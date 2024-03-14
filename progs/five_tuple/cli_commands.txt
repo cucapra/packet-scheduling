@@ -1,0 +1,46 @@
+# Table FiveTuple, Entry 1
+# key:[ ipv4.src=fd5f0bc8 ipv4.dst=9aaa2010 ipv4.protocol=11 src_port=2411 dst_port=6cc1 ]
+# response:[ counter_index=0 pcp=1 cfi=1 vid=111 action=InsertVLAN ]
+table_add FiveTuple InsertVLAN 0xfd5f0bc8 0x9aaa2010 0x11 0x2411 0x6cc1 => 0x0000 0x1 0x1 0x111
+
+# Table FiveTuple, Entry 2
+# key:[ ipv4.src=7cf6cd9c ipv4.dst=cc930a03 ipv4.protocol=11 src_port=211e dst_port=5b98 ]
+# response:[ counter_index=1 pcp=1 cfi=1 vid=222 action=InsertVLAN ]
+table_add FiveTuple InsertVLAN 0x7cf6cd9c 0xcc930a03 0x11 0x211e 0x5b98 => 0x0001 0x1 0x1 0x222
+
+# Table FiveTuple, Entry 3
+# key:[ ipv4.src=e90a5c71 ipv4.dst=6353a5ca ipv4.protocol=11 src_port=7320 dst_port=85bb ]
+# response:[ counter_index=2 pcp=4 cfi=0 vid=333 action=InsertVLAN ]
+table_add FiveTuple InsertVLAN 0xe90a5c71 0x6353a5ca 0x11 0x7320 0x85bb => 0x0002 0x4 0x0 0x333
+
+# Table FiveTuple, Entry 4
+# key:[ ipv4.src=ad8575e6 ipv4.dst=cc3d03d7 ipv4.protocol=11 src_port=9e55 dst_port=51fa ]
+# response:[ counter_index=3 pcp=4 cfi=0 vid=444 action=InsertVLAN ]
+table_add FiveTuple InsertVLAN 0xad8575e6 0xcc3d03d7 0x11 0x9e55 0x51fa => 0x0003 0x4 0x0 0x444
+
+# Table FiveTuple, Entry 5
+# key:[ ipv4.src=0c371659 ipv4.dst=0ea8a7a2 ipv4.protocol=11 src_port=eb3b dst_port=79ec ]
+# response:[ counter_index=4 pcp=4 cfi=0 vid=555 action=InsertVLAN ]
+table_add FiveTuple InsertVLAN 0x0c371659 0x0ea8a7a2 0x11 0xeb3b 0x79ec => 0x0004 0x4 0x0 0x555
+
+# table entry editing example
+table_modify FiveTuple InsertVLAN 1 => 0x0001 0x2 0x0 0x666
+table_delete FiveTuple 4
+
+# run traffic
+run_traffic ./traffic
+
+# Read counter values
+counter_read PacketCounter 0
+counter_read ByteCounter 0
+counter_read PacketCounter 1
+counter_read ByteCounter 1
+counter_read PacketCounter 2
+counter_read ByteCounter 2
+counter_read PacketCounter 3
+counter_read ByteCounter 3
+counter_read PacketCounter 4
+counter_read ByteCounter 4
+
+# end
+exit

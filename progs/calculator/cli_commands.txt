@@ -1,0 +1,35 @@
+# Table calculate, Entry 1
+# key:[ p4calc.operation=6 ]
+# response:[ action=operation_add ]
+table_add calculate operation_add 0x6 =>
+
+# Table calculate, Entry 2
+# key:[ p4calc.operation=1 ]
+# response:[ action=operation_sub ]
+table_add calculate operation_sub 0x1 =>
+
+# Table calculate, Entry 3
+# key:[ p4calc.operation=5 ]
+# response:[ action=operation_mult ]
+table_add calculate operation_mult 0x5 =>
+
+# Table calculate, Entry 4
+# key:[ p4calc.operation=0 ]
+# response:[ action=operation_and ]
+table_add calculate operation_and 0x0 =>
+
+# Table calculate, Entry 5
+# key:[ p4calc.operation=4 ]
+# response:[ action=operation_or ]
+table_add calculate operation_or 0x4 =>
+
+# Table calculate, Entry 6
+# key:[ p4calc.operation=3 ]
+# response:[ action=operation_xor ]
+table_add calculate operation_xor 0x3 =>
+
+# run traffic
+run_traffic ./traffic
+
+# end
+exit

@@ -1,0 +1,35 @@
+# Table forwardIPv4, Entry 1 
+# key:[ ipv4.dst=8482895d ] 
+# response:[ port=6c action=forwardPacket ]
+table_add forwardIPv4 forwardPacket 0x8482895d/32 => 0x6c 0
+
+# Table forwardIPv4, Entry 2 
+# key:[ ipv4.dst=a00965f5 ]
+# response:[ port=2e action=forwardPacket ]
+table_add forwardIPv4 forwardPacket 0xa00965f5/32 => 0x2e 0
+
+# Table forwardIPv4, Entry 3 
+# key:[ ipv4.dst=5f5c7d3a ]
+# response:[ port=73 action=forwardPacket ]
+table_add forwardIPv4 forwardPacket 0x5f5c7d3a/32 => 0x73 0
+
+# Table forwardIPv6, Entry 1
+# key:[ ipv6.dst=9f2f01913d8b6437864e0b6791a8ba64 ]
+# response:[ port=14 action=forwardPacket ]
+table_add forwardIPv6 forwardPacket 0x9f2f01913d8b6437864e0b6791a8ba64/128 => 0x14 0
+
+# Table forwardIPv6, Entry 2
+# key:[ ipv6.dst=b070daff605832a6d3849342a0b04fbb ]
+# response:[ port=18 action=forwardPacket ]
+table_add forwardIPv6 forwardPacket 0xb070daff605832a6d3849342a0b04fbb/128 => 0x18 0
+
+# Table forwardIPv6, Entry 3
+# key:[ ipv6.dst=74a7d1ace9060b082bdb486afb9cdbda ]
+# response:[ port=6c action=forwardPacket ]
+table_add forwardIPv6 forwardPacket 0x74a7d1ace9060b082bdb486afb9cdbda/128 => 0x6c 0
+
+# run traffic
+run_traffic ./traffic
+
+# end
+exit
