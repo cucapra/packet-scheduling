@@ -71,8 +71,6 @@ Citeable facts:
     - Batching-based scheduling, where worker threads dynamically collect a batch of transactions, divide the batch into groups, and minimize contention between groups. Con: takes time to make the groups. 
 - FPGA-armed smartNICs are either "on-path" or "off-path". Off-path is what this paper (and, indeed, we) are thinking of: traffic flows through the NIC as normal, and some of that traffic may be sent to the FPGA using a PCIe link (Section 2.3).
 
-Further reading: 
-
 Questions:
 - I don't fully get how their "feedback mechanism" (between the upper-level transaction software and the smartNIC) works (Section 3.3).
 
@@ -81,8 +79,6 @@ This paper highlights two challenges with transaction scheduling:
 - Calculating which CPU core is best suited to deal with a packet, without resource contention, is hard and takes up cycles. 
 They have a new way to compactly representing the state of contention (a function of the "request state" of the packet, the "worker state" of each CPU, and the "global state" of the whole server), which allows them to calculate the possibility of contention at the hardware level. 
 
-Contention (where two transactions access the same record, and at least one of those transaction is a write) is bad because it leads to an abort. Aborts can cascade. That said, we cannot aim for perfect contention-awareness all the time, since that would slow us down too much. 
+Contention (where two transactions access the same record, and at least one of those transaction is a write) is bad because it leads to an abort. Aborts can cascade. That said, we cannot aim for perfect contention-awareness all the time, since that would slow us down too much. This paper seeks to minimize this contention without slowing things down.
 
-
-
-
+Clients of AlNiCo must tag packets with a fixed-form header called the "request feature vector". The data plus the header is sent to the scheduler. The scheduler looks at these, plus the state of the worker threads, and notifies the worker threads of their next tasks. This notification is just an address for the data, not the data itself. When the thread is ready, it pulls the data from a buffer, does its work, and transmits the answer to its client.
