@@ -4,8 +4,7 @@
 A data center acts like a multiplexer, matching tasks ("packets") with CPUs that can accomplish those tasks ("cores"). The tasks may be time sensitive or may be "batch mode" style work that is not as time-sensitive. Doing this multiplexing at the NIC makes sense, since every packet must go through the NIC anyway. SmartNICs to the rescue! That said, a smartNIC cannot do this scheduling in a vacuum; it needs to coordinate with the CPU cores, which have additional info. 
 
 #### Elastic RSS
-Rucker et al
-APNet '19
+Rucker et al at APNet '19 | [Paper](https://ppl.stanford.edu/papers/apnet19_erss.pdf)
 
 Major goals:
 - Don't dedicate a CPU core to TM, as this will bottleneck your throughput. 
@@ -36,8 +35,7 @@ Scheduling is at two timescales: fine-grained, per-packet processing at NIC, coa
 
 
 #### PANIC
-Lin et al
-OSDI '20
+Lin et. al. at OSDI '20 | [Paper](https://www.usenix.org/system/files/osdi20-lin.pdf)
 
 Major goals:
 - Offload variety: hardware and software offloads
@@ -62,8 +60,7 @@ Packets are given a "PANIC descriptor", then pushed to the scheduler, which then
 
 
 #### AlNiCo
-Li et al
-USENIX ATC '22
+Li et. al. at USENIX ATC '22 | [Paper](https://www.usenix.org/system/files/atc22-li-junru.pdf)
 
 Major goals:
 - Contention awareness: minimize inter-transaction contention over cores. 
