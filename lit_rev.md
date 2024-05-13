@@ -1,89 +1,4 @@
-
-#### Background 
-
-A data center acts like a multiplexer, matching tasks ("packets") with CPUs that can accomplish those tasks ("cores"). The tasks may be time sensitive or may be "batch mode" style work that is not as time-sensitive. Doing this multiplexing at the NIC makes sense, since every packet must go through the NIC anyway. SmartNICs to the rescue! That said, a smartNIC cannot do this scheduling in a vacuum; it needs to coordinate with the CPU cores, which have additional info. 
-
-#### Elastic RSS
-Rucker et al at APNet '19 | [Paper](https://ppl.stanford.edu/papers/apnet19_erss.pdf)
-
-Major goals:
-- Don't dedicate a CPU core to TM, as this will bottleneck your throughput. 
-- Schedule the traffic intelligently, with the ability to respond to upstream changes. 
-
-Minor goals:
-- Line rate operation
-- Work conservation
-- CPU utilization, e.g. don't dedicate a core to TM, handle bursts without leaving cores underutilized, etc.
-- Dispersion tolerance
-- Packet stealing
-
-Citeable facts:
-- Real-world tail latency is 100 microseconds.
-- Packet stealing improves tail latency in case of head-of-line blocking at a core.
-
-Further reading: 
-- Taurus [19].
-- Possible to make updates to flow tables over the PCIe bus using Programmed IO [15].
-
-Questions:
-- How dated is this? 
-- Are we interested in Taurus?
-
-This paper argues that packets and cores should be co-scheduled at the NIC. They want to use Taurus, a programmable NIC, which has a map-reduce abstraction. Map: for each packet, find the weighted consistent hashing distance to each core. Reduce: for each packet, find the closest allocated core. 
-
-Scheduling is at two timescales: fine-grained, per-packet processing at NIC, coarse-grained state management at CPU. 
-
-
-#### PANIC
-Lin et. al. at OSDI '20 | [Paper](https://www.usenix.org/system/files/osdi20-lin.pdf)
-
-Major goals:
-- Offload variety: hardware and software offloads
-- Offload chaining: avoid wasting area on redundant functionality. Instead, provision the functionality in one place, and cleverly chain tasks to get them consumed by the right core. 
-- Multi-tenant isolation: tenants should not be able to consume more than their allocation of a shared offload. Required on-the-fly reprogramming of the TM. 
-- Variable-perfomance offloads: latency sensitive, or not. 
-- Line rate
-
-Citeable facts:
-- Categorization of existing NIC designs into three kinds, along with their limitations when it comes to the five major goals above. 
-
-This paper contributes a new NIC design that combines a variety of offloads into chains that can then be consumed efficiently by a pipelined core. 
-
-They want the design to be in 4 parts: 
-- RMT pipeline that makes packets into chains
-- Fast switching fabric that connects everything
-- Scheduler
-- Cores, each running one offload
-
-Packets are given a "PANIC descriptor", then pushed to the scheduler, which then buffers the packet until the first destination core is idle. It then pushes the packet to that idle core. A core may further push the packet directly to another core, without going back to the scheduler. If a core receives a packet while not idle, it may push the packet to the scheduler's buffer and then pull it later on. You more or less reverse this for transmission. 
-
-
-
-#### AlNiCo
-Li et. al. at USENIX ATC '22 | [Paper](https://www.usenix.org/system/files/atc22-li-junru.pdf)
-
-Major goals:
-- Contention awareness: minimize inter-transaction contention over cores. 
-
-Citeable facts:
-- Two existing methods of scheduling, broadly. (Section 2.2). These are:
-    - Static data partitioning, where the client knows a partition scheme and sends its packets to some known core directly. Con: can't handle cases that are dynamic, or that don't partition nicely. 
-    - Batching-based scheduling, where worker threads dynamically collect a batch of transactions, divide the batch into groups, and minimize contention between groups. Con: takes time to make the groups. 
-- FPGA-armed smartNICs are either "on-path" or "off-path". Off-path is what this paper (and, indeed, we) are thinking of: traffic flows through the NIC as normal, and some of that traffic may be sent to the FPGA using a PCIe link (Section 2.3).
-
-Questions:
-- I don't fully get how their "feedback mechanism" (between the upper-level transaction software and the smartNIC) works (Section 3.3).
-
-This paper highlights two challenges with transaction scheduling:
-- The metrics by which we want to schedule a packet may be sophisticated and dynamic, not just a 5-tuple.
-- Calculating which CPU core is best suited to deal with a packet, without resource contention, is hard and takes up cycles. 
-They have a new way to compactly representing the state of contention (a function of the "request state" of the packet, the "worker state" of each CPU, and the "global state" of the whole server), which allows them to calculate the possibility of contention at the hardware level. 
-
-Contention (where two transactions access the same record, and at least one of those transaction is a write) is bad because it leads to an abort. Aborts can cascade. That said, we cannot aim for perfect contention-awareness all the time, since that would slow us down too much. This paper seeks to minimize this contention without slowing things down.
-
-Clients of AlNiCo must tag packets with a fixed-form header called the "request feature vector". The data plus the header is sent to the scheduler. The scheduler looks at these, plus the state of the worker threads, and notifies the worker threads of their next tasks. This notification is just an address for the data, not the data itself. When the thread is ready, it pulls the data from a buffer, does its work, and transmits the answer to its client.
-
-#### FlowValve: Packet Scheduling Offloaded on NP-based SmartNICs
+### FlowValve: Packet Scheduling Offloaded on NP-based SmartNICs
 Xi et al at DCS '22 | [Paper](https://ieeexplore.ieee.org/document/9912227)
 
 Major goals:
@@ -105,16 +20,34 @@ Questions:
 They abstract over the existing queues on a NIC to create a logical FIFO. They "perform specialized tail drops to mix the FIFO queue with expected flow proportions". I'm not totally sure what they mean, but the line is: "Unlike common tail drop, FlowValve prejudges which packet would cause buffer overflow to its belonged traffic class. Then it explicitly drops this packet in advance. In this way, FlowValve assigns buffers conceptually."
 
 
-#### Shinjuku: Preemptive Scheduling for μsecond-scale Tail Latency 
+### Shinjuku: Preemptive Scheduling for μsecond-scale Tail Latency 
 Kaffes et al at NSDI '19 | [Paper](https://www.usenix.org/system/files/nsdi19-kaffes.pdf)
 
-TK: will transfer paper notes.
+Major goals:
+- The issue is that workloads with high dispersion (packets get spread out to many workers, essentially the opposite of affinity to one core) and workloads with heavy tails (many small packets after a few big packets) get very poor service. This paper proposes a centralized scheduling mechanism featuring Linux-style _preemption_ but at _very fine granularity_. This gives higher throughput and lower latency, thereby preventing the kinds of blocks we were seeing.
+- The fine granularity of preemption is achieved by lowering the preemptions to the hardware level. Moving to hardware is not a cure-all, and incurs its own slowdown. Some further jankiness, e.g. sharing of address spaces and "posted interrupts", are needed in order to avoid the slowdown that hardware would itself incur.
+- In reality they maintain a small number of FIFOs, one per "class" of packets. They have come up with a lightweight policy that determines which of those FIFOs should be popped next. The policy takes into account how long ago each FIFO was popped, and what service-level objectives the user stated for the class of packets in each FIFO. A preempted packet is reinserted either at the head or the tail of its queue, and this has varying effects. This can be modified based on the desired scheduling regime.
+- The end result is a scheduler that simulates cFCFS when the workload is easy, and PS when the workload is challenging. See below for what those policies are.
+- Note that this work is an opinionated departure away from the RSS-style work we've seen above. In their words: "If service times exhibit low dispersion and there are enough client connections for RSS to spread requests evenly across queues, stealing happens infrequently."
+- Overall I'm a fan. This is a top-notch paper that does some very helpful surveying of the field in addition to its own strong contribution. It has also been used extensively by RackSched (see below).
+- The [video](https://www.usenix.org/conference/nsdi19/presentation/kaffes) is a worth a watch too.
 
 Citeable facts:
-- Centralized first-come-first-serve (cFCFS) is near-optimal for low-dispersion workloads, and processor sharing (PS) is near-optimal for heavy-tailed workloads or light-tailed workloads with high dispersion.
+- Centralized first-come-first-serve (cFCFS), where you maintain one central FIFO that any worker can pop to grab its next piece of work, is near-optimal for low-dispersion workloads.
+- Processor sharing (PS), where all requests receive a fine-grained and fair fraction of the available processing capacity, is near-optimal for heavy-tailed workloads or light-tailed workloads with high dispersion.
+
+Further reading: 
+- They say that they want to integrate with Shenago. Has something along those lines happened since 2019?
+
+Questions:
+- Can we really presume that all this work is preemptible? 
+- Even if so, can a task get stuck forever, with barely any work getting done on it? They mention that this hurts them in one experiment. Maybe an interesting contribution could be that a task gets additional "karma points" every time it is preempted and sent back. Concretely, this could mean (a combination of):
+	- Putting it at the head of its FIFO, not at the tail.
+	- Making the preemption logic aware of the packet's many prior trips, so this packet in particular is preempted less eagerly.
+	- Maintaining a dedicated core that is preempted less eagerly, and passing oft-preempted packets to that core. This idea almost reminds me of hierarchical garbage collection: young blocks die quickly, old blocks stick around. We could even have a whole spectrum of cores with different preemption eagerness settings, along with some notion of promotion instead of just re-sending to the same core.
 
 
-#### RackSched: A Microsecond-Scale Scheduler for Rack-Scale Computers
+### RackSched: A Microsecond-Scale Scheduler for Rack-Scale Computers
 Zhu et al at OSDI '20 | [Paper](https://www.usenix.org/system/files/osdi20-zhu.pdf)
 
 Major goals:
@@ -130,26 +63,28 @@ The Shinjuku paper has shown that cFCFS and PS are ideal policies in many circum
 
 Pretty cool! But one wonders what the limitations of this observation are... we first commit to a server and then let the server run its buffering and scheduling routines using Shinjuku. Surely there is a flexibility cost to this? Shinjuku's secret sauce was preemption, and that is not possible at the inter-server level?
 
+## TODO
 
-## TODO: 
-
-#### Shenango: Achieving High CPU Efficiency for Latency-sensitive Datacenter Workloads
+### Shenango: Achieving High CPU Efficiency for Latency-sensitive Datacenter Workloads
 Ousterhout et al at NSDI '19 | [Paper](https://www.usenix.org/system/files/nsdi19-ousterhout.pdf)
  
-#### Loom: Flexible and Efficient NIC Packet Scheduling
+### Loom: Flexible and Efficient NIC Packet Scheduling
 Stephens et al at NSDI '19 | [Paper](https://www.usenix.org/conference/nsdi19/presentation/stephens)
+
 Others cite this paper as the SOTA on programmable packet scheduling on NICs. Note, un-smart, so it would take years to tape out onto ASICs.
 
-#### SENIC: Scalable NIC for End-Host Rate Limiting
+### SENIC: Scalable NIC for End-Host Rate Limiting
 Radhakrishnan et al at NSDI '14 | [Paper](https://www.usenix.org/system/files/conference/nsdi14/nsdi14-paper-radhakrishnan.pdf)
 
-#### Eiffel: Efficient and Flexible Software Packet Scheduling
+### Eiffel: Efficient and Flexible Software Packet Scheduling
 Saeed et al at NSDI '19 | [Paper](https://www.usenix.org/conference/nsdi19/presentation/saeed)
 
-#### A large-scale deployment of DCTCP
+### A large-scale deployment of DCTCP
 Dhamija et al at NSDI '24 | [Paper](https://www.usenix.org/system/files/nsdi24-dhamija.pdf)
+
 See §4.4
 
 #### OS Scheduling: Better scheduling policies for modern computing systems
 Kaffes in CACM | [Paper](https://dl.acm.org/doi/pdf/10.1145/3595837)
+
 A review of the SOTA in OS scheduling by the Shinjuku lead author!
