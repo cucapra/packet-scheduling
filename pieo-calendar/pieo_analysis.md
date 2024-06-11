@@ -1,6 +1,12 @@
 # PIEO Queues – Overview & Analysis
 
-Here I'll attempt to discuss the implementation of the PIEO (Push-In-Extract-Out) Queue, its relevance against PIFOs and potential drawbacks.
+This serves to discuss the implementation of the PIEO (Push-In-Extract-Out) Queue, its relevance against PIFOs and potential drawbacks.
+
+### Papers
+
+1) [DR-PIFO: A Dynamic Ranking Packet Scheduler Using a Push-In-First-Out Queue](https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=10215378&tag=1) – Elbediwy et al 2024, IEEE
+2) [Discussion on Push-In-Extract-Out Scheduler in Hardware](https://cemclaughlin.github.io/img/portfolio/PIEO%20Presentation/Final%20Project%20Report.pdf) – McLaughlin, University of Hawaii
+
 ### Summary
 
 Fundamentally, a PIEO (Push-In Extract Out) Queue is a generalization of the PIFO (Push-In First Out) Queue which we have already studied. The main difference lies in how a queue is queried.
@@ -38,10 +44,10 @@ There are a few drawbacks of using a PIFO for packets, which PIEO queues can add
 - A major issue with PIFOs is that it is unable to handle high numbers of flows in a reasonable timeframe (Elbediwy et al upper bounds this at around 1000). 
 - PIEOs can instead handle up to 30,000 simultaneous flows by optimizing its register usage.
 
-**A Potential Downside – Speed
+**A Potential Downside – Speed**
 - PIEOs require a four-step non-pipelined system, which is slower than the standard PIFO architecture.
 - Enqueueing and dequeueing achieve a throughput of 1 packet per 4 cycles, while updating a rank can lead to an 8-cycle break from the norm.
-- 
+
 ### A Visual OCaml Representation
 
 For the sake of argument and a visual aid, I've explored a functional PIEO module type implementation in OCaml:
