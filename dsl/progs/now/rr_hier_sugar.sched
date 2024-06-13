@@ -1,6 +1,6 @@
 classes B, RP, RT
 // B represents packets that came from Buffalo
-// R* represents packets that came from Rochester
+// R? represents packets that came from Rochester
 // RP packets are destined for Pittsburgh
 // RT packets are destined for Toronto
 
@@ -8,3 +8,7 @@ r_policy = rr[RP, RT]
 policy = rr[B, r_policy]
 
 return policy
+
+// We have no way of partitioning classes after they come to us.
+// We assume the finest partitioning that we care about
+// has already been done for us and supplied to us via `classes`.
