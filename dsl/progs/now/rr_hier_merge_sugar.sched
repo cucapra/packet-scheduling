@@ -1,0 +1,18 @@
+classes BX, BY, RP, RT
+// B* represents packets that came from Buffalo
+// BX packets are destined for Xanadu
+// BY packets are destined for Yangon
+// R* represents packets that came from Rochester
+// RP packets are destined for Pittsburgh
+// RT packets are destined for Toronto
+
+b_policy = fifo[BX, BY]
+r_policy = rr[RP, RT]
+policy = rr[b_policy, r_policy]
+
+return policy
+
+// This policy is not interested in paritioning `B` packets by destination.
+// However, it has been given classes for `BX` and `BY` packets, not some
+// monolithic class `B`.
+// Therefore, it must merge them into a single policy using a `fifo` wrapper.
