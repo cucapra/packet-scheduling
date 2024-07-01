@@ -1,0 +1,74 @@
+\documentclass{article}
+
+% font
+\usepackage{cmbright}
+
+% margin 
+\usepackage[margin=1in]{geometry}
+
+% references
+\usepackage[colorlinks]{hyperref} 
+\PassOptionsToPackage{colorlinks}{hyperref}
+\hypersetup{urlcolor = RedViolet, linkcolor = RoyalBlue, citecolor = NavyBlue}
+\urlstyle{same}
+
+\usepackage{amsmath, amssymb, amsthm} 
+\usepackage[svgnames, dvipsnames]{xcolor}
+\usepackage{mhsetup, mathtools}
+
+\usepackage[capitalise]{cleveref}
+\usepackage[T1]{fontenc} 
+\usepackage{silence} % for suppressing warnings
+\usepackage{cite}
+
+% PL macros
+\usepackage{mathpartir}
+\usepackage{stmaryrd}
+\newcommand{\inference}[3]{\inferrule*[Right=#1]{#2}{#3}}
+\newcommand{\axiom}[2]{\inferrule*[Right=#1]{\;}{#2}}
+\DeclareMathOperator{\bigstep}{\Downarrow}
+\DeclareMathOperator{\false}{\textbf{false}}
+\DeclareMathOperator{\true}{\mathbf{true}}
+\newcommand{\hoare}[3]{\{#1\} \; #2 \; \{#3\}}
+
+% theorems
+\newtheorem{thm}{Theorem}[section]
+\newtheorem{lem}[thm]{Lemma}
+\renewcommand{\thethm}{\arabic{thm}} % Remove subsection from counter
+\theoremstyle{definition}
+\newtheorem{dfn}{Definition}[section]
+\renewcommand{\thedfn}{\arabic{dfn}} % Remove subsection from counter
+
+% no more indent
+\setlength{\parindent}{0pt}
+
+\begin{document}
+
+{\LARGE \textbf{PIEO Trees for Fun and Profit}}
+
+\hrulefill
+
+This writeup formalizes syntax and semantics of PIEO tree, much like \cite{OG} does with PIFO trees.
+
+\section*{PIEOs}
+
+\section*{PIEO Trees}
+
+Let $\mathrm{Topo}$ be the set of (tree) topologies, as defined in \cite{OG}:
+\begin{dfn}
+    The set of (tree) topologies, denoted $\mathrm{Topo}$, is the smallest set satisfying the rules:
+    \begin{align*}
+        \axiom{}{\ast \in \mathrm{Topo}} && 
+        \inference{}{n \in \mathbb N\\ ts \in \mathrm{Topo}^n}{\mathrm{Node}(ts) \in \mathrm{Topo}}
+    \end{align*}
+
+    Here, $\ast$ is the topology of a single-node tree, and, given a list $ts$ of $n$ topologies, $\mathrm{Node}(ts)$ is the topology of a node with $ts$ as its children.
+\end{dfn}
+
+\newpage 
+
+\renewcommand\refname{\Large References}
+\bibliographystyle{alpha} 
+\bibliography{refs}
+
+\end{document}
