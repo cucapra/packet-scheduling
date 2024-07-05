@@ -11,4 +11,4 @@ type policy =
 
 type exp = 
 | Assn of var * policy
-| Return of var (*unsure*)
+| Return of policy (*unsure*)
