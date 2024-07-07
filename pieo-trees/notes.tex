@@ -1,4 +1,4 @@
-\documentclass{article}
+\documentclass{amsart}
 
 % font
 \usepackage{cmbright}
@@ -31,43 +31,121 @@
 \DeclareMathOperator{\true}{\mathbf{true}}
 \newcommand{\hoare}[3]{\{#1\} \; #2 \; \{#3\}}
 
+% Formal Abstractions macros
+\DeclareMathOperator{\pkt}{\mathrm{pkt}}
+
 % theorems
 \newtheorem{thm}{Theorem}[section]
 \newtheorem{lem}[thm]{Lemma}
-\renewcommand{\thethm}{\arabic{thm}} % Remove subsection from counter
 \theoremstyle{definition}
-\newtheorem{dfn}{Definition}[section]
-\renewcommand{\thedfn}{\arabic{dfn}} % Remove subsection from counter
+\newtheorem{dfn}[thm]{Definition}
+\newtheorem{abuse}[thm]{Abuse of Notation}
+\newtheorem{ex}[thm]{Example}
 
 % no more indent
 \setlength{\parindent}{0pt}
 
+% right-justified sections hack
+\usepackage{titlesec}
+\newcommand{\marginsecnumber}[1]{%
+  \makebox[0pt][r]{#1\hspace{6pt}}%
+}
+\titleformat{\section}
+  {\normalfont\Large\bfseries}
+  {\marginsecnumber\thesection}
+  {0pt}
+  {}
+\titleformat{\subsection}
+  {\normalfont\large\bfseries}
+  {\marginsecnumber\thesubsection}
+  {0pt}
+  {}
+\titleformat{\subsubsection}
+  {\normalfont\normalsize\bfseries}
+  {\marginsecnumber\thesubsubsection}
+  {0pt}
+  {}
+
 \begin{document}
+
+\pagestyle{empty}
 
 {\LARGE \textbf{PIEO Trees for Fun and Profit}}
 
-\hrulefill
+\hrulefill\\
 
-This writeup formalizes syntax and semantics of PIEO tree, much like \cite{OG} does with PIFO trees.
+We assume familiarity with \cite{OG}, adopt its notational conventions, and borrow many of its definitions!
 
-\section*{PIEOs}
+% \section{Overview}
+% 
+% {
+%     \color{red}
+%     TODO!
+%     \begin{enumerate}
+%         \item An example of a scheduling transaction that cannot be expressed with PIFO trees: maybe token bucket?
+%         \item Introduce what a PIEO is and what it does 
+%         \item An overview of what to expect with each section.
+%     \end{enumerate}
+% }
+% 
+% \newpage
 
-\section*{PIEO Trees}
+\section{Structure \& Semantics}
 
-Let $\mathrm{Topo}$ be the set of (tree) topologies, as defined in \cite{OG}:
-\begin{dfn}
-    The set of (tree) topologies, denoted $\mathrm{Topo}$, is the smallest set satisfying the rules:
+Our PIEO trees are near identical to PIFO trees, with only two modifications:
+\begin{enumerate}
+    \item All nodes hold PIEOs instead of PIFOs
+    \item Internal PIEOs hold just enough extra data to compute predicates of packets that live in subtrees.
+\end{enumerate}
+
+To make ``just enough extra data'' precise, let $f$ be a predicate on $\mathbf{Pkt}$. 
+We'll presuppose the existence of a set $\mathbf{Data}_f$ and associated surjective map $\mathrm{data}_f: \mathbf{Pkt} \to \mathbf{Data}_f$.
+This map and set are such that, for $\pkt, \pkt^\prime \in \mathbf{Pkt}$, 
+$$\mathrm{data}_f(\pkt) = \mathrm{data}_f(\pkt^\prime) \implies f(\pkt) = f(\pkt^\prime)$$
+In other words, all preimages of $d \in \mathbf{Data}_f$ evaluate to the same truth value under $f$. 
+For this reason,
+
+\begin{abuse}
+    We'll often write $f(d)$ when we mean $f(\pkt)$ for some $\pkt \in f^{-1}(d)$. 
+\end{abuse}
+
+Broadly, this set $\mathbf{Data}_f$ is designed to encode just the parts of $\mathbf{Pkt}$ necessary for computing $f(\pkt)$.
+
+\begin{ex}
+    For any $f$, it is legal to set $\mathrm{Data}_f = \mathbf{Pkt}$ and $\mathrm{data}_f$ to be the identity map.
+    We'd expect this to work since each $\pkt \in \mathbf{Pkt}$ certainly holds all the information necessary to compute $f(\pkt)$.
+\end{ex}
+
+We can now formally define PIEO trees!
+
+\begin{dfn}[PIEO tree]
+    Let $t \in \mathbf{Topo}$ be a topology and $f$ a predicate over $\mathbf{Pkt}$.
+    The set of \emph{PIEO trees} over $t$ and $f$, denoted $\mathbf{PIEOTree}(t, f)$, is defined inductively by
     \begin{align*}
-        \axiom{}{\ast \in \mathrm{Topo}} && 
-        \inference{}{n \in \mathbb N\\ ts \in \mathrm{Topo}^n}{\mathrm{Node}(ts) \in \mathrm{Topo}}
+        \inference{}
+        {
+            p \in \mathbf{PIEO}(\mathbf{Pkt}, f)
+        }
+        {
+            \mathrm{Leaf}(p) \in \mathbf{PIEOTree}(\ast)
+        }
+        &&
+        \inference{}
+        {
+            n \in \mathbb N\\
+            ts \in \mathbf{Topo}^n\\
+            p \in \mathbf{PIEO}(\{1,\ldots, n\} \times \mathbf{Data}_f(\mathbf{Pkt}), f)\\\\
+            \forall i \in [1, n]. \; qs[i] \in \mathbf{PIEOTree}(ts[i])
+        }
+        {
+            \mathrm{Internal}(qs, p) \in \mathbf{PIEO}(\mathrm{Node}(ts))
+        }
     \end{align*}
-
-    Here, $\ast$ is the topology of a single-node tree, and, given a list $ts$ of $n$ topologies, $\mathrm{Node}(ts)$ is the topology of a node with $ts$ as its children.
 \end{dfn}
 
 \newpage 
 
-\renewcommand\refname{\Large References}
+\renewcommand\refname{\LARGE References}
 \bibliographystyle{alpha} 
 \bibliography{refs}
 
