@@ -3,7 +3,7 @@
 # Shared cache: disabled
 # Workspace root: /Users/cassandrasziklai/packet-scheduling/parser
 # Auto-detected concurrency: 8
-$ /Users/cassandrasziklai/.opam/5.0.0/bin/ocamlc.opt -config > /var/folders/xr/gwyhxzqd4xldjpcy0p8629b80000gn/T/dune_751554_output
+$ /Users/cassandrasziklai/.opam/5.0.0/bin/ocamlc.opt -config > /var/folders/xr/gwyhxzqd4xldjpcy0p8629b80000gn/T/dune_617ee0_output
 # Dune context:
 #  { name = "default"
 #  ; kind = "default"
@@ -117,15 +117,12 @@ $ /Users/cassandrasziklai/.opam/5.0.0/bin/ocamlc.opt -config > /var/folders/xr/g
 #      ; windows_unicode = false
 #      }
 #  }
-# Promoting "_build/default/parser.opam" to "parser.opam"
-$ (cd _build/default && /Users/cassandrasziklai/.opam/5.0.0/bin/ocamlc.opt -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g -bin-annot -I test/.parser.eobjs/byte -no-alias-deps -opaque -o test/.parser.eobjs/byte/dune__exe__Parser.cmi -c -intf test/parser.mli)
-$ (cd _build/default && /Users/cassandrasziklai/.opam/5.0.0/bin/ocamlc.opt -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -w -49 -nopervasives -nostdlib -g -bin-annot -I lib/.parser.objs/byte -no-alias-deps -opaque -o lib/.parser.objs/byte/parser.cmo -c -impl lib/parser.ml-gen)
-$ (cd _build/default && /Users/cassandrasziklai/.opam/5.0.0/bin/ocamlc.opt -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g -a -o lib/parser.cma lib/.parser.objs/byte/parser.cmo)
-$ (cd _build/default && /Users/cassandrasziklai/.opam/5.0.0/bin/ocamlc.opt -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g -bin-annot -I bin/.main.eobjs/byte -I lib/.parser.objs/byte -no-alias-deps -opaque -o bin/.main.eobjs/byte/dune__exe__Main.cmi -c -intf bin/main.mli)
-$ (cd _build/default && /Users/cassandrasziklai/.opam/5.0.0/bin/ocamlopt.opt -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g -I test/.parser.eobjs/byte -I test/.parser.eobjs/native -intf-suffix .ml -no-alias-deps -opaque -o test/.parser.eobjs/native/dune__exe__Parser.cmx -c -impl test/parser.ml)
-$ (cd _build/default && /Users/cassandrasziklai/.opam/5.0.0/bin/ocamlopt.opt -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -w -49 -nopervasives -nostdlib -g -I lib/.parser.objs/byte -I lib/.parser.objs/native -intf-suffix .ml-gen -no-alias-deps -opaque -o lib/.parser.objs/native/parser.cmx -c -impl lib/parser.ml-gen)
-$ (cd _build/default && /Users/cassandrasziklai/.opam/5.0.0/bin/ocamlopt.opt -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g -I bin/.main.eobjs/byte -I bin/.main.eobjs/native -I lib/.parser.objs/byte -I lib/.parser.objs/native -intf-suffix .ml -no-alias-deps -opaque -o bin/.main.eobjs/native/dune__exe__Main.cmx -c -impl bin/main.ml)
-$ (cd _build/default && /Users/cassandrasziklai/.opam/5.0.0/bin/ocamlopt.opt -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g -a -o lib/parser.cmxa lib/.parser.objs/native/parser.cmx)
-$ (cd _build/default && /Users/cassandrasziklai/.opam/5.0.0/bin/ocamlopt.opt -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g -shared -linkall -I lib -o lib/parser.cmxs lib/parser.cmxa)
-$ (cd _build/default && /Users/cassandrasziklai/.opam/5.0.0/bin/ocamlopt.opt -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g -o test/parser.exe test/.parser.eobjs/native/dune__exe__Parser.cmx)
-$ (cd _build/default && /Users/cassandrasziklai/.opam/5.0.0/bin/ocamlopt.opt -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g -o bin/main.exe lib/parser.cmxa bin/.main.eobjs/native/dune__exe__Main.cmx)
+$ (cd _build/.sandbox/a269be7b959056a12947010d69a17b6e/default && /Users/cassandrasziklai/.opam/5.0.0/bin/menhir lib/parser.mly --base lib/parser --infer-write-query lib/parser__mock.ml.mock)
+> File "lib/parser.mly", line 16, characters 14-20:
+> Warning: the token LBRACE is unused.
+> File "lib/parser.mly", line 16, characters 21-27:
+> Warning: the token RBRACE is unused.
+$ (cd _build/default && /Users/cassandrasziklai/.opam/5.0.0/bin/ocamldep.opt -modules -impl lib/parser__mock.ml.mock) > _build/default/lib/.parser.objs/parser__mock.impl.d
+> File "lib/parser.mly", line 7, characters 28-30:
+> Error: Syntax error
+[2]

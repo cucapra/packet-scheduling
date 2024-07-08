@@ -1,4 +1,4 @@
-type clss = Id
+type clss = string
 
 type var = string
 

@@ -33,7 +33,6 @@ exp:
 
 clist:
     | CLSS COMMA clist                         { $1::$3 }
-    | CLSS                                     {[$1]}
 
 pexp:
     | plist                                    { list_expr $1 }
@@ -43,10 +42,10 @@ plist:
     | policy                                   { [$1] }
 
 policy:
-    | CLSS                                     { Class } // what is argument
-    | FIFO LBRACE plist RBRACE                 { Policy(Fifo, $3) } // put braces here?
-    | FAIR LBRACE plist RBRACE                 { Policy(Fair, $3) }
-    | STRICT LBRACE plist RBRACE               { Policy(Strict, $3) }
-    | TRANSIENT LBRACE plist RBRACE            { Policy(Transient, $3) }
+    | CLSS                                    { Class } // what is argument
+    | FIFO plist                               { Policy(Fifo, $2) } // put braces here?
+    | FAIR plist                               { Policy(Fair, $2) }
+    | STRICT plist                             { Policy(Strict, $2) }
+    | TRANSIENT plist                          { Policy(Transient, $2) }
 
 
