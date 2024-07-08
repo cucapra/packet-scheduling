@@ -5,18 +5,12 @@
     match ls with
     | [l] -> l 
     | _ -> Policy ls (* what to put for typ?? *)
-
-    let class_expr ls =
-    match ls with
-    | [l] -> l 
-    | _ -> Classes ls
 %}
 
 %token <string> VAR
 %token LPARENS RPAREN EQUALS LBRACE RBRACE RETURN CLASSES 
 COMMA EOF FIFO FAIR STRICT TRANSIENT
 
-%type <clss> clss
 %type <policy> policy
 %type <exp> expression
 %type <Ast.exp> program
@@ -29,11 +23,7 @@ program: exp EOF                               { $1 }
 exp:
     | VAR EQUALS pexp                          { Assn($1, $3) }
     | RETURN policy                            { Return($2) } //unsure
-    | CLASSES clist                            { class_expr $1}
     | pexp                                     { $1 }
-
-clist:
-    | clss COMMA clist                         { $1::$3 }
 
 pexp:
     | plist                                    { list_expr $1 }
@@ -43,10 +33,10 @@ plist:
     | policy                                   { [$1] }
 
 policy:
-    | CLASS                                    { Class } // what is argument
-    | FIFO plist                               { Policy(Fifo, $2) } // put braces here?
-    | FAIR plist                               { Policy(Fair, $2) }
-    | STRICT plist                             { Policy(Strict, $2) }
-    | TRANSIENT plist                          { Policy(Transient, $2) }
+    | CLASS                                    { Class }
+    | FIFO plist                               { Fifo($1) }
+    | FAIR plist                               { Fair($1) }
+    | STRICT plist                             { Strict($1) }
+    | TRANSIENT plist                          { Transient($1) }
 
 
