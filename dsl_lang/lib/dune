@@ -1,0 +1,6 @@
+(library
+ (name dsl_lang)
+ (modules parser ast))
+
+(menhir
+ (modules parser))
