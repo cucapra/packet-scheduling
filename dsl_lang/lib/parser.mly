@@ -1,10 +1,11 @@
 %{
     open Ast
+    open Lexing
 
     let list_expr ls =
     match ls with
     | [l] -> l 
-    | _ -> Transient, ls (* what to put for typ?? *)
+    | _ -> Transient ls (* what to put for typ?? *)
 
 %}
 
@@ -21,19 +22,23 @@
 %token FAIR 
 %token STRICT 
 %token TRANSIENT
+%token NEWLINE
 
 %type <policy> policy
 // %type <exp> expression
-%type <Ast.statement> program
+%type <Ast.program> prog
 
-%start program
+%start prog
 
 %%
-program: statement EOF                               { $1 }
+program: prog EOF                               { $1 }
+
+prog:
+    | statement NEWLINE statement                { Prog($1, $3) }
 
 statement:
-    | VAR EQUALS pexp                          { Assn($1, $3) }
-    | RETURN policy                            { Return($2) } //unsure
+    // | VAR EQUALS pexp                          { Assn($1, $3) }
+    // | RETURN pexp                            { Return($2) }
     | CLASSES clist                             { $1 }
     | pexp                                     { $1 }
 
