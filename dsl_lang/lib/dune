@@ -1,7 +1,7 @@
 (library
- (name dsl_lang)
- (modules parser lexer ast))
+ (name dsl_core))
 
-(ocamllex lexer)
 (menhir
  (modules parser))
+
+(ocamllex lexer)

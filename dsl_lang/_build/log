@@ -1,9 +1,9 @@
-# dune build
+# dune utop lib
 # OCAMLPARAM: unset
 # Shared cache: disabled
 # Workspace root: /Users/cassandrasziklai/packet-scheduling/dsl_lang
 # Auto-detected concurrency: 8
-$ /Users/cassandrasziklai/.opam/5.0.0/bin/ocamlc.opt -config > /var/folders/xr/gwyhxzqd4xldjpcy0p8629b80000gn/T/dune_b546ba_output
+$ /Users/cassandrasziklai/.opam/cs3110-2023fa/bin/ocamlc.opt -config > /var/folders/xr/gwyhxzqd4xldjpcy0p8629b80000gn/T/dune_e033f7_output
 # Dune context:
 #  { name = "default"
 #  ; kind = "default"
@@ -12,21 +12,29 @@ $ /Users/cassandrasziklai/.opam/5.0.0/bin/ocamlc.opt -config > /var/folders/xr/g
 #  ; for_host = None
 #  ; fdo_target_exe = None
 #  ; build_dir = In_build_dir "default"
-#  ; ocaml_bin = External "/Users/cassandrasziklai/.opam/5.0.0/bin"
-#  ; ocaml = Ok External "/Users/cassandrasziklai/.opam/5.0.0/bin/ocaml"
-#  ; ocamlc = External "/Users/cassandrasziklai/.opam/5.0.0/bin/ocamlc.opt"
+#  ; ocaml_bin = External "/Users/cassandrasziklai/.opam/cs3110-2023fa/bin"
+#  ; ocaml =
+#      Ok External "/Users/cassandrasziklai/.opam/cs3110-2023fa/bin/ocaml"
+#  ; ocamlc =
+#      External "/Users/cassandrasziklai/.opam/cs3110-2023fa/bin/ocamlc.opt"
 #  ; ocamlopt =
-#      Ok External "/Users/cassandrasziklai/.opam/5.0.0/bin/ocamlopt.opt"
+#      Ok
+#        External
+#          "/Users/cassandrasziklai/.opam/cs3110-2023fa/bin/ocamlopt.opt"
 #  ; ocamldep =
-#      Ok External "/Users/cassandrasziklai/.opam/5.0.0/bin/ocamldep.opt"
+#      Ok
+#        External
+#          "/Users/cassandrasziklai/.opam/cs3110-2023fa/bin/ocamldep.opt"
 #  ; ocamlmklib =
-#      Ok External "/Users/cassandrasziklai/.opam/5.0.0/bin/ocamlmklib.opt"
+#      Ok
+#        External
+#          "/Users/cassandrasziklai/.opam/cs3110-2023fa/bin/ocamlmklib.opt"
 #  ; env =
 #      map
 #        { "DUNE_OCAML_HARDCODED" :
-#            "/Users/cassandrasziklai/.opam/5.0.0/lib/ocaml:/Users/cassandrasziklai/.opam/5.0.0/lib"
+#            "/Users/cassandrasziklai/.opam/cs3110-2023fa/lib/ocaml:/Users/cassandrasziklai/.opam/cs3110-2023fa/lib"
 #        ; "DUNE_OCAML_STDLIB" :
-#            "/Users/cassandrasziklai/.opam/5.0.0/lib/ocaml"
+#            "/Users/cassandrasziklai/.opam/cs3110-2023fa/lib/ocaml"
 #        ; "DUNE_SOURCEROOT" :
 #            "/Users/cassandrasziklai/packet-scheduling/dsl_lang"
 #        ; "INSIDE_DUNE" :
@@ -41,16 +49,17 @@ $ /Users/cassandrasziklai/.opam/5.0.0/bin/ocamlc.opt -config > /var/folders/xr/g
 #        ; "OPAMCOLOR" : "always"
 #        }
 #  ; findlib_paths =
-#      [ External "/Users/cassandrasziklai/.opam/5.0.0/lib/ocaml"
-#      ; External "/Users/cassandrasziklai/.opam/5.0.0/lib"
+#      [ External "/Users/cassandrasziklai/.opam/cs3110-2023fa/lib/ocaml"
+#      ; External "/Users/cassandrasziklai/.opam/cs3110-2023fa/lib"
 #      ]
 #  ; natdynlink_supported = true
 #  ; supports_shared_libraries = true
 #  ; ocaml_config =
 #      { version = "5.0.0"
 #      ; standard_library_default =
-#          "/Users/cassandrasziklai/.opam/5.0.0/lib/ocaml"
-#      ; standard_library = "/Users/cassandrasziklai/.opam/5.0.0/lib/ocaml"
+#          "/Users/cassandrasziklai/.opam/cs3110-2023fa/lib/ocaml"
+#      ; standard_library =
+#          "/Users/cassandrasziklai/.opam/cs3110-2023fa/lib/ocaml"
 #      ; standard_runtime = "the_standard_runtime_variable_was_deleted"
 #      ; ccomp_type = "cc"
 #      ; c_compiler = "cc"
@@ -96,8 +105,8 @@ $ /Users/cassandrasziklai/.opam/5.0.0/bin/ocamlc.opt -config > /var/folders/xr/g
 #      ; os_type = "Unix"
 #      ; default_executable_name = "a.out"
 #      ; systhread_supported = true
-#      ; host = "aarch64-apple-darwin23.2.0"
-#      ; target = "aarch64-apple-darwin23.2.0"
+#      ; host = "aarch64-apple-darwin22.6.0"
+#      ; target = "aarch64-apple-darwin22.6.0"
 #      ; profiling = false
 #      ; flambda = false
 #      ; spacetime = false
@@ -117,19 +126,38 @@ $ /Users/cassandrasziklai/.opam/5.0.0/bin/ocamlc.opt -config > /var/folders/xr/g
 #      ; windows_unicode = false
 #      }
 #  }
-$ (cd _build/.sandbox/d2c68086a64bd09ae0c755a6ec33ff99/default && /Users/cassandrasziklai/.opam/5.0.0/bin/menhir lib/parser.mly --base lib/parser --infer-write-query lib/parser__mock.ml.mock)
-> File "lib/parser.mly", line 45, characters 9-10:
-> Error: syntax error after 'statement' and before ':'.
-> Ill-formed production.
-> A production is a sequence of producers, followed with a semantic action.
-> Examples of well-formed producers:
->   expr
->   option(COMMA)
->   separated_list(COMMA, expr)
->   e = expr
->   ds = declaration*
->   es = list(terminated(expr, SEMI))
->   es = list(e = expr SEMI { e })
->   xs = list(x = var { Some x } | WILDCARD { None })
->   expr [@cost 0]
-[1]
+$ (cd _build/default && /Users/cassandrasziklai/.opam/cs3110-2023fa/bin/ocamlc.opt -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -w -49 -nopervasives -nostdlib -g -bin-annot -I lib/.dsl_core.objs/byte -no-alias-deps -opaque -o lib/.dsl_core.objs/byte/dsl_core.cmo -c -impl lib/dsl_core.ml-gen)
+$ (cd _build/default && /Users/cassandrasziklai/.opam/cs3110-2023fa/bin/ocamllex -q -o lib/lexer.ml lib/lexer.mll)
+$ (cd _build/.sandbox/1d9e16a69648880b866bd1a82e6205da/default && /Users/cassandrasziklai/.opam/cs3110-2023fa/bin/menhir lib/parser.mly --base lib/parser --infer-write-query lib/parser__mock.ml.mock)
+$ (cd _build/default && /Users/cassandrasziklai/.opam/cs3110-2023fa/bin/ocamldep.opt -modules -impl lib/ast.ml) > _build/default/lib/.dsl_core.objs/dsl_core__Ast.impl.d
+$ (cd _build/default && /Users/cassandrasziklai/.opam/cs3110-2023fa/bin/ocamldep.opt -modules -impl lib/util.ml) > _build/default/lib/.dsl_core.objs/dsl_core__Util.impl.d
+$ (cd _build/default && /Users/cassandrasziklai/.opam/cs3110-2023fa/bin/ocamldep.opt -modules -impl lib/lexer.ml) > _build/default/lib/.dsl_core.objs/dsl_core__Lexer.impl.d
+$ (cd _build/default && /Users/cassandrasziklai/.opam/cs3110-2023fa/bin/ocamldep.opt -modules -impl lib/parser__mock.ml.mock) > _build/default/lib/.dsl_core.objs/parser__mock.impl.d
+$ (cd _build/default && /Users/cassandrasziklai/.opam/cs3110-2023fa/bin/ocamlc.opt -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g -bin-annot -I lib/.dsl_core.objs/byte -no-alias-deps -opaque -open Dsl_core -o lib/.dsl_core.objs/byte/dsl_core__Ast.cmo -c -impl lib/ast.ml)
+$ (cd _build/.sandbox/6ff794a2ea403f794148763f70e0cfd6/default && /Users/cassandrasziklai/.opam/cs3110-2023fa/bin/ocamlc.opt -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g -I lib/.dsl_core.objs/byte -open Dsl_core -short-paths -i -impl lib/parser__mock.ml.mock) > _build/.sandbox/6ff794a2ea403f794148763f70e0cfd6/default/lib/parser__mock.mli.inferred
+$ (cd _build/.sandbox/e9467a9664e28a5ec4dbb5a080abbeb5/default && /Users/cassandrasziklai/.opam/cs3110-2023fa/bin/menhir lib/parser.mly --base lib/parser --infer-read-reply lib/parser__mock.mli.inferred)
+> Warning: 3 states have shift/reduce conflicts.
+> Warning: 4 shift/reduce conflicts were arbitrarily resolved.
+$ (cd _build/default && /Users/cassandrasziklai/.opam/cs3110-2023fa/bin/ocamldep.opt -modules -intf lib/parser.mli) > _build/default/lib/.dsl_core.objs/dsl_core__Parser.intf.d
+$ (cd _build/default && /Users/cassandrasziklai/.opam/cs3110-2023fa/bin/ocamldep.opt -modules -impl lib/parser.ml) > _build/default/lib/.dsl_core.objs/dsl_core__Parser.impl.d
+$ (cd _build/default && /Users/cassandrasziklai/.opam/cs3110-2023fa/bin/ocamlc.opt -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g -bin-annot -I lib/.dsl_core.objs/byte -no-alias-deps -opaque -open Dsl_core -o lib/.dsl_core.objs/byte/dsl_core__Parser.cmi -c -intf lib/parser.mli)
+$ (cd _build/default && /Users/cassandrasziklai/.opam/cs3110-2023fa/bin/ocamlc.opt -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g -bin-annot -I lib/.dsl_core.objs/byte -no-alias-deps -opaque -open Dsl_core -o lib/.dsl_core.objs/byte/dsl_core__Lexer.cmo -c -impl lib/lexer.ml)
+$ (cd _build/default && /Users/cassandrasziklai/.opam/cs3110-2023fa/bin/ocamlc.opt -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g -bin-annot -I lib/.dsl_core.objs/byte -no-alias-deps -opaque -open Dsl_core -o lib/.dsl_core.objs/byte/dsl_core__Util.cmo -c -impl lib/util.ml)
+$ (cd _build/default && /Users/cassandrasziklai/.opam/cs3110-2023fa/bin/ocamlc.opt -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -w -24 -g -bin-annot -I lib/.utop/.utop.eobjs/byte -I /Users/cassandrasziklai/.opam/cs3110-2023fa/lib/bytes -I /Users/cassandrasziklai/.opam/cs3110-2023fa/lib/findlib -I /Users/cassandrasziklai/.opam/cs3110-2023fa/lib/lambda-term -I /Users/cassandrasziklai/.opam/cs3110-2023fa/lib/logs -I /Users/cassandrasziklai/.opam/cs3110-2023fa/lib/lwt -I /Users/cassandrasziklai/.opam/cs3110-2023fa/lib/lwt/unix -I /Users/cassandrasziklai/.opam/cs3110-2023fa/lib/lwt_react -I /Users/cassandrasziklai/.opam/cs3110-2023fa/lib/mew -I /Users/cassandrasziklai/.opam/cs3110-2023fa/lib/mew_vi -I /Users/cassandrasziklai/.opam/cs3110-2023fa/lib/ocaml/compiler-libs -I /Users/cassandrasziklai/.opam/cs3110-2023fa/lib/ocaml/threads -I /Users/cassandrasziklai/.opam/cs3110-2023fa/lib/ocaml/unix -I /Users/cassandrasziklai/.opam/cs3110-2023fa/lib/ocplib-endian -I /Users/cassandrasziklai/.opam/cs3110-2023fa/lib/ocplib-endian/bigstring -I /Users/cassandrasziklai/.opam/cs3110-2023fa/lib/react -I /Users/cassandrasziklai/.opam/cs3110-2023fa/lib/result -I /Users/cassandrasziklai/.opam/cs3110-2023fa/lib/trie -I /Users/cassandrasziklai/.opam/cs3110-2023fa/lib/uchar -I /Users/cassandrasziklai/.opam/cs3110-2023fa/lib/utop -I /Users/cassandrasziklai/.opam/cs3110-2023fa/lib/uucp -I /Users/cassandrasziklai/.opam/cs3110-2023fa/lib/uuseg -I /Users/cassandrasziklai/.opam/cs3110-2023fa/lib/uutf -I /Users/cassandrasziklai/.opam/cs3110-2023fa/lib/xdg -I /Users/cassandrasziklai/.opam/cs3110-2023fa/lib/zed -I lib/.dsl_core.objs/byte -no-alias-deps -o lib/.utop/.utop.eobjs/byte/dune__exe__Utop.cmo -c -impl lib/.utop/utop.ml-gen)
+$ (cd _build/default && /Users/cassandrasziklai/.opam/cs3110-2023fa/bin/ocamlc.opt -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g -bin-annot -I lib/.dsl_core.objs/byte -intf-suffix .ml -no-alias-deps -opaque -open Dsl_core -o lib/.dsl_core.objs/byte/dsl_core__Parser.cmo -c -impl lib/parser.ml)
+$ (cd _build/default && /Users/cassandrasziklai/.opam/cs3110-2023fa/bin/ocamlc.opt -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g -a -o lib/dsl_core.cma lib/.dsl_core.objs/byte/dsl_core.cmo lib/.dsl_core.objs/byte/dsl_core__Ast.cmo lib/.dsl_core.objs/byte/dsl_core__Parser.cmo lib/.dsl_core.objs/byte/dsl_core__Lexer.cmo lib/.dsl_core.objs/byte/dsl_core__Util.cmo)
+$ (cd _build/default && /Users/cassandrasziklai/.opam/cs3110-2023fa/bin/ocamlc.opt -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -w -24 -g -o lib/.utop/utop.exe -output-complete-exe /Users/cassandrasziklai/.opam/cs3110-2023fa/lib/ocaml/compiler-libs/ocamlcommon.cma /Users/cassandrasziklai/.opam/cs3110-2023fa/lib/ocaml/compiler-libs/ocamlbytecomp.cma /Users/cassandrasziklai/.opam/cs3110-2023fa/lib/ocaml/compiler-libs/ocamltoplevel.cma /Users/cassandrasziklai/.opam/cs3110-2023fa/lib/findlib/findlib.cma /Users/cassandrasziklai/.opam/cs3110-2023fa/lib/findlib/findlib_top.cma /Users/cassandrasziklai/.opam/cs3110-2023fa/lib/logs/logs.cma /Users/cassandrasziklai/.opam/cs3110-2023fa/lib/lwt/lwt.cma /Users/cassandrasziklai/.opam/cs3110-2023fa/lib/logs/logs_lwt.cma /Users/cassandrasziklai/.opam/cs3110-2023fa/lib/ocplib-endian/ocplib_endian.cma /Users/cassandrasziklai/.opam/cs3110-2023fa/lib/ocplib-endian/bigstring/ocplib_endian_bigstring.cma /Users/cassandrasziklai/.opam/cs3110-2023fa/lib/ocaml/unix/unix.cma /Users/cassandrasziklai/.opam/cs3110-2023fa/lib/ocaml/threads/threads.cma /Users/cassandrasziklai/.opam/cs3110-2023fa/lib/lwt/unix/lwt_unix.cma -I /Users/cassandrasziklai/.opam/cs3110-2023fa/lib/lwt/unix /Users/cassandrasziklai/.opam/cs3110-2023fa/lib/react/react.cma /Users/cassandrasziklai/.opam/cs3110-2023fa/lib/lwt_react/lwt_react.cma /Users/cassandrasziklai/.opam/cs3110-2023fa/lib/result/result.cma /Users/cassandrasziklai/.opam/cs3110-2023fa/lib/uutf/uutf.cma /Users/cassandrasziklai/.opam/cs3110-2023fa/lib/uucp/uucp.cma /Users/cassandrasziklai/.opam/cs3110-2023fa/lib/uuseg/uuseg.cma /Users/cassandrasziklai/.opam/cs3110-2023fa/lib/zed/zed.cma /Users/cassandrasziklai/.opam/cs3110-2023fa/lib/trie/trie.cma /Users/cassandrasziklai/.opam/cs3110-2023fa/lib/mew/mew.cma /Users/cassandrasziklai/.opam/cs3110-2023fa/lib/mew_vi/mew_vi.cma /Users/cassandrasziklai/.opam/cs3110-2023fa/lib/lambda-term/lambda_term.cma -I /Users/cassandrasziklai/.opam/cs3110-2023fa/lib/lambda-term /Users/cassandrasziklai/.opam/cs3110-2023fa/lib/xdg/xdg.cma -I /Users/cassandrasziklai/.opam/cs3110-2023fa/lib/xdg /Users/cassandrasziklai/.opam/cs3110-2023fa/lib/utop/uTop.cma lib/dsl_core.cma lib/.utop/.utop.eobjs/byte/dune__exe__Utop.cmo -linkall -warn-error -31)
+> /var/folders/xr/gwyhxzqd4xldjpcy0p8629b80000gn/T/build_aa8e28_dune/camlobj7b773f.c:371463:14: warning: a function declaration without a prototype is deprecated in all versions of C and is treated as a zero-parameter prototype in C2x, conflicting with a previous declaration [-Wdeprecated-non-prototype]
+> extern value caml_get_public_method();
+>              ^
+> /Users/cassandrasziklai/.opam/cs3110-2023fa/lib/ocaml/caml/mlvalues.h:236:18: note: conflicting prototype is here
+> CAMLextern value caml_get_public_method (value obj, value tag);
+>                  ^
+> /var/folders/xr/gwyhxzqd4xldjpcy0p8629b80000gn/T/build_aa8e28_dune/camlobj7b773f.c:371665:14: warning: a function declaration without a prototype is deprecated in all versions of C and is treated as a zero-parameter prototype in C2x, conflicting with a previous declaration [-Wdeprecated-non-prototype]
+> extern value caml_set_oo_id();
+>              ^
+> /Users/cassandrasziklai/.opam/cs3110-2023fa/lib/ocaml/caml/mlvalues.h:423:18: note: conflicting prototype is here
+> CAMLextern value caml_set_oo_id(value obj);
+>                  ^
+> 2 warnings generated.
+> ld: warning: ignoring duplicate libraries: '-lunix'

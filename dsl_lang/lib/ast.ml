@@ -1,19 +1,38 @@
-type clss = string
-
 type var = string
 
-type policy =
-| Class of clss
-| Fifo of clss list
-| Fair of policy list (*same as round robin*)
-| Strict of policy list
-| Transient of policy list
-(* | Classes of policy list *)
+type typ =
+  | TFun of typ * typ
+  | TBase of string
+  | TTuple of typ list
+  | TList of typ
 
-type statement = 
-| DeclareClasses of clss list (*classes A, B, C *)
-| Assn of var * policy
-| Return of var
+type binop =
+  | Plus
+  | Less
+  | Greater
+  | And
+  | Or
+  | Equal
+  | Times
+  | Minus
+  | Cons
 
-type program =
-| Prog of statement * statement (* declareClasses; return *)
+type unop =
+  | Not
+
+type exp =
+  | True
+  | False
+  | Empty of typ
+  | Int of int
+  | Var of var
+  | App of exp * exp
+  | Lam of var * typ * exp
+  | Let of var * exp * exp
+  | Binary of binop * exp * exp
+  | Unary of unop * exp
+  | Tuple of exp list
+  | Proj of exp * int
+  | Fix of exp
+  | If of exp * exp * exp
+  | Match of exp * exp * exp
