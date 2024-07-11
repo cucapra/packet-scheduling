@@ -7,6 +7,11 @@
     | [l] -> l 
     | _ -> Transient ls (* what to put for typ?? *)
 
+    let class_expr cs = 
+    match cs with
+    | [c] -> c 
+    | _ -> DeclareClasses cs
+
 %}
 
 %token <string> VAR 
@@ -34,12 +39,13 @@
 program: prog EOF                               { $1 }
 
 prog:
-    | statement NEWLINE statement                { Prog($1, $3) }
+    | statement NEWLINE statement              { Prog($1, $3) }
+    | statement
 
 statement:
-    // | VAR EQUALS pexp                          { Assn($1, $3) }
-    // | RETURN pexp                            { Return($2) }
-    | CLASSES clist                             { $1 }
+    | VAR EQUALS pexp                          { Assn($1, $3) }
+    | RETURN pexp                              { Return($2) }
+    | CLASSES cexp                             { DeclareClasses($1) }
     | pexp                                     { $1 }
 
 pexp:
@@ -51,11 +57,13 @@ plist:
 
 policy:
     | CLSS                                     { Class($1) }
-    | FIFO LBRACE plist RBRACE                 { Fifo, $3 }
+    | FIFO LBRACE clist RBRACE                 { Fifo, $3 }
     | FAIR LBRACE plist RBRACE                 { Fair, $3 }
     | STRICT LBRACE plist RBRACE               { Strict, $3 }
     | TRANSIENT LBRACE plist RBRACE            { Transient, $3 }
-    | clist                                    { Classes($1) }
+    | cexp                                     { $1 }
+cexp:
+    | clist                                    { class_expr $1 }
 
 clist:
     | CLSS COMMA clist                         { $1::$3 }

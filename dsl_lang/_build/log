@@ -3,7 +3,7 @@
 # Shared cache: disabled
 # Workspace root: /Users/cassandrasziklai/packet-scheduling/dsl_lang
 # Auto-detected concurrency: 8
-$ /Users/cassandrasziklai/.opam/5.0.0/bin/ocamlc.opt -config > /var/folders/xr/gwyhxzqd4xldjpcy0p8629b80000gn/T/dune_eec694_output
+$ /Users/cassandrasziklai/.opam/5.0.0/bin/ocamlc.opt -config > /var/folders/xr/gwyhxzqd4xldjpcy0p8629b80000gn/T/dune_b546ba_output
 # Dune context:
 #  { name = "default"
 #  ; kind = "default"
@@ -117,18 +117,19 @@ $ /Users/cassandrasziklai/.opam/5.0.0/bin/ocamlc.opt -config > /var/folders/xr/g
 #      ; windows_unicode = false
 #      }
 #  }
-$ (cd _build/.sandbox/2a79895dea4bc6d4bb244d6cac2067e7/default && /Users/cassandrasziklai/.opam/5.0.0/bin/menhir lib/parser.mly --base lib/parser --infer-write-query lib/parser__mock.ml.mock)
-> File "lib/parser.mly", line 14, characters 7-13:
-> Warning: the token EQUALS is unused.
-> File "lib/parser.mly", line 17, characters 7-13:
-> Warning: the token RETURN is unused.
-> File "lib/parser.mly", line 12, characters 16-19:
-> Warning: the token VAR is unused.
-> File "lib/parser.mly", line 34, characters 0-7:
-> Warning: symbol program is unreachable from any of the start symbol(s).
-$ (cd _build/default && /Users/cassandrasziklai/.opam/5.0.0/bin/ocamldep.opt -modules -impl lib/parser__mock.ml.mock) > _build/default/lib/.dsl_lang.objs/parser__mock.impl.d
-$ (cd _build/.sandbox/825d96171cc33b96c61eacfaca4be776/default && /Users/cassandrasziklai/.opam/5.0.0/bin/ocamlc.opt -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g -I lib/.dsl_lang.objs/byte -open Dsl_lang -short-paths -i -impl lib/parser__mock.ml.mock) > _build/.sandbox/825d96171cc33b96c61eacfaca4be776/default/lib/parser__mock.mli.inferred
-> File "lib/parser.mly", line 37, characters 56-58:
-> Error: This expression has type unit but an expression was expected of type
->          statement
-[2]
+$ (cd _build/.sandbox/d2c68086a64bd09ae0c755a6ec33ff99/default && /Users/cassandrasziklai/.opam/5.0.0/bin/menhir lib/parser.mly --base lib/parser --infer-write-query lib/parser__mock.ml.mock)
+> File "lib/parser.mly", line 45, characters 9-10:
+> Error: syntax error after 'statement' and before ':'.
+> Ill-formed production.
+> A production is a sequence of producers, followed with a semantic action.
+> Examples of well-formed producers:
+>   expr
+>   option(COMMA)
+>   separated_list(COMMA, expr)
+>   e = expr
+>   ds = declaration*
+>   es = list(terminated(expr, SEMI))
+>   es = list(e = expr SEMI { e })
+>   xs = list(x = var { Some x } | WILDCARD { None })
+>   expr [@cost 0]
+[1]

@@ -13,7 +13,7 @@ type policy =
 type statement = 
 | DeclareClasses of clss list (*classes A, B, C *)
 | Assn of var * policy
-| Return of policy 
+| Return of var
 
 type program =
 | Prog of statement * statement (* declareClasses; return *)
