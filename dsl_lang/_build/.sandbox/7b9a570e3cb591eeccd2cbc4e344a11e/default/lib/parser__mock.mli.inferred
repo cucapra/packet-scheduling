@@ -1,0 +1,17 @@
+type token =
+    TRANSIENT
+  | STRICT
+  | RBRACE
+  | LBRACE
+  | FIFO
+  | FAIR
+  | EOF
+  | COMMA
+  | CLSS of string
+val list_expr : Ast.policy list -> Ast.policy
+val menhir_begin_marker : int
+val xv_prog : Ast.policy
+val xv_policy : Ast.policy
+val xv_plist : Ast.policy list
+val xv_pexp : Ast.policy
+val menhir_end_marker : int

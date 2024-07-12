@@ -3,7 +3,7 @@
 # Shared cache: disabled
 # Workspace root: /Users/cassandrasziklai/packet-scheduling/dsl_lang
 # Auto-detected concurrency: 8
-$ /Users/cassandrasziklai/.opam/5.0.0/bin/ocamlc.opt -config > /var/folders/xr/gwyhxzqd4xldjpcy0p8629b80000gn/T/dune_b546ba_output
+$ /Users/cassandrasziklai/.opam/cs3110-2023fa/bin/ocamlc.opt -config > /var/folders/xr/gwyhxzqd4xldjpcy0p8629b80000gn/T/dune_3687c9_output
 # Dune context:
 #  { name = "default"
 #  ; kind = "default"
@@ -12,21 +12,29 @@ $ /Users/cassandrasziklai/.opam/5.0.0/bin/ocamlc.opt -config > /var/folders/xr/g
 #  ; for_host = None
 #  ; fdo_target_exe = None
 #  ; build_dir = In_build_dir "default"
-#  ; ocaml_bin = External "/Users/cassandrasziklai/.opam/5.0.0/bin"
-#  ; ocaml = Ok External "/Users/cassandrasziklai/.opam/5.0.0/bin/ocaml"
-#  ; ocamlc = External "/Users/cassandrasziklai/.opam/5.0.0/bin/ocamlc.opt"
+#  ; ocaml_bin = External "/Users/cassandrasziklai/.opam/cs3110-2023fa/bin"
+#  ; ocaml =
+#      Ok External "/Users/cassandrasziklai/.opam/cs3110-2023fa/bin/ocaml"
+#  ; ocamlc =
+#      External "/Users/cassandrasziklai/.opam/cs3110-2023fa/bin/ocamlc.opt"
 #  ; ocamlopt =
-#      Ok External "/Users/cassandrasziklai/.opam/5.0.0/bin/ocamlopt.opt"
+#      Ok
+#        External
+#          "/Users/cassandrasziklai/.opam/cs3110-2023fa/bin/ocamlopt.opt"
 #  ; ocamldep =
-#      Ok External "/Users/cassandrasziklai/.opam/5.0.0/bin/ocamldep.opt"
+#      Ok
+#        External
+#          "/Users/cassandrasziklai/.opam/cs3110-2023fa/bin/ocamldep.opt"
 #  ; ocamlmklib =
-#      Ok External "/Users/cassandrasziklai/.opam/5.0.0/bin/ocamlmklib.opt"
+#      Ok
+#        External
+#          "/Users/cassandrasziklai/.opam/cs3110-2023fa/bin/ocamlmklib.opt"
 #  ; env =
 #      map
 #        { "DUNE_OCAML_HARDCODED" :
-#            "/Users/cassandrasziklai/.opam/5.0.0/lib/ocaml:/Users/cassandrasziklai/.opam/5.0.0/lib"
+#            "/Users/cassandrasziklai/.opam/cs3110-2023fa/lib/ocaml:/Users/cassandrasziklai/.opam/cs3110-2023fa/lib"
 #        ; "DUNE_OCAML_STDLIB" :
-#            "/Users/cassandrasziklai/.opam/5.0.0/lib/ocaml"
+#            "/Users/cassandrasziklai/.opam/cs3110-2023fa/lib/ocaml"
 #        ; "DUNE_SOURCEROOT" :
 #            "/Users/cassandrasziklai/packet-scheduling/dsl_lang"
 #        ; "INSIDE_DUNE" :
@@ -41,16 +49,17 @@ $ /Users/cassandrasziklai/.opam/5.0.0/bin/ocamlc.opt -config > /var/folders/xr/g
 #        ; "OPAMCOLOR" : "always"
 #        }
 #  ; findlib_paths =
-#      [ External "/Users/cassandrasziklai/.opam/5.0.0/lib/ocaml"
-#      ; External "/Users/cassandrasziklai/.opam/5.0.0/lib"
+#      [ External "/Users/cassandrasziklai/.opam/cs3110-2023fa/lib/ocaml"
+#      ; External "/Users/cassandrasziklai/.opam/cs3110-2023fa/lib"
 #      ]
 #  ; natdynlink_supported = true
 #  ; supports_shared_libraries = true
 #  ; ocaml_config =
 #      { version = "5.0.0"
 #      ; standard_library_default =
-#          "/Users/cassandrasziklai/.opam/5.0.0/lib/ocaml"
-#      ; standard_library = "/Users/cassandrasziklai/.opam/5.0.0/lib/ocaml"
+#          "/Users/cassandrasziklai/.opam/cs3110-2023fa/lib/ocaml"
+#      ; standard_library =
+#          "/Users/cassandrasziklai/.opam/cs3110-2023fa/lib/ocaml"
 #      ; standard_runtime = "the_standard_runtime_variable_was_deleted"
 #      ; ccomp_type = "cc"
 #      ; c_compiler = "cc"
@@ -96,8 +105,8 @@ $ /Users/cassandrasziklai/.opam/5.0.0/bin/ocamlc.opt -config > /var/folders/xr/g
 #      ; os_type = "Unix"
 #      ; default_executable_name = "a.out"
 #      ; systhread_supported = true
-#      ; host = "aarch64-apple-darwin23.2.0"
-#      ; target = "aarch64-apple-darwin23.2.0"
+#      ; host = "aarch64-apple-darwin22.6.0"
+#      ; target = "aarch64-apple-darwin22.6.0"
 #      ; profiling = false
 #      ; flambda = false
 #      ; spacetime = false
@@ -117,19 +126,13 @@ $ /Users/cassandrasziklai/.opam/5.0.0/bin/ocamlc.opt -config > /var/folders/xr/g
 #      ; windows_unicode = false
 #      }
 #  }
-$ (cd _build/.sandbox/d2c68086a64bd09ae0c755a6ec33ff99/default && /Users/cassandrasziklai/.opam/5.0.0/bin/menhir lib/parser.mly --base lib/parser --infer-write-query lib/parser__mock.ml.mock)
-> File "lib/parser.mly", line 45, characters 9-10:
-> Error: syntax error after 'statement' and before ':'.
-> Ill-formed production.
-> A production is a sequence of producers, followed with a semantic action.
-> Examples of well-formed producers:
->   expr
->   option(COMMA)
->   separated_list(COMMA, expr)
->   e = expr
->   ds = declaration*
->   es = list(terminated(expr, SEMI))
->   es = list(e = expr SEMI { e })
->   xs = list(x = var { Some x } | WILDCARD { None })
->   expr [@cost 0]
-[1]
+$ (cd _build/default && /Users/cassandrasziklai/.opam/cs3110-2023fa/bin/ocamllex -q -o lib/lexer.ml lib/lexer.mll)
+$ (cd _build/default && /Users/cassandrasziklai/.opam/cs3110-2023fa/bin/ocamldep.opt -modules -impl lib/lexer.ml) > _build/default/lib/.dsl_lang.objs/dsl_lang__Lexer.impl.d
+$ (cd _build/default && /Users/cassandrasziklai/.opam/cs3110-2023fa/bin/ocamlc.opt -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g -bin-annot -I lib/.dsl_lang.objs/byte -no-alias-deps -opaque -open Dsl_lang -o lib/.dsl_lang.objs/byte/dsl_lang__Lexer.cmo -c -impl lib/lexer.ml)
+$ (cd _build/default && /Users/cassandrasziklai/.opam/cs3110-2023fa/bin/ocamlc.opt -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g -a -o lib/dsl_lang.cma lib/.dsl_lang.objs/byte/dsl_lang.cmo lib/.dsl_lang.objs/byte/dsl_lang__Ast.cmo lib/.dsl_lang.objs/byte/dsl_lang__Parser.cmo lib/.dsl_lang.objs/byte/dsl_lang__Lexer.cmo)
+$ (cd _build/default && /Users/cassandrasziklai/.opam/cs3110-2023fa/bin/ocamlc.opt -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g -bin-annot -I bin/.main.eobjs/byte -I lib/.dsl_lang.objs/byte -no-alias-deps -opaque -o bin/.main.eobjs/byte/dune__exe__Main.cmi -c -intf bin/main.mli)
+$ (cd _build/default && /Users/cassandrasziklai/.opam/cs3110-2023fa/bin/ocamlopt.opt -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g -I bin/.main.eobjs/byte -I bin/.main.eobjs/native -I lib/.dsl_lang.objs/byte -I lib/.dsl_lang.objs/native -intf-suffix .ml -no-alias-deps -opaque -o bin/.main.eobjs/native/dune__exe__Main.cmx -c -impl bin/main.ml)
+$ (cd _build/default && /Users/cassandrasziklai/.opam/cs3110-2023fa/bin/ocamlopt.opt -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g -I lib/.dsl_lang.objs/byte -I lib/.dsl_lang.objs/native -intf-suffix .ml -no-alias-deps -opaque -open Dsl_lang -o lib/.dsl_lang.objs/native/dsl_lang__Lexer.cmx -c -impl lib/lexer.ml)
+$ (cd _build/default && /Users/cassandrasziklai/.opam/cs3110-2023fa/bin/ocamlopt.opt -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g -a -o lib/dsl_lang.cmxa lib/.dsl_lang.objs/native/dsl_lang.cmx lib/.dsl_lang.objs/native/dsl_lang__Ast.cmx lib/.dsl_lang.objs/native/dsl_lang__Parser.cmx lib/.dsl_lang.objs/native/dsl_lang__Lexer.cmx)
+$ (cd _build/default && /Users/cassandrasziklai/.opam/cs3110-2023fa/bin/ocamlopt.opt -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g -shared -linkall -I lib -o lib/dsl_lang.cmxs lib/dsl_lang.cmxa)
+$ (cd _build/default && /Users/cassandrasziklai/.opam/cs3110-2023fa/bin/ocamlopt.opt -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g -o bin/main.exe lib/dsl_lang.cmxa bin/.main.eobjs/native/dune__exe__Main.cmx)

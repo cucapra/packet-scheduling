@@ -7,24 +7,24 @@
 
 let clss = ['a'-'z' 'A'-'Z']*
 let whitespace = [' ' '\t']+
-let id = ['a'-'z'] ['a'-'z' '0'-'9']*
+(* let id = ['a'-'z'] ['a'-'z' '0'-'9']* *)
 let bigid = ['A'-'Z'] ['a'-'z' '0'-'9']*
 let newline = ['\n']*
 
 rule token = parse 
 | whitespace        { token lexbuf}
 | newline       { Lexing.new_line lexbuf; token lexbuf }
-| "="       { EQUALS }
+(* | "="       { EQUALS } *)
 | "["       { LBRACE }
 | "]"       { RBRACE }
-| "return"  { RETURN }
-| "classes" { CLASSES }
+(* | "return"  { RETURN }
+| "classes" { CLASSES } *)
 | ","       { COMMA }
 | "fifo"    { FIFO }
 | "fair"    { FAIR }
 | "strict"  { STRICT }
 | "transient"   { TRANSIENT }
-| id as v   { VAR(v) }
+(* | id as v   { VAR(v) } *)
 | bigid as i    { CLSS(i) }
 | eof       { EOF }
 
