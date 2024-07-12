@@ -6,10 +6,10 @@
 }
 
 
-let clss = ['a'-'z' 'A'-'Z']*
+(* let clss = ['a'-'z' 'A'-'Z']* *)
 let whitespace = [' ' '\t']+
 (* let id = ['a'-'z'] ['a'-'z' '0'-'9']* *)
-let bigid = ['A'-'Z'] ['a'-'z' '0'-'9']*
+let bigid = ['A'-'Z']* (* change to allow TY and such variables *)
 let newline = ['\n']*
 
 
