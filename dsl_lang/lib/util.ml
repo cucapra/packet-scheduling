@@ -22,4 +22,4 @@ let parse_file (f : string) =
   let lexbuf = Lexing.from_channel (open_in f) in 
   try parse lexbuf with
     | Parser.Error -> prerr_endline (syntax_error_msg lexbuf); exit 1
-    | Lexer.Err s -> prerr_endline s; exit 1
+    | Lexer.Err -> prerr_endline (syntax_error_msg lexbuf); exit 1
