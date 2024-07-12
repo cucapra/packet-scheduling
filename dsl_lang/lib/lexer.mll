@@ -23,7 +23,7 @@ rule token = parse
 | "classes" { CLASSES } *)
 | ","       { COMMA }
 | "fifo"    { FIFO }
-| "fair"    { FAIR }
+| "rr"    { FAIR }
 | "strict"  { STRICT }
 | "transient"   { TRANSIENT }
 (* | id as v   { VAR(v) } *)
