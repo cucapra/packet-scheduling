@@ -15,8 +15,6 @@
     match ls with
     | [l] -> l 
     | _ -> Strict ls
-
-
 %}
 
 // %token <string> VAR 
@@ -42,21 +40,17 @@
 %%
 prog: policy EOF                               { $1 }
 
-clss:
-    | CLSS                                     { Class($1) }
-    | policy                                { $1 }
-
 policy:    
     | FIFO LBRACE arglist RBRACE               { fifo_list $3 } // or Fifo($3)
     | STRICT LBRACE arglist RBRACE              { strict_list $3 }
     | FAIR LBRACE arglist RBRACE               { rr_list $3 }
+    | CLSS                                     { Class($1) }
 
 arglist:
     | exp COMMA arglist                         { $1::$3 }
     | exp                               { [$1] }
 
 exp:
-    | clss     { $1 }
     | policy    { $1 }
 
 // fexp:

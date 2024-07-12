@@ -149,7 +149,7 @@ and __ocaml_lex_token_rec lexbuf __ocaml_lex_state =
 
   | 6 ->
 # 26 "lib/lexer.mll"
-          ( FAIR )
+            ( FAIR )
 # 154 "lib/lexer.ml"
 
   | 7 ->
