@@ -42,30 +42,43 @@
 %%
 prog: policy EOF                               { $1 }
 
-policy:
+clss:
     | CLSS                                     { Class($1) }
-    | fexp                                     { $1 }
+    | policy                                { $1 }
 
-fexp:
-    | FIFO LBRACE flist RBRACE                 { fifo_list $1 }
+policy:    
+    | FIFO LBRACE arglist RBRACE               { fifo_list $3 } // or Fifo($3)
+    | STRICT LBRACE arglist RBRACE              { strict_list $3 }
+    | FAIR LBRACE arglist RBRACE               { rr_list $3 }
 
-flist:
-    | rrexp COMMA flist                       { $1::$3 }
-    | rrexp                                   { [$1] }
+arglist:
+    | exp COMMA arglist                         { $1::$3 }
+    | exp                               { [$1] }
 
-rrexp:
-    | FAIR LBRACE rrlist RBRACE                            { rr_list $1 }
+exp:
+    | clss     { $1 }
+    | policy    { $1 }
 
-rrlist:
-    | stexp COMMA rrlist            { $1::$3}
-    | stexp                         { [$1] }
+// fexp:
+//     | FIFO LBRACE flist RBRACE                 { fifo_list $1 }
 
-stexp:
-    | STRICT LBRACE stlist RBRACE                            { strict_list $1 }
+// flist:
+//     | rrexp COMMA flist                       { $1::$3 }
+//     | rrexp                                   { [$1] }
 
-stlist:
-    | fexp COMMA stlist         { $1::$3 }
-    | fexp                      { [$1] }
+// rrexp:
+//     | FAIR LBRACE rrlist RBRACE                            { rr_list $1 }
+
+// rrlist:
+//     | stexp COMMA rrlist            { $1::$3}
+//     | stexp                         { [$1] }
+
+// stexp:
+//     | STRICT LBRACE stlist RBRACE                            { strict_list $1 }
+
+// stlist:
+//     | fexp COMMA stlist         { $1::$3 }
+//     | fexp                      { [$1] }
 
 
 
