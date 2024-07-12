@@ -4,7 +4,7 @@
     let list_expr ls =
     match ls with
     | [l] -> l 
-    | _ -> Transient ls (* what to put for typ?? *)
+    | _ -> Strict ls (* what to put for typ?? *)
 
 %}
 
@@ -39,7 +39,7 @@ pexp:
     | plist                                    { list_expr $1 }
 
 plist:
-    | policy COMMA plist                       { $1::$3 }
+    | lexp COMMA plist                       { $1::$3 }
     | lexp                                   { [$1] }
 
 lexp:
