@@ -5,18 +5,16 @@
    exception Err
 }
 
-
-(* let clss = ['a'-'z' 'A'-'Z']* *)
 let whitespace = [' ' '\t']+
-(* let id = ['a'-'z'] ['a'-'z' '0'-'9']* *)
-let bigid = ['A'-'Z']* (* change to allow TY and such variables *)
+let id = ['a'-'z'] ['a'-'z' '0'-'9']*
+let bigid = ['A'-'Z']* 
 let newline = ['\n']*
 
 
 rule token = parse
 | whitespace        { token lexbuf}
 | newline       { Lexing.new_line lexbuf; token lexbuf }
-(* | "="       { EQUALS } *)
+| "="       { EQUALS }
 | "["       { LBRACE }
 | "]"       { RBRACE }
 (* | "return"  { RETURN }
@@ -25,8 +23,7 @@ rule token = parse
 | "fifo"    { FIFO }
 | "rr"      { FAIR }
 | "strict"  { STRICT }
-(* | "transient"   { TRANSIENT } *)
-(* | id as v   { VAR(v) } *)
+| id as v   { VAR(v) }
 | bigid as i    { CLSS(i) }
 | eof       { EOF }
 
