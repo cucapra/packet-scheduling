@@ -6,7 +6,7 @@
 }
 
 let whitespace = [' ' '\t']+
-let id = ['a'-'z'] ['a'-'z' '0'-'9']*
+let id = ['a'-'z'] ['a'-'z' '0'-'9' '_']*
 let bigid = ['A'-'Z']* 
 let newline = ['\n']*
 
@@ -17,12 +17,13 @@ rule token = parse
 | "="       { EQUALS }
 | "["       { LBRACE }
 | "]"       { RBRACE }
-(* | "return"  { RETURN }
-| "classes" { CLASSES } *)
+| "return"  { RETURN }
+| "classes" { CLASSES }
 | ","       { COMMA }
 | "fifo"    { FIFO }
 | "rr"      { FAIR }
 | "strict"  { STRICT }
+| ";"       {SEMICOLON}
 | id as v   { VAR(v) }
 | bigid as i    { CLSS(i) }
 | eof       { EOF }
