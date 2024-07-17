@@ -1,21 +1,6 @@
 %{
     open Ast
 
-    let fifo_list ls =
-    match ls with
-    | [l] -> l 
-    | _ -> Fifo ls 
-
-    let rr_list ls =
-    match ls with
-    | [l] -> l 
-    | _ -> Fair ls
-
-    let strict_list ls =
-    match ls with
-    | [l] -> l 
-    | _ -> Strict ls
-
 %}
 
 %token <string> VAR 
@@ -33,7 +18,7 @@
 %token SEMICOLON
 
 %type <policy> policy
-%type <Ast.policy> prog
+%type <Ast.statement> prog
 
 %start prog
 
@@ -43,23 +28,35 @@
 
 // clist:
 //     | exp COMMA clist { $1::$3}
-//     | exp   { [$1] }
 
+/* Policies */
 policy:    
-    | FIFO LBRACE arglist RBRACE               { fifo_list $3 }
-    | STRICT LBRACE arglist RBRACE             { strict_list $3 }
-    | FAIR LBRACE arglist RBRACE               { rr_list $3 }
+    | FIFO LBRACE; pl = arglist; RBRACE               { Fifo pl }
+    | STRICT LBRACE; pl = arglist; RBRACE             { Strict pl }
+    | FAIR LBRACE; pl = arglist; RBRACE               { Fair pl }
     | CLSS                                     { Class($1) }
-    | VAR EQUALS policy                        { Assn($1, $3) }
-    | RETURN policy                            { Return($2)}
-    | policy SEMICOLON policy       {Seq($1, $3)}
-
+    | VAR                                       { Var($1) }
 
 arglist:
-    | exp COMMA arglist                        { $1::$3 }
-    | exp                                      { [$1] }
+    | pl = separated_list(COMMA, policy) { pl } ;
 
-exp:
-    | policy                                   { $1 }
+/* Statements */
+state:
+    | statem SEMICOLON state { Seq($1, $3) }
+    | statem                 { $1 }
 
-prog: policy EOF                               { $1 }
+statem:
+    | RETURN policy           { Ret(Return($2)) }
+    | CLASSES; vl  = list_fields    { Declare(DeclareClasses vl) }
+
+list_fields:
+    vl = separated_list(COMMA, CLSS)         { vl } ;
+
+
+// classes:
+//     | class_decl COMMA classes    { $1 :: $3 }
+//     | class_decl                  { [$1] }
+
+
+/* Program */
+prog: state EOF                               { $1 }
