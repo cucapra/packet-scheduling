@@ -31,8 +31,23 @@
 \DeclareMathOperator{\true}{\mathbf{true}}
 \newcommand{\hoare}[3]{\{#1\} \; #2 \; \{#3\}}
 
-% Formal Abstractions macros
+% (Formal Abstractions macros)++
+\DeclareMathOperator{\halfto}{\rightharpoonup}
 \DeclareMathOperator{\pkt}{\mathrm{pkt}}
+\DeclareMathOperator{\push}{\mathrm{push}}
+\DeclareMathOperator{\pop}{\mathrm{pop}}
+\DeclareMathOperator{\Pkt}{\mathbf{Pkt}}
+\DeclareMathOperator{\Rk}{\mathbf{Rk}}
+\DeclareMathOperator{\Data}{\mathbf{Data}}
+\DeclareMathOperator{\Topo}{\mathbf{Topo}}
+\DeclareMathOperator{\Path}{\mathbf{Path}}
+\DeclareMathOperator{\PIEO}{\mathbf{PIEO}}
+\DeclareMathOperator{\PIFO}{\mathbf{PIFO}}
+\DeclareMathOperator{\PIEOTree}{\mathbf{PIEOTree}}
+\DeclareMathOperator{\PIFOTree}{\mathbf{PIFOTree}}
+\DeclareMathOperator{\Leaf}{\mathrm{Leaf}}
+\DeclareMathOperator{\Internal}{\mathrm{Internal}}
+\DeclareMathOperator{\Node}{\mathrm{Node}}
 
 % theorems
 \newtheorem{thm}{Theorem}[section]
@@ -76,74 +91,134 @@
 
 We assume familiarity with \cite{OG}, adopt its notational conventions, and borrow many of its definitions!
 
-% \section{Overview}
-% 
-% {
-%     \color{red}
-%     TODO!
-%     \begin{enumerate}
-%         \item An example of a scheduling transaction that cannot be expressed with PIFO trees: maybe token bucket?
-%         \item Introduce what a PIEO is and what it does 
-%         \item An overview of what to expect with each section.
-%     \end{enumerate}
-% }
-% 
-% \newpage
-
 \section{Structure \& Semantics}
 
-Our PIEO trees are near identical to PIFO trees, with only two modifications:
-\begin{enumerate}
-    \item All nodes hold PIEOs instead of PIFOs
-    \item Internal PIEOs hold just enough extra data to compute predicates of packets that live in subtrees.
-\end{enumerate}
+\begin{dfn}
+    For sets $S$, $D$, and predicates $F$ over $D$,
+    let $\PIEO(S, D, F)$ denote the set of \emph{PIEO}s that
+    \begin{enumerate}
+        \item hold entries in $S$, decorated with meta-data in $D$
+        \item are ordered by $\Rk$
+        \item support predicates in $F$
+        \item admit partial functions 
+        \begin{align*}
+            \pop &: \PIEO(S, D, F) \times F \halfto S \times \PIEO(S, D, F) \\
+            \push &: \PIEO(S, D, F) \times S \times D \times \Rk \to \PIEO(S, D, F) 
+        \end{align*}
+    \end{enumerate}
+    For $p \in \PIEO(S, D, F)$, $s \in S$, and $f \in F$, we write 
+    \begin{enumerate}
+        \item $|p|$ for the number of entries in $p$
+        \item $|p|_{s}$ for the number of times $s$ occurs in $p$
+        \item $|p|_{s,f}$ for the number of times $s$ occurs in $p$ with associated $d$ such that $f(d)$
+    \end{enumerate}
+\end{dfn}
 
-To make ``just enough extra data'' precise, let $f$ be a predicate on $\mathbf{Pkt}$. 
-We'll presuppose the existence of a set $\mathbf{Data}_f$ and associated surjective map $\mathrm{data}_f: \mathbf{Pkt} \to \mathbf{Data}_f$.
-This map and set are such that, for $\pkt, \pkt^\prime \in \mathbf{Pkt}$, 
-$$\mathrm{data}_f(\pkt) = \mathrm{data}_f(\pkt^\prime) \implies f(\pkt) = f(\pkt^\prime)$$
-In other words, all preimages of $d \in \mathbf{Data}_f$ evaluate to the same truth value under $f$. 
-For this reason,
+We fix an opaque set $\Data$ and a collection $\mathcal F$ of predicates defined on it.
+These predicates come with a total order $\leq$ and the property that, $\forall d \in \Data$ and $f,f^\prime \in \mathcal F$,
+$f \leq f^\prime \land f(d) \implies f^\prime(d)$.
 
-\begin{abuse}
-    We'll often write $f(d)$ when we mean $f(\pkt)$ for some $\pkt \in f^{-1}(d)$. 
-\end{abuse}
-
-Broadly, this set $\mathbf{Data}_f$ is designed to encode just the parts of $\mathbf{Pkt}$ necessary for computing $f(\pkt)$.
-
-\begin{ex}
-    For any $f$, it is legal to set $\mathrm{Data}_f = \mathbf{Pkt}$ and $\mathrm{data}_f$ to be the identity map.
-    We'd expect this to work since each $\pkt \in \mathbf{Pkt}$ certainly holds all the information necessary to compute $f(\pkt)$.
-\end{ex}
-
-We can now formally define PIEO trees!
-
-\begin{dfn}[PIEO tree]
-    Let $t \in \mathbf{Topo}$ be a topology and $f$ a predicate over $\mathbf{Pkt}$.
-    The set of \emph{PIEO trees} over $t$ and $f$, denoted $\mathbf{PIEOTree}(t, f)$, is defined inductively by
+\begin{dfn}
+    The set of \emph{PIEO trees} over $t \in \Topo$, denoted $\mathbf{PIEOTree}(t)$, is defined inductively by
     \begin{align*}
         \inference{}
         {
-            p \in \mathbf{PIEO}(\mathbf{Pkt}, f)
+            p \in \mathbf{PIEO}(\Pkt, \Data, \mathcal F)
         }
         {
-            \mathrm{Leaf}(p) \in \mathbf{PIEOTree}(\ast)
+            \Leaf(p) \in \mathbf{PIEOTree}(\ast)
         }
         &&
         \inference{}
         {
             n \in \mathbb N\\
             ts \in \mathbf{Topo}^n\\
-            p \in \mathbf{PIEO}(\{1,\ldots, n\} \times \mathbf{Data}_f(\mathbf{Pkt}), f)\\\\
+            p \in \mathbf{PIEO}(\{1,\ldots, n\}, \mathbf{Data}, \mathcal F)\\\\
             \forall i \in [1, n]. \; qs[i] \in \mathbf{PIEOTree}(ts[i])
         }
         {
-            \mathrm{Internal}(qs, p) \in \mathbf{PIEO}(\mathrm{Node}(ts))
+            \Internal(qs, p) \in \mathbf{PIEO}(\Node(ts))
         }
     \end{align*}
 \end{dfn}
 
+\begin{dfn}
+    Define $\pop : \PIEOTree(t) \times \mathcal F \halfto \Pkt \times \PIEOTree(t)$ by
+    \begin{align*}
+        \inference{}
+        {
+            \pop(p, f) = (\pkt, p^\prime)
+        }
+        {
+            \pop(\Leaf(p), f) = (\pkt, \Leaf(p^\prime))
+        }
+        &&
+        \inference{}
+        {
+            \pop(p, f) = (i, p^\prime)\\
+            \pop(qs[i], f) = (\pkt, q^\prime)
+        }
+        {
+            \pop(\Internal(qs, p), f) = (\pkt, \Internal(qs[q^\prime/i], p^\prime))
+        }
+    \end{align*}
+\end{dfn}
+
+\begin{dfn}
+    Define $\push : \PIEOTree(t) \times \Pkt \times \Data \times \Path(t) \to \PIEOTree(t)$ by
+    \begin{align*}
+        \inference{}
+        {
+            \push(p, \pkt, d, r) = p^\prime
+        }
+        {
+            \push(\Leaf(p), \pkt, d, r) = \Leaf(p^\prime)
+        }
+        &&
+        \inference{}
+        {
+            \push(p, i, d, r) = p^\prime\\ 
+            \push(qs[i],  \pkt, d, pt) = q^\prime
+        }
+        {
+            \push(\Internal(qs, p), \pkt, d, (i, r) :: pt) = \Internal(qs[q^\prime/i], p^\prime)
+        }
+    \end{align*}
+\end{dfn}
+
+\begin{dfn}
+    Let $t \in \Topo$. 
+    A \emph{control} over $t$ is a triple $(s, q, z)$, where $s \in \mathrm{St}$ is the \emph{current state},
+    $q$ is a PIEO tree of topology $t$, 
+    and $z : \mathrm{St} \times \Pkt \to \Data \times \Path(t) \times \mathrm{St}$ is a function called the \emph{scheduling transaction}.
+    We write $\mathrm{Control}(t)$ for the set of controls over $t$.
+\end{dfn}
+
+\begin{dfn}
+    Define $|\cdot| : \PIEOTree(t) \to \mathbb N$ by
+    \begin{align*}
+        |\Leaf(p)| = |p| && |\Internal(qs, p)| = \sum_{i=1}^{|qs|} |qs[i]|
+    \end{align*}
+
+    We say that $q \in \PIEOTree(t)$ is \emph{well-formed} w.r.t $f \in \mathcal F$, denoted $\vdash_f q$, if it adheres to the following rules.
+    \begin{align*}
+        \axiom{}
+        {\vdash_f \Leaf(p)}
+        &&
+        \inference{}
+        {
+            \forall i \in [1, |qs|] \; \vdash_f qs[i] \land |p|_i = |qs[i]|
+        }
+        {
+            \vdash_f \Internal(qs, p)
+        }
+    \end{align*}
+
+    We say $q$ is well-formed, denoted $\vdash q$, if for all $f \in \mathcal F$, $\vdash_f q$.
+\end{dfn}
+
 \newpage 
+
 
 \renewcommand\refname{\LARGE References}
 \bibliographystyle{alpha} 
