@@ -110,7 +110,7 @@ We assume familiarity with \cite{OG}, adopt its notational conventions, and borr
     \begin{enumerate}
         \item $|p|$ for the number of entries in $p$
         \item $|p|_{s}$ for the number of times $s$ occurs in $p$
-        \item $|p|_{s,f}$ for the number of times $s$ occurs in $p$ with associated $d$ such that $f(d)$
+        \item $|p|_{s,f}$ for the number of times $s$ occurs in $p$ with associated $d \in D$ such that $f(d)$ holds
     \end{enumerate}
 \end{dfn}
 
@@ -217,8 +217,21 @@ $f \leq f^\prime \land f(d) \implies f^\prime(d)$.
     We say $q$ is well-formed, denoted $\vdash q$, if for all $f \in \mathcal F$, $\vdash_f q$.
 \end{dfn}
 
-\newpage 
+\section{Embedding and Simulation}
 
+\begin{dfn}
+    Let $t_1, t_2 \in \Topo$. 
+    We call a relation $R \subseteq \PIFOTree(t_1) \times \PIFOTree(t_2)$ a \emph{simulation} if, 
+    for all $\pkt \in \Pkt$, $f \in \mathcal F$, and $q_1 \; R \; q_2$,
+    \begin{enumerate}
+        \item If $\pop(q_1, f)$ is undefined, then so is $\pop(q_2, f)$
+        \item If $\pop(q_1, f) = (\pkt, q_1^\prime)$, then $\pop(q_2) = (\pkt, q_2^\prime)$ such that $q_1^\prime \; R \; q_2^\prime$.
+        \item For all $pt_1 \in \Path(t_1)$ and $d \in \Data$, there exists $pt_2 \in \Path(t_2)$ such that
+            $$\push(q_1, \pkt, d, pt_1) \; R \; \push(q_2, \pkt, d, pt_2)$$
+    \end{enumerate}
+\end{dfn}
+
+\newpage 
 
 \renewcommand\refname{\LARGE References}
 \bibliographystyle{alpha} 
