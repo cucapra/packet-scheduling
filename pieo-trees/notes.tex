@@ -21,6 +21,9 @@
 \usepackage{silence} % for suppressing warnings
 \usepackage{cite}
 
+% hats
+\usepackage{yhmath}
+
 % PL macros
 \usepackage{mathpartir}
 \usepackage{stmaryrd}
@@ -56,6 +59,7 @@
 \newtheorem{dfn}[thm]{Definition}
 \newtheorem{abuse}[thm]{Abuse of Notation}
 \newtheorem{ex}[thm]{Example}
+\newtheorem{rem}[thm]{Remark}
 
 % no more indent
 \setlength{\parindent}{0pt}
@@ -89,7 +93,7 @@
 
 \hrulefill\\
 
-We assume familiarity with \cite{OG}, adopt its notational conventions, and borrow many of its definitions!
+We assume familiarity with \cite{OG}, adopt its notational conventions, and borrow its definitions!
 
 \section{Structure \& Semantics}
 
@@ -189,9 +193,9 @@ $f \leq f^\prime \land f(d) \implies f^\prime(d)$.
 \begin{dfn}
     Let $t \in \Topo$. 
     A \emph{control} over $t$ is a triple $(s, q, z)$, where $s \in \mathrm{St}$ is the \emph{current state},
-    $q$ is a PIEO tree of topology $t$, 
-    and $z : \mathrm{St} \times \Pkt \to \Data \times \Path(t) \times \mathrm{St}$ is a function called the \emph{scheduling transaction}.
-    We write $\mathrm{Control}(t)$ for the set of controls over $t$.
+    $q$ is a PIEO tree of topology $t$, and 
+    $$z : \mathrm{St} \times \Pkt \to \Data \times \Path(t) \times \mathrm{St}$$
+    is a function called the \emph{scheduling transaction}.
 \end{dfn}
 
 \begin{dfn}
@@ -207,7 +211,7 @@ $f \leq f^\prime \land f(d) \implies f^\prime(d)$.
         &&
         \inference{}
         {
-            \forall i \in [1, |qs|] \; \vdash_f qs[i] \land |p|_i = |qs[i]|
+            \forall i \in [1, |qs|] \; \vdash_f qs[i] \land |p|_{i, f} = |qs[i]|
         }
         {
             \vdash_f \Internal(qs, p)
@@ -221,7 +225,7 @@ $f \leq f^\prime \land f(d) \implies f^\prime(d)$.
 
 \begin{dfn}
     Let $t_1, t_2 \in \Topo$. 
-    We call a relation $R \subseteq \PIFOTree(t_1) \times \PIFOTree(t_2)$ a \emph{simulation} if, 
+    We call a relation $R \subseteq \PIEOTree(t_1) \times \PIEOTree(t_2)$ a \emph{simulation} if, 
     for all $\pkt \in \Pkt$, $f \in \mathcal F$, and $q_1 \; R \; q_2$,
     \begin{enumerate}
         \item If $\pop(q_1, f)$ is undefined, then so is $\pop(q_2, f)$
@@ -229,12 +233,52 @@ $f \leq f^\prime \land f(d) \implies f^\prime(d)$.
         \item For all $pt_1 \in \Path(t_1)$ and $d \in \Data$, there exists $pt_2 \in \Path(t_2)$ such that
             $$\push(q_1, \pkt, d, pt_1) \; R \; \push(q_2, \pkt, d, pt_2)$$
     \end{enumerate}
+    If such a simulation exists, we say that $q_1$ is \emph{simulated} by $q_2$, and we write $q_1 \preccurlyeq q_2$.
 \end{dfn}
+
+\begin{rem}
+    For all further discussion, we assume our embeddings are injective.
+\end{rem}
+
+\begin{dfn}
+    For $t_1, t_2 \in \Topo$, let $f$ be an embedding from $t_1$ to $t_2$.
+    We lift $f$ to a map $\overline{f}$ from $\PIEOTree(t_1)$ to $\PIEOTree(t_2)$ inductively.
+    \begin{itemize}
+        \item For $t_1 = \ast$, define $\overline{f}(q) = q$. This is well-defined by \cite[Lemma ~5.2]{OG}.
+        \item For $t_1 = \Node(ts_1)$, $n = |ts_1|$, $q = \Internal(qs, p)$, 
+            construct $\overline{f}_{\alpha}(q) \in \PIEOTree(t_2/\alpha)$ for each prefix $\alpha$ of $f(i)$ for some $i \in [1,n]$.
+            Inductively, we'll build up from $f(i)$'s to $\epsilon$ and set $\overline{f}(q) = \overline{f}_\epsilon(q)$.
+            \begin{itemize}
+                \item Let $\alpha = f(i)$ for some $i \in [1,n]$. We'll set $\overline{f}_\alpha(q) = \overline{f_i}(qs[i])$, 
+                    where $f_i$ embeds $t_1/i$ into $t_2/f(i)$ as per \cite[Lemma 5.2]{OG}.
+                    This well-defined by the injectivity of $f$.
+                \item Let $\alpha$ point to a transient node, say with $m$ children.
+                    For $1 \leq j \leq m$ such that $\alpha \cdot j$ is not a prefix of some $f(i)$, 
+                    define $\overline{f}(q)_{\alpha \cdot j}$ to be the PIEO tree with empty PIEOs on all leaves and internal nodes. 
+                    With this and recursion, we know $\overline{f}(q)_{\alpha \cdot j} \in \PIEOTree(t_2/(\alpha \cdot j))$ for all $j \in [1, m]$.
+
+                    We create a new PIEO $p_\alpha$ as follows:
+                    \begin{enumerate} 
+                        \item Start with $p_\alpha$ empty
+                        \item For each $i$ in $p$ such that $\alpha \cdot j$ is a prefix of $f(i)$, push $j$ into $p_\alpha$ with $i$'s data and rank
+                    \end{enumerate}
+
+                    Finally, for all $j \in [1,m]$, set $qs_\alpha[j] = \overline{f}(q)_{\alpha \cdot j}$ and $\overline{f}(q)_\alpha = \Internal(qs_\alpha, p_\alpha)$.
+            \end{itemize}
+    \end{itemize}
+\end{dfn}
+
+\begin{thm}
+    \label{thm:profit}
+    Let $t_1, t_2 \in \Topo$. If $f$ embeds $t_1$ into $t_2$, then 
+    $$R = \{(q, f(q)) \mid q \in \PIEOTree(t_1)\}$$ 
+    is a simulation.
+\end{thm}
 
 \newpage 
 
 \renewcommand\refname{\LARGE References}
-\bibliographystyle{alpha} 
+\bibliographystyle{apalike} 
 \bibliography{refs}
 
 \end{document}
