@@ -1,2 +1,6 @@
-classes CU, CV, CW, CX; 
-return rr[rr[CU, CV], strict[CW, CX]]
+classes B, RP, RT;
+
+r_policy = rr[fifo[RP], fifo[RT]];
+policy = rr[fifo[B], r_policy];
+
+return policy
