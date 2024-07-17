@@ -23,6 +23,5 @@ type statement =
 | Seq of statement * statement
 | Ret of return
 
-
 type program =
 | Prog of declare * (statement list) * return
