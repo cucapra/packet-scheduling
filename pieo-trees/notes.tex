@@ -39,6 +39,7 @@
 \DeclareMathOperator{\pkt}{\mathrm{pkt}}
 \DeclareMathOperator{\push}{\mathrm{push}}
 \DeclareMathOperator{\pop}{\mathrm{pop}}
+\DeclareMathOperator{\proj}{\mathrm{proj}}
 \DeclareMathOperator{\Pkt}{\mathbf{Pkt}}
 \DeclareMathOperator{\Rk}{\mathbf{Rk}}
 \DeclareMathOperator{\Data}{\mathbf{Data}}
@@ -107,9 +108,12 @@ We assume familiarity with \cite{OG}, adopt its notational conventions, and borr
         \item admit partial functions 
         \begin{align*}
             \pop &: \PIEO(S, D, F) \times F \halfto S \times \PIEO(S, D, F) \\
-            \push &: \PIEO(S, D, F) \times S \times D \times \Rk \to \PIEO(S, D, F) 
+            \push &: \PIEO(S, D, F) \times S \times D \times \Rk \to \PIEO(S, D, F) \\
+            \proj &: \PIEO(S, D, F) \times F \to \PIFO(S)
         \end{align*}
     \end{enumerate}
+    Maps $\push$ and $\pop$ are as usual.
+    The \emph{projection} $\proj(p, f)$ is the PIFO of entries in $p$ with data satisfying $f$.
     For $p \in \PIEO(S, D, F)$, $s \in S$, and $f \in F$, we write 
     \begin{enumerate}
         \item $|p|$ for the number of entries in $p$
@@ -211,7 +215,7 @@ $f \leq f^\prime \land f(d) \implies f^\prime(d)$.
         &&
         \inference{}
         {
-            \forall i \in [1, |qs|] \; \vdash_f qs[i] \land |p|_{i, f} = |qs[i]|
+            \forall i \in [1, |qs|], \; \vdash_f qs[i] \land |p|_{i, f} = |qs[i]|
         }
         {
             \vdash_f \Internal(qs, p)
@@ -221,7 +225,66 @@ $f \leq f^\prime \land f(d) \implies f^\prime(d)$.
     We say $q$ is well-formed, denoted $\vdash q$, if there exists $f \in \mathcal F$ such that, for all $f^\prime \geq f$, $\vdash_{f^\prime} q$.
 \end{dfn}
 
-\section{Embedding and Simulation}
+\section{Projection}
+
+\begin{dfn}
+    For $f \in \mathcal F$, define $\proj_f: \PIEOTree(t) \to \PIFOTree(t)$ by
+    \begin{align*}
+        \inference{}  
+        {
+            p^\prime = \proj(p, f)
+        }
+        {
+            \proj_f(\Leaf(p)) = \Leaf(p^\prime)
+        }
+        &&
+        \inference{}
+        {
+            p^\prime = \proj(p, f)\\
+            \forall i \in [1, |qs|], \; qs^\prime[i] = \proj_f(qs[i])
+        }
+        {
+            \proj_f(\Internal(qs, p)) = \Internal(qs^\prime, p^\prime)
+        }
+    \end{align*}
+\end{dfn}
+
+\begin{lem}
+    For $q \in \PIEOTree(t)$ and $f \in \mathcal F$, $\pop(q, f)$ is undefined if and only if $\pop(\proj_f(q))$ is undefined.
+\end{lem}
+
+\begin{proof}
+    TODO: structural induction on $q$
+\end{proof}
+
+\begin{lem}
+    For $q \in \PIEOTree(t)$ and $f \in \mathcal F$, 
+    $$
+        \pop(q, f) = (\pkt, q^\prime) \implies \pop(\proj_f(q)) = (\pkt, \proj_f(q^\prime))
+    $$
+\end{lem}
+
+\begin{proof}
+    TODO!
+\end{proof}
+
+\begin{lem}
+    For $q \in \PIEOTree(t)$, $\pkt \in \Pkt$, $d \in \Data$, $pt \in \Path(t)$, and $f \in \mathcal F$,
+    $$
+        \proj_f(\push(q, \pkt, d, pt)) = 
+        \begin{cases}
+            \push(\proj_f(q), \pkt, pt) & f(d) \text{ holds true}\\
+            \proj_f(q) & \text{otherwise}
+        \end{cases}
+    $$
+\end{lem}
+
+\begin{proof}
+    TODO!
+\end{proof}
+
+
+\section{Embedding \& Simulation}
 
 \begin{dfn}
     Let $t_1, t_2 \in \Topo$. 
