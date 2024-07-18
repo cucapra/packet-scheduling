@@ -9,14 +9,18 @@ let whitespace = [' ' '\t']+
 let id = ['a'-'z'] ['a'-'z' '0'-'9' '_']*
 let bigid = ['A'-'Z']* 
 let newline = ['\n']*
+let comment = ['/' '/'] ['A'-'Z' 'a'-'z' '0'-'9' ' ' ',' '.']* ['\x00' - '\x80']* ['\n']*
 
 
 rule token = parse
 | whitespace        { token lexbuf}
 | newline       { Lexing.new_line lexbuf; token lexbuf }
+| comment      { token lexbuf }
 | "="       { EQUALS }
 | "["       { LBRACE }
 | "]"       { RBRACE }
+| "("       { LPAREN }
+| ")"       { RPAREN }
 | "return"  { RETURN }
 | "classes" { CLASSES }
 | ","       { COMMA }
