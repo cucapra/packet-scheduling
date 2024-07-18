@@ -10,16 +10,16 @@
 \usepackage[colorlinks]{hyperref} 
 \PassOptionsToPackage{colorlinks}{hyperref}
 \hypersetup{urlcolor = RedViolet, linkcolor = RoyalBlue, citecolor = NavyBlue}
-\urlstyle{same}
 
-\usepackage{amsmath, amssymb, amsthm} 
+% basics
+\usepackage[leqno]{amsmath}
+\usepackage{amssymb, amsthm} 
 \usepackage[svgnames, dvipsnames]{xcolor}
 \usepackage{mhsetup, mathtools}
-
 \usepackage[capitalise]{cleveref}
-\usepackage[T1]{fontenc} 
-\usepackage{silence} % for suppressing warnings
-\usepackage{cite}
+
+% commutative diagram
+\usepackage{tikz-cd}
 
 % hats
 \usepackage{yhmath}
@@ -29,10 +29,6 @@
 \usepackage{stmaryrd}
 \newcommand{\inference}[3]{\inferrule*[Right=#1]{#2}{#3}}
 \newcommand{\axiom}[2]{\inferrule*[Right=#1]{\;}{#2}}
-\DeclareMathOperator{\bigstep}{\Downarrow}
-\DeclareMathOperator{\false}{\textbf{false}}
-\DeclareMathOperator{\true}{\mathbf{true}}
-\newcommand{\hoare}[3]{\{#1\} \; #2 \; \{#3\}}
 
 % (Formal Abstractions macros)++
 \DeclareMathOperator{\halfto}{\rightharpoonup}
@@ -86,6 +82,15 @@
   {0pt}
   {}
 
+% tag on the right hack
+\makeatletter
+\newcommand{\leqnomode}{\tagsleft@true}
+\newcommand{\reqnomode}{\tagsleft@false}
+\makeatother
+
+% todos
+\usepackage[textwidth=0.7in]{todonotes}
+
 \begin{document}
 
 \pagestyle{empty}
@@ -94,11 +99,14 @@
 
 \hrulefill\\
 
-We assume familiarity with \cite{OG}, adopt its notational conventions, and borrow its definitions!
+\reqnomode
+
+We assume familiarity with \cite{OG}, adopt its notational conventions, and borrow many of its definitions!
 
 \section{Structure \& Semantics}
 
 \begin{dfn}
+    \label{dfn:pieo}
     For sets $S$, $D$, and predicates $F$ over $D$,
     let $\PIEO(S, D, F)$ denote the set of \emph{PIEO}s that
     \begin{enumerate}
@@ -114,7 +122,9 @@ We assume familiarity with \cite{OG}, adopt its notational conventions, and borr
     \end{enumerate}
     Maps $\push$ and $\pop$ are as usual.
     The \emph{projection} $\proj(p, f)$ is the PIFO of entries in $p$ with data satisfying $f$.
-    For $p \in \PIEO(S, D, F)$, $s \in S$, and $f \in F$, we write 
+    We consider PIEOs $p, p^\prime$ equal if, for all $f \in F$, $\proj(p,f) = \proj(p^\prime, f)$, i.e. their projections are always equal.
+
+    For PIEO $p$, entry $s \in S$, and predicate $f \in F$, we write 
     \begin{enumerate}
         \item $|p|$ for the number of entries in $p$
         \item $|p|_{s}$ for the number of times $s$ occurs in $p$
@@ -250,14 +260,41 @@ $f \leq f^\prime \land f(d) \implies f^\prime(d)$.
 \end{dfn}
 
 \begin{lem}
+    \label{lem:pieotree_eq}
+    For $q, q^\prime \in \PIEOTree(t)$,
+    $$\forall f \in \mathcal F, \; \proj_f(q) = \proj_f(q^\prime) \implies q = q^\prime$$
+\end{lem}
+
+\begin{proof}
+    Suppose $\proj_f(q) = \proj_f(q^\prime)$ for all $f \in \mathcal F$.
+    We'll proceed by induction on $t$ to show $q = q^\prime$.
+    \begin{itemize}
+        \item[(Leaf)] For $t = \ast$, let $q = \Leaf(p)$ and $q^\prime = \Leaf(p^\prime)$.
+            Since $$\proj_f(q) = \Leaf(\proj(p, f)) = \Leaf(\proj(p^\prime, f)) = \proj_f(q^\prime)$$
+            we know $\proj(p, f) = \proj(p^\prime, f)$ for all $f \in \mathcal F$.
+            By \Cref{dfn:pieo}, $p = p^\prime$ and hence $q = q^\prime$.
+        \item[(Node)] For $t = \Node(ts)$ and $n = |ts|$, let $q = \Internal(qs, p)$ and $q^\prime = \Internal(qs^\prime, p)$.
+            Notice
+            \begin{align*}
+                \proj_f(p) &= \proj_f(p^\prime)\\
+                \proj_f(qs[i]) &= \proj_f(qs^\prime[i]) \tag{$i = 1,\ldots, n$}
+            \end{align*}
+            for all $f \in \mathcal F$. 
+            Hence, $p = p^\prime$ via \Cref{dfn:pieo} and $qs = qs^\prime$ by the inductive hypothesis, i.e. $q = q^\prime$.
+    \end{itemize}
+\end{proof}
+
+\begin{lem}
+    \label{lem:pop_undef}
     For $q \in \PIEOTree(t)$ and $f \in \mathcal F$, $\pop(q, f)$ is undefined if and only if $\pop(\proj_f(q))$ is undefined.
 \end{lem}
 
 \begin{proof}
-    TODO: structural induction on $q$
+    \textcolor{red}{TODO}
 \end{proof}
 
 \begin{lem}
+    \label{lem:pop}
     For $q \in \PIEOTree(t)$ and $f \in \mathcal F$, 
     $$
         \pop(q, f) = (\pkt, q^\prime) \implies \pop(\proj_f(q)) = (\pkt, \proj_f(q^\prime))
@@ -265,10 +302,11 @@ $f \leq f^\prime \land f(d) \implies f^\prime(d)$.
 \end{lem}
 
 \begin{proof}
-    TODO!
+    \textcolor{red}{TODO}
 \end{proof}
 
 \begin{lem}
+    \label{lem:push}
     For $q \in \PIEOTree(t)$, $\pkt \in \Pkt$, $d \in \Data$, $pt \in \Path(t)$, and $f \in \mathcal F$,
     $$
         \proj_f(\push(q, \pkt, d, pt)) = 
@@ -280,13 +318,14 @@ $f \leq f^\prime \land f(d) \implies f^\prime(d)$.
 \end{lem}
 
 \begin{proof}
-    TODO!
+    \textcolor{red}{TODO}
 \end{proof}
 
 
 \section{Embedding \& Simulation}
 
 \begin{dfn}
+    \label{dfn:sim}
     Let $t_1, t_2 \in \Topo$. 
     We call a relation $R \subseteq \PIEOTree(t_1) \times \PIEOTree(t_2)$ a \emph{simulation} if, 
     for all $\pkt \in \Pkt$, $f \in \mathcal F$, and $q_1 \; R \; q_2$,
@@ -332,16 +371,112 @@ $f \leq f^\prime \land f(d) \implies f^\prime(d)$.
 \end{dfn}
 
 \begin{thm}
+    \label{thm:cd}
+    The following diagram commutes
+    $$
+    \begin{tikzcd}
+    	{\PIEOTree(t_1)} &&& {\PIEOTree(t_2)} \\
+    	\\
+    	{\PIFOTree(t_1)} &&& {\PIFOTree(t_2)}
+    	\arrow["{\overline{f}}", from=1-1, to=1-4]
+    	\arrow["{\proj_g}"{description}, from=1-1, to=3-1]
+    	\arrow["{\proj_g}"{description}, from=1-4, to=3-4]
+    	\arrow["{\widehat{f}}", from=3-1, to=3-4]
+    \end{tikzcd}
+    $$
+    In other words, for $q_1 \in \PIEOTree(t_1)$, $q_2 = \overline{f}(q_1) \in \PIEOTree(t_2)$, and $g \in \mathcal F$, $\proj_g(q_2) = \widehat{f}(\proj_g(q_1))$.
+\end{thm}
+
+\begin{proof}
+    \textcolor{red}{TODO}
+\end{proof}
+
+\begin{thm}
     \label{thm:profit}
     Let $t_1, t_2 \in \Topo$. If $f$ embeds $t_1$ into $t_2$, then 
-    $$R = \{(q, f(q)) \mid q \in \PIEOTree(t_1)\}$$ 
+    $$R = \{(q, \overline{f}(q)) \mid q \in \PIEOTree(t_1)\}$$ 
     is a simulation.
 \end{thm}
+
+\begin{proof}
+    We'll show the conditions from \Cref{dfn:sim} hold.
+    Fix $g \in \mathcal F$ and $q_1 \in \PIEOTree(t_1)$.
+    Let $q_2 = \overline{f}(q_1)$.
+    \begin{enumerate}
+        \item Suppose $\pop(q_1, g)$ is undefined. 
+            Applying both \Cref{lem:pop_undef} and \cite[Lemma ~5.6]{OG}, notice $\pop(\widehat{f}(\proj_g(q_1)))$ is undefined.
+            By \Cref{thm:cd}, $\widehat{f}(\proj_g(q_1)) = \proj_g(q_2)$.
+            Hence, $\pop(\proj_g(q_2))$ is undefined.
+            Applying \Cref{lem:pop_undef} once more, $\pop(q_2, g)$ is undefined.
+
+        \item Suppose $\pop(q_1, g)$ is defined. 
+            By \Cref{lem:pop_undef} and \cite[Lemma ~5.6]{OG}, $\pop(\widehat{f}(\proj_g(q_1)))$ is defined.
+            Hence, $\pop(\proj_g(q_2))$ is defined via \Cref{thm:cd}.
+            By \Cref{lem:pop_undef}, $\pop(q_2, g)$ is defined.
+            Let's say 
+            \begin{align*}
+                \pop(q_1, g) = (\pkt_1, q_1^\prime) && \pop(q_2, g) = (\pkt_2, q_2^\prime)
+            \end{align*}
+            By \Cref{lem:pop}, 
+            \begin{align*}
+                \pop(\proj_g(q_1)) = (\pkt_1, \proj_g(q_1^\prime)) 
+                &&
+                \pop(\proj_g(q_2)) = (\pkt_2, \proj_g(q_2^\prime))
+            \end{align*}
+            By \cite[Lemma ~5.7]{OG},
+            $$\pop(\widehat{f}(\proj_g(q_1))) = (\pkt_1, \widehat{f}(\proj_g(q_1^\prime)))$$
+            By \Cref{thm:cd},
+            \begin{align*}
+                \pkt_1 &= \pkt_2\\
+                \widehat{f}(\proj_g(q_1^\prime)) &= \proj_g(q_2^\prime) \label{eq:popsim} \tag{$\dagger$} 
+            \end{align*}
+            Since our choice of $g$ was arbitrary, notice \Cref{eq:popsim} holds for all $g \in \mathcal F$.
+            Hence, using \Cref{thm:cd},
+            $$\proj_{g^\prime}(\overline{f}(q_1^\prime)) = \widehat{f}(\proj_{g^\prime}(q_1^\prime)) = \proj_{g^\prime}(q_2^\prime)$$
+            for all $g^\prime \in \mathcal F$. 
+            At last, \Cref{lem:pieotree_eq} yields $\overline{f}(q_1^\prime) = q_2^\prime$. \todo{this logic is wrong!}
+        
+        \leqnomode
+
+        \item Consider $\pkt \in \Pkt$, $d \in \Data$, and $pt \in \Path(t_1)$.
+            For $g \in \mathcal F$ such that $g(d)$ holds true,
+            \begin{align*}
+                \proj_g(\overline{f}(\push(q_1, \pkt, d, pt)))
+                &= \widehat{f}(\proj_g(\push(q_1, \pkt, d, pt))) \tag{by \Cref{thm:cd}}\\
+                &= \widehat{f}(\push(\proj_g(q_1), \pkt, pt)) \tag{by \Cref{lem:push}}\\
+                &= \push(\widehat{f}(\proj_g(q_1)), \pkt, \widetilde{f}(pt)) \tag{by \cite[Lemma ~5.9]{OG}}\\
+                &= \push(\proj_g(q_2), \pkt, \widetilde{f}(pt)) \tag{by \Cref{thm:cd}}\\
+                &= \proj_g(\push(q_2, \pkt, d, \widetilde{f}(pt))) \tag{by \Cref{lem:push}}
+            \end{align*}
+            For $g \in \mathcal F$ such that $g(d)$ does not hold true,
+            \begin{align*}
+                \proj_g(\overline{f}(\push(q_1, \pkt, d, pt)))
+                &= \widehat{f}(\proj_g(\push(q_1, \pkt, d, pt))) \tag{by \Cref{thm:cd}}\\
+                &= \widehat{f}(\proj_g(q_1)) \tag{by \Cref{lem:push}}\\
+                &= \proj_g(q_2) \tag{by \Cref{thm:cd}}\\
+                &= \proj_g(\push(q_2, \pkt, d, \widetilde{f}(pt))) \tag{by \Cref{lem:push}}
+            \end{align*}
+            Overall,
+            $
+                \proj_g(\overline{f}(\push(q_1, \pkt, d, pt)))
+                = 
+                \proj_g(\push(q_2, \pkt, d, \widetilde{f}(pt)))
+            $
+            for all $g \in \mathcal F$. 
+            Hence,
+            $$
+                \overline{f}(\push(q_1, \pkt, d, pt))
+                = 
+                \push(q_2, \pkt, d, \widetilde{f}(pt))
+            $$
+            by \Cref{lem:pieotree_eq}, as desired.
+    \end{enumerate}
+\end{proof}
 
 \newpage 
 
 \renewcommand\refname{\LARGE References}
-\bibliographystyle{apalike} 
+\bibliographystyle{alpha}
 \bibliography{refs}
 
 \end{document}
