@@ -9,7 +9,7 @@ let whitespace = [' ' '\t']+
 let id = ['a'-'z'] ['a'-'z' '0'-'9' '_']*
 let bigid = ['A'-'Z']* 
 let newline = ['\n']*
-let comment = ['/' '/'] ['A'-'Z' 'a'-'z' '0'-'9' ' ' ',' '.']* ['\x00' - '\x80']* ['\n']*
+let comment = ['/' '/'] ['\x00' - '\x09']* ['\x0b' - '\x80']*
 
 
 rule token = parse
