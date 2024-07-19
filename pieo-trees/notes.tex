@@ -84,8 +84,8 @@
 
 % tag on the right hack
 \makeatletter
-\newcommand{\leqnomode}{\tagsleft@true}
-\newcommand{\reqnomode}{\tagsleft@false}
+\newcommand{\leqnomode}{\tagsleft@true\let\veqno\@@leqno}
+\newcommand{\reqnomode}{\tagsleft@false\let\veqno\@@eqno}
 \makeatother
 
 \begin{document}
@@ -356,6 +356,7 @@ $f \leq f^\prime \land f(d) \implies f^\prime(d)$.
 \end{rem}
 
 \begin{dfn}
+    \label{dfn:f_bar}
     For $t_1, t_2 \in \Topo$, let $f$ be an embedding from $t_1$ to $t_2$.
     We lift $f$ to a map $\overline{f}$ from $\PIEOTree(t_1)$ to $\PIEOTree(t_2)$ inductively.
     \begin{itemize}
@@ -383,6 +384,8 @@ $f \leq f^\prime \land f(d) \implies f^\prime(d)$.
     \end{itemize}
 \end{dfn}
 
+\reqnomode
+
 \begin{thm}
     \label{thm:cd}
     The following diagram commutes
@@ -397,11 +400,51 @@ $f \leq f^\prime \land f(d) \implies f^\prime(d)$.
     	\arrow["{\widehat{f}}", from=3-1, to=3-4]
     \end{tikzcd}
     $$
-    In other words, for $q_1 \in \PIEOTree(t_1)$, $q_2 = \overline{f}(q_1) \in \PIEOTree(t_2)$, and $g \in \mathcal F$, $\proj_g(q_2) = \widehat{f}(\proj_g(q_1))$.
+    In other words, for $q \in \PIEOTree(t_1)$ and $g \in \mathcal F$, $\proj_g(\overline{f}(q)) = \widehat{f}(\proj_g(q))$.
 \end{thm}
 
 \begin{proof}
-    \textcolor{red}{TODO}
+    We'll proceed by induction on $t_1$.
+    Suppose $t_1 = \ast$ and $q = \Leaf(p)$. 
+    By \cite[Lemma ~5.3]{OG}, $t_2 = \ast$ as well.
+    By \Cref{dfn:f_bar} and \cite[Definition ~5.4]{OG}, both $\overline{f}$ and $\widehat{f}$ are the identity.
+    Hence,
+    $$\proj_g(\overline{f}(q)) = \proj_g(q) = \widehat{f}(\proj_g(q))$$
+
+    Suppose $t_1 = \Node(ts)$ and $q = \Internal(qs, p)$.
+    For any prefix $\alpha$ of $f(i)$ for $i \in [1, |ts|]$, we'll show
+    \begin{equation}
+        \label{eq:cd1}
+        \proj_g(\overline{f}(q)_{\alpha}) = \widehat{f}(\proj_g(q))_{\alpha}
+        \tag{$\ast$}
+    \end{equation}
+    by inverse induction on $\alpha$. 
+    Instantiating \Cref{eq:cd1} with $\alpha = \epsilon$ yields the desired result. 
+    \begin{itemize}
+        \item For $\alpha = f(i)$, \Cref{eq:cd1} holds by the outer inductive hypothesis because
+            $$\proj_g(\overline{f}(q)_{\alpha}) = \proj_g(\overline{f_i}(q)) = \widehat{f_i}(\proj_g(q)) = \widehat{f}(\proj_g(q))_{\alpha}$$
+
+        \item Suppose $\alpha$ is some strict prefix of $f(i)$, pointing to a node with $m$ children. Let
+            \begin{align*}
+                \proj_g(\overline{f}(q)) = \Internal(qs^\prime, p^\prime) 
+                &&\text{and}&&
+                \widehat{f}(\proj_g(q)) = \Internal(qs^{\prime\prime}, p^{\prime\prime})
+            \end{align*}
+
+            There's two parts to showing \Cref{eq:cd1}, namely $qs^{\prime} = qs^{\prime\prime}$ and $p^\prime = p^{\prime\prime}$.
+
+            \begin{itemize}
+                \item For all $j \in [1,m]$,
+                    $$\proj_g(\overline{f}(q)_{\alpha \cdot j}) = \widehat{f}(\proj_g(q))_{\alpha \cdot j}$$
+                    For $j$ such that $\alpha \cdot j$ is a prefix of some $f(i)$, this follows from the inner inductive hypothesis.
+                    For all other $j$, notice the LHS and RHS are both PIFO trees of topology $t_2$, with empty PIFOs on all leaves and internal nodes.
+                    Hence, $qs^{\prime}[j] = qs^{\prime\prime}[j]$ for all $j \in [1,m]$, i.e. $qs^{\prime} = qs^{\prime\prime}$.
+                \item By inspection, it's clear following the construction for $p_\alpha$ from \Cref{dfn:f_bar} and then computing the projection $\proj(p_\alpha, g)$ 
+                    yields the same result as following the recipe for $p_\alpha$ from \cite[Definition ~5.4]{OG} on the projection $\proj_g(q)$: 
+                    that is, exactly when we filter out elements not satisfying $g$ does not matter.
+                    Hence, $p^{\prime} = p^{\prime\prime}$.
+            \end{itemize}
+    \end{itemize}
 \end{proof}
 
 \begin{thm}
