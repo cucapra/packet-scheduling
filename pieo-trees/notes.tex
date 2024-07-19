@@ -119,6 +119,17 @@ We assume familiarity with \cite{OG}, adopt its notational conventions, and borr
     \end{enumerate}
     Maps $\push$ and $\pop$ are as usual.
     The \emph{projection} $\proj(p, f)$ is the PIFO of entries in $p$ with data satisfying $f$.
+    These three maps play nicely together: 
+    \begin{align}
+        \pop(p, f) \text{ is undefined} &\iff \pop(\proj(p, f)) \text{ is undefined} \label{eq:pieo1}\\
+        \pop(p, f) = (\pkt, p^\prime) &\implies \pop(\proj(p, f)) = (\pkt, \proj(p^\prime, f)) \label{eq:pieo2}\\
+        \proj(\push(p, s, d, r), f) &= 
+        \begin{cases}
+            \push(\proj(p, f), s, r) & f(d) \text{ holds true}\\
+            \proj(p, f) & \text{otherwise}
+        \end{cases}
+        \label{eq:pieo3}
+    \end{align}
     We consider PIEOs $p, p^\prime$ equal if, for all $f \in F$, $\proj(p,f) = \proj(p^\prime, f)$, i.e. their projections are always equal.
 
     For PIEO $p$, entry $s \in S$, and predicate $f \in F$, we write 
@@ -290,19 +301,20 @@ $f \leq f^\prime \land f(d) \implies f^\prime(d)$.
     We'll do induction on $t$.
     \begin{itemize}
         \item[(Leaf)] For $t = \ast$, let $q = \Leaf(p)$ and $\proj_f(q) = \Leaf(p^\prime)$.
+            By \Cref{eq:pieo1} in \Cref{dfn:pieo},
             \begin{align*}
-                \pop(q, f) \text{ is undefined} &\iff \text{$p$ has no items with meta-data satisfying $f$}\\
-                                                &\iff p^\prime \text{ is empty}\\
+                \pop(q, f) \text{ is undefined} &\iff \pop(p, f) \text{ is undefined} \\
+                                                &\iff \pop(p^\prime) \text{ is undefined} \\
                                                 &\iff \pop(\proj_f(q)) \text{ is undefined}
             \end{align*}
 
         \item[(Node)] For $t = \Node(ts)$, let $q = \Internal(qs, p)$ and $\proj_f(q) = \Internal(qs^\prime, p^\prime)$.
             Notice 
-            $$\text{$p$ has no items with meta-data satisfying $f$} \iff p^\prime \text{ is empty}$$
-            and 
+            $$\pop(p, f) \text{ is undefined} \iff \pop(p^\prime) \text{ is undefined}$$
+            by \Cref{eq:pieo1} in \Cref{dfn:pieo} and 
             $$\pop(qs[i], f) \text{ is undefined} \iff \pop(qs^\prime[i]) \text{ is undefined $\forall i \in [1, |ts|]$}$$
             by the inductive hypothesis.
-            Hence, $\pop(q, f)$ is undefined if and only if $\pop(\proj_f(q))$ is, as desired.
+            Hence, $\pop(q, f)$ is undefined if and only if $\pop(\proj_f(q))$ is.
     \end{itemize}
 \end{proof}
 
@@ -315,7 +327,11 @@ $f \leq f^\prime \land f(d) \implies f^\prime(d)$.
 \end{lem}
 
 \begin{proof}
-    \textcolor{red}{TODO}
+    More induction on $t$!
+    \begin{itemize}
+        \item[(Leaf)]
+        \item[(Node)]
+    \end{itemize}
 \end{proof}
 
 \begin{lem}
@@ -331,7 +347,45 @@ $f \leq f^\prime \land f(d) \implies f^\prime(d)$.
 \end{lem}
 
 \begin{proof}
-    \textcolor{red}{TODO}
+    Even more induction on $t$!
+    \begin{itemize}
+        \item[(Leaf)] For $t = \ast$, let $q = \Leaf(p)$ and $pt = r$.
+            By \Cref{eq:pieo3} in \Cref{dfn:pieo}.
+            \begin{align*}
+                \proj_f(\push(q,\pkt, d, pt)) &= \Leaf(\proj(\push(p, \pkt, d, r), f)) \\
+                                              &=
+                \begin{cases}
+                    \Leaf(\push(\proj(p, f), \pkt, r)) & f(d) \text{ holds true}\\
+                    \Leaf(\proj(p, f)) & \text{otherwise}
+                \end{cases}\\
+                                              &= 
+                \begin{cases}
+                    \push(\proj_f(q), \pkt, pt) & f(d) \text{ holds true}\\
+                    \proj_f(q) & \text{otherwise}
+                \end{cases}
+            \end{align*}
+        \item[(Node)] For $t = \Node(ts)$, let $q = \Internal(qs, p)$ and $pt = (i, r) :: pt^\prime$.
+            Define
+            \begin{align*}
+                p^\prime = \push(p, i, d, r) &&
+                q^\prime = \push(qs[i] \pkt, d, pt^\prime) &&
+                qs^\prime &= qs[q^\prime/i]
+            \end{align*}
+            By \Cref{eq:pieo3} in \Cref{dfn:pieo} and the inductive hypothesis,
+            \begin{align*}
+                \proj(p^\prime, f) &= 
+                \begin{cases}
+                    \push(\proj(p, f), i, r) & f(d) \text{ holds true}\\
+                    \proj(p, f) & \text{otherwise}
+                \end{cases}\\
+                \proj_f(qs^\prime, \pkt, d, pt^\prime)) &= 
+                \begin{cases}
+                    \push(\proj_f(qs[i]), \pkt, pt^\prime) & f(d) \text{ holds true}\\
+                    \proj_f(qs[i]) & \text{otherwise}
+                \end{cases}
+            \end{align*}
+            Since $\push(q, \pkt, d, pt)) = \Internal(qs^\prime, p^\prime)$, the desired result follows.
+    \end{itemize}
 \end{proof}
 
 
@@ -448,7 +502,6 @@ $f \leq f^\prime \land f(d) \implies f^\prime(d)$.
 \end{proof}
 
 \begin{thm}
-    \label{thm:profit}
     Let $t_1, t_2 \in \Topo$. If $f$ embeds $t_1$ into $t_2$, then 
     $$R = \{(q, \overline{f}(q)) \mid q \in \PIEOTree(t_1)\}$$ 
     is a simulation.
