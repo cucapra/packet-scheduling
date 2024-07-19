@@ -2,18 +2,18 @@
     open Ast
 %}
 
-%token <string> VAR 
+%token <string> VAR
 %token <string> CLSS
 %token EQUALS
 %token LBRACE
 %token RBRACE
-%token RETURN 
-%token CLASSES 
+%token RETURN
+%token CLASSES
 %token COMMA
-%token EOF 
-%token FIFO 
-%token FAIR 
-%token STRICT 
+%token EOF
+%token FIFO
+%token FAIR
+%token STRICT
 %token SEMICOLON
 %token LPAREN
 %token RPAREN
@@ -26,7 +26,7 @@
 %%
 
 /* Policies */
-policy:    
+policy:
     | FIFO LBRACE; pl = arglist; RBRACE               { Fifo pl }
     | STRICT LBRACE; pl = arglist; RBRACE             { Strict pl }
     | FAIR LBRACE; pl = arglist; RBRACE               { Fair pl }
@@ -46,7 +46,7 @@ state:
     | statem                                           { $1 }
 
 statem:
-    | RETURN policy                         { Ret(Return($2)) }
+    | RETURN policy                         { Return($2) }
     | CLASSES; vl  = list_fields            { Declare(DeclareClasses vl) }
     | VAR EQUALS policy                     { Assignment(Assn($1, $3)) }
 
