@@ -40,20 +40,22 @@ let rec evals (s : statement) (st : store) (cl : classes): statement =
         evals c2 st' clsses
         | _ -> failwith "unimplimented yet"
       end
-      | Ret (Return pol) -> seq2 (* return statement we have reached *)
+      | Ret (Return _) -> seq2 (* return statement we have reached *)
+      | _ -> raise (IllformedExpression "invalid statement")
       end
     
-    | _ -> raise (IllformedExpression "first statement must be declaration of classes")
+    | _ -> raise (IllformedExpression "first line must be declaration of classes")
     end
-  | _ -> raise (IllformedExpression "expected sequence")
+  | _ -> raise (IllformedExpression "expected sequence since a program must contain 
+    of at least a declaration classes and a return")
 
 
 (* Second-outermost function that is the first that is called by eval. So
 therefore it knows that the first thing that is matched must be a sequence since
 a program must at least declare classes then return a policy. *)
-let rec eval' (stmnt : statement) (st : store) : policy =
+let eval' (stmnt : statement) (st : store) : policy =
   match stmnt with
-  | Seq (s1, s2) ->
+  | Seq (_, _) ->
     let fin = evals stmnt st [] in begin
       match fin with
       | Ret (Return pol) -> begin
@@ -64,3 +66,6 @@ let rec eval' (stmnt : statement) (st : store) : policy =
       | _ -> raise (IllformedExpression "must return a policy")
     end
   | _ -> raise (IllformedExpression "first statement must be declaration of classes")
+
+let eval (s : statement) : policy =
+  eval' s []
