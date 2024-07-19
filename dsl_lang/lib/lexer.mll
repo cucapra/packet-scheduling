@@ -19,8 +19,6 @@ rule token = parse
 | "="       { EQUALS }
 | "["       { LBRACE }
 | "]"       { RBRACE }
-| "("       { LPAREN }
-| ")"       { RPAREN }
 | "return"  { RETURN }
 | "classes" { CLASSES }
 | ","       { COMMA }

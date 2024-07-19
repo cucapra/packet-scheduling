@@ -15,8 +15,6 @@
 %token FAIR
 %token STRICT
 %token SEMICOLON
-%token LPAREN
-%token RPAREN
 
 %type <policy> policy
 %type <Ast.statement> prog
@@ -30,15 +28,11 @@ policy:
     | FIFO LBRACE; pl = arglist; RBRACE               { Fifo pl }
     | STRICT LBRACE; pl = arglist; RBRACE             { Strict pl }
     | FAIR LBRACE; pl = arglist; RBRACE               { Fair pl }
-    | LPAREN; pl = singlelist; RPAREN                 { Fifo pl }
     | CLSS                                            { Class($1) }
     | VAR                                             { Var($1) }
 
 arglist:
     | pl = separated_list(COMMA, policy)              { pl } ;
-
-singlelist:
-    | pl = policy                                     { [pl] } ;
 
 /* Statements */
 state:
