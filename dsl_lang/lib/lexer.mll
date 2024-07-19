@@ -23,7 +23,7 @@ rule token = parse
 | "fifo"    { FIFO }
 | "rr"      { FAIR }
 | "strict"  { STRICT }
-| ";"       {SEMICOLON}
+| ";"       { SEMICOLON }
 | id as v   { VAR(v) }
 | bigid as i    { CLSS(i) }
 | eof       { EOF }
