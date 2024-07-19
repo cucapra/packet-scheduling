@@ -2,21 +2,19 @@
     open Ast
 %}
 
-%token <string> VAR 
+%token <string> VAR
 %token <string> CLSS
 %token EQUALS
 %token LBRACE
 %token RBRACE
-%token RETURN 
-%token CLASSES 
+%token RETURN
+%token CLASSES
 %token COMMA
-%token EOF 
-%token FIFO 
-%token FAIR 
-%token STRICT 
+%token EOF
+%token FIFO
+%token FAIR
+%token STRICT
 %token SEMICOLON
-%token LPAREN
-%token RPAREN
 
 %type <policy> policy
 %type <Ast.statement> prog
@@ -26,19 +24,15 @@
 %%
 
 /* Policies */
-policy:    
+policy:
     | FIFO LBRACE; pl = arglist; RBRACE               { Fifo pl }
     | STRICT LBRACE; pl = arglist; RBRACE             { Strict pl }
     | FAIR LBRACE; pl = arglist; RBRACE               { Fair pl }
-    | LPAREN; pl = singlelist; RPAREN                 { Fifo pl }
     | CLSS                                            { Class($1) }
     | VAR                                             { Var($1) }
 
 arglist:
     | pl = separated_list(COMMA, policy)              { pl } ;
-
-singlelist:
-    | pl = policy                                     { [pl] } ;
 
 /* Statements */
 state:
@@ -46,7 +40,7 @@ state:
     | statem                                           { $1 }
 
 statem:
-    | RETURN policy                         { Ret(Return($2)) }
+    | RETURN policy                         { Return($2) }
     | CLASSES; vl  = list_fields            { Declare(DeclareClasses vl) }
     | VAR EQUALS policy                     { Assignment(Assn($1, $3)) }
 

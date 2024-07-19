@@ -7,7 +7,7 @@
 
 let whitespace = [' ' '\t']+
 let id = ['a'-'z'] ['a'-'z' '0'-'9' '_']*
-let bigid = ['A'-'Z']* 
+let bigid = ['A'-'Z']*
 let newline = ['\n']*
 let comment = ['/' '/'] ['\x00' - '\x09']* ['\x0b' - '\x80']*
 
@@ -19,15 +19,13 @@ rule token = parse
 | "="       { EQUALS }
 | "["       { LBRACE }
 | "]"       { RBRACE }
-| "("       { LPAREN }
-| ")"       { RPAREN }
 | "return"  { RETURN }
 | "classes" { CLASSES }
 | ","       { COMMA }
 | "fifo"    { FIFO }
 | "rr"      { FAIR }
 | "strict"  { STRICT }
-| ";"       {SEMICOLON}
+| ";"       { SEMICOLON }
 | id as v   { VAR(v) }
 | bigid as i    { CLSS(i) }
 | eof       { EOF }
