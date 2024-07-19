@@ -88,9 +88,6 @@
 \newcommand{\reqnomode}{\tagsleft@false}
 \makeatother
 
-% todos
-\usepackage[textwidth=0.7in]{todonotes}
-
 \begin{document}
 
 \pagestyle{empty}
@@ -446,11 +443,11 @@ $f \leq f^\prime \land f(d) \implies f^\prime(d)$.
                 \pkt_1 &= \pkt_2\\
                 \widehat{f}(\proj_g(q_1^\prime)) &= \proj_g(q_2^\prime) \label{eq:popsim} \tag{$\dagger$} 
             \end{align*}
-            Since our choice of $g$ was arbitrary, notice \Cref{eq:popsim} holds for all $g \in \mathcal F$.
+            Since our choice of $g$ was arbitrary, notice \Cref{eq:popsim} holds for all $g \in \mathcal F$ \textcolor{red}{(this is not true!)}.
             Hence, using \Cref{thm:cd},
             $$\proj_{g^\prime}(\overline{f}(q_1^\prime)) = \widehat{f}(\proj_{g^\prime}(q_1^\prime)) = \proj_{g^\prime}(q_2^\prime)$$
             for all $g^\prime \in \mathcal F$. 
-            At last, \Cref{lem:pieotree_eq} yields $\overline{f}(q_1^\prime) = q_2^\prime$. \todo{this logic is wrong!}
+            At last, \Cref{lem:pieotree_eq} yields $\overline{f}(q_1^\prime) = q_2^\prime$. 
         
         \leqnomode
 
