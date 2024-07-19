@@ -42,6 +42,7 @@ state:
 statem:
     | RETURN policy                         { Return($2) }
     | CLASSES; vl  = list_fields            { Declare(DeclareClasses vl) }
+    | VAR EQUALS policy                     { Assignment(Assn($1, $3)) }
 
 list_fields:
     vl = separated_list(COMMA, CLSS)          { vl } ;

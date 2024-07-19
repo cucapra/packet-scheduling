@@ -1,4 +1,4 @@
-classes BX, BY, RP, RT
+classes BX, BY, RP, RT;
 // B* represents packets that came from Buffalo
 // BX packets are destined for Xanadu
 // BY packets are destined for Yangon
@@ -6,9 +6,9 @@ classes BX, BY, RP, RT
 // RP packets are destined for Pittsburgh
 // RT packets are destined for Toronto
 
-b_policy = fifo[BX, BY]
-r_policy = rr[RP, RT]
-policy = rr[b_policy, r_policy]
+b_policy = fifo[BX, BY];
+r_policy = rr[RP, RT];
+policy = rr[b_policy, r_policy];
 
 return policy
 
