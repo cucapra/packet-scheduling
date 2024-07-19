@@ -290,7 +290,23 @@ $f \leq f^\prime \land f(d) \implies f^\prime(d)$.
 \end{lem}
 
 \begin{proof}
-    \textcolor{red}{TODO}
+    We'll do induction on $t$.
+    \begin{itemize}
+        \item[(Leaf)] For $t = \ast$, let $q = \Leaf(p)$ and $\proj_f(q) = \Leaf(p^\prime)$.
+            \begin{align*}
+                \pop(q, f) \text{ is undefined} &\iff \text{$p$ has no items with meta-data satisfying $f$}\\
+                                                &\iff p^\prime \text{ is empty}\\
+                                                &\iff \pop(\proj_f(q)) \text{ is undefined}
+            \end{align*}
+
+        \item[(Node)] For $t = \Node(ts)$, let $q = \Internal(qs, p)$ and $\proj_f(q) = \Internal(qs^\prime, p^\prime)$.
+            Notice 
+            $$\text{$p$ has no items with meta-data satisfying $f$} \iff p^\prime \text{ is empty}$$
+            and 
+            $$\pop(qs[i], f) \text{ is undefined} \iff \pop(qs^\prime[i]) \text{ is undefined $\forall i \in [1, |ts|]$}$$
+            by the inductive hypothesis.
+            Hence, $\pop(q, f)$ is undefined if and only if $\pop(\proj_f(q))$ is, as desired.
+    \end{itemize}
 \end{proof}
 
 \begin{lem}
