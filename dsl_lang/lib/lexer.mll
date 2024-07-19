@@ -7,7 +7,7 @@
 
 let whitespace = [' ' '\t']+
 let id = ['a'-'z'] ['a'-'z' '0'-'9' '_']*
-let bigid = ['A'-'Z']* 
+let bigid = ['A'-'Z']*
 let newline = ['\n']*
 
 
