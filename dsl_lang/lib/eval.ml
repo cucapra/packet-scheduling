@@ -28,44 +28,31 @@ type classes = string list
       if x = y then u
       else (lookup t x)
 
-let rec evals (s : statement) (st : store) (cl : classes): statement =
-  match s with 
-  | Seq (s1, s2) -> let dec = evals s1 st cl in begin
-    match dec with 
-    | Declare (DeclareClasses clsses) -> let seq2 = evals s2 st clsses in begin
-      match seq2 with
-      | Seq (c1, c2) -> let assn = evals c1 st clsses in begin 
-        match assn with
-        | Assignment (Assn (var, p)) -> let st' = update st var p in 
-        evals c2 st' clsses
-        | _ -> failwith "unimplimented yet"
-      end
-      | Ret (Return _) -> seq2 (* return statement we have reached *)
-      | _ -> raise (IllformedExpression "invalid statement")
-      end
-    
-    | _ -> raise (IllformedExpression "first line must be declaration of classes")
-    end
-  | _ -> raise (IllformedExpression "expected sequence since a program must contain 
-    of at least a declaration classes and a return")
+
+let rec evalp (p: policy) (st : store) (cl : classes) = 
+  match p with 
+  | Class c -> if List.mem c cl then c else raise (UnboundVariable "Undeclared class")
+  | Fifo (h :: t) -> failwith "unimplimented"
+  
+(* A function to evaluate all the assignments in a program by updating the store *)
+let rec evala (alist : assignment list) (st : store) (cl : classes) : store =
+  match alist with
+  | [] -> st
+  | Assn(var, pol) :: t -> let st' = update st var pol in 
+    evala t st' cl
 
 
 (* Second-outermost function that is the first that is called by eval. So
 therefore it knows that the first thing that is matched must be a sequence since
 a program must at least declare classes then return a policy. *)
-let eval' (stmnt : statement) (st : store) : policy =
-  match stmnt with
-  | Seq (_, _) ->
-    let fin = evals stmnt st [] in begin
-      match fin with
-      | Ret (Return pol) -> begin
-        match pol with
-        | Var v -> lookup st v (* make sure store is being threaded through properly *)
-        | _ -> pol
-      end
-      | _ -> raise (IllformedExpression "must return a policy")
-    end
-  | _ -> raise (IllformedExpression "first statement must be declaration of classes")
+let eval' (prog : program) (st : store) (cl : classes): policy =
+  match prog with 
+  | Prog (dec, alist, ret) -> begin
+    match dec with
+    | DeclareClasses clist -> let cl' = cl @ clist in 
+      let st' = evala alist st cl' in begin
+      match ret with
+      | Return p -> 
 
-let eval (s : statement) : policy =
-  eval' s []
+let eval (p : program) : policy =
+  eval' p [] []
