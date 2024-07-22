@@ -122,7 +122,7 @@ We assume familiarity with \cite{OG}, adopt its notational conventions, and borr
     These three maps play nicely together: 
     \begin{align}
         \pop(p, f) \text{ is undefined} &\iff \pop(\proj(p, f)) \text{ is undefined} \label{eq:pieo1}\\
-        \pop(p, f) = (\pkt, p^\prime) &\implies \pop(\proj(p, f)) = (\pkt, \proj(p^\prime, f)) \label{eq:pieo2}\\
+        \pop(p, f) = (\pkt, p^\prime) &\iff \pop(\proj(p, f)) = (\pkt, \proj(p^\prime, f)) \label{eq:pieo2}\\
         \proj(\push(p, s, d, r), f) &= 
         \begin{cases}
             \push(\proj(p, f), s, r) & f(d) \text{ holds true}\\
@@ -169,6 +169,7 @@ $f \leq f^\prime \land f(d) \implies f^\prime(d)$.
 \end{dfn}
 
 \begin{dfn}
+    \label{dfn:pop}
     Define $\pop : \PIEOTree(t) \times \mathcal F \halfto \Pkt \times \PIEOTree(t)$ by
     \begin{align*}
         \inference{}
@@ -191,6 +192,7 @@ $f \leq f^\prime \land f(d) \implies f^\prime(d)$.
 \end{dfn}
 
 \begin{dfn}
+    \label{dfn:push}
     Define $\push : \PIEOTree(t) \times \Pkt \times \Data \times \Path(t) \to \PIEOTree(t)$ by
     \begin{align*}
         \inference{}
@@ -246,6 +248,7 @@ $f \leq f^\prime \land f(d) \implies f^\prime(d)$.
 \section{Projection}
 
 \begin{dfn}
+    \label{dfn:proj}
     For $f \in \mathcal F$, define $\proj_f: \PIEOTree(t) \to \PIFOTree(t)$ by
     \begin{align*}
         \inference{}  
@@ -281,10 +284,11 @@ $f \leq f^\prime \land f(d) \implies f^\prime(d)$.
             Since $$\proj_f(q) = \Leaf(\proj(p, f)) = \Leaf(\proj(p^\prime, f)) = \proj_f(q^\prime)$$
             we know $\proj(p, f) = \proj(p^\prime, f)$ for all $f \in \mathcal F$.
             By \Cref{dfn:pieo}, $p = p^\prime$ and hence $q = q^\prime$.
-        \item[(Node)] For $t = \Node(ts)$ and $n = |ts|$, let $q = \Internal(qs, p)$ and $q^\prime = \Internal(qs^\prime, p)$.
+
+        \item[(Node)] For $t = \Node(ts)$ and $n = |ts|$, let $q = \Internal(qs, p)$ and $q^\prime = \Internal(qs^\prime, p^{\prime})$.
             Notice
             \begin{align*}
-                \proj_f(p) &= \proj_f(p^\prime)\\
+                \proj(p, f) &= \proj(p^\prime, f)\\
                 \proj_f(qs[i]) &= \proj_f(qs^\prime[i]) \tag{$i = 1,\ldots, n$}
             \end{align*}
             for all $f \in \mathcal F$. 
@@ -309,12 +313,17 @@ $f \leq f^\prime \land f(d) \implies f^\prime(d)$.
             \end{align*}
 
         \item[(Node)] For $t = \Node(ts)$, let $q = \Internal(qs, p)$ and $\proj_f(q) = \Internal(qs^\prime, p^\prime)$.
-            Notice 
+            As before, 
             $$\pop(p, f) \text{ is undefined} \iff \pop(p^\prime) \text{ is undefined}$$
             by \Cref{eq:pieo1} in \Cref{dfn:pieo} and 
             $$\pop(qs[i], f) \text{ is undefined} \iff \pop(qs^\prime[i]) \text{ is undefined $\forall i \in [1, |ts|]$}$$
             by the inductive hypothesis.
-            Hence, $\pop(q, f)$ is undefined if and only if $\pop(\proj_f(q))$ is.
+            Hence, using \Cref{eq:pieo2} in \Cref{dfn:pieo}, 
+            \begin{align*}
+                \pop(q, f) \text{ is undefined} &\iff \pop(p, f) \text{ is undefined} \lor (\pop(p, f) = (i, \_) \land \pop(qs[i], f) \text{ is undefined})\\
+                                                &\iff \pop(p^\prime) \text{ is undefined} \lor (\pop(p^{\prime}) = (i, \_) \land \pop(qs^{\prime}[i]) \text{ is undefined})\\
+                                                &\iff \pop(\proj_f(q)) \text{ is undefined}
+            \end{align*}
     \end{itemize}
 \end{proof}
 
@@ -329,8 +338,30 @@ $f \leq f^\prime \land f(d) \implies f^\prime(d)$.
 \begin{proof}
     More induction on $t$!
     \begin{itemize}
-        \item[(Leaf)]
-        \item[(Node)]
+        \item[(Leaf)] For $t = \ast$, let
+            \begin{align*}
+                q = \Leaf(p_1) && \proj_f(q) = \Leaf(p_2)\\
+                q^{\prime} = \Leaf(p_1^\prime) && \proj_f(q^\prime) = \Leaf(p_2^\prime)
+            \end{align*}
+            By \Cref{eq:pieo2} in \Cref{dfn:pieo},
+            \begin{align*}
+                \pop(q, f) = (\pkt, q^\prime) &\implies \pop(p_1, f) = (\pkt, p_1^\prime)\\
+                                              &\implies \pop(p_2) = \pop(\proj(p_1, f)) = (\pkt, \proj(p_1^\prime, f)) = (\pkt, p_2^\prime)\\
+                                              &\implies \pop(\proj_f(q)) = (\pkt, \proj_f(q^\prime))
+            \end{align*}
+
+        \item[(Node)] For $t = \Node(ts)$, Let
+            \begin{align*}
+                q = \Internal(qs_1, p_1) && \proj_f(q) = \Internal(qs_2, p_2)\\
+                q^{\prime} = \Internal(qs_1^\prime, p_1^\prime) && \proj_f(q^\prime) = \Internal(qs_2^\prime, p_2^\prime)
+            \end{align*}
+            Using \Cref{eq:pieo2} in \Cref{dfn:pieo} again and the inductive hypothesis,
+            \begin{align*}
+                \pop(q, f) = (\pkt, q^\prime) &\implies \pop(p_1, f) = (i, p_1^\prime) \land \pop(qs_1[i], f) = (\pkt, qs_1^\prime[i])\\
+                                              &\implies \pop(\proj(p_1, f)) = (i, \proj(p_1^\prime, f)) \land \pop(\proj_f(qs_1[i])) = (\pkt, \proj_f(qs_1^\prime[i]))\\
+                                              &\implies \pop(p_2) = (i, p_2^\prime) \land \pop(qs_2[i]) = (\pkt, qs_2^\prime[i])\\
+                                              &\implies \pop(\proj_f(q)) = (\pkt, \proj_f(q^\prime))
+            \end{align*}
     \end{itemize}
 \end{proof}
 
@@ -352,7 +383,7 @@ $f \leq f^\prime \land f(d) \implies f^\prime(d)$.
         \item[(Leaf)] For $t = \ast$, let $q = \Leaf(p)$ and $pt = r$.
             By \Cref{eq:pieo3} in \Cref{dfn:pieo}.
             \begin{align*}
-                \proj_f(\push(q,\pkt, d, pt)) &= \Leaf(\proj(\push(p, \pkt, d, r), f)) \\
+                \proj_f(\push(q, \pkt, d, pt)) &= \Leaf(\proj(\push(p, \pkt, d, r), f)) \\
                                               &=
                 \begin{cases}
                     \Leaf(\push(\proj(p, f), \pkt, r)) & f(d) \text{ holds true}\\
@@ -364,27 +395,73 @@ $f \leq f^\prime \land f(d) \implies f^\prime(d)$.
                     \proj_f(q) & \text{otherwise}
                 \end{cases}
             \end{align*}
-        \item[(Node)] For $t = \Node(ts)$, let $q = \Internal(qs, p)$ and $pt = (i, r) :: pt^\prime$.
-            Define
+
+        \item[(Node)] For $t = \Node(ts)$, let $pt = (i, r) :: pt^\prime$ and
             \begin{align*}
-                p^\prime = \push(p, i, d, r) &&
-                q^\prime = \push(qs[i] \pkt, d, pt^\prime) &&
-                qs^\prime &= qs[q^\prime/i]
+                q &= \Internal(qs, p)\\
+                \proj_f(q) &= \Internal(qs^\prime, p^\prime)\\
+                \push(\proj_f(q), \pkt, pt) &= \Internal(qs^{\prime\prime}, p^{\prime\prime})\\
+                \proj_f(\push(q, \pkt, d, pt)) &= \Internal(qs^{\prime\prime\prime}, p^{\prime\prime\prime})\\
             \end{align*}
             By \Cref{eq:pieo3} in \Cref{dfn:pieo} and the inductive hypothesis,
             \begin{align*}
-                \proj(p^\prime, f) &= 
+                p^{\prime\prime\prime} &= 
                 \begin{cases}
                     \push(\proj(p, f), i, r) & f(d) \text{ holds true}\\
                     \proj(p, f) & \text{otherwise}
                 \end{cases}\\
-                \proj_f(qs^\prime, \pkt, d, pt^\prime)) &= 
+                                                 &=
+                \begin{cases}
+                    \push(p^\prime, i, r) & f(d) \text{ holds true}\\
+                    p^\prime & \text{otherwise}
+                \end{cases}
+                                                 =
+                \begin{cases}
+                    p^{\prime\prime} & f(d) \text{ holds true}\\
+                    p^\prime & \text{otherwise}
+                \end{cases}\\
+                qs^{\prime\prime\prime}[i] &= 
                 \begin{cases}
                     \push(\proj_f(qs[i]), \pkt, pt^\prime) & f(d) \text{ holds true}\\
                     \proj_f(qs[i]) & \text{otherwise}
+                \end{cases}\\
+                                                            &=
+                \begin{cases}
+                    \push(qs^\prime[i], \pkt, pt^\prime) & f(d) \text{ holds true}\\
+                    qs^\prime[i] & \text{otherwise}
+                \end{cases}
+                                                            =
+                \begin{cases}
+                    qs^{\prime\prime}[i] & f(d) \text{ holds true}\\
+                    qs^\prime[i] & \text{otherwise}
                 \end{cases}
             \end{align*}
-            Since $\push(q, \pkt, d, pt)) = \Internal(qs^\prime, p^\prime)$, the desired result follows.
+            By inspection of \Cref{dfn:push} and \Cref{dfn:proj},
+            $$qs^\prime[j] = qs^{\prime\prime}[j] = qs^{\prime\prime\prime}[j] = \proj_f(qs[j])$$
+            for all $j \in [1, |ts|]$ such that $j \neq i$.
+            Hence,
+            $$
+            qs^{\prime\prime\prime}
+            =
+            \begin{cases}
+                qs^{\prime\prime} & f(d) \text{ holds true}\\
+                qs^{\prime} & \text{otherwise}
+            \end{cases}
+            $$
+            Putting everything together, 
+            \begin{align*}
+                \proj_f(\push(q, \pkt, d, pt)) &= \Internal(qs^{\prime\prime\prime}, p^{\prime\prime\prime})\\
+                                               &=
+                \begin{cases}
+                    \Internal(qs^{\prime\prime}, p^{\prime\prime}) & f(d) \text{ holds true}\\
+                    \Internal(qs^{\prime}, p^{\prime}) & \text{otherwise}
+                \end{cases}\\
+                                               &=
+                \begin{cases}
+                    \push(\proj_f(q), \pkt, pt) & f(d) \text{ holds true}\\
+                    \proj_f(q) & \text{otherwise}
+                \end{cases}
+            \end{align*}
     \end{itemize}
 \end{proof}
 
@@ -398,7 +475,7 @@ $f \leq f^\prime \land f(d) \implies f^\prime(d)$.
     for all $\pkt \in \Pkt$, $f \in \mathcal F$, and $q_1 \; R \; q_2$,
     \begin{enumerate}
         \item If $\pop(q_1, f)$ is undefined, then so is $\pop(q_2, f)$
-        \item If $\pop(q_1, f) = (\pkt, q_1^\prime)$, then $\pop(q_2) = (\pkt, q_2^\prime)$ such that $q_1^\prime \; R \; q_2^\prime$.
+        \item If $\pop(q_1, f) = (\pkt, q_1^\prime)$, then $\pop(q_2, f) = (\pkt, q_2^\prime)$ such that $q_1^\prime \; R \; q_2^\prime$.
         \item For all $pt_1 \in \Path(t_1)$ and $d \in \Data$, there exists $pt_2 \in \Path(t_2)$ such that
             $$\push(q_1, \pkt, d, pt_1) \; R \; \push(q_2, \pkt, d, pt_2)$$
     \end{enumerate}
