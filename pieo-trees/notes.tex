@@ -578,6 +578,99 @@ $f \leq f^\prime \land f(d) \implies f^\prime(d)$.
     \end{itemize}
 \end{proof}
 
+\begin{lem}
+    \label{lem:sim1}
+    Let $t_1, t_2 \in \Topo$ and $f$ be an embedding of $t_1$ inside $t_2$. For $g \in \mathcal F$,
+    $$\pop(q, g) \text{ is undefined} \implies \pop(\overline{f}(q), g) \text{ is undefined}$$
+\end{lem}
+
+\begin{proof}
+    Suppose $\pop(q, g)$ is undefined. 
+    Applying both \Cref{lem:pop_undef} and \cite[Lemma ~5.6]{OG}, notice $\pop(\widehat{f}(\proj_g(q)))$ is undefined.
+    By \Cref{thm:cd}, $\widehat{f}(\proj_g(q)) = \proj_g(\overline{f}(q))$.
+    Hence, $\pop(\proj_g(\overline{f}(q)))$ is undefined.
+    Applying \Cref{lem:pop_undef} once more, $\pop(\overline{f}(q), g)$ is undefined.
+\end{proof}
+
+\begin{lem}
+    \label{lem:sim2}
+    Let $t_1, t_2 \in \Topo$ and $f$ be an embedding of $t_1$ inside $t_2$. For $g \in \mathcal F$,
+    $$\pop(q, g) = (\pkt, q^\prime) \implies \pop(\overline{f}(q), g) = (\pkt, \overline{f}(q^\prime))$$
+\end{lem}
+
+\begin{proof}
+    Let $q_2 = \overline{f}(q_1)$ and suppose $\pop(q_1, g)$ is defined. 
+    By \Cref{lem:pop_undef} and \cite[Lemma ~5.6]{OG}, $\pop(\widehat{f}(\proj_g(q_1)))$ is defined.
+    Hence, $\pop(\proj_g(q_2))$ is defined via \Cref{thm:cd}.
+    By \Cref{lem:pop_undef}, $\pop(q_2, g)$ is defined.
+    Let's say 
+    \begin{align*}
+        \pop(q_1, g) = (\pkt_1, q_1^\prime) && \pop(q_2, g) = (\pkt_2, q_2^\prime)
+    \end{align*}
+    By \Cref{lem:pop}, 
+    \begin{align*}
+        \pop(\proj_g(q_1)) = (\pkt_1, \proj_g(q_1^\prime)) 
+        &&
+        \pop(\proj_g(q_2)) = (\pkt_2, \proj_g(q_2^\prime))
+    \end{align*}
+    By \cite[Lemma ~5.7]{OG},
+    $$\pop(\widehat{f}(\proj_g(q_1))) = (\pkt_1, \widehat{f}(\proj_g(q_1^\prime)))$$
+    By \Cref{thm:cd},
+    \begin{align*}
+        \pkt_1 &= \pkt_2\\
+        \widehat{f}(\proj_g(q_1^\prime)) &= \proj_g(q_2^\prime) \label{eq:popsim} \tag{$\dagger$} 
+    \end{align*}
+    Since our choice of $g$ was arbitrary, notice \Cref{eq:popsim} holds for all $g \in \mathcal F$ \textcolor{red}{(this is not true!)}.
+    Hence, using \Cref{thm:cd},
+    $$\proj_{g^\prime}(\overline{f}(q_1^\prime)) = \widehat{f}(\proj_{g^\prime}(q_1^\prime)) = \proj_{g^\prime}(q_2^\prime)$$
+    for all $g^\prime \in \mathcal F$. 
+    At last, \Cref{lem:pieotree_eq} yields $\overline{f}(q_1^\prime) = q_2^\prime$. 
+\end{proof}
+
+\leqnomode
+
+\begin{lem}
+    \label{lem:sim3}
+    Let $t_1, t_2 \in \Topo$ and $f$ be an embedding of $t_1$ inside $t_2$. 
+    For $\pkt \in \Pkt$, $d \in \Data$, and $pt \in \Path(t_1)$,
+    $$\overline{f}(\push(q, \pkt, d, pt)) = \push(\overline{f}(q), \pkt, d, \widetilde{f}(pt))$$
+\end{lem}
+
+\begin{proof}
+    Let $q_2 = \overline{f}(q_1)$.
+    For $g \in \mathcal F$ such that $g(d)$ holds true,
+    \begin{align*}
+        \proj_g(\overline{f}(\push(q_1, \pkt, d, pt)))
+        &= \widehat{f}(\proj_g(\push(q_1, \pkt, d, pt))) \tag{by \Cref{thm:cd}}\\
+        &= \widehat{f}(\push(\proj_g(q_1), \pkt, pt)) \tag{by \Cref{lem:push}}\\
+        &= \push(\widehat{f}(\proj_g(q_1)), \pkt, \widetilde{f}(pt)) \tag{by \cite[Lemma ~5.9]{OG}}\\
+        &= \push(\proj_g(q_2), \pkt, \widetilde{f}(pt)) \tag{by \Cref{thm:cd}}\\
+        &= \proj_g(\push(q_2, \pkt, d, \widetilde{f}(pt))) \tag{by \Cref{lem:push}}
+    \end{align*}
+    For $g \in \mathcal F$ such that $g(d)$ does not hold true,
+    \begin{align*}
+        \proj_g(\overline{f}(\push(q_1, \pkt, d, pt)))
+        &= \widehat{f}(\proj_g(\push(q_1, \pkt, d, pt))) \tag{by \Cref{thm:cd}}\\
+        &= \widehat{f}(\proj_g(q_1)) \tag{by \Cref{lem:push}}\\
+        &= \proj_g(q_2) \tag{by \Cref{thm:cd}}\\
+        &= \proj_g(\push(q_2, \pkt, d, \widetilde{f}(pt))) \tag{by \Cref{lem:push}}
+    \end{align*}
+    Overall,
+    $
+        \proj_g(\overline{f}(\push(q_1, \pkt, d, pt)))
+        = 
+        \proj_g(\push(q_2, \pkt, d, \widetilde{f}(pt)))
+    $
+    for all $g \in \mathcal F$. 
+    Hence,
+    $$
+        \overline{f}(\push(q_1, \pkt, d, pt))
+        = 
+        \push(q_2, \pkt, d, \widetilde{f}(pt))
+    $$
+    by \Cref{lem:pieotree_eq}, as desired.
+\end{proof}
+
 \begin{thm}
     Let $t_1, t_2 \in \Topo$. If $f$ embeds $t_1$ into $t_2$, then 
     $$R = \{(q, \overline{f}(q)) \mid q \in \PIEOTree(t_1)\}$$ 
@@ -586,76 +679,10 @@ $f \leq f^\prime \land f(d) \implies f^\prime(d)$.
 
 \begin{proof}
     We'll show the conditions from \Cref{dfn:sim} hold.
-    Fix $g \in \mathcal F$ and $q_1 \in \PIEOTree(t_1)$.
-    Let $q_2 = \overline{f}(q_1)$.
     \begin{enumerate}
-        \item Suppose $\pop(q_1, g)$ is undefined. 
-            Applying both \Cref{lem:pop_undef} and \cite[Lemma ~5.6]{OG}, notice $\pop(\widehat{f}(\proj_g(q_1)))$ is undefined.
-            By \Cref{thm:cd}, $\widehat{f}(\proj_g(q_1)) = \proj_g(q_2)$.
-            Hence, $\pop(\proj_g(q_2))$ is undefined.
-            Applying \Cref{lem:pop_undef} once more, $\pop(q_2, g)$ is undefined.
-
-        \item Suppose $\pop(q_1, g)$ is defined. 
-            By \Cref{lem:pop_undef} and \cite[Lemma ~5.6]{OG}, $\pop(\widehat{f}(\proj_g(q_1)))$ is defined.
-            Hence, $\pop(\proj_g(q_2))$ is defined via \Cref{thm:cd}.
-            By \Cref{lem:pop_undef}, $\pop(q_2, g)$ is defined.
-            Let's say 
-            \begin{align*}
-                \pop(q_1, g) = (\pkt_1, q_1^\prime) && \pop(q_2, g) = (\pkt_2, q_2^\prime)
-            \end{align*}
-            By \Cref{lem:pop}, 
-            \begin{align*}
-                \pop(\proj_g(q_1)) = (\pkt_1, \proj_g(q_1^\prime)) 
-                &&
-                \pop(\proj_g(q_2)) = (\pkt_2, \proj_g(q_2^\prime))
-            \end{align*}
-            By \cite[Lemma ~5.7]{OG},
-            $$\pop(\widehat{f}(\proj_g(q_1))) = (\pkt_1, \widehat{f}(\proj_g(q_1^\prime)))$$
-            By \Cref{thm:cd},
-            \begin{align*}
-                \pkt_1 &= \pkt_2\\
-                \widehat{f}(\proj_g(q_1^\prime)) &= \proj_g(q_2^\prime) \label{eq:popsim} \tag{$\dagger$} 
-            \end{align*}
-            Since our choice of $g$ was arbitrary, notice \Cref{eq:popsim} holds for all $g \in \mathcal F$ \textcolor{red}{(this is not true!)}.
-            Hence, using \Cref{thm:cd},
-            $$\proj_{g^\prime}(\overline{f}(q_1^\prime)) = \widehat{f}(\proj_{g^\prime}(q_1^\prime)) = \proj_{g^\prime}(q_2^\prime)$$
-            for all $g^\prime \in \mathcal F$. 
-            At last, \Cref{lem:pieotree_eq} yields $\overline{f}(q_1^\prime) = q_2^\prime$. 
-        
-        \leqnomode
-
-        \item Consider $\pkt \in \Pkt$, $d \in \Data$, and $pt \in \Path(t_1)$.
-            For $g \in \mathcal F$ such that $g(d)$ holds true,
-            \begin{align*}
-                \proj_g(\overline{f}(\push(q_1, \pkt, d, pt)))
-                &= \widehat{f}(\proj_g(\push(q_1, \pkt, d, pt))) \tag{by \Cref{thm:cd}}\\
-                &= \widehat{f}(\push(\proj_g(q_1), \pkt, pt)) \tag{by \Cref{lem:push}}\\
-                &= \push(\widehat{f}(\proj_g(q_1)), \pkt, \widetilde{f}(pt)) \tag{by \cite[Lemma ~5.9]{OG}}\\
-                &= \push(\proj_g(q_2), \pkt, \widetilde{f}(pt)) \tag{by \Cref{thm:cd}}\\
-                &= \proj_g(\push(q_2, \pkt, d, \widetilde{f}(pt))) \tag{by \Cref{lem:push}}
-            \end{align*}
-            For $g \in \mathcal F$ such that $g(d)$ does not hold true,
-            \begin{align*}
-                \proj_g(\overline{f}(\push(q_1, \pkt, d, pt)))
-                &= \widehat{f}(\proj_g(\push(q_1, \pkt, d, pt))) \tag{by \Cref{thm:cd}}\\
-                &= \widehat{f}(\proj_g(q_1)) \tag{by \Cref{lem:push}}\\
-                &= \proj_g(q_2) \tag{by \Cref{thm:cd}}\\
-                &= \proj_g(\push(q_2, \pkt, d, \widetilde{f}(pt))) \tag{by \Cref{lem:push}}
-            \end{align*}
-            Overall,
-            $
-                \proj_g(\overline{f}(\push(q_1, \pkt, d, pt)))
-                = 
-                \proj_g(\push(q_2, \pkt, d, \widetilde{f}(pt)))
-            $
-            for all $g \in \mathcal F$. 
-            Hence,
-            $$
-                \overline{f}(\push(q_1, \pkt, d, pt))
-                = 
-                \push(q_2, \pkt, d, \widetilde{f}(pt))
-            $$
-            by \Cref{lem:pieotree_eq}, as desired.
+        \item See \Cref{lem:sim1}
+        \item See \Cref{lem:sim2}
+        \item See \Cref{lem:sim3}
     \end{enumerate}
 \end{proof}
 
