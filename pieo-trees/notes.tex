@@ -135,7 +135,7 @@ We assume familiarity with \cite{OG}, adopt its notational conventions, and borr
     For PIEO $p$, entry $s \in S$, and predicate $f \in F$, we write 
     \begin{enumerate}
         \item $|p|$ for the number of entries in $p$
-        \item $|p|_{s}$ for the number of times $s$ occurs in $p$
+        \item $|p|_{f}$ for the number of entries in $p$ satisfying $f$
         \item $|p|_{s,f}$ for the number of times $s$ occurs in $p$ with associated $d \in D$ such that $f(d)$ holds
     \end{enumerate}
 \end{dfn}
@@ -225,19 +225,20 @@ $f \leq f^\prime \land f(d) \implies f^\prime(d)$.
 \section{Well-Formedness}
 
 \begin{dfn}
-    Define $|\cdot| : \PIEOTree(t) \to \mathbb N$ by
+    Fix $f \in \mathcal F$.
+    Define $|\cdot|_f : \PIEOTree(t) \to \mathbb N$ by
     \begin{align*}
-        |\Leaf(p)| = |p| && |\Internal(qs, p)| = \sum_{i=1}^{|qs|} |qs[i]|
+        |\Leaf(p)| = |p|_f && |\Internal(qs, p)| = \sum_{i=1}^{|qs|} |qs[i]|_f
     \end{align*}
 
-    We say that $q \in \PIEOTree(t)$ is \emph{well-formed} w.r.t $f \in \mathcal F$, denoted $\vdash_f q$, if it adheres to the following rules.
+    We say that $q \in \PIEOTree(t)$ is \emph{well-formed} w.r.t $f$, denoted $\vdash_f q$, if it adheres to the following rules.
     \begin{align*}
         \axiom{}
         {\vdash_f \Leaf(p)}
         &&
         \inference{}
         {
-            \forall i \in [1, |qs|], \; \vdash_f qs[i] \land |p|_{i, f} = |qs[i]|
+            \forall i \in [1, |qs|], \; \vdash_f qs[i] \land |p|_{i, f} = |qs[i]|_f
         }
         {
             \vdash_f \Internal(qs, p)
@@ -246,6 +247,18 @@ $f \leq f^\prime \land f(d) \implies f^\prime(d)$.
 
     We say $q$ is well-formed, denoted $\vdash q$, if there exists $f \in \mathcal F$ such that, for all $f^\prime \geq f$, $\vdash_{f^\prime} q$.
 \end{dfn}
+
+\begin{thm}
+    Let $t \in \Topo$, $\pkt \in \Pkt$, $d \in \Data$, $f \in \mathcal F$, and $q \in \PIEOTree(t)$ such that $\vdash q$. 
+    \begin{enumerate}
+        \item If $pt \in \Path(t)$, then $\push(q, \pkt, d, pt)$ is well-defined and $\vdash \push(q, \pkt, d, pt)$.
+        \item If $|q|_f > 0$, then $\pop(q, f)$ is well-defined and $\vdash q^\prime$, where $\pop(q, f) = (\pkt, q^\prime)$.
+    \end{enumerate}
+\end{thm}
+
+\begin{proof}
+    \textcolor{red}{TBD}
+\end{proof}
 
 \newpage
 
