@@ -222,6 +222,8 @@ $f \leq f^\prime \land f(d) \implies f^\prime(d)$.
     is a function called the \emph{scheduling transaction}.
 \end{dfn}
 
+\section{Well-Formedness}
+
 \begin{dfn}
     Define $|\cdot| : \PIEOTree(t) \to \mathbb N$ by
     \begin{align*}
@@ -244,6 +246,8 @@ $f \leq f^\prime \land f(d) \implies f^\prime(d)$.
 
     We say $q$ is well-formed, denoted $\vdash q$, if there exists $f \in \mathcal F$ such that, for all $f^\prime \geq f$, $\vdash_{f^\prime} q$.
 \end{dfn}
+
+\newpage
 
 \section{Projection}
 
@@ -465,7 +469,6 @@ $f \leq f^\prime \land f(d) \implies f^\prime(d)$.
     \end{itemize}
 \end{proof}
 
-
 \section{Embedding \& Simulation}
 
 \begin{dfn}
@@ -598,33 +601,79 @@ $f \leq f^\prime \land f(d) \implies f^\prime(d)$.
     $$\pop(q, g) = (\pkt, q^\prime) \implies \pop(\overline{f}(q), g) = (\pkt, \overline{f}(q^\prime))$$
 \end{lem}
 
+\textcolor{red}{Almost a clone of the proof \cite[Lemma ~5.7]{OG}.}
+
 \begin{proof}
-    Let $q_2 = \overline{f}(q_1)$ and suppose $\pop(q_1, g)$ is defined. 
-    By \Cref{lem:pop_undef} and \cite[Lemma ~5.6]{OG}, $\pop(\widehat{f}(\proj_g(q_1)))$ is defined.
-    Hence, $\pop(\proj_g(q_2))$ is defined via \Cref{thm:cd}.
-    By \Cref{lem:pop_undef}, $\pop(q_2, g)$ is defined.
-    Let's say 
+    We'll proceed by induction on $t_1$.
+    Suppose $t_1 = \ast$.
+    By \cite[Lemma ~5.3]{OG}, $t_2 = \ast$ as well.
+    By \Cref{dfn:f_bar}, $\overline{f}$ is the identity.
+    Hence, 
+    $$\pop(q, g) = (\pkt, q^\prime) \implies \pop(\overline{f}(q), g) = \pop(q, g) = (\pkt, q^\prime) = (\pkt, \overline{f}(q^\prime))$$
+    Suppose $t_1 = \Node(ts)$. 
+    Let 
     \begin{align*}
-        \pop(q_1, g) = (\pkt_1, q_1^\prime) && \pop(q_2, g) = (\pkt_2, q_2^\prime)
+        q = \Internal(qs, p) &&
+        q^\prime = \Internal(qs^\prime, p^\prime) &&
+        \pop(p, g) = (j, p^\prime)
     \end{align*}
-    By \Cref{lem:pop}, 
+    For any prefix $\alpha$ of some $f(i)$ (where $i \in [1, |ts|]$), we'll show
     \begin{align*}
-        \pop(\proj_g(q_1)) = (\pkt_1, \proj_g(q_1^\prime)) 
-        &&
-        \pop(\proj_g(q_2)) = (\pkt_2, \proj_g(q_2^\prime))
+        \pop(\overline{f}(q)_\alpha, g) &= (\pkt, \overline{f}(q^\prime)_\alpha) &\text{ if $\alpha$ is a prefix of $f(j)$} \tag{$\dagger$} \label{eq:popinduc}\\
+        \overline{f}(q)_\alpha &= \overline{f}(q^\prime)_\alpha &\text{ otherwise}
     \end{align*}
-    By \cite[Lemma ~5.7]{OG},
-    $$\pop(\widehat{f}(\proj_g(q_1))) = (\pkt_1, \widehat{f}(\proj_g(q_1^\prime)))$$
-    By \Cref{thm:cd},
-    \begin{align*}
-        \pkt_1 &= \pkt_2\\
-        \widehat{f}(\proj_g(q_1^\prime)) &= \proj_g(q_2^\prime) \label{eq:popsim} \tag{$\dagger$} 
-    \end{align*}
-    Since our choice of $g$ was arbitrary, notice \Cref{eq:popsim} holds for all $g \in \mathcal F$ \textcolor{red}{(this is not true!)}.
-    Hence, using \Cref{thm:cd},
-    $$\proj_{g^\prime}(\overline{f}(q_1^\prime)) = \widehat{f}(\proj_{g^\prime}(q_1^\prime)) = \proj_{g^\prime}(q_2^\prime)$$
-    for all $g^\prime \in \mathcal F$. 
-    At last, \Cref{lem:pieotree_eq} yields $\overline{f}(q_1^\prime) = q_2^\prime$. 
+    by inverse induction on $\alpha$. Instantiating \Cref{eq:popinduc} with $\alpha = \epsilon$ yields the desired result.
+    \begin{itemize}
+        \item Suppose $\alpha = f(i)$. 
+            If $\alpha$ is a prefix of $f(j)$, $i = j$ by injectivity and \cite[Definition ~5.2, Equation (3)]{OG}.
+            Recall $\pop(qs[j], g) = (\pkt, qs^\prime[j])$.
+            Hence, by the outer inductive hypothesis,
+            $$
+                \pop(\overline{f}(q)_\alpha, g) = 
+                \pop(\overline{f_j}(qs[j]), g) = 
+                (\pkt, \overline{f_j}(qs^\prime[j])) = 
+                (\pkt, \overline{f}(q^\prime)_\alpha)
+            $$
+        \item Once more, suppose $\alpha = f(i)$.
+            If $\alpha$ is not a prefix of $f(j)$, then $i \neq j$.
+            Since $qs[i] = qs^\prime[i]$,
+            $$
+                \overline{f}(q)_\alpha =
+                \overline{f_i}(qs[i]) =
+                \overline{f_i}(qs^\prime[i]) = 
+                \overline{f}(q^\prime)_\alpha
+            $$
+        \item Suppose $\alpha$ is some strict prefix of $f(j)$, pointing to a node with $m$ children.
+            Let 
+            \begin{align*}
+                \overline{f}(q)_\alpha = \Internal(qs_\alpha, p_\alpha) &&
+                \overline{f}(q^\prime)_\alpha = \Internal(qs^{\prime}_\alpha, p^{\prime}_\alpha)
+            \end{align*}
+            There exists $k \in [1, m]$ such that $\alpha \cdot k$ is a prefix of $f(j)$.
+            By the inner inductive hypothesis,
+            \begin{align*}
+                qs_\alpha[i] &= \overline{f}(q)_{\alpha \cdot i} = \overline{f}(q^\prime)_{\alpha \cdot i} = qs_\alpha[i] \text{ for $i \in [1,m]$ with $i \neq k$} \label{eq:empty1} \tag{!}\\
+                \pop(qs_\alpha[k], g) &=  \pop(\overline{f}(q)_{\alpha \cdot k}, g) = (\pkt, \overline{f}(q^\prime)_{\alpha \cdot k}) = (\pkt, qs^\prime[k])
+            \end{align*}
+            Via the construction in \Cref{dfn:f_bar} and since $\pop(p, g) = p^\prime$, $\pop(p_\alpha, g) = (k, p_\alpha^\prime)$.
+            Putting everything together, $\pop(\overline{f}(q)_\alpha, g) = (\pkt, \overline{f}(q^\prime)_\alpha)$, as desired.
+
+        \item Suppose $\alpha$ is some strict prefix of some $f(i)$ but not $f(j)$, pointing to a node with $m$ children.
+            Let 
+            \begin{align*}
+                \overline{f}(q)_\alpha = \Internal(qs_\alpha, p_\alpha) &&
+                \overline{f}(q^\prime)_\alpha = \Internal(qs^{\prime}_\alpha, p^{\prime}_\alpha)
+            \end{align*}
+            Since $p$ and $p^\prime$ agree on all indices $i$ such that $f(i)$ is a child of $\alpha$, $p_\alpha = p^\prime_\alpha$.
+            For $i \in [1,m]$, since $\alpha \cdot i$ is not a prefix of $f(j)$, the inner inductive hypothesis yields
+            \begin{align*}
+                qs_\alpha[i] = \overline{f}(q)_{\alpha\cdot i} = \overline{f}(q^\prime)_{\alpha\cdot i} = qs^\prime_\alpha[i] \label{eq:empty2} \tag{!!}
+            \end{align*}
+            Putting everything together, $\overline{f}(q)_\alpha = \overline{f}(q^\prime)_\alpha$, as desired.
+    \end{itemize}
+    \textbf{NOTE:}
+    even when $\alpha \cdot i$ is not a prefix of any $f(i)$, \Cref{eq:empty1} and \Cref{eq:empty2} hold!
+    Both $\overline{f}(q)_{\alpha \cdot i}$ and $\overline{f}(q^\prime)_{\alpha \cdot i}$ would be PIEO trees with empty PIEOs on all leaf and internal nodes.
 \end{proof}
 
 \leqnomode
@@ -678,12 +727,7 @@ $f \leq f^\prime \land f(d) \implies f^\prime(d)$.
 \end{thm}
 
 \begin{proof}
-    We'll show the conditions from \Cref{dfn:sim} hold.
-    \begin{enumerate}
-        \item See \Cref{lem:sim1}
-        \item See \Cref{lem:sim2}
-        \item See \Cref{lem:sim3}
-    \end{enumerate}
+    By \Cref{lem:sim1}, \Cref{lem:sim2}, and \Cref{lem:sim3}, the conditions from \Cref{dfn:sim} hold.
 \end{proof}
 
 \newpage 
