@@ -29,10 +29,17 @@ type classes = string list
       else (lookup t x)
 
 
-let rec evalp (p: policy) (st : store) (cl : classes) = 
+let rec evalplist (pl : policy list) (st : store) (cl : classes) =
+  match pl with
+  | [] -> pl
+  | h :: t -> evalp h st cl :: evalplist t st cl
+
+and evalp (p: policy) (st : store) (cl : classes) : policy = 
   match p with 
-  | Class c -> if List.mem c cl then c else raise (UnboundVariable "Undeclared class")
-  | Fifo (h :: t) -> failwith "unimplimented"
+  | Class c -> if List.mem c cl then p else raise (UnboundVariable "Undeclared class used in policy")
+  | Var x -> let pol = lookup st x in evalp pol st cl
+  | Fifo (h :: t) -> Fifo ((evalp h st cl) :: (evalplist t st cl))
+  | _ -> failwith "unimplimented"
   
 (* A function to evaluate all the assignments in a program by updating the store *)
 let rec evala (alist : assignment list) (st : store) (cl : classes) : store =
@@ -52,7 +59,9 @@ let eval' (prog : program) (st : store) (cl : classes): policy =
     | DeclareClasses clist -> let cl' = cl @ clist in 
       let st' = evala alist st cl' in begin
       match ret with
-      | Return p -> 
+      | Return p -> evalp p st' cl'
+      end
+    end
 
 let eval (p : program) : policy =
   eval' p [] []

@@ -23,3 +23,17 @@ let parse_file (f : string) =
   try parse lexbuf with
     | Parser.Error -> prerr_endline (syntax_error_msg lexbuf); exit 1
     | Lexer.Err -> prerr_endline (syntax_error_msg lexbuf); exit 1
+
+let rec string_of_plist (plist : Ast.policy list) :string =
+  match plist with
+  | [] -> ""
+  | h :: t -> string_of_policy h ^ ", " ^ string_of_plist t
+  
+and string_of_policy (pol :Ast.policy) : string = 
+  match pol with
+  | Class c -> c
+  | Fifo (h :: t) -> "fifo[ " ^(string_of_policy h) ^ ", " ^ string_of_plist t ^ "]"
+  | Strict (h :: t) -> "strict[ " ^(string_of_policy h) ^ ", " ^ string_of_plist t ^ "]"
+  | Fair (h :: t) -> "rr[ " ^(string_of_policy h) ^ ", " ^ string_of_plist t ^ "]"
+  | _ -> "error"
+
