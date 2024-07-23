@@ -1,0 +1,7 @@
+classes BX, BY, RP, RT;
+
+b_policy = fifo[BX, BY];
+r = rr[RP, RT];
+policy = rr[b_policy, r_polic];
+
+return policy

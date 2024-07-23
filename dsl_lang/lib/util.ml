@@ -24,11 +24,13 @@ let parse_file (f : string) =
     | Parser.Error -> prerr_endline (syntax_error_msg lexbuf); exit 1
     | Lexer.Err -> prerr_endline (syntax_error_msg lexbuf); exit 1
 
+(** Helper function to turn policy lists into strings. **)
 let rec string_of_plist (plist : Ast.policy list) :string =
   match plist with
   | [] -> ""
   | h :: t -> string_of_policy h ^ ", " ^ string_of_plist t
   
+(** Takes a policy and returns the string representation of it. **)
 and string_of_policy (pol :Ast.policy) : string = 
   match pol with
   | Class c -> c
