@@ -6,6 +6,8 @@
 }
 
 let whitespace = [' ' '\t']+
+let digit = ['0'-'9']
+let int = '-'? digit+
 let id = ['a'-'z'] ['a'-'z' '0'-'9' '_']*
 let bigid = ['A'-'Z']*
 let newline = ['\n']*
@@ -19,15 +21,22 @@ rule token = parse
 | "="       { EQUALS }
 | "["       { LBRACE }
 | "]"       { RBRACE }
+| "("       { LPAREN }
+| ")"       { RPAREN }
 | "return"  { RETURN }
 | "classes" { CLASSES }
 | ","       { COMMA }
 | "fifo"    { FIFO }
 | "rr"      { FAIR }
 | "strict"  { STRICT }
+| "wfq"     { WFQ }
+| "edf"     { EDF }
+| "sjn"     { SJN }
+| "srtf"    { SRTF }
 | ";"       { SEMICOLON }
 | id as v   { VAR(v) }
 | bigid as i    { CLSS(i) }
+| int { INT (int_of_string (Lexing.lexeme lexbuf)) }
 | eof       { EOF }
 
 

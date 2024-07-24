@@ -9,6 +9,10 @@ type policy =
 | Fifo of policy list
 | Fair of policy list
 | Strict of policy list
+| WeightedFair of (policy * int) list
+| EarliestDeadline of policy list 
+| ShortestJobNext of policy list
+| ShortestRemaining of policy list
 | Var of var
 
 type return =

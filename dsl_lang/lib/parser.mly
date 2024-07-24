@@ -4,17 +4,25 @@
 
 %token <string> VAR
 %token <string> CLSS
+%token <int> INT
 %token EQUALS
 %token LBRACE
 %token RBRACE
+%token LPAREN
+%token RPAREN
 %token RETURN
 %token CLASSES
 %token COMMA
+%token SEMICOLON
 %token EOF
+
 %token FIFO
 %token FAIR
 %token STRICT
-%token SEMICOLON
+%token WFQ
+%token EDF
+%token SJN
+%token SRTF
 
 %type <policy> policy
 %type <Ast.program> prog
@@ -28,10 +36,18 @@ policy:
     | FIFO LBRACE; pl = arglist; RBRACE             { Fifo pl }
     | STRICT LBRACE; pl = arglist; RBRACE           { Strict pl }
     | FAIR LBRACE; pl = arglist; RBRACE             { Fair pl }
+    | WFQ LBRACE; pl = weighted_arglist; RBRACE     { WeightedFair pl }
+    | EDF LBRACE; pl = arglist; RBRACE              { EarliestDeadline pl }
+    | SJN LBRACE; pl = arglist; RBRACE              { ShortestJobNext pl }
+    | SRTF LBRACE; pl = arglist; RBRACE             { ShortestRemaining pl }
     | CLSS                                          { Class($1) }
     | VAR                                           { Var($1) }
 arglist:
-    | pl = separated_list(COMMA, policy)            { pl } ;
+    | pl = separated_list(COMMA, policy)            { pl }
+weighted_arglist:
+    | pl = separated_list(COMMA, weighted_arg)      { pl }
+weighted_arg:
+    | LPAREN; arg = separated_pair(policy, COMMA, INT); RPAREN      { arg } ;
 
 /* Declarations */
 declare:
