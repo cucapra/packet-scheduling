@@ -1,5 +1,31 @@
 %{
     open Ast
+
+    exception FormatError of string
+
+    type internalcomp =
+    | DeclareComp of clss list
+    | AssnComp of var * policy
+    | RtnComp of policy
+
+    (* Check that a program contains exactly one return statement as its final component *)
+    let rec validate_seq acc = function
+    | RtnComp(pol) :: [] -> acc, pol
+    | RtnComp(_) :: _ ->
+        raise(FormatError "Program must contain exactly one return statement as its final component.")
+    | h :: t -> validate_seq (acc @ [h]) t
+    | [] -> raise (FormatError "Program must begin with a declaration of classes.")
+
+    (* Check that a program's assignment list does not contain declarations *)
+    let check_assn_list acc = function
+    | AssnComp(var, pol) -> (var, pol) :: acc
+    | _ -> raise(FormatError "Cannot interleave declarations and assignments.")
+
+    (* Validate a program sequence as a valid program *)
+    let validate_program seq = match (validate_seq [] seq) with
+    | DeclareComp(classes) :: t, rtn -> 
+        (classes, (List.fold_left check_assn_list [] t), rtn)
+    | _ -> raise(FormatError "Program must begin with a declaration of classes.")
 %}
 
 %token <string> VAR
@@ -16,10 +42,7 @@
 %token STRICT
 %token SEMICOLON
 
-%type <Ast.policy> policy
-%type <Ast.seq> prog
-
-%start prog
+%start <program> prog
 
 %%
 
@@ -40,4 +63,7 @@ internalcomp :
     | RETURN policy SEMICOLON                                  { RtnComp ($2) }
 
 /* Program Sequence */
-prog: list (internalcomp) EOF                                  { $1 }
+progseq: list (internalcomp)                                   { $1 }
+
+/* Program */
+prog: progseq EOF                                              { validate_program($1) }
