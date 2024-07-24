@@ -17,8 +17,8 @@ rule token = parse
 | newline       { Lexing.new_line lexbuf; token lexbuf }
 | comment      { token lexbuf }
 | "="       { EQUALS }
-| "["       { LBRACE }
-| "]"       { RBRACE }
+| "["       { LBRACKET }
+| "]"       { RBRACKET }
 | "return"  { RETURN }
 | "classes" { CLASSES }
 | ","       { COMMA }

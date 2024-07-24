@@ -5,8 +5,8 @@
 %token <string> VAR
 %token <string> CLSS
 %token EQUALS
-%token LBRACE
-%token RBRACE
+%token LBRACKET
+%token RBRACKET
 %token RETURN
 %token CLASSES
 %token COMMA
@@ -16,8 +16,8 @@
 %token STRICT
 %token SEMICOLON
 
-%type <policy> policy
-%type <Ast.program> prog
+%type <Ast.policy> policy
+%type <Ast.seq> prog
 
 %start prog
 
@@ -25,29 +25,21 @@
 
 /* Policies */
 policy:
-    | FIFO LBRACE; pl = arglist; RBRACE             { Fifo pl }
-    | STRICT LBRACE; pl = arglist; RBRACE           { Strict pl }
-    | FAIR LBRACE; pl = arglist; RBRACE             { Fair pl }
-    | CLSS                                          { Class($1) }
-    | VAR                                           { Var($1) }
+    | FIFO LBRACKET; pl = arglist; RBRACKET             { Fifo pl }
+    | STRICT LBRACKET; pl = arglist; RBRACKET           { Strict pl }
+    | FAIR LBRACKET; pl = arglist; RBRACKET             { Fair pl }
+    | CLSS                                              { Class($1) }
+    | VAR                                               { Var($1) }
 arglist:
-    | pl = separated_list(COMMA, policy)            { pl } ;
+    | pl = separated_list(COMMA, policy)                { pl } ;
 
-/* Declarations */
-declare:
-    | CLASSES; vl  = list_fields; SEMICOLON         { DeclareClasses vl }
-list_fields:
-    vl = separated_list(COMMA, CLSS)                { vl } ;
-
-/* Return */
-return:
-    | RETURN policy                                 { Return($2) }
-
-/* Assignment List */
-assignments:
-    l = list(assignment)                            { l }
-assignment:
-    | VAR EQUALS policy SEMICOLON                   { Assn($1, $3) }
+/* Declarations, assignments and returns */
+internalcomp :
+    | CLASSES; vl = separated_list(COMMA, CLSS); SEMICOLON     { DeclareComp (vl) }
+    | VAR EQUALS policy SEMICOLON                              { AssnComp ($1, $3) }
+    | RETURN policy                                            { RtnComp ($2) }
+    | RETURN policy SEMICOLON                                  { RtnComp ($2) }
 
 /* Program */
-prog: declare assignments return EOF                { Prog($1, $2, $3) }
+prog:
+    | list (internalcomp) EOF                                  { $1 }

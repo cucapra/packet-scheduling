@@ -17,5 +17,13 @@ type return =
 type assignment =
 | Assn of var * policy
 
+type internalcomp =
+| DeclareComp of clss list
+| AssnComp of var * policy
+| RtnComp of policy
+
+type seq = internalcomp list
+type progseq = seq * return
+
 type program =
 | Prog of declare * (assignment list) * return
