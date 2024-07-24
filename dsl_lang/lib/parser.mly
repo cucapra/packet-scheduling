@@ -17,7 +17,7 @@
 %token EOF
 
 %token FIFO
-%token FAIR
+%token RR
 %token STRICT
 %token WFQ
 %token EDF
@@ -35,7 +35,7 @@
 policy:
     | FIFO LBRACE; pl = arglist; RBRACE             { Fifo pl }
     | STRICT LBRACE; pl = arglist; RBRACE           { Strict pl }
-    | FAIR LBRACE; pl = arglist; RBRACE             { Fair pl }
+    | RR LBRACE; pl = arglist; RBRACE               { RoundRobin pl }
     | WFQ LBRACE; pl = weighted_arglist; RBRACE     { WeightedFair pl }
     | EDF LBRACE; pl = arglist; RBRACE              { EarliestDeadline pl }
     | SJN LBRACE; pl = arglist; RBRACE              { ShortestJobNext pl }

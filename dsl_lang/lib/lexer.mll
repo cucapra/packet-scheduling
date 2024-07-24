@@ -27,7 +27,7 @@ rule token = parse
 | "classes" { CLASSES }
 | ","       { COMMA }
 | "fifo"    { FIFO }
-| "rr"      { FAIR }
+| "rr"      { RR }
 | "strict"  { STRICT }
 | "wfq"     { WFQ }
 | "edf"     { EDF }
