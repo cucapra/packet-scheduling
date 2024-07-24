@@ -12,7 +12,7 @@ let syntax_error_msg lexbuf =
 
 (* Check that a program contains exactly one return statement as its final component *)
 let rec validate_seq acc = function
-| RtnComp(pol) :: [] -> acc, Return(pol)
+| RtnComp(pol) :: [] -> acc, pol
 | RtnComp(_) :: _ ->
     raise(FormatError "Program must contain exactly one return statement as its final component.")
 | h :: t -> validate_seq (acc @ [h]) t
@@ -20,17 +20,13 @@ let rec validate_seq acc = function
 
 (* Check that a program's assignment list does not contain declarations *)
 let check_assn_list acc = function
-| AssnComp(var, pol) -> Assn(var, pol) :: acc
+| AssnComp(var, pol) -> (var, pol) :: acc
 | _ -> raise(FormatError "Cannot interleave declarations and assignments.")
 
 (* Validate a program sequence as a valid program *)
 let validate_program seq = match (validate_seq [] seq) with
 | DeclareComp(classes) :: t, rtn ->
-    Prog (
-        DeclareClasses(classes),
-        (List.fold_left check_assn_list [] t),
-        rtn
-    )
+    Prog (classes, (List.fold_left check_assn_list [] t), rtn)
 | _ -> raise(FormatError "Program must begin with a declaration of classes.")
 
 let parse lexbuf = validate_program (Parser.prog Lexer.token lexbuf)
