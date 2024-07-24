@@ -30,8 +30,7 @@ policy:
     | FAIR LBRACKET; pl = arglist; RBRACKET             { Fair pl }
     | CLSS                                              { Class($1) }
     | VAR                                               { Var($1) }
-arglist:
-    | pl = separated_list(COMMA, policy)                { pl } ;
+arglist: separated_list(COMMA, policy)                  { $1 } ;
 
 /* Declarations, assignments and returns */
 internalcomp :
@@ -40,6 +39,5 @@ internalcomp :
     | RETURN policy                                            { RtnComp ($2) }
     | RETURN policy SEMICOLON                                  { RtnComp ($2) }
 
-/* Program */
-prog:
-    | list (internalcomp) EOF                                  { $1 }
+/* Program Sequence */
+prog: list (internalcomp) EOF                                  { $1 }
