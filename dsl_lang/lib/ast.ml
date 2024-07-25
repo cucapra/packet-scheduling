@@ -1,5 +1,6 @@
 type clss = string
 type var = string
+type declare = DeclareClasses of clss list
 
 type policy =
   | Class of clss
