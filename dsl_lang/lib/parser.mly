@@ -16,6 +16,10 @@
 %token SEMICOLON
 %token EOF
 
+%token WIDTH
+%token BUFFER
+%token TIME
+
 %token FIFO
 %token RR
 %token STRICT
@@ -45,19 +49,29 @@ policy:
     | SJN LBRACKET; pl = arglist; RBRACKET              { ShortestJobNext pl }
     | SRTF LBRACKET; pl = arglist; RBRACKET             { ShortestRemaining pl }
     | RCSP LBRACKET; pl = arglist; RBRACKET             { RateControlled pl }
-    | LEAKY LBRACKET; LBRACKET; pl = arglist; RBRACKET; COMMA; args = pairing; RBRACKET    { LeakyBucket (pl, fst args, snd args) }
-    | TOKEN LBRACKET; LBRACKET; pl = arglist; RBRACKET; COMMA; args = pairing; RBRACKET    { TokenBucket (pl, fst args, snd args) }
-    | STOPGO LBRACKET; LBRACKET; pl = arglist; RBRACKET; COMMA; t = INT; RBRACKET   { StopAndGo (pl, t) } 
-    | CLSS                                          { Class($1) }
-    | VAR                                           { Var($1) }
+
+    | LEAKY LBRACKET; LBRACKET;
+        pl = arglist; RBRACKET; COMMA; 
+        WIDTH EQUALS; i1 = INT; COMMA; BUFFER EQUALS; i2 = INT;
+        RBRACKET                                        { LeakyBucket (pl, i1, i2) }
+
+    | TOKEN LBRACKET; LBRACKET;
+        pl = arglist; RBRACKET; COMMA; 
+        WIDTH EQUALS; i1 = INT; COMMA; TIME EQUALS; i2 = INT;
+        RBRACKET                                        { TokenBucket (pl, i1, i2) }
+
+    | STOPGO LBRACKET; LBRACKET;
+        pl = arglist; RBRACKET; COMMA;
+        WIDTH EQUALS; t = INT; RBRACKET                 { StopAndGo (pl, t) } 
+
+    | CLSS                                              { Class($1) }
+        | VAR                                           { Var($1) }
 arglist:
     | pl = separated_list(COMMA, policy)            { pl }
 weighted_arglist:
     | pl = separated_list(COMMA, weighted_arg)      { pl }
 weighted_arg:
     | LPAREN; arg = separated_pair(policy, COMMA, INT); RPAREN      { arg }
-pairing:
-    | arg = separated_pair(INT, COMMA, INT)         { arg }
 
 
 /* Declarations */

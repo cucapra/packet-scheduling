@@ -25,6 +25,10 @@ rule token = parse
 | ")"       { RPAREN }
 | "return"  { RETURN }
 | "classes" { CLASSES }
+| "width"   { WIDTH }
+| "buffer"  { BUFFER }
+| "time"    { TIME }
+
 | ","       { COMMA }
 | "fifo"    { FIFO }
 | "rr"      { RR }
