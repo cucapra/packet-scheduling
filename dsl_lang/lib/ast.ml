@@ -4,7 +4,7 @@ type var = string
 type policy =
   | Class of clss
   | Fifo of policy list
-  | RoundRobin of policy list
+  | Fair of policy list
   | Strict of policy list
   | WeightedFair of (policy * int) list
   | EarliestDeadline of policy list
