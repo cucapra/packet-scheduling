@@ -24,41 +24,42 @@ let rec lookup s x : policy =
 
 (* Helper function that evaulates a policy list. *)
 let rec evalplist (pl : policy list) (st : store) (cl : classes) =
-  match pl with [] -> pl | h :: t -> evalp h st cl :: evalplist t st cl
+  match pl with [] -> pl | h :: t -> eval_pol h st cl :: evalplist t st cl
 
 (* Evaluates a policy, looking up any variables and substituting them in. *)
-and evalp (p : policy) (st : store) (cl : classes) : policy =
+and eval_pol (p : policy) (st : store) (cl : classes) : policy =
   match p with
   | Class c ->
       if List.mem c cl then p
       else raise (UnboundVariable "Undeclared class used in policy")
   | Var x ->
       let pol = lookup st x in
-      evalp pol st cl
-  | Fifo (h :: t) -> Fifo (evalp h st cl :: evalplist t st cl)
-  | Fair (h :: t) -> Fair (evalp h st cl :: evalplist t st cl)
-  | Strict (h :: t) -> Strict (evalp h st cl :: evalplist t st cl)
+      eval_pol pol st cl
+  | Fifo (h :: t) -> Fifo (eval_pol h st cl :: evalplist t st cl)
+  | Fair (h :: t) -> Fair (eval_pol h st cl :: evalplist t st cl)
+  | Strict (h :: t) -> Strict (eval_pol h st cl :: evalplist t st cl)
   | _ -> failwith "cannot have empty policy"
 
 (* A function to evaluate all the assignments in a program by updating the store
    with the variable and the policy it maps to. *)
-let rec evala (alist : assignment list) (st : store) (cl : classes) : store =
+let rec eval_assn (alist : assignment list) (st : store) (cl : classes) : store
+    =
   match alist with
   | [] -> st
   | Assn (var, pol) :: t ->
       let st' = update st var pol in
-      evala t st' cl
+      eval_assn t st' cl
 
 (* First funtion called by eval. Matches against the components of type program
    and further calls helper functions to check each component of a program. *)
-let eval' (prog : program) (st : store) (cl : classes) : policy =
+let eval_helper (prog : program) (st : store) (cl : classes) : policy =
   match prog with
   | Prog (dec, alist, ret) -> (
       match dec with
       | DeclareClasses clist -> (
           let cl' = cl @ clist in
-          let st' = evala alist st cl' in
-          match ret with Return p -> evalp p st' cl'))
+          let st' = eval_assn alist st cl' in
+          match ret with Return p -> eval_pol p st' cl'))
 
 (* Outermost function that is called by main.ml *)
-let eval (p : program) : policy = eval' p [] []
+let eval (p : program) : policy = eval_helper p [] []
