@@ -1,6 +1,5 @@
 type clss = string
 type var = string
-type declare = DeclareClasses of clss list
 
 type policy =
   | Class of clss
@@ -17,6 +16,7 @@ type policy =
   | StopAndGo of policy list * int
   | Var of var
 
-type return = Return of policy
-type assignment = Assn of var * policy
-type program = Prog of declare * assignment list * return
+type declare = clss list
+type assignment = var * policy
+type return = policy
+type program = declare * assignment list * return
