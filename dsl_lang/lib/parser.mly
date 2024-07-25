@@ -1,5 +1,35 @@
 %{
     open Ast
+
+    exception FormatError of string
+
+    (* error messages *)
+    let misplaced_return = "Program must contain exactly one return statement as its final component."
+    let misplaced_declare = "Cannot interleave declarations and assignments."
+    let missing_declare = "Program must begin with a declaration of classes."
+
+    type internalcomp =
+    | DeclareComp of clss list
+    | AssnComp of var * policy
+    | RtnComp of policy
+
+    (* Check that a program contains exactly one return statement as its final component *)
+    let rec validate_seq acc = function
+    | RtnComp pol :: [] -> acc, pol
+    | RtnComp _ :: _ -> raise (FormatError misplaced_return)
+    | h :: t -> validate_seq (acc @ [h]) t
+    | [] -> raise (FormatError misplaced_return)
+
+    (* Check that a program's assignment list does not contain declarations *)
+    let check_assn_list acc = function
+    | AssnComp (var, pol) -> (var, pol) :: acc
+    | _ -> raise (FormatError misplaced_declare)
+
+    (* Validate a program sequence as a valid program *)
+    let validate_program seq = match (validate_seq [] seq) with
+    | DeclareComp classes :: t, rtn ->
+        (classes, (List.fold_left check_assn_list [] t), rtn)
+    | _ -> raise (FormatError missing_declare)
 %}
 
 %token <string> VAR
@@ -32,10 +62,7 @@
 %token TOKEN
 %token STOPGO
 
-%type <policy> policy
-%type <Ast.program> prog
-
-%start prog
+%start <program> prog
 
 %%
 
@@ -51,18 +78,18 @@ policy:
     | RCSP LBRACKET; pl = arglist; RBRACKET             { RateControlled pl }
 
     | LEAKY LBRACKET; LBRACKET;
-        pl = arglist; RBRACKET; COMMA; 
+        pl = arglist; RBRACKET; COMMA;
         WIDTH EQUALS; i1 = INT; COMMA; BUFFER EQUALS; i2 = INT;
         RBRACKET                                        { LeakyBucket (pl, i1, i2) }
 
     | TOKEN LBRACKET; LBRACKET;
-        pl = arglist; RBRACKET; COMMA; 
+        pl = arglist; RBRACKET; COMMA;
         WIDTH EQUALS; i1 = INT; COMMA; TIME EQUALS; i2 = INT;
         RBRACKET                                        { TokenBucket (pl, i1, i2) }
 
     | STOPGO LBRACKET; LBRACKET;
         pl = arglist; RBRACKET; COMMA;
-        WIDTH EQUALS; t = INT; RBRACKET                 { StopAndGo (pl, t) } 
+        WIDTH EQUALS; t = INT; RBRACKET                 { StopAndGo (pl, t) }
 
     | CLSS                                              { Class($1) }
         | VAR                                           { Var($1) }
@@ -74,21 +101,15 @@ weighted_arg:
     | LPAREN; arg = separated_pair(policy, COMMA, INT); RPAREN      { arg }
 
 
-/* Declarations */
-declare:
-    | CLASSES; vl  = list_fields; SEMICOLON         { DeclareClasses vl }
-list_fields:
-    vl = separated_list(COMMA, CLSS)                { vl } ;
+/* Declarations, assignments and returns */
+internalcomp :
+    | CLASSES; vl = separated_list(COMMA, CLSS); SEMICOLON     { DeclareComp vl }
+    | VAR EQUALS policy SEMICOLON                              { AssnComp ($1, $3) }
+    | RETURN policy                                            { RtnComp $2 }
+    | RETURN policy SEMICOLON                                  { RtnComp $2 }
 
-/* Return */
-return:
-    | RETURN policy                                 { Return($2) }
-
-/* Assignment List */
-assignments:
-    l = list(assignment)                            { l }
-assignment:
-    | VAR EQUALS policy SEMICOLON                   { Assn($1, $3) }
+/* Program Sequence */
+progseq: list (internalcomp)                                   { $1 }
 
 /* Program */
-prog: declare assignments return EOF                { Prog($1, $2, $3) }
+prog: progseq EOF                                              { validate_program $1 }

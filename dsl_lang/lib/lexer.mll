@@ -40,7 +40,7 @@ rule token = parse
 | "rcsp"    { RCSP }
 | "leakybucket"   { LEAKY }
 | "tokenbucket"   { TOKEN }
-| "stopandgo"  { STOPGO }  
+| "stopandgo"  { STOPGO }
 | ";"       { SEMICOLON }
 | id as v   { VAR(v) }
 | bigid as i    { CLSS(i) }
