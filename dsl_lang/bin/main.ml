@@ -4,7 +4,7 @@ open OUnit2
 (* The test suite for running our interpreter. *)
 
 let eval_prog (filename : string) =
-  let res = Util.parse_file filename in
+  let res = Parse.parse_file filename in
   Eval.eval res
 
 let make_test (name : string) (filename : string) (val_str : string) =
@@ -44,6 +44,7 @@ let tests =
       "strict[A, B, rr[rr[CU, CV], strict[CW, CX]]]";
     make_test "strict of 3" "../../dsl/progs/soon/strict_n_classes.sched"
       "strict[A, B, C]";
+
   ]
 
 let error_tests =

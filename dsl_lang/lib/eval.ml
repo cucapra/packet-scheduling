@@ -36,7 +36,7 @@ and eval_pol (p : policy) (st : store) (cl : classes) : policy =
       let pol = lookup st x in
       eval_pol pol st cl
   | Fifo (h :: t) -> Fifo (eval_pol h st cl :: evalplist t st cl)
-  | Fair (h :: t) -> Fair (eval_pol h st cl :: evalplist t st cl)
+  | RoundRobin (h :: t) -> RoundRobin (eval_pol h st cl :: evalplist t st cl)
   | Strict (h :: t) -> Strict (eval_pol h st cl :: evalplist t st cl)
   | _ -> failwith "cannot have empty policy"
 
@@ -46,7 +46,7 @@ let rec eval_assn (alist : assignment list) (st : store) (cl : classes) : store
     =
   match alist with
   | [] -> st
-  | Assn (var, pol) :: t ->
+  | (var, pol) :: t ->
       let st' = update st var pol in
       eval_assn t st' cl
 
@@ -54,12 +54,10 @@ let rec eval_assn (alist : assignment list) (st : store) (cl : classes) : store
    and further calls helper functions to check each component of a program. *)
 let eval_helper (prog : program) (st : store) (cl : classes) : policy =
   match prog with
-  | Prog (dec, alist, ret) -> (
-      match dec with
-      | DeclareClasses clist -> (
-          let cl' = cl @ clist in
-          let st' = eval_assn alist st cl' in
-          match ret with Return p -> eval_pol p st' cl'))
+  | (clist, alist, ret) ->
+      let cl' = cl @ clist in
+      let st' = eval_assn alist st cl' in 
+      eval_pol ret st' cl'
 
 (* Outermost function that is called by main.ml *)
 let eval (p : program) : policy = eval_helper p [] []
