@@ -44,6 +44,14 @@ let tests =
       "strict[A, B, rr[rr[CU, CV], strict[CW, CX]]]";
     make_test "strict of 3" "../../dsl/progs/soon/strict_n_classes.sched"
       "strict[A, B, C]";
+    make_test "leaky bucket of 2" "../../dsl/progs/nwc/leaky_2_classes.sched"
+      "leaky[[A, B, width = 20, time = 50]]";
+    make_test "token bucket of 2 round robins" "../../dsl/progs/soon/token_2_rr_children.sched"
+      "token[[rr[A, B], rr[C, D]], width = 20, time = 50]";
+    make_test "stop and go with 3 classes" "../../dsl/progs/soon/sg_3_classes.sched"
+      "stopandgo[[stopandgo[[A, B], 10], stopandgo[[C], 10], 5]";
+    make_test "rcsp for 4 classes" "../../dsl/progs/soon/rcsp_4_classes.sched"
+      "rcsp[A, B, C, D]";
 
   ]
 
