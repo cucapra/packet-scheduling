@@ -33,6 +33,10 @@ rule token = parse
 | "edf"     { EDF }
 | "sjn"     { SJN }
 | "srtf"    { SRTF }
+| "rcsp"    { RCSP }
+| "leaky"   { LEAKY }
+| "token"   { TOKEN }
+| "stopgo"  { STOPGO }  
 | ";"       { SEMICOLON }
 | id as v   { VAR(v) }
 | bigid as i    { CLSS(i) }

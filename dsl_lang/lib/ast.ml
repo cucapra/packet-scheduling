@@ -13,6 +13,10 @@ type policy =
 | EarliestDeadline of policy list 
 | ShortestJobNext of policy list
 | ShortestRemaining of policy list
+| RCSP of policy list
+| LeakyBucket of (policy * int * int) list
+| TokenBucket of (policy * int * int) list
+| StopAndGo of policy list
 | Var of var
 
 type return =

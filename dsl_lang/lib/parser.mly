@@ -40,6 +40,9 @@ policy:
     | EDF LBRACE; pl = arglist; RBRACE              { EarliestDeadline pl }
     | SJN LBRACE; pl = arglist; RBRACE              { ShortestJobNext pl }
     | SRTF LBRACE; pl = arglist; RBRACE             { ShortestRemaining pl }
+    | RCSP LBRACE; pl = arglist; RBRACE             { RCSP pl }
+    | LEAKY LBRACE; pl = triple_arglist; RBRACE     { LeakyBucket pl }
+    | TOKEN LBRACE; pl = triple_arglist; RBRACE     { TokenBucket pl }
     | CLSS                                          { Class($1) }
     | VAR                                           { Var($1) }
 arglist:
@@ -48,6 +51,9 @@ weighted_arglist:
     | pl = separated_list(COMMA, weighted_arg)      { pl }
 weighted_arg:
     | LPAREN; arg = separated_pair(policy, COMMA, INT); RPAREN      { arg } ;
+triple_arglist:
+    | LPAREN; arg1 = policy; COMMA; arg2 = INT; COMMA; arg3 = INT; RPAREN   { (arg1, arg2, arg3) }
+
 
 /* Declarations */
 declare:
