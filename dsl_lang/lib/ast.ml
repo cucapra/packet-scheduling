@@ -14,9 +14,9 @@ type policy =
 | ShortestJobNext of policy list
 | ShortestRemaining of policy list
 | RCSP of policy list
-| LeakyBucket of (policy * int * int) list
-| TokenBucket of (policy * int * int) list
-| StopAndGo of policy list
+| LeakyBucket of policy list * int * int
+| TokenBucket of policy list * int * int
+| StopAndGo of policy list * int
 | Var of var
 
 type return =
