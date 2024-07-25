@@ -42,7 +42,7 @@
 %token COMMA
 %token EOF
 %token FIFO
-%token FAIR
+%token RR
 %token STRICT
 %token SEMICOLON
 
@@ -54,7 +54,7 @@
 policy:
     | FIFO LBRACKET; pl = arglist; RBRACKET             { Fifo pl }
     | STRICT LBRACKET; pl = arglist; RBRACKET           { Strict pl }
-    | FAIR LBRACKET; pl = arglist; RBRACKET             { Fair pl }
+    | RR LBRACKET; pl = arglist; RBRACKET               { RoundRobin pl }
     | CLSS                                              { Class $1 }
     | VAR                                               { Var $1 }
 arglist: separated_list(COMMA, policy)                  { $1 } ;
