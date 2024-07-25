@@ -6,6 +6,8 @@
 }
 
 let whitespace = [' ' '\t']+
+let digit = ['0'-'9']
+let int = '-'? digit+
 let id = ['a'-'z'] ['a'-'z' '0'-'9' '_']*
 let bigid = ['A'-'Z']*
 let newline = ['\n']*
@@ -19,15 +21,30 @@ rule token = parse
 | "="       { EQUALS }
 | "["       { LBRACKET }
 | "]"       { RBRACKET }
+| "("       { LPAREN }
+| ")"       { RPAREN }
 | "return"  { RETURN }
 | "classes" { CLASSES }
+| "width"   { WIDTH }
+| "buffer"  { BUFFER }
+| "time"    { TIME }
+
 | ","       { COMMA }
 | "fifo"    { FIFO }
 | "rr"      { RR }
 | "strict"  { STRICT }
+| "wfq"     { WFQ }
+| "edf"     { EDF }
+| "sjn"     { SJN }
+| "srtf"    { SRTF }
+| "rcsp"    { RCSP }
+| "leakybucket"   { LEAKY }
+| "tokenbucket"   { TOKEN }
+| "stopandgo"  { STOPGO }
 | ";"       { SEMICOLON }
 | id as v   { VAR(v) }
 | bigid as i    { CLSS(i) }
+| int { INT (int_of_string (Lexing.lexeme lexbuf)) }
 | eof       { EOF }
 
 
@@ -37,3 +54,5 @@ rule token = parse
            printf "Unrecognized character: [%c]\n" c;
            exit 1
        }
+
+(* classes A, B; s = leakybucket [A, B] 5, 10; return leaky *)
