@@ -5,7 +5,7 @@
 
     (* error messages *)
     let misplaced_return = "Program must contain exactly one return statement as its final component."
-    let misplaced_declare = "Cannot interleave declarations and assignments."
+    let misplaced_declare = "Cannot interleave declarations and assignments. All declarations must be grouped as one at the top of the program."
     let missing_declare = "Program must begin with a declaration of classes."
 
     type internalcomp =
