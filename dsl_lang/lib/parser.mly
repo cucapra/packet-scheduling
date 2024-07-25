@@ -6,8 +6,8 @@
 %token <string> CLSS
 %token <int> INT
 %token EQUALS
-%token LBRACE
-%token RBRACE
+%token LBRACKET
+%token RBRACKET
 %token LPAREN
 %token RPAREN
 %token RETURN
@@ -23,6 +23,10 @@
 %token EDF
 %token SJN
 %token SRTF
+%token RCSP
+%token LEAKY
+%token TOKEN
+%token STOPGO
 
 %type <policy> policy
 %type <Ast.program> prog
@@ -33,17 +37,17 @@
 
 /* Policies */
 policy:
-    | FIFO LBRACE; pl = arglist; RBRACE             { Fifo pl }
-    | STRICT LBRACE; pl = arglist; RBRACE           { Strict pl }
-    | RR LBRACE; pl = arglist; RBRACE               { RoundRobin pl }
-    | WFQ LBRACE; pl = weighted_arglist; RBRACE     { WeightedFair pl }
-    | EDF LBRACE; pl = arglist; RBRACE              { EarliestDeadline pl }
-    | SJN LBRACE; pl = arglist; RBRACE              { ShortestJobNext pl }
-    | SRTF LBRACE; pl = arglist; RBRACE             { ShortestRemaining pl }
-    | RCSP LBRACE; pl = arglist; RBRACE             { RCSP pl }
-    | LEAKY LBRACE; pl = arglist; (fst, snd) = flow_args  RBRACE     { LeakyBucket (pl, fst, snd) }
-    | TOKEN LBRACE; pl = arglist; (fst, snd) = flow_args  RBRACE     { TokenBucket (pl, fst, snd) }
-    | STOPGO LBRACE; pl = arglist; t = INT          { StopandGo (pl, t) } 
+    | FIFO LBRACKET; pl = arglist; RBRACKET             { Fifo pl }
+    | STRICT LBRACKET; pl = arglist; RBRACKET           { Strict pl }
+    | RR LBRACKET; pl = arglist; RBRACKET               { RoundRobin pl }
+    | WFQ LBRACKET; pl = weighted_arglist; RBRACKET     { WeightedFair pl }
+    | EDF LBRACKET; pl = arglist; RBRACKET              { EarliestDeadline pl }
+    | SJN LBRACKET; pl = arglist; RBRACKET              { ShortestJobNext pl }
+    | SRTF LBRACKET; pl = arglist; RBRACKET             { ShortestRemaining pl }
+    | RCSP LBRACKET; pl = arglist; RBRACKET             { RateControlled pl }
+    | LEAKY LBRACKET; LBRACKET; pl = arglist; RBRACKET; COMMA; args = pairing; RBRACKET    { LeakyBucket (pl, fst args, snd args) }
+    | TOKEN LBRACKET; LBRACKET; pl = arglist; RBRACKET; COMMA; args = pairing; RBRACKET    { TokenBucket (pl, fst args, snd args) }
+    | STOPGO LBRACKET; LBRACKET; pl = arglist; RBRACKET; COMMA; t = INT; RBRACKET   { StopAndGo (pl, t) } 
     | CLSS                                          { Class($1) }
     | VAR                                           { Var($1) }
 arglist:
@@ -51,9 +55,9 @@ arglist:
 weighted_arglist:
     | pl = separated_list(COMMA, weighted_arg)      { pl }
 weighted_arg:
-    | LPAREN; arg = separated_pair(policy, COMMA, INT); RPAREN      { arg } ;
-flow_args:
-    | INT COMMA INT                                 { ($1, $3) }
+    | LPAREN; arg = separated_pair(policy, COMMA, INT); RPAREN      { arg }
+pairing:
+    | arg = separated_pair(INT, COMMA, INT)         { arg }
 
 
 /* Declarations */

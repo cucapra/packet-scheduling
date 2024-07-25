@@ -13,7 +13,7 @@ type policy =
 | EarliestDeadline of policy list 
 | ShortestJobNext of policy list
 | ShortestRemaining of policy list
-| RCSP of policy list
+| RateControlled of policy list
 | LeakyBucket of policy list * int * int
 | TokenBucket of policy list * int * int
 | StopAndGo of policy list * int

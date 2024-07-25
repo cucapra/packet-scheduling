@@ -19,8 +19,8 @@ rule token = parse
 | newline       { Lexing.new_line lexbuf; token lexbuf }
 | comment      { token lexbuf }
 | "="       { EQUALS }
-| "["       { LBRACE }
-| "]"       { RBRACE }
+| "["       { LBRACKET }
+| "]"       { RBRACKET }
 | "("       { LPAREN }
 | ")"       { RPAREN }
 | "return"  { RETURN }
@@ -34,9 +34,9 @@ rule token = parse
 | "sjn"     { SJN }
 | "srtf"    { SRTF }
 | "rcsp"    { RCSP }
-| "leaky"   { LEAKY }
-| "token"   { TOKEN }
-| "stopgo"  { STOPGO }  
+| "leakybucket"   { LEAKY }
+| "tokenbucket"   { TOKEN }
+| "stopandgo"  { STOPGO }  
 | ";"       { SEMICOLON }
 | id as v   { VAR(v) }
 | bigid as i    { CLSS(i) }
@@ -50,3 +50,5 @@ rule token = parse
            printf "Unrecognized character: [%c]\n" c;
            exit 1
        }
+
+(* classes A, B; s = leakybucket [A, B] 5, 10; return leaky *)
