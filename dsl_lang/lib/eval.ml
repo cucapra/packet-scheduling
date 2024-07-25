@@ -24,7 +24,15 @@ let rec lookup s x : policy =
 
 (* Helper function that evaulates a policy list. *)
 let rec evalplist (pl : policy list) (st : store) (cl : classes) =
-  match pl with [] -> pl | h :: t -> eval_pol h st cl :: evalplist t st cl
+  match pl with
+  | [] -> pl
+  | h :: t -> eval_pol h st cl :: evalplist t st cl
+
+(* Helper function that evaluates a weighted policy list. *)
+and evalppairlist (pl : (policy * int) list) (st : store) (cl : classes) =
+  match pl with
+  | [] -> pl
+  | (pol, weight) :: t -> (eval_pol pol st cl, weight) :: evalppairlist t st cl
 
 (* Evaluates a policy, looking up any variables and substituting them in. *)
 and eval_pol (p : policy) (st : store) (cl : classes) : policy =
@@ -38,6 +46,21 @@ and eval_pol (p : policy) (st : store) (cl : classes) : policy =
   | Fifo (h :: t) -> Fifo (eval_pol h st cl :: evalplist t st cl)
   | RoundRobin (h :: t) -> RoundRobin (eval_pol h st cl :: evalplist t st cl)
   | Strict (h :: t) -> Strict (eval_pol h st cl :: evalplist t st cl)
+  | WeightedFair((pol, weight) :: t)
+    -> WeightedFair(((eval_pol pol st cl), weight) :: (evalppairlist t st cl))
+  | EarliestDeadline (h :: t)
+    -> EarliestDeadline (eval_pol h st cl :: evalplist t st cl)
+  | ShortestJobNext (h :: t)
+    -> ShortestJobNext (eval_pol h st cl :: evalplist t st cl)
+  | ShortestRemaining (h :: t)
+    -> ShortestRemaining (eval_pol h st cl :: evalplist t st cl)
+  | RateControlled (h :: t)
+    -> RateControlled (eval_pol h st cl :: evalplist t st cl)
+  | LeakyBucket(lst, n1, n2) -> LeakyBucket((evalplist lst st cl), n1, n2)
+  | TokenBucket(lst, n1, n2) -> TokenBucket((evalplist lst st cl), n1, n2)
+  | StopAndGo(lst, n) -> StopAndGo((evalplist lst st cl), n)
+
+
   | _ -> failwith "cannot have empty policy"
 
 (* A function to evaluate all the assignments in a program by updating the store
