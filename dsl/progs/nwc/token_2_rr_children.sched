@@ -1,0 +1,13 @@
+classes A, B, C, D;
+
+sub1 = rr [A, B];
+sub2 = rr [C, D];
+
+policy = tokenbucket [[sub1, sub2], width=20, time=50];
+
+// sub1 and sub2 interleave packets from A/B and C/D respectively,
+// obeying round-robin rules.
+// the policy interleaves sub1 and sub2, processing 20 packets per cycle,
+// and refilling tokens every 50.
+
+return s
