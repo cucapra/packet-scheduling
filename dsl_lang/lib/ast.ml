@@ -1,21 +1,14 @@
 type clss = string
 type var = string
 
-type declare =
-| DeclareClasses of clss list
-
 type policy =
-| Class of clss
-| Fifo of policy list
-| Fair of policy list
-| Strict of policy list
-| Var of var
+  | Class of clss
+  | Fifo of policy list
+  | RoundRobin of policy list
+  | Strict of policy list
+  | Var of var
 
-type return =
-| Return of policy
-
-type assignment =
-| Assn of var * policy
-
-type program =
-| Prog of declare * (assignment list) * return
+type declare = clss list
+type assignment = var * policy
+type return = policy
+type program = declare * assignment list * return

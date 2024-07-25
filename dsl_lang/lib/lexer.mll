@@ -17,13 +17,13 @@ rule token = parse
 | newline       { Lexing.new_line lexbuf; token lexbuf }
 | comment      { token lexbuf }
 | "="       { EQUALS }
-| "["       { LBRACE }
-| "]"       { RBRACE }
+| "["       { LBRACKET }
+| "]"       { RBRACKET }
 | "return"  { RETURN }
 | "classes" { CLASSES }
 | ","       { COMMA }
 | "fifo"    { FIFO }
-| "rr"      { FAIR }
+| "rr"      { RR }
 | "strict"  { STRICT }
 | ";"       { SEMICOLON }
 | id as v   { VAR(v) }
