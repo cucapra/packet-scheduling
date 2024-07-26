@@ -1,7 +1,7 @@
 open Dsl_core
 open OUnit2
 
-(* The test suite for running our interpreter. *)
+(* The test suite for our interpreter. *)
 
 let eval_prog (filename : string) =
   let res = Parse.parse_file filename in
@@ -15,9 +15,7 @@ let make_test (name : string) (filename : string) (val_str : string) =
 
 let make_error_test (name : string) (filename : string) (exn : exn) =
   name >:: fun _ ->
-  assert_raises exn (fun () ->
-      try Util.string_of_policy (eval_prog filename)
-      with Eval.UnboundVariable _ -> raise exn)
+  assert_raises exn (fun () -> Util.string_of_policy (eval_prog filename))
 
 let tests =
   [
@@ -45,25 +43,28 @@ let tests =
       "strict[A, B, C]";
     make_test "leaky bucket of 2" "../../dsl/progs/nwc/leaky_2_classes.sched"
       "leaky[[A, B], width = 5, buffer = 10]";
-    make_test "token bucket of 2 round robins" "../../dsl/progs/nwc/token_2_rr_children.sched"
+    make_test "token bucket of 2 round robins"
+      "../../dsl/progs/nwc/token_2_rr_children.sched"
       "token[[rr[A, B], rr[C, D]], width = 20, time = 50]";
-    make_test "stop and go with 3 classes" "../../dsl/progs/nwc/sg_3_classes.sched"
-      "stopandgo[[stopandgo[[A, B], width = 10], stopandgo[[C], width = 10]], width = 5]";
+    make_test "stop and go with 3 classes"
+      "../../dsl/progs/nwc/sg_3_classes.sched"
+      "stopandgo[[stopandgo[[A, B], width = 10], stopandgo[[C], width = 10]], \
+       width = 5]";
     make_test "rcsp for 4 classes" "../../dsl/progs/nwc/rcsp_4_classes.sched"
       "rcsp[A, B, C, D]";
-
   ]
 
 let error_tests =
   [
     make_error_test "undeclared class"
       "../../dsl/progs/incorrect/undeclared_classes.sched"
-      (Eval.UnboundVariable "...");
+      (Eval.UndeclaredClass "Z");
     make_error_test "unbound variable"
-      "../../dsl/progs/incorrect/unbound_var.sched" (Eval.UnboundVariable "...");
+      "../../dsl/progs/incorrect/unbound_var.sched"
+      (Eval.UnboundVariable "policy");
     make_error_test "unbound var in middle of list of assignments"
       "../../dsl/progs/incorrect/unbound_var_hier.sched"
-      (Eval.UnboundVariable "...");
+      (Eval.UnboundVariable "r_polic");
   ]
 
 let suite = "suite" >::: tests @ error_tests
