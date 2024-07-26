@@ -13,7 +13,7 @@ let make_test (name : string) (filename : string) (val_str : string) =
     (Util.string_of_policy (eval_prog filename))
     ~printer:(fun x -> x)
 
-let make_error_test (name : string) (filename : string) (exn : exn ) =
+let make_error_test (name : string) (filename : string) (exn : exn) =
   name >:: fun _ ->
   assert_raises exn (fun () ->
       try Util.string_of_policy (eval_prog filename)
@@ -37,8 +37,7 @@ let tests =
     make_test "3 classes with substitutions"
       "../../dsl/progs/soon/rr_n_class_hier.sched"
       "rr[A, B, rr[rr[CU, CV], rr[CW, CX]]]";
-    make_test "rr of 3" "../../dsl/progs/soon/rr_n_classes.sched"
-      "rr[A, B, C]";
+    make_test "rr of 3" "../../dsl/progs/soon/rr_n_classes.sched" "rr[A, B, C]";
     make_test "rr and strict substitutions"
       "../../dsl/progs/soon/rr_strict_n_classes_hier.sched"
       "strict[A, B, rr[rr[CU, CV], strict[CW, CX]]]";
@@ -58,11 +57,13 @@ let tests =
 let error_tests =
   [
     make_error_test "undeclared class"
-      "../../dsl/progs/incorrect/undeclared_classes.sched" (Eval.UnboundVariable "...");
+      "../../dsl/progs/incorrect/undeclared_classes.sched"
+      (Eval.UnboundVariable "...");
     make_error_test "unbound variable"
       "../../dsl/progs/incorrect/unbound_var.sched" (Eval.UnboundVariable "...");
     make_error_test "unbound var in middle of list of assignments"
-      "../../dsl/progs/incorrect/unbound_var_hier.sched" (Eval.UnboundVariable "...");
+      "../../dsl/progs/incorrect/unbound_var_hier.sched"
+      (Eval.UnboundVariable "...");
   ]
 
 let suite = "suite" >::: tests @ error_tests

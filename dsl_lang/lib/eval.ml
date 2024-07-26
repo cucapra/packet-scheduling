@@ -71,10 +71,10 @@ let rec eval_assn (alist : assignment list) (st : store) (cl : classes) : store 
       let st' = update st var pol in
       eval_assn t st' cl
 
-(* First funtion called by eval. Matches against the components of type program
+(* First funtion called by eval. Unpacks the components of type program
    and further calls helper functions to check each component of a program. *)
 let eval_helper (prog : program) (st : store) (cl : classes) : policy =
-  let (clist, alist, ret) = prog in
+  let clist, alist, ret = prog in
   let cl' = cl @ clist in
   let st' = eval_assn alist st cl' in 
   eval_pol ret st' cl'
