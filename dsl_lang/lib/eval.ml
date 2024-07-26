@@ -60,13 +60,11 @@ and eval_pol (p : policy) (st : store) (cl : classes) : policy =
   | TokenBucket(lst, n1, n2) -> TokenBucket((evalplist lst st cl), n1, n2)
   | StopAndGo(lst, n) -> StopAndGo((evalplist lst st cl), n)
 
-
   | _ -> failwith "cannot have empty policy"
 
 (* A function to evaluate all the assignments in a program by updating the store
    with the variable and the policy it maps to. *)
-let rec eval_assn (alist : assignment list) (st : store) (cl : classes) : store
-    =
+let rec eval_assn (alist : assignment list) (st : store) (cl : classes) : store =
   match alist with
   | [] -> st
   | (var, pol) :: t ->
@@ -76,11 +74,10 @@ let rec eval_assn (alist : assignment list) (st : store) (cl : classes) : store
 (* First funtion called by eval. Matches against the components of type program
    and further calls helper functions to check each component of a program. *)
 let eval_helper (prog : program) (st : store) (cl : classes) : policy =
-  match prog with
-  | (clist, alist, ret) ->
-      let cl' = cl @ clist in
-      let st' = eval_assn alist st cl' in 
-      eval_pol ret st' cl'
+  let (clist, alist, ret) = prog in
+  let cl' = cl @ clist in
+  let st' = eval_assn alist st cl' in 
+  eval_pol ret st' cl'
 
 (* Outermost function that is called by main.ml *)
 let eval (p : program) : policy = eval_helper p [] []
