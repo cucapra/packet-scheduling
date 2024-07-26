@@ -5,16 +5,13 @@ exception ParserError of string
 let rec string_of_policy (pol : Ast.policy) : string =
   
   (* Helper function to compactly join policy lists by comma *)
-  let join = List.fold_left (fun acc s ->
-    let parsed = string_of_policy s in
-    if acc = "" then parsed
-    else (acc ^ ", " ^ parsed)) "" in
+  let join lst = lst |> List.map string_of_policy |> String.concat ", " in
 
   (* Helper function to compactly join weighted policy lists by comma *)
-  let join_weighted = List.fold_left (fun acc s ->
-    let parsed = "(" ^ string_of_policy (fst s) ^ ", " ^ string_of_int (snd s) ^ ")" in
-    if acc = "" then parsed
-    else (acc ^ ", " ^ parsed)) "" in
+  let join_weighted lst = lst
+    |> List.map
+        (fun (x, y) -> "(" ^ string_of_policy x ^ ", " ^ string_of_int y ^ ")")
+    |> String.concat ", " in
 
   match pol with
   | Class c -> c
@@ -41,5 +38,5 @@ let rec string_of_policy (pol : Ast.policy) : string =
   | StopAndGo (lst, width) -> 
       "stopandgo[[" ^ join lst ^ "], width = "
       ^ string_of_int width ^ "]"
-
-  | _ -> "error"
+  
+  | Var _ -> raise(NonTerminal)
