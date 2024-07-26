@@ -1,4 +1,4 @@
-name: Test
+name: Format
 
 on:
   push:
@@ -21,13 +21,10 @@ jobs:
         uses: ocaml/setup-ocaml@v3
         with:
           ocaml-compiler: 5
-      - name: Install dependencies
+      - name: Install ocamlformat
         working-directory: dsl_lang
-        run: | 
-          opam install . --deps-only
-      - name: DSL tests
+        run: opam install ocamlformat
+      - name: Check format 
         working-directory: dsl_lang
         run: |
-          opam exec -- dune build
-          opam exec -- dune test
-
+          [ $(dune fmt 2> >(wc -c)) -ne 0 ] && exit 1
