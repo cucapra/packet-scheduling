@@ -6,7 +6,7 @@ open OUnit2
 let prefix = "../../../../dsl/progs/"
 
 let eval_prog (filename : string) =
-  let res = Util.parse_file (prefix ^ filename) in
+  let res = Parse.parse_file (prefix ^ filename) in
   Eval.eval res
 
 let make_test (name : string) (filename : string) (val_str : string) =

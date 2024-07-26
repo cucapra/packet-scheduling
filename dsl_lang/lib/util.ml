@@ -1,44 +1,42 @@
 exception NonTerminal
 exception ParserError of string
 
-(** syntax_error_msg lexbuf is a syntax error message for the current position **)
-let syntax_error_msg lexbuf =
-  let pos = Lexing.lexeme_start_p lexbuf in
-  let lnum, cnum = (pos.pos_lnum, pos.pos_cnum - pos.pos_bol) in
-  Printf.sprintf "Syntax error at line %d, character %d" lnum cnum
-
-let parse lexbuf = Parser.prog Lexer.token lexbuf
-
-(** parse s parses a program string into an AST **)
-let parse_string (s : string) =
-  let lexbuf = Lexing.from_string s in
-  try parse lexbuf
-  with Parser.Error -> raise (ParserError (syntax_error_msg lexbuf))
-
-(** parse s parses a program file into an AST **)
-let parse_file (f : string) =
-  let lexbuf = Lexing.from_channel (open_in f) in
-  try parse lexbuf with
-  | Parser.Error ->
-      prerr_endline (syntax_error_msg lexbuf);
-      exit 1
-  | Lexer.Err ->
-      prerr_endline (syntax_error_msg lexbuf);
-      exit 1
-
-(** Helper function to turn policy lists into strings. **)
-let rec string_of_plist (plist : Ast.policy list) : string =
-  match plist with
-  | [] -> ""
-  | [ x ] -> string_of_policy x
-  | h :: t -> string_of_policy h ^ ", " ^ string_of_plist t
-
 (** Takes a policy and returns the string representation of it. **)
-and string_of_policy (pol : Ast.policy) : string =
+let rec string_of_policy (pol : Ast.policy) : string =
+  
+  (* Helper function to compactly join policy lists by comma *)
+  let join lst = lst |> List.map string_of_policy |> String.concat ", " in
+
+  (* Helper function to compactly join weighted policy lists by comma *)
+  let join_weighted lst = lst
+    |> List.map
+        (fun (x, y) -> "(" ^ string_of_policy x ^ ", " ^ string_of_int y ^ ")")
+    |> String.concat ", " in
+
   match pol with
   | Class c -> c
-  | Fifo pl -> "fifo[" ^ string_of_plist pl ^ "]"
-  | Strict pl -> "strict[" ^ string_of_plist pl ^ "]"
-  | RoundRobin pl -> "rr[" ^ string_of_plist pl ^ "]"
-  | Var v -> v
-  | _ -> "NWC pretty-printing not yet implemented"
+  | Fifo lst -> "fifo[" ^ join lst ^ "]"
+  | RoundRobin lst -> "rr[" ^ join lst ^ "]"
+  | Strict lst -> "strict[" ^ join lst ^ "]"
+  | WeightedFair lst -> "strict[" ^ join_weighted lst ^ "]"
+
+  | EarliestDeadline lst -> "edf[" ^ join lst ^ "]"
+  | ShortestJobNext lst -> "sjn[" ^ join lst ^ "]"
+  | ShortestRemaining lst -> "srtf[" ^ join lst ^ "]"
+  | RateControlled lst -> "rcsp[" ^ join lst ^ "]"
+
+  | LeakyBucket (lst, width, buffer) ->
+      "leaky[[" ^ join lst ^ "], width = "
+      ^ string_of_int width ^ ", buffer = "
+      ^ string_of_int buffer ^ "]"
+
+  | TokenBucket (lst, width, buffer) ->
+      "token[[" ^ join lst ^ "], width = "
+      ^ string_of_int width ^ ", time = "
+      ^ string_of_int buffer ^ "]"
+
+  | StopAndGo (lst, width) -> 
+      "stopandgo[[" ^ join lst ^ "], width = "
+      ^ string_of_int width ^ "]"
+  
+  | Var _ -> raise(NonTerminal)
