@@ -10,4 +10,4 @@ policy = tokenbucket [[sub1, sub2], width=20, time=50];
 // the policy interleaves sub1 and sub2, processing 20 packets per cycle,
 // and refilling tokens every 50.
 
-return s
+return policy
