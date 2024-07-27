@@ -1,6 +1,6 @@
 open Ast
 
-exception UnboundVariable of string
+exception UnboundVariable of var
 exception UndeclaredClass of clss
 exception IllformedExpression of string
 
