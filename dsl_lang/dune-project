@@ -1,2 +1,31 @@
-(lang dune 3.10)
-(using menhir 2.1)
+(lang dune 3.16)
+
+(name dsl_lang)
+
+(generate_opam_files true)
+
+(source 
+ (github cucapra/packet-scheduling))
+
+(authors
+ "Anshuman Mohan"
+ "Cassandra Sziklai"
+ "Kabir Samsi"
+ "Akash Dhiraj")
+
+(maintainers
+ "Anshuman Mohan"
+ "Cassandra Sziklai"
+ "Kabir Samsi"
+ "Akash Dhiraj")
+
+(license MIT)
+
+(using menhir 3.0)
+
+(package
+ (name dsl_lang)
+ (synopsis "DSL for Programmable Packet Scheduling")
+ (description "TBD")
+ (depends ocaml dune ounit2 menhir))
+

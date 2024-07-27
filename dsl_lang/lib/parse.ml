@@ -17,10 +17,7 @@ let parse_string (s : string) =
 (* parse s parses a program file into an AST *)
 let parse_file (f : string) =
   let lexbuf = Lexing.from_channel (open_in f) in
-  try parse lexbuf with
-  | Parser.Error ->
-      prerr_endline (syntax_error_msg lexbuf);
-      exit 1
-  | Lexer.Err ->
-      prerr_endline (syntax_error_msg lexbuf);
-      exit 1
+  try parse lexbuf
+  with Parser.Error ->
+    prerr_endline (syntax_error_msg lexbuf);
+    exit 1
