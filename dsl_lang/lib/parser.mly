@@ -92,7 +92,7 @@ policy:
         WIDTH EQUALS; t = INT; RBRACKET                 { StopAndGo (pl, t) }
 
     | CLSS                                              { Class($1) }
-        | VAR                                           { Var($1) }
+    | VAR                                               { Var($1) }
 arglist:
     | pl = separated_list(COMMA, policy)            { pl }
 weighted_arglist:
