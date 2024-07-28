@@ -11,6 +11,10 @@
 
 \begin{document}
 
+\title{Preservation Of Well-Formedness In PIFO Trees}
+
+\maketitle
+
 \section{Relevant Definitions and Lemmas}
 
 \subsection{Definition 1}
@@ -107,6 +111,70 @@ $$\implies |\text{push}(\text{Internal}(qs, p), pkt, (i, r) :: pt)| = m + 1$$\\[
 \noindent With this, we have shown the desired equality, and proven our Inductive case.\newline
 
 \noindent Thus, it follows that Lemma 1 holds.\newline
+
+\subsection{Lemma 2:}
+
+\noindent \textbf{\textit{Popping from a PIFO Tree decrements its size}}
+
+$$\frac{q \in \text{PIFOTree} \hspace{0.7cm} |q| = n \hspace{0.7cm} n \in \mathbb{N} \hspace{0.7cm} (pkt, q') = \text{pop}(q) \hspace{0.7cm} n' = n-1}{|q'| = n'}$$
+
+\noindent \textbf{Proof}. We proceed upon this proof by structural induction over the definition of $|\cdot|$ as follows.\newline
+
+\noindent \textbf{Base Case}: $q = \text{Leaf}(p)$ for some packet $p$.\newline
+
+\noindent By definition 3.8, we have that $|\text{Leaf}(p)|_i = |p|_i$, where $|p|_i$ is the number of occurrences of $i$ in PIFO $p$. The definition of $pop$ in 3.6 gives the following:
+
+$$\frac{\text{POP}(p) = p'}{pop(\text{Leaf}(p)) = \text{Leaf}(pkt, p')}$$\\[-10pt]
+
+\noindent Where $\text{Leaf}(p')$ is the result of $pop$ping from $\text{Leaf}(p)$.\newline
+
+\noindent By definition 2A, we now know that $|p'|_i = |p|_i - 1$.\newline
+
+\noindent By definition 3.8, we know that $|\text{Leaf}(p')|_i = |p'|_i$ and $|\text{Leaf}(p)|_i = |p|_i$.\newline
+
+\noindent Combining these together, we obtain the following:
+
+$$|\text{Leaf}(p')| = |\text{Leaf}(p)| - 1$$
+
+\noindent Thus, we have proven our base case.\\[10pt]
+
+\noindent \textbf{Inductive Case}:\newline
+
+\noindent Assume an arbitrary PIFO $p$, Node $q = \text{Internal}(qs, p)$ and index $i$.\newline
+
+\noindent \textbf{Inductive Hypothesis}: $|qs[i]| = n \implies |q'| = n-1$ where $(pkt, q') = pop(qs[i])$.\newline
+
+\noindent \textbf{Show}: $|\text{Internal}(qs, p)| = m \implies |q''| = m-1$ where $(pkt, q'') =\text{pop}(\text{Internal}(qs, p)$.\newline
+
+\noindent Note that $pop$ is defined for internal nodes as follows:
+
+$$\frac{\text{POP(p) = (i, p') \hspace{1cm} \text{pop}(qs[i]) = (pkt, q')}}{{\text{pop}(\text{Internal}(qs, p)) = (pkt, \text{Internal}(qs[q'/i], p'))}}$$\\[-10pt]
+
+\noindent Since $q$ is a valid PIFO, we know from Definition 3.8 the following:
+
+$$m = |q| = \sum_{j=1}^{|qs|} |qs[j]|$$
+
+\noindent Thus, we can further conclude the following:
+
+$$(pkt, q'') = \text{pop}(\text{Internal}(qs, p) \implies |q''| = \sum_{j=1}^{|qs|} |qs[q'/i][j]|$$
+
+\noindent From our Inductive Hypothesis, we know that $|q'| = n-1$ where $pkt, q' = \text{pop}(qs[i])$.\newline
+
+\noindent From the definition of $pop$, popping changes only $qs[i]$, while the remaining subtrees remain the same. Subsequently, we can assert that $\forall 
+1 \leq j \leq |qs|, i \neq j \implies |qs[j]| = |qs[q'/i][j]$. With this in mind, we make the following claim:\\[-15pt]
+
+$$(pkt, q'') = \text{pop}(\text{Internal}(qs, p)) \implies |q''| = \sum_{j=1}^{|qs|} |qs[j]| - |qs[i]| + |qs[q'/i][i]|$$
+
+\noindent Substituting what we know, this gives us the following:
+
+$$(pkt, qs'') = \text{pop}(\text{Internal}(qs, p)) \implies |q''| = m - n + n - 1$$
+
+$$\implies (pkt, qs'') = \text{pop}(\text{Internal}(qs, p)) \implies |qs''| = m - 1$$\\[-15pt]
+
+\noindent With this, we have shown the desired equality, and proven our Inductive case.\newline
+
+\noindent Thus, it follows that Lemma 2 holds.\newline
+
 
 \section{Proofs For Lemma 3.9 (Well-Formedness)}
 
