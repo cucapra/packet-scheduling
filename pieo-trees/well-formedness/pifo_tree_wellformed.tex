@@ -49,9 +49,9 @@ $$\frac{p \in \text{PIFO}  \hspace{0.7cm} |p| = n \hspace{0.7cm} n \in \mathbb{N
 \section{Lemmas 1 and 2}
 \noindent \textbf{\textit{Defining $|\cdot|$ on PIFO Trees With Regards to Pushes and Pops}}\newline
 
-\subsection{Lemma 1:}
+\subsection{Lemma 1: Pushing to a PIFO Tree increments its size}
 
-\noindent \textbf{\textit{Pushing to a PIFO Tree increments its size}}
+\par\
 
 $$\frac{q \in \text{PIFOTree} \hspace{0.7cm} |q| = n \hspace{0.7cm} n \in \mathbb{N} \hspace{0.7cm} \text{push}(q, pkt, p) = q' \hspace{0.7cm} n' = n+1}{|q'| = n'}$$
 
@@ -59,11 +59,11 @@ $$\frac{q \in \text{PIFOTree} \hspace{0.7cm} |q| = n \hspace{0.7cm} n \in \mathb
 
 \noindent \textbf{Base Case}: $q = \text{Leaf}(p)$ for some packet $p$.\newline
 
-\noindent By definition 3.8, we have that $|\text{Leaf}(p)|_i = |p|_i$, where $|p|_i$ is the number of occurrences of $i$ in PIFO $p$. The definition of $push$ in 3.6 gives the following:
+\noindent By definition 3.8, we have that $|\text{Leaf}(p)|_i = |p|_i$, where $|p|_i$ is the number of occurrences of $i$ in PIFO $p$. The definition of $\text{push}$ in 3.6 gives the following:
 
-$$\frac{\text{PUSH}(p, pkt, r) = p'}{push(\text{Leaf}(p), pkt, r) = \text{Leaf}(p')}$$\\[-10pt]
+$$\frac{\text{PUSH}(p, pkt, r) = p'}{\text{push}(\text{Leaf}(p), pkt, r) = \text{Leaf}(p')}$$\\[-10pt]
 
-\noindent Where $\text{Leaf}(p')$ is the result of $push$ing into $\text{Leaf}(p)$.\newline
+\noindent Where $\text{Leaf}(p')$ is the result of $\text{push}$ing into $\text{Leaf}(p)$.\newline
 
 \noindent By definition 1A, we now know that $|p'|_i = |p|_i + 1$.\newline
 
@@ -79,11 +79,11 @@ $$|\text{Leaf}(p')| = |\text{Leaf}(p)| + 1$$
 
 \noindent Assume an arbitrary PIFO $p$, Node $q = \text{Internal}(qs, p)$, packet $pkt$, path $pt$, index $i$ and rank $r$.\newline
 
-\noindent \textbf{Inductive Hypothesis}: $|qs[i]| = n \implies |push(qs[i], pkt, pt)| = n+1$\newline
+\noindent \textbf{Inductive Hypothesis}: $|qs[i]| = n \implies |\text{push}(qs[i], pkt, pt)| = n+1$\newline
 
 \noindent \textbf{Show}: $|\text{Internal}(qs, p)| = m \implies |\text{push}(\text{Internal}(qs, p), pkt, (i, r) :: pt)| = m+1$\newline
 
-\noindent Note that $push$ is defined for internal nodes as follows:
+\noindent Note that $\text{push}$ is defined for internal nodes as follows:
 
 $$\frac{\text{push}(qs[i], pkt, pt) = q' \hspace{1cm} \text{PUSH}(p, i, r) = p'}{\text{push}(\text{Internal}(qs, p), pkt, (i, r) :: pt) = \text{Internal}(qs[q'/i], p')}$$\\[-10pt]
 
@@ -95,9 +95,9 @@ $$m = |q| = \sum_{j=1}^{|qs|} |qs[j]|$$
 
 $$|\text{push}(\text{Internal}(qs, p), pkt, (i, r) :: pt)| = \sum_{j=1}^{|qs|} |qs[q'/i][j]|$$
 
-\noindent From our Inductive Hypothesis, we know that $|q'| = |push(qs[i], pkt, pt| = n+1$.\newline
+\noindent From our Inductive Hypothesis, we know that $|q'| = |\text{push}(qs[i], pkt, pt| = n+1$.\newline
 
-\noindent From the definition of $push$, pushing changes only $qs[i]$, while the remaining subtrees remain the same. Subsequently, we can assert that $\forall 
+\noindent From the definition of $\text{push}$, pushing changes only $qs[i]$, while the remaining subtrees remain the same. Subsequently, we can assert that $\forall 
 1 \leq j \leq |qs|, i \neq j \implies |qs[j]| = |qs[q'/i][j]$. With this in mind, we make the following claim:\\[-15pt]
 
 $$|\text{push}(\text{Internal}(qs, p), pkt, (i, r) :: pt)| = \sum_{j=1}^{|qs|} |qs[j]| - |qs[i]| + |qs[q'/i][i]|$$
@@ -112,9 +112,9 @@ $$\implies |\text{push}(\text{Internal}(qs, p), pkt, (i, r) :: pt)| = m + 1$$\\[
 
 \noindent Thus, it follows that Lemma 1 holds.\newline
 
-\subsection{Lemma 2:}
+\subsection{Lemma 2: Popping from a PIFO Tree decrements its size}
 
-\noindent \textbf{\textit{Popping from a PIFO Tree decrements its size}}
+\par\
 
 $$\frac{q \in \text{PIFOTree} \hspace{0.7cm} |q| = n \hspace{0.7cm} n \in \mathbb{N} \hspace{0.7cm} (pkt, q') = \text{pop}(q) \hspace{0.7cm} n' = n-1}{|q'| = n'}$$
 
@@ -122,11 +122,11 @@ $$\frac{q \in \text{PIFOTree} \hspace{0.7cm} |q| = n \hspace{0.7cm} n \in \mathb
 
 \noindent \textbf{Base Case}: $q = \text{Leaf}(p)$ for some packet $p$.\newline
 
-\noindent By definition 3.8, we have that $|\text{Leaf}(p)|_i = |p|_i$, where $|p|_i$ is the number of occurrences of $i$ in PIFO $p$. The definition of $pop$ in 3.6 gives the following:
+\noindent By definition 3.8, we have that $|\text{Leaf}(p)|_i = |p|_i$, where $|p|_i$ is the number of occurrences of $i$ in PIFO $p$. The definition of $\text{pop}$ in 3.6 gives the following:
 
-$$\frac{\text{POP}(p) = p'}{pop(\text{Leaf}(p)) = \text{Leaf}(pkt, p')}$$\\[-10pt]
+$$\frac{\text{POP}(p) = p'}{\text{pop}(\text{Leaf}(p)) = \text{Leaf}(pkt, p')}$$\\[-10pt]
 
-\noindent Where $\text{Leaf}(p')$ is the result of $pop$ping from $\text{Leaf}(p)$.\newline
+\noindent Where $\text{Leaf}(p')$ is the result of $\text{pop}$ping from $\text{Leaf}(p)$.\newline
 
 \noindent By definition 2A, we now know that $|p'|_i = |p|_i - 1$.\newline
 
@@ -142,11 +142,11 @@ $$|\text{Leaf}(p')| = |\text{Leaf}(p)| - 1$$
 
 \noindent Assume an arbitrary PIFO $p$, Node $q = \text{Internal}(qs, p)$ and index $i$.\newline
 
-\noindent \textbf{Inductive Hypothesis}: $|qs[i]| = n \implies |q'| = n-1$ where $(pkt, q') = pop(qs[i])$.\newline
+\noindent \textbf{Inductive Hypothesis}: $|qs[i]| = n \implies |q'| = n-1$ where $(pkt, q') = \text{pop}(qs[i])$.\newline
 
 \noindent \textbf{Show}: $|\text{Internal}(qs, p)| = m \implies |q''| = m-1$ where $(pkt, q'') =\text{pop}(\text{Internal}(qs, p)$.\newline
 
-\noindent Note that $pop$ is defined for internal nodes as follows:
+\noindent Note that $\text{pop}$ is defined for internal nodes as follows:
 
 $$\frac{\text{POP(p) = (i, p') \hspace{1cm} \text{pop}(qs[i]) = (pkt, q')}}{{\text{pop}(\text{Internal}(qs, p)) = (pkt, \text{Internal}(qs[q'/i], p'))}}$$\\[-10pt]
 
@@ -160,7 +160,7 @@ $$(pkt, q'') = \text{pop}(\text{Internal}(qs, p) \implies |q''| = \sum_{j=1}^{|q
 
 \noindent From our Inductive Hypothesis, we know that $|q'| = n-1$ where $pkt, q' = \text{pop}(qs[i])$.\newline
 
-\noindent From the definition of $pop$, popping changes only $qs[i]$, while the remaining subtrees remain the same. Subsequently, we can assert that $\forall 
+\noindent From the definition of $\text{pop}$, popping changes only $qs[i]$, while the remaining subtrees remain the same. Subsequently, we can assert that $\forall 
 1 \leq j \leq |qs|, i \neq j \implies |qs[j]| = |qs[q'/i][j]$. With this in mind, we make the following claim:\\[-15pt]
 
 $$(pkt, q'') = \text{pop}(\text{Internal}(qs, p)) \implies |q''| = \sum_{j=1}^{|qs|} |qs[j]| - |qs[i]| + |qs[q'/i][i]|$$
@@ -179,41 +179,41 @@ $$\implies (pkt, qs'') = \text{pop}(\text{Internal}(qs, p)) \implies |qs''| = m 
 \section{Proofs For Lemma 3.9 (Well-Formedness)}
 
 \subsection{Proof of Lemma 3.9.1}
-\noindent \textit{\textbf{Well-Formedness Is Preserved in PIFO Trees Upon Pushes}}\newline
+\noindent \textit{\textbf{Well-Formedness Is Preserved in PIFO Trees Upon Pushes}}\\[10pt]
 
-\noindent We proceed with this proof by inducting upon the definition of $push$ for PIFO Trees.\newline
+\noindent We proceed with this proof by inducting upon the definition of $\text{push}$ for PIFO Trees.\newline
 
 \noindent \textbf{Base Case : $Leaf(p)$}\newline
 
-\noindent By definition 3.6 of $push$, we have the following for Leaf nodes:
+\noindent By definition 3.6 of $\text{push}$, we have the following for Leaf nodes:
 
-$$\frac{\text{PUSH}(p, pkt, r) = p'}{push(\text{Leaf}(p), pkt, r) = \text{Leaf}(p')}$$\\[-10pt]
+$$\frac{\text{PUSH}(p, pkt, r) = p'}{\text{push}(\text{Leaf}(p), pkt, r) = \text{Leaf}(p')}$$\\[-10pt]
 
 \noindent It follows that after pushing, the resultant tree is expressed as $\text{Leaf}(p')$ for some packet $p'$ By definition 3.8 (cited above), we know the following holds for any arbitrary PIFO $p$:\\[-10pt]
 
 $$\frac{}{\vdash \text{Leaf}(p)}$$
 
-\noindent We now have: $\forall p, pkt, r, \vdash push(\text{Leaf}(p), pkt, r)$\newline
+\noindent We now have: $\forall p, pkt, r, \vdash \text{push}(\text{Leaf}(p), pkt, r)$\newline
 
 \noindent With this, our Base Case is proven.\\[10pt]
 
 \noindent \textbf{Inductive Case:} $q = \text{Internal}(qs, p), \vdash q$\newline
 
-\noindent \textbf{Inductive Hypothesis}: $\forall 1 \leq i \leq |qs|. \vdash push(qs[i], pkt, pt)$\newline
+\noindent \textbf{Inductive Hypothesis}: $\forall 1 \leq i \leq |qs|. \vdash \text{push}(qs[i], pkt, pt)$\newline
 
 \noindent Recall Definition 3.8 for $\vdash$ on Internal Nodes:
 
 $$\frac{\forall 1 \leq i \leq |qs|. \vdash qs[i] \land |p|_i = |qs[i]|}{\vdash \text{Internal}(\text{qs, p})}$$\newline
 
-\noindent Recall Definition 3.6 for $push$ on Internal Nodes:
+\noindent Recall Definition 3.6 for $\text{push}$ on Internal Nodes:
 
 $$\frac{\text{push}(qs[i], pkt, pt) = q' \hspace{1cm} \text{PUSH}(p, i, r) = p'}{\text{push}(\text{Internal}(qs, p), pkt, (i, r) :: pt) = \text{Internal}(qs[q'/i], p')}$$\newline
 
-\noindent Now, let $q' = push(q, pkt, (i, r) :: pt)$, and let $p' = \text{PUSH}(p, i, r)$.\newline
+\noindent Now, let $q' = \text{push}(q, pkt, (i, r) :: pt)$, and let $p' = \text{PUSH}(p, i, r)$.\newline
 
 \noindent \textbf{Show}: $\vdash q \implies \vdash \text{Internal}(qs[q'/i], p')$.\newline
 
-\noindent Using definition 3.6 and our Inductive Hypothesis, we can conclude that $\vdash q'$. Furthermore, note that the only subtree to be modified in $qs$ is in $qs[i]$, per the definition of $push$.\newline
+\noindent Using definition 3.6 and our Inductive Hypothesis, we can conclude that $\vdash q'$. Furthermore, note that the only subtree to be modified in $qs$ is in $qs[i]$, per the definition of $\text{push}$.\newline
 
 \noindent \textbf{Now we make the following claim:}
 
@@ -236,21 +236,21 @@ $$\frac{\text{push}(qs[i], pkt, pt) = q' \hspace{1cm} \text{PUSH}(p, i, r) = p'}
 \noindent With this, we have proven our Inductive Statement and completed the proof. We have shown that pushing to an arbitrary PIFO Tree preserves its well-formedness.\\[-10pt]
 
 \subsection{Proof of Lemma 3.9.2}
-\noindent \textit{\textbf{Well-Formedness Is Preserved in PIFO Trees Upon Pops}}\newline
+\noindent \textit{\textbf{Well-Formedness Is Preserved in PIFO Trees Upon Pops}}\\[10pt]
 
-\noindent We proceed with this proof by inducting upon the definition of $pop$ for PIFO Trees.\newline
+\noindent We proceed with this proof by inducting upon the definition of $\text{pop}$ for PIFO Trees.\newline
 
 \noindent \textbf{Base Case : $Leaf(p)$}\newline
 
-\noindent By definition 3.4 of $pop$, the following holds for Leaf nodes:
+\noindent By definition 3.4 of $\text{pop}$, the following holds for Leaf nodes:
 
-$$\frac{\text{POP}(p) = (pkt, p')}{pop(\text{Leaf}(p)) = (pkt, \text{Leaf}(p'))}$$
+$$\frac{\text{POP}(p) = (pkt, p')}{\text{pop}(\text{Leaf}(p)) = (pkt, \text{Leaf}(p'))}$$
 
 \noindent It follows that after popping, the resultant tree is of form $\text{Leaf}(p')$ for some packet $p'$. By definition 3.8 (cited above), we know the following holds for any arbitrary PIFO $p$:\\[-10pt]
 
 $$\frac{}{\vdash \text{Leaf}(p)}$$
 
-\noindent We now have: $\forall p, \vdash p'$ where $(pkt, p') = pop(\text{Leaf}(p))$.\newline
+\noindent We now have: $\forall p, \vdash p'$ where $(pkt, p') = \text{pop}(\text{Leaf}(p))$.\newline
 
 \noindent With this, our Base Case is proven.
 
