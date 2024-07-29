@@ -231,7 +231,7 @@ $f \leq f^\prime \land f(d) \implies f^\prime(d)$.
         |\Leaf(p)|_f = |p|_f && |\Internal(qs, p)|_f = \sum_{i=1}^{|qs|} |qs[i]|_f
     \end{align*}
 
-    We say that $q \in \PIEOTree(t)$ is \emph{well-formed} w.r.t $f$, denoted $\vdash_f q$, if it adheres to the following rules.
+    We say $q \in \PIEOTree(t)$ is \emph{well-formed} w.r.t. $f$, denoted $\models_f q$, if it adheres to the following rules.
     \begin{align*}
         \axiom{}
         {\vdash_f \Leaf(p)}
@@ -245,14 +245,14 @@ $f \leq f^\prime \land f(d) \implies f^\prime(d)$.
         }
     \end{align*}
 
-    We say $q$ is well-formed, denoted $\vdash q$, if there exists $f \in \mathcal F$ such that, for all $f^\prime \geq f$, $\vdash_{f^\prime} q$.
+    We say $q$ is $f$-well-formed, denoted $\vdash_f q$, if for all $f^\prime \geq f$, $\models_{f^\prime} q$.
 \end{dfn}
 
 \begin{thm}
-    Let $t \in \Topo$, $\pkt \in \Pkt$, $d \in \Data$, $f \in \mathcal F$, and $q \in \PIEOTree(t)$ such that $\vdash q$. 
+    Let $t \in \Topo$, $\pkt \in \Pkt$, $d \in \Data$, $f,f^\prime \in \mathcal F$, and $q \in \PIEOTree(t)$ such that $\vdash_f q$.
     \begin{enumerate}
-        \item If $pt \in \Path(t)$, then $\push(q, \pkt, d, pt)$ is well-defined and $\vdash \push(q, \pkt, d, pt)$.
-        \item If $|q|_f > 0$, then $\pop(q, f)$ is well-defined and $\vdash q^\prime$, where $\pop(q, f) = (\pkt, q^\prime)$.
+        \item If $pt \in \Path(t)$, then $\push(q, \pkt, d, pt)$ is well-defined and $\vdash_f \push(q, \pkt, d, pt)$.
+        \item If $|q|_{f^\prime} > 0$ and $f^\prime \geq f$, then $\pop(q, f^{\prime})$ is well-defined and $\vdash_{f^\prime} q^\prime$, where $\pop(q, f^{\prime}) = (\pkt, q^\prime)$.
     \end{enumerate}
 \end{thm}
 
