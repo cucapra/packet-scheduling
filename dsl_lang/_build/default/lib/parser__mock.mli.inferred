@@ -1,0 +1,63 @@
+type token =
+    WIDTH
+  | WFQ
+  | VAR of string
+  | TOKEN
+  | TIME
+  | STRICT
+  | STOPGO
+  | SRTF
+  | SJN
+  | SEMICOLON
+  | RR
+  | RPAREN
+  | RETURN
+  | RCSP
+  | RBRACKET
+  | LPAREN
+  | LEAKY
+  | LBRACKET
+  | INT of int
+  | FIFO
+  | EQUALS
+  | EOF
+  | EDF
+  | COMMA
+  | CLSS of string
+  | CLASSES
+  | BUFFER
+exception FormatError of string
+val misplaced_return : string
+val misplaced_declare : string
+val missing_declare : string
+type internalcomp =
+    DeclareComp of string list
+  | AssnComp of string * Ast.return
+  | RtnComp of Ast.return
+val validate_seq :
+  internalcomp list -> internalcomp list -> internalcomp list * Ast.return
+val check_assn_list :
+  (string * Ast.return) list -> internalcomp -> (string * Ast.return) list
+val validate_program :
+  internalcomp list -> string list * (string * Ast.return) list * Ast.return
+val menhir_begin_marker : int
+val xv_weighted_arglist : (Ast.return * int) list
+val xv_weighted_arg : Ast.return * int
+val xv_separated_pair_policy_COMMA_INT_ : Ast.return * int
+val xv_separated_nonempty_list_COMMA_weighted_arg_ : (Ast.return * int) list
+val xv_separated_nonempty_list_COMMA_policy_ : Ast.return list
+val xv_separated_nonempty_list_COMMA_CLSS_ : string list
+val xv_separated_list_COMMA_weighted_arg_ : (Ast.return * int) list
+val xv_separated_list_COMMA_policy_ : Ast.return list
+val xv_separated_list_COMMA_CLSS_ : string list
+val xv_progseq : internalcomp list
+val xv_prog : Ast.program
+val xv_policy : Ast.return
+val xv_loption_separated_nonempty_list_COMMA_weighted_arg__ :
+  (Ast.return * int) list
+val xv_loption_separated_nonempty_list_COMMA_policy__ : Ast.return list
+val xv_loption_separated_nonempty_list_COMMA_CLSS__ : string list
+val xv_list_internalcomp_ : internalcomp list
+val xv_internalcomp : internalcomp
+val xv_arglist : Ast.return list
+val menhir_end_marker : int
