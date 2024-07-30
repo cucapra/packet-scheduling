@@ -1,6 +1,6 @@
 (lang dune 3.16)
 
-(name dsl_lang)
+(name dsl)
 
 (generate_opam_files true)
 
@@ -24,7 +24,7 @@
 (using menhir 3.0)
 
 (package
- (name dsl_lang)
+ (name dsl)
  (synopsis "DSL for Programmable Packet Scheduling")
  (description "TBD")
  (depends ocaml dune ounit2 menhir))
