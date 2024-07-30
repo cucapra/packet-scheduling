@@ -1,12 +1,11 @@
-open Dsl_core.Parse
-open Dsl_core.Util
-open Dsl_core.Eval
+open Dsl_core
 open OUnit2
 
 let path_prefix = "../../../../progs/"
 
 let parse (filename : string) =
-  path_prefix ^ filename |> parse_file |> eval |> string_of_policy
+  path_prefix ^ filename |> Parse.parse_file |> Policy.from_program
+  |> Policy.to_string
 
 let make_test (name : string) (filename : string) (val_str : string) =
   name >:: fun _ -> assert_equal val_str (parse filename) ~printer:Fun.id
@@ -54,11 +53,11 @@ let tests =
 let error_tests =
   [
     make_error_test "undeclared class" "incorrect/undeclared_classes.sched"
-      (UndeclaredClass "Z");
+      (Policy.UndeclaredClass "Z");
     make_error_test "unbound variable" "incorrect/unbound_var.sched"
-      (UnboundVariable "policy");
+      (Policy.UnboundVariable "policy");
     make_error_test "unbound var in middle of list of assignments"
-      "incorrect/unbound_var_hier.sched" (UnboundVariable "r_polic");
+      "incorrect/unbound_var_hier.sched" (Policy.UnboundVariable "r_polic");
   ]
 
 let suite = "suite" >::: tests @ error_tests
