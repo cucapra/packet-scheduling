@@ -1,3 +1,4 @@
+(* Changes to this type must also be reflected in `Ast.policy` in ast.ml *)
 type t =
   | Class of Ast.clss
   | Fifo of t list

@@ -1,6 +1,7 @@
 type clss = string
 type var = string
 
+(* Changes to this type must also be reflected in `Policy.t` in policy.ml *)
 type policy =
   | Class of clss
   | Fifo of policy list
