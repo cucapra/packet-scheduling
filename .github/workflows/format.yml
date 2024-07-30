@@ -22,10 +22,10 @@ jobs:
         with:
           ocaml-compiler: 5
       - name: Install ocamlformat
-        working-directory: dsl_lang
+        working-directory: dsl
         run: opam install ocamlformat
       - name: Check format 
-        working-directory: dsl_lang
+        working-directory: dsl
         run: | 
           [ $(opam exec -- dune fmt 2> >(wc -c)) -eq 0 ]
 

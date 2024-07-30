@@ -2,7 +2,6 @@ open Ast
 
 exception UnboundVariable of var
 exception UndeclaredClass of clss
-exception IllformedExpression of string
 
 (* A function to look up the binding for a variable in a store.
    `lookup s x` returns `s(x)` or raises `UnboundVariable x` if `x` is not defined on `s`. *)
