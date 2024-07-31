@@ -1,4 +1,4 @@
-type clss = string
+type clss = {name : string; used : bool}
 type var = string
 
 (* Changes to this type must also be reflected in `Policy.t` in policy.ml *)

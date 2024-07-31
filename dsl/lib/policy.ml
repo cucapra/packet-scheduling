@@ -1,6 +1,6 @@
 (* Changes to this type must also be reflected in `Ast.policy` in ast.ml *)
 type t =
-  | Class of Ast.clss
+  | Class of Ast.clss 
   | Fifo of t list
   | RoundRobin of t list
   | Strict of t list
@@ -14,7 +14,7 @@ type t =
   | StopAndGo of t list * int
 
 exception UnboundVariable of Ast.var
-exception UndeclaredClass of Ast.clss
+exception UndeclaredClass of string
 
 let lookup s x =
   match List.assoc_opt x s with
@@ -29,7 +29,7 @@ let rec eval cl st p =
   let eval_weighted_plst cl st = List.map (fun (x, i) -> (eval cl st x, i)) in
 
   match p with
-  | Ast.Class c -> if List.mem c cl then Class c else raise (UndeclaredClass c)
+  | Ast.Class c -> if (List.mem c cl) && (c.used = false) then Class {name= c.name; used= true} else raise (UndeclaredClass c.name)
   | Ast.Var x -> eval cl st (lookup st x)
   | Ast.Fifo plst -> Fifo (eval_plst cl st plst)
   | Ast.RoundRobin plst -> RoundRobin (eval_plst cl st plst)
@@ -62,8 +62,8 @@ let rec to_string p =
   in
 
   match p with
-  | Class c -> c
-  | Fifo lst -> "fifo" ^ join lst
+  | Class c -> c.name
+  | Fifo lst -> "fifo" ^ join lst 
   | RoundRobin lst -> "rr" ^ join lst
   | Strict lst -> "strict" ^ join lst
   | WeightedFair lst -> "strict" ^ join_weighted lst
