@@ -1,7 +1,33 @@
-\documentclass{article}
-\usepackage{graphicx} % Required for inserting images
-\usepackage{amsmath}
-\usepackage{amssymb}
+\documentclass{amsart}
+
+% font
+\usepackage{cmbright}
+
+% margin 
+\usepackage[margin=1in]{geometry}
+
+% references
+\usepackage[colorlinks]{hyperref} 
+\PassOptionsToPackage{colorlinks}{hyperref}
+\hypersetup{urlcolor = RedViolet, linkcolor = RoyalBlue, citecolor = NavyBlue}
+
+% basics
+\usepackage[leqno]{amsmath}
+\usepackage{amssymb, amsthm} 
+\usepackage[svgnames, dvipsnames]{xcolor}
+\usepackage{mhsetup, mathtools}
+\usepackage[capitalise]{cleveref}
+
+% commutative diagram
+\usepackage{tikz-cd}
+
+% hats
+\usepackage{yhmath}
+
+% PL macros
+\usepackage{mathpartir}
+\usepackage{stmaryrd}
+
 \usepackage{geometry}
  \geometry{
  a4paper,
@@ -12,11 +38,37 @@
  % no more indent
 \setlength{\parindent}{0pt}
 
+% right-justified sections hack
+\usepackage{titlesec}
+\newcommand{\marginsecnumber}[1]{%
+  \makebox[0pt][r]{#1\hspace{6pt}}%
+}
+\titleformat{\section}
+  {\normalfont\Large\bfseries}
+  {\marginsecnumber\thesection}
+  {0pt}
+  {}
+\titleformat{\subsection}
+  {\normalfont\large\bfseries}
+  {\marginsecnumber\thesubsection}
+  {0pt}
+  {}
+\titleformat{\subsubsection}
+  {\normalfont\normalsize\bfseries}
+  {\marginsecnumber\thesubsubsection}
+  {0pt}
+  {}
+
 \begin{document}
+
+\pagestyle{empty}
+
+{\LARGE \textbf{Preservation of Well-Formedness in PIEO Trees}}
+
+\hrulefill\\
 
 \section{Relevant Definitions}
 
-\subsection{Definition 1}
 \textbf{\textit{Defining $| \cdot |$ on PIEOs With Regards to Pushes}}\newline
 
 
@@ -35,6 +87,7 @@ $$\frac{p \in \text{PIEO}  \hspace{0.7cm} f \in \mathcal{F} \hspace{0.7cm} n \in
 \section{Relevant Lemmas}
 
 \subsection{Lemma 1}
+
 \text{Given $f \in \mathcal{F}, pkt \in \text{Pkt}, d \in \mathcal{D}, pt \in \text{Path}, t \in \text{Topo}$ and $q \in \text{PIEOTree}(t)$:}
 
 $$\begin{cases}
@@ -136,14 +189,20 @@ Thus, it follows that Lemma 1 holds.\newline
 
 \newpage
 
-\section{Proofs For Well-Formedness}
+\section{Proof Of Theorem 2.2}
 
-\subsection{Proof of Lemma 2.2.1}
+Let $t \in \text{Topo}$, $\text{pkt} \in \text{Pkt}$, $d \in \mathcal{D}$, $f,f' \in \mathcal{F}$, and $q \in \text{PIEOTree}(t)$ such that $\vdash_f q$.\newline
+
+1. If $pt \in \text{Path}(t)$, then $\text{push}(q, pkt, d, pt)$ is well-defined and $\vdash_f \text{push}(q, pkt, d, pt)$.\newline
+
+2. If $|q|_{f'} > 0$ and $f' \geq f$, then $\text{pop}(q, f')$ is well-defined and $\vdash_{f'} q'$, where $\text{pop}(q, f') = (pkt, q')$.
+
+\subsection{Proof of Theorem 2.2.1}
 \textit{\textbf{Well-Formedness Is Preserved in PIEO Trees Upon Pushes}}\\[10pt]
 
 We proceed with this proof by inducting upon the definition of $\text{push}$ for PIEO Trees.\newline
 
-\textbf{Base Case : $Leaf(p)$}\newline
+\textbf{Base Case : $\text{Leaf}(p)$}\newline
 
 By definition 1.4 of $\text{push}$ for PIEOs, we have the following for Leaf nodes:
 
@@ -194,7 +253,7 @@ Using definition 2.1 and our Inductive Hypothesis, we can conclude that $\vdash_
 &(10) \implies \forall 1 \leq j \leq |p'|, |p'|_{j, f} = |qs[q' / i][j]|_f&& \hspace{0.3cm} \textit{By (7) and (9)}\\[5pt]
 &(11)  \indent \forall 1 \leq j \leq |qs|. \vdash_f qs[q'/i][j] && \hspace{0.3cm} \textit{Inductive Hypothesis}\\[5pt]
 &(12) \implies \forall 1 \leq j \leq |qs|. \vdash_f qs[q'/i][j] \land |p'|_{j, f} = |qs[q'/i][j]|_f&&\hspace{0.3cm} \textit{By (10) and (11)}\\[5pt]
-&(13) \implies \vdash_f \text{Internal}(qs[q'/i], p') && \hspace{0.3cm} \textit{Definition of } \vdash \textit{given } f\\[-10pt]
+&(13) \implies \vdash_f \text{Internal}(qs[q'/i], p') && \hspace{0.3cm} \textit{Definition of } \vdash_f\\[-10pt]
 \end{alignat*}
 
 With this, we have proven our Inductive Statement and completed the proof. We have shown that pushing to an arbitrary PIEO Tree preserves its well-formedness.\\[-10pt]
