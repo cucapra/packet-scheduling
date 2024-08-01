@@ -1,0 +1,203 @@
+\documentclass{article}
+\usepackage{graphicx} % Required for inserting images
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{geometry}
+ \geometry{
+ a4paper,
+ top=25mm,
+ bottom=25mm,
+ }
+
+ % no more indent
+\setlength{\parindent}{0pt}
+
+\begin{document}
+
+\section{Relevant Definitions}
+
+\subsection{Definition 1}
+\textbf{\textit{Defining $| \cdot |$ on PIEOs With Regards to Pushes}}\newline
+
+
+\textbf{Definition 1A}: \textit{Given a predicate $f \in \mathcal{F}$, element $i$ and data $d$, if $d$ satisfies $f$, then pushing $i$ to $p$ with data $d$ increments the number of instances of $i$ that satisfy $f$.}
+
+$$\frac{p \in \text{PIEO}  \hspace{0.7cm} f \in \mathcal{F} \hspace{0.7cm} n \in \mathbb{N} \hspace{0.7cm} r \in \text{Rank} \hspace{0.7cm} |p|_{i, f} = n \hspace{0.7cm} \text{PUSH}(p, i, d, r) = p' \hspace{0.7cm} f(d)}{|p'|_{i, f} = n+1}$$
+
+\textbf{Definition 1B}: \textit{Given a predicate $f \in \mathcal{F}$, element $i$ and data $d$, if $d$ does not satisfy $f$, then pushing $i$ to $p$ with data $d$ preserves the number of instances of $i$ that satisfy $f$.}
+
+$$\frac{p \in \text{PIEO}  \hspace{0.7cm} f \in \mathcal{F} \hspace{0.7cm} n \in \mathbb{N} \hspace{0.7cm} r \in \text{Rank} \hspace{0.7cm} |p|_{i, f} = n \hspace{0.7cm} \text{PUSH}(p, i, d, r) = p' \hspace{0.7cm} \neg f(d)}{|p'|_{i, f} = n}$$
+
+\textbf{Definition 1C}: \textit{Given elements $i, j$ and data $d \in \mathcal{D}$, pushing $i$ to $p$ with data $d$ does not modify how many times $j$ appears in $p$.}
+
+$$\frac{p \in \text{PIEO}  \hspace{0.7cm} f \in \mathcal{F} \hspace{0.7cm} n \in \mathbb{N} \hspace{0.7cm} r \in \text{Rank} \hspace{0.7cm} |p|_{j, f} = n \hspace{0.7cm} \text{PUSH}(p, i, d, r) = p' \hspace{0.7cm} i \neq j}{|p'|_{j, f} = n}$$
+
+\section{Relevant Lemmas}
+
+\subsection{Lemma 1}
+\text{Given $f \in \mathcal{F}, pkt \in \text{Pkt}, d \in \mathcal{D}, pt \in \text{Path}, t \in \text{Topo}$ and $q \in \text{PIEOTree}(t)$:}
+
+$$\begin{cases}
+    \hspace{0.25cm} \text{$f(d) \implies |push(q, pkt, d, pt)|_f = |q|_f + 1$}\\
+    \text{$\neg f(d) \implies |push(q, pkt, d, pt)|_f = |q|_f$}
+\end{cases}$$
+
+\textbf{Proof}: We proceed about this proof by Structural Induction over the derivation of $| \cdot |$ as follows:\newline
+
+\textbf{Base Case}: $q = \text{Leaf}(p)$ for some PIEO $p$.\newline
+
+By definition 2.1, we have that $|\text{Leaf}(p)|_{i, f} = |p|_{i, f}$, where $|p|_{i, f}$ is the number of occurrences of $i$ in PIEO $p$ that satisfy predicate $f$. The definition of $\text{push}$ in 1.4 gives the following:\newline
+
+$$\frac{\text{PUSH}(p, i, d, r) = p'}{\text{push}(\text{Leaf}(p), pkt, d, r) = \text{Leaf}(p')}$$\\[-10pt]
+
+Where $\text{Leaf}(p')$ is the result of $\text{push}$ing into $\text{Leaf}(p)$.\newline
+
+By definition 1A, we now know that $f(d) \implies |p'|_f = |p|_f + 1$.\newline
+
+By definition 1B, we now know that $\neg f(d) \implies |p'|_f = |p|_f$.\newline
+
+By definition 2.1, we know that $|\text{Leaf}(p')|_f = |p'|_f$ and $|\text{Leaf}(p)|_f = |p|_f$.\newline
+
+Combining these together, we obtain the following:
+
+$$\begin{cases}
+    \hspace{0.25cm} \text{$f(d) \implies |\text{Leaf}(p')|_f = |\text{Leaf}(p)|_f + 1$}\\
+    \text{$\neg f(d) \implies |\text{Leaf}(p')|_f = |\text{Leaf}(p)|_f$}
+\end{cases}$$
+
+Thus, we have proven our base case.\\[10pt]
+
+\textbf{Inductive Case}: Assume an arbitrary PIEO $p$, set of subtrees $qs$, node $q = \text{Internal}(qs, p)$, index $i$, data $d$ and packet $pkt$.
+Also assume a set of paths $pts : |pts| = |qs|$.\newline
+
+\textbf{Inductive Hypothesis}:
+$\forall 1 \leq j \leq |qs|:$
+
+$$\begin{cases}
+    \hspace{0.25cm} \text{$f(d) \implies |push(qs[j], pkt, d, pts[j])|_f = |qs[j]|_f + 1$}\\
+    \text{$\neg f(d) \implies |push(qs[j], pkt, d, pts[j])|_f = |qs[j]|_f$}
+\end{cases}$$\\[-5pt]
+
+We now push a packet $pkt$ with an arbitrary index $i$ and rank $r$.\newline
+
+Let $q' = push(q, pkt, d, (i, r) :: pts[i])$.\newline
+
+\textbf{Show}: 
+
+$$\begin{cases}
+    \hspace{0.25cm} \text{$f(d) \implies |q'|_f = |q|_f + 1$}\\
+    \text{$\neg f(d) \implies |q'|_f = |q|_f$}
+\end{cases}$$
+
+Recall Definition 1.4 for push on Internal Nodes:
+
+$$\frac{\text{push}(qs[i], pkt, d, pt) = q' \hspace{0.5cm} \text{PUSH}(p, i, d, r) = p' }{\text{push}(\text{Internal}(qs, p), pkt, d, (i, r) :: pt) = \text{Internal}(qs[q'/i], p')}$$
+
+Recall Definition 2.1 for $|\cdot|_f$ on Internal Nodes:
+
+$$m = |\text{Internal}(qs, p)|_f = \sum_{j=1}^{|qs|} |qs[j]|_f$$
+
+Thus, we can further conclude the following:
+
+$$|\text{push}(\text{Internal}(qs, p), pkt, d, (i, r) :: pt)|_f = \sum_{j=1}^{|qs|} |qs[q'/i][j]|_f$$
+
+From our Inductive Hypothesis, we know the following:
+
+$$\begin{cases}
+    \hspace{0.25cm} \text{$f(d) \implies |push(qs[i], pkt, d, pts[i])|_f = |qs[i]|_f + 1$}\\
+    \text{$\neg f(d) \implies |push(qs[i], pkt, d, pts[i])|_f = |qs[i]|_f$}
+\end{cases}$$\\[-5pt]
+
+From the definition of $\text{push}$, pushing changes only $qs[i]$, while the remaining subtrees remain the same. Subsequently, we can assert that $\forall 
+1 \leq j \leq |qs|, i \neq j \implies |qs[j]|_f = |qs[q'/i][j]|_f$. With this in mind, we make the following claim:\\[-15pt]
+
+$$|\text{push}(\text{Internal}(qs, p), pkt, (i, r) :: pt)|_f = \sum_{j=1}^{|qs|} |qs[j]|_f - |qs[i]|_f + |qs[q'/i][i]|_f$$
+
+Substituting what we know gives the following:
+
+$$\begin{cases}
+    \hspace{0.25cm} f(d) \implies |\text{push}(\text{Internal}(qs, p), pkt, (i, r) :: pt)|_f = |\text{Internal}(qs, p)|_f - |qs[i]|_f + |qs[i]|_f + 1\\
+    \hspace{0.25cm} \neg f(d) \implies |\text{push}(\text{Internal}(qs, p), pkt, (i, r) :: pt)|_f = |\text{Internal}(qs, p)|_f - |qs[i]|_f + |qs[i]|_f\\
+\end{cases}$$
+
+$$\implies \begin{cases}
+    \hspace{0.25cm} f(d) \implies |\text{push}(\text{Internal}(qs, p), pkt, (i, r) :: pt)|_f = |q|_f + 1\\
+    \hspace{0.25cm} \neg f(d) \implies |\text{push}(\text{Internal}(qs, p), pkt, (i, r) :: pt)|_f = |q|_f \\
+\end{cases}$$
+
+$$\implies \begin{cases}
+    \hspace{0.25cm} f(d) \implies |q'|_f = |q|_f + 1\\
+    \hspace{0.25cm} \neg f(d) \implies|q'|_f = |q|_f \\
+\end{cases}$$
+
+With this, we have shown the desired equality, and proven our Inductive case.\newline
+
+Thus, it follows that Lemma 1 holds.\newline
+
+\newpage
+
+\section{Proofs For Well-Formedness}
+
+\subsection{Proof of Lemma 2.2.1}
+\textit{\textbf{Well-Formedness Is Preserved in PIEO Trees Upon Pushes}}\\[10pt]
+
+We proceed with this proof by inducting upon the definition of $\text{push}$ for PIEO Trees.\newline
+
+\textbf{Base Case : $Leaf(p)$}\newline
+
+By definition 1.4 of $\text{push}$ for PIEOs, we have the following for Leaf nodes:
+
+$$\frac{\text{PUSH}(p, pkt, d, r) = p'}{\text{push}(\text{Leaf}(p), pkt, d, r) = \text{Leaf}(p')}$$\\[-10pt]
+
+It follows that after pushing, the resultant tree is expressed as $\text{Leaf}(p')$ for some packet $p'$. By definition 2.1, we know the following holds for any arbitrary PIEO $p$, under any predicate $f \in \mathcal{F}$:\\[-10pt]
+
+$$\frac{}{\vdash_f \text{Leaf}(p)}$$
+
+We now have: $\forall (p, pkt, d, f, r), \vdash_f \text{push}(\text{Leaf}(p), pkt, d, r)$\newline
+
+With this, our Base Case is proven.\\[10pt]
+
+\textbf{Inductive Case:} $q = \text{Internal}(qs, p), f \in \mathcal{F}, \vdash_f q$\newline
+
+\textbf{Inductive Hypothesis}: $\forall 1 \leq i \leq |qs|. \vdash_f \text{push}(qs[i], pkt, d, pt)$\newline
+
+Recall Definition 2.1 for $\vdash_f$ on Internal Nodes, given a predicate $f$:
+
+$$\frac{\forall 1 \leq i \leq |qs|. \vdash_f qs[i] \land |p|_{i, f} = |qs[i]|_f}{\vdash_f \text{Internal}(\text{qs, p})}$$\newline
+
+Recall Definition 1.4 for $\text{push}$ on Internal Nodes:
+
+$$\frac{\text{push}(qs[i], pkt, d, pt) = q' \hspace{1cm} \text{PUSH}(p, i, d, r) = p'}{\text{push}(\text{Internal}(qs, p), pkt, d, (i, r) :: pt) = \text{Internal}(qs[q'/i], p')}$$\newline
+
+Now, let $q' = \text{push}(qs[i], pkt, d, pt)$, and let $p' = \text{PUSH}(p, i, d, r)$.\newline
+
+\noindent Let $f$ be any totally-ordered predicate.\newline
+
+\textbf{Show}: $\vdash_f q \implies \vdash_f \text{Internal}(qs[q'/i], p')$.\newline
+
+Using definition 2.1 and our Inductive Hypothesis, we can conclude that $\vdash_f q'$. Furthermore, note that the only subtree to be modified in $qs$ is in $qs[i]$, per the definition of $\text{push}$.\newline
+
+\textbf{Now we make the following claim:}\\[-20pt]
+
+\begin{alignat*}{5}
+&(1) \vdash_f \text{Internal}(qs, p) && \hspace{0.3cm} \textit{By definition}\\[10pt]
+&(2) \implies \forall 1 \leq j \leq |qs|. \hspace{0.2cm} \vdash_f qs[j] \land |p|_{j, f} = |qs[j]|_f&& \hspace{0.3cm} \textit{Inversion Lemma (Definition 2.1)}\\[5pt]
+&(3) \implies |p|_{i, f} = |qs[i]|_f&& \hspace{0.3cm} \textit{Instance of universal quantifier (2)}\\[5pt]
+&(4.1)  \hspace{0.2cm} f(d) \implies \indent |p'|_{i, f} = |p|_{i, f} + 1&& \hspace{0.3cm} \textit{Definition 1A}\\[5pt]
+&(4.2)  \hspace{0.2cm} \neg f(d) \implies \indent |p'|_{i, f} = |p|_{i, f} && \hspace{0.3cm} \textit{Definition 1B}\\[5pt]
+&(5.1) \hspace{0.2cm} f(d) \implies \indent |q'|_f = |qs[i]|_f + 1&& \hspace{0.3cm} \textit{Lemma 1}\\[5pt]
+&(5.2) \hspace{0.2cm}  \neg f(d) \implies \indent |q'|_f = |qs[i]|_f && \hspace{0.3cm} \textit{Lemma 1}\\[5pt]
+&(6) \hspace{0.2cm} |p|_{i, f} + 1 = |qs[i]|_f + 1&& \hspace{0.3cm} \textit{Addition Property of Equality (3)}\\[5pt]
+&(7) \implies |p'|_{i, f} = |q'|_f && \hspace{0.3cm} \textit{Substitution (3 - 6)}\\[5pt]
+&(8) \indent \forall 1 \leq j \leq |p'|, i \neq j \implies |p'|_{j, f} = |p|_{j, f}&& \hspace{0.3cm} \textit{Definition 1C}\\[5pt]
+&(9) \implies \forall 1 \leq j \leq |p'|, i \neq j \implies |p'|_{j, f} = |qs[j]|_f&& \hspace{0.3cm} \textit{By (2) and (8)}\\[5pt]
+&(10) \implies \forall 1 \leq j \leq |p'|, |p'|_{j, f} = |qs[q' / i][j]|_f&& \hspace{0.3cm} \textit{By (7) and (9)}\\[5pt]
+&(11)  \indent \forall 1 \leq j \leq |qs|. \vdash_f qs[q'/i][j] && \hspace{0.3cm} \textit{Inductive Hypothesis}\\[5pt]
+&(12) \implies \forall 1 \leq j \leq |qs|. \vdash_f qs[q'/i][j] \land |p'|_{j, f} = |qs[q'/i][j]|_f&&\hspace{0.3cm} \textit{By (10) and (11)}\\[5pt]
+&(13) \implies \vdash_f \text{Internal}(qs[q'/i], p') && \hspace{0.3cm} \textit{Definition of } \vdash \textit{given } f\\[-10pt]
+\end{alignat*}
+
+With this, we have proven our Inductive Statement and completed the proof. We have shown that pushing to an arbitrary PIEO Tree preserves its well-formedness.\\[-10pt]
+
+\end{document}
+

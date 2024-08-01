@@ -64,7 +64,7 @@ $$\frac{q \in \text{PIFOTree} \hspace{0.7cm} |q| = n \hspace{0.7cm} n \in \mathb
 
 \textbf{Proof}. We proceed upon this proof by structural induction over the definition of $|\cdot|$ as follows.\newline
 
-\textbf{Base Case}: $q = \text{Leaf}(p)$ for some packet $p$.\newline
+\textbf{Base Case}: $q = \text{Leaf}(p)$ for some PIFO $p$.\newline
 
 By definition 3.8, we have that $|\text{Leaf}(p)|_i = |p|_i$, where $|p|_i$ is the number of occurrences of $i$ in PIFO $p$. The definition of $\text{push}$ in 3.6 gives the following:
 
@@ -127,7 +127,7 @@ $$\frac{q \in \text{PIFOTree} \hspace{0.7cm} |q| = n \hspace{0.7cm} n \in \mathb
 
 \textbf{Proof}. We proceed upon this proof by structural induction over the definition of $|\cdot|$ as follows.\newline
 
-\textbf{Base Case}: $q = \text{Leaf}(p)$ for some packet $p$.\newline
+\textbf{Base Case}: $q = \text{Leaf}(p)$ for some PIFO $p$.\newline
 
 By definition 3.8, we have that $|\text{Leaf}(p)|_i = |p|_i$, where $|p|_i$ is the number of occurrences of $i$ in PIFO $p$. The definition of $\text{pop}$ in 3.6 gives the following:
 
@@ -196,7 +196,7 @@ By definition 3.6 of $\text{push}$, we have the following for Leaf nodes:
 
 $$\frac{\text{PUSH}(p, pkt, r) = p'}{\text{push}(\text{Leaf}(p), pkt, r) = \text{Leaf}(p')}$$\\[-10pt]
 
-It follows that after pushing, the resultant tree is expressed as $\text{Leaf}(p')$ for some packet $p'$ By definition 3.8 (cited above), we know the following holds for any arbitrary PIFO $p$:\\[-10pt]
+It follows that after pushing, the resultant tree is expressed as $\text{Leaf}(p')$ for some PIFO $p'$ By definition 3.8 (cited above), we know the following holds for any arbitrary PIFO $p$:\\[-10pt]
 
 $$\frac{}{\vdash \text{Leaf}(p)}$$
 
@@ -253,7 +253,7 @@ By definition 3.4 of $\text{pop}$, the following holds for Leaf nodes:
 
 $$\frac{\text{POP}(p) = (pkt, p')}{\text{pop}(\text{Leaf}(p)) = (pkt, \text{Leaf}(p'))}$$\\[-15pt]
 
-It follows that after popping, the resultant tree is of form $\text{Leaf}(p')$ for some packet $p'$. By definition 3.8 (cited above), we know the following holds for any arbitrary PIFO $p$:\\[-20pt]
+It follows that after popping, the resultant tree is of form $\text{Leaf}(p')$ for some PIFO $p'$. By definition 3.8 (cited above), we know the following holds for any arbitrary PIFO $p$:\\[-20pt]
 
 $$\frac{}{\vdash \text{Leaf}(p)}$$\\[-10pt]
 
