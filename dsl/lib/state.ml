@@ -1,10 +1,12 @@
 type t = (string, float) Hashtbl.t
 
-let create size = Hashtbl.create size
+exception UnboundKey of string
 
-let lookup v t =
-  try Hashtbl.find t v
-  with Not_found -> failwith (Printf.sprintf "Uninitialized variable: %s" v)
+let create size = Hashtbl.create size
+let lookup_opt k t = Hashtbl.find_opt t k
+
+let lookup k t =
+  match lookup_opt k t with Some v -> v | None -> raise (UnboundKey k)
 
 let rebind k v t =
   Hashtbl.remove t k;

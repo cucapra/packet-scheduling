@@ -1,15 +1,9 @@
 type t = Star | Node of t list
 
-let rec of_policy p =
-  let open Policy in
+let rec of_policy (p : Policy.t) =
   match p with
   | Class _ -> Star
-  | Fifo plst
-  | RoundRobin plst
-  | Strict plst
-  | EarliestDeadline plst
-  | ShortestJobNext plst ->
-      Node (List.map of_policy plst)
+  | Fifo plst | RoundRobin plst | Strict plst -> Node (List.map of_policy plst)
   | WeightedFair wplst -> Node (List.map (fun (p, _) -> of_policy p) wplst)
 
 let rec size = function

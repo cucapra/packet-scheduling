@@ -5,9 +5,9 @@ type t =
   | RoundRobin of t list
   | Strict of t list
   | WeightedFair of (t * int) list
+(*
   | EarliestDeadline of t list
   | ShortestJobNext of t list
-(*
   | ShortestRemaining of t list
   | RateControlled of t list
   | LeakyBucket of t list * int * int

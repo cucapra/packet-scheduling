@@ -4,6 +4,8 @@ type t =
   | Leaf of (Packet.t * Rank.t * Time.t) Pieo.t
   | Internal of t list * (int * Rank.t * Time.t) Pieo.t
 
+exception InvalidPath
+
 let predicate now (_, _, ts) = ts <= now
 
 let rec pop t now =
@@ -23,7 +25,7 @@ let rec push t ts pkt path =
       let p' = Pieo.push p (i, r, ts) in
       let q' = push (List.nth qs i) ts pkt pt in
       Internal (Util.replace_nth qs i q', p')
-  | _ -> failwith "Push: invalid path"
+  | _ -> raise InvalidPath
 
 let rec size t now =
   (* The size of a PIEO tree is the number of ready packets in its leaves.
