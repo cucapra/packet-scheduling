@@ -103,7 +103,38 @@ let z_in p s pkt =
   | Some rank_less_path -> z_in_aux p rank_less_path Eps s pkt
   | None -> raise (RoutingError pkt)
 
-let z_out _ = failwith "TBD"
+let z_out p s pkt =
+  let rec z_out_aux (p : Policy.t) rank_less_path addr s pkt =
+    let prefix = addr_to_string addr in
+
+    match (p, rank_less_path) with
+    | Class _, [] -> s
+    | Fifo plst, h :: t | Strict plst, h :: t ->
+        z_out_aux (List.nth plst h) t (Cons (h, addr)) s pkt
+    | WeightedFair plst, h :: t ->
+        z_out_aux (List.nth plst h |> fst) t (Cons (h, addr)) s pkt
+    | RoundRobin plst, h :: t ->
+        let n = List.length plst in
+        let who_skip pop turn =
+          let rec who_skip_aux t acc =
+            if t = pop then acc else who_skip_aux ((t + 1) mod n) (t :: acc)
+          in
+          who_skip_aux turn []
+        in
+        let turn = State.lookup (Printf.sprintf "%s_turn" prefix) s in
+        let s' = State.rebind "turn" ((h + 1) mod n |> float_of_int) s in
+        let skipped = who_skip h (int_of_float turn) in
+        let f s i =
+          let r_i = Printf.sprintf "%s_r_%d" prefix i in
+          State.rebind r_i (State.lookup r_i s +. float_of_int n) s
+        in
+        let s'' = List.fold_left f s' skipped in
+        z_out_aux (List.nth plst h) t (Cons (h, addr)) s'' pkt
+    | _ -> failwith "ERROR: unreachable branch"
+  in
+  match route_pkt_opt p pkt with
+  | Some rank_less_path -> z_out_aux p rank_less_path Eps s pkt
+  | None -> raise (RoutingError pkt)
 
 let of_policy p =
   {
