@@ -7,12 +7,11 @@ let digit = ['0'-'9']
 let int = '-'? digit+
 let id = ['a'-'z'] ['a'-'z' '0'-'9' '_']*
 let bigid = ['A'-'Z']*
-let newline = ['\n']*
 let comment = ['/' '/'] ['\x00' - '\x09']* ['\x0b' - '\x80']*
 
 rule token = parse
 | whitespace            { token lexbuf}
-| newline               { Lexing.new_line lexbuf; token lexbuf }
+| "\n"                  { Lexing.new_line lexbuf; token lexbuf }
 | comment               { token lexbuf }
 | "="                   { EQUALS }
 | "["                   { LBRACKET }

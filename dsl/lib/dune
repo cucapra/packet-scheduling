@@ -1,5 +1,6 @@
 (library
- (name dsl_core))
+ (name dsl_core)
+ (libraries core_kernel.fheap))
 
 (menhir
  (modules parser))

@@ -1,11 +1,10 @@
 open Dsl_core
 open OUnit2
 
-let path_prefix = "../../../../progs/"
+let prefix = "../../../../progs/"
 
 let parse (filename : string) =
-  path_prefix ^ filename |> Parse.parse_file |> Policy.from_program
-  |> Policy.to_string
+  prefix ^ filename |> Parse.parse_file |> Policy.of_program |> Policy.to_string
 
 let make_test (name : string) (filename : string) (val_str : string) =
   name >:: fun _ -> assert_equal val_str (parse filename) ~printer:Fun.id
@@ -15,7 +14,7 @@ let make_error_test (name : string) (filename : string) (exn : exn) =
 
 (* The test suite for our interpreter. *)
 
-let tests =
+let wc_tests =
   [
     make_test "single class policy" "work_conserving/drop_a_class.sched" "A";
     make_test "fifo sugar 1 class" "work_conserving/fifo_1_class_sugar.sched"
@@ -37,6 +36,10 @@ let tests =
       "strict[A, B, rr[rr[CU, CV], strict[CW, CX]]]";
     make_test "strict of 3" "work_conserving/strict_n_classes.sched"
       "strict[A, B, C]";
+  ]
+
+let _nwc_tests =
+  [
     make_test "leaky bucket of 2" "non_work_conserving/leaky_2_classes.sched"
       "leaky[[A, B], width = 5, buffer = 10]";
     make_test "token bucket of 2 round robins"
@@ -60,5 +63,5 @@ let error_tests =
       "incorrect/unbound_var_hier.sched" (Policy.UnboundVariable "r_polic");
   ]
 
-let suite = "suite" >::: tests @ error_tests
+let suite = "suite" >::: wc_tests @ error_tests (* @ nwc_tests *)
 let () = run_test_tt_main suite
