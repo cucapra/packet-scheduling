@@ -12,6 +12,10 @@ let rec of_policy p =
       Node (List.map of_policy plst)
   | WeightedFair wplst -> Node (List.map (fun (p, _) -> of_policy p) wplst)
 
+let rec size = function
+  | Star -> 1
+  | Node ts -> List.fold_left (fun acc x -> acc + size x) 0 ts
+
 (* A few topologies to play with. *)
 let one_level_quaternary = Node [ Star; Star; Star; Star ]
 let one_level_ternary = Node [ Star; Star; Star ]

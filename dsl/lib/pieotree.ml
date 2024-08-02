@@ -39,3 +39,6 @@ let rec create (topo : Topo.t) =
       let qs = List.map create topos in
       let p = Pieo.create (fun (_, a, _) (_, b, _) -> Rank.cmp a b) in
       Internal (qs, p)
+
+let rec to_topo t : Topo.t =
+  match t with Leaf _ -> Star | Internal (qs, _) -> Node (List.map to_topo qs)

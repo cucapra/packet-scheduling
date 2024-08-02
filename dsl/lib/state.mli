@@ -3,4 +3,5 @@ type t
 val create : int -> t
 val lookup : string -> t -> float
 val rebind : string -> float -> t -> t
+val rebind_all : (string * float) list -> t -> t
 val isdefined : string -> t -> bool

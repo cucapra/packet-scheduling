@@ -11,4 +11,5 @@ let rebind k v t =
   Hashtbl.add t k v;
   t
 
+let rebind_all lst t = List.fold_left (fun t (k, v) -> rebind k v t) t lst
 let isdefined mem t = Hashtbl.mem t mem

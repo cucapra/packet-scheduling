@@ -1,6 +1,7 @@
 type t = Star | Node of t list
 
 val of_policy : Policy.t -> t
+val size : t -> int
 
 (* A few topologies to play with. *)
 val one_level_quaternary : t
