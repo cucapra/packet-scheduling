@@ -15,36 +15,46 @@ type t =
 
 exception UnboundVariable of Ast.var
 exception UndeclaredClass of Ast.clss
+exception DuplicateClass of Ast.clss
 
 let lookup s x =
   match List.assoc_opt x s with
   | Some v -> v
   | None -> raise (UnboundVariable x)
 
-let rec eval cl st p =
+let rec eval cl st (used : string list ref) p =
   (* Helper function that evaulates a policy list. *)
-  let eval_plst cl st = List.map (eval cl st) in
+  let eval_plst cl st used = List.map (eval cl st used) in
 
   (* Helper function that evaluates a weighted policy list. *)
-  let eval_weighted_plst cl st = List.map (fun (x, i) -> (eval cl st x, i)) in
+  let eval_weighted_plst cl st used =
+    List.map (fun (x, i) -> (eval cl st used x, i))
+  in
 
   match p with
-  | Ast.Class c -> if List.mem c cl then Class c else raise (UndeclaredClass c)
-  | Ast.Var x -> eval cl st (lookup st x)
-  | Ast.Fifo plst -> Fifo (eval_plst cl st plst)
-  | Ast.RoundRobin plst -> RoundRobin (eval_plst cl st plst)
-  | Ast.Strict plst -> Strict (eval_plst cl st plst)
-  | Ast.WeightedFair wplst -> WeightedFair (eval_weighted_plst cl st wplst)
-  | Ast.EarliestDeadline plst -> EarliestDeadline (eval_plst cl st plst)
-  | Ast.ShortestJobNext plst -> ShortestJobNext (eval_plst cl st plst)
-  | Ast.ShortestRemaining plst -> ShortestRemaining (eval_plst cl st plst)
-  | Ast.RateControlled plst -> RateControlled (eval_plst cl st plst)
-  | Ast.LeakyBucket (plst, n1, n2) -> LeakyBucket (eval_plst cl st plst, n1, n2)
-  | Ast.TokenBucket (plst, n1, n2) -> TokenBucket (eval_plst cl st plst, n1, n2)
-  | Ast.StopAndGo (plst, n) -> StopAndGo (eval_plst cl st plst, n)
+  | Ast.Class c ->
+      if List.mem c !used then raise (DuplicateClass c)
+      else if List.mem c cl then (
+        used := c :: !used;
+        Class c)
+      else raise (UndeclaredClass c)
+  | Ast.Var x -> eval cl st used (lookup st x)
+  | Ast.Fifo plst -> Fifo (eval_plst cl st used plst)
+  | Ast.RoundRobin plst -> RoundRobin (eval_plst cl st used plst)
+  | Ast.Strict plst -> Strict (eval_plst cl st used plst)
+  | Ast.WeightedFair wplst -> WeightedFair (eval_weighted_plst cl st used wplst)
+  | Ast.EarliestDeadline plst -> EarliestDeadline (eval_plst cl st used plst)
+  | Ast.ShortestJobNext plst -> ShortestJobNext (eval_plst cl st used plst)
+  | Ast.ShortestRemaining plst -> ShortestRemaining (eval_plst cl st used plst)
+  | Ast.RateControlled plst -> RateControlled (eval_plst cl st used plst)
+  | Ast.LeakyBucket (plst, n1, n2) ->
+      LeakyBucket (eval_plst cl st used plst, n1, n2)
+  | Ast.TokenBucket (plst, n1, n2) ->
+      TokenBucket (eval_plst cl st used plst, n1, n2)
+  | Ast.StopAndGo (plst, n) -> StopAndGo (eval_plst cl st used plst, n)
 
 (* Evaluates a program, looking up any variables and substituting them in. *)
-let from_program (cl, alst, ret) = eval cl alst ret
+let from_program (cl, alst, ret) = eval cl alst (ref []) ret
 
 let rec to_string p =
   let bracket_wrap s = "[" ^ s ^ "]" in

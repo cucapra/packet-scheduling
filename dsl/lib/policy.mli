@@ -15,6 +15,7 @@ type t =
 
 exception UnboundVariable of Ast.var
 exception UndeclaredClass of Ast.clss
+exception DuplicateClass of Ast.clss
 
 val from_program : Ast.program -> t
 val to_string : t -> string

@@ -1,7 +1,7 @@
 open Dsl_core
 open OUnit2
 
-let path_prefix = "../../../../progs/"
+let path_prefix = "../../progs/"
 
 let parse (filename : string) =
   path_prefix ^ filename |> Parse.parse_file |> Policy.from_program
@@ -58,6 +58,8 @@ let error_tests =
       (Policy.UnboundVariable "policy");
     make_error_test "unbound var in middle of list of assignments"
       "incorrect/unbound_var_hier.sched" (Policy.UnboundVariable "r_polic");
+    make_error_test "class used twice in policy" "incorrect/duplicate_classes.sched" 
+    (Policy.DuplicateClass "B"); 
   ]
 
 let suite = "suite" >::: tests @ error_tests
