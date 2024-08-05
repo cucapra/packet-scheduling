@@ -52,21 +52,20 @@ let rec eval cl st (p : Ast.policy) =
 let of_program (cl, alst, ret) = eval cl alst ret
 
 let rec to_string p =
-  let bracket_wrap s = "[" ^ s ^ "]" in
+  let sprintf = Printf.sprintf in
 
   (* Helper function to compactly join policy lists by comma *)
   let join lst =
-    lst |> List.map to_string |> String.concat ", " |> bracket_wrap
+    sprintf "[%s]" (lst |> List.map to_string |> String.concat ", ")
   in
 
   (* Helper function to compactly join weighted policy lists by comma *)
   let join_weighted lst =
-    lst
-    |> List.map (fun (x, y) -> "(" ^ to_string x ^ ", " ^ string_of_int y ^ ")")
-    |> String.concat ", " |> bracket_wrap
+    sprintf "[%s]"
+      (lst
+      |> List.map (fun (x, y) -> sprintf "(%s, %d)" (to_string x) y)
+      |> String.concat ", ")
   in
-
-  let sprintf = Printf.sprintf in
 
   match p with
   | Class c -> c

@@ -9,6 +9,8 @@ type addr = Eps | Cons of int * addr
 
 exception RoutingError of Packet.t
 
+let sprintf = Printf.sprintf
+
 let rec addr_to_string = function
   | Eps -> "ε"
   | Cons (i, addr) -> Printf.sprintf "%d ∙ %s" i (addr_to_string addr)
@@ -27,23 +29,23 @@ let init_state p =
     | RoundRobin plst ->
         let ranks =
           List.mapi
-            (fun i _ -> (Printf.sprintf "%s_r_%d" prefix i, float_of_int i))
+            (fun i _ -> (sprintf "%s_r_%d" prefix i, float_of_int i))
             plst
         in
         s
-        |> State.rebind (Printf.sprintf "%s_turn" prefix) 0.0
+        |> State.rebind (sprintf "%s_turn" prefix) 0.0
         |> State.rebind_all ranks |> join plst addr
     | WeightedFair wplst ->
         let weights =
           List.mapi
-            (fun i (_, w) ->
-              (Printf.sprintf "%s_w_%d" prefix i, float_of_int w))
+            (fun i (_, w) -> (sprintf "%s_w_%d" prefix i, float_of_int w))
             wplst
         in
         s |> State.rebind_all weights |> join (List.map fst wplst) addr
     | Fifo plst | Strict plst -> join plst addr s
   in
-  init_state_aux p Eps (State.create 10)
+  let buckets = (p |> Topo.of_policy |> Topo.size) * 10 in
+  init_state_aux p Eps (State.create buckets)
 
 let route_pkt_opt p pkt =
   let rec route_pkt_opt_aux (p : Frontend.Policy.t) pt pkt =
@@ -75,7 +77,7 @@ let z_in p s pkt =
         ((h, Rank.create_for_pkt (float_of_int h) pkt) :: pt, s', time)
     | RoundRobin plst, h :: t ->
         let n = List.length plst in
-        let r_i = Printf.sprintf "%s_r_%d" prefix h in
+        let r_i = sprintf "%s_r_%d" prefix h in
         let rank = State.lookup r_i s in
         let s' = State.rebind r_i (rank +. float_of_int n) s in
         let pt, s'', time =
@@ -83,9 +85,7 @@ let z_in p s pkt =
         in
         ((h, Rank.create_for_pkt rank pkt) :: pt, s'', time)
     | WeightedFair plst, h :: t ->
-        let lf, w =
-          (Printf.sprintf "%s_lf_%d" prefix h, Printf.sprintf "%s_w_%d" prefix h)
-        in
+        let lf, w = (sprintf "%s_lf_%d" prefix h, sprintf "%s_w_%d" prefix h) in
         let weight = State.lookup w s in
         let rank =
           match State.lookup_opt lf s with
@@ -121,11 +121,11 @@ let z_out p s pkt =
           in
           who_skip_aux turn []
         in
-        let turn = State.lookup (Printf.sprintf "%s_turn" prefix) s in
+        let turn = State.lookup (sprintf "%s_turn" prefix) s in
         let s' = State.rebind "turn" ((h + 1) mod n |> float_of_int) s in
         let skipped = who_skip h (int_of_float turn) in
         let f s i =
-          let r_i = Printf.sprintf "%s_r_%d" prefix i in
+          let r_i = sprintf "%s_r_%d" prefix i in
           State.rebind r_i (State.lookup r_i s +. float_of_int n) s
         in
         let s'' = List.fold_left f s' skipped in
