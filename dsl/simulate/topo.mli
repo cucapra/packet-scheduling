@@ -1,6 +1,6 @@
 type t = Star | Node of t list
 
-val of_policy : Policy.t -> t
+val of_policy : Frontend.Policy.t -> t
 val size : t -> int
 
 (* A few topologies to play with. *)

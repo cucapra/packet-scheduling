@@ -14,7 +14,7 @@ let rec addr_to_string = function
   | Cons (i, addr) -> Printf.sprintf "%d ∙ %s" i (addr_to_string addr)
 
 let init_state p =
-  let rec init_state_aux (p : Policy.t) addr s =
+  let rec init_state_aux (p : Frontend.Policy.t) addr s =
     let join plst addr s =
       let f (i, s) p = (i + 1, init_state_aux p (Cons (i, addr)) s) in
       match List.fold_left f (0, s) plst with _, s' -> s'
@@ -46,7 +46,7 @@ let init_state p =
   init_state_aux p Eps (State.create 10)
 
 let route_pkt_opt p pkt =
-  let rec route_pkt_opt_aux (p : Policy.t) pt pkt =
+  let rec route_pkt_opt_aux (p : Frontend.Policy.t) pt pkt =
     match p with
     | Class c -> if Packet.flow pkt = c then Some (List.rev pt) else None
     | Fifo plst | RoundRobin plst | Strict plst ->
@@ -57,7 +57,7 @@ let route_pkt_opt p pkt =
   route_pkt_opt_aux p [] pkt
 
 let z_in p s pkt =
-  let rec z_in_aux (p : Policy.t) rank_less_path addr s pkt =
+  let rec z_in_aux (p : Frontend.Policy.t) rank_less_path addr s pkt =
     let prefix = addr_to_string addr in
 
     match (p, rank_less_path) with
@@ -104,7 +104,7 @@ let z_in p s pkt =
   | None -> raise (RoutingError pkt)
 
 let z_out p s pkt =
-  let rec z_out_aux (p : Policy.t) rank_less_path addr s pkt =
+  let rec z_out_aux (p : Frontend.Policy.t) rank_less_path addr s pkt =
     let prefix = addr_to_string addr in
 
     match (p, rank_less_path) with

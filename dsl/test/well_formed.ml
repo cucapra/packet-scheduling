@@ -1,4 +1,4 @@
-open Dsl_core
+open Frontend
 open OUnit2
 
 let prefix = "../../../../progs/"

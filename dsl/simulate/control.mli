@@ -5,4 +5,4 @@ type t = {
   z_out : State.t -> Packet.t -> State.t;
 }
 
-val of_policy : Policy.t -> t
+val of_policy : Frontend.Policy.t -> t

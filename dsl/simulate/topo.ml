@@ -1,6 +1,6 @@
 type t = Star | Node of t list
 
-let rec of_policy (p : Policy.t) =
+let rec of_policy (p : Frontend.Policy.t) =
   match p with
   | Class _ -> Star
   | Fifo plst | RoundRobin plst | Strict plst -> Node (List.map of_policy plst)
