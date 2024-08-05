@@ -6,14 +6,14 @@ type t =
   | Strict of t list
   | WeightedFair of (t * int) list
 (*
-  | EarliestDeadline of t list
-  | ShortestJobNext of t list
-  | ShortestRemaining of t list
-  | RateControlled of t list
-  | LeakyBucket of t list * int * int
-  | TokenBucket of t list * int * int
-  | StopAndGo of t list * int
-  *)
+   | EarliestDeadline of t list
+   | ShortestJobNext of t list
+   | ShortestRemaining of t list
+   | RateControlled of t list
+   | LeakyBucket of t list * int * int
+   | TokenBucket of t list * int * int
+   | StopAndGo of t list * int
+*)
 
 exception UnboundVariable of Ast.var
 exception UndeclaredClass of Ast.clss
@@ -40,11 +40,11 @@ let rec eval cl st (p : Ast.policy) =
   (*
   | EarliestDeadline plst -> EarliestDeadline (eval_plst cl st plst)
   | ShortestJobNext plst -> ShortestJobNext (eval_plst cl st plst)
-  | Ast.ShortestRemaining plst -> ShortestRemaining (eval_plst cl st plst)
-  | Ast.RateControlled plst -> RateControlled (eval_plst cl st plst)
-  | Ast.LeakyBucket (plst, n1, n2) -> LeakyBucket (eval_plst cl st plst, n1, n2)
-  | Ast.TokenBucket (plst, n1, n2) -> TokenBucket (eval_plst cl st plst, n1, n2)
-  | Ast.StopAndGo (plst, n) -> StopAndGo (eval_plst cl st plst, n)
+  | ShortestRemaining plst -> ShortestRemaining (eval_plst cl st plst)
+  | RateControlled plst -> RateControlled (eval_plst cl st plst)
+  | LeakyBucket (plst, n1, n2) -> LeakyBucket (eval_plst cl st plst, n1, n2)
+  | TokenBucket (plst, n1, n2) -> TokenBucket (eval_plst cl st plst, n1, n2)
+  | StopAndGo (plst, n) -> StopAndGo (eval_plst cl st plst, n)
   *)
   | _ -> failwith "ERROR: unsupported policy"
 
@@ -66,23 +66,23 @@ let rec to_string p =
     |> String.concat ", " |> bracket_wrap
   in
 
+  let sprintf = Printf.sprintf in
+
   match p with
   | Class c -> c
-  | Fifo lst -> "fifo" ^ join lst
-  | RoundRobin lst -> "rr" ^ join lst
-  | Strict lst -> "strict" ^ join lst
-  | WeightedFair lst -> "strict" ^ join_weighted lst
+  | Fifo lst -> sprintf "fifo%s" (join lst)
+  | RoundRobin lst -> sprintf "rr%s" (join lst)
+  | Strict lst -> sprintf "strict%s" (join lst)
+  | WeightedFair lst -> sprintf "strict%s" (join_weighted lst)
 (*
-  | EarliestDeadline lst -> "edf" ^ join lst
-  | ShortestJobNext lst -> "sjn" ^ join lst
-  | ShortestRemaining lst -> "srtf" ^ join lst
-  | RateControlled lst -> "rcsp" ^ join lst
+  | EarliestDeadline lst -> sprintf "edf%s" (join lst)
+  | ShortestJobNext lst -> sprintf "sjn%s" (join lst)
+  | ShortestRemaining lst -> sprintf "srtf%s" (join lst)
+  | RateControlled lst -> sprintf "rcsp%s" (join lst)
   | LeakyBucket (lst, width, buffer) ->
-      "leaky[" ^ join lst ^ ", width = " ^ string_of_int width ^ ", buffer = "
-      ^ string_of_int buffer ^ "]"
+      sprintf "leaky[%s, width = %d, buffer = %d]" (join lst) width buffer
   | TokenBucket (lst, width, buffer) ->
-      "token[" ^ join lst ^ ", width = " ^ string_of_int width ^ ", time = "
-      ^ string_of_int buffer ^ "]"
+      sprintf "token[%s, width = %d, time = %d]" (join lst) width buffer
   | StopAndGo (lst, width) ->
-      "stopandgo[" ^ join lst ^ ", width = " ^ string_of_int width ^ "]"
+      sprintf "stopandgo[%s, width = %d]" (join lst) width
   *)

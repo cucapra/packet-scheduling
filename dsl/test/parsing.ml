@@ -3,22 +3,20 @@ open OUnit2
 
 let prefix = "../../../../progs/"
 
-let parse (filename : string) =
-  prefix ^ filename |> Parse.parse_file |> Policy.of_program |> Policy.to_string
+let parse filename =
+  prefix ^ filename |> Parser.parse_file |> Policy.of_program
+  |> Policy.to_string
 
-let make_test (name : string) (filename : string) (val_str : string) =
+let make_test name filename val_str =
   name >:: fun _ -> assert_equal val_str (parse filename) ~printer:Fun.id
 
-let make_error_test (name : string) (filename : string) (exn : exn) =
+let make_error_test name filename exn =
   name >:: fun _ -> assert_raises exn (fun () -> parse filename)
-
-(* The test suite for our interpreter. *)
 
 let wc_tests =
   [
     make_test "single class policy" "work_conserving/drop_a_class.sched" "A";
-    make_test "fifo sugar 1 class" "work_conserving/fifo_1_class_sugar.sched"
-      "A";
+    make_test "fifo 1 class" "work_conserving/fifo_1_class_sugar.sched" "A";
     make_test "fifo 1 class" "work_conserving/fifo_1_class.sched" "A";
     make_test "fifo of 3" "work_conserving/fifo_n_classes.sched" "fifo[A, B, C]";
     make_test "rr of 1" "work_conserving/rr_1_class.sched" "rr[A]";
