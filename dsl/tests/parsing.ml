@@ -33,7 +33,9 @@ let wc_tests =
       "work_conserving/rr_strict_n_classes_hier.sched"
       "strict[A, B, rr[rr[CU, CV], strict[CW, CX]]]";
     make_test "strict of 3" "work_conserving/strict_n_classes.sched"
-      "strict[A, B, C]";
+      "strict[C, B, A]";
+    make_test "wfq of 3" "work_conserving/wfq_n_classes.sched"
+      "wfq[(A, 0.10), (B, 0.20), (C, 0.30)]";
   ]
 
 let _nwc_tests =

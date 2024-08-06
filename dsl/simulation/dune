@@ -1,0 +1,6 @@
+(library
+ (name Simulation)
+ (public_name dsl.simulation)
+ (libraries dsl.frontend core_kernel.fheap pcap-format hex csv mmap)
+ (preprocess
+  (pps ppx_cstruct)))

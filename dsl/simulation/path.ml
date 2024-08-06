@@ -9,11 +9,3 @@ type t = (int * Rank.t) list
 *)
 
 let foot = -1
-
-let rec to_string = function
-  | [] -> "\n"
-  | [ (_, r) ] ->
-      (* The integer at the foot of the path is bogus, so we drop it. *)
-      Printf.sprintf "_ @ %s" (Rank.to_string false r)
-  | (i, r) :: t ->
-      Printf.sprintf "%d @ %s\t %s" i (Rank.to_string false r) (to_string t)

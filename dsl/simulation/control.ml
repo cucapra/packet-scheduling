@@ -37,9 +37,7 @@ let init_state p =
         |> State.rebind_all ranks |> join plst addr
     | WeightedFair wplst ->
         let weights =
-          List.mapi
-            (fun i (_, w) -> (sprintf "%s_w_%d" prefix i, float_of_int w))
-            wplst
+          List.mapi (fun i (_, w) -> (sprintf "%s_w_%d" prefix i, w)) wplst
         in
         s |> State.rebind_all weights |> join (List.map fst wplst) addr
     | Fifo plst | Strict plst -> join plst addr s
@@ -122,7 +120,11 @@ let z_out p s pkt =
           who_skip_aux turn []
         in
         let turn = State.lookup (sprintf "%s_turn" prefix) s in
-        let s' = State.rebind "turn" ((h + 1) mod n |> float_of_int) s in
+        let s' =
+          State.rebind (sprintf "%s_turn" prefix)
+            ((h + 1) mod n |> float_of_int)
+            s
+        in
         let skipped = who_skip h (int_of_float turn) in
         let f s i =
           let r_i = sprintf "%s_r_%d" prefix i in

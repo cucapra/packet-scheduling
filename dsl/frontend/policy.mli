@@ -4,7 +4,7 @@ type t =
   | Fifo of t list
   | RoundRobin of t list
   | Strict of t list
-  | WeightedFair of (t * int) list
+  | WeightedFair of (t * float) list
 (*
   | EarliestDeadline of t list
   | ShortestJobNext of t list

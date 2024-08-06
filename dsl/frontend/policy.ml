@@ -4,7 +4,7 @@ type t =
   | Fifo of t list
   | RoundRobin of t list
   | Strict of t list
-  | WeightedFair of (t * int) list
+  | WeightedFair of (t * float) list
 (*
    | EarliestDeadline of t list
    | ShortestJobNext of t list
@@ -63,7 +63,7 @@ let rec to_string p =
   let join_weighted lst =
     sprintf "[%s]"
       (lst
-      |> List.map (fun (x, y) -> sprintf "(%s, %d)" (to_string x) y)
+      |> List.map (fun (x, y) -> sprintf "(%s, %.2f)" (to_string x) y)
       |> String.concat ", ")
   in
 
@@ -72,7 +72,7 @@ let rec to_string p =
   | Fifo lst -> sprintf "fifo%s" (join lst)
   | RoundRobin lst -> sprintf "rr%s" (join lst)
   | Strict lst -> sprintf "strict%s" (join lst)
-  | WeightedFair lst -> sprintf "strict%s" (join_weighted lst)
+  | WeightedFair lst -> sprintf "wfq%s" (join_weighted lst)
 (*
   | EarliestDeadline lst -> sprintf "edf%s" (join lst)
   | ShortestJobNext lst -> sprintf "sjn%s" (join lst)
