@@ -163,7 +163,7 @@ $f \leq f^\prime \land f(d) \implies f^\prime(d)$.
             \forall i \in [1, n]. \; qs[i] \in \mathbf{PIEOTree}(ts[i])
         }
         {
-            \Internal(qs, p) \in \mathbf{PIEO}(\Node(ts))
+            \Internal(qs, p) \in \mathbf{PIEOTree}(\Node(ts))
         }
     \end{align*}
 \end{dfn}
@@ -174,7 +174,7 @@ $f \leq f^\prime \land f(d) \implies f^\prime(d)$.
     \begin{align*}
         \inference{}
         {
-            \pop(p, f) = (\pkt, p^\prime)
+            \text{POP}(p, f) = (\pkt, p^\prime)
         }
         {
             \pop(\Leaf(p), f) = (\pkt, \Leaf(p^\prime))
@@ -182,7 +182,7 @@ $f \leq f^\prime \land f(d) \implies f^\prime(d)$.
         &&
         \inference{}
         {
-            \pop(p, f) = (i, p^\prime)\\
+            \text{POP}(p, f) = (i, p^\prime)\\
             \pop(qs[i], f) = (\pkt, q^\prime)
         }
         {
@@ -197,7 +197,7 @@ $f \leq f^\prime \land f(d) \implies f^\prime(d)$.
     \begin{align*}
         \inference{}
         {
-            \push(p, \pkt, d, r) = p^\prime
+            \text{PUSH}(p, \pkt, d, r) = p^\prime
         }
         {
             \push(\Leaf(p), \pkt, d, r) = \Leaf(p^\prime)
@@ -205,7 +205,7 @@ $f \leq f^\prime \land f(d) \implies f^\prime(d)$.
         &&
         \inference{}
         {
-            \push(p, i, d, r) = p^\prime\\ 
+            \text{PUSH}(p, i, d, r) = p^\prime\\ 
             \push(qs[i],  \pkt, d, pt) = q^\prime
         }
         {
