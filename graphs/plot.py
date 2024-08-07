@@ -1,8 +1,8 @@
-import sys
+import os
+import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 import pandas as pd
-import numpy as np
 
 c1 = "red"
 c2 = "skyblue"
@@ -67,28 +67,25 @@ def make_plot(df, subplt, name):
     df1 = df.sort_values("pushed")
     df1 = df1.reset_index()
     flesh_out_plot(f1, df1, name)
-    subplt.savefig("pcaps/graphs/" + name, bbox_inches="tight")
+    subplt.savefig(name, bbox_inches="tight")
 
 
 def plot():
     for i in [
         "fcfs",
+        "fcfs_bin",
         "rr",
+        "rr_bin",
         "wfq",
-        "strict"
+        "wfq_bin",
+        "strict",
+        "strict_bin"
     ]:
-        df = pd.read_csv(f"dsl/_build/{i}.csv")
-        make_plot(df, plt, i)
-
-
-def plot_extension():
-    for i in ["extension", "extension_ternary"]:
-        df = pd.read_csv(f"dsl/_build/output{i}.csv")
-        make_plot(df, plt, i)
+        csv = os.path.join(os.path.dirname(__file__), f"{i}.csv")
+        df = pd.read_csv(csv)
+        png = os.path.join(os.path.dirname(__file__), i)
+        make_plot(df, plt, png)
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1 and sys.argv[1] == "--ext":
-        plot_extension()
-    else:
-        plot()
+    plot()

@@ -6,6 +6,7 @@ type t =
 
 exception InvalidPath
 
+let replace_nth l n nth' = List.mapi (fun i x -> if i = n then nth' else x) l
 let predicate now (_, _, ts) = ts <= now
 
 let rec pop t now =
@@ -16,7 +17,7 @@ let rec pop t now =
   | Internal (qs, p) ->
       let* (i, _, _), p' = Pieo.pop p (predicate now) in
       let* pkt, q' = pop (List.nth qs i) now in
-      Some (pkt, Internal (Util.replace_nth qs i q', p'))
+      Some (pkt, Internal (replace_nth qs i q', p'))
 
 let rec push t ts pkt path =
   match (t, path) with
@@ -24,7 +25,7 @@ let rec push t ts pkt path =
   | Internal (qs, p), (i, r) :: pt ->
       let p' = Pieo.push p (i, r, ts) in
       let q' = push (List.nth qs i) ts pkt pt in
-      Internal (Util.replace_nth qs i q', p')
+      Internal (replace_nth qs i q', p')
   | _ -> raise InvalidPath
 
 let rec size t now =
