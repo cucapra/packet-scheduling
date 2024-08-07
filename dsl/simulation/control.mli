@@ -6,4 +6,5 @@ type t = {
 }
 
 val of_policy : Frontend.Policy.t -> t
-val compile : t -> Topo.t * Topo.map -> t
+val to_topo : t -> Topo.t
+val compile : Topo.t * Topo.map -> t -> t

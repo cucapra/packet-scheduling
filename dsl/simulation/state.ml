@@ -3,6 +3,7 @@ type t = (string, float) Hashtbl.t
 exception UnboundKey of string
 
 let create size = Hashtbl.create size
+let clone = Hashtbl.copy
 let lookup_opt k t = Hashtbl.find_opt t k
 
 let lookup k t =

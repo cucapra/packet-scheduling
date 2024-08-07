@@ -1,10 +1,10 @@
-let simulate sim_length sleep pop_tick flow (control : Control.t) =
+let simulate sim_length sleep pop_tick flow (ctrl : Control.t) =
   (* The user gives us:
      - sim_length: after how many seconds to stop simulating.
      - sleep: how long to sleep when there's no work to do.
      - pop_tick: a threshold for when next to try a pop.
      - flow: the packet flow to simulate, essentially a list of packets.
-     - control: the control to simulate over.
+     - ctrl: the ctrl to simulate over.
 
      We assume that flow is ordered by packet time.
      We start the simulation at the time of the first packet in flow.
@@ -44,7 +44,7 @@ let simulate sim_length sleep pop_tick flow (control : Control.t) =
         match Pieotree.pop tree time with
         | None -> failwith "The tree was nonempty, but pop returned None."
         | Some (pkt, tree') ->
-            let state' = control.z_out state pkt in
+            let state' = ctrl.z_out state pkt in
             helper flow time 0.0 state' tree' (Packet.punch_out pkt time :: ans)
     else
       match flow with
@@ -52,7 +52,7 @@ let simulate sim_length sleep pop_tick flow (control : Control.t) =
           helper flow (Time.add_float time sleep) (tsp +. sleep) state tree ans
       | pkt :: flow' ->
           if time >= Packet.time pkt then
-            let path, state', ts = control.z_in state pkt in
+            let path, state', ts = ctrl.z_in state pkt in
             let tree' = Pieotree.push tree ts (Packet.punch_in pkt time) path in
             helper flow' time tsp state' tree' ans
           else
@@ -60,4 +60,4 @@ let simulate sim_length sleep pop_tick flow (control : Control.t) =
               (Time.add_float time sleep)
               (tsp +. sleep) state tree ans
   in
-  helper flow start_time 0.0 control.s control.q []
+  helper flow start_time 0.0 ctrl.s ctrl.q []

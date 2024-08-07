@@ -146,13 +146,17 @@ let of_policy p =
     z_out = z_out p;
   }
 
-let compile c (topo, map) =
+let to_topo c = Pieotree.to_topo c.q
+
+let compile (topo, map) c =
+  let z_in' s pkt =
+    let f_tilde = Topo.lift_tilde map (to_topo c) in
+    let pt, s', ts = c.z_in s pkt in
+    (f_tilde pt, s', ts)
+  in
   {
     q = Pieotree.create topo;
-    s = c.s;
-    z_in =
-      (fun s pkt ->
-        let pt, s', ts = c.z_in s pkt in
-        (Topo.lift_tilde map (Pieotree.to_topo c.q) pt, s', ts));
+    s = State.clone c.s;
+    z_in = z_in';
     z_out = c.z_out;
   }

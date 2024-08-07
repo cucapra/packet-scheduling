@@ -76,10 +76,10 @@ def plot():
         "fcfs_bin",
         "rr",
         "rr_bin",
-        "wfq",
-        "wfq_bin",
         "strict",
-        "strict_bin"
+        "strict_bin",
+        "wfq",
+        "wfq_bin"
     ]:
         csv = os.path.join(os.path.dirname(__file__), f"{i}.csv")
         df = pd.read_csv(csv)
