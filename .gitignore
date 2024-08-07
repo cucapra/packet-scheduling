@@ -10,6 +10,7 @@
 *.blg
 
 # OCaml
+_build
 *.annot
 *.cmo
 *.cma
@@ -19,11 +20,6 @@
 *.cmx
 *.cmxs
 *.cmxa
-
-# ocamlbuild working directory
-dsl/_build/
-
-# ocamlbuild targets
 *.byte
 *.native
 
@@ -34,6 +30,9 @@ setup.log
 # Merlin configuring file for Vim and Emacs
 .merlin
 
+# VS code configuring file
+.vscode/
+
 # Dune generated files
 *.install
 
@@ -41,5 +40,6 @@ setup.log
 _opam/
 .DS_Store
 
-# VS code
-.vscode/
+# misc
+*.png
+*.csv

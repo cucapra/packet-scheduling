@@ -34,6 +34,7 @@
 
 %token <string> VAR
 %token <string> CLSS
+%token <float> FLOAT
 %token <int> INT
 %token EQUALS
 %token LBRACKET
@@ -98,7 +99,7 @@ arglist:
 weighted_arglist:
     | pl = separated_list(COMMA, weighted_arg)      { pl }
 weighted_arg:
-    | LPAREN; arg = separated_pair(policy, COMMA, INT); RPAREN      { arg }
+    | LPAREN; arg = separated_pair(policy, COMMA, FLOAT); RPAREN      { arg }
 
 /* Declarations, assignments and returns */
 internalcomp :
