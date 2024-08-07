@@ -1,18 +1,7 @@
 open Pcap
 open Ethernet
 
-type packet_header_t = { time : Time.t; size_incl : int32 }
-type ethernet_t = { dst : int; src : int }
-
-type packet_complete = {
-  (* This is the type for all the information we get'll get
-     about an individual packet from the PCAP. *)
-  header : packet_header_t;
-  payload : ethernet_t;
-}
-
 type t = {
-  (* We will mostly pass around this lighter-weight metadata. *)
   len : int;
   dst : int;
   time : Time.t;
@@ -21,16 +10,9 @@ type t = {
   popped : Time.t option;
 }
 
-(* It is occasionally useful to read/write fields in the metadata. *)
 let time t = t.time
 let flow t = t.flow
-
-let len t =
-  (* The only user of this immediately converts it into a float, so we just do it here. *)
-  float_of_int t.len
-
-(* It will become useful to modify these timing fields as the packet enters and leaves
-   the scheduler. This is just for the purposes of our visualization. *)
+let len t = float_of_int t.len
 let punch_in t time = { t with pushed = Some time }
 let punch_out t time = { t with popped = Some time }
 
@@ -56,40 +38,28 @@ let find_flow x =
   String.iteri f hex;
   Buffer.contents buf |> mac_addr_to_flow
 
-let complete_to_meta (p : packet_complete) =
-  (* This is how we'll discard unnecessary packet information and keep just the metadata. *)
-  {
-    time = p.header.time;
-    len = Int32.to_int p.header.size_incl;
-    flow = p.payload.src |> find_flow;
-    dst = p.payload.dst;
-    pushed = None;
-    popped = None;
-  }
-
 let create_pkt h (ph, pb) =
   (* ph is the packet header; pb is the packet body. *)
   let module H = (val h : HDR) in
-  let hex_to_int = function `Hex s -> int_of_string ("0x" ^ s) in
-  let header =
-    {
-      time =
-        Time.of_ints
-          (H.get_pcap_packet_ts_sec ph)
-          (H.get_pcap_packet_ts_usec ph);
-      size_incl = H.get_pcap_packet_incl_len ph;
-    }
+  let hex_to_int = function
+    | `Hex s -> int_of_string ("0x" ^ s)
   in
-  let payload =
-    {
-      src = hex_to_int (Hex.of_string (copy_ethernet_src pb));
-      dst = hex_to_int (Hex.of_string (copy_ethernet_dst pb));
-    }
+  let time, size_incl =
+    ( Time.of_ints (H.get_pcap_packet_ts_sec ph) (H.get_pcap_packet_ts_usec ph),
+      H.get_pcap_packet_incl_len ph )
   in
-  (* For debugging etc, it is useful to compute the "complete" version and
-     then discard some information to get the metadata we are interested in.
-  *)
-  complete_to_meta { header; payload }
+  let src, dst =
+    ( hex_to_int (Hex.of_string (copy_ethernet_src pb)),
+      hex_to_int (Hex.of_string (copy_ethernet_dst pb)) )
+  in
+  {
+    time;
+    len = Int32.to_int size_incl;
+    flow = src |> find_flow;
+    dst;
+    pushed = None;
+    popped = None;
+  }
 
 let create_pcap_packets h body : t list =
   List.rev (Cstruct.fold (fun l p -> create_pkt h p :: l) (packets h body) [])
@@ -117,7 +87,6 @@ let pkts_from_file filename =
   create_pcap_packets h body
 
 let write_to_csv ts filename =
-  (* This is the CSV format that out plot.py method expects downstream. *)
   let format_to_csv metas =
     let headers =
       "\"flow\", \"dst\", \"arrived\", \"length\", \"pushed\", \"popped\""

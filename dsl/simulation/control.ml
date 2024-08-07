@@ -5,7 +5,9 @@ type t = {
   z_out : State.t -> Packet.t -> State.t;
 }
 
-type addr = Eps | Cons of int * addr
+type addr =
+  | Eps
+  | Cons of int * addr
 
 exception RoutingError of Packet.t
 
@@ -19,7 +21,8 @@ let init_state p =
   let rec init_state_aux (p : Frontend.Policy.t) addr s =
     let join plst addr s =
       let f (i, s) p = (i + 1, init_state_aux p (Cons (i, addr)) s) in
-      match List.fold_left f (0, s) plst with _, s' -> s'
+      match List.fold_left f (0, s) plst with
+      | _, s' -> s'
     in
 
     let prefix = addr_to_string addr in

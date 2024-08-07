@@ -5,15 +5,9 @@ type t =
   | RoundRobin of t list
   | Strict of t list
   | WeightedFair of (t * float) list
-(*
-  | EarliestDeadline of t list
-  | ShortestJobNext of t list
-  | ShortestRemaining of t list
-  | RateControlled of t list
-  | LeakyBucket of t list * int * int
-  | TokenBucket of t list * int * int
-  | StopAndGo of t list * int
-  *)
+(* | EarliestDeadline of t list | ShortestJobNext of t list | ShortestRemaining
+   of t list | RateControlled of t list | LeakyBucket of t list * int * int |
+   TokenBucket of t list * int * int | StopAndGo of t list * int *)
 
 exception UnboundVariable of Ast.var
 exception UndeclaredClass of Ast.clss

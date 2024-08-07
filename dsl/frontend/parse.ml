@@ -1,6 +1,7 @@
 exception ParserError of string
 
-(* `syntax_error_msg lexbuf` is a syntax error message for the current position *)
+(* `syntax_error_msg lexbuf` is a syntax error message for the current
+   position *)
 let syntax_error_msg lexbuf =
   let pos = Lexing.lexeme_start_p lexbuf in
   let lnum, cnum = (pos.pos_lnum, pos.pos_cnum - pos.pos_bol) in

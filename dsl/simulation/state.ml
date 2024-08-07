@@ -7,7 +7,9 @@ let clone = Hashtbl.copy
 let lookup_opt k t = Hashtbl.find_opt t k
 
 let lookup k t =
-  match lookup_opt k t with Some v -> v | None -> raise (UnboundKey k)
+  match lookup_opt k t with
+  | Some v -> v
+  | None -> raise (UnboundKey k)
 
 let rebind k v t =
   Hashtbl.remove t k;

@@ -4,8 +4,6 @@ type t =
   | Leaf of (Packet.t * Rank.t * Time.t) Pieo.t
   | Internal of t list * (int * Rank.t * Time.t) Pieo.t
 
-exception InvalidPath
-
 let replace_nth l n nth' = List.mapi (fun i x -> if i = n then nth' else x) l
 let predicate now (_, _, ts) = ts <= now
 
@@ -26,13 +24,13 @@ let rec push t ts pkt path =
       let p' = Pieo.push p (i, r, ts) in
       let q' = push (List.nth qs i) ts pkt pt in
       Internal (replace_nth qs i q', p')
-  | _ -> raise InvalidPath
+  | _ -> failwith "ERROR: invalid path"
 
 let rec size t now =
   (* The size of a PIEO tree is the number of ready packets in its leaves.
      Recall that a packet is _ready_ if its time stamp is <= `now`. *)
   match t with
-  | Leaf p -> Pieo.count p (predicate now)
+  | Leaf p -> Pieo.size p (predicate now)
   | Internal (qs, _) -> List.fold_left (fun acc q -> acc + size q now) 0 qs
 
 let rec create (topo : Topo.t) =
@@ -44,4 +42,6 @@ let rec create (topo : Topo.t) =
       Internal (qs, p)
 
 let rec to_topo t : Topo.t =
-  match t with Leaf _ -> Star | Internal (qs, _) -> Node (List.map to_topo qs)
+  match t with
+  | Leaf _ -> Star
+  | Internal (qs, _) -> Node (List.map to_topo qs)

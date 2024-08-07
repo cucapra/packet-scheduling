@@ -1,4 +1,7 @@
-type t = Star | Node of t list
+type t =
+  | Star
+  | Node of t list
+
 type addr = int list
 type map = addr -> addr Option.t
 

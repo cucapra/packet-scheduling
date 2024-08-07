@@ -1,4 +1,7 @@
-type t = Star | Node of t list
+type t =
+  | Star
+  | Node of t list
+
 type addr = int list
 type hint = int -> addr Option.t (* A partial map from int to addr. *)
 type map = addr -> addr Option.t
@@ -20,68 +23,45 @@ let rec height = function
   | Node trees -> 1 + List.fold_left max 0 (List.map height trees)
 
 let pop_d_topos pq d =
-  (* pq is a priority queue of (decorated) topologies, prioritized by height.
-     pq has at least two elements.
-     We will pop up to d of them _so long as they have the same height m_.
-     We will return the popped topologies as a list, the remaining priority queue, and m.
-  *)
-  let rec helper pq height acc d =
-    if d = 0 then (List.rev acc, pq) (* We popped d items. Success. *)
-    else
-      match Pieo.length pq with
-      | 0 ->
-          (List.rev acc, pq)
-          (* Before we could pop d items, we ran the PQ empty. Success. *)
-      | _ -> (
-          (* We have budget for more topologies, plus the PQ has topologies.
-             We'll only take them if their height is correct, though. *)
-          match Pieo.pop_if pq (fun (_, _, _, height') -> height = height') with
-          | None ->
-              (* The next shortest topologies has height <> the target height.
-                 What we have in the accumulator is the best we can do.
-                 Success. *)
-              (List.rev acc, pq)
-          | Some (topo, pq') ->
-              (* We have another topology with the right height.
-                 Add it to the accumulator and recurse. *)
-              helper pq' height (topo :: acc) (d - 1))
+  (* `pq` is a priority queue of (decorated) topologies, prioritized by height.
+     `pq has at least two elements. We will pop up to `d` of them so long as
+     they have the same height `m`. We will return the popped topologies as a
+     list, the remaining priority queue, and `m`. *)
+  let rec pop_d_topos_aux pq height acc d =
+    match (d, Pieo.pop pq (fun (_, _, _, height') -> height = height')) with
+    | 0, _ | _, None ->
+        (* We finished popping! Success. *)
+        (List.rev acc, pq, height)
+    | d, Some (topo, pq') ->
+        (* We have another topology with the right height. Add it to the
+           accumulator and recurse. *)
+        pop_d_topos_aux pq' height (topo :: acc) (d - 1)
   in
+  match Pieo.pop pq (fun _ -> true) with
   (* Pop the top topology to prime the algorithm. *)
-  let ((_, _, _, m) as topo_one), pq' = Pieo.pop_exn pq in
-  (* Now we need up to d-1 more topologies, IF they have height m. *)
-  let one, two = helper pq' m [ topo_one ] (d - 1) in
-  (one, two, m)
+  | None -> failwith "ERROR: cannot pop empty PQ of topologies"
+  | Some (((_, _, _, m) as topo_one), pq') ->
+      (* Now we need up to `d - 1` more topologies, IF they have height `m`. *)
+      pop_d_topos_aux pq' m [ topo_one ] (d - 1)
 
 let rec merge_into_one_topo pq d : t * map =
-  (* Accepts a priority queue of PIFO trees ordered by (minimum) height.
-     Each tree is further accompanied by the embedding function that maps some
-     subtree of a source tree onto the tree in question.
-     This method merges the PQ's trees into one tree, as described in the paper.
-  *)
-  match Pieo.length pq with
-  | 0 -> failwith "Cannot merge an empty PQ of topologies."
-  | 1 ->
-      (* Success: there was just one tree left.
-         Discard the hint and the height and return the tree and its map.
-      *)
-      let t, _, map, _ = Pieo.top_exn pq in
-      (t, map)
+  match (Pieo.size pq (fun _ -> true), Pieo.pop pq (fun _ -> true)) with
+  | 0, _ -> failwith "ERROR: cannot merge an empty PQ of topologies."
+  | 1, Some ((t, _, map, _), _) -> (t, map)
   | _ -> (
-      (* Extract up to d trees with minimum height m. *)
+      (* Extract up to `d` trees with minimum height `m`. *)
       let trees, pq', m = pop_d_topos pq d in
       match trees with
       | [ (topo, hint, map, _) ] ->
-          (* There was just one tree with height m.
-             Reinsert it with height m+1 and recurse.
-          *)
+          (* There was just one tree with height `m`. Reinsert it with height `m
+             + 1` and recurse. *)
           let pq'' = Pieo.push pq' (topo, hint, map, m + 1) in
           merge_into_one_topo pq'' d
       | _ ->
-          (* There were two or more trees with height m.
-             Pad the tree list with Stars until it has length d.
-             Then make a new node with those d topologies as its children.
-             Make, also, a new embedding map and a new hint map.
-          *)
+          (* There were two or more trees with height `m`. Pad the tree list
+             with Stars until it has length `d`. Then make a new node with those
+             `d` topologies as its children. Make, also, a new embedding map and
+             a new hint map. *)
           let k = List.length trees in
           let trees' =
             trees
@@ -98,32 +78,34 @@ let rec merge_into_one_topo pq d : t * map =
           let map = function
             | [] -> Some []
             | n :: rest ->
-                (* The step n will determine which of our children we'll rely on.
-                   The rest of the address will be processed by that child's map.
-                   Which, if any, of the hints in trees'' have a value registered for n?
-                *)
+                (* The step `n` will determine which of our children we'll rely
+                   on. The rest of the address will be processed by that child's
+                   map. Which, if any, of the hints in `trees''` have a value
+                   registered for `n`? *)
                 let* i, _, hint_i, map_i, _ =
                   List.find_opt
                     (fun (_, _, hint, _, _) -> hint n <> None)
                     trees''
                 in
-                (* If none of my children can get to it, neither can I.
-                   But if my i'th child knows how to get to it, I'll go via that child. *)
+                (* If none of my children can get to it, neither can I. But if
+                   my `i`'th child knows how to get to it, I'll go via that
+                   child. *)
                 let* x = hint_i n in
-                (* Now we have the rest of the address, but we need to prepend i. *)
+                (* Now we have the rest of the address, but we need to prepend
+                   `i`. *)
                 Some ((i :: x) @ Option.get (map_i rest))
           in
           (* Add the new node to the priority queue. *)
           let hint n =
             (* The new hint for the node is the union of the children's hints,
-               but, since we are growing taller by one level, we need to arbitrate
-               _between_ those d children using 0, 1, ..., d-1 as a prefix.
-            *)
+               but, since we are growing taller by one level, we need to
+               arbitrate _between_ those `d` children using `0, 1, ..., d - 1`
+               as a prefix. *)
             let* i, _, hint_i, _, _ =
               List.find_opt (fun (_, _, hint, _, _) -> hint n <> None) trees''
             in
-            (* If none of my children can get to it, neither can I.
-               But if my i'th child knows how to get to it, I'll go via that child. *)
+            (* If none of my children can get to it, neither can I. But if my
+               i'th child knows how to get to it, I'll go via that child. *)
             let* x = hint_i n in
             Some (i :: x)
           in
@@ -136,7 +118,8 @@ let rec merge_into_one_topo pq d : t * map =
 
 let rec build_d_ary d = function
   | Star ->
-      (* The embedding of a Star is a Star, and the map is the identity for []. *)
+      (* The embedding of a `Star` is a `Star`, and the map is the identity for
+         `[]`. *)
       (Star, fun addr -> if addr = [] then Some [] else None)
   | Node ts ->
       let (ts' : (t * hint * map * int) list) =
@@ -145,8 +128,8 @@ let rec build_d_ary d = function
           (fun i t ->
             (* Get embeddings and maps for the subtrees. *)
             let t', map = build_d_ary d t in
-            (* For each child, creat a hints map that just has
-               the binding i -> Some []. *)
+            (* For each child, creat a hints map that just has the binding `i ->
+               Some []`. *)
             let hint addr = if addr = i then Some [] else None in
             (* Get the height of this tree. *)
             let height = height t' in
@@ -154,9 +137,8 @@ let rec build_d_ary d = function
             (t', hint, map, height))
           ts
       in
-      (* A PIFO of these decorated subtrees, prioritized by height.
-         Shorter is higher-priority.
-      *)
+      (* A PIFO of these decorated subtrees, prioritized by height. Shorter is
+         higher-priority. *)
       let pq = Pieo.of_list ts' (fun (_, _, _, a) (_, _, _, b) -> a - b) in
       merge_into_one_topo pq d
 
@@ -166,8 +148,8 @@ let rec remove_prefix (prefix : addr) (addr : addr) =
   | [], addr -> addr
   | p :: prefix, a :: addr ->
       if p = a then remove_prefix prefix addr
-      else failwith "Prefix does not match address."
-  | _ -> failwith "Prefix does not match address."
+      else failwith "ERROR: prefix does not match address."
+  | _ -> failwith "ERROR: prefix does not match address."
 
 let rec add_prefix prefix r path_rest =
   match prefix with
@@ -177,38 +159,31 @@ let rec add_prefix prefix r path_rest =
       (j, r) :: add_prefix prefix r path_rest
 
 let rec lift_tilde (f : map) tree (path : Path.t) =
-  (* Topology tree can embed into some topology tree'.
-     We don't need tree' as an argument.
-     We have f, the partial map that takes
-     addresses in tree to addresses in tree'.
-     Given a path in tree, we want to find the corresponding path in tree'.
-  *)
+  (* Topology `tree` can embed into some topology `tree'`. We don't need `tree'`
+     as an argument. We have `f`, the partial map that takes addresses in `tree`
+     to addresses in `tree'`. Given a path in `tree`, we want to find the
+     corresponding path in `tree'`. *)
   match (tree, path) with
   | Star, [ _ ] ->
-      (* When the toplogy is a Star, the embedded topology is also a Star.
-         The path better be a singleton; we have checked this via pattern-matching.
-         We return the path unchanged.
-      *)
+      (* When the toplogy is a `Star`, the embedded topology is also a `Star`.
+         The path better be a singleton; we have checked this via
+         pattern-matching. We return the path unchanged. *)
       path
   | Node ts, (i, r) :: pt ->
-      (* When the topology is a node, the embedded topology is a node.
-         The path better be a non-empty list; we have checked this via pattern-matching.
-         If this node embeds into node' in the embedded topology,
-         this node's ith child embeds somewhere under node' in the embedded topology.
-      *)
+      (* When the topology is a node, the embedded topology is a node. The path
+         better be a non-empty list; we have checked this via pattern-matching.
+         If this node embeds into node' in the embedded topology, this node's
+         `i`th child embeds somewhere under node' in the embedded topology. *)
       let f_i addr =
-        (* First we compute that embedding.
-           We need to check what f would have said about (i::addr).
-           The resultant list has some prefix that is f's answer for [i] alone.
-           We must remove that prefix.
-        *)
+        (* First we compute that embedding. We need to check what `f` would have
+           said about `i :: addr`. The resultant list has some prefix that is
+           f's answer for `[ i ]` alone. We must remove that prefix. *)
         let* whole = f (i :: addr) in
         let* prefix = f [ i ] in
         Some (remove_prefix prefix whole)
       in
       let path_rest = lift_tilde f_i (List.nth ts i) pt in
-      (* We are not done.
-         For each j in the prefix, we must add (j,r) to the front of path_rest.
-      *)
+      (* We are not done. For each `j` in the prefix, we must add `(j, r)` to
+         the front of path_rest. *)
       add_prefix (Option.get (f [ i ])) r path_rest
-  | _ -> failwith "Topology and path do not match."
+  | _ -> failwith "ERROR: topology and path do not match."
