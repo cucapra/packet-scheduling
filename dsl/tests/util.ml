@@ -1,5 +1,5 @@
 open Frontend
-open Simulation
+open Simulator
 
 let prefix = "../../../../"
 let parse filename = prefix ^ filename |> Parser.parse_file |> Policy.of_program

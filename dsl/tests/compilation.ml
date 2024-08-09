@@ -1,4 +1,4 @@
-open Simulation
+open Simulator
 open OUnit2
 
 let fcfs_flow, two_then_three, strict_flow, wfq_flow =
