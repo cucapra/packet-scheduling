@@ -62,6 +62,8 @@ let error_tests =
       "incorrect/unbound_var_hier.sched" (Policy.UnboundVariable "r_polic");
     make_error_test "class used twice in policy"
       "incorrect/duplicate_classes.sched" (Policy.DuplicateClass "B");
+    make_error_test "class used twice in one fifo"
+      "incorrect/duplicate_samepol.sched" (Policy.DuplicateClass "A");
   ]
 
 let suite = "suite" >::: tests @ error_tests

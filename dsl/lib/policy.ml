@@ -53,8 +53,9 @@ let rec eval cl st (used : string list ref) p =
       TokenBucket (eval_plst cl st used plst, n1, n2)
   | Ast.StopAndGo (plst, n) -> StopAndGo (eval_plst cl st used plst, n)
 
-(* Evaluates a program, looking up any variables and substituting them in. *)
-let from_program (cl, alst, ret) = eval cl alst (ref []) ret
+(* Evaluates a program, looking up any variables and substituting them in. It returns
+   the final policy with any variables substituted in. *)
+let from_program (cl, alst, ret) : t = eval cl alst (ref []) ret
 
 let rec to_string p =
   let bracket_wrap s = "[" ^ s ^ "]" in
