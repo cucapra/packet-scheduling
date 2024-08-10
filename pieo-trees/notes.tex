@@ -122,7 +122,7 @@ We assume familiarity with \cite{OG}, adopt its notational conventions, and borr
     These three maps play nicely together: 
     \begin{align}
         \pop(p, f) \text{ is undefined} &\iff \pop(\proj(p, f)) \text{ is undefined} \label{eq:pieo1}\\
-        \pop(p, f) = (\pkt, p^\prime) &\iff \pop(\proj(p, f)) = (\pkt, \proj(p^\prime, f)) \label{eq:pieo2}\\
+        \pop(p, f) = (\pkt, p^\prime) &\implies \pop(\proj(p, f)) = (\pkt, \proj(p^\prime, f)) \label{eq:pieo2}\\
         \proj(\push(p, s, d, r), f) &= 
         \begin{cases}
             \push(\proj(p, f), s, r) & f(d) \text{ holds true}\\
@@ -163,7 +163,7 @@ $f \leq f^\prime \land f(d) \implies f^\prime(d)$.
             \forall i \in [1, n]. \; qs[i] \in \mathbf{PIEOTree}(ts[i])
         }
         {
-            \Internal(qs, p) \in \mathbf{PIEOTree}(\Node(ts))
+            \Internal(qs, p) \in \PIEOTree(\Node(ts))
         }
     \end{align*}
 \end{dfn}
@@ -174,7 +174,7 @@ $f \leq f^\prime \land f(d) \implies f^\prime(d)$.
     \begin{align*}
         \inference{}
         {
-            \text{POP}(p, f) = (\pkt, p^\prime)
+            \pop(p, f) = (\pkt, p^\prime)
         }
         {
             \pop(\Leaf(p), f) = (\pkt, \Leaf(p^\prime))
@@ -182,7 +182,7 @@ $f \leq f^\prime \land f(d) \implies f^\prime(d)$.
         &&
         \inference{}
         {
-            \text{POP}(p, f) = (i, p^\prime)\\
+            \pop(p, f) = (i, p^\prime)\\
             \pop(qs[i], f) = (\pkt, q^\prime)
         }
         {
@@ -197,7 +197,7 @@ $f \leq f^\prime \land f(d) \implies f^\prime(d)$.
     \begin{align*}
         \inference{}
         {
-            \text{PUSH}(p, \pkt, d, r) = p^\prime
+            \push(p, \pkt, d, r) = p^\prime
         }
         {
             \push(\Leaf(p), \pkt, d, r) = \Leaf(p^\prime)
@@ -205,7 +205,7 @@ $f \leq f^\prime \land f(d) \implies f^\prime(d)$.
         &&
         \inference{}
         {
-            \text{PUSH}(p, i, d, r) = p^\prime\\ 
+            \push(p, i, d, r) = p^\prime\\ 
             \push(qs[i],  \pkt, d, pt) = q^\prime
         }
         {
@@ -259,8 +259,6 @@ $f \leq f^\prime \land f(d) \implies f^\prime(d)$.
 \begin{proof}
     \textcolor{red}{TBD}
 \end{proof}
-
-\newpage
 
 \section{Projection}
 
