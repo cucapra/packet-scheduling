@@ -1,0 +1,750 @@
+\documentclass{amsart}
+
+% font
+\usepackage{cmbright}
+
+% margin 
+\usepackage[margin=1in]{geometry}
+
+% references
+\usepackage[colorlinks]{hyperref} 
+\PassOptionsToPackage{colorlinks}{hyperref}
+\hypersetup{urlcolor = RedViolet, linkcolor = RoyalBlue, citecolor = NavyBlue}
+
+% basics
+\usepackage[leqno]{amsmath}
+\usepackage{amssymb, amsthm} 
+\usepackage[svgnames, dvipsnames]{xcolor}
+\usepackage{mhsetup, mathtools}
+\usepackage[capitalise]{cleveref}
+
+% commutative diagram
+\usepackage{tikz-cd}
+
+% hats
+\usepackage{yhmath}
+
+% PL macros
+\usepackage{mathpartir}
+\usepackage{stmaryrd}
+\newcommand{\inference}[3]{\inferrule*[Right=#1]{#2}{#3}}
+\newcommand{\axiom}[2]{\inferrule*[Right=#1]{\;}{#2}}
+
+% (Formal Abstractions macros)++
+\DeclareMathOperator{\halfto}{\rightharpoonup}
+\DeclareMathOperator{\pkt}{\mathrm{pkt}}
+\DeclareMathOperator{\push}{\mathrm{push}}
+\DeclareMathOperator{\pop}{\mathrm{pop}}
+\DeclareMathOperator{\proj}{\mathrm{proj}}
+\DeclareMathOperator{\Pkt}{\mathbf{Pkt}}
+\DeclareMathOperator{\Rk}{\mathbf{Rk}}
+\DeclareMathOperator{\Data}{\mathbf{Data}}
+\DeclareMathOperator{\Topo}{\mathbf{Topo}}
+\DeclareMathOperator{\Path}{\mathbf{Path}}
+\DeclareMathOperator{\PIEO}{\mathbf{PIEO}}
+\DeclareMathOperator{\PIFO}{\mathbf{PIFO}}
+\DeclareMathOperator{\PIEOTree}{\mathbf{PIEOTree}}
+\DeclareMathOperator{\PIFOTree}{\mathbf{PIFOTree}}
+\DeclareMathOperator{\Leaf}{\mathrm{Leaf}}
+\DeclareMathOperator{\Internal}{\mathrm{Internal}}
+\DeclareMathOperator{\Node}{\mathrm{Node}}
+
+% theorems
+\newtheorem{thm}{Theorem}[section]
+\newtheorem{lem}[thm]{Lemma}
+\theoremstyle{definition}
+\newtheorem{dfn}[thm]{Definition}
+\newtheorem{abuse}[thm]{Abuse of Notation}
+\newtheorem{ex}[thm]{Example}
+\newtheorem{rem}[thm]{Remark}
+
+% no more indent
+\setlength{\parindent}{0pt}
+
+% right-justified sections hack
+\usepackage{titlesec}
+\newcommand{\marginsecnumber}[1]{%
+  \makebox[0pt][r]{#1\hspace{6pt}}%
+}
+\titleformat{\section}
+  {\normalfont\Large\bfseries}
+  {\marginsecnumber\thesection}
+  {0pt}
+  {}
+\titleformat{\subsection}
+  {\normalfont\large\bfseries}
+  {\marginsecnumber\thesubsection}
+  {0pt}
+  {}
+\titleformat{\subsubsection}
+  {\normalfont\normalsize\bfseries}
+  {\marginsecnumber\thesubsubsection}
+  {0pt}
+  {}
+
+% tag on the right hack
+\makeatletter
+\newcommand{\leqnomode}{\tagsleft@true\let\veqno\@@leqno}
+\newcommand{\reqnomode}{\tagsleft@false\let\veqno\@@eqno}
+\makeatother
+
+\begin{document}
+
+\pagestyle{empty}
+
+{\LARGE \textbf{PIEO Trees for Fun and Profit}}
+
+\hrulefill\\
+
+\reqnomode
+
+We assume familiarity with \cite{OG}, adopt its notational conventions, and borrow many of its definitions!
+
+\section{Structure \& Semantics}
+
+\begin{dfn}
+    \label{dfn:pieo}
+    For sets $S$, $D$, and predicates $F$ over $D$,
+    let $\PIEO(S, D, F)$ denote the set of \emph{PIEO}s that
+    \begin{enumerate}
+        \item hold entries in $S$, decorated with meta-data in $D$
+        \item are ordered by $\Rk$
+        \item support predicates in $F$
+        \item admit partial functions 
+        \begin{align*}
+            \pop &: \PIEO(S, D, F) \times F \halfto S \times \PIEO(S, D, F) \\
+            \push &: \PIEO(S, D, F) \times S \times D \times \Rk \to \PIEO(S, D, F) \\
+            \proj &: \PIEO(S, D, F) \times F \to \PIFO(S)
+        \end{align*}
+    \end{enumerate}
+    Maps $\push$ and $\pop$ are as usual.
+    The \emph{projection} $\proj(p, f)$ is the PIFO of entries in $p$ with data satisfying $f$.
+    These three maps play nicely together: 
+    \begin{align}
+        \pop(p, f) \text{ is undefined} &\iff \pop(\proj(p, f)) \text{ is undefined} \label{eq:pieo1}\\
+        \pop(p, f) = (\pkt, p^\prime) &\implies \pop(\proj(p, f)) = (\pkt, \proj(p^\prime, f)) \label{eq:pieo2}\\
+        \proj(\push(p, s, d, r), f) &= 
+        \begin{cases}
+            \push(\proj(p, f), s, r) & f(d) \text{ holds true}\\
+            \proj(p, f) & \text{otherwise}
+        \end{cases}
+        \label{eq:pieo3}
+    \end{align}
+    We consider PIEOs $p, p^\prime$ equal if, for all $f \in F$, $\proj(p,f) = \proj(p^\prime, f)$, i.e. their projections are always equal.
+
+    For PIEO $p$, entry $s \in S$, and predicate $f \in F$, we write 
+    \begin{enumerate}
+        \item $|p|$ for the number of entries in $p$
+        \item $|p|_{f}$ for the number of entries in $p$ satisfying $f$
+        \item $|p|_{s,f}$ for the number of times $s$ occurs in $p$ with associated $d \in D$ such that $f(d)$ holds
+    \end{enumerate}
+\end{dfn}
+
+We fix an opaque set $\Data$ and a collection $\mathcal F$ of predicates defined on it.
+These predicates come with a total order $\leq$ and the property that, $\forall d \in \Data$ and $f,f^\prime \in \mathcal F$,
+$f \leq f^\prime \land f(d) \implies f^\prime(d)$.
+
+\begin{dfn}
+    The set of \emph{PIEO trees} over $t \in \Topo$, denoted $\mathbf{PIEOTree}(t)$, is defined inductively by
+    \begin{align*}
+        \inference{}
+        {
+            p \in \mathbf{PIEO}(\Pkt, \Data, \mathcal F)
+        }
+        {
+            \Leaf(p) \in \mathbf{PIEOTree}(\ast)
+        }
+        &&
+        \inference{}
+        {
+            n \in \mathbb N\\
+            ts \in \mathbf{Topo}^n\\
+            p \in \mathbf{PIEO}(\{1,\ldots, n\}, \mathbf{Data}, \mathcal F)\\\\
+            \forall i \in [1, n]. \; qs[i] \in \mathbf{PIEOTree}(ts[i])
+        }
+        {
+            \Internal(qs, p) \in \PIEOTree(\Node(ts))
+        }
+    \end{align*}
+\end{dfn}
+
+\begin{dfn}
+    \label{dfn:pop}
+    Define $\pop : \PIEOTree(t) \times \mathcal F \halfto \Pkt \times \PIEOTree(t)$ by
+    \begin{align*}
+        \inference{}
+        {
+            \pop(p, f) = (\pkt, p^\prime)
+        }
+        {
+            \pop(\Leaf(p), f) = (\pkt, \Leaf(p^\prime))
+        }
+        &&
+        \inference{}
+        {
+            \pop(p, f) = (i, p^\prime)\\
+            \pop(qs[i], f) = (\pkt, q^\prime)
+        }
+        {
+            \pop(\Internal(qs, p), f) = (\pkt, \Internal(qs[q^\prime/i], p^\prime))
+        }
+    \end{align*}
+\end{dfn}
+
+\begin{dfn}
+    \label{dfn:push}
+    Define $\push : \PIEOTree(t) \times \Pkt \times \Data \times \Path(t) \to \PIEOTree(t)$ by
+    \begin{align*}
+        \inference{}
+        {
+            \push(p, \pkt, d, r) = p^\prime
+        }
+        {
+            \push(\Leaf(p), \pkt, d, r) = \Leaf(p^\prime)
+        }
+        &&
+        \inference{}
+        {
+            \push(p, i, d, r) = p^\prime\\ 
+            \push(qs[i],  \pkt, d, pt) = q^\prime
+        }
+        {
+            \push(\Internal(qs, p), \pkt, d, (i, r) :: pt) = \Internal(qs[q^\prime/i], p^\prime)
+        }
+    \end{align*}
+\end{dfn}
+
+\begin{dfn}
+    Let $t \in \Topo$. 
+    A \emph{control} over $t$ is a triple $(s, q, z)$, where $s \in \mathrm{St}$ is the \emph{current state},
+    $q$ is a PIEO tree of topology $t$, and 
+    $$z : \mathrm{St} \times \Pkt \to \Data \times \Path(t) \times \mathrm{St}$$
+    is a function called the \emph{scheduling transaction}.
+\end{dfn}
+
+\section{Well-Formedness}
+
+\begin{dfn}
+    Fix $f \in \mathcal F$.
+    Define $|\cdot|_f : \PIEOTree(t) \to \mathbb N$ by
+    \begin{align*}
+        |\Leaf(p)|_f = |p|_f && |\Internal(qs, p)|_f = \sum_{i=1}^{|qs|} |qs[i]|_f
+    \end{align*}
+
+    We say $q \in \PIEOTree(t)$ is \emph{well-formed} w.r.t. $f$, denoted $\models_f q$, if it adheres to the following rules.
+    \begin{align*}
+        \axiom{}
+        {\vdash_f \Leaf(p)}
+        &&
+        \inference{}
+        {
+            \forall i \in [1, |qs|], \; \vdash_f qs[i] \land |p|_{i, f} = |qs[i]|_f
+        }
+        {
+            \vdash_f \Internal(qs, p)
+        }
+    \end{align*}
+
+    We say $q$ is $f$-well-formed, denoted $\vdash_f q$, if for all $f^\prime \geq f$, $\models_{f^\prime} q$.
+\end{dfn}
+
+\begin{thm}
+    Let $t \in \Topo$, $\pkt \in \Pkt$, $d \in \Data$, $f,f^\prime \in \mathcal F$, and $q \in \PIEOTree(t)$ such that $\vdash_f q$.
+    \begin{enumerate}
+        \item If $pt \in \Path(t)$, then $\push(q, \pkt, d, pt)$ is well-defined and $\vdash_f \push(q, \pkt, d, pt)$.
+        \item If $|q|_{f^\prime} > 0$ and $f^\prime \geq f$, then $\pop(q, f^{\prime})$ is well-defined and $\vdash_{f^\prime} q^\prime$, where $\pop(q, f^{\prime}) = (\pkt, q^\prime)$.
+    \end{enumerate}
+\end{thm}
+
+\begin{proof}
+    \textcolor{red}{TBD}
+\end{proof}
+
+\section{Projection}
+
+\begin{dfn}
+    \label{dfn:proj}
+    For $f \in \mathcal F$, define $\proj_f: \PIEOTree(t) \to \PIFOTree(t)$ by
+    \begin{align*}
+        \inference{}  
+        {
+            p^\prime = \proj(p, f)
+        }
+        {
+            \proj_f(\Leaf(p)) = \Leaf(p^\prime)
+        }
+        &&
+        \inference{}
+        {
+            p^\prime = \proj(p, f)\\
+            \forall i \in [1, |qs|], \; qs^\prime[i] = \proj_f(qs[i])
+        }
+        {
+            \proj_f(\Internal(qs, p)) = \Internal(qs^\prime, p^\prime)
+        }
+    \end{align*}
+\end{dfn}
+
+\begin{lem}
+    \label{lem:pieotree_eq}
+    For $q, q^\prime \in \PIEOTree(t)$,
+    $$\forall f \in \mathcal F, \; \proj_f(q) = \proj_f(q^\prime) \implies q = q^\prime$$
+\end{lem}
+
+\begin{proof}
+    Suppose $\proj_f(q) = \proj_f(q^\prime)$ for all $f \in \mathcal F$.
+    We'll proceed by induction on $t$ to show $q = q^\prime$.
+    \begin{itemize}
+        \item[(Leaf)] For $t = \ast$, let $q = \Leaf(p)$ and $q^\prime = \Leaf(p^\prime)$.
+            Since $$\proj_f(q) = \Leaf(\proj(p, f)) = \Leaf(\proj(p^\prime, f)) = \proj_f(q^\prime)$$
+            we know $\proj(p, f) = \proj(p^\prime, f)$ for all $f \in \mathcal F$.
+            By \Cref{dfn:pieo}, $p = p^\prime$ and hence $q = q^\prime$.
+
+        \item[(Node)] For $t = \Node(ts)$ and $n = |ts|$, let $q = \Internal(qs, p)$ and $q^\prime = \Internal(qs^\prime, p^{\prime})$.
+            Notice
+            \begin{align*}
+                \proj(p, f) &= \proj(p^\prime, f)\\
+                \proj_f(qs[i]) &= \proj_f(qs^\prime[i]) \tag{$i = 1,\ldots, n$}
+            \end{align*}
+            for all $f \in \mathcal F$. 
+            Hence, $p = p^\prime$ via \Cref{dfn:pieo} and $qs = qs^\prime$ by the inductive hypothesis, i.e. $q = q^\prime$.
+    \end{itemize}
+\end{proof}
+
+\begin{lem}
+    \label{lem:pop_undef}
+    For $q \in \PIEOTree(t)$ and $f \in \mathcal F$, $\pop(q, f)$ is undefined if and only if $\pop(\proj_f(q))$ is undefined.
+\end{lem}
+
+\begin{proof}
+    We'll do induction on $t$.
+    \begin{itemize}
+        \item[(Leaf)] For $t = \ast$, let $q = \Leaf(p)$ and $\proj_f(q) = \Leaf(p^\prime)$.
+            By \Cref{eq:pieo1} in \Cref{dfn:pieo},
+            \begin{align*}
+                \pop(q, f) \text{ is undefined} &\iff \pop(p, f) \text{ is undefined} \\
+                                                &\iff \pop(p^\prime) \text{ is undefined} \\
+                                                &\iff \pop(\proj_f(q)) \text{ is undefined}
+            \end{align*}
+
+        \item[(Node)] For $t = \Node(ts)$, let $q = \Internal(qs, p)$ and $\proj_f(q) = \Internal(qs^\prime, p^\prime)$.
+            As before, 
+            $$\pop(p, f) \text{ is undefined} \iff \pop(p^\prime) \text{ is undefined}$$
+            by \Cref{eq:pieo1} in \Cref{dfn:pieo} and 
+            $$\pop(qs[i], f) \text{ is undefined} \iff \pop(qs^\prime[i]) \text{ is undefined $\forall i \in [1, |ts|]$}$$
+            by the inductive hypothesis.
+            Hence, using \Cref{eq:pieo2} in \Cref{dfn:pieo}, 
+            \begin{align*}
+                \pop(q, f) \text{ is undefined} &\iff \pop(p, f) \text{ is undefined} \lor (\pop(p, f) = (i, \_) \land \pop(qs[i], f) \text{ is undefined})\\
+                                                &\iff \pop(p^\prime) \text{ is undefined} \lor (\pop(p^{\prime}) = (i, \_) \land \pop(qs^{\prime}[i]) \text{ is undefined})\\
+                                                &\iff \pop(\proj_f(q)) \text{ is undefined}
+            \end{align*}
+    \end{itemize}
+\end{proof}
+
+\begin{lem}
+    \label{lem:pop}
+    For $q \in \PIEOTree(t)$ and $f \in \mathcal F$, 
+    $$
+        \pop(q, f) = (\pkt, q^\prime) \implies \pop(\proj_f(q)) = (\pkt, \proj_f(q^\prime))
+    $$
+\end{lem}
+
+\begin{proof}
+    More induction on $t$!
+    \begin{itemize}
+        \item[(Leaf)] For $t = \ast$, let
+            \begin{align*}
+                q = \Leaf(p_1) && \proj_f(q) = \Leaf(p_2)\\
+                q^{\prime} = \Leaf(p_1^\prime) && \proj_f(q^\prime) = \Leaf(p_2^\prime)
+            \end{align*}
+            By \Cref{eq:pieo2} in \Cref{dfn:pieo},
+            \begin{align*}
+                \pop(q, f) = (\pkt, q^\prime) &\implies \pop(p_1, f) = (\pkt, p_1^\prime)\\
+                                              &\implies \pop(p_2) = \pop(\proj(p_1, f)) = (\pkt, \proj(p_1^\prime, f)) = (\pkt, p_2^\prime)\\
+                                              &\implies \pop(\proj_f(q)) = (\pkt, \proj_f(q^\prime))
+            \end{align*}
+
+        \item[(Node)] For $t = \Node(ts)$, Let
+            \begin{align*}
+                q = \Internal(qs_1, p_1) && \proj_f(q) = \Internal(qs_2, p_2)\\
+                q^{\prime} = \Internal(qs_1^\prime, p_1^\prime) && \proj_f(q^\prime) = \Internal(qs_2^\prime, p_2^\prime)
+            \end{align*}
+            Using \Cref{eq:pieo2} in \Cref{dfn:pieo} again and the inductive hypothesis,
+            \begin{align*}
+                \pop(q, f) = (\pkt, q^\prime) &\implies \pop(p_1, f) = (i, p_1^\prime) \land \pop(qs_1[i], f) = (\pkt, qs_1^\prime[i])\\
+                                              &\implies \pop(\proj(p_1, f)) = (i, \proj(p_1^\prime, f)) \land \pop(\proj_f(qs_1[i])) = (\pkt, \proj_f(qs_1^\prime[i]))\\
+                                              &\implies \pop(p_2) = (i, p_2^\prime) \land \pop(qs_2[i]) = (\pkt, qs_2^\prime[i])\\
+                                              &\implies \pop(\proj_f(q)) = (\pkt, \proj_f(q^\prime))
+            \end{align*}
+    \end{itemize}
+\end{proof}
+
+\begin{lem}
+    \label{lem:push}
+    For $q \in \PIEOTree(t)$, $\pkt \in \Pkt$, $d \in \Data$, $pt \in \Path(t)$, and $f \in \mathcal F$,
+    $$
+        \proj_f(\push(q, \pkt, d, pt)) = 
+        \begin{cases}
+            \push(\proj_f(q), \pkt, pt) & f(d) \text{ holds true}\\
+            \proj_f(q) & \text{otherwise}
+        \end{cases}
+    $$
+\end{lem}
+
+\begin{proof}
+    Even more induction on $t$!
+    \begin{itemize}
+        \item[(Leaf)] For $t = \ast$, let $q = \Leaf(p)$ and $pt = r$.
+            By \Cref{eq:pieo3} in \Cref{dfn:pieo}.
+            \begin{align*}
+                \proj_f(\push(q, \pkt, d, pt)) &= \Leaf(\proj(\push(p, \pkt, d, r), f)) \\
+                                              &=
+                \begin{cases}
+                    \Leaf(\push(\proj(p, f), \pkt, r)) & f(d) \text{ holds true}\\
+                    \Leaf(\proj(p, f)) & \text{otherwise}
+                \end{cases}\\
+                                              &= 
+                \begin{cases}
+                    \push(\proj_f(q), \pkt, pt) & f(d) \text{ holds true}\\
+                    \proj_f(q) & \text{otherwise}
+                \end{cases}
+            \end{align*}
+
+        \item[(Node)] For $t = \Node(ts)$, let $pt = (i, r) :: pt^\prime$ and
+            \begin{align*}
+                q &= \Internal(qs, p)\\
+                \proj_f(q) &= \Internal(qs^\prime, p^\prime)\\
+                \push(\proj_f(q), \pkt, pt) &= \Internal(qs^{\prime\prime}, p^{\prime\prime})\\
+                \proj_f(\push(q, \pkt, d, pt)) &= \Internal(qs^{\prime\prime\prime}, p^{\prime\prime\prime})\\
+            \end{align*}
+            By \Cref{eq:pieo3} in \Cref{dfn:pieo} and the inductive hypothesis,
+            \begin{align*}
+                p^{\prime\prime\prime} &= 
+                \begin{cases}
+                    \push(\proj(p, f), i, r) & f(d) \text{ holds true}\\
+                    \proj(p, f) & \text{otherwise}
+                \end{cases}\\
+                                                 &=
+                \begin{cases}
+                    \push(p^\prime, i, r) & f(d) \text{ holds true}\\
+                    p^\prime & \text{otherwise}
+                \end{cases}
+                                                 =
+                \begin{cases}
+                    p^{\prime\prime} & f(d) \text{ holds true}\\
+                    p^\prime & \text{otherwise}
+                \end{cases}\\
+                qs^{\prime\prime\prime}[i] &= 
+                \begin{cases}
+                    \push(\proj_f(qs[i]), \pkt, pt^\prime) & f(d) \text{ holds true}\\
+                    \proj_f(qs[i]) & \text{otherwise}
+                \end{cases}\\
+                                                            &=
+                \begin{cases}
+                    \push(qs^\prime[i], \pkt, pt^\prime) & f(d) \text{ holds true}\\
+                    qs^\prime[i] & \text{otherwise}
+                \end{cases}
+                                                            =
+                \begin{cases}
+                    qs^{\prime\prime}[i] & f(d) \text{ holds true}\\
+                    qs^\prime[i] & \text{otherwise}
+                \end{cases}
+            \end{align*}
+            By inspection of \Cref{dfn:push} and \Cref{dfn:proj},
+            $$qs^\prime[j] = qs^{\prime\prime}[j] = qs^{\prime\prime\prime}[j] = \proj_f(qs[j])$$
+            for all $j \in [1, |ts|]$ such that $j \neq i$.
+            Hence,
+            $$
+            qs^{\prime\prime\prime}
+            =
+            \begin{cases}
+                qs^{\prime\prime} & f(d) \text{ holds true}\\
+                qs^{\prime} & \text{otherwise}
+            \end{cases}
+            $$
+            Putting everything together, 
+            \begin{align*}
+                \proj_f(\push(q, \pkt, d, pt)) &= \Internal(qs^{\prime\prime\prime}, p^{\prime\prime\prime})\\
+                                               &=
+                \begin{cases}
+                    \Internal(qs^{\prime\prime}, p^{\prime\prime}) & f(d) \text{ holds true}\\
+                    \Internal(qs^{\prime}, p^{\prime}) & \text{otherwise}
+                \end{cases}\\
+                                               &=
+                \begin{cases}
+                    \push(\proj_f(q), \pkt, pt) & f(d) \text{ holds true}\\
+                    \proj_f(q) & \text{otherwise}
+                \end{cases}
+            \end{align*}
+    \end{itemize}
+\end{proof}
+
+\section{Embedding \& Simulation}
+
+\begin{dfn}
+    \label{dfn:sim}
+    Let $t_1, t_2 \in \Topo$. 
+    We call a relation $R \subseteq \PIEOTree(t_1) \times \PIEOTree(t_2)$ a \emph{simulation} if, 
+    for all $\pkt \in \Pkt$, $f \in \mathcal F$, and $q_1 \; R \; q_2$,
+    \begin{enumerate}
+        \item If $\pop(q_1, f)$ is undefined, then so is $\pop(q_2, f)$
+        \item If $\pop(q_1, f) = (\pkt, q_1^\prime)$, then $\pop(q_2, f) = (\pkt, q_2^\prime)$ such that $q_1^\prime \; R \; q_2^\prime$.
+        \item For all $pt_1 \in \Path(t_1)$ and $d \in \Data$, there exists $pt_2 \in \Path(t_2)$ such that
+            $$\push(q_1, \pkt, d, pt_1) \; R \; \push(q_2, \pkt, d, pt_2)$$
+    \end{enumerate}
+    If such a simulation exists, we say that $q_1$ is \emph{simulated} by $q_2$, and we write $q_1 \preccurlyeq q_2$.
+\end{dfn}
+
+\begin{rem}
+    For all further discussion, we assume our embeddings are injective.
+\end{rem}
+
+\begin{dfn}
+    \label{dfn:f_bar}
+    For $t_1, t_2 \in \Topo$, let $f$ be an embedding from $t_1$ to $t_2$.
+    We lift $f$ to a map $\overline{f}$ from $\PIEOTree(t_1)$ to $\PIEOTree(t_2)$ inductively.
+    \begin{itemize}
+        \item For $t_1 = \ast$, define $\overline{f}(q) = q$. This is well-defined by \cite[Lemma ~5.2]{OG}.
+        \item For $t_1 = \Node(ts_1)$, $n = |ts_1|$, $q = \Internal(qs, p)$, 
+            construct $\overline{f}_{\alpha}(q) \in \PIEOTree(t_2/\alpha)$ for each prefix $\alpha$ of $f(i)$ for some $i \in [1,n]$.
+            Inductively, we'll build up from $f(i)$'s to $\epsilon$ and set $\overline{f}(q) = \overline{f}_\epsilon(q)$.
+            \begin{itemize}
+                \item Let $\alpha = f(i)$ for some $i \in [1,n]$. We'll set $\overline{f}_\alpha(q) = \overline{f_i}(qs[i])$, 
+                    where $f_i$ embeds $t_1/i$ into $t_2/f(i)$ as per \cite[Lemma 5.2]{OG}.
+                    This well-defined by the injectivity of $f$.
+                \item Let $\alpha$ point to a transient node, say with $m$ children.
+                    For $1 \leq j \leq m$ such that $\alpha \cdot j$ is not a prefix of some $f(i)$, 
+                    define $\overline{f}(q)_{\alpha \cdot j}$ to be the PIEO tree with empty PIEOs on all leaves and internal nodes. 
+                    With this and recursion, we know $\overline{f}(q)_{\alpha \cdot j} \in \PIEOTree(t_2/(\alpha \cdot j))$ for all $j \in [1, m]$.
+
+                    We create a new PIEO $p_\alpha$ as follows:
+                    \begin{enumerate} 
+                        \item Start with $p_\alpha$ empty
+                        \item For each $i$ in $p$ such that $\alpha \cdot j$ is a prefix of $f(i)$, push $j$ into $p_\alpha$ with $i$'s data and rank
+                    \end{enumerate}
+
+                    Finally, for all $j \in [1,m]$, set $qs_\alpha[j] = \overline{f}(q)_{\alpha \cdot j}$ and $\overline{f}(q)_\alpha = \Internal(qs_\alpha, p_\alpha)$.
+            \end{itemize}
+    \end{itemize}
+\end{dfn}
+
+\reqnomode
+
+\begin{thm}
+    \label{thm:cd}
+    The following diagram commutes
+    $$
+    \begin{tikzcd}
+    	{\PIEOTree(t_1)} &&& {\PIEOTree(t_2)} \\
+    	\\
+    	{\PIFOTree(t_1)} &&& {\PIFOTree(t_2)}
+    	\arrow["{\overline{f}}", from=1-1, to=1-4]
+    	\arrow["{\proj_g}"{description}, from=1-1, to=3-1]
+    	\arrow["{\proj_g}"{description}, from=1-4, to=3-4]
+    	\arrow["{\widehat{f}}", from=3-1, to=3-4]
+    \end{tikzcd}
+    $$
+    In other words, for $q \in \PIEOTree(t_1)$ and $g \in \mathcal F$, $\proj_g(\overline{f}(q)) = \widehat{f}(\proj_g(q))$.
+\end{thm}
+
+\begin{proof}
+    We'll proceed by induction on $t_1$.
+    Suppose $t_1 = \ast$ and $q = \Leaf(p)$. 
+    By \cite[Lemma ~5.3]{OG}, $t_2 = \ast$ as well.
+    By \Cref{dfn:f_bar} and \cite[Definition ~5.4]{OG}, both $\overline{f}$ and $\widehat{f}$ are the identity.
+    Hence,
+    $$\proj_g(\overline{f}(q)) = \proj_g(q) = \widehat{f}(\proj_g(q))$$
+
+    Suppose $t_1 = \Node(ts)$ and $q = \Internal(qs, p)$.
+    For any prefix $\alpha$ of $f(i)$ for $i \in [1, |ts|]$, we'll show
+    \begin{equation}
+        \label{eq:cd1}
+        \proj_g(\overline{f}(q)_{\alpha}) = \widehat{f}(\proj_g(q))_{\alpha}
+        \tag{$\ast$}
+    \end{equation}
+    by inverse induction on $\alpha$. 
+    Instantiating \Cref{eq:cd1} with $\alpha = \epsilon$ yields the desired result. 
+    \begin{itemize}
+        \item For $\alpha = f(i)$, \Cref{eq:cd1} holds by the outer inductive hypothesis because
+            $$\proj_g(\overline{f}(q)_{\alpha}) = \proj_g(\overline{f_i}(q)) = \widehat{f_i}(\proj_g(q)) = \widehat{f}(\proj_g(q))_{\alpha}$$
+
+        \item Suppose $\alpha$ is some strict prefix of $f(i)$, pointing to a node with $m$ children. Let
+            \begin{align*}
+                \proj_g(\overline{f}(q)) = \Internal(qs^\prime, p^\prime) 
+                &&\text{and}&&
+                \widehat{f}(\proj_g(q)) = \Internal(qs^{\prime\prime}, p^{\prime\prime})
+            \end{align*}
+
+            There's two parts to showing \Cref{eq:cd1}, namely $qs^{\prime} = qs^{\prime\prime}$ and $p^\prime = p^{\prime\prime}$.
+
+            \begin{itemize}
+                \item For all $j \in [1,m]$,
+                    $$\proj_g(\overline{f}(q)_{\alpha \cdot j}) = \widehat{f}(\proj_g(q))_{\alpha \cdot j}$$
+                    For $j$ such that $\alpha \cdot j$ is a prefix of some $f(i)$, this follows from the inner inductive hypothesis.
+                    For all other $j$, notice the LHS and RHS are both PIFO trees of topology $t_2$, with empty PIFOs on all leaves and internal nodes.
+                    Hence, $qs^{\prime}[j] = qs^{\prime\prime}[j]$ for all $j \in [1,m]$, i.e. $qs^{\prime} = qs^{\prime\prime}$.
+                \item By inspection, it's clear following the construction for $p_\alpha$ from \Cref{dfn:f_bar} and then computing the projection $\proj(p_\alpha, g)$ 
+                    yields the same result as following the recipe for $p_\alpha$ from \cite[Definition ~5.4]{OG} on the projection $\proj_g(q)$: 
+                    that is, exactly when we filter out elements not satisfying $g$ does not matter.
+                    Hence, $p^{\prime} = p^{\prime\prime}$.
+            \end{itemize}
+    \end{itemize}
+\end{proof}
+
+\begin{lem}
+    \label{lem:sim1}
+    Let $t_1, t_2 \in \Topo$ and $f$ be an embedding of $t_1$ inside $t_2$. For $g \in \mathcal F$,
+    $$\pop(q, g) \text{ is undefined} \implies \pop(\overline{f}(q), g) \text{ is undefined}$$
+\end{lem}
+
+\begin{proof}
+    Suppose $\pop(q, g)$ is undefined. 
+    Applying both \Cref{lem:pop_undef} and \cite[Lemma ~5.6]{OG}, notice $\pop(\widehat{f}(\proj_g(q)))$ is undefined.
+    By \Cref{thm:cd}, $\widehat{f}(\proj_g(q)) = \proj_g(\overline{f}(q))$.
+    Hence, $\pop(\proj_g(\overline{f}(q)))$ is undefined.
+    Applying \Cref{lem:pop_undef} once more, $\pop(\overline{f}(q), g)$ is undefined.
+\end{proof}
+
+\begin{lem}
+    \label{lem:sim2}
+    Let $t_1, t_2 \in \Topo$ and $f$ be an embedding of $t_1$ inside $t_2$. For $g \in \mathcal F$,
+    $$\pop(q, g) = (\pkt, q^\prime) \implies \pop(\overline{f}(q), g) = (\pkt, \overline{f}(q^\prime))$$
+\end{lem}
+
+\textcolor{red}{Almost a clone of the proof \cite[Lemma ~5.7]{OG}.}
+
+\begin{proof}
+    We'll proceed by induction on $t_1$.
+    Suppose $t_1 = \ast$.
+    By \cite[Lemma ~5.3]{OG}, $t_2 = \ast$ as well.
+    By \Cref{dfn:f_bar}, $\overline{f}$ is the identity.
+    Hence, 
+    $$\pop(q, g) = (\pkt, q^\prime) \implies \pop(\overline{f}(q), g) = \pop(q, g) = (\pkt, q^\prime) = (\pkt, \overline{f}(q^\prime))$$
+    Suppose $t_1 = \Node(ts)$. 
+    Let 
+    \begin{align*}
+        q = \Internal(qs, p) &&
+        q^\prime = \Internal(qs^\prime, p^\prime) &&
+        \pop(p, g) = (j, p^\prime)
+    \end{align*}
+    For any prefix $\alpha$ of some $f(i)$ (where $i \in [1, |ts|]$), we'll show
+    \begin{align*}
+        \pop(\overline{f}(q)_\alpha, g) &= (\pkt, \overline{f}(q^\prime)_\alpha) &\text{ if $\alpha$ is a prefix of $f(j)$} \tag{$\dagger$} \label{eq:popinduc}\\
+        \overline{f}(q)_\alpha &= \overline{f}(q^\prime)_\alpha &\text{ otherwise}
+    \end{align*}
+    by inverse induction on $\alpha$. Instantiating \Cref{eq:popinduc} with $\alpha = \epsilon$ yields the desired result.
+    \begin{itemize}
+        \item Suppose $\alpha = f(i)$. 
+            If $\alpha$ is a prefix of $f(j)$, $i = j$ by injectivity and \cite[Definition ~5.2, Equation (3)]{OG}.
+            Recall $\pop(qs[j], g) = (\pkt, qs^\prime[j])$.
+            Hence, by the outer inductive hypothesis,
+            $$
+                \pop(\overline{f}(q)_\alpha, g) = 
+                \pop(\overline{f_j}(qs[j]), g) = 
+                (\pkt, \overline{f_j}(qs^\prime[j])) = 
+                (\pkt, \overline{f}(q^\prime)_\alpha)
+            $$
+        \item Once more, suppose $\alpha = f(i)$.
+            If $\alpha$ is not a prefix of $f(j)$, then $i \neq j$.
+            Since $qs[i] = qs^\prime[i]$,
+            $$
+                \overline{f}(q)_\alpha =
+                \overline{f_i}(qs[i]) =
+                \overline{f_i}(qs^\prime[i]) = 
+                \overline{f}(q^\prime)_\alpha
+            $$
+        \item Suppose $\alpha$ is some strict prefix of $f(j)$, pointing to a node with $m$ children.
+            Let 
+            \begin{align*}
+                \overline{f}(q)_\alpha = \Internal(qs_\alpha, p_\alpha) &&
+                \overline{f}(q^\prime)_\alpha = \Internal(qs^{\prime}_\alpha, p^{\prime}_\alpha)
+            \end{align*}
+            There exists $k \in [1, m]$ such that $\alpha \cdot k$ is a prefix of $f(j)$.
+            By the inner inductive hypothesis,
+            \begin{align*}
+                qs_\alpha[i] &= \overline{f}(q)_{\alpha \cdot i} = \overline{f}(q^\prime)_{\alpha \cdot i} = qs_\alpha[i] \text{ for $i \in [1,m]$ with $i \neq k$} \label{eq:empty1} \tag{!}\\
+                \pop(qs_\alpha[k], g) &=  \pop(\overline{f}(q)_{\alpha \cdot k}, g) = (\pkt, \overline{f}(q^\prime)_{\alpha \cdot k}) = (\pkt, qs^\prime[k])
+            \end{align*}
+            Via the construction in \Cref{dfn:f_bar} and since $\pop(p, g) = p^\prime$, $\pop(p_\alpha, g) = (k, p_\alpha^\prime)$.
+            Putting everything together, $\pop(\overline{f}(q)_\alpha, g) = (\pkt, \overline{f}(q^\prime)_\alpha)$, as desired.
+
+        \item Suppose $\alpha$ is some strict prefix of some $f(i)$ but not $f(j)$, pointing to a node with $m$ children.
+            Let 
+            \begin{align*}
+                \overline{f}(q)_\alpha = \Internal(qs_\alpha, p_\alpha) &&
+                \overline{f}(q^\prime)_\alpha = \Internal(qs^{\prime}_\alpha, p^{\prime}_\alpha)
+            \end{align*}
+            Since $p$ and $p^\prime$ agree on all indices $i$ such that $f(i)$ is a child of $\alpha$, $p_\alpha = p^\prime_\alpha$.
+            For $i \in [1,m]$, since $\alpha \cdot i$ is not a prefix of $f(j)$, the inner inductive hypothesis yields
+            \begin{align*}
+                qs_\alpha[i] = \overline{f}(q)_{\alpha\cdot i} = \overline{f}(q^\prime)_{\alpha\cdot i} = qs^\prime_\alpha[i] \label{eq:empty2} \tag{!!}
+            \end{align*}
+            Putting everything together, $\overline{f}(q)_\alpha = \overline{f}(q^\prime)_\alpha$, as desired.
+    \end{itemize}
+    \textbf{NOTE:}
+    even when $\alpha \cdot i$ is not a prefix of any $f(i)$, \Cref{eq:empty1} and \Cref{eq:empty2} hold!
+    Both $\overline{f}(q)_{\alpha \cdot i}$ and $\overline{f}(q^\prime)_{\alpha \cdot i}$ would be PIEO trees with empty PIEOs on all leaf and internal nodes.
+\end{proof}
+
+\leqnomode
+
+\begin{lem}
+    \label{lem:sim3}
+    Let $t_1, t_2 \in \Topo$ and $f$ be an embedding of $t_1$ inside $t_2$. 
+    For $\pkt \in \Pkt$, $d \in \Data$, and $pt \in \Path(t_1)$,
+    $$\overline{f}(\push(q, \pkt, d, pt)) = \push(\overline{f}(q), \pkt, d, \widetilde{f}(pt))$$
+\end{lem}
+
+\begin{proof}
+    Let $q_2 = \overline{f}(q_1)$.
+    For $g \in \mathcal F$ such that $g(d)$ holds true,
+    \begin{align*}
+        \proj_g(\overline{f}(\push(q_1, \pkt, d, pt)))
+        &= \widehat{f}(\proj_g(\push(q_1, \pkt, d, pt))) \tag{by \Cref{thm:cd}}\\
+        &= \widehat{f}(\push(\proj_g(q_1), \pkt, pt)) \tag{by \Cref{lem:push}}\\
+        &= \push(\widehat{f}(\proj_g(q_1)), \pkt, \widetilde{f}(pt)) \tag{by \cite[Lemma ~5.9]{OG}}\\
+        &= \push(\proj_g(q_2), \pkt, \widetilde{f}(pt)) \tag{by \Cref{thm:cd}}\\
+        &= \proj_g(\push(q_2, \pkt, d, \widetilde{f}(pt))) \tag{by \Cref{lem:push}}
+    \end{align*}
+    For $g \in \mathcal F$ such that $g(d)$ does not hold true,
+    \begin{align*}
+        \proj_g(\overline{f}(\push(q_1, \pkt, d, pt)))
+        &= \widehat{f}(\proj_g(\push(q_1, \pkt, d, pt))) \tag{by \Cref{thm:cd}}\\
+        &= \widehat{f}(\proj_g(q_1)) \tag{by \Cref{lem:push}}\\
+        &= \proj_g(q_2) \tag{by \Cref{thm:cd}}\\
+        &= \proj_g(\push(q_2, \pkt, d, \widetilde{f}(pt))) \tag{by \Cref{lem:push}}
+    \end{align*}
+    Overall,
+    $
+        \proj_g(\overline{f}(\push(q_1, \pkt, d, pt)))
+        = 
+        \proj_g(\push(q_2, \pkt, d, \widetilde{f}(pt)))
+    $
+    for all $g \in \mathcal F$. 
+    Hence,
+    $$
+        \overline{f}(\push(q_1, \pkt, d, pt))
+        = 
+        \push(q_2, \pkt, d, \widetilde{f}(pt))
+    $$
+    by \Cref{lem:pieotree_eq}, as desired.
+\end{proof}
+
+\begin{thm}
+    Let $t_1, t_2 \in \Topo$. If $f$ embeds $t_1$ into $t_2$, then 
+    $$R = \{(q, \overline{f}(q)) \mid q \in \PIEOTree(t_1)\}$$ 
+    is a simulation.
+\end{thm}
+
+\begin{proof}
+    By \Cref{lem:sim1}, \Cref{lem:sim2}, and \Cref{lem:sim3}, the conditions from \Cref{dfn:sim} hold.
+\end{proof}
+
+\newpage 
+
+\renewcommand\refname{\LARGE References}
+\bibliographystyle{alpha}
+\bibliography{refs}
+
+\end{document}
