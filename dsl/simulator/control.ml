@@ -9,8 +9,6 @@ type addr =
   | Eps
   | Cons of int * addr
 
-exception RoutingError of Packet.t
-
 let sprintf = Printf.sprintf
 
 let rec addr_to_string = function
@@ -56,10 +54,12 @@ let route_pkt p pkt =
     | WeightedFair wplst ->
         List.find_mapi (fun i (p, _) -> route_pkt_aux p (i :: pt)) wplst
   in
-  route_pkt_aux p []
+  match route_pkt_aux p [] with
+  | Some rankless_path -> rankless_path
+  | None -> failwith (sprintf "ERROR: cannot route flow %s" (Packet.flow pkt))
 
 let z_in_of_policy p s pkt =
-  let rec z_in_of_policy_aux (p : Frontend.Policy.t) rankless_path addr s pkt =
+  let rec z_in_of_policy_aux (p : Frontend.Policy.t) rankless_path addr s =
     let prefix = addr_to_string addr in
 
     match (p, rankless_path) with
@@ -67,12 +67,12 @@ let z_in_of_policy p s pkt =
         ([ (Path.foot, Rank.create_for_pkt 0.0 pkt) ], s, Time.epoch)
     | Fifo plst, h :: t ->
         let pt, s', time =
-          z_in_of_policy_aux (List.nth plst h) t (Cons (h, addr)) s pkt
+          z_in_of_policy_aux (List.nth plst h) t (Cons (h, addr)) s
         in
         ((h, Rank.create_for_pkt 0.0 pkt) :: pt, s', time)
     | Strict plst, h :: t ->
         let pt, s', time =
-          z_in_of_policy_aux (List.nth plst h) t (Cons (h, addr)) s pkt
+          z_in_of_policy_aux (List.nth plst h) t (Cons (h, addr)) s
         in
         ((h, Rank.create_for_pkt (float_of_int h) pkt) :: pt, s', time)
     | RoundRobin plst, h :: t ->
@@ -81,7 +81,7 @@ let z_in_of_policy p s pkt =
         let rank = State.lookup r_i s in
         let s' = State.rebind r_i (rank +. float_of_int n) s in
         let pt, s'', time =
-          z_in_of_policy_aux (List.nth plst h) t (Cons (h, addr)) s' pkt
+          z_in_of_policy_aux (List.nth plst h) t (Cons (h, addr)) s'
         in
         ((h, Rank.create_for_pkt rank pkt) :: pt, s'', time)
     | WeightedFair plst, h :: t ->
@@ -95,25 +95,23 @@ let z_in_of_policy p s pkt =
         in
         let s' = State.rebind lf (rank +. (Packet.len pkt /. weight)) s in
         let pt, s'', time =
-          z_in_of_policy_aux (List.nth plst h |> fst) t (Cons (h, addr)) s' pkt
+          z_in_of_policy_aux (List.nth plst h |> fst) t (Cons (h, addr)) s'
         in
         ((h, Rank.create_for_pkt rank pkt) :: pt, s'', time)
     | _ -> failwith "ERROR: unreachable branch"
   in
-  match route_pkt p pkt with
-  | Some rankless_path -> z_in_of_policy_aux p rankless_path Eps s pkt
-  | None -> raise (RoutingError pkt)
+  z_in_of_policy_aux p (route_pkt p pkt) Eps s
 
 let z_out_of_policy p s pkt =
-  let rec z_out_of_policy_aux (p : Frontend.Policy.t) rankless_path addr s pkt =
+  let rec z_out_of_policy_aux (p : Frontend.Policy.t) rankless_path addr s =
     let prefix = addr_to_string addr in
 
     match (p, rankless_path) with
     | Class _, [] -> s
     | Fifo plst, h :: t | Strict plst, h :: t ->
-        z_out_of_policy_aux (List.nth plst h) t (Cons (h, addr)) s pkt
+        z_out_of_policy_aux (List.nth plst h) t (Cons (h, addr)) s
     | WeightedFair plst, h :: t ->
-        z_out_of_policy_aux (List.nth plst h |> fst) t (Cons (h, addr)) s pkt
+        z_out_of_policy_aux (List.nth plst h |> fst) t (Cons (h, addr)) s
     | RoundRobin plst, h :: t ->
         let n = List.length plst in
         let who_skip pop turn =
@@ -134,12 +132,10 @@ let z_out_of_policy p s pkt =
           State.rebind r_i (State.lookup r_i s +. float_of_int n) s
         in
         let s'' = List.fold_left f s' skipped in
-        z_out_of_policy_aux (List.nth plst h) t (Cons (h, addr)) s'' pkt
+        z_out_of_policy_aux (List.nth plst h) t (Cons (h, addr)) s''
     | _ -> failwith "ERROR: unreachable branch"
   in
-  match route_pkt p pkt with
-  | Some rankless_path -> z_out_of_policy_aux p rankless_path Eps s pkt
-  | None -> raise (RoutingError pkt)
+  z_out_of_policy_aux p (route_pkt p pkt) Eps s
 
 let of_policy p =
   {
