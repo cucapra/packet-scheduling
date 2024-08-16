@@ -17,7 +17,7 @@ let simulate sim_length sleep pop_tick flow (ctrl : Control.t) =
       packet, it will only be pushed into the tree 5 (or more) seconds after the
       simulation starts. The tree can be popped only if the time since the last
       pop is greater than `pop_tick`. This allows us to play with `pop_tick` and
-      therfore saturate the tree. *)
+      therefore saturate the tree. *)
   let start_time = Packet.time (List.hd flow) in
   let end_time = Time.add_float start_time sim_length in
 
