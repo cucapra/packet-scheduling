@@ -8,15 +8,15 @@ type map = addr -> addr Option.t
 
 let ( let* ) = Option.bind
 
+let rec addr_to_string = function
+  | [] -> "ε"
+  | h :: t -> Printf.sprintf "%d ∙ %s" h (addr_to_string t)
+
 let rec of_policy (p : Frontend.Policy.t) =
   match p with
   | Class _ -> Star
   | Fifo plst | RoundRobin plst | Strict plst -> Node (List.map of_policy plst)
   | WeightedFair wplst -> Node (List.map (fun (p, _) -> of_policy p) wplst)
-
-let rec size = function
-  | Star -> 1
-  | Node ts -> List.fold_left (fun acc x -> acc + size x) 0 ts
 
 let rec height = function
   | Star -> 1

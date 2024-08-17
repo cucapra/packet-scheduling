@@ -5,25 +5,17 @@ type t = {
   z_out : State.t -> Packet.t -> State.t;
 }
 
-type addr =
-  | Eps
-  | Cons of int * addr
-
 let sprintf = Printf.sprintf
 
-let rec addr_to_string = function
-  | Eps -> "ε"
-  | Cons (i, addr) -> Printf.sprintf "%d ∙ %s" i (addr_to_string addr)
-
-let init_state p =
-  let rec init_state_aux (p : Frontend.Policy.t) addr s =
+let init_state_of_policy p =
+  let rec init_state_of_policy_aux (p : Frontend.Policy.t) addr s =
     let join plst addr s =
-      let f (i, s) p = (i + 1, init_state_aux p (Cons (i, addr)) s) in
+      let f (i, s) p = (i + 1, init_state_of_policy_aux p (i :: addr) s) in
       match List.fold_left f (0, s) plst with
       | _, s' -> s'
     in
 
-    let prefix = addr_to_string addr in
+    let prefix = Topo.addr_to_string addr in
 
     match p with
     | Class _ -> s
@@ -43,7 +35,7 @@ let init_state p =
         s |> State.rebind_all weights |> join (List.map fst wplst) addr
     | Fifo plst | Strict plst -> join plst addr s
   in
-  init_state_aux p Eps State.empty
+  init_state_of_policy_aux p [] State.empty
 
 let route_pkt p pkt =
   let rec route_pkt_aux (p : Frontend.Policy.t) pt =
@@ -60,19 +52,19 @@ let route_pkt p pkt =
 
 let z_in_of_policy p s pkt =
   let rec z_in_of_policy_aux (p : Frontend.Policy.t) rankless_path addr s =
-    let prefix = addr_to_string addr in
+    let prefix = Topo.addr_to_string addr in
 
     match (p, rankless_path) with
     | Class _, [] ->
         ([ (Path.foot, Rank.create_for_pkt 0.0 pkt) ], s, Time.epoch)
     | Fifo plst, h :: t ->
         let pt, s', time =
-          z_in_of_policy_aux (List.nth plst h) t (Cons (h, addr)) s
+          z_in_of_policy_aux (List.nth plst h) t (h :: addr) s
         in
         ((h, Rank.create_for_pkt 0.0 pkt) :: pt, s', time)
     | Strict plst, h :: t ->
         let pt, s', time =
-          z_in_of_policy_aux (List.nth plst h) t (Cons (h, addr)) s
+          z_in_of_policy_aux (List.nth plst h) t (h :: addr) s
         in
         ((h, Rank.create_for_pkt (float_of_int h) pkt) :: pt, s', time)
     | RoundRobin plst, h :: t ->
@@ -81,7 +73,7 @@ let z_in_of_policy p s pkt =
         let rank = State.lookup r_i s in
         let s' = State.rebind r_i (rank +. float_of_int n) s in
         let pt, s'', time =
-          z_in_of_policy_aux (List.nth plst h) t (Cons (h, addr)) s'
+          z_in_of_policy_aux (List.nth plst h) t (h :: addr) s'
         in
         ((h, Rank.create_for_pkt rank pkt) :: pt, s'', time)
     | WeightedFair plst, h :: t ->
@@ -95,23 +87,23 @@ let z_in_of_policy p s pkt =
         in
         let s' = State.rebind lf (rank +. (Packet.len pkt /. weight)) s in
         let pt, s'', time =
-          z_in_of_policy_aux (List.nth plst h |> fst) t (Cons (h, addr)) s'
+          z_in_of_policy_aux (List.nth plst h |> fst) t (h :: addr) s'
         in
         ((h, Rank.create_for_pkt rank pkt) :: pt, s'', time)
     | _ -> failwith "ERROR: unreachable branch"
   in
-  z_in_of_policy_aux p (route_pkt p pkt) Eps s
+  z_in_of_policy_aux p (route_pkt p pkt) [] s
 
 let z_out_of_policy p s pkt =
   let rec z_out_of_policy_aux (p : Frontend.Policy.t) rankless_path addr s =
-    let prefix = addr_to_string addr in
+    let prefix = Topo.addr_to_string addr in
 
     match (p, rankless_path) with
     | Class _, [] -> s
     | Fifo plst, h :: t | Strict plst, h :: t ->
-        z_out_of_policy_aux (List.nth plst h) t (Cons (h, addr)) s
+        z_out_of_policy_aux (List.nth plst h) t (h :: addr) s
     | WeightedFair plst, h :: t ->
-        z_out_of_policy_aux (List.nth plst h |> fst) t (Cons (h, addr)) s
+        z_out_of_policy_aux (List.nth plst h |> fst) t (h :: addr) s
     | RoundRobin plst, h :: t ->
         let n = List.length plst in
         let who_skip pop turn =
@@ -132,15 +124,15 @@ let z_out_of_policy p s pkt =
           State.rebind r_i (State.lookup r_i s +. float_of_int n) s
         in
         let s'' = List.fold_left f s' skipped in
-        z_out_of_policy_aux (List.nth plst h) t (Cons (h, addr)) s''
+        z_out_of_policy_aux (List.nth plst h) t (h :: addr) s''
     | _ -> failwith "ERROR: unreachable branch"
   in
-  z_out_of_policy_aux p (route_pkt p pkt) Eps s
+  z_out_of_policy_aux p (route_pkt p pkt) [] s
 
 let of_policy p =
   {
     q = p |> Topo.of_policy |> Pieotree.create;
-    s = init_state p;
+    s = init_state_of_policy p;
     z_in = z_in_of_policy p;
     z_out = z_out_of_policy p;
   }
