@@ -62,6 +62,10 @@ let error_tests =
     make_error_test "unbound var in middle of list of assignments"
       "progs/incorrect/unbound_var_hier.sched"
       (Policy.UnboundVariable "r_polic");
+    make_error_test "class used twice in policy"
+      "progs/incorrect/duplicate_classes.sched" (Policy.DuplicateClass "B");
+    make_error_test "class used twice in one fifo"
+      "progs/incorrect/duplicate_samepol.sched" (Policy.DuplicateClass "A");
   ]
 
 let suite = "parsing tests" >::: wc_tests @ error_tests (* @ nwc_tests *)

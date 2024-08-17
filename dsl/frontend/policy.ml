@@ -8,22 +8,27 @@ type t =
 
 exception UnboundVariable of Ast.var
 exception UndeclaredClass of Ast.clss
+exception DuplicateClass of Ast.clss
 
 let lookup s x =
   match List.assoc_opt x s with
   | Some v -> v
   | None -> raise (UnboundVariable x)
 
-let rec sub cl st (p : Ast.policy) =
-  (* Helper function that evaluates a policy list. *)
-  let sub_plst cl st = List.map (sub cl st) in
-
-  (* Helper function that evaluates a weighted policy list. *)
-  let sub_weighted_plst cl st = List.map (fun (x, i) -> (sub cl st x, i)) in
+let rec sub cl st (p : Ast.policy) used =
+  let sub_plst cl st = List.map (fun x -> sub cl st x used) in
+  let sub_weighted_plst cl st =
+    List.map (fun (x, i) -> (sub cl st x used, i))
+  in
 
   match p with
-  | Class c -> if List.mem c cl then Class c else raise (UndeclaredClass c)
-  | Var x -> sub cl st (lookup st x)
+  | Class c ->
+      if List.mem c !used then raise (DuplicateClass c)
+      else if List.mem c cl then (
+        used := c :: !used;
+        (Class c : t))
+      else raise (UndeclaredClass c)
+  | Var x -> sub cl st (lookup st x) used
   | Fifo plst -> Fifo (sub_plst cl st plst)
   | RoundRobin plst -> RoundRobin (sub_plst cl st plst)
   | Strict plst -> Strict (sub_plst cl st plst)
@@ -31,17 +36,13 @@ let rec sub cl st (p : Ast.policy) =
   | _ -> failwith "ERROR: unsupported policy"
 
 (* Look up any variables and substitute them in. *)
-let of_program (cl, alst, ret) = sub cl alst ret
+let of_program (cl, alst, ret) : t = sub cl alst ret (ref [])
 
 let rec to_string p =
   let sprintf = Printf.sprintf in
-
-  (* Helper function to compactly join policy lists by comma *)
   let join lst =
     sprintf "[%s]" (lst |> List.map to_string |> String.concat ", ")
   in
-
-  (* Helper function to compactly join weighted policy lists by comma *)
   let join_weighted lst =
     sprintf "[%s]"
       (lst
