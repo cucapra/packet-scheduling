@@ -26,9 +26,9 @@ let rec push t ts pkt path =
       Internal (replace_nth qs i q', p')
   | _ -> failwith "ERROR: invalid path"
 
+(* The size of a PIEO tree is the number of ready packets in its leaves.
+   Recall that a packet is _ready_ if its time stamp is <= `now`. *)
 let rec size t now =
-  (* The size of a PIEO tree is the number of ready packets in its leaves.
-     Recall that a packet is _ready_ if its time stamp is <= `now`. *)
   match t with
   | Leaf p -> Pieo.size p (predicate now)
   | Internal (qs, _) -> List.fold_left (fun acc q -> acc + size q now) 0 qs

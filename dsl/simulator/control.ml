@@ -7,6 +7,12 @@ type t = {
 
 let sprintf = Printf.sprintf
 
+(* `init_state_of_policy p` is `(of_policy p).s`, i.e. the initial state for
+   `p`'s control.
+
+   `init_state_of_policy` initalizes values bound to keys managed by each node
+   of `p` according to the semantics of their policies. To prevent name clashes,
+   each key is prefixed with the address of its associated node. *)
 let init_state_of_policy p =
   let rec init_state_of_policy_aux (p : Frontend.Policy.t) addr s =
     let join plst addr s =
@@ -50,6 +56,20 @@ let route_pkt p pkt =
   | Some rankless_path -> rankless_path
   | None -> failwith (sprintf "ERROR: cannot route flow %s" (Packet.flow pkt))
 
+(* `z_in_of_policy p` is `(of_policy p).z_in`, i.e. the _scheduling transaction_
+   for `p`'s control.
+
+   More specifically, consider packet `pkt`, belonging to the flow living at
+   `p`'s leaf with address `i · _`. Call `p`'s `i`th child policy `p_i`.
+   We define `z_in_of_policy p s pkt` inductively:
+   - Update `s` to `s'` and compute the readiness time `t` and rank `r`, as per
+     the semantics of the policy at `p`'s root.
+   - Next, recursively compute `z_in_of_policy p_i s' pkt` = (path, s'', t') and
+     return `((i, r) :: path, s'', max t t')`
+   Instead, if `p` has no children, i.e. `pkt` belongs to the flow living at
+   address `ε`, then let `z_in_of_policy p s pkt` be
+    `([ (_, pkt's arrival time) ], s, -\infty)`.
+*)
 let z_in_of_policy p s pkt =
   let rec z_in_of_policy_aux (p : Frontend.Policy.t) rankless_path addr s =
     let prefix = Topo.addr_to_string addr in
@@ -94,6 +114,16 @@ let z_in_of_policy p s pkt =
   in
   z_in_of_policy_aux p (route_pkt p pkt) [] s
 
+(* `z_out_of_policy p` is `(of_policy p).z_out`, i.e. the state updating
+   function at dequeue for `p`'s control.
+
+   More specifically, consider packet `pkt`, belonging to the flow living at
+   `p`'s leaf with address `i · _`. Call `p`'s `i`th child policy `p_i`.
+   We define state `z_out_of_policy p s pkt` inductively:
+   - Update `s` to `s'`, as per the semantics of the policy at `p`'s root.
+   - Next, recursively compute `z_out_of_policy p_i s' pkt`
+   Instead, if `p` has no children, i.e. `pkt` belongs to the flow living at
+   address `ε`, then let `z_out_of_policy p s pkt` be `s`. *)
 let z_out_of_policy p s pkt =
   let rec z_out_of_policy_aux (p : Frontend.Policy.t) rankless_path addr s =
     let prefix = Topo.addr_to_string addr in
