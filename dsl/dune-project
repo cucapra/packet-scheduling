@@ -27,5 +27,17 @@
  (name dsl)
  (synopsis "DSL for Programmable Packet Scheduling")
  (description "TBD")
- (depends ocaml dune ounit2 menhir))
+ (depends 
+   ocaml 
+   dune 
+   ounit2 
+   menhir 
+   ; libraries for Simulator
+   core_kernel 
+   pcap-format 
+   hex 
+   mmap
+   csv
+  )
+)
 

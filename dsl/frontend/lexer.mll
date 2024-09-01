@@ -3,16 +3,15 @@
 }
 
 let whitespace = [' ' '\t']+
-let digit = ['0'-'9']
-let int = '-'? digit+
+let int = '-'? ['0'-'9']+
+let float = '-'? (['0'-'9']* '.')? ['0'-'9']+
 let id = ['a'-'z'] ['a'-'z' '0'-'9' '_']*
 let bigid = ['A'-'Z']*
-let newline = ['\n']*
 let comment = ['/' '/'] ['\x00' - '\x09']* ['\x0b' - '\x80']*
 
 rule token = parse
 | whitespace            { token lexbuf}
-| newline               { Lexing.new_line lexbuf; token lexbuf }
+| "\n"                  { Lexing.new_line lexbuf; token lexbuf }
 | comment               { token lexbuf }
 | "="                   { EQUALS }
 | "["                   { LBRACKET }
@@ -41,6 +40,7 @@ rule token = parse
 | id as v               { VAR(v) }
 | bigid as i            { CLSS(i) }
 | int                   { INT (int_of_string (Lexing.lexeme lexbuf)) }
+| float                 { FLOAT (float_of_string (Lexing.lexeme lexbuf)) }
 | eof                   { EOF }
 
 
