@@ -22,11 +22,11 @@ jobs:
         with:
           ocaml-compiler: 5
       - name: Install dependencies
-        working-directory: dsl
+        working-directory: rio
         run: | 
           opam install . --deps-only
-      - name: DSL tests
-        working-directory: dsl
+      - name: Rio tests
+        working-directory: rio
         run: |
           opam exec -- dune build
           opam exec -- dune test
