@@ -4,6 +4,7 @@ type var = string
 (* Changes to this type must also be reflected in `Policy.t` in policy.ml *)
 type policy =
   | Class of clss
+  | Union of policy list
   | Fifo of policy list
   | RoundRobin of policy list
   | Strict of policy list

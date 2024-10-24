@@ -43,6 +43,7 @@
 %token RPAREN
 %token RETURN
 %token CLASSES
+%token UNION
 %token COMMA
 %token SEMICOLON
 %token EOF
@@ -69,6 +70,7 @@
 
 /* Policies */
 policy:
+    | UNION LBRACKET; pl = arglist; RBRACKET            { Union pl }
     | FIFO LBRACKET; pl = arglist; RBRACKET             { Fifo pl }
     | STRICT LBRACKET; pl = arglist; RBRACKET           { Strict pl }
     | RR LBRACKET; pl = arglist; RBRACKET               { RoundRobin pl }
