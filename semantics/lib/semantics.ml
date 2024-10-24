@@ -61,7 +61,7 @@ module Semantics (Pkt : Packet) (Q : Queue) : SemanticsSig = struct
     (* Sort all non-None pop candidates for each queue by f *)
     let candidates =
       List.sort
-        (fun (q1, p1) (q2, p2) -> compare p1 p2)
+        (fun (_, p1) (_, p2) -> compare p1 p2)
         (List.filter (fun (_, x) -> x <> None) (heads f qs))
     in
     match candidates with
@@ -80,7 +80,26 @@ module Semantics (Pkt : Packet) (Q : Queue) : SemanticsSig = struct
     let pkt, qs_new = popg f qs in
     (pkt, (p, qs_new))
 
-  let pop (p, qs) =
+  (* Compute the number of subclasses in a program *)
+  let rec length = function
+    | Fifo s | EarliestDeadline s | ShortestJobNext s -> (
+        match s with Union lst -> List.length lst | _ -> 1)
+    | RoundRobin lst | Strict lst | WeightedFair (lst, _) ->
+        List.fold_right (fun x acc -> length x + acc) lst 0
+
+  (** Partition lst into a list of lists where each lst[i] has length lengths[i].
+      Precondition: sum(lengths) = List.length lst
+  *)
+  let partition lst lengths =
+    let rec aux lst lengths acc =
+      match (lst, lengths) with
+      | [], _ | _, [] -> [ acc ]
+      | h1 :: t1, h2 :: t2 when h2 = 0 -> acc :: aux lst t2 []
+      | h1 :: t1, h2 :: t2 -> aux t1 ((h2 - 1) :: t2) (acc @ [ h1 ])
+    in
+    aux lst lengths []
+
+  let rec pop (p, qs) =
     match p with
     (* FIFO pops the packet with the lowest rank *)
     | Fifo _ -> pop_set_stream Pkt.rank (p, qs)
@@ -88,6 +107,27 @@ module Semantics (Pkt : Packet) (Q : Queue) : SemanticsSig = struct
     | EarliestDeadline _ -> pop_set_stream Pkt.time (p, qs)
     (* SJN pops the packet with the lowest weight *)
     | ShortestJobNext _ -> pop_set_stream Pkt.weight (p, qs)
+    (* RR alternates popping one packet from each of a series of streams *)
+    | RoundRobin substreams -> (
+        match substreams with
+        | [] -> (None, (p, qs))
+        | h :: t -> (
+            (* Partition qs into intervals by number of classes per substream *)
+            let partitioned = partition qs (List.map length substreams) in
+            (* Pop with the first substream and its subset of queues *)
+            match pop (List.hd substreams, List.hd partitioned) with
+            | None, _ ->
+                (* Queues and program don't change, but move to the end *)
+                ( None,
+                  ( RoundRobin (List.tl substreams @ [ List.hd substreams ]),
+                    List.flatten (List.tl partitioned @ [ List.hd partitioned ])
+                  ) )
+            | Some pkt, (p_new, qs_new) ->
+                (* Update program and queues and move both to the end *)
+                ( Some pkt,
+                  ( RoundRobin (List.tl substreams @ [ p_new ]),
+                    List.flatten (List.tl partitioned @ [ qs_new ]) ) )))
     (* To Be Implemented *)
-    | _ -> failwith "Not yet implemented"
+    | Strict lst -> failwith "Not yet implemented"
+    | WeightedFair (lst, weights) -> failwith "Not yet implemented"
 end
