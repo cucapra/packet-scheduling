@@ -13,6 +13,9 @@ module type Queue = sig
   (* pop qs returns the highest-priority element (if there is one) and modified queue *)
   val pop : 'a t -> 'a option * 'a t
 
+  (* pop qs removes the specified element from qs *)
+  val remove : 'a option -> 'a t -> 'a t
+
   (* update qs q q' is qs[q'/q] *)
   val update : 'a t list -> 'a t -> 'a t -> 'a t list
 
