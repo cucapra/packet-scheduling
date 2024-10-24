@@ -16,21 +16,22 @@ module type SemanticsSig = sig
   (** push pkt q st enqueues pkt to the queue q, and updates st. *)
 
   val pop : state -> pkt option * state
-  (* pop st dequeues the next packet in line, and updates st. *)
+  (** pop st dequeues the next packet in line, and updates st. *)
 end
 
 (** An implementation for Rio's operational semantics. *)
 module Semantics (Pkt : Packet) (Q : Queue) : SemanticsSig = struct
-  (* For the time being, we operate in a world without variables. *)
   type clss = string
   type set = Class of clss | Union of set list
 
   exception EvaluationError
 
   type stream =
+    (* Set To Stream *)
     | Fifo of set
     | EarliestDeadline of set
     | ShortestJobNext of set
+    (* Stream To Stream *)
     | RoundRobin of stream list
     | Strict of stream list
     | WeightedFair of stream list * int list
@@ -41,6 +42,7 @@ module Semantics (Pkt : Packet) (Q : Queue) : SemanticsSig = struct
   type state = prog * queue list
 
   let push (pkt, q, (p, qs)) =
+    (* Assert that the relevant queue is part of the larger list of queues *)
     if List.mem q qs then (p, Q.update qs q (Q.push (pkt, q)))
     else raise EvaluationError
 
@@ -57,16 +59,16 @@ module Semantics (Pkt : Packet) (Q : Queue) : SemanticsSig = struct
   (* Pop packet that has the highest value for the specified f *)
   let popg f qs =
     (* Sort all non-None pop candidates for each queue by f *)
-    let candidates = List.filter (fun (_, x) -> x <> None) (heads f qs) in
+    let candidates =
+      List.sort
+        (fun (q1, p1) (q2, p2) -> compare p1 p2)
+        (List.filter (fun (_, x) -> x <> None) (heads f qs))
+    in
     match candidates with
     (* Case – all queues are empty. Then return none. *)
     | [] -> (None, qs)
-    | _ ->
-        let sorted =
-          List.sort (fun (q1, p1) (q2, p2) -> compare p1 p2) candidates
-        in
-        (* Get pop queue and pop candidate from head of sorted list *)
-        let q, pkt = List.hd sorted in
+    (* Get pop queue and pop candidate from head of sorted list *)
+    | (q, pkt) :: _ ->
         (* Remove packet from queue *)
         let updated_q = Q.remove pkt q in
         (* Update qs *)
@@ -87,5 +89,5 @@ module Semantics (Pkt : Packet) (Q : Queue) : SemanticsSig = struct
     (* SJN pops the packet with the lowest weight *)
     | ShortestJobNext _ -> pop_set_stream Pkt.weight (p, qs)
     (* To Be Implemented *)
-    | _ -> failwith "Stream-To-Stream not yet implemented"
+    | _ -> failwith "Not yet implemented"
 end
