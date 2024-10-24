@@ -81,15 +81,18 @@ module Semantics (Pkt : Packet) (Q : Queue) : SemanticsSig = struct
     (pkt, (p, qs_new))
 
   (* Compute the number of subclasses in a program *)
-  let rec length = function
-    | Fifo s | EarliestDeadline s | ShortestJobNext s -> (
-        match s with Union lst -> List.length lst | _ -> 1)
+  let rec num_classes prog =
+    let rec n_classes_set = function
+      | Class name -> 1
+      | Union lst -> List.fold_right (fun x acc -> n_classes_set x + acc) lst 0
+    in
+    match prog with
+    | Fifo s | EarliestDeadline s | ShortestJobNext s -> n_classes_set s
     | RoundRobin lst | Strict lst | WeightedFair (lst, _) ->
-        List.fold_right (fun x acc -> length x + acc) lst 0
+        List.fold_right (fun x acc -> num_classes x + acc) lst 0
 
   (** Partition lst into a list of lists where each lst[i] has length lengths[i].
-      Precondition: sum(lengths) = List.length lst
-  *)
+      Precondition: sum(lengths) = List.num_classes lst *)
   let partition lst lengths =
     let rec aux lst lengths acc =
       match (lst, lengths) with
@@ -113,21 +116,21 @@ module Semantics (Pkt : Packet) (Q : Queue) : SemanticsSig = struct
         | [] -> (None, (p, qs))
         | h :: t -> (
             (* Partition qs into intervals by number of classes per substream *)
-            let partitioned = partition qs (List.map length substreams) in
+            let partitioned = partition qs (List.map num_classes substreams) in
             (* Pop with the first substream and its subset of queues *)
-            match pop (List.hd substreams, List.hd partitioned) with
+            match pop (h, List.hd partitioned) with
             | None, _ ->
                 (* Queues and program don't change, but move to the end *)
                 ( None,
-                  ( RoundRobin (List.tl substreams @ [ List.hd substreams ]),
+                  ( RoundRobin (t @ [ h ]),
                     List.flatten (List.tl partitioned @ [ List.hd partitioned ])
                   ) )
             | Some pkt, (p_new, qs_new) ->
                 (* Update program and queues and move both to the end *)
                 ( Some pkt,
-                  ( RoundRobin (List.tl substreams @ [ p_new ]),
+                  ( RoundRobin (t @ [ p_new ]),
                     List.flatten (List.tl partitioned @ [ qs_new ]) ) )))
     (* To Be Implemented *)
-    | Strict lst -> failwith "Not yet implemented"
+    | Strict substreams -> failwith "Not yet implemented"
     | WeightedFair (lst, weights) -> failwith "Not yet implemented"
 end
