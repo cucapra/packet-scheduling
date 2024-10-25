@@ -1,14 +1,20 @@
 (** A signature for packets. *)
 
 module type Packet = sig
+  (* A type for packets *)
   type t
 
+  (* An ordered type *)
+  type ord
+
+  val compare : ord -> ord -> int
+
   (* rank pkt is the rank of pkt *)
-  val rank : t -> float
+  val rank : t -> ord
 
   (* time pkt is the pop deadline of pkt *)
-  val time : t -> float
+  val time : t -> ord
 
   (* weight pkt is the weight pkt *)
-  val weight : t -> float
+  val weight : t -> ord
 end

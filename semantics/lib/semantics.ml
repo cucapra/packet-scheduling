@@ -102,6 +102,11 @@ module Semantics (Pkt : Packet) (Q : Queue) : SemanticsSig = struct
     in
     aux lst lengths []
 
+  (* update_i idx newval lst updates lst such that lst[i] = newval *)
+  let rec update_i idx newval = function
+    | [] -> []
+    | h :: t -> if idx = 0 then newval :: t else update_i (idx - 1) newval t
+
   let rec pop (p, qs) =
     match p with
     (* FIFO pops the packet with the lowest rank *)
@@ -130,7 +135,32 @@ module Semantics (Pkt : Packet) (Q : Queue) : SemanticsSig = struct
                 ( Some pkt,
                   ( RoundRobin (t @ [ p_new ]),
                     List.flatten (List.tl partitioned @ [ qs_new ]) ) )))
+    (* Strict pops from the first stream that is not silent *)
+    | Strict substreams -> (
+        match substreams with
+        | [] -> (None, (p, qs))
+        | _ -> (
+            (* Partition qs into intervals by number of classes per substream *)
+            let partitioned = partition qs (List.map num_classes substreams) in
+            let combined = List.combine substreams partitioned in
+
+            (* Check first that there is a pop candidate *)
+            let can_pop =
+              List.filter
+                (fun (_, x) -> fst (pop x) <> None)
+                (List.mapi (fun i x -> (i, x)) combined)
+            in
+
+            (* If there is no pop candidate, return None *)
+            match can_pop with
+            | [] -> (None, (p, qs))
+            (* Otherwise, pop the candidate; update relevant programs and queues *)
+            | h :: _ ->
+                let (idx, _), (popped, new_state) = (h, pop (snd h)) in
+                let p_new, qs_new =
+                  List.split (update_i idx new_state combined)
+                in
+                (popped, (Strict p_new, List.flatten qs_new))))
     (* To Be Implemented *)
-    | Strict substreams -> failwith "Not yet implemented"
-    | WeightedFair (lst, weights) -> failwith "Not yet implemented"
+    | WeightedFair (substreams, weights) -> failwith "Not yet implemented"
 end
