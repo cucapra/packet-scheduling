@@ -1,5 +1,6 @@
 open Packet
 open Queue
+open Program
 
 (** Implementation of the semantics discussed in #67. See linked documentation. *)
 
@@ -22,25 +23,13 @@ end
 (** An implementation for Rio's operational semantics. *)
 module Semantics (Pkt : Packet) (Q : Queue with type elt = Pkt.t) :
   SemanticsSig = struct
-  type clss = string
-  type set = Class of clss | Union of set list
-
-  exception EvaluationError
-
-  type stream =
-    (* Set To Stream *)
-    | Fifo of set
-    | EarliestDeadline of set
-    | ShortestJobNext of set
-    (* Stream To Stream *)
-    | RoundRobin of stream list
-    | Strict of stream list
-    | WeightedFair of stream list * int list
-
-  type prog = stream
+  type set = Program.set
+  type prog = Program.prog
   type pkt = Pkt.t
   type queue = Q.t
   type state = prog * queue list
+
+  exception EvaluationError
 
   let push (pkt, q, (p, qs)) =
     (* Assert that the relevant queue is part of the larger list of queues *)
@@ -82,8 +71,9 @@ module Semantics (Pkt : Packet) (Q : Queue with type elt = Pkt.t) :
     (pkt, (p, qs_new))
 
   (* Compute the number of subclasses in a program *)
-  let rec num_classes prog =
-    let rec n_classes_set = function
+  let rec num_classes (prog : prog) =
+    let rec n_classes_set (set : set) =
+      match set with
       | Class _ -> 1
       | Union lst -> List.fold_right (fun x acc -> n_classes_set x + acc) lst 0
     in
@@ -109,7 +99,7 @@ module Semantics (Pkt : Packet) (Q : Queue with type elt = Pkt.t) :
     | h :: t ->
         if idx = 0 then newval :: t else h :: update_i (idx - 1) newval t
 
-  let rec pop (p, qs) =
+  let rec pop ((p : prog), qs) =
     match p with
     (* FIFO pops the packet with the lowest rank *)
     | Fifo _ -> pop_set_stream Pkt.rank (p, qs)

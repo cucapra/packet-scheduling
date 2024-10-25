@@ -1,6 +1,7 @@
 open SemanticsImpl.Packet
 open SemanticsImpl.Queue
 open SemanticsImpl.Semantics
+open SemanticsImpl.Program
 open OUnit2
 
 module PacketImpl : Packet = struct
