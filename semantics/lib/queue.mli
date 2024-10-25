@@ -1,24 +1,26 @@
 (** A signature for queues. *)
 
 module type Queue = sig
-  (* An abstract type for a queue with elements of type 'a *)
-  type 'a t
+  type elt
+
+  (* An abstract type for a queue with elements of type elt *)
+  type t
 
   (* empty is the empty queue *)
-  val empty : 'a t
+  val empty : t
 
   (* push pushes the latest element (with some rank) into the queue *)
-  val push : 'a * 'a t -> 'a t
+  val push : elt * t -> t
 
   (* pop qs returns the highest-priority element (if there is one) and modified queue *)
-  val pop : 'a t -> 'a option * 'a t
+  val pop : t -> elt option * t
 
   (* pop qs removes the specified element from qs *)
-  val remove : 'a option -> 'a t -> 'a t
+  val remove : elt option -> t -> t
 
   (* update qs q q' is qs[q'/q] *)
-  val update : 'a t list -> 'a t -> 'a t -> 'a t list
+  val update : t -> t -> t list -> t list
 
   (* flush q returns all elements enqeued in q. *)
-  val flush : 'a t -> 'a list
+  val flush : t -> elt list
 end

@@ -20,7 +20,8 @@ module type SemanticsSig = sig
 end
 
 (** An implementation for Rio's operational semantics. *)
-module Semantics (Pkt : Packet) (Q : Queue) : SemanticsSig = struct
+module Semantics (Pkt : Packet) (Q : Queue with type elt = Pkt.t) :
+  SemanticsSig = struct
   type clss = string
   type set = Class of clss | Union of set list
 
@@ -38,12 +39,12 @@ module Semantics (Pkt : Packet) (Q : Queue) : SemanticsSig = struct
 
   type prog = stream
   type pkt = Pkt.t
-  type queue = pkt Q.t
+  type queue = Q.t
   type state = prog * queue list
 
   let push (pkt, q, (p, qs)) =
     (* Assert that the relevant queue is part of the larger list of queues *)
-    if List.mem q qs then (p, Q.update qs q (Q.push (pkt, q)))
+    if List.mem q qs then (p, Q.update q (Q.push (pkt, q)) qs)
     else raise EvaluationError
 
   (* Find lowest rank packet in a queue *)
@@ -72,7 +73,7 @@ module Semantics (Pkt : Packet) (Q : Queue) : SemanticsSig = struct
         (* Remove packet from queue *)
         let updated_q = Q.remove pkt q in
         (* Update qs *)
-        let updated_qs = Q.update qs q updated_q in
+        let updated_qs = Q.update q updated_q qs in
         (pkt, updated_qs)
 
   (* Pop from a queue with specified function *)
