@@ -83,7 +83,7 @@ module Semantics (Pkt : Packet) (Q : Queue) : SemanticsSig = struct
   (* Compute the number of subclasses in a program *)
   let rec num_classes prog =
     let rec n_classes_set = function
-      | Class name -> 1
+      | Class _ -> 1
       | Union lst -> List.fold_right (fun x acc -> n_classes_set x + acc) lst 0
     in
     match prog with
@@ -97,7 +97,7 @@ module Semantics (Pkt : Packet) (Q : Queue) : SemanticsSig = struct
     let rec aux lst lengths acc =
       match (lst, lengths) with
       | [], _ | _, [] -> [ acc ]
-      | h1 :: t1, h2 :: t2 when h2 = 0 -> acc :: aux lst t2 []
+      | _, h2 :: t2 when h2 = 0 -> acc :: aux lst t2 []
       | h1 :: t1, h2 :: t2 -> aux t1 ((h2 - 1) :: t2) (acc @ [ h1 ])
     in
     aux lst lengths []
@@ -105,7 +105,8 @@ module Semantics (Pkt : Packet) (Q : Queue) : SemanticsSig = struct
   (* update_i idx newval lst updates lst such that lst[i] = newval *)
   let rec update_i idx newval = function
     | [] -> []
-    | h :: t -> if idx = 0 then newval :: t else update_i (idx - 1) newval t
+    | h :: t ->
+        if idx = 0 then newval :: t else h :: update_i (idx - 1) newval t
 
   let rec pop (p, qs) =
     match p with
