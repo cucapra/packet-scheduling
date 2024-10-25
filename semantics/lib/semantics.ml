@@ -119,22 +119,15 @@ module Semantics (Pkt : Packet) (Q : Queue) : SemanticsSig = struct
     | RoundRobin substreams -> (
         match substreams with
         | [] -> (None, (p, qs))
-        | h :: t -> (
+        | h :: t ->
             (* Partition qs into intervals by number of classes per substream *)
             let partitioned = partition qs (List.map num_classes substreams) in
             (* Pop with the first substream and its subset of queues *)
-            match pop (h, List.hd partitioned) with
-            | None, _ ->
-                (* Queues and program don't change, but move to the end *)
-                ( None,
-                  ( RoundRobin (t @ [ h ]),
-                    List.flatten (List.tl partitioned @ [ List.hd partitioned ])
-                  ) )
-            | Some pkt, (p_new, qs_new) ->
-                (* Update program and queues and move both to the end *)
-                ( Some pkt,
-                  ( RoundRobin (t @ [ p_new ]),
-                    List.flatten (List.tl partitioned @ [ qs_new ]) ) )))
+            let popped, (p_new, qs_new) = pop (h, List.hd partitioned) in
+            (* Update program and queues and move both to the end *)
+            ( popped,
+              ( RoundRobin (t @ [ p_new ]),
+                List.flatten (List.tl partitioned @ [ qs_new ]) ) ))
     (* Strict pops from the first stream that is not silent *)
     | Strict substreams -> (
         match substreams with
@@ -161,6 +154,41 @@ module Semantics (Pkt : Packet) (Q : Queue) : SemanticsSig = struct
                   List.split (update_i idx new_state combined)
                 in
                 (popped, (Strict p_new, List.flatten qs_new))))
-    (* To Be Implemented *)
-    | WeightedFair (substreams, weights) -> failwith "Not yet implemented"
+    (* WFQ is RR with weights *)
+    | WeightedFair (substreams, weights) -> (
+        match (substreams, weights) with
+        | [], _ | _, [] -> (None, (p, qs))
+        | h1 :: t1, h2 :: t2 ->
+            (* Partition qs into intervals by number of classes per substream *)
+            let partitioned = partition qs (List.map num_classes substreams) in
+
+            (* Pop with the first substream and its subset of queues *)
+            let popped, (p_new, qs_new) = pop (h1, List.hd partitioned) in
+
+            if List.length weights = List.length substreams then
+              if h2 = 1 then
+                (* Case 1. Move everything to the end. *)
+                ( popped,
+                  ( WeightedFair (t1 @ [ p_new ], t2 @ [ h2 ]),
+                    List.flatten (List.tl partitioned @ [ qs_new ]) ) )
+              else if h2 > 1 then
+                (* Case 2. The round has just started; cache value and subtract *)
+                ( popped,
+                  ( WeightedFair (p_new :: t1, ((h2 - 1) :: t2) @ [ h2 ]),
+                    List.flatten (qs_new :: List.tl partitioned) ) )
+              else raise EvaluationError
+            else if List.length weights = List.length substreams + 1 then
+              if h2 = 1 then
+                (* Case 3. The round is active and we need to pop;
+                   re-add program and queues to the end, thereby getting m = n. *)
+                ( popped,
+                  ( WeightedFair (t1 @ [ p_new ], t2),
+                    List.flatten (List.tl partitioned @ [ qs_new ]) ) )
+              else if h2 > 1 then
+                (* Case 4. The round is active, so just subtract. *)
+                ( popped,
+                  ( WeightedFair (p_new :: t1, (h2 - 1) :: t2),
+                    List.flatten (qs_new :: List.tl partitioned) ) )
+              else raise EvaluationError
+            else raise EvaluationError)
 end
