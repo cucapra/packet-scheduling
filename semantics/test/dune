@@ -1,3 +1,4 @@
 (tests
  (names test_semantics)
- (libraries rioSemantics ounit2))
+ (libraries rioSemantics ounit2)
+ (deps (glob_files_rec ../data/*)))
