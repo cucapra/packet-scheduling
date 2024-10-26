@@ -23,4 +23,7 @@ module type Queue = sig
 
   (* flush q returns all elements enqeued in q. *)
   val flush : t -> elt list
+
+  (* from_list elems returns a queue containing all elements enqueued in priority order *)
+  val from_list : elt list -> t
 end

@@ -10,6 +10,7 @@ module type Queue = sig
   val remove : elt option -> t -> t
   val update : t -> t -> t list -> t list
   val flush : t -> elt list
+  val from_list : elt list -> t
 end
 
 (* An implementation for queues (see MLI) *)
@@ -41,4 +42,5 @@ module QueueImpl (Pkt : Packet) : Queue with type elt = Pkt.t = struct
         | h :: t -> if h = e then t else h :: remove elem t)
 
   let flush q = q
+  let from_list elems = List.fold_right (fun x acc -> push (x, acc)) elems empty
 end

@@ -13,5 +13,6 @@ module Program = struct
     | Strict of stream list
     | WeightedFair of stream list * int list
 
-  type prog = stream (* Exportable type *)
+  (* Exportable type *)
+  type prog = stream
 end

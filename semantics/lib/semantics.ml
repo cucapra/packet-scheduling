@@ -21,8 +21,7 @@ module type SemanticsSig = sig
 end
 
 (** An implementation for Rio's operational semantics. *)
-module Semantics (Pkt : Packet) (Q : Queue with type elt = Pkt.t) :
-  SemanticsSig = struct
+module Semantics (Pkt : Packet) (Q : Queue with type elt = Pkt.t) = struct
   type set = Program.set
   type prog = Program.prog
   type pkt = Pkt.t
