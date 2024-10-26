@@ -9,7 +9,7 @@ module type SemanticsSig = sig
   type prog
   type pkt
   type queue
-  type state
+  type state = prog * queue list
 
   exception EvaluationError
 
