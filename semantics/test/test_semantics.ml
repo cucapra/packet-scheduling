@@ -60,13 +60,13 @@ end
 
 (** A functor for testing semantics with packet and queue modules *)
 module SemanticsTester
-    (Pkt : RioSemantics.Packet.Packet
+    (Pkt : Packet.Packet
              with type t = float * float * float
               and type ord = float)
-    (Q : RioSemantics.Queue.Queue with type elt = Pkt.t) =
+    (Q : Queue.Queue with type elt = Pkt.t) =
 struct
-  include RioSemantics.Program.Program
-  module S = RioSemantics.Semantics.Semantics (Pkt) (Q)
+  include Program.Program
+  module S = Semantics.Semantics (Pkt) (Q)
 
   exception QueryFormatException
 
@@ -302,6 +302,9 @@ struct
         queuegen 10 );
     ]
 end
+
+module Tester =
+  SemanticsTester (Packet.PacketImpl) (Queue.QueueImpl (Packet.PacketImpl))
 
 let () =
   TestGenerator.gen_tests 3 "data/test_3_classes.data" 100;
