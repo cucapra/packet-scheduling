@@ -303,4 +303,4 @@ struct
     ]
 end
 
-let () = TestGenerator.gen_tests 5 "test1.data" 40
+let () = TestGenerator.gen_tests 8 "data/test2.data" 100
