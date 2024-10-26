@@ -303,4 +303,12 @@ struct
     ]
 end
 
-let () = TestGenerator.gen_tests 8 "data/test2.data" 100
+let () =
+  TestGenerator.gen_tests 3 "data/test_3_classes.data" 100;
+  TestGenerator.gen_tests 4 "data/test_4_classes.data" 100;
+  TestGenerator.gen_tests 5 "data/test_5_classes.data" 100;
+  TestGenerator.gen_tests 6 "data/test_6_classes.data" 100;
+  TestGenerator.gen_tests 7 "data/test_7_classes.data" 100;
+  TestGenerator.gen_tests 8 "data/test_8_classes.data" 100;
+  TestGenerator.gen_tests 9 "data/test_9_classes.data" 100;
+  TestGenerator.gen_tests 10 "data/test_10_classes.data" 100
