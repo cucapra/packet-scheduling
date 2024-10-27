@@ -55,6 +55,7 @@ module TestGenerator = struct
     in
     read_lines []
     |> List.map (String.split_on_char ' ')
+    |> List.filter (fun x -> List.length x = 5)
     |> List.map parse_to_query
 end
 
@@ -86,7 +87,7 @@ struct
                ^ string_of_float (Pkt.time p)
                ^ " "
                ^ string_of_float (Pkt.weight p)
-               ^ "\n")
+               ^ "\n" ^ acc)
          results "");
     close_out oc
 
@@ -95,10 +96,10 @@ struct
     let rec aux (p, qs) = function
       | [] -> []
       | (cmd, p1, p2, p3, i) :: t ->
-          if cmd = 1 then
+          if cmd = 0 then
             (* Command = 1 => push with packet and qs[i] *)
             aux (S.push ((p1, p2, p3), List.nth qs i, (p, qs))) t
-          else if cmd = 0 then
+          else if cmd = 1 then
             (* Command = 0 => pop *)
             let popped, new_state = S.pop (p, qs) in
             popped :: aux new_state t
@@ -314,4 +315,7 @@ let () =
   TestGenerator.gen_tests 7 "data/test_7_classes.data" 100;
   TestGenerator.gen_tests 8 "data/test_8_classes.data" 100;
   TestGenerator.gen_tests 9 "data/test_9_classes.data" 100;
-  TestGenerator.gen_tests 10 "data/test_10_classes.data" 100
+  TestGenerator.gen_tests 10 "data/test_10_classes.data" 100;
+  "data/test_4_classes.data" |> TestGenerator.load_queries
+  |> Tester.simulate (List.hd Tester.four_classes)
+  |> Tester.write_results "data/test_4_output.data"
