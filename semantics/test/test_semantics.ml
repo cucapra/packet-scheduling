@@ -66,8 +66,8 @@ module SemanticsTester
               and type ord = float)
     (Q : Queue.Queue with type elt = Pkt.t) =
 struct
-  include Program.Program
-  module S = Semantics.Semantics (Pkt) (Q)
+  include Program
+  module S = Semantics.SemanticsImpl (Pkt) (Q)
 
   exception QueryFormatException
 
