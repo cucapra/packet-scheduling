@@ -14,10 +14,9 @@ let rec addr_to_string = function
 
 let rec of_policy (p : Frontend.Policy.t) =
   match p with
-  | Fifo _ | EarliestDeadline _ | ShortestJobNext _ | ShortestRemaining _ ->
-      Node [ Star ]
-  | RoundRobin plst | Strict plst -> Node (List.map of_policy plst)
-  | WeightedFair (wplst, _) -> Node (List.map of_policy wplst)
+  | Class _ -> Star
+  | Fifo plst | RoundRobin plst | Strict plst -> Node (List.map of_policy plst)
+  | WeightedFair wplst -> Node (List.map (fun (p, _) -> of_policy p) wplst)
 
 let rec height = function
   | Star -> 1
