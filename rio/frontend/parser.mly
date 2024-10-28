@@ -34,13 +34,10 @@
 
 %token <string> VAR
 %token <string> CLSS
-%token <float> FLOAT
 %token <int> INT
 %token EQUALS
 %token LBRACKET
 %token RBRACKET
-%token LPAREN
-%token RPAREN
 %token RETURN
 %token CLASSES
 %token UNION
@@ -68,17 +65,20 @@
 
 %%
 
+set:
+    | CLSS                                              { Class($1) }
+    | UNION LBRACKET; pl = setlist; RBRACKET            { Union pl }
+
 /* Policies */
 policy:
-    | UNION LBRACKET; pl = arglist; RBRACKET            { Union pl }
-    | FIFO LBRACKET; pl = arglist; RBRACKET             { Fifo pl }
-    | STRICT LBRACKET; pl = arglist; RBRACKET           { Strict pl }
-    | RR LBRACKET; pl = arglist; RBRACKET               { RoundRobin pl }
-    | WFQ LBRACKET; pl = weighted_arglist; RBRACKET     { WeightedFair pl }
-    | EDF LBRACKET; pl = arglist; RBRACKET              { EarliestDeadline pl }
-    | SJN LBRACKET; pl = arglist; RBRACKET              { ShortestJobNext pl }
-    | SRTF LBRACKET; pl = arglist; RBRACKET             { ShortestRemaining pl }
-    | RCSP LBRACKET; pl = arglist; RBRACKET             { RateControlled pl }
+    | FIFO LBRACKET; pl = set; RBRACKET                                              { Fifo pl }
+    | EDF LBRACKET; pl = set; RBRACKET                                               { EarliestDeadline pl }
+    | SJN LBRACKET; pl = set; RBRACKET                                               { ShortestJobNext pl }
+    | SRTF LBRACKET; pl = set; RBRACKET                                              { ShortestRemaining pl }
+    | RR LBRACKET; pl = arglist; RBRACKET                                            { RoundRobin pl }
+    | STRICT LBRACKET; pl = arglist; RBRACKET                                        { Strict pl }
+    | WFQ LBRACKET; pl = arglist; RBRACKET; LBRACKET; wt = weight_list; RBRACKET     { WeightedFair (pl, wt) }
+    | RCSP LBRACKET; pl = arglist; RBRACKET                                          { RateControlled pl }
 
     | LEAKY LBRACKET; LBRACKET;
         pl = arglist; RBRACKET; COMMA;
@@ -94,14 +94,13 @@ policy:
         pl = arglist; RBRACKET; COMMA;
         WIDTH EQUALS; t = INT; RBRACKET                 { StopAndGo (pl, t) }
 
-    | CLSS                                              { Class($1) }
     | VAR                                               { Var($1) }
+setlist:
+    | pl = separated_list(COMMA, set)               { pl }
 arglist:
     | pl = separated_list(COMMA, policy)            { pl }
-weighted_arglist:
-    | pl = separated_list(COMMA, weighted_arg)      { pl }
-weighted_arg:
-    | LPAREN; arg = separated_pair(policy, COMMA, FLOAT); RPAREN      { arg }
+weight_list:
+    | pl = separated_list(COMMA, INT)               { pl }
 
 /* Declarations, assignments and returns */
 internalcomp :

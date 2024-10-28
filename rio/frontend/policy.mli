@@ -1,10 +1,17 @@
 (* Changes to this type must also be reflected in `Ast.policy` in ast.ml *)
-type t =
+
+type set =
   | Class of Ast.clss
-  | Fifo of t list
+  | Union of set list
+
+type t =
+  | Fifo of set
+  | EarliestDeadline of set
+  | ShortestJobNext of set
+  | ShortestRemaining of set
   | RoundRobin of t list
   | Strict of t list
-  | WeightedFair of (t * float) list
+  | WeightedFair of t list * int list
 
 exception UnboundVariable of Ast.var
 exception UndeclaredClass of Ast.clss

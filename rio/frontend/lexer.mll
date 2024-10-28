@@ -16,8 +16,6 @@ rule token = parse
 | "="                   { EQUALS }
 | "["                   { LBRACKET }
 | "]"                   { RBRACKET }
-| "("                   { LPAREN }
-| ")"                   { RPAREN }
 | "return"              { RETURN }
 | "classes"             { CLASSES }
 | "union"               { UNION }
@@ -41,7 +39,6 @@ rule token = parse
 | id as v               { VAR(v) }
 | bigid as i            { CLSS(i) }
 | int                   { INT (int_of_string (Lexing.lexeme lexbuf)) }
-| float                 { FLOAT (float_of_string (Lexing.lexeme lexbuf)) }
 | eof                   { EOF }
 
 

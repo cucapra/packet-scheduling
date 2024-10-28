@@ -8,14 +8,14 @@ type set =
 
 type stream =
   (* Set-to-Stream *)
-  | Fifo of set list
-  | EarliestDeadline of set list
-  | ShortestJobNext of set list
-  | ShortestRemaining of set list
+  | Fifo of set
+  | EarliestDeadline of set
+  | ShortestJobNext of set
+  | ShortestRemaining of set
   (* Stream-To-Stream *)
   | RoundRobin of stream list
   | Strict of stream list
-  | WeightedFair of (stream * float) list
+  | WeightedFair of stream list * int list
   (* Non-Work Conserving *)
   | RateControlled of stream list
   | LeakyBucket of stream list * int * int
@@ -24,7 +24,8 @@ type stream =
   (* Variables *)
   | Var of var
 
+type policy = stream
 type declare = clss list
-type assignment = var * stream
-type return = stream
+type assignment = var * policy
+type return = policy
 type program = declare * assignment list * return
