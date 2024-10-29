@@ -70,7 +70,7 @@ let error_tests =
       "progs/incorrect/duplicate_samepol.sched" (Policy.DuplicateClass "A");
     make_error_test "fifo for multiple classes without union"
       "progs/incorrect/set_multiple.sched"
-      (Parser.ParserError "Syntax error at line 3, character 17");
+      (Parser.ParserError "Syntax error at line 4, character 17");
     make_error_test "rr for classes without fifo'ing first"
       "progs/incorrect/set_hierarchical.sched"
       (Parser.ParserError "Syntax error at line 3, character 14");
