@@ -1,5 +1,5 @@
 classes A;
 
-policy = rr[A];
+policy = rr[fifo[A]];
 
 return policy

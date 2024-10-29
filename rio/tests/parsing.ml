@@ -11,30 +11,35 @@ let make_error_test name filename exn =
 let wc_tests =
   [
     make_test "single class policy" "progs/work_conserving/drop_a_class.sched"
-      "A";
+      "fifo[A]";
     make_test "fifo 1 class" "progs/work_conserving/fifo_1_class_sugar.sched"
-      "A";
-    make_test "fifo 1 class" "progs/work_conserving/fifo_1_class.sched" "A";
+      "fifo[A]";
+    make_test "fifo 1 class" "progs/work_conserving/fifo_1_class.sched"
+      "fifo[A]";
     make_test "fifo of 3" "progs/work_conserving/fifo_n_classes.sched"
       "fifo[A, B, C]";
-    make_test "rr of 1" "progs/work_conserving/rr_1_class.sched" "rr[A]";
-    make_test "rr of 2" "progs/work_conserving/rr_2_classes.sched" "rr[A, B]";
+    make_test "rr of 1" "progs/work_conserving/rr_1_class.sched" "rr[fifo[A]]";
+    make_test "rr of 2" "progs/work_conserving/rr_2_classes.sched"
+      "rr[fifo[A, B]]";
     make_test "multiple assignments"
       "progs/work_conserving/rr_hier_merge_sugar.sched"
-      "rr[fifo[BX, BY], rr[RP, RT]]";
+      "rr[fifo[BX, BY], rr[fifo[RP], fifo[RT]]]";
     make_test "2 assignments w/ substitutions"
-      "progs/work_conserving/rr_hier.sched" "rr[B, rr[RP, RT]]";
+      "progs/work_conserving/rr_hier.sched"
+      "rr[fifo[B], rr[fifo[RP], fifo[RT]]]";
     make_test "3 classes with substitutions"
       "progs/work_conserving/rr_n_class_hier.sched"
-      "rr[A, B, rr[rr[CU, CV], rr[CW, CX]]]";
-    make_test "rr of 3" "progs/work_conserving/rr_n_classes.sched" "rr[A, B, C]";
+      "rr[fifo[A], fifo[B], rr[rr[fifo[CU], fifo[CV]], rr[fifo[CW], fifo[CX]]]]";
+    make_test "rr of 3" "progs/work_conserving/rr_n_classes.sched"
+      "rr[fifo[A], fifo[B], fifo[C]]";
     make_test "rr and strict substitutions"
       "progs/work_conserving/rr_strict_n_classes_hier.sched"
-      "strict[A, B, rr[rr[CU, CV], strict[CW, CX]]]";
+      "strict[fifo[A], fifo[B], rr[rr[fifo[CU], fifo[CV]], strict[fifo[CW], \
+       fifo[CX]]]]";
     make_test "strict of 3" "progs/work_conserving/strict_n_classes.sched"
-      "strict[C, B, A]";
+      "strict[fifo[C], fifo[B], fifo[A]]";
     make_test "wfq of 3" "progs/work_conserving/wfq_n_classes.sched"
-      "wfq[(A, 0.10), (B, 0.20), (C, 0.30)]";
+      "wfq[(fifo[A], 1.00), (fifo[B], 2.00), (fifo[C], 3.00)]";
   ]
 
 let _nwc_tests =

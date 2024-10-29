@@ -1,6 +1,6 @@
 classes A, B; 
 
-var = rr[A, B];
-final = fifo[var, B]; // B is used twice
+var = fifo[union[A, B]];
+final = rr[var, fifo[B]]; // B is used twice
 
 return final

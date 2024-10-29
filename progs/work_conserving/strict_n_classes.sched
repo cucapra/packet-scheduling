@@ -1,5 +1,5 @@
 classes A, B, C;
 
-policy = strict[C, B, A];
+policy = strict[fifo[C], fifo[B], fifo[A]];
 
 return policy
