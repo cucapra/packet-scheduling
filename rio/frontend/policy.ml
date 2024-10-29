@@ -33,15 +33,29 @@ let rec sub cl st (p : Ast.policy) used =
     List.map (fun (x, i) -> (sub cl st x used, i))
   in
 
+  (* Temporary compilation removes FIFOs for test cases *)
+  let rec extract_subpol (p : t) =
+    match p with
+    | Class _ -> p
+    | Fifo plst ->
+        if List.length plst = 1 then extract_subpol (List.hd plst)
+        else Fifo (List.map extract_subpol plst)
+    | RoundRobin plst -> RoundRobin (List.map extract_subpol plst)
+    | Strict plst -> Strict (List.map extract_subpol plst)
+    | WeightedFair wplst ->
+        WeightedFair (List.map (fun (x, y) -> (extract_subpol x, y)) wplst)
+  in
+
   match p with
   | Var x -> sub cl st (lookup st x) used
   | Fifo p -> Fifo (sub_set cl st p used)
-  | RoundRobin plst -> RoundRobin (sub_plst cl st plst)
-  | Strict plst -> Strict (sub_plst cl st plst)
+  | RoundRobin plst -> extract_subpol (RoundRobin (sub_plst cl st plst))
+  | Strict plst -> extract_subpol (Strict (sub_plst cl st plst))
   | WeightedFair (plst, wts) ->
-      WeightedFair
-        (sub_weighted_plst cl st
-           (List.combine plst (List.map float_of_int wts)))
+      extract_subpol
+        (WeightedFair
+           (sub_weighted_plst cl st
+              (List.combine plst (List.map float_of_int wts))))
   | _ -> failwith "ERROR: unsupported policy"
 
 (* Look up any variables and substitute them in. *)
