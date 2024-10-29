@@ -71,6 +71,12 @@ let error_tests =
       "progs/incorrect/duplicate_classes.sched" (Policy.DuplicateClass "B");
     make_error_test "class used twice in one fifo"
       "progs/incorrect/duplicate_samepol.sched" (Policy.DuplicateClass "A");
+    make_error_test "fifo for multiple classes without union"
+      "progs/incorrect/set_multiple.sched"
+      (Parser.ParserError "Syntax error at line 3, character 17");
+    make_error_test "rr for classes without fifo'ing first"
+      "progs/incorrect/set_hierarchical.sched"
+      (Parser.ParserError "Syntax error at line 3, character 14");
   ]
 
 let suite = "parsing tests" >::: wc_tests @ error_tests (* @ nwc_tests *)
