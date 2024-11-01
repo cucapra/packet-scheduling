@@ -38,6 +38,8 @@
 %token EQUALS
 %token LBRACKET
 %token RBRACKET
+%token LPAREN
+%token RPAREN
 %token RETURN
 %token CLASSES
 %token UNION
@@ -71,14 +73,14 @@ set:
 
 /* Policies */
 policy:
-    | FIFO LBRACKET; pl = set; RBRACKET                                              { Fifo pl }
-    | EDF LBRACKET; pl = set; RBRACKET                                               { EarliestDeadline pl }
-    | SJN LBRACKET; pl = set; RBRACKET                                               { ShortestJobNext pl }
-    | SRTF LBRACKET; pl = set; RBRACKET                                              { ShortestRemaining pl }
-    | RR LBRACKET; pl = arglist; RBRACKET                                            { RoundRobin pl }
-    | STRICT LBRACKET; pl = arglist; RBRACKET                                        { Strict pl }
-    | WFQ LBRACKET; pl = arglist; RBRACKET; LBRACKET; wt = weight_list; RBRACKET     { WeightedFair (pl, wt) }
-    | RCSP LBRACKET; pl = arglist; RBRACKET                                          { RateControlled pl }
+    | FIFO LBRACKET; pl = set; RBRACKET                 { Fifo pl }
+    | EDF LBRACKET; pl = set; RBRACKET                  { EarliestDeadline pl }
+    | SJN LBRACKET; pl = set; RBRACKET                  { ShortestJobNext pl }
+    | SRTF LBRACKET; pl = set; RBRACKET                 { ShortestRemaining pl }
+    | RR LBRACKET; pl = arglist; RBRACKET               { RoundRobin pl }
+    | STRICT LBRACKET; pl = arglist; RBRACKET           { Strict pl }
+    | WFQ LBRACKET; pl = weighted_arglist; RBRACKET     { WeightedFair pl }
+    | RCSP LBRACKET; pl = arglist; RBRACKET             { RateControlled pl }
 
     | LEAKY LBRACKET; LBRACKET;
         pl = arglist; RBRACKET; COMMA;
@@ -99,8 +101,10 @@ setlist:
     | pl = separated_list(COMMA, set)               { pl }
 arglist:
     | pl = separated_list(COMMA, policy)            { pl }
-weight_list:
-    | pl = separated_list(COMMA, INT)               { pl }
+weighted_arglist:
+    | pl = separated_list(COMMA, weighted_arg)      { pl }
+weighted_arg:
+    | LPAREN; arg = separated_pair(policy, COMMA, INT); RPAREN      { arg }
 
 /* Declarations, assignments and returns */
 internalcomp :

@@ -51,11 +51,11 @@ let rec sub cl st (p : Ast.policy) used =
   | Fifo p -> Fifo (sub_set cl st p used)
   | RoundRobin plst -> extract_subpol (RoundRobin (sub_plst cl st plst))
   | Strict plst -> extract_subpol (Strict (sub_plst cl st plst))
-  | WeightedFair (plst, wts) ->
+  | WeightedFair wplst ->
       extract_subpol
         (WeightedFair
            (sub_weighted_plst cl st
-              (List.combine plst (List.map float_of_int wts))))
+              (List.map (fun (x, y) -> (x, float_of_int y)) wplst)))
   | _ -> failwith "ERROR: unsupported policy"
 
 (* Look up any variables and substitute them in. *)

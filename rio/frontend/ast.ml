@@ -15,7 +15,7 @@ type stream =
   (* Stream-To-Stream *)
   | RoundRobin of stream list
   | Strict of stream list
-  | WeightedFair of stream list * int list
+  | WeightedFair of (stream * int) list
   (* Non-Work Conserving *)
   | RateControlled of stream list
   | LeakyBucket of stream list * int * int

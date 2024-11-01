@@ -16,6 +16,8 @@ rule token = parse
 | "="                   { EQUALS }
 | "["                   { LBRACKET }
 | "]"                   { RBRACKET }
+| "("                   { LPAREN }
+| ")"                   { RPAREN }
 | "return"              { RETURN }
 | "classes"             { CLASSES }
 | "union"               { UNION }
