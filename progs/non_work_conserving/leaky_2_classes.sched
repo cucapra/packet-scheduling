@@ -1,9 +1,8 @@
 classes A, B;
 
-policy = leakybucket [[A, B], width=5, buffer=10];
+policy = leakybucket [[fifo[A], fifo[B]], width=5, buffer=10];
 // Interleave packets from flows A and B, allowing at most 
 // 5 packets to be processed per time cycle,
 // and at most 10 packets to be in a buffer at once
 
 return policy
-    

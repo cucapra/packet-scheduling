@@ -15,24 +15,47 @@ let lookup s x =
   | Some v -> v
   | None -> raise (UnboundVariable x)
 
+let rec sub_set cl st (p : Ast.set) used =
+  match p with
+  | Class c ->
+      if List.mem c !used then raise (DuplicateClass c)
+      else if List.mem c cl then (
+        used := c :: !used;
+        [ Class c ])
+      else raise (UndeclaredClass c)
+  | Union slst ->
+      let subbed = List.map (fun x -> sub_set cl st x used) slst in
+      List.flatten subbed
+
 let rec sub cl st (p : Ast.policy) used =
   let sub_plst cl st = List.map (fun x -> sub cl st x used) in
   let sub_weighted_plst cl st =
     List.map (fun (x, i) -> (sub cl st x used, i))
   in
 
+  (* Temporary compilation removes FIFOs for test cases *)
+  let rec extract_subpol (p : t) =
+    match p with
+    | Class _ -> p
+    | Fifo plst ->
+        if List.length plst = 1 then extract_subpol (List.hd plst)
+        else Fifo (List.map extract_subpol plst)
+    | RoundRobin plst -> RoundRobin (List.map extract_subpol plst)
+    | Strict plst -> Strict (List.map extract_subpol plst)
+    | WeightedFair wplst ->
+        WeightedFair (List.map (fun (x, y) -> (extract_subpol x, y)) wplst)
+  in
+
   match p with
-  | Class c ->
-      if List.mem c !used then raise (DuplicateClass c)
-      else if List.mem c cl then (
-        used := c :: !used;
-        (Class c : t))
-      else raise (UndeclaredClass c)
   | Var x -> sub cl st (lookup st x) used
-  | Fifo plst -> Fifo (sub_plst cl st plst)
-  | RoundRobin plst -> RoundRobin (sub_plst cl st plst)
-  | Strict plst -> Strict (sub_plst cl st plst)
-  | WeightedFair wplst -> WeightedFair (sub_weighted_plst cl st wplst)
+  | Fifo p -> Fifo (sub_set cl st p used)
+  | RoundRobin plst -> extract_subpol (RoundRobin (sub_plst cl st plst))
+  | Strict plst -> extract_subpol (Strict (sub_plst cl st plst))
+  | WeightedFair wplst ->
+      extract_subpol
+        (WeightedFair
+           (sub_weighted_plst cl st
+              (List.map (fun (x, y) -> (x, float_of_int y)) wplst)))
   | _ -> failwith "ERROR: unsupported policy"
 
 (* Look up any variables and substitute them in. *)

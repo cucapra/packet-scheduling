@@ -11,14 +11,16 @@ let make_error_test name filename exn =
 let wc_tests =
   [
     make_test "single class policy" "progs/work_conserving/drop_a_class.sched"
-      "A";
+      "fifo[A]";
     make_test "fifo 1 class" "progs/work_conserving/fifo_1_class_sugar.sched"
-      "A";
-    make_test "fifo 1 class" "progs/work_conserving/fifo_1_class.sched" "A";
+      "fifo[A]";
+    make_test "fifo 1 class" "progs/work_conserving/fifo_1_class.sched"
+      "fifo[A]";
     make_test "fifo of 3" "progs/work_conserving/fifo_n_classes.sched"
       "fifo[A, B, C]";
     make_test "rr of 1" "progs/work_conserving/rr_1_class.sched" "rr[A]";
-    make_test "rr of 2" "progs/work_conserving/rr_2_classes.sched" "rr[A, B]";
+    make_test "rr of 2" "progs/work_conserving/rr_2_classes.sched"
+      "rr[fifo[A, B]]";
     make_test "multiple assignments"
       "progs/work_conserving/rr_hier_merge_sugar.sched"
       "rr[fifo[BX, BY], rr[RP, RT]]";
@@ -34,7 +36,7 @@ let wc_tests =
     make_test "strict of 3" "progs/work_conserving/strict_n_classes.sched"
       "strict[C, B, A]";
     make_test "wfq of 3" "progs/work_conserving/wfq_n_classes.sched"
-      "wfq[(A, 0.10), (B, 0.20), (C, 0.30)]";
+      "wfq[(A, 1.00), (B, 2.00), (C, 3.00)]";
   ]
 
 let _nwc_tests =
@@ -66,6 +68,12 @@ let error_tests =
       "progs/incorrect/duplicate_classes.sched" (Policy.DuplicateClass "B");
     make_error_test "class used twice in one fifo"
       "progs/incorrect/duplicate_samepol.sched" (Policy.DuplicateClass "A");
+    make_error_test "fifo for multiple classes without union"
+      "progs/incorrect/set_multiple.sched"
+      (Parser.ParserError "Syntax error at line 4, character 17");
+    make_error_test "rr for classes without fifo'ing first"
+      "progs/incorrect/set_hierarchical.sched"
+      (Parser.ParserError "Syntax error at line 3, character 14");
   ]
 
 let suite = "parsing tests" >::: wc_tests @ error_tests (* @ nwc_tests *)

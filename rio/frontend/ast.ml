@@ -2,21 +2,29 @@ type clss = string
 type var = string
 
 (* Changes to this type must also be reflected in `Policy.t` in policy.ml *)
-type policy =
+type set =
   | Class of clss
-  | Fifo of policy list
-  | RoundRobin of policy list
-  | Strict of policy list
-  | WeightedFair of (policy * float) list
-  | EarliestDeadline of policy list
-  | ShortestJobNext of policy list
-  | ShortestRemaining of policy list
-  | RateControlled of policy list
-  | LeakyBucket of policy list * int * int
-  | TokenBucket of policy list * int * int
-  | StopAndGo of policy list * int
+  | Union of set list
+
+type stream =
+  (* Set-to-Stream *)
+  | Fifo of set
+  | EarliestDeadline of set
+  | ShortestJobNext of set
+  | ShortestRemaining of set
+  (* Stream-To-Stream *)
+  | RoundRobin of stream list
+  | Strict of stream list
+  | WeightedFair of (stream * int) list
+  (* Non-Work Conserving *)
+  | RateControlled of stream list
+  | LeakyBucket of stream list * int * int
+  | TokenBucket of stream list * int * int
+  | StopAndGo of stream list * int
+  (* Variables *)
   | Var of var
 
+type policy = stream
 type declare = clss list
 type assignment = var * policy
 type return = policy

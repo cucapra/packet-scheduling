@@ -20,6 +20,7 @@ rule token = parse
 | ")"                   { RPAREN }
 | "return"              { RETURN }
 | "classes"             { CLASSES }
+| "union"               { UNION }
 | "width"               { WIDTH }
 | "buffer"              { BUFFER }
 | "time"                { TIME }
@@ -40,7 +41,6 @@ rule token = parse
 | id as v               { VAR(v) }
 | bigid as i            { CLSS(i) }
 | int                   { INT (int_of_string (Lexing.lexeme lexbuf)) }
-| float                 { FLOAT (float_of_string (Lexing.lexeme lexbuf)) }
 | eof                   { EOF }
 
 

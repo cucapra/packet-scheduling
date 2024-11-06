@@ -4,8 +4,8 @@ classes B, RP, RT;
 // RP packets are destined for Pittsburgh
 // RT packets are destined for Toronto
 
-r_policy = rr[RP, RT];
-policy = rr[B, r_policy];
+r_policy = rr[fifo[RP], fifo[RT]];
+policy = rr[fifo[B], r_policy];
 
 return policy
 

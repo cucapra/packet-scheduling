@@ -1,5 +1,5 @@
 classes X, Y, Z;
 
-foo = strict[X, Y, Z];
+foo = strict[fifo[X], fifo[Y], fifo[Z]];
 
 return policy // user probably meant to return `foo`
