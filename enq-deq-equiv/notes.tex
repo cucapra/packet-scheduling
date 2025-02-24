@@ -54,8 +54,10 @@
 
 % Rio
 \DeclareMathOperator{\Rio}{\mathbf{Rio}}
-\DeclareMathOperator{\RR}{\mathbf{rr}}
-\DeclareMathOperator{\Fifo}{\mathbf{fifo}}
+\DeclareMathOperator{\Fifo}{\mathbf{fifo}} % set2stream
+\DeclareMathOperator{\EDF}{\mathbf{edf}}
+\DeclareMathOperator{\RR}{\mathbf{rr}}     % stream2stream
+\DeclareMathOperator{\Strict}{\mathbf{strict}}
 \DeclareMathOperator{\Class}{\mathbf{Class}}
 \DeclareMathOperator{\flow}{\mathbf{flow}}
 \DeclareMathOperator{\class}{\mathrm{class}}
@@ -115,38 +117,25 @@
 
 \reqnomode
 
-As usual, we assume familiarity with citeOG, adopt its notational conventions, and steal its definitions!
+\textbf{Disclaimer}: we assume familiarity with citeOG, adopt its notational conventions, and steal its definitions!
+
+Further, we work with a specific subset of \emph{Rio}, denoted $\Rio$, namely
+\begin{align*}
+    \inference{set2stream}
+    {c \in \Class}
+    {\EDF[c], \Fifo[c] \in \Rio}
+    &&
+    \inference{stream2stream}
+    {n \in \mathbb N\\ rs \in \Rio^n}
+    {\Strict[rs], \RR[rs] \in \Rio}
+\end{align*}
+
+where $\Class$ is an opaque collection of \emph{classes}.
 
 \section{Structure and Semantics of Rio Trees}
 
-In addition to $\Pkt$, $\Rk$, and $\St$, presuppose the existence of the following opaque sets/functions:
-\begin{enumerate}
-    \item $\FIFO(S)$, a set of FIFOs with entries in $S$.
-    \item $\Class$, a collection of \emph{classes}
-    \item $\flow : \Pkt \to \Class$, a mapping from packets to the class they belong to (flow inference)
-\end{enumerate}
-
-Naturally, FIFOs support the partial functions
-\begin{align*}
-    \pop  &: \FIFO(S) \halfto S \times \FIFO(S)\\
-    \push &: \FIFO(S) \times S \halfto \FIFO(S)
-\end{align*}
-
 \subsection{Structure}
 
-% \begin{dfn}
-%     % Rio
-%     We'll inductively define the set of \emph{Rio} programs, denoted $\Rio$, by
-%     \begin{align*}
-%         \inference{}
-%         {c \in \Class}
-%         {\Fifo[c] \in \Rio}
-%         &&
-%         \inference{}
-%         {n \in \mathbb N\\ rs \in \Rio^n}
-%         {\RR[rs] \in \Rio}
-%     \end{align*}
-% \end{dfn}
 
 % \begin{dfn}
 %     % Well-formed
@@ -207,12 +196,11 @@ Naturally, FIFOs support the partial functions
 % \end{abuse}
 
 \begin{dfn}
-   % Rio tree  
     For topology $t \in \Topo$, the set $\RioTree(t)$ of \emph{Rio trees} over $t$ is defined by
     \begin{align*}
         \inference{}
-        {f \in \FIFO(\Pkt)\\ c \in \Class}
-        {\Leaf(f, c) \in \RioTree(\ast)}
+        {p \in \PIFO(\Pkt)\\ c \in \Class}
+        {\Leaf(p, c) \in \RioTree(\ast)}
         &&
         \inference{}
         {
@@ -221,7 +209,7 @@ Naturally, FIFOs support the partial functions
         }
         {\Internal(qs) \in \RioTree(\Node(ts))}
     \end{align*}
-    These are trees with leaves decorated by both classes and FIFOs.
+    These are trees with leaves decorated by both classes and PIFOs.
 \end{dfn}
 
 \begin{dfn}
@@ -243,37 +231,39 @@ Naturally, FIFOs support the partial functions
 
 \subsection{Semantics}
 
+Let $\flow : \Pkt \to \Class$ be an opaque mapping from packets to the class they belong to (flow inference).
+
 \begin{dfn}
-    For $t \in \Topo$, define $\push : \RioTree(t) \times \Pkt \halfto \RioTree(t)$ such that
+    For $t \in \Topo$, define $\push : \RioTree(t) \times \Pkt \times \Rk \halfto \RioTree(t)$ such that
     \begin{align*}
         \inference{}
         {
             \flow(\pkt) = c\\
-            \push(f, \pkt) = f^\prime
+            \push(p, \pkt, r) = p^\prime
         }
-        {\push(\Leaf(f, c), \pkt) = \Leaf(f^\prime, c)}
+        {\push(\Leaf(p, c), \pkt, r) = \Leaf(p^\prime, c)}
         &&
         \inference{}
         {
-            \forall 1 \leq i \leq |qs|. \; \push(qs[i], \pkt) = qs^\prime[i]
+            \forall 1 \leq i \leq |qs|. \; \push(qs[i], \pkt, r) = qs^\prime[i]
         }
-        {\push(\Internal(qs), \pkt) = \Internal(qs^\prime)}
+        {\push(\Internal(qs), \pkt, r) = \Internal(qs^\prime)}
         &&
         \inference{}
         {
             \flow(\pkt) \neq c\\
         }
-        {\push(\Leaf(f, c), \pkt) = \Leaf(f, c)}
+        {\push(\Leaf(p, c), \pkt, r) = \Leaf(p, c)}
     \end{align*}
-    Informally, we recursively push to all subtrees but only the FIFOs on leaves with the packet's flow are updated.
+    Informally, we recursively push to all subtrees but only the PIFOs on leaves with the packet's flow are updated.
 \end{dfn}
 
 \begin{dfn}
     For $t \in \Topo$, define $\pop : \RioTree(t) \times \OrdTree(t) \halfto \Pkt \times \RioTree(t)$ such that
     \begin{align*}
         \inference{}
-        {\pop(f) = (\pkt, f^\prime)}
-        {\pop(\Leaf(f, c), \Leaf) = (\pkt, \Leaf(f^\prime, c))}
+        {\pop(p) = (\pkt, p^\prime)}
+        {\pop(\Leaf(p, c), \Leaf) = (\pkt, \Leaf(p^\prime, c))}
         &&
         \inference{}
         {
@@ -287,7 +277,7 @@ Naturally, FIFOs support the partial functions
 
 \newpage 
 
-\section{Controls}
+\section{PIFO \& Rio Controls}
 
 \begin{figure}[!htb]
     \begin{align*}
@@ -342,7 +332,7 @@ For these notes, we'll refer to \emph{controls} from citeOG as \emph{PIFO contro
     For $t \in \Topo$, $\PIFOControl(t)$ is the set of quadruples of $(s, q, \zin, \zout)$ where 
     \begin{align*}
         \zin &: \St \times \Pkt \to \Path(t) \times \St\\
-        \zout &: \St \times \Pkt \to \times \St
+        \zout &: \St \times \Pkt \to \St
     \end{align*}
     $s \in \St$ and $q \in \PIFOTree(t)$.
 \end{dfn}
@@ -358,7 +348,7 @@ Here's the dequeue side version.
     $s \in \St$ and $q \in \RioTree(t)$.
 \end{dfn}
 
-Both types of controls support $\push$ and $\pop$ operations:
+Both controls admit $\push$ and $\pop$ operations:
 \begin{align*}
     \push : \RioControl(t) \times \Pkt \to \RioControl(t) && 
     \push : \PIFOControl(t) \times \Pkt \to \PIFOControl(t)\\
@@ -367,6 +357,18 @@ Both types of controls support $\push$ and $\pop$ operations:
 \end{align*}
 
 Their semantics are written out in full in \Cref{fig:control_push_pop}.
+
+\newpage
+
+\section{Round-Robin}
+
+Let's put our theory to use by constructing both a $\PIFOControl$ and $\RioControl$ for
+\begin{align*}
+    \RR[(\FIFO[F_1], \FIFO[F_2], \ldots, \FIFO[F_n])] && \text{distinct } F_1, F_2, \ldots, F_n \in \Class
+\end{align*}
+and showing they're in simulation.
+This would show the equivalence of enqueue and dequeue-side semantics for a specific type of program!
+
 
 \renewcommand\refname{\LARGE References}
 \bibliographystyle{alpha}
