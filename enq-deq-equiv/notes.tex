@@ -1,0 +1,375 @@
+\documentclass{amsart}
+
+% font
+\usepackage{cmbright}
+
+% margin 
+\usepackage[margin=1in]{geometry}
+
+% references
+\usepackage[colorlinks]{hyperref} 
+\PassOptionsToPackage{colorlinks}{hyperref}
+\hypersetup{urlcolor = RedViolet, linkcolor = RoyalBlue, citecolor = NavyBlue}
+
+% basics
+\usepackage[leqno]{amsmath}
+\usepackage{amssymb, amsthm} 
+\usepackage[svgnames, dvipsnames]{xcolor}
+\usepackage{mhsetup, mathtools}
+\usepackage[capitalise]{cleveref}
+
+% commutative diagram
+\usepackage{tikz-cd}
+
+% hats
+\usepackage{yhmath}
+
+% PL macros
+\usepackage{mathpartir}
+\usepackage{stmaryrd}
+\newcommand{\inference}[3]{\inferrule*[Right=#1]{#2}{#3}}
+\newcommand{\axiom}[2]{\inferrule*[Right=#1]{\;}{#2}}
+
+% (Formal Abstractions macros)++
+\DeclareMathOperator{\halfto}{\rightharpoonup}
+\DeclareMathOperator{\pkt}{\mathrm{pkt}}
+\DeclareMathOperator{\push}{\mathrm{push}}
+\DeclareMathOperator{\pop}{\mathrm{pop}}
+\DeclareMathOperator{\proj}{\mathrm{proj}}
+\DeclareMathOperator{\Pkt}{\mathbf{Pkt}}
+\DeclareMathOperator{\Rk}{\mathbf{Rk}}
+\DeclareMathOperator{\Data}{\mathbf{Data}}
+\DeclareMathOperator{\Topo}{\mathbf{Topo}}
+\DeclareMathOperator{\Path}{\mathbf{Path}}
+\DeclareMathOperator{\PIEO}{\mathbf{PIEO}}
+\DeclareMathOperator{\PIFO}{\mathbf{PIFO}}
+\DeclareMathOperator{\PIEOTree}{\mathbf{PIEOTree}}
+\DeclareMathOperator{\PIFOTree}{\mathbf{PIFOTree}}
+\DeclareMathOperator{\Leaf}{\mathrm{Leaf}}
+\DeclareMathOperator{\Internal}{\mathrm{Internal}}
+\DeclareMathOperator{\Node}{\mathrm{Node}}
+\DeclareMathOperator{\St}{\mathbf{St}}
+\DeclareMathOperator{\zin}{z_{\mathrm{in}}}
+\DeclareMathOperator{\zout}{z_{\mathrm{out}}}
+
+% Rio
+\DeclareMathOperator{\Rio}{\mathbf{Rio}}
+\DeclareMathOperator{\RR}{\mathbf{rr}}
+\DeclareMathOperator{\Fifo}{\mathbf{fifo}}
+\DeclareMathOperator{\Class}{\mathbf{Class}}
+\DeclareMathOperator{\flow}{\mathbf{flow}}
+\DeclareMathOperator{\class}{\mathrm{class}}
+\DeclareMathOperator{\FIFO}{\mathbf{FIFO}}
+\DeclareMathOperator{\CTopo}{\textbf{CTopo}}
+\DeclareMathOperator{\RioTree}{\mathbf{RioTree}}
+\DeclareMathOperator{\OrdTree}{\mathbf{OrdTree}}
+\DeclareMathOperator{\PIFOControl}{\mathbf{PIFOControl}}
+\DeclareMathOperator{\RioControl}{\mathbf{RioControl}}
+
+% theorems
+\newtheorem{thm}{Theorem}[section]
+\newtheorem{lem}[thm]{Lemma}
+\theoremstyle{definition}
+\newtheorem{dfn}[thm]{Definition}
+\newtheorem{abuse}[thm]{Abuse of Notation}
+\newtheorem{ex}[thm]{Example}
+\newtheorem{rem}[thm]{Remark}
+
+% no more indent
+\setlength{\parindent}{0pt}
+
+% right-justified sections hack
+\usepackage{titlesec}
+\newcommand{\marginsecnumber}[1]{%
+  \makebox[0pt][r]{#1\hspace{6pt}}%
+}
+\titleformat{\section}
+  {\normalfont\Large\bfseries}
+  {\marginsecnumber\thesection}
+  {0pt}
+  {}
+\titleformat{\subsection}
+  {\normalfont\large\bfseries}
+  {\marginsecnumber\thesubsection}
+  {0pt}
+  {}
+\titleformat{\subsubsection}
+  {\normalfont\normalsize\bfseries}
+  {\marginsecnumber\thesubsubsection}
+  {0pt}
+  {}
+
+% tag on the right hack
+\makeatletter
+\newcommand{\leqnomode}{\tagsleft@true\let\veqno\@@leqno}
+\newcommand{\reqnomode}{\tagsleft@false\let\veqno\@@eqno}
+\makeatother
+
+\begin{document}
+
+\pagestyle{empty}
+
+{\LARGE \textbf{Dequeue Side Semantics}}
+
+\hrulefill\\
+
+\reqnomode
+
+As usual, we assume familiarity with citeOG, adopt its notational conventions, and steal its definitions!
+
+\section{Structure and Semantics of Rio Trees}
+
+In addition to $\Pkt$, $\Rk$, and $\St$, presuppose the existence of the following opaque sets/functions:
+\begin{enumerate}
+    \item $\FIFO(S)$, a set of FIFOs with entries in $S$.
+    \item $\Class$, a collection of \emph{classes}
+    \item $\flow : \Pkt \to \Class$, a mapping from packets to the class they belong to (flow inference)
+\end{enumerate}
+
+Naturally, FIFOs support the partial functions
+\begin{align*}
+    \pop  &: \FIFO(S) \halfto S \times \FIFO(S)\\
+    \push &: \FIFO(S) \times S \halfto \FIFO(S)
+\end{align*}
+
+\subsection{Structure}
+
+% \begin{dfn}
+%     % Rio
+%     We'll inductively define the set of \emph{Rio} programs, denoted $\Rio$, by
+%     \begin{align*}
+%         \inference{}
+%         {c \in \Class}
+%         {\Fifo[c] \in \Rio}
+%         &&
+%         \inference{}
+%         {n \in \mathbb N\\ rs \in \Rio^n}
+%         {\RR[rs] \in \Rio}
+%     \end{align*}
+% \end{dfn}
+
+% \begin{dfn}
+%     % Well-formed
+%     We'll inductively define the map $\class : \Rio \to \mathcal P(\Class)$: 
+%     \begin{align*}
+%         \axiom{}
+%         {\class(\Fifo[c]) = \{c\}}
+%         &&
+%         \inference{}
+%         {\bigcup_{1 \leq i \leq |rs|} \class(rs[i]) = c}
+%         {\class(\RR[rs]) = c}
+%     \end{align*}
+%     More succinctly, Rio programs are sent to the collection of classes living at their leaves.
+% 
+%     We say $r \in \Rio$ is \emph{well-formed}, denoted $\vdash r$, if no two leaves share the same class:
+%     \begin{align*}
+%         \axiom{}
+%         {\vdash \Fifo[c]}
+%         &&
+%         \inference{}
+%         {
+%             \forall 1 \leq i \leq |rs|. \; \vdash rs[i] \\\\
+%             \forall 1 \leq i < j \leq |rs|. \; \class(rs[i]) \cap \class(rs[j]) = \varnothing
+%         }
+%         {\vdash \RR[rs]}
+%     \end{align*}
+% \end{dfn}
+
+% \begin{dfn}
+%     Let $\CTopo$ be the set of tree topologies with leaves decorated by classes. 
+%     More precisely,
+%     \begin{align*}
+%         \inference{}
+%         {c \in \Class}
+%         {(\ast, c) \in \CTopo}
+%         &&
+%         \inference{}
+%         {n \in \mathbb N\\ ts \in \CTopo^n}
+%         {\Node(ts) \in \CTopo}
+%     \end{align*}
+% \end{dfn}
+% 
+% \begin{abuse}
+%     Removing the classes at the leaves yields an obvious map $\CTopo \to \Topo$
+%     \begin{align*}
+%         \axiom{}
+%         {(\ast, c) \to \ast}
+%         &&
+%         \inference{}
+%         {
+%             ts \in \CTopo^n\\ 
+%             ts^\prime \in \Topo^n\\ 
+%             \forall 1 \leq i \leq n. \; ts[i] \to ts^\prime[i]
+%         }
+%         {\Node(ts) \to \Node(ts^\prime)}
+%     \end{align*}
+%     For $t \in \CTopo$ with $t \to t^\prime$, we'll occasionally use $t$ when we really mean the topology of the same shape, $t^\prime$.
+% \end{abuse}
+
+\begin{dfn}
+   % Rio tree  
+    For topology $t \in \Topo$, the set $\RioTree(t)$ of \emph{Rio trees} over $t$ is defined by
+    \begin{align*}
+        \inference{}
+        {f \in \FIFO(\Pkt)\\ c \in \Class}
+        {\Leaf(f, c) \in \RioTree(\ast)}
+        &&
+        \inference{}
+        {
+            ts \in \Topo^n\\
+            \forall 1 \leq i \leq n. \; qs[i] \in \RioTree(ts[i])
+        }
+        {\Internal(qs) \in \RioTree(\Node(ts))}
+    \end{align*}
+    These are trees with leaves decorated by both classes and FIFOs.
+\end{dfn}
+
+\begin{dfn}
+    For topology $t \in \Topo$, the set $\OrdTree(t)$ of \emph{ordered trees} over $t$ is defined by
+    \begin{align*}
+        \axiom{}
+        {\Leaf \in \OrdTree(\ast)}
+        &&
+        \inference{}
+        {
+            ts \in \Topo^n\\
+            rs \in \Rk^{n}\\
+            \forall 1 \leq i \leq n. \; os[i] \in \OrdTree(ts[i])
+        }
+        {\Internal(rs, os) \in \OrdTree(\Node(ts))}
+    \end{align*}
+    These are trees with each internal node's child given a rank, thereby inducing a total ordering of children.
+\end{dfn}
+
+\subsection{Semantics}
+
+\begin{dfn}
+    For $t \in \Topo$, define $\push : \RioTree(t) \times \Pkt \halfto \RioTree(t)$ such that
+    \begin{align*}
+        \inference{}
+        {
+            \flow(\pkt) = c\\
+            \push(f, \pkt) = f^\prime
+        }
+        {\push(\Leaf(f, c), \pkt) = \Leaf(f^\prime, c)}
+        &&
+        \inference{}
+        {
+            \forall 1 \leq i \leq |qs|. \; \push(qs[i], \pkt) = qs^\prime[i]
+        }
+        {\push(\Internal(qs), \pkt) = \Internal(qs^\prime)}
+        &&
+        \inference{}
+        {
+            \flow(\pkt) \neq c\\
+        }
+        {\push(\Leaf(f, c), \pkt) = \Leaf(f, c)}
+    \end{align*}
+    Informally, we recursively push to all subtrees but only the FIFOs on leaves with the packet's flow are updated.
+\end{dfn}
+
+\begin{dfn}
+    For $t \in \Topo$, define $\pop : \RioTree(t) \times \OrdTree(t) \halfto \Pkt \times \RioTree(t)$ such that
+    \begin{align*}
+        \inference{}
+        {\pop(f) = (\pkt, f^\prime)}
+        {\pop(\Leaf(f, c), \Leaf) = (\pkt, \Leaf(f^\prime, c))}
+        &&
+        \inference{}
+        {
+            \exists 1 \leq i \leq |qs|. \; \pop(qs[i], os[i]) = (\pkt, q)\\
+            \forall 1 \leq j \leq |qs|. \; j \neq i \land \pop(qs[j], os[j]) = (\pkt^\prime, q^\prime) \implies rs[i] < rs[j]
+        }
+        {\pop(\Internal(qs), \Internal(rs, os)) = (\pkt, \Internal(qs[q/i]))}
+    \end{align*}
+    Informally, we recursively pop the smallest ranked, poppable subtree.
+\end{dfn}
+
+\newpage 
+
+\section{Controls}
+
+\begin{figure}[!htb]
+    \begin{align*}
+        \inference{RioCtrl-Push}
+        {
+            \zin(s, \pkt) = s^\prime\\
+            \push(q, \pkt) = q^\prime
+        }
+        {
+            \push((s, q, \zin, \zout), \pkt) 
+            = 
+            (s^\prime, q^\prime, \zin, \zout)
+        }\\
+        \inference{RioCtrl-Pop}
+        {
+            \zout(s) = (o, s^\prime)\\
+            \pop(q, o) = (\pkt, q^\prime)
+        }
+        {
+            \pop((s, q, \zin, \zout)) 
+            = 
+            (\pkt, (s^\prime, q^\prime, \zin, \zout))
+        }\\
+        \inference{PIFOCtrl-Push}
+        {
+            \zin(s, \pkt) = (pt, s^\prime)\\
+            \push(q, \pkt, pt) = q^\prime
+        }
+        {
+            \push((s, q, \zin, \zout), \pkt) 
+            = 
+            (s^\prime, q^\prime, \zin, \zout)
+        }\\
+        \inference{PIFOCtrl-Pop}
+        {
+            \pop(q) = (\pkt, q^\prime)\\
+            \zout(s, \pkt) = s^\prime
+        }
+        {
+            \pop((s, q, \zin, \zout)) 
+            = 
+            (\pkt, (s^\prime, q^\prime, \zin, \zout))
+        }
+    \end{align*}
+    \caption{Pushing and Popping Controls}
+    \label{fig:control_push_pop}
+\end{figure}
+
+For these notes, we'll refer to \emph{controls} from citeOG as \emph{PIFO controls}.
+
+\begin{dfn}
+    For $t \in \Topo$, $\PIFOControl(t)$ is the set of quadruples of $(s, q, \zin, \zout)$ where 
+    \begin{align*}
+        \zin &: \St \times \Pkt \to \Path(t) \times \St\\
+        \zout &: \St \times \Pkt \to \times \St
+    \end{align*}
+    $s \in \St$ and $q \in \PIFOTree(t)$.
+\end{dfn}
+
+Here's the dequeue side version.
+
+\begin{dfn}
+    For $t \in \Topo$, $\RioControl(t)$ is the set of quadruples of $(s, q, \zin, \zout)$ where 
+    \begin{align*}
+        \zin &: \St \times \Pkt \to \St\\
+        \zout &: \St \to \OrdTree(t) \times \St
+    \end{align*}
+    $s \in \St$ and $q \in \RioTree(t)$.
+\end{dfn}
+
+Both types of controls support $\push$ and $\pop$ operations:
+\begin{align*}
+    \push : \RioControl(t) \times \Pkt \to \RioControl(t) && 
+    \push : \PIFOControl(t) \times \Pkt \to \PIFOControl(t)\\
+    \pop : \RioControl(t) \to \Pkt \times \RioControl(t) && 
+    \pop : \PIFOControl(t) \to \Pkt \times \PIFOControl(t)
+\end{align*}
+
+Their semantics are written out in full in \Cref{fig:control_push_pop}.
+
+\renewcommand\refname{\LARGE References}
+\bibliographystyle{alpha}
+\bibliography{refs}
+
+\end{document}
