@@ -1,0 +1,4 @@
+def z_pre-push(st, pkt):
+    r = st["counter"]
+    st["counter"] += 1
+    return float_to_int(r)

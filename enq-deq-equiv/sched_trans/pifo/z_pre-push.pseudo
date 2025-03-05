@@ -1,0 +1,8 @@
+z_pre-push(st, pkt):
+    r = st["counter"]
+    st["count"] += 1
+    f = flow(pkt)
+    rank_ptr = "r_" + str(f)
+    r_i = int(st[rank_ptr])
+    st["rank_ptr"] += float(n)
+    return ((f, r_i) :: r, st)

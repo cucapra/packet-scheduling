@@ -24,6 +24,9 @@
 % hats
 \usepackage{yhmath}
 
+% subfigures
+\usepackage{subcaption}
+
 % PL macros
 \usepackage{mathpartir}
 \usepackage{stmaryrd}
@@ -67,6 +70,12 @@
 \DeclareMathOperator{\OrdTree}{\mathbf{OrdTree}}
 \DeclareMathOperator{\PIFOControl}{\mathbf{PIFOControl}}
 \DeclareMathOperator{\RioControl}{\mathbf{RioControl}}
+\DeclareMathOperator{\zprepush}{z_{\mathrm{pre-push}}}
+\DeclareMathOperator{\zprepop}{z_{\mathrm{pre-pop}}}
+\DeclareMathOperator{\zpostpop}{z_{\mathrm{post-pop}}}
+\DeclareMathOperator{\tzprepush}{z^{\prime}_{\mathrm{pre-push}}}
+\DeclareMathOperator{\tzprepop}{z^{\prime}_{\mathrm{pre-pop}}}
+\DeclareMathOperator{\tzpostpop}{z^{\prime}_{\mathrm{post-pop}}}
 
 % theorems
 \newtheorem{thm}{Theorem}[section]
@@ -107,11 +116,40 @@
 \newcommand{\reqnomode}{\tagsleft@false\let\veqno\@@eqno}
 \makeatother
 
+% align env labels are alphabets instead of numbers
+\renewcommand\theequation{\alph{equation}}
+
+% pseudocode
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\usepackage{listings}
+
+\lstdefinestyle{custom}{
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2
+}
+
+\lstset{language=Python, style=custom}
+
 \begin{document}
 
 \pagestyle{empty}
 
-{\LARGE \textbf{Dequeue Side Semantics}}
+{\LARGE \textbf{Dequeue-Side Semantics}}
 
 \hrulefill\\
 
@@ -133,9 +171,6 @@ Further, we work with a specific subset of \emph{Rio}, denoted $\Rio$, namely
 where $\Class$ is an opaque collection of \emph{classes}.
 
 \section{Structure and Semantics of Rio Trees}
-
-\subsection{Structure}
-
 
 % \begin{dfn}
 %     % Well-formed
@@ -229,8 +264,6 @@ where $\Class$ is an opaque collection of \emph{classes}.
     These are trees with each internal node's child given a rank, thereby inducing a total ordering of children.
 \end{dfn}
 
-\subsection{Semantics}
-
 Let $\flow : \Pkt \to \Class$ be an opaque mapping from packets to the class they belong to (flow inference).
 
 \begin{dfn}
@@ -281,45 +314,46 @@ Let $\flow : \Pkt \to \Class$ be an opaque mapping from packets to the class the
 
 \begin{figure}[!htb]
     \begin{align*}
-        \inference{RioCtrl-Push}
+        &\inference{RioCtrl-Push}
         {
-            \zin(s, \pkt) = s^\prime\\
-            \push(q, \pkt) = q^\prime
+            \zprepush(s, \pkt) = (r, s^\prime)\\
+            \push(q, \pkt, r) = q^\prime
         }
         {
-            \push((s, q, \zin, \zout), \pkt) 
+            \push((s, q, \zprepush, \zprepop, \zpostpop), \pkt) 
             = 
-            (s^\prime, q^\prime, \zin, \zout)
+            (s^\prime, q^\prime, \zprepush, \zprepop, \zpostpop)
         }\\
-        \inference{RioCtrl-Pop}
+        &\inference{RioCtrl-Pop}
         {
-            \zout(s) = (o, s^\prime)\\
-            \pop(q, o) = (\pkt, q^\prime)
+            \zprepop(s) = (o, s^\prime)\\
+            \pop(q, o) = (\pkt, q^\prime)\\
+            \zpostpop(s^\prime, \pkt) = s^{\prime\prime}
         }
         {
-            \pop((s, q, \zin, \zout)) 
+            \pop((s, q, \zprepush, \zprepop, \zpostpop)) 
             = 
-            (\pkt, (s^\prime, q^\prime, \zin, \zout))
+            (\pkt, (s^{\prime\prime}, q^\prime, \zprepush, \zprepop, \zpostpop))
         }\\
-        \inference{PIFOCtrl-Push}
+        &\inference{PIFOCtrl-Push}
         {
-            \zin(s, \pkt) = (pt, s^\prime)\\
+            \zprepush(s, \pkt) = (pt, s^\prime)\\
             \push(q, \pkt, pt) = q^\prime
         }
         {
-            \push((s, q, \zin, \zout), \pkt) 
+            \push((s, q, \zprepush, \zpostpop), \pkt) 
             = 
-            (s^\prime, q^\prime, \zin, \zout)
+            (s^\prime, q^\prime, \zprepush, \zpostpop)
         }\\
-        \inference{PIFOCtrl-Pop}
+        &\inference{PIFOCtrl-Pop}
         {
             \pop(q) = (\pkt, q^\prime)\\
-            \zout(s, \pkt) = s^\prime
+            \zpostpop(s, \pkt) = s^\prime
         }
         {
-            \pop((s, q, \zin, \zout)) 
+            \pop((s, q, \zprepush, \zpostpop)) 
             = 
-            (\pkt, (s^\prime, q^\prime, \zin, \zout))
+            (\pkt, (s^\prime, q^\prime, \zprepush, \zpostpop))
         }
     \end{align*}
     \caption{Pushing and Popping Controls}
@@ -329,43 +363,110 @@ Let $\flow : \Pkt \to \Class$ be an opaque mapping from packets to the class the
 For these notes, we'll refer to \emph{controls} from citeOG as \emph{PIFO controls}.
 
 \begin{dfn}
-    For $t \in \Topo$, $\PIFOControl(t)$ is the set of quadruples of $(s, q, \zin, \zout)$ where 
+    Let $t \in \Topo$ and \emph{scheduling transactions} $\zprepush$ and $\zpostpop$ be partial functions
     \begin{align*}
-        \zin &: \St \times \Pkt \to \Path(t) \times \St\\
-        \zout &: \St \times \Pkt \to \St
+        \zprepush &: \St \times \Pkt \halfto \Path(t) \times \St\\
+        \zpostpop &: \St \times \Pkt \halfto \St
     \end{align*}
-    $s \in \St$ and $q \in \PIFOTree(t)$.
+    Define $\PIFOControl(t, \zprepush, \zpostpop)$ to be the set of quadruples 
+    $$(s, q, \zprepush, \zpostpop)$$
+    where $s \in \St$ and $q \in \PIFOTree(t)$.
 \end{dfn}
 
-Here's the dequeue side version.
-
 \begin{dfn}
-    For $t \in \Topo$, $\RioControl(t)$ is the set of quadruples of $(s, q, \zin, \zout)$ where 
+    Let $t \in \Topo$ and \emph{scheduling transactions} $\zprepush, \zprepop, \zpostpop$ be partial functions
     \begin{align*}
-        \zin &: \St \times \Pkt \to \St\\
-        \zout &: \St \to \OrdTree(t) \times \St
+        \zprepush &: \St \times \Pkt \halfto \Rk \times \St\\
+        \zprepop  &: \St \halfto \OrdTree(t) \times \St\\
+        \zpostpop &: \St \times \Pkt \halfto \St
     \end{align*}
-    $s \in \St$ and $q \in \RioTree(t)$.
+    Define $\RioControl(t, \zprepush, \zprepop, \zpostpop)$ to be the set of quintuples 
+    $$(s, q, \zprepush, \zprepop, \zpostpop)$$ 
+    where $s \in \St$ and $q \in \RioTree(t)$.
 \end{dfn}
 
 Both controls admit $\push$ and $\pop$ operations:
 \begin{align*}
-    \push : \RioControl(t) \times \Pkt \to \RioControl(t) && 
-    \push : \PIFOControl(t) \times \Pkt \to \PIFOControl(t)\\
-    \pop : \RioControl(t) \to \Pkt \times \RioControl(t) && 
-    \pop : \PIFOControl(t) \to \Pkt \times \PIFOControl(t)
+    \push &: \PIFOControl(t, \zprepush, \zpostpop) \times \Pkt \to \PIFOControl(t, \zprepush, \zpostpop)\\
+    \pop  &: \PIFOControl(t, \zprepush, \zpostpop) \to \Pkt \times \PIFOControl(t, \zprepush, \zpostpop)\\
+    \push &: \RioControl(t, \zprepush, \zprepop, \zpostpop) \times \Pkt \to \RioControl(t, \zprepush, \zprepop, \zpostpop)\\
+    \pop  &: \RioControl(t, \zprepush, \zprepop, \zpostpop) \to \Pkt \times \RioControl(t, \zprepush, \zprepop, \zpostpop)
 \end{align*}
 
 Their semantics are written out in full in \Cref{fig:control_push_pop}.
 
+\begin{dfn}
+    Define the $\to \; \subseteq \PIFOControl(t, \zprepush, \zpostpop) \times \PIFOControl(t, \zprepush, \zpostpop)$ by
+    \begin{align*}
+        \inference{}
+        {\pkt \in \Pkt\\ \push c \pkt = c^\prime}
+        {c \to c^{\prime}}
+        &&
+        \inference{}
+        {\pop c = (\pkt, c^\prime)}
+        {c \to c^{\prime}}
+    \end{align*}
+    i.e. $c \to c^\prime$ if $c^\prime$ is a push or pop from $c$.
+    We write $\to^\ast$ for the reflexive transitive closure of $\to$.
+\end{dfn}
+
+\begin{dfn}
+    A partial function
+    $$
+        f :  
+        \RioControl(t, \zprepush, \zprepop, \zpostpop) 
+        \halfto
+        \PIFOControl(t^\prime, \tzprepush, \tzpostpop) 
+    $$
+    is \emph{simulation} if, for all $\pkt \in \Pkt$ and $f(c_1) = c_2$, the following conditions are satisfied:
+    \begin{enumerate}
+        \item There exists $f(c_{\text{init}}) = c^{\prime}_{\text{init}}$ where the trees in $c_{\text{init}}$ and $c^\prime_{\text{init}}$ hold empty PIFOs at the leaves.
+        \item If $c_{\text{init}} \to^\ast c_1$,
+            \begin{align}
+                \pop(c_1) \text{ is undefined} &\implies \pop(c_2) \text{ is undefined}\\
+                \pop(c_1) = (\pkt, c^\prime_1) &\implies \pop(c_2) = (\pkt, c^\prime_2) \land f(c_1^\prime) = c_2^\prime\\
+                \push(c_1, \pkt) = c^\prime_1  &\implies \push(c_2, \pkt) = c^\prime_2 \land f(c_1^\prime) = c_2^\prime
+            \end{align}
+    \end{enumerate}
+\end{dfn}
+
 \newpage
 
-\section{Round-Robin}
+\section{Enqueue and Dequeue-Side Equivalence}
 
-Let's put our theory to use by constructing both a $\PIFOControl$ and $\RioControl$ for
+All further discussion takes $\St = \text{set of dictionaries mapping $\textbf{string} \to \textbf{float}$}$ and $\Rk = \Class = \mathbb N$.
+
+\subsection{Round-Robin}
+
+\begin{figure}[!htb]
+    \centering
+    \begin{subfigure}[t]{0.49\linewidth}
+        \lstinputlisting{sched_trans/rio/z_post-pop.pseudo}
+        \lstinputlisting{sched_trans/rio/z_pre-pop.pseudo}
+        \lstinputlisting{sched_trans/rio/z_pre_push.pseudo}
+        \caption{Rio Control}
+    \end{subfigure}
+    \begin{subfigure}[t]{0.49\linewidth}
+        \lstinputlisting{sched_trans/pifo/z_post-pop.pseudo}
+        \lstinputlisting{sched_trans/pifo/z_pre-push.pseudo}
+        \caption{PIFO Control}
+    \end{subfigure}
+    \caption{Scheduling Transactions}
+\end{figure}
+
+For $n \in \mathbb N$, let's put our theory to use by constructing PIFO and Rio controls for
 \begin{align*}
-    \RR[(\FIFO[F_1], \FIFO[F_2], \ldots, \FIFO[F_n])] && \text{distinct } F_1, F_2, \ldots, F_n \in \Class
+    \RR[(\FIFO[0], \FIFO[1], \ldots, \FIFO[n - 1])] 
 \end{align*}
+
+Both controls use the same underlying topology, namely
+$$
+t = \Node((\underbrace{\ast, \ast, \ldots, \ast}_{n \text{ times}}))
+$$
+Figure \Cref{fig:placeholder} describes the scheduling transactions 
+
+
+
 and showing they're in simulation.
 This would show the equivalence of enqueue and dequeue-side semantics for a specific type of program!
 
