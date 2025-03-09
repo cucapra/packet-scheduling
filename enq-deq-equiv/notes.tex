@@ -76,6 +76,8 @@
 \DeclareMathOperator{\tzprepush}{z^{\prime}_{\mathrm{pre-push}}}
 \DeclareMathOperator{\tzprepop}{z^{\prime}_{\mathrm{pre-pop}}}
 \DeclareMathOperator{\tzpostpop}{z^{\prime}_{\mathrm{post-pop}}}
+\DeclareMathOperator{\cinit}{c_{\text{init}}}
+\DeclareMathOperator{\emt}{\mathrm{empty}}
 
 % theorems
 \newtheorem{thm}{Theorem}[section]
@@ -155,7 +157,7 @@
 
 \reqnomode
 
-\textbf{Disclaimer}: we assume familiarity with citeOG, adopt its notational conventions, and steal its definitions!
+\textbf{Disclaimer}: we assume familiarity with \cite{OG}, adopt its notational conventions, and steal its definitions!
 
 Further, we work with a specific subset of \emph{Rio}, denoted $\Rio$, namely
 \begin{align*}
@@ -230,6 +232,44 @@ where $\Class$ is an opaque collection of \emph{classes}.
 %     For $t \in \CTopo$ with $t \to t^\prime$, we'll occasionally use $t$ when we really mean the topology of the same shape, $t^\prime$.
 % \end{abuse}
 
+\begin{figure}[!htb]
+    \centering
+    \begin{subfigure}[t]{0.49\linewidth}
+        \centering
+        \begin{tikzpicture}[scale = 1.25]
+            \node[draw, align=left] at (-1,-1.3) {$A_1$};
+            \node[align=left] at (-1.55,-1.3) {$A$};
+            \node[draw, align=left] at (0,-2.3) {$B_2, B_1$};
+            \node[align=left] at (-0.85,-2.3) {$B$};
+            \node[draw, align=left] at (2,-2.3) {$C_1$};
+            \node[align=left] at (1.45,-2.3) {$C$};
+            
+            \draw (0,0) -- (-1, -1);
+            \draw (0,0) -- (1, -1);
+            \draw (1,-1) -- (0, -2);
+            \draw (1,-1) -- (2, -2);
+        \end{tikzpicture}
+        \caption{Over topology $\Node(\ast, \Node(\ast, \ast))$}
+    \end{subfigure}
+    \begin{subfigure}[t]{0.49\linewidth}
+        \centering
+        \begin{tikzpicture}[scale = 1.25]
+            \node[draw, align=left] at (-1,-1.3) {$A_1$};
+            \node[draw, align=left] at (0,-1.3) {$B_1$};
+            \node[draw, align=left] at (1,-1.3) {\phantom{$C_1$}};
+            \node[align=left] at (-1,-1.8) {$A$};
+            \node[align=left] at (0,-1.8) {$B$};
+            \node[align=left] at (1,-1.8) {$C$};
+
+            \draw (0,0) -- (-1, -1);
+            \draw (0,0) -- (0, -1);
+            \draw (0,0) -- (1, -1);
+        \end{tikzpicture}
+        \caption{Over topology $\Node(\ast, \ast, \ast)$}
+    \end{subfigure}
+    \caption{Rio trees decorated by classes $A$, $B$, and $C$}
+\end{figure}
+
 \begin{dfn}
     For topology $t \in \Topo$, the set $\RioTree(t)$ of \emph{Rio trees} over $t$ is defined by
     \begin{align*}
@@ -256,12 +296,13 @@ where $\Class$ is an opaque collection of \emph{classes}.
         \inference{}
         {
             ts \in \Topo^n\\
-            rs \in \Rk^{n}\\
+            rs \in \Rk^{n}\\\\
+            \forall 1 \leq i < j \leq n. \; rs[i] \neq rs[j]\\
             \forall 1 \leq i \leq n. \; os[i] \in \OrdTree(ts[i])
         }
         {\Internal(rs, os) \in \OrdTree(\Node(ts))}
     \end{align*}
-    These are trees with each internal node's child given a rank, thereby inducing a total ordering of children.
+    These are trees with each internal node's child given a \emph{unique} rank, thereby inducing a total ordering of children.
 \end{dfn}
 
 Let $\flow : \Pkt \to \Class$ be an opaque mapping from packets to the class they belong to (flow inference).
@@ -300,7 +341,7 @@ Let $\flow : \Pkt \to \Class$ be an opaque mapping from packets to the class the
         &&
         \inference{}
         {
-            \exists 1 \leq i \leq |qs|. \; \pop(qs[i], os[i]) = (\pkt, q)\\
+            \pop(qs[i], os[i]) = (\pkt, q)\\\\
             \forall 1 \leq j \leq |qs|. \; j \neq i \land \pop(qs[j], os[j]) = (\pkt^\prime, q^\prime) \implies rs[i] < rs[j]
         }
         {\pop(\Internal(qs), \Internal(rs, os)) = (\pkt, \Internal(qs[q/i]))}
@@ -308,9 +349,19 @@ Let $\flow : \Pkt \to \Class$ be an opaque mapping from packets to the class the
     Informally, we recursively pop the smallest ranked, poppable subtree.
 \end{dfn}
 
-\newpage 
+\section{Modelling Scheduling Algorithms}
 
-\section{PIFO \& Rio Controls}
+Like \cite{OG}, we model scheduling algorithms through a \emph{control}, a thin-layer over the tree policies run on.
+They keep track of 
+\begin{enumerate}
+    \item a state from a fixed collection $\St$
+    \item an underlying tree of buffered packets % is buffered the right word?
+    \item scheduling transactions that update state and construct auxillary structures to push or pop the tree
+\end{enumerate}
+They come in two flavors: Rio \& PIFO Controls.
+The former determines the order to forward packets at dequeue while latter does so at enqueue.
+
+\subsection{Controls}
 
 \begin{figure}[!htb]
     \begin{align*}
@@ -360,8 +411,6 @@ Let $\flow : \Pkt \to \Class$ be an opaque mapping from packets to the class the
     \label{fig:control_push_pop}
 \end{figure}
 
-For these notes, we'll refer to \emph{controls} from citeOG as \emph{PIFO controls}.
-
 \begin{dfn}
     Let $t \in \Topo$ and \emph{scheduling transactions} $\zprepush$ and $\zpostpop$ be partial functions
     \begin{align*}
@@ -370,7 +419,7 @@ For these notes, we'll refer to \emph{controls} from citeOG as \emph{PIFO contro
     \end{align*}
     Define $\PIFOControl(t, \zprepush, \zpostpop)$ to be the set of quadruples 
     $$(s, q, \zprepush, \zpostpop)$$
-    where $s \in \St$ and $q \in \PIFOTree(t)$.
+    where $s \in \St$ and well-formed $q \in \PIFOTree(t)$.
 \end{dfn}
 
 \begin{dfn}
@@ -387,23 +436,44 @@ For these notes, we'll refer to \emph{controls} from citeOG as \emph{PIFO contro
 
 Both controls admit $\push$ and $\pop$ operations:
 \begin{align*}
-    \push &: \PIFOControl(t, \zprepush, \zpostpop) \times \Pkt \to \PIFOControl(t, \zprepush, \zpostpop)\\
-    \pop  &: \PIFOControl(t, \zprepush, \zpostpop) \to \Pkt \times \PIFOControl(t, \zprepush, \zpostpop)\\
-    \push &: \RioControl(t, \zprepush, \zprepop, \zpostpop) \times \Pkt \to \RioControl(t, \zprepush, \zprepop, \zpostpop)\\
-    \pop  &: \RioControl(t, \zprepush, \zprepop, \zpostpop) \to \Pkt \times \RioControl(t, \zprepush, \zprepop, \zpostpop)
+    \push &: \PIFOControl(t, \zprepush, \zpostpop) \times \Pkt \halfto \PIFOControl(t, \zprepush, \zpostpop)\\
+    \pop  &: \PIFOControl(t, \zprepush, \zpostpop) \halfto \Pkt \times \PIFOControl(t, \zprepush, \zpostpop)\\
+    \push &: \RioControl(t, \zprepush, \zprepop, \zpostpop) \times \Pkt \halfto \RioControl(t, \zprepush, \zprepop, \zpostpop)\\
+    \pop  &: \RioControl(t, \zprepush, \zprepop, \zpostpop) \halfto \Pkt \times \RioControl(t, \zprepush, \zprepop, \zpostpop)
 \end{align*}
 
 Their semantics are written out in full in \Cref{fig:control_push_pop}.
+
+\subsection{Simulations}
+
+\begin{dfn}
+    For $t \in \Topo$, define $\emt_t \in \PIFOTree(t)$ such that
+    \begin{align*}
+        \inference{}
+        {p \in \PIFO(\Pkt)\\ \pop(p) \text{ is undefined}}
+        {\emt_{\ast} = \Leaf(p)}
+        &&
+        \inference{}
+        {
+            ts \in \Topo^n\\
+            p \in \PIFO(\{1, \ldots, n\})\\\\
+            \pop(p) \text{ is undefined}\\
+            \forall 1 \leq i \leq n. \; qs[i] = \emt{ts[i]}
+        }
+        {\emt_{\Node(ts)} = \Internal(p, qs)}
+    \end{align*}
+    Informally, $\emt_t$ is a PIFO tree of topology $t$, with empty PIFOs at all nodes.
+\end{dfn}
 
 \begin{dfn}
     Define the $\to \; \subseteq \PIFOControl(t, \zprepush, \zpostpop) \times \PIFOControl(t, \zprepush, \zpostpop)$ by
     \begin{align*}
         \inference{}
-        {\pkt \in \Pkt\\ \push c \pkt = c^\prime}
+        {\pkt \in \Pkt\\ \push(c, \pkt) = c^\prime}
         {c \to c^{\prime}}
         &&
         \inference{}
-        {\pop c = (\pkt, c^\prime)}
+        {\pop(c) = (\pkt, c^\prime)}
         {c \to c^{\prime}}
     \end{align*}
     i.e. $c \to c^\prime$ if $c^\prime$ is a push or pop from $c$.
@@ -414,14 +484,14 @@ Their semantics are written out in full in \Cref{fig:control_push_pop}.
     A partial function
     $$
         f :  
-        \RioControl(t, \zprepush, \zprepop, \zpostpop) 
+        \PIFOControl(t, \zprepush, \zpostpop) 
         \halfto
-        \PIFOControl(t^\prime, \tzprepush, \tzpostpop) 
+        \RioControl(t^\prime, \tzprepush, \tzprepop, \tzpostpop) 
     $$
-    is \emph{simulation} if, for all $\pkt \in \Pkt$ and $f(c_1) = c_2$, the following conditions are satisfied:
+    is \emph{simulation} if the following conditions are satisfied:
     \begin{enumerate}
-        \item There exists $f(c_{\text{init}}) = c^{\prime}_{\text{init}}$ where the trees in $c_{\text{init}}$ and $c^\prime_{\text{init}}$ hold empty PIFOs at the leaves.
-        \item If $c_{\text{init}} \to^\ast c_1$,
+        \item There exists $c_{init} = (s, q, \zprepush, \zpostpop)$ where $q = \emt_t$ and $c_{init} \in \operatorname{dom} f$.
+        \item When $c_{\text{init}} \to^\ast c_1$ and $f(c_1) = c_2$, we can guarantee the following:
             \begin{align}
                 \pop(c_1) \text{ is undefined} &\implies \pop(c_2) \text{ is undefined}\\
                 \pop(c_1) = (\pkt, c^\prime_1) &\implies \pop(c_2) = (\pkt, c^\prime_2) \land f(c_1^\prime) = c_2^\prime\\
@@ -429,6 +499,7 @@ Their semantics are written out in full in \Cref{fig:control_push_pop}.
             \end{align}
     \end{enumerate}
 \end{dfn}
+
 
 \newpage
 
@@ -441,17 +512,18 @@ All further discussion takes $\St = \text{set of dictionaries mapping $\textbf{s
 \begin{figure}[!htb]
     \centering
     \begin{subfigure}[t]{0.49\linewidth}
-        \lstinputlisting{sched_trans/rio/z_post-pop.pseudo}
-        \lstinputlisting{sched_trans/rio/z_pre-pop.pseudo}
-        \lstinputlisting{sched_trans/rio/z_pre_push.pseudo}
-        \caption{Rio Control}
-    \end{subfigure}
-    \begin{subfigure}[t]{0.49\linewidth}
-        \lstinputlisting{sched_trans/pifo/z_post-pop.pseudo}
         \lstinputlisting{sched_trans/pifo/z_pre-push.pseudo}
+        \lstinputlisting{sched_trans/pifo/z_post-pop.pseudo}
         \caption{PIFO Control}
     \end{subfigure}
+    \begin{subfigure}[t]{0.49\linewidth}
+        \lstinputlisting{sched_trans/rio/z_pre_push.pseudo}
+        \lstinputlisting{sched_trans/rio/z_pre-pop.pseudo}
+        \lstinputlisting{sched_trans/rio/z_post-pop.pseudo}
+        \caption{Rio Control}
+    \end{subfigure}
     \caption{Scheduling Transactions}
+    \label{fig:sched_trans}
 \end{figure}
 
 For $n \in \mathbb N$, let's put our theory to use by constructing PIFO and Rio controls for
@@ -461,15 +533,21 @@ For $n \in \mathbb N$, let's put our theory to use by constructing PIFO and Rio 
 
 Both controls use the same underlying topology, namely
 $$
-t = \Node((\underbrace{\ast, \ast, \ldots, \ast}_{n \text{ times}}))
+t = \Node(\underbrace{\ast, \ast, \ldots, \ast}_{n \text{ times}})
 $$
-Figure \Cref{fig:placeholder} describes the scheduling transactions 
+\Cref{fig:sched_trans} describes their scheduling transactions in pseudocode.
+Therefore, we have the materials to define
+\begin{align*}
+    \PIFOControl(t, \zprepush, \zpostpop)
+    &&
+    \text{and}
+    &&
+    \RioControl(t, \tzprepush, \tzprepop, \tzpostpop)
+\end{align*}
+I.e. the collection of PIFO and Rio controls for our program.
+Let's find a simulation between them!
 
-
-
-and showing they're in simulation.
-This would show the equivalence of enqueue and dequeue-side semantics for a specific type of program!
-
+\newpage
 
 \renewcommand\refname{\LARGE References}
 \bibliographystyle{alpha}

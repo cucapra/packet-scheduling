@@ -1,6 +1,6 @@
-z_pre-push(st, pkt):
+def z_pre-push(st, pkt):
     r = st["counter"]
-    st["count"] += 1
+    st["counter"] += 1
     f = flow(pkt)
     rank_ptr = "r_" + str(f)
     r_i = int(st[rank_ptr])

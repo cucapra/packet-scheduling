@@ -1,8 +1,11 @@
-z_post-pop(st, pkt):
+def z_post-pop(st, pkt):
     f = flow(pkt)
-    i = int(s["turn"])
+    turn = int(s["turn"])
+    i = turn
     while i != f:
         st["r_" + str(i)] += n
         i = (i + 1) % n
     st["turn"] = float((f + 1) % n)
+    if turn >= st["turn"]:
+        st["cycle"] += 1
     return st
