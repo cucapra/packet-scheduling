@@ -77,7 +77,9 @@
 \DeclareMathOperator{\tzprepop}{z^{\prime}_{\mathrm{pre-pop}}}
 \DeclareMathOperator{\tzpostpop}{z^{\prime}_{\mathrm{post-pop}}}
 \DeclareMathOperator{\cinit}{c_{\text{init}}}
+\DeclareMathOperator{\crr}{c_{\text{RR}}}
 \DeclareMathOperator{\emt}{\mathrm{empty}}
+\DeclareMathOperator{\ranks}{\mathrm{ranks}}
 
 % theorems
 \newtheorem{thm}{Theorem}[section]
@@ -111,12 +113,6 @@
   {\marginsecnumber\thesubsubsection}
   {0pt}
   {}
-
-% tag on the right hack
-\makeatletter
-\newcommand{\leqnomode}{\tagsleft@true\let\veqno\@@leqno}
-\newcommand{\reqnomode}{\tagsleft@false\let\veqno\@@eqno}
-\makeatother
 
 % align env labels are alphabets instead of numbers
 \renewcommand\theequation{\alph{equation}}
@@ -154,8 +150,6 @@
 {\LARGE \textbf{Dequeue-Side Semantics}}
 
 \hrulefill\\
-
-\reqnomode
 
 \textbf{Disclaimer}: we assume familiarity with \cite{OG}, adopt its notational conventions, and steal its definitions!
 
@@ -200,37 +194,6 @@ where $\Class$ is an opaque collection of \emph{classes}.
 %         {\vdash \RR[rs]}
 %     \end{align*}
 % \end{dfn}
-
-% \begin{dfn}
-%     Let $\CTopo$ be the set of tree topologies with leaves decorated by classes. 
-%     More precisely,
-%     \begin{align*}
-%         \inference{}
-%         {c \in \Class}
-%         {(\ast, c) \in \CTopo}
-%         &&
-%         \inference{}
-%         {n \in \mathbb N\\ ts \in \CTopo^n}
-%         {\Node(ts) \in \CTopo}
-%     \end{align*}
-% \end{dfn}
-% 
-% \begin{abuse}
-%     Removing the classes at the leaves yields an obvious map $\CTopo \to \Topo$
-%     \begin{align*}
-%         \axiom{}
-%         {(\ast, c) \to \ast}
-%         &&
-%         \inference{}
-%         {
-%             ts \in \CTopo^n\\ 
-%             ts^\prime \in \Topo^n\\ 
-%             \forall 1 \leq i \leq n. \; ts[i] \to ts^\prime[i]
-%         }
-%         {\Node(ts) \to \Node(ts^\prime)}
-%     \end{align*}
-%     For $t \in \CTopo$ with $t \to t^\prime$, we'll occasionally use $t$ when we really mean the topology of the same shape, $t^\prime$.
-% \end{abuse}
 
 \begin{figure}[!htb]
     \centering
@@ -447,6 +410,7 @@ Their semantics are written out in full in \Cref{fig:control_push_pop}.
 \subsection{Simulations}
 
 \begin{dfn}
+    \label{dfn:empty}
     For $t \in \Topo$, define $\emt_t \in \PIFOTree(t)$ such that
     \begin{align*}
         \inference{}
@@ -458,7 +422,7 @@ Their semantics are written out in full in \Cref{fig:control_push_pop}.
             ts \in \Topo^n\\
             p \in \PIFO(\{1, \ldots, n\})\\\\
             \pop(p) \text{ is undefined}\\
-            \forall 1 \leq i \leq n. \; qs[i] = \emt{ts[i]}
+            \forall 1 \leq i \leq n. \; qs[i] = \emt_{ts[i]}
         }
         {\emt_{\Node(ts)} = \Internal(p, qs)}
     \end{align*}
@@ -466,13 +430,14 @@ Their semantics are written out in full in \Cref{fig:control_push_pop}.
 \end{dfn}
 
 \begin{dfn}
+    \label{dfn:step}
     Define the $\to \; \subseteq \PIFOControl(t, \zprepush, \zpostpop) \times \PIFOControl(t, \zprepush, \zpostpop)$ by
     \begin{align*}
-        \inference{}
+        \inference{Step-Push}
         {\pkt \in \Pkt\\ \push(c, \pkt) = c^\prime}
         {c \to c^{\prime}}
         &&
-        \inference{}
+        \inference{Step-Pop}
         {\pop(c) = (\pkt, c^\prime)}
         {c \to c^{\prime}}
     \end{align*}
@@ -490,8 +455,8 @@ Their semantics are written out in full in \Cref{fig:control_push_pop}.
     $$
     is \emph{simulation} if the following conditions are satisfied:
     \begin{enumerate}
-        \item There exists $c_{init} = (s, q, \zprepush, \zpostpop)$ where $q = \emt_t$ and $c_{init} \in \operatorname{dom} f$.
-        \item When $c_{\text{init}} \to^\ast c_1$ and $f(c_1) = c_2$, we can guarantee the following:
+        \item There exists $\cinit = (s, q, \zprepush, \zpostpop)$ where $q = \emt_t$ and $\cinit \in \operatorname{dom} f$.
+        \item When $\cinit \to^\ast c_1$ and $f(c_1) = c_2$, we can guarantee the following:
             \begin{align}
                 \pop(c_1) \text{ is undefined} &\implies \pop(c_2) \text{ is undefined}\\
                 \pop(c_1) = (\pkt, c^\prime_1) &\implies \pop(c_2) = (\pkt, c^\prime_2) \land f(c_1^\prime) = c_2^\prime\\
@@ -503,7 +468,7 @@ Their semantics are written out in full in \Cref{fig:control_push_pop}.
 
 \newpage
 
-\section{Enqueue and Dequeue-Side Equivalence}
+\section{Example Controls \& Simulations}
 
 All further discussion takes $\St = \text{set of dictionaries mapping $\textbf{string} \to \textbf{float}$}$ and $\Rk = \Class = \mathbb N$.
 
@@ -514,13 +479,15 @@ All further discussion takes $\St = \text{set of dictionaries mapping $\textbf{s
     \begin{subfigure}[t]{0.49\linewidth}
         \lstinputlisting{sched_trans/pifo/z_pre-push.pseudo}
         \lstinputlisting{sched_trans/pifo/z_post-pop.pseudo}
-        \caption{PIFO Control}
+        \caption{Round-Robin PIFO Control}
+        \label{fig:rr-pifo-ctrl}
     \end{subfigure}
     \begin{subfigure}[t]{0.49\linewidth}
         \lstinputlisting{sched_trans/rio/z_pre_push.pseudo}
         \lstinputlisting{sched_trans/rio/z_pre-pop.pseudo}
         \lstinputlisting{sched_trans/rio/z_post-pop.pseudo}
-        \caption{Rio Control}
+        \caption{Round-Robin Rio Control}
+        \label{fig:rr-rio-ctrl}
     \end{subfigure}
     \caption{Scheduling Transactions}
     \label{fig:sched_trans}
@@ -546,6 +513,252 @@ Therefore, we have the materials to define
 \end{align*}
 I.e. the collection of PIFO and Rio controls for our program.
 Let's find a simulation between them!
+
+\begin{dfn}
+    \label{dfn:rrinit}
+    Let $\crr = (s, \emt_t, \zprepush, \zpostpop) \in \PIFOControl(t, \zprepush, \zpostpop)$, where
+    \begin{align*}
+        s[``\text{counter}"] = 0 &&
+        s[``\text{turn}"] = 0 &&
+        s[``\text{cycle}"] = 1 &&
+        s[``r\_" + \text{str}(i)] = i 
+    \end{align*}
+    for all $0 \leq i \leq n - 1$
+\end{dfn}
+
+\begin{dfn}
+    \label{dfn:ranks}
+    For set $S$, define $\ranks : \PIFO(S) \times S \to \mathcal M(\Rk)$\footnote{
+        We use $\mathcal M(X)$ to denote the collection of \href{https://en.wikipedia.org/wiki/Multiset}{multisets} with entries in set $X$.
+    } 
+    such that
+    \begin{align*}
+        \inference{}
+        {\pop(p^\prime) = (j, p)\\ m = \min(\ranks(p^\prime, j))\\ i = j}
+        {\ranks(p, i) = \ranks(p^\prime, i) - \{m\}}
+        \hspace{10mm}
+        \inference{}
+        {\pop(p^\prime) = (j, p)\\ i \neq j}
+        {\ranks(p) = \ranks(p^\prime, i)}
+        \\
+        \inference{}
+        {\push(p^\prime, j, r) = p\\ i = j}
+        {\ranks(p, i) = \ranks(p^\prime, i) + \{r\}}
+        \hspace{5mm}
+        \inference{}
+        {\pop(p) \text{ is undefined}}
+        {\ranks(p, i) = \{\}}
+        \hspace{5mm}
+        \inference{}
+        {\push(p^\prime, j, r) = p\\ i \neq j}
+        {\ranks(p, i) = \ranks(p^\prime, i)}
+    \end{align*}
+    Informally, $\ranks(p, i)$ is the multiset of ranks with which $i$ lives in PIFO $p$.
+\end{dfn}
+
+\begin{lem}
+    \label{lem:ranks}
+    If $\crr \to^\ast c = (s, q, \zprepush, \zpostpop)$ and $p$ is $q$'s root PIFO, i.e. $q = \Internal(p, qs)$, then
+    $$
+        \ranks(p, i) =
+        \begin{cases}
+            \Big\{x \in \Rk \mid x \equiv i \pmod n \land n \cdot s[``\text{cycle}"] \leq x < s[``r\_" + \mathrm{str}(i)] \Big\} 
+            & i < s[``\text{turn}"]\\
+            \Big\{x \in \Rk \mid x \equiv i \pmod n \land n \cdot (s[``\text{cycle}"] - 1) \leq x < s[``r\_" + \mathrm{str}(i)]\Big\} 
+            & i \geq s[``\text{turn}"]
+        \end{cases}
+    $$
+    for all $0 \leq i \leq n - 1$.
+\end{lem}
+
+\begin{proof}
+    We'll proceed by induction on $\to^\ast$.
+    \begin{enumerate}
+        \item[(Base Case)] Let $c = \crr$ and fix arbitrary $i \in [0, n - 1]$.\\
+            Recall $q = \emt_t$ by \Cref{dfn:rrinit}. 
+            Therefore, $\pop(p)$ is undefined by \Cref{dfn:empty}.
+            Hence, $$\ranks(p, i) = \{\}$$ by \Cref{dfn:ranks}.
+            \Cref{dfn:rrinit} also insists
+            \begin{align*}
+                s[``\text{turn}"] = 0
+                &&
+                s[``cycle"] = 1
+                &&
+                s[``r\_" + str(i)] = i
+            \end{align*}
+            Hence, $i \geq s[``\text{turn}"]$ and
+            \begin{align*}
+                &=
+                \begin{cases}
+                    \Big\{x \in \Rk \mid x \equiv i \pmod n \land n \cdot s[``cycle"] \leq x < s[``r\_" + \mathrm{str}(i)] \Big\} 
+                    & i < s[``\text{turn}"]\\
+                    \Big\{x \in \Rk \mid x \equiv i \pmod n \land n \cdot (s[``cycle"] - 1) \leq x < s[``r\_" + \mathrm{str}(i)]\Big\} 
+                    & i \geq s[``\text{turn}"]
+                \end{cases}\\
+                &= \Big\{x \in \Rk \mid x \equiv i \pmod n \land n \cdot (s[``cycle"] - 1) \leq x < s[``r\_" + \mathrm{str}(i)]\Big\}\\
+                &= \Big\{x \in \Rk \mid x \equiv i \pmod n \land 0 \leq x < i \Big\} = \{\}
+            \end{align*}
+            Both sides of the desired equality are therefore the empty multiset $\{\}$.
+        \item[(Inductive Step)] Let $c^\prime = (s^\prime, q^\prime, \zprepush, \zpostpop) \to c$ and $q^\prime = \Internal(p^\prime, qs^\prime)$.
+            We have two cases.
+            \begin{enumerate}
+                \item[(Step-Push)] Suppose $c = \push(c^\prime, \pkt)$ and $f = \flow(\pkt)$.
+                    From inspecting $\zprepush$ in \Cref{fig:rr-pifo-ctrl},
+                    \begin{align*}
+                        \push\Big(p^\prime, f, s^\prime[``r\_" + \mathrm{str}(f)]\Big) = p
+                        &&
+                        s[x] =
+                        \begin{cases}
+                            s^\prime[x] + n & x = ``r\_" + \mathrm{str}(f)\\
+                            s^\prime[x] + 1 & x = ``\text{counter}"\\
+                            s^\prime[x] & \text{otherwise}
+                        \end{cases}
+                    \end{align*}
+                    Hence, by \Cref{dfn:ranks} and the IH, for $i \neq f$,
+                    \begin{align*}
+                        &= \ranks(p, i) = \ranks(p^\prime, i)\\
+                        &=
+                            \begin{cases}
+                                \Big\{x \in \Rk \mid x \equiv i \pmod n \land n \cdot s^\prime[``cycle"] \leq x < s^\prime[``r\_" + \mathrm{str}(i)] \Big\} 
+                                & i < s^\prime[``\text{turn}"]\\
+                                \Big\{x \in \Rk \mid x \equiv i \pmod n \land n \cdot (s^\prime[``cycle"] - 1) \leq x < s^\prime[``r\_" + \mathrm{str}(i)]\Big\} 
+                                & i \geq s^\prime[``\text{turn}"]
+                            \end{cases}\\
+                        &=
+                            \begin{cases}
+                                \Big\{x \in \Rk \mid x \equiv i \pmod n \land n \cdot s[``cycle"] \leq x < s[``r\_" + \mathrm{str}(i)] \Big\} 
+                                & i < s[``\text{turn}"]\\
+                                \Big\{x \in \Rk \mid x \equiv i \pmod n \land n \cdot (s[``cycle"] - 1) \leq x < s[``r\_" + \mathrm{str}(i)]\Big\} 
+                                & i \geq s[``\text{turn}"]
+                            \end{cases}
+                    \end{align*}
+                    Instead, for $i = f$, let $r = s^\prime[``r\_" + \mathrm{str}(i)]$. 
+                    \Cref{dfn:ranks} and the IH then once again show
+                    \begin{align*}
+                        &= \ranks(p, i) = \ranks(p^\prime, i) + \{r\}\\
+                        &=
+                            \begin{cases}
+                                \Big\{x \in \Rk \mid x \equiv i \pmod n \land n \cdot s^\prime[``cycle"] \leq x < s^\prime[``r\_" + \mathrm{str}(i)] \Big\} + \{r\}
+                                & i < s^\prime[``\text{turn}"]\\
+                                \Big\{x \in \Rk \mid x \equiv i \pmod n \land n \cdot (s^\prime[``cycle"] - 1) \leq x < s^\prime[``r\_" + \mathrm{str}(i)]\Big\} + \{r\}
+                                & i \geq s^\prime[``\text{turn}"]
+                            \end{cases}\\
+                        &=
+                            \begin{cases}
+                                \Big\{x \in \Rk \mid x \equiv i \pmod n \land n \cdot s^\prime[``cycle"] \leq x < s^\prime[``r\_" + \mathrm{str}(i)] + n\Big\}
+                                & i < s^\prime[``\text{turn}"]\\
+                                \Big\{x \in \Rk \mid x \equiv i \pmod n \land n \cdot (s^\prime[``cycle"] - 1) \leq x < s^\prime[``r\_" + \mathrm{str}(i)] + n\Big\}
+                                & i \geq s^\prime[``\text{turn}"]
+                            \end{cases}\\
+                        &=
+                            \begin{cases}
+                                \Big\{x \in \Rk \mid x \equiv i \pmod n \land n \cdot s[``cycle"] \leq x < s[``r\_" + \mathrm{str}(i)] \Big\}
+                                & i < s[``\text{turn}"]\\
+                                \Big\{x \in \Rk \mid x \equiv i \pmod n \land n \cdot (s[``cycle"] - 1) \leq x < s[``r\_" + \mathrm{str}(i)]\Big\}
+                                & i \geq s[``\text{turn}"]
+                            \end{cases}
+                    \end{align*}
+
+                \item[(Step-Pop)] Suppose $(\pkt, c) = \pop(c^\prime)$ and $f = \flow(\pkt)$. 
+                    From inspecting $\zpostpop$ in \Cref{fig:rr-pifo-ctrl},
+                    \begin{align*}
+                        \pop(p^\prime) = (f, p) %This claim maybe requires proof; definitely true though
+                        &&
+                        s[``\text{cycle}"] \in \{s^\prime[``\text{cycle}"], s^\prime[``\text{cycle}"] + 1\}
+                    \end{align*}
+                    Consider the case where $s[``\text{cycle}"] = s^\prime[``\text{cycle}"]$, i.e. $s^\prime[``\text{turn}"] \leq f < s[``\text{turn}"] = f + 1$.
+                    \begin{itemize}
+                        \item For $i < s^\prime[``\text{turn}"]$ or $i \geq s[``\text{turn}"]$, lines 5-7 of $\zpostpop$ in \Cref{fig:rr-pifo-ctrl} show
+                            $$s[``r\_" + \mathrm{str}(i)] = s^\prime[``r\_" + \mathrm{str}(i)]$$
+                            Therefore, by \Cref{dfn:ranks} and the IH,
+                            \begin{align*}
+                                &= \ranks(p, i) = \ranks(p^\prime, i)\\
+                                &=
+                                    \begin{cases}
+                                        \Big\{x \in \Rk \mid x \equiv i \pmod n \land n \cdot s^\prime[``cycle"] \leq x < s^\prime[``r\_" + \mathrm{str}(i)] \Big\} 
+                                        & i < s^\prime[``\text{turn}"]\\
+                                        \Big\{x \in \Rk \mid x \equiv i \pmod n \land n \cdot (s^\prime[``cycle"] - 1) \leq x < s^\prime[``r\_" + \mathrm{str}(i)]\Big\} 
+                                        & i \geq s^\prime[``\text{turn}"]
+                                    \end{cases}\\
+                                &=
+                                    \begin{cases}
+                                        \Big\{x \in \Rk \mid x \equiv i \pmod n \land n \cdot s[``cycle"] \leq x < s[``r\_" + \mathrm{str}(i)] \Big\} 
+                                        & i < s[``\text{turn}"]\\
+                                        \Big\{x \in \Rk \mid x \equiv i \pmod n \land n \cdot (s[``cycle"] - 1) \leq x < s[``r\_" + \mathrm{str}(i)]\Big\} 
+                                        & i \geq s[``\text{turn}"]
+                                    \end{cases}
+                            \end{align*}
+
+                        \item For $s^\prime[``turn"] \leq i < f$, lines 5-7 of $\zpostpop$ in \Cref{fig:rr-pifo-ctrl} show
+                            $$s[``r\_" + \mathrm{str}(i)] = s^\prime[``r\_" + \mathrm{str}(i)] + n$$
+                            and the IH says
+                            \begin{align*}
+                                \ranks(p^\prime, i) &= 
+                                \Big\{x \in \Rk \mid x \equiv i \pmod n \land n \cdot (s^\prime[``cycle"] - 1) \leq x < s^\prime[``r\_" + \mathrm{str}(i)]\Big\}\\
+                                \ranks(p^\prime, f) &= 
+                                \Big\{x \in \Rk \mid x \equiv f \pmod n \land n \cdot (s^\prime[``cycle"] - 1) \leq x < s^\prime[``r\_" + \mathrm{str}(f)]\Big\} 
+                            \end{align*}
+                            Since popping $p^\prime$ returned $f$, it must be a minimally ranked element.
+                            However,
+                            $$
+                                n \cdot (s^\prime[``cycle"] - 1) + i
+                                < 
+                                n \cdot (s^\prime[``cycle"] - 1) + f
+                            $$
+                            Therefore, $\ranks(p^\prime, i) = \{\}$:
+                            i.e. there are no numbers congruent to $i \mod n$ in
+                            $$
+                                \Big[n \cdot (s^\prime[``cycle"] - 1), s^\prime[``r\_" + \mathrm{str}(i)]\Big)
+                            $$
+                            The same is therefore true of
+                            $$
+                                \Big[n \cdot s^\prime[``cycle"], s^\prime[``r\_" + \mathrm{str}(i)] + n\Big)
+                            $$
+                            Putting all this together with \Cref{dfn:ranks},
+                            \begin{align*}
+                                &= \ranks(p, i) = \ranks(p^\prime, i)\\
+                                &=
+                                \Big\{x \in \Rk \mid x \equiv i \pmod n \land n \cdot (s^\prime[``cycle"] - 1) \leq x < s^\prime[``r\_" + \mathrm{str}(i)]\Big\}\\
+                                &= \{\}\\
+                                &=
+                                \Big\{x \in \Rk \mid x \equiv i \pmod n \land n \cdot s^\prime[``cycle"] \leq x < s^\prime[``r\_" + \mathrm{str}(i)] + n\Big\}\\
+                                &=
+                                    \begin{cases}
+                                        \Big\{x \in \Rk \mid x \equiv i \pmod n \land n \cdot s[``cycle"] \leq x < s[``r\_" + \mathrm{str}(i)] \Big\} 
+                                        & i < s[``\text{turn}"]\\
+                                        \Big\{x \in \Rk \mid x \equiv i \pmod n \land n \cdot (s[``cycle"] - 1) \leq x < s[``r\_" + \mathrm{str}(i)]\Big\} 
+                                        & i \geq s[``\text{turn}"]
+                                    \end{cases}
+                            \end{align*}
+
+                        \item For $i = f$, lines 5-7 of $\zpostpop$ in \Cref{fig:rr-pifo-ctrl} yet again show
+                            $$s[``r\_" + \mathrm{str}(i)] = s^\prime[``r\_" + \mathrm{str}(i)]$$
+                            and the IH says
+                            $$
+                                \ranks(p^\prime, i) = 
+                                \Big\{x \in \Rk \mid x \equiv i \pmod n \land n \cdot (s^\prime[``\text{cycle}"] - 1) \leq x < s^\prime[``r\_" + \mathrm{str}(i)]\Big\} 
+                            $$
+                            By \Cref{dfn:ranks},
+                            \begin{align*}
+                                &= \ranks(p, i) = \ranks(p^\prime) - \{n \cdot (s^\prime[``\text{cycle}"] - 1)\}\\
+                                &= \Big\{x \in \Rk \mid x \equiv i \pmod n \land n \cdot s^\prime[``\text{cycle}"] \leq x < s^\prime[``r\_" + \mathrm{str}(i)]\Big\}\\
+                                &= \Big\{x \in \Rk \mid x \equiv i \pmod n \land n \cdot s[``\text{cycle}"] \leq x < s[``r\_" + \mathrm{str}(i)]\Big\}\\
+                                &=
+                                    \begin{cases}
+                                        \Big\{x \in \Rk \mid x \equiv i \pmod n \land n \cdot s[``cycle"] \leq x < s[``r\_" + \mathrm{str}(i)] \Big\} 
+                                        & i < s[``\text{turn}"]\\
+                                        \Big\{x \in \Rk \mid x \equiv i \pmod n \land n \cdot (s[``cycle"] - 1) \leq x < s[``r\_" + \mathrm{str}(i)]\Big\} 
+                                        & i \geq s[``\text{turn}"]
+                                    \end{cases}
+                            \end{align*}
+                    \end{itemize}
+            \end{enumerate}
+    \end{enumerate}
+\end{proof}
+
+\newpage
+
+\subsection{Strict}
 
 \newpage
 
