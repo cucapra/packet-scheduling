@@ -14,6 +14,7 @@
 % basics
 \usepackage[leqno]{amsmath}
 \usepackage{amssymb, amsthm} 
+\usepackage{thmtools, thm-restate}
 \usepackage[svgnames, dvipsnames]{xcolor}
 \usepackage{mhsetup, mathtools}
 \usepackage[capitalise]{cleveref}
@@ -26,6 +27,9 @@
 
 % subfigures
 \usepackage{subcaption}
+
+% Image of map
+\DeclareMathOperator{\Ima}{Im}
 
 % PL macros
 \usepackage{mathpartir}
@@ -465,12 +469,46 @@ Their semantics are written out in full in \Cref{fig:control_push_pop}.
     \end{enumerate}
 \end{dfn}
 
+\begin{dfn}
+    For $t \in \Topo$, define the set $\CTopo(t)$ such that
+    \begin{align*}
+        \inference{}
+        {c \in \Class}
+        {c \in \CTopo(\ast)}
+        &&
+        \inference{}
+        {\forall 1 \leq i \leq |ts|. \; \tau s[i] \in \CTopo(ts[i])}
+        {\Node(\tau s) \in \CTopo(\Node(ts))}
+    \end{align*}
+    These are topologies decorated with classes at the leaves.
+\end{dfn}
+
+As we usually use $t$ to denote elements of $\Topo$, we'll use $\tau$ for elements of $\CTopo$.
+
+\begin{dfn}
+    For $t \in \Topo$, define $\proj: \CTopo(t) \times \PIFOTree(t) \to \RioTree(t)$ such that
+    \begin{align*}
+        \axiom{}
+        {\proj(c, \Leaf(p)) = \Leaf(c, p)}
+        &&
+        \inference{}
+        {\forall 1 \leq i \leq |qs|. \; \proj(\tau s[i], qs[i]) = qs^\prime[i]}
+        {\proj(\Node(\tau s), \Internal(p, qs)) = \Internal(qs^\prime)}
+    \end{align*}
+\end{dfn}
+
 
 \newpage
 
 \section{Example Controls \& Simulations}
 
-All further discussion takes $\St = \text{set of dictionaries mapping $\textbf{string} \to \textbf{float}$}$ and $\Rk = \Class = \mathbb N$.
+For all further discussion, we make transparent our previously opaque collections:
+\begin{align*}
+    \St = \{s \mid s \text{ is dictionary mapping } \textbf{string} \to \textbf{float}\} &&
+    \Rk = \Class = \mathbb N &&
+    \Ima(\flow) = [0, n - 1]
+\end{align*}
+for some $n \in \mathbb N$.
 
 \subsection{Round-Robin}
 
@@ -493,15 +531,14 @@ All further discussion takes $\St = \text{set of dictionaries mapping $\textbf{s
     \label{fig:sched_trans}
 \end{figure}
 
-For $n \in \mathbb N$, let's put our theory to use by constructing PIFO and Rio controls for
+Let's put our theory to use by constructing PIFO and Rio controls for
+$\RR[(\FIFO[0], \FIFO[1], \ldots, \FIFO[n - 1])]$.
+Both controls use the same underlying topologies, namely
 \begin{align*}
-    \RR[(\FIFO[0], \FIFO[1], \ldots, \FIFO[n - 1])] 
+    t = \Node(\underbrace{\ast, \ast, \ldots, \ast}_{n \text{ times}}) \in \Topo
+    &&
+    \tau = \Node((\ast, 0), (\ast, 1), \ldots, (\ast, n - 1)) \in \CTopo
 \end{align*}
-
-Both controls use the same underlying topology, namely
-$$
-t = \Node(\underbrace{\ast, \ast, \ldots, \ast}_{n \text{ times}})
-$$
 \Cref{fig:sched_trans} describes their scheduling transactions in pseudocode.
 Therefore, we have the materials to define
 \begin{align*}
@@ -557,6 +594,11 @@ Let's find a simulation between them!
 \end{dfn}
 
 \begin{lem}
+    If $\crr \to^\ast c = (s, q, \zprepush, \zpostpop)$, then 
+    both $\zprepush$ and $\zpostpop$ are defined on $$\{\pkt \in \Pkt \mid (s, \pkt)\}$$
+\end{lem}
+
+\begin{restatable}{lem}{lemranks}
     \label{lem:ranks}
     If $\crr \to^\ast c = (s, q, \zprepush, \zpostpop)$ and $p$ is $q$'s root PIFO, i.e. $q = \Internal(p, qs)$, then
     $$
@@ -569,7 +611,27 @@ Let's find a simulation between them!
         \end{cases}
     $$
     for all $0 \leq i \leq n - 1$.
-\end{lem}
+\end{restatable}
+
+See \Cref{sec:details} for a complete proofs.
+
+\newpage
+
+\subsection{Strict}
+
+\newpage
+
+\renewcommand\refname{\LARGE References}
+\bibliographystyle{alpha}
+\bibliography{refs}
+
+\newpage
+
+\appendix
+
+\section{Proofs for Section 3} \label{sec:details}
+
+\lemranks*
 
 \begin{proof}
     We'll proceed by induction on $\to^\ast$.
@@ -666,7 +728,7 @@ Let's find a simulation between them!
                         &&
                         s[``\text{cycle}"] \in \{s^\prime[``\text{cycle}"], s^\prime[``\text{cycle}"] + 1\}
                     \end{align*}
-                    Consider the case where $s[``\text{cycle}"] = s^\prime[``\text{cycle}"]$, i.e. $s^\prime[``\text{turn}"] \leq f < s[``\text{turn}"] = f + 1$.
+                    Consider the case where $s[``\text{cycle}"] = s^\prime[``\text{cycle}"]$, i.e. $s^\prime[``\text{turn}"] \leq f < f + 1 = s[``\text{turn}"]$.
                     \begin{itemize}
                         \item For $i < s^\prime[``\text{turn}"]$ or $i \geq s[``\text{turn}"]$, lines 5-7 of $\zpostpop$ in \Cref{fig:rr-pifo-ctrl} show
                             $$s[``r\_" + \mathrm{str}(i)] = s^\prime[``r\_" + \mathrm{str}(i)]$$
@@ -738,7 +800,7 @@ Let's find a simulation between them!
                                 \ranks(p^\prime, i) = 
                                 \Big\{x \in \Rk \mid x \equiv i \pmod n \land n \cdot (s^\prime[``\text{cycle}"] - 1) \leq x < s^\prime[``r\_" + \mathrm{str}(i)]\Big\} 
                             $$
-                            By \Cref{dfn:ranks},
+                            Therefore, by \Cref{dfn:ranks},
                             \begin{align*}
                                 &= \ranks(p, i) = \ranks(p^\prime) - \{n \cdot (s^\prime[``\text{cycle}"] - 1)\}\\
                                 &= \Big\{x \in \Rk \mid x \equiv i \pmod n \land n \cdot s^\prime[``\text{cycle}"] \leq x < s^\prime[``r\_" + \mathrm{str}(i)]\Big\}\\
@@ -752,18 +814,10 @@ Let's find a simulation between them!
                                     \end{cases}
                             \end{align*}
                     \end{itemize}
+
+                    Now, consider the case where $s[``\text{cycle}"] = s^\prime[``\text{cycle}"] + 1$, i.e. $s[``turn"] \leq s^\prime[``turn"]$.
             \end{enumerate}
     \end{enumerate}
 \end{proof}
-
-\newpage
-
-\subsection{Strict}
-
-\newpage
-
-\renewcommand\refname{\LARGE References}
-\bibliographystyle{alpha}
-\bibliography{refs}
 
 \end{document}
