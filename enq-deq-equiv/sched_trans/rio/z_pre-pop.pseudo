@@ -2,5 +2,6 @@ def z_pre-pop(st):
     turn = int(s["turn"])
     rs = []
     for i in range(n):
+        # Python %, e.g. -2 % 3 == 1, not -2
         rs.append((i - turn) % n)
     return Internal(rs, [Leaf] * n)

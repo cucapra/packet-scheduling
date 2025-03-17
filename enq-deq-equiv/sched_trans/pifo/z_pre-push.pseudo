@@ -1,6 +1,5 @@
 def z_pre-push(st, pkt):
-    r = st["counter"]
-    st["counter"] += 1
+    r = arrival_time(pkt)
     f = flow(pkt)
     rank_ptr = "r_" + str(f)
     r_i = int(st[rank_ptr])

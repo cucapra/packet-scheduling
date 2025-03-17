@@ -275,6 +275,7 @@ where $\Class$ is an opaque collection of \emph{classes}.
 Let $\flow : \Pkt \to \Class$ be an opaque mapping from packets to the class they belong to (flow inference).
 
 \begin{dfn}
+    \label{dfn:riotree-push}
     For $t \in \Topo$, define $\push : \RioTree(t) \times \Pkt \times \Rk \halfto \RioTree(t)$ such that
     \begin{align*}
         \inference{}
@@ -300,6 +301,7 @@ Let $\flow : \Pkt \to \Class$ be an opaque mapping from packets to the class the
 \end{dfn}
 
 \begin{dfn}
+    \label{dfn:riotree-pop}
     For $t \in \Topo$, define $\pop : \RioTree(t) \times \OrdTree(t) \halfto \Pkt \times \RioTree(t)$ such that
     \begin{align*}
         \inference{}
@@ -450,6 +452,7 @@ Their semantics are written out in full in \Cref{fig:control_push_pop}.
 \end{dfn}
 
 \begin{dfn}
+    \label{dfn:sim}
     A partial function
     $$
         f :  
@@ -457,9 +460,9 @@ Their semantics are written out in full in \Cref{fig:control_push_pop}.
         \halfto
         \RioControl(t^\prime, \tzprepush, \tzprepop, \tzpostpop) 
     $$
-    is \emph{simulation} if the following conditions are satisfied:
+    and control $\cinit \in \operatorname{dom} f$ form a \emph{simulation} if the following conditions are satisfied:
     \begin{enumerate}
-        \item There exists $\cinit = (s, q, \zprepush, \zpostpop)$ where $q = \emt_t$ and $\cinit \in \operatorname{dom} f$.
+        \item The PIFO tree in $\cinit$ is empty, i.e. $\cinit = (s, \emt_t, \zprepush, \zpostpop)$.
         \item When $\cinit \to^\ast c_1$ and $f(c_1) = c_2$, we can guarantee the following:
             \begin{align}
                 \pop(c_1) \text{ is undefined} &\implies \pop(c_2) \text{ is undefined}\\
@@ -496,7 +499,6 @@ As we usually use $t$ to denote elements of $\Topo$, we'll use $\tau$ for elemen
         {\proj(\Node(\tau s), \Internal(p, qs)) = \Internal(qs^\prime)}
     \end{align*}
 \end{dfn}
-
 
 \newpage
 
@@ -555,7 +557,6 @@ Let's find a simulation between them!
     \label{dfn:rrinit}
     Let $\crr = (s, \emt_t, \zprepush, \zpostpop) \in \PIFOControl(t, \zprepush, \zpostpop)$, where
     \begin{align*}
-        s[``\text{counter}"] = 0 &&
         s[``\text{turn}"] = 0 &&
         s[``\text{cycle}"] = 1 &&
         s[``r\_" + \text{str}(i)] = i 
@@ -594,9 +595,21 @@ Let's find a simulation between them!
 \end{dfn}
 
 \begin{lem}
+    \label{lem:def}
     If $\crr \to^\ast c = (s, q, \zprepush, \zpostpop)$, then 
     both $\zprepush$ and $\zpostpop$ are defined on $$\{\pkt \in \Pkt \mid (s, \pkt)\}$$
 \end{lem}
+
+\begin{proof}[Proof Sketch]
+    This follows by induction on $\to^\ast$ and the following observations:
+    \begin{itemize}
+        \item $\zprepush$ and $\zpostpop$ are only undefined if they access unbound keys in the state.
+        \item All keys in $s$ accessed by $\zprepush$ and $\zpostpop$ are defined in $\crr$'s state.
+        \item Neither $\zprepush$ nor $\zpostpop$ unbind keys in the state, and, therefore, if 
+            $$(s, q, \zprepush, \zpostpop) \to (s^\prime, q^\prime, \zprepush, \zpostpop)$$
+            all keys bound in $s$ are bound $s^\prime$. \qedhere
+    \end{itemize}
+\end{proof}
 
 \begin{restatable}{lem}{lemranks}
     \label{lem:ranks}
@@ -613,7 +626,50 @@ Let's find a simulation between them!
     for all $0 \leq i \leq n - 1$.
 \end{restatable}
 
-See \Cref{sec:details} for a complete proofs.
+\begin{proof}[Proof Sketch]
+    This follows by induction on $\to^\ast$ and careful analysis of lines 5-7 of $\zpostpop$ in \Cref{fig:rr-pifo-ctrl}.
+\end{proof}
+
+See \Cref{sec:details} for a complete proofs of these lemmas.
+
+\begin{thm}
+    Consider the function 
+    $$f : \PIFOControl(t, \zprepush, \zpostpop) \to \RioControl(t, \tzprepush, \tzprepop, \tzpostpop)$$ 
+    such that
+    $f(s, q, \zprepush, \zpostpop) = (s^\prime, \proj(\tau, q), \tzprepush, \tzprepop, \tzpostpop)$, where
+    $$
+        s^\prime[x] = 
+        \begin{cases}
+            s[x] & x = ``\text{turn}"\\
+            \text{undefined} & \text{otherwise}
+        \end{cases}
+    $$
+    Together $f$ and $\crr$ form a simulation.
+\end{thm}
+
+\begin{proof}
+    We'll verify each condition of \Cref{dfn:sim} one by one.
+    \begin{enumerate}
+        \item By \Cref{dfn:rrinit}, the PIFO tree in $\crr$ is empty.
+        \item Let $\crr \to^\ast c_1 = (s_1, q_1, \zprepush, \zprepop)$ and $f(c_1) = c_2 = (s_2, q_2, \zprepush, \zprepop, \zpostpop)$.
+            \begin{enumerate}
+                \item Suppose $\pop(c_1)$ is undefined.
+                    By \Cref{lem:def}, $\zpostpop$ is defined on $(s_1, \pkt)$ for all $\pkt \in \Pkt$.
+                    Therefore, by rule PIFOCtrl-Pop in \Cref{fig:control_push_pop}, $\pop(q_1)$ must be undefined.
+                    Since $q_1$ is well-formed, all PIFOs on it are empty.
+                    Similarly, all PIFOs on $q_2 = \proj(\tau, q_1)$ are empty.
+                    Hence, $\pop(q_2, o)$ is undefined for all $o \in \OrdTree(t)$, i.e. $\pop(c_2)$ is undefined per rule RioCtrl-Pop in \Cref{fig:control_push_pop}.
+
+                \item
+
+                \item Suppose $\push(c_1, \pkt) = c_1^\prime$.
+                    By \Cref{lem:def}, $\tzprepush$ is defined on $(s_2, \pkt)$ for all $\pkt \in \Pkt$.
+                    From inspecting \Cref{dfn:riotree-push}, $\push(q, \pkt, r)$ is defined for all $q \in \RioTree(t)$, $\pkt \in \Pkt$, and $r \in \Rk$.
+                    Therefore, by rule RioCtrl-Push in \Cref{fig:control_push_pop}, $\push(c_2, \pkt) = c_2^\prime$ is defined.
+            \end{enumerate}
+    \end{enumerate}
+\end{proof}
+
 
 \newpage
 
@@ -672,7 +728,6 @@ See \Cref{sec:details} for a complete proofs.
                         s[x] =
                         \begin{cases}
                             s^\prime[x] + n & x = ``r\_" + \mathrm{str}(f)\\
-                            s^\prime[x] + 1 & x = ``\text{counter}"\\
                             s^\prime[x] & \text{otherwise}
                         \end{cases}
                     \end{align*}
@@ -751,15 +806,15 @@ See \Cref{sec:details} for a complete proofs.
                                     \end{cases}
                             \end{align*}
 
-                        \item For $s^\prime[``turn"] \leq i < f$, lines 5-7 of $\zpostpop$ in \Cref{fig:rr-pifo-ctrl} show
-                            $$s[``r\_" + \mathrm{str}(i)] = s^\prime[``r\_" + \mathrm{str}(i)] + n$$
-                            and the IH says
-                            \begin{align*}
-                                \ranks(p^\prime, i) &= 
-                                \Big\{x \in \Rk \mid x \equiv i \pmod n \land n \cdot (s^\prime[``cycle"] - 1) \leq x < s^\prime[``r\_" + \mathrm{str}(i)]\Big\}\\
-                                \ranks(p^\prime, f) &= 
-                                \Big\{x \in \Rk \mid x \equiv f \pmod n \land n \cdot (s^\prime[``cycle"] - 1) \leq x < s^\prime[``r\_" + \mathrm{str}(f)]\Big\} 
-                            \end{align*}
+                        \item Suppose $s^\prime[``turn"] \leq i < f$.
+                            %lines 5-7 of $\zpostpop$ in \Cref{fig:rr-pifo-ctrl} show
+                            %$$s[``r\_" + \mathrm{str}(i)] = s^\prime[``r\_" + \mathrm{str}(i)] + n$$
+                            %and the IH says
+                            By the IH,
+                            $$
+                                \ranks(p^\prime, j) = 
+                                \Big\{x \in \Rk \mid x \equiv j \pmod n \land n \cdot (s^\prime[``cycle"] - 1) \leq x < s^\prime[``r\_" + \mathrm{str}(j)]\Big\}
+                            $$
                             Since popping $p^\prime$ returned $f$, it must be a minimally ranked element.
                             However,
                             $$
@@ -776,46 +831,37 @@ See \Cref{sec:details} for a complete proofs.
                             $$
                                 \Big[n \cdot s^\prime[``cycle"], s^\prime[``r\_" + \mathrm{str}(i)] + n\Big)
                             $$
-                            Putting all this together with \Cref{dfn:ranks},
+                            Since lines 5-7 of $\zpostpop$ in \Cref{fig:rr-pifo-ctrl} show
+                            $s[``r\_" + \mathrm{str}(i)] = s^\prime[``r\_" + \mathrm{str}(i)] + n$,
                             \begin{align*}
-                                &= \ranks(p, i) = \ranks(p^\prime, i)\\
+                                &= \ranks(p, i) = \ranks(p^\prime, i) \tag{By \Cref{dfn:ranks}}\\
                                 &=
                                 \Big\{x \in \Rk \mid x \equiv i \pmod n \land n \cdot (s^\prime[``cycle"] - 1) \leq x < s^\prime[``r\_" + \mathrm{str}(i)]\Big\}\\
                                 &= \{\}\\
                                 &=
                                 \Big\{x \in \Rk \mid x \equiv i \pmod n \land n \cdot s^\prime[``cycle"] \leq x < s^\prime[``r\_" + \mathrm{str}(i)] + n\Big\}\\
                                 &=
-                                    \begin{cases}
-                                        \Big\{x \in \Rk \mid x \equiv i \pmod n \land n \cdot s[``cycle"] \leq x < s[``r\_" + \mathrm{str}(i)] \Big\} 
-                                        & i < s[``\text{turn}"]\\
-                                        \Big\{x \in \Rk \mid x \equiv i \pmod n \land n \cdot (s[``cycle"] - 1) \leq x < s[``r\_" + \mathrm{str}(i)]\Big\} 
-                                        & i \geq s[``\text{turn}"]
-                                    \end{cases}
+                                \Big\{x \in \Rk \mid x \equiv i \pmod n \land n \cdot s[``cycle"] \leq x < s[``r\_" + \mathrm{str}(i)] \Big\} 
                             \end{align*}
 
                         \item For $i = f$, lines 5-7 of $\zpostpop$ in \Cref{fig:rr-pifo-ctrl} yet again show
                             $$s[``r\_" + \mathrm{str}(i)] = s^\prime[``r\_" + \mathrm{str}(i)]$$
-                            and the IH says
-                            $$
-                                \ranks(p^\prime, i) = 
-                                \Big\{x \in \Rk \mid x \equiv i \pmod n \land n \cdot (s^\prime[``\text{cycle}"] - 1) \leq x < s^\prime[``r\_" + \mathrm{str}(i)]\Big\} 
-                            $$
-                            Therefore, by \Cref{dfn:ranks},
+                            Therefore, by \Cref{dfn:ranks} and the IH,
                             \begin{align*}
                                 &= \ranks(p, i) = \ranks(p^\prime) - \{n \cdot (s^\prime[``\text{cycle}"] - 1)\}\\
+                                &= \Big\{x \in \Rk \mid x \equiv i \pmod n \land n \cdot (s^\prime[``\text{cycle}"] - 1) \leq x < s^\prime[``r\_" + \mathrm{str}(i)]\Big\} 
+                                    - \{n \cdot (s^\prime[``\text{cycle}"] - 1)\}\\
                                 &= \Big\{x \in \Rk \mid x \equiv i \pmod n \land n \cdot s^\prime[``\text{cycle}"] \leq x < s^\prime[``r\_" + \mathrm{str}(i)]\Big\}\\
-                                &= \Big\{x \in \Rk \mid x \equiv i \pmod n \land n \cdot s[``\text{cycle}"] \leq x < s[``r\_" + \mathrm{str}(i)]\Big\}\\
-                                &=
-                                    \begin{cases}
-                                        \Big\{x \in \Rk \mid x \equiv i \pmod n \land n \cdot s[``cycle"] \leq x < s[``r\_" + \mathrm{str}(i)] \Big\} 
-                                        & i < s[``\text{turn}"]\\
-                                        \Big\{x \in \Rk \mid x \equiv i \pmod n \land n \cdot (s[``cycle"] - 1) \leq x < s[``r\_" + \mathrm{str}(i)]\Big\} 
-                                        & i \geq s[``\text{turn}"]
-                                    \end{cases}
+                                &= \Big\{x \in \Rk \mid x \equiv i \pmod n \land n \cdot s[``\text{cycle}"] \leq x < s[``r\_" + \mathrm{str}(i)]\Big\}
                             \end{align*}
                     \end{itemize}
 
-                    Now, consider the case where $s[``\text{cycle}"] = s^\prime[``\text{cycle}"] + 1$, i.e. $s[``turn"] \leq s^\prime[``turn"]$.
+                    We leave the cases where $s[``\text{cycle}"] = s^\prime[``\text{cycle}"] + 1$ as an exercise as they're much of the same:
+                    \begin{enumerate}
+                        \item $i \in [s[``turn"], s^\prime[``turn"])$ \; ($``r\_" + \mathrm{str}(i)$ is unchanged)
+                        \item $i \in [s^\prime[``turn"], n] \cup [0, f)$ \; ($``r\_" + \mathrm{str}(i)$ is incremented by $n$)
+                        \item $i = f$ \qedhere
+                    \end{enumerate}
             \end{enumerate}
     \end{enumerate}
 \end{proof}

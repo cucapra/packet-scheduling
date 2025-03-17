@@ -1,4 +1,2 @@
 def z_pre-push(st, pkt):
-    r = int(st["counter"])
-    st["counter"] += 1.0
-    return r
+    return arrival_time(pkt)
