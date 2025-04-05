@@ -1,12 +1,15 @@
 open Frontend
 open OUnit2
 
+let prefix = "../../../../"
+let parse filename = prefix ^ filename |> Parser.parse_file |> Policy.of_program
+
 let make_test name filename val_str =
   name >:: fun _ ->
-  assert_equal val_str (Util.parse filename |> Policy.to_string) ~printer:Fun.id
+  assert_equal val_str (parse filename |> Policy.to_string) ~printer:Fun.id
 
 let make_error_test name filename exn =
-  name >:: fun _ -> assert_raises exn (fun () -> Util.parse filename)
+  name >:: fun _ -> assert_raises exn (fun () -> parse filename)
 
 let wc_tests =
   [

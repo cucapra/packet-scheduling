@@ -1,10 +1,9 @@
-(* Changes to this type must also be reflected in `Ast.policy` in ast.ml *)
+type set2stream = EDF | FIFO
+type stream2stream = RR | Strict
+
 type t =
-  | Class of Ast.clss
-  | Fifo of t list
-  | RoundRobin of t list
-  | Strict of t list
-  | WeightedFair of (t * float) list
+  | Leaf of (set2stream * Ast.clss list)
+  | Node of (stream2stream * t list)
 
 exception UnboundVariable of Ast.var
 exception UndeclaredClass of Ast.clss
