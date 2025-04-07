@@ -1,8 +1,11 @@
 (library
  (name Frontend)
- (public_name rio.frontend))
+ (public_name rio.frontend)
+ (libraries yojson))
 
 (menhir
  (modules parser))
 
 (ocamllex lexer)
+
+
