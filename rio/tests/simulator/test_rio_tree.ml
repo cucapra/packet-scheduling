@@ -64,7 +64,7 @@ let make_push_pop_test name data tree order permutation =
 let basic_tests =
   let topo = Topo.Node [ CStar A; CStar B ] in
   let tree = Riotree.create topo (fun i -> infer_flow (i mod 2)) in
-  let order = Ordtree.Order [ (Foot, rank); (Foot, rank) ] in
+  let order = Riotree.Order [ (Foot, rank); (Foot, rank) ] in
 
   [
     ( "`pop` on newly created tree is `None`" >:: fun _ ->
@@ -78,7 +78,7 @@ let basic_tests =
 (* Leaf Tests *)
 let leaf_tests =
   let tree = Riotree.create (Topo.CStar A) (fun _ -> A) in
-  let order = Ordtree.Foot in
+  let order = Riotree.Foot in
   let zero_to_nine = consecutive 0 9 in
 
   [
@@ -103,9 +103,9 @@ let ff_ord, fl_ord, weird_ord =
   let one_level_ord l =
     let order =
       l |> List.map float_of_int
-      |> List.map (fun r -> (Ordtree.Foot, Rank.create r))
+      |> List.map (fun r -> (Riotree.Foot, Rank.create r))
     in
-    Ordtree.Order order
+    Riotree.Order order
   in
   (one_level_ord ff, one_level_ord fl, one_level_ord weird)
 
@@ -151,17 +151,17 @@ let tree = Riotree.create topo infer_flow
 
 let ff_ord, fl_ord =
   let ff_small_ord, fl_small_ord =
-    ( Ordtree.Order [ (Foot, Rank.create 0.0); (Foot, Rank.create 1.0) ],
-      Ordtree.Order [ (Foot, Rank.create 1.0); (Foot, Rank.create 0.0) ] )
+    ( Riotree.Order [ (Foot, Rank.create 0.0); (Foot, Rank.create 1.0) ],
+      Riotree.Order [ (Foot, Rank.create 1.0); (Foot, Rank.create 0.0) ] )
   in
-  ( Ordtree.Order
+  ( Riotree.Order
       [
         (ff_small_ord, Rank.create 0.0);
         (Foot, Rank.create 1.0);
         (Foot, Rank.create 2.0);
         (ff_small_ord, Rank.create 3.0);
       ],
-    Ordtree.Order
+    Riotree.Order
       [
         (fl_small_ord, Rank.create 3.0);
         (Foot, Rank.create 2.0);

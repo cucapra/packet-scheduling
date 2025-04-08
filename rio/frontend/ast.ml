@@ -24,8 +24,4 @@ type stream =
   (* Variables *)
   | Var of var
 
-type policy = stream
-type declare = clss list
-type assignment = var * policy
-type return = policy
-type program = declare * assignment list * return
+type program = clss list * (var * stream) list * stream

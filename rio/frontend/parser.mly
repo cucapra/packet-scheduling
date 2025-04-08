@@ -10,8 +10,8 @@
 
     type internalcomp =
     | DeclareComp of clss list
-    | AssnComp of var * policy
-    | RtnComp of policy
+    | AssnComp of var * stream
+    | RtnComp of stream
 
     (* Check that a program contains exactly one return statement as its final component *)
     let rec validate_seq acc = function

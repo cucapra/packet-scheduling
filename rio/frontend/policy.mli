@@ -1,9 +1,8 @@
-type set2stream = EDF | FIFO
-type stream2stream = RR | Strict
-
 type t =
-  | Leaf of (set2stream * Ast.clss list)
-  | Node of (stream2stream * t list)
+  | Fifo of Ast.clss list
+  | EDF of Ast.clss list
+  | RoundRobin of t list
+  | Strict of t list
 
 exception UnboundVariable of Ast.var
 exception UndeclaredClass of Ast.clss
