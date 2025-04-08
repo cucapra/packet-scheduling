@@ -1,7 +1,7 @@
-type t =
+type 'a t =
   | Star
-  | CStar of Frontend.Ast.clss (* for Rio trees *)
-  | Node of t list
+  | CStar of 'a (* for Rio trees *)
+  | Node of 'a t list
 
 type addr = int list
 
