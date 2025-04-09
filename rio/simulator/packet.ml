@@ -94,12 +94,11 @@ let write_to_csv ts filename =
     let format_one_to_csv meta =
       let pushed, popped =
         match (meta.pushed, meta.popped) with
-        | Some pushed', Some popped' ->
-            (Time.to_float pushed', Time.to_float popped')
+        | Some pushed', Some popped' -> (pushed', popped')
         | _, _ -> (0.0, 0.0)
       in
       Printf.sprintf "\"%s\",\"%d\",\"%f\",\"%d\",\"%f\",\"%f\"" meta.flow
-        meta.dst (Time.to_float meta.time) meta.len pushed popped
+        meta.dst meta.time meta.len pushed popped
     in
     Printf.sprintf "%s\n%s" headers
       (String.concat "\n" (List.map format_one_to_csv metas))

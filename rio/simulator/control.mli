@@ -10,4 +10,4 @@ module type Policy = sig
   val policy : Frontend.Policy.t
 end
 
-module PIFOControl (_ : Policy) : Control
+module Make_PIFOControl (_ : Policy) : Control

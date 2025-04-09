@@ -14,7 +14,15 @@ module type Policy = sig
   val policy : Policy.t
 end
 
-module PIFOControl (P : Policy) : Control = struct
+type addr =
+  | Eps
+  | Ptr of int * addr
+
+let rec addr_to_string = function
+  | Eps -> "ε"
+  | Ptr (i, t) -> Printf.sprintf "%d ∙ %s" i (addr_to_string t)
+
+module Make_PIFOControl (P : Policy) : Control = struct
   type t = {
     s : State.t;
     q : Packet.t Pifotree.t;
@@ -25,15 +33,15 @@ module PIFOControl (P : Policy) : Control = struct
 
   let state =
     let rec state_aux (p : Policy.t) addr s =
-      let prefix = Address.to_string addr in
+      let prefix = addr_to_string addr in
 
       let join ps s =
-        let f (i, s) p = (i + 1, state_aux p (Address.Ptr (i, addr)) s) in
+        let f (i, s) p = (i + 1, state_aux p (Ptr (i, addr)) s) in
         snd (List.fold_left f (0, s) ps)
       in
 
       match p with
-      | Policy.RoundRobin ps ->
+      | RoundRobin ps ->
           List.mapi (fun i _ -> (fmt "%s_r_%d" prefix i, i)) ps
           |> Fun.flip State.rebind_all s
           |> State.rebind (fmt "%s_turn" prefix) 0
@@ -42,7 +50,7 @@ module PIFOControl (P : Policy) : Control = struct
       | Fifo _ | EDF _ -> s
     in
 
-    state_aux policy Address.Eps State.empty
+    state_aux policy Eps State.empty
 
   let route_pkt pkt =
     let rec route_pkt_aux (p : Policy.t) pt =
@@ -53,13 +61,14 @@ module PIFOControl (P : Policy) : Control = struct
           List.find_mapi (fun i p -> route_pkt_aux p (i :: pt)) ps
       | Fifo _ | EDF _ -> None
     in
+
     match route_pkt_aux policy [] with
     | Some directions -> directions
     | None -> failwith (fmt "ERROR: cannot route flow %s" (Packet.flow pkt))
 
   let z_pre_push s pkt =
     let rec z_pre_push_aux (p : Policy.t) directions addr s =
-      let prefix = Address.to_string addr in
+      let prefix = addr_to_string addr in
 
       match (p, directions) with
       | Strict ps, h :: t ->
@@ -74,11 +83,12 @@ module PIFOControl (P : Policy) : Control = struct
       | Fifo _, [] -> (Pifotree.Foot 0, s)
       | _ -> failwith "ERROR: unreachable branch"
     in
-    z_pre_push_aux policy (route_pkt pkt) Address.Eps s
+
+    z_pre_push_aux policy (route_pkt pkt) Eps s
 
   let z_post_pop s pkt =
     let rec z_post_pop_aux (p : Policy.t) directions addr s =
-      let prefix = Address.to_string addr in
+      let prefix = addr_to_string addr in
 
       match (p, directions) with
       | Fifo _, [] | EDF _, [] -> s
@@ -104,7 +114,8 @@ module PIFOControl (P : Policy) : Control = struct
           z_post_pop_aux (List.nth ps h) t (Ptr (h, addr)) s'
       | _ -> failwith "ERROR: unreachable branch"
     in
-    z_post_pop_aux policy (route_pkt pkt) Address.Eps s
+
+    z_post_pop_aux policy (route_pkt pkt) Eps s
 
   let init =
     { s = state; q = policy |> Topo.of_policy Topo.Enq |> Pifotree.create }
