@@ -3,12 +3,13 @@ type 'a t =
   | CStar of 'a (* for Rio trees *)
   | Node of 'a t list
 
-type addr = int list
+type enqdeq =
+  | Enq
+  | Deq
 
-let rec addr_to_string = function
-  | [] -> "ε"
-  | h :: t -> Printf.sprintf "%d ∙ %s" h (addr_to_string t)
-
-let rec of_policy = function
-  | Frontend.Policy.Node (_, ps) -> Node (List.map of_policy ps)
-  | Frontend.Policy.Leaf (_, _) -> Star
+let rec of_policy e p =
+  let open Frontend.Policy in
+  match (e, p) with
+  | _, RoundRobin ps | _, Strict ps -> Node (List.map (of_policy e) ps)
+  | Enq, Fifo _ | Enq, EDF _ -> Star
+  | Deq, Fifo clss | Deq, EDF clss -> CStar clss

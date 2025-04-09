@@ -7,6 +7,10 @@ type ('a, 'b) t = {
   canonical : 'a -> 'b;
 }
 
+type order =
+  | Foot
+  | Order of (order * Rank.t) list (* ranks must be unique *)
+
 let ( let* ) = Option.bind
 let replace_nth l i v = List.mapi (fun j x -> if j = i then v else x) l
 
@@ -21,8 +25,8 @@ let min cmp l =
   in
   min_aux None l
 
-let rec pop { tree; canonical } (ordtree : Ordtree.t) =
-  match (tree, ordtree) with
+let rec pop { tree; canonical } order =
+  match (tree, order) with
   | Leaf (p, c), Foot ->
       let* v, p' = Pifo.pop p in
       Some (v, { tree = Leaf (p', c); canonical })
@@ -38,7 +42,7 @@ let rec pop { tree; canonical } (ordtree : Ordtree.t) =
         |> min (fun (_, a, _) (_, b, _) -> Rank.cmp a b)
       in
       Some (v, { tree = Internal (replace_nth qs i q'); canonical })
-  | _ -> failwith "ERROR: invalid ordered tree"
+  | _ -> failwith "ERROR: invalid order"
 
 let rec push { tree; canonical } v rk =
   match tree with

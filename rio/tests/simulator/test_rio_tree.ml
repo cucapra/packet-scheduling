@@ -33,7 +33,7 @@ let infer_flow i =
   | 5 -> F
   | _ -> failwith "Ruh Roh Raggy"
 
-let rank = Rank.create 0.0
+let rank = 0
 
 let push_seq data tree =
   (* Assume PIFO works correctly; therefore fix a specific rank for all pushes.
@@ -101,11 +101,7 @@ let ff, fl, weird =
 
 let ff_ord, fl_ord, weird_ord =
   let one_level_ord l =
-    let order =
-      l |> List.map float_of_int
-      |> List.map (fun r -> (Riotree.Foot, Rank.create r))
-    in
-    Riotree.Order order
+    Riotree.Order (List.map (fun r -> (Riotree.Foot, r)) l)
   in
   (one_level_ord ff, one_level_ord fl, one_level_ord weird)
 
@@ -151,23 +147,12 @@ let tree = Riotree.create topo infer_flow
 
 let ff_ord, fl_ord =
   let ff_small_ord, fl_small_ord =
-    ( Riotree.Order [ (Foot, Rank.create 0.0); (Foot, Rank.create 1.0) ],
-      Riotree.Order [ (Foot, Rank.create 1.0); (Foot, Rank.create 0.0) ] )
+    ( Riotree.Order [ (Foot, 0); (Foot, 1) ],
+      Riotree.Order [ (Foot, 1); (Foot, 0) ] )
   in
-  ( Riotree.Order
-      [
-        (ff_small_ord, Rank.create 0.0);
-        (Foot, Rank.create 1.0);
-        (Foot, Rank.create 2.0);
-        (ff_small_ord, Rank.create 3.0);
-      ],
-    Riotree.Order
-      [
-        (fl_small_ord, Rank.create 3.0);
-        (Foot, Rank.create 2.0);
-        (Foot, Rank.create 1.0);
-        (fl_small_ord, Rank.create 0.0);
-      ] )
+  ( Riotree.Order [ (ff_small_ord, 0); (Foot, 1); (Foot, 2); (ff_small_ord, 3) ],
+    Riotree.Order [ (fl_small_ord, 3); (Foot, 2); (Foot, 1); (fl_small_ord, 0) ]
+  )
 
 let two_level_tests =
   [

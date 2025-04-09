@@ -2,6 +2,10 @@ type 'a t =
   | Leaf of 'a Pifo.t
   | Internal of 'a t list * int Pifo.t
 
+type path =
+  | Foot of Rank.t
+  | Path of int * Rank.t * path
+
 let ( let* ) = Option.bind
 let replace_nth l i v = List.mapi (fun j x -> if j = i then v else x) l
 
@@ -15,7 +19,7 @@ let rec pop t =
       let* v, q' = pop (List.nth qs i) in
       Some (v, Internal (replace_nth qs i q', p'))
 
-let rec push t v (path : Path.t) =
+let rec push t v path =
   match (t, path) with
   | Leaf p, Foot r -> Leaf (Pifo.push p v r)
   | Internal (qs, p), Path (i, r, pt) ->

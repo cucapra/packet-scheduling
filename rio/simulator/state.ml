@@ -1,4 +1,4 @@
-type t = (string * float) list
+type t = (string * int) list
 
 exception UnboundKey of string
 
