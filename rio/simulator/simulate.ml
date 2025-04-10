@@ -20,12 +20,13 @@ module Make_Sim (C : Control.Control) (P : Parameters) : Sim = struct
       (* sim over *)
       | _, true, _ -> popped
       (* pop time! *)
-      | _, false, true when C.pop ctrl = None ->
-          simulate_aux packets time 0.0 ctrl popped
-      | _, false, true ->
-          let[@warning "-8"] (Some (pkt, ctrl')) = C.pop ctrl in
-          let pkt' = Packet.punch_out pkt time in
-          simulate_aux packets time 0.0 ctrl' (pkt' :: popped)
+      | _, false, true -> begin
+          match C.pop ctrl with
+          | Some (pkt, ctrl') ->
+              let pkt' = Packet.punch_out pkt time in
+              simulate_aux packets time 0.0 ctrl' (pkt' :: popped)
+          | None -> simulate_aux packets time 0.0 ctrl popped
+        end
       (* push time! *)
       | [], false, false ->
           simulate_aux [] (time +. sleep) (tsp +. sleep) ctrl popped

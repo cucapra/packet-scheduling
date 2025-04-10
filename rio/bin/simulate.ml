@@ -21,7 +21,8 @@ module Pol : Control.Policy = struct
   let policy = prog
 end
 
-module Ctrl : Control.Control = Control.Make_PIFOControl (Pol)
+module PIFOCtrl : Control.Control = Control.Make_PIFOControl (Pol)
+module RioCtrl : Control.Control = Control.Make_RioControl (Pol)
 
 module Params : Simulate.Parameters = struct
   let sim_len = 30.0
@@ -29,9 +30,15 @@ module Params : Simulate.Parameters = struct
   let pop_tick = 0.25
 end
 
-module S : Simulate.Sim = Simulate.Make_Sim (Ctrl) (Params)
+module PIFOSim : Simulate.Sim = Simulate.Make_Sim (PIFOCtrl) (Params)
+module RioSim : Simulate.Sim = Simulate.Make_Sim (RioCtrl) (Params)
 
 let () =
-  pcap |> S.simulate
+  pcap |> PIFOSim.simulate
   |> Fun.flip Packet.write_to_csv
-       (Printf.sprintf "../graphs/%s_%s.csv" prog_name pcap_name)
+       (Printf.sprintf "../graphs/enq_%s_%s.csv" prog_name pcap_name)
+
+let () =
+  pcap |> RioSim.simulate
+  |> Fun.flip Packet.write_to_csv
+       (Printf.sprintf "../graphs/deq_%s_%s.csv" prog_name pcap_name)

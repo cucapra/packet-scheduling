@@ -22,7 +22,7 @@ type addr =
 
 let rec addr_to_string = function
   | Eps -> "ε"
-  | Ptr (i, t) -> Printf.sprintf "%d ∙ %s" i (addr_to_string t)
+  | Ptr (i, t) -> fmt "%d ∙ %s" i (addr_to_string t)
 
 let route_pkt (policy : Policy.t) pkt =
   let rec route_pkt_aux (p : Policy.t) pt =
@@ -172,7 +172,7 @@ module Make_RioControl (P : Policy) : Control = struct
     let rec z_pre_pop_aux (p : Policy.t) addr s =
       let prefix = addr_to_string addr in
 
-      let join (compute_rank : int -> int) s ps =
+      let join compute_rank s ps =
         let f s (i, r, p) =
           let order, s' = z_pre_pop_aux p (Ptr (i, addr)) s in
           (s', (order, r))
@@ -205,10 +205,7 @@ module Make_RioControl (P : Policy) : Control = struct
       | Strict ps, h :: t -> z_pre_pop_aux (List.nth ps h) t (Ptr (h, addr)) s
       | RoundRobin ps, h :: t ->
           let turn = fmt "%s_turn" prefix in
-          let s' =
-            s |> fun s ->
-            State.lookup turn s + 1 |> Fun.flip (State.rebind turn) s
-          in
+          let s' = State.rebind turn ((h + 1) mod List.length ps) s in
           z_pre_pop_aux (List.nth ps h) t (Ptr (h, addr)) s'
       | _ -> failwith "ERROR: unreachable branch"
     in
@@ -230,6 +227,6 @@ module Make_RioControl (P : Policy) : Control = struct
   let pop t =
     let order, s' = z_pre_pop t.s in
     let* pkt, q' = Riotree.pop t.q order in
-    let s' = z_post_pop s' pkt in
-    Some (pkt, { q = q'; s = s' })
+    let s'' = z_post_pop s' pkt in
+    Some (pkt, { q = q'; s = s'' })
 end

@@ -11,3 +11,4 @@ module type Policy = sig
 end
 
 module Make_PIFOControl (_ : Policy) : Control
+module Make_RioControl (_ : Policy) : Control

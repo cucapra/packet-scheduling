@@ -41,7 +41,7 @@ def flesh_out_plot(f, df, name):
     # Setting Y-axis limits, ticks
     f.set_ylim(0, len(df))
     f.axes.yaxis.set_visible(False)
-    f.set_xticks(np.arange(df["pushed"].min(), df["popped"].max() + 1, 1))
+    f.set_xticks(np.arange(df["pushed"].min(), df["pushed"].max() + 1, 1))
 
     # Setting labels and the legend
     # f.set_xlabel('seconds since start')
@@ -65,7 +65,7 @@ def flesh_out_plot(f, df, name):
 def make_plot(df, subplt, name):
     fig, f1 = subplt.subplots(1, 1)
     fig.set_size_inches(20, 10, forward=True)
-    df1 = df.sort_values("pushed")
+    df1 = df.sort_values("popped")
     df1 = df1.reset_index()
     flesh_out_plot(f1, df1, name)
     subplt.savefig(name, bbox_inches="tight")
