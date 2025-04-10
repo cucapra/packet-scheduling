@@ -45,21 +45,31 @@ def flesh_out_plot(f, df, name):
 
     # Setting labels and the legend
     # f.set_xlabel('seconds since start')
-
+    used_flows = set()
     for index, row in df.iterrows():
         # Declaring a bar in schedule
         # [(start, stride)] in x-axis
         # (start, stride) in y-axis
         treetime = row["popped"] - row["pushed"]
-        color = colors[row["flow"]]
-        f.broken_barh([(row["pushed"], treetime)], (index, 1), facecolors=color)
+        flow = row["flow"]
+        color = colors[flow]
+        used_flows.add(flow)
+        f.broken_barh([(row["pushed"], treetime)], (index, 1), facecolor=color)
         if "rate_limit" in name:
             f.text(x=row["popped"] + 0.2, 
                    y=index + 0.7, 
                    s=row["length"], 
                    color='black', 
                    fontsize="x-small")
+    
+    used_flows = list(used_flows)
+    used_flows.sort()
+    patches = []
+    for flow in used_flows:
+        patch = Patch(color=colors[flow], label=flow)
+        patches.append(patch)
     f.invert_yaxis()
+    f.legend(handles=patches)
 
 
 def make_plot(df, subplt, name):
