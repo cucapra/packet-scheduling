@@ -30,7 +30,7 @@ module Make_Sim (C : Control.Control) (P : Parameters) : Sim = struct
       | [], false, false ->
           simulate_aux [] (time +. sleep) (tsp +. sleep) ctrl popped
       | pkt :: _, false, false when time < Packet.time pkt ->
-          simulate_aux [] (time +. sleep) (tsp +. sleep) ctrl popped
+          simulate_aux packets (time +. sleep) (tsp +. sleep) ctrl popped
       | pkt :: t, false, false ->
           let pkt' = Packet.punch_in pkt time in
           simulate_aux t time tsp (C.push ctrl pkt') popped

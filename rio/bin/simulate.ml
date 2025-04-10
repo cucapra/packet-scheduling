@@ -3,19 +3,25 @@ open Simulator
 
 let () =
   if Array.length Sys.argv <> 3 then (
-    Printf.printf "usage: ./%s path/to/pcap" Sys.argv.(0);
+    Printf.printf "usage: ./%s path/to/prog path/to/pcap\n" Sys.argv.(0);
     exit 1)
   else ()
 
-let policy = Sys.argv.(1) |> Parser.parse_file |> Policy.of_program
-let _ = "prog : " ^ (policy |> Policy.to_string) |> print_endline
-let pcap = Sys.argv.(2) |> Packet.pkts_from_file
+let prog_path, pcap_path = (Sys.argv.(1), Sys.argv.(2))
 
-module P : Control.Policy = struct
-  let policy = policy
+let prog_name, pcap_name =
+  let file_name = Fun.compose Filename.remove_extension Filename.basename in
+  (file_name prog_path, file_name pcap_path)
+
+let prog, pcap =
+  ( prog_path |> Parser.parse_file |> Policy.of_program,
+    Packet.pkts_from_file pcap_path )
+
+module Pol : Control.Policy = struct
+  let policy = prog
 end
 
-module C : Control.Control = Control.Make_PIFOControl (P)
+module Ctrl : Control.Control = Control.Make_PIFOControl (Pol)
 
 module Params : Simulate.Parameters = struct
   let sim_len = 30.0
@@ -23,6 +29,9 @@ module Params : Simulate.Parameters = struct
   let pop_tick = 0.25
 end
 
-module S : Simulate.Sim = Simulate.Make_Sim (C) (Params)
+module S : Simulate.Sim = Simulate.Make_Sim (Ctrl) (Params)
 
-let () = pcap |> S.simulate |> Fun.flip Packet.write_to_csv "pcap.csv"
+let () =
+  pcap |> S.simulate
+  |> Fun.flip Packet.write_to_csv
+       (Printf.sprintf "../graphs/%s_%s.csv" prog_name pcap_name)

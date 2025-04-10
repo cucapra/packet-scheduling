@@ -1,4 +1,5 @@
 import os
+import sys
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
@@ -71,20 +72,11 @@ def make_plot(df, subplt, name):
 
 
 def plot():
-    for i in [
-        "fcfs",
-        "fcfs_bin",
-        "rr",
-        "rr_bin",
-        "strict",
-        "strict_bin",
-        "wfq",
-        "wfq_bin"
-    ]:
-        csv = os.path.join(os.path.dirname(__file__), f"{i}.csv")
-        df = pd.read_csv(csv)
-        png = os.path.join(os.path.dirname(__file__), i)
-        make_plot(df, plt, png)
+    path = sys.argv[1]
+    name = os.path.splitext(os.path.basename(path))[0]
+    df = pd.read_csv(path)
+    png = os.path.join(os.path.dirname(__file__), name)
+    make_plot(df, plt, png)
 
 
 if __name__ == "__main__":
