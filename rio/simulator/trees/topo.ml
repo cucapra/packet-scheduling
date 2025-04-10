@@ -1,6 +1,6 @@
 type 'a t =
   | Star
-  | CStar of 'a (* for Rio trees *)
+  | CStar of 'a list (* for Rio trees *)
   | Node of 'a t list
 
 type enqdeq =

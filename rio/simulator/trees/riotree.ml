@@ -1,5 +1,5 @@
 type ('a, 'b) tree =
-  | Leaf of 'a Pifo.t * 'b
+  | Leaf of 'a Pifo.t * 'b list
   | Internal of ('a, 'b) tree list
 
 type ('a, 'b) t = {
@@ -46,14 +46,13 @@ let rec pop { tree; canonical } order =
 
 let rec push { tree; canonical } v rk =
   match tree with
-  | Leaf (p, c) when c <> canonical v -> { tree = Leaf (p, c); canonical }
-  | Leaf (p, c) ->
+  | Leaf (p, c) when List.exists (fun x -> x = canonical v) c ->
       let p' = Pifo.push p v rk in
       { tree = Leaf (p', c); canonical }
+  | Leaf (p, c) -> { tree = Leaf (p, c); canonical }
   | Internal qs ->
-      let qs' =
-        List.map (fun q -> (push { tree = q; canonical } v rk).tree) qs
-      in
+      let f q = (push { tree = q; canonical } v rk).tree in
+      let qs' = List.map f qs in
       { tree = Internal qs'; canonical }
 
 let rec size { tree; canonical } =
