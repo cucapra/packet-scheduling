@@ -5,6 +5,17 @@ type t = {
   z_out : State.t -> Packet.t -> State.t;
 }
 
+let find_mapi f lst =
+  let rec aux i = function
+    | [] -> None
+    | x :: xs ->
+      match f i x with
+      | Some _ as result -> result
+      | None -> aux (i + 1) xs
+  in
+  aux 0 lst
+
+
 let sprintf = Printf.sprintf
 
 (* `init_state_of_policy p` is `(of_policy p).s`, i.e. the initial state for
@@ -48,9 +59,9 @@ let route_pkt p pkt =
     match p with
     | Class c -> if Packet.flow pkt = c then Some (List.rev pt) else None
     | Fifo plst | RoundRobin plst | Strict plst ->
-        List.find_mapi (fun i p -> route_pkt_aux p (i :: pt)) plst
+        find_mapi (fun i p -> route_pkt_aux p (i :: pt)) plst
     | WeightedFair wplst ->
-        List.find_mapi (fun i (p, _) -> route_pkt_aux p (i :: pt)) wplst
+        find_mapi (fun i (p, _) -> route_pkt_aux p (i :: pt)) wplst
   in
   match route_pkt_aux p [] with
   | Some rankless_path -> rankless_path
