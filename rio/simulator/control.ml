@@ -8,13 +8,12 @@ type t = {
 let find_mapi f lst =
   let rec aux i = function
     | [] -> None
-    | x :: xs ->
-      match f i x with
-      | Some _ as result -> result
-      | None -> aux (i + 1) xs
+    | x :: xs -> (
+        match f i x with
+        | Some _ as result -> result
+        | None -> aux (i + 1) xs)
   in
   aux 0 lst
-
 
 let sprintf = Printf.sprintf
 
