@@ -31,6 +31,9 @@ module Params : Simulate.Parameters = struct
 end
 
 let make_sim_test (prog_name, pcap_name) =
+  let prog_no_ext, pcap_no_ext =
+    (Filename.remove_extension prog_name, Filename.remove_extension pcap_name)
+  in
   let prog, pcap = (parse_prog prog_name, parse_pcap pcap_name) in
 
   let module Pol : Control.Policy = struct
@@ -46,9 +49,9 @@ let make_sim_test (prog_name, pcap_name) =
     match gen_csv with
     | Some "YES" ->
         Packet.write_to_csv enq_pops
-          (fmt "%senq_%s_%s.csv" graph_dir prog_name pcap_name);
+          (fmt "%senq_%s_%s.csv" graph_dir prog_no_ext pcap_no_ext);
         Packet.write_to_csv deq_pops
-          (fmt "%sdeq_%s_%s.csv" graph_dir prog_name pcap_name)
+          (fmt "%sdeq_%s_%s.csv" graph_dir prog_no_ext pcap_no_ext)
     | Some _ | None -> ()
   in
 
