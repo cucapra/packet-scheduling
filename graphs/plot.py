@@ -53,4 +53,5 @@ if __name__ == "__main__":
         if ".csv" in file:
             name = os.path.splitext(os.path.basename(file))[0]
             png = os.path.join(script_dir, name)
+            file = os.path.join(script_dir, file)
             make_plot(file, png)
