@@ -39,7 +39,7 @@ let rec pop { tree; canonical } order =
         |> List.filter_map (fun (i, x, y) ->
                let* y = y in
                Some (i, x, y))
-        |> min (fun (_, a, _) (_, b, _) -> Rank.cmp a b)
+        |> min (fun (_, a, _) (_, b, _) -> a - b)
       in
       Some (v, { tree = Internal (replace_nth qs i q'); canonical })
   | _ -> failwith "ERROR: invalid order"

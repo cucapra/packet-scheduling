@@ -4,11 +4,7 @@ type 'a t = {
 }
 
 let create () =
-  let cmp (_, a, i) (_, b, j) =
-    match Rank.cmp a b with
-    | 0 -> i - j
-    | x -> x
-  in
+  let cmp (_, a, i) (_, b, j) = if a = b then i - j else a - b in
   { heap = Fheap.create ~compare:cmp; counter = 0 }
 
 let size t = Fheap.length t.heap

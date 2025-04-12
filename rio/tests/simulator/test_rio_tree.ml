@@ -2,7 +2,6 @@ open OUnit2
 open Simulator
 
 let ( mod ) a b = (a mod b) + if a < 0 then b else 0
-let fmt = Printf.sprintf
 
 let intlist_to_string intlist =
   "[" ^ String.concat "; " (List.map string_of_int intlist) ^ "]"
@@ -44,7 +43,7 @@ let flush order tree =
   let rec flush_aux tree acc =
     match (Riotree.pop tree order, Riotree.size tree) with
     | None, 0 -> List.rev acc
-    | None, i -> failwith (fmt "ERROR: `pop` returns None on size %d tree" i)
+    | None, _ -> failwith "ERROR: `pop` returns None on non-empty tree"
     | Some _, 0 -> failwith "ERROR: [pop] returns Some _ on size 0 tree"
     | Some (v, tree), _ -> flush_aux tree (v :: acc)
   in
