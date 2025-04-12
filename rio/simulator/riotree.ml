@@ -64,14 +64,14 @@ let rec size { tree; canonical } =
 let rec create (topo : 'b Topo.t) canonical =
   match topo with
   | Star -> failwith "ERROR: invalid topology"
-  | CStar c -> { tree = Leaf (Pifo.create (), c); canonical }
+  | DecoratedStar c -> { tree = Leaf (Pifo.create (), c); canonical }
   | Node ts ->
       let qs = List.map (fun t -> (create t canonical).tree) ts in
       { tree = Internal qs; canonical }
 
 let rec to_topo { tree; canonical } : 'b Topo.t =
   match tree with
-  | Leaf (_, c) -> CStar c
+  | Leaf (_, c) -> DecoratedStar c
   | Internal qs ->
       let ts = List.map (fun q -> to_topo { tree = q; canonical }) qs in
       Node ts

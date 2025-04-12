@@ -36,7 +36,7 @@ let rec size t =
 let rec create (topo : 'b Topo.t) =
   match topo with
   | Star -> Leaf (Pifo.create ())
-  | CStar _ -> failwith "ERROR: invalid topology"
+  | DecoratedStar _ -> failwith "ERROR: invalid topology"
   | Node ts ->
       let qs = List.map create ts in
       Internal (qs, Pifo.create ())

@@ -1,6 +1,6 @@
 type 'a t =
   | Star
-  | CStar of 'a list (* for Rio trees *)
+  | DecoratedStar of 'a list (* for Rio trees *)
   | Node of 'a t list
 
 type enqdeq =
@@ -12,4 +12,4 @@ let rec of_policy e p =
   match (e, p) with
   | _, RoundRobin ps | _, Strict ps -> Node (List.map (of_policy e) ps)
   | Enq, Fifo _ | Enq, EDF _ -> Star
-  | Deq, Fifo clss | Deq, EDF clss -> CStar clss
+  | Deq, Fifo clss | Deq, EDF clss -> DecoratedStar clss

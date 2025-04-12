@@ -61,7 +61,7 @@ let make_push_pop_test name data tree order permutation =
 
 (* Basic Invariant Tests *)
 let basic_tests =
-  let topo = Topo.Node [ CStar [ A ]; CStar [ B ] ] in
+  let topo = Topo.Node [ DecoratedStar [ A ]; DecoratedStar [ B ] ] in
   let tree = Riotree.create topo (fun i -> infer_flow (i mod 2)) in
   let order = Riotree.Order [ (Foot, rank); (Foot, rank) ] in
 
@@ -76,7 +76,7 @@ let basic_tests =
 
 (* Leaf Tests *)
 let leaf_tests =
-  let tree = Riotree.create (Topo.CStar [ A ]) (fun _ -> A) in
+  let tree = Riotree.create (Topo.DecoratedStar [ A ]) (fun _ -> A) in
   let order = Riotree.Foot in
   let zero_to_nine = consecutive 0 9 in
 
@@ -95,12 +95,12 @@ let leaf_tests =
 let topo =
   Topo.Node
     [
-      CStar [ A ];
-      CStar [ B ];
-      CStar [ C ];
-      CStar [ D ];
-      CStar [ E ];
-      CStar [ F ];
+      DecoratedStar [ A ];
+      DecoratedStar [ B ];
+      DecoratedStar [ C ];
+      DecoratedStar [ D ];
+      DecoratedStar [ E ];
+      DecoratedStar [ F ];
     ]
 
 let tree = Riotree.create topo infer_flow
@@ -148,10 +148,10 @@ let one_level_tests =
 *)
 let topo =
   let left, right =
-    ( Topo.Node [ CStar [ A ]; CStar [ B ] ],
-      Topo.Node [ CStar [ E ]; CStar [ F ] ] )
+    ( Topo.Node [ DecoratedStar [ A ]; DecoratedStar [ B ] ],
+      Topo.Node [ DecoratedStar [ E ]; DecoratedStar [ F ] ] )
   in
-  Topo.Node [ left; CStar [ C ]; CStar [ D ]; right ]
+  Topo.Node [ left; DecoratedStar [ C ]; DecoratedStar [ D ]; right ]
 
 let tree = Riotree.create topo infer_flow
 
