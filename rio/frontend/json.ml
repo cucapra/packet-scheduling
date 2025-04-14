@@ -1,15 +1,11 @@
-(* open Yojson.Basic *)
-
 let rec policy_to_json (ast : Policy.t) =
   match ast with
   | Class c -> `Assoc [ ("class", `String c) ]
   | Fifo sl -> `Assoc [ ("fifo", `List (List.map policy_to_json sl)) ]
-  | RoundRobin sl ->
-      let lst = List.map policy_to_json sl in
-      `Assoc [ ("rr", `List lst) ]
+  | RoundRobin sl -> `Assoc [ ("rr", `List (List.map policy_to_json sl)) ]
   | Strict sl -> `Assoc [ ("strict", `List (List.map policy_to_json sl)) ]
   | _ -> failwith "not implemented"
 
 let main (prog : string) =
-  let parsed = Parse.parse_file prog |> Policy.of_program in
-  policy_to_json parsed |> Yojson.Basic.to_string
+  prog |> Parse.parse_file |> Policy.of_program |> policy_to_json
+  |> Yojson.Basic.to_string
