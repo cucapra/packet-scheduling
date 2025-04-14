@@ -1,0 +1,7 @@
+classes A, B, C, D, E, F, G, H;
+
+strict1 = strict[fifo[A], fifo[B], fifo[C]];
+rr1 = rr[fifo[D], fifo[E], fifo[F]];
+rr2 = rr[fifo[G], fifo[H]];
+
+return rr[strict1, rr1, rr2]
