@@ -2,11 +2,11 @@ open Frontend
 open OUnit2
 
 let make_test name filename val_str =
-  let f_name = "../../progs/work_conserving/" ^ filename ^ ".sched" in
+  let f_name = "../../../../progs/work_conserving/" ^ filename ^ ".sched" in
   name >:: fun _ -> assert_equal val_str (Json.main f_name) ~printer:Fun.id
 
 let make_error_test name filename exn =
-  let f_name = "../../progs/incorrect/" ^ filename ^ ".sched" in
+  let f_name = "../../../../progs/incorrect/" ^ filename ^ ".sched" in
   name >:: fun _ -> assert_raises exn (fun () -> Json.main f_name)
 
 let tests =
