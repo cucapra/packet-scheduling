@@ -1,8 +1,9 @@
 type t =
-  | Fifo of Ast.clss list
+  | FIFO of Ast.clss list
   | EDF of Ast.clss list
-  | RoundRobin of t list
+  | RR of t list
   | Strict of t list
+  | WFQ of t list * float list
 
 exception UnboundVariable of Ast.var
 exception UndeclaredClass of Ast.clss

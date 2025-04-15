@@ -18,7 +18,7 @@ let replace_nth l i v = List.mapi (fun j x -> if j = i then v else x) l
 let min cmp l =
   let rec min_aux min l =
     match (l, min) with
-    | h :: t, Some m when cmp h m < 0 -> min_aux (Some h) t
+    | h :: t, Some m when cmp h m < 0.0 -> min_aux (Some h) t
     | _ :: t, Some _ -> min_aux min t
     | h :: t, None -> min_aux (Some h) t
     | [], _ -> min
@@ -39,7 +39,7 @@ let rec pop { tree; canonical } order =
         |> List.filter_map (fun (i, x, y) ->
                let* y = y in
                Some (i, x, y))
-        |> min (fun (_, a, _) (_, b, _) -> a - b)
+        |> min (fun (_, a, _) (_, b, _) -> a -. b)
       in
       Some (v, { tree = Internal (replace_nth qs i q'); canonical })
   | _ -> failwith "ERROR: invalid order"

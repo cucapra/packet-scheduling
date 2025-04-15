@@ -10,6 +10,6 @@ type enqdeq =
 let rec of_policy e p =
   let open Frontend.Policy in
   match (e, p) with
-  | _, RoundRobin ps | _, Strict ps -> Node (List.map (of_policy e) ps)
-  | Enq, Fifo _ | Enq, EDF _ -> Star
-  | Deq, Fifo clss | Deq, EDF clss -> DecoratedStar clss
+  | _, Strict ps | _, RR ps | _, WFQ (ps, _) -> Node (List.map (of_policy e) ps)
+  | Enq, FIFO _ | Enq, EDF _ -> Star
+  | Deq, FIFO clss | Deq, EDF clss -> DecoratedStar clss

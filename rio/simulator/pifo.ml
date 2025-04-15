@@ -4,7 +4,9 @@ type 'a t = {
 }
 
 let create () =
-  let cmp (_, a, i) (_, b, j) = if a = b then i - j else a - b in
+  let cmp (_, a, i) (_, b, j) =
+    if a = b then i - j else int_of_float (a -. b)
+  in
   { heap = Fheap.create ~compare:cmp; counter = 0 }
 
 let size t = Fheap.length t.heap

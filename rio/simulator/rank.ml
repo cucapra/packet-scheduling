@@ -1,1 +1,1 @@
-type t = int
+type t = float
