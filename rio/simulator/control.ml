@@ -38,6 +38,13 @@ let route_pkt (policy : Policy.t) pkt =
   | Some directions -> directions
   | None -> failwith (fmt "ERROR: cannot route flow %s" (Packet.flow pkt))
 
+let wfq_rank_state prefix pkt i w s =
+  let finish_var = fmt "%s_finish_%d" prefix i in
+  let len, time = (Packet.len pkt, Packet.time pkt) in
+  let rank = max time (State.lookup finish_var s) in
+  let s' = State.rebind finish_var (rank +. (len /. w)) s in
+  (rank, s')
+
 module Make_PIFOControl (P : Policy) : Control = struct
   open P
 
@@ -62,7 +69,7 @@ module Make_PIFOControl (P : Policy) : Control = struct
           |> State.rebind (fmt "%s_turn" prefix) 0.0
           |> join ps
       | WFQ (ps, _) ->
-          List.mapi (fun i _ -> (fmt "%s_f_%d" prefix i, 0.0)) ps
+          List.mapi (fun i _ -> (fmt "%s_finish_%d" prefix i, 0.0)) ps
           |> Fun.flip State.rebind_all s
           |> join ps
       | Strict ps -> join ps s
@@ -87,10 +94,7 @@ module Make_PIFOControl (P : Policy) : Control = struct
           let pt, s'' = z_pre_push_aux (List.nth ps h) t (Ptr (h, addr)) s' in
           (Pifotree.Path (h, r_i, pt), s'')
       | WFQ (ps, ws), h :: t ->
-          let f_var = fmt "%s_f_%d" prefix h in
-          let rank = max (Packet.time pkt) (State.lookup f_var s) in
-          let pkt_len = Packet.len pkt in
-          let s' = State.rebind f_var (rank +. (pkt_len /. List.nth ws h)) s in
+          let rank, s' = wfq_rank_state prefix pkt h (List.nth ws h) s in
           let pt, s'' = z_pre_push_aux (List.nth ps h) t (Ptr (h, addr)) s' in
           (Pifotree.Path (h, rank, pt), s'')
       | FIFO _, [] -> (Pifotree.Foot 0.0, s)
@@ -121,9 +125,8 @@ module Make_PIFOControl (P : Policy) : Control = struct
           in
           let increment s i =
             let r_var = fmt "%s_r_%d" prefix i in
-            let r_i = s |> State.lookup r_var |> int_of_float in
-            let r_i' = float_of_int (r_i + n) in
-            State.rebind r_var r_i' s
+            let r_i = State.lookup r_var s in
+            State.rebind r_var (r_i +. float_of_int n) s
           in
           let s' =
             s
@@ -137,7 +140,7 @@ module Make_PIFOControl (P : Policy) : Control = struct
     z_post_pop_aux policy (route_pkt policy pkt) Eps s
 
   let init =
-    { s = state; q = policy |> Topo.of_policy Topo.Enq |> Pifotree.create }
+    { s = state; q = policy |> Topo.(of_policy Enq) |> Pifotree.create }
 
   let push t pkt =
     let pt, s' = z_pre_push t.s pkt in
@@ -168,19 +171,36 @@ module Make_RioControl (P : Policy) : Control = struct
       in
 
       match p with
+      | WFQ (ps, _) ->
+          let binds index2key = List.mapi (fun i _ -> (index2key i, 0.0)) ps in
+          s
+          |> State.rebind_all (binds (fun i -> fmt "%s_start_%d" prefix i))
+          |> State.rebind_all (binds (fun i -> fmt "%s_len_%d" prefix i))
+          |> State.rebind_all (binds (fun i -> fmt "%s_finish_%d" prefix i))
+          |> join ps
       | RR ps -> State.rebind (fmt "%s_turn" prefix) 0.0 s |> join ps
       | Strict ps -> join ps s
       | FIFO _ | EDF _ -> s
-      | _ -> failwith "WFQ NOT DONE YET"
     in
 
     state_aux policy Eps State.empty
 
   let z_pre_push s pkt =
     let rec z_pre_push_aux (p : Policy.t) directions addr s =
+      let prefix = addr_to_string addr in
+
       match (p, directions) with
       | Strict ps, h :: t | RR ps, h :: t ->
           z_pre_push_aux (List.nth ps h) t (Ptr (h, addr)) s
+      | WFQ (ps, ws), h :: t ->
+          let rank, s' = wfq_rank_state prefix pkt h (List.nth ws h) s in
+          let len_i = State.lookup (fmt "%s_len_%d" prefix h) s' in
+          let s'' =
+            s'
+            |> State.rebind (fmt "%s_el_%d_%f" prefix h len_i) rank
+            |> State.rebind (fmt "%s_len_%d" prefix h) (len_i +. 1.0)
+          in
+          z_pre_push_aux (List.nth ps h) t (Ptr (h, addr)) s''
       | FIFO _, [] -> (0.0, s)
       | _ -> failwith "ERROR: unreachable branch"
     in
@@ -214,9 +234,16 @@ module Make_RioControl (P : Policy) : Control = struct
             |> float_of_int
           in
           join compute_rank s ps
+      | WFQ (ps, _) ->
+          let compute_rank i =
+            let start_i = State.lookup (fmt "%s_start_%d" prefix i) s in
+            match State.lookup_opt (fmt "%s_el_%d_%f" prefix i start_i) s with
+            | Some r -> r
+            | None -> Float.infinity
+          in
+          join compute_rank s ps
       | Strict ps -> join float_of_int s ps
       | FIFO _ | EDF _ -> (Foot, s)
-      | _ -> failwith "WFQ NOT READY YET"
     in
 
     z_pre_pop_aux policy Eps s
@@ -228,6 +255,11 @@ module Make_RioControl (P : Policy) : Control = struct
       match (p, directions) with
       | FIFO _, [] | EDF _, [] -> s
       | Strict ps, h :: t -> z_pre_pop_aux (List.nth ps h) t (Ptr (h, addr)) s
+      | WFQ (ps, _), h :: t ->
+          let start_var = fmt "%s_start_%d" prefix h in
+          let start_i = State.lookup start_var s in
+          let s' = State.rebind start_var (start_i +. 1.0) s in
+          z_pre_pop_aux (List.nth ps h) t (Ptr (h, addr)) s'
       | RR ps, h :: t ->
           let turn_var = fmt "%s_turn" prefix in
           let turn' = (h + 1) mod List.length ps |> float_of_int in
@@ -241,8 +273,7 @@ module Make_RioControl (P : Policy) : Control = struct
   let init =
     {
       s = state;
-      q =
-        policy |> Topo.of_policy Topo.Deq |> Fun.flip Riotree.create Packet.flow;
+      q = policy |> Topo.(of_policy Deq) |> Fun.flip Riotree.create Packet.flow;
     }
 
   let push t pkt =

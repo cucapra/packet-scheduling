@@ -5,7 +5,9 @@ type 'a t = {
 
 let create () =
   let cmp (_, a, i) (_, b, j) =
-    if a = b then i - j else int_of_float (a -. b)
+    match Rank.cmp a b with
+    | 0 -> i - j
+    | x -> x
   in
   { heap = Fheap.create ~compare:cmp; counter = 0 }
 

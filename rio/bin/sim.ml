@@ -32,10 +32,8 @@ module Params : Simulate.Parameters = struct
 end
 
 let run () =
-  let prog_no_ext, pcap_no_ext =
-    ( prog_path |> Filename.basename |> Filename.remove_extension,
-      prog_path |> Filename.basename |> Filename.remove_extension )
-  in
+  let name path = path |> Filename.basename |> Filename.remove_extension in
+  let prog_no_ext, pcap_no_ext = (prog_path |> name, pcap_path |> name) in
   let prog, pcap = (parse_prog prog_path, parse_pcap pcap_path) in
 
   let module Pol : Control.Policy = struct
@@ -43,17 +41,14 @@ let run () =
   end in
   match enqdeq with
   | PIFO ->
-      let module PIFOCtrl : Control.Control = Control.Make_PIFOControl (Pol) in
-      let module PIFOSim : Simulate.Sim = Simulate.Make_Sim (PIFOCtrl) (Params)
-      in
-      let pops = PIFOSim.simulate pcap in
-      Packet.write_to_csv pops
+      let module PIFOCtrl = Control.Make_PIFOControl (Pol) in
+      let module PIFOSim = Simulate.Make_Sim (PIFOCtrl) (Params) in
+      Packet.write_to_csv (PIFOSim.simulate pcap)
         (Printf.sprintf "%senq_%s_%s.csv" graph_dir prog_no_ext pcap_no_ext)
   | RIO ->
-      let module RioCtrl : Control.Control = Control.Make_RioControl (Pol) in
-      let module RioSim : Simulate.Sim = Simulate.Make_Sim (RioCtrl) (Params) in
-      let pops = RioSim.simulate pcap in
-      Packet.write_to_csv pops
+      let module RioCtrl = Control.Make_RioControl (Pol) in
+      let module RioSim = Simulate.Make_Sim (RioCtrl) (Params) in
+      Packet.write_to_csv (RioSim.simulate pcap)
         (Printf.sprintf "%sdeq_%s_%s.csv" graph_dir prog_no_ext pcap_no_ext)
 
 let () = run ()
