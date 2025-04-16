@@ -10,14 +10,17 @@ type t = {
   popped : Time.t option;
 }
 
+exception UnknownMacAddress of string
+exception PCAPNotFound of string
+exception MalformedPCAPHeader of string
+
 let time t = t.time
 let flow t = t.flow
 let len t = float_of_int t.len
 let punch_in t time = { t with pushed = Some time }
 let punch_out t time = { t with popped = Some time }
 
-let mac_addr_to_flow s : Frontend.Ast.clss =
-  match s with
+let mac_addr_to_flow = function
   | "10:10:10:10:10:10" -> "A"
   | "20:20:20:20:20:20" -> "B"
   | "30:30:30:30:30:30" -> "C"
@@ -25,7 +28,7 @@ let mac_addr_to_flow s : Frontend.Ast.clss =
   | "50:50:50:50:50:50" -> "E"
   | "60:60:60:60:60:60" -> "F"
   | "70:70:70:70:70:70" -> "G"
-  | n -> failwith Printf.(sprintf "Unknown MAC address: %s." n)
+  | n -> raise (UnknownMacAddress n)
 
 let find_flow x =
   let hex = Printf.sprintf "%x" x in
@@ -66,7 +69,10 @@ let create_pcap_packets h body : t list =
 
 let pkts_from_file filename =
   let open_file filename =
-    let fd = Unix.(openfile filename [ O_RDONLY ] 0) in
+    let fd =
+      try Unix.(openfile filename [ O_RDONLY ] 0)
+      with Unix.Unix_error _ -> raise (PCAPNotFound filename)
+    in
     let ba =
       Bigarray.(
         array1_of_genarray
@@ -79,8 +85,7 @@ let pkts_from_file filename =
     let buf = open_file filename in
     match Pcap.detect buf with
     | Some h -> (h, buf)
-    | None ->
-        failwith (Printf.sprintf "can't parse pcap header from %s" filename)
+    | None -> raise (MalformedPCAPHeader filename)
   in
   let h, buf = read_header filename in
   let _, body = Cstruct.split buf sizeof_pcap_header in
