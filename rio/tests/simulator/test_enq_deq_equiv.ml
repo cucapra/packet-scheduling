@@ -17,8 +17,10 @@ let progs_and_pcaps =
     ("fifo.sched", "fcfs_generated.pcap");
     ("rr_3_classes.sched", "two_then_three.pcap");
     ("strict_3_classes.sched", "two_then_three.pcap");
+    ("wfq_3_classes.sched", "two_then_three.pcap");
     ("mix_5_classes.sched", "five_flows.pcap");
     ("mix_7_classes.sched", "seven_flows.pcap");
+    ("mix_weight.sched", "seven_flows.pcap");
     ("bin_tree_pol.sched", "seven_flows.pcap");
   ]
 
