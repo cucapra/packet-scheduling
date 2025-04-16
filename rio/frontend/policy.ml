@@ -1,8 +1,8 @@
 type t =
   | FIFO of Ast.clss list
   | EDF of Ast.clss list
-  | RR of t list
   | Strict of t list
+  | RR of t list
   | WFQ of t list * float list
 
 exception UnboundVariable of Ast.var
@@ -32,8 +32,8 @@ let rec sub cl st used (p : Ast.stream) =
       sub cl st used p
   | Fifo s -> FIFO (sub_set s)
   | EarliestDeadline s -> EDF (sub_set s)
-  | RoundRobin ps -> RR (sub_ps ps)
   | Strict ps -> Strict (sub_ps ps)
+  | RoundRobin ps -> RR (sub_ps ps)
   | WeightedFair pws ->
       let ps, ws = List.split pws in
       WFQ (sub_ps ps, List.map float_of_int ws)
@@ -51,8 +51,8 @@ let rec to_string p =
   | EDF cs when List.length cs > 1 -> fmt "edf[union[%s]]" (join cs Fun.id)
   | FIFO cs -> fmt "fifo[%s]" (join cs Fun.id)
   | EDF cs -> fmt "edf[%s]" (join cs Fun.id)
-  | RR ps -> fmt "rr[%s]" (join ps to_string)
   | Strict ps -> fmt "strict[%s]" (join ps to_string)
+  | RR ps -> fmt "rr[%s]" (join ps to_string)
   | WFQ (ps, ws) ->
       let pws = List.combine ps ws in
       let to_string (p, w) = fmt "(%s, %f)" (to_string p) w in

@@ -1,3 +1,6 @@
 (tests
- (names test_parsing)
- (libraries rio.frontend ounit2))
+ (names test_parsing test_serialize)
+ (deps
+  (:json
+   (glob_files jsons/*.json)))
+ (libraries rio.frontend ounit2 yojson))
