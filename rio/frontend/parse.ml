@@ -1,4 +1,5 @@
 exception ParserError of string
+exception FileNotFound of string
 
 (* `syntax_error_msg lexbuf` is a syntax error message for the current
    position *)
@@ -17,6 +18,9 @@ let parse_string (s : string) =
 
 (* `parse s` is the AST for program file with name `s` *)
 let parse_file (f : string) =
-  let lexbuf = Lexing.from_channel (open_in f) in
+  let lexbuf =
+    try Lexing.from_channel (open_in f)
+    with Sys_error _ -> raise (FileNotFound f)
+  in
   try parse lexbuf
   with Parser.Error -> raise (ParserError (syntax_error_msg lexbuf))
