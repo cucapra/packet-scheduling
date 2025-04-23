@@ -1,5 +1,9 @@
 type t
 
+exception UnknownMacAddress of string
+exception PCAPNotFound of string
+exception MalformedPCAPHeader of string
+
 val len : t -> float
 val time : t -> Time.t
 val flow : t -> Frontend.Ast.clss

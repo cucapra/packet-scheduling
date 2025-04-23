@@ -1,10 +1,9 @@
-(* Changes to this type must also be reflected in `Ast.policy` in ast.ml *)
 type t =
-  | Class of Ast.clss
-  | Fifo of t list
-  | RoundRobin of t list
+  | FIFO of Ast.clss list
+  | EDF of Ast.clss list
   | Strict of t list
-  | WeightedFair of (t * float) list
+  | RR of t list
+  | WFQ of t list * float list
 
 exception UnboundVariable of Ast.var
 exception UndeclaredClass of Ast.clss

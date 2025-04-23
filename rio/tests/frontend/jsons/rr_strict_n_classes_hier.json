@@ -1,0 +1,12 @@
+{
+  "Strict": [
+    { "FIFO": [ "A" ] },
+    { "FIFO": [ "B" ] },
+    {
+      "RR": [
+        { "RR": [ { "FIFO": [ "CU" ] }, { "FIFO": [ "CV" ] } ] },
+        { "Strict": [ { "FIFO": [ "CW" ] }, { "FIFO": [ "CX" ] } ] }
+      ]
+    }
+  ]
+}

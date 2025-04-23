@@ -1,0 +1,7 @@
+classes A, B, C, D, E;
+
+left = strict[fifo[A], fifo[B]];
+right = rr[fifo[C], fifo[D], fifo[E]];
+policy = rr[left, right];
+
+return policy

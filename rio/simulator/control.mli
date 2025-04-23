@@ -1,10 +1,14 @@
-type t = {
-  s : State.t;
-  q : Pieotree.t;
-  z_in : State.t -> Packet.t -> Path.t * State.t * Time.t;
-  z_out : State.t -> Packet.t -> State.t;
-}
+module type Control = sig
+  type t
 
-val of_policy : Frontend.Policy.t -> t
-val to_topo : t -> Topo.t
-val compile : Topo.t * Topo.map -> t -> t
+  val init : t
+  val push : t -> Packet.t -> t
+  val pop : t -> (Packet.t * t) option
+end
+
+module type Policy = sig
+  val policy : Frontend.Policy.t
+end
+
+module Make_PIFOControl (_ : Policy) : Control
+module Make_RioControl (_ : Policy) : Control

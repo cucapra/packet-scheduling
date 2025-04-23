@@ -1,178 +1,289 @@
-type t = {
-  s : State.t;
-  q : Pieotree.t;
-  z_in : State.t -> Packet.t -> Path.t * State.t * Time.t;
-  z_out : State.t -> Packet.t -> State.t;
-}
+open Frontend
 
-let sprintf = Printf.sprintf
+let ( let* ) = Option.bind
+let fmt = Printf.sprintf
+let ( mod ) a b = (a mod b) + if a < 0 then b else 0
 
-(* `init_state_of_policy p` is `(of_policy p).s`, i.e. the initial state for
-   `p`'s control.
+module type Control = sig
+  type t
 
-   `init_state_of_policy` initalizes values bound to keys managed by each node
-   of `p` according to the semantics of their policies. To prevent name clashes,
-   each key is prefixed with the address of its associated node. *)
-let init_state_of_policy p =
-  let rec init_state_of_policy_aux (p : Frontend.Policy.t) addr s =
-    let join plst addr s =
-      let f (i, s) p = (i + 1, init_state_of_policy_aux p (i :: addr) s) in
-      match List.fold_left f (0, s) plst with
-      | _, s' -> s'
-    in
+  val init : t
+  val push : t -> Packet.t -> t
+  val pop : t -> (Packet.t * t) option
+end
 
-    let prefix = Topo.addr_to_string addr in
+module type Policy = sig
+  val policy : Policy.t
+end
 
+type addr =
+  | Eps
+  | Ptr of int * addr
+
+let rec addr_to_string = function
+  | Eps -> "ε"
+  | Ptr (i, t) -> fmt "%d ∙ %s" i (addr_to_string t)
+
+let route_pkt (policy : Policy.t) pkt =
+  let rec route_pkt_aux (p : Policy.t) pt =
     match p with
-    | Class _ -> s
-    | RoundRobin plst ->
-        let ranks =
-          List.mapi
-            (fun i _ -> (sprintf "%s_r_%d" prefix i, float_of_int i))
-            plst
-        in
-        s
-        |> State.rebind (sprintf "%s_turn" prefix) 0.0
-        |> State.rebind_all ranks |> join plst addr
-    | WeightedFair wplst ->
-        let weights =
-          List.mapi (fun i (_, w) -> (sprintf "%s_w_%d" prefix i, w)) wplst
-        in
-        s |> State.rebind_all weights |> join (List.map fst wplst) addr
-    | Fifo plst | Strict plst -> join plst addr s
+    | (FIFO cs | EDF cs) when List.exists (fun c -> Packet.flow pkt = c) cs ->
+        Some (List.rev pt)
+    | Strict ps | RR ps | WFQ (ps, _) ->
+        List.find_mapi (fun i p -> route_pkt_aux p (i :: pt)) ps
+    | FIFO _ | EDF _ -> None
   in
-  init_state_of_policy_aux p [] State.empty
 
-let route_pkt p pkt =
-  let rec route_pkt_aux (p : Frontend.Policy.t) pt =
-    match p with
-    | Class c -> if Packet.flow pkt = c then Some (List.rev pt) else None
-    | Fifo plst | RoundRobin plst | Strict plst ->
-        List.find_mapi (fun i p -> route_pkt_aux p (i :: pt)) plst
-    | WeightedFair wplst ->
-        List.find_mapi (fun i (p, _) -> route_pkt_aux p (i :: pt)) wplst
-  in
-  match route_pkt_aux p [] with
-  | Some rankless_path -> rankless_path
-  | None -> failwith (sprintf "ERROR: cannot route flow %s" (Packet.flow pkt))
+  match route_pkt_aux policy [] with
+  | Some directions -> directions
+  | None -> failwith (fmt "ERROR: cannot route flow %s" (Packet.flow pkt))
 
-(* `z_in_of_policy p` is `(of_policy p).z_in`, i.e. the _scheduling transaction_
-   for `p`'s control.
+let wfq_rank_state prefix pkt i w s =
+  let finish_var = fmt "%s_finish_%d" prefix i in
+  let len, time = (Packet.len pkt, Packet.time pkt) in
+  let rank = max time (State.lookup finish_var s) in
+  let s' = State.rebind finish_var (rank +. (len /. w)) s in
+  (rank, s')
 
-   More specifically, consider packet `pkt`, belonging to the flow living at
-   `p`'s leaf with address `i · _`. Call `p`'s `i`th child policy `p_i`.
-   We define `z_in_of_policy p s pkt` inductively:
-   - Update `s` to `s'` and compute the readiness time `t` and rank `r`, as per
-     the semantics of the policy at `p`'s root.
-   - Next, recursively compute `z_in_of_policy p_i s' pkt` = (path, s'', t') and
-     return `((i, r) :: path, s'', max t t')`
-   Instead, if `p` has no children, i.e. `pkt` belongs to the flow living at
-   address `ε`, then let `z_in_of_policy p s pkt` be
-    `([ (_, pkt's arrival time) ], s, -\infty)`.
-*)
-let z_in_of_policy p s pkt =
-  let rec z_in_of_policy_aux (p : Frontend.Policy.t) rankless_path addr s =
-    let prefix = Topo.addr_to_string addr in
+module Make_PIFOControl (P : Policy) : Control = struct
+  open P
 
-    match (p, rankless_path) with
-    | Class _, [] ->
-        ([ (Path.foot, Rank.create_for_pkt 0.0 pkt) ], s, Time.epoch)
-    | Fifo plst, h :: t ->
-        let pt, s', time =
-          z_in_of_policy_aux (List.nth plst h) t (h :: addr) s
-        in
-        ((h, Rank.create_for_pkt 0.0 pkt) :: pt, s', time)
-    | Strict plst, h :: t ->
-        let pt, s', time =
-          z_in_of_policy_aux (List.nth plst h) t (h :: addr) s
-        in
-        ((h, Rank.create_for_pkt (float_of_int h) pkt) :: pt, s', time)
-    | RoundRobin plst, h :: t ->
-        let n = List.length plst in
-        let r_i = sprintf "%s_r_%d" prefix h in
-        let rank = State.lookup r_i s in
-        let s' = State.rebind r_i (rank +. float_of_int n) s in
-        let pt, s'', time =
-          z_in_of_policy_aux (List.nth plst h) t (h :: addr) s'
-        in
-        ((h, Rank.create_for_pkt rank pkt) :: pt, s'', time)
-    | WeightedFair plst, h :: t ->
-        let lf, w = (sprintf "%s_lf_%d" prefix h, sprintf "%s_w_%d" prefix h) in
-        let weight = State.lookup w s in
-        let rank =
-          let time = pkt |> Packet.time |> Time.to_float in
-          match State.lookup_opt lf s with
-          | Some v -> max time v
-          | None -> time
-        in
-        let s' = State.rebind lf (rank +. (Packet.len pkt /. weight)) s in
-        let pt, s'', time =
-          z_in_of_policy_aux (List.nth plst h |> fst) t (h :: addr) s'
-        in
-        ((h, Rank.create_for_pkt rank pkt) :: pt, s'', time)
-    | _ -> failwith "ERROR: unreachable branch"
-  in
-  z_in_of_policy_aux p (route_pkt p pkt) [] s
-
-(* `z_out_of_policy p` is `(of_policy p).z_out`, i.e. the state updating
-   function at dequeue for `p`'s control.
-
-   More specifically, consider packet `pkt`, belonging to the flow living at
-   `p`'s leaf with address `i · _`. Call `p`'s `i`th child policy `p_i`.
-   We define state `z_out_of_policy p s pkt` inductively:
-   - Update `s` to `s'`, as per the semantics of the policy at `p`'s root.
-   - Next, recursively compute `z_out_of_policy p_i s' pkt`
-   Instead, if `p` has no children, i.e. `pkt` belongs to the flow living at
-   address `ε`, then let `z_out_of_policy p s pkt` be `s`. *)
-let z_out_of_policy p s pkt =
-  let rec z_out_of_policy_aux (p : Frontend.Policy.t) rankless_path addr s =
-    let prefix = Topo.addr_to_string addr in
-
-    match (p, rankless_path) with
-    | Class _, [] -> s
-    | Fifo plst, h :: t | Strict plst, h :: t ->
-        z_out_of_policy_aux (List.nth plst h) t (h :: addr) s
-    | WeightedFair plst, h :: t ->
-        z_out_of_policy_aux (List.nth plst h |> fst) t (h :: addr) s
-    | RoundRobin plst, h :: t ->
-        let n = List.length plst in
-        let who_skip pop turn =
-          let rec who_skip_aux t acc =
-            if t = pop then acc else who_skip_aux ((t + 1) mod n) (t :: acc)
-          in
-          who_skip_aux turn []
-        in
-        let turn = State.lookup (sprintf "%s_turn" prefix) s in
-        let s' =
-          State.rebind (sprintf "%s_turn" prefix)
-            ((h + 1) mod n |> float_of_int)
-            s
-        in
-        let skipped = who_skip h (int_of_float turn) in
-        let f s i =
-          let r_i = sprintf "%s_r_%d" prefix i in
-          State.rebind r_i (State.lookup r_i s +. float_of_int n) s
-        in
-        let s'' = List.fold_left f s' skipped in
-        z_out_of_policy_aux (List.nth plst h) t (h :: addr) s''
-    | _ -> failwith "ERROR: unreachable branch"
-  in
-  z_out_of_policy_aux p (route_pkt p pkt) [] s
-
-let of_policy p =
-  {
-    q = p |> Topo.of_policy |> Pieotree.create;
-    s = init_state_of_policy p;
-    z_in = z_in_of_policy p;
-    z_out = z_out_of_policy p;
+  type t = {
+    s : State.t;
+    q : Packet.t Pifotree.t;
   }
 
-let to_topo c = Pieotree.to_topo c.q
+  let state =
+    let rec state_aux (p : Policy.t) addr s =
+      let prefix = addr_to_string addr in
 
-let compile (topo, map) c =
-  let z_in' s pkt =
-    let f_tilde = Topo.lift_tilde map (to_topo c) in
-    let pt, s', ts = c.z_in s pkt in
-    (f_tilde pt, s', ts)
-  in
-  { q = Pieotree.create topo; s = c.s; z_in = z_in'; z_out = c.z_out }
+      let join ps s =
+        let f (i, s) p = (i + 1, state_aux p (Ptr (i, addr)) s) in
+        snd (List.fold_left f (0, s) ps)
+      in
+
+      match p with
+      | RR ps ->
+          List.mapi (fun i _ -> (fmt "%s_r_%d" prefix i, float_of_int i)) ps
+          |> Fun.flip State.rebind_all s
+          |> State.rebind (fmt "%s_turn" prefix) 0.0
+          |> join ps
+      | WFQ (ps, _) ->
+          List.mapi (fun i _ -> (fmt "%s_finish_%d" prefix i, 0.0)) ps
+          |> Fun.flip State.rebind_all s
+          |> join ps
+      | Strict ps -> join ps s
+      | FIFO _ | EDF _ -> s
+    in
+
+    state_aux policy Eps State.empty
+
+  let z_pre_push s pkt =
+    let rec z_pre_push_aux (p : Policy.t) directions addr s =
+      let prefix = addr_to_string addr in
+
+      match (p, directions) with
+      | Strict ps, h :: t ->
+          let pt, s' = z_pre_push_aux (List.nth ps h) t (Ptr (h, addr)) s in
+          (Pifotree.Path (h, float_of_int h, pt), s')
+      | RR ps, h :: t ->
+          let n = ps |> List.length |> float_of_int in
+          let r_var = fmt "%s_r_%d" prefix h in
+          let r_i = State.lookup r_var s in
+          let s' = State.rebind r_var (r_i +. n) s in
+          let pt, s'' = z_pre_push_aux (List.nth ps h) t (Ptr (h, addr)) s' in
+          (Pifotree.Path (h, r_i, pt), s'')
+      | WFQ (ps, ws), h :: t ->
+          let rank, s' = wfq_rank_state prefix pkt h (List.nth ws h) s in
+          let pt, s'' = z_pre_push_aux (List.nth ps h) t (Ptr (h, addr)) s' in
+          (Pifotree.Path (h, rank, pt), s'')
+      | FIFO _, [] -> (Pifotree.Foot 0.0, s)
+      | _ -> failwith "ERROR: unreachable branch"
+    in
+
+    z_pre_push_aux policy (route_pkt policy pkt) Eps s
+
+  let z_post_pop s pkt =
+    let rec z_post_pop_aux (p : Policy.t) directions addr s =
+      let prefix = addr_to_string addr in
+
+      match (p, directions) with
+      | FIFO _, [] | EDF _, [] -> s
+      | WFQ (ps, _), h :: t | Strict ps, h :: t ->
+          z_post_pop_aux (List.nth ps h) t (Ptr (h, addr)) s
+      | RR ps, h :: t ->
+          let n = List.length ps in
+          let turn, turn' =
+            ( prefix |> fmt "%s_turn" |> Fun.flip State.lookup s,
+              (h + 1) mod n |> float_of_int )
+          in
+          let who_skip =
+            let rec who_skip_aux t acc =
+              if t = h then acc else who_skip_aux ((t + 1) mod n) (t :: acc)
+            in
+            who_skip_aux (int_of_float turn) []
+          in
+          let increment s i =
+            let r_var = fmt "%s_r_%d" prefix i in
+            let r_i = State.lookup r_var s in
+            State.rebind r_var (r_i +. float_of_int n) s
+          in
+          let s' =
+            s
+            |> Fun.flip (List.fold_left increment) who_skip
+            |> State.rebind (fmt "%s_turn" prefix) turn'
+          in
+          z_post_pop_aux (List.nth ps h) t (Ptr (h, addr)) s'
+      | _ -> failwith "ERROR: unreachable branch"
+    in
+
+    z_post_pop_aux policy (route_pkt policy pkt) Eps s
+
+  let init =
+    { s = state; q = policy |> Topo.(of_policy Enq) |> Pifotree.create }
+
+  let push t pkt =
+    let pt, s' = z_pre_push t.s pkt in
+    let q' = Pifotree.push t.q pkt pt in
+    { q = q'; s = s' }
+
+  let pop t =
+    let* pkt, q' = Pifotree.pop t.q in
+    let s' = z_post_pop t.s pkt in
+    Some (pkt, { q = q'; s = s' })
+end
+
+module Make_RioControl (P : Policy) : Control = struct
+  open P
+
+  type t = {
+    s : State.t;
+    q : (Packet.t, Ast.clss) Riotree.t;
+  }
+
+  let state =
+    let rec state_aux (p : Policy.t) addr s =
+      let prefix = addr_to_string addr in
+
+      let join ps s =
+        let f (i, s) p = (i + 1, state_aux p (Ptr (i, addr)) s) in
+        snd (List.fold_left f (0, s) ps)
+      in
+
+      match p with
+      | WFQ (ps, _) ->
+          let binds index2key = List.mapi (fun i _ -> (index2key i, 0.0)) ps in
+          s
+          |> State.rebind_all (binds (fun i -> fmt "%s_start_%d" prefix i))
+          |> State.rebind_all (binds (fun i -> fmt "%s_len_%d" prefix i))
+          |> State.rebind_all (binds (fun i -> fmt "%s_finish_%d" prefix i))
+          |> join ps
+      | RR ps -> State.rebind (fmt "%s_turn" prefix) 0.0 s |> join ps
+      | Strict ps -> join ps s
+      | FIFO _ | EDF _ -> s
+    in
+
+    state_aux policy Eps State.empty
+
+  let z_pre_push s pkt =
+    let rec z_pre_push_aux (p : Policy.t) directions addr s =
+      let prefix = addr_to_string addr in
+
+      match (p, directions) with
+      | Strict ps, h :: t | RR ps, h :: t ->
+          z_pre_push_aux (List.nth ps h) t (Ptr (h, addr)) s
+      | WFQ (ps, ws), h :: t ->
+          let rank, s' = wfq_rank_state prefix pkt h (List.nth ws h) s in
+          let len_i = State.lookup (fmt "%s_len_%d" prefix h) s' in
+          let s'' =
+            s'
+            |> State.rebind (fmt "%s_el_%d_%f" prefix h len_i) rank
+            |> State.rebind (fmt "%s_len_%d" prefix h) (len_i +. 1.0)
+          in
+          z_pre_push_aux (List.nth ps h) t (Ptr (h, addr)) s''
+      | FIFO _, [] -> (0.0, s)
+      | _ -> failwith "ERROR: unreachable branch"
+    in
+
+    z_pre_push_aux policy (route_pkt policy pkt) Eps s
+
+  let z_pre_pop s =
+    let rec z_pre_pop_aux (p : Policy.t) addr s =
+      let prefix = addr_to_string addr in
+
+      let join compute_rank s ps =
+        let f s (i, r, p) =
+          let order, s' = z_pre_pop_aux p (Ptr (i, addr)) s in
+          (s', (order, r))
+        in
+        let s', order =
+          ps
+          |> List.mapi (fun i p -> (i, compute_rank i, p))
+          |> List.fold_left_map f s
+        in
+        (Riotree.Order order, s')
+      in
+
+      match p with
+      | RR ps ->
+          let turn = State.lookup (fmt "%s_turn" prefix) s in
+          let compute_rank i =
+            float_of_int i -. turn
+            |> int_of_float
+            |> Fun.flip ( mod ) (List.length ps)
+            |> float_of_int
+          in
+          join compute_rank s ps
+      | WFQ (ps, _) ->
+          let compute_rank i =
+            let start_i = State.lookup (fmt "%s_start_%d" prefix i) s in
+            match State.lookup_opt (fmt "%s_el_%d_%f" prefix i start_i) s with
+            | Some r -> r
+            | None -> Float.infinity
+          in
+          join compute_rank s ps
+      | Strict ps -> join float_of_int s ps
+      | FIFO _ | EDF _ -> (Foot, s)
+    in
+
+    z_pre_pop_aux policy Eps s
+
+  let z_post_pop s pkt =
+    let rec z_pre_pop_aux (p : Policy.t) directions addr s =
+      let prefix = addr_to_string addr in
+
+      match (p, directions) with
+      | FIFO _, [] | EDF _, [] -> s
+      | Strict ps, h :: t -> z_pre_pop_aux (List.nth ps h) t (Ptr (h, addr)) s
+      | WFQ (ps, _), h :: t ->
+          let start_var = fmt "%s_start_%d" prefix h in
+          let start_i = State.lookup start_var s in
+          let s' = State.rebind start_var (start_i +. 1.0) s in
+          z_pre_pop_aux (List.nth ps h) t (Ptr (h, addr)) s'
+      | RR ps, h :: t ->
+          let turn_var = fmt "%s_turn" prefix in
+          let turn' = (h + 1) mod List.length ps |> float_of_int in
+          let s' = State.rebind turn_var turn' s in
+          z_pre_pop_aux (List.nth ps h) t (Ptr (h, addr)) s'
+      | _ -> failwith "ERROR: unreachable branch"
+    in
+
+    z_pre_pop_aux policy (route_pkt policy pkt) Eps s
+
+  let init =
+    {
+      s = state;
+      q = policy |> Topo.(of_policy Deq) |> Fun.flip Riotree.create Packet.flow;
+    }
+
+  let push t pkt =
+    let r, s' = z_pre_push t.s pkt in
+    let q' = Riotree.push t.q pkt r in
+    { q = q'; s = s' }
+
+  let pop t =
+    let order, s' = z_pre_pop t.s in
+    let* pkt, q' = Riotree.pop t.q order in
+    let s'' = z_post_pop s' pkt in
+    Some (pkt, { q = q'; s = s'' })
+end
