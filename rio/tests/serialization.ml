@@ -35,7 +35,7 @@ let tests =
     make_test "strict n classes" "strict_n_classes"
       "{\"strict\":[{\"class\":\"C\"},{\"class\":\"B\"},{\"class\":\"A\"}]}";
     make_test "complex tree" "complex_tree"
-      "{\"rr\":[{\"strict\":[{\"class\":\"A\"},{\"class\":\"B\"},{\"class\":\"C\"}]},{\"rr\":[{\"class\":\"D\"},{\"class\":\"E\"},{\"class\":\"F\"}]},{\"rr\":[{\"class\":\"G\"},{\"class\":\"H\"}]}]}";
+      "{\"rr\":[{\"strict\":[{\"class\":\"A\"},{\"class\":\"B\"},{\"class\":\"C\"}]},{\"rr\":[{\"class\":\"D\"},{\"class\":\"E\"},{\"class\":\"F\"}]},{\"strict\":[{\"class\":\"G\"},{\"class\":\"H\"}]}]}";
   ]
 
 let error_tests =
