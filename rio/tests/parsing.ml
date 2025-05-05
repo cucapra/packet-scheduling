@@ -37,6 +37,12 @@ let wc_tests =
       "strict[C, B, A]";
     make_test "wfq of 3" "progs/work_conserving/wfq_n_classes.sched"
       "wfq[(A, 1.00), (B, 2.00), (C, 3.00)]";
+    make_test "fifo with class names not including capital letters"
+      "progs/work_conserving/fifo_noncap_classes.sched"
+      "fifo[CLASS_A, CLASS_B, CLASS_C]";
+    make_test "rr and fifo with camelCase variables"
+      "progs/work_conserving/fifo_camel_vars.sched"
+      "rr[fifo[CLASS_A, CLASS_B], fifo[CLASS_C, CLASS_D]]";
   ]
 
 let _nwc_tests =

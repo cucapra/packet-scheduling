@@ -5,8 +5,8 @@
 let whitespace = [' ' '\t']+
 let int = '-'? ['0'-'9']+
 let float = '-'? (['0'-'9']* '.')? ['0'-'9']+
-let id = ['a'-'z'] ['a'-'z' '0'-'9' '_']*
-let bigid = ['A'-'Z']*
+let varid = ['a'-'z'] ['a'-'z' 'A'-'Z' '0'-'9' '_']*
+let classid = ['A'-'Z']['A'-'Z' 'a'-'z' '0'-'9' '_']*
 let comment = ['/' '/'] ['\x00' - '\x09']* ['\x0b' - '\x80']*
 
 rule token = parse
@@ -38,8 +38,8 @@ rule token = parse
 | "tokenbucket"         { TOKEN }
 | "stopandgo"           { STOPGO }
 | ";"                   { SEMICOLON }
-| id as v               { VAR(v) }
-| bigid as i            { CLSS(i) }
+| varid as v            { VAR(v) }
+| classid as i          { CLSS(i) }
 | int                   { INT (int_of_string (Lexing.lexeme lexbuf)) }
 | eof                   { EOF }
 
