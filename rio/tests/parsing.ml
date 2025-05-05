@@ -37,6 +37,9 @@ let wc_tests =
       "strict[C, B, A]";
     make_test "wfq of 3" "progs/work_conserving/wfq_n_classes.sched"
       "wfq[(A, 1.00), (B, 2.00), (C, 3.00)]";
+    make_test "fifo with non-capitalized classes"
+      "progs/work_conserving/fifo_noncap_classes.sched"
+      "fifo[CLASS_A, CLASS_B, CLASS_C]";
   ]
 
 let _nwc_tests =
