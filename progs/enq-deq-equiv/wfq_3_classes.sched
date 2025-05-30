@@ -1,0 +1,5 @@
+classes A, B, C;
+
+policy = wfq[(fifo[A], 3), (fifo[B], 2), (fifo[C], 1)];
+
+return policy

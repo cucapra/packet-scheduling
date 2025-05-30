@@ -1,5 +1,7 @@
 {
    open Parser
+
+   exception LexerError of Ast.error_info
 }
 
 let whitespace = [' ' '\t']+
@@ -46,7 +48,6 @@ rule token = parse
 
 | _ as c {
             let pos = lexbuf.Lexing.lex_curr_p in
-            Printf.printf "Error at line %d\n" pos.Lexing.pos_lnum;
-            Printf.printf "Unrecognized character: [%c]\n" c;
-            exit 1
+            let row, col, char = Some pos.Lexing.pos_lnum, None, Some c in
+            raise (LexerError { row; col; char })
          }

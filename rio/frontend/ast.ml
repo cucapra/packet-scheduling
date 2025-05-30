@@ -1,7 +1,12 @@
 type clss = string
 type var = string
 
-(* Changes to this type must also be reflected in `Policy.t` in policy.ml *)
+type error_info = {
+  row : int option;
+  col : int option;
+  char : char option;
+}
+
 type set =
   | Class of clss
   | Union of set list
@@ -24,8 +29,4 @@ type stream =
   (* Variables *)
   | Var of var
 
-type policy = stream
-type declare = clss list
-type assignment = var * policy
-type return = policy
-type program = declare * assignment list * return
+type program = clss list * (var * stream) list * stream

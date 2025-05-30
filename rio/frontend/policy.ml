@@ -1,81 +1,59 @@
-(* Changes to this type must also be reflected in `Ast.policy` in ast.ml *)
 type t =
-  | Class of Ast.clss
-  | Fifo of t list
-  | RoundRobin of t list
+  | FIFO of Ast.clss list
+  | EDF of Ast.clss list
   | Strict of t list
-  | WeightedFair of (t * float) list
+  | RR of t list
+  | WFQ of t list * float list
 
 exception UnboundVariable of Ast.var
 exception UndeclaredClass of Ast.clss
 exception DuplicateClass of Ast.clss
 
-let lookup s x =
-  match List.assoc_opt x s with
-  | Some v -> v
-  | None -> raise (UnboundVariable x)
+let rec lookup x = function
+  | [] -> raise (UnboundVariable x)
+  | (v, p) :: t when v = x -> (p, t)
+  | (_, _) :: t -> lookup x t
 
-let rec sub_set cl st (p : Ast.set) used =
-  match p with
-  | Class c ->
-      if List.mem c !used then raise (DuplicateClass c)
-      else if List.mem c cl then (
-        used := c :: !used;
-        [ Class c ])
-      else raise (UndeclaredClass c)
-  | Union slst ->
-      let subbed = List.map (fun x -> sub_set cl st x used) slst in
-      List.flatten subbed
-
-let rec sub cl st (p : Ast.policy) used =
-  let sub_plst cl st = List.map (fun x -> sub cl st x used) in
-  let sub_weighted_plst cl st =
-    List.map (fun (x, i) -> (sub cl st x used, i))
-  in
-
-  (* Temporary compilation removes FIFOs for test cases *)
-  let rec extract_subpol (p : t) =
-    match p with
-    | Class _ -> p
-    | Fifo plst ->
-        if List.length plst = 1 then extract_subpol (List.hd plst)
-        else Fifo (List.map extract_subpol plst)
-    | RoundRobin plst -> RoundRobin (List.map extract_subpol plst)
-    | Strict plst -> Strict (List.map extract_subpol plst)
-    | WeightedFair wplst ->
-        WeightedFair (List.map (fun (x, y) -> (extract_subpol x, y)) wplst)
+let rec sub cl st used (p : Ast.stream) =
+  let sub_ps = List.map (sub cl st used) in
+  let rec sub_set = function
+    | Ast.Class c ->
+        if List.mem c !used then raise (DuplicateClass c)
+        else if not (List.mem c cl) then raise (UndeclaredClass c)
+        else (
+          used := c :: !used;
+          [ c ])
+    | Ast.Union sets -> sets |> List.map sub_set |> List.flatten
   in
 
   match p with
-  | Var x -> sub cl st (lookup st x) used
-  | Fifo p -> Fifo (sub_set cl st p used)
-  | RoundRobin plst -> extract_subpol (RoundRobin (sub_plst cl st plst))
-  | Strict plst -> extract_subpol (Strict (sub_plst cl st plst))
-  | WeightedFair wplst ->
-      extract_subpol
-        (WeightedFair
-           (sub_weighted_plst cl st
-              (List.map (fun (x, y) -> (x, float_of_int y)) wplst)))
+  | Var x ->
+      let p, st = lookup x st in
+      sub cl st used p
+  | Fifo s -> FIFO (sub_set s)
+  | EarliestDeadline s -> EDF (sub_set s)
+  | Strict ps -> Strict (sub_ps ps)
+  | RoundRobin ps -> RR (sub_ps ps)
+  | WeightedFair pws ->
+      let ps, ws = List.split pws in
+      WFQ (sub_ps ps, List.map float_of_int ws)
   | _ -> failwith "ERROR: unsupported policy"
 
 (* Look up any variables and substitute them in. *)
-let of_program (cl, alst, ret) : t = sub cl alst ret (ref [])
+let of_program (classes, assigns, ret) = sub classes assigns (ref []) ret
 
 let rec to_string p =
-  let sprintf = Printf.sprintf in
-  let join lst =
-    sprintf "[%s]" (lst |> List.map to_string |> String.concat ", ")
-  in
-  let join_weighted lst =
-    sprintf "[%s]"
-      (lst
-      |> List.map (fun (x, y) -> sprintf "(%s, %.2f)" (to_string x) y)
-      |> String.concat ", ")
-  in
+  let fmt = Printf.sprintf in
+  let join lst to_string = lst |> List.map to_string |> String.concat ", " in
 
   match p with
-  | Class c -> c
-  | Fifo lst -> sprintf "fifo%s" (join lst)
-  | RoundRobin lst -> sprintf "rr%s" (join lst)
-  | Strict lst -> sprintf "strict%s" (join lst)
-  | WeightedFair lst -> sprintf "wfq%s" (join_weighted lst)
+  | FIFO cs when List.length cs > 1 -> fmt "fifo[union[%s]]" (join cs Fun.id)
+  | EDF cs when List.length cs > 1 -> fmt "edf[union[%s]]" (join cs Fun.id)
+  | FIFO cs -> fmt "fifo[%s]" (join cs Fun.id)
+  | EDF cs -> fmt "edf[%s]" (join cs Fun.id)
+  | Strict ps -> fmt "strict[%s]" (join ps to_string)
+  | RR ps -> fmt "rr[%s]" (join ps to_string)
+  | WFQ (ps, ws) ->
+      let pws = List.combine ps ws in
+      let to_string (p, w) = fmt "(%s, %f)" (to_string p) w in
+      fmt "wfq[%s]" (join pws to_string)
