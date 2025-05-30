@@ -1,6 +1,12 @@
 type clss = string
 type var = string
 
+type error_info = {
+  row : int option;
+  col : int option;
+  char : char option;
+}
+
 type set =
   | Class of clss
   | Union of set list

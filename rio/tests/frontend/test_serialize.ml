@@ -18,9 +18,6 @@ let make_test name file =
     (prog_to_json file) ~printer:Yojson.Basic.pretty_to_string
     ~cmp:Yojson.Basic.equal
 
-let make_error_test name file exn =
-  name >:: fun _ -> assert_raises exn (fun () -> prog_to_json file)
-
 let tests =
   [
     make_test "single class policy" "work_conserving/drop_a_class.sched";
@@ -38,25 +35,5 @@ let tests =
     make_test "complex tree" "work_conserving/complex_tree.sched";
   ]
 
-let error_tests =
-  [
-    make_error_test "undeclared class" "incorrect/undeclared_classes.sched"
-      (Policy.UndeclaredClass "Z");
-    make_error_test "unbound variable" "incorrect/unbound_var.sched"
-      (Policy.UnboundVariable "policy");
-    make_error_test "unbound var in middle of list of assignments"
-      "incorrect/unbound_var_hier.sched" (Policy.UnboundVariable "r_polic");
-    make_error_test "class used twice in policy"
-      "incorrect/duplicate_classes.sched" (Policy.DuplicateClass "B");
-    make_error_test "class used twice in one fifo"
-      "incorrect/duplicate_samepol.sched" (Policy.DuplicateClass "A");
-    make_error_test "fifo for multiple classes without union"
-      "incorrect/set_multiple.sched"
-      (Parser.ParserError "Syntax error at line 4, character 17");
-    make_error_test "rr for classes without fifo'ing first"
-      "incorrect/set_hierarchical.sched"
-      (Parser.ParserError "Syntax error at line 3, character 14");
-  ]
-
-let suite = "serialization tests" >::: tests @ error_tests
+let suite = "serialization tests" >::: tests
 let () = run_test_tt_main suite

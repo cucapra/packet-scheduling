@@ -1,12 +1,14 @@
-exception ParserError of string
+exception ParserError of Ast.error_info
 exception FileNotFound of string
 
-(* `syntax_error_msg lexbuf` is a syntax error message for the current
-   position *)
-let syntax_error_msg lexbuf =
+(* `syntax_error_msg lexbuf` is the "information" for a syntax error at the 
+    current position *)
+let syntax_error_msg lexbuf : Ast.error_info =
   let pos = Lexing.lexeme_start_p lexbuf in
-  let lnum, cnum = (pos.pos_lnum, pos.pos_cnum - pos.pos_bol) in
-  Printf.sprintf "Syntax error at line %d, character %d" lnum cnum
+  let row, col, char =
+    (Some pos.pos_lnum, Some (pos.pos_cnum - pos.pos_bol), None)
+  in
+  { row; col; char }
 
 let parse lexbuf = Parser.prog Lexer.token lexbuf
 
