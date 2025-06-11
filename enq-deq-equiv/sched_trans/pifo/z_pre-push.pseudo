@@ -1,0 +1,7 @@
+def z_pre-push(st, pkt):
+    r = arrival_time(pkt)
+    f = flow(pkt)
+    rank_ptr = "r_" + str(f)
+    r_i = int(st[rank_ptr])
+    st["rank_ptr"] += float(n)
+    return ((f, r_i) :: r, st)
