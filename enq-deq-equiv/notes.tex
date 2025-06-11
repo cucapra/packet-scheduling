@@ -472,6 +472,12 @@ Their semantics are written out in full in \Cref{fig:control_push_pop}.
     \end{enumerate}
 \end{dfn}
 
+\begin{abuse}
+    For simulation $f$ and $\cinit$, suppose 
+    $$f(s, q, \zprepush, \zpostpop) = (s^\prime, q^\prime, \zprepush, \zprepop, \zpostpop)$$
+    We'll use $f(s)$ and $f(q)$ to mean $s^\prime$ and $q^\prime$ respectively.
+\end{abuse}
+
 \begin{dfn}
     For $t \in \Topo$, define the set $\CTopo(t)$ such that
     \begin{align*}
@@ -663,7 +669,8 @@ See \Cref{sec:details} for a complete proofs of these lemmas.
                 \item
 
                 \item Suppose $\push(c_1, \pkt) = c_1^\prime$.
-                    By \Cref{lem:def}, $\tzprepush$ is defined on $(s_2, \pkt)$ for all $\pkt \in \Pkt$.
+                    From \Cref{fig:control_push_pop}, notice $\tzprepush$ doesn't read state;
+                    therefore, $\tzprepush$ is defined on $(s_2, \pkt)$ for all $\pkt \in \Pkt$.
                     From inspecting \Cref{dfn:riotree-push}, $\push(q, \pkt, r)$ is defined for all $q \in \RioTree(t)$, $\pkt \in \Pkt$, and $r \in \Rk$.
                     Therefore, by rule RioCtrl-Push in \Cref{fig:control_push_pop}, $\push(c_2, \pkt) = c_2^\prime$ is defined.
             \end{enumerate}
