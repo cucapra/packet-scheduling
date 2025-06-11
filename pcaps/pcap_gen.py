@@ -1,3 +1,4 @@
+import os
 from scapy.all import Ether, IP, wrpcap
 
 a = "10:10:10:10:10:10"
@@ -8,6 +9,13 @@ e = "50:50:50:50:50:50"
 f = "60:60:60:60:60:60"
 g = "70:70:70:70:70:70"
 dummy = "1:1:1:1:1:1"
+
+
+def append_path_prefix(file):
+    path_to_script = os.path.dirname(__file__)
+    path_to_file = os.path.join(path_to_script, file)
+    print(path_to_file)
+    return path_to_file
 
 
 def three_flows():
@@ -72,12 +80,12 @@ def seven_flows():
 
 
 def generate_pcaps():
-    wrpcap("./pcaps/three_flows.pcap", three_flows())
-    wrpcap("./pcaps/three_flows_bursty.pcap", three_flows_bursty())
-    wrpcap("./pcaps/two_then_three.pcap", two_then_three())
-    wrpcap("./pcaps/four_flows.pcap", four_flows())
-    wrpcap("./pcaps/five_flows.pcap", five_flows())
-    wrpcap("./pcaps/seven_flows.pcap", seven_flows())
+    wrpcap(append_path_prefix("three_flows.pcap"), three_flows())
+    wrpcap(append_path_prefix("three_flows_bursty.pcap"), three_flows_bursty())
+    wrpcap(append_path_prefix("two_then_three.pcap"), two_then_three())
+    wrpcap(append_path_prefix("four_flows.pcap"), four_flows())
+    wrpcap(append_path_prefix("five_flows.pcap"), five_flows())
+    wrpcap(append_path_prefix("seven_flows.pcap"), seven_flows())
 
 
 if __name__ == "__main__":
