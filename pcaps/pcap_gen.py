@@ -1,5 +1,5 @@
 import os
-from scapy.all import Ether, IP, wrpcap
+from scapy.all import Ether, Raw, wrpcap
 
 a = "10:10:10:10:10:10"
 b = "20:20:20:20:20:20"
@@ -14,78 +14,83 @@ dummy = "1:1:1:1:1:1"
 def append_path_prefix(file):
     path_to_script = os.path.dirname(__file__)
     path_to_file = os.path.join(path_to_script, file)
-    print(path_to_file)
     return path_to_file
 
 
 def three_flows():
     packets = []
     srcs = [a, b, c] * 3 + [a]
-    for src in srcs:
-        packets += Ether(src=src, dst=dummy) / IP(src="1.1.1.1", dst="1.1.1.1")
-    for i, p in enumerate(packets):
-        p.time = i / 10
+    for i, src in enumerate(srcs):
+        pkt = Ether(src=src, dst=dummy)
+        pkt.time = i / 10
+        packets += pkt
     return packets
 
 
 def three_flows_bursty():
     packets = []
     srcs = [a, b, c] * 16 + [a, b]
-    for src in srcs:
-        packets += Ether(src=src, dst=dummy) / IP(src="1.1.1.1", dst="1.1.1.1")
-    time = 0
-    for i, p in enumerate(packets):
-        p.time = (i / 10) + int(i / 5)
+    for i, src in enumerate(srcs):
+        pkt = Ether(src=src, dst=dummy)
+        pkt.time = (i / 10) + int(i / 5)
+        packets += pkt
     return packets
 
 
 def two_then_three():
     packets = []
     srcs = [b, c] * 7 + [a] * 6 + [a, b, c] * 10
-    for src in srcs:
-        packets += Ether(src=src, dst=dummy) / IP(src="1.1.1.1", dst="1.1.1.1")
-    for i, p in enumerate(packets):
-        p.time = i / 10
+    for i, src in enumerate(srcs):
+        pkt = Ether(src=src, dst=dummy)
+        pkt.time = i / 10
+        packets += pkt
     return packets
 
 
 def four_flows():
     packets = []
     srcs = [a, b, c, d] * 12 + [a, b]
-    for src in srcs:
-        packets += Ether(src=src, dst=dummy) / IP(src="1.1.1.1", dst="1.1.1.1")
-    for i, p in enumerate(packets):
-        p.time = i / 10
+    for i, src in enumerate(srcs):
+        pkt = Ether(src=src, dst=dummy)
+        pkt.time = i / 10
+        packets += pkt
     return packets
 
 
 def five_flows():
     packets = []
     srcs = [a, b, c, d, e] * 10
-    for src in srcs:
-        packets += Ether(src=src, dst=dummy) / IP(src="1.1.1.1", dst="1.1.1.1")
-    for i, p in enumerate(packets):
-        p.time = i / 10
+    for i, src in enumerate(srcs):
+        pkt = Ether(src=src, dst=dummy)
+        pkt.time = i / 10
+        packets += pkt
     return packets
 
 
 def seven_flows():
     packets = []
     srcs = [a, b, c, d, e, f, g] * 7 + [a]
-    for src in srcs:
-        packets += Ether(src=src, dst=dummy) / IP(src="1.1.1.1", dst="1.1.1.1")
-    for i, p in enumerate(packets):
-        p.time = i / 10
+    for i, src in enumerate(srcs):
+        pkt = Ether(src=src, dst=dummy)
+        pkt.time = i / 10
+        packets += pkt
     return packets
 
 
 def generate_pcaps():
-    wrpcap(append_path_prefix("three_flows.pcap"), three_flows())
-    wrpcap(append_path_prefix("three_flows_bursty.pcap"), three_flows_bursty())
-    wrpcap(append_path_prefix("two_then_three.pcap"), two_then_three())
-    wrpcap(append_path_prefix("four_flows.pcap"), four_flows())
-    wrpcap(append_path_prefix("five_flows.pcap"), five_flows())
-    wrpcap(append_path_prefix("seven_flows.pcap"), seven_flows())
+    pcaps = [
+        ("three_flows.pcap", three_flows()),
+        ("three_flows_bursty.pcap", three_flows_bursty()),
+        ("two_then_three.pcap", two_then_three()),
+        ("four_flows.pcap", four_flows()),
+        ("five_flows.pcap", five_flows()),
+        ("seven_flows.pcap", seven_flows())
+    ]
+
+    for name, pcap in pcaps:
+        name = append_path_prefix(name)
+        wrpcap(name, pcap)
+        print(f"Generated {name}")
 
 
 if __name__ == "__main__":
