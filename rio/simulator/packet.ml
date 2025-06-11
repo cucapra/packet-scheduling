@@ -1,9 +1,7 @@
 open Pcap
-open Ethernet
 
 type t = {
   len : int;
-  dst : int;
   time : Time.t;
   flow : string;
   pushed : Time.t option;
@@ -51,15 +49,11 @@ let create_pkt h (ph, pb) =
     ( Time.of_ints (H.get_pcap_packet_ts_sec ph) (H.get_pcap_packet_ts_usec ph),
       H.get_pcap_packet_incl_len ph )
   in
-  let src, dst =
-    ( hex_to_int (Hex.of_string (copy_ethernet_src pb)),
-      hex_to_int (Hex.of_string (copy_ethernet_dst pb)) )
-  in
+  let src = hex_to_int (Hex.of_string (Ethernet.copy_ethernet_src pb)) in
   {
     time;
     len = Int32.to_int size_incl;
     flow = src |> find_flow;
-    dst;
     pushed = None;
     popped = None;
   }
@@ -93,17 +87,15 @@ let pkts_from_file filename =
 
 let write_to_csv ts filename =
   let format_to_csv metas =
-    let headers =
-      "\"flow\", \"dst\", \"arrived\", \"length\", \"pushed\", \"popped\""
-    in
+    let headers = "\"flow\", \"arrived\", \"length\", \"pushed\", \"popped\"" in
     let format_one_to_csv meta =
       let pushed, popped =
         match (meta.pushed, meta.popped) with
         | Some pushed', Some popped' -> (pushed', popped')
         | _, _ -> (0.0, 0.0)
       in
-      Printf.sprintf "\"%s\",\"%d\",\"%f\",\"%d\",\"%f\",\"%f\"" meta.flow
-        meta.dst meta.time meta.len pushed popped
+      Printf.sprintf "\"%s\",\"%f\",\"%d\",\"%f\",\"%f\"" meta.flow meta.time
+        meta.len pushed popped
     in
     Printf.sprintf "%s\n%s" headers
       (String.concat "\n" (List.map format_one_to_csv metas))
