@@ -9,7 +9,7 @@
 #define QUEUE_SIZE 10
 #define WAVEFORM   "waveform.vcd"
 
-enum class Op { Push, Pop };
+enum class Op { Push, Pop, PushPop, PushPush };
 
 struct RankValue {
     int rank;
@@ -26,7 +26,8 @@ struct RankValue {
 
 struct Cmd {
     Op op;
-    RankValue data;
+    RankValue data_1;
+    RankValue data_2;
 };
 
 
@@ -38,12 +39,38 @@ std::vector<Cmd> generate_commands(int num_cmds) {
         Cmd cmd;
         if (!size || size == QUEUE_SIZE) // to avoid over/underflow
             cmd.op = !size ? Op::Push : Op::Pop;
-        else 
-            cmd.op = rand() % 3 ? Op::Push : Op::Pop;
-        int v = rand() % 1000, r = rand() % 1000;
-        cmd.data = {r, v, i};
+        else {
+            int rng = rand() % 4;
+            rng = rng < 0 ? -1 * rng : rng;
+            switch (rng) {
+                case 0:
+                    cmd.op = Op::Push;
+                    break;
+                case 1:
+                    cmd.op = Op::Pop;
+                    break;
+                case 2:
+                    cmd.op = Op::PushPop;
+                    break;
+                case 3:
+                    cmd.op = size == QUEUE_SIZE - 1 ? Op::Push : Op::PushPush;
+                    break;
+            }
+        }
+        int v_1 = rand() % 1000, r_1 = rand() % 1000;
+        int v_2 = rand() % 1000, r_2 = rand() % 1000;
+        cmd.data_1 = {r_1, v_1, 2 * i};
+        cmd.data_2 = {r_2, v_2, 2 * i + 1};
         cmds.push_back(cmd);
-        size = size + (cmd.op == Op::Push ? 1 : -1);
+
+        int delta;
+        switch (cmd.op) {
+            case Op::Push:     delta = 1;  break;
+            case Op::Pop:      delta = -1; break;
+            case Op::PushPop:  delta = 0;  break;
+            case Op::PushPush: delta = 2;  break;
+        }
+        size = size + delta;
     }
 
     while (size) {
@@ -63,12 +90,23 @@ std::vector<int> compute_expected(std::vector<Cmd> cmds) {
     for (Cmd cmd : cmds) {
         switch (cmd.op) {
             case Op::Push:
-                pifo.push(cmd.data);
+                pifo.push(cmd.data_1);
                 break;
 
             case Op::Pop:
                 out.push_back(pifo.top().value);
                 pifo.pop();
+                break;
+
+            case Op::PushPop:
+                pifo.push(cmd.data_2);
+                out.push_back(pifo.top().value);
+                pifo.pop();
+                break;
+
+            case Op::PushPush:
+                pifo.push(cmd.data_1);
+                pifo.push(cmd.data_2);
                 break;
         }
     }
@@ -110,18 +148,23 @@ std::vector<int> simulate(std::vector<Cmd> cmds, const char* waveform) {
                 out.push_back(dut->pop_value);
 
             if (it == cmds.end()) {
-                dut->push = 0;
+                dut->push_1 = 0;
+                dut->push_2 = 0;
                 dut->pop = 0;
                 delay--;
                 continue;
             }
 
             Cmd cmd = *it;
+            
+            dut->push_1 = cmd.op == Op::Push    || cmd.op == Op::PushPush;
+            dut->push_2 = cmd.op == Op::PushPop || cmd.op == Op::PushPush;
+            dut->pop    = cmd.op == Op::Pop     || cmd.op == Op::PushPop;
 
-            dut->push = cmd.op == Op::Push;
-            dut->pop  = cmd.op == Op::Pop;
-            dut->push_rank  = cmd.data.rank;
-            dut->push_value = cmd.data.value;
+            dut->push_rank_1  = cmd.data_1.rank;
+            dut->push_value_1 = cmd.data_1.value;
+            dut->push_rank_2  = cmd.data_2.rank;
+            dut->push_value_2 = cmd.data_2.value;
 
             it++;
         }
@@ -161,11 +204,31 @@ int main(int argc, char** argv, char** env) {
     if (verbose) {
         std::cout << "Commands" << std::endl;
         for (Cmd c : cmds) {
-            int value = c.data.value, rank = c.data.rank;
-            if (c.op == Op::Push)
-                std::cout << "push(" << value << ", " << rank << ")" << std::endl;
-            else
-                std::cout << "pop" << std::endl;
+            int value_1 = c.data_1.value, rank_1 = c.data_1.rank;
+            int value_2 = c.data_2.value, rank_2 = c.data_2.rank;
+            switch (c.op) {
+                case Op::Push:
+                    std::cout << "push(" << value_1 << ", " << rank_1 << ")" << std::endl;
+                    break;
+                case Op::Pop:
+                    std::cout << "pop" << std::endl;
+                    break;
+                case Op::PushPop:
+                    std::cout << "push(" << value_2 << ", " << rank_2 << ") + pop" << std::endl;
+                    break;
+                case Op::PushPush:
+                    std::cout << "push(" 
+                              << value_1
+                              << ", " 
+                              << rank_1
+                              << ") + push("
+                              << value_2
+                              << ", " 
+                              << rank_2
+                              << ")"
+                              << std::endl;
+                    break;
+            }
         }
         std::cout << "Expected" << std::endl;
         for (int i : expect) std::cout << i << std::endl;
@@ -176,8 +239,10 @@ int main(int argc, char** argv, char** env) {
 
     if (expect == output)
         std::cout << "\x1B[32mTEST PASS\033[0m\t\t" << std::endl;
-    else
+    else {
         std::cout << "\x1B[31mTEST FAIL\033[0m\t\t" << std::endl;
+        return 1;
+    }
 
     return 0;
 }
