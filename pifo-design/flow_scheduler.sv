@@ -35,14 +35,6 @@ module FlowScheduler #(parameter N = 10) (
     element elements [N - 1 : 0];
     logic [31:0] size;
 
-    always_ff @( posedge clk ) begin
-        if ( rst ) begin
-            push_valid_S <= 0;
-            pop_valid_S  <= 0;
-            for ( int i = 0; i < N; i++ ) elements[i].valid <= 0;
-        end
-    end
-
     assign is_full  = size == N;
     assign is_empty = size == 0;
 
@@ -50,10 +42,10 @@ module FlowScheduler #(parameter N = 10) (
     // Check stage
     //-------------------------------------------------------------------------
 
-    logic [1:0] [31:0] push_value_C;
-    logic [1:0] [31:0] push_rank_C;
-    logic [1:0]        push_valid_C;
-    logic [1:0] [31:0] insert_idx_C;
+    logic [1:0]  [31:0] push_value_C;
+    logic [1:0]  [31:0] push_rank_C;
+    logic [1:0]         push_valid_C;
+    logic signed [N :0] insert_idx_C [1:0];
 
     assign push_valid_C[0] = push_1;
     assign push_value_C[0] = push_value_1;
@@ -65,30 +57,25 @@ module FlowScheduler #(parameter N = 10) (
 
     logic pop_valid_C;
     assign pop_valid_C = pop;
-    
-    // compute index to insert new element for `push_1`
+
+    // compute index to insert new element for `push_1` and `push_2`
     always_comb begin
-        insert_idx_C[0] = N - 1;
-        insert_idx_C[1] = N - 1;
-       
-        for ( int j = 0; j < 2; j++ )
+        for ( int j = 0; j < 2; j++ ) begin
+            insert_idx_C[j][N] = 1;
             for ( int i = 0; i < N; i++ )
-                if ( !elements[i].valid || push_rank_C[j] < elements[i].rank ) begin
-                    insert_idx_C[j] = i;
-                    for ( int k = 0; k < 2; k++ ) begin
-                        if ( push_valid_S[k] && insert_idx_S[k] < i )
-                            insert_idx_C[j] += 1;
-                        if ( push_valid_S[k]      && 
-                             insert_idx_S[k] == i && 
-                             push_rank_S[k]  <= push_rank_C[j] )
-                            insert_idx_C[j] += 1;
-                    end
+                insert_idx_C[j][i] = !elements[i].valid || push_rank_C[j] < elements[i].rank;
+        end
 
-                    if ( pop_valid_S && insert_idx_C[j] > 0 )
-                        insert_idx_C[j] -= 1;
+        for ( int c = 0; c < 2; c++ ) begin
+            for ( int s = 0; s < 2; s++ )
+                if (  push_valid_S[s] &&
+                    ( insert_idx_S[s] > insert_idx_C[c] ||
+                    ( insert_idx_S[s] == insert_idx_C[c] && push_rank_S[s] <= push_rank_C[c] ) ) )
+                    insert_idx_C[c] = insert_idx_C[c] << 1;
 
-                    break;
-                end
+            if ( pop_valid_S && !insert_idx_C[c][0] )
+                insert_idx_C[c] = insert_idx_C[c] >>> 1;
+        end
     end
 
     //-------------------------------------------------------------------------
@@ -98,96 +85,112 @@ module FlowScheduler #(parameter N = 10) (
     logic [1:0] [31:0] push_value_S;
     logic [1:0] [31:0] push_rank_S;
     logic [1:0]        push_valid_S;
-    logic [1:0] [31:0] insert_idx_S;
+    logic       [N :0] insert_idx_S [1:0];
 
     logic pop_valid_S;
     
-    // propogate
+    // propogate + reset
     always_ff @( posedge clk ) begin
-        insert_idx_S <= insert_idx_C;
-        push_value_S <= push_value_C;
-        push_rank_S  <= push_rank_C;
-        push_valid_S <= push_valid_C;
-        pop_valid_S  <= pop_valid_C;
+        if ( rst ) begin
+            push_valid_S <= 0;
+            pop_valid_S  <= 0;
+            for ( int i = 0; i < N; i++ ) elements[i].valid <= 0;
+        end
+        else begin
+            for ( int i = 0; i < 2; i++ ) begin
+                if ( insert_idx_C[0] > insert_idx_C[1] && 
+                     push_valid_C[0] && push_valid_C[1] ) begin
+                    insert_idx_S[i] <= insert_idx_C[1 - i];
+                    push_value_S[i] <= push_value_C[1 - i];
+                    push_rank_S[i]  <= push_rank_C[1 - i];
+                end
+                else begin
+                    insert_idx_S[i] <= insert_idx_C[i];
+                    push_value_S[i] <= push_value_C[i];
+                    push_rank_S[i]  <= push_rank_C[i];
+                end
+            end
+
+            push_valid_S <= push_valid_C;
+            pop_valid_S <= pop_valid_C;
+        end
     end
     
-    // shift
+    // insert + shift
     always_ff @( posedge clk ) begin 
-        if ( push_valid_S[0] && push_valid_S[1] ) begin
-            // perform two pushes 
+        if ( push_valid_S[0] && push_valid_S[1] ) begin // perform two pushes 
+            // shifting
             for ( int i = 0; i < N - 1; i++ ) begin
-                if ( insert_idx_S[0] <= i && insert_idx_S[1] <= i) 
+                if ( i < N - 2 && insert_idx_S[0][i] && insert_idx_S[1][i] ) 
                     elements[i + 2] <= elements[i];
-                else if ( insert_idx_S[0] <= i || insert_idx_S[1] <= i )
+                else if ( insert_idx_S[0][i] || insert_idx_S[1][i] )
                     elements[i + 1] <= elements[i];
             end
+            
+            // insert
+            for ( int i = 1; i < N; i++ ) begin
+                if ( insert_idx_S[0] == insert_idx_S[1] ) begin
+                    if ( insert_idx_S[0][i] && !insert_idx_S[0][i - 1] ) begin
+                        elements[i].valid <= 1;
+                        elements[i].value <= 
+                            push_rank_S[0] <= push_rank_S[1] ? push_value_S[0] : push_value_S[1];
+                        elements[i].rank  <= 
+                            push_rank_S[0] <= push_rank_S[1] ? push_rank_S[0] : push_rank_S[1];
 
-            if ( insert_idx_S[0] == insert_idx_S[1] ) begin
-                elements[insert_idx_S[0]].valid <= 1;
-                elements[insert_idx_S[0]].value <= 
-                    push_rank_S[0] <= push_rank_S[1] ? push_value_S[0] : push_value_S[1];
-                elements[insert_idx_S[0]].rank  <= 
-                    push_rank_S[0] <= push_rank_S[1] ? push_rank_S[0] : push_rank_S[1];
-
-                elements[insert_idx_S[1] + 1].valid <= 1;
-                elements[insert_idx_S[1] + 1].value <= 
-                    push_rank_S[0] <= push_rank_S[1] ? push_value_S[1] : push_value_S[0];
-                elements[insert_idx_S[1] + 1].rank  <= 
-                    push_rank_S[0] <= push_rank_S[1] ? push_rank_S[1] : push_rank_S[0];
-            end
-            else if ( insert_idx_S[0] < insert_idx_S[1] ) begin
-                elements[insert_idx_S[0]].valid <= 1;
-                elements[insert_idx_S[0]].value <= push_value_S[0];
-                elements[insert_idx_S[0]].rank  <= push_rank_S[0];
-
-                elements[insert_idx_S[1] + 1].valid <= 1;
-                elements[insert_idx_S[1] + 1].value <= push_value_S[1];
-                elements[insert_idx_S[1] + 1].rank  <= push_rank_S[1];
-            end
-            else begin
-                elements[insert_idx_S[0] + 1].valid <= 1;
-                elements[insert_idx_S[0] + 1].value <= push_value_S[0];
-                elements[insert_idx_S[0] + 1].rank  <= push_rank_S[0];
-
-                elements[insert_idx_S[1]].valid <= 1;
-                elements[insert_idx_S[1]].value <= push_value_S[1];
-                elements[insert_idx_S[1]].rank  <= push_rank_S[1];
+                        elements[i + 1].valid <= 1;
+                        elements[i + 1].value <= 
+                            push_rank_S[0] <= push_rank_S[1] ? push_value_S[1] : push_value_S[0];
+                        elements[i + 1].rank  <= 
+                            push_rank_S[0] <= push_rank_S[1] ? push_rank_S[1] : push_rank_S[0];
+                    end
+                end
+                else begin
+                    if ( insert_idx_S[0][i] && !insert_idx_S[0][i - 1] ) begin
+                        elements[i].valid <= 1;
+                        elements[i].value <= push_value_S[0];
+                        elements[i].rank  <= push_rank_S[0];
+                    end
+                    if ( insert_idx_S[1][i] && !insert_idx_S[1][i - 1] ) begin
+                        elements[i + 1].valid <= 1;
+                        elements[i + 1].value <= push_value_S[1];
+                        elements[i + 1].rank  <= push_rank_S[1];
+                    end
+                end
             end
 
             size <= size + 2;
         end
-        else if ( push_valid_S[1] && pop_valid_S ) begin
-            // perform push and pop (first push, then pop)
-            if ( insert_idx_S[1] != 0 ) begin
-                elements[insert_idx_S[1] - 1].valid <= 1;
-                elements[insert_idx_S[1] - 1].value <= push_value_S[1];
-                elements[insert_idx_S[1] - 1].rank  <= push_rank_S[1];
-
-                for ( int i = 1; i < N; i++ )
-                    if ( i < insert_idx_S[1] ) elements[i - 1] <= elements[i];
+        else if ( push_valid_S[0] ) begin // perform push
+            // shift
+            for ( int i = 0; i < N - 1; i++ ) begin
+                if ( insert_idx_S[0][i] ) elements[i + 1] <= elements[i];
             end
-        end
-        else if ( push_valid_S[0] ) begin
-            // perform push
-            elements[insert_idx_S[0]].valid <= 1;
-            elements[insert_idx_S[0]].value <= push_value_S[0];
-            elements[insert_idx_S[0]].rank  <= push_rank_S[0];
 
-            for ( int i = 0; i < N - 1; i++ )
-                if ( insert_idx_S[0] <= i ) elements[i + 1] <= elements[i];
+            // insert
+            for ( int i = 1; i < N; i++ )
+                if ( insert_idx_S[0][i] && !insert_idx_S[0][i - 1] ) begin
+                    elements[i].valid <= 1;
+                    elements[i].value <= push_value_S[0];
+                    elements[i].rank  <= push_rank_S[0];
+                end
+            if ( insert_idx_S[0][0] == 1 ) begin
+                elements[0].valid <= 1;
+                elements[0].value <= push_value_S[0];
+                elements[0].rank  <= push_rank_S[0];
+            end
 
             size <= size + 1;
         end
-        else if ( pop_valid_S ) begin
-            // perform pop
-            for ( int i = 1; i < N; i++ ) elements[i - 1] <= elements[i];
+        else if ( pop_valid_S ) begin // perform pop
+            // shift
             elements[N - 1].valid <= 0;
+            for ( int i = 1; i < N; i++ ) elements[i - 1] <= elements[i];
 
             size <= size - 1;
         end
     end
     
-    assign pop_value = ( push_valid_S[1] && insert_idx_S[1] == 0 ) ? push_value_S[1] : elements[0].value;
+    assign pop_value = elements[0].value;
     assign pop_valid = pop_valid_S;
 endmodule
 

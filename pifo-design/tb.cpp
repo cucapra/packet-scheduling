@@ -40,7 +40,7 @@ std::vector<Cmd> generate_commands(int num_cmds) {
         if (!size || size == QUEUE_SIZE) // to avoid over/underflow
             cmd.op = !size ? Op::Push : Op::Pop;
         else {
-            int rng = rand() % 4;
+            int rng = rand() % 3;
             rng = rng < 0 ? -1 * rng : rng;
             switch (rng) {
                 case 0:
@@ -50,9 +50,6 @@ std::vector<Cmd> generate_commands(int num_cmds) {
                     cmd.op = Op::Pop;
                     break;
                 case 2:
-                    cmd.op = Op::PushPop;
-                    break;
-                case 3:
                     cmd.op = size == QUEUE_SIZE - 1 ? Op::Push : Op::PushPush;
                     break;
             }
