@@ -1,17 +1,10 @@
-MODULE=flow_scheduler
+MODULES=./obj_dir/Vflow_scheduler ./obj_dir/Vrank_store
 
-.PHONY:build
-build: obj_dir/V$(MODULE)
+all: $(MODULES)
 
-.PHONY:verilate
-verilate: .stamp-verilate
-
-./obj_dir/V$(MODULE): .stamp-verilate
-	make -C obj_dir -f V$(MODULE).mk V$(MODULE)
-
-.stamp-verilate: $(MODULE).sv tb.cpp
-	verilator --trace -cc $(MODULE).sv --exe tb.cpp
-	@touch .stamp-verilate
+./obj_dir/V%: %.sv tb_%.cpp
+	verilator --trace -cc $*.sv --exe tb_$*.cpp
+	make -C obj_dir -f V$*.mk V$*
 
 .PHONY: clean
 clean:

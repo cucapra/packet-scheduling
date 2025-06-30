@@ -7,9 +7,9 @@
 
 #define NUM_CMDS   50
 #define QUEUE_SIZE 10
-#define WAVEFORM   "waveform.vcd"
+#define WAVEFORM   "flow_scheduler.vcd"
 
-enum class Op { Push, Pop, PushPop, PushPush };
+enum class Op { Push, Pop, PushPush };
 
 struct RankValue {
     int rank;
@@ -64,7 +64,6 @@ std::vector<Cmd> generate_commands(int num_cmds) {
         switch (cmd.op) {
             case Op::Push:     delta = 1;  break;
             case Op::Pop:      delta = -1; break;
-            case Op::PushPop:  delta = 0;  break;
             case Op::PushPush: delta = 2;  break;
         }
         size = size + delta;
@@ -91,12 +90,6 @@ std::vector<int> compute_expected(std::vector<Cmd> cmds) {
                 break;
 
             case Op::Pop:
-                out.push_back(pifo.top().value);
-                pifo.pop();
-                break;
-
-            case Op::PushPop:
-                pifo.push(cmd.data_2);
                 out.push_back(pifo.top().value);
                 pifo.pop();
                 break;
@@ -141,29 +134,28 @@ std::vector<int> simulate(std::vector<Cmd> cmds, const char* waveform) {
         dut->eval();
 
         if (dut->clk) {
-            if (dut->pop_valid) 
-                out.push_back(dut->pop_value);
+            if (dut->pop_valid) out.push_back(dut->pop_value);
 
             if (it == cmds.end()) {
                 dut->push_1 = 0;
                 dut->push_2 = 0;
                 dut->pop = 0;
                 delay--;
-                continue;
             }
+            else {
+                Cmd cmd = *it;
+                
+                dut->push_1 = cmd.op == Op::Push || cmd.op == Op::PushPush;
+                dut->push_2 = cmd.op == Op::PushPush;
+                dut->pop    = cmd.op == Op::Pop;
 
-            Cmd cmd = *it;
-            
-            dut->push_1 = cmd.op == Op::Push    || cmd.op == Op::PushPush;
-            dut->push_2 = cmd.op == Op::PushPop || cmd.op == Op::PushPush;
-            dut->pop    = cmd.op == Op::Pop     || cmd.op == Op::PushPop;
+                dut->push_rank_1  = cmd.data_1.rank;
+                dut->push_value_1 = cmd.data_1.value;
+                dut->push_rank_2  = cmd.data_2.rank;
+                dut->push_value_2 = cmd.data_2.value;
 
-            dut->push_rank_1  = cmd.data_1.rank;
-            dut->push_value_1 = cmd.data_1.value;
-            dut->push_rank_2  = cmd.data_2.rank;
-            dut->push_value_2 = cmd.data_2.value;
-
-            it++;
+                it++;
+            }
         }
         
         m_trace->dump(sim_time);
@@ -210,9 +202,6 @@ int main(int argc, char** argv, char** env) {
                 case Op::Pop:
                     std::cout << "pop" << std::endl;
                     break;
-                case Op::PushPop:
-                    std::cout << "push(" << value_2 << ", " << rank_2 << ") + pop" << std::endl;
-                    break;
                 case Op::PushPush:
                     std::cout << "push(" 
                               << value_1
@@ -227,6 +216,7 @@ int main(int argc, char** argv, char** env) {
                     break;
             }
         }
+
         std::cout << "Expected" << std::endl;
         for (int i : expect) std::cout << i << std::endl;
 

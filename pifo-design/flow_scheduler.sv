@@ -1,8 +1,8 @@
 `ifndef FLOW_SCHEDULER
 `define FLOW_SCHEDULER
 
-//                     requires  N > 1
-module FlowScheduler #(parameter N = 10) (
+//                     requires  SIZE > 1
+module FlowScheduler #(parameter SIZE = 10) (
     input  clk,
     input  rst,
         
@@ -33,11 +33,11 @@ module FlowScheduler #(parameter N = 10) (
         logic        valid;
     } element;
 
-    element elements [N - 1 : 0];
+    element elements [SIZE - 1 : 0];
     logic [31:0] size;
 
-    assign can_push_1 = size < N;
-    assign can_push_2 = size < N - 1;
+    assign can_push_1 = size < SIZE;
+    assign can_push_2 = size < SIZE - 1;
     assign can_pop    = size != 0;
 
     //-------------------------------------------------------------------------
@@ -47,7 +47,7 @@ module FlowScheduler #(parameter N = 10) (
     logic [1:0]  [31:0] push_value_C;
     logic [1:0]  [31:0] push_rank_C;
     logic [1:0]         push_valid_C;
-    logic signed [N :0] insert_idx_C [1:0];
+    logic signed [SIZE :0] insert_idx_C [1:0];
 
     assign push_valid_C[0] = push_1;
     assign push_value_C[0] = push_value_1;
@@ -63,8 +63,8 @@ module FlowScheduler #(parameter N = 10) (
     // compute index to insert new element for `push_1` and `push_2`
     always_comb begin
         for ( int j = 0; j < 2; j++ ) begin
-            insert_idx_C[j][N] = 1;
-            for ( int i = 0; i < N; i++ )
+            insert_idx_C[j][SIZE] = 1;
+            for ( int i = 0; i < SIZE; i++ )
                 insert_idx_C[j][i] = !elements[i].valid || push_rank_C[j] < elements[i].rank;
         end
 
@@ -87,16 +87,16 @@ module FlowScheduler #(parameter N = 10) (
     logic [1:0] [31:0] push_value_S;
     logic [1:0] [31:0] push_rank_S;
     logic [1:0]        push_valid_S;
-    logic       [N :0] insert_idx_S [1:0];
+    logic       [SIZE :0] insert_idx_S [1:0];
 
     logic pop_valid_S;
     
-    // propogate + reset
-    always_ff @( posedge clk ) begin
+    always_ff @( posedge clk ) begin 
+        // reset + propogate
         if ( rst ) begin
             push_valid_S <= 0;
             pop_valid_S  <= 0;
-            for ( int i = 0; i < N; i++ ) elements[i].valid <= 0;
+            for ( int i = 0; i < SIZE; i++ ) elements[i].valid <= 0;
         end
         else begin
             // swap if push_2's rank < push_1's rank
@@ -120,19 +120,16 @@ module FlowScheduler #(parameter N = 10) (
             else if ( push_valid_C[0] ) size <= size + 1;
             if ( pop_valid_C ) size <= size - 1;
         end
-    end
-    
-    // insert + shift
-    always_ff @( posedge clk ) begin 
-        // perform push 2
-        if ( push_valid_S[1] ) begin 
+
+        // insert + shift
+        if ( push_valid_S[1] && !rst ) begin // perform push 2
             // shifting
-            for ( int i = 0; i < N - 2; i++ ) begin
+            for ( int i = 0; i < SIZE - 2; i++ ) begin
                 if ( insert_idx_S[1][i] ) elements[i + 2] <= elements[i];
             end
             
             // insert
-            for ( int i = 1; i < N; i++ )
+            for ( int i = 1; i < SIZE; i++ )
                 if ( insert_idx_S[1][i] && !insert_idx_S[1][i - 1] ) begin
                     elements[i + 1].valid <= 1;
                     elements[i + 1].value <= push_value_S[1];
@@ -145,16 +142,15 @@ module FlowScheduler #(parameter N = 10) (
             end
         end
 
-        // perform push 1
-        if ( push_valid_S[0] ) begin 
+        if ( push_valid_S[0] && !rst ) begin // perform push 1
             // shift
-            for ( int i = 0; i < N - 1; i++ ) begin
+            for ( int i = 0; i < SIZE - 1; i++ ) begin
                 if ( insert_idx_S[0][i] && ( !push_valid_S[1] || !insert_idx_S[1][i]) )
                     elements[i + 1] <= elements[i];
             end
 
             // insert
-            for ( int i = 1; i < N; i++ )
+            for ( int i = 1; i < SIZE; i++ )
                 if ( insert_idx_S[0][i] && !insert_idx_S[0][i - 1] ) begin
                     elements[i].valid <= 1;
                     elements[i].value <= push_value_S[0];
@@ -167,11 +163,10 @@ module FlowScheduler #(parameter N = 10) (
             end
         end
 
-        // perform pop
-        if ( pop_valid_S ) begin 
+        if ( pop_valid_S && !rst ) begin // perform pop
             // shift
-            elements[N - 1].valid <= 0;
-            for ( int i = 1; i < N; i++ ) elements[i - 1] <= elements[i];
+            elements[SIZE - 1].valid <= 0;
+            for ( int i = 1; i < SIZE; i++ ) elements[i - 1] <= elements[i];
         end
     end
     
