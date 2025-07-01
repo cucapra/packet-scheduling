@@ -11,5 +11,4 @@ tb_%: src/%.sv tb/tb_%.cpp
 clean:
 	rm -rf .obj_dir
 	rm -f *.vcd
-	rm -f tb_flow_scheduler tb_rank_store
-
+	rm -f $(TESTBENCHES)
