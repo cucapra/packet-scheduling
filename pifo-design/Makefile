@@ -1,14 +1,15 @@
-MODULES=./obj_dir/Vflow_scheduler ./obj_dir/Vrank_store
+TESTBENCHES=tb_flow_scheduler tb_rank_store
 
-all: $(MODULES)
+all: $(TESTBENCHES)
 
-./obj_dir/V%: %.sv tb_%.cpp
-	verilator --trace -cc $*.sv --exe tb_$*.cpp
-	make -C obj_dir -f V$*.mk V$*
+tb_%: src/%.sv tb/tb_%.cpp
+	verilator --trace -cc src/$*.sv --exe tb/tb_$*.cpp --Mdir '.obj_dir'
+	make -C .obj_dir -f V$*.mk V$*
+	cp .obj_dir/V$* tb_$*
 
 .PHONY: clean
 clean:
-	rm -rf .stamp-*;
-	rm -rf ./obj_dir
-	rm -rf *.vcd
+	rm -rf .obj_dir
+	rm -f *.vcd
+	rm -f tb_flow_scheduler tb_rank_store
 

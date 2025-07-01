@@ -1,6 +1,7 @@
 #include <iostream>
 #include <queue>
 #include <cstdlib> 
+#include <cstdio> 
 #include <verilated.h>
 #include <verilated_vcd_c.h>
 #include "Vflow_scheduler.h"
@@ -181,7 +182,7 @@ int main(int argc, char** argv, char** env) {
         if ( !strcmp(argv[i], "-w") && i + 1 < argc )
             waveform = argv[i + 1];
         if ( !strcmp(argv[i], "-h") ) {
-            std::cout << argv[0] << " [-h] [-v] [-n NUM_CMDS] [-w FILE.vcd]" << std::endl;
+            printf("%s [-h] [-v] [-n NUM_CMDS] [-w FILE.vcd]\n", argv[0]);
             return 0;
         }
     }
@@ -197,22 +198,16 @@ int main(int argc, char** argv, char** env) {
             int value_2 = c.data_2.value, rank_2 = c.data_2.rank;
             switch (c.op) {
                 case Op::Push:
-                    std::cout << "push(" << value_1 << ", " << rank_1 << ")" << std::endl;
+                    printf("push(value=%d, rank=%d)\n", value_1, rank_1);
                     break;
+
                 case Op::Pop:
-                    std::cout << "pop" << std::endl;
+                    printf("pop\n");
                     break;
+
                 case Op::PushPush:
-                    std::cout << "push(" 
-                              << value_1
-                              << ", " 
-                              << rank_1
-                              << ") + push("
-                              << value_2
-                              << ", " 
-                              << rank_2
-                              << ")"
-                              << std::endl;
+                    printf("push(value=%d, rank=%d) + push(value=%d, rank=%d)\n", 
+                            value_1, rank_1, value_2, rank_2);
                     break;
             }
         }
@@ -220,7 +215,7 @@ int main(int argc, char** argv, char** env) {
         std::cout << "Expected" << std::endl;
         for (int i : expect) std::cout << i << std::endl;
 
-        std::cout << "Actual" << std::endl;
+        std::cout << "Output" << std::endl;
         for (int i : output) std::cout << i << std::endl;
     }
 
