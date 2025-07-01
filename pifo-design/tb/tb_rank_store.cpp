@@ -15,12 +15,12 @@
 
 enum class Op { Push, Pop };
 
-struct FlowValue {
-    unsigned int flow;
+struct RankValue {
+    unsigned int rank;
     unsigned int value;
 
-    bool operator==(const FlowValue& other) const {
-        return flow == other.flow && value == other.value;
+    bool operator==(const RankValue& other) const {
+        return rank == other.rank && value == other.value;
     }
 };
 
@@ -28,6 +28,7 @@ struct Cmd {
     Op  op;
     unsigned int value;
     unsigned int flow;
+    unsigned int rank;
 };
 
 
@@ -37,7 +38,7 @@ std::vector<Cmd> generate_commands(int num_cmds) {
 
     for (int i = 0; i < num_cmds; i++) {
         Cmd cmd;
-        unsigned int v = rand() % 1000, f = rand() % FLOWS;
+        unsigned int v = rand() % 1000, r = rand() % 1000, f = rand() % FLOWS;
 
         if (size[f] == SIZE) // to avoid overflow
             cmd.op = Op::Pop;
@@ -52,6 +53,7 @@ std::vector<Cmd> generate_commands(int num_cmds) {
         }
 
         cmd.value = v;
+        cmd.rank  = r;
         cmd.flow  = 1U << f;
         cmds.push_back(cmd);
 
@@ -74,18 +76,18 @@ std::vector<Cmd> generate_commands(int num_cmds) {
 }
 
 
-std::vector<FlowValue> compute_expected(std::vector<Cmd> cmds) {
-    std::queue<unsigned int> bank[FLOWS];
-    std::vector<FlowValue> out;
+std::vector<RankValue> compute_expected(std::vector<Cmd> cmds) {
+    std::queue<RankValue> bank[FLOWS];
+    std::vector<RankValue> out;
 
     for (Cmd cmd : cmds) {
         switch (cmd.op) {
             case Op::Push:
-                bank[LOG(cmd.flow)].push(cmd.value);
+                bank[LOG(cmd.flow)].push({ cmd.rank, cmd.value });
                 break;
 
             case Op::Pop:
-                out.push_back({ cmd.flow, bank[LOG(cmd.flow)].front() });
+                out.push_back(bank[LOG(cmd.flow)].front());
                 bank[LOG(cmd.flow)].pop();
                 break;
         }
@@ -95,9 +97,9 @@ std::vector<FlowValue> compute_expected(std::vector<Cmd> cmds) {
 }
 
 
-std::vector<FlowValue> simulate(std::vector<Cmd> cmds, const char* waveform) {
+std::vector<RankValue> simulate(std::vector<Cmd> cmds, const char* waveform) {
     Vrank_store *dut = new Vrank_store;
-    std::vector<FlowValue> out;
+    std::vector<RankValue> out;
 
     Verilated::traceEverOn(true);
     VerilatedVcdC *m_trace = new VerilatedVcdC;
@@ -124,7 +126,7 @@ std::vector<FlowValue> simulate(std::vector<Cmd> cmds, const char* waveform) {
         dut->eval();
 
         if (dut->clk) {
-            if (dut->pop_valid) out.push_back({ dut->pop_flow, dut->pop_value });
+            if (dut->pop_valid) out.push_back({ dut->pop_rank, dut->pop_value });
 
             if (it == cmds.end()) {
                 dut->push = 0;
@@ -138,6 +140,7 @@ std::vector<FlowValue> simulate(std::vector<Cmd> cmds, const char* waveform) {
                 dut->pop  = cmd.op == Op::Pop;
                 
                 dut->push_value = cmd.value;
+                dut->push_rank  = cmd.rank;
                 dut->push_flow  = cmd.flow;
                 dut->pop_flow   = cmd.flow;
 
@@ -174,16 +177,16 @@ int main(int argc, char** argv, char** env) {
     }
 
     std::vector<Cmd>       cmds   = generate_commands(num_cmds);
-    std::vector<FlowValue> expect = compute_expected(cmds);
-    std::vector<FlowValue> output = simulate(cmds, waveform);
+    std::vector<RankValue> expect = compute_expected(cmds);
+    std::vector<RankValue> output = simulate(cmds, waveform);
     
     if (verbose) {
         std::cout << "Commands" << std::endl;
         for (Cmd c : cmds) {
-            int value = c.value, flow = c.flow;
+            unsigned int value = c.value, flow = c.flow, rank = c.rank;
             switch (c.op) {
                 case Op::Push:
-                    printf("push(v=%d, f=%d)\n", value, flow);
+                    printf("push(v=%u, f=%u, r=%u)\n", value, flow, rank);
                     break;
 
                 case Op::Pop:
@@ -193,10 +196,10 @@ int main(int argc, char** argv, char** env) {
         }
 
         std::cout << "Expected" << std::endl;
-        for (auto x : expect) printf("v=%u\tf=%u\n", x.value, x.flow);
+        for (auto x : expect) printf("v=%u\tr=%u\n", x.value, x.rank);
 
         std::cout << "Output" << std::endl;
-        for (auto x : output) printf("v=%u\tf=%u\n", x.value, x.flow);
+        for (auto x : output) printf("v=%u\tr=%u\n", x.value, x.rank);
     }
 
     if (expect == output)

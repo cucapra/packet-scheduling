@@ -30,14 +30,17 @@ module FlowScheduler #(parameter SIZE = 10, parameter FLOWS = 10) (
     output             can_pop
 );
 
-    typedef struct {
-        logic [31:0]      value;
-        logic [31:0]      rank;
-        logic [FLOWS-1:0] flow;
-        logic             valid;
-    } element;
+    //typedef struct {
+    //    logic [31:0]      value;
+    //    logic [31:0]      rank;
+    //    logic [FLOWS-1:0] flow;
+    //    logic             valid;
+    //} element;
 
-    element elements [SIZE - 1 : 0];
+    logic [SIZE - 1 : 0] [31:0]      values;
+    logic [SIZE - 1 : 0] [31:0]      ranks;
+    logic [SIZE - 1 : 0] [FLOWS-1:0] flows;
+    logic [SIZE - 1 : 0]             valids;
     logic [31:0] size;
 
     assign can_push_1 = size < SIZE;
@@ -72,7 +75,7 @@ module FlowScheduler #(parameter SIZE = 10, parameter FLOWS = 10) (
         for ( int j = 0; j < 2; j++ ) begin
             insert_idx_C[j][SIZE] = 1;
             for ( int i = 0; i < SIZE; i++ )
-                insert_idx_C[j][i] = !elements[i].valid || push_rank_C[j] < elements[i].rank;
+                insert_idx_C[j][i] = !valids[i] || push_rank_C[j] < ranks[i];
         end
 
         for ( int c = 0; c < 2; c++ ) begin
@@ -104,7 +107,7 @@ module FlowScheduler #(parameter SIZE = 10, parameter FLOWS = 10) (
         if ( rst ) begin
             push_valid_S <= 0;
             pop_valid_S  <= 0;
-            for ( int i = 0; i < SIZE; i++ ) elements[i].valid <= 0;
+            for ( int i = 0; i < SIZE; i++ ) valids[i] <= 0;
         end
         else begin
             // swap if push_2's rank < push_1's rank
@@ -138,57 +141,71 @@ module FlowScheduler #(parameter SIZE = 10, parameter FLOWS = 10) (
         if ( push_valid_S[1] && !rst ) begin // perform push 2
             // shifting
             for ( int i = 0; i < SIZE - 2; i++ ) begin
-                if ( insert_idx_S[1][i] ) elements[i + 2] <= elements[i];
+                if ( insert_idx_S[1][i] ) begin
+                    values[i + 2] <= values[i];
+                    ranks[i + 2]  <= ranks[i];
+                    flows[i + 2]  <= flows[i];
+                    valids[i + 2] <= valids[i];
+                end
             end
             
             // insert
             for ( int i = 1; i < SIZE; i++ )
                 if ( insert_idx_S[1][i] && !insert_idx_S[1][i - 1] ) begin
-                    elements[i + 1].valid <= 1;
-                    elements[i + 1].value <= push_value_S[1];
-                    elements[i + 1].rank  <= push_rank_S[1];
-                    elements[i + 1].flow  <= push_flow_S[1];
+                    values[i + 1] <= push_value_S[1];
+                    ranks[i + 1]  <= push_rank_S[1];
+                    flows[i + 1]  <= push_flow_S[1];
+                    valids[i + 1] <= 1;
                 end
             if ( insert_idx_S[1][0] == 1 ) begin
-                elements[1].valid <= 1;
-                elements[1].value <= push_value_S[1];
-                elements[1].rank  <= push_rank_S[1];
-                elements[1].flow  <= push_flow_S[1];
+                values[1] <= push_value_S[1];
+                ranks[1]  <= push_rank_S[1];
+                flows[1]  <= push_flow_S[1];
+                valids[1] <= 1;
             end
         end
 
         if ( push_valid_S[0] && !rst ) begin // perform push 1
             // shift
             for ( int i = 0; i < SIZE - 1; i++ ) begin
-                if ( insert_idx_S[0][i] && ( !push_valid_S[1] || !insert_idx_S[1][i]) )
-                    elements[i + 1] <= elements[i];
+                if ( insert_idx_S[0][i] && ( !push_valid_S[1] || !insert_idx_S[1][i]) ) begin
+                    values[i + 1] <= values[i];
+                    ranks[i + 1]  <= ranks[i];
+                    flows[i + 1]  <= flows[i];
+                    valids[i + 1] <= valids[i];
+                end
             end
 
             // insert
             for ( int i = 1; i < SIZE; i++ )
                 if ( insert_idx_S[0][i] && !insert_idx_S[0][i - 1] ) begin
-                    elements[i].valid <= 1;
-                    elements[i].value <= push_value_S[0];
-                    elements[i].rank  <= push_rank_S[0];
-                    elements[i].flow  <= push_flow_S[0];
+                    values[i] <= push_value_S[0];
+                    ranks[i]  <= push_rank_S[0];
+                    flows[i]  <= push_flow_S[0];
+                    valids[i] <= 1;
                 end
             if ( insert_idx_S[0][0] == 1 ) begin
-                elements[0].valid <= 1;
-                elements[0].value <= push_value_S[0];
-                elements[0].rank  <= push_rank_S[0];
-                elements[0].flow  <= push_flow_S[0];
+                values[0] <= push_value_S[0];
+                ranks[0]  <= push_rank_S[0];
+                flows[0]  <= push_flow_S[0];
+                valids[0] <= 1;
             end
         end
 
         if ( pop_valid_S && !rst ) begin // perform pop
             // shift
-            elements[SIZE - 1].valid <= 0;
-            for ( int i = 1; i < SIZE; i++ ) elements[i - 1] <= elements[i];
+            valids[SIZE - 1] <= 0;
+            for ( int i = 1; i < SIZE; i++ ) begin
+                values[i - 1] <= values[i];
+                ranks[i - 1]  <= ranks[i];
+                flows[i - 1]  <= flows[i];
+                valids[i - 1] <= valids[i];
+            end
         end
     end
     
-    assign pop_value = elements[0].value;
-    assign pop_flow  = elements[0].flow;
+    assign pop_value = values[0];
+    assign pop_flow  = flows[0];
     assign pop_valid = pop_valid_S;
 endmodule
 
