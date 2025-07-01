@@ -11,12 +11,23 @@
 #define SIZE       50
 #define WAVEFORM   "rank_store.vcd"
 
+#define LOG(x) (sizeof(unsigned int) * 8 - __builtin_clz(x) - 1)
+
 enum class Op { Push, Pop };
+
+struct FlowValue {
+    unsigned int flow;
+    unsigned int value;
+
+    bool operator==(const FlowValue& other) const {
+        return flow == other.flow && value == other.value;
+    }
+};
 
 struct Cmd {
     Op  op;
-    int value;
-    int flow;
+    unsigned int value;
+    unsigned int flow;
 };
 
 
@@ -26,43 +37,35 @@ std::vector<Cmd> generate_commands(int num_cmds) {
 
     for (int i = 0; i < num_cmds; i++) {
         Cmd cmd;
-        int v = rand() % 1000, f = rand() % 10;
-        f = f < 0 ? -1 * f : f;
+        unsigned int v = rand() % 1000, f = rand() % FLOWS;
 
-        int delta;
-        if (size[f] == SIZE) { // to avoid overflow
+        if (size[f] == SIZE) // to avoid overflow
             cmd.op = Op::Pop;
-            delta = -1;
-        }
-        else if (!size[f]) {   // to avoid underflow
+        else if (!size[f])   // to avoid underflow
             cmd.op = Op::Push;
-            delta = 1;
-        }
         else {
             int rng = rand() % 2;
-            rng = rng < 0 ? -1 * rng : rng;
             switch (rng) {
-                case 0:
-                    cmd.op = Op::Push;
-                    delta  = 1;
-                    break;
-                case 1:
-                    cmd.op = Op::Pop;
-                    delta  = -1;
-                    break;
+                case 0: cmd.op = Op::Push; break;
+                case 1: cmd.op = Op::Pop;  break;
             }
         }
 
-        
         cmd.value = v;
-        cmd.flow  = f;
+        cmd.flow  = 1U << f;
         cmds.push_back(cmd);
+
+        int delta;
+        switch (cmd.op) {
+            case Op::Push: delta = 1;  break;
+            case Op::Pop:  delta = -1; break;
+        }
         size[f]  += delta;
     }
     
-    for (int f = 0; f <  FLOWS; f++)
+    for (unsigned int f = 0; f < FLOWS; f++)
         while (size[f]) {
-            Cmd cmd = { .op = Op::Pop, .flow = f };
+            Cmd cmd = { .op = Op::Pop, .flow = 1U << f };
             cmds.push_back(cmd);
             size[f]--;
         }
@@ -71,19 +74,19 @@ std::vector<Cmd> generate_commands(int num_cmds) {
 }
 
 
-std::vector<int> compute_expected(std::vector<Cmd> cmds) {
-    std::queue<int> bank[FLOWS];
-    std::vector<int> out;
+std::vector<FlowValue> compute_expected(std::vector<Cmd> cmds) {
+    std::queue<unsigned int> bank[FLOWS];
+    std::vector<FlowValue> out;
 
     for (Cmd cmd : cmds) {
         switch (cmd.op) {
             case Op::Push:
-                bank[cmd.flow].push(cmd.value);
+                bank[LOG(cmd.flow)].push(cmd.value);
                 break;
 
             case Op::Pop:
-                out.push_back(bank[cmd.flow].front());
-                bank[cmd.flow].pop();
+                out.push_back({ cmd.flow, bank[LOG(cmd.flow)].front() });
+                bank[LOG(cmd.flow)].pop();
                 break;
         }
     }
@@ -92,9 +95,9 @@ std::vector<int> compute_expected(std::vector<Cmd> cmds) {
 }
 
 
-std::vector<int> simulate(std::vector<Cmd> cmds, const char* waveform) {
+std::vector<FlowValue> simulate(std::vector<Cmd> cmds, const char* waveform) {
     Vrank_store *dut = new Vrank_store;
-    std::vector<int> out;
+    std::vector<FlowValue> out;
 
     Verilated::traceEverOn(true);
     VerilatedVcdC *m_trace = new VerilatedVcdC;
@@ -121,11 +124,11 @@ std::vector<int> simulate(std::vector<Cmd> cmds, const char* waveform) {
         dut->eval();
 
         if (dut->clk) {
-            if (dut->pop_valid) out.push_back(dut->pop_value);
+            if (dut->pop_valid) out.push_back({ dut->pop_flow, dut->pop_value });
 
             if (it == cmds.end()) {
-                dut->push       = 0;
-                dut->pop        = 0;
+                dut->push = 0;
+                dut->pop  = 0;
                 delay--;
             }
             else {
@@ -134,10 +137,9 @@ std::vector<int> simulate(std::vector<Cmd> cmds, const char* waveform) {
                 dut->push = cmd.op == Op::Push;
                 dut->pop  = cmd.op == Op::Pop;
                 
-                int flow_1_hot  = 1 << cmd.flow;
                 dut->push_value = cmd.value;
-                dut->push_flow  = flow_1_hot;
-                dut->pop_flow   = flow_1_hot;
+                dut->push_flow  = cmd.flow;
+                dut->pop_flow   = cmd.flow;
 
                 it++;
             }
@@ -171,9 +173,9 @@ int main(int argc, char** argv, char** env) {
         }
     }
 
-    std::vector<Cmd> cmds   = generate_commands(num_cmds);
-    std::vector<int> expect = compute_expected(cmds);
-    std::vector<int> output = simulate(cmds, waveform);
+    std::vector<Cmd>       cmds   = generate_commands(num_cmds);
+    std::vector<FlowValue> expect = compute_expected(cmds);
+    std::vector<FlowValue> output = simulate(cmds, waveform);
     
     if (verbose) {
         std::cout << "Commands" << std::endl;
@@ -181,7 +183,7 @@ int main(int argc, char** argv, char** env) {
             int value = c.value, flow = c.flow;
             switch (c.op) {
                 case Op::Push:
-                    printf("push(value=%d, flow=%d)\n", value, flow);
+                    printf("push(v=%d, f=%d)\n", value, flow);
                     break;
 
                 case Op::Pop:
@@ -191,10 +193,10 @@ int main(int argc, char** argv, char** env) {
         }
 
         std::cout << "Expected" << std::endl;
-        for (int i : expect) std::cout << i << std::endl;
+        for (auto x : expect) printf("v=%u\tf=%u\n", x.value, x.flow);
 
         std::cout << "Output" << std::endl;
-        for (int i : output) std::cout << i << std::endl;
+        for (auto x : output) printf("v=%u\tf=%u\n", x.value, x.flow);
     }
 
     if (expect == output)

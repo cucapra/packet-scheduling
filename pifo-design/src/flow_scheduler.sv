@@ -2,35 +2,39 @@
 `define FLOW_SCHEDULER
 
 //                     requires  SIZE > 1
-module FlowScheduler #(parameter SIZE = 10) (
+module FlowScheduler #(parameter SIZE = 10, parameter FLOWS = 10) (
     input  clk,
     input  rst,
         
     // For enqueue
 
-    input         push_1,
-    input  [31:0] push_rank_1,
-    input  [31:0] push_value_1,
+    input              push_1,
+    input  [31:0]      push_rank_1,
+    input  [31:0]      push_value_1,
+    input  [FLOWS-1:0] push_flow_1,
 
-    input         push_2,
-    input  [31:0] push_rank_2,
-    input  [31:0] push_value_2,
+    input              push_2,
+    input  [31:0]      push_rank_2,
+    input  [31:0]      push_value_2,
+    input  [FLOWS-1:0] push_flow_2,
 
-    output        can_push_1,
-    output        can_push_2,
+    output             can_push_1,
+    output             can_push_2,
 
     // For dequeue
 
-    input         pop,
-    output [31:0] pop_value,
-    output        pop_valid,
-    output        can_pop
+    input              pop,
+    output [31:0]      pop_value,
+    output [FLOWS-1:0] pop_flow,
+    output             pop_valid,
+    output             can_pop
 );
 
     typedef struct {
-        logic [31:0] value;
-        logic [31:0] rank;
-        logic        valid;
+        logic [31:0]      value;
+        logic [31:0]      rank;
+        logic [FLOWS-1:0] flow;
+        logic             valid;
     } element;
 
     element elements [SIZE - 1 : 0];
@@ -44,18 +48,21 @@ module FlowScheduler #(parameter SIZE = 10) (
     // Check stage
     //-------------------------------------------------------------------------
 
-    logic [1:0]  [31:0] push_value_C;
-    logic [1:0]  [31:0] push_rank_C;
-    logic [1:0]         push_valid_C;
-    logic signed [SIZE :0] insert_idx_C [1:0];
+    logic [1:0]  [31:0]      push_value_C;
+    logic [1:0]  [31:0]      push_rank_C;
+    logic [1:0]  [FLOWS-1:0] push_flow_C;
+    logic [1:0]              push_valid_C;
+    logic signed [SIZE:0]    insert_idx_C [1:0];
 
     assign push_valid_C[0] = push_1;
     assign push_value_C[0] = push_value_1;
     assign push_rank_C[0]  = push_rank_1;
+    assign push_flow_C[0]  = push_flow_1;
 
     assign push_valid_C[1] = push_2;
     assign push_value_C[1] = push_value_2;
     assign push_rank_C[1]  = push_rank_2;
+    assign push_flow_C[1]  = push_flow_2;
 
     logic pop_valid_C;
     assign pop_valid_C = pop;
@@ -84,10 +91,11 @@ module FlowScheduler #(parameter SIZE = 10) (
     // Shift stage
     //-------------------------------------------------------------------------
 
-    logic [1:0] [31:0] push_value_S;
-    logic [1:0] [31:0] push_rank_S;
-    logic [1:0]        push_valid_S;
-    logic       [SIZE :0] insert_idx_S [1:0];
+    logic [1:0] [31:0]      push_value_S;
+    logic [1:0] [31:0]      push_rank_S;
+    logic [1:0] [FLOWS-1:0] push_flow_S;
+    logic [1:0]             push_valid_S;
+    logic       [SIZE:0]    insert_idx_S [1:0];
 
     logic pop_valid_S;
     
@@ -105,20 +113,25 @@ module FlowScheduler #(parameter SIZE = 10) (
                     insert_idx_S[i] <= insert_idx_C[1 - i];
                     push_value_S[i] <= push_value_C[1 - i];
                     push_rank_S[i]  <= push_rank_C[1 - i];
+                    push_flow_S[i]  <= push_flow_C[1 - i];
                 end
                 else begin
                     insert_idx_S[i] <= insert_idx_C[i];
                     push_value_S[i] <= push_value_C[i];
                     push_rank_S[i]  <= push_rank_C[i];
+                    push_flow_S[i]  <= push_flow_C[i];
                 end
             end
 
             push_valid_S <= push_valid_C;
             pop_valid_S  <= pop_valid_C;
              
-            if ( push_valid_C[0] && push_valid_C[1] ) size <= size + 2;
-            else if ( push_valid_C[0] ) size <= size + 1;
-            if ( pop_valid_C ) size <= size - 1;
+            if ( push_valid_C[0] && push_valid_C[1] ) 
+                size <= size + 2;
+            else if ( push_valid_C[0] ) 
+                size <= size + 1;
+            if ( pop_valid_C ) 
+                size <= size - 1;
         end
 
         // insert + shift
@@ -134,11 +147,13 @@ module FlowScheduler #(parameter SIZE = 10) (
                     elements[i + 1].valid <= 1;
                     elements[i + 1].value <= push_value_S[1];
                     elements[i + 1].rank  <= push_rank_S[1];
+                    elements[i + 1].flow  <= push_flow_S[1];
                 end
             if ( insert_idx_S[1][0] == 1 ) begin
                 elements[1].valid <= 1;
                 elements[1].value <= push_value_S[1];
                 elements[1].rank  <= push_rank_S[1];
+                elements[1].flow  <= push_flow_S[1];
             end
         end
 
@@ -155,11 +170,13 @@ module FlowScheduler #(parameter SIZE = 10) (
                     elements[i].valid <= 1;
                     elements[i].value <= push_value_S[0];
                     elements[i].rank  <= push_rank_S[0];
+                    elements[i].flow  <= push_flow_S[0];
                 end
             if ( insert_idx_S[0][0] == 1 ) begin
                 elements[0].valid <= 1;
                 elements[0].value <= push_value_S[0];
                 elements[0].rank  <= push_rank_S[0];
+                elements[0].flow  <= push_flow_S[0];
             end
         end
 
@@ -171,6 +188,7 @@ module FlowScheduler #(parameter SIZE = 10) (
     end
     
     assign pop_value = elements[0].value;
+    assign pop_flow  = elements[0].flow;
     assign pop_valid = pop_valid_S;
 endmodule
 

@@ -8,16 +8,16 @@ module RankStore #(parameter FLOWS = 10, parameter SIZE = 50) (
         
     // For enqueue
 
-    input                push,
-    input  [31:0]        push_value,
-    input  [FLOWS - 1:0] push_flow,
+    input              push,
+    input  [31:0]      push_value,
+    input  [FLOWS-1:0] push_flow,
 
     // For dequeue
 
-    input                pop,
-    input  [FLOWS - 1:0] pop_flow,
-    output [31:0]        pop_value,
-    output               pop_valid
+    input              pop,
+    input  [FLOWS-1:0] pop_flow,
+    output [31:0]      pop_value,
+    output             pop_valid
 );
 
     logic [31:0] bank [FLOWS - 1 : 0] [SIZE - 1 : 0];

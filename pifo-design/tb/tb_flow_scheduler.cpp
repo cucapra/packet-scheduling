@@ -7,17 +7,27 @@
 #include "Vflow_scheduler.h"
 
 #define NUM_CMDS   50
-#define QUEUE_SIZE 10
+#define FLOWS      10
+#define SIZE       10
 #define WAVEFORM   "flow_scheduler.vcd"
 
 enum class Op { Push, Pop, PushPush };
 
-struct RankValue {
-    int rank;
-    int value;
+struct FlowValue {
+    unsigned int flow;
+    unsigned int value;
+
+    bool operator==(const FlowValue& other) const {
+        return flow == other.flow && value == other.value;
+    }
+};
+
+struct Node {
+    unsigned int rank;
+    FlowValue flow_value;
     int counter; // to break ties in FIFO order 
 
-    bool operator()(const RankValue l, const RankValue r) {
+    bool operator()(const Node& l, const Node& r) {
         if (l.rank == r.rank) 
             return l.counter > r.counter;
 
@@ -27,8 +37,8 @@ struct RankValue {
 
 struct Cmd {
     Op op;
-    RankValue data_1;
-    RankValue data_2;
+    Node data_1;
+    Node data_2;
 };
 
 
@@ -38,11 +48,10 @@ std::vector<Cmd> generate_commands(int num_cmds) {
     
     for (int i = 0; i < num_cmds; i++) {
         Cmd cmd;
-        if (!size || size == QUEUE_SIZE) // to avoid over/underflow
+        if (!size || size == SIZE) // to avoid over/underflow
             cmd.op = !size ? Op::Push : Op::Pop;
         else {
             int rng = rand() % 3;
-            rng = rng < 0 ? -1 * rng : rng;
             switch (rng) {
                 case 0:
                     cmd.op = Op::Push;
@@ -51,14 +60,18 @@ std::vector<Cmd> generate_commands(int num_cmds) {
                     cmd.op = Op::Pop;
                     break;
                 case 2:
-                    cmd.op = size == QUEUE_SIZE - 1 ? Op::Push : Op::PushPush;
+                    cmd.op = size == SIZE - 1 ? Op::Push : Op::PushPush;
                     break;
             }
         }
-        int v_1 = rand() % 1000, r_1 = rand() % 1000;
-        int v_2 = rand() % 1000, r_2 = rand() % 1000;
-        cmd.data_1 = {r_1, v_1, 2 * i};
-        cmd.data_2 = {r_2, v_2, 2 * i + 1};
+        unsigned int v_1 = rand() % 1000, 
+                     r_1 = rand() % 1000, 
+                     f_1 = 1U << (rand() % FLOWS);
+        unsigned int v_2 = rand() % 1000, 
+                     r_2 = rand() % 1000, 
+                     f_2 = 1U << (rand() % FLOWS);
+        cmd.data_1 = {r_1, {f_1, v_1}, 2 * i};
+        cmd.data_2 = {r_2, {f_2, v_2}, 2 * i + 1};
         cmds.push_back(cmd);
 
         int delta;
@@ -80,9 +93,9 @@ std::vector<Cmd> generate_commands(int num_cmds) {
 }
 
 
-std::vector<int> compute_expected(std::vector<Cmd> cmds) {
-    std::priority_queue<RankValue, std::vector<RankValue>, RankValue> pifo;
-    std::vector<int> out;
+std::vector<FlowValue> compute_expected(std::vector<Cmd> cmds) {
+    std::priority_queue<Node, std::vector<Node>, Node> pifo;
+    std::vector<FlowValue> out;
 
     for (Cmd cmd : cmds) {
         switch (cmd.op) {
@@ -91,7 +104,7 @@ std::vector<int> compute_expected(std::vector<Cmd> cmds) {
                 break;
 
             case Op::Pop:
-                out.push_back(pifo.top().value);
+                out.push_back(pifo.top().flow_value);
                 pifo.pop();
                 break;
 
@@ -106,9 +119,9 @@ std::vector<int> compute_expected(std::vector<Cmd> cmds) {
 }
 
 
-std::vector<int> simulate(std::vector<Cmd> cmds, const char* waveform) {
+std::vector<FlowValue> simulate(std::vector<Cmd> cmds, const char* waveform) {
     Vflow_scheduler *dut = new Vflow_scheduler;
-    std::vector<int> out;
+    std::vector<FlowValue> out;
 
     Verilated::traceEverOn(true);
     VerilatedVcdC *m_trace = new VerilatedVcdC;
@@ -135,7 +148,7 @@ std::vector<int> simulate(std::vector<Cmd> cmds, const char* waveform) {
         dut->eval();
 
         if (dut->clk) {
-            if (dut->pop_valid) out.push_back(dut->pop_value);
+            if (dut->pop_valid) out.push_back({ dut->pop_flow, dut->pop_value });
 
             if (it == cmds.end()) {
                 dut->push_1 = 0;
@@ -151,9 +164,11 @@ std::vector<int> simulate(std::vector<Cmd> cmds, const char* waveform) {
                 dut->pop    = cmd.op == Op::Pop;
 
                 dut->push_rank_1  = cmd.data_1.rank;
-                dut->push_value_1 = cmd.data_1.value;
+                dut->push_value_1 = cmd.data_1.flow_value.value;
+                dut->push_flow_1  = cmd.data_1.flow_value.flow;
                 dut->push_rank_2  = cmd.data_2.rank;
-                dut->push_value_2 = cmd.data_2.value;
+                dut->push_value_2 = cmd.data_2.flow_value.value;
+                dut->push_flow_2  = cmd.data_2.flow_value.flow;
 
                 it++;
             }
@@ -187,18 +202,22 @@ int main(int argc, char** argv, char** env) {
         }
     }
 
-    std::vector<Cmd> cmds   = generate_commands(num_cmds);
-    std::vector<int> expect = compute_expected(cmds);
-    std::vector<int> output = simulate(cmds, waveform);
+    std::vector<Cmd>       cmds   = generate_commands(num_cmds);
+    std::vector<FlowValue> expect = compute_expected(cmds);
+    std::vector<FlowValue> output = simulate(cmds, waveform);
     
     if (verbose) {
         std::cout << "Commands" << std::endl;
         for (Cmd c : cmds) {
-            int value_1 = c.data_1.value, rank_1 = c.data_1.rank;
-            int value_2 = c.data_2.value, rank_2 = c.data_2.rank;
+            unsigned int v_1 = c.data_1.flow_value.value, 
+                         r_1 = c.data_1.rank, 
+                         f_1 = c.data_1.flow_value.flow;
+            unsigned int v_2 = c.data_2.flow_value.value, 
+                         r_2 = c.data_2.rank, 
+                         f_2 = c.data_2.flow_value.flow;
             switch (c.op) {
                 case Op::Push:
-                    printf("push(value=%d, rank=%d)\n", value_1, rank_1);
+                    printf("push(v=%u, f=%u, r=%u)\n", v_1, f_1, r_1);
                     break;
 
                 case Op::Pop:
@@ -206,17 +225,17 @@ int main(int argc, char** argv, char** env) {
                     break;
 
                 case Op::PushPush:
-                    printf("push(value=%d, rank=%d) + push(value=%d, rank=%d)\n", 
-                            value_1, rank_1, value_2, rank_2);
+                    printf("push(v=%u, f=%u, r=%u) + push(v=%u, f=%u, r=%u)\n",
+                            v_1, f_1, r_1, v_2, f_2, r_2);
                     break;
             }
         }
 
         std::cout << "Expected" << std::endl;
-        for (int i : expect) std::cout << i << std::endl;
+        for (auto x : expect) printf("v=%u\tf=%u\n", x.value, x.flow);
 
         std::cout << "Output" << std::endl;
-        for (int i : output) std::cout << i << std::endl;
+        for (auto x : output) printf("v=%u\tf=%u\n", x.value, x.flow);
     }
 
     if (expect == output)
