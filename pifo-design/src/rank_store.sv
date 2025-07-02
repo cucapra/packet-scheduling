@@ -28,14 +28,14 @@ module RankStore #(parameter SIZE = 50, parameter FLOWS = 10) (
     logic [FLOWS - 1 : 0] [SIZE - 1 : 0] head;
     logic [FLOWS - 1 : 0] [SIZE - 1 : 0] tail;
 
-    // can be replaced with flags to indicate if empty/full
-    logic [FLOWS - 1 : 0] [31:0] counter; 
+    logic [FLOWS - 1 : 0] empty; 
 
     always_ff @( posedge clk ) begin
         if ( rst ) begin
             for ( int i = 0; i < FLOWS; i++ ) begin
                 head[i]  <= 1;
                 tail[i]  <= 1;
+                empty[i] <= 1;
             end
         end
 
@@ -44,14 +44,16 @@ module RankStore #(parameter SIZE = 50, parameter FLOWS = 10) (
                 if ( push && push_flow[i] && tail[i][j] ) begin
                     values[i][j] <= push_value;
                     ranks[i][j]  <= push_rank;
-                    if ( tail[i][SIZE - 1] )
-                        tail[i] <= 1;
-                    else
+                    if ( tail[i][SIZE - 1] ) 
+                        tail[i]  <= 1;
+                    else 
                         tail[i] <= tail[i] << 1;
+
+                    if ( !pop || !pop_flow[i] ) empty[i] <= 0;
                 end
 
                 if ( pop && pop_flow[i] && head[i][j] ) begin
-                    if ( push && push_flow[i] && counter == 0 ) begin
+                    if ( push && push_flow[i] && empty[i] ) begin
                         out_value <= push_value;
                         out_rank  <= push_rank;
                     end
@@ -60,14 +62,16 @@ module RankStore #(parameter SIZE = 50, parameter FLOWS = 10) (
                         out_rank  <= ranks[i][j];
                     end
 
-                    if ( head[i][SIZE - 1] )
+                    if ( head[i][SIZE - 1] ) begin
                         head[i] <= 1;
-                    else
+                        if ( !push || !push_flow[i] ) empty[i] <= tail[i][0];
+                    end
+                    else begin
                         head[i] <= head[i] << 1;
+                        if ( !push || !push_flow[i] ) empty[i] <= tail[i][j + 1];
+                    end
                 end
             end
-
-        if ( push ^ pop ) counter <= counter + (push ? 1 : -1);
 
         out_valid <= pop;
     end
