@@ -28,37 +28,45 @@ module RankStore #(parameter SIZE = 50, parameter FLOWS = 10) (
     logic [FLOWS - 1 : 0] [SIZE - 1 : 0] head;
     logic [FLOWS - 1 : 0] [SIZE - 1 : 0] tail;
 
+    logic [FLOWS - 1 : 0] [31:0] counter;
+
     always_ff @( posedge clk ) begin
         if ( rst ) begin
             for ( int i = 0; i < FLOWS; i++ ) begin
-                head[i] <= 1;
-                tail[i] <= 1;
+                head[i]  <= 1;
+                tail[i]  <= 1;
             end
         end
 
-        if ( push && !rst ) 
-            for ( int i = 0; i < FLOWS; i++ )
-                for ( int j = 0; j < SIZE; j++ )
-                    if ( push_flow[i] && tail[i][j] ) begin
-                        values[i][j] <= push_value;
-                        ranks[i][j]  <= push_rank;
-                        if ( tail[i][SIZE - 1] )
-                            tail[i] <= 1 ;
-                        else
-                            tail[i] <= tail[i] << 1;
-                    end
+        for ( int i = 0; i < FLOWS; i++ )
+            for ( int j = 0; j < SIZE; j++ ) begin
+                if ( push && push_flow[i] && tail[i][j] ) begin
+                    values[i][j] <= push_value;
+                    ranks[i][j]  <= push_rank;
+                    if ( tail[i][SIZE - 1] )
+                        tail[i] <= 1;
+                    else
+                        tail[i] <= tail[i] << 1;
+                end
 
-        if ( pop & !rst )
-            for ( int i = 0; i < FLOWS; i++ )
-                for ( int j = 0; j < SIZE; j++ )
-                    if ( pop_flow[i] && head[i][j] ) begin
+                if ( pop && pop_flow[i] && head[i][j] ) begin
+                    if ( push && push_flow[i] && counter == 0 ) begin
+                        out_value <= push_value;
+                        out_rank  <= push_rank;
+                    end
+                    else begin
                         out_value <= values[i][j];
                         out_rank  <= ranks[i][j];
-                        if ( head[i][SIZE - 1] )
-                            head[i] <= 1;
-                        else
-                            head[i] <= head[i] << 1;
                     end
+
+                    if ( head[i][SIZE - 1] )
+                        head[i] <= 1;
+                    else
+                        head[i] <= head[i] << 1;
+                end
+            end
+
+        if ( push ^ pop ) counter <= counter + (push ? 1 : -1);
 
         out_valid <= pop;
     end

@@ -13,7 +13,7 @@
 
 #define LOG(x) (sizeof(unsigned int) * 8 - __builtin_clz(x) - 1)
 
-enum class Op { Push, Pop, Nop };
+enum class Op { Push, Pop, PushPop, Nop };
 
 struct RankValue {
     unsigned int rank;
@@ -27,7 +27,8 @@ struct RankValue {
 struct Cmd {
     Op  op;
     unsigned int value;
-    unsigned int flow;
+    unsigned int push_flow;
+    unsigned int pop_flow;
     unsigned int rank;
 };
 
@@ -38,38 +39,53 @@ std::vector<Cmd> generate_commands(int num_cmds) {
 
     for (int i = 0; i < num_cmds; i++) {
         Cmd cmd;
-        unsigned int v = rand() % 1000, r = rand() % 1000, f = rand() % FLOWS;
+        unsigned int v         = rand() % 1000, 
+                     r         = rand() % 1000, 
+                     push_flow = rand() % FLOWS,
+                     pop_flow  = rand() % FLOWS;
 
-        if (size[f] == SIZE) // to avoid overflow
+        if (size[push_flow] == SIZE) { // to avoid overflow
+            pop_flow = push_flow;
             cmd.op = Op::Pop;
-        else if (!size[f])   // to avoid underflow
+        }
+        else if (!size[pop_flow]) {    // to avoid underflow
+            push_flow = pop_flow;
             cmd.op = Op::Push;
+        }
         else {
-            int rng = rand() % 3;
+            int rng = rand() % 4;
             switch (rng) {
-                case 0: cmd.op = Op::Push; break;
-                case 1: cmd.op = Op::Pop;  break;
-                case 2: cmd.op = Op::Nop;  break;
+                case 0: cmd.op = Op::Push;    break;
+                case 1: cmd.op = Op::Pop;     break;
+                case 2: 
+                    cmd.op = Op::PushPop; 
+                    // bias odds toward concurrent push-pops on same flow
+                    if (rand() % 2) push_flow = pop_flow;
+                    break;
+                case 3: cmd.op = Op::Nop;     break;
             }
         }
 
-        cmd.value = v;
-        cmd.rank  = r;
-        cmd.flow  = 1U << f;
+        cmd.value     = v;
+        cmd.rank      = r;
+        cmd.push_flow = 1U << push_flow;
+        cmd.pop_flow  = 1U << pop_flow;
         cmds.push_back(cmd);
 
-        int delta;
         switch (cmd.op) {
-            case Op::Push: delta = 1;  break;
-            case Op::Pop:  delta = -1; break;
-            case Op::Nop:  delta = 0;  break;
+            case Op::Push: size[push_flow]++; break;
+            case Op::Pop:  size[pop_flow]--;  break;
+            case Op::Nop:                     break;
+            case Op::PushPop: 
+                    size[push_flow]++;
+                    size[pop_flow]--;
+                    break;
         }
-        size[f]  += delta;
     }
     
     for (unsigned int f = 0; f < FLOWS; f++)
         while (size[f]) {
-            Cmd cmd = { .op = Op::Pop, .flow = 1U << f };
+            Cmd cmd = { .op = Op::Pop, .pop_flow = 1U << f };
             cmds.push_back(cmd);
             size[f]--;
         }
@@ -83,14 +99,25 @@ std::vector<RankValue> compute_expected(std::vector<Cmd> cmds) {
     std::vector<RankValue> out;
 
     for (Cmd cmd : cmds) {
+        int pop_idx  = LOG(cmd.pop_flow);
+        int push_idx = LOG(cmd.push_flow);
+
         switch (cmd.op) {
             case Op::Push:
-                bank[LOG(cmd.flow)].push({ cmd.rank, cmd.value });
+                bank[push_idx].push({ cmd.rank, cmd.value });
                 break;
 
             case Op::Pop:
-                out.push_back(bank[LOG(cmd.flow)].front());
-                bank[LOG(cmd.flow)].pop();
+                out.push_back(bank[pop_idx].front());
+                bank[pop_idx].pop();
+                break;
+
+            case Op::PushPop:
+                // push
+                bank[push_idx].push({ cmd.rank, cmd.value });
+                out.push_back(bank[pop_idx].front());
+                // pop
+                bank[pop_idx].pop();
                 break;
 
             case Op::Nop:
@@ -142,13 +169,13 @@ std::vector<RankValue> simulate(std::vector<Cmd> cmds, const char* waveform) {
             else {
                 Cmd cmd = *it;
                 
-                dut->push = cmd.op == Op::Push;
-                dut->pop  = cmd.op == Op::Pop;
+                dut->push = cmd.op == Op::PushPop || cmd.op == Op::Push;
+                dut->pop  = cmd.op == Op::PushPop || cmd.op == Op::Pop;
                 
                 dut->push_value = cmd.value;
                 dut->push_rank  = cmd.rank;
-                dut->push_flow  = cmd.flow;
-                dut->pop_flow   = cmd.flow;
+                dut->push_flow  = cmd.push_flow;
+                dut->pop_flow   = cmd.pop_flow;
 
                 it++;
             }
@@ -189,14 +216,21 @@ int main(int argc, char** argv, char** env) {
     if (verbose) {
         std::cout << "Commands" << std::endl;
         for (Cmd c : cmds) {
-            unsigned int value = c.value, flow = c.flow, rank = c.rank;
+            unsigned int value     = c.value, 
+                         push_flow = c.push_flow, 
+                         pop_flow  = c.pop_flow, 
+                         rank      = c.rank;
             switch (c.op) {
                 case Op::Push:
-                    printf("push(v=%u, f=%u, r=%u)\n", value, flow, rank);
+                    printf("push(v=%u, f=%u, r=%u)\n", value, push_flow, rank);
                     break;
 
                 case Op::Pop:
-                    printf("pop\n");
+                    printf("pop(f=%u)\n", pop_flow);
+                    break;
+
+                case Op::PushPop:
+                    printf("push(v=%u, f=%u, r=%u) + pop(f=%u)\n", value, push_flow, rank, pop_flow);
                     break;
 
                 case Op::Nop:
