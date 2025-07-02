@@ -2,7 +2,7 @@
 `define RANK_STORE
 
 
-module RankStore #(parameter FLOWS = 10, parameter SIZE = 50) (
+module RankStore #(parameter SIZE = 50, parameter FLOWS = 10) (
     input  clk,
     input  rst,
         
@@ -21,11 +21,6 @@ module RankStore #(parameter FLOWS = 10, parameter SIZE = 50) (
     output [31:0]      pop_rank,
     output             pop_valid
 );
-
-    //typedef struct {
-    //    logic [31:0] value;
-    //    logic [31:0] rank;
-    //} element;
 
     logic [FLOWS - 1 : 0] [SIZE - 1 : 0] [31:0] values;
     logic [FLOWS - 1 : 0] [SIZE - 1 : 0] [31:0] ranks;

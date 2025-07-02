@@ -11,7 +11,7 @@
 #define SIZE       10
 #define WAVEFORM   "flow_scheduler.vcd"
 
-enum class Op { Push, Pop, PushPush };
+enum class Op { Push, Pop, PushPush, Nop };
 
 struct FlowValue {
     unsigned int flow;
@@ -51,7 +51,7 @@ std::vector<Cmd> generate_commands(int num_cmds) {
         if (!size || size == SIZE) // to avoid over/underflow
             cmd.op = !size ? Op::Push : Op::Pop;
         else {
-            int rng = rand() % 3;
+            int rng = rand() % 4;
             switch (rng) {
                 case 0:
                     cmd.op = Op::Push;
@@ -61,6 +61,9 @@ std::vector<Cmd> generate_commands(int num_cmds) {
                     break;
                 case 2:
                     cmd.op = size == SIZE - 1 ? Op::Push : Op::PushPush;
+                    break;
+                case 3:
+                    cmd.op = Op::Nop;
                     break;
             }
         }
@@ -79,6 +82,7 @@ std::vector<Cmd> generate_commands(int num_cmds) {
             case Op::Push:     delta = 1;  break;
             case Op::Pop:      delta = -1; break;
             case Op::PushPush: delta = 2;  break;
+            case Op::Nop:      delta = 0;  break;
         }
         size = size + delta;
     }
@@ -111,6 +115,10 @@ std::vector<FlowValue> compute_expected(std::vector<Cmd> cmds) {
             case Op::PushPush:
                 pifo.push(cmd.data_1);
                 pifo.push(cmd.data_2);
+                break;
+
+            case Op::Nop:
+                // nothing to do...
                 break;
         }
     }
@@ -227,6 +235,10 @@ int main(int argc, char** argv, char** env) {
                 case Op::PushPush:
                     printf("push(v=%u, f=%u, r=%u) + push(v=%u, f=%u, r=%u)\n",
                             v_1, f_1, r_1, v_2, f_2, r_2);
+                    break;
+
+                case Op::Nop:
+                    printf("nop\n");
                     break;
             }
         }

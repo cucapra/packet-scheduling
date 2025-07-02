@@ -13,7 +13,7 @@
 
 #define LOG(x) (sizeof(unsigned int) * 8 - __builtin_clz(x) - 1)
 
-enum class Op { Push, Pop };
+enum class Op { Push, Pop, Nop };
 
 struct RankValue {
     unsigned int rank;
@@ -45,10 +45,11 @@ std::vector<Cmd> generate_commands(int num_cmds) {
         else if (!size[f])   // to avoid underflow
             cmd.op = Op::Push;
         else {
-            int rng = rand() % 2;
+            int rng = rand() % 3;
             switch (rng) {
                 case 0: cmd.op = Op::Push; break;
                 case 1: cmd.op = Op::Pop;  break;
+                case 2: cmd.op = Op::Nop;  break;
             }
         }
 
@@ -61,6 +62,7 @@ std::vector<Cmd> generate_commands(int num_cmds) {
         switch (cmd.op) {
             case Op::Push: delta = 1;  break;
             case Op::Pop:  delta = -1; break;
+            case Op::Nop:  delta = 0;  break;
         }
         size[f]  += delta;
     }
@@ -89,6 +91,10 @@ std::vector<RankValue> compute_expected(std::vector<Cmd> cmds) {
             case Op::Pop:
                 out.push_back(bank[LOG(cmd.flow)].front());
                 bank[LOG(cmd.flow)].pop();
+                break;
+
+            case Op::Nop:
+                // nothing to do...
                 break;
         }
     }
@@ -191,6 +197,10 @@ int main(int argc, char** argv, char** env) {
 
                 case Op::Pop:
                     printf("pop\n");
+                    break;
+
+                case Op::Nop:
+                    printf("nop\n");
                     break;
             }
         }

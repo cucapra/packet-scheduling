@@ -30,13 +30,6 @@ module FlowScheduler #(parameter SIZE = 10, parameter FLOWS = 10) (
     output             can_pop
 );
 
-    //typedef struct {
-    //    logic [31:0]      value;
-    //    logic [31:0]      rank;
-    //    logic [FLOWS-1:0] flow;
-    //    logic             valid;
-    //} element;
-
     logic [SIZE - 1 : 0] [31:0]      values;
     logic [SIZE - 1 : 0] [31:0]      ranks;
     logic [SIZE - 1 : 0] [FLOWS-1:0] flows;
