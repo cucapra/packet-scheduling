@@ -28,7 +28,8 @@ module RankStore #(parameter SIZE = 50, parameter FLOWS = 10) (
     logic [FLOWS - 1 : 0] [SIZE - 1 : 0] head;
     logic [FLOWS - 1 : 0] [SIZE - 1 : 0] tail;
 
-    logic [FLOWS - 1 : 0] [31:0] counter;
+    // can be replaced with flags to indicate if empty/full
+    logic [FLOWS - 1 : 0] [31:0] counter; 
 
     always_ff @( posedge clk ) begin
         if ( rst ) begin
