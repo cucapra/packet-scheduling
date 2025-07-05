@@ -53,8 +53,7 @@ std::vector<Cmd> generate_commands(int num_cmds) {
             cmd.op = Op::Push;
         }
         else {
-            int rng = rand() % 4;
-            switch (rng) {
+            switch (rand() % 4) {
                 case 0: cmd.op = Op::Push;    break;
                 case 1: cmd.op = Op::Pop;     break;
                 case 2: 

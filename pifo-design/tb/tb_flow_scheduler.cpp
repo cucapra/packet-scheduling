@@ -11,7 +11,13 @@
 #define SIZE       10
 #define WAVEFORM   "flow_scheduler.vcd"
 
-enum class Op { Push, Pop, PushPush, Nop };
+enum class Op { 
+    Push1,    // single push through push port 1
+    Push2,    // single push through push port 2
+    Pop, 
+    PushPush, // dual push through both ports
+    Nop 
+};
 
 struct FlowValue {
     unsigned int flow;
@@ -48,21 +54,25 @@ std::vector<Cmd> generate_commands(int num_cmds) {
     
     for (int i = 0; i < num_cmds; i++) {
         Cmd cmd;
-        if (!size || size == SIZE) // to avoid over/underflow
-            cmd.op = !size ? Op::Push : Op::Pop;
+        if (size == SIZE) // to avoid overflow
+            cmd.op = Op::Pop;
+        else if (!size)   // to avoid underflow
+            cmd.op = rand() % 2 ? Op::Push1 : Op::Push2;
         else {
-            int rng = rand() % 4;
-            switch (rng) {
+            switch (rand() % 5) {
                 case 0:
-                    cmd.op = Op::Push;
+                    cmd.op = Op::Push1;
                     break;
                 case 1:
-                    cmd.op = Op::Pop;
+                    cmd.op = Op::Push2;
                     break;
                 case 2:
-                    cmd.op = size == SIZE - 1 ? Op::Push : Op::PushPush;
+                    cmd.op = Op::Pop;
                     break;
                 case 3:
+                    cmd.op = size == SIZE - 1 ? Op::Push1 : Op::PushPush;
+                    break;
+                case 4:
                     cmd.op = Op::Nop;
                     break;
             }
@@ -79,7 +89,8 @@ std::vector<Cmd> generate_commands(int num_cmds) {
 
         int delta;
         switch (cmd.op) {
-            case Op::Push:     delta = 1;  break;
+            case Op::Push1:    
+            case Op::Push2:    delta = 1;  break;
             case Op::Pop:      delta = -1; break;
             case Op::PushPush: delta = 2;  break;
             case Op::Nop:      delta = 0;  break;
@@ -103,8 +114,12 @@ std::vector<FlowValue> compute_expected(std::vector<Cmd> cmds) {
 
     for (Cmd cmd : cmds) {
         switch (cmd.op) {
-            case Op::Push:
+            case Op::Push1:
                 pifo.push(cmd.data_1);
+                break;
+
+            case Op::Push2:
+                pifo.push(cmd.data_2);
                 break;
 
             case Op::Pop:
@@ -167,8 +182,8 @@ std::vector<FlowValue> simulate(std::vector<Cmd> cmds, const char* waveform) {
             else {
                 Cmd cmd = *it;
                 
-                dut->push_1 = cmd.op == Op::Push || cmd.op == Op::PushPush;
-                dut->push_2 = cmd.op == Op::PushPush;
+                dut->push_1 = cmd.op == Op::Push1 || cmd.op == Op::PushPush;
+                dut->push_2 = cmd.op == Op::Push2 || cmd.op == Op::PushPush;
                 dut->pop    = cmd.op == Op::Pop;
 
                 dut->push_rank_1  = cmd.data_1.rank;
@@ -224,8 +239,12 @@ int main(int argc, char** argv, char** env) {
                          r_2 = c.data_2.rank, 
                          f_2 = c.data_2.flow_value.flow;
             switch (c.op) {
-                case Op::Push:
-                    printf("push(v=%u, f=%u, r=%u)\n", v_1, f_1, r_1);
+                case Op::Push1:
+                    printf("push(v=%u, f=%u, r=%u) (port 1)\n", v_1, f_1, r_1);
+                    break;
+
+                case Op::Push2:
+                    printf("push(v=%u, f=%u, r=%u) (port 2)\n", v_2, f_2, r_2);
                     break;
 
                 case Op::Pop:

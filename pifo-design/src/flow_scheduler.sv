@@ -103,23 +103,26 @@ module FlowScheduler #(parameter SIZE = 10, parameter FLOWS = 10) (
             for ( int i = 0; i < SIZE; i++ ) valids[i] <= 0;
         end
         else begin
-            // swap if push_2's rank < push_1's rank
+            // swap if 
+            // 1) both pushes are valid and push_2's rank < push_1's rank
+            // 2) push_2 is valid but push_1 isn't
             for ( int i = 0; i < 2; i++ ) begin
-                if ( push_valid_C[1] && push_rank_C[1] <  push_rank_C[0] ) begin
+                if ( push_valid_C[1] && ((push_rank_C[1] < push_rank_C[0]) || !push_valid_C[0]) ) begin
                     insert_idx_S[i] <= insert_idx_C[1 - i];
                     push_value_S[i] <= push_value_C[1 - i];
                     push_rank_S[i]  <= push_rank_C[1 - i];
                     push_flow_S[i]  <= push_flow_C[1 - i];
+                    push_valid_S[i] <= push_valid_C[1 - i];
                 end
                 else begin
                     insert_idx_S[i] <= insert_idx_C[i];
                     push_value_S[i] <= push_value_C[i];
                     push_rank_S[i]  <= push_rank_C[i];
                     push_flow_S[i]  <= push_flow_C[i];
+                    push_valid_S[i] <= push_valid_C[i];
                 end
             end
 
-            push_valid_S <= push_valid_C;
             pop_valid_S  <= pop_valid_C;
              
             if ( push_valid_C[0] && push_valid_C[1] ) 
