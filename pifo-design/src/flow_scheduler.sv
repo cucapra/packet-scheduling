@@ -18,27 +18,27 @@ module FlowScheduler #(parameter SIZE = 10, parameter FLOWS = 10) (
     input  [31:0]      push_value_2,
     input  [FLOWS-1:0] push_flow_2,
 
-    output             can_push_1,
-    output             can_push_2,
+    //output             can_push_1,
+    //output             can_push_2,
 
     // For dequeue
 
     input              pop,
     output [31:0]      pop_value,
     output [FLOWS-1:0] pop_flow,
-    output             pop_valid,
-    output             can_pop
+    output             pop_valid
+    //output             can_pop
 );
 
     logic [SIZE - 1 : 0] [31:0]      values;
     logic [SIZE - 1 : 0] [31:0]      ranks;
     logic [SIZE - 1 : 0] [FLOWS-1:0] flows;
     logic [SIZE - 1 : 0]             valids;
-    logic [31:0] size;
+    //logic [31:0] size;
 
-    assign can_push_1 = size < SIZE;
-    assign can_push_2 = size < SIZE - 1;
-    assign can_pop    = size != 0;
+    //assign can_push_1 = size < SIZE;
+    //assign can_push_2 = size < SIZE - 1;
+    //assign can_pop    = size != 0;
 
     //-------------------------------------------------------------------------
     // Check stage
@@ -125,12 +125,12 @@ module FlowScheduler #(parameter SIZE = 10, parameter FLOWS = 10) (
 
             pop_valid_S  <= pop_valid_C;
              
-            if ( push_valid_C[0] && push_valid_C[1] ) 
-                size <= size + 2;
-            else if ( push_valid_C[0] ) 
-                size <= size + 1;
-            if ( pop_valid_C ) 
-                size <= size - 1;
+            //if ( push_valid_C[0] && push_valid_C[1] ) 
+            //    size <= size + 2;
+            //else if ( push_valid_C[0] ) 
+            //    size <= size + 1;
+            //if ( pop_valid_C ) 
+            //    size <= size - 1;
         end
 
         // insert + shift
