@@ -61,27 +61,23 @@ module PIFO #(parameter BANK_SIZE = 50, parameter FLOWS = 10) (
     logic [31:0]      fs_push_value_2;
     logic [FLOWS-1:0] fs_push_flow_2;
 
-    logic             fs_can_push_1;
-    logic             fs_can_push_2;
-
     logic             fs_pop;
     logic [31:0]      fs_pop_value;
     logic [FLOWS-1:0] fs_pop_flow;
     logic             fs_pop_valid;
-    logic             fs_can_pop;
 
     FlowScheduler#(FLOWS, FLOWS) flow_scheduler
     (
         .clk            (clk),
         .rst            (rst),
         
-        // for incoming packets 
+        // for packets from the rank store
         .push_1         (fs_push_1),
         .push_rank_1    (fs_push_rank_1),
         .push_value_1   (fs_push_value_1),
         .push_flow_1    (fs_push_flow_1),
 
-        // for packets from the rank store
+        // for incoming packets 
         .push_2         (fs_push_2),
         .push_rank_2    (fs_push_rank_2),
         .push_value_2   (fs_push_value_2),
@@ -98,32 +94,32 @@ module PIFO #(parameter BANK_SIZE = 50, parameter FLOWS = 10) (
     always_comb begin
         // push incoming packet
         rs_push   = 0;
-        fs_push_1 = 0;
+        fs_push_2 = 0;
         for ( int i = 0; i < FLOWS; i++ ) begin
             if ( fs_pop_valid && fs_pop_flow[i] ) begin
                 rs_push   = rs_push   || ( push_flow[i] && size[i] >  1 );
-                fs_push_1 = fs_push_1 || ( push_flow[i] && size[i] == 1 );
+                fs_push_2 = fs_push_2 || ( push_flow[i] && size[i] == 1 );
             end
             else begin
                 rs_push   = rs_push   || ( push_flow[i] && size[i] >  0 );
-                fs_push_1 = fs_push_1 || ( push_flow[i] && size[i] == 0 );
+                fs_push_2 = fs_push_2 || ( push_flow[i] && size[i] == 0 );
             end
         end
         rs_push   = push && rs_push;
-        fs_push_1 = push && fs_push_1;
+        fs_push_2 = push && fs_push_2;
 
-        fs_push_rank_1  = push_rank;
-        fs_push_value_1 = push_value;
-        fs_push_flow_1  = push_flow;
+        fs_push_rank_2  = push_rank;
+        fs_push_value_2 = push_value;
+        fs_push_flow_2  = push_flow;
         rs_push_rank    = push_rank;
         rs_push_value   = push_value;
         rs_push_flow    = push_flow;
         
         // push rank_store -> flow_scheduler
-        fs_push_2       = rs_pop_valid;
-        fs_push_rank_2  = rs_pop_rank;
-        fs_push_value_2 = rs_pop_value;
-        fs_push_flow_2  = rs_pop_flow_prev;
+        fs_push_1       = rs_pop_valid;
+        fs_push_rank_1  = rs_pop_rank;
+        fs_push_value_1 = rs_pop_value;
+        fs_push_flow_1  = rs_pop_flow_prev;
 
         // pop 
         fs_pop = pop;

@@ -20,11 +20,14 @@ struct Node {
     unsigned int rank;
     unsigned int flow;
     unsigned int value;
-    int counter; // to break ties in FIFO order 
+
+    // weird logic to break rank ties
+    int  cycle; 
+    bool prio;
 
     bool operator()(const Node& l, const Node& r) {
-        if (l.rank == r.rank) 
-            return l.counter > r.counter;
+        if (l.rank == r.rank && l.cycle == r.cycle) return l.prio;
+        if (l.rank == r.rank) return l.cycle > r.cycle;
 
         return l.rank > r.rank;
     }
@@ -62,7 +65,7 @@ std::vector<Cmd> generate_commands(int num_cmds) {
         unsigned int v = rand() % 1000, 
                      r = rand() % 1000, 
                      f = 1U << (rand() % FLOWS);
-        cmd.data = {r, f, v, i};
+        cmd.data = {r, f, v};
         if (cmd.op == Op::Pop && delay > 0) cmd.op = Op::Nop;
         cmds.push_back(cmd);
 
@@ -103,14 +106,18 @@ std::vector<unsigned int> compute_expected(std::vector<Cmd> cmds) {
     
     int idx;
     Node node;
+    int i = 0;
     for (Cmd cmd : cmds) {
         switch (cmd.op) {
             case Op::Push:
                 idx = LOG(cmd.data.flow);
                 if (size[idx])
                     rs[idx].push(cmd.data);
-                else
+                else {
+                    cmd.data.cycle = i;
+                    cmd.data.prio  = true;
                     fs.push(cmd.data);
+                }
                 size[idx]++;
                 break;
 
@@ -121,7 +128,10 @@ std::vector<unsigned int> compute_expected(std::vector<Cmd> cmds) {
                 out.push_back(node.value);
                 size[idx]--;
                 if (size[idx]) {
-                    fs.push(rs[idx].front());
+                    node = rs[idx].front();
+                    node.cycle = i + 2;
+                    node.prio  = false;
+                    fs.push(node);
                     rs[idx].pop();
                 }
                 break;
@@ -130,6 +140,8 @@ std::vector<unsigned int> compute_expected(std::vector<Cmd> cmds) {
                 // nothing to do...
                 break;
         }
+
+        i++;
     }
     
     return out;
