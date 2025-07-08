@@ -66,22 +66,23 @@ struct Cmd : public ICmd {
 };
 
 
-std::vector<ICmd*> generate_commands(int num_cmds) {
+std::vector<ICmd*> generate_commands(int num_cmds, bool overflow) {
     std::vector<ICmd*> cmds;
     int size[FLOWS] = {0};
 
     for (int i = 0; i < num_cmds; i++) {
         Cmd* cmd = new Cmd;
+
         unsigned int v         = rand() % 1000, 
                      r         = rand() % 1000, 
                      push_flow = rand() % FLOWS,
                      pop_flow  = rand() % FLOWS;
 
-        if (size[push_flow] == SIZE) { // to avoid overflow
+        if (!overflow && size[push_flow] == SIZE) { // to avoid overflow
             pop_flow = push_flow;
             cmd->op = Op::Pop;
         }
-        else if (!size[pop_flow]) {    // to avoid underflow
+        else if (!overflow && !size[pop_flow]) {    // to avoid underflow
             push_flow = pop_flow;
             cmd->op = Op::Push;
         }
@@ -103,7 +104,7 @@ std::vector<ICmd*> generate_commands(int num_cmds) {
         cmd->push_flow        = 1U << push_flow;
         cmd->pop_flow         = 1U << pop_flow;
         cmds.push_back(cmd);
-
+        
         switch (cmd->op) {
             case Op::Push: size[push_flow]++; break;
             case Op::Pop:  size[pop_flow]--;  break;
@@ -114,9 +115,10 @@ std::vector<ICmd*> generate_commands(int num_cmds) {
                     break;
         }
     }
-
+    
+    // flush all flows
     for (unsigned int f = 0; f < FLOWS; f++)
-        while (size[f]) {
+        while (size[f] > 0) {
             Cmd* cmd      = new Cmd;
             cmd->op       = Op::Pop;
             cmd->pop_flow = 1U << f;
@@ -139,25 +141,19 @@ std::vector<IOutput*> compute_expected(std::vector<ICmd*> cmds) {
         int push_idx = LOG(cmd->push_flow);
 
         switch (cmd->op) {
+            case Op::PushPop:
+                // fall through
+
             case Op::Push: {
+                if (bank[push_idx].size() == SIZE) continue;
+
                 bank[push_idx].push(cmd->rank_value);
-                break;
+                if (cmd->op == Op::Push) break;
             }
 
             case Op::Pop: {
-                Output  n = bank[pop_idx].front();
-                Output* o = new Output;
-                o->rank   = n.rank;
-                o->value  = n.value;
-                out.push_back(o);
-                bank[pop_idx].pop();
-                break;
-            }
+                if (bank[pop_idx].empty()) continue;
 
-            case Op::PushPop: {
-                // push
-                bank[push_idx].push(cmd->rank_value);
-                // pop
                 Output  n = bank[pop_idx].front();
                 Output* o = new Output;
                 o->rank   = n.rank;

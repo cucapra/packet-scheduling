@@ -76,16 +76,16 @@ struct Cmd : public ICmd {
 };
 
 
-std::vector<ICmd*> generate_commands(int num_cmds) {
+std::vector<ICmd*> generate_commands(int num_cmds, bool overflow) {
     std::vector<ICmd*> cmds;
     int size = 0, delay = POP_GAP;
 
     for (int i = 0; i < num_cmds; i++) {
         Cmd* cmd = new Cmd;
 
-        if (size == SIZE) // to avoid overflow
+        if (!overflow && size == SIZE) // to avoid overflow
             cmd->op = Op::Pop;
-        else if (!size)   // to avoid underflow
+        else if (!overflow && !size)   // to avoid underflow
             cmd->op = Op::Push;
         else {
             switch (rand() % 3) {
@@ -104,6 +104,7 @@ std::vector<ICmd*> generate_commands(int num_cmds) {
         unsigned int v = rand() % 1000, 
                      r = rand() % 1000, 
                      f = 1U << (rand() % FLOWS);
+
         cmd->data = {r, f, v};
         if (cmd->op == Op::Pop && delay > 0) cmd->op = Op::Nop;
         cmds.push_back(cmd);
@@ -118,8 +119,9 @@ std::vector<ICmd*> generate_commands(int num_cmds) {
         delay = cmd->op == Op::Pop ? POP_GAP : delay - 1;
         size = size + delta;
     }
-
-    while (size) {
+    
+    // flush
+    while (size > 0) {
         Cmd* cmd = new Cmd;
         if (delay > 0) {
             cmd->op = Op::Nop;
@@ -150,9 +152,11 @@ std::vector<IOutput*> compute_expected(std::vector<ICmd*> cmds) {
         switch (cmd->op) {
             case Op::Push: {
                 int idx = LOG(cmd->data.flow);
-                if (size[idx])
+                if (size[idx] == SIZE) continue; 
+
+                if (size[idx]) // push to rank store if flow non-empty
                     rs[idx].push(cmd->data);
-                else {
+                else {         // otherwise push to flow scheduler
                     cmd->data.cycle = i;
                     cmd->data.prio  = true;
                     fs.push(cmd->data);
@@ -162,15 +166,20 @@ std::vector<IOutput*> compute_expected(std::vector<ICmd*> cmds) {
             }
 
             case Op::Pop: {
-                Node n = fs.top();
-                fs.pop();
-                int idx = LOG(n.flow);
+                if (fs.empty()) continue;
+                
+                // pop flow scheduler
+                Node n    = fs.top();
+                int idx   = LOG(n.flow);
                 Output* o = new Output;
-                o->value = n.value;
+                o->value  = n.value;
                 out.push_back(o);
+                fs.pop();
                 size[idx]--;
+                
+                // update flow head from rank store
                 if (size[idx]) {
-                    n = rs[idx].front();
+                    n       = rs[idx].front();
                     n.cycle = i + 2;
                     n.prio  = false;
                     fs.push(n);

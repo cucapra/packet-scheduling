@@ -10,11 +10,14 @@
 int main(int argc, char** argv, char** env) {
     int  num_cmds = NUM_CMDS;
     bool verbose  = false;
+    bool overflow = true;
     const char* waveform = nullptr;
 
     for (int i = 0; i < argc; i++) {
         if ( !strcmp(argv[i], "-v") ) 
             verbose = true;
+        if ( !strcmp(argv[i], "--no-overflow") )
+            overflow = false;
         if ( !strcmp(argv[i], "-n") && i + 1 < argc )
             num_cmds = atoi(argv[i + 1]);
         if ( !strcmp(argv[i], "-w") && i + 1 < argc )
@@ -25,7 +28,7 @@ int main(int argc, char** argv, char** env) {
         }
     }
 
-    std::vector<ICmd*>    cmds   = generate_commands(num_cmds);
+    std::vector<ICmd*>    cmds   = generate_commands(num_cmds, overflow);
     std::vector<IOutput*> expect = compute_expected(cmds);
     std::vector<IOutput*> output = simulate(cmds, waveform);
     

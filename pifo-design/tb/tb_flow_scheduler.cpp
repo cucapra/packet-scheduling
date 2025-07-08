@@ -91,16 +91,16 @@ struct Cmd : public ICmd {
 };
 
 
-std::vector<ICmd*> generate_commands(int num_cmds) {
+std::vector<ICmd*> generate_commands(int num_cmds, bool overflow) {
     std::vector<ICmd*> cmds;
     int size = 0;
     
     for (int i = 0; i < num_cmds; i++) {
         Cmd* cmd = new Cmd;
 
-        if (size == SIZE) // to avoid overflow
+        if (!overflow && size == SIZE) // to avoid overflow
             cmd->op = Op::Pop;
-        else if (!size)   // to avoid underflow
+        else if (!overflow && !size)   // to avoid underflow
             cmd->op = rand() % 2 ? Op::Push1 : Op::Push2;
         else {
             switch (rand() % 5) {
@@ -114,7 +114,8 @@ std::vector<ICmd*> generate_commands(int num_cmds) {
                     cmd->op = Op::Pop;
                     break;
                 case 3:
-                    cmd->op = size == SIZE - 1 ? Op::Push1 : Op::PushPush;
+                              // to avoid overflow
+                    cmd->op = !overflow && size == SIZE - 1 ? Op::Push1 : Op::PushPush;
                     break;
                 case 4:
                     cmd->op = Op::Nop;
@@ -128,6 +129,7 @@ std::vector<ICmd*> generate_commands(int num_cmds) {
         unsigned int v_2 = rand() % 1000, 
                      r_2 = rand() % 1000, 
                      f_2 = 1U << (rand() % FLOWS);
+
         cmd->data_1 = {r_1, f_1, v_1, 2 * i};
         cmd->data_2 = {r_2, f_2, v_2, 2 * i + 1};
         cmds.push_back(cmd);
@@ -142,8 +144,9 @@ std::vector<ICmd*> generate_commands(int num_cmds) {
         }
         size = size + delta;
     }
-
-    while (size) {
+    
+    // flush
+    while (size > 0) {
         Cmd* cmd = new Cmd;
         cmd->op  = Op::Pop;
         cmds.push_back(cmd);
@@ -162,15 +165,9 @@ std::vector<IOutput*> compute_expected(std::vector<ICmd*> cmds) {
         Cmd* cmd = static_cast<Cmd*>(icmd);
 
         switch (cmd->op) {
-            case Op::Push1:
-                pifo.push(cmd->data_1);
-                break;
-
-            case Op::Push2:
-                pifo.push(cmd->data_2);
-                break;
-
             case Op::Pop: {
+                if (pifo.empty()) continue;
+
                 Node    n = pifo.top();
                 Output* o = new Output;
                 o->flow   = n.flow;
@@ -181,7 +178,17 @@ std::vector<IOutput*> compute_expected(std::vector<ICmd*> cmds) {
             }
 
             case Op::PushPush:
+                // fall through
+
+            case Op::Push1:
+                if (pifo.size() == SIZE) continue;
+
                 pifo.push(cmd->data_1);
+                if (cmd->op == Op::Push1) break;
+
+            case Op::Push2:
+                if (pifo.size() == SIZE) continue;
+
                 pifo.push(cmd->data_2);
                 break;
 
