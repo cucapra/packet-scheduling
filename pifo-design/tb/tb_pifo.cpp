@@ -1,20 +1,18 @@
-#include <iostream>
 #include <queue>
-#include <cstdlib> 
-#include <cstdio> 
+#include <vector>
+#include <assert.h>
+
 #include <verilated.h>
 #include <verilated_vcd_c.h>
 #include "Vpifo.h"
 
-#define NUM_CMDS   50
-#define FLOWS      10
-#define SIZE       51
-#define WAVEFORM   "pifo.vcd"
-#define POP_GAP    3 // in cycles
+#include "tb.hpp"
 
-#define LOG(x) (sizeof(unsigned int) * 8 - __builtin_clz(x) - 1)
+#define FLOWS   10
+#define SIZE    51
+#define POP_GAP 3 // in cycles
 
-enum class Op { Push, Pop, Nop };
+#define WAVEFORM "pifo.vcd"
 
 struct Node {
     unsigned int rank;
@@ -33,62 +31,103 @@ struct Node {
     }
 };
 
-struct Cmd {
+struct Output : public IOutput {
+    unsigned int value;
+    
+    std::string to_string() const {
+        return std::to_string(value);
+    }
+
+    bool is_equal(const IOutput& other) const {
+        return value == static_cast<const Output&>(other).value;
+    }
+};
+
+struct Cmd : public ICmd {
     Op op;
     Node data;
+
+    std::string to_string() const {
+        unsigned int v = data.value, 
+                     r = data.rank, 
+                     f = data.flow;
+
+        char buff[100];
+        switch (op) {
+            case Op::Push:
+                snprintf(buff, sizeof(buff), "push(v=%u, f=%u, r=%u)", v, f, r);
+                break;
+
+            case Op::Pop:
+                snprintf(buff, sizeof(buff), "pop");
+                break;
+
+            case Op::Nop:
+                snprintf(buff, sizeof(buff), "nop");
+                break;
+
+            default:
+                assert(!"ERROR: invalid operation");
+                exit(1);
+        }
+
+        return buff;
+    }
 };
 
 
-std::vector<Cmd> generate_commands(int num_cmds) {
-    std::vector<Cmd> cmds;
-    int size  = 0;
-    int delay = POP_GAP;
+std::vector<ICmd*> generate_commands(int num_cmds) {
+    std::vector<ICmd*> cmds;
+    int size = 0, delay = POP_GAP;
+
     for (int i = 0; i < num_cmds; i++) {
-        Cmd cmd;
+        Cmd* cmd = new Cmd;
+
         if (size == SIZE) // to avoid overflow
-            cmd.op = Op::Pop;
+            cmd->op = Op::Pop;
         else if (!size)   // to avoid underflow
-            cmd.op = Op::Push;
+            cmd->op = Op::Push;
         else {
             switch (rand() % 3) {
                 case 0:
-                    cmd.op = Op::Push;
+                    cmd->op = Op::Push;
                     break;
                 case 1:
-                    cmd.op = Op::Pop;
+                    cmd->op = Op::Pop;
                     break;
                 case 2:
-                    cmd.op = Op::Nop;
+                    cmd->op = Op::Nop;
                     break;
             }
         }
+
         unsigned int v = rand() % 1000, 
                      r = rand() % 1000, 
                      f = 1U << (rand() % FLOWS);
-        cmd.data = {r, f, v};
-        if (cmd.op == Op::Pop && delay > 0) cmd.op = Op::Nop;
+        cmd->data = {r, f, v};
+        if (cmd->op == Op::Pop && delay > 0) cmd->op = Op::Nop;
         cmds.push_back(cmd);
 
 
         int delta;
-        switch (cmd.op) {
+        switch (cmd->op) {
             case Op::Push: delta = 1;  break;
             case Op::Pop:  delta = -1; break;
             case Op::Nop:  delta = 0;  break;
         }
-        delay = cmd.op == Op::Pop ? POP_GAP : delay - 1;
+        delay = cmd->op == Op::Pop ? POP_GAP : delay - 1;
         size = size + delta;
     }
 
     while (size) {
-        Cmd cmd;
+        Cmd* cmd = new Cmd;
         if (delay > 0) {
-            cmd = { .op = Op::Nop };
+            cmd->op = Op::Nop;
             delay--;
         }
         else {
-            cmd = { .op = Op::Pop };
-            delay = POP_GAP;
+            cmd->op = Op::Pop;
+            delay   = POP_GAP;
             size--;
         }
         cmds.push_back(cmd);
@@ -98,43 +137,47 @@ std::vector<Cmd> generate_commands(int num_cmds) {
 }
 
 
-std::vector<unsigned int> compute_expected(std::vector<Cmd> cmds) {
+std::vector<IOutput*> compute_expected(std::vector<ICmd*> cmds) {
     std::queue<Node> rs[FLOWS];
     std::priority_queue<Node, std::vector<Node>, Node> fs;
     int size[FLOWS] = {0};
-    std::vector<unsigned int> out;
+    std::vector<IOutput*> out;
     
-    int idx;
-    Node node;
     int i = 0;
-    for (Cmd cmd : cmds) {
-        switch (cmd.op) {
-            case Op::Push:
-                idx = LOG(cmd.data.flow);
+    for (ICmd* icmd : cmds) {
+        Cmd* cmd = static_cast<Cmd*>(icmd);
+
+        switch (cmd->op) {
+            case Op::Push: {
+                int idx = LOG(cmd->data.flow);
                 if (size[idx])
-                    rs[idx].push(cmd.data);
+                    rs[idx].push(cmd->data);
                 else {
-                    cmd.data.cycle = i;
-                    cmd.data.prio  = true;
-                    fs.push(cmd.data);
+                    cmd->data.cycle = i;
+                    cmd->data.prio  = true;
+                    fs.push(cmd->data);
                 }
                 size[idx]++;
                 break;
+            }
 
-            case Op::Pop:
-                node = fs.top();
+            case Op::Pop: {
+                Node n = fs.top();
                 fs.pop();
-                idx = LOG(node.flow);
-                out.push_back(node.value);
+                int idx = LOG(n.flow);
+                Output* o = new Output;
+                o->value = n.value;
+                out.push_back(o);
                 size[idx]--;
                 if (size[idx]) {
-                    node = rs[idx].front();
-                    node.cycle = i + 2;
-                    node.prio  = false;
-                    fs.push(node);
+                    n = rs[idx].front();
+                    n.cycle = i + 2;
+                    n.prio  = false;
+                    fs.push(n);
                     rs[idx].pop();
                 }
                 break;
+            }
 
             case Op::Nop:
                 // nothing to do...
@@ -148,9 +191,11 @@ std::vector<unsigned int> compute_expected(std::vector<Cmd> cmds) {
 }
 
 
-std::vector<unsigned int> simulate(std::vector<Cmd> cmds, const char* waveform) {
+std::vector<IOutput*> simulate(std::vector<ICmd*> cmds, const char* waveform) {
+    if (!waveform) waveform = WAVEFORM;
+
     Vpifo *dut = new Vpifo;
-    std::vector<unsigned int> out;
+    std::vector<IOutput*> out;
 
     Verilated::traceEverOn(true);
     VerilatedVcdC *m_trace = new VerilatedVcdC;
@@ -170,14 +215,18 @@ std::vector<unsigned int> simulate(std::vector<Cmd> cmds, const char* waveform) 
     dut->rst = 0;
 
     // process commands
-    std::vector<Cmd>::iterator it = cmds.begin();
+    std::vector<ICmd*>::iterator it = cmds.begin();
     int delay = 4; // pad with 4 cycles after all commands
     while (it != cmds.end() || delay) {
         dut->clk ^= 1;
         dut->eval();
 
         if (dut->clk) {
-            if (dut->pop_valid) out.push_back(dut->pop_value);
+            if (dut->pop_valid) {
+                Output* o = new Output;
+                o->value = dut->pop_value;
+                out.push_back(o);
+            }
 
             if (it == cmds.end()) {
                 dut->push = 0;
@@ -185,14 +234,14 @@ std::vector<unsigned int> simulate(std::vector<Cmd> cmds, const char* waveform) 
                 delay--;
             }
             else {
-                Cmd cmd = *it;
+                Cmd* cmd = static_cast<Cmd*>(*it);
                 
-                dut->push = cmd.op == Op::Push;
-                dut->pop  = cmd.op == Op::Pop;
+                dut->push = cmd->op == Op::Push;
+                dut->pop  = cmd->op == Op::Pop;
 
-                dut->push_rank  = cmd.data.rank;
-                dut->push_value = cmd.data.value;
-                dut->push_flow  = cmd.data.flow;
+                dut->push_rank  = cmd->data.rank;
+                dut->push_value = cmd->data.value;
+                dut->push_flow  = cmd->data.flow;
 
                 it++;
             }
@@ -206,64 +255,4 @@ std::vector<unsigned int> simulate(std::vector<Cmd> cmds, const char* waveform) 
     delete dut;
 
     return out;
-}
-
-
-int main(int argc, char** argv, char** env) {
-    int  num_cmds = NUM_CMDS;
-    bool verbose  = false;
-    const char* waveform = WAVEFORM;
-    for (int i = 0; i < argc; i++) {
-        if ( !strcmp(argv[i], "-v") ) 
-            verbose = true;
-        if ( !strcmp(argv[i], "-n") && i + 1 < argc )
-            num_cmds = atoi(argv[i + 1]);
-        if ( !strcmp(argv[i], "-w") && i + 1 < argc )
-            waveform = argv[i + 1];
-        if ( !strcmp(argv[i], "-h") ) {
-            printf("%s [-h] [-v] [-n NUM_CMDS] [-w FILE.vcd]\n", argv[0]);
-            return 0;
-        }
-    }
-
-    std::vector<Cmd>          cmds   = generate_commands(num_cmds);
-    std::vector<unsigned int> expect = compute_expected(cmds);
-    std::vector<unsigned int> output = simulate(cmds, waveform);
-    
-    if (verbose) {
-        std::cout << "Commands" << std::endl;
-        for (Cmd c : cmds) {
-            unsigned int v = c.data.value, 
-                         r = c.data.rank, 
-                         f = c.data.flow;
-            switch (c.op) {
-                case Op::Push:
-                    printf("push(v=%u, f=%u, r=%u)\n", v, f, r);
-                    break;
-
-                case Op::Pop:
-                    printf("pop\n");
-                    break;
-
-                case Op::Nop:
-                    printf("nop\n");
-                    break;
-            }
-        }
-
-        std::cout << "Expected" << std::endl;
-        for (auto x : expect) printf("%u\n", x);
-
-        std::cout << "Output" << std::endl;
-        for (auto x : output) printf("%u\n", x);
-    }
-
-    if (expect == output)
-        std::cout << "\x1B[32mTEST PASS\033[0m\t\t" << std::endl;
-    else {
-        std::cout << "\x1B[31mTEST FAIL\033[0m\t\t" << std::endl;
-        return 1;
-    }
-
-    return 0;
 }
