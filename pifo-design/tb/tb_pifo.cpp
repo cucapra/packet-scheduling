@@ -10,7 +10,7 @@
 
 #define FLOWS   10
 #define SIZE    51
-#define POP_GAP 3 // in cycles
+#define POP_GAP 2 // in cycles
 
 #define WAVEFORM "pifo.vcd"
 
