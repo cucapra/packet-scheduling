@@ -4,6 +4,7 @@
 `include "flow_scheduler.sv"
 `include "rank_store.sv"
 
+
 module PIFO #(parameter BANK_SIZE = 50, parameter FLOWS = 10) (
     input  clk,
     input  rst,
@@ -29,7 +30,6 @@ module PIFO #(parameter BANK_SIZE = 50, parameter FLOWS = 10) (
 
     logic             rs_pop;
     logic [FLOWS-1:0] rs_pop_flow;
-    logic [FLOWS-1:0] rs_pop_flow_prev;
     logic [31:0]      rs_pop_value;
     logic [31:0]      rs_pop_rank;
     logic             rs_pop_valid;
@@ -89,65 +89,53 @@ module PIFO #(parameter BANK_SIZE = 50, parameter FLOWS = 10) (
         .pop_valid      (fs_pop_valid)
     );
 
-    logic [FLOWS-1:0] [31:0] size;
+    logic             do_fs_push_2;
+    logic             do_rs_push;
+    logic [FLOWS-1:0] rs_pop_flow_prev;
+    logic [FLOWS-1:0] flow_non_empty;
+    
+    // push incoming packet
+    assign fs_push_2       = push && do_fs_push_2;
+    assign fs_push_rank_2  = push_rank;
+    assign fs_push_value_2 = push_value;
+    assign fs_push_flow_2  = push_flow;
+    assign rs_push         = push && do_rs_push;
+    assign rs_push_rank    = push_rank;
+    assign rs_push_value   = push_value;
+    assign rs_push_flow    = push_flow;
+        
+    // push rank_store -> flow_scheduler
+    assign fs_push_1       = rs_pop_valid;
+    assign fs_push_rank_1  = rs_pop_rank;
+    assign fs_push_value_1 = rs_pop_value;
+    assign fs_push_flow_1  = rs_pop_flow_prev;
+
+    // pop 
+    assign fs_pop      = pop;
+    assign rs_pop      = fs_pop_valid;
+    assign rs_pop_flow = fs_pop_flow;
+    assign pop_valid   = fs_pop_valid;
+    assign pop_value   = fs_pop_value;
 
     always_comb begin
-        // push incoming packet
-        rs_push   = 0;
-        fs_push_2 = 0;
+        do_rs_push   = 0;
+        do_fs_push_2 = 0;
         for ( int i = 0; i < FLOWS; i++ ) begin
-            if ( fs_pop_valid && fs_pop_flow[i] ) begin
-                rs_push   = rs_push   || ( push_flow[i] && size[i] >  1 );
-                fs_push_2 = fs_push_2 || ( push_flow[i] && size[i] == 1 );
-            end
-            else begin
-                rs_push   = rs_push   || ( push_flow[i] && size[i] >  0 );
-                fs_push_2 = fs_push_2 || ( push_flow[i] && size[i] == 0 );
-            end
+            do_rs_push   = do_rs_push   || (  (  flow_non_empty[i] || ( fs_push_1 &&  fs_push_flow_1[i]) ) && push_flow[i] );
+            do_fs_push_2 = do_fs_push_2 || ( !(  flow_non_empty[i] || ( fs_push_1 &&  fs_push_flow_1[i]) ) && push_flow[i] );
         end
-        rs_push   = push && rs_push;
-        fs_push_2 = push && fs_push_2;
-
-        fs_push_rank_2  = push_rank;
-        fs_push_value_2 = push_value;
-        fs_push_flow_2  = push_flow;
-        rs_push_rank    = push_rank;
-        rs_push_value   = push_value;
-        rs_push_flow    = push_flow;
-        
-        // push rank_store -> flow_scheduler
-        fs_push_1       = rs_pop_valid;
-        fs_push_rank_1  = rs_pop_rank;
-        fs_push_value_1 = rs_pop_value;
-        fs_push_flow_1  = rs_pop_flow_prev;
-
-        // pop 
-        fs_pop = pop;
-        
-        // pop rank_store
-        rs_pop = 0;
-        for ( int i = 0; i < FLOWS; i++ ) begin
-            rs_pop = rs_pop || ( fs_pop_flow[i] && size[i] > 1 );
-        end
-        rs_pop = fs_pop_valid && rs_pop;
-        rs_pop_flow = fs_pop_flow;
     end
 
     always_ff @( posedge clk ) begin 
         for ( int i = 0; i < FLOWS; i++ ) begin
-            case ({push && push_flow[i], pop_valid && fs_pop_flow[i]})
-                2'b10: size[i] <= size[i] + 1;
-                2'b01: size[i] <= size[i] - 1;
-                default: begin end // do nothing
-            endcase
+            if (( fs_push_1 && fs_push_flow_1[i] ) || ( fs_push_2 && fs_push_flow_2[i] )) 
+                flow_non_empty[i] <= 1;
+            else if ( fs_pop_valid && fs_pop_flow[i] )
+                flow_non_empty[i] <= 0;
         end
 
         rs_pop_flow_prev <= rs_pop_flow;
     end
-
-    assign pop_valid = fs_pop_valid;
-    assign pop_value = fs_pop_value;
-
 endmodule
 
 `endif /* PIFO */

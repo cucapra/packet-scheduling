@@ -1,6 +1,7 @@
 `ifndef FLOW_SCHEDULER
 `define FLOW_SCHEDULER
 
+
 //                     requires  SIZE > 1
 module FlowScheduler #(parameter SIZE = 10, parameter FLOWS = 10) (
     input  clk,
@@ -18,27 +19,18 @@ module FlowScheduler #(parameter SIZE = 10, parameter FLOWS = 10) (
     input  [31:0]      push_value_2,
     input  [FLOWS-1:0] push_flow_2,
 
-    //output             can_push_1,
-    //output             can_push_2,
-
     // For dequeue
 
     input              pop,
     output [31:0]      pop_value,
     output [FLOWS-1:0] pop_flow,
     output             pop_valid
-    //output             can_pop
 );
 
     logic [SIZE - 1 : 0] [31:0]      values;
     logic [SIZE - 1 : 0] [31:0]      ranks;
     logic [SIZE - 1 : 0] [FLOWS-1:0] flows;
     logic [SIZE - 1 : 0]             valids;
-    //logic [31:0] size;
-
-    //assign can_push_1 = size < SIZE;
-    //assign can_push_2 = size < SIZE - 1;
-    //assign can_pop    = size != 0;
 
     //-------------------------------------------------------------------------
     // Check stage
@@ -61,7 +53,7 @@ module FlowScheduler #(parameter SIZE = 10, parameter FLOWS = 10) (
     logic pop_valid_C;
     assign pop_valid_C = pop;
     
-    // invalidate pushes that overflow
+    // invalidate pushes that overflow and pops that underflow
     always_comb begin
         casez ( {push_valid_S, pop_valid_S} )
             3'b110 : begin         // dual push in S

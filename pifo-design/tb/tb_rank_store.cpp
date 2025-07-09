@@ -145,7 +145,9 @@ std::vector<IOutput*> compute_expected(std::vector<ICmd*> cmds) {
                 // fall through
 
             case Op::Push: {
-                if (bank[push_idx].size() != SIZE) bank[push_idx].push(cmd->rank_value);
+                if (bank[push_idx].size() != SIZE || (cmd->op == Op::PushPop && pop_idx == push_idx))
+                    bank[push_idx].push(cmd->rank_value);
+
                 if (cmd->op == Op::Push) break;
             }
 

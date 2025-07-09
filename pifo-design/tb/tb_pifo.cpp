@@ -145,9 +145,10 @@ std::vector<IOutput*> compute_expected(std::vector<ICmd*> cmds) {
     int size[FLOWS] = {0};
     std::vector<IOutput*> out;
     
-    int i = 0;
+    int i = 0; 
     for (ICmd* icmd : cmds) {
         Cmd* cmd = static_cast<Cmd*>(icmd);
+        i++;
 
         switch (cmd->op) {
             case Op::Push: {
@@ -192,8 +193,6 @@ std::vector<IOutput*> compute_expected(std::vector<ICmd*> cmds) {
                 // nothing to do...
                 break;
         }
-
-        i++;
     }
     
     return out;

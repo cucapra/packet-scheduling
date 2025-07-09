@@ -28,7 +28,22 @@ module RankStore #(parameter SIZE = 50, parameter FLOWS = 10) (
     logic [FLOWS - 1 : 0] [SIZE - 1 : 0] head;
     logic [FLOWS - 1 : 0] [SIZE - 1 : 0] tail;
 
-    logic [FLOWS - 1 : 0] empty; 
+    logic [FLOWS - 1 : 0] empty;
+    logic [FLOWS - 1 : 0] full;
+
+    logic [FLOWS - 1 : 0] allow_push;
+    logic [FLOWS - 1 : 0] allow_pop;
+    logic                 any_pop_valid;
+
+    // invalidate pushes that overflow and pops that underflow
+    always_comb begin
+        any_pop_valid = 0;
+        for ( int i = 0; i < FLOWS; i++ ) begin
+            allow_push[i] = push && push_flow[i] && ( !full[i]  || ( pop  && pop_flow[i]  ) );
+            allow_pop[i]  = pop  && pop_flow[i]  && ( !empty[i] || ( push && push_flow[i] ) );
+            any_pop_valid = any_pop_valid || allow_pop[i];
+        end
+    end
 
     always_ff @( posedge clk ) begin
         if ( rst ) begin
@@ -36,24 +51,30 @@ module RankStore #(parameter SIZE = 50, parameter FLOWS = 10) (
                 head[i]  <= 1;
                 tail[i]  <= 1;
                 empty[i] <= 1;
+                full[i]  <= 0;
             end
         end
 
         for ( int i = 0; i < FLOWS; i++ )
             for ( int j = 0; j < SIZE; j++ ) begin
-                if ( push && push_flow[i] && tail[i][j] ) begin
+                if ( allow_push[i] && tail[i][j] ) begin
                     values[i][j] <= push_value;
                     ranks[i][j]  <= push_rank;
-                    if ( tail[i][SIZE - 1] ) 
-                        tail[i]  <= 1;
-                    else 
-                        tail[i] <= tail[i] << 1;
 
-                    if ( !pop || !pop_flow[i] ) empty[i] <= 0;
+                    if ( tail[i][SIZE - 1] ) begin
+                        tail[i]  <= 1;
+                        if ( !allow_pop[i] ) full[i] <= head[i][0];
+                    end
+                    else begin
+                        tail[i] <= tail[i] << 1;
+                        if ( !allow_pop[i] ) full[i] <= head[i][j + 1];
+                    end
+
+                    if ( !allow_pop[i] ) empty[i] <= 0;
                 end
 
-                if ( pop && pop_flow[i] && head[i][j] ) begin
-                    if ( push && push_flow[i] && empty[i] ) begin
+                if ( allow_pop[i] && head[i][j] ) begin
+                    if ( allow_push[i] && empty[i] ) begin
                         out_value <= push_value;
                         out_rank  <= push_rank;
                     end
@@ -64,16 +85,18 @@ module RankStore #(parameter SIZE = 50, parameter FLOWS = 10) (
 
                     if ( head[i][SIZE - 1] ) begin
                         head[i] <= 1;
-                        if ( !push || !push_flow[i] ) empty[i] <= tail[i][0];
+                        if ( !allow_push[i] ) empty[i] <= tail[i][0];
                     end
                     else begin
                         head[i] <= head[i] << 1;
-                        if ( !push || !push_flow[i] ) empty[i] <= tail[i][j + 1];
+                        if ( !allow_push[i] ) empty[i] <= tail[i][j + 1];
                     end
+
+                    if ( !allow_push[i] ) full[i] <= 0;
                 end
             end
 
-        out_valid <= pop;
+        out_valid <= any_pop_valid;
     end
 
     logic [31:0] out_value;
