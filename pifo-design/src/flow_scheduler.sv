@@ -144,7 +144,7 @@ module FlowScheduler #(parameter SIZE = 10, parameter FLOWS = 10) (
                 end
             end
 
-            pop_valid_S  <= pop_valid_C;
+            pop_valid_S <= pop_valid_C;
         end
 
         // insert + shift
@@ -160,7 +160,7 @@ module FlowScheduler #(parameter SIZE = 10, parameter FLOWS = 10) (
             end
             
             // insert
-            for ( int i = 1; i < SIZE; i++ )
+            for ( int i = 1; i < SIZE - 1; i++ )
                 if ( insert_idx_S[1][i] && !insert_idx_S[1][i - 1] ) begin
                     values[i + 1] <= push_value_S[1];
                     ranks[i + 1]  <= push_rank_S[1];
