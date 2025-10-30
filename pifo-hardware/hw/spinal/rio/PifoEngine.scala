@@ -209,15 +209,21 @@ case class PifoEngine(config : EngineConfig) extends Component {
 
   val control = new Area {
     // control logic to write the mappers and brain state
-    val controlHeads = StreamFork(io.control, 5)
+    val controlHeads = StreamFork(io.control, 2)
     controlHeads(0)
-      .takeWhen(controlHeads(0).payload.command == ControlCommand.MODIFY_MAPPING && controlHeads(0).mappingId == MappingId.InputMapper)
+      .takeWhen(controlHeads(0).payload.command === ControlCommand.MODIFY_MAPPING && controlHeads(0).mappingId === MappingId.InputMapper)
       .translateInto(Stream(enque.enqueMapper.updater)) { (to, from) =>
         to.inputId := from.flowId
         to.outputId := from.vPifoId
       }.toFlow >> enque.enqueMapper.io.writeReq
 
     // continue with other control paths...
+    controlHeads(1)
+      .takeWhen(controlHeads(1).payload.command === ControlCommand.MODIFY_MAPPING && controlHeads(1).mappingId === MappingId.OutputMapper)
+      .translateInto(Stream(deque.dequeMapper.updater)) { (to, from) =>
+        to.inputId := from.flowId
+        to.outputId := from.vPifoId // assuming 1:1 mapping for simplicity
+      }.toFlow >> deque.dequeMapper.io.writeReq
 
   }
 }

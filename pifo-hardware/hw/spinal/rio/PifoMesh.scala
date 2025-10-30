@@ -20,11 +20,11 @@ case class MessageCrossBar(config : EngineConfig) extends Component {
     }
 }
 
-case class ControlCommand() extends SpinalEnum {
+object ControlCommand extends SpinalEnum {
     val MODIFY_MAPPING, COMMIT_MAPPING = newElement()
 }
 
-case class MappingId() extends SpinalEnum {
+object MappingId extends SpinalEnum {
     val InputMapper, OutputMapper, BrainEngineId, BrainState, BrainFlowState = newElement()
 }
 
