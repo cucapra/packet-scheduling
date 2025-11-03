@@ -32,6 +32,7 @@ case class PifoPopResponse(config: PifoConfig) extends Bundle {
   val exist = Bool()
   val priority = UInt(config.bitPrio bits)
   val data = UInt(config.bitData bits)
+  val port = UInt(config.bitPort bits)
 }
 
 // Push interface bundle
@@ -234,6 +235,7 @@ class PifoRTL(config: PifoConfig) extends Component {
   io.popResponse.exist := RegNext(popExists)
   io.popResponse.data := RegNext(pifoArray(popPosition).data)
   io.popResponse.priority := RegNext(pifoArray(popPosition).priority)
+  io.popResponse.port := RegNext(pifoArray(popPosition).port)
 
   pifoCount := nextCount
 }

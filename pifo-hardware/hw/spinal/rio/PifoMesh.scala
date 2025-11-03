@@ -21,16 +21,13 @@ case class MessageCrossBar(config : EngineConfig) extends Component {
 }
 
 object ControlCommand extends SpinalEnum {
-    val MODIFY_MAPPING, COMMIT_MAPPING = newElement()
-}
-
-object MappingId extends SpinalEnum {
-    val InputMapper, OutputMapper, BrainEngineId, BrainState, BrainFlowState = newElement()
+    val UpdateMapperPre, UpdateMapperPost, CommitMapper,
+        // brain operators
+        UpdateBrainEngine, UpdateBrainState, UpdateBrainFlowState = newElement()
 }
 
 case class ControlMessage(config: EngineConfig) extends Bundle {
     val command = ControlCommand()
-    val mappingId = MappingId()
     val engineId = UInt(config.engineIdWidth bits)
     val vPifoId = UInt(config.vpifoIdWidth bits)
     val flowId = UInt(config.flowIdWidth bits)
