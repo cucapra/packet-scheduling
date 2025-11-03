@@ -38,8 +38,8 @@ case class PifoPopResponse(config: PifoConfig) extends Bundle {
 // Push interface bundle
 case class PifoEntry(config: PifoConfig) extends Bundle {
   val priority = UInt(config.bitPrio bits)
-  val data = UInt(config.bitData bits)
-  val port = UInt(config.bitPort bits)
+  val data     = UInt(config.bitData bits)
+  val port     = UInt(config.bitPort bits)
 }
 
 // SpinalHDL blackbox wrapper for the pifo Verilog module
