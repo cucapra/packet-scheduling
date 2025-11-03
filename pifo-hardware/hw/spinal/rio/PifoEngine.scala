@@ -2,6 +2,7 @@ package rio
 
 import spinal.core._
 import spinal.lib._
+import spinal.core.fiber.Engine
 
 // flow = vPIFOs + FlowId
 
@@ -91,7 +92,7 @@ case class PIFOBrain(config : EngineConfig) extends Component {
   }
   inHeads(1).map(_.vpifoId).toFlow >> lastVirtualMapper.io.readReq
 
-  val engineCAM = Mapper(config.numVPIFOs * config.numFlows, 16)
+  val engineCAM = Mapper(config.numVPIFOs * config.numFlows, 32)
   inHeads(2).map { data =>
     data.vpifoId @@ data.flowId
   }.toFlow >> engineCAM.io.readReq
@@ -132,45 +133,77 @@ case class PIFOBrain(config : EngineConfig) extends Component {
     }
   )
   
-
-  // Brain types for the PIFO brain engine
-  object BrainType extends SpinalEnum {
-    val NOP, WFQ, SP, FIFO = newElement()
-  }
-
+  // TODO(zhiyaung): add update logic for different brain types
   // Engine Logic
   val outStream = engineStream.map { data =>
-    val entry = PifoEntry(config)
-    entry.port := data.pifoId
+    val res = new Bundle {
+      val entry = io.out.payload
+      val flowUpdate = new Bundle {
+        val flow = engineCAM.updater
+        val update = Bool()
+      }
+      val brainUpdate = new Bundle {
+        val brain = brainStateMem.updater
+        val update = Bool()
+      }
+    }
+
+    res.entry.port := data.pifoId
+    res.entry.priority := 0
+    res.flowUpdate.flow.inputId := data.pifoId @@ data.flowId
+    res.flowUpdate.update := False
+    res.brainUpdate.brain.inputId := data.pifoId
+    res.brainUpdate.update := False
     
     switch(data.engineId) {
       // strict priority
       is(BrainType.SP) {
-        entry.priority := data.flowState.resized
+        res.entry.priority := data.flowState.resized
       }
 
       // WFQ
+      // Currently this works like a Round-Robin: as its weight is same for all flows
+      // TODO(zhiyuang): need some assertation on weight configuration: we need to make sure it fits into the bits
       is(BrainType.WFQ) {
+        val current = data.brainState.resize(config.maxPacketPriority bits)
+        val virtualTime = data.virutalTime.resize(config.maxPacketPriority bits)
+        val lastFinish = data.flowState.resize(config.maxPacketPriority bits)
 
+        val newStart = Mux(virtualTime > lastFinish, virtualTime, lastFinish)
+
+        val newTime = newStart + 16 // TODO(zhiyuang): weight handling in per-flow state
+        res.entry.priority := newTime
+
+        res.flowUpdate.update := True
+        res.flowUpdate.flow.outputId :=  newTime
       }
 
       // FIFO
       is(BrainType.FIFO) {
         val current = data.brainState.resize(config.maxPacketPriority bits)
-        entry.priority := current + 1
-      }
-
-      default {
-        // invalid entry
-        entry.priority := 0
+        val newPriority = current + 1
+        res.entry.priority := newPriority
+        res.brainUpdate.update := True
+        res.brainUpdate.brain.outputId := newPriority
       }
     }
 
-    entry
+    res
   }
 
-  // priority should not be zero
-  io.out << outStream.throwWhen(outStream.payload.priority === 0)
+  val (output, flowUpdates, brainUpdates) = StreamFork3(outStream)
+
+  io.out << output
+    .throwWhen(output.entry.priority === 0)
+    .map(_.entry)
+
+  engineCAM.io.writeReq << flowUpdates
+    .throwWhen(flowUpdates.payload.flowUpdate.update)
+    .map(_.flowUpdate.flow).toFlow
+
+  brainStateMem.io.writeReq << brainUpdates
+    .throwWhen(brainUpdates.payload.brainUpdate.update)
+    .map(_.brainUpdate.brain).toFlow
 }
 
 case class PifoMessage(config: EngineConfig) extends Bundle {
@@ -237,6 +270,7 @@ case class PifoEngine(config : EngineConfig) extends Component {
     val (popResp, brainUpdate) = StreamFork2(pifos.io.popResponse.toStream)
     enque.brain.io.poped << brainUpdate.toFlow
 
+    // TODO(zhiyuang): add the flowid on it. thinking about the throw condition
     io.dequeueResponse << popResp
       .throwWhen(!pifos.io.popResponse.exist)
       .map(resp => PifoMessage.fromData(config, resp.data))
