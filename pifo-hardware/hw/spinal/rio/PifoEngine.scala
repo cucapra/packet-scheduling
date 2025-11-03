@@ -11,12 +11,20 @@ case class EngineConfig (
     numVPIFOs : Int,
     maxPacketPriority: Int,
     fifoDepth: Int,
-    prefetchBufferDepth: Int
+    prefetchBufferDepth: Int,
+
+    brainStateWidth : Int = 1024,
+    flowStateWidth : Int = 32,
+
+    configDataWidth : Int = 32
 ) {
     def vpifoIdWidth = log2Up(numVPIFOs)
     def numFlows = numVPIFOs * numEngines
     def flowIdWidth = log2Up(numFlows)
     def engineIdWidth = log2Up(numEngines)
+
+    assert(flowStateWidth <= configDataWidth, "flowStateWidth should be less than configDataWidth")
+    assert(brainStateWidth % configDataWidth == 0, "brainStateWidth should be multiple of configDataWidth")
 }
 
 object EngineConfig {
@@ -214,9 +222,10 @@ case class PifoMessage(config: EngineConfig) extends Bundle {
 }
 
 object PifoMessage {
-  def fromData(config : EngineConfig, data : UInt) : PifoMessage = {
+  def fromData(config : EngineConfig, data : UInt, exist : Bool) : PifoMessage = {
     val msg = PifoMessage(config)
-    msg.engineId := data(config.engineIdWidth - 1 downto 0)
+    // If not exist, set engineId to 0
+    msg.engineId := Mux(exist, data(config.engineIdWidth - 1 downto 0), U(0))
     msg.vPifoId := data(config.engineIdWidth + config.vpifoIdWidth - 1 downto config.engineIdWidth)
     msg
   }
@@ -270,10 +279,8 @@ case class PifoEngine(config : EngineConfig) extends Component {
     val (popResp, brainUpdate) = StreamFork2(pifos.io.popResponse.toStream)
     enque.brain.io.poped << brainUpdate.toFlow
 
-    // TODO(zhiyuang): add the flowid on it. thinking about the throw condition
     io.dequeueResponse << popResp
-      .throwWhen(!pifos.io.popResponse.exist)
-      .map(resp => PifoMessage.fromData(config, resp.data))
+      .map(resp => PifoMessage.fromData(config, resp.data, resp.exist))
   }
 
   val controller = new ControllerFactory(config)
