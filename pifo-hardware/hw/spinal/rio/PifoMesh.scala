@@ -36,10 +36,10 @@ case class ControlMessage(config: EngineConfig) extends Bundle {
 
 case class PifoMesh(config: EngineConfig) extends Component {
     val io = new Bundle {
-        val dataRequest = master(Stream(PifoMessage(config)))
-        val pop = slave(Stream(PifoMessage(config)))
+        val dataRequest = slave(Stream(PifoMessage(config)))
+        val pop = master(Stream(PifoMessage(config)))
 
-        val insert = slave(Stream(PifoMessage(config)))
+        val insert = Vec(slave(Stream(PifoMessage(config))), config.numEngines)
         val controlRequest = slave(Stream(ControlMessage(config)))
     }
 
@@ -58,14 +58,13 @@ case class PifoMesh(config: EngineConfig) extends Component {
     xbar.io.outputs(0) >> io.pop
 
     // insert path
-    val inserts = StreamFork(io.insert, config.numEngines)
-    (inserts zip pifoEngines).foreach { case (insertStream, engine) =>
-        engine.io.enqueRequest << insertStream
+    (io.insert zip pifoEngines).foreach { case (in, engine) =>
+        engine.io.enqueRequest << in
     }
 
-
     // all controlpath. currently only write the memories
-    val controlCommand = StreamDemux(io.controlRequest, io.controlRequest.payload.engineId, config.numEngines)
+    val translatedEngineId = (io.controlRequest.payload.engineId - 1).resized
+    val controlCommand = StreamDemux(io.controlRequest, translatedEngineId, config.numEngines)
     (controlCommand zip pifoEngines).foreach { case (cmdStream, engine) =>
         engine.io.control << cmdStream
     }

@@ -19,7 +19,7 @@ case class EngineConfig (
 ) {
     def vpifoIdWidth = log2Up(numVPIFOs)
     def numFlows = numVPIFOs * numEngines
-    def engineIdWidth = log2Up(numEngines)
+    def engineIdWidth = log2Up(numEngines + 1) // +1 for control port
     def flowIdWidth = vpifoIdWidth + engineIdWidth
 
     def numBrainState = 1 << brainStateWidth
