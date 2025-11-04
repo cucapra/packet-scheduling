@@ -256,14 +256,18 @@ case class PifoMessage(config: EngineConfig) extends Bundle {
   val vPifoId = UInt(config.vpifoIdWidth bits)
 
   def flowId : UInt = engineId @@ vPifoId
+  def fromFlowId(id : UInt) = {
+    engineId := id(config.flowIdWidth - 1 downto config.vpifoIdWidth)
+    vPifoId := id(config.vpifoIdWidth - 1 downto 0)
+  }
 }
 
 object PifoMessage {
   def fromData(config : EngineConfig, data : UInt, exist : Bool) : PifoMessage = {
     val msg = PifoMessage(config)
     // If not exist, set engineId to 0
-    msg.engineId := Mux(exist, data(config.engineIdWidth - 1 downto 0), U(0))
-    msg.vPifoId := data(config.engineIdWidth + config.vpifoIdWidth - 1 downto config.engineIdWidth)
+    msg.engineId := Mux(exist, data(config.flowIdWidth - 1 downto config.vpifoIdWidth), U(0))
+    msg.vPifoId := data(config.vpifoIdWidth - 1 downto 0)
     msg
   }
 }
@@ -288,10 +292,10 @@ case class PifoEngine(config : EngineConfig) extends Component {
     val (mapperRead, flowIdStream) = StreamFork2(io.enqueRequest)
 
     val enqueMapper = Mapper(config.vpifoIdWidth, config.vpifoIdWidth)
-    enqueMapper.io.readReq << mapperRead.map(_.flowId).toFlow
+    enqueMapper.io.readReq << mapperRead.map(_.vPifoId).toFlow
 
     val brainInput = Stream(BrainInput(config))
-    StreamJoin(enqueMapper.io.readRes.toStream, flowIdStream)
+    StreamJoin(enqueMapper.io.readRes.toStream, flowIdStream.queueLowLatency(2))
       .translateInto(brainInput) { (to, from) =>
         to.vpifoId := from._1
         to.flowId := from._2.flowId
@@ -305,22 +309,28 @@ case class PifoEngine(config : EngineConfig) extends Component {
 
     // flow PIFO will give the result
     pifos.io.push1 << brain.io.response.toFlow
+    // currently we do not use push2
+    pifos.io.push2.valid := False
+    pifos.io.push2.payload.assignDontCare()
   }
 
   val deque = new Area {
     // dequeue also need a mapper, reinterpret vpifoId if needed
-    val dequeMapper = Mapper(config.vpifoIdWidth, config.vpifoIdWidth)
+    val dequeMapper = Mapper(config.flowIdWidth, config.flowIdWidth)
 
-    // connect external dequeue requests into the deque mapper read port
-    dequeMapper.io.readReq << io.dequeueRequest.map(_.vPifoId).toFlow
-
-    pifos.io.popRequest.translateFrom(dequeMapper.io.readRes) { _.port := _ }
+    pifos.io.popRequest.translateFrom(io.dequeueRequest.toFlow) { case (to, from) =>
+      to.port := from.vPifoId
+    }
 
     val (popResp, brainUpdate) = StreamFork2(pifos.io.popResponse.toStream)
     enque.brain.io.poped << brainUpdate.toFlow
 
-    io.dequeueResponse << popResp
-      .map(resp => PifoMessage.fromData(config, resp.data, resp.exist))
+    // TODO(zhiyuang): handle not exist. do not drop it
+    popResp
+      .throwWhen(!popResp.exist)
+      .map(_.data).toFlow >> dequeMapper.io.readReq
+    
+    io.dequeueResponse.translateFrom(dequeMapper.io.readRes.toStream) { _.fromFlowId(_) }
   }
 
   val controller = new ControllerFactory(config)
@@ -328,16 +338,16 @@ case class PifoEngine(config : EngineConfig) extends Component {
     ControlCommand.UpdateMapperPre,
     enque.enqueMapper.io.writeReq
   ) { (to, from) =>
-    to.inputId := from.flowId
-    to.outputId := from.vPifoId
+    to.inputId := from.vPifoId
+    to.outputId := from.data.resized
   }
 
   controller.dispatch(
     ControlCommand.UpdateMapperPost,
     deque.dequeMapper.io.writeReq
   ) { (to, from) =>
-    to.inputId := from.vPifoId
-    to.outputId := from.vPifoId
+    to.inputId := from.flowId
+    to.outputId := from.data.resized
   }
 
   val (control, brainControl) = StreamFork2(io.control)

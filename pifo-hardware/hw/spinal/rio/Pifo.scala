@@ -180,8 +180,8 @@ class PifoRTL(config: PifoConfig) extends Component {
     nextCount \= nextCount - 1
   }
 
-  val (_, pos1) = findFirstPosition(True) { _.priority < io.push1.priority }
-  val (_, pos2) = findFirstPosition(True) { _.priority < io.push2.priority }
+  val (_, pos1) = findFirstPosition(True) { _.priority > io.push1.priority }
+  val (_, pos2) = findFirstPosition(True) { _.priority > io.push2.priority }
 
   var adjustedPos1 = CombInit(pos1)
   when(popPosition < pos1 && io.popRequest.valid) { adjustedPos1 \= adjustedPos1 - 1 }

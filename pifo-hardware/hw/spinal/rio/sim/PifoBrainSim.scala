@@ -10,7 +10,7 @@ object PifoBrainSim extends App {
   val testConfig = EngineConfig(
     numEngines = 2,
     numVPIFOs = 1024,
-    maxPacketPriority = 64,
+    maxPacketPriority = 256,
     fifoDepth = 1024,
     prefetchBufferDepth = 2
   )
@@ -70,22 +70,16 @@ object PifoBrainSim extends App {
       dut.io.poped.exist #= false
     }
 
-    def readOutOnce(timeoutCycles: Int = 10) = {
-      var seen = false
-      dut.io.response.ready #= true
-      for (_ <- 0 until timeoutCycles if !seen) {
-        dut.clockDomain.waitRisingEdge()
-        if (dut.io.response.valid.toBoolean) {
-          val pr = dut.io.response.payload.priority.toLong
-          val pt = dut.io.response.payload.port.toLong
-          val dt = dut.io.response.payload.data.toLong
-          println(s"  OUT: port=$pt priority=$pr data=$dt")
-          seen = true
+    def monitor(timeoutCycles: Int = 10) = {
+      fork{
+        while (true) {
+          dut.clockDomain.waitRisingEdge()
+          if (dut.io.response.valid.toBoolean) {
+            println(s"  Output: data=${dut.io.response.payload.data.toLong} port=${dut.io.response.payload.port.toLong} prio=${dut.io.response.payload.priority.toLong}")
+          }
         }
       }
-      dut.io.response.ready #= false
-      seen
-    }
+   }
 
     // clock
     fork {
@@ -103,22 +97,28 @@ object PifoBrainSim extends App {
     dut.clockDomain.deassertReset()
     dut.clockDomain.waitRisingEdge(4)
 
+    monitor()
+
     val testVPifoId = 12
     val testFlowId  = 14
 
     println("=== PIFOBrain Simulation: FIFO test ===")
-    // 2 for WFQ?
+    // 1 for WFQ, 2 for SP, 3 for FIFO
     sendControl(ControlCommand.UpdateBrainEngine,    0, 1, vPifoId = testVPifoId)
     sendControl(ControlCommand.UpdateBrainFlowState, 0, 1, vPifoId = testVPifoId, flowId = testFlowId)
     sendControl(ControlCommand.UpdateBrainState,     0, 2, vPifoId = testVPifoId, flowId = testFlowId)
 
+    sendControl(ControlCommand.UpdateBrainEngine,    0, 3, vPifoId = testVPifoId+1)
+    sendControl(ControlCommand.UpdateBrainFlowState, 0, 33, vPifoId = testVPifoId+1, flowId = testFlowId)
+
     dut.clockDomain.waitRisingEdge(4)
 
-    sendIn(testVPifoId, testFlowId)
-    dut.clockDomain.waitRisingEdge(1)
-    sendIn(testVPifoId, testFlowId)
-    dut.clockDomain.waitRisingEdge(1)
-    sendIn(testVPifoId, testFlowId)
+    for (i <- 0 until 5) {
+      sendIn(testVPifoId, testFlowId)
+      dut.clockDomain.waitRisingEdge(1)
+      sendIn(testVPifoId+1, testFlowId)
+      dut.clockDomain.waitRisingEdge(1)
+    }
     dut.clockDomain.waitRisingEdge(20)
     // readOutOnce()
     // sendIn(0, 2)
