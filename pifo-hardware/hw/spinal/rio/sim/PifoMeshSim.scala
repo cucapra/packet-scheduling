@@ -20,6 +20,13 @@ object PifoMeshSim extends App {
     .withFstWave
     .compile(new PifoMesh(testConfig)).doSim { dut =>
 
+    def mkFlowId(engineId: Int, vPifoId: Int): Int = {
+      assert(engineId >= 0 && engineId <= testConfig.numEngines, "Invalid engineId")
+      assert(vPifoId >= 0 && vPifoId < testConfig.numVPIFOs, "Invalid vPifoId")
+
+      (engineId << testConfig.vpifoIdWidth) | vPifoId
+    }
+
     def initialize() = {
       // Initialize all insert ports
       for (i <- 0 until testConfig.numEngines) {
@@ -45,7 +52,7 @@ object PifoMeshSim extends App {
       dut.io.controlRequest.payload.data #= 0
     }
 
-    def sendControl(cmd: ControlCommand.E, engineId: Int, data: Int, vPifoId: Int = 0, flowId: Int = 0) = {
+    def sendControl(cmd: ControlCommand.E, engineId: Int, data: Int, vPifoId: Int = 0, flowId: Int = 0, exist : Boolean = true) = {
       dut.io.controlRequest.valid #= true
       dut.io.controlRequest.payload.command #= cmd
       dut.io.controlRequest.payload.engineId #= engineId
@@ -105,57 +112,70 @@ object PifoMeshSim extends App {
 
     monitor()
 
-    val testVPifoId0 = 12
-    val testVPifoId1 = 13
-    val testFlowId  = 14
+    val flow0 = 0xE
+    val flow1 = 0xF
+
+    val vPifo_A = 0xA
+    val vPifo_B = 0xB
+    val vPifo_C = 0xC
+
+    val engine_out = 0
+    val engine1 = 1
+    val engine2 = 2
+
+    val vPifoMap = Map(
+      engine1 -> Map(
+        flow0 -> vPifo_A,
+        flow1 -> vPifo_A
+      ),
+      engine2 -> Map(
+        flow0 -> vPifo_B,
+        flow1 -> vPifo_C
+      )
+    )
 
     println("=== PifoMesh Simulation: Multi-Engine Test ===")
 
-    val testEngineId0 = 1
-    val testEngineId1 = 2
-
     // Configure engine 0
-    println("Configuring Engine 0...")
-    sendControl(ControlCommand.UpdateMapperPre, testEngineId0, testVPifoId0, vPifoId = testVPifoId0)
-    sendControl(ControlCommand.UpdateMapperPost, testEngineId0, testVPifoId0, flowId = testVPifoId0)
-    sendControl(ControlCommand.UpdateBrainEngine, testEngineId0, 3, testVPifoId0)  // FIFO
-    sendControl(ControlCommand.UpdateBrainState, testEngineId0, 2, testVPifoId0)
-    sendControl(ControlCommand.UpdateBrainFlowState, testEngineId0, 1, testVPifoId0, testFlowId)
+    println(s"Configuring Engine $engine1...")
+    // Format: data = engineType (1=WFQ,2=SP,3=FIFO), vPifoId= vPifoId
+    sendControl(ControlCommand.UpdateBrainEngine, engine1, 2, vPifoId = vPifo_A)  // SP
+    // SP MUST set per-flow state as priority
+    // Format: data = state (priority in SP, Weight in WFQ), flowId = (engineId, flowId), vPifoId = vPifoId
+    sendControl(ControlCommand.UpdateBrainFlowState, engine1, 10, vPifoId = vPifo_A, flowId = mkFlowId(engine1, flow0))  // prio flow0 -> 10
+    sendControl(ControlCommand.UpdateBrainFlowState, engine1, 20, vPifoId = vPifo_A, flowId = mkFlowId(engine1, flow1))  // prio flow1 -> 20
+    vPifoMap(engine1).foreach { case (flowId, vPifoId) =>
+      // Format: data = vPifoId, vPifoId = flowId
+      sendControl(ControlCommand.UpdateMapperPre, engine1, vPifoId, vPifoId = flowId)
+      // Format: data = (targetEngineId, targetvPifoId), flowId = (sourceEngineId, sourceFlowId)
+      sendControl(ControlCommand.UpdateMapperPost, engine1, mkFlowId(engine2, vPifoMap(engine2)(flowId)), flowId = mkFlowId(engine1, flowId))
+    }
 
-    // Configure engine 1
-    println("Configuring Engine 1...")
-    sendControl(ControlCommand.UpdateMapperPre, testEngineId1, testVPifoId1, vPifoId = testVPifoId1)
-    sendControl(ControlCommand.UpdateMapperPost, testEngineId1, testVPifoId1, flowId = testVPifoId1)
-    sendControl(ControlCommand.UpdateBrainEngine, testEngineId1, 1, testVPifoId1)  // WFQ
-    sendControl(ControlCommand.UpdateBrainState, testEngineId1, 33, testVPifoId1)
-    sendControl(ControlCommand.UpdateBrainFlowState, testEngineId1, 33, testVPifoId1, testFlowId)
+    println(s"Configuring Engine $engine2...")
+    sendControl(ControlCommand.UpdateBrainEngine, engine2, 3, vPifoId = vPifo_B)  // FIFO
+    sendControl(ControlCommand.UpdateBrainEngine, engine2, 3, vPifoId = vPifo_C)  // FIFO
+    vPifoMap(engine2).foreach { case (flowId, vPifoId) =>
+      sendControl(ControlCommand.UpdateMapperPre, engine2, vPifoId, vPifoId = flowId)
+      sendControl(ControlCommand.UpdateMapperPost, engine2, mkFlowId(engine_out, flowId), flowId = mkFlowId(engine2, flowId))
+    }
 
     dut.clockDomain.waitRisingEdge(4)
 
-    println(s"Enqueueing packets to Engine 0: vPifo=$testVPifoId0")
+    println(s"Enqueueing packets to Engine $engine1")
     for (i <- 0 until 3) {
-      enqueueToEngine(testEngineId0, testVPifoId0)
+      enqueueToEngine(engine1, flow0)
+      enqueueToEngine(engine2, flow0)
       dut.clockDomain.waitRisingEdge(1)
-    }
-
-    println(s"Enqueueing packets to Engine 1: vPifo=$testVPifoId1")
-    for (i <- 0 until 3) {
-      enqueueToEngine(testEngineId1, testVPifoId1)
+      enqueueToEngine(engine1, flow1)
+      enqueueToEngine(engine2, flow1)
       dut.clockDomain.waitRisingEdge(1)
     }
 
     dut.clockDomain.waitRisingEdge(6)
 
-    println(s"Requesting dequeue from Engine 0 (vPifo $testVPifoId0):")
-    for (_ <- 0 until 4) {
-      requestDequeue(testEngineId0, testVPifoId0)
-    }
-
-    dut.clockDomain.waitRisingEdge(8)
-
-    println(s"Requesting dequeue from Engine 1 (vPifo $testVPifoId1):")
-    for (_ <- 0 until 4) {
-      requestDequeue(testEngineId1, testVPifoId1)
+    println(s"Requesting dequeue from Engine $engine1 (root vPifo=$vPifo_A):")
+    for (_ <- 0 until 8) {
+      requestDequeue(engine1, vPifo_A)
     }
 
     dut.clockDomain.waitRisingEdge(8)
