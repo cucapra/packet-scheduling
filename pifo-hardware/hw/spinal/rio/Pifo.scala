@@ -232,10 +232,10 @@ class PifoRTL(config: PifoConfig) extends Component {
 
   // output next cycle
   io.popResponse.valid := RegNext(io.popRequest.valid)
+  io.popResponse.port := RegNext(io.popRequest.port)
   io.popResponse.exist := RegNext(popExists)
   io.popResponse.data := RegNext(pifoArray(popPosition).data)
   io.popResponse.priority := RegNext(pifoArray(popPosition).priority)
-  io.popResponse.port := RegNext(pifoArray(popPosition).port)
 
   pifoCount := nextCount
 }

@@ -21,8 +21,8 @@ object PifoMeshSim extends App {
     .compile(new PifoMesh(testConfig)).doSim { dut =>
 
     def mkFlowId(engineId: Int, vPifoId: Int): Int = {
-      assert(engineId >= 0 && engineId <= testConfig.numEngines, "Invalid engineId")
-      assert(vPifoId >= 0 && vPifoId < testConfig.numVPIFOs, "Invalid vPifoId")
+      assert(engineId >= 0 && engineId <= testConfig.numEngines, s"Invalid engineId: $engineId")
+      assert(vPifoId >= 0 && vPifoId < testConfig.numVPIFOs, s"Invalid vPifoId: $vPifoId")
 
       (engineId << testConfig.vpifoIdWidth) | vPifoId
     }
@@ -52,7 +52,7 @@ object PifoMeshSim extends App {
       dut.io.controlRequest.payload.data #= 0
     }
 
-    def sendControl(cmd: ControlCommand.E, engineId: Int, data: Int, vPifoId: Int = 0, flowId: Int = 0, exist : Boolean = true) = {
+    def sendControl(cmd: ControlCommand.E, engineId: Int, data: Int, vPifoId: Int = 0, flowId: Int = 0) = {
       dut.io.controlRequest.valid #= true
       dut.io.controlRequest.payload.command #= cmd
       dut.io.controlRequest.payload.engineId #= engineId
@@ -87,7 +87,7 @@ object PifoMeshSim extends App {
           if(dut.io.pop.valid.toBoolean) {
             val eng = dut.io.pop.payload.engineId.toLong
             val vp = dut.io.pop.payload.vPifoId.toLong
-            println(s"[Monitor] Pop response valid: engineId=$eng, vPifoId=$vp")
+            println(s"[Monitor] Pop response: vPifoId=0x${vp.toHexString}")
           }
         }
       }
@@ -140,6 +140,9 @@ object PifoMeshSim extends App {
     println(s"Configuring Engine $engine1...")
     // Format: data = engineType (1=WFQ,2=SP,3=FIFO), vPifoId= vPifoId
     sendControl(ControlCommand.UpdateBrainEngine, engine1, 2, vPifoId = vPifo_A)  // SP
+    // add the non-exist rewrite
+    // Format: data = (targetEngine, targetvPifoId), vPifoId = vPifoId
+    sendControl(ControlCommand.UpdateMapperNonExist, engine1, mkFlowId(0, testConfig.numVPIFOs-1), vPifoId = vPifo_A)
     // SP MUST set per-flow state as priority
     // Format: data = state (priority in SP, Weight in WFQ), flowId = (engineId, flowId), vPifoId = vPifoId
     sendControl(ControlCommand.UpdateBrainFlowState, engine1, 10, vPifoId = vPifo_A, flowId = mkFlowId(engine1, flow0))  // prio flow0 -> 10
@@ -153,6 +156,7 @@ object PifoMeshSim extends App {
 
     println(s"Configuring Engine $engine2...")
     sendControl(ControlCommand.UpdateBrainEngine, engine2, 3, vPifoId = vPifo_B)  // FIFO
+    // Should not have non-exist on a non-root vPifo
     sendControl(ControlCommand.UpdateBrainEngine, engine2, 3, vPifoId = vPifo_C)  // FIFO
     vPifoMap(engine2).foreach { case (flowId, vPifoId) =>
       sendControl(ControlCommand.UpdateMapperPre, engine2, vPifoId, vPifoId = flowId)
@@ -178,7 +182,7 @@ object PifoMeshSim extends App {
       requestDequeue(engine1, vPifo_A)
     }
 
-    dut.clockDomain.waitRisingEdge(8)
+    dut.clockDomain.waitRisingEdge(20)
 
     println("=== PifoMesh Simulation Completed ===")
   }

@@ -22,6 +22,8 @@ case class EngineConfig (
     def engineIdWidth = log2Up(numEngines + 1) // +1 for control port
     def flowIdWidth = vpifoIdWidth + engineIdWidth
 
+    def dequePredWidth = vpifoIdWidth + 1 // +1 for exist bit
+
     def numBrainState = 1 << brainStateWidth
     def numFlowState = 1 << flowStateWidth
 
@@ -317,20 +319,33 @@ case class PifoEngine(config : EngineConfig) extends Component {
   val deque = new Area {
     // dequeue also need a mapper, reinterpret vpifoId if needed
     val dequeMapper = Mapper(config.flowIdWidth, config.flowIdWidth)
+    val nonExistMapper = Mapper(config.vpifoIdWidth, config.flowIdWidth)
 
     pifos.io.popRequest.translateFrom(io.dequeueRequest.toFlow) { case (to, from) =>
       to.port := from.vPifoId
     }
 
-    val (popResp, brainUpdate) = StreamFork2(pifos.io.popResponse.toStream)
-    enque.brain.io.poped << brainUpdate.toFlow
+    val popResps = StreamFork(pifos.io.popResponse.toStream, 4)
 
-    // TODO(zhiyuang): handle not exist. do not drop it
-    popResp
-      .throwWhen(!popResp.exist)
-      .map(_.data).toFlow >> dequeMapper.io.readReq
-    
-    io.dequeueResponse.translateFrom(dequeMapper.io.readRes.toStream) { _.fromFlowId(_) }
+    enque.brain.io.poped << popResps(0).throwWhen(!popResps(0).exist).toFlow
+
+    dequeMapper.io.readReq << popResps(1).map(_.data).toFlow
+    nonExistMapper.io.readReq << popResps(2).map(_.port).toFlow
+
+    // select the mapper based on the exist bit
+    val popFifo = popResps(3).queueLowLatency(2)
+    StreamJoin(Seq(
+      dequeMapper.io.readRes.toStream,
+      nonExistMapper.io.readRes.toStream,
+      popFifo
+    )).translateInto(io.dequeueResponse) {
+      case (to, from) =>
+        when (popFifo.payload.exist) {
+          to.fromFlowId(dequeMapper.io.readRes.payload)
+        } otherwise {
+          to.fromFlowId(nonExistMapper.io.readRes.payload)
+        }
+    }
   }
 
   val controller = new ControllerFactory(config)
@@ -347,6 +362,14 @@ case class PifoEngine(config : EngineConfig) extends Component {
     deque.dequeMapper.io.writeReq
   ) { (to, from) =>
     to.inputId := from.flowId
+    to.outputId := from.data.resized
+  }
+
+  controller.dispatch(
+    ControlCommand.UpdateMapperNonExist,
+    deque.nonExistMapper.io.writeReq
+  ) { (to, from) =>
+    to.inputId := from.vPifoId
     to.outputId := from.data.resized
   }
 

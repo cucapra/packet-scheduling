@@ -74,7 +74,11 @@ This contains a PifoMesh Implementation. Current implementation assumes the inse
 - [ ] Support configurable brain policy
     - [ ] support configurable rank in WFQ
 - [ ] Hardware controller for insertion and pop
-- [ ] Transactional update of 
+- [ ] Transactional update of mappers.
+    - [ ] change some of the mappers to CAMs
+- [ ] deque mapper 
+    - [ ] support exist signal
+    - [ ] support TCAM match (on vPifoId)
 
 
 

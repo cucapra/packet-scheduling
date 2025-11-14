@@ -10,18 +10,22 @@ case class MessageCrossBar(config : EngineConfig) extends Component {
         val outputs = Vec(master Stream(PifoMessage(config)), numPorts)
     }
 
+    val xbarFifoDepth = 8
+
+    // TODO(zhiyuang): optimize the buffer to regs
     val fanouts = io.inputs.map { in =>
-        StreamDemux(in, in.payload.engineId, numPorts)
+        val inFifo = in.queueLowLatency(xbarFifoDepth, latency = 1)
+        StreamDemux(inFifo, inFifo.payload.engineId, numPorts)
     }
 
     for(i <- 0 until numPorts) {
-        val arbiter = StreamArbiterFactory.roundRobin.on(fanouts.map(_(i)))
-        arbiter >> io.outputs(i)
+        val arbiter = StreamArbiterFactory.lowerFirst.on(fanouts.map(_(i)))
+        arbiter >-> io.outputs(i)
     }
 }
 
 object ControlCommand extends SpinalEnum {
-    val UpdateMapperPre, UpdateMapperPost, CommitMapper,
+    val UpdateMapperPre, UpdateMapperPost, UpdateMapperNonExist, CommitMapper,
         // brain operators
         UpdateBrainEngine, UpdateBrainState, UpdateBrainFlowState = newElement()
 }
