@@ -12,24 +12,18 @@ object SimUtils {
       .withFstWave
 }
 
+// TODO(zhiyuang): check the pifos and flow ids are valid
+object RioPredefinedPifos {
+  // pifos are 0xA to 0xF
+  val rPifo : Seq[Int] = 10 until 16
+  // flows are 1 to 9
+  val rFlow : Seq[Int] = 1 until 10
+}
+
 case class PifoMeshSimController(
   config: EngineConfig,
   dut: PifoMesh
 ) {
-  // high-level functions
-  def setBrainFIFO(engineId: Int, vPifoId: Int) = {
-    sendControl(ControlCommand.UpdateBrainEngine, engineId, 3, vPifoId = vPifoId)  // FIFO
-  }
-  def setBrainSP(engineId: Int, vPifoId: Int) = {
-    sendControl(ControlCommand.UpdateBrainEngine, engineId, 2, vPifoId = vPifoId)  // SP
-  }
-  def setBrainWFQ(engineId: Int, vPifoId: Int) = {
-    sendControl(ControlCommand.UpdateBrainEngine, engineId, 1, vPifoId = vPifoId)  // WFQ
-  }
-
-  def setBrainState(engineId: Int, vPifoId: Int, flowId: Int, state: Int) = {
-    sendControl(ControlCommand.UpdateBrainFlowState, engineId, state, vPifoId = vPifoId, flowId = mkFlowId(engineId, flowId))
-  }
 
   // compound functions
   def enque(vPifoId: Int) = {
@@ -102,6 +96,100 @@ case class PifoMeshSimController(
     }
   }
 
+  // high-level configuration interface
+  case class Configer(transactional: Boolean = false) {
+    // high-level functions
+    def setBrainFIFO(engineId: Int, vPifoId: Int) = {
+      sendControl(ControlCommand.UpdateBrainEngine, engineId, 3, vPifoId = vPifoId)  // FIFO
+    }
+    def setBrainSP(engineId: Int, vPifoId: Int) = {
+      sendControl(ControlCommand.UpdateBrainEngine, engineId, 2, vPifoId = vPifoId)  // SP
+    }
+    def setBrainWFQ(engineId: Int, vPifoId: Int) = {
+      sendControl(ControlCommand.UpdateBrainEngine, engineId, 1, vPifoId = vPifoId)  // WFQ
+    }
+
+    def setBrainState(engineId: Int, vPifoId: Int, flowId: Int, state: Int) = {
+      sendControl(ControlCommand.UpdateBrainFlowState, engineId, state, vPifoId = vPifoId, flowId = mkFlowId(engineId, flowId))
+    }
+
+    case class TreeConfiger(tree : TreeController) {
+      def addPifo(engineId : Int, pifoId : Int) : TreeConfiger = {
+        assert(engineId <= config.numEngines, s"Invalid engineId: $engineId")
+        assert(!tree.pifoMap.contains(pifoId), s"pifoId $pifoId already exists in the tree")
+        tree.pifoMap(pifoId) = engineId
+        this
+      }
+
+      def addFlow(flowId : Int, vPifos : Seq[Int]) : TreeConfiger = {
+        for (i <- 0 until vPifos.length) {
+          val engine = tree.pifoMap(vPifos(i))
+          val vPifo = vPifos(i)
+
+          sendControl(ControlCommand.UpdateMapperPre, engine, vPifo, vPifoId = flowId)
+          val nextvPifo = if (i + 1 < vPifos.length) vPifos(i + 1) else flowId
+          val nextEngine = if (i + 1 < vPifos.length) tree.pifoMap(nextvPifo) else 0
+          sendControl(
+            ControlCommand.UpdateMapperPost,
+            engine, mkFlowId(nextEngine, nextvPifo),
+            flowId = mkFlowId(engine, flowId)
+          )
+        }
+        this
+      }
+      // apply the non-exist rewrite at the root pifo
+      def rootNonExistRewrite(newEngineId : Int, newPifoId : Int) : TreeConfiger = {
+        sendControl(
+          ControlCommand.UpdateMapperPost,
+          tree.rootEngine,
+          mkFlowId(newEngineId, newPifoId),
+          flowId = mkFlowId(tree.rootEngine, tree.rootPifo)
+        )
+        this
+      }
+
+      // brain operations
+      // TODO(zhiyuang): limitations on transactional updates
+      def brainFIFO(vPifoId: Int) : TreeConfiger = {
+        // assert(!transactional, "setBrainFIFO is not supported in transactional mode")
+        val engineId = tree.pifoMap(vPifoId)
+        setBrainFIFO(engineId, vPifoId)
+        this
+      }
+      def brainSP(vPifoId: Int) : TreeConfiger = {
+        val engineId = tree.pifoMap(vPifoId)
+        setBrainSP(engineId, vPifoId)
+        this
+      }
+      def brainWFQ(vPifoId: Int) : TreeConfiger = {
+        val engineId = tree.pifoMap(vPifoId)
+        setBrainWFQ(engineId, vPifoId)
+        this
+      }
+      def brainState(vPifoId: Int, flowId: Int, state: Int) : TreeConfiger = {
+        val engineId = tree.pifoMap(vPifoId)
+        setBrainState(engineId, vPifoId, flowId, state)
+        this
+      }
+    }
+
+    def tree(tree : TreeController) : TreeConfiger = TreeConfiger(tree)
+  }
+
+  // Transactional configuration process.
+  // TODO(zhiyuang): make this async and transactional
+  def transaction(F : Configer => Unit) : SimThread = {
+    assert(false,  "Transactional configuration is not yet implemented")
+    val configer = Configer(transactional = true)
+    fork { F(configer) }
+  }
+
+  def config(F : Configer => Unit) : SimThread = {
+    val configer = Configer(transactional = false)
+    fork { F(configer) }
+  }
+
+  ///////////////////////////////////
   // Initialize all inputs
   for (i <- 0 until config.numEngines) {
     dut.io.insert(i).valid #= false
@@ -140,75 +228,6 @@ case class TreeController(
 
   def deque = {
     meshController.requestDequeue(rootEngine, rootPifo)
-  }
-
-  // configuration interface
-  case class TreeConfiger(transactional : Boolean = false) {
-    def addPifo(engineId : Int, pifoId : Int) = {
-      assert(engineId <= meshController.config.numEngines, s"Invalid engineId: $engineId")
-      assert(!pifoMap.contains(pifoId), s"pifoId $pifoId already exists in the tree")
-      pifoMap(pifoId) = engineId
-    }
-
-    def addFlow(flowId : Int, vPifos : Seq[Int]) = {
-      for (i <- 0 until vPifos.length) {
-        val engine = pifoMap(vPifos(i))
-        val vPifo = vPifos(i)
-
-        meshController.sendControl(ControlCommand.UpdateMapperPre, engine, vPifo, vPifoId = flowId)
-        val nextvPifo = if (i + 1 < vPifos.length) vPifos(i + 1) else flowId
-        val nextEngine = if (i + 1 < vPifos.length) pifoMap(nextvPifo) else 0
-        meshController.sendControl(
-          ControlCommand.UpdateMapperPost,
-          engine, meshController.mkFlowId(nextEngine, nextvPifo),
-          flowId = meshController.mkFlowId(engine, flowId)
-        )
-      }
-    }
-    // apply the non-exist rewrite at the root pifo
-    def rootNonExistRewrite(newEngineId : Int, newPifoId : Int) = {
-      meshController.sendControl(
-        ControlCommand.UpdateMapperPost,
-        rootEngine,
-        meshController.mkFlowId(newEngineId, newPifoId),
-        flowId = meshController.mkFlowId(rootEngine, rootPifo)
-      )
-    }
-
-    // brain operations
-    // TODO(zhiyuang): limitations on transactional updates
-    def setBrainFIFO(vPifoId: Int) = {
-      // assert(!transactional, "setBrainFIFO is not supported in transactional mode")
-      val engineId = pifoMap(vPifoId)
-      meshController.setBrainFIFO(engineId, vPifoId)
-    }
-    def setBrainSP(vPifoId: Int) = {
-      val engineId = pifoMap(vPifoId)
-      meshController.setBrainSP(engineId, vPifoId)
-    }
-    def setBrainWFQ(vPifoId: Int) = {
-      val engineId = pifoMap(vPifoId)
-      meshController.setBrainWFQ(engineId, vPifoId)
-    }
-    def setBrainState(vPifoId: Int, flowId: Int, state: Int) = {
-      val engineId = pifoMap(vPifoId)
-      meshController.setBrainState(engineId, vPifoId, flowId, state)
-    }
-  }
-
-  // Transactional configuration process.
-  // TODO(zhiyuang): make this async and transactional
-  def transaction(F : TreeConfiger => Unit) : SimThread = {
-    val configer = TreeConfiger(true)
-    fork { F(configer) }
-  }
-
-  def async_config(F : TreeConfiger => Unit) : SimThread = {
-    val configer = TreeConfiger(false)
-    fork { F(configer) }
-  }
-  def config(F : TreeConfiger => Unit) : Unit = {
-    async_config(F).join()
   }
 
   // init code

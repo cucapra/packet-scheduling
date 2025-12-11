@@ -24,31 +24,27 @@ object PifoMeshSim extends App {
 
     controller.start
 
-    val flow0 = 0xE
-    val flow1 = 0xF
-
-    val vPifo_A = 0xA
-    val vPifo_B = 0xB
-    val vPifo_C = 0xC
-
-    val engine1 = 1
-    val engine2 = 2
+    import RioPredefinedPifos._
 
     val tree1 = TreeController(
       controller,
-      pifos = Seq((engine1, vPifo_A), (engine2, vPifo_B), (engine2, vPifo_C))
+      pifos = Seq((1, rPifo(0)), (2, rPifo(1)), (2, rPifo(2)))
     )
 
-    val configThread = tree1.async_config { tc => {
-      tc.addFlow(flow0, Seq(vPifo_A, vPifo_B))
-      tc.addFlow(flow1, Seq(vPifo_A, vPifo_C))
 
-      tc.setBrainSP(vPifo_A)
-      tc.setBrainState(vPifo_A, flow0, 10)  // prio flow0 -> 10
-      tc.setBrainState(vPifo_A, flow1, 20)  // prio flow1 -> 20
-      tc.setBrainFIFO(vPifo_B)
-      tc.setBrainFIFO(vPifo_C)
-    }}
+    // use controller.transaction if you want transactional configuration
+    val configThread = controller.config { cf =>
+      cf.tree(tree1)
+       .addFlow(rFlow(0), Seq(rPifo(0), rPifo(1)))
+       .addFlow(rFlow(1), Seq(rPifo(0), rPifo(2)))
+
+       .brainSP(rPifo(0))
+       .brainState(rPifo(0), rFlow(0), 10)  // prio flow0 -> 10
+       .brainState(rPifo(0), rFlow(1), 20)  // prio flow1 -> 20
+
+       .brainFIFO(rPifo(1))
+       .brainFIFO(rPifo(2))
+    }
 
     // join here to ensure configuration completes before proceeding
     // but you could let it run in parallel with other testbench activity!
@@ -57,17 +53,16 @@ object PifoMeshSim extends App {
     println("=== PifoMesh Simulation: Multi-Engine Test ===")
     dut.clockDomain.waitRisingEdge(4)
 
-    println(s"Enqueueing packets to Engine $engine1")
     for (i <- 0 until 3) {
-      controller.enque(flow0)
+      controller.enque(rFlow(0))
       dut.clockDomain.waitRisingEdge(1)
-      controller.enque(flow1)
+      controller.enque(rFlow(1))
       dut.clockDomain.waitRisingEdge(1)
     }
 
     dut.clockDomain.waitRisingEdge(6)
 
-    println(s"Requesting dequeue from Engine $engine1 (root vPifo=$vPifo_A):")
+    println(s"Requesting dequeue (root vPifo=${rPifo(0)}):")
     for (_ <- 0 until 8) {
       tree1.deque
     }
