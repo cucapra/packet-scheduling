@@ -1,0 +1,4 @@
+def z_post-pop(st, pkt):
+    f = flow(pkt)
+    st["turn"] = float((f + 1) % n)
+    return st
