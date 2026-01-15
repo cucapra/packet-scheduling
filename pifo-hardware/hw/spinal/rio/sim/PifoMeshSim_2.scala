@@ -5,7 +5,7 @@ import spinal.core.sim._
 import spinal.lib._
 import rio._
 
-object PifoMeshSim extends App {
+object PifoMeshSim_2 extends App {
 
   val testConfig = EngineConfig(
     numEngines = 2,
@@ -21,14 +21,8 @@ object PifoMeshSim extends App {
     .compile(new PifoMesh(testConfig))
     .doSim { dut =>
       def mkFlowId(engineId: Int, vPifoId: Int): Int = {
-        assert(
-          engineId >= 0 && engineId <= testConfig.numEngines,
-          s"Invalid engineId: $engineId"
-        )
-        assert(
-          vPifoId >= 0 && vPifoId < testConfig.numVPIFOs,
-          s"Invalid vPifoId: $vPifoId"
-        )
+        assert(engineId >= 0 && engineId <= testConfig.numEngines, s"Invalid engineId: $engineId")
+        assert(vPifoId >= 0 && vPifoId < testConfig.numVPIFOs, s"Invalid vPifoId: $vPifoId")
 
         (engineId << testConfig.vpifoIdWidth) | vPifoId
       }
@@ -58,13 +52,7 @@ object PifoMeshSim extends App {
         dut.io.controlRequest.payload.data #= 0
       }
 
-      def sendControl(
-          cmd: ControlCommand.E,
-          engineId: Int,
-          data: Int,
-          vPifoId: Int = 0,
-          flowId: Int = 0
-      ) = {
+      def sendControl(cmd: ControlCommand.E, engineId: Int, data: Int, vPifoId: Int = 0, flowId: Int = 0) = {
         dut.io.controlRequest.valid #= true
         dut.io.controlRequest.payload.command #= cmd
         dut.io.controlRequest.payload.engineId #= engineId
@@ -134,8 +122,7 @@ object PifoMeshSim extends App {
       // These are not truly magic numbers; we just need some index and we are
       // using these so that they're easy to find in Surfer later on
 
-      val engine_out =
-        0 // Port 0 is a magic number: it represents a dequeue from the tree
+      val engine_out = 0 // Port 0 is a magic number: it represents a dequeue from the tree
       val engine1 = 1
       val engine2 = 2
 
@@ -155,12 +142,7 @@ object PifoMeshSim extends App {
       // Configure engine 1
       println(s"Configuring Engine $engine1...")
       // Format: data = engineType (1=WFQ,2=SP,3=FIFO), vPifoId= vPifoId
-      sendControl(
-        ControlCommand.UpdateBrainEngine,
-        engine1,
-        1,
-        vPifoId = vPifo_A
-      )
+      sendControl(ControlCommand.UpdateBrainEngine, engine1, 1, vPifoId = vPifo_A)
       // Engine 1 has a new vPIFO, A, and A has policy WFQ.
 
       // add the non-exist rewrite
@@ -168,10 +150,7 @@ object PifoMeshSim extends App {
       sendControl(
         ControlCommand.UpdateMapperNonExist,
         engine1,
-        mkFlowId(
-          engine_out,
-          testConfig.numVPIFOs - 1
-        ), // Engine1 will ping engine_out in case of underflow
+        mkFlowId(engine_out, testConfig.numVPIFOs - 1), // Engine1 will ping engine_out in case of underflow
         vPifoId = vPifo_A
       )
       // WFQ MUST set per-flow state as priority
@@ -197,12 +176,7 @@ object PifoMeshSim extends App {
 
       vPifoMap(engine1).foreach { case (flowId, vPifoId) =>
         // Format: data = vPifoId, vPifoId = flowId
-        sendControl(
-          ControlCommand.UpdateMapperPre,
-          engine1,
-          vPifoId,
-          vPifoId = flowId
-        ) // trivial
+        sendControl(ControlCommand.UpdateMapperPre, engine1, vPifoId, vPifoId = flowId) // trivial
         // Format: data = (targetEngineId, targetvPifoId), flowId = (sourceEngineId, sourceFlowId)
         sendControl(
           ControlCommand.UpdateMapperPost,
@@ -215,36 +189,18 @@ object PifoMeshSim extends App {
       }
 
       println(s"Configuring Engine $engine2...")
-      sendControl(
-        ControlCommand.UpdateBrainEngine,
-        engine2,
-        3,
-        vPifoId = vPifo_B
-      ) // 3 = FIFO
+      sendControl(ControlCommand.UpdateBrainEngine, engine2, 3, vPifoId = vPifo_B) // 3 = FIFO
       // Should not have non-exist on a non-root vPifo
-      sendControl(
-        ControlCommand.UpdateBrainEngine,
-        engine2,
-        3,
-        vPifoId = vPifo_C
-      ) // 3 = FIFO
+      sendControl(ControlCommand.UpdateBrainEngine, engine2, 3, vPifoId = vPifo_C) // 3 = FIFO
       // We have associated Engine 2 with two vPIFOs, B and C. Those both have policy FIFO
       // This policy requires no per-flow state, so we skip some of the steps we performed earlier.
 
       vPifoMap(engine2).foreach { case (flowId, vPifoId) =>
-        sendControl(
-          ControlCommand.UpdateMapperPre,
-          engine2,
-          vPifoId,
-          vPifoId = flowId
-        ) // trivial
+        sendControl(ControlCommand.UpdateMapperPre, engine2, vPifoId, vPifoId = flowId) // trivial
         sendControl(
           ControlCommand.UpdateMapperPost,
           engine2,
-          mkFlowId(
-            engine_out,
-            flowId
-          ), // report pops to engine 0, which prints etc.
+          mkFlowId(engine_out, flowId), // report pops to engine 0, which prints etc.
           flowId = mkFlowId(engine2, flowId)
         )
       }
@@ -263,17 +219,41 @@ object PifoMeshSim extends App {
 
       dut.clockDomain.waitRisingEdge(6)
 
-      println(s"Requesting dequeue from Engine $engine1 (root vPifo=$vPifo_A):")
-      for (_ <- 0 until 20) {
-        requestDequeue(engine1, vPifo_A) // not par, and only called on the root
-      }
-
-      // Note, we have done 20 pushes and 20 pops.
+      // Note, we have done 6 pushes and 0 pops.
       // Two ramifications:
       // - We have not tested Zhiyuan's underflow mechanism
-      // - We have not left any elements in the tree
+      // - We HAVE left 6 elements in the tree, and now it will be interesting to see how the first few dequeues look when we do them later on!
 
-      dut.clockDomain.waitRisingEdge(20)
+      sendControl(
+        ControlCommand.UpdateBrainFlowState,
+        engine1,
+        2,
+        vPifoId = vPifo_A,
+        flowId = mkFlowId(engine1, flow0)
+      ) // Now we are changing flow 0's state to be 2. flow 1's state remains 1.
+      // Recall that engine 1 is running WFQ b/w flows 0 and 1.
+      // This means that flow 0 will have higher priority than flow 1.
+
+      // Let's again push and pop some packets to appreciate this change.
+
+      dut.clockDomain.waitRisingEdge(4)
+
+      println(s"Enqueueing packets to Engine $engine1")
+      for (i <- 0 until 10) {
+        enqueueToEngine(engine1, flow0) // par 1
+        enqueueToEngine(engine2, flow0) // par 1
+        dut.clockDomain.waitRisingEdge(1)
+        enqueueToEngine(engine1, flow1) // par 2
+        enqueueToEngine(engine2, flow1) // par 2
+        dut.clockDomain.waitRisingEdge(1)
+      }
+
+      dut.clockDomain.waitRisingEdge(6)
+
+      println(s"Requesting dequeue from Engine $engine1 (root vPifo=$vPifo_A):")
+      for (_ <- 0 until 40) {
+        requestDequeue(engine1, vPifo_A) // not par, and only called on the root
+      }
 
       println("=== PifoMesh Simulation Completed ===")
     }

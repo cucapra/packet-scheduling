@@ -5,7 +5,7 @@ import spinal.core.sim._
 import spinal.lib._
 import rio._
 
-object PifoMeshSim extends App {
+object PifoMeshSim_1 extends App {
 
   val testConfig = EngineConfig(
     numEngines = 2,
@@ -271,9 +271,40 @@ object PifoMeshSim extends App {
       // Note, we have done 20 pushes and 20 pops.
       // Two ramifications:
       // - We have not tested Zhiyuan's underflow mechanism
-      // - We have not left any elements in the tree
+      // - We have not left any elements in the tree, so the work below ought to happen without a hitch?
 
       dut.clockDomain.waitRisingEdge(20)
+
+      sendControl(
+        ControlCommand.UpdateBrainFlowState,
+        engine1,
+        2,
+        vPifoId = vPifo_A,
+        flowId = mkFlowId(engine1, flow0)
+      ) // Now we are changing flow 0's state to be 2. flow 1's state remains 1.
+      // Recall that engine 1 is running WFQ b/w flows 0 and 1.
+      // This means that flow 0 will have higher priority than flow 1.
+
+      // Let's again push and pop some packets to appreciate this change.
+
+      dut.clockDomain.waitRisingEdge(4)
+
+      println(s"Enqueueing packets to Engine $engine1")
+      for (i <- 0 until 10) {
+        enqueueToEngine(engine1, flow0) // par 1
+        enqueueToEngine(engine2, flow0) // par 1
+        dut.clockDomain.waitRisingEdge(1)
+        enqueueToEngine(engine1, flow1) // par 2
+        enqueueToEngine(engine2, flow1) // par 2
+        dut.clockDomain.waitRisingEdge(1)
+      }
+
+      dut.clockDomain.waitRisingEdge(6)
+
+      println(s"Requesting dequeue from Engine $engine1 (root vPifo=$vPifo_A):")
+      for (_ <- 0 until 20) {
+        requestDequeue(engine1, vPifo_A) // not par, and only called on the root
+      }
 
       println("=== PifoMesh Simulation Completed ===")
     }
