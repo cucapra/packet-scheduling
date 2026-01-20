@@ -25,10 +25,14 @@ object PifoMeshSim extends App {
       controller.start
 
       import RioPredefinedPifos._
+      // Once you import this, rPifo(0) is 0xA... rPifo(5) is 0xF.
+
+      val engine1 = 1
+      val engine2 = 2
 
       val tree1 = TreeController(
         controller,
-        pifos = Seq((1, rPifo(0)), (2, rPifo(1)), (2, rPifo(2)))
+        pifos = Seq((engine1, rPifo(0)), (engine2, rPifo(1)), (engine2, rPifo(2)))
       )
 
       // use controller.transaction if you want transactional configuration
@@ -37,8 +41,8 @@ object PifoMeshSim extends App {
           .addFlow(rFlow(0), Seq(rPifo(0), rPifo(1)))
           .addFlow(rFlow(1), Seq(rPifo(0), rPifo(2)))
           .brainSP(rPifo(0))
-          .brainState(rPifo(0), rFlow(0), 10) // prio flow0 -> 10
-          .brainState(rPifo(0), rFlow(1), 20) // prio flow1 -> 20
+          .brainState(rPifo(0), rFlow(0), 10) // prio of flow0 in pifo0 -> 10
+          .brainState(rPifo(0), rFlow(1), 20) // prio of flow1 in pifo0 -> 20
           .brainFIFO(rPifo(1))
           .brainFIFO(rPifo(2))
       }
