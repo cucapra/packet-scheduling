@@ -42,6 +42,7 @@ object PifoMeshSim_1 extends App {
           .brainWFQ(rPifo(0))
           .brainState(rPifo(0), rFlow(0), 1) // weight of flow0 in pifo0 -> 1
           .brainState(rPifo(0), rFlow(1), 1) // weight of flow1 in pifo0 -> 1
+          // In engine 1, we are running WFQ with weights 1 and 1, so we are essentially running RR
           .brainFIFO(rPifo(1))
           .brainFIFO(rPifo(2))
       }
