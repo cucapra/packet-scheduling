@@ -33,6 +33,7 @@ object PifoMeshSim_1 extends App {
       val tree1 = TreeController(
         controller,
         pifos = Seq((engine1, rPifo(0)), (engine2, rPifo(1)), (engine2, rPifo(2)))
+        // Engine 1 has pifo A, and engine 2 has pifos B and C.
       )
 
       val configThread = controller.config { cf =>
@@ -42,9 +43,9 @@ object PifoMeshSim_1 extends App {
           .brainWFQ(rPifo(0))
           .brainState(rPifo(0), rFlow(0), 1) // weight of flow0 in pifo0 -> 1
           .brainState(rPifo(0), rFlow(1), 1) // weight of flow1 in pifo0 -> 1
-          // In engine 1, we are running WFQ with weights 1 and 1, so we are essentially running RR
+          // In pifo0 we are running WFQ with weights 1 and 1, so we are essentially running RR
           .brainFIFO(rPifo(1))
-          .brainFIFO(rPifo(2))
+          .brainFIFO(rPifo(2)) // pifo1 and pifo2 run the FIFO policy
       }
 
       configThread.join()
@@ -58,22 +59,33 @@ object PifoMeshSim_1 extends App {
         controller.enque(rFlow(1))
         dut.clockDomain.waitRisingEdge(1)
       }
+      // We have enqueued 20 items into the tree.
 
       dut.clockDomain.waitRisingEdge(6)
+      // AM question: do we need to wait longer than 6?
+      // what is the relationship between the magic numbers?
 
       println(s"Requesting dequeue (root vPifo=${rPifo(0)}):")
       for (_ <- 0 until 20) {
         tree1.deque
       }
+      // we dequeue precisely 20 times, so the tree should be empty again
 
       dut.clockDomain.waitRisingEdge(20)
+      // AM question: again, magic number question
 
       controller.config { cf =>
         cf.tree(tree1)
           .brainState(rPifo(0), rFlow(0), 2)
       }
+      // AM: does this work like this?
+      // my intention is to NOW change the brain of pifo0 to give flow0 the weight 2
 
       dut.clockDomain.waitRisingEdge(4)
+      // AM: waiting time? necessary?
+
+      // the below is just a repetition of the same experiment with the new weights
+      // enqueue 20, dequeue 20
 
       for (i <- 0 until 10) {
         controller.enque(rFlow(0))
