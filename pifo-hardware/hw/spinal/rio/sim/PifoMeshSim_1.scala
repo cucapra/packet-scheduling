@@ -33,7 +33,7 @@ object PifoMeshSim_1 extends App {
       val tree1 = TreeController(
         controller,
         pifos = Seq((engine1, rPifo(0)), (engine2, rPifo(1)), (engine2, rPifo(2)))
-        // Engine 1 has pifo A, and engine 2 has pifos B and C.
+        // engine1 has pifo0, and engine2 has pifo1 and pifo2.
       )
 
       val configThread = controller.config { cf =>
@@ -52,6 +52,7 @@ object PifoMeshSim_1 extends App {
 
       println("=== PifoMesh Simulation: Multi-Engine Test ===")
       dut.clockDomain.waitRisingEdge(4)
+      // AM question: why did we wait for some time? How long must this be?
 
       for (i <- 0 until 10) {
         controller.enque(rFlow(0))
