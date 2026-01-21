@@ -24,8 +24,6 @@ jobs:
       - name: Install ocamlformat
         working-directory: rio
         run: opam install ocamlformat
-      - name: Check format 
+      - name: Check format
         working-directory: rio
-        run: | 
-          [ $(opam exec -- dune fmt 2> >(wc -c)) -eq 0 ]
-
+        run: opam exec -- dune build @fmt
