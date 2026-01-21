@@ -25,6 +25,7 @@ object PifoMeshSim_2 extends App {
       controller.start
 
       import RioPredefinedPifos._
+      // Once you import this, rPifo(0) is 0xA... rPifo(5) is 0xF.
 
       val engine1 = 1
       val engine2 = 2
@@ -32,6 +33,7 @@ object PifoMeshSim_2 extends App {
       val tree1 = TreeController(
         controller,
         pifos = Seq((engine1, rPifo(0)), (engine2, rPifo(1)), (engine2, rPifo(2)))
+        // engine1 has pifo0, and engine2 has pifo1 and pifo2.
       )
 
       val configThread = controller.config { cf =>
@@ -41,9 +43,9 @@ object PifoMeshSim_2 extends App {
           .brainWFQ(rPifo(0))
           .brainState(rPifo(0), rFlow(0), 1) // weight of flow0 in pifo0 -> 1
           .brainState(rPifo(0), rFlow(1), 1) // weight of flow1 in pifo0 -> 1
-          // In engine 1, we are running WFQ with weights 1 and 1, so we are essentially running RR
+          // In pifo0 we are running WFQ with weights 1 and 1, so we are essentially running RR
           .brainFIFO(rPifo(1))
-          .brainFIFO(rPifo(2))
+          .brainFIFO(rPifo(2)) // pifo1 and pifo2 run the FIFO policy
       }
 
       configThread.join()
@@ -58,17 +60,18 @@ object PifoMeshSim_2 extends App {
         controller.enque(rFlow(1))
         dut.clockDomain.waitRisingEdge(1)
       }
+      // We have enqueued 20 items into the tree.
 
       dut.clockDomain.waitRisingEdge(6)
 
-      // Note, we have done 10 pushes and 0 pops.
+      // Note, we have done 20 pushes and 0 pops.
       // Two ramifications:
       // - We have not tested Zhiyuan's underflow mechanism
-      // - We HAVE left 10 elements in the tree, and now it will be interesting to see how the first few dequeues look when we do them later on!
+      // - We HAVE left 20 elements in the tree, and now it will be interesting to see how the first few dequeues look when we do them later on!
 
-      // Now we are changing flow 0's state to be 2. flow 1's state remains 1.
-      // Recall that engine 1 is running WFQ b/w flows 0 and 1.
-      // This means that flow 0 will have higher priority than flow 1.
+      // Now we are changing flow0's state to be 2. flow1's state remains 1.
+      // Recall that pifo0 is running WFQ b/w flows 0 and 1.
+      // This means that flow 0 will have higher weight than flow 1.
       controller.config { cf =>
         cf.tree(tree1)
           .brainState(rPifo(0), rFlow(0), 2)
@@ -85,6 +88,7 @@ object PifoMeshSim_2 extends App {
         controller.enque(rFlow(1))
         dut.clockDomain.waitRisingEdge(1)
       }
+      // We have enqueued 20 more items into the tree (40 total now).
 
       dut.clockDomain.waitRisingEdge(6)
 
@@ -92,6 +96,7 @@ object PifoMeshSim_2 extends App {
       for (_ <- 0 until 40) {
         tree1.deque
       }
+      // we dequeue precisely 40 times, so the tree should be empty again
 
       dut.clockDomain.waitRisingEdge(20)
 

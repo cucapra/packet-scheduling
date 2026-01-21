@@ -25,6 +25,7 @@ object PifoMeshSim_4 extends App {
       controller.start
 
       import RioPredefinedPifos._
+      // Once you import this, rPifo(0) is 0xA... rPifo(5) is 0xF.
 
       val engine1 = 1
       val engine2 = 2
@@ -32,6 +33,7 @@ object PifoMeshSim_4 extends App {
       val tree1 = TreeController(
         controller,
         pifos = Seq((engine1, rPifo(0)), (engine2, rPifo(1)), (engine2, rPifo(2)), (engine2, rPifo(3)))
+        // engine1 has pifo0, and engine2 has pifo1, pifo2, and pifo3.
       )
 
       val configThread = controller.config { cf =>
@@ -43,11 +45,10 @@ object PifoMeshSim_4 extends App {
           .brainState(rPifo(0), rFlow(0), 1) // weight of flow0 in pifo0 -> 1
           .brainState(rPifo(0), rFlow(1), 1) // weight of flow1 in pifo0 -> 1
           .brainState(rPifo(0), rFlow(2), 1) // weight of flow2 in pifo0 -> 1
-          // In engine 1, we are running WFQ with weights 1, 1, and 1
-          // so essentially RR b/w flows 0, 1, and 2.
+          // In pifo0 we are essentiall running RR b/w flows 0, 1, and 2.
           .brainFIFO(rPifo(1))
           .brainFIFO(rPifo(2))
-          .brainFIFO(rPifo(3))
+          .brainFIFO(rPifo(3)) // pifo1, pifo2, and pifo3 run the FIFO policy
       }
 
       configThread.join()
@@ -63,6 +64,7 @@ object PifoMeshSim_4 extends App {
         dut.clockDomain.waitRisingEdge(1)
         // NOT sending any packets to flow2 yet...
       }
+      // We have enqueued 20 items into the tree.
 
       dut.clockDomain.waitRisingEdge(6)
 
@@ -70,8 +72,7 @@ object PifoMeshSim_4 extends App {
       for (_ <- 0 until 10) {
         tree1.deque
       }
-
-      // We do 10 pops. This means that 10 packets are still in the buffer.
+      // We dequeue 10 times. This means that 10 packets are still in the tree.
 
       println(s"Enqueueing packets to Engine $engine1")
       for (i <- 0 until 10) {
@@ -83,6 +84,7 @@ object PifoMeshSim_4 extends App {
         dut.clockDomain.waitRisingEdge(1)
         // Now all three flows are sending
       }
+      // We have enqueued 30 more items into the tree (40 total now).
 
       dut.clockDomain.waitRisingEdge(6)
 
@@ -90,6 +92,7 @@ object PifoMeshSim_4 extends App {
       for (_ <- 0 until 40) {
         tree1.deque
       }
+      // we dequeue precisely 40 times, so the tree should be empty again
 
       dut.clockDomain.waitRisingEdge(20)
 
