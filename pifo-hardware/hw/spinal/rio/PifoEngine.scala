@@ -10,12 +10,25 @@ case class EngineConfig (
     numVPIFOs : Int,
     maxPacketPriority: Int,
     fifoDepth: Int,
-    prefetchBufferDepth: Int
+    prefetchBufferDepth: Int,
+
+    brainStateWidth : Int = 32,
+    flowStateWidth : Int = 32,
+
+    configDataWidth : Int = 32
 ) {
     def vpifoIdWidth = log2Up(numVPIFOs)
     def numFlows = numVPIFOs * numEngines
-    def flowIdWidth = log2Up(numFlows)
-    def engineIdWidth = log2Up(numEngines)
+    def engineIdWidth = log2Up(numEngines + 1) // +1 for control port
+    def flowIdWidth = vpifoIdWidth + engineIdWidth
+
+    def dequePredWidth = vpifoIdWidth + 1 // +1 for exist bit
+
+    def numBrainState = 1 << brainStateWidth
+    def numFlowState = 1 << flowStateWidth
+
+    assert(flowStateWidth <= configDataWidth, "flowStateWidth should be less than configDataWidth")
+    assert(brainStateWidth % configDataWidth == 0, "brainStateWidth should be multiple of configDataWidth")
 }
 
 object EngineConfig {
@@ -28,24 +41,24 @@ object EngineConfig {
     )
 }
 
-case class MapperUpdater(numInputs : Int, numOutputs : Int) extends Bundle {
-  val inputId = UInt(log2Up(numInputs) bits)
-  val outputId = UInt(log2Up(numOutputs) bits)
+case class MapperUpdater(inputWidth : Int, outputWidth : Int) extends Bundle {
+  val inputId = UInt(inputWidth bits)
+  val outputId = UInt(outputWidth bits)
 }
 
-case class Mapper(numInputs : Int, numOutputs : Int) extends Component {
-  val inputWidth = log2Up(numInputs)
-  val outputWidth = log2Up(numOutputs)
-  def updater = MapperUpdater(numInputs, numOutputs)
+// TODO(zhiyuang): check for the writeFirst policy
+case class Mapper(inputWidth : Int, outputWidth : Int) extends Component {
+  val numInputs = 1 << inputWidth
+  def updater = MapperUpdater(inputWidth, outputWidth)
 
   val io = new Bundle {
-    val readReq = slave Flow(UInt(log2Up(numInputs) bits))
-    val readRes = master Flow(UInt(log2Up(numOutputs) bits))
+    val readReq = slave Flow(UInt(inputWidth bits))
+    val readRes = master Flow(UInt(outputWidth bits))
 
     val writeReq = slave Flow(updater)
   }
 
-  val ram = Mem(UInt(outputWidth bits), numInputs)
+  val ram = Mem(UInt(outputWidth bits), numInputs) init (Seq.fill(numInputs)(0))
 
   // read logic
   ram.flowReadSync(io.readReq) >> io.readRes
@@ -64,80 +77,180 @@ case class BrainInput(config : EngineConfig) extends Bundle {
 
 case class PIFOBrain(config : EngineConfig) extends Component {
   val io = new Bundle {
-    val in = slave Stream(BrainInput(config))
-    val out = master Stream(PifoEntry(config))
+    val request = slave Stream(BrainInput(config))
+    val response = master Stream(PifoEntry(config))
 
-    val control = new Bundle {
-    }
+    val control = slave Stream(ControlMessage(config))
+    val poped = slave Flow(PifoPopResponse(config))
   }
 
-  val inHeads = StreamFork(io.in, 4)
+  val inHeads = StreamFork(io.request, 5)
+  val controller = new ControllerFactory(config)
 
-  val engineMapper = Mapper(config.numVPIFOs, 16)
+  val engineMapper = Mapper(config.vpifoIdWidth, log2Up(BrainType.elements.size))
   inHeads(0).map(_.vpifoId).toFlow >> engineMapper.io.readReq
+  controller.dispatch(
+    ControlCommand.UpdateBrainEngine,
+    engineMapper.io.writeReq
+  ) { (to, from) =>
+    to.inputId := from.vPifoId
+    to.outputId := from.data.resized
+  }
 
+  val lastVirtualMapper = Mapper(config.vpifoIdWidth, config.bitPrio)
+  lastVirtualMapper.io.writeReq.translateFrom(io.poped.throwWhen(!io.poped.exist)) { (to, from) => 
+    to.inputId := from.port
+    to.outputId := from.priority
+  }
+  inHeads(1).map(_.vpifoId).toFlow >> lastVirtualMapper.io.readReq
 
-  val engineCAM = Mapper(config.numVPIFOs * config.numFlows, 16)
-  inHeads(1).map { data =>
+  val engineCAM = Mapper(config.flowIdWidth + config.vpifoIdWidth, config.flowStateWidth)
+  inHeads(2).map { data =>
     data.vpifoId @@ data.flowId
   }.toFlow >> engineCAM.io.readReq
-
-  val brainStateMem = Mapper(config.numVPIFOs, 1024)
-  inHeads(2).map { _.vpifoId }.toFlow >> brainStateMem.io.readReq
-
-  val engineStream = StreamJoin(Seq(
-    engineMapper.io.readRes.toStream,
-    engineCAM.io.readRes.toStream,
-    brainStateMem.io.readRes.toStream,
-    inHeads(3)
-  )).translateWith(
-    new Bundle {
-      val pifoId = inHeads(3).payload.vpifoId
-      val flowId = inHeads(3).payload.flowId
-      val engineId = engineMapper.io.readRes.payload
-      val flowState = engineCAM.io.readRes.payload
-      val brainState = brainStateMem.io.readRes.payload
-    }
-  )
-  
-
-  // Brain types for the PIFO brain engine
-  object BrainType extends SpinalEnum {
-    val NOP, SP, RR, FIFO = newElement()
+  // TODO(zhiyuang): check this priority and flows when updating
+  val flowStateControl, flowStateUpdate = Flow(engineCAM.updater)
+  engineCAM.io.writeReq << StreamArbiterFactory
+    .lowerFirst
+    .onArgs(flowStateControl.toStream, flowStateUpdate.toStream.queueLowLatency(2))
+    .toFlow
+  controller.dispatch(
+    ControlCommand.UpdateBrainFlowState,
+    flowStateControl
+  ) { (to, from) =>
+    to.inputId := from.vPifoId @@ from.flowId
+    to.outputId := from.data.resized
   }
 
+  val brainStateMem = Mapper(config.vpifoIdWidth, config.brainStateWidth)
+  inHeads(3).map { _.vpifoId }.toFlow >> brainStateMem.io.readReq
+  val brainStateControl, brainStateUpdate = Flow(brainStateMem.updater)
+  brainStateMem.io.writeReq << StreamArbiterFactory
+    .lowerFirst
+    .onArgs(brainStateControl.toStream, brainStateUpdate.toStream.queueLowLatency(2))
+    .toFlow
+  controller.dispatch(
+    ControlCommand.UpdateBrainState,
+    brainStateControl
+  ) { (to, from) =>
+    to.inputId := from.vPifoId
+    to.outputId := from.data.resized
+  }
+  
+  controller.build(io.control)
+
+
+  val engineFifo = engineMapper.io.readRes.toStream.queueLowLatency(2)
+  val brainStateFifo = brainStateMem.io.readRes.toStream.queueLowLatency(2)
+  val flowStateFifo = engineCAM.io.readRes.toStream.queueLowLatency(2)
+  val lastVirtualFifo = lastVirtualMapper.io.readRes.toStream.queueLowLatency(2)
+  val inputFifo = inHeads(4).queueLowLatency(2)
+
+  val engineStream = StreamJoin(Seq(
+    engineFifo,
+    brainStateFifo,
+    flowStateFifo,
+    lastVirtualFifo,
+    inputFifo
+  )).map { data =>
+    val anno = new Bundle {
+      val pifoId      = cloneOf(inHeads(4).payload.vpifoId)
+      val flowId      = cloneOf(inHeads(4).payload.flowId)
+      val engineId    = cloneOf(engineMapper.io.readRes.payload)
+      val flowState   = cloneOf(engineCAM.io.readRes.payload)
+      val brainState  = cloneOf(brainStateMem.io.readRes.payload)
+      val virutalTime = cloneOf(lastVirtualMapper.io.readRes.payload)
+    }
+
+    anno.pifoId      := inputFifo.payload.vpifoId
+    anno.flowId      := inputFifo.payload.flowId
+    anno.engineId    := engineFifo.payload
+    anno.flowState   := flowStateFifo.payload
+    anno.brainState  := brainStateFifo.payload
+    anno.virutalTime := lastVirtualFifo.payload
+
+    anno
+  }
+  
+  // TODO(zhiyaung): add update logic for different brain types
   // Engine Logic
   val outStream = engineStream.map { data =>
-    val entry = PifoEntry(config)
-    entry.port := data.pifoId
+    val res = new Bundle {
+      val entry = cloneOf(io.response.payload)
+      val flowUpdate = new Bundle {
+        val flow = engineCAM.updater
+        val update = Bool()
+      }
+      val brainUpdate = new Bundle {
+        val brain = brainStateMem.updater
+        val update = Bool()
+      }
+    }
+
+    // set data to data.id
+    res.entry.port := data.pifoId
+    res.entry.priority := 0
+    res.entry.data := data.flowId
+    res.flowUpdate.flow.inputId := data.pifoId @@ data.flowId
+    res.flowUpdate.flow.outputId := 0
+    res.flowUpdate.update := False
+    res.brainUpdate.brain.inputId := data.pifoId
+    res.brainUpdate.brain.outputId := 0
+    res.brainUpdate.update := False
     
-    switch(data.engineId) {
+    val brainType = BrainType()
+    brainType.assignFromBits(data.engineId.asBits.resized)
+
+    switch(brainType) {
       // strict priority
       is(BrainType.SP) {
-        entry.priority := data.flowState.resized
+        res.entry.priority := data.flowState.resized
       }
 
-      // round robin
-      is(BrainType.RR) {
+      // WFQ
+      // Currently this works like a Round-Robin: as its weight is same for all flows
+      // TODO(zhiyuang): need some assertation on weight configuration: we need to make sure it fits into the bits
+      is(BrainType.WFQ) {
+        val virtualTime = data.virutalTime.resize(config.bitPrio bits)
+        val lastFinish = data.flowState.resize(config.bitPrio bits)
 
+        val newStart = Mux(virtualTime > lastFinish, virtualTime, lastFinish)
+
+        val newTime = newStart + U(16, config.bitPrio bits)
+        // TODO(zhiyuang): weight handling in per-flow state
+        res.entry.priority := newTime
+
+        res.flowUpdate.update := True
+        res.flowUpdate.flow.outputId :=  newTime.resized
       }
 
       // FIFO
       is(BrainType.FIFO) {
+        val current = data.brainState.resize(config.bitPrio bits)
+        val newPriority = current + 1
 
-      }
-
-      default {
-        // invalid entry
-        entry.priority := 0
+        res.entry.priority := newPriority
+        res.brainUpdate.update := True
+        res.brainUpdate.brain.outputId := newPriority.resized
       }
     }
 
-    entry
+    res
   }
 
-  // priority should not be zero
-  io.out << outStream.throwWhen(outStream.payload.priority === 0)
+  val (output, flowUpdates, brainUpdates) = StreamFork3(outStream)
+
+  io.response << output
+    .throwWhen(output.entry.priority === 0)
+    .map(_.entry)
+
+  flowStateUpdate << flowUpdates
+    .throwWhen(!flowUpdates.payload.flowUpdate.update)
+    .map(_.flowUpdate.flow).toFlow
+
+  brainStateUpdate << brainUpdates
+    .throwWhen(!brainUpdates.payload.brainUpdate.update)
+    .map(_.brainUpdate.brain).toFlow
 }
 
 case class PifoMessage(config: EngineConfig) extends Bundle {
@@ -145,13 +258,18 @@ case class PifoMessage(config: EngineConfig) extends Bundle {
   val vPifoId = UInt(config.vpifoIdWidth bits)
 
   def flowId : UInt = engineId @@ vPifoId
+  def fromFlowId(id : UInt) = {
+    engineId := id(config.flowIdWidth - 1 downto config.vpifoIdWidth)
+    vPifoId := id(config.vpifoIdWidth - 1 downto 0)
+  }
 }
 
 object PifoMessage {
-  def fromData(config : EngineConfig, data : UInt) : PifoMessage = {
+  def fromData(config : EngineConfig, data : UInt, exist : Bool) : PifoMessage = {
     val msg = PifoMessage(config)
-    msg.engineId := data(config.engineIdWidth - 1 downto 0)
-    msg.vPifoId := data(config.engineIdWidth + config.vpifoIdWidth - 1 downto config.engineIdWidth)
+    // If not exist, set engineId to 0
+    msg.engineId := Mux(exist, data(config.flowIdWidth - 1 downto config.vpifoIdWidth), U(0))
+    msg.vPifoId := data(config.vpifoIdWidth - 1 downto 0)
     msg
   }
 }
@@ -175,11 +293,11 @@ case class PifoEngine(config : EngineConfig) extends Component {
   val enque = new Area {
     val (mapperRead, flowIdStream) = StreamFork2(io.enqueRequest)
 
-    val enqueMapper = Mapper(config.numFlows, config.numVPIFOs)
-    enqueMapper.io.readReq << mapperRead.map(_.flowId).toFlow
+    val enqueMapper = Mapper(config.vpifoIdWidth, config.vpifoIdWidth)
+    enqueMapper.io.readReq << mapperRead.map(_.vPifoId).toFlow
 
     val brainInput = Stream(BrainInput(config))
-    StreamJoin(enqueMapper.io.readRes.toStream, flowIdStream)
+    StreamJoin(enqueMapper.io.readRes.toStream, flowIdStream.queueLowLatency(2))
       .translateInto(brainInput) { (to, from) =>
         to.vpifoId := from._1
         to.flowId := from._2.flowId
@@ -188,36 +306,74 @@ case class PifoEngine(config : EngineConfig) extends Component {
     // brain takes (vpid, flowid) to PIFOEntry(priority, flowid)
     // each VPIFO has its own brain
     val brain = PIFOBrain(config)
-    brain.io.in << brainInput
+    brain.io.request << brainInput
     
 
     // flow PIFO will give the result
-    pifos.io.push1 << brain.io.out.toFlow
+    pifos.io.push1 << brain.io.response.toFlow
+    // currently we do not use push2
+    pifos.io.push2.valid := False
+    pifos.io.push2.payload.assignDontCare()
   }
 
   val deque = new Area {
     // dequeue also need a mapper, reinterpret vpifoId if needed
-    val dequeMapper = Mapper(config.numVPIFOs, config.numVPIFOs)
+    val dequeMapper = Mapper(config.flowIdWidth, config.flowIdWidth)
+    val nonExistMapper = Mapper(config.vpifoIdWidth, config.flowIdWidth)
 
-    pifos.io.popRequest.translateFrom(dequeMapper.io.readRes) { _.port := _ }
+    pifos.io.popRequest.translateFrom(io.dequeueRequest.toFlow) { case (to, from) =>
+      to.port := from.vPifoId
+    }
 
-    pifos.io.popResponse
-      .throwWhen(!pifos.io.popResponse.exist)
-      .map(resp => PifoMessage.fromData(config, resp.data))
-      .toStream >> io.dequeueResponse
+    val popResps = StreamFork(pifos.io.popResponse.toStream, 4)
+
+    enque.brain.io.poped << popResps(0).throwWhen(!popResps(0).exist).toFlow
+
+    dequeMapper.io.readReq << popResps(1).map(_.data).toFlow
+    nonExistMapper.io.readReq << popResps(2).map(_.port).toFlow
+
+    // select the mapper based on the exist bit
+    val popFifo = popResps(3).queueLowLatency(2)
+    StreamJoin(Seq(
+      dequeMapper.io.readRes.toStream,
+      nonExistMapper.io.readRes.toStream,
+      popFifo
+    )).translateInto(io.dequeueResponse) {
+      case (to, from) =>
+        when (popFifo.payload.exist) {
+          to.fromFlowId(dequeMapper.io.readRes.payload)
+        } otherwise {
+          to.fromFlowId(nonExistMapper.io.readRes.payload)
+        }
+    }
   }
 
-  val control = new Area {
-    // control logic to write the mappers and brain state
-    val controlHeads = StreamFork(io.control, 5)
-    controlHeads(0)
-      .takeWhen(controlHeads(0).payload.command == ControlCommand.MODIFY_MAPPING && controlHeads(0).mappingId == MappingId.InputMapper)
-      .translateInto(Stream(enque.enqueMapper.updater)) { (to, from) =>
-        to.inputId := from.flowId
-        to.outputId := from.vPifoId
-      }.toFlow >> enque.enqueMapper.io.writeReq
-
-    // continue with other control paths...
-
+  val controller = new ControllerFactory(config)
+  controller.dispatch(
+    ControlCommand.UpdateMapperPre,
+    enque.enqueMapper.io.writeReq
+  ) { (to, from) =>
+    to.inputId := from.vPifoId
+    to.outputId := from.data.resized
   }
+
+  controller.dispatch(
+    ControlCommand.UpdateMapperPost,
+    deque.dequeMapper.io.writeReq
+  ) { (to, from) =>
+    to.inputId := from.flowId
+    to.outputId := from.data.resized
+  }
+
+  controller.dispatch(
+    ControlCommand.UpdateMapperNonExist,
+    deque.nonExistMapper.io.writeReq
+  ) { (to, from) =>
+    to.inputId := from.vPifoId
+    to.outputId := from.data.resized
+  }
+
+  val (control, brainControl) = StreamFork2(io.control)
+  controller.build(control)
+  enque.brain.io.control << brainControl
 }

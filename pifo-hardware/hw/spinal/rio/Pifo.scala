@@ -32,13 +32,14 @@ case class PifoPopResponse(config: PifoConfig) extends Bundle {
   val exist = Bool()
   val priority = UInt(config.bitPrio bits)
   val data = UInt(config.bitData bits)
+  val port = UInt(config.bitPort bits)
 }
 
 // Push interface bundle
 case class PifoEntry(config: PifoConfig) extends Bundle {
   val priority = UInt(config.bitPrio bits)
-  val data = UInt(config.bitData bits)
-  val port = UInt(config.bitPort bits)
+  val data     = UInt(config.bitData bits)
+  val port     = UInt(config.bitPort bits)
 }
 
 // SpinalHDL blackbox wrapper for the pifo Verilog module
@@ -179,8 +180,8 @@ class PifoRTL(config: PifoConfig) extends Component {
     nextCount \= nextCount - 1
   }
 
-  val (_, pos1) = findFirstPosition(True) { _.priority < io.push1.priority }
-  val (_, pos2) = findFirstPosition(True) { _.priority < io.push2.priority }
+  val (_, pos1) = findFirstPosition(True) { _.priority > io.push1.priority }
+  val (_, pos2) = findFirstPosition(True) { _.priority > io.push2.priority }
 
   var adjustedPos1 = CombInit(pos1)
   when(popPosition < pos1 && io.popRequest.valid) { adjustedPos1 \= adjustedPos1 - 1 }
@@ -231,6 +232,7 @@ class PifoRTL(config: PifoConfig) extends Component {
 
   // output next cycle
   io.popResponse.valid := RegNext(io.popRequest.valid)
+  io.popResponse.port := RegNext(io.popRequest.port)
   io.popResponse.exist := RegNext(popExists)
   io.popResponse.data := RegNext(pifoArray(popPosition).data)
   io.popResponse.priority := RegNext(pifoArray(popPosition).priority)

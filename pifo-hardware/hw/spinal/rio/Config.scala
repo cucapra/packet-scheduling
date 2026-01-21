@@ -14,3 +14,7 @@ object Config {
 
   def sim = SimConfig.withConfig(spinal).withFstWave
 }
+
+object BrainType extends SpinalEnum(binarySequential) {
+  val NOP, WFQ, SP, FIFO = newElement()
+}

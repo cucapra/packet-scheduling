@@ -10,38 +10,40 @@ case class MessageCrossBar(config : EngineConfig) extends Component {
         val outputs = Vec(master Stream(PifoMessage(config)), numPorts)
     }
 
+    val xbarFifoDepth = 8
+
+    // TODO(zhiyuang): optimize the buffer to regs
     val fanouts = io.inputs.map { in =>
-        StreamDemux(in, in.payload.engineId, numPorts)
+        val inFifo = in.queueLowLatency(xbarFifoDepth, latency = 1)
+        StreamDemux(inFifo, inFifo.payload.engineId, numPorts)
     }
 
     for(i <- 0 until numPorts) {
-        val arbiter = StreamArbiterFactory.roundRobin.on(fanouts.map(_(i)))
-        arbiter >> io.outputs(i)
+        val arbiter = StreamArbiterFactory.lowerFirst.on(fanouts.map(_(i)))
+        arbiter >-> io.outputs(i)
     }
 }
 
-case class ControlCommand() extends SpinalEnum {
-    val MODIFY_MAPPING, COMMIT_MAPPING = newElement()
-}
-
-case class MappingId() extends SpinalEnum {
-    val InputMapper, OutputMapper, BrainEngineId, BrainState, BrainFlowState = newElement()
+object ControlCommand extends SpinalEnum {
+    val UpdateMapperPre, UpdateMapperPost, UpdateMapperNonExist, CommitMapper,
+        // brain operators
+        UpdateBrainEngine, UpdateBrainState, UpdateBrainFlowState = newElement()
 }
 
 case class ControlMessage(config: EngineConfig) extends Bundle {
     val command = ControlCommand()
-    val mappingId = MappingId()
     val engineId = UInt(config.engineIdWidth bits)
     val vPifoId = UInt(config.vpifoIdWidth bits)
     val flowId = UInt(config.flowIdWidth bits)
-    val data = UInt(32 bits)
+    val data = UInt(config.flowStateWidth bits)
 }
 
 case class PifoMesh(config: EngineConfig) extends Component {
     val io = new Bundle {
-        val dataRequest = master(Stream(PifoMessage(config)))
-        val pop = slave(Stream(PifoMessage(config)))
+        val dataRequest = slave(Stream(PifoMessage(config)))
+        val pop = master(Stream(PifoMessage(config)))
 
+        val insert = Vec(slave(Stream(PifoMessage(config))), config.numEngines)
         val controlRequest = slave(Stream(ControlMessage(config)))
     }
 
@@ -50,13 +52,23 @@ case class PifoMesh(config: EngineConfig) extends Component {
     val pifoEngines = Seq.fill(config.numEngines)(PifoEngine(config))
 
     (pifoEngines zip xbar.io.outputs.tail).foreach { case (engine, out) =>
-            engine.io.enqueRequest >> out
+        engine.io.dequeueRequest << out
     }
+    (pifoEngines zip xbar.io.inputs.tail).foreach { case (engine, in) =>
+        engine.io.dequeueResponse >> in
+    }
+
     io.dataRequest >> xbar.io.inputs(0)
     xbar.io.outputs(0) >> io.pop
 
+    // insert path
+    (io.insert zip pifoEngines).foreach { case (in, engine) =>
+        engine.io.enqueRequest << in
+    }
+
     // all controlpath. currently only write the memories
-    val controlCommand = StreamDemux(io.controlRequest, io.controlRequest.payload.engineId, config.numEngines)
+    val translatedEngineId = (io.controlRequest.payload.engineId - 1).resized
+    val controlCommand = StreamDemux(io.controlRequest, translatedEngineId, config.numEngines)
     (controlCommand zip pifoEngines).foreach { case (cmdStream, engine) =>
         engine.io.control << cmdStream
     }
