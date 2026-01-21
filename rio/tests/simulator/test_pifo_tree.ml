@@ -16,9 +16,9 @@ let flush tree =
   flush_aux tree []
 
 (* How this test works:
-  1. push all of `data` (using `int_to_path` to make paths) into PIFO tree `tree`.
-  2. repeatedly pop `tree` until empty.
-  3. check `data` is permuted correctly, i.e. matches `permutation`. *)
+   1. push all of `data` (using `int_to_path` to make paths) into PIFO tree `tree`.
+   2. repeatedly pop `tree` until empty.
+   3. check `data` is permuted correctly, i.e. matches `permutation`. *)
 let make_push_pop_test name data tree int_to_path permutation =
   name >:: fun _ ->
   assert_equal permutation

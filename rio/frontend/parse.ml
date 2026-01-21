@@ -1,7 +1,7 @@
 exception ParserError of Ast.error_info
 exception FileNotFound of string
 
-(* `syntax_error_msg lexbuf` is the "information" for a syntax error at the 
+(* `syntax_error_msg lexbuf` is the "information" for a syntax error at the
     current position *)
 let syntax_error_msg lexbuf : Ast.error_info =
   let pos = Lexing.lexeme_start_p lexbuf in
