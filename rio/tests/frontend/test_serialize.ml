@@ -11,7 +11,6 @@ let prog_to_json file =
 let make_test name file =
   let base = file |> Filename.basename |> Filename.remove_extension in
   let json = json_dir ^ Printf.sprintf "%s.json" base in
-
   name >:: fun _ ->
   assert_equal
     (Yojson.Basic.from_file json)
