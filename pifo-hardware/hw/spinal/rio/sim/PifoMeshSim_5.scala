@@ -25,8 +25,6 @@ object PifoMeshSim_5 extends App {
       controller.start
 
       import RioPredefinedPifos._
-      // Once you import this, rPifo(0) is 0xA... rPifo(5) is 0xF.
-
       val engine1 = 1
       val engine2 = 2
 
@@ -67,8 +65,6 @@ object PifoMeshSim_5 extends App {
       }
       // We have enqueued 20 items into the tree.
 
-      dut.clockDomain.waitRisingEdge(6)
-
       println(s"Requesting dequeue (root vPifo=${rPifo(0)}):")
       for (_ <- 0 until 10) {
         tree1.deque
@@ -76,14 +72,13 @@ object PifoMeshSim_5 extends App {
       // We dequeue 10 times. This means that 10 packets are still in the tree.
 
       // Now we will tell the tree about flow2
-
-      controller.config { cf =>
-        cf.tree(tree1)
-          .addFlow(rFlow(2), Seq(rPifo(0), rPifo(3)))
-          .brainState(rPifo(0), rFlow(2), 1)
-      }
-
-      dut.clockDomain.waitRisingEdge(4)
+      controller
+        .config { cf =>
+          cf.tree(tree1)
+            .addFlow(rFlow(2), Seq(rPifo(0), rPifo(3)))
+            .brainState(rPifo(0), rFlow(2), 1)
+        }
+        .join()
 
       println(s"Enqueueing packets to Engine $engine1")
       for (i <- 0 until 10) {
@@ -96,15 +91,11 @@ object PifoMeshSim_5 extends App {
       }
       // We have enqueued 30 more items into the tree (40 total now).
 
-      dut.clockDomain.waitRisingEdge(6)
-
       println(s"Requesting dequeue (root vPifo=${rPifo(0)}):")
       for (_ <- 0 until 40) {
         tree1.deque
       }
       // we dequeue precisely 40 times, so the tree should be empty again
-
-      dut.clockDomain.waitRisingEdge(20)
 
       println("=== PifoMesh Simulation Completed ===")
     }

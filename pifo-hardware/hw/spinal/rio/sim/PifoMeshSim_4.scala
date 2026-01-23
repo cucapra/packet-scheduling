@@ -25,8 +25,6 @@ object PifoMeshSim_4 extends App {
       controller.start
 
       import RioPredefinedPifos._
-      // Once you import this, rPifo(0) is 0xA... rPifo(5) is 0xF.
-
       val engine1 = 1
       val engine2 = 2
 
@@ -42,9 +40,9 @@ object PifoMeshSim_4 extends App {
           .addFlow(rFlow(1), Seq(rPifo(0), rPifo(2)))
           .addFlow(rFlow(2), Seq(rPifo(0), rPifo(3)))
           .brainWFQ(rPifo(0))
-          .brainState(rPifo(0), rFlow(0), 1) // weight of flow0 in pifo0 -> 1
-          .brainState(rPifo(0), rFlow(1), 1) // weight of flow1 in pifo0 -> 1
-          .brainState(rPifo(0), rFlow(2), 1) // weight of flow2 in pifo0 -> 1
+          .brainState(rPifo(0), rFlow(0), 1)
+          .brainState(rPifo(0), rFlow(1), 1)
+          .brainState(rPifo(0), rFlow(2), 1)
           // In pifo0 we are essentiall running RR b/w flows 0, 1, and 2.
           .brainFIFO(rPifo(1))
           .brainFIFO(rPifo(2))
@@ -66,8 +64,6 @@ object PifoMeshSim_4 extends App {
       }
       // We have enqueued 20 items into the tree.
 
-      dut.clockDomain.waitRisingEdge(6)
-
       println(s"Requesting dequeue (root vPifo=${rPifo(0)}):")
       for (_ <- 0 until 10) {
         tree1.deque
@@ -86,15 +82,11 @@ object PifoMeshSim_4 extends App {
       }
       // We have enqueued 30 more items into the tree (40 total now).
 
-      dut.clockDomain.waitRisingEdge(6)
-
       println(s"Requesting dequeue (root vPifo=${rPifo(0)}):")
       for (_ <- 0 until 40) {
         tree1.deque
       }
       // we dequeue precisely 40 times, so the tree should be empty again
-
-      dut.clockDomain.waitRisingEdge(20)
 
       println("=== PifoMesh Simulation Completed ===")
     }

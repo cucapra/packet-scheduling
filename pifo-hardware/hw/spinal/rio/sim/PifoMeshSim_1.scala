@@ -25,8 +25,6 @@ object PifoMeshSim_1 extends App {
       controller.start
 
       import RioPredefinedPifos._
-      // Once you import this, rPifo(0) is 0xA... rPifo(5) is 0xF.
-
       val engine1 = 1
       val engine2 = 2
 
@@ -52,7 +50,9 @@ object PifoMeshSim_1 extends App {
 
       println("=== PifoMesh Simulation: Multi-Engine Test ===")
       dut.clockDomain.waitRisingEdge(4)
-      // AM question: why did we wait for some time? How long must this be?
+      // This creates a clear gap in the waveform.
+      // It's good to LEAVE this here, since we want to give some time for the config to happen (above).
+      // Does a more complicated tree config require a longer wait? NO.
 
       for (i <- 0 until 10) {
         controller.enque(rFlow(0))
@@ -62,28 +62,20 @@ object PifoMeshSim_1 extends App {
       }
       // We have enqueued 20 items into the tree.
 
-      dut.clockDomain.waitRisingEdge(6)
-      // AM question: do we need to wait longer than 6?
-      // what is the relationship between the magic numbers?
-
       println(s"Requesting dequeue (root vPifo=${rPifo(0)}):")
       for (_ <- 0 until 20) {
         tree1.deque
       }
       // we dequeue precisely 20 times, so the tree should be empty again
 
-      dut.clockDomain.waitRisingEdge(20)
-      // AM question: again, magic number question
-
-      controller.config { cf =>
-        cf.tree(tree1)
-          .brainState(rPifo(0), rFlow(0), 2)
-      }
-      // AM: does this work like this?
-      // my intention is to NOW change the brain of pifo0 to give flow0 the weight 2
-
-      dut.clockDomain.waitRisingEdge(4)
-      // AM: waiting time? necessary?
+      controller
+        .config { cf =>
+          cf.tree(tree1)
+            .brainState(rPifo(0), rFlow(0), 2)
+        }
+        .join()
+      // We have NOW changed the brain of pifo0 to give flow0 the weight 2
+      // This is immediate, once we use `join()` to join it.
 
       // the below is just a repetition of the same experiment with the new weights
       // enqueue 20, dequeue 20
@@ -95,14 +87,10 @@ object PifoMeshSim_1 extends App {
         dut.clockDomain.waitRisingEdge(1)
       }
 
-      dut.clockDomain.waitRisingEdge(6)
-
       println(s"Requesting dequeue (root vPifo=${rPifo(0)}):")
       for (_ <- 0 until 20) {
         tree1.deque
       }
-
-      dut.clockDomain.waitRisingEdge(20)
 
       println("=== PifoMesh Simulation Completed ===")
     }

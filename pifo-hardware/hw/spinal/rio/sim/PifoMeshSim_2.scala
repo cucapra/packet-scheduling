@@ -25,8 +25,6 @@ object PifoMeshSim_2 extends App {
       controller.start
 
       import RioPredefinedPifos._
-      // Once you import this, rPifo(0) is 0xA... rPifo(5) is 0xF.
-
       val engine1 = 1
       val engine2 = 2
 
@@ -60,10 +58,6 @@ object PifoMeshSim_2 extends App {
         controller.enque(rFlow(1))
         dut.clockDomain.waitRisingEdge(1)
       }
-      // We have enqueued 20 items into the tree.
-
-      dut.clockDomain.waitRisingEdge(6)
-
       // Note, we have done 20 pushes and 0 pops.
       // Two ramifications:
       // - We have not tested Zhiyuan's underflow mechanism
@@ -72,14 +66,14 @@ object PifoMeshSim_2 extends App {
       // Now we are changing flow0's state to be 2. flow1's state remains 1.
       // Recall that pifo0 is running WFQ b/w flows 0 and 1.
       // This means that flow 0 will have higher weight than flow 1.
-      controller.config { cf =>
-        cf.tree(tree1)
-          .brainState(rPifo(0), rFlow(0), 2)
-      }
+      controller
+        .config { cf =>
+          cf.tree(tree1)
+            .brainState(rPifo(0), rFlow(0), 2)
+        }
+        .join()
 
       // Let's again push and pop some packets to appreciate this change.
-
-      dut.clockDomain.waitRisingEdge(4)
 
       println(s"Enqueueing packets to Engine $engine1")
       for (i <- 0 until 10) {
@@ -90,15 +84,11 @@ object PifoMeshSim_2 extends App {
       }
       // We have enqueued 20 more items into the tree (40 total now).
 
-      dut.clockDomain.waitRisingEdge(6)
-
       println(s"Requesting dequeue (root vPifo=${rPifo(0)}):")
       for (_ <- 0 until 40) {
         tree1.deque
       }
       // we dequeue precisely 40 times, so the tree should be empty again
-
-      dut.clockDomain.waitRisingEdge(20)
 
       println("=== PifoMesh Simulation Completed ===")
     }

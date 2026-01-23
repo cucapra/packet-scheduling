@@ -26,7 +26,6 @@ object PifoMeshSim extends App {
 
       import RioPredefinedPifos._
       // Once you import this, rPifo(0) is 0xA .. rPifo(5) is 0xF.
-
       val engine1 = 1
       val engine2 = 2
 
@@ -59,8 +58,8 @@ object PifoMeshSim extends App {
         controller.enque(
           rFlow(0)
         ) // this is a compound function that enqueues into all the pifos associated with the flow.
-        // AM question: true?
-        // AM question: but it's not in parallel? See Utils.scala.
+        // But it's not in parallel, and logically speaking we know that it _can_ be.
+        // Decision 1/23: ZG needs to think more about this, and then it can be made parallel.
         dut.clockDomain.waitRisingEdge(1)
         controller.enque(rFlow(1))
         dut.clockDomain.waitRisingEdge(1)
@@ -68,15 +67,13 @@ object PifoMeshSim extends App {
       // So a total of 6 items have been enqueued.
 
       dut.clockDomain.waitRisingEdge(6)
+      // This is optional; it just creates a clear gap in the waveform and that's useful for debugging.
 
       println(s"Requesting dequeue (root vPifo=${rPifo(0)}):")
       for (_ <- 0 until 8) {
         tree1.deque
       }
       // By doing 8 dequeues we will probably trigger underflow.
-      // AM question: true?
-
-      dut.clockDomain.waitRisingEdge(20)
 
       println("=== PifoMesh Simulation Completed ===")
     }
