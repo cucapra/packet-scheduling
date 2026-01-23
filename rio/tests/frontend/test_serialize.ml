@@ -43,13 +43,19 @@ let compare_tests =
   [
     make_compare_test "same program twice" "work_conserving/rr_1_class.sched"
       "work_conserving/rr_1_class.sched" true;
-    make_compare_test "different programs" "work_conserving/rr_1_class.sched"
-      "work_conserving/fifo_1_class.sched" false;
+    make_compare_test "totally different programs"
+      "work_conserving/rr_1_class.sched" "work_conserving/fifo_1_class.sched"
+      false;
     make_compare_test "true_diff_strict"
       "work_conserving/strict_n_classes.sched"
       "work_conserving/strict_n_classes_jumbled.sched" false;
+    (* These need to be considered different *)
     make_compare_test "slight difference" "work_conserving/wfq_n_classes.sched"
       "work_conserving/wfq_n_classes_jumbled.sched" true;
+    (* These need to be considered the same *)
+    make_compare_test "jumbled rr hierarchy"
+      "work_conserving/rr_hier_merge_sugar.sched"
+      "work_conserving/rr_hier_merge_sugar_jumbled.sched" true;
   ]
 
 let suite = "serialization tests" >::: serialize_tests @ compare_tests

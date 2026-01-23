@@ -1,0 +1,21 @@
+classes BX, BY, RP, RT;
+// B* represents packets that came from Buffalo
+// BX packets are destined for Xanadu
+// BY packets are destined for Yangon
+// R* represents packets that came from Rochester
+// RP packets are destined for Pittsburgh
+// RT packets are destined for Toronto
+
+b_policy = fifo[union[BY, BX]];
+r_policy = rr[fifo[RT], fifo[RP]];
+policy = rr[r_policy, b_policy];
+
+return policy
+
+// This policy is not interested in paritioning `B` packets by destination.
+// However, it has been given classes for `BX` and `BY` packets, not some
+// monolithic class `B`.
+// Therefore, it must merge them into a single policy using a `fifo` wrapper.
+
+// This is a jumbled version of rr_hier_merge_sugar.sched:
+// The order of classes and the order of merging have both been changed.
