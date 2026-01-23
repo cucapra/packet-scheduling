@@ -41,12 +41,15 @@ let serialize_tests =
 
 let compare_tests =
   [
-    make_compare_test "same program twice" "work_conserving/fifo_1_class.sched"
-      "work_conserving/fifo_1_class.sched" true;
-    make_compare_test "different programs" "work_conserving/fifo_1_class.sched"
-      "work_conserving/rr_1_class.sched" false;
-    make_compare_test "rr 1 vs rr 2" "work_conserving/rr_1_class.sched"
-      "work_conserving/rr_2_classes.sched" false;
+    make_compare_test "same program twice" "work_conserving/rr_1_class.sched"
+      "work_conserving/rr_1_class.sched" true;
+    make_compare_test "different programs" "work_conserving/rr_1_class.sched"
+      "work_conserving/fifo_1_class.sched" false;
+    make_compare_test "true_diff_strict"
+      "work_conserving/strict_n_classes.sched"
+      "work_conserving/strict_n_classes_jumbled.sched" false;
+    make_compare_test "slight difference" "work_conserving/wfq_n_classes.sched"
+      "work_conserving/wfq_n_classes_jumbled.sched" true;
   ]
 
 let suite = "serialization tests" >::: serialize_tests @ compare_tests

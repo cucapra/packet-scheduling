@@ -1,0 +1,7 @@
+classes A, B, C;
+
+policy = strict[fifo[B], fifo[C], fifo[A]];
+
+return policy
+
+// This is genuinely different from strict_n_classes.sched because the order of classes is jumbled
