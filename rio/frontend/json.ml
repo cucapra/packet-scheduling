@@ -45,13 +45,11 @@ let rec normalize_json (json : Yojson.Basic.t) : Yojson.Basic.t =
   | other -> other
 
 (* Serialize and compare functionality *)
-let prog_to_jsonaf prog_dir file =
-  (* Convert a scheduling program file to a Jsonaf representation *)
-  prog_dir ^ file |> Parse.parse_file |> Policy.of_program |> from_policy
-  |> normalize_json |> Yojson.Basic.to_string |> Jsonaf.of_string
-
 let compare_programs prog_dir (file1 : string) (file2 : string) : bool =
-  let json1 = prog_to_jsonaf prog_dir file1 in
-  let json2 = prog_to_jsonaf prog_dir file2 in
-  Jsonaf.exactly_equal json1 json2
-(* TODO: move away from exactly_equal *)
+  let prog_to_json file =
+    prog_dir ^ file |> Parse.parse_file |> Policy.of_program |> from_policy
+    |> normalize_json
+  in
+  let json1 = prog_to_json file1 in
+  let json2 = prog_to_json file2 in
+  Yojson.Basic.equal json1 json2
