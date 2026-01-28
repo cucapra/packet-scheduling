@@ -25,6 +25,8 @@ let wc_tests =
       "fifo[union[A, B, C]]";
     make_test "rr of 1" "work_conserving/rr_1_class.sched" "rr[fifo[A]]";
     make_test "rr of 2" "work_conserving/rr_2_classes.sched"
+      "rr[fifo[A], fifo[B]]";
+    make_test "rr of 2 merged" "work_conserving/rr_2_classes_merged.sched"
       "rr[fifo[union[A, B]]]";
     make_test "multiple assignments" "work_conserving/rr_hier_merge_sugar.sched"
       "rr[fifo[union[BX, BY]], rr[fifo[RP], fifo[RT]]]";
@@ -33,7 +35,7 @@ let wc_tests =
     make_test "3 classes with substitutions"
       "work_conserving/rr_n_class_hier.sched"
       "rr[fifo[A], fifo[B], rr[rr[fifo[CU], fifo[CV]], rr[fifo[CW], fifo[CX]]]]";
-    make_test "rr of 3" "work_conserving/rr_n_classes.sched"
+    make_test "rr of 3" "work_conserving/rr_3_classes.sched"
       "rr[fifo[A], fifo[B], fifo[C]]";
     make_test "rr and strict substitutions"
       "work_conserving/rr_strict_n_classes_hier.sched"
