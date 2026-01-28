@@ -52,4 +52,4 @@ let compare_programs prog_dir (file1 : string) (file2 : string) : bool =
   in
   let json1 = prog_to_json file1 in
   let json2 = prog_to_json file2 in
-  Yojson.Basic.equal json1 json2
+  json1 = json2
