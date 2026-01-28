@@ -57,6 +57,11 @@ let compare_tests =
       "work_conserving/rr_2_classes.sched" "work_conserving/rr_3_classes.sched"
       (Rio_compare.Compare.ArmAdded
          { policy_type = "RoundRobin"; old_count = 2; new_count = 3 });
+    make_compare_test "rr 2 classes vs rr 3 classes DEF"
+      "work_conserving/rr_2_classes.sched"
+      "work_conserving/rr_3_classes_DEF.sched"
+      (Rio_compare.Compare.VeryDifferent
+         { reason = "Different RoundRobin structure (0/2 arms preserved)" });
     (* FIFO nested in RR *)
     make_compare_test "fifo vs rr hierarchy"
       "work_conserving/fifo_1_class.sched" "work_conserving/rr_1_class.sched"
@@ -67,18 +72,29 @@ let compare_tests =
       "work_conserving/strict_n_classes.sched"
       "work_conserving/strict_n_classes_jumbled.sched"
       (Rio_compare.Compare.VeryDifferent
-         { reason = "Different Strict structure" });
+         { reason = "Different Strict structure (1/3 arms preserved)" });
     (* WFQ jumbled - arms are reordered with different weights *)
     make_compare_test "wfq n classes vs jumbled"
       "work_conserving/wfq_n_classes.sched"
       "work_conserving/wfq_n_classes_jumbled.sched"
-      (Rio_compare.Compare.VeryDifferent { reason = "WFQ arms changed" });
+      (Rio_compare.Compare.VeryDifferent
+         {
+           reason =
+             "WFQ arms changed (1/3 arms preserved; weights also changed)";
+         });
     (* RR hierarchy jumbled - RR children are reordered *)
     make_compare_test "rr hierarchy vs jumbled"
       "work_conserving/rr_hier_merge_sugar.sched"
       "work_conserving/rr_hier_merge_sugar_jumbled.sched"
       (Rio_compare.Compare.VeryDifferent
-         { reason = "Different RoundRobin structure" });
+         { reason = "Different RoundRobin structure (0/2 arms preserved)" });
+    make_compare_test "subpolicy rr hierarchy" "work_conserving/rr_subpol.sched"
+      "work_conserving/rr_hier_merge_sugar.sched"
+      (Rio_compare.Compare.SuperPol
+         {
+           outer_policy = "RoundRobin of FIFO and FIFO";
+           inner_policy = "RoundRobin of FIFO and FIFO";
+         });
   ]
 
 let suite = "serialization tests" >::: serialize_tests @ compare_tests
