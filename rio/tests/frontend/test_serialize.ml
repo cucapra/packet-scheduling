@@ -95,8 +95,20 @@ let compare_tests_different =
          { old_weights = [ 1.0; 2.0; 3.0 ]; new_weights = [ 2.0; 2.0; 4.0 ] });
   ]
 
+let compare_tests_deep =
+  [
+    (* RR and Strict hierarchy with arm added deep in the tree *)
+    make_compare_test "RR and Strict hierarchy with arm added deep"
+      "work_conserving/rr_strict_hier.sched"
+      "work_conserving/rr_strict_hier_add_arm.sched"
+      (* (Rio_compare.Compare.ArmsAdded
+         { policy_type = "Strict"; old_count = 2; new_count = 3 }); *)
+      Rio_compare.Compare.VeryDifferent;
+  ]
+
 let suite =
   "serialization tests"
   >::: serialize_tests @ compare_tests_same @ compare_tests_different
+       @ compare_tests_deep
 
 let () = run_test_tt_main suite
