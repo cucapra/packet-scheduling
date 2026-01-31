@@ -46,7 +46,7 @@ let serialize_tests =
     make_test "complex tree" "work_conserving/complex_tree.sched";
   ]
 
-let compare_tests =
+let compare_tests_same =
   [
     (* Same program twice *)
     make_compare_test "same program twice"
@@ -57,7 +57,10 @@ let compare_tests =
       "work_conserving/rr_hier_merge_sugar.sched"
       "work_conserving/rr_hier_merge_sugar_jumbled.sched"
       Rio_compare.Compare.Same;
+    make_compare_test "merely jumbled in WFQ"
+      "work_conserving/wfq_3_classes.sched"
+      "work_conserving/wfq_3_classes_jumbled.sched" Rio_compare.Compare.Same;
   ]
 
-let suite = "serialization tests" >::: serialize_tests @ compare_tests
+let suite = "serialization tests" >::: serialize_tests @ compare_tests_same
 let () = run_test_tt_main suite
