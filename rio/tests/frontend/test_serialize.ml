@@ -62,5 +62,16 @@ let compare_tests_same =
       "work_conserving/wfq_3_classes_jumbled.sched" Rio_compare.Compare.Same;
   ]
 
-let suite = "serialization tests" >::: serialize_tests @ compare_tests_same
+let compare_tests_different =
+  [
+    make_compare_test "different WFQ" "work_conserving/wfq_3_classes.sched"
+      "work_conserving/wfq_3_classes_diff.sched"
+      (Rio_compare.Compare.VeryDifferent
+         { reason = "Policies are not equivalent" });
+  ]
+
+let suite =
+  "serialization tests"
+  >::: serialize_tests @ compare_tests_same @ compare_tests_different
+
 let () = run_test_tt_main suite
