@@ -12,10 +12,7 @@ type t =
       old_weights : float list;
       new_weights : float list;
     }
-  | SuperPol of {
-      outer_policy : string;
-      inner_policy : string;
-    }
+  | SuperPol (* Make more sophisticated. *)
   | VeryDifferent
 
 (* Get a simple string representation of a policy type *)
@@ -28,9 +25,21 @@ let policy_type_name = function
 
 let subset lst1 lst2 = List.for_all (fun x -> List.mem x lst2) lst1
 
-(* Analyze differences between two policies *)
+let rec is_sub_policy p1 p2 =
+  (* Is p1 a sub-policy of p2? Examples:
+      - RR(A, B) is NOT sub-policy of RR(A, B, C); that should be ArmsAdded
+      - WFQ(A, B) is NOT a sub-policy of WFQ(A, B, C)
+      - RR(A, B) is a sub-policy of SP(RR(A, B), C)
+      - RR(A, B) is a sub-policy of SP(RR(RR(A, B),C), D)
+      *)
+  match p2 with
+  | Frontend.Policy.Strict ps
+  | Frontend.Policy.RR ps
+  | Frontend.Policy.WFQ (ps, _) -> List.exists (is_sub_policy p1) ps
+  | _ -> p1 = p2
 
 let analyze p1 p2 : t =
+  (* Analyze differences between two policies *)
   if Json.equiv_policy p1 p2 then Same
   else
     (* We'd like to report an added arm. We can assume that the programs are normalized. So RR(A,B) and RR(A,B,C) would indicate an added arm. But RR(A,B) and RR(C,D,E) would indicate VeryDifferent. Similar logic applies to WFQ. *)
@@ -53,7 +62,9 @@ let analyze p1 p2 : t =
         else if arms1 = arms2 && weights1 <> weights2 then
           WeightsChanged { old_weights = weights1; new_weights = weights2 }
         else VeryDifferent
-    | _, _ -> VeryDifferent
+    | _, _ ->
+        (* Eithe sub-pol or give up with VeryDifferent *)
+        if is_sub_policy p1 p2 then SuperPol else VeryDifferent
 
 (* Format the diff for display *)
 let to_string = function
@@ -67,7 +78,5 @@ let to_string = function
       in
       Printf.sprintf "Weights changed: [%s] → [%s]" (fmt_weights old_weights)
         (fmt_weights new_weights)
-  | SuperPol { outer_policy; inner_policy } ->
-      Printf.sprintf "Nested: %s contains %s as sub-policy" outer_policy
-        inner_policy
+  | SuperPol -> Printf.sprintf "Nested policy"
   | VeryDifferent -> Printf.sprintf "Very different"

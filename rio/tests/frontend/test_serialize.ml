@@ -102,6 +102,11 @@ let compare_tests_different =
       "work_conserving/wfq_3_classes_diff_weights.sched"
       (Rio_compare.Compare.WeightsChanged
          { old_weights = [ 1.0; 2.0; 3.0 ]; new_weights = [ 2.0; 2.0; 4.0 ] });
+    make_compare_test "sub-policy" "work_conserving/rr_hier_subpol.sched"
+      "work_conserving/rr_hier.sched"
+      Rio_compare.Compare
+      .(* SuperPol; *)
+      VeryDifferent;
   ]
 
 let compare_tests_deep =
