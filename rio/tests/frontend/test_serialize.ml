@@ -57,6 +57,7 @@ let compare_tests_same =
       "work_conserving/rr_hier_merge_sugar.sched"
       "work_conserving/rr_hier_merge_sugar_jumbled.sched"
       Rio_compare.Compare.Same;
+    (* Merely jumbled, in WFQ *)
     make_compare_test "merely jumbled in WFQ"
       "work_conserving/wfq_3_classes.sched"
       "work_conserving/wfq_3_classes_jumbled.sched" Rio_compare.Compare.Same;
@@ -64,23 +65,34 @@ let compare_tests_same =
 
 let compare_tests_different =
   [
+    (* WFQ(A,B,C) vs WFQ(A,B,D)*)
     make_compare_test "different WFQ" "work_conserving/wfq_3_classes.sched"
       "work_conserving/wfq_3_classes_diff.sched"
       Rio_compare.Compare.VeryDifferent;
+    (* RR(A,B) vs RR(A,B,C) *)
     make_compare_test "RR with arm added" "work_conserving/rr_2_classes.sched"
       "work_conserving/rr_3_classes.sched"
       (Rio_compare.Compare.ArmsAdded
          { policy_type = "RoundRobin"; old_count = 2; new_count = 3 });
+    (* WFQ(A,B) vs WFQ(A,B,C) *)
     make_compare_test "WFQ with arm added" "work_conserving/wfq_2_classes.sched"
       "work_conserving/wfq_3_classes.sched"
       (Rio_compare.Compare.ArmsAdded
          { policy_type = "WeightedFair"; old_count = 2; new_count = 3 });
+    (* RR(A,B) vs RR(D,E,F) *)
     make_compare_test "RR big diff" "work_conserving/rr_2_classes.sched"
       "work_conserving/rr_3_classes_DEF.sched" Rio_compare.Compare.VeryDifferent;
+    (* SP(C, B, A) vs SP(B, C, A) *)
     make_compare_test "Strict with arms reordered"
       "work_conserving/strict_3_classes.sched"
       "work_conserving/strict_3_classes_jumbled.sched"
       Rio_compare.Compare.VeryDifferent;
+    (* WFQ -- same classes but weights changed *)
+    make_compare_test "WFQ with weights changed"
+      "work_conserving/wfq_3_classes.sched"
+      "work_conserving/wfq_3_classes_diff_weights.sched"
+      (Rio_compare.Compare.WeightsChanged
+         { old_weights = [ 1.0; 2.0; 3.0 ]; new_weights = [ 2.0; 2.0; 4.0 ] });
   ]
 
 let suite =

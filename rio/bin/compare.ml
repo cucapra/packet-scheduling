@@ -43,12 +43,15 @@ let analyze p1 p2 : t =
           ArmsAdded
             { policy_type = "RoundRobin"; old_count = len1; new_count = len2 }
         else VeryDifferent
-    | Frontend.Policy.WFQ (arms1, _), Frontend.Policy.WFQ (arms2, _) ->
+    | ( Frontend.Policy.WFQ (arms1, weights1),
+        Frontend.Policy.WFQ (arms2, weights2) ) ->
         let len1 = List.length arms1 in
         let len2 = List.length arms2 in
         if len2 > len1 && subset arms1 arms2 then
           ArmsAdded
             { policy_type = "WeightedFair"; old_count = len1; new_count = len2 }
+        else if arms1 = arms2 && weights1 <> weights2 then
+          WeightsChanged { old_weights = weights1; new_weights = weights2 }
         else VeryDifferent
     | _, _ -> VeryDifferent
 
