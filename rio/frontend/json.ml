@@ -44,12 +44,13 @@ let rec normalize_json (json : Yojson.Basic.t) : Yojson.Basic.t =
   | `List items -> `List (List.map normalize_json items)
   | other -> other
 
-(* Serialize and compare functionality *)
-let compare_programs prog_dir (file1 : string) (file2 : string) : bool =
-  let prog_to_json file =
-    prog_dir ^ file |> Parse.parse_file |> Policy.of_program |> from_policy
-    |> normalize_json
+let equiv_policy (p1 : Policy.t) (p2 : Policy.t) : bool =
+  Yojson.Basic.equal
+    (normalize_json (from_policy p1))
+    (normalize_json (from_policy p2))
+
+let compare_programs prog_dir file1 file2 : bool =
+  let prog_to_policy file =
+    prog_dir ^ file |> Parse.parse_file |> Policy.of_program
   in
-  let json1 = prog_to_json file1 in
-  let json2 = prog_to_json file2 in
-  json1 = json2
+  equiv_policy (prog_to_policy file1) (prog_to_policy file2)
