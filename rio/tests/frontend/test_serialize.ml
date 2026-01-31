@@ -74,6 +74,11 @@ let compare_tests_different =
       "work_conserving/rr_3_classes.sched"
       (Rio_compare.Compare.ArmsAdded
          { policy_type = "RoundRobin"; old_count = 2; new_count = 3 });
+    (* RR(A,B) vs RR(C,A,B) *)
+    make_compare_test "RR with arm added" "work_conserving/rr_2_classes.sched"
+      "work_conserving/rr_3_classes_CAB.sched"
+      (Rio_compare.Compare.ArmsAdded
+         { policy_type = "RoundRobin"; old_count = 2; new_count = 3 });
     (* WFQ(A,B) vs WFQ(A,B,C) *)
     make_compare_test "WFQ with arm added" "work_conserving/wfq_2_classes.sched"
       "work_conserving/wfq_3_classes.sched"
