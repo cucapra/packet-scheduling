@@ -61,6 +61,10 @@ let compare_tests_same =
     make_compare_test "merely jumbled in WFQ"
       "work_conserving/wfq_3_classes.sched"
       "work_conserving/wfq_3_classes_jumbled.sched" Rio_compare.Compare.Same;
+    (* Different variable names, same structure *)
+    make_compare_test "different variable names, same structure"
+      "work_conserving/rr_hier.sched"
+      "work_conserving/rr_hier_weird_var_names.sched" Rio_compare.Compare.Same;
   ]
 
 let compare_tests_different =
