@@ -1,0 +1,7 @@
+// This policy is just designed to be a sub-policy of rr_hier_merge_sugar.sched
+
+classes RP, RT;
+
+policy = rr[fifo[RP], fifo[RT]];
+
+return policy
