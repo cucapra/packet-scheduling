@@ -68,6 +68,18 @@ let compare_tests_different =
       "work_conserving/wfq_3_classes_diff.sched"
       (Rio_compare.Compare.VeryDifferent
          { reason = "Policies are not equivalent" });
+    make_compare_test "RR with arm added" "work_conserving/rr_2_classes.sched"
+      "work_conserving/rr_3_classes.sched"
+      (Rio_compare.Compare.ArmsAdded
+         { policy_type = "RoundRobin"; old_count = 2; new_count = 3 });
+    make_compare_test "WFQ with arm added" "work_conserving/wfq_2_classes.sched"
+      "work_conserving/wfq_3_classes.sched"
+      (Rio_compare.Compare.ArmsAdded
+         { policy_type = "WeightedFair"; old_count = 2; new_count = 3 });
+    make_compare_test "RR big diff" "work_conserving/rr_2_classes.sched"
+      "work_conserving/rr_3_classes_DEF.sched"
+      (Rio_compare.Compare.VeryDifferent
+         { reason = "Policies are not equivalent" });
   ]
 
 let suite =
