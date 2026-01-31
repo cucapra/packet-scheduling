@@ -33,15 +33,15 @@ let wc_tests =
     make_test "2 assignments w/ substitutions" "work_conserving/rr_hier.sched"
       "rr[fifo[B], rr[fifo[RP], fifo[RT]]]";
     make_test "3 classes with substitutions"
-      "work_conserving/rr_n_class_hier.sched"
+      "work_conserving/rr_wide_hier.sched"
       "rr[fifo[A], fifo[B], rr[rr[fifo[CU], fifo[CV]], rr[fifo[CW], fifo[CX]]]]";
     make_test "rr of 3" "work_conserving/rr_3_classes.sched"
       "rr[fifo[A], fifo[B], fifo[C]]";
     make_test "rr and strict substitutions"
-      "work_conserving/rr_strict_n_classes_hier.sched"
+      "work_conserving/rr_strict_hier.sched"
       "strict[fifo[A], fifo[B], rr[rr[fifo[CU], fifo[CV]], strict[fifo[CW], \
        fifo[CX]]]]";
-    make_test "strict of 3" "work_conserving/strict_n_classes.sched"
+    make_test "strict of 3" "work_conserving/strict_3_classes.sched"
       "strict[fifo[C], fifo[B], fifo[A]]";
   ]
 

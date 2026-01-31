@@ -16,7 +16,7 @@ type t =
       outer_policy : string;
       inner_policy : string;
     }
-  | VeryDifferent of { reason : string }
+  | VeryDifferent
 
 (* Get a simple string representation of a policy type *)
 let policy_type_name = function
@@ -42,15 +42,15 @@ let analyze p1 p2 : t =
         if len2 > len1 && subset arms1 arms2 then
           ArmsAdded
             { policy_type = "RoundRobin"; old_count = len1; new_count = len2 }
-        else VeryDifferent { reason = "Policies are not equivalent" }
+        else VeryDifferent
     | Frontend.Policy.WFQ (arms1, _), Frontend.Policy.WFQ (arms2, _) ->
         let len1 = List.length arms1 in
         let len2 = List.length arms2 in
         if len2 > len1 && subset arms1 arms2 then
           ArmsAdded
             { policy_type = "WeightedFair"; old_count = len1; new_count = len2 }
-        else VeryDifferent { reason = "Policies are not equivalent" }
-    | _, _ -> VeryDifferent { reason = "Policies are not equivalent" }
+        else VeryDifferent
+    | _, _ -> VeryDifferent
 
 (* Format the diff for display *)
 let to_string = function
@@ -67,4 +67,4 @@ let to_string = function
   | SuperPol { outer_policy; inner_policy } ->
       Printf.sprintf "Nested: %s contains %s as sub-policy" outer_policy
         inner_policy
-  | VeryDifferent { reason } -> Printf.sprintf "Very different: %s" reason
+  | VeryDifferent -> Printf.sprintf "Very different"

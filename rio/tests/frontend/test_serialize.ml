@@ -39,10 +39,10 @@ let serialize_tests =
     make_test "rr 2 classes merged" "work_conserving/rr_2_classes_merged.sched";
     make_test "rr hierarchy" "work_conserving/rr_hier_merge_sugar.sched";
     make_test "rr even hierarchy" "work_conserving/rr_hier.sched";
-    make_test "rr n classes hierarchy" "work_conserving/rr_n_class_hier.sched";
+    make_test "rr wide hierarchy" "work_conserving/rr_wide_hier.sched";
     make_test "rr 3 classes" "work_conserving/rr_3_classes.sched";
-    make_test "rr and strict" "work_conserving/rr_strict_n_classes_hier.sched";
-    make_test "strict n classes" "work_conserving/strict_n_classes.sched";
+    make_test "rr and strict" "work_conserving/rr_strict_hier.sched";
+    make_test "strict n classes" "work_conserving/strict_3_classes.sched";
     make_test "complex tree" "work_conserving/complex_tree.sched";
   ]
 
@@ -50,8 +50,8 @@ let compare_tests_same =
   [
     (* Same program twice *)
     make_compare_test "same program twice"
-      "work_conserving/strict_n_classes.sched"
-      "work_conserving/strict_n_classes.sched" Rio_compare.Compare.Same;
+      "work_conserving/strict_3_classes.sched"
+      "work_conserving/strict_3_classes.sched" Rio_compare.Compare.Same;
     (* Merely jumbled, in RR *)
     make_compare_test "merely jumbled in RR"
       "work_conserving/rr_hier_merge_sugar.sched"
@@ -66,8 +66,7 @@ let compare_tests_different =
   [
     make_compare_test "different WFQ" "work_conserving/wfq_3_classes.sched"
       "work_conserving/wfq_3_classes_diff.sched"
-      (Rio_compare.Compare.VeryDifferent
-         { reason = "Policies are not equivalent" });
+      Rio_compare.Compare.VeryDifferent;
     make_compare_test "RR with arm added" "work_conserving/rr_2_classes.sched"
       "work_conserving/rr_3_classes.sched"
       (Rio_compare.Compare.ArmsAdded
@@ -77,9 +76,11 @@ let compare_tests_different =
       (Rio_compare.Compare.ArmsAdded
          { policy_type = "WeightedFair"; old_count = 2; new_count = 3 });
     make_compare_test "RR big diff" "work_conserving/rr_2_classes.sched"
-      "work_conserving/rr_3_classes_DEF.sched"
-      (Rio_compare.Compare.VeryDifferent
-         { reason = "Policies are not equivalent" });
+      "work_conserving/rr_3_classes_DEF.sched" Rio_compare.Compare.VeryDifferent;
+    make_compare_test "Strict with arms reordered"
+      "work_conserving/strict_3_classes.sched"
+      "work_conserving/strict_3_classes_jumbled.sched"
+      Rio_compare.Compare.VeryDifferent;
   ]
 
 let suite =
