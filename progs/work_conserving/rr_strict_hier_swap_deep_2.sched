@@ -1,0 +1,18 @@
+classes A, B, CU, CV, CW, CX;
+
+c_policy = rr[rr[fifo[CU], fifo[CV]], strict[fifo[CX], fifo[CW]]];
+policy = strict[fifo[A], fifo[B], c_policy];
+
+return policy
+
+//     strict
+//    /  |  \
+//   /   |   \
+//  A    B    rr
+//         /      \
+//        rr     strict
+//       /  \     /  \
+//      CU   CV  CX   CW
+
+// Same as rr_strict_hier.sched but with CW and CX swapped.
+// This IS actually a meaningful difference, and we want our comparison algorithm to catch it.

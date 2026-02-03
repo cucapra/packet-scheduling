@@ -69,7 +69,7 @@ let compare_tests_same =
 
 let compare_tests_different =
   [
-    (* WFQ(A,B,C) vs WFQ(A,B,D)*)
+    (* WFQ(A,B,C) vs WFQ(A,B,D) *)
     make_compare_test "different WFQ" "work_conserving/wfq_3_classes.sched"
       "work_conserving/wfq_3_classes_diff.sched"
       Rio_compare.Compare.VeryDifferent;
@@ -104,9 +104,8 @@ let compare_tests_different =
          { old_weights = [ 1.0; 2.0; 3.0 ]; new_weights = [ 2.0; 2.0; 4.0 ] });
     make_compare_test "sub-policy" "work_conserving/rr_hier_subpol.sched"
       "work_conserving/rr_hier.sched"
-      Rio_compare.Compare
-      .(* SuperPol; *)
-      VeryDifferent;
+      (* Rio_compare.Compare.SuperPol; *)
+      Rio_compare.Compare.VeryDifferent;
   ]
 
 let compare_tests_deep =
@@ -115,9 +114,19 @@ let compare_tests_deep =
     make_compare_test "RR and Strict hierarchy with arm added deep"
       "work_conserving/rr_strict_hier.sched"
       "work_conserving/rr_strict_hier_add_arm.sched"
-      (* (Rio_compare.Compare.ArmsAdded
-         { policy_type = "Strict"; old_count = 2; new_count = 3 }); *)
       Rio_compare.Compare.VeryDifferent;
+    (* It's not wrong. But I would like to make this smarter so that it is more specific than this! *)
+    (* RR and Strict hierarchy with an RR swap deep in the tree *)
+    make_compare_test "RR and Strict hierarchy with RR swap deep"
+      "work_conserving/rr_strict_hier.sched"
+      "work_conserving/rr_strict_hier_swap_deep_1.sched"
+      Rio_compare.Compare.Same;
+    (* RR and Strict hierarchy with an RR swap deep in the tree *)
+    make_compare_test "RR and Strict hierarchy with SP swap deep"
+      "work_conserving/rr_strict_hier.sched"
+      "work_conserving/rr_strict_hier_swap_deep_2.sched"
+      Rio_compare.Compare.VeryDifferent;
+    (* It's not wrong. But I would like to make this smarter so that it is more specific than this! *)
   ]
 
 let suite =
