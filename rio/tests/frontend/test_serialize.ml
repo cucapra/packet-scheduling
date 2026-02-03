@@ -103,9 +103,8 @@ let compare_tests_different =
       (Rio_compare.Compare.WeightsChanged
          { old_weights = [ 1.0; 2.0; 3.0 ]; new_weights = [ 2.0; 2.0; 4.0 ] });
     make_compare_test "sub-policy" "work_conserving/rr_hier_subpol.sched"
-      "work_conserving/rr_hier.sched"
-      (* Rio_compare.Compare.SuperPol; *)
-      Rio_compare.Compare.VeryDifferent;
+      "work_conserving/rr_hier.sched" Rio_compare.Compare.VeryDifferent;
+    (* TODO. This is giving up too easily. I'd like it to say SuperPol instead. *)
   ]
 
 let compare_tests_deep =
@@ -115,7 +114,7 @@ let compare_tests_deep =
       "work_conserving/rr_strict_hier.sched"
       "work_conserving/rr_strict_hier_add_arm.sched"
       Rio_compare.Compare.VeryDifferent;
-    (* It's not wrong. But I would like to make this smarter so that it is more specific than this! *)
+    (* TODO. It's not wrong. But I would like to make this smarter so that it is more specific than this! *)
     (* RR and Strict hierarchy with an RR swap deep in the tree *)
     make_compare_test "RR and Strict hierarchy with RR swap deep"
       "work_conserving/rr_strict_hier.sched"
@@ -126,7 +125,7 @@ let compare_tests_deep =
       "work_conserving/rr_strict_hier.sched"
       "work_conserving/rr_strict_hier_swap_deep_2.sched"
       Rio_compare.Compare.VeryDifferent;
-    (* It's not wrong. But I would like to make this smarter so that it is more specific than this! *)
+    (* TODO. It's not wrong. But I would like to make this smarter so that it is more specific than this! *)
   ]
 
 let suite =
