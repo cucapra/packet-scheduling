@@ -20,9 +20,9 @@ let flush order tree =
   flush_aux tree []
 
 (* How this test works:
-  1. push all of `data` into Rio tree `tree`.
-  2. repeatedly pop `tree` with `order` until empty.
-  3. check `data` is permuted correctly, i.e. matches `permutation`. *)
+   1. push all of `data` into Rio tree `tree`.
+   2. repeatedly pop `tree` with `order` until empty.
+   3. check `data` is permuted correctly, i.e. matches `permutation`. *)
 let make_push_pop_test name data tree order permutation =
   name >:: fun _ ->
   assert_equal permutation
