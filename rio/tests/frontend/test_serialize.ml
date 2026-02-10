@@ -103,8 +103,7 @@ let compare_tests_different =
       (Rio_compare.Compare.WeightsChanged
          { old_weights = [ 1.0; 2.0; 3.0 ]; new_weights = [ 2.0; 2.0; 4.0 ] });
     make_compare_test "sub-policy" "work_conserving/rr_hier_subpol.sched"
-      "work_conserving/rr_hier.sched" Rio_compare.Compare.VeryDifferent;
-    (* TODO. This is giving up too easily. I'd like it to say SuperPol instead. *)
+      "work_conserving/rr_hier.sched" Rio_compare.Compare.SuperPol;
   ]
 
 let compare_tests_deep =

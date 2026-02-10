@@ -13,7 +13,10 @@ type t =
       new_weights : float list;
     }
   | VeryDifferent
-  | SuperPol (* Make more sophisticated. *)
+  (* Make more sophisticated. *)
+  | SuperPol
+
+(* In general, make more sophisticated so that the LOCATION of the change is specified. *)
 
 (* Get a simple string representation of a policy type *)
 let policy_type_name = function
@@ -43,28 +46,26 @@ let analyze p1 p2 : t =
   (* Analyze differences between two policies *)
   if p1 = p2 then Same
   else
-    (* We'd like to report an added arm. We can assume that the programs are normalized. So RR(A,B) and RR(A,B,C) would indicate an added arm. But RR(A,B) and RR(C,D,E) would indicate VeryDifferent. Similar logic applies to WFQ. *)
     match (p1, p2) with
     | RR arms1, RR arms2 ->
-        (* use subset *)
         let len1 = List.length arms1 in
         let len2 = List.length arms2 in
-        if len2 > len1 && subset arms1 arms2 then
+        if is_sub_policy p1 p2 then SuperPol
+        else if len2 > len1 && subset arms1 arms2 then
           ArmsAdded
             { policy_type = "RoundRobin"; old_count = len1; new_count = len2 }
         else VeryDifferent
     | WFQ (arms1, weights1), WFQ (arms2, weights2) ->
         let len1 = List.length arms1 in
         let len2 = List.length arms2 in
-        if len2 > len1 && subset arms1 arms2 then
+        if is_sub_policy p1 p2 then SuperPol
+        else if len2 > len1 && subset arms1 arms2 then
           ArmsAdded
             { policy_type = "WeightedFair"; old_count = len1; new_count = len2 }
         else if arms1 = arms2 && weights1 <> weights2 then
           WeightsChanged { old_weights = weights1; new_weights = weights2 }
         else VeryDifferent
-    | _, _ ->
-        (* Either sub-pol or give up with VeryDifferent *)
-        if is_sub_policy p1 p2 then SuperPol else VeryDifferent
+    | _, _ -> if is_sub_policy p1 p2 then SuperPol else VeryDifferent
 
 (* Format the diff for display *)
 let to_string = function
@@ -78,5 +79,5 @@ let to_string = function
       in
       Printf.sprintf "Weights changed: [%s] → [%s]" (fmt_weights old_weights)
         (fmt_weights new_weights)
-  | SuperPol -> Printf.sprintf "Nested policy"
+  | SuperPol -> Printf.sprintf "SuperPol"
   | VeryDifferent -> Printf.sprintf "Very different"
