@@ -120,7 +120,14 @@ let compare_tests_different =
       "work_conserving/strict_3_classes.sched"
       "work_conserving/strict_3_classes_jumbled.sched"
       (NodeChange
-         { policy_type = "Strict"; index = None; change = VeryDifferent });
+         {
+           policy_type = "Strict";
+           index = Some 0;
+           change =
+             SubChange
+               (NodeChange
+                  { policy_type = "FIFO"; index = None; change = VeryDifferent });
+         });
     (* WFQ weights changed *)
     make_compare_test "WFQ with weights changed"
       "work_conserving/wfq_3_classes.sched"
@@ -149,7 +156,25 @@ let compare_tests_deep =
       "work_conserving/rr_strict_hier.sched"
       "work_conserving/rr_strict_hier_add_arm.sched"
       (NodeChange
-         { policy_type = "RoundRobin"; index = None; change = VeryDifferent });
+         {
+           policy_type = "Strict";
+           index = Some 2;
+           change =
+             SubChange
+               (NodeChange
+                  {
+                    policy_type = "RoundRobin";
+                    index = Some 0;
+                    change =
+                      SubChange
+                        (NodeChange
+                           {
+                             policy_type = "Strict";
+                             index = None;
+                             change = VeryDifferent;
+                           });
+                  });
+         });
     make_compare_test "RR/Strict hierarchy with RR swap deep"
       "work_conserving/rr_strict_hier.sched"
       "work_conserving/rr_strict_hier_swap_deep_1.sched" Same;
@@ -157,7 +182,32 @@ let compare_tests_deep =
       "work_conserving/rr_strict_hier.sched"
       "work_conserving/rr_strict_hier_swap_deep_2.sched"
       (NodeChange
-         { policy_type = "Strict"; index = None; change = VeryDifferent });
+         {
+           policy_type = "Strict";
+           index = Some 2;
+           change =
+             SubChange
+               (NodeChange
+                  {
+                    policy_type = "RoundRobin";
+                    index = Some 0;
+                    change =
+                      SubChange
+                        (NodeChange
+                           {
+                             policy_type = "Strict";
+                             index = Some 0;
+                             change =
+                               SubChange
+                                 (NodeChange
+                                    {
+                                      policy_type = "FIFO";
+                                      index = None;
+                                      change = VeryDifferent;
+                                    });
+                           });
+                  });
+         });
   ]
 
 let suite =
