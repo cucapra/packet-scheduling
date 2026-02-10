@@ -104,6 +104,7 @@ let compare_tests_different =
          { old_weights = [ 1.0; 2.0; 3.0 ]; new_weights = [ 2.0; 2.0; 4.0 ] });
     make_compare_test "sub-policy" "work_conserving/rr_hier_subpol.sched"
       "work_conserving/rr_hier.sched" Rio_compare.Compare.SuperPol;
+    (* TODO: make more sophisticated *)
   ]
 
 let compare_tests_deep =
