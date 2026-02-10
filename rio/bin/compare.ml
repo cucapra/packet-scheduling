@@ -1,5 +1,3 @@
-open Frontend
-
 (* ADT describing differences between two policies *)
 type t =
   | Same
@@ -28,12 +26,14 @@ let subset lst1 lst2 = List.for_all (fun x -> List.mem x lst2) lst1
 let is_sub_policy p1 p2 =
   (* Is p1 a sub-policy of p2? Examples:
       - RR(A, B) is NOT sub-policy of RR(A, B, C); that should be ArmsAdded
-      - WFQ(A, B) is NOT a sub-policy of WFQ(A, B, C)
+      - WFQ(A, B) is NOT a sub-policy of WFQ(A, B, C), for the same reason
       - RR(A, B) is a sub-policy of SP(RR(A, B), C)
       - RR(A, B) is a sub-policy of SP(RR(RR(A, B),C), D)
       *)
   let rec helper p2 =
-    if Policy.equiv p1 p2 then true
+    if p1 = p2 then true
+      (* This feels a little silly but it actually exists for the recursive case,
+          once we have drilled into p2. *)
     else
       match p2 with
       | Frontend.Policy.FIFO _ | Frontend.Policy.EDF _ -> false
@@ -45,7 +45,7 @@ let is_sub_policy p1 p2 =
 
 let analyze p1 p2 : t =
   (* Analyze differences between two policies *)
-  if Policy.equiv p1 p2 then Same
+  if p1 = p2 then Same
   else
     (* We'd like to report an added arm. We can assume that the programs are normalized. So RR(A,B) and RR(A,B,C) would indicate an added arm. But RR(A,B) and RR(C,D,E) would indicate VeryDifferent. Similar logic applies to WFQ. *)
     match (p1, p2) with

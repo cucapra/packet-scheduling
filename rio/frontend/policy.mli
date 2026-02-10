@@ -11,5 +11,4 @@ exception DuplicateClass of Ast.clss
 
 val of_program : Ast.program -> t
 val to_string : t -> string
-val equiv : t -> t -> bool
-val to_normalized_json : t -> Yojson.Basic.t
+val to_json : t -> Yojson.Basic.t

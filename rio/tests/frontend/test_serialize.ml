@@ -6,8 +6,7 @@ let prog_dir = root_dir ^ "progs/"
 let json_dir = "jsons/"
 
 let prog_to_json file =
-  prog_dir ^ file |> Parser.parse_file |> Policy.of_program
-  |> Policy.to_normalized_json
+  prog_dir ^ file |> Parser.parse_file |> Policy.of_program |> Policy.to_json
 
 let prog_to_policy file =
   prog_dir ^ file |> Parser.parse_file |> Policy.of_program
