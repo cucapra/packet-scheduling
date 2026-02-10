@@ -25,18 +25,23 @@ let policy_type_name = function
 
 let subset lst1 lst2 = List.for_all (fun x -> List.mem x lst2) lst1
 
-let rec is_sub_policy p1 p2 =
+let is_sub_policy p1 p2 =
   (* Is p1 a sub-policy of p2? Examples:
       - RR(A, B) is NOT sub-policy of RR(A, B, C); that should be ArmsAdded
       - WFQ(A, B) is NOT a sub-policy of WFQ(A, B, C)
       - RR(A, B) is a sub-policy of SP(RR(A, B), C)
       - RR(A, B) is a sub-policy of SP(RR(RR(A, B),C), D)
       *)
-  match p2 with
-  | Frontend.Policy.Strict ps
-  | Frontend.Policy.RR ps
-  | Frontend.Policy.WFQ (ps, _) -> List.exists (is_sub_policy p1) ps
-  | _ -> p1 = p2
+  let rec helper p2 =
+    if Policy.equiv p1 p2 then true
+    else
+      match p2 with
+      | Frontend.Policy.FIFO _ | Frontend.Policy.EDF _ -> false
+      | Frontend.Policy.Strict arms2 -> List.exists helper arms2
+      | Frontend.Policy.RR arms2 -> List.exists helper arms2
+      | Frontend.Policy.WFQ (arms2, _) -> List.exists helper arms2
+  in
+  helper p2
 
 let analyze p1 p2 : t =
   (* Analyze differences between two policies *)
