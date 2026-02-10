@@ -40,7 +40,7 @@ let rec is_sub_policy p1 p2 =
 
 let analyze p1 p2 : t =
   (* Analyze differences between two policies *)
-  if Json.equiv_policy p1 p2 then Same
+  if Policy.equiv p1 p2 then Same
   else
     (* We'd like to report an added arm. We can assume that the programs are normalized. So RR(A,B) and RR(A,B,C) would indicate an added arm. But RR(A,B) and RR(C,D,E) would indicate VeryDifferent. Similar logic applies to WFQ. *)
     match (p1, p2) with
@@ -63,7 +63,7 @@ let analyze p1 p2 : t =
           WeightsChanged { old_weights = weights1; new_weights = weights2 }
         else VeryDifferent
     | _, _ ->
-        (* Eithe sub-pol or give up with VeryDifferent *)
+        (* Either sub-pol or give up with VeryDifferent *)
         if is_sub_policy p1 p2 then SuperPol else VeryDifferent
 
 (* Format the diff for display *)
