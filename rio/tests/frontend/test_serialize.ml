@@ -47,85 +47,117 @@ let serialize_tests =
   ]
 
 let compare_tests_same =
+  let open Rio_compare.Compare in
   [
-    (* Same program twice *)
     make_compare_test "same program twice"
       "work_conserving/strict_3_classes.sched"
-      "work_conserving/strict_3_classes.sched" Rio_compare.Compare.Same;
-    (* Merely jumbled, in RR *)
+      "work_conserving/strict_3_classes.sched" Same;
     make_compare_test "merely jumbled in RR"
       "work_conserving/rr_hier_merge_sugar.sched"
-      "work_conserving/rr_hier_merge_sugar_jumbled.sched"
-      Rio_compare.Compare.Same;
-    (* Merely jumbled, in WFQ *)
+      "work_conserving/rr_hier_merge_sugar_jumbled.sched" Same;
     make_compare_test "merely jumbled in WFQ"
       "work_conserving/wfq_3_classes.sched"
-      "work_conserving/wfq_3_classes_jumbled.sched" Rio_compare.Compare.Same;
-    (* Different variable names, same structure *)
+      "work_conserving/wfq_3_classes_jumbled.sched" Same;
     make_compare_test "different variable names, same structure"
       "work_conserving/rr_hier.sched"
-      "work_conserving/rr_hier_weird_var_names.sched" Rio_compare.Compare.Same;
+      "work_conserving/rr_hier_weird_var_names.sched" Same;
   ]
 
 let compare_tests_different =
+  let open Rio_compare.Compare in
   [
     (* WFQ(A,B,C) vs WFQ(A,B,D) *)
     make_compare_test "different WFQ" "work_conserving/wfq_3_classes.sched"
       "work_conserving/wfq_3_classes_diff.sched"
-      Rio_compare.Compare.VeryDifferent;
+      (NodeChange
+         {
+           policy_type = "WeightedFair";
+           index = Some 2;
+           change =
+             SubChange
+               (NodeChange
+                  {
+                    policy_type = "FIFO";
+                    (* or EDF depending on your sched file *) index = None;
+                    change = VeryDifferent;
+                  });
+         });
     (* RR(A,B) vs RR(A,B,C) *)
     make_compare_test "RR with arm added" "work_conserving/rr_2_classes.sched"
       "work_conserving/rr_3_classes.sched"
-      (Rio_compare.Compare.ArmsAdded
-         { policy_type = "RoundRobin"; old_count = 2; new_count = 3 });
+      (NodeChange
+         {
+           policy_type = "RoundRobin";
+           index = None;
+           change = ArmsAdded { old_count = 2; new_count = 3 };
+         });
     (* RR(A,B) vs RR(C,A,B) *)
-    make_compare_test "RR with arm added" "work_conserving/rr_2_classes.sched"
+    make_compare_test "RR with arm added (CAB)"
+      "work_conserving/rr_2_classes.sched"
       "work_conserving/rr_3_classes_CAB.sched"
-      (Rio_compare.Compare.ArmsAdded
-         { policy_type = "RoundRobin"; old_count = 2; new_count = 3 });
+      (NodeChange
+         {
+           policy_type = "RoundRobin";
+           index = None;
+           change = ArmsAdded { old_count = 2; new_count = 3 };
+         });
     (* WFQ(A,B) vs WFQ(A,B,C) *)
     make_compare_test "WFQ with arm added" "work_conserving/wfq_2_classes.sched"
       "work_conserving/wfq_3_classes.sched"
-      (Rio_compare.Compare.ArmsAdded
-         { policy_type = "WeightedFair"; old_count = 2; new_count = 3 });
+      (NodeChange
+         {
+           policy_type = "WeightedFair";
+           index = None;
+           change = ArmsAdded { old_count = 2; new_count = 3 };
+         });
     (* RR(A,B) vs RR(D,E,F) *)
     make_compare_test "RR big diff" "work_conserving/rr_2_classes.sched"
-      "work_conserving/rr_3_classes_DEF.sched" Rio_compare.Compare.VeryDifferent;
-    (* SP(C, B, A) vs SP(B, C, A) *)
+      "work_conserving/rr_3_classes_DEF.sched"
+      (NodeChange
+         { policy_type = "RoundRobin"; index = None; change = VeryDifferent });
+    (* SP(C,B,A) vs SP(B,C,A) *)
     make_compare_test "Strict with arms reordered"
       "work_conserving/strict_3_classes.sched"
       "work_conserving/strict_3_classes_jumbled.sched"
-      Rio_compare.Compare.VeryDifferent;
-    (* WFQ -- same classes but weights changed *)
+      (NodeChange
+         { policy_type = "Strict"; index = None; change = VeryDifferent });
+    (* WFQ weights changed *)
     make_compare_test "WFQ with weights changed"
       "work_conserving/wfq_3_classes.sched"
       "work_conserving/wfq_3_classes_diff_weights.sched"
-      (Rio_compare.Compare.WeightsChanged
-         { old_weights = [ 1.0; 2.0; 3.0 ]; new_weights = [ 2.0; 2.0; 4.0 ] });
+      (NodeChange
+         {
+           policy_type = "WeightedFair";
+           index = None;
+           change =
+             WeightsChanged
+               {
+                 old_weights = [ 1.0; 2.0; 3.0 ];
+                 new_weights = [ 2.0; 2.0; 4.0 ];
+               };
+         });
     make_compare_test "sub-policy" "work_conserving/rr_hier_subpol.sched"
-      "work_conserving/rr_hier.sched" Rio_compare.Compare.SuperPol;
-    (* TODO: make more sophisticated *)
+      "work_conserving/rr_hier.sched"
+      (NodeChange
+         { policy_type = "RoundRobin"; index = None; change = SuperPol });
   ]
 
 let compare_tests_deep =
+  let open Rio_compare.Compare in
   [
-    (* RR and Strict hierarchy with arm added deep in the tree *)
-    make_compare_test "RR and Strict hierarchy with arm added deep"
+    make_compare_test "RR/Strict hierarchy with arm added deep"
       "work_conserving/rr_strict_hier.sched"
       "work_conserving/rr_strict_hier_add_arm.sched"
-      Rio_compare.Compare.VeryDifferent;
-    (* TODO. It's not wrong. But I would like to make this smarter so that it is more specific than this! *)
-    (* RR and Strict hierarchy with an RR swap deep in the tree *)
-    make_compare_test "RR and Strict hierarchy with RR swap deep"
+      (NodeChange
+         { policy_type = "RoundRobin"; index = None; change = VeryDifferent });
+    make_compare_test "RR/Strict hierarchy with RR swap deep"
       "work_conserving/rr_strict_hier.sched"
-      "work_conserving/rr_strict_hier_swap_deep_1.sched"
-      Rio_compare.Compare.Same;
-    (* RR and Strict hierarchy with an RR swap deep in the tree *)
-    make_compare_test "RR and Strict hierarchy with SP swap deep"
+      "work_conserving/rr_strict_hier_swap_deep_1.sched" Same;
+    make_compare_test "RR/Strict hierarchy with SP swap deep"
       "work_conserving/rr_strict_hier.sched"
       "work_conserving/rr_strict_hier_swap_deep_2.sched"
-      Rio_compare.Compare.VeryDifferent;
-    (* TODO. It's not wrong. But I would like to make this smarter so that it is more specific than this! *)
+      (NodeChange
+         { policy_type = "Strict"; index = None; change = VeryDifferent });
   ]
 
 let suite =
