@@ -28,6 +28,12 @@ let make_compare_test name file1 file2 expected_diff =
   assert_equal expected_diff actual_diff ~printer:(fun d ->
       Rio_compare.Compare.to_string d)
 
+let node ?(index = None) policy_type change =
+  Rio_compare.Compare.NodeChange { policy_type; index; change }
+
+let sub_node ?(index = None) policy_type change =
+  Rio_compare.Compare.SubChange (node ~index policy_type change)
+
 let serialize_tests =
   [
     make_test "single class policy" "work_conserving/drop_a_class.sched";
@@ -66,87 +72,47 @@ let compare_tests_same =
 let compare_tests_different =
   let open Rio_compare.Compare in
   [
+    (* SP(A,B) vs SP(A,B,C) *)
+    make_compare_test "strict arm added"
+      "work_conserving/strict_2_classes.sched"
+      "work_conserving/strict_3_classes.sched"
+      (node "Strict" (ArmsAdded { old_count = 2; new_count = 3 }));
     (* WFQ(A,B,C) vs WFQ(A,B,D) *)
     make_compare_test "different WFQ" "work_conserving/wfq_3_classes.sched"
       "work_conserving/wfq_3_classes_diff.sched"
-      (NodeChange
-         {
-           policy_type = "WeightedFair";
-           index = Some 2;
-           change =
-             SubChange
-               (NodeChange
-                  {
-                    policy_type = "FIFO";
-                    (* or EDF depending on your sched file *) index = None;
-                    change = VeryDifferent;
-                  });
-         });
+      (node ~index:(Some 2) "WeightedFair" (sub_node "FIFO" VeryDifferent));
     (* RR(A,B) vs RR(A,B,C) *)
     make_compare_test "RR with arm added" "work_conserving/rr_2_classes.sched"
       "work_conserving/rr_3_classes.sched"
-      (NodeChange
-         {
-           policy_type = "RoundRobin";
-           index = None;
-           change = ArmsAdded { old_count = 2; new_count = 3 };
-         });
+      (node "RoundRobin" (ArmsAdded { old_count = 2; new_count = 3 }));
     (* RR(A,B) vs RR(C,A,B) *)
     make_compare_test "RR with arm added (CAB)"
       "work_conserving/rr_2_classes.sched"
       "work_conserving/rr_3_classes_CAB.sched"
-      (NodeChange
-         {
-           policy_type = "RoundRobin";
-           index = None;
-           change = ArmsAdded { old_count = 2; new_count = 3 };
-         });
+      (node "RoundRobin" (ArmsAdded { old_count = 2; new_count = 3 }));
     (* WFQ(A,B) vs WFQ(A,B,C) *)
     make_compare_test "WFQ with arm added" "work_conserving/wfq_2_classes.sched"
       "work_conserving/wfq_3_classes.sched"
-      (NodeChange
-         {
-           policy_type = "WeightedFair";
-           index = None;
-           change = ArmsAdded { old_count = 2; new_count = 3 };
-         });
+      (node "WeightedFair" (ArmsAdded { old_count = 2; new_count = 3 }));
     (* RR(A,B) vs RR(D,E,F) *)
     make_compare_test "RR big diff" "work_conserving/rr_2_classes.sched"
       "work_conserving/rr_3_classes_DEF.sched"
-      (NodeChange
-         { policy_type = "RoundRobin"; index = None; change = VeryDifferent });
+      (node "RoundRobin" VeryDifferent);
     (* SP(C,B,A) vs SP(B,C,A) *)
     make_compare_test "Strict with arms reordered"
       "work_conserving/strict_3_classes.sched"
       "work_conserving/strict_3_classes_jumbled.sched"
-      (NodeChange
-         {
-           policy_type = "Strict";
-           index = Some 0;
-           change =
-             SubChange
-               (NodeChange
-                  { policy_type = "FIFO"; index = None; change = VeryDifferent });
-         });
+      (node ~index:(Some 0) "Strict" (sub_node "FIFO" VeryDifferent));
     (* WFQ weights changed *)
     make_compare_test "WFQ with weights changed"
       "work_conserving/wfq_3_classes.sched"
       "work_conserving/wfq_3_classes_diff_weights.sched"
-      (NodeChange
-         {
-           policy_type = "WeightedFair";
-           index = None;
-           change =
-             WeightsChanged
-               {
-                 old_weights = [ 1.0; 2.0; 3.0 ];
-                 new_weights = [ 2.0; 2.0; 4.0 ];
-               };
-         });
+      (node "WeightedFair"
+         (WeightsChanged
+            { old_weights = [ 1.0; 2.0; 3.0 ]; new_weights = [ 2.0; 2.0; 4.0 ] }));
     make_compare_test "sub-policy" "work_conserving/rr_hier_subpol.sched"
       "work_conserving/rr_hier.sched"
-      (NodeChange
-         { policy_type = "RoundRobin"; index = None; change = SuperPol });
+      (node "RoundRobin" SuperPol);
   ]
 
 let compare_tests_deep =
@@ -155,59 +121,18 @@ let compare_tests_deep =
     make_compare_test "RR/Strict hierarchy with arm added deep"
       "work_conserving/rr_strict_hier.sched"
       "work_conserving/rr_strict_hier_add_arm.sched"
-      (NodeChange
-         {
-           policy_type = "Strict";
-           index = Some 2;
-           change =
-             SubChange
-               (NodeChange
-                  {
-                    policy_type = "RoundRobin";
-                    index = Some 0;
-                    change =
-                      SubChange
-                        (NodeChange
-                           {
-                             policy_type = "Strict";
-                             index = None;
-                             change = VeryDifferent;
-                           });
-                  });
-         });
+      (node ~index:(Some 2) "Strict"
+         (sub_node ~index:(Some 0) "RoundRobin"
+            (sub_node "Strict" VeryDifferent)));
     make_compare_test "RR/Strict hierarchy with RR swap deep"
       "work_conserving/rr_strict_hier.sched"
       "work_conserving/rr_strict_hier_swap_deep_1.sched" Same;
     make_compare_test "RR/Strict hierarchy with SP swap deep"
       "work_conserving/rr_strict_hier.sched"
       "work_conserving/rr_strict_hier_swap_deep_2.sched"
-      (NodeChange
-         {
-           policy_type = "Strict";
-           index = Some 2;
-           change =
-             SubChange
-               (NodeChange
-                  {
-                    policy_type = "RoundRobin";
-                    index = Some 0;
-                    change =
-                      SubChange
-                        (NodeChange
-                           {
-                             policy_type = "Strict";
-                             index = Some 0;
-                             change =
-                               SubChange
-                                 (NodeChange
-                                    {
-                                      policy_type = "FIFO";
-                                      index = None;
-                                      change = VeryDifferent;
-                                    });
-                           });
-                  });
-         });
+      (node ~index:(Some 2) "Strict"
+         (sub_node ~index:(Some 0) "RoundRobin"
+            (sub_node ~index:(Some 0) "Strict" (sub_node "FIFO" VeryDifferent))));
   ]
 
 let suite =

@@ -31,6 +31,15 @@ let policy_type_name = function
 
 let subset lst1 lst2 = List.for_all (fun x -> List.mem x lst2) lst1
 
+(* Check if lst1 appears as an order-preserving subsequence of lst2 *)
+let rec is_ordered_subsequence lst1 lst2 =
+  match (lst1, lst2) with
+  | [], _ -> true (* Empty list is subsequence of anything *)
+  | _, [] -> false (* Non-empty list can't be subsequence of empty *)
+  | h1 :: t1, h2 :: t2 ->
+      if h1 = h2 then is_ordered_subsequence t1 t2
+      else is_ordered_subsequence lst1 t2
+
 let rec is_sub_policy p1 p2 =
   (* Is p1 a sub-policy of p2? Examples:
       - RR(A, B) is NOT sub-policy of RR(A, B, C); that should be ArmsAdded
@@ -52,26 +61,42 @@ let rec compare_lists policy_type ps1 ps2 =
   if len1 <> len2 then
     NodeChange { policy_type; index = None; change = VeryDifferent }
   else
-    let rec loop i ps1 ps2 =
-      match (ps1, ps2) with
+    let rec loop i l1 l2 =
+      match (l1, l2) with
       | [], [] -> Same
-      | p1 :: t1, p2 :: t2 ->
-          let d = analyze p1 p2 in
-          begin match d with
+      | p1 :: t1, p2 :: t2 -> (
+          match analyze p1 p2 with
           | Same -> loop (i + 1) t1 t2
-          | _ ->
-              NodeChange { policy_type; index = Some i; change = SubChange d }
-          end
-      | _ -> NodeChange { policy_type; index = None; change = VeryDifferent }
+          | d ->
+              NodeChange { policy_type; index = Some i; change = SubChange d })
+      | _ -> Same (* Same length guaranteed by outer condition *)
     in
     loop 0 ps1 ps2
+
+(* Helper: centralize super-policy (nested) result *)
+and make_super_pol policy_type =
+  NodeChange { policy_type; index = None; change = SuperPol }
+
+(* Strict comparison: detect arms added (preserving order) or recurse into children. *)
+and compare_strict ps1 ps2 =
+  let len1 = List.length ps1 in
+  let len2 = List.length ps2 in
+  if is_sub_policy (Strict ps1) (Strict ps2) then make_super_pol "Strict"
+  else if len2 > len1 && is_ordered_subsequence ps1 ps2 then
+    (* Arms added: old arms appear in the same order in new list *)
+    NodeChange
+      {
+        policy_type = "Strict";
+        index = None;
+        change = ArmsAdded { old_count = len1; new_count = len2 };
+      }
+  else compare_lists "Strict" ps1 ps2
 
 (* RR comparison: detect arms added or recurse into children. *)
 and compare_rr_like policy_type ps1 ps2 =
   let len1 = List.length ps1 in
   let len2 = List.length ps2 in
-  if is_sub_policy (RR ps1) (RR ps2) then
-    NodeChange { policy_type; index = None; change = SuperPol }
+  if is_sub_policy (RR ps1) (RR ps2) then make_super_pol policy_type
   else if len2 > len1 && subset ps1 ps2 then
     NodeChange
       {
@@ -86,7 +111,7 @@ and compare_wfq ps1 ws1 ps2 ws2 =
   let len1 = List.length ps1 in
   let len2 = List.length ps2 in
   if is_sub_policy (WFQ (ps1, ws1)) (WFQ (ps2, ws2)) then
-    NodeChange { policy_type = "WeightedFair"; index = None; change = SuperPol }
+    make_super_pol "WeightedFair"
   else if len2 > len1 && subset ps1 ps2 then
     NodeChange
       {
@@ -115,7 +140,7 @@ and analyze p1 p2 : t =
             index = None;
             change = VeryDifferent;
           }
-    | Strict ps1, Strict ps2 -> compare_lists "Strict" ps1 ps2
+    | Strict ps1, Strict ps2 -> compare_strict ps1 ps2
     | RR ps1, RR ps2 -> compare_rr_like "RoundRobin" ps1 ps2
     | WFQ (ps1, ws1), WFQ (ps2, ws2) -> compare_wfq ps1 ws1 ps2 ws2
     | _, _ ->
@@ -156,5 +181,5 @@ and change_to_string = function
       Printf.sprintf "WeightsChanged [%s] → [%s]" (fmt old_weights)
         (fmt new_weights)
   | SubChange d -> "SubChange(" ^ to_string d ^ ")"
-  | VeryDifferent -> "VeryDifferent"
-  | SuperPol -> "SuperPol"
+  | VeryDifferent -> "Incompatible (different types or structure)"
+  | SuperPol -> "OneIsNestedInOther"
