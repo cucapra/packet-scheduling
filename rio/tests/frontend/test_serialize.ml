@@ -82,6 +82,11 @@ let compare_tests_different =
       "work_conserving/strict_2_classes.sched"
       "work_conserving/strict_3_classes_BCA.sched"
       (node "Strict" (ArmsAdded { old_count = 2; new_count = 3 }));
+    (* SP(B,A) vs SP(A,B,C) *)
+    make_compare_test "strict arm added whilst reordering arms"
+      "work_conserving/strict_2_classes.sched"
+      "work_conserving/strict_3_classes_ABC.sched"
+      (node "Strict" VeryDifferent);
     (* WFQ(A,B,C) vs WFQ(A,B,D) *)
     make_compare_test "different WFQ" "work_conserving/wfq_3_classes.sched"
       "work_conserving/wfq_3_classes_diff.sched"
