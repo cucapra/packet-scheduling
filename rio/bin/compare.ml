@@ -14,6 +14,10 @@ and change =
       old_count : int;
       new_count : int;
     }
+  | ArmsRemoved of {
+      old_count : int;
+      new_count : int;
+    }
   | SubChange of t (* Recursive diff *)
   | VeryDifferent
   | SuperPol
@@ -73,7 +77,7 @@ let rec compare_lists policy_type ps1 ps2 =
 and make_super_pol policy_type =
   NodeChange { policy_type; index = None; change = SuperPol }
 
-(* Strict comparison: detect arms added (preserving order) or recurse into children. *)
+(* Strict comparison: detect arms added/removed (preserving order) or recurse into children. *)
 and compare_strict ps1 ps2 =
   let len1 = List.length ps1 in
   let len2 = List.length ps2 in
@@ -86,9 +90,17 @@ and compare_strict ps1 ps2 =
         index = None;
         change = ArmsAdded { old_count = len1; new_count = len2 };
       }
+  else if len1 > len2 && is_ordered_subsequence ps2 ps1 then
+    (* Arms removed: new arms appear in the same order in old list *)
+    NodeChange
+      {
+        policy_type = "SP";
+        index = None;
+        change = ArmsRemoved { old_count = len1; new_count = len2 };
+      }
   else compare_lists "SP" ps1 ps2
 
-(* RR comparison: detect arms added or recurse into children. *)
+(* RR comparison: detect arms added/removed or recurse into children. *)
 and compare_rr_like policy_type ps1 ps2 =
   let len1 = List.length ps1 in
   let len2 = List.length ps2 in
@@ -100,6 +112,13 @@ and compare_rr_like policy_type ps1 ps2 =
         index = None;
         change = ArmsAdded { old_count = len1; new_count = len2 };
       }
+  else if len1 > len2 && subset ps2 ps1 then
+    NodeChange
+      {
+        policy_type;
+        index = None;
+        change = ArmsRemoved { old_count = len1; new_count = len2 };
+      }
   else compare_lists policy_type ps1 ps2
 
 (* Helper: check if old weights are preserved in new weights *)
@@ -108,7 +127,7 @@ and old_weights_preserved old_weights new_weights old_count =
   && List.for_all2 ( = ) old_weights
        (List.filteri (fun i _ -> i < old_count) new_weights)
 
-(* WFQ comparison: detect arms added or recurse into children. *)
+(* WFQ comparison: detect arms added/removed or recurse into children. *)
 and compare_wfq ps1 ws1 ps2 ws2 =
   let len1 = List.length ps1 in
   let len2 = List.length ps2 in
@@ -125,6 +144,20 @@ and compare_wfq ps1 ws1 ps2 ws2 =
         index = None;
         change = ArmsAdded { old_count = len1; new_count = len2 };
       }
+  else if len1 > len2 && subset ps2 ps1 then
+    (* Check if new weights match first len2 of old weights *)
+    let new_weights_match =
+      len2 <= List.length ws1
+      && List.for_all2 ( = ) ws2 (List.filteri (fun i _ -> i < len2) ws1)
+    in
+    if new_weights_match then
+      NodeChange
+        {
+          policy_type = "WFQ";
+          index = None;
+          change = ArmsRemoved { old_count = len1; new_count = len2 };
+        }
+    else compare_lists "WFQ" ps1 ps2
   else compare_lists "WFQ" ps1 ps2
 
 (* Main structural comparison *)
@@ -173,6 +206,8 @@ let rec to_string diff =
 and change_to_string = function
   | ArmsAdded { old_count; new_count } ->
       Printf.sprintf "ArmsAdded %d → %d" old_count new_count
+  | ArmsRemoved { old_count; new_count } ->
+      Printf.sprintf "ArmsRemoved %d → %d" old_count new_count
   | SubChange d -> "SubChange(" ^ to_string d ^ ")"
   | VeryDifferent -> "Incompatible (different types or structure)"
   | SuperPol -> "OneIsNestedInOther"

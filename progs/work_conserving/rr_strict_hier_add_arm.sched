@@ -1,6 +1,6 @@
 classes A, B, CU, CV, CW, CX, CY;
 
-c_policy = rr[rr[fifo[CU], fifo[CV]], strict[fifo[CX], fifo[CW], fifo[CY]]];
+c_policy = rr[rr[fifo[CU], fifo[CV]], strict[fifo[CW], fifo[CX], fifo[CY]]];
 policy = strict[fifo[A], fifo[B], c_policy];
 
 return policy
@@ -12,7 +12,7 @@ return policy
 //         /         \
 //        rr          strict
 //       /  \       /  \   \
-//      CU   CV   CX   CW   CY
+//      CU   CV   CW   CX   CY
 
 // Compare to:
 //     strict

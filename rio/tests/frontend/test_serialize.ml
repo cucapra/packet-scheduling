@@ -121,6 +121,14 @@ let compare_tests_different =
       "work_conserving/wfq_very_diff.sched" (node "WFQ" VeryDifferent);
     make_compare_test "sub-policy" "work_conserving/rr_hier_subpol.sched"
       "work_conserving/rr_hier.sched" (node "RR" SuperPol);
+    (* Test arm removal *)
+    make_compare_test "RR with arm removed" "work_conserving/rr_3_classes.sched"
+      "work_conserving/rr_2_classes.sched"
+      (node "RR" (ArmsRemoved { old_count = 3; new_count = 2 }));
+    make_compare_test "WFQ with arm removed"
+      "work_conserving/wfq_3_classes.sched"
+      "work_conserving/wfq_2_classes.sched"
+      (node "WFQ" (ArmsRemoved { old_count = 3; new_count = 2 }));
   ]
 
 let compare_tests_deep =
@@ -130,7 +138,8 @@ let compare_tests_deep =
       "work_conserving/rr_strict_hier.sched"
       "work_conserving/rr_strict_hier_add_arm.sched"
       (node ~index:(Some 2) "SP"
-         (sub_node ~index:(Some 0) "RR" (sub_node "SP" VeryDifferent)));
+         (sub_node ~index:(Some 0) "RR"
+            (sub_node "SP" (ArmsAdded { old_count = 2; new_count = 3 }))));
     make_compare_test "RR/Strict hierarchy with RR swap deep"
       "work_conserving/rr_strict_hier.sched"
       "work_conserving/rr_strict_hier_swap_deep_1.sched" Same;
@@ -140,6 +149,12 @@ let compare_tests_deep =
       (node ~index:(Some 2) "SP"
          (sub_node ~index:(Some 0) "RR"
             (sub_node ~index:(Some 0) "SP" (sub_node "FIFO" VeryDifferent))));
+    make_compare_test "RR/Strict hierarchy with arm removed deep"
+      "work_conserving/rr_strict_hier_add_arm.sched"
+      "work_conserving/rr_strict_hier.sched"
+      (node ~index:(Some 2) "SP"
+         (sub_node ~index:(Some 0) "RR"
+            (sub_node "SP" (ArmsRemoved { old_count = 3; new_count = 2 }))));
   ]
 
 let suite =
