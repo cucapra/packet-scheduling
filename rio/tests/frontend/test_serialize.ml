@@ -72,10 +72,15 @@ let compare_tests_same =
 let compare_tests_different =
   let open Rio_compare.Compare in
   [
-    (* SP(A,B) vs SP(A,B,C) *)
+    (* SP(B,A) vs SP(C,B,A) *)
     make_compare_test "strict arm added"
       "work_conserving/strict_2_classes.sched"
       "work_conserving/strict_3_classes.sched"
+      (node "Strict" (ArmsAdded { old_count = 2; new_count = 3 }));
+    (* SP(B,A) vs SP(B,C,A) *)
+    make_compare_test "strict arm added in the middle"
+      "work_conserving/strict_2_classes.sched"
+      "work_conserving/strict_3_classes_BCA.sched"
       (node "Strict" (ArmsAdded { old_count = 2; new_count = 3 }));
     (* WFQ(A,B,C) vs WFQ(A,B,D) *)
     make_compare_test "different WFQ" "work_conserving/wfq_3_classes.sched"
