@@ -21,9 +21,9 @@ and change =
 let policy_type_name = function
   | FIFO _ -> "FIFO"
   | EDF _ -> "EDF"
-  | Strict _ -> "Strict"
-  | RR _ -> "RoundRobin"
-  | WFQ _ -> "WeightedFair"
+  | Strict _ -> "SP"
+  | RR _ -> "RR"
+  | WFQ _ -> "WFQ"
 
 let subset lst1 lst2 = List.for_all (fun x -> List.mem x lst2) lst1
 
@@ -77,16 +77,16 @@ and make_super_pol policy_type =
 and compare_strict ps1 ps2 =
   let len1 = List.length ps1 in
   let len2 = List.length ps2 in
-  if is_sub_policy (Strict ps1) (Strict ps2) then make_super_pol "Strict"
+  if is_sub_policy (Strict ps1) (Strict ps2) then make_super_pol "SP"
   else if len2 > len1 && is_ordered_subsequence ps1 ps2 then
     (* Arms added: old arms appear in the same order in new list *)
     NodeChange
       {
-        policy_type = "Strict";
+        policy_type = "SP";
         index = None;
         change = ArmsAdded { old_count = len1; new_count = len2 };
       }
-  else compare_lists "Strict" ps1 ps2
+  else compare_lists "SP" ps1 ps2
 
 (* RR comparison: detect arms added or recurse into children. *)
 and compare_rr_like policy_type ps1 ps2 =
@@ -102,35 +102,30 @@ and compare_rr_like policy_type ps1 ps2 =
       }
   else compare_lists policy_type ps1 ps2
 
+(* Helper: check if old weights are preserved in new weights *)
+and old_weights_preserved old_weights new_weights old_count =
+  old_count <= List.length new_weights
+  && List.for_all2 ( = ) old_weights
+       (List.filteri (fun i _ -> i < old_count) new_weights)
+
 (* WFQ comparison: detect arms added or recurse into children. *)
 and compare_wfq ps1 ws1 ps2 ws2 =
   let len1 = List.length ps1 in
   let len2 = List.length ps2 in
-  if is_sub_policy (WFQ (ps1, ws1)) (WFQ (ps2, ws2)) then
-    make_super_pol "WeightedFair"
+  if is_sub_policy (WFQ (ps1, ws1)) (WFQ (ps2, ws2)) then make_super_pol "WFQ"
   else if ps1 = ps2 && ws1 <> ws2 then
     (* Same arms but different weights *)
+    NodeChange { policy_type = "WFQ"; index = None; change = VeryDifferent }
+  else if len2 > len1 && subset ps1 ps2 && old_weights_preserved ws1 ws2 len1
+  then
+    (* Arms added with same weights for old arms *)
     NodeChange
       {
-        policy_type = "WeightedFair";
+        policy_type = "WFQ";
         index = None;
-        change = VeryDifferent;
+        change = ArmsAdded { old_count = len1; new_count = len2 };
       }
-  else if len2 > len1 && subset ps1 ps2 then
-    (* Check if old arms have same weights in new policy *)
-    let old_weights_match =
-      len1 <= List.length ws2 &&
-      List.for_all2 (=) ws1 (List.filteri (fun i _ -> i < len1) ws2)
-    in
-    if old_weights_match then
-      NodeChange
-        {
-          policy_type = "WeightedFair";
-          index = None;
-          change = ArmsAdded { old_count = len1; new_count = len2 };
-        }
-    else compare_lists "WeightedFair" ps1 ps2
-  else compare_lists "WeightedFair" ps1 ps2
+  else compare_lists "WFQ" ps1 ps2
 
 (* Main structural comparison *)
 and analyze p1 p2 : t =
@@ -145,7 +140,7 @@ and analyze p1 p2 : t =
             change = VeryDifferent;
           }
     | Strict ps1, Strict ps2 -> compare_strict ps1 ps2
-    | RR ps1, RR ps2 -> compare_rr_like "RoundRobin" ps1 ps2
+    | RR ps1, RR ps2 -> compare_rr_like "RR" ps1 ps2
     | WFQ (ps1, ws1), WFQ (ps2, ws2) -> compare_wfq ps1 ws1 ps2 ws2
     | _, _ ->
         if is_sub_policy p1 p2 then

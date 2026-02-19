@@ -76,55 +76,51 @@ let compare_tests_different =
     make_compare_test "strict arm added"
       "work_conserving/strict_2_classes.sched"
       "work_conserving/strict_3_classes.sched"
-      (node "Strict" (ArmsAdded { old_count = 2; new_count = 3 }));
+      (node "SP" (ArmsAdded { old_count = 2; new_count = 3 }));
     (* SP(B,A) vs SP(B,C,A) *)
     make_compare_test "strict arm added in the middle"
       "work_conserving/strict_2_classes.sched"
       "work_conserving/strict_3_classes_BCA.sched"
-      (node "Strict" (ArmsAdded { old_count = 2; new_count = 3 }));
+      (node "SP" (ArmsAdded { old_count = 2; new_count = 3 }));
     (* SP(B,A) vs SP(A,B,C) *)
     make_compare_test "strict arm added whilst reordering arms"
       "work_conserving/strict_2_classes.sched"
-      "work_conserving/strict_3_classes_ABC.sched"
-      (node "Strict" VeryDifferent);
+      "work_conserving/strict_3_classes_ABC.sched" (node "SP" VeryDifferent);
     (* WFQ(A,B,C) vs WFQ(A,B,D) *)
     make_compare_test "different WFQ" "work_conserving/wfq_3_classes.sched"
       "work_conserving/wfq_3_classes_diff.sched"
-      (node ~index:(Some 2) "WeightedFair" (sub_node "FIFO" VeryDifferent));
+      (node ~index:(Some 2) "WFQ" (sub_node "FIFO" VeryDifferent));
     (* RR(A,B) vs RR(A,B,C) *)
     make_compare_test "RR with arm added" "work_conserving/rr_2_classes.sched"
       "work_conserving/rr_3_classes.sched"
-      (node "RoundRobin" (ArmsAdded { old_count = 2; new_count = 3 }));
+      (node "RR" (ArmsAdded { old_count = 2; new_count = 3 }));
     (* RR(A,B) vs RR(C,A,B) *)
     make_compare_test "RR with arm added (CAB)"
       "work_conserving/rr_2_classes.sched"
       "work_conserving/rr_3_classes_CAB.sched"
-      (node "RoundRobin" (ArmsAdded { old_count = 2; new_count = 3 }));
+      (node "RR" (ArmsAdded { old_count = 2; new_count = 3 }));
     (* WFQ(A,B) vs WFQ(A,B,C) *)
     make_compare_test "WFQ with arm added" "work_conserving/wfq_2_classes.sched"
       "work_conserving/wfq_3_classes.sched"
-      (node "WeightedFair" (ArmsAdded { old_count = 2; new_count = 3 }));
+      (node "WFQ" (ArmsAdded { old_count = 2; new_count = 3 }));
     (* RR(A,B) vs RR(D,E,F) *)
     make_compare_test "RR big diff" "work_conserving/rr_2_classes.sched"
-      "work_conserving/rr_3_classes_DEF.sched"
-      (node "RoundRobin" VeryDifferent);
+      "work_conserving/rr_3_classes_DEF.sched" (node "RR" VeryDifferent);
     (* SP(C,B,A) vs SP(B,C,A) *)
     make_compare_test "Strict with arms reordered"
       "work_conserving/strict_3_classes.sched"
       "work_conserving/strict_3_classes_jumbled.sched"
-      (node ~index:(Some 0) "Strict" (sub_node "FIFO" VeryDifferent));
+      (node ~index:(Some 0) "SP" (sub_node "FIFO" VeryDifferent));
     (* WFQ weights changed *)
     make_compare_test "WFQ with weights changed"
       "work_conserving/wfq_3_classes.sched"
       "work_conserving/wfq_3_classes_diff_weights.sched"
-      (node "WeightedFair" VeryDifferent);
+      (node "WFQ" VeryDifferent);
     make_compare_test "WFQ with weights changed and arm added"
       "work_conserving/wfq_3_classes.sched"
-      "work_conserving/wfq_very_diff.sched"
-      (node "WeightedFair" VeryDifferent);
+      "work_conserving/wfq_very_diff.sched" (node "WFQ" VeryDifferent);
     make_compare_test "sub-policy" "work_conserving/rr_hier_subpol.sched"
-      "work_conserving/rr_hier.sched"
-      (node "RoundRobin" SuperPol);
+      "work_conserving/rr_hier.sched" (node "RR" SuperPol);
   ]
 
 let compare_tests_deep =
@@ -133,18 +129,17 @@ let compare_tests_deep =
     make_compare_test "RR/Strict hierarchy with arm added deep"
       "work_conserving/rr_strict_hier.sched"
       "work_conserving/rr_strict_hier_add_arm.sched"
-      (node ~index:(Some 2) "Strict"
-         (sub_node ~index:(Some 0) "RoundRobin"
-            (sub_node "Strict" VeryDifferent)));
+      (node ~index:(Some 2) "SP"
+         (sub_node ~index:(Some 0) "RR" (sub_node "SP" VeryDifferent)));
     make_compare_test "RR/Strict hierarchy with RR swap deep"
       "work_conserving/rr_strict_hier.sched"
       "work_conserving/rr_strict_hier_swap_deep_1.sched" Same;
     make_compare_test "RR/Strict hierarchy with SP swap deep"
       "work_conserving/rr_strict_hier.sched"
       "work_conserving/rr_strict_hier_swap_deep_2.sched"
-      (node ~index:(Some 2) "Strict"
-         (sub_node ~index:(Some 0) "RoundRobin"
-            (sub_node ~index:(Some 0) "Strict" (sub_node "FIFO" VeryDifferent))));
+      (node ~index:(Some 2) "SP"
+         (sub_node ~index:(Some 0) "RR"
+            (sub_node ~index:(Some 0) "SP" (sub_node "FIFO" VeryDifferent))));
   ]
 
 let suite =
