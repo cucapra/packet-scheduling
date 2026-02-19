@@ -13,6 +13,7 @@ and change =
   | ArmsAdded of {
       old_count : int;
       new_count : int;
+      details : string; (* human-readable description of what was added *)
     }
   | ArmsRemoved of {
       old_count : int;
@@ -84,20 +85,24 @@ and compare_strict ps1 ps2 =
   if is_sub_policy (Strict ps1) (Strict ps2) then make_super_pol "SP"
   else if len2 > len1 && is_ordered_subsequence ps1 ps2 then
     (* Arms added: old arms appear in the same order in new list *)
-    NodeChange
-      {
-        policy_type = "SP";
-        index = None;
-        change = ArmsAdded { old_count = len1; new_count = len2 };
-      }
+    let details =
+      (* Build a simple description: list added arm positions and summaries *)
+      let rec scan i j acc =
+        match (j, i) with
+        | ([], _) -> String.concat ", " (List.rev acc)
+        | (p2 :: t2, _) -> (
+            match i with
+            | p1 :: t1 when p1 = p2 -> scan t1 t2 acc
+            | _ ->
+                let desc = Frontend.Policy.to_string p2 in
+                scan i t2 (Printf.sprintf "added %s at %d" desc (List.length ps2 - List.length t2) :: acc))
+      in
+      scan ps1 ps2 []
+    in
+    NodeChange { policy_type = "SP"; index = None; change = ArmsAdded { old_count = len1; new_count = len2; details } }
   else if len1 > len2 && is_ordered_subsequence ps2 ps1 then
     (* Arms removed: new arms appear in the same order in old list *)
-    NodeChange
-      {
-        policy_type = "SP";
-        index = None;
-        change = ArmsRemoved { old_count = len1; new_count = len2 };
-      }
+    NodeChange { policy_type = "SP"; index = None; change = ArmsRemoved { old_count = len1; new_count = len2 } }
   else compare_lists "SP" ps1 ps2
 
 (* RR comparison: detect arms added/removed or recurse into children. *)
@@ -106,19 +111,16 @@ and compare_rr_like policy_type ps1 ps2 =
   let len2 = List.length ps2 in
   if is_sub_policy (RR ps1) (RR ps2) then make_super_pol policy_type
   else if len2 > len1 && subset ps1 ps2 then
-    NodeChange
-      {
-        policy_type;
-        index = None;
-        change = ArmsAdded { old_count = len1; new_count = len2 };
-      }
+    let details =
+      ps2
+      |> List.mapi (fun i p -> (i, p))
+      |> List.filter (fun (_, p) -> not (List.mem p ps1))
+      |> List.map (fun (i, p) -> Printf.sprintf "added %s at %d" (Frontend.Policy.to_string p) i)
+      |> String.concat ", "
+    in
+    NodeChange { policy_type; index = None; change = ArmsAdded { old_count = len1; new_count = len2; details } }
   else if len1 > len2 && subset ps2 ps1 then
-    NodeChange
-      {
-        policy_type;
-        index = None;
-        change = ArmsRemoved { old_count = len1; new_count = len2 };
-      }
+    NodeChange { policy_type; index = None; change = ArmsRemoved { old_count = len1; new_count = len2 } }
   else compare_lists policy_type ps1 ps2
 
 (* Helper: check if old weights are preserved in new weights *)
@@ -135,15 +137,21 @@ and compare_wfq ps1 ws1 ps2 ws2 =
   else if ps1 = ps2 && ws1 <> ws2 then
     (* Same arms but different weights *)
     NodeChange { policy_type = "WFQ"; index = None; change = VeryDifferent }
-  else if len2 > len1 && subset ps1 ps2 && old_weights_preserved ws1 ws2 len1
-  then
+  else if len2 > len1 && subset ps1 ps2 && old_weights_preserved ws1 ws2 len1 then
     (* Arms added with same weights for old arms *)
-    NodeChange
-      {
-        policy_type = "WFQ";
-        index = None;
-        change = ArmsAdded { old_count = len1; new_count = len2 };
-      }
+    let added =
+      ps2
+      |> List.mapi (fun i p -> (i, p))
+      |> List.filter (fun (_, p) -> not (List.mem p ps1))
+    in
+    let details =
+      added
+      |> List.map (fun (i, p) ->
+           let w = List.nth ws2 i in
+           Printf.sprintf "added %s at %d with weight %g" (Frontend.Policy.to_string p) i w)
+      |> String.concat ", "
+    in
+    NodeChange { policy_type = "WFQ"; index = None; change = ArmsAdded { old_count = len1; new_count = len2; details } }
   else if len1 > len2 && subset ps2 ps1 then
     (* Check if new weights match first len2 of old weights *)
     let new_weights_match =
@@ -151,12 +159,7 @@ and compare_wfq ps1 ws1 ps2 ws2 =
       && List.for_all2 ( = ) ws2 (List.filteri (fun i _ -> i < len2) ws1)
     in
     if new_weights_match then
-      NodeChange
-        {
-          policy_type = "WFQ";
-          index = None;
-          change = ArmsRemoved { old_count = len1; new_count = len2 };
-        }
+      NodeChange { policy_type = "WFQ"; index = None; change = ArmsRemoved { old_count = len1; new_count = len2 } }
     else compare_lists "WFQ" ps1 ps2
   else compare_lists "WFQ" ps1 ps2
 
@@ -204,9 +207,10 @@ let rec to_string diff =
       Printf.sprintf "%s %s: %s" policy_type loc (change_to_string change)
 
 and change_to_string = function
-  | ArmsAdded { old_count; new_count } ->
-      Printf.sprintf "ArmsAdded %d → %d" old_count new_count
-  | ArmsRemoved { old_count; new_count } ->
+    | ArmsAdded { old_count; new_count; details } ->
+      if details = "" then Printf.sprintf "ArmsAdded %d → %d" old_count new_count
+      else Printf.sprintf "ArmsAdded %d → %d: %s" old_count new_count details
+    | ArmsRemoved { old_count; new_count } ->
       Printf.sprintf "ArmsRemoved %d → %d" old_count new_count
   | SubChange d -> "SubChange(" ^ to_string d ^ ")"
   | VeryDifferent -> "Incompatible (different types or structure)"

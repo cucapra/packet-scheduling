@@ -76,12 +76,17 @@ let compare_tests_different =
     make_compare_test "strict arm added"
       "work_conserving/strict_2_classes.sched"
       "work_conserving/strict_3_classes.sched"
-      (node "SP" (ArmsAdded { old_count = 2; new_count = 3 }));
+      (node "SP"
+         (ArmsAdded
+            { old_count = 2; new_count = 3; details = "added fifo[C] at 1" }));
+    (* TODO: is this index okay? *)
     (* SP(B,A) vs SP(B,C,A) *)
     make_compare_test "strict arm added in the middle"
       "work_conserving/strict_2_classes.sched"
       "work_conserving/strict_3_classes_BCA.sched"
-      (node "SP" (ArmsAdded { old_count = 2; new_count = 3 }));
+      (node "SP"
+         (ArmsAdded
+            { old_count = 2; new_count = 3; details = "added fifo[C] at 2" }));
     (* SP(B,A) vs SP(A,B,C) *)
     make_compare_test "strict arm added whilst reordering arms"
       "work_conserving/strict_2_classes.sched"
@@ -93,16 +98,26 @@ let compare_tests_different =
     (* RR(A,B) vs RR(A,B,C) *)
     make_compare_test "RR with arm added" "work_conserving/rr_2_classes.sched"
       "work_conserving/rr_3_classes.sched"
-      (node "RR" (ArmsAdded { old_count = 2; new_count = 3 }));
+      (node "RR"
+         (ArmsAdded
+            { old_count = 2; new_count = 3; details = "added fifo[C] at 2" }));
     (* RR(A,B) vs RR(C,A,B) *)
     make_compare_test "RR with arm added (CAB)"
       "work_conserving/rr_2_classes.sched"
       "work_conserving/rr_3_classes_CAB.sched"
-      (node "RR" (ArmsAdded { old_count = 2; new_count = 3 }));
+      (node "RR"
+         (ArmsAdded
+            { old_count = 2; new_count = 3; details = "added fifo[C] at 2" }));
     (* WFQ(A,B) vs WFQ(A,B,C) *)
     make_compare_test "WFQ with arm added" "work_conserving/wfq_2_classes.sched"
       "work_conserving/wfq_3_classes.sched"
-      (node "WFQ" (ArmsAdded { old_count = 2; new_count = 3 }));
+      (node "WFQ"
+         (ArmsAdded
+            {
+              old_count = 2;
+              new_count = 3;
+              details = "added fifo[C] at 2 with weight 3";
+            }));
     (* RR(A,B) vs RR(D,E,F) *)
     make_compare_test "RR big diff" "work_conserving/rr_2_classes.sched"
       "work_conserving/rr_3_classes_DEF.sched" (node "RR" VeryDifferent);
@@ -139,7 +154,13 @@ let compare_tests_deep =
       "work_conserving/rr_strict_hier_add_arm.sched"
       (node ~index:(Some 2) "SP"
          (sub_node ~index:(Some 0) "RR"
-            (sub_node "SP" (ArmsAdded { old_count = 2; new_count = 3 }))));
+            (sub_node "SP"
+               (ArmsAdded
+                  {
+                    old_count = 2;
+                    new_count = 3;
+                    details = "added fifo[CY] at 3";
+                  }))));
     make_compare_test "RR/Strict hierarchy with RR swap deep"
       "work_conserving/rr_strict_hier.sched"
       "work_conserving/rr_strict_hier_swap_deep_1.sched" Same;
