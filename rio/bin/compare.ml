@@ -14,10 +14,6 @@ and change =
       old_count : int;
       new_count : int;
     }
-  | WeightsChanged of {
-      old_weights : float list;
-      new_weights : float list;
-    }
   | SubChange of t (* Recursive diff *)
   | VeryDifferent
   | SuperPol
@@ -106,26 +102,34 @@ and compare_rr_like policy_type ps1 ps2 =
       }
   else compare_lists policy_type ps1 ps2
 
-(* WFQ comparison: detect arms added, weight changes, or recurse. *)
+(* WFQ comparison: detect arms added or recurse into children. *)
 and compare_wfq ps1 ws1 ps2 ws2 =
   let len1 = List.length ps1 in
   let len2 = List.length ps2 in
   if is_sub_policy (WFQ (ps1, ws1)) (WFQ (ps2, ws2)) then
     make_super_pol "WeightedFair"
-  else if len2 > len1 && subset ps1 ps2 then
-    NodeChange
-      {
-        policy_type = "WeightedFair";
-        index = None;
-        change = ArmsAdded { old_count = len1; new_count = len2 };
-      }
   else if ps1 = ps2 && ws1 <> ws2 then
+    (* Same arms but different weights *)
     NodeChange
       {
         policy_type = "WeightedFair";
         index = None;
-        change = WeightsChanged { old_weights = ws1; new_weights = ws2 };
+        change = VeryDifferent;
       }
+  else if len2 > len1 && subset ps1 ps2 then
+    (* Check if old arms have same weights in new policy *)
+    let old_weights_match =
+      len1 <= List.length ws2 &&
+      List.for_all2 (=) ws1 (List.filteri (fun i _ -> i < len1) ws2)
+    in
+    if old_weights_match then
+      NodeChange
+        {
+          policy_type = "WeightedFair";
+          index = None;
+          change = ArmsAdded { old_count = len1; new_count = len2 };
+        }
+    else compare_lists "WeightedFair" ps1 ps2
   else compare_lists "WeightedFair" ps1 ps2
 
 (* Main structural comparison *)
@@ -174,12 +178,6 @@ let rec to_string diff =
 and change_to_string = function
   | ArmsAdded { old_count; new_count } ->
       Printf.sprintf "ArmsAdded %d → %d" old_count new_count
-  | WeightsChanged { old_weights; new_weights } ->
-      let fmt ws =
-        ws |> List.map (Printf.sprintf "%.9g") |> String.concat ", "
-      in
-      Printf.sprintf "WeightsChanged [%s] → [%s]" (fmt old_weights)
-        (fmt new_weights)
   | SubChange d -> "SubChange(" ^ to_string d ^ ")"
   | VeryDifferent -> "Incompatible (different types or structure)"
   | SuperPol -> "OneIsNestedInOther"

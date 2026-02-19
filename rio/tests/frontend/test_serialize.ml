@@ -117,9 +117,11 @@ let compare_tests_different =
     make_compare_test "WFQ with weights changed"
       "work_conserving/wfq_3_classes.sched"
       "work_conserving/wfq_3_classes_diff_weights.sched"
-      (node "WeightedFair"
-         (WeightsChanged
-            { old_weights = [ 1.0; 2.0; 3.0 ]; new_weights = [ 2.0; 2.0; 4.0 ] }));
+      (node "WeightedFair" VeryDifferent);
+    make_compare_test "WFQ with weights changed and arm added"
+      "work_conserving/wfq_3_classes.sched"
+      "work_conserving/wfq_very_diff.sched"
+      (node "WeightedFair" VeryDifferent);
     make_compare_test "sub-policy" "work_conserving/rr_hier_subpol.sched"
       "work_conserving/rr_hier.sched"
       (node "RoundRobin" SuperPol);
