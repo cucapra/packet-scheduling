@@ -3,10 +3,9 @@ open Frontend.Policy
 (* A structural diff that can describe *where* a change occurs. *)
 type t =
   | Same
-  | Change of {
-      path : int list; (* Path of child indices to the change; [] = root *)
-      change : change; (* What changed *)
-    }
+  | Change of int list * change
+(* Path of child indices; change type *)
+(* An empty path means that the change is at the root level *)
 
 and change =
   | ArmsAdded of {
@@ -82,13 +81,11 @@ let rec is_sub_policy p1 p2 : bool * int list option =
         in
         loop 0 ps
 
-(* NOTE: was `find_child_index_of_subpolicy` — now folded into `is_sub_policy`. *)
-
 (* Compare lists of children structurally and report the index of the change. *)
 let rec compare_lists ps1 ps2 =
   let len1 = List.length ps1 in
   let len2 = List.length ps2 in
-  if len1 <> len2 then Change { path = []; change = VeryDifferent }
+  if len1 <> len2 then Change ([], VeryDifferent)
   else
     let rec loop i l1 l2 =
       match (l1, l2) with
@@ -96,21 +93,18 @@ let rec compare_lists ps1 ps2 =
       | p1 :: t1, p2 :: t2 -> (
           match analyze p1 p2 with
           | Same -> loop (i + 1) t1 t2
-          | Change { path = child_path; change = child_change } ->
-              Change { path = i :: child_path; change = child_change })
+          | Change (child_path, child_change) ->
+              Change (i :: child_path, child_change))
       | _ -> Same (* Same length guaranteed by outer condition *)
     in
     loop 0 ps1 ps2
-
-(* Helper: centralize super-policy (nested) result *)
-and make_super_pol path = Change { path; change = SuperPol }
 
 (* Strict comparison: detect arms added/removed (preserving order) or recurse into children. *)
 and compare_strict ps1 ps2 =
   let len1 = List.length ps1 in
   let len2 = List.length ps2 in
   let found, idx = is_sub_policy (Strict ps1) (Strict ps2) in
-  if found then make_super_pol (Option.get idx)
+  if found then Change (Option.get idx, SuperPol)
   else if len2 > len1 && is_ordered_subsequence ps1 ps2 then
     (* Arms added: old arms appear in the same order in new list *)
     let details =
@@ -130,15 +124,10 @@ and compare_strict ps1 ps2 =
       in
       scan ps1 ps2 []
     in
-    Change
-      {
-        path = [];
-        change = ArmsAdded { old_count = len1; new_count = len2; details };
-      }
+    Change ([], ArmsAdded { old_count = len1; new_count = len2; details })
   else if len1 > len2 && is_ordered_subsequence ps2 ps1 then
     (* Arms removed: new arms appear in the same order in old list *)
-    Change
-      { path = []; change = ArmsRemoved { old_count = len1; new_count = len2 } }
+    Change ([], ArmsRemoved { old_count = len1; new_count = len2 })
   else compare_lists ps1 ps2
 
 (* RR comparison: detect arms added/removed or recurse into children. *)
@@ -146,7 +135,7 @@ and compare_rr_like ps1 ps2 =
   let len1 = List.length ps1 in
   let len2 = List.length ps2 in
   let found, idx = is_sub_policy (RR ps1) (RR ps2) in
-  if found then make_super_pol (Option.get idx)
+  if found then Change (Option.get idx, SuperPol)
   else if len2 > len1 && subset ps1 ps2 then
     let details =
       ps2
@@ -156,14 +145,9 @@ and compare_rr_like ps1 ps2 =
           Printf.sprintf "added %s at %d" (Frontend.Policy.to_string p) i)
       |> String.concat ", "
     in
-    Change
-      {
-        path = [];
-        change = ArmsAdded { old_count = len1; new_count = len2; details };
-      }
+    Change ([], ArmsAdded { old_count = len1; new_count = len2; details })
   else if len1 > len2 && subset ps2 ps1 then
-    Change
-      { path = []; change = ArmsRemoved { old_count = len1; new_count = len2 } }
+    Change ([], ArmsRemoved { old_count = len1; new_count = len2 })
   else compare_lists ps1 ps2
 
 (* Helper: check if old weights are preserved in new weights *)
@@ -177,10 +161,10 @@ and compare_wfq ps1 ws1 ps2 ws2 =
   let len1 = List.length ps1 in
   let len2 = List.length ps2 in
   let found, idx = is_sub_policy (WFQ (ps1, ws1)) (WFQ (ps2, ws2)) in
-  if found then make_super_pol (Option.get idx)
+  if found then Change (Option.get idx, SuperPol)
   else if ps1 = ps2 && ws1 <> ws2 then
     (* Same arms but different weights *)
-    Change { path = []; change = VeryDifferent }
+    Change ([], VeryDifferent)
   else if len2 > len1 && subset ps1 ps2 && old_weights_preserved ws1 ws2 len1
   then
     (* Arms added with same weights for old arms *)
@@ -198,11 +182,7 @@ and compare_wfq ps1 ws1 ps2 ws2 =
             i w)
       |> String.concat ", "
     in
-    Change
-      {
-        path = [];
-        change = ArmsAdded { old_count = len1; new_count = len2; details };
-      }
+    Change ([], ArmsAdded { old_count = len1; new_count = len2; details })
   else if len1 > len2 && subset ps2 ps1 then
     (* Check if new weights match first len2 of old weights *)
     let new_weights_match =
@@ -210,11 +190,7 @@ and compare_wfq ps1 ws1 ps2 ws2 =
       && List.for_all2 ( = ) ws2 (List.filteri (fun i _ -> i < len2) ws1)
     in
     if new_weights_match then
-      Change
-        {
-          path = [];
-          change = ArmsRemoved { old_count = len1; new_count = len2 };
-        }
+      Change ([], ArmsRemoved { old_count = len1; new_count = len2 })
     else compare_lists ps1 ps2
   else compare_lists ps1 ps2
 
@@ -223,22 +199,20 @@ and analyze p1 p2 : t =
   if p1 = p2 then Same
   else
     match (p1, p2) with
-    | FIFO _, FIFO _ | EDF _, EDF _ ->
-        Change { path = []; change = VeryDifferent }
+    | FIFO _, FIFO _ | EDF _, EDF _ -> Change ([], VeryDifferent)
     | Strict ps1, Strict ps2 -> compare_strict ps1 ps2
     | RR ps1, RR ps2 -> compare_rr_like ps1 ps2
     | WFQ (ps1, ws1), WFQ (ps2, ws2) -> compare_wfq ps1 ws1 ps2 ws2
     | _, _ ->
         let found, idx = is_sub_policy p1 p2 in
-        if found then
-          Change { path = Option.value idx ~default:[]; change = SuperPol }
-        else Change { path = []; change = VeryDifferent }
+        if found then Change (Option.value idx ~default:[], SuperPol)
+        else Change ([], VeryDifferent)
 
 (* Pretty-printing *)
 let rec to_string diff =
   match diff with
   | Same -> "Same"
-  | Change { path; change } ->
+  | Change (path, change) ->
       let loc =
         match path with
         | [] -> "(root)"
