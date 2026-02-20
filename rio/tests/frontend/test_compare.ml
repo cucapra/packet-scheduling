@@ -16,7 +16,7 @@ let make_compare_test name file1 file2 expected_diff =
   assert_equal expected_diff actual_diff ~printer:(fun d ->
       Rio_compare.Compare.to_string d)
 
-let compare_tests_same =
+let same =
   [
     make_compare_test "same program twice"
       "work_conserving/strict_3_classes.sched"
@@ -32,7 +32,7 @@ let compare_tests_same =
       "work_conserving/rr_hier_weird_var_names.sched" Same;
   ]
 
-let compare_tests_different =
+let armsadded =
   [
     (* SP(B,A) vs SP(C,B,A) *)
     make_compare_test "strict arm added"
@@ -51,15 +51,14 @@ let compare_tests_different =
          ( [],
            ArmsAdded
              { old_count = 2; new_count = 3; details = "added fifo[C] at 2" } ));
-    (* SP(B,A) vs SP(A,B,C) *)
-    make_compare_test "strict arm added whilst reordering arms"
+    (* SP(B,A) vs SP(B,C,A) *)
+    make_compare_test "strict arm added in the middle"
       "work_conserving/strict_2_classes.sched"
-      "work_conserving/strict_3_classes_ABC.sched"
-      (Change ([], VeryDifferent));
-    (* WFQ(A,B,C) vs WFQ(A,B,D) *)
-    make_compare_test "different WFQ" "work_conserving/wfq_3_classes.sched"
-      "work_conserving/wfq_3_classes_diff.sched"
-      (Change ([ 2 ], VeryDifferent));
+      "work_conserving/strict_3_classes_BCA.sched"
+      (Change
+         ( [],
+           ArmsAdded
+             { old_count = 2; new_count = 3; details = "added fifo[C] at 2" } ));
     (* RR(A,B) vs RR(A,B,C) *)
     make_compare_test "RR with arm added" "work_conserving/rr_2_classes.sched"
       "work_conserving/rr_3_classes.sched"
@@ -86,6 +85,32 @@ let compare_tests_different =
                new_count = 3;
                details = "added fifo[C] at 2 with weight 3";
              } ));
+  ]
+
+let armsremoved =
+  (* In reality we will just give up. *)
+  [
+    (* Test arm removal *)
+    make_compare_test "RR with arm removed" "work_conserving/rr_3_classes.sched"
+      "work_conserving/rr_2_classes.sched"
+      (Change ([], ArmsRemoved { old_count = 3; new_count = 2 }));
+    make_compare_test "WFQ with arm removed"
+      "work_conserving/wfq_3_classes.sched"
+      "work_conserving/wfq_2_classes.sched"
+      (Change ([], ArmsRemoved { old_count = 3; new_count = 2 }));
+  ]
+
+let verydiff =
+  [
+    (* SP(B,A) vs SP(A,B,C) *)
+    make_compare_test "strict arm added whilst reordering arms"
+      "work_conserving/strict_2_classes.sched"
+      "work_conserving/strict_3_classes_ABC.sched"
+      (Change ([], VeryDifferent));
+    (* WFQ(A,B,C) vs WFQ(A,B,D) *)
+    make_compare_test "different WFQ" "work_conserving/wfq_3_classes.sched"
+      "work_conserving/wfq_3_classes_diff.sched"
+      (Change ([ 2 ], VeryDifferent));
     (* RR(A,B) vs RR(D,E,F) *)
     make_compare_test "RR big diff" "work_conserving/rr_2_classes.sched"
       "work_conserving/rr_3_classes_DEF.sched"
@@ -104,17 +129,9 @@ let compare_tests_different =
       "work_conserving/wfq_3_classes.sched"
       "work_conserving/wfq_very_diff.sched"
       (Change ([], VeryDifferent));
-    (* Test arm removal *)
-    make_compare_test "RR with arm removed" "work_conserving/rr_3_classes.sched"
-      "work_conserving/rr_2_classes.sched"
-      (Change ([], ArmsRemoved { old_count = 3; new_count = 2 }));
-    make_compare_test "WFQ with arm removed"
-      "work_conserving/wfq_3_classes.sched"
-      "work_conserving/wfq_2_classes.sched"
-      (Change ([], ArmsRemoved { old_count = 3; new_count = 2 }));
   ]
 
-let compare_tests_superpol =
+let superpol =
   [
     make_compare_test "B is sub-pol of large tree"
       "work_conserving/FIFO_B.sched" "work_conserving/rr_hier_superpol.sched"
@@ -128,7 +145,7 @@ let compare_tests_superpol =
       (Change ([ 1; 1 ], SuperPol));
   ]
 
-let compare_tests_deep =
+let deep =
   [
     make_compare_test "RR/Strict hierarchy with arm added deep"
       "work_conserving/rr_strict_hier.sched"
@@ -153,7 +170,6 @@ let compare_tests_deep =
 
 let suite =
   "compare tests"
-  >::: compare_tests_same @ compare_tests_different @ compare_tests_superpol
-       @ compare_tests_deep
+  >::: same @ armsadded @ armsremoved @ verydiff @ superpol @ deep
 
 let () = run_test_tt_main suite
