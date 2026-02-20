@@ -23,9 +23,8 @@ jobs:
           ocaml-compiler: 5
       - name: Install ocamlformat
         working-directory: rio
-        run: opam install ocamlformat
-      - name: Check format 
+        run: opam install ocamlformat.0.28.1
+      - name: Check format
         working-directory: rio
-        run: | 
-          [ $(opam exec -- dune fmt 2> >(wc -c)) -eq 0 ]
+        run: run: opam exec -- dune build @fmt
 
