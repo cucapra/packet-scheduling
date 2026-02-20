@@ -1,7 +1,7 @@
 classes A, B, C;
 
-sub_policy1 = stopandgo[[fifo[A], fifo[B]], width=10];
-sub_policy2 = stopandgo[[fifo[C]], width=10];
+sub_policy1 = stopandgo[[A, B], width=10];
+sub_policy2 = stopandgo[[C], width=10];
 policy = stopandgo [[sub_policy1, sub_policy2], width=5];
 
 //Interleaves two sub-policies, with windows of length 10,

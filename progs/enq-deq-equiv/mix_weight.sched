@@ -1,8 +1,8 @@
 classes A, B, C, D, E, F, G;
 
-left = wfq[(fifo[A], 10), (fifo[B], 3)];
-middle = rr[fifo[C], fifo[D]];
-right = strict[fifo[E], wfq[(fifo[F], 1), (fifo[G], 3)]];
+left = wfq[(A, 10), (B, 3)];
+middle = rr[C, D];
+right = strict[E, wfq[(F, 1), (G, 3)]];
 
 policy = wfq[(left, 2), (middle, 5), (right, 3)];
 

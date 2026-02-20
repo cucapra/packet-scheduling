@@ -1,8 +1,8 @@
 classes A, B, C, D, E, F, G;
 
-left = strict[fifo[A], fifo[B]];
-middle = rr[fifo[C], fifo[D]];
-right = strict[fifo[E], rr[fifo[F], fifo[G]]];
+left = strict[A, B];
+middle = rr[C, D];
+right = strict[E, rr[F, G]];
 
 policy = rr[left, middle, right];
 

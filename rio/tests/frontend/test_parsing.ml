@@ -18,8 +18,7 @@ let wc_tests =
   [
     make_test "single class policy" "work_conserving/drop_a_class.sched"
       "fifo[A]";
-    make_test "fifo 1 class" "work_conserving/fifo_1_class_sugar.sched"
-      "fifo[A]";
+    make_test "fifo 1 class" "work_conserving/fifo_1_class.sched" "fifo[A]";
     make_test "fifo 1 class" "work_conserving/fifo_1_class.sched" "fifo[A]";
     make_test "fifo of 3" "work_conserving/fifo_n_classes.sched"
       "fifo[union[A, B, C]]";
@@ -28,7 +27,7 @@ let wc_tests =
       "rr[fifo[A], fifo[B]]";
     make_test "rr of 2 merged" "work_conserving/rr_2_classes_merged.sched"
       "rr[fifo[union[A, B]]]";
-    make_test "multiple assignments" "work_conserving/rr_hier_merge_sugar.sched"
+    make_test "multiple assignments" "work_conserving/rr_hier_merge.sched"
       "rr[fifo[union[BX, BY]], rr[fifo[RP], fifo[RT]]]";
     make_test "2 assignments w/ substitutions" "work_conserving/rr_hier.sched"
       "rr[fifo[B], rr[fifo[RP], fifo[RT]]]";
