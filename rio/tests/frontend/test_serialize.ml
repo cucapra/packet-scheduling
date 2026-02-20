@@ -20,13 +20,13 @@ let make_test name file =
 let serialize_tests =
   [
     make_test "single class policy" "work_conserving/drop_a_class.sched";
-    make_test "fifo 1 class" "work_conserving/fifo_1_class_sugar.sched";
+    make_test "fifo 1 class" "work_conserving/fifo_1_class.sched";
     make_test "fifo 2 class union" "work_conserving/fifo_2_class_union.sched";
     make_test "fifo n classes" "work_conserving/fifo_n_classes.sched";
     make_test "rr 1 class" "work_conserving/rr_1_class.sched";
     make_test "rr 2 classes" "work_conserving/rr_2_classes.sched";
     make_test "rr 2 classes merged" "work_conserving/rr_2_classes_merged.sched";
-    make_test "rr hierarchy" "work_conserving/rr_hier_merge_sugar.sched";
+    make_test "rr hierarchy" "work_conserving/rr_hier_merge.sched";
     make_test "rr even hierarchy" "work_conserving/rr_hier.sched";
     make_test "rr wide hierarchy" "work_conserving/rr_wide_hier.sched";
     make_test "rr 3 classes" "work_conserving/rr_3_classes.sched";

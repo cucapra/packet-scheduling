@@ -22,8 +22,8 @@ let same =
       "work_conserving/strict_3_classes.sched"
       "work_conserving/strict_3_classes.sched" Same;
     make_compare_test "merely jumbled in RR"
-      "work_conserving/rr_hier_merge_sugar.sched"
-      "work_conserving/rr_hier_merge_sugar_jumbled.sched" Same;
+      "work_conserving/rr_hier_merge.sched"
+      "work_conserving/rr_hier_merge_jumbled.sched" Same;
     make_compare_test "merely jumbled in WFQ"
       "work_conserving/wfq_3_classes.sched"
       "work_conserving/wfq_3_classes_jumbled.sched" Same;
