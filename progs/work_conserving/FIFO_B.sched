@@ -1,0 +1,7 @@
+classes A, B;
+
+policy = fifo[B];
+
+return policy
+
+// This is just a FIFO of class B. It's meant be tested as a deep sub-policy of rr_hier.sched, which has a fifo[B] as a sub-policy. We want to make sure that we can detect this as a sub-policy of rr_hier.sched, even though deeply buried.

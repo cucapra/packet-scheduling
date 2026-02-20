@@ -94,7 +94,7 @@ let compare_tests_different =
     (* WFQ(A,B,C) vs WFQ(A,B,D) *)
     make_compare_test "different WFQ" "work_conserving/wfq_3_classes.sched"
       "work_conserving/wfq_3_classes_diff.sched"
-      (node ~index:(Some 2) "WFQ" (sub_node "FIFO" VeryDifferent));
+      (node ~index:(Some [ 2 ]) "WFQ" (sub_node "FIFO" VeryDifferent));
     (* RR(A,B) vs RR(A,B,C) *)
     make_compare_test "RR with arm added" "work_conserving/rr_2_classes.sched"
       "work_conserving/rr_3_classes.sched"
@@ -125,7 +125,7 @@ let compare_tests_different =
     make_compare_test "Strict with arms reordered"
       "work_conserving/strict_3_classes.sched"
       "work_conserving/strict_3_classes_jumbled.sched"
-      (node ~index:(Some 0) "SP" (sub_node "FIFO" VeryDifferent));
+      (node ~index:(Some [ 0 ]) "SP" (sub_node "FIFO" VeryDifferent));
     (* WFQ weights changed *)
     make_compare_test "WFQ with weights changed"
       "work_conserving/wfq_3_classes.sched"
@@ -134,8 +134,6 @@ let compare_tests_different =
     make_compare_test "WFQ with weights changed and arm added"
       "work_conserving/wfq_3_classes.sched"
       "work_conserving/wfq_very_diff.sched" (node "WFQ" VeryDifferent);
-    make_compare_test "sub-policy" "work_conserving/rr_hier_subpol.sched"
-      "work_conserving/rr_hier.sched" (node "RR" SuperPol);
     (* Test arm removal *)
     make_compare_test "RR with arm removed" "work_conserving/rr_3_classes.sched"
       "work_conserving/rr_2_classes.sched"
@@ -146,14 +144,29 @@ let compare_tests_different =
       (node "WFQ" (ArmsRemoved { old_count = 3; new_count = 2 }));
   ]
 
+let compare_tests_superpol =
+  let open Rio_compare.Compare in
+  [
+    make_compare_test "B is sub-pol of large tree"
+      "work_conserving/FIFO_B.sched" "work_conserving/rr_hier_superpol.sched"
+      (node ~index:(Some [ 1; 0 ]) "RR" SuperPol);
+    make_compare_test "sub-policy of rr_hier"
+      "work_conserving/rr_hier_subpol.sched" "work_conserving/rr_hier.sched"
+      (node ~index:(Some [ 1 ]) "RR" SuperPol);
+    make_compare_test "rr_hier is subpol of large tree"
+      "work_conserving/rr_hier_subpol.sched"
+      "work_conserving/rr_hier_superpol.sched"
+      (node ~index:(Some [ 1; 1 ]) "RR" SuperPol);
+  ]
+
 let compare_tests_deep =
   let open Rio_compare.Compare in
   [
     make_compare_test "RR/Strict hierarchy with arm added deep"
       "work_conserving/rr_strict_hier.sched"
       "work_conserving/rr_strict_hier_add_arm.sched"
-      (node ~index:(Some 2) "SP"
-         (sub_node ~index:(Some 0) "RR"
+      (node ~index:(Some [ 2 ]) "SP"
+         (sub_node ~index:(Some [ 0 ]) "RR"
             (sub_node "SP"
                (ArmsAdded
                   {
@@ -167,20 +180,20 @@ let compare_tests_deep =
     make_compare_test "RR/Strict hierarchy with SP swap deep"
       "work_conserving/rr_strict_hier.sched"
       "work_conserving/rr_strict_hier_swap_deep_2.sched"
-      (node ~index:(Some 2) "SP"
-         (sub_node ~index:(Some 0) "RR"
-            (sub_node ~index:(Some 0) "SP" (sub_node "FIFO" VeryDifferent))));
+      (node ~index:(Some [ 2 ]) "SP"
+         (sub_node ~index:(Some [ 0 ]) "RR"
+            (sub_node ~index:(Some [ 0 ]) "SP" (sub_node "FIFO" VeryDifferent))));
     make_compare_test "RR/Strict hierarchy with arm removed deep"
       "work_conserving/rr_strict_hier_add_arm.sched"
       "work_conserving/rr_strict_hier.sched"
-      (node ~index:(Some 2) "SP"
-         (sub_node ~index:(Some 0) "RR"
+      (node ~index:(Some [ 2 ]) "SP"
+         (sub_node ~index:(Some [ 0 ]) "RR"
             (sub_node "SP" (ArmsRemoved { old_count = 3; new_count = 2 }))));
   ]
 
 let suite =
   "serialization tests"
   >::: serialize_tests @ compare_tests_same @ compare_tests_different
-       @ compare_tests_deep
+       @ compare_tests_superpol @ compare_tests_deep
 
 let () = run_test_tt_main suite
