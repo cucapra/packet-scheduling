@@ -1,7 +1,7 @@
 classes B, RP, RT;
 
-flamingo = rr[fifo[RP], fifo[RT]];
-pineapple = rr[fifo[B], flamingo];
+flamingo = rr[RP, RT];
+pineapple = rr[B, flamingo];
 
 return pineapple
 

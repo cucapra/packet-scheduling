@@ -7,7 +7,7 @@ classes BX, BY, RP, RT;
 // RT packets are destined for Toronto
 
 b_policy = fifo[union[BY, BX]];
-r_policy = rr[fifo[RT], fifo[RP]];
+r_policy = rr[RT, RP];
 policy = rr[r_policy, b_policy];
 
 return policy

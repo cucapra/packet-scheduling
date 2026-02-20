@@ -97,6 +97,9 @@ policy:
         WIDTH EQUALS; t = INT; RBRACKET                 { StopAndGo (pl, t) }
 
     | VAR                                               { Var($1) }
+    /* Allow bare class names as shorthand for FIFO(Class(...)) */
+    | CLSS                                              { Fifo (Class($1)) }
+
 setlist:
     | pl = separated_list(COMMA, set)               { pl }
 arglist:

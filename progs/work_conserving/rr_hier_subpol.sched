@@ -3,6 +3,6 @@
 
 classes RP, RT;
 
-policy = rr[fifo[RT], fifo[RP]];
+policy = rr[RT, RP];
 
 return policy

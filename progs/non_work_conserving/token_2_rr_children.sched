@@ -1,7 +1,7 @@
 classes A, B, C, D;
 
-sub1 = rr [fifo[A], fifo[B]];
-sub2 = rr [fifo[C], fifo[D]];
+sub1 = rr [A, B];
+sub2 = rr [C, D];
 
 policy = tokenbucket [[sub1, sub2], width=20, time=50];
 

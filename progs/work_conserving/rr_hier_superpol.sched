@@ -1,8 +1,8 @@
 classes A, B, RP, RT;
 
-r_policy = rr[fifo[RP], fifo[RT]];
-policy = rr[fifo[B], r_policy];
-superpolicy = rr[fifo[A], policy];
+r_policy = rr[RP, RT];
+policy = rr[B, r_policy];
+superpolicy = rr[A, policy];
 
 return superpolicy
 

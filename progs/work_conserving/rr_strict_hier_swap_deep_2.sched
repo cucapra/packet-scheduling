@@ -1,7 +1,7 @@
 classes A, B, CU, CV, CW, CX;
 
-c_policy = rr[rr[fifo[CU], fifo[CV]], strict[fifo[CX], fifo[CW]]];
-policy = strict[fifo[A], fifo[B], c_policy];
+c_policy = rr[rr[CU, CV], strict[CX, CW]];
+policy = strict[A, B, c_policy];
 
 return policy
 
