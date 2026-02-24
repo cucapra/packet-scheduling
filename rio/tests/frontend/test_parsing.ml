@@ -11,7 +11,8 @@ let make_test name filename val_str =
   name >:: fun _ ->
   assert_equal val_str (filename |> parse |> Policy.to_string) ~printer:Fun.id
 
-let make_error_test name filename exn =
+let make_fail name exn =
+  let filename = "incorrect/" ^ name ^ ".sched" in
   name >:: fun _ -> assert_raises exn (fun () -> parse filename)
 
 let wc_tests =
@@ -34,16 +35,11 @@ let wc_tests =
 
 let error_tests =
   [
-    make_error_test "undeclared class" "incorrect/unbound_class.sched"
-      (Policy.UndeclaredClass "Z");
-    make_error_test "unbound var in middle of list of assignments"
-      "incorrect/unbound_var.sched" (Policy.UnboundVariable "r_police");
-    make_error_test "class used twice in policy"
-      "incorrect/duplicate_classes.sched" (Policy.DuplicateClass "B");
-    make_error_test "class used twice in one fifo"
-      "incorrect/duplicate_samepol.sched" (Policy.DuplicateClass "A");
-    make_error_test "fifo for multiple classes without union"
-      "incorrect/fifo_multiple.sched"
+    make_fail "unbound_class" (Policy.UndeclaredClass "Z");
+    make_fail "unbound_var" (Policy.UnboundVariable "r_police");
+    make_fail "duplicate_classes" (Policy.DuplicateClass "B");
+    make_fail "duplicate_samepol" (Policy.DuplicateClass "A");
+    make_fail "fifo_multiple"
       (Parser.ParserError { row = Some 4; col = Some 17; char = None });
   ]
 

@@ -10,7 +10,7 @@ let prog_to_json filename =
   filewithpath |> Parser.parse_file |> Policy.of_program |> Policy.to_json
 
 let expected_json file =
-  (* Grab the expected JSON file *)
+  (* Grab the _expected_ JSON object *)
   file |> Printf.sprintf "%s.json" |> ( ^ ) json_dir |> Yojson.Basic.from_file
 
 let make_test filename =
