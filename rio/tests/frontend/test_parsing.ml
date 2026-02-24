@@ -26,10 +26,10 @@ let wc_tests =
       "rr[fifo[A], fifo[B], fifo[C]]";
     make_test "rr and strict substitutions"
       "work_conserving/rr_strict_hier.sched"
-      "strict[fifo[A], fifo[B], rr[rr[fifo[CU], fifo[CV]], strict[fifo[CW], \
-       fifo[CX]]]]";
-    make_test "strict of 3" "work_conserving/strict_CBA.sched"
-      "strict[fifo[C], fifo[B], fifo[A]]";
+      "strict[fifo[A], fifo[B], rr[strict[fifo[CW], fifo[CX]], rr[fifo[CU], \
+       fifo[CV]]]]";
+    make_test "strict of 3" "work_conserving/strict_ABC.sched"
+      "strict[fifo[A], fifo[B], fifo[C]]";
   ]
 
 let _nwc_tests =

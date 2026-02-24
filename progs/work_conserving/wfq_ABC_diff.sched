@@ -1,0 +1,9 @@
+classes A, B, C;
+
+policy = wfq[(fifo[A], 2), (fifo[B], 2), (fifo[C], 4)];
+
+return policy
+
+// This is is designed to be doubly different compared to wfq_AB.sched.
+// 1. It has a different number of classes (3 vs 2).
+// 2. It has different weights (2,2,4 vs 1,2).

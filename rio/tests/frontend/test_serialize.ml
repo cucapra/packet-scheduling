@@ -25,7 +25,7 @@ let serialize_tests =
     make_test "rr hierarchy" "work_conserving/rr_union_hier.sched";
     make_test "rr n classes" "work_conserving/rr_ABC.sched";
     make_test "rr and strict" "work_conserving/rr_strict_hier.sched";
-    make_test "strict n classes" "work_conserving/strict_CBA.sched";
+    make_test "strict n classes" "work_conserving/strict_ABC.sched";
     make_test "complex tree" "work_conserving/complex_tree.sched";
   ]
 

@@ -1,0 +1,14 @@
+classes A, B, C, D, E, F, G, H;
+
+flamingo = strict[A, B, C];
+orangutan = rr[D, E, F];
+giraffe = union[G, H];
+
+return wfq[(flamingo, 1), (orangutan, 2), (giraffe, 3)]
+
+//              wfq
+//           /   |   \
+//         /     |     \
+//     strict    rr     union
+//     / | \    / | \    /  \
+//    A  B  C  D  E  F  G    H

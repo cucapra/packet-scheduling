@@ -1,9 +1,0 @@
-classes A, B, RP, RT;
-
-r_policy = rr[fifo[RP], fifo[RT]];
-policy = rr[fifo[B], r_policy];
-superpolicy = rr[fifo[A], policy];
-
-return superpolicy
-
-// This policy is designed to be a super-policy of rr_hier.sched
