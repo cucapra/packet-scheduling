@@ -31,6 +31,7 @@ let wc_tests =
        fifo[CV]]]]";
     make_test "strict of 3" "work_conserving/strict_ABC.sched"
       "strict[fifo[A], fifo[B], fifo[C]]";
+    make_test "new" "work_conserving/fifo_multiple.sched" "fifo[union[A, B]]";
   ]
 
 let error_tests =
@@ -39,8 +40,6 @@ let error_tests =
     make_fail "unbound_var" (Policy.UnboundVariable "r_police");
     make_fail "duplicate_classes" (Policy.DuplicateClass "B");
     make_fail "duplicate_samepol" (Policy.DuplicateClass "A");
-    make_fail "fifo_multiple"
-      (Parser.ParserError { row = Some 4; col = Some 17; char = None });
   ]
 
 let suite = "parsing tests" >::: wc_tests @ error_tests
