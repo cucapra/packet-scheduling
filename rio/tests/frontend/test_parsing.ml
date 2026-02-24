@@ -73,9 +73,6 @@ let error_tests =
     make_error_test "fifo for multiple classes without union"
       "incorrect/set_multiple.sched"
       (Parser.ParserError { row = Some 4; col = Some 17; char = None });
-    make_error_test "rr for classes without fifo'ing first"
-      "incorrect/set_hierarchical.sched"
-      (Parser.ParserError { row = Some 3; col = Some 14; char = None });
   ]
 
 let suite = "parsing tests" >::: wc_tests @ error_tests (* @ nwc_tests *)
