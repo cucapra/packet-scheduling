@@ -16,3 +16,12 @@ return policy
 // However, it has been given classes for `BX` and `BY` packets, not some
 // monolithic class `B`.
 // Therefore, it must merge them into a single policy using a `union` wrapper.
+
+//              rr
+//             /  \
+//            /    \
+//           /      \
+//          /        \
+//     union         rr
+//     /   \         /  \
+//   BX     BY     RP    RT

@@ -16,30 +16,19 @@ let make_error_test name filename exn =
 
 let wc_tests =
   [
-    make_test "single class policy" "work_conserving/drop_a_class.sched"
-      "fifo[A]";
-    make_test "fifo 1 class" "work_conserving/fifo_1_class_sugar.sched"
-      "fifo[A]";
-    make_test "fifo 1 class" "work_conserving/fifo_1_class.sched" "fifo[A]";
-    make_test "fifo of 3" "work_conserving/fifo_n_classes.sched"
+    make_test "single class policy" "work_conserving/drop_class.sched" "fifo[A]";
+    make_test "fifo 1 class" "work_conserving/fifo_A.sched" "fifo[A]";
+    make_test "union of 3" "work_conserving/union_ABC.sched"
       "fifo[union[A, B, C]]";
-    make_test "rr of 1" "work_conserving/rr_1_class.sched" "rr[fifo[A]]";
-    make_test "rr of 2" "work_conserving/rr_2_classes.sched"
-      "rr[fifo[union[A, B]]]";
-    make_test "multiple assignments" "work_conserving/rr_hier_merge_sugar.sched"
+    make_test "multiple assignments" "work_conserving/rr_union_hier.sched"
       "rr[fifo[union[BX, BY]], rr[fifo[RP], fifo[RT]]]";
-    make_test "2 assignments w/ substitutions" "work_conserving/rr_hier.sched"
-      "rr[fifo[B], rr[fifo[RP], fifo[RT]]]";
-    make_test "3 classes with substitutions"
-      "work_conserving/rr_n_class_hier.sched"
-      "rr[fifo[A], fifo[B], rr[rr[fifo[CU], fifo[CV]], rr[fifo[CW], fifo[CX]]]]";
-    make_test "rr of 3" "work_conserving/rr_n_classes.sched"
+    make_test "rr of 3" "work_conserving/rr_ABC.sched"
       "rr[fifo[A], fifo[B], fifo[C]]";
     make_test "rr and strict substitutions"
-      "work_conserving/rr_strict_n_classes_hier.sched"
+      "work_conserving/rr_strict_hier.sched"
       "strict[fifo[A], fifo[B], rr[rr[fifo[CU], fifo[CV]], strict[fifo[CW], \
        fifo[CX]]]]";
-    make_test "strict of 3" "work_conserving/strict_n_classes.sched"
+    make_test "strict of 3" "work_conserving/strict_CBA.sched"
       "strict[fifo[C], fifo[B], fifo[A]]";
   ]
 
