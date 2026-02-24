@@ -60,18 +60,16 @@ let _nwc_tests =
 
 let error_tests =
   [
-    make_error_test "undeclared class" "incorrect/undeclared_classes.sched"
+    make_error_test "undeclared class" "incorrect/unbound_class.sched"
       (Policy.UndeclaredClass "Z");
-    make_error_test "unbound variable" "incorrect/unbound_var.sched"
-      (Policy.UnboundVariable "policy");
     make_error_test "unbound var in middle of list of assignments"
-      "incorrect/unbound_var_hier.sched" (Policy.UnboundVariable "r_polic");
+      "incorrect/unbound_var.sched" (Policy.UnboundVariable "r_police");
     make_error_test "class used twice in policy"
       "incorrect/duplicate_classes.sched" (Policy.DuplicateClass "B");
     make_error_test "class used twice in one fifo"
       "incorrect/duplicate_samepol.sched" (Policy.DuplicateClass "A");
     make_error_test "fifo for multiple classes without union"
-      "incorrect/set_multiple.sched"
+      "incorrect/fifo_multiple.sched"
       (Parser.ParserError { row = Some 4; col = Some 17; char = None });
   ]
 
