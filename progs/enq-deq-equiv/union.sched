@@ -1,0 +1,7 @@
+classes A, B, C;
+
+policy = union[A, B, C];
+
+return policy
+
+// This program doesn't actualy care to distinguish between the classes, so we can just return the union of all the classes. Implicitly this is a FIFO policy.

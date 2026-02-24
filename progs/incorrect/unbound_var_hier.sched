@@ -1,7 +1,0 @@
-classes BX, BY, RP, RT;
-
-b_policy = fifo[union[BX, BY]];
-r_policy = rr[fifo[RP], fifo[RT]];
-policy = rr[b_policy, r_polic]; // user made a typo, meant to reference `r_policy`
-
-return policy
