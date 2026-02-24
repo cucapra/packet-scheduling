@@ -32,21 +32,6 @@ let wc_tests =
       "strict[fifo[A], fifo[B], fifo[C]]";
   ]
 
-let _nwc_tests =
-  [
-    make_test "leaky bucket of 2" "non_work_conserving/leaky_2_classes.sched"
-      "leaky[[A, B], width = 5, buffer = 10]";
-    make_test "token bucket of 2 round robins"
-      "non_work_conserving/token_2_rr_children.sched"
-      "token[[rr[A, B], rr[C, D]], width = 20, time = 50]";
-    make_test "stop and go with 3 classes"
-      "non_work_conserving/sg_3_classes.sched"
-      "stopandgo[[stopandgo[[A, B], width = 10], stopandgo[[C], width = 10]], \
-       width = 5]";
-    make_test "rcsp for 4 classes" "non_work_conserving/rcsp_4_classes.sched"
-      "rcsp[A, B, C, D]";
-  ]
-
 let error_tests =
   [
     make_error_test "undeclared class" "incorrect/unbound_class.sched"
@@ -62,5 +47,5 @@ let error_tests =
       (Parser.ParserError { row = Some 4; col = Some 17; char = None });
   ]
 
-let suite = "parsing tests" >::: wc_tests @ error_tests (* @ nwc_tests *)
+let suite = "parsing tests" >::: wc_tests @ error_tests
 let () = run_test_tt_main suite
