@@ -1,5 +1,5 @@
 classes A, B, C;
 
-policy = fifo[union[A, B, C]];
+policy = strict[C, B, A];
 
 return policy

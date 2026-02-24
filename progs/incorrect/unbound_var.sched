@@ -1,5 +1,7 @@
-classes X, Y, Z;
+classes BX, BY, RP, RT;
 
-foo = strict[fifo[X], fifo[Y], fifo[Z]];
+b_policy = union[BX, BY];
+r_policy = rr[RP, RT];
+policy = rr[b_policy, r_police]; // user made a typo, meant to reference `r_policy`
 
-return policy // user probably meant to return `foo`
+return policy

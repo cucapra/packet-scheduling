@@ -14,7 +14,7 @@ let parse_pcap name = pcap_dir ^ name |> Packet.pkts_from_file
 let progs_and_pcaps =
   (* just file names, not paths *)
   [
-    ("fifo.sched", "fcfs_generated.pcap");
+    ("union.sched", "fcfs_generated.pcap");
     ("rr_3_classes.sched", "two_then_three.pcap");
     ("strict_3_classes.sched", "two_then_three.pcap");
     ("wfq_3_classes.sched", "two_then_three.pcap");
