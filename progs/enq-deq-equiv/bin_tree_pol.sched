@@ -1,11 +1,11 @@
 classes A, B, C, D, E, F, G;
 
-ab = strict[fifo[A], fifo[B]];
-cd = rr[fifo[C], fifo[D]];
-ef = rr[fifo[E], fifo[F]];
+ab = strict[A, B];
+cd = rr[C, D];
+ef = rr[E, F];
 
 left = rr[ab, cd];
-right = strict[ef, fifo[G]];
+right = strict[ef, G];
 
 policy = strict[left, right];
 
