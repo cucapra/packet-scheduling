@@ -1,7 +1,0 @@
-classes A, B, D;
-
-policy = wfq[(fifo[B], 2), (fifo[A], 1), (fifo[D], 3)];
-
-return policy
-
-// This IS genuinely different from wfq_n_classes.sched because a new class `D` has been introduced with weight 3.
