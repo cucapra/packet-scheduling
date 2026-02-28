@@ -43,14 +43,14 @@ let armsadded =
     make_compare_test "RR with arm added at end" "rr_AB" "rr_ABC"
       (Change
          ( [],
-           ArmsAdded
-             { old_count = 2; new_count = 3; details = "added fifo[C] at 2" } ));
+           ArmsAdded { old_count = 2; new_count = 3; details = "added fifo[C]" }
+         ));
     (* RR(A,B) vs RR(B,A,C) *)
     make_compare_test "RR with arm added whilst reordering" "rr_AB" "rr_BAC"
       (Change
          ( [],
-           ArmsAdded
-             { old_count = 2; new_count = 3; details = "added fifo[C] at 2" } ));
+           ArmsAdded { old_count = 2; new_count = 3; details = "added fifo[C]" }
+         ));
     (* WFQ(A,B) vs WFQ(A,B,C) *)
     make_compare_test "WFQ with arm added" "wfq_AB" "wfq_ABC"
       (Change
@@ -59,7 +59,7 @@ let armsadded =
              {
                old_count = 2;
                new_count = 3;
-               details = "added fifo[C] at 2 with weight 3";
+               details = "added fifo[C] with weight 3";
              } ));
   ]
 
@@ -113,8 +113,7 @@ let deep =
       (Change
          ( [ 2 ],
            ArmsAdded
-             { old_count = 3; new_count = 4; details = "added fifo[NEW] at 3" }
-         ));
+             { old_count = 3; new_count = 4; details = "added fifo[NEW]" } ));
     make_compare_test "complex tree with an rr-reordering deep down"
       "complex_tree" "complex_tree_swap_rr_arms" Same;
     make_compare_test "complex tree with an SP reordering deep down"

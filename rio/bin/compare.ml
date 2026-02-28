@@ -138,13 +138,16 @@ and compare_rr_like ps1 ps2 =
   let found, idx = is_sub_policy (RR ps1) (RR ps2) in
   if found then Change (Option.get idx, SuperPol)
   else if len2 > len1 && subset ps1 ps2 then
-    let details =
+    (* Order-insensitive: just list what was added, no index needed *)
+    let added =
       ps2
-      |> List.mapi (fun i p -> (i, p))
-      |> List.filter (fun (_, p) -> not (List.mem p ps1))
-      |> List.map (fun (i, p) ->
-          Printf.sprintf "added %s at %d" (Frontend.Policy.to_string p) i)
-      |> String.concat ", "
+      |> List.filter (fun p -> not (List.mem p ps1))
+      |> List.map (fun p -> Frontend.Policy.to_string p)
+    in
+    let details =
+      match added with
+      | [] -> "" (* Shouldn't happen if len2 > len1 and subset ps1 ps2 *)
+      | _ -> "added " ^ String.concat ", " added
     in
     Change ([], ArmsAdded { old_count = len1; new_count = len2; details })
   else if len1 > len2 && subset ps2 ps1 then
@@ -169,19 +172,24 @@ and compare_wfq ps1 ws1 ps2 ws2 =
   else if len2 > len1 && subset ps1 ps2 && old_weights_preserved ws1 ws2 len1
   then
     (* Arms added with same weights for old arms *)
-    let added =
-      ps2
-      |> List.mapi (fun i p -> (i, p))
-      |> List.filter (fun (_, p) -> not (List.mem p ps1))
+    (* Collect only newly added (arm, weight) pairs, without exposing index. *)
+    let added_pairs =
+      (* We need to pair each p2 with its corresponding w2, then filter by not in ps1 *)
+      let zipped = List.combine ps2 ws2 in
+      zipped |> List.filter (fun (p, _w) -> not (List.mem p ps1))
     in
     let details =
-      added
-      |> List.map (fun (i, p) ->
-          let w = List.nth ws2 i in
-          Printf.sprintf "added %s at %d with weight %g"
-            (Frontend.Policy.to_string p)
-            i w)
-      |> String.concat ", "
+      match added_pairs with
+      | [] -> ""
+      | _ ->
+          let parts =
+            added_pairs
+            |> List.map (fun (p, w) ->
+                Printf.sprintf "added %s with weight %g"
+                  (Frontend.Policy.to_string p)
+                  w)
+          in
+          String.concat ", " parts
     in
     Change ([], ArmsAdded { old_count = len1; new_count = len2; details })
   else if len1 > len2 && subset ps2 ps1 then
