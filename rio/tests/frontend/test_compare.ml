@@ -51,6 +51,17 @@ let armsadded =
          ( [],
            ArmsAdded { old_count = 2; new_count = 3; details = "added fifo[C]" }
          ));
+    (* RR(A,B) vs RR(D,B,A,C) *)
+    make_compare_test "RR with two arms added whilst reordering" "rr_AB"
+      "rr_DBAC"
+      (Change
+         ( [],
+           ArmsAdded
+             {
+               old_count = 2;
+               new_count = 4;
+               details = "added fifo[C], fifo[D]";
+             } ));
     (* WFQ(A,B) vs WFQ(A,B,C) *)
     make_compare_test "WFQ with arm added" "wfq_AB" "wfq_ABC"
       (Change
