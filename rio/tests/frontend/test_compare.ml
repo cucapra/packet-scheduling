@@ -98,12 +98,12 @@ let armsremoved =
   (* In reality we will just give up. *)
   [
     make_compare_test "RR with arm removed" "rr_ABC" "rr_AB"
-      (Change ([], ArmsRemoved { old_count = 3; new_count = 2 }));
+      (Change ([], VeryDifferent));
     make_compare_test "WFQ with arm removed" "wfq_ABC" "wfq_AB"
-      (Change ([], ArmsRemoved { old_count = 3; new_count = 2 }));
+      (Change ([], VeryDifferent));
     make_compare_test "complex tree remove arm deep" "complex_tree_add_arm_deep"
       "complex_tree"
-      (Change ([ 2 ], ArmsRemoved { old_count = 4; new_count = 3 }));
+      (Change ([ 2 ], VeryDifferent));
   ]
 
 let verydiff =

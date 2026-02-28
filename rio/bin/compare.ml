@@ -1,9 +1,11 @@
 open Frontend.Policy
 
+type path = int list
+
 (* A structural diff that can describe *where* a change occurs. *)
 type t =
   | Same
-  | Change of int list * change
+  | Change of path * change
 (* Path of child indices; change type *)
 (* An empty path means that the change is at the root level *)
 
@@ -12,11 +14,6 @@ and change =
       old_count : int;
       new_count : int;
       details : string; (* human-readable description of what was added *)
-    }
-  | ArmsRemoved of {
-      old_count : int;
-      new_count : int;
-          (* Not bothering with a human-readable description; in the hardware we will always consider this to be a terribly dramatic change. *)
     }
   | VeryDifferent
   | SuperPol
@@ -100,7 +97,7 @@ let rec compare_lists ps1 ps2 =
     loop 0 ps1 ps2
 
 and details_strict ps1 ps2 =
-  (* For SP, we want to report what was added in a human-readable way, e.g. "added C at index 2" or "added B at index 1". *)
+  (* For SP, report what was added in a human-readable way, e.g. "added C at index 2" or "added B at index 1". *)
   let rec go i1 i2 l1 l2 acc =
     match (l1, l2) with
     | _, [] -> acc
@@ -117,7 +114,7 @@ and details_strict ps1 ps2 =
   in
   go 0 0 ps1 ps2 [] |> List.rev |> String.concat ", "
 
-(* Strict comparison: detect arms added/removed (preserving order) or recurse into children. *)
+(* Strict comparison: detect arms added (order-preserving) or treat other diffs. *)
 and compare_strict ps1 ps2 =
   let len1 = List.length ps1 in
   let len2 = List.length ps2 in
@@ -127,16 +124,16 @@ and compare_strict ps1 ps2 =
     (* Arms added: old arms appear in the same order in new list *)
     let details = details_strict ps1 ps2 in
     Change ([], ArmsAdded { old_count = len1; new_count = len2; details })
-  else if len1 > len2 && is_ordered_subsequence ps2 ps1 then
-    (* Arms removed: new arms appear in the same order in old list *)
-    Change ([], ArmsRemoved { old_count = len1; new_count = len2 })
+  else if len1 > len2 then
+    (* Some arms were removed: treat as VeryDifferent *)
+    Change ([], VeryDifferent)
   else if len1 = len2 && subset ps1 ps2 && subset ps2 ps1 then
     (* Same arms but different order *)
     Change ([], VeryDifferent)
   else compare_lists ps1 ps2
 (* else, we can't figure it out at the root level so we'll dig deeper *)
 
-(* RR comparison: detect arms added/removed or recurse into children. *)
+(* RR comparison: detect arms added or removed. Removals are considered VeryDifferent. Otherwise recurse *)
 and compare_rr_like ps1 ps2 =
   let len1 = List.length ps1 in
   let len2 = List.length ps2 in
@@ -155,8 +152,9 @@ and compare_rr_like ps1 ps2 =
       | _ -> "added " ^ String.concat ", " added
     in
     Change ([], ArmsAdded { old_count = len1; new_count = len2; details })
-  else if len1 > len2 && subset ps2 ps1 then
-    Change ([], ArmsRemoved { old_count = len1; new_count = len2 })
+  else if len1 > len2 then
+    (* Arms were removed: treat as VeryDifferent *)
+    Change ([], VeryDifferent)
   else compare_lists ps1 ps2
 
 (* Helper: check if old weights are preserved in new weights *)
@@ -165,7 +163,7 @@ and old_weights_preserved old_weights new_weights old_count =
   && List.for_all2 ( = ) old_weights
        (List.filteri (fun i _ -> i < old_count) new_weights)
 
-(* WFQ comparison: detect arms added/removed or recurse into children. *)
+(* WFQ comparison: detect arms added or removed. Removals are considered VeryDifferent. If arms are the same but weights differ, that's also VeryDifferent. Otherwise recurse. *)
 and compare_wfq ps1 ws1 ps2 ws2 =
   let len1 = List.length ps1 in
   let len2 = List.length ps2 in
@@ -179,7 +177,7 @@ and compare_wfq ps1 ws1 ps2 ws2 =
     (* Arms added with same weights for old arms *)
     (* Collect only newly added (arm, weight) pairs, without exposing index. *)
     let added_pairs =
-      (* We need to pair each p2 with its corresponding w2, then filter by not in ps1 *)
+      (* Pair each p2 with its corresponding w2, then filter by not in ps1 *)
       let zipped = List.combine ps2 ws2 in
       zipped |> List.filter (fun (p, _w) -> not (List.mem p ps1))
     in
@@ -197,15 +195,9 @@ and compare_wfq ps1 ws1 ps2 ws2 =
           String.concat ", " parts
     in
     Change ([], ArmsAdded { old_count = len1; new_count = len2; details })
-  else if len1 > len2 && subset ps2 ps1 then
-    (* Check if new weights match first len2 of old weights *)
-    let new_weights_match =
-      len2 <= List.length ws1
-      && List.for_all2 ( = ) ws2 (List.filteri (fun i _ -> i < len2) ws1)
-    in
-    if new_weights_match then
-      Change ([], ArmsRemoved { old_count = len1; new_count = len2 })
-    else compare_lists ps1 ps2
+  else if len1 > len2 then
+    (* Arms removed: treat as VeryDifferent *)
+    Change ([], VeryDifferent)
   else compare_lists ps1 ps2
 
 (* Main structural comparison *)
@@ -242,7 +234,5 @@ and change_to_string = function
       if details = "" then
         Printf.sprintf "ArmsAdded %d → %d" old_count new_count
       else Printf.sprintf "ArmsAdded %d → %d: %s" old_count new_count details
-  | ArmsRemoved { old_count; new_count } ->
-      Printf.sprintf "ArmsRemoved %d → %d" old_count new_count
   | VeryDifferent -> "VeryDifferent"
   | SuperPol -> "SuperPol"
