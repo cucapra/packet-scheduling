@@ -24,8 +24,8 @@ let serialize_tests =
     (* If a class is not mentioned in the policy, it is dropped *)
     make_test "fifo_A";
     (* fifo[A] is stable *)
-    make_test "union_ABC";
-    (* union[A,B,C] is converted into fifo[A,B,C] *)
+    make_test "union_GH";
+    (* union[G,H] is converted into fifo[G,H] *)
     make_test "strict_BA";
     (* strict[B,A] is stable *)
     make_test "rr_BAC";

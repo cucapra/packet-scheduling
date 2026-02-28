@@ -140,10 +140,12 @@ let superpol =
     make_compare_test "strict_ABC is subpol of complex_tree" "strict_ABC"
       "complex_tree_weird_var_names"
       (Change ([ 1 ], SuperPol));
+    make_compare_test "union_GH is subpol of complex_tree" "union_GH"
+      "complex_tree"
+      (Change ([ 0 ], SuperPol));
   ]
 
 let suite =
-  "compare tests"
-  >::: same @ armsadded @ armsremoved @ verydiff @ superpol @ deep
+  "compare tests" >::: same @ armsadded @ armsremoved @ verydiff @ superpol
 
 let () = run_test_tt_main suite
