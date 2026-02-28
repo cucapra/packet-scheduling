@@ -1,0 +1,14 @@
+classes A, B, C, D, E, F, G, H;
+
+left = strict[C, B, A];
+mid = rr[F, E, D];
+right = union[G, H];
+
+return wfq[(left, 1), (mid, 2), (right, 3)]
+
+//              wfq
+//           /   |   \
+//         /     |     \
+//     strict    rr     union
+//     / | \    / | \    /  \
+//    C  B  A  F  E  D  G    H

@@ -115,11 +115,11 @@ let deep =
            ArmsAdded
              { old_count = 3; new_count = 4; details = "added fifo[NEW] at 3" }
          ));
-    make_compare_test "RR/Strict hierarchy with RR swap deep" "rr_strict_hier"
-      "rr_strict_hier_swap_deep_1" Same;
-    make_compare_test "RR/Strict hierarchy with SP swap deep" "rr_strict_hier"
-      "rr_strict_hier_swap_deep_2"
-      (Change ([ 2; 0; 0 ], VeryDifferent));
+    make_compare_test "complex tree with an rr-reordering deep down"
+      "complex_tree" "complex_tree_swap_rr_arms" Same;
+    make_compare_test "complex tree with an SP reordering deep down"
+      "complex_tree" "complex_tree_swap_sp_arms"
+      (Change ([ 1; 0 ], VeryDifferent));
     make_compare_test "complex tree remove arm deep" "complex_tree_add_arm_deep"
       "complex_tree"
       (Change ([ 2 ], ArmsRemoved { old_count = 4; new_count = 3 }));
