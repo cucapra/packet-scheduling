@@ -12,3 +12,4 @@ return wfq[(left, 1), (mid, 2), (right, 3)]
 //     strict    rr     union
 //     / | \    / | \    /  \
 //    A  B  C  D  E  F  G    H
+// This is the same tree as complex_tree, but with the arms under RR swapped: they used to be F,E,D but now they're D,E,F. We expect the report to say that there was _no_ change, since RR is insensitive to the order of its arms.
