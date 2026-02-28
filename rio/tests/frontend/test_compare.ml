@@ -138,7 +138,7 @@ let superpol =
       "complex_tree"
       (Change ([ 1; 0 ], SuperPol));
     make_compare_test "strict_ABC is subpol of complex_tree" "strict_ABC"
-      "complex_tree_weird_var_names"
+      "complex_tree"
       (Change ([ 1 ], SuperPol));
     make_compare_test "union_GH is subpol of complex_tree" "union_GH"
       "complex_tree"
