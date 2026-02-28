@@ -48,13 +48,12 @@ let rec normalize p =
       RR (List.sort compare ps)
   | WFQ (ps, ws) ->
       let ps = List.map normalize ps in
-      let pairs = List.combine ps ws in
       let pairs =
         List.sort
           (fun (p1, w1) (p2, w2) ->
             let c = compare p1 p2 in
             if c <> 0 then c else compare w1 w2)
-          pairs
+          (List.combine ps ws)
       in
       let ps, ws = List.split pairs in
       WFQ (ps, ws)
