@@ -1,34 +1,40 @@
 open Frontend
 open OUnit2
 
-let root_dir = "../../../../../"
-let prog_dir = root_dir ^ "progs/"
+let prog_dir = "../../../../../progs/"
 let json_dir = "jsons/"
 
-let prog_to_json file =
-  prog_dir ^ file |> Parser.parse_file |> Policy.of_program |> Json.from_policy
+let prog_to_json filename =
+  (* Actually convert to JSON *)
+  let filewithpath = prog_dir ^ "work_conserving/" ^ filename ^ ".sched" in
+  filewithpath |> Parser.parse_file |> Policy.of_program |> Policy.to_json
 
-let make_test name file =
-  let base = file |> Filename.basename |> Filename.remove_extension in
-  let json = json_dir ^ Printf.sprintf "%s.json" base in
+let expected_json file =
+  (* Grab the _expected_ JSON object *)
+  file |> Printf.sprintf "%s.json" |> ( ^ ) json_dir |> Yojson.Basic.from_file
 
-  name >:: fun _ ->
-  assert_equal
-    (Yojson.Basic.from_file json)
-    (prog_to_json file) ~printer:Yojson.Basic.pretty_to_string
-    ~cmp:Yojson.Basic.equal
+let make_test filename =
+  filename >:: fun _ ->
+  assert_equal (expected_json filename) (prog_to_json filename)
+    ~printer:Yojson.Basic.pretty_to_string ~cmp:Yojson.Basic.equal
 
-let tests =
+let serialize_tests =
   [
-    make_test "single class policy" "work_conserving/drop_class.sched";
-    make_test "fifo 1 class" "work_conserving/fifo_A.sched";
-    make_test "union ABC" "work_conserving/union_ABC.sched";
-    make_test "rr hierarchy" "work_conserving/rr_union_hier.sched";
-    make_test "rr n classes" "work_conserving/rr_ABC.sched";
-    make_test "rr and strict" "work_conserving/rr_strict_hier.sched";
-    make_test "strict n classes" "work_conserving/strict_CBA.sched";
-    make_test "complex tree" "work_conserving/complex_tree.sched";
+    make_test "drop_class";
+    (* If a class is not mentioned in the policy, it is dropped *)
+    make_test "fifo_A";
+    (* fifo[A] is stable *)
+    make_test "union_GH";
+    (* union[G,H] is converted into fifo[G,H] *)
+    make_test "strict_BA";
+    (* strict[B,A] is stable *)
+    make_test "rr_BAC";
+    (* rr[B,A,C] is convered into rr[A,B,C] *)
+    make_test "complex_tree";
+    (* a complex tree wit wfq, rr, and strict policies and union used to merge classes
+     * The children of the rr get sorted, the children of the strict stay in
+     * the same order, and the union gets converted to fifo *)
   ]
 
-let suite = "serialization tests" >::: tests
+let suite = "serialization tests" >::: serialize_tests
 let () = run_test_tt_main suite

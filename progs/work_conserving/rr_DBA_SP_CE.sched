@@ -1,0 +1,7 @@
+classes A, B, C, D, E;
+
+policy = rr[D, B, A, strict[C, E]];
+
+return policy
+
+// We'll compare this to RR(A,B) and we'll expect it to report that fifo D and sp[C,E] were added

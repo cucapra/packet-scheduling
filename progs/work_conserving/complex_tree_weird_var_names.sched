@@ -1,14 +1,14 @@
 classes A, B, C, D, E, F, G, H;
 
-left = strict[A, B, C];
-mid = rr[F, E, D];
-right = union[G, H];
+flamingo = strict[A, B, C];
+orangutan = rr[D, E, F];
+giraffe = union[G, H];
 
-return wfq[(left, 1), (mid, 2), (right, 3)]
+return wfq[(flamingo, 1), (orangutan, 2), (giraffe, 3)]
 
 //              wfq
 //           /   |   \
 //         /     |     \
 //     strict    rr     union
 //     / | \    / | \    /  \
-//    A  B  C  F  E  D  G    H
+//    A  B  C  D  E  F  G    H

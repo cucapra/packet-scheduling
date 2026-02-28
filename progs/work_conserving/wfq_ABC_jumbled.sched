@@ -1,0 +1,7 @@
+classes A, B, C;
+
+policy = wfq[(B, 2), (A, 1), (C, 3)];
+
+return policy
+
+// Not meaningfully different from wfq_ABC.sched, just jumbled the order of the classes. Should be classed as `Same` as wfq_ABC.sched.

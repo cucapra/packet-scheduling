@@ -25,7 +25,6 @@ let rec sub cl st used (p : Ast.stream) =
           [ c ])
     | Ast.Union sets -> sets |> List.map sub_set |> List.flatten
   in
-
   match p with
   | Var x ->
       let p, st = lookup x st in
@@ -39,13 +38,33 @@ let rec sub cl st used (p : Ast.stream) =
       WFQ (sub_ps ps, List.map float_of_int ws)
   | _ -> failwith "ERROR: unsupported policy"
 
-(* Look up any variables and substitute them in. *)
-let of_program (classes, assigns, ret) = sub classes assigns (ref []) ret
+let rec normalize p =
+  match p with
+  | FIFO cs -> FIFO (List.sort String.compare cs)
+  | EDF cs -> EDF (List.sort String.compare cs)
+  | Strict ps -> Strict (List.map normalize ps)
+  | RR ps ->
+      let ps = List.map normalize ps in
+      RR (List.sort compare ps)
+  | WFQ (ps, ws) ->
+      let ps = List.map normalize ps in
+      let pairs =
+        List.sort
+          (fun (p1, w1) (p2, w2) ->
+            let c = compare p1 p2 in
+            if c <> 0 then c else compare w1 w2)
+          (List.combine ps ws)
+      in
+      let ps, ws = List.split pairs in
+      WFQ (ps, ws)
+
+(* Look up any variables and substitute them in. Then normalize the resulting policy. *)
+let of_program (classes, assigns, ret) =
+  sub classes assigns (ref []) ret |> normalize
 
 let rec to_string p =
   let fmt = Printf.sprintf in
   let join lst to_string = lst |> List.map to_string |> String.concat ", " in
-
   match p with
   | FIFO cs when List.length cs > 1 -> fmt "fifo[union[%s]]" (join cs Fun.id)
   | EDF cs when List.length cs > 1 -> fmt "edf[union[%s]]" (join cs Fun.id)
@@ -57,3 +76,13 @@ let rec to_string p =
       let pws = List.combine ps ws in
       let to_string (p, w) = fmt "(%s, %f)" (to_string p) w in
       fmt "wfq[%s]" (join pws to_string)
+
+let rec to_json p : Yojson.Basic.t =
+  match p with
+  | FIFO cs -> `Assoc [ ("FIFO", `List (List.map (fun c -> `String c) cs)) ]
+  | EDF cs -> `Assoc [ ("EDF", `List (List.map (fun c -> `String c) cs)) ]
+  | Strict ps -> `Assoc [ ("Strict", `List (List.map to_json ps)) ]
+  | RR ps -> `Assoc [ ("RR", `List (List.map to_json ps)) ]
+  | WFQ (ps, ws) ->
+      let pairs = List.map2 (fun p w -> `List [ to_json p; `Float w ]) ps ws in
+      `Assoc [ ("WFQ", `List pairs) ]

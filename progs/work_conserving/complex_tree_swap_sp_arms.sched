@@ -1,0 +1,15 @@
+classes A, B, C, D, E, F, G, H;
+
+left = strict[C, B, A];
+mid = rr[F, E, D];
+right = union[G, H];
+
+return wfq[(left, 1), (mid, 2), (right, 3)]
+
+//              wfq
+//           /   |   \
+//         /     |     \
+//     strict    rr     union
+//     / | \    / | \    /  \
+//    C  B  A  F  E  D  G    H
+// This is the same tree as complex_tree, but with the arms under SP swapped: they used to be A,B,C but now they're C,B,A. We expect the report to say that there was a major difference that was not at the root.
