@@ -55,8 +55,6 @@ and is_sub_policy p1 p2 : bool * path =
         in
         loop 0 ps
 
-and found_at (idx : path) (chg : change) : t = Change (idx, chg)
-
 and compare_lists ps1 ps2 =
   (* Compare lists of children structurally and report the index of the change. *)
   let len1 = List.length ps1 in
@@ -71,7 +69,9 @@ and compare_lists ps1 ps2 =
           | Same -> loop (i + 1) t1 t2
           | Change (child_path, child_change) ->
               Change (i :: child_path, child_change))
-      | _ -> Same (* Same length guaranteed by outer condition *)
+      | _ ->
+          failwith
+            "same length guaranteed by outer condition; we'll never get here"
     in
     loop 0 ps1 ps2
 
@@ -97,9 +97,7 @@ and details_strict ps1 ps2 =
 and compare_strict ps1 ps2 =
   let len1 = List.length ps1 in
   let len2 = List.length ps2 in
-  let found, idx = is_sub_policy (Strict ps1) (Strict ps2) in
-  if found then found_at idx SuperPol
-  else if len2 > len1 && is_ordered_subsequence ps1 ps2 then
+  if len2 > len1 && is_ordered_subsequence ps1 ps2 then
     let details = details_strict ps1 ps2 in
     Change ([], ArmsAdded { old_count = len1; new_count = len2; details })
   else if len1 > len2 then Change ([], VeryDifferent) (* Arms removed *)
@@ -119,9 +117,7 @@ and details_added_indexless added =
 and compare_rr_like ps1 ps2 =
   let len1 = List.length ps1 in
   let len2 = List.length ps2 in
-  let found, idx = is_sub_policy (RR ps1) (RR ps2) in
-  if found then found_at idx SuperPol
-  else if len2 > len1 && subset ps1 ps2 then
+  if len2 > len1 && subset ps1 ps2 then
     let added = list_diff ps2 ps1 in
     let details = details_added_indexless added in
     Change ([], ArmsAdded { old_count = len1; new_count = len2; details })
@@ -139,9 +135,7 @@ and old_weights_preserved old_weights new_weights =
 and compare_wfq ps1 ws1 ps2 ws2 =
   let len1 = List.length ps1 in
   let len2 = List.length ps2 in
-  let found, idx = is_sub_policy (WFQ (ps1, ws1)) (WFQ (ps2, ws2)) in
-  if found then found_at idx SuperPol
-  else if ps1 = ps2 && ws1 <> ws2 then Change ([], VeryDifferent)
+  if ps1 = ps2 && ws1 <> ws2 then Change ([], VeryDifferent)
     (* Same arms, weights changed *)
   else if len2 > len1 && subset ps1 ps2 && old_weights_preserved ws1 ws2 then
     let added_pairs =
@@ -165,14 +159,15 @@ and compare_wfq ps1 ws1 ps2 ws2 =
 and analyze p1 p2 : t =
   if p1 = p2 then Same
   else
-    match (p1, p2) with
-    | FIFO _, FIFO _ | EDF _, EDF _ -> Change ([], VeryDifferent)
-    | Strict ps1, Strict ps2 -> compare_strict ps1 ps2
-    | RR ps1, RR ps2 -> compare_rr_like ps1 ps2
-    | WFQ (ps1, ws1), WFQ (ps2, ws2) -> compare_wfq ps1 ws1 ps2 ws2
-    | _, _ ->
-        let found, idx = is_sub_policy p1 p2 in
-        if found then Change (idx, SuperPol) else Change ([], VeryDifferent)
+    let found, idx = is_sub_policy p1 p2 in
+    if found then Change (idx, SuperPol)
+    else
+      match (p1, p2) with
+      | FIFO _, FIFO _ | EDF _, EDF _ -> Change ([], VeryDifferent)
+      | Strict ps1, Strict ps2 -> compare_strict ps1 ps2
+      | RR ps1, RR ps2 -> compare_rr_like ps1 ps2
+      | WFQ (ps1, ws1), WFQ (ps2, ws2) -> compare_wfq ps1 ws1 ps2 ws2
+      | _, _ -> Change ([], VeryDifferent)
 
 let rec to_string diff =
   match diff with
