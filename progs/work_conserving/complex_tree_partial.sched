@@ -1,0 +1,24 @@
+classes A, B, C, G, H;
+
+left = strict[A, B, C];
+right = union[G, H];
+
+return wfq[(left, 1), (right, 3)]
+
+// The present tree is
+//             wfq
+//           /   \
+//         /     \
+//     strict    union
+//     / | \      /  \
+//    A  B  C    G    H
+//
+// and this is complex_tree:
+//              wfq
+//           /   |   \
+//         /     |     \
+//     strict    rr     union
+//     / | \    / | \    /  \
+//    A  B  C  F  E  D  G    H
+//
+// Our intention is to compare the present tree to complex_tree, and we expect a report that RR[DEF] was added.

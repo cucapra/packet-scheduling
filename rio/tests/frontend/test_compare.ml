@@ -72,6 +72,17 @@ let armsadded =
                new_count = 3;
                details = "added fifo[C] with weight 3";
              } ));
+    (* Going from part of complex_tree to the whole complex_tree, which requires adding a whole RR arm. This is still at the root, not deeper *)
+    make_compare_test "complex tree add arm deep" "complex_tree_partial"
+      "complex_tree"
+      (Change
+         ( [],
+           ArmsAdded
+             {
+               old_count = 2;
+               new_count = 3;
+               details = "added rr[fifo[D], fifo[E], fifo[F]] with weight 2";
+             } ));
   ]
 
 let armsremoved =
