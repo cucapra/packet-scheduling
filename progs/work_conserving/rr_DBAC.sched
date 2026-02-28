@@ -1,7 +1,0 @@
-classes A, B, C, D;
-
-policy = rr[D, B, A, C];
-
-return policy
-
-// We'll compare this to RR(A,B) and we'll expect it to report that FIFOs C and D were added. The order doesn't matter.
