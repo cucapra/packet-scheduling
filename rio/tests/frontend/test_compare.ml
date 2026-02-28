@@ -23,6 +23,8 @@ let same =
     make_compare_test "merely jumbled in WFQ" "wfq_ABC" "wfq_ABC_jumbled" Same;
     make_compare_test "different variable names, same structure" "complex_tree"
       "complex_tree_weird_var_names" Same;
+    make_compare_test "complex tree with an rr-reordering deep down"
+      "complex_tree" "complex_tree_swap_rr_arms" Same;
   ]
 
 let armsadded =
@@ -72,7 +74,14 @@ let armsadded =
                new_count = 3;
                details = "added fifo[C] with weight 3";
              } ));
-    (* Going from part of complex_tree to the whole complex_tree, which requires adding a whole RR arm. This is still at the root, not deeper *)
+    (* Adding an arm deep inside the complex tree *)
+    make_compare_test "complex tree add arm deep" "complex_tree"
+      "complex_tree_add_arm_deep"
+      (Change
+         ( [ 2 ],
+           ArmsAdded
+             { old_count = 3; new_count = 4; details = "added fifo[NEW]" } ));
+    (* Going from _part_ of complex_tree to the whole complex_tree, which requires adding a whole RR arm. This change is still at the root, not deeper, but the change involves adding more than just a FIFO. *)
     make_compare_test "complex tree add arm deep" "complex_tree_partial"
       "complex_tree"
       (Change
@@ -92,11 +101,13 @@ let armsremoved =
       (Change ([], ArmsRemoved { old_count = 3; new_count = 2 }));
     make_compare_test "WFQ with arm removed" "wfq_ABC" "wfq_AB"
       (Change ([], ArmsRemoved { old_count = 3; new_count = 2 }));
+    make_compare_test "complex tree remove arm deep" "complex_tree_add_arm_deep"
+      "complex_tree"
+      (Change ([ 2 ], ArmsRemoved { old_count = 4; new_count = 3 }));
   ]
 
 let verydiff =
   [
-    (* TODO: make deeper diffs *)
     (* SP(B,A) vs SP(A,B,C) *)
     make_compare_test "strict arm added whilst reordering arms" "strict_BA"
       "strict_ABC"
@@ -116,6 +127,9 @@ let verydiff =
     make_compare_test "WFQ with weights changed and arm added" "wfq_AB"
       "wfq_ABC_diff"
       (Change ([], VeryDifferent));
+    make_compare_test "complex tree with an SP reordering deep down"
+      "complex_tree" "complex_tree_swap_sp_arms"
+      (Change ([ 1 ], VeryDifferent));
   ]
 
 let superpol =
@@ -126,24 +140,6 @@ let superpol =
     make_compare_test "strict_ABC is subpol of complex_tree" "strict_ABC"
       "complex_tree_weird_var_names"
       (Change ([ 1 ], SuperPol));
-  ]
-
-let deep =
-  [
-    make_compare_test "complex tree add arm deep" "complex_tree"
-      "complex_tree_add_arm_deep"
-      (Change
-         ( [ 2 ],
-           ArmsAdded
-             { old_count = 3; new_count = 4; details = "added fifo[NEW]" } ));
-    make_compare_test "complex tree with an rr-reordering deep down"
-      "complex_tree" "complex_tree_swap_rr_arms" Same;
-    make_compare_test "complex tree with an SP reordering deep down"
-      "complex_tree" "complex_tree_swap_sp_arms"
-      (Change ([ 1 ], VeryDifferent));
-    make_compare_test "complex tree remove arm deep" "complex_tree_add_arm_deep"
-      "complex_tree"
-      (Change ([ 2 ], ArmsRemoved { old_count = 4; new_count = 3 }));
   ]
 
 let suite =
