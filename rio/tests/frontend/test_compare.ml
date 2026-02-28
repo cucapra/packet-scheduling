@@ -107,9 +107,9 @@ let verydiff =
     (* RR(A,B) vs RR(D,E,F) *)
     make_compare_test "RR big diff" "rr_AB" "rr_DEF"
       (Change ([], VeryDifferent));
-    (* SP(C,B,A) vs SP(B,C,A) *)
+    (* SP(A,B) vs SP(B,A) *)
     make_compare_test "Strict with arms reordered" "strict_AB" "strict_BA"
-      (Change ([ 0 ], VeryDifferent));
+      (Change ([], VeryDifferent));
     (* WFQ weights changed *)
     make_compare_test "WFQ with weights changed" "wfq_ABC" "wfq_ABC_diff"
       (Change ([], VeryDifferent));
@@ -140,7 +140,7 @@ let deep =
       "complex_tree" "complex_tree_swap_rr_arms" Same;
     make_compare_test "complex tree with an SP reordering deep down"
       "complex_tree" "complex_tree_swap_sp_arms"
-      (Change ([ 1; 0 ], VeryDifferent));
+      (Change ([ 1 ], VeryDifferent));
     make_compare_test "complex tree remove arm deep" "complex_tree_add_arm_deep"
       "complex_tree"
       (Change ([ 2 ], ArmsRemoved { old_count = 4; new_count = 3 }));

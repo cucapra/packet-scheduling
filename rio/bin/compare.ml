@@ -100,6 +100,7 @@ let rec compare_lists ps1 ps2 =
     loop 0 ps1 ps2
 
 and details_strict ps1 ps2 =
+  (* For SP, we want to report what was added in a human-readable way, e.g. "added C at index 2" or "added B at index 1". *)
   let rec go i1 i2 l1 l2 acc =
     match (l1, l2) with
     | _, [] -> acc
@@ -129,7 +130,11 @@ and compare_strict ps1 ps2 =
   else if len1 > len2 && is_ordered_subsequence ps2 ps1 then
     (* Arms removed: new arms appear in the same order in old list *)
     Change ([], ArmsRemoved { old_count = len1; new_count = len2 })
+  else if len1 = len2 && subset ps1 ps2 && subset ps2 ps1 then
+    (* Same arms but different order *)
+    Change ([], VeryDifferent)
   else compare_lists ps1 ps2
+(* else, we can't figure it out at the root level so we'll dig deeper *)
 
 (* RR comparison: detect arms added/removed or recurse into children. *)
 and compare_rr_like ps1 ps2 =
