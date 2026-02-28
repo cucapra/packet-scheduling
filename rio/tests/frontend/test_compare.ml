@@ -27,26 +27,26 @@ let same =
 
 let armsadded =
   [
-    (* SP(B,A) vs SP(C,B,A) *)
+    (* SP(A,B) vs SP(A,B,C) *)
     make_compare_test "strict arm added" "strict_AB" "strict_ABC"
       (Change
          ( [],
            ArmsAdded
-             { old_count = 2; new_count = 3; details = "added fifo[C] at 3" } ));
+             { old_count = 2; new_count = 3; details = "added fifo[C] at 2" } ));
     (* SP(A,C) vs SP(A,B,C) *)
     make_compare_test "strict arm added in the middle" "strict_AC" "strict_ABC"
       (Change
          ( [],
            ArmsAdded
-             { old_count = 2; new_count = 3; details = "added fifo[B] at 2" } ));
+             { old_count = 2; new_count = 3; details = "added fifo[B] at 1" } ));
     (* RR(A,B) vs RR(A,B,C) *)
-    make_compare_test "RR with arm added" "rr_AB" "rr_ABC"
+    make_compare_test "RR with arm added at end" "rr_AB" "rr_ABC"
       (Change
          ( [],
            ArmsAdded
              { old_count = 2; new_count = 3; details = "added fifo[C] at 2" } ));
     (* RR(A,B) vs RR(B,A,C) *)
-    make_compare_test "RR with arm added (BAC)" "rr_AB" "rr_BAC"
+    make_compare_test "RR with arm added whilst reordering" "rr_AB" "rr_BAC"
       (Change
          ( [],
            ArmsAdded

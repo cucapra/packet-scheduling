@@ -99,6 +99,23 @@ let rec compare_lists ps1 ps2 =
     in
     loop 0 ps1 ps2
 
+and details_strict ps1 ps2 =
+  let rec go i1 i2 l1 l2 acc =
+    match (l1, l2) with
+    | _, [] -> acc
+    | [], p2 :: t2 ->
+        go i1 (i2 + 1) [] t2
+          (Printf.sprintf "added %s at %d" (Frontend.Policy.to_string p2) i2
+          :: acc)
+    | p1 :: t1, p2 :: t2 ->
+        if p1 = p2 then go (i1 + 1) (i2 + 1) t1 t2 acc
+        else
+          go i1 (i2 + 1) l1 t2
+            (Printf.sprintf "added %s at %d" (Frontend.Policy.to_string p2) i2
+            :: acc)
+  in
+  go 0 0 ps1 ps2 [] |> List.rev |> String.concat ", "
+
 (* Strict comparison: detect arms added/removed (preserving order) or recurse into children. *)
 and compare_strict ps1 ps2 =
   let len1 = List.length ps1 in
@@ -107,23 +124,7 @@ and compare_strict ps1 ps2 =
   if found then Change (Option.get idx, SuperPol)
   else if len2 > len1 && is_ordered_subsequence ps1 ps2 then
     (* Arms added: old arms appear in the same order in new list *)
-    let details =
-      (* Build a simple description: list added arm positions and summaries *)
-      let rec scan i j acc =
-        match (j, i) with
-        | [], _ -> String.concat ", " (List.rev acc)
-        | p2 :: t2, _ -> (
-            match i with
-            | p1 :: t1 when p1 = p2 -> scan t1 t2 acc
-            | _ ->
-                let desc = Frontend.Policy.to_string p2 in
-                scan i t2
-                  (Printf.sprintf "added %s at %d" desc
-                     (List.length ps2 - List.length t2)
-                  :: acc))
-      in
-      scan ps1 ps2 []
-    in
+    let details = details_strict ps1 ps2 in
     Change ([], ArmsAdded { old_count = len1; new_count = len2; details })
   else if len1 > len2 && is_ordered_subsequence ps2 ps1 then
     (* Arms removed: new arms appear in the same order in old list *)
