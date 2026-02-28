@@ -36,45 +36,26 @@ let rec is_ordered_subsequence lst1 lst2 =
       if h1 = h2 then is_ordered_subsequence t1 t2
       else is_ordered_subsequence lst1 t2
 
-let rec is_sub_policy p1 p2 : bool * int list option =
-  (* Is p1 a sub-policy of p2? Return (found, index) where [index] is the
-     immediate child index of [p2] that contains [p1] (or None if p1 == p2
-     or if p1 is found at the root). Examples:
+let rec is_sub_policy p1 p2 : bool * path =
+  (* Is p1 a sub-policy of p2? Examples:
       - RR(A, B) is NOT sub-policy of RR(A, B, C); that should be ArmsAdded
       - WFQ(A, B) is NOT a sub-policy of WFQ(A, B, C), for the same reason
-      - RR(A, B) is a sub-policy of SP(RR(A, B), C) -> (true, Some 0)
-      - RR(A, B) is a sub-policy of SP(RR(RR(A, B),C), D) -> (true, Some 0)
+      - RR(A, B) is a sub-policy of SP(RR(A, B), C)
+      - RR(A, B) is a sub-policy of SP(RR(RR(A, B),C), D)
+      The path option is used to show _where_ inside p2 we find p1. If the search fails, we return the nil path and the caller ignores it.
   *)
-  if p1 = p2 then (true, None)
+  if p1 = p2 then (true, [])
   else
     match p2 with
-    | FIFO _ | EDF _ -> (false, None)
-    | Strict ps | RR ps ->
+    | FIFO _ | EDF _ -> (false, []) (* No sub-policies inside FIFO or EDF *)
+    | Strict ps | RR ps | WFQ (ps, _) ->
         let rec loop i = function
-          | [] -> (false, None)
+          | [] -> (false, [])
           | p :: t ->
-              if p = p1 then (true, Some [ i ])
+              if p = p1 then (true, [ i ])
               else
                 let found, path = is_sub_policy p1 p in
-                if found then
-                  match path with
-                  | None -> (true, Some [ i ])
-                  | Some pth -> (true, Some (i :: pth))
-                else loop (i + 1) t
-        in
-        loop 0 ps
-    | WFQ (ps, _) ->
-        let rec loop i = function
-          | [] -> (false, None)
-          | p :: t ->
-              if p = p1 then (true, Some [ i ])
-              else
-                let found, path = is_sub_policy p1 p in
-                if found then
-                  match path with
-                  | None -> (true, Some [ i ])
-                  | Some pth -> (true, Some (i :: pth))
-                else loop (i + 1) t
+                if found then (found, i :: path) else loop (i + 1) t
         in
         loop 0 ps
 
@@ -119,7 +100,7 @@ and compare_strict ps1 ps2 =
   let len1 = List.length ps1 in
   let len2 = List.length ps2 in
   let found, idx = is_sub_policy (Strict ps1) (Strict ps2) in
-  if found then Change (Option.get idx, SuperPol)
+  if found then Change (idx, SuperPol)
   else if len2 > len1 && is_ordered_subsequence ps1 ps2 then
     (* Arms added: old arms appear in the same order in new list *)
     let details = details_strict ps1 ps2 in
@@ -138,7 +119,7 @@ and compare_rr_like ps1 ps2 =
   let len1 = List.length ps1 in
   let len2 = List.length ps2 in
   let found, idx = is_sub_policy (RR ps1) (RR ps2) in
-  if found then Change (Option.get idx, SuperPol)
+  if found then Change (idx, SuperPol)
   else if len2 > len1 && subset ps1 ps2 then
     (* Order-insensitive: just list what was added, no index needed *)
     let added =
@@ -168,7 +149,7 @@ and compare_wfq ps1 ws1 ps2 ws2 =
   let len1 = List.length ps1 in
   let len2 = List.length ps2 in
   let found, idx = is_sub_policy (WFQ (ps1, ws1)) (WFQ (ps2, ws2)) in
-  if found then Change (Option.get idx, SuperPol)
+  if found then Change (idx, SuperPol)
   else if ps1 = ps2 && ws1 <> ws2 then
     (* Same arms but different weights *)
     Change ([], VeryDifferent)
@@ -211,8 +192,7 @@ and analyze p1 p2 : t =
     | WFQ (ps1, ws1), WFQ (ps2, ws2) -> compare_wfq ps1 ws1 ps2 ws2
     | _, _ ->
         let found, idx = is_sub_policy p1 p2 in
-        if found then Change (Option.value idx ~default:[], SuperPol)
-        else Change ([], VeryDifferent)
+        if found then Change (idx, SuperPol) else Change ([], VeryDifferent)
 
 (* Pretty-printing *)
 let rec to_string diff =
