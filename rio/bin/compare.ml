@@ -2,12 +2,12 @@ open Frontend.Policy
 
 type path = int list
 
-(* A structural diff that can describe *where* a change occurs. *)
+(* A structural diff that can describe *where* a change occurs.
+   A change at the root has path = [].
+*)
 type t =
   | Same
   | Change of path * change
-(* Path of child indices; change type *)
-(* An empty path means that the change is at the root level *)
 
 and change =
   | ArmsAdded of {
@@ -19,8 +19,6 @@ and change =
   | SuperPol
 
 let subset lst1 lst2 = List.for_all (fun x -> List.mem x lst2) lst1
-
-(* Arms are guaranteed unique, so set-equality is fine. *)
 let set_equal xs ys = subset xs ys && subset ys xs
 let list_diff xs ys = List.filter (fun x -> not (List.mem x ys)) xs
 let list_inter xs ys = List.filter (fun x -> List.mem x ys) xs
@@ -28,18 +26,20 @@ let list_inter xs ys = List.filter (fun x -> List.mem x ys) xs
 (* Check if lst1 appears as an order-preserving sub-sequence of lst2. E.g. [A,C] is an order-preserving sub-sequence of [A,B,C,D], but [C,A] is not. *)
 let rec is_ordered_subsequence lst1 lst2 =
   match (lst1, lst2) with
-  | [], _ -> true (* Empty list is subsequence of anything *)
-  | _, [] -> false (* Non-empty list can't be subsequence of empty *)
+  | [], _ -> true (* Empty list is sub-sequence of anything *)
+  | _, [] -> false (* Non-empty list can't be sub-sequence of empty *)
   | h1 :: t1, h2 :: t2 ->
       if h1 = h2 then is_ordered_subsequence t1 t2
       else is_ordered_subsequence lst1 t2
 
 and is_sub_policy p1 p2 : bool * path =
   (* Is p1 a sub-policy of p2?
-     Returns (found, path). When found at an *immediate* child i, path = [i].
+     Returns (found, path).
+     path tells us where in p2 we found p1, if anywhere.
+     When found at an *immediate* child i, path = [i].
      When found deeper, path = i :: deeper_path.
      Returns (true, []) when p1 = p2.
-     Returns (false, []) otherwise. *)
+     Returns (false, []) if not found. *)
   if p1 = p2 then (true, [])
   else
     match p2 with
@@ -93,7 +93,6 @@ and details_strict ps1 ps2 =
   in
   loop 0 ps1 ps2 [] |> List.rev |> String.concat ", "
 
-(* Strict comparison: detect arms added (order-preserving) or treat other diffs. *)
 and compare_strict ps1 ps2 =
   let len1 = List.length ps1 in
   let len2 = List.length ps2 in
@@ -102,18 +101,18 @@ and compare_strict ps1 ps2 =
     Change ([], ArmsAdded { old_count = len1; new_count = len2; details })
   else if len1 > len2 then Change ([], VeryDifferent) (* Arms removed *)
   else if len1 = len2 && set_equal ps1 ps2 then Change ([], VeryDifferent)
-    (* Same arms, different order *)
+    (* Same arms, different order. We know the order is different: the top-level `analyze` would have caught `Same` *)
   else compare_lists ps1 ps2
 (* else, we can't figure it out at the root level so we'll dig deeper *)
 
 and details_added_indexless added =
+  (* Somtimes we need text details but the policy doesn't care about the _index_ of the addition. *)
   match added with
   | [] -> ""
   | _ ->
       "added "
       ^ (added |> List.map Frontend.Policy.to_string |> String.concat ", ")
 
-(* RR comparison: detect arms added; removals are VeryDifferent; otherwise recurse. *)
 and compare_rr_like ps1 ps2 =
   let len1 = List.length ps1 in
   let len2 = List.length ps2 in
@@ -121,7 +120,7 @@ and compare_rr_like ps1 ps2 =
     let added = list_diff ps2 ps1 in
     let details = details_added_indexless added in
     Change ([], ArmsAdded { old_count = len1; new_count = len2; details })
-  else if len1 > len2 then Change ([], VeryDifferent)
+  else if len1 > len2 then Change ([], VeryDifferent) (* Arms removed *)
   else compare_lists ps1 ps2
 
 (* Helper: check if old weights are preserved in new weights *)
@@ -131,7 +130,6 @@ and old_weights_preserved old_weights new_weights =
   && List.for_all2 ( = ) old_weights
        (List.filteri (fun i _ -> i < old_count) new_weights)
 
-(* WFQ comparison: detect arms added (with preserved old weights), or differences. *)
 and compare_wfq ps1 ws1 ps2 ws2 =
   let len1 = List.length ps1 in
   let len2 = List.length ps2 in

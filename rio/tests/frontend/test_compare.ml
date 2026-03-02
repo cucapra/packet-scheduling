@@ -95,7 +95,7 @@ let armsadded =
   ]
 
 let armsremoved =
-  (* In reality we will just give up. *)
+  (* We just give up. *)
   [
     make_compare_test "RR with arm removed" "rr_ABC" "rr_AB"
       (Change ([], VeryDifferent));
