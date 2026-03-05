@@ -1,6 +1,7 @@
 type t =
-  | FIFO of Ast.clss list
-  | EDF of Ast.clss list
+  | FIFO of Ast.clss
+  | UNION of t list
+  | EDF of t
   | Strict of t list
   | RR of t list
   | WFQ of t list * float list
@@ -16,22 +17,22 @@ let rec lookup x = function
 
 let rec sub cl st used (p : Ast.stream) =
   let sub_ps = List.map (sub cl st used) in
-  let rec sub_set = function
+  let rec sub_set wrap = function
     | Ast.Class c ->
         if List.mem c !used then raise (DuplicateClass c)
         else if not (List.mem c cl) then raise (UndeclaredClass c)
         else (
           used := c :: !used;
-          [ c ])
-    | Ast.Union sets -> sets |> List.map sub_set |> List.flatten
+          wrap c)
+    | Ast.Union sets -> UNION (sets |> List.map (sub_set wrap))
   in
 
   match p with
   | Var x ->
       let p, st = lookup x st in
       sub cl st used p
-  | Fifo s -> FIFO (sub_set s)
-  | EarliestDeadline s -> EDF (sub_set s)
+  | Fifo s -> sub_set (fun c -> FIFO c) s
+  | EarliestDeadline s -> EDF (sub_set (fun c -> FIFO c) s)
   | Strict ps -> Strict (sub_ps ps)
   | RoundRobin ps -> RR (sub_ps ps)
   | WeightedFair pws ->
@@ -47,10 +48,9 @@ let rec to_string p =
   let join lst to_string = lst |> List.map to_string |> String.concat ", " in
 
   match p with
-  | FIFO cs when List.length cs > 1 -> fmt "fifo[union[%s]]" (join cs Fun.id)
-  | EDF cs when List.length cs > 1 -> fmt "edf[union[%s]]" (join cs Fun.id)
-  | FIFO cs -> fmt "fifo[%s]" (join cs Fun.id)
-  | EDF cs -> fmt "edf[%s]" (join cs Fun.id)
+  | FIFO c -> fmt "fifo[%s]" c
+  | EDF p -> fmt "edf[%s]" (to_string p)
+  | UNION ps -> fmt "union[%s]" (join ps to_string)
   | Strict ps -> fmt "strict[%s]" (join ps to_string)
   | RR ps -> fmt "rr[%s]" (join ps to_string)
   | WFQ (ps, ws) ->

@@ -1,6 +1,7 @@
 type t =
-  | FIFO of Ast.clss list
-  | EDF of Ast.clss list
+  | FIFO of Ast.clss
+  | UNION of t list
+  | EDF of t
   | Strict of t list
   | RR of t list
   | WFQ of t list * float list
