@@ -101,9 +101,10 @@ and compare_strict ps1 ps2 =
     Change ([], ArmsAdded { old_count = len1; new_count = len2; details })
   else if len1 > len2 then Change ([], VeryDifferent) (* Arms removed *)
   else if len1 = len2 && set_equal ps1 ps2 then Change ([], VeryDifferent)
-    (* Same arms, different order. We know the order is different: the top-level `analyze` would have caught `Same` *)
+    (* Same arms, different order. We know the order is different: the top-level `analyze` would have caught them if they were just identical under `=`. *)
   else compare_lists ps1 ps2
 (* else, we can't figure it out at the root level so we'll dig deeper *)
+(* AM: who comes here, ever?? *)
 
 and details_added_indexless added =
   (* Somtimes we need text details but the policy doesn't care about the _index_ of the addition. *)
@@ -165,7 +166,6 @@ and analyze p1 p2 : t =
       | Strict ps1, Strict ps2 -> compare_strict ps1 ps2
       | RR ps1, RR ps2 -> compare_rr_like ps1 ps2
       | WFQ (ps1, ws1), WFQ (ps2, ws2) -> compare_wfq ps1 ws1 ps2 ws2
-      | _, _ -> Change ([], VeryDifferent)
 
 let rec to_string diff =
   match diff with
