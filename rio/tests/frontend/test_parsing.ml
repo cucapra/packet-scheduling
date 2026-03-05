@@ -19,9 +19,9 @@ let wc_tests =
     make_test "single class policy" "work_conserving/drop_class.sched" "fifo[A]";
     make_test "fifo 1 class" "work_conserving/fifo_A.sched" "fifo[A]";
     make_test "union of 3" "work_conserving/union_ABC.sched"
-      "fifo[union[A, B, C]]";
+      "union[fifo[A], fifo[B], fifo[C]]";
     make_test "multiple assignments" "work_conserving/rr_union_hier.sched"
-      "rr[fifo[union[BX, BY]], rr[fifo[RP], fifo[RT]]]";
+      "rr[union[fifo[BX], fifo[BY]], rr[fifo[RP], fifo[RT]]]";
     make_test "rr of 3" "work_conserving/rr_ABC.sched"
       "rr[fifo[A], fifo[B], fifo[C]]";
     make_test "rr and strict substitutions"
