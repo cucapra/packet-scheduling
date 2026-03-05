@@ -27,11 +27,11 @@ let rec addr_to_string = function
 let route_pkt (policy : Policy.t) pkt =
   let rec route_pkt_aux (p : Policy.t) pt =
     match p with
-    | (FIFO cs | EDF cs) when List.exists (fun c -> Packet.flow pkt = c) cs ->
-        Some (List.rev pt)
-    | Strict ps | RR ps | WFQ (ps, _) ->
+    | FIFO c when Packet.flow pkt = c -> Some (List.rev pt)
+    | UNION ps | Strict ps | RR ps | WFQ (ps, _) ->
         List.find_mapi (fun i p -> route_pkt_aux p (i :: pt)) ps
-    | FIFO _ | EDF _ -> None
+    | EDF p -> route_pkt_aux p pt
+    | FIFO _ -> None
   in
 
   match route_pkt_aux policy [] with
@@ -72,8 +72,9 @@ module Make_PIFOControl (P : Policy) : Control = struct
           List.mapi (fun i _ -> (fmt "%s_finish_%d" prefix i, 0.0)) ps
           |> Fun.flip State.rebind_all s
           |> join ps
-      | Strict ps -> join ps s
-      | FIFO _ | EDF _ -> s
+      | Strict ps | UNION ps -> join ps s
+      | EDF p -> state_aux p addr s
+      | FIFO _ -> s
     in
 
     state_aux policy Eps State.empty
@@ -84,6 +85,9 @@ module Make_PIFOControl (P : Policy) : Control = struct
 
       match (p, directions) with
       | Strict ps, h :: t ->
+          let pt, s' = z_pre_push_aux (List.nth ps h) t (Ptr (h, addr)) s in
+          (Pifotree.Path (h, float_of_int h, pt), s')
+      | UNION ps, h :: t ->
           let pt, s' = z_pre_push_aux (List.nth ps h) t (Ptr (h, addr)) s in
           (Pifotree.Path (h, float_of_int h, pt), s')
       | RR ps, h :: t ->
@@ -97,6 +101,9 @@ module Make_PIFOControl (P : Policy) : Control = struct
           let rank, s' = wfq_rank_state prefix pkt h (List.nth ws h) s in
           let pt, s'' = z_pre_push_aux (List.nth ps h) t (Ptr (h, addr)) s' in
           (Pifotree.Path (h, rank, pt), s'')
+      | EDF p, _ ->
+          let pt, s' = z_pre_push_aux p directions addr s in
+          (pt, s')
       | FIFO _, [] -> (Pifotree.Foot 0.0, s)
       | _ -> failwith "ERROR: unreachable branch"
     in
@@ -108,8 +115,9 @@ module Make_PIFOControl (P : Policy) : Control = struct
       let prefix = addr_to_string addr in
 
       match (p, directions) with
-      | FIFO _, [] | EDF _, [] -> s
-      | WFQ (ps, _), h :: t | Strict ps, h :: t ->
+      | FIFO _, [] -> s
+      | EDF p, _ -> z_post_pop_aux p directions addr s
+      | WFQ (ps, _), h :: t | Strict ps, h :: t | UNION ps, h :: t ->
           z_post_pop_aux (List.nth ps h) t (Ptr (h, addr)) s
       | RR ps, h :: t ->
           let n = List.length ps in
@@ -179,8 +187,9 @@ module Make_RioControl (P : Policy) : Control = struct
           |> State.rebind_all (binds (fun i -> fmt "%s_finish_%d" prefix i))
           |> join ps
       | RR ps -> State.rebind (fmt "%s_turn" prefix) 0.0 s |> join ps
-      | Strict ps -> join ps s
-      | FIFO _ | EDF _ -> s
+      | Strict ps | UNION ps -> join ps s
+      | EDF p -> state_aux p addr s
+      | FIFO _ -> s
     in
 
     state_aux policy Eps State.empty
@@ -190,7 +199,7 @@ module Make_RioControl (P : Policy) : Control = struct
       let prefix = addr_to_string addr in
 
       match (p, directions) with
-      | Strict ps, h :: t | RR ps, h :: t ->
+      | Strict ps, h :: t | RR ps, h :: t | UNION ps, h :: t ->
           z_pre_push_aux (List.nth ps h) t (Ptr (h, addr)) s
       | WFQ (ps, ws), h :: t ->
           let rank, s' = wfq_rank_state prefix pkt h (List.nth ws h) s in
@@ -201,6 +210,7 @@ module Make_RioControl (P : Policy) : Control = struct
             |> State.rebind (fmt "%s_len_%d" prefix h) (len_i +. 1.0)
           in
           z_pre_push_aux (List.nth ps h) t (Ptr (h, addr)) s''
+      | EDF p, _ -> z_pre_push_aux p directions addr s
       | FIFO _, [] -> (0.0, s)
       | _ -> failwith "ERROR: unreachable branch"
     in
@@ -242,8 +252,9 @@ module Make_RioControl (P : Policy) : Control = struct
             | None -> Float.infinity
           in
           join compute_rank s ps
-      | Strict ps -> join float_of_int s ps
-      | FIFO _ | EDF _ -> (Foot, s)
+      | Strict ps | UNION ps -> join float_of_int s ps
+      | EDF p -> z_pre_pop_aux p addr s
+      | FIFO _ -> (Foot, s)
     in
 
     z_pre_pop_aux policy Eps s
@@ -253,8 +264,10 @@ module Make_RioControl (P : Policy) : Control = struct
       let prefix = addr_to_string addr in
 
       match (p, directions) with
-      | FIFO _, [] | EDF _, [] -> s
-      | Strict ps, h :: t -> z_pre_pop_aux (List.nth ps h) t (Ptr (h, addr)) s
+      | FIFO _, [] -> s
+      | EDF p, _ -> z_pre_pop_aux p directions addr s
+      | Strict ps, h :: t | UNION ps, h :: t ->
+          z_pre_pop_aux (List.nth ps h) t (Ptr (h, addr)) s
       | WFQ (ps, _), h :: t ->
           let start_var = fmt "%s_start_%d" prefix h in
           let start_i = State.lookup start_var s in

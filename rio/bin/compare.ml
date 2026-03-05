@@ -43,8 +43,11 @@ and is_sub_policy p1 p2 : bool * path =
   if p1 = p2 then (true, [])
   else
     match p2 with
-    | FIFO _ | EDF _ -> (false, []) (* No sub-policies inside FIFO/EDF *)
-    | Strict ps | RR ps | WFQ (ps, _) ->
+    | FIFO _ -> (false, []) (* No sub-policies inside FIFO *)
+    | EDF p ->
+        let found, path = is_sub_policy p1 p in
+        (found, path)
+    | UNION ps | Strict ps | RR ps | WFQ (ps, _) ->
         let rec loop i = function
           | [] -> (false, [])
           | p :: t ->
@@ -103,8 +106,6 @@ and compare_strict ps1 ps2 =
   else if len1 = len2 && set_equal ps1 ps2 then Change ([], VeryDifferent)
     (* Same arms, different order. We know the order is different: the top-level `analyze` would have caught them if they were just identical under `=`. *)
   else compare_lists ps1 ps2
-(* else, we can't figure it out at the root level so we'll dig deeper *)
-(* AM: who comes here, ever?? *)
 
 and details_added_indexless added =
   (* Somtimes we need text details but the policy doesn't care about the _index_ of the addition. *)
@@ -162,10 +163,13 @@ and analyze p1 p2 : t =
     if found then Change (idx, SuperPol)
     else
       match (p1, p2) with
-      | FIFO _, FIFO _ | EDF _, EDF _ -> Change ([], VeryDifferent)
+      | FIFO _, FIFO _ -> Change ([], VeryDifferent)
+      | EDF p1, EDF p2 -> analyze p1 p2
+      | UNION ps1, UNION ps2 -> compare_rr_like ps1 ps2
       | Strict ps1, Strict ps2 -> compare_strict ps1 ps2
       | RR ps1, RR ps2 -> compare_rr_like ps1 ps2
       | WFQ (ps1, ws1), WFQ (ps2, ws2) -> compare_wfq ps1 ws1 ps2 ws2
+      | _ -> Change ([], VeryDifferent)
 
 let rec to_string diff =
   match diff with
