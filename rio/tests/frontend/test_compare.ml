@@ -112,24 +112,24 @@ let verydiff =
     make_compare_test "strict arm added whilst reordering arms" "strict_BA"
       "strict_ABC"
       (Change ([], VeryDifferent));
-    (* WFQ(A,B,C) vs WFQ(A,B,D) *)
-    make_compare_test "different WFQ" "wfq_ABC" "wfq_ABC_diff"
+    (* WFQ(A_1,B_2,C_3) vs WFQ(A_2,B_2,C_4): classes same, weight different  *)
+    make_compare_test "different WFQ weights" "wfq_ABC" "wfq_ABC_diff"
       (Change ([], VeryDifferent));
+    (* WFQ(A_1,B_2,C_3) vs WFQ(D_1,E_2,F_3) : classes different, weights same *)
+    make_compare_test "different WFQ classes" "wfq_ABC" "wfq_DEF"
+      (Change ([ 0 ], VeryDifferent));
     (* RR(A,B) vs RR(D,E,F) *)
     make_compare_test "RR big diff" "rr_AB" "rr_DEF"
       (Change ([], VeryDifferent));
     (* SP(A,B) vs SP(B,A) *)
     make_compare_test "Strict with arms reordered" "strict_AB" "strict_BA"
-      (Change ([], VeryDifferent));
-    (* WFQ weights changed *)
-    make_compare_test "WFQ with weights changed" "wfq_ABC" "wfq_ABC_diff"
-      (Change ([], VeryDifferent));
+      (Change ([ 0 ], VeryDifferent));
     make_compare_test "WFQ with weights changed and arm added" "wfq_AB"
       "wfq_ABC_diff"
       (Change ([], VeryDifferent));
     make_compare_test "complex tree with an SP reordering deep down"
       "complex_tree" "complex_tree_swap_sp_arms"
-      (Change ([ 1 ], VeryDifferent));
+      (Change ([ 1; 0 ], VeryDifferent));
   ]
 
 let superpol =

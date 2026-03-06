@@ -6,12 +6,12 @@ right = union[G, H];
 return wfq[(left, 1), (right, 3)]
 
 // The present tree is
-//             wfq
-//           /   \
-//         /     \
-//     strict    union
-//     / | \      /  \
-//    A  B  C    G    H
+//            wfq
+//          /    \
+//         /      \
+//     strict     union
+//     / | \       /  \
+//    A  B  C     G    H
 //
 // and this is complex_tree:
 //              wfq
@@ -21,4 +21,4 @@ return wfq[(left, 1), (right, 3)]
 //     / | \    / | \    /  \
 //    A  B  C  F  E  D  G    H
 //
-// Our intention is to compare the present tree to complex_tree, and we expect a report that RR[DEF] was added.
+// Our intention is to compare the present tree to complex_tree, and we expect a report that RR[DEF] was added. The report will say DEF and not FED because it will normalize the tree first.

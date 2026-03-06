@@ -32,7 +32,7 @@ let rec is_ordered_subsequence lst1 lst2 =
       if h1 = h2 then is_ordered_subsequence t1 t2
       else is_ordered_subsequence lst1 t2
 
-and is_sub_policy p1 p2 : bool * path =
+let rec is_sub_policy p1 p2 : bool * path =
   (* Is p1 a sub-policy of p2?
      Returns (found, path).
      path tells us where in p2 we found p1, if anywhere.
@@ -117,28 +117,23 @@ and details_added_indexless added =
 and compare_rr_like ps1 ps2 =
   let len1 = List.length ps1 in
   let len2 = List.length ps2 in
-  if len2 > len1 && subset ps1 ps2 then
+  if is_ordered_subsequence ps1 ps2 then
     let added = list_diff ps2 ps1 in
     let details = details_added_indexless added in
     Change ([], ArmsAdded { old_count = len1; new_count = len2; details })
-  else if len1 > len2 then Change ([], VeryDifferent) (* Arms removed *)
+  else if len1 > len2 then (* Arms removed *) Change ([], VeryDifferent)
   else compare_lists ps1 ps2
-
-(* Helper: check if old weights are preserved in new weights *)
-and old_weights_preserved old_weights new_weights =
-  let old_count = List.length old_weights in
-  old_count <= List.length new_weights
-  && List.for_all2 ( = ) old_weights
-       (List.filteri (fun i _ -> i < old_count) new_weights)
 
 and compare_wfq ps1 ws1 ps2 ws2 =
   let len1 = List.length ps1 in
   let len2 = List.length ps2 in
-  if ps1 = ps2 && ws1 <> ws2 then Change ([], VeryDifferent)
-    (* Same arms, weights changed *)
-  else if len2 > len1 && subset ps1 ps2 && old_weights_preserved ws1 ws2 then
+  (* Treat each (policy, weight) as an atomic unit and check that
+       the old sequence appears in order inside the new sequence. *)
+  let pairs1 = List.combine ps1 ws1 in
+  let pairs2 = List.combine ps2 ws2 in
+  if is_ordered_subsequence pairs1 pairs2 then
     let added_pairs =
-      List.combine ps2 ws2 |> List.filter (fun (p, _w) -> not (List.mem p ps1))
+      List.filter (fun (p, w) -> not (List.mem (p, w) pairs1)) pairs2
     in
     let details =
       match added_pairs with
@@ -152,8 +147,13 @@ and compare_wfq ps1 ws1 ps2 ws2 =
           |> String.concat ", "
     in
     Change ([], ArmsAdded { old_count = len1; new_count = len2; details })
-  else if len1 > len2 then Change ([], VeryDifferent) (* Arms removed *)
-  else compare_lists ps1 ps2
+  else if len1 > len2 then
+    (* Arms removed *)
+    Change ([], VeryDifferent)
+  else if ws1 = ws2 then
+    (*  defer to structural child diff only if the weights are the same *)
+    compare_lists ps1 ps2
+  else Change ([], VeryDifferent)
 
 and analyze p1 p2 : t =
   if p1 = p2 then Same
