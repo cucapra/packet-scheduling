@@ -78,7 +78,8 @@ and compare_lists ps1 ps2 =
     in
     loop 0 ps1 ps2
 
-and details_strict ps1 ps2 =
+(* Extract the specific change bewtween two SP policies where an arm was added *)
+and details_strict_arm_added ps1 ps2 =
   let rec loop i2 l1 l2 acc =
     match (l1, l2) with
     | _, [] -> acc
@@ -99,12 +100,10 @@ and details_strict ps1 ps2 =
 and compare_strict ps1 ps2 =
   let len1 = List.length ps1 in
   let len2 = List.length ps2 in
-  if len2 > len1 && is_ordered_subsequence ps1 ps2 then
-    let details = details_strict ps1 ps2 in
+  if is_ordered_subsequence ps1 ps2 then
+    let details = details_strict_arm_added ps1 ps2 in
     Change ([], ArmsAdded { old_count = len1; new_count = len2; details })
-  else if len1 > len2 then Change ([], VeryDifferent) (* Arms removed *)
-  else if len1 = len2 && set_equal ps1 ps2 then Change ([], VeryDifferent)
-    (* Same arms, different order. We know the order is different: the top-level `analyze` would have caught them if they were just identical under `=`. *)
+  else if len1 > len2 then (* Arms removed *) Change ([], VeryDifferent)
   else compare_lists ps1 ps2
 
 and details_added_indexless added =
