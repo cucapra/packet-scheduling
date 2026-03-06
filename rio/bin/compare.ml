@@ -32,6 +32,12 @@ let rec is_ordered_subsequence lst1 lst2 =
       if h1 = h2 then is_ordered_subsequence t1 t2
       else is_ordered_subsequence lst1 t2
 
+let arms_added_by_subseq details_fn path lst1 lst2 =
+  let old_count = List.length lst1 in
+  let new_count = List.length lst2 in
+  let details = details_fn lst1 lst2 in
+  Change (path, ArmsAdded { old_count; new_count; details })
+
 let rec is_sub_policy p1 p2 : bool * path =
   (* Is p1 a sub-policy of p2?
      Returns (found, path).
@@ -98,12 +104,8 @@ and details_strict_arm_added ps1 ps2 =
   loop 0 ps1 ps2 [] |> List.rev |> String.concat ", "
 
 and compare_strict ps1 ps2 =
-  let len1 = List.length ps1 in
-  let len2 = List.length ps2 in
   if is_ordered_subsequence ps1 ps2 then
-    let details = details_strict_arm_added ps1 ps2 in
-    Change ([], ArmsAdded { old_count = len1; new_count = len2; details })
-  else if len1 > len2 then (* Arms removed *) Change ([], VeryDifferent)
+    arms_added_by_subseq details_strict_arm_added [] ps1 ps2
   else compare_lists ps1 ps2
 
 and details_added_indexless added =

@@ -112,6 +112,9 @@ let verydiff =
     make_compare_test "strict arm added whilst reordering arms" "strict_BA"
       "strict_ABC"
       (Change ([], VeryDifferent));
+    (* SP(A,B) vs SP(A,C) *)
+    make_compare_test "strict arm changed" "strict_AB" "strict_AC"
+      (Change ([ 1 ], VeryDifferent));
     (* WFQ(A_1,B_2,C_3) vs WFQ(A_2,B_2,C_4): classes same, weight different  *)
     make_compare_test "different WFQ weights" "wfq_ABC" "wfq_ABC_diff"
       (Change ([], VeryDifferent));
