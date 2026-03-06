@@ -65,7 +65,7 @@ let armsadded =
                details = "added fifo[D], strict[fifo[C], fifo[E]]";
              } ));
     (* WFQ(A,B) vs WFQ(A,B,C) *)
-    make_compare_test "WFQ with arm added" "wfq_AB" "wfq_ABC"
+    make_compare_test "WFQ with arm added" "wfq_BA" "wfq_ABC"
       (Change
          ( [],
            ArmsAdded
@@ -99,7 +99,7 @@ let armsremoved =
   [
     make_compare_test "RR with arm removed" "rr_ABC" "rr_AB"
       (Change ([], VeryDifferent));
-    make_compare_test "WFQ with arm removed" "wfq_ABC" "wfq_AB"
+    make_compare_test "WFQ with arm removed" "wfq_ABC" "wfq_BA"
       (Change ([], VeryDifferent));
     make_compare_test "complex tree remove arm deep" "complex_tree_add_arm_deep"
       "complex_tree"
@@ -120,14 +120,14 @@ let verydiff =
       (Change ([], VeryDifferent));
     (* WFQ(A_1,B_2,C_3) vs WFQ(D_1,E_2,F_3) : classes different, weights same *)
     make_compare_test "different WFQ classes" "wfq_ABC" "wfq_DEF"
-      (Change ([ 0 ], VeryDifferent));
+      (Change ([], VeryDifferent));
     (* RR(A,B) vs RR(D,E,F) *)
     make_compare_test "RR big diff" "rr_AB" "rr_DEF"
       (Change ([], VeryDifferent));
     (* SP(A,B) vs SP(B,A) *)
     make_compare_test "Strict with arms reordered" "strict_AB" "strict_BA"
       (Change ([ 0 ], VeryDifferent));
-    make_compare_test "WFQ with weights changed and arm added" "wfq_AB"
+    make_compare_test "WFQ with weights changed and arm added" "wfq_BA"
       "wfq_ABC_diff"
       (Change ([], VeryDifferent));
     make_compare_test "complex tree with an SP reordering deep down"

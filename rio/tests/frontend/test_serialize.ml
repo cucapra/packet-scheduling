@@ -29,7 +29,9 @@ let serialize_tests =
     make_test "strict_BA";
     (* strict[B,A] is stable *)
     make_test "rr_BAC";
-    (* rr[B,A,C] is convered into rr[A,B,C] *)
+    (* rr[B,A,C] is converted into rr[A,B,C] *)
+    make_test "wfq_BA";
+    (* wfq[B_30,A_70] is converted into wfq[A_70,B_30] *)
     make_test "complex_tree";
     (* a complex tree wit wfq, rr, and strict policies and union used to merge classes
      * The children of the rr get sorted, the children of the strict stay in
