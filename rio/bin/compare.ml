@@ -18,10 +18,7 @@ and change =
   | VeryDifferent
   | SuperPol
 
-let subset lst1 lst2 = List.for_all (fun x -> List.mem x lst2) lst1
-let set_equal xs ys = subset xs ys && subset ys xs
 let list_diff xs ys = List.filter (fun x -> not (List.mem x ys)) xs
-let list_inter xs ys = List.filter (fun x -> List.mem x ys) xs
 
 (* Check if lst1 appears as an order-preserving sub-sequence of lst2. E.g. [A,C] is an order-preserving sub-sequence of [A,B,C,D], but [C,A] is not. *)
 let rec is_ordered_subsequence lst1 lst2 =
@@ -32,13 +29,54 @@ let rec is_ordered_subsequence lst1 lst2 =
       if h1 = h2 then is_ordered_subsequence t1 t2
       else is_ordered_subsequence lst1 t2
 
-let arms_added_by_subseq details_fn path lst1 lst2 =
+(* This is a generic constructor of a `Change`, when arms are added. It takes a function to understand how the details string is to be constructed. *)
+let arms_added_by_subseq details_fn lst1 lst2 =
   let old_count = List.length lst1 in
   let new_count = List.length lst2 in
   let details = details_fn lst1 lst2 in
-  Change (path, ArmsAdded { old_count; new_count; details })
+  Change ([], ArmsAdded { old_count; new_count; details })
 
-let rec is_sub_policy p1 p2 : bool * path =
+(* The function we'll use to construct SP-SP details when arms are added *)
+let details_strict_arm_added ps1 ps2 =
+  let rec loop i2 l1 l2 acc =
+    match (l1, l2) with
+    | _, [] -> acc
+    | [], p2 :: t2 ->
+        loop (i2 + 1) [] t2
+          (Printf.sprintf "added %s at %d" (Frontend.Policy.to_string p2) i2
+          :: acc)
+    | p1 :: t1, p2 :: t2 ->
+        if p1 = p2 then loop (i2 + 1) t1 t2 acc
+        else
+          (* p2 is an inserted arm *)
+          loop (i2 + 1) l1 t2
+            (Printf.sprintf "added %s at %d" (Frontend.Policy.to_string p2) i2
+            :: acc)
+  in
+  loop 0 ps1 ps2 [] |> List.rev |> String.concat ", "
+
+(* The function we'll use to construct RR-RR or Union-Union details when arms are added *)
+let details_rr_arm_added additions =
+  (* Sometimes we need text details but the policy doesn't care about the _index_ of the addition. *)
+  if additions = [] then ""
+  else
+    "added "
+    ^ (additions |> List.map Frontend.Policy.to_string |> String.concat ", ")
+
+(* WFQ: build details for added (policy,weight) arms *)
+let details_wfq_arm_added pairs1 pairs2 =
+  let added_pairs = List.filter (fun pw -> not (List.mem pw pairs1)) pairs2 in
+  match added_pairs with
+  | [] -> ""
+  | _ ->
+      added_pairs
+      |> List.map (fun (p, w) ->
+          Printf.sprintf "added %s with weight %g"
+            (Frontend.Policy.to_string p)
+            w)
+      |> String.concat ", "
+
+let rec is_sub_policy p1 p2 =
   (* Is p1 a sub-policy of p2?
      Returns (found, path).
      path tells us where in p2 we found p1, if anywhere.
@@ -64,7 +102,7 @@ let rec is_sub_policy p1 p2 : bool * path =
         in
         loop 0 ps
 
-and compare_lists ps1 ps2 =
+let rec compare_lists ps1 ps2 =
   (* Compare lists of children structurally and report the index of the change. *)
   let len1 = List.length ps1 in
   let len2 = List.length ps2 in
@@ -84,80 +122,37 @@ and compare_lists ps1 ps2 =
     in
     loop 0 ps1 ps2
 
-(* Extract the specific change bewtween two SP policies where an arm was added *)
-and details_strict_arm_added ps1 ps2 =
-  let rec loop i2 l1 l2 acc =
-    match (l1, l2) with
-    | _, [] -> acc
-    | [], p2 :: t2 ->
-        loop (i2 + 1) [] t2
-          (Printf.sprintf "added %s at %d" (Frontend.Policy.to_string p2) i2
-          :: acc)
-    | p1 :: t1, p2 :: t2 ->
-        if p1 = p2 then loop (i2 + 1) t1 t2 acc
-        else
-          (* p2 is an inserted arm *)
-          loop (i2 + 1) l1 t2
-            (Printf.sprintf "added %s at %d" (Frontend.Policy.to_string p2) i2
-            :: acc)
-  in
-  loop 0 ps1 ps2 [] |> List.rev |> String.concat ", "
-
 and compare_strict ps1 ps2 =
   if is_ordered_subsequence ps1 ps2 then
-    arms_added_by_subseq details_strict_arm_added [] ps1 ps2
+    arms_added_by_subseq details_strict_arm_added ps1 ps2
   else compare_lists ps1 ps2
 
-and details_added_indexless added =
-  (* Somtimes we need text details but the policy doesn't care about the _index_ of the addition. *)
-  match added with
-  | [] -> ""
-  | _ ->
-      "added "
-      ^ (added |> List.map Frontend.Policy.to_string |> String.concat ", ")
-
 and compare_rr_like ps1 ps2 =
-  let len1 = List.length ps1 in
-  let len2 = List.length ps2 in
+  (* for RR and Union, for now *)
   if is_ordered_subsequence ps1 ps2 then
-    let added = list_diff ps2 ps1 in
-    let details = details_added_indexless added in
-    Change ([], ArmsAdded { old_count = len1; new_count = len2; details })
-  else if len1 > len2 then (* Arms removed *) Change ([], VeryDifferent)
+    arms_added_by_subseq
+      (fun xs1 xs2 -> details_rr_arm_added (list_diff xs2 xs1))
+      ps1 ps2
   else compare_lists ps1 ps2
 
 and compare_wfq ps1 ws1 ps2 ws2 =
   let len1 = List.length ps1 in
   let len2 = List.length ps2 in
-  (* Treat each (policy, weight) as an atomic unit and check that
-       the old sequence appears in order inside the new sequence. *)
   let pairs1 = List.combine ps1 ws1 in
   let pairs2 = List.combine ps2 ws2 in
   if is_ordered_subsequence pairs1 pairs2 then
-    let added_pairs =
-      List.filter (fun (p, w) -> not (List.mem (p, w) pairs1)) pairs2
-    in
-    let details =
-      match added_pairs with
-      | [] -> ""
-      | _ ->
-          added_pairs
-          |> List.map (fun (p, w) ->
-              Printf.sprintf "added %s with weight %g"
-                (Frontend.Policy.to_string p)
-                w)
-          |> String.concat ", "
-    in
-    Change ([], ArmsAdded { old_count = len1; new_count = len2; details })
+    arms_added_by_subseq details_wfq_arm_added pairs1 pairs2
   else if len1 > len2 then
     (* Arms removed *)
     Change ([], VeryDifferent)
   else if ws1 = ws2 then
-    (*  defer to structural child diff only if the weights are the same *)
+    (* Same weights, so fall back to structural child diff on arms *)
     compare_lists ps1 ps2
-  else Change ([], VeryDifferent)
+  else
+    (* Weight changes, or mixed differences *)
+    Change ([], VeryDifferent)
 
-and analyze p1 p2 : t =
+and analyze p1 p2 =
   if p1 = p2 then Same
   else
     let found, idx = is_sub_policy p1 p2 in
