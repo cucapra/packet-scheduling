@@ -64,7 +64,7 @@ let armsadded =
                new_count = 4;
                details = "added fifo[D], strict[fifo[C], fifo[E]]";
              } ));
-    (* WFQ(A,B) vs WFQ(A,B,C) *)
+    (* WFQ(B,A) vs WFQ(A,B,C) *)
     make_compare_test "WFQ with arm added" "wfq_BA" "wfq_ABC"
       (Change
          ( [],
@@ -74,6 +74,13 @@ let armsadded =
                new_count = 3;
                details = "added fifo[C] with weight 3";
              } ));
+    (* Adding an arm deep inside a tree with WFQ at root *)
+    make_compare_test "WFQ with arm added deep" "wfq_complex"
+      "wfq_complex_add_arm_deep"
+      (Change
+         ( [ 1 ],
+           ArmsAdded { old_count = 2; new_count = 3; details = "added fifo[D]" }
+         ));
     (* Adding an arm deep inside the complex tree *)
     make_compare_test "complex tree add arm deep" "complex_tree"
       "complex_tree_add_arm_deep"
@@ -115,6 +122,9 @@ let verydiff =
     (* SP(A,B) vs SP(A,C) *)
     make_compare_test "strict arm changed" "strict_AB" "strict_AC"
       (Change ([ 1 ], VeryDifferent));
+    (* RR(A,B) vs RR(A,D) *)
+    make_compare_test "rr arm changed" "rr_AB" "rr_AD"
+      (Change ([ 1 ], VeryDifferent));
     (* WFQ(A_1,B_2,C_3) vs WFQ(A_2,B_2,C_4): classes same, weight different  *)
     make_compare_test "different WFQ weights" "wfq_ABC" "wfq_ABC_diff"
       (Change ([], VeryDifferent));
@@ -137,6 +147,8 @@ let verydiff =
 
 let superpol =
   [
+    make_compare_test "fifo_G is sub-pol of union[G,H]" "fifo_G" "union_GH"
+      (Change ([ 0 ], SuperPol));
     make_compare_test "fifo_A is sub-pol of complex_tree" "fifo_A"
       "complex_tree"
       (Change ([ 1; 0 ], SuperPol));
