@@ -91,7 +91,7 @@ let rec is_sub_policy p1 p2 =
     | EDF p ->
         let found, path = is_sub_policy p1 p in
         (found, path)
-    | UNION ps | Strict ps | RR ps | WFQ (ps, _) ->
+    | Union ps | Strict ps | RR ps | WFQ (ps, _) ->
         let rec loop i = function
           | [] -> (false, [])
           | p :: t ->
@@ -161,7 +161,7 @@ and analyze p1 p2 =
       match (p1, p2) with
       | FIFO _, FIFO _ -> Change ([], VeryDifferent)
       | EDF p1, EDF p2 -> analyze p1 p2
-      | UNION ps1, UNION ps2 -> compare_rr_like ps1 ps2
+      | Union ps1, Union ps2 -> compare_rr_like ps1 ps2
       | Strict ps1, Strict ps2 -> compare_strict ps1 ps2
       | RR ps1, RR ps2 -> compare_rr_like ps1 ps2
       | WFQ (ps1, ws1), WFQ (ps2, ws2) -> compare_wfq ps1 ws1 ps2 ws2

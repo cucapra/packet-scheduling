@@ -1,6 +1,6 @@
 type t =
   | FIFO of Ast.clss
-  | UNION of t list
+  | Union of t list
   | EDF of t
   | Strict of t list
   | RR of t list

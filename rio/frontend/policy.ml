@@ -1,6 +1,6 @@
 type t =
   | FIFO of Ast.clss
-  | UNION of t list
+  | Union of t list
   | EDF of t
   | Strict of t list
   | RR of t list
@@ -24,7 +24,7 @@ let rec sub cl st used (p : Ast.stream) =
         else (
           used := c :: !used;
           wrap c)
-    | Ast.Union sets -> UNION (sets |> List.map (sub_set wrap))
+    | Ast.Union sets -> Union (sets |> List.map (sub_set wrap))
   in
   match p with
   | Var x ->
@@ -42,7 +42,7 @@ let rec sub cl st used (p : Ast.stream) =
 let rec normalize p =
   match p with
   | FIFO _ -> p
-  | UNION ps -> UNION (List.map normalize ps |> List.sort compare)
+  | Union ps -> Union (List.map normalize ps |> List.sort compare)
   | EDF p -> EDF (normalize p)
   | Strict ps -> Strict (List.map normalize ps)
   | RR ps -> RR (List.map normalize ps |> List.sort compare)
@@ -68,7 +68,7 @@ let rec to_string p =
   match p with
   | FIFO c -> fmt "fifo[%s]" c
   | EDF p -> fmt "edf[%s]" (to_string p)
-  | UNION ps -> fmt "union[%s]" (join ps to_string)
+  | Union ps -> fmt "union[%s]" (join ps to_string)
   | Strict ps -> fmt "strict[%s]" (join ps to_string)
   | RR ps -> fmt "rr[%s]" (join ps to_string)
   | WFQ (ps, ws) ->
@@ -79,7 +79,7 @@ let rec to_string p =
 let rec to_json p : Yojson.Basic.t =
   match p with
   | FIFO c -> `Assoc [ ("FIFO", `String c) ]
-  | UNION ps -> `Assoc [ ("UNION", `List (List.map to_json ps)) ]
+  | Union ps -> `Assoc [ ("Union", `List (List.map to_json ps)) ]
   | EDF p -> `Assoc [ ("EDF", to_json p) ]
   | Strict ps -> `Assoc [ ("Strict", `List (List.map to_json ps)) ]
   | RR ps -> `Assoc [ ("RR", `List (List.map to_json ps)) ]
