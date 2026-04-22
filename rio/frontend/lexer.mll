@@ -32,6 +32,7 @@ rule token = parse
 | "rr"                  { RR }
 | "strict"              { STRICT }
 | "wfq"                 { WFQ }
+| "edf"                 { EDF }
 | "sjn"                 { SJN }
 | "srtf"                { SRTF }
 | "rcsp"                { RCSP }

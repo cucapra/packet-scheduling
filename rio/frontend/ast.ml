@@ -14,6 +14,7 @@ type set =
 type stream =
   (* Set-to-Stream *)
   | Fifo of set
+  | EarliestDeadline of set
   | ShortestJobNext of set
   | ShortestRemaining of set
   (* Stream-To-Stream *)
