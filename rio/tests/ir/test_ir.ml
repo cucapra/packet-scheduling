@@ -1,14 +1,14 @@
 open Ir
 open OUnit2
 
-(* Hand-built rr[A, B] *)
+(* Handwritten rr[A, B] *)
 let rr_ab_program : program =
   let root = 0 in
   let a_leaf = 1 in
   let b_leaf = 2 in
   let s_a = 0 in
   let s_b = 1 in
-  let pe1 = 1 in 
+  let pe1 = 1 in
   let pe2 = 2 in
   [
     Spawn (root, pe1);

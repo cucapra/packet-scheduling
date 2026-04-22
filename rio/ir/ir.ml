@@ -1,12 +1,17 @@
-(** IR for the Rio → hardware-primitive intermediate language, as sketched
-    in https://github.com/cucapra/packet-scheduling/discussions/93. *)
+(** IR for the Rio → hardware-primitive intermediate language, as sketched in
+    https://github.com/cucapra/packet-scheduling/discussions/93. *)
 
 type pe = int
 type vpifo = int
 type step = int
 type clss = string
 
-type pol_ty = FIFO | RR | SP | WFQ | UNION
+type pol_ty =
+  | FIFO
+  | RR
+  | SP
+  | WFQ
+  | UNION
 
 type instr =
   | Spawn of vpifo * pe
@@ -51,21 +56,18 @@ let string_of_program p = p |> List.map string_of_instr |> String.concat "\n"
 
 exception UnsupportedPolicy of string
 
-(* Collect all classes from a leaf-shaped policy subtree. A "leaf" is a
-   [FIFO c], or a [UNION] whose eventual leaves are all [FIFO c]s. 
-   Raises [UnsupportedPolicy] on any interior policy node. *)
-let rec classes_of_leaf (p : Frontend.Policy.t) : clss list =
+(* Every leaf is a [FIFO c]: a single-class vPIFO with no children. 
+    Anything else (a nested policy node, EDF, …) raises [UnsupportedPolicy]. *)
+let class_of_leaf (p : Frontend.Policy.t) : clss =
   let module P = Frontend.Policy in
   match p with
-  | P.FIFO c -> [ c ]
-  | P.UNION ps -> List.concat_map classes_of_leaf ps
-  | P.Strict _ | P.RR _ | P.WFQ _ ->
+  | P.FIFO c -> c
+  | P.UNION _ | P.Strict _ | P.RR _ | P.WFQ _ ->
       raise
         (UnsupportedPolicy
-           "nested policy nodes are not supported in the first cut; only \
-            one-level work-conserving programs compile")
-  | P.EDF _ ->
-      raise (UnsupportedPolicy "EDF is not supported in the first cut")
+           "nested policy nodes are not supported in MS1; only one-level \
+            work-conserving programs compile")
+  | P.EDF _ -> raise (UnsupportedPolicy "EDF is not supported in MS1")
 
 let make_counter () =
   let n = ref (-1) in
@@ -73,55 +75,45 @@ let make_counter () =
     incr n;
     !n
 
-(* Compile an [RR] / [Strict] / [WFQ] at the top level. [weights] is [None]
-   for round-robin and [Some ws] for strict / weighted-fair. *)
+(* Compile a one-level [UNION] / [RR] / [Strict] / [WFQ]. [weights] is
+   [None] for round-robin and union; [Some ws] for strict / weighted-fair.
+   Every child must be a [FIFO c] in MS1. *)
 let compile_arm_node ~pol_ty ~children ~weights =
   let fresh_v = make_counter () in
   let fresh_s = make_counter () in
   let root_pe = 1 in
   let leaf_pe = 2 in
   let root = fresh_v () in
-  (* For each child: resolve its class list, allocate a leaf vPIFO and a
-     step. List.map is left-to-right in the stdlib, so IDs come out in
-     source order. *)
+  (* For each child: resolve its class, allocate a leaf vPIFO and a step.
+     List.map is left-to-right in the stdlib, so IDs come out in source
+     order. *)
   let leaves =
     List.map
       (fun child ->
-        let cs = classes_of_leaf child in
+        let c = class_of_leaf child in
         let leaf = fresh_v () in
         let step = fresh_s () in
-        (cs, leaf, step))
+        (c, leaf, step))
       children
   in
   let spawn_root = [ Spawn (root, root_pe) ] in
+  (* The list [leaves] now has all the info we need to generate our adopt, assoc, map commands *)
   let spawn_leaves =
     List.map (fun (_, leaf, _) -> Spawn (leaf, leaf_pe)) leaves
   in
   let adopts =
     List.map (fun (_, leaf, step) -> Adopt (step, root, leaf)) leaves
   in
-  let all_classes = List.concat_map (fun (cs, _, _) -> cs) leaves in
-  let root_assocs = List.map (fun c -> Assoc (root, c)) all_classes in
-  let leaf_assocs =
-    List.concat_map
-      (fun (cs, leaf, _) -> List.map (fun c -> Assoc (leaf, c)) cs)
-      leaves
-  in
-  let maps =
-    List.concat_map
-      (fun (cs, _, step) -> List.map (fun c -> Map (root, c, step)) cs)
-      leaves
-  in
-  let change_pol_instr =
-    [ Change_pol (root, pol_ty, List.length children) ]
-  in
+  let root_assocs = List.map (fun (c, _, _) -> Assoc (root, c)) leaves in
+  let leaf_assocs = List.map (fun (c, leaf, _) -> Assoc (leaf, c)) leaves in
+  let maps = List.map (fun (c, _, step) -> Map (root, c, step)) leaves in
+  let change_pol_instr = [ Change_pol (root, pol_ty, List.length children) ] in
   let change_weight_instrs =
     match weights with
     | None -> []
     | Some ws ->
         if List.length ws <> List.length leaves then
-          raise
-            (UnsupportedPolicy "internal error: weight/arm count mismatch");
+          raise (UnsupportedPolicy "internal error: weight/arm count mismatch");
         List.map2
           (fun (_, _, step) w -> Change_weight (root, step, w))
           leaves ws
@@ -144,11 +136,7 @@ let of_policy (p : Frontend.Policy.t) : program =
   | P.FIFO c ->
       (* A single-class top-level policy: one vPIFO with one [Assoc]. *)
       [ Spawn (0, 1); Assoc (0, c) ]
-  | P.UNION _ as u ->
-      (* A top-level union: one vPIFO [Assoc]'d with every class in the
-         (possibly nested) union. *)
-      let classes = classes_of_leaf u in
-      Spawn (0, 1) :: List.map (fun c -> Assoc (0, c)) classes
+  | P.UNION children -> compile_arm_node ~pol_ty:UNION ~children ~weights:None
   | P.RR children -> compile_arm_node ~pol_ty:RR ~children ~weights:None
   | P.Strict children ->
       (* Strict priority: first child has priority 1 (highest), then 2, 3, … *)
@@ -159,4 +147,4 @@ let of_policy (p : Frontend.Policy.t) : program =
          [int]s. Convert back for the IR. *)
       let weights = Some (List.map int_of_float ws) in
       compile_arm_node ~pol_ty:WFQ ~children ~weights
-  | P.EDF _ -> raise (UnsupportedPolicy "EDF is not supported in the first cut")
+  | P.EDF _ -> raise (UnsupportedPolicy "EDF is not supported in MS1")
