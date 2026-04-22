@@ -1,18 +1,18 @@
 open Frontend
 open OUnit2
+open Ir
 
 let root_dir = "../../../../../"
 let prog_dir = root_dir ^ "progs/"
 
+(* [.sched] file -> [Ir.program]. Stops short of pretty-printing — that's
+   [test_pretty]'s job. *)
 let compile filename =
-  prog_dir ^ filename
-  |> Parser.parse_file
-  |> Policy.of_program
-  |> Ir.of_policy
-  |> Ir.string_of_program
+  prog_dir ^ filename |> Parser.parse_file |> Policy.of_program |> Ir.of_policy
 
-let make_test name filename expected =
-  name >:: fun _ -> assert_equal ~printer:Fun.id expected (compile filename)
+let make_test name filename (expected : program) =
+  name >:: fun _ ->
+  assert_equal ~printer:Ir.string_of_program expected (compile filename)
 
 (* Asserts that compilation raises [Ir.UnsupportedPolicy]. The carried
    message is not checked. *)
@@ -24,108 +24,103 @@ let make_unsupported_test name filename =
       (Printf.sprintf "%s: expected UnsupportedPolicy, got a result" name)
   with Ir.UnsupportedPolicy _ -> ()
 
-(* -------- Golden strings for each supported shape. -------- *)
+(* -------- Expected [Ir.program]s for each supported shape. -------- *)
 
-let fifo_a_expected = String.concat "\n" [ "v0 = spawn(pe1)"; "assoc(v0, A)" ]
+let fifo_a_expected : program = [ Spawn (0, 1); Assoc (0, "A") ]
 
-let union_abc_expected =
-  String.concat "\n"
-    [
-      "v0 = spawn(pe1)";
-      "v1 = spawn(pe2)";
-      "v2 = spawn(pe2)";
-      "v3 = spawn(pe2)";
-      "step_0 = adopt(v0, v1)";
-      "step_1 = adopt(v0, v2)";
-      "step_2 = adopt(v0, v3)";
-      "assoc(v0, A)";
-      "assoc(v0, B)";
-      "assoc(v0, C)";
-      "assoc(v1, A)";
-      "assoc(v2, B)";
-      "assoc(v3, C)";
-      "map(v0, A, step_0)";
-      "map(v0, B, step_1)";
-      "map(v0, C, step_2)";
-      "change_pol(v0, UNION, 3)";
-    ]
+let union_abc_expected : program =
+  [
+    Spawn (0, 1);
+    Spawn (1, 2);
+    Spawn (2, 2);
+    Spawn (3, 2);
+    Adopt (0, 0, 1);
+    Adopt (1, 0, 2);
+    Adopt (2, 0, 3);
+    Assoc (0, "A");
+    Assoc (0, "B");
+    Assoc (0, "C");
+    Assoc (1, "A");
+    Assoc (2, "B");
+    Assoc (3, "C");
+    Map (0, "A", 0);
+    Map (0, "B", 1);
+    Map (0, "C", 2);
+    Change_pol (0, UNION, 3);
+  ]
 
-let rr_abc_expected =
-  String.concat "\n"
-    [
-      "v0 = spawn(pe1)";
-      "v1 = spawn(pe2)";
-      "v2 = spawn(pe2)";
-      "v3 = spawn(pe2)";
-      "step_0 = adopt(v0, v1)";
-      "step_1 = adopt(v0, v2)";
-      "step_2 = adopt(v0, v3)";
-      "assoc(v0, A)";
-      "assoc(v0, B)";
-      "assoc(v0, C)";
-      "assoc(v1, A)";
-      "assoc(v2, B)";
-      "assoc(v3, C)";
-      "map(v0, A, step_0)";
-      "map(v0, B, step_1)";
-      "map(v0, C, step_2)";
-      "change_pol(v0, RR, 3)";
-    ]
+let rr_abc_expected : program =
+  [
+    Spawn (0, 1);
+    Spawn (1, 2);
+    Spawn (2, 2);
+    Spawn (3, 2);
+    Adopt (0, 0, 1);
+    Adopt (1, 0, 2);
+    Adopt (2, 0, 3);
+    Assoc (0, "A");
+    Assoc (0, "B");
+    Assoc (0, "C");
+    Assoc (1, "A");
+    Assoc (2, "B");
+    Assoc (3, "C");
+    Map (0, "A", 0);
+    Map (0, "B", 1);
+    Map (0, "C", 2);
+    Change_pol (0, RR, 3);
+  ]
 
-let strict_cba_expected =
-  String.concat "\n"
-    [
-      "v0 = spawn(pe1)";
-      "v1 = spawn(pe2)";
-      "v2 = spawn(pe2)";
-      "v3 = spawn(pe2)";
-      "step_0 = adopt(v0, v1)";
-      "step_1 = adopt(v0, v2)";
-      "step_2 = adopt(v0, v3)";
-      "assoc(v0, C)";
-      "assoc(v0, B)";
-      "assoc(v0, A)";
-      "assoc(v1, C)";
-      "assoc(v2, B)";
-      "assoc(v3, A)";
-      "map(v0, C, step_0)";
-      "map(v0, B, step_1)";
-      "map(v0, A, step_2)";
-      "change_pol(v0, SP, 3)";
-      "change_weight(v0, step_0, 1)";
-      "change_weight(v0, step_1, 2)";
-      "change_weight(v0, step_2, 3)";
-    ]
+let strict_cba_expected : program =
+  [
+    Spawn (0, 1);
+    Spawn (1, 2);
+    Spawn (2, 2);
+    Spawn (3, 2);
+    Adopt (0, 0, 1);
+    Adopt (1, 0, 2);
+    Adopt (2, 0, 3);
+    Assoc (0, "C");
+    Assoc (0, "B");
+    Assoc (0, "A");
+    Assoc (1, "C");
+    Assoc (2, "B");
+    Assoc (3, "A");
+    Map (0, "C", 0);
+    Map (0, "B", 1);
+    Map (0, "A", 2);
+    Change_pol (0, SP, 3);
+    Change_weight (0, 0, 1);
+    Change_weight (0, 1, 2);
+    Change_weight (0, 2, 3);
+  ]
 
-let wfq_abc_expected =
-  String.concat "\n"
-    [
-      "v0 = spawn(pe1)";
-      "v1 = spawn(pe2)";
-      "v2 = spawn(pe2)";
-      "v3 = spawn(pe2)";
-      "step_0 = adopt(v0, v1)";
-      "step_1 = adopt(v0, v2)";
-      "step_2 = adopt(v0, v3)";
-      "assoc(v0, A)";
-      "assoc(v0, B)";
-      "assoc(v0, C)";
-      "assoc(v1, A)";
-      "assoc(v2, B)";
-      "assoc(v3, C)";
-      "map(v0, A, step_0)";
-      "map(v0, B, step_1)";
-      "map(v0, C, step_2)";
-      "change_pol(v0, WFQ, 3)";
-      "change_weight(v0, step_0, 1)";
-      "change_weight(v0, step_1, 2)";
-      "change_weight(v0, step_2, 3)";
-    ]
+let wfq_abc_expected : program =
+  [
+    Spawn (0, 1);
+    Spawn (1, 2);
+    Spawn (2, 2);
+    Spawn (3, 2);
+    Adopt (0, 0, 1);
+    Adopt (1, 0, 2);
+    Adopt (2, 0, 3);
+    Assoc (0, "A");
+    Assoc (0, "B");
+    Assoc (0, "C");
+    Assoc (1, "A");
+    Assoc (2, "B");
+    Assoc (3, "C");
+    Map (0, "A", 0);
+    Map (0, "B", 1);
+    Map (0, "C", 2);
+    Change_pol (0, WFQ, 3);
+    Change_weight (0, 0, 1);
+    Change_weight (0, 1, 2);
+    Change_weight (0, 2, 3);
+  ]
 
 let compile_tests =
   [
     make_test "fifo[A]" "work_conserving/fifo_A.sched" fifo_a_expected;
-    (* classes A, B; policy = A — B is declared but unused, dropped. *)
     make_test "drop unused class" "work_conserving/drop_class.sched"
       fifo_a_expected;
     make_test "union[A, B, C]" "work_conserving/union_ABC.sched"
