@@ -38,8 +38,7 @@ let run () =
 
   let module Pol : Control.Policy = struct
     let policy = prog
-  end
-  in
+  end in
   match enqdeq with
   | PIFO ->
       let module PIFOCtrl = Control.Make_PIFOControl (Pol) in
