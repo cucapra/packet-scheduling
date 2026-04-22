@@ -56,95 +56,138 @@ let string_of_program p = p |> List.map string_of_instr |> String.concat "\n"
 
 exception UnsupportedPolicy of string
 
-(* Every leaf is a [FIFO c]: a single-class vPIFO with no children. 
-    Anything else (a nested policy node, EDF, …) raises [UnsupportedPolicy]. *)
-let class_of_leaf (p : Frontend.Policy.t) : clss =
-  let module P = Frontend.Policy in
-  match p with
-  | P.FIFO c -> c
-  | P.UNION _ | P.Strict _ | P.RR _ | P.WFQ _ ->
-      raise
-        (UnsupportedPolicy
-           "nested policy nodes are not supported in MS1; only one-level \
-            work-conserving programs compile")
-  | P.EDF _ -> raise (UnsupportedPolicy "EDF is not supported in MS1")
-
-let make_counter () =
-  let n = ref (-1) in
+let make_counter ~start =
+  let n = ref (start - 1) in
   fun () ->
     incr n;
     !n
 
-(* Compile a one-level [UNION] / [RR] / [Strict] / [WFQ]. [weights] is
-   [None] for round-robin and union; [Some ws] for strict / weighted-fair.
-   Every child must be a [FIFO c] in MS1. *)
-let compile_arm_node ~pol_ty ~children ~weights =
-  let fresh_v = make_counter () in
-  let fresh_s = make_counter () in
-  let root_pe = 1 in
-  let leaf_pe = 2 in
-  let root = fresh_v () in
-  (* For each child: resolve its class, allocate a leaf vPIFO and a step.
-     List.map is left-to-right in the stdlib, so IDs come out in source
-     order. *)
-  let leaves =
-    List.map
-      (fun child ->
-        let c = class_of_leaf child in
-        let leaf = fresh_v () in
-        let step = fresh_s () in
-        (c, leaf, step))
-      children
-  in
-  let spawn_root = [ Spawn (root, root_pe) ] in
-  (* The list [leaves] now has all the info we need to generate our adopt, assoc, map commands *)
-  let spawn_leaves =
-    List.map (fun (_, leaf, _) -> Spawn (leaf, leaf_pe)) leaves
-  in
-  let adopts =
-    List.map (fun (_, leaf, step) -> Adopt (step, root, leaf)) leaves
-  in
-  let root_assocs = List.map (fun (c, _, _) -> Assoc (root, c)) leaves in
-  let leaf_assocs = List.map (fun (c, leaf, _) -> Assoc (leaf, c)) leaves in
-  let maps = List.map (fun (c, _, step) -> Map (root, c, step)) leaves in
-  let change_pol_instr = [ Change_pol (root, pol_ty, List.length children) ] in
-  let change_weight_instrs =
-    match weights with
-    | None -> []
-    | Some ws ->
-        if List.length ws <> List.length leaves then
-          raise (UnsupportedPolicy "internal error: weight/arm count mismatch");
-        List.map2
-          (fun (_, _, step) w -> Change_weight (root, step, w))
-          leaves ws
-  in
-  List.concat
-    [
-      spawn_root;
-      spawn_leaves;
-      adopts;
-      root_assocs;
-      leaf_assocs;
-      maps;
-      change_pol_instr;
-      change_weight_instrs;
-    ]
+(* A compiled subtree, grouped by instruction kind so the top-level
+   concatenation produces all spawns first, then all adopts, etc. *)
+type frag = {
+  spawns : instr list;
+  adopts : instr list;
+  assocs : instr list;
+  maps : instr list;
+  change_pols : instr list;
+  change_weights : instr list;
+  root_v : vpifo;
+  classes : clss list;
+      (** Classes handled by this subtree, in the order they were declared in
+          the source. *)
+}
 
-let of_policy (p : Frontend.Policy.t) : program =
+(** Given a generator of fresh vPIFO IDs, the depth of PE to place the fresh
+    vPIFO into, and the class to assciate the vPIFO with, complete all the
+    necessary steps to stand up the FIFO. This is also a good place to get
+    warmed up with [frag]s. A [frag] is the relevant component of the final
+    program that pertains to setting up the present subtree. *)
+let compile_FIFO ~fresh_v ~depth c =
+  let v = fresh_v () in
+  {
+    spawns = [ Spawn (v, depth) ];
+    assocs = [ Assoc (v, c) ];
+    root_v = v;
+    classes = [ c ];
+    (* many frag fields are empty when setting up a FIFO-running vPIFO *)
+    adopts = [];
+    maps = [];
+    change_pols = [];
+    change_weights = [];
+  }
+
+(* Compile a [Frontend.Policy.t] subtree rooted at depth [depth]. PE
+   assignment is depth-based — every node at depth [d] lives on
+   [pe d]. *)
+let rec compile_subtree ~fresh_v ~fresh_s ~depth (p : Frontend.Policy.t) : frag
+    =
   let module P = Frontend.Policy in
   match p with
-  | P.FIFO c ->
-      (* A single-class top-level policy: one vPIFO with one [Assoc]. *)
-      [ Spawn (0, 1); Assoc (0, c) ]
-  | P.UNION children -> compile_arm_node ~pol_ty:UNION ~children ~weights:None
-  | P.RR children -> compile_arm_node ~pol_ty:RR ~children ~weights:None
+  | P.FIFO c -> compile_FIFO ~fresh_v ~depth c
+  | P.UNION children ->
+      compile_arm ~fresh_v ~fresh_s ~depth ~pol_ty:UNION ~weights:None children
+  | P.RR children ->
+      compile_arm ~fresh_v ~fresh_s ~depth ~pol_ty:RR ~weights:None children
   | P.Strict children ->
       (* Strict priority: first child has priority 1 (highest), then 2, 3, … *)
       let weights = Some (List.mapi (fun i _ -> i + 1) children) in
-      compile_arm_node ~pol_ty:SP ~children ~weights
+      compile_arm ~fresh_v ~fresh_s ~depth ~pol_ty:SP ~weights children
   | P.WFQ (children, ws) ->
       (* [Frontend.Policy] stores weights as [float] converted from DSL
          [int]s. Convert back for the IR. *)
       let weights = Some (List.map int_of_float ws) in
-      compile_arm_node ~pol_ty:WFQ ~children ~weights
+      compile_arm ~fresh_v ~fresh_s ~depth ~pol_ty:WFQ ~weights children
   | P.EDF _ -> raise (UnsupportedPolicy "EDF is not supported in MS1")
+
+and compile_arm ~fresh_v ~fresh_s ~depth ~pol_ty ~weights children =
+  let v = fresh_v () in
+  (* Recurse on each child first; List.map is left-to-right in the stdlib
+     so vpifo IDs come out in source order. *)
+  let child_frags =
+    List.map (compile_subtree ~fresh_v ~fresh_s ~depth:(depth + 1)) children
+  in
+  (* The children are all done at this point, and the relevant instructions are in [child_frags]. 
+  Now we just need to connect the present node with the children. *)
+  (* Adopt each child, and store the fresh step ID that we get at the moment we adopt it. *)
+  let adoption_records =
+    List.map
+      (fun cf ->
+        let s = fresh_s () in
+        (Adopt (s, v, cf.root_v), s, cf))
+      child_frags
+  in
+  (* Spawn self *)
+  let local_spawn = Spawn (v, depth) in
+  (* Yank out the literal [adopt] commands from [adoption_records] *)
+  let local_adopts = List.map (fun (a, _, _) -> a) adoption_records in
+  (* Create a list of classes with which the children are associated *)
+  let all_classes = List.concat_map (fun cf -> cf.classes) child_frags in
+  (* and associate with them yourself *)
+  let local_assocs = List.map (fun c -> Assoc (v, c)) all_classes in
+  (* Add mappings to remember how to get to each child *)
+  let local_maps =
+    List.concat_map
+      (fun (_, s, cf) -> List.map (fun c -> Map (v, c, s)) cf.classes)
+      adoption_records
+  in
+  (* set the local policy and, if supplied, the relevant weights *)
+  let local_change_pol = [ Change_pol (v, pol_ty, List.length children) ] in
+  let local_change_weights =
+    match weights with
+    | None -> []
+    | Some ws ->
+        if List.length ws <> List.length adoption_records then
+          raise (UnsupportedPolicy "internal error: weight/arm count mismatch");
+        List.map2
+          (fun (_, s, _) w -> Change_weight (v, s, w))
+          adoption_records ws
+  in
+  (* Now we have lots of instructions within [child_frags] and we have some local instructions. 
+     Time to merge them carefully. *)
+  {
+    spawns = local_spawn :: List.concat_map (fun cf -> cf.spawns) child_frags;
+    adopts = local_adopts @ List.concat_map (fun cf -> cf.adopts) child_frags;
+    assocs = local_assocs @ List.concat_map (fun cf -> cf.assocs) child_frags;
+    maps = local_maps @ List.concat_map (fun cf -> cf.maps) child_frags;
+    change_pols =
+      local_change_pol @ List.concat_map (fun cf -> cf.change_pols) child_frags;
+    change_weights =
+      local_change_weights
+      @ List.concat_map (fun cf -> cf.change_weights) child_frags;
+    root_v = v;
+    classes = all_classes;
+  }
+
+let of_policy (p : Frontend.Policy.t) : program =
+  let fresh_v = make_counter ~start:100 in
+  let fresh_s = make_counter ~start:1000 in
+  let frag = compile_subtree ~fresh_v ~fresh_s ~depth:0 p in
+  List.concat
+    [
+      frag.spawns;
+      frag.adopts;
+      frag.assocs;
+      frag.maps;
+      frag.change_pols;
+      frag.change_weights;
+    ]

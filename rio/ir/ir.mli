@@ -38,17 +38,13 @@ val string_of_instr : instr -> string
 val string_of_program : program -> string
 
 exception UnsupportedPolicy of string
-(** Raised when the input [Frontend.Policy.t] falls outside MS1 compiler's
-    supported shape — i.e., anything that is NOT a one-level work-conserving
-    policy. The string carries a human-readable reason. *)
+(** Raised when the input [Frontend.Policy.t] falls outside the MS1.5 compiler's
+    supported shape — i.e., anything that involves [EDF]. The string carries a
+    human-readable reason. *)
 
 val of_policy : Frontend.Policy.t -> program
-(** Compile a [Frontend.Policy.t] to IR. Supported shapes are:
-    - [FIFO c]
-    - [UNION children], [RR children], [Strict children],
-      [WFQ (children, weights)] where every child is a [FIFO c] (a single-class
-      leaf with no children).
-
-    Any other shape (a nested policy node, [EDF], …) raises [UnsupportedPolicy].
-    Declared classes that do not appear in the returned policy are silently
-    dropped, per the DSL semantics. *)
+(** Compile a [Frontend.Policy.t] to IR. Supports trees of any height built from
+    [FIFO], [UNION], [RR], [Strict], and [WFQ]. Each node at depth [d] is placed
+    on PE [d] (so all siblings — and cousins — share a PE). [EDF] anywhere in
+    the tree raises [UnsupportedPolicy]. Declared classes that do not appear in
+    the returned policy are silently dropped, per the DSL semantics. *)
