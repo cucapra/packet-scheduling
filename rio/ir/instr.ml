@@ -1,6 +1,4 @@
-(** IR types and string-conversion helpers, factored out of [ir.ml] so other
-    modules in the library (notably [Json]) can reference them without creating
-    a wrapper-cycle on [Ir]. *)
+(** IR types and string-conversion helpers. *)
 
 type pe = int
 type vpifo = int

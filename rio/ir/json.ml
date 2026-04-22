@@ -1,10 +1,4 @@
-(** JSON exporter for IR programs.
-
-    The shape mirrors [Instr.string_of_instr]: each instruction becomes a JSON
-    object with an ["op"] field plus the operand fields, and a program is a JSON
-    array of those objects. Policy-type names are emitted exactly as
-    [Instr.string_of_pol_ty] renders them ([FIFO], [RR], [SP], [WFQ], [UNION]).
-*)
+(** JSON exporter for IR programs. *)
 
 let from_pol_ty (pt : Instr.pol_ty) : Yojson.Basic.t =
   `String (Instr.string_of_pol_ty pt)

@@ -1,10 +1,6 @@
 (** IR for the Rio → hardware-primitive intermediate language, as sketched in
     https://github.com/cucapra/packet-scheduling/discussions/93. *)
 
-(* The IR's types and string-conversion helpers live in [Instr] so that other
-   modules in this library (notably [Json]) can reference them without
-   depending on [Ir] itself, which is the library wrapper. We re-export them
-   here so consumers continue to see [Ir.pol_ty], [Ir.Spawn], etc. *)
 include Instr
 
 let make_counter ~start =
@@ -57,15 +53,12 @@ let rec compile_subtree ~fresh_v ~fresh_s ~depth (p : Frontend.Policy.t) : frag
   | P.RR children -> compile_arm ~fresh_v ~fresh_s ~depth ~pol_ty:RR children
   | P.Strict children ->
       (* Strict priority: first child has priority 1.0 (highest), then 2.0, 3.0, … *)
-      let weights =
-        Some (List.mapi (fun i _ -> float_of_int (i + 1)) children)
-      in
+      let weights = List.mapi (fun i _ -> float_of_int (i + 1)) children in
       compile_arm ~fresh_v ~fresh_s ~depth ~pol_ty:SP ~weights children
   | P.WFQ (children, ws) ->
-      compile_arm ~fresh_v ~fresh_s ~depth ~pol_ty:WFQ ~weights:(Some ws)
-        children
+      compile_arm ~fresh_v ~fresh_s ~depth ~pol_ty:WFQ ~weights:ws children
 
-and compile_arm ~fresh_v ~fresh_s ~depth ~pol_ty ?(weights = None) children =
+and compile_arm ~fresh_v ~fresh_s ~depth ~pol_ty ?weights children =
   (* Recurse on each child first; List.map is left-to-right in the stdlib
      so vpifo IDs come out in source order. *)
   let child_frags =
@@ -103,8 +96,8 @@ and compile_arm ~fresh_v ~fresh_s ~depth ~pol_ty ?(weights = None) children =
     match weights with
     | None -> []
     | Some ws ->
-        if List.length ws <> List.length adoption_records then
-          failwith "internal error: weight/arm count mismatch";
+        (* Frontend invariant: WFQ/Strict produce one weight per arm. *)
+        assert (List.length ws = List.length adoption_records);
         List.map2
           (fun (_, s, _) w -> Change_weight (v, s, w))
           adoption_records ws
