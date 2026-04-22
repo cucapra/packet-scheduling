@@ -1,41 +1,10 @@
 (** IR for the Rio → hardware-primitive intermediate language, as sketched in
     https://github.com/cucapra/packet-scheduling/discussions/93. *)
 
-type pe = int
-type vpifo = int
-type step = int
-type clss = string
-
-type pol_ty =
-  | FIFO
-  | RR
-  | SP
-  | WFQ
-  | UNION
-
-type instr =
-  | Spawn of vpifo * pe
-      (** [Spawn (v, pe)]: add a fresh empty vPIFO [v] to [pe]. *)
-  | Adopt of step * vpifo * vpifo
-      (** [Adopt (s, parent, child)]: tell [parent] that [child] is its child;
-          [s] is the step [parent] uses to refer to [child]. *)
-  | Assoc of vpifo * clss
-      (** [Assoc (v, c)]: [v] begins to accept packets of class [c]. *)
-  | Deassoc of vpifo * clss
-      (** [Deassoc (v, c)]: [v] stops accepting packets of class [c]. *)
-  | Map of vpifo * clss * step
-      (** [Map (v, c, s)]: in [v]'s brain, map class [c] to step [s]. *)
-  | Change_pol of vpifo * pol_ty * int
-      (** [Change_pol (v, pol, n)]: set [v]'s policy to [pol] with [n] arms. *)
-  | Change_weight of vpifo * step * float
-      (** [Change_weight (v, s, w)]: the child reached via step [s] has weight
-          [w]. *)
-
-type program = instr list
-
-val string_of_pol_ty : pol_ty -> string
-val string_of_instr : instr -> string
-val string_of_program : program -> string
+(* Re-export the IR types and string-conversion helpers from [Instr]. They
+   live there (rather than here) so that other modules in this library can
+   reference them without depending on [Ir]. *)
+include module type of Instr
 
 val of_policy : Frontend.Policy.t -> program
 (** Compile a [Frontend.Policy.t] to IR. Supports trees of any height built from
@@ -43,3 +12,12 @@ val of_policy : Frontend.Policy.t -> program
     on PE [d] (so all siblings — and cousins — share a PE). Declared classes
     that do not appear in the returned policy are silently dropped, per the DSL
     semantics. *)
+
+(** JSON exporter for IR programs. *)
+module Json : sig
+  val from_instr : instr -> Yojson.Basic.t
+  (** Serialize a single instruction as a JSON object. *)
+
+  val from_program : program -> Yojson.Basic.t
+  (** Serialize a program as a JSON array of instruction objects. *)
+end
