@@ -3,17 +3,17 @@ open OUnit2
 
 (* Handwritten rr[A, B] *)
 let rr_ab_program : program =
-  let root = 0 in
-  let a_leaf = 1 in
-  let b_leaf = 2 in
-  let s_a = 0 in
-  let s_b = 1 in
+  let root = 100 in
+  let a_leaf = 101 in
+  let b_leaf = 102 in
+  let s_a = 1000 in
+  let s_b = 1001 in
+  let pe0 = 0 in
   let pe1 = 1 in
-  let pe2 = 2 in
   [
-    Spawn (root, pe1);
-    Spawn (a_leaf, pe2);
-    Spawn (b_leaf, pe2);
+    Spawn (root, pe0);
+    Spawn (a_leaf, pe1);
+    Spawn (b_leaf, pe1);
     Adopt (s_a, root, a_leaf);
     Adopt (s_b, root, b_leaf);
     Assoc (root, "A");
@@ -28,18 +28,18 @@ let rr_ab_program : program =
 let expected_rr_ab =
   String.concat "\n"
     [
-      "v0 = spawn(pe1)";
-      "v1 = spawn(pe2)";
-      "v2 = spawn(pe2)";
-      "step_0 = adopt(v0, v1)";
-      "step_1 = adopt(v0, v2)";
-      "assoc(v0, A)";
-      "assoc(v0, B)";
-      "assoc(v1, A)";
-      "assoc(v2, B)";
-      "map(v0, A, step_0)";
-      "map(v0, B, step_1)";
-      "change_pol(v0, RR, 2)";
+      "v100 = spawn(pe0)";
+      "v101 = spawn(pe1)";
+      "v102 = spawn(pe1)";
+      "step_1000 = adopt(v100, v101)";
+      "step_1001 = adopt(v100, v102)";
+      "assoc(v100, A)";
+      "assoc(v100, B)";
+      "assoc(v101, A)";
+      "assoc(v102, B)";
+      "map(v100, A, step_1000)";
+      "map(v100, B, step_1001)";
+      "change_pol(v100, RR, 2)";
     ]
 
 let test_rr_ab_printer =
