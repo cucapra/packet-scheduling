@@ -27,7 +27,7 @@ type instr =
       (** [Map (v, c, s)]: in [v]'s brain, map class [c] to step [s]. *)
   | Change_pol of vpifo * pol_ty * int
       (** [Change_pol (v, pol, n)]: set [v]'s policy to [pol] with [n] arms. *)
-  | Change_weight of vpifo * step * int
+  | Change_weight of vpifo * step * float
       (** [Change_weight (v, s, w)]: the child reached via step [s] has weight
           [w]. *)
 
@@ -37,14 +37,9 @@ val string_of_pol_ty : pol_ty -> string
 val string_of_instr : instr -> string
 val string_of_program : program -> string
 
-exception UnsupportedPolicy of string
-(** Raised when the input [Frontend.Policy.t] falls outside the MS1.5 compiler's
-    supported shape — i.e., anything that involves [EDF]. The string carries a
-    human-readable reason. *)
-
 val of_policy : Frontend.Policy.t -> program
 (** Compile a [Frontend.Policy.t] to IR. Supports trees of any height built from
     [FIFO], [UNION], [RR], [Strict], and [WFQ]. Each node at depth [d] is placed
-    on PE [d] (so all siblings — and cousins — share a PE). [EDF] anywhere in
-    the tree raises [UnsupportedPolicy]. Declared classes that do not appear in
-    the returned policy are silently dropped, per the DSL semantics. *)
+    on PE [d] (so all siblings — and cousins — share a PE). Declared classes
+    that do not appear in the returned policy are silently dropped, per the DSL
+    semantics. *)

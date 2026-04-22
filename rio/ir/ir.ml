@@ -20,7 +20,7 @@ type instr =
   | Deassoc of vpifo * clss
   | Map of vpifo * clss * step
   | Change_pol of vpifo * pol_ty * int
-  | Change_weight of vpifo * step * int
+  | Change_weight of vpifo * step * float
 
 type program = instr list
 
@@ -49,12 +49,10 @@ let string_of_instr = function
       Printf.sprintf "change_pol(%s, %s, %d)" (string_of_vpifo v)
         (string_of_pol_ty pt) n
   | Change_weight (v, s, w) ->
-      Printf.sprintf "change_weight(%s, %s, %d)" (string_of_vpifo v)
+      Printf.sprintf "change_weight(%s, %s, %g)" (string_of_vpifo v)
         (string_of_step s) w
 
 let string_of_program p = p |> List.map string_of_instr |> String.concat "\n"
-
-exception UnsupportedPolicy of string
 
 let make_counter ~start =
   let n = ref (start - 1) in
@@ -106,14 +104,13 @@ let rec compile_subtree ~fresh_v ~fresh_s ~depth (p : Frontend.Policy.t) : frag
   | P.RR children -> compile_arm ~fresh_v ~fresh_s ~depth ~pol_ty:RR children
   | P.Strict children ->
       (* Strict priority: first child has priority 1 (highest), then 2, 3, … *)
-      let weights = Some (List.mapi (fun i _ -> i + 1) children) in
+      let weights =
+        Some (List.mapi (fun i _ -> float_of_int (i + 1)) children)
+      in
       compile_arm ~fresh_v ~fresh_s ~depth ~pol_ty:SP ~weights children
   | P.WFQ (children, ws) ->
-      (* [Frontend.Policy] stores weights as [float] converted from DSL
-         [int]s. Convert back for the IR. *)
-      let weights = Some (List.map int_of_float ws) in
-      compile_arm ~fresh_v ~fresh_s ~depth ~pol_ty:WFQ ~weights children
-  | P.EDF _ -> raise (UnsupportedPolicy "EDF is not supported in MS1")
+      compile_arm ~fresh_v ~fresh_s ~depth ~pol_ty:WFQ ~weights:(Some ws)
+        children
 
 and compile_arm ~fresh_v ~fresh_s ~depth ~pol_ty ?(weights = None) children =
   (* Recurse on each child first; List.map is left-to-right in the stdlib
@@ -154,7 +151,7 @@ and compile_arm ~fresh_v ~fresh_s ~depth ~pol_ty ?(weights = None) children =
     | None -> []
     | Some ws ->
         if List.length ws <> List.length adoption_records then
-          raise (UnsupportedPolicy "internal error: weight/arm count mismatch");
+          failwith "internal error: weight/arm count mismatch";
         List.map2
           (fun (_, s, _) w -> Change_weight (v, s, w))
           adoption_records ws

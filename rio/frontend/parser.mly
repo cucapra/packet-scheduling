@@ -55,7 +55,6 @@
 %token RR
 %token STRICT
 %token WFQ
-%token EDF
 %token SJN
 %token SRTF
 %token RCSP
@@ -74,7 +73,6 @@ set:
 /* Policies */
 policy:
     | FIFO LBRACKET; pl = set; RBRACKET                 { Fifo pl }
-    | EDF LBRACKET; pl = set; RBRACKET                  { EarliestDeadline pl }
     | SJN LBRACKET; pl = set; RBRACKET                  { ShortestJobNext pl }
     | SRTF LBRACKET; pl = set; RBRACKET                 { ShortestRemaining pl }
     | RR LBRACKET; pl = arglist; RBRACKET               { RoundRobin pl }

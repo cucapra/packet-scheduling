@@ -1,7 +1,6 @@
 type t =
   | FIFO of Ast.clss
   | UNION of t list
-  | EDF of t
   | Strict of t list
   | RR of t list
   | WFQ of t list * float list
@@ -32,7 +31,6 @@ let rec sub cl st used (p : Ast.stream) =
       let p, st = lookup x st in
       sub cl st used p
   | Fifo s -> sub_set (fun c -> FIFO c) s
-  | EarliestDeadline s -> EDF (sub_set (fun c -> FIFO c) s)
   | Strict ps -> Strict (sub_ps ps)
   | RoundRobin ps -> RR (sub_ps ps)
   | WeightedFair pws ->
@@ -49,7 +47,6 @@ let rec to_string p =
 
   match p with
   | FIFO c -> fmt "fifo[%s]" c
-  | EDF p -> fmt "edf[%s]" (to_string p)
   | UNION ps -> fmt "union[%s]" (join ps to_string)
   | Strict ps -> fmt "strict[%s]" (join ps to_string)
   | RR ps -> fmt "rr[%s]" (join ps to_string)

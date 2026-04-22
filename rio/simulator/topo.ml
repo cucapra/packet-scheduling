@@ -12,6 +12,5 @@ let rec of_policy e p =
   match (e, p) with
   | _, Strict ps | _, RR ps | _, WFQ (ps, _) -> Node (List.map (of_policy e) ps)
   | _, UNION ps -> Node (List.map (of_policy e) ps)
-  | _, EDF p -> of_policy e p
   | Enq, FIFO _ -> Star
   | Deq, FIFO c -> DecoratedStar [ c ]
