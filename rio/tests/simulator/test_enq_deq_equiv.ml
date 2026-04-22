@@ -40,7 +40,8 @@ let make_sim_test (prog_name, pcap_name) =
 
   let module Pol : Control.Policy = struct
     let policy = prog
-  end in
+  end
+  in
   let module PIFOCtrl : Control.Control = Control.Make_PIFOControl (Pol) in
   let module RioCtrl : Control.Control = Control.Make_RioControl (Pol) in
   let module PIFOSim : Simulate.Sim = Simulate.Make_Sim (PIFOCtrl) (Params) in
