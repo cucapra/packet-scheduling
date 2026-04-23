@@ -5,8 +5,8 @@ include module type of Instr
 
 val of_policy : Frontend.Policy.t -> program
 (** Compile a [Frontend.Policy.t] to IR. Supports trees of any height built from
-    [FIFO], [UNION], [RR], [Strict], and [WFQ]. Each node at depth [d] is placed
-    on PE [d] — so all siblings (and cousins) share a PE. *)
+    [FIFO], [UNION], [RR], [SP], and [WFQ]. Each node at depth [d] is placed on
+    PE [d] — so all siblings (and cousins) share a PE. *)
 
 (** JSON exporter for IR programs. *)
 module Json : sig
