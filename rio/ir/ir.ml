@@ -23,7 +23,7 @@ type frag = {
   classes : clss list; (* Classes handled by this subtree *)
 }
 
-(** Given a fresh vPIFO IDs the depth of PE to place the fresh vPIFO into, and
+(** Given a fresh vPIFO ID, the depth of PE to place the fresh vPIFO into, and
     the class to assciate the vPIFO with, complete all the necessary steps to
     stand up the FIFO. This is also a good place to get warmed up with [frag]s.
     A [frag] is the relevant component of the final program that pertains to
