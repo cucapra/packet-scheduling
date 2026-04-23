@@ -1,0 +1,25 @@
+classes A, B, C, D, E, F, G, H, NEW;
+
+left = strict[A, B, C];
+mid = rr[D, E, F, NEW];
+right = union[G, H];
+
+return wfq[(left, 1), (mid, 2), (right, 3)];
+
+// So we have created:
+//              wfq----
+//           /    |    \
+//         /      |     ----\
+//     strict     rr        union
+//     / | \    / | \ \      /  \
+//    A  B  C  D  E  F NEW  G    H
+//
+// Compare that to what is in complex_tree:
+//              wfq
+//           /   |   \
+//         /     |     \
+//     strict    rr     union
+//     / | \    / | \    /  \
+//    A  B  C  D  E  F  G    H
+//
+// A naive move is to claim that the present file is totally different from complex_tree, because of the new class NEW. But in fact, the structure of the tree is the same, and the only difference is that we have added a new class as a leaf under rr. So we should be able to match up the two trees and identify the point of difference precisely as an "arms added".

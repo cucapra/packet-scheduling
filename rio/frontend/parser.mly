@@ -73,7 +73,11 @@ set:
 
 /* Policies */
 policy:
-    | FIFO LBRACKET; pl = set; RBRACKET                 { Fifo pl }
+    | FIFO LBRACKET; pl = setlist; RBRACKET {
+    match pl with
+    | [s] -> Fifo s
+    | _   -> Fifo (Union pl)
+  }
     | EDF LBRACKET; pl = set; RBRACKET                  { EarliestDeadline pl }
     | SJN LBRACKET; pl = set; RBRACKET                  { ShortestJobNext pl }
     | SRTF LBRACKET; pl = set; RBRACKET                 { ShortestRemaining pl }

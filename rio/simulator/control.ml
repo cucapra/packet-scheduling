@@ -28,7 +28,7 @@ let route_pkt (policy : Policy.t) pkt =
   let rec route_pkt_aux (p : Policy.t) pt =
     match p with
     | FIFO c when Packet.flow pkt = c -> Some (List.rev pt)
-    | UNION ps | Strict ps | RR ps | WFQ (ps, _) ->
+    | UNION ps | SP ps | RR ps | WFQ (ps, _) ->
         List.find_mapi (fun i p -> route_pkt_aux p (i :: pt)) ps
     | FIFO _ -> None
   in
@@ -71,7 +71,7 @@ module Make_PIFOControl (P : Policy) : Control = struct
           List.mapi (fun i _ -> (fmt "%s_finish_%d" prefix i, 0.0)) ps
           |> Fun.flip State.rebind_all s
           |> join ps
-      | Strict ps | UNION ps -> join ps s
+      | SP ps | UNION ps -> join ps s
       | FIFO _ -> s
     in
 
@@ -82,7 +82,7 @@ module Make_PIFOControl (P : Policy) : Control = struct
       let prefix = addr_to_string addr in
 
       match (p, directions) with
-      | Strict ps, h :: t ->
+      | SP ps, h :: t ->
           let pt, s' = z_pre_push_aux (List.nth ps h) t (Ptr (h, addr)) s in
           (Pifotree.Path (h, float_of_int h, pt), s')
       | UNION ps, h :: t ->
@@ -111,7 +111,7 @@ module Make_PIFOControl (P : Policy) : Control = struct
 
       match (p, directions) with
       | FIFO _, [] -> s
-      | WFQ (ps, _), h :: t | Strict ps, h :: t | UNION ps, h :: t ->
+      | WFQ (ps, _), h :: t | SP ps, h :: t | UNION ps, h :: t ->
           z_post_pop_aux (List.nth ps h) t (Ptr (h, addr)) s
       | RR ps, h :: t ->
           let n = List.length ps in
@@ -181,7 +181,7 @@ module Make_RioControl (P : Policy) : Control = struct
           |> State.rebind_all (binds (fun i -> fmt "%s_finish_%d" prefix i))
           |> join ps
       | RR ps -> State.rebind (fmt "%s_turn" prefix) 0.0 s |> join ps
-      | Strict ps | UNION ps -> join ps s
+      | SP ps | UNION ps -> join ps s
       | FIFO _ -> s
     in
 
@@ -192,7 +192,7 @@ module Make_RioControl (P : Policy) : Control = struct
       let prefix = addr_to_string addr in
 
       match (p, directions) with
-      | Strict ps, h :: t | RR ps, h :: t | UNION ps, h :: t ->
+      | SP ps, h :: t | RR ps, h :: t | UNION ps, h :: t ->
           z_pre_push_aux (List.nth ps h) t (Ptr (h, addr)) s
       | WFQ (ps, ws), h :: t ->
           let rank, s' = wfq_rank_state prefix pkt h (List.nth ws h) s in
@@ -244,7 +244,7 @@ module Make_RioControl (P : Policy) : Control = struct
             | None -> Float.infinity
           in
           join compute_rank s ps
-      | Strict ps | UNION ps -> join float_of_int s ps
+      | SP ps | UNION ps -> join float_of_int s ps
       | FIFO _ -> (Foot, s)
     in
 
@@ -256,7 +256,7 @@ module Make_RioControl (P : Policy) : Control = struct
 
       match (p, directions) with
       | FIFO _, [] -> s
-      | Strict ps, h :: t | UNION ps, h :: t ->
+      | SP ps, h :: t | UNION ps, h :: t ->
           z_pre_pop_aux (List.nth ps h) t (Ptr (h, addr)) s
       | WFQ (ps, _), h :: t ->
           let start_var = fmt "%s_start_%d" prefix h in

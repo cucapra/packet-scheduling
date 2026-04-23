@@ -51,7 +51,7 @@ let rec compile_subtree ~fresh_v ~fresh_s ~depth (p : Frontend.Policy.t) : frag
   | P.UNION children ->
       compile_arm ~fresh_v ~fresh_s ~depth ~pol_ty:UNION children
   | P.RR children -> compile_arm ~fresh_v ~fresh_s ~depth ~pol_ty:RR children
-  | P.Strict children ->
+  | P.SP children ->
       (* Strict priority: first child has priority 1.0 (highest), then 2.0, 3.0, … *)
       let weights = List.mapi (fun i _ -> float_of_int (i + 1)) children in
       compile_arm ~fresh_v ~fresh_s ~depth ~pol_ty:SP ~weights children
@@ -59,6 +59,9 @@ let rec compile_subtree ~fresh_v ~fresh_s ~depth (p : Frontend.Policy.t) : frag
       compile_arm ~fresh_v ~fresh_s ~depth ~pol_ty:WFQ ~weights:ws children
 
 and compile_arm ~fresh_v ~fresh_s ~depth ~pol_ty ?weights children =
+  (* Spawn self first, so that we get a lower ID number than the kids. *)
+  let v = fresh_v () in
+  let local_spawn = Spawn (v, depth) in
   (* Recurse on each child first; List.map is left-to-right in the stdlib
      so vpifo IDs come out in source order. *)
   let child_frags =
@@ -67,9 +70,6 @@ and compile_arm ~fresh_v ~fresh_s ~depth ~pol_ty ?weights children =
   (* The children are all done at this point, and the relevant instructions are in [child_frags]. 
   Now we just need to connect the present node with the children. *)
 
-  (* Spawn self *)
-  let v = fresh_v () in
-  let local_spawn = Spawn (v, depth) in
   (* Adopt each child, and store the fresh step ID that we get at the moment we adopt it. *)
   let adoption_records =
     List.map
