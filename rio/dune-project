@@ -4,14 +4,10 @@
 
 (generate_opam_files true)
 
-(source 
+(source
  (github cucapra/packet-scheduling))
 
-(authors
- "Anshuman Mohan"
- "Cassandra Sziklai"
- "Kabir Samsi"
- "Akash Dhiraj")
+(authors "Anshuman Mohan" "Cassandra Sziklai" "Kabir Samsi" "Akash Dhiraj")
 
 (maintainers
  "Anshuman Mohan"
@@ -27,18 +23,15 @@
  (name rio)
  (synopsis "Rio - a DSL for Programmable Packet Scheduling")
  (description "TBD")
- (depends 
-   ocaml 
-   dune 
-   ounit2 
-   menhir 
-   ; libraries for Simulator
-   core_kernel 
-   pcap-format 
-   hex 
-   mmap
-   csv
-   yojson
-  )
-)
-
+ (depends
+  ocaml
+  dune
+  ounit2
+  menhir
+  ; libraries for Simulator
+  core_kernel
+  pcap-format
+  hex
+  mmap
+  csv
+  yojson))

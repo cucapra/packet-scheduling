@@ -1,3 +1,9 @@
-(executable
- (name sim)
- (libraries rio.frontend rio.simulator))
+(library
+ (name rio_compare)
+ (libraries rio.frontend)
+ (modules compare))
+
+(executables
+ (names sim)
+ (libraries rio.frontend rio.simulator)
+ (modules sim))
