@@ -1,0 +1,6 @@
+(tests
+ (names test_pretty test_compile test_json)
+ (deps
+  (:json
+   (glob_files jsons/*.json)))
+ (libraries rio.ir rio.frontend ounit2 yojson))

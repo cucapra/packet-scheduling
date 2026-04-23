@@ -1,8 +1,7 @@
 type t =
   | FIFO of Ast.clss
-  | Union of t list
-  | EDF of t
-  | Strict of t list
+  | UNION of t list
+  | SP of t list
   | RR of t list
   | WFQ of t list * float list
 
@@ -24,15 +23,14 @@ let rec sub cl st used (p : Ast.stream) =
         else (
           used := c :: !used;
           wrap c)
-    | Ast.Union sets -> Union (sets |> List.map (sub_set wrap))
+    | Ast.Union sets -> UNION (sets |> List.map (sub_set wrap))
   in
   match p with
   | Var x ->
       let p, st = lookup x st in
       sub cl st used p
   | Fifo s -> sub_set (fun c -> FIFO c) s
-  | EarliestDeadline s -> EDF (sub_set (fun c -> FIFO c) s)
-  | Strict ps -> Strict (sub_ps ps)
+  | Strict ps -> SP (sub_ps ps)
   | RoundRobin ps -> RR (sub_ps ps)
   | WeightedFair pws ->
       let ps, ws = List.split pws in
@@ -42,9 +40,8 @@ let rec sub cl st used (p : Ast.stream) =
 let rec normalize p =
   match p with
   | FIFO _ -> p
-  | Union ps -> Union (List.map normalize ps |> List.sort compare)
-  | EDF p -> EDF (normalize p)
-  | Strict ps -> Strict (List.map normalize ps)
+  | UNION ps -> UNION (List.map normalize ps |> List.sort compare)
+  | SP ps -> SP (List.map normalize ps)
   | RR ps -> RR (List.map normalize ps |> List.sort compare)
   | WFQ (ps, ws) ->
       let ps = List.map normalize ps in
@@ -67,9 +64,8 @@ let rec to_string p =
   let join lst to_string = lst |> List.map to_string |> String.concat ", " in
   match p with
   | FIFO c -> fmt "fifo[%s]" c
-  | EDF p -> fmt "edf[%s]" (to_string p)
-  | Union ps -> fmt "union[%s]" (join ps to_string)
-  | Strict ps -> fmt "strict[%s]" (join ps to_string)
+  | UNION ps -> fmt "union[%s]" (join ps to_string)
+  | SP ps -> fmt "strict[%s]" (join ps to_string)
   | RR ps -> fmt "rr[%s]" (join ps to_string)
   | WFQ (ps, ws) ->
       let pws = List.combine ps ws in
@@ -79,9 +75,8 @@ let rec to_string p =
 let rec to_json p : Yojson.Basic.t =
   match p with
   | FIFO c -> `Assoc [ ("FIFO", `String c) ]
-  | Union ps -> `Assoc [ ("Union", `List (List.map to_json ps)) ]
-  | EDF p -> `Assoc [ ("EDF", to_json p) ]
-  | Strict ps -> `Assoc [ ("Strict", `List (List.map to_json ps)) ]
+  | UNION ps -> `Assoc [ ("Union", `List (List.map to_json ps)) ]
+  | SP ps -> `Assoc [ ("Strict", `List (List.map to_json ps)) ]
   | RR ps -> `Assoc [ ("RR", `List (List.map to_json ps)) ]
   | WFQ (ps, ws) ->
       let pairs = List.map2 (fun p w -> `List [ to_json p; `Float w ]) ps ws in
