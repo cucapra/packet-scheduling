@@ -3,11 +3,33 @@
 
 include Instr
 
+(* See [ir.mli] for the documented forms of these. *)
+type node_id = int list
+
+type identities = {
+  vpifos : (node_id, vpifo) Hashtbl.t;
+  steps : (node_id * int, step) Hashtbl.t;
+}
+
+type compiled = {
+  prog : program;
+  policy : Frontend.Policy.t;
+  identities : identities;
+  next_vpifo : int;
+  next_step : int;
+}
+
+(* A counter starting at [start]. [fresh ()] returns the next value (first
+   call returns [start]). [peek_next ()] reports what [fresh ()] would return
+   on its next invocation, without advancing the counter. *)
 let make_counter ~start =
   let n = ref (start - 1) in
-  fun () ->
+  let fresh () =
     incr n;
     !n
+  in
+  let peek_next () = !n + 1 in
+  (fresh, peek_next)
 
 (* The instructions for compiling a subtree, grouped by instruction "kind".
    By merging these [frags] with care, we can make a top-level
@@ -118,20 +140,66 @@ and compile_arm ~fresh_v ~fresh_s ~depth ~pol_ty ?weights children =
     classes = all_classes;
   }
 
-let of_policy (p : Frontend.Policy.t) : program =
-  let fresh_v = make_counter ~start:100 in
-  let fresh_s = make_counter ~start:1000 in
+let of_policy (p : Frontend.Policy.t) : compiled =
+  let fresh_v, peek_v = make_counter ~start:100 in
+  let fresh_s, peek_s = make_counter ~start:1000 in
   let frag = compile_subtree ~fresh_v ~fresh_s ~depth:0 p in
-  List.concat
-    [
-      frag.spawns;
-      frag.adopts;
-      frag.assocs;
-      frag.maps;
-      frag.change_pols;
-      frag.change_weights;
-    ]
+  let prog =
+    List.concat
+      [
+        frag.spawns;
+        frag.adopts;
+        frag.assocs;
+        frag.maps;
+        frag.change_pols;
+        frag.change_weights;
+      ]
+  in
+  (* PR1: identities tables stay empty placeholders; PR2 will thread node_ids
+     through [compile_subtree]/[compile_arm] to populate them. *)
+  let identities = { vpifos = Hashtbl.create 16; steps = Hashtbl.create 16 } in
+  {
+    prog;
+    policy = p;
+    identities;
+    next_vpifo = peek_v ();
+    next_step = peek_s ();
+  }
 
-(* Re-export the JSON exporter as a submodule so consumers say
-   [Ir.Json.from_program]. *)
-module Json = Json
+(* JSON exporter for compiled IR programs. Re-exports [from_instr] from the
+   [Json] file-module and adds [from_compiled], which lives here because it
+   needs the [compiled] type defined above. *)
+module Json = struct
+  include Json
+
+  (* Stringified tree path. Root is the empty string; non-root is dot-
+     separated child indices, e.g. [[0; 2]] -> ["0.2"]. *)
+  let path_to_string (path : node_id) : string =
+    path |> List.map string_of_int |> String.concat "."
+
+  (* Stringified (parent_path, child_index) key. The slash separates the
+     parent path from the child index, and an empty parent path collapses to
+     just ["/<i>"]. E.g. [([], 2)] -> ["/2"]; [([0; 1], 2)] -> ["0.1/2"]. *)
+  let step_key_to_string ((parent, child) : node_id * int) : string =
+    Printf.sprintf "%s/%d" (path_to_string parent) child
+
+  let from_compiled (c : compiled) : Yojson.Basic.t =
+    let instrs = `List (List.map from_instr c.prog) in
+    (* Sort by stringified key so the JSON output is deterministic regardless
+       of Hashtbl insertion order. *)
+    let sorted_pairs of_key tbl =
+      Hashtbl.fold (fun k v acc -> (of_key k, `Int v) :: acc) tbl []
+      |> List.sort (fun (a, _) (b, _) -> String.compare a b)
+    in
+    let vpifo_pairs = sorted_pairs path_to_string c.identities.vpifos in
+    let step_pairs = sorted_pairs step_key_to_string c.identities.steps in
+    `Assoc
+      [
+        ("instrs", instrs);
+        ( "identities",
+          `Assoc
+            [ ("vpifos", `Assoc vpifo_pairs); ("steps", `Assoc step_pairs) ] );
+        ("next_vpifo", `Int c.next_vpifo);
+        ("next_step", `Int c.next_step);
+      ]
+end

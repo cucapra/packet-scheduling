@@ -6,9 +6,15 @@ let root_dir = "../../../../../"
 let prog_dir = root_dir ^ "progs/"
 
 (* [.sched] file -> [Ir.program]. Stops short of pretty-printing — that's
-   [test_pretty]'s job. *)
+   [test_pretty]'s job. We project [Ir.of_policy]'s [compiled] result down to
+   its [.prog] field; the [identities] / counter snapshots are exercised in
+   [test_json]. *)
 let compile filename =
-  prog_dir ^ filename |> Parser.parse_file |> Policy.of_program |> Ir.of_policy
+  let c =
+    prog_dir ^ filename |> Parser.parse_file |> Policy.of_program
+    |> Ir.of_policy
+  in
+  c.prog
 
 let make_test name filename (expected : program) =
   name >:: fun _ ->
@@ -20,9 +26,12 @@ let make_test name filename (expected : program) =
    - PEs are depth-based, starting at 0 (root).
    - vPIFO IDs come from a counter starting at 100.
    - Step IDs come from a counter starting at 1000.
-   - vPIFOs are allocated post-order: children get IDs first, then parent.
-   - Step IDs are allocated at adopt-time (one per child of each parent),
-     so inner-tree adopts get smaller step IDs than outer-tree adopts. *)
+   - vPIFOs are allocated PRE-order: each subtree-root gets its ID before its
+     children do, so the WFQ/RR/UNION/SP root sits at the lowest number in
+     its subtree.
+   - Step IDs are allocated at adopt-time (one per child of each parent).
+     Children are compiled before the parent's adopts run, so inner-tree
+     adopts claim the lower step IDs and the outer adopts come later. *)
 
 (* Single FIFO leaf [A] living on PE0 as v100. *)
 let fifo_a_expected : program = [ Spawn (100, 0); Assoc (100, "A") ]
