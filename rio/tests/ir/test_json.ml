@@ -21,6 +21,8 @@ let make_golden_test name sched_file json_file =
 
 let json_tests =
   [
+    make_golden_test "rr[A, B, C]" "work_conserving/rr_ABC.sched"
+      "rr_ABC.json";
     make_golden_test "complex_tree" "work_conserving/complex_tree.sched"
       "complex_tree.json";
   ]

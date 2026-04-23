@@ -48,7 +48,7 @@ let string_of_instr = function
       Printf.sprintf "change_pol(%s, %s, %d)" (string_of_vpifo v)
         (string_of_pol_ty pt) n
   | Change_weight (v, s, w) ->
-      Printf.sprintf "change_weight(%s, %s, %g)" (string_of_vpifo v)
+      Printf.sprintf "change_weight(%s, %s, %F)" (string_of_vpifo v)
         (string_of_step s) w
 
 let string_of_program p = p |> List.map string_of_instr |> String.concat "\n"
