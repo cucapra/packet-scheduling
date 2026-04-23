@@ -5,8 +5,6 @@ on:
   pull_request:
     branches: [main]
 
-# Ensures that only the latest commit of a PR can execute the actions.
-# Useful for cancelling job when a sequence of commits are quickly added.
 concurrency:
   group: ${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
@@ -17,17 +15,22 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Set-up OCaml
         uses: ocaml/setup-ocaml@v3
         with:
           ocaml-compiler: 5
+          cache: true
+          dune-cache: true
+
       - name: Install dependencies
         working-directory: rio
-        run: | 
-          opam install . --deps-only
-      - name: Rio tests
-        working-directory: rio
-        run: |
-          opam exec -- dune build
-          opam exec -- dune test
+        run: opam install . --deps-only --with-test
 
+      - name: Build
+        working-directory: rio
+        run: opam exec -- dune build
+
+      - name: Run tests
+        working-directory: rio
+        run: opam exec -- dune test
