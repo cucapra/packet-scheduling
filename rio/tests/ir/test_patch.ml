@@ -40,7 +40,7 @@ let make_delta_test name prev_file next_file (expected : program) =
 let make_giveup_test name prev_file next_file =
   name >:: fun _ -> assert_gives_up prev_file next_file
 
-(* --- Happy paths: ArmAdded --- *)
+(* --- Happy paths: OneArmAppended --- *)
 
 (* ============================================================
    Walked-through example: SP arm appended at the root.
@@ -74,11 +74,11 @@ let make_giveup_test name prev_file next_file =
    What [Ir.patch] does, step by step:
 
    1. [Compare.analyze prev.policy next] returns
-        Change ([], ArmAdded (FIFO "C"))
+        Change ([], OneArmAppended (FIFO "C"))
       i.e. "at the root (path = []), one arm was appended; the new
-      arm is FIFO C". Anything else (mid-insert, weight change,
-      reordering) would give VeryDifferent and patch would return
-      None.
+      arm is FIFO C". The broader [ArmsAdded] case (mid-insert,
+      multi-arm, weighted-arm) and the [VeryDifferent] / [SuperPol]
+      results all cause patch to return None.
 
    2. Walk [prev.policy] along path = [] → the parent is the root
       itself: SP[A, B], so [pol_ty = SP] and [old_arity = 2].
@@ -203,11 +203,12 @@ let giveup_tests =
   [
     make_giveup_test "rr[A,B] -> rr[D,E,F] (VeryDifferent)" "rr_AB" "rr_DEF";
     make_giveup_test "fifo[G] -> union[G,H] (SuperPol)" "fifo_G" "union_GH";
-    make_giveup_test "strict[A,C] -> strict[A,B,C] (mid-insert)" "strict_AC"
-      "strict_ABC";
-    make_giveup_test "wfq[B,A] -> wfq[A,B,C] (WFQ arm-add)" "wfq_BA" "wfq_ABC";
-    make_giveup_test "rr[A,B] -> rr[D,B,A,SP[C,E]] (multi-arm)" "rr_AB"
-      "rr_DBA_SP_CE";
+    make_giveup_test "strict[A,C] -> strict[A,B,C] (ArmsAdded mid-insert)"
+      "strict_AC" "strict_ABC";
+    make_giveup_test "wfq[B,A] -> wfq[A,B,C] (ArmsAdded WFQ arm-add)" "wfq_BA"
+      "wfq_ABC";
+    make_giveup_test "rr[A,B] -> rr[D,B,A,SP[C,E]] (ArmsAdded multi-arm)"
+      "rr_AB" "rr_DBA_SP_CE";
   ]
 
 let suite =

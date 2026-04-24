@@ -19,9 +19,7 @@ type compiled = {
   next_step : int;
 }
 
-(* Starting IDs for the two ID spaces. Hoisted so that [of_policy] can
-   recover the [next_*] counter values from the populated identity tables
-   without holding onto the counter closures. *)
+(* Starting IDs for the two ID spaces. *)
 let vpifo_start = 100
 let step_start = 1000
 
@@ -47,12 +45,9 @@ type frag = {
   classes : clss list; (* Classes handled by this subtree *)
 }
 
-(** Given a fresh vPIFO ID, the depth of PE to place the fresh vPIFO into, the
-    tree path of this leaf, the identity tables to register into, and the class
-    to associate with, complete all the necessary steps to stand up the FIFO.
-    This is also a good place to get warmed up with [frag]s. A [frag] is the
-    relevant component of the final program that pertains to setting up the
-    present subtree. *)
+(** Complete all the necessary steps to stand up the FIFO. This is also a good
+    place to get warmed up with [frag]s. A [frag] is the relevant component of
+    the final program that pertains to setting up the present subtree. *)
 let compile_FIFO ~v ~depth ~path ~identities c =
   Hashtbl.add identities.vpifos path v;
   {
@@ -225,8 +220,8 @@ let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
           next_vpifo = prev.next_vpifo;
           next_step = prev.next_step;
         }
-  | Change (_, VeryDifferent) | Change (_, SuperPol) -> None
-  | Change (path, ArmAdded arm) ->
+  | Change (_, (VeryDifferent | SuperPol | ArmsAdded _)) -> None
+  | Change (path, OneArmAppended arm) ->
       let parent_pol = walk_to prev.policy path in
       let pol_ty, old_arity =
         match parent_pol with
@@ -235,7 +230,7 @@ let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
         | P.RR ps -> (RR, List.length ps)
         | P.WFQ (ps, _) -> (WFQ, List.length ps)
         | P.FIFO _ ->
-            failwith "Ir.patch: ArmAdded reported a FIFO as the parent"
+            failwith "Ir.patch: OneArmAppended reported a FIFO as the parent"
       in
       let parent_v =
         try Hashtbl.find prev.identities.vpifos path

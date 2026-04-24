@@ -27,32 +27,86 @@ let same =
       "complex_tree" "complex_tree_swap_rr_arms" Same;
   ]
 
-(* ArmAdded fires only on a single-arm append at a UNION/RR/SP parent
-   (after [Policy.normalize] has sorted UNION/RR children). WFQ never
-   reports ArmAdded itself — see [verydiff] for the cases that get
-   demoted. *)
-let armadded =
+(* OneArmAppended fires only on a single-arm append at a UNION/RR/SP
+   parent (after [Policy.normalize] has sorted UNION/RR children). It
+   binds greedily — when a change is *both* a one-arm append and a more
+   general subsequence-style ArmsAdded, OneArmAppended wins. WFQ never
+   reports OneArmAppended itself; see [armsadded] / [verydiff] for the
+   WFQ cases. *)
+let one_arm_appended =
   [
     (* SP(A,B) vs SP(A,B,C) — append *)
     make_compare_test "strict arm added at end" "strict_AB" "strict_ABC"
-      (Change ([], ArmAdded (Policy.FIFO "C")));
+      (Change ([], OneArmAppended (Policy.FIFO "C")));
     (* RR(A,B) vs RR(A,B,C) — append after sort *)
     make_compare_test "RR with arm added at end" "rr_AB" "rr_ABC"
-      (Change ([], ArmAdded (Policy.FIFO "C")));
+      (Change ([], OneArmAppended (Policy.FIFO "C")));
     (* RR(A,B) vs RR(B,A,C) — both sort to [A,B,...], so still an append *)
     make_compare_test "RR with arm added whilst reordering" "rr_AB" "rr_BAC"
-      (Change ([], ArmAdded (Policy.FIFO "C")));
+      (Change ([], OneArmAppended (Policy.FIFO "C")));
     (* Adding an arm deep inside a tree with WFQ at root. The root WFQ
        is a transparent passthrough (lengths and weights line up), so
        the diff surfaces at the rr child (path [1]). *)
     make_compare_test "WFQ with arm added deep" "wfq_complex"
       "wfq_complex_add_arm_deep"
-      (Change ([ 1 ], ArmAdded (Policy.FIFO "D")));
+      (Change ([ 1 ], OneArmAppended (Policy.FIFO "D")));
     (* Adding an arm deep inside the complex tree. After normalize, the
        WFQ pairs sort to (UNION, SP, RR), so the rr arm is at index 2. *)
     make_compare_test "complex tree add arm deep" "complex_tree"
       "complex_tree_add_arm_deep"
-      (Change ([ 2 ], ArmAdded (Policy.FIFO "NEW")));
+      (Change ([ 2 ], OneArmAppended (Policy.FIFO "NEW")));
+  ]
+
+(* ArmsAdded captures the broader subsequence-style structural arm-add:
+   mid-inserts, multi-arm additions, and WFQ weighted-arm additions.
+   The patcher gives up on these (only OneArmAppended is in scope) but
+   [analyze] still describes them precisely so a future broader patcher
+   has the structured information to work with. *)
+let armsadded =
+  [
+    (* SP(A,C) vs SP(A,B,C) — mid-insert. Subsequence detected; not a
+       one-arm append because the new element isn't at the tail. *)
+    make_compare_test "strict arm added in the middle" "strict_AC" "strict_ABC"
+      (Change
+         ( [],
+           ArmsAdded
+             { old_count = 2; new_count = 3; details = "added fifo[B] at 1" } ));
+    (* RR(A,B) vs RR(D,B,A,SP(C,E)) — after sort, [A,B] is a subsequence
+       of [A,B,D,SP[C,E]] but two arms were added, so out of OneArmAppended
+       scope. *)
+    make_compare_test "RR with two arms added whilst reordering" "rr_AB"
+      "rr_DBA_SP_CE"
+      (Change
+         ( [],
+           ArmsAdded
+             {
+               old_count = 2;
+               new_count = 4;
+               details = "added fifo[D], strict[fifo[C], fifo[E]]";
+             } ));
+    (* WFQ(B,A) vs WFQ(A,B,C) — WFQ never reports OneArmAppended, so even
+       a single appended arm lands in ArmsAdded. *)
+    make_compare_test "WFQ with arm added" "wfq_BA" "wfq_ABC"
+      (Change
+         ( [],
+           ArmsAdded
+             {
+               old_count = 2;
+               new_count = 3;
+               details = "added fifo[C] with weight 3";
+             } ));
+    (* complex_tree_partial vs complex_tree — a WFQ-level add at the root.
+       Adds an entire RR subtree as a new weighted arm. *)
+    make_compare_test "complex tree fill in missing arm" "complex_tree_partial"
+      "complex_tree"
+      (Change
+         ( [],
+           ArmsAdded
+             {
+               old_count = 2;
+               new_count = 3;
+               details = "added rr[fifo[D], fifo[E], fifo[F]] with weight 2";
+             } ));
   ]
 
 let armsremoved =
@@ -69,12 +123,8 @@ let armsremoved =
 
 let verydiff =
   [
-    (* SP(A,C) vs SP(A,B,C) — mid-insert. SP isn't sorted by normalize, so
-       [A,C] is not a one-arm append of [A,B,C]; we degrade to
-       VeryDifferent. *)
-    make_compare_test "strict arm added in the middle" "strict_AC" "strict_ABC"
-      (Change ([], VeryDifferent));
-    (* SP(B,A) vs SP(A,B,C) *)
+    (* SP(B,A) vs SP(A,B,C) — SP isn't sorted by normalize and [B,A] is
+       not even a subsequence of [A,B,C], so we degrade to VeryDifferent. *)
     make_compare_test "strict arm added whilst reordering arms" "strict_BA"
       "strict_ABC"
       (Change ([], VeryDifferent));
@@ -84,18 +134,6 @@ let verydiff =
     (* RR(A,B) vs RR(A,D) *)
     make_compare_test "rr arm changed" "rr_AB" "rr_AD"
       (Change ([ 1 ], VeryDifferent));
-    (* RR(A,B) vs RR(D,B,A,SP(C,E)) — after sort, [A,B] -> [A,B,D,SP[C,E]]
-       adds two arms, so out of scope. *)
-    make_compare_test "RR with two arms added whilst reordering" "rr_AB"
-      "rr_DBA_SP_CE"
-      (Change ([], VeryDifferent));
-    (* WFQ(B,A) vs WFQ(A,B,C) — WFQ never reports ArmAdded. *)
-    make_compare_test "WFQ with arm added" "wfq_BA" "wfq_ABC"
-      (Change ([], VeryDifferent));
-    (* complex_tree_partial vs complex_tree — a WFQ-level add at the root. *)
-    make_compare_test "complex tree fill in missing arm" "complex_tree_partial"
-      "complex_tree"
-      (Change ([], VeryDifferent));
     (* WFQ(A_1,B_2,C_3) vs WFQ(A_2,B_2,C_4): classes same, weight different *)
     make_compare_test "different WFQ weights" "wfq_ABC" "wfq_ABC_diff"
       (Change ([], VeryDifferent));
@@ -132,6 +170,7 @@ let superpol =
   ]
 
 let suite =
-  "compare tests" >::: same @ armadded @ armsremoved @ verydiff @ superpol
+  "compare tests"
+  >::: same @ one_arm_appended @ armsadded @ armsremoved @ verydiff @ superpol
 
 let () = run_test_tt_main suite

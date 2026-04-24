@@ -64,12 +64,13 @@ val patch : prev:compiled -> next:Frontend.Policy.t -> compiled option
     - [next] is structurally equal to [prev.policy]: returns [Some] with an
       empty [prog].
     - [next] adds exactly one arm at the end of a [UNION], [RR], or [SP] parent
-      in [prev.policy] (per [Rio_compare.Compare.ArmAdded]): returns [Some] with
-      the [Spawn]/[Adopt]/[Assoc]/[Map]/[Change_pol] (and [Change_weight] for
-      [SP]) instructions needed to splice the new arm in.
+      in [prev.policy] (per [Rio_compare.Compare.OneArmAppended]): returns
+      [Some] with the [Spawn]/[Adopt]/[Assoc]/[Map]/[Change_pol] (and
+      [Change_weight] for [SP]) instructions needed to splice the new arm in.
 
-    Anything else (multi-arm add, mid-insert, reorder, weight change,
-    super-policy, or completely different policy) returns [None]. *)
+    Anything else — including the broader [Rio_compare.Compare.ArmsAdded] case
+    (mid-insert, multi-arm add, weighted-arm add) and any [VeryDifferent] /
+    [SuperPol] result — returns [None]. *)
 
 (** JSON exporter for IR programs. The identity tables and counter snapshots on
     [compiled] are intentionally not serialized — they are runtime state used by
