@@ -14,8 +14,14 @@ type identities = {
           parent adopted that child. *)
 }
 (** Identity tables: which vPIFO/step IDs were assigned to which positions in
-    the source policy tree. Populated by [of_policy] (in PR2 — empty for now)
-    and consulted by [patch] to splice new arms onto an existing root. *)
+    the source policy tree. Populated by [of_policy] and consulted by [patch]
+    (Milestone 2 PR3) to splice new arms onto an existing root.
+
+    [vpifos] is keyed by [node_id]: every node in the policy tree (every
+    FIFO leaf and every internal UNION/RR/SP/WFQ root) gets exactly one
+    entry. [steps] is keyed by [(parent_path, child_index)]: every adopt
+    instruction gets exactly one entry, recording the step ID that was
+    handed out the moment the parent adopted that child. *)
 
 type compiled = {
   prog : program;
@@ -41,26 +47,17 @@ type compiled = {
 val of_policy : Frontend.Policy.t -> compiled
 (** Compile a [Frontend.Policy.t] to IR. Supports trees of any height built from
     [FIFO], [UNION], [RR], [SP], and [WFQ]. Each node at depth [d] is placed on
-    PE [d] — so all siblings (and cousins) share a PE.
+    PE [d] — so all siblings (and cousins) share a PE. Populates the identity
+    tables and the [next_vpifo]/[next_step] counter snapshots so that a
+    follow-up [patch] (Milestone 2 PR3) can extend this compile in place. *)
 
-    Note: in this PR the returned [identities] tables are empty placeholders;
-    they get populated in PR2. The instruction list and counter snapshots are
-    fully accurate. *)
-
-(** JSON exporter for compiled IR programs. *)
+(** JSON exporter for IR programs. The identity tables and counter snapshots
+    on [compiled] are intentionally not serialized — they are runtime state
+    used by [patch], not part of the IR's external surface. *)
 module Json : sig
   val from_instr : instr -> Yojson.Basic.t
   (** Serialize a single instruction as a JSON object. *)
 
-  val from_compiled : compiled -> Yojson.Basic.t
-  (** Serialize a [compiled] as a wrapped JSON object:
-      {[
-        { "instrs":     [ ...instructions... ],
-          "identities": { "vpifos": { ... }, "steps": { ... } },
-          "next_vpifo": <int>,
-          "next_step":  <int> }
-      ]}
-      Identity table keys are stringified tree paths: dot-separated child
-      indices (root = [""]). Step keys append ["/<child_index>"] to the parent's
-      path. Empty in PR1. *)
+  val from_program : program -> Yojson.Basic.t
+  (** Serialize a program as a JSON array of instruction objects. *)
 end

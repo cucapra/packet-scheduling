@@ -43,3 +43,6 @@ let from_instr (i : Instr.instr) : Yojson.Basic.t =
           ("step", `Int s);
           ("weight", `Float w);
         ]
+
+let from_program (p : Instr.program) : Yojson.Basic.t =
+  `List (List.map from_instr p)

@@ -45,12 +45,14 @@ type frag = {
   classes : clss list; (* Classes handled by this subtree *)
 }
 
-(** Given a fresh vPIFO ID, the depth of PE to place the fresh vPIFO into, and
-    the class to assciate the vPIFO with, complete all the necessary steps to
-    stand up the FIFO. This is also a good place to get warmed up with [frag]s.
-    A [frag] is the relevant component of the final program that pertains to
-    setting up the present subtree. *)
-let compile_FIFO ~v ~depth c =
+(** Given a fresh vPIFO ID, the depth of PE to place the fresh vPIFO into, the
+    tree path of this leaf, the identity tables to register into, and the
+    class to associate with, complete all the necessary steps to stand up the
+    FIFO. This is also a good place to get warmed up with [frag]s. A [frag] is
+    the relevant component of the final program that pertains to setting up
+    the present subtree. *)
+let compile_FIFO ~v ~depth ~path ~identities c =
+  Hashtbl.add identities.vpifos path v;
   {
     spawns = [ Spawn (v, depth) ];
     assocs = [ Assoc (v, c) ];
@@ -63,40 +65,58 @@ let compile_FIFO ~v ~depth c =
     change_weights = [];
   }
 
-(* Compile a [Frontend.Policy.t] subtree rooted at [depth]. 
-   PE assignment is depth-based — every node at depth [d] lives on [pe d]. *)
-let rec compile_subtree ~fresh_v ~fresh_s ~depth (p : Frontend.Policy.t) : frag
-    =
+(* Compile a [Frontend.Policy.t] subtree rooted at [depth]. [path] is the tree
+   position of this subtree's root within the top-level policy, used to key
+   the identity tables. PE assignment is depth-based — every node at depth
+   [d] lives on [pe d]. *)
+let rec compile_subtree ~fresh_v ~fresh_s ~depth ~path ~identities
+    (p : Frontend.Policy.t) : frag =
   let module P = Frontend.Policy in
   match p with
-  | P.FIFO c -> compile_FIFO ~v:(fresh_v ()) ~depth c
+  | P.FIFO c -> compile_FIFO ~v:(fresh_v ()) ~depth ~path ~identities c
   | P.UNION children ->
-      compile_arm ~fresh_v ~fresh_s ~depth ~pol_ty:UNION children
-  | P.RR children -> compile_arm ~fresh_v ~fresh_s ~depth ~pol_ty:RR children
+      compile_arm ~fresh_v ~fresh_s ~depth ~path ~identities ~pol_ty:UNION
+        children
+  | P.RR children ->
+      compile_arm ~fresh_v ~fresh_s ~depth ~path ~identities ~pol_ty:RR
+        children
   | P.SP children ->
       (* Strict priority: first child has priority 1.0 (highest), then 2.0, 3.0, … *)
       let weights = List.mapi (fun i _ -> float_of_int (i + 1)) children in
-      compile_arm ~fresh_v ~fresh_s ~depth ~pol_ty:SP ~weights children
+      compile_arm ~fresh_v ~fresh_s ~depth ~path ~identities ~pol_ty:SP
+        ~weights children
   | P.WFQ (children, ws) ->
-      compile_arm ~fresh_v ~fresh_s ~depth ~pol_ty:WFQ ~weights:ws children
+      compile_arm ~fresh_v ~fresh_s ~depth ~path ~identities ~pol_ty:WFQ
+        ~weights:ws children
 
-and compile_arm ~fresh_v ~fresh_s ~depth ~pol_ty ?weights children =
+and compile_arm ~fresh_v ~fresh_s ~depth ~path ~identities ~pol_ty ?weights
+    children =
   (* Spawn self first, so that we get a lower ID number than the kids. *)
   let v = fresh_v () in
+  Hashtbl.add identities.vpifos path v;
   let local_spawn = Spawn (v, depth) in
-  (* Recurse on each child first; List.map is left-to-right in the stdlib
-     so vpifo IDs come out in source order. *)
+  (* Recurse on each child first; List.mapi is left-to-right in the stdlib so
+     vpifo IDs come out in source order, and [i] gives us the child's index
+     for both the path extension and the (parent_path, child_index) step
+     key. *)
   let child_frags =
-    List.map (compile_subtree ~fresh_v ~fresh_s ~depth:(depth + 1)) children
+    List.mapi
+      (fun i child ->
+        compile_subtree ~fresh_v ~fresh_s ~depth:(depth + 1)
+          ~path:(path @ [ i ]) ~identities child)
+      children
   in
-  (* The children are all done at this point, and the relevant instructions are in [child_frags]. 
+  (* The children are all done at this point, and the relevant instructions are in [child_frags].
   Now we just need to connect the present node with the children. *)
 
-  (* Adopt each child, and store the fresh step ID that we get at the moment we adopt it. *)
+  (* Adopt each child, and store the fresh step ID that we get at the moment we adopt it.
+     We register every step ID in [identities.steps] keyed by (this node's
+     path, the child's index). *)
   let adoption_records =
-    List.map
-      (fun cf ->
+    List.mapi
+      (fun i cf ->
         let s = fresh_s () in
+        Hashtbl.add identities.steps (path, i) s;
         (Adopt (s, v, cf.root_v), s, cf))
       child_frags
   in
@@ -143,7 +163,12 @@ and compile_arm ~fresh_v ~fresh_s ~depth ~pol_ty ?weights children =
 let of_policy (p : Frontend.Policy.t) : compiled =
   let fresh_v, peek_v = make_counter ~start:100 in
   let fresh_s, peek_s = make_counter ~start:1000 in
-  let frag = compile_subtree ~fresh_v ~fresh_s ~depth:0 p in
+  (* Identity tables are created here and mutated in place as
+     [compile_subtree]/[compile_arm] register each spawn and adopt. *)
+  let identities = { vpifos = Hashtbl.create 16; steps = Hashtbl.create 16 } in
+  let frag =
+    compile_subtree ~fresh_v ~fresh_s ~depth:0 ~path:[] ~identities p
+  in
   let prog =
     List.concat
       [
@@ -155,9 +180,6 @@ let of_policy (p : Frontend.Policy.t) : compiled =
         frag.change_weights;
       ]
   in
-  (* PR1: identities tables stay empty placeholders; PR2 will thread node_ids
-     through [compile_subtree]/[compile_arm] to populate them. *)
-  let identities = { vpifos = Hashtbl.create 16; steps = Hashtbl.create 16 } in
   {
     prog;
     policy = p;
@@ -166,40 +188,8 @@ let of_policy (p : Frontend.Policy.t) : compiled =
     next_step = peek_s ();
   }
 
-(* JSON exporter for compiled IR programs. Re-exports [from_instr] from the
-   [Json] file-module and adds [from_compiled], which lives here because it
-   needs the [compiled] type defined above. *)
-module Json = struct
-  include Json
-
-  (* Stringified tree path. Root is the empty string; non-root is dot-
-     separated child indices, e.g. [[0; 2]] -> ["0.2"]. *)
-  let path_to_string (path : node_id) : string =
-    path |> List.map string_of_int |> String.concat "."
-
-  (* Stringified (parent_path, child_index) key. The slash separates the
-     parent path from the child index, and an empty parent path collapses to
-     just ["/<i>"]. E.g. [([], 2)] -> ["/2"]; [([0; 1], 2)] -> ["0.1/2"]. *)
-  let step_key_to_string ((parent, child) : node_id * int) : string =
-    Printf.sprintf "%s/%d" (path_to_string parent) child
-
-  let from_compiled (c : compiled) : Yojson.Basic.t =
-    let instrs = `List (List.map from_instr c.prog) in
-    (* Sort by stringified key so the JSON output is deterministic regardless
-       of Hashtbl insertion order. *)
-    let sorted_pairs of_key tbl =
-      Hashtbl.fold (fun k v acc -> (of_key k, `Int v) :: acc) tbl []
-      |> List.sort (fun (a, _) (b, _) -> String.compare a b)
-    in
-    let vpifo_pairs = sorted_pairs path_to_string c.identities.vpifos in
-    let step_pairs = sorted_pairs step_key_to_string c.identities.steps in
-    `Assoc
-      [
-        ("instrs", instrs);
-        ( "identities",
-          `Assoc
-            [ ("vpifos", `Assoc vpifo_pairs); ("steps", `Assoc step_pairs) ] );
-        ("next_vpifo", `Int c.next_vpifo);
-        ("next_step", `Int c.next_step);
-      ]
-end
+(* Re-export the per-program / per-instruction JSON exporters as a submodule
+   so consumers say [Ir.Json.from_program]. The [identities] / counter
+   metadata on [compiled] is intentionally not serialized — it's runtime
+   state for [patch], not part of the IR's external surface. *)
+module Json = Json

@@ -5,10 +5,16 @@ let root_dir = "../../../../../"
 let prog_dir = root_dir ^ "progs/"
 let json_dir = "jsons/"
 
-(* [.sched] file -> JSON value, going via the IR. *)
+(* [.sched] file -> JSON value, going via the IR. We project [Ir.of_policy]'s
+   [compiled] result down to its [.prog] field; the [identities] / counter
+   metadata is runtime state for [Ir.patch] and intentionally not part of the
+   JSON surface. *)
 let compile_to_json filename =
-  prog_dir ^ filename |> Parser.parse_file |> Policy.of_program |> Ir.of_policy
-  |> Ir.Json.from_compiled
+  let c =
+    prog_dir ^ filename |> Parser.parse_file |> Policy.of_program
+    |> Ir.of_policy
+  in
+  Ir.Json.from_program c.prog
 
 let make_golden_test name sched_file json_file =
   name >:: fun _ ->
