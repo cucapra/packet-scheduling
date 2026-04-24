@@ -49,7 +49,29 @@ val of_policy : Frontend.Policy.t -> compiled
     [FIFO], [UNION], [RR], [SP], and [WFQ]. Each node at depth [d] is placed on
     PE [d] — so all siblings (and cousins) share a PE. Populates the identity
     tables and the [next_vpifo]/[next_step] counter snapshots so that a
-    follow-up [patch] (Milestone 2 PR3) can extend this compile in place. *)
+    follow-up [patch] can extend this compile in place. *)
+
+val patch : prev:compiled -> next:Frontend.Policy.t -> compiled option
+(** Incrementally extend [prev] to handle policy [next], returning the IR
+    delta. The returned record's [prog] is the *delta only* — the new
+    instructions to splice into a runtime that's already executing
+    [prev.prog]. [policy] is set to [next]; [identities] and the counter
+    snapshots are extensions of [prev]'s, working on a clone, so [prev] is
+    left untouched.
+
+    Returns [None] when the change is too complex for this scope. The
+    supported transitions are:
+
+    - [next] is structurally equal to [prev.policy]: returns [Some] with
+      an empty [prog].
+    - [next] adds exactly one arm at the end of a [UNION], [RR], or [SP]
+      parent in [prev.policy] (per [Rio_compare.Compare.ArmAdded]): returns [Some]
+      with the [Spawn]/[Adopt]/[Assoc]/[Map]/[Change_pol] (and
+      [Change_weight] for [SP]) instructions needed to splice the new
+      arm in.
+
+    Anything else (multi-arm add, mid-insert, reorder, weight change,
+    super-policy, or completely different policy) returns [None]. *)
 
 (** JSON exporter for IR programs. The identity tables and counter snapshots
     on [compiled] are intentionally not serialized — they are runtime state

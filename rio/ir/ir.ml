@@ -193,6 +193,105 @@ let of_policy (p : Frontend.Policy.t) : compiled =
     next_step = step_start + Hashtbl.length identities.steps;
   }
 
+(* Shallow copy of the identity tables. The values are ints, so a shallow
+   copy is sufficient to ensure later mutations on the result don't leak
+   back into the source. *)
+let clone_identities { vpifos; steps } =
+  { vpifos = Hashtbl.copy vpifos; steps = Hashtbl.copy steps }
+
+(* Walk a policy tree along [path] and return the subtree at that
+   position. Used to find the parent constructor (and arity) at the
+   location reported by [Compare.analyze]. *)
+let rec walk_to (p : Frontend.Policy.t) path =
+  let module P = Frontend.Policy in
+  match (path, p) with
+  | [], _ -> p
+  | i :: rest, (P.UNION ps | P.SP ps | P.RR ps) -> walk_to (List.nth ps i) rest
+  | i :: rest, P.WFQ (ps, _) -> walk_to (List.nth ps i) rest
+  | _ :: _, P.FIFO _ -> failwith "Ir.patch: path goes through a FIFO leaf"
+
+let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
+  let module P = Frontend.Policy in
+  let open Rio_compare.Compare in
+  match analyze prev.policy next with
+  | Same ->
+      (* Nothing structural to do — return an empty delta. We still hand
+         back a fresh identities clone so the caller can mutate the
+         result without affecting [prev]. *)
+      Some
+        {
+          prog = [];
+          policy = next;
+          identities = clone_identities prev.identities;
+          next_vpifo = prev.next_vpifo;
+          next_step = prev.next_step;
+        }
+  | Change (_, VeryDifferent) | Change (_, SuperPol) -> None
+  | Change (path, ArmAdded arm) ->
+      let parent_pol = walk_to prev.policy path in
+      let pol_ty, old_arity =
+        match parent_pol with
+        | P.UNION ps -> (UNION, List.length ps)
+        | P.SP ps -> (SP, List.length ps)
+        | P.RR ps -> (RR, List.length ps)
+        | P.WFQ (ps, _) -> (WFQ, List.length ps)
+        | P.FIFO _ ->
+            failwith "Ir.patch: ArmAdded reported a FIFO as the parent"
+      in
+      let parent_v =
+        try Hashtbl.find prev.identities.vpifos path
+        with Not_found ->
+          failwith "Ir.patch: parent path missing from identity table"
+      in
+      let identities = clone_identities prev.identities in
+      let fresh_v = make_counter ~start:prev.next_vpifo in
+      let fresh_s = make_counter ~start:prev.next_step in
+      (* Compile the new arm first so its internal vPIFO/step IDs land
+         lower than the parent's new adopt-step ID — mirroring the
+         pre-order numbering [of_policy]/[compile_arm] use. *)
+      let arm_path = path @ [ old_arity ] in
+      let arm_depth = List.length path + 1 in
+      let frag =
+        compile_subtree ~fresh_v ~fresh_s ~depth:arm_depth ~path:arm_path
+          ~identities arm
+      in
+      let new_step = fresh_s () in
+      Hashtbl.add identities.steps (path, old_arity) new_step;
+      let new_arity = old_arity + 1 in
+      let local_adopt = Adopt (new_step, parent_v, frag.root_v) in
+      let local_assocs = List.map (fun c -> Assoc (parent_v, c)) frag.classes in
+      let local_maps =
+        List.map (fun c -> Map (parent_v, c, new_step)) frag.classes
+      in
+      let local_change_pol = Change_pol (parent_v, pol_ty, new_arity) in
+      let local_change_weights =
+        match pol_ty with
+        | SP ->
+            (* Strict priority: the new arm goes to the back of the line,
+               so its positional weight is the new arity. *)
+            [ Change_weight (parent_v, new_step, float_of_int new_arity) ]
+        | _ -> []
+      in
+      let prog =
+        List.concat
+          [
+            frag.spawns;
+            local_adopt :: frag.adopts;
+            local_assocs @ frag.assocs;
+            local_maps @ frag.maps;
+            local_change_pol :: frag.change_pols;
+            local_change_weights @ frag.change_weights;
+          ]
+      in
+      Some
+        {
+          prog;
+          policy = next;
+          identities;
+          next_vpifo = vpifo_start + Hashtbl.length identities.vpifos;
+          next_step = step_start + Hashtbl.length identities.steps;
+        }
+
 (* Re-export the per-program / per-instruction JSON exporters as a submodule
    so consumers say [Ir.Json.from_program]. The [identities] / counter
    metadata on [compiled] is intentionally not serialized — it's runtime
