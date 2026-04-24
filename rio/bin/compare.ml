@@ -4,29 +4,29 @@ type path = int list
 
 (* A structural diff that can describe *where* a change occurs.
    A change at the root has path = []. *)
-type t = Same | Change of path * change
+type t =
+  | Same
+  | Change of path * change
 
 and change =
   | OneArmAppended of Frontend.Policy.t
-      (** Exactly one arm was appended at the indicated parent (a
-          UNION/RR/SP). The patcher consumes this case to splice the
-          new arm onto an existing runtime; everything else (including
-          the broader [ArmsAdded] below) is out of scope and the patcher
-          gives up. Greedy: when both [OneArmAppended] and the more
-          general [ArmsAdded] would fit, [analyze] reports
-          [OneArmAppended]. *)
+      (** Exactly one arm was appended at the indicated parent (a UNION/RR/SP).
+          The patcher consumes this case to splice the new arm onto an existing
+          runtime; everything else (including the broader [ArmsAdded] below) is
+          out of scope and the patcher gives up. Greedy: when both
+          [OneArmAppended] and the more general [ArmsAdded] would fit, [analyze]
+          reports [OneArmAppended]. *)
   | ArmsAdded of {
       old_count : int;
       new_count : int;
       details : string;  (** human-readable description of what was added *)
     }
-      (** A more permissive structural arm-add: the old children list is
-          an order-preserving subsequence of the new one. Catches
-          mid-inserts, multi-arm additions, and (for WFQ) weighted-arm
-          additions. Not currently consumable by the patcher; included
-          so [analyze] can describe these changes precisely for
-          diagnostics and for any future patcher that grows broader
-          scope. *)
+      (** A more permissive structural arm-add: the old children list is an
+          order-preserving subsequence of the new one. Catches mid-inserts,
+          multi-arm additions, and (for WFQ) weighted-arm additions. Not
+          currently consumable by the patcher; included so [analyze] can
+          describe these changes precisely for diagnostics and for any future
+          patcher that grows broader scope. *)
   | VeryDifferent
   | SuperPol
 
@@ -98,9 +98,9 @@ let details_wfq_arm_added pairs1 pairs2 =
   | _ ->
       added_pairs
       |> List.map (fun (p, w) ->
-             Printf.sprintf "added %s with weight %g"
-               (Frontend.Policy.to_string p)
-               w)
+          Printf.sprintf "added %s with weight %g"
+            (Frontend.Policy.to_string p)
+            w)
       |> String.concat ", "
 
 let rec is_sub_policy p1 p2 =
