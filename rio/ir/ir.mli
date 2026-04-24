@@ -17,11 +17,11 @@ type identities = {
     the source policy tree. Populated by [of_policy] and consulted by [patch]
     (Milestone 2 PR3) to splice new arms onto an existing root.
 
-    [vpifos] is keyed by [node_id]: every node in the policy tree (every
-    FIFO leaf and every internal UNION/RR/SP/WFQ root) gets exactly one
-    entry. [steps] is keyed by [(parent_path, child_index)]: every adopt
-    instruction gets exactly one entry, recording the step ID that was
-    handed out the moment the parent adopted that child. *)
+    [vpifos] is keyed by [node_id]: every node in the policy tree (every FIFO
+    leaf and every internal UNION/RR/SP/WFQ root) gets exactly one entry.
+    [steps] is keyed by [(parent_path, child_index)]: every adopt instruction
+    gets exactly one entry, recording the step ID that was handed out the moment
+    the parent adopted that child. *)
 
 type compiled = {
   prog : program;
@@ -52,30 +52,28 @@ val of_policy : Frontend.Policy.t -> compiled
     follow-up [patch] can extend this compile in place. *)
 
 val patch : prev:compiled -> next:Frontend.Policy.t -> compiled option
-(** Incrementally extend [prev] to handle policy [next], returning the IR
-    delta. The returned record's [prog] is the *delta only* — the new
-    instructions to splice into a runtime that's already executing
-    [prev.prog]. [policy] is set to [next]; [identities] and the counter
-    snapshots are extensions of [prev]'s, working on a clone, so [prev] is
-    left untouched.
+(** Incrementally extend [prev] to handle policy [next], returning the IR delta.
+    The returned record's [prog] is the *delta only* — the new instructions to
+    splice into a runtime that's already executing [prev.prog]. [policy] is set
+    to [next]; [identities] and the counter snapshots are extensions of
+    [prev]'s, working on a clone, so [prev] is left untouched.
 
-    Returns [None] when the change is too complex for this scope. The
-    supported transitions are:
+    Returns [None] when the change is too complex for this scope. The supported
+    transitions are:
 
-    - [next] is structurally equal to [prev.policy]: returns [Some] with
-      an empty [prog].
-    - [next] adds exactly one arm at the end of a [UNION], [RR], or [SP]
-      parent in [prev.policy] (per [Rio_compare.Compare.ArmAdded]): returns [Some]
-      with the [Spawn]/[Adopt]/[Assoc]/[Map]/[Change_pol] (and
-      [Change_weight] for [SP]) instructions needed to splice the new
-      arm in.
+    - [next] is structurally equal to [prev.policy]: returns [Some] with an
+      empty [prog].
+    - [next] adds exactly one arm at the end of a [UNION], [RR], or [SP] parent
+      in [prev.policy] (per [Rio_compare.Compare.ArmAdded]): returns [Some] with
+      the [Spawn]/[Adopt]/[Assoc]/[Map]/[Change_pol] (and [Change_weight] for
+      [SP]) instructions needed to splice the new arm in.
 
     Anything else (multi-arm add, mid-insert, reorder, weight change,
     super-policy, or completely different policy) returns [None]. *)
 
-(** JSON exporter for IR programs. The identity tables and counter snapshots
-    on [compiled] are intentionally not serialized — they are runtime state
-    used by [patch], not part of the IR's external surface. *)
+(** JSON exporter for IR programs. The identity tables and counter snapshots on
+    [compiled] are intentionally not serialized — they are runtime state used by
+    [patch], not part of the IR's external surface. *)
 module Json : sig
   val from_instr : instr -> Yojson.Basic.t
   (** Serialize a single instruction as a JSON object. *)

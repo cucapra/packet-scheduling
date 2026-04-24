@@ -29,8 +29,8 @@ let assert_gives_up prev_file next_file =
   | None -> ()
   | Some _ ->
       assert_failure
-        (Printf.sprintf "patch %s -> %s unexpectedly returned Some"
-           prev_file next_file)
+        (Printf.sprintf "patch %s -> %s unexpectedly returned Some" prev_file
+           next_file)
 
 let make_delta_test name prev_file next_file (expected : program) =
   name >:: fun _ ->

@@ -4,11 +4,13 @@ type path = int list
 
 (* A structural diff that can describe *where* a change occurs.
    A change at the root has path = []. *)
-type t = Same | Change of path * change
+type t =
+  | Same
+  | Change of path * change
 
 and change =
   | ArmAdded of Frontend.Policy.t
-      (* Exactly one arm was appended at the indicated parent. The patcher
+    (* Exactly one arm was appended at the indicated parent. The patcher
          has access to the parent's [prev] policy via the path, so it can
          derive arity (and, for SP, the new arm's positional weight) on
          its own; we just hand it the new arm. *)

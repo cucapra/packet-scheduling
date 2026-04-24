@@ -48,11 +48,11 @@ type frag = {
 }
 
 (** Given a fresh vPIFO ID, the depth of PE to place the fresh vPIFO into, the
-    tree path of this leaf, the identity tables to register into, and the
-    class to associate with, complete all the necessary steps to stand up the
-    FIFO. This is also a good place to get warmed up with [frag]s. A [frag] is
-    the relevant component of the final program that pertains to setting up
-    the present subtree. *)
+    tree path of this leaf, the identity tables to register into, and the class
+    to associate with, complete all the necessary steps to stand up the FIFO.
+    This is also a good place to get warmed up with [frag]s. A [frag] is the
+    relevant component of the final program that pertains to setting up the
+    present subtree. *)
 let compile_FIFO ~v ~depth ~path ~identities c =
   Hashtbl.add identities.vpifos path v;
   {
@@ -80,13 +80,12 @@ let rec compile_subtree ~fresh_v ~fresh_s ~depth ~path ~identities
       compile_arm ~fresh_v ~fresh_s ~depth ~path ~identities ~pol_ty:UNION
         children
   | P.RR children ->
-      compile_arm ~fresh_v ~fresh_s ~depth ~path ~identities ~pol_ty:RR
-        children
+      compile_arm ~fresh_v ~fresh_s ~depth ~path ~identities ~pol_ty:RR children
   | P.SP children ->
       (* Strict priority: first child has priority 1.0 (highest), then 2.0, 3.0, … *)
       let weights = List.mapi (fun i _ -> float_of_int (i + 1)) children in
-      compile_arm ~fresh_v ~fresh_s ~depth ~path ~identities ~pol_ty:SP
-        ~weights children
+      compile_arm ~fresh_v ~fresh_s ~depth ~path ~identities ~pol_ty:SP ~weights
+        children
   | P.WFQ (children, ws) ->
       compile_arm ~fresh_v ~fresh_s ~depth ~path ~identities ~pol_ty:WFQ
         ~weights:ws children
