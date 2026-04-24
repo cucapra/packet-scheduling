@@ -19,17 +19,19 @@ type compiled = {
   next_step : int;
 }
 
-(* A counter starting at [start]. [fresh ()] returns the next value (first
-   call returns [start]). [peek_next ()] reports what [fresh ()] would return
-   on its next invocation, without advancing the counter. *)
+(* Starting IDs for the two ID spaces. Hoisted so that [of_policy] can
+   recover the [next_*] counter values from the populated identity tables
+   without holding onto the counter closures. *)
+let vpifo_start = 100
+let step_start = 1000
+
+(* A counter starting at [start]: returns a thunk that hands out fresh
+   integers, the first being [start]. *)
 let make_counter ~start =
   let n = ref (start - 1) in
-  let fresh () =
+  fun () ->
     incr n;
     !n
-  in
-  let peek_next () = !n + 1 in
-  (fresh, peek_next)
 
 (* The instructions for compiling a subtree, grouped by instruction "kind".
    By merging these [frags] with care, we can make a top-level
@@ -161,8 +163,8 @@ and compile_arm ~fresh_v ~fresh_s ~depth ~path ~identities ~pol_ty ?weights
   }
 
 let of_policy (p : Frontend.Policy.t) : compiled =
-  let fresh_v, peek_v = make_counter ~start:100 in
-  let fresh_s, peek_s = make_counter ~start:1000 in
+  let fresh_v = make_counter ~start:vpifo_start in
+  let fresh_s = make_counter ~start:step_start in
   (* Identity tables are created here and mutated in place as
      [compile_subtree]/[compile_arm] register each spawn and adopt. *)
   let identities = { vpifos = Hashtbl.create 16; steps = Hashtbl.create 16 } in
@@ -180,12 +182,15 @@ let of_policy (p : Frontend.Policy.t) : compiled =
         frag.change_weights;
       ]
   in
+  (* Each [Hashtbl.add] in [compile_FIFO]/[compile_arm] corresponds to
+     exactly one tick of the counter, so the table sizes tell us how many
+     IDs were handed out and therefore what the next one would be. *)
   {
     prog;
     policy = p;
     identities;
-    next_vpifo = peek_v ();
-    next_step = peek_s ();
+    next_vpifo = vpifo_start + Hashtbl.length identities.vpifos;
+    next_step = step_start + Hashtbl.length identities.steps;
   }
 
 (* Re-export the per-program / per-instruction JSON exporters as a submodule
