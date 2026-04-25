@@ -10,23 +10,11 @@ type t =
 
 and change =
   | OneArmAppended of Frontend.Policy.t
-      (** Exactly one arm was appended at the indicated parent (a UNION/RR/SP).
-          The patcher consumes this case to splice the new arm onto an existing
-          runtime; everything else (including the broader [ArmsAdded] below) is
-          out of scope and the patcher gives up. Greedy: when both
-          [OneArmAppended] and the more general [ArmsAdded] would fit, [analyze]
-          reports [OneArmAppended]. *)
   | ArmsAdded of {
       old_count : int;
       new_count : int;
-      details : string;  (** human-readable description of what was added *)
+      details : string; (* human-readable description of what was added *)
     }
-      (** A more permissive structural arm-add: the old children list is an
-          order-preserving subsequence of the new one. Catches mid-inserts,
-          multi-arm additions, and (for WFQ) weighted-arm additions. Not
-          currently consumable by the patcher; included so [analyze] can
-          describe these changes precisely for diagnostics and for any future
-          patcher that grows broader scope. *)
   | VeryDifferent
   | SuperPol
 
@@ -43,8 +31,8 @@ let rec is_ordered_subsequence lst1 lst2 =
       if h1 = h2 then is_ordered_subsequence t1 t2
       else is_ordered_subsequence lst1 t2
 
-(* Greedy single-arm-append check that gates [OneArmAppended]. Returns
-   the appended arm if [ps2] is exactly [ps1] with one extra element
+(* Greedy single-arm-append check that matches before [OneArmAppended]. 
+   Returns the appended arm if [ps2] is exactly [ps1] with one extra element
    tacked onto the end; otherwise [None]. Strictly narrower than
    [is_ordered_subsequence]. *)
 let one_arm_appended ps1 ps2 =
@@ -52,9 +40,6 @@ let one_arm_appended ps1 ps2 =
   | last :: init_rev when List.rev init_rev = ps1 -> Some last
   | _ -> None
 
-(* This is a generic constructor of a [Change], when arms are added.
-   It takes a function to understand how the details string is to be
-   constructed. *)
 let arms_added_by_subseq details_fn lst1 lst2 =
   let old_count = List.length lst1 in
   let new_count = List.length lst2 in
@@ -174,8 +159,8 @@ and compare_rr_like ps1 ps2 =
 and compare_wfq ps1 ws1 ps2 ws2 =
   (* WFQ never reports [OneArmAppended] — the patcher is out of scope
      for WFQ either way (weight changes, weighted arm-adds), so we let
-     [analyze] describe the change as precisely as the ms1 logic could
-     and leave the patcher to give up. *)
+     [analyze] describe the change as precisely as it can.
+     The patcher will give up later. *)
   let len1 = List.length ps1 in
   let len2 = List.length ps2 in
   let pairs1 = List.combine ps1 ws1 in

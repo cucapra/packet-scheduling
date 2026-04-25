@@ -30,7 +30,7 @@ let same =
 (* OneArmAppended fires only on a single-arm append at a UNION/RR/SP
    parent (after [Policy.normalize] has sorted UNION/RR children). It
    binds greedily — when a change is *both* a one-arm append and a more
-   general subsequence-style ArmsAdded, OneArmAppended wins. WFQ never
+   general ArmsAdded, OneArmAppended wins. WFQ never
    reports OneArmAppended itself; see [armsadded] / [verydiff] for the
    WFQ cases. *)
 let one_arm_appended =
@@ -38,7 +38,7 @@ let one_arm_appended =
     (* SP(A,B) vs SP(A,B,C) — append *)
     make_compare_test "strict arm added at end" "strict_AB" "strict_ABC"
       (Change ([], OneArmAppended (Policy.FIFO "C")));
-    (* RR(A,B) vs RR(A,B,C) — append after sort *)
+    (* RR(A,B) vs RR(A,B,C) — append *)
     make_compare_test "RR with arm added at end" "rr_AB" "rr_ABC"
       (Change ([], OneArmAppended (Policy.FIFO "C")));
     (* RR(A,B) vs RR(B,A,C) — both sort to [A,B,...], so still an append *)
@@ -57,23 +57,15 @@ let one_arm_appended =
       (Change ([ 2 ], OneArmAppended (Policy.FIFO "NEW")));
   ]
 
-(* ArmsAdded captures the broader subsequence-style structural arm-add:
-   mid-inserts, multi-arm additions, and WFQ weighted-arm additions.
-   The patcher gives up on these (only OneArmAppended is in scope) but
-   [analyze] still describes them precisely so a future broader patcher
-   has the structured information to work with. *)
 let armsadded =
   [
-    (* SP(A,C) vs SP(A,B,C) — mid-insert. Subsequence detected; not a
-       one-arm append because the new element isn't at the tail. *)
+    (* SP(A,C) vs SP(A,B,C) *)
     make_compare_test "strict arm added in the middle" "strict_AC" "strict_ABC"
       (Change
          ( [],
            ArmsAdded
              { old_count = 2; new_count = 3; details = "added fifo[B] at 1" } ));
-    (* RR(A,B) vs RR(D,B,A,SP(C,E)) — after sort, [A,B] is a subsequence
-       of [A,B,D,SP[C,E]] but two arms were added, so out of OneArmAppended
-       scope. *)
+    (* RR(A,B) vs RR(D,B,A,SP(C,E)) *)
     make_compare_test "RR with two arms added whilst reordering" "rr_AB"
       "rr_DBA_SP_CE"
       (Change
@@ -84,8 +76,7 @@ let armsadded =
                new_count = 4;
                details = "added fifo[D], strict[fifo[C], fifo[E]]";
              } ));
-    (* WFQ(B,A) vs WFQ(A,B,C) — WFQ never reports OneArmAppended, so even
-       a single appended arm lands in ArmsAdded. *)
+    (* WFQ(B,A) vs WFQ(A,B,C) *)
     make_compare_test "WFQ with arm added" "wfq_BA" "wfq_ABC"
       (Change
          ( [],
@@ -123,8 +114,7 @@ let armsremoved =
 
 let verydiff =
   [
-    (* SP(B,A) vs SP(A,B,C) — SP isn't sorted by normalize and [B,A] is
-       not even a subsequence of [A,B,C], so we degrade to VeryDifferent. *)
+    (* SP(B,A) vs SP(A,B,C) *)
     make_compare_test "strict arm added whilst reordering arms" "strict_BA"
       "strict_ABC"
       (Change ([], VeryDifferent));
