@@ -72,9 +72,7 @@ val patch : prev:compiled -> next:Frontend.Policy.t -> compiled option
     (mid-insert, multi-arm add, weighted-arm add) and any [VeryDifferent] /
     [SuperPol] result — returns [None]. *)
 
-(** JSON exporter for IR programs. The identity tables and counter snapshots on
-    [compiled] are intentionally not serialized — they are runtime state used by
-    [patch], not part of the IR's external surface. *)
+(** JSON exporter for IR programs. *)
 module Json : sig
   val from_instr : instr -> Yojson.Basic.t
   (** Serialize a single instruction as a JSON object. *)
