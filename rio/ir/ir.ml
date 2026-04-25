@@ -45,9 +45,31 @@ type frag = {
   classes : clss list; (* Classes handled by this subtree *)
 }
 
-(** Complete all the necessary steps to stand up the FIFO. This is also a good
-    place to get warmed up with [frag]s. A [frag] is the relevant component of
-    the final program that pertains to setting up the present subtree. *)
+(* Flatten a [frag] into the canonical IR program ordering *)
+let frag_to_program (f : frag) : program =
+  List.concat
+    [ f.spawns; f.adopts; f.assocs; f.maps; f.change_pols; f.change_weights ]
+
+(* Interleave a parent's [local] frag with each of its [children] frags,
+   kindwise: every kind list is local-first, then children in order. The
+   result inherits [root_v] and [classes] from [local] — the parent's local
+   instructions were built around its own identity. Used by [compile_arm] to
+   combine self with recursive child results, and by [patch] to combine the
+   splice instructions with the new arm's frag. *)
+let combine_frags (local : frag) (children : frag list) : frag =
+  let collect proj = proj local @ List.concat_map proj children in
+  {
+    spawns = collect (fun f -> f.spawns);
+    adopts = collect (fun f -> f.adopts);
+    assocs = collect (fun f -> f.assocs);
+    maps = collect (fun f -> f.maps);
+    change_pols = collect (fun f -> f.change_pols);
+    change_weights = collect (fun f -> f.change_weights);
+    root_v = local.root_v;
+    classes = local.classes;
+  }
+
+(** Complete all the necessary steps to stand up the FIFO. *)
 let compile_FIFO ~v ~depth ~path ~identities c =
   Hashtbl.add identities.vpifos path v;
   {
@@ -55,7 +77,6 @@ let compile_FIFO ~v ~depth ~path ~identities c =
     assocs = [ Assoc (v, c) ];
     root_v = v;
     classes = [ c ];
-    (* many frag fields are empty when setting up a vPIFO that runs FIFO *)
     adopts = [];
     maps = [];
     change_pols = [];
@@ -65,7 +86,8 @@ let compile_FIFO ~v ~depth ~path ~identities c =
 (* Compile a [Frontend.Policy.t] subtree rooted at [depth]. [path] is the tree
    position of this subtree's root within the top-level policy, used to key
    the identity tables. PE assignment is depth-based — every node at depth
-   [d] lives on [pe d]. *)
+   [d] lives on [pe d]. This function is just a dispatcher: it picks the
+   right helper for the variant and synthesizes weights for SP. *)
 let rec compile_subtree ~fresh_v ~fresh_s ~depth ~path ~identities
     (p : Frontend.Policy.t) : frag =
   let module P = Frontend.Policy in
@@ -73,9 +95,10 @@ let rec compile_subtree ~fresh_v ~fresh_s ~depth ~path ~identities
   | P.FIFO c -> compile_FIFO ~v:(fresh_v ()) ~depth ~path ~identities c
   | P.UNION children ->
       compile_arm ~fresh_v ~fresh_s ~depth ~path ~identities ~pol_ty:UNION
-        children
+        ~weights:[] children
   | P.RR children ->
-      compile_arm ~fresh_v ~fresh_s ~depth ~path ~identities ~pol_ty:RR children
+      compile_arm ~fresh_v ~fresh_s ~depth ~path ~identities ~pol_ty:RR
+        ~weights:[] children
   | P.SP children ->
       (* Strict priority: first child has priority 1.0 (highest), then 2.0, 3.0, … *)
       let weights = List.mapi (fun i _ -> float_of_int (i + 1)) children in
@@ -85,12 +108,15 @@ let rec compile_subtree ~fresh_v ~fresh_s ~depth ~path ~identities
       compile_arm ~fresh_v ~fresh_s ~depth ~path ~identities ~pol_ty:WFQ
         ~weights:ws children
 
-and compile_arm ~fresh_v ~fresh_s ~depth ~path ~identities ~pol_ty ?weights
+(* [weights] is empty for UNION/RR (they don't carry weights) and
+   one-per-arm for SP/WFQ. List length parity with [children] is the
+   caller's responsibility — [List.map2] below will raise on mismatch. *)
+and compile_arm ~fresh_v ~fresh_s ~depth ~path ~identities ~pol_ty ~weights
     children =
   (* Spawn self first, so that we get a lower ID number than the kids. *)
   let v = fresh_v () in
   Hashtbl.add identities.vpifos path v;
-  let local_spawn = Spawn (v, depth) in
+  let local_spawns = [ Spawn (v, depth) ] in
   (* Recurse on each child first; List.mapi is left-to-right in the stdlib so
      vpifo IDs come out in source order, and [i] gives us the child's index
      for both the path extension and the (parent_path, child_index) step
@@ -102,12 +128,9 @@ and compile_arm ~fresh_v ~fresh_s ~depth ~path ~identities ~pol_ty ?weights
           ~path:(path @ [ i ]) ~identities child)
       children
   in
-  (* The children are all done at this point, and the relevant instructions are in [child_frags].
-  Now we just need to connect the present node with the children. *)
-
-  (* Adopt each child, and store the fresh step ID that we get at the moment we adopt it.
-     We register every step ID in [identities.steps] keyed by (this node's
-     path, the child's index). *)
+  (* Adopt each child, and store the fresh step ID that we get at the moment
+     we adopt it. We register every step ID in [identities.steps] keyed by
+     (this node's path, the child's index). *)
   let adoption_records =
     List.mapi
       (fun i cf ->
@@ -116,45 +139,36 @@ and compile_arm ~fresh_v ~fresh_s ~depth ~path ~identities ~pol_ty ?weights
         (Adopt (s, v, cf.root_v), s, cf))
       child_frags
   in
-  (* Yank out the literal [adopt] commands from [adoption_records] *)
   let local_adopts = List.map (fun (a, _, _) -> a) adoption_records in
-  (* Create a list of classes with which the children are [assoc]iated *)
   let all_classes = List.concat_map (fun cf -> cf.classes) child_frags in
-  (* and [assoc]iate with them yourself *)
   let local_assocs = List.map (fun c -> Assoc (v, c)) all_classes in
-  (* Add mappings to remember how to get to each child *)
   let local_maps =
     List.concat_map
       (fun (_, s, cf) -> List.map (fun c -> Map (v, c, s)) cf.classes)
       adoption_records
   in
-  (* set the local policy and, if supplied, the relevant weights *)
-  let local_change_pol = [ Change_pol (v, pol_ty, List.length children) ] in
+  let local_change_pols = [ Change_pol (v, pol_ty, List.length children) ] in
   let local_change_weights =
     match weights with
-    | None -> []
-    | Some ws ->
-        (* Frontend invariant: WFQ/Strict produce one weight per arm. *)
-        assert (List.length ws = List.length adoption_records);
+    | [] -> []
+    | ws ->
         List.map2
           (fun (_, s, _) w -> Change_weight (v, s, w))
           adoption_records ws
   in
-  (* We have lots of instructions within [child_frags], and we have lots of local instructions. 
-     Time to merge them carefully. *)
-  {
-    spawns = local_spawn :: List.concat_map (fun cf -> cf.spawns) child_frags;
-    adopts = local_adopts @ List.concat_map (fun cf -> cf.adopts) child_frags;
-    assocs = local_assocs @ List.concat_map (fun cf -> cf.assocs) child_frags;
-    maps = local_maps @ List.concat_map (fun cf -> cf.maps) child_frags;
-    change_pols =
-      local_change_pol @ List.concat_map (fun cf -> cf.change_pols) child_frags;
-    change_weights =
-      local_change_weights
-      @ List.concat_map (fun cf -> cf.change_weights) child_frags;
-    root_v = v;
-    classes = all_classes;
-  }
+  let local =
+    {
+      spawns = local_spawns;
+      adopts = local_adopts;
+      assocs = local_assocs;
+      maps = local_maps;
+      change_pols = local_change_pols;
+      change_weights = local_change_weights;
+      root_v = v;
+      classes = all_classes;
+    }
+  in
+  combine_frags local child_frags
 
 let of_policy (p : Frontend.Policy.t) : compiled =
   let fresh_v = make_counter ~start:vpifo_start in
@@ -165,22 +179,11 @@ let of_policy (p : Frontend.Policy.t) : compiled =
   let frag =
     compile_subtree ~fresh_v ~fresh_s ~depth:0 ~path:[] ~identities p
   in
-  let prog =
-    List.concat
-      [
-        frag.spawns;
-        frag.adopts;
-        frag.assocs;
-        frag.maps;
-        frag.change_pols;
-        frag.change_weights;
-      ]
-  in
   (* Each [Hashtbl.add] in [compile_FIFO]/[compile_arm] corresponds to
      exactly one tick of the counter, so the table sizes tell us how many
      IDs were handed out and therefore what the next one would be. *)
   {
-    prog;
+    prog = frag_to_program frag;
     policy = p;
     identities;
     next_vpifo = vpifo_start + Hashtbl.length identities.vpifos;
@@ -204,6 +207,20 @@ let rec walk_to (p : Frontend.Policy.t) path =
   | i :: rest, P.WFQ (ps, _) -> walk_to (List.nth ps i) rest
   | _ :: _, P.FIFO _ -> failwith "Ir.patch: path goes through a FIFO leaf"
 
+(* Translate a [Frontend.Policy.t] variant to its IR [pol_ty] counterpart.
+   Used in [patch] where the variant has been recovered via [walk_to] and
+   we need its IR-side label. [compile_subtree] doesn't go through this —
+   its surrounding pattern match makes the correspondence visible at a
+   glance. *)
+let pol_ty_of_policy (p : Frontend.Policy.t) : pol_ty =
+  let module P = Frontend.Policy in
+  match p with
+  | P.FIFO _ -> FIFO
+  | P.UNION _ -> UNION
+  | P.SP _ -> SP
+  | P.RR _ -> RR
+  | P.WFQ _ -> WFQ
+
 let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
   let module P = Frontend.Policy in
   let open Rio_compare.Compare in
@@ -223,15 +240,14 @@ let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
   | Change (_, (VeryDifferent | SuperPol | ArmsAdded _)) -> None
   | Change (path, OneArmAppended arm) ->
       let parent_pol = walk_to prev.policy path in
-      let pol_ty, old_arity =
+      let old_arity =
         match parent_pol with
-        | P.UNION ps -> (UNION, List.length ps)
-        | P.SP ps -> (SP, List.length ps)
-        | P.RR ps -> (RR, List.length ps)
-        | P.WFQ (ps, _) -> (WFQ, List.length ps)
+        | P.UNION ps | P.SP ps | P.RR ps -> List.length ps
+        | P.WFQ (ps, _) -> List.length ps
         | P.FIFO _ ->
             failwith "Ir.patch: OneArmAppended reported a FIFO as the parent"
       in
+      let pol_ty = pol_ty_of_policy parent_pol in
       let parent_v =
         try Hashtbl.find prev.identities.vpifos path
         with Not_found ->
@@ -245,41 +261,38 @@ let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
          pre-order numbering [of_policy]/[compile_arm] use. *)
       let arm_path = path @ [ old_arity ] in
       let arm_depth = List.length path + 1 in
-      let frag =
+      let arm_frag =
         compile_subtree ~fresh_v ~fresh_s ~depth:arm_depth ~path:arm_path
           ~identities arm
       in
       let new_step = fresh_s () in
       Hashtbl.add identities.steps (path, old_arity) new_step;
       let new_arity = old_arity + 1 in
-      let local_adopt = Adopt (new_step, parent_v, frag.root_v) in
-      let local_assocs = List.map (fun c -> Assoc (parent_v, c)) frag.classes in
-      let local_maps =
-        List.map (fun c -> Map (parent_v, c, new_step)) frag.classes
-      in
-      let local_change_pol = Change_pol (parent_v, pol_ty, new_arity) in
-      let local_change_weights =
-        match pol_ty with
-        | SP ->
-            (* Strict priority: the new arm goes to the back of the line,
-               so its positional weight is the new arity. *)
-            [ Change_weight (parent_v, new_step, float_of_int new_arity) ]
-        | _ -> []
-      in
-      let prog =
-        List.concat
-          [
-            frag.spawns;
-            local_adopt :: frag.adopts;
-            local_assocs @ frag.assocs;
-            local_maps @ frag.maps;
-            local_change_pol :: frag.change_pols;
-            local_change_weights @ frag.change_weights;
-          ]
+      (* Build the parent's local splice instructions as a frag, then
+         interleave with the new arm's frag through the same canonical
+         ordering [of_policy] uses. *)
+      let local =
+        {
+          spawns = [];
+          adopts = [ Adopt (new_step, parent_v, arm_frag.root_v) ];
+          assocs = List.map (fun c -> Assoc (parent_v, c)) arm_frag.classes;
+          maps =
+            List.map (fun c -> Map (parent_v, c, new_step)) arm_frag.classes;
+          change_pols = [ Change_pol (parent_v, pol_ty, new_arity) ];
+          change_weights =
+            (match pol_ty with
+            | SP ->
+                (* Strict priority: the new arm goes to the back of the
+                   line, so its positional weight is the new arity. *)
+                [ Change_weight (parent_v, new_step, float_of_int new_arity) ]
+            | _ -> []);
+          root_v = parent_v;
+          classes = arm_frag.classes;
+        }
       in
       Some
         {
-          prog;
+          prog = frag_to_program (combine_frags local [ arm_frag ]);
           policy = next;
           identities;
           next_vpifo = vpifo_start + Hashtbl.length identities.vpifos;
