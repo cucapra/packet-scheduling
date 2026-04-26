@@ -3,64 +3,57 @@
 
 include module type of Instr
 
-type node_id = int list
-(** Tree position of a node within a [Frontend.Policy.t]. [[]] is the root;
-    [[0; 2]] is the third child of the first child of the root; and so on. *)
+type path = int list
+(** Tree position of a node within a [Frontend.Policy.t]. Examples: [[]] is the
+    root; [[0; 2]] is the third child of the first child of the root. *)
 
-type identities = {
-  vpifos : (node_id, vpifo) Hashtbl.t;
-  steps : (node_id * int, step) Hashtbl.t;
-      (** [(parent_path, child_index)] → step ID assigned at the moment the
-          parent adopted that child. *)
-}
-(** Identity tables: which vPIFO/step IDs were assigned to which positions in
-    the source policy tree. Populated by [of_policy] and consulted by [patch]
-    (Milestone 2 PR3) to splice new arms onto an existing root.
+val vpifo_of_path : path -> vpifo
+(** vPIFO ID for the node at [path], as a pure function of position.
 
-    [vpifos] is keyed by [node_id]: every node in the policy tree (every FIFO
-    leaf and every internal UNION/RR/SP/WFQ root) gets exactly one entry.
-    [steps] is keyed by [(parent_path, child_index)]: every adopt instruction
-    gets exactly one entry, recording the step ID that was handed out the moment
-    the parent adopted that child. *)
+    Encoding: base-10, leading sentinel digit [1], then the path's child indices
+    written out as base-10 digits. So [vpifo_of_path []] is [1],
+    [vpifo_of_path [0]] is [10], [vpifo_of_path [2]] is [12], and
+    [vpifo_of_path [0; 1]] is [101].
+
+    Max arity is therefore 10, which is a little silly but let's go with it for
+    now haha *)
+
+val step_of_path : path -> int -> step
+(** [step_of_path parent_path child_index] is a Step ID that the node at
+    [parent_path] will use to reach its [child_index]th child. Same encoding as
+    [vpifo_of_path] but with leading sentinel [2], so the step and vPIFO ID
+    spaces never collide. E.g. [step_of_path [] 0] is [20], [step_of_path [] 2]
+    is [22], [step_of_path [0] 1] is [201]. *)
 
 type compiled = {
   prog : program;
   policy : Frontend.Policy.t;
-  identities : identities;
-  next_vpifo : int;
-  next_step : int;
 }
 (** The result of compiling a [Frontend.Policy.t]. Carries enough state that a
-    subsequent [patch] call (Milestone 2) can extend the in-flight runtime
-    without recompiling from scratch:
-
+    subsequent [patch] call can extend the in-flight runtime without recompiling
+    from scratch:
     - [prog]: the IR program. When this record came from a fresh compile, [prog]
       is the full program; when it came from [patch], [prog] is the *delta
       only*.
     - [policy]: the [Frontend.Policy.t] this record was built from. Lets a
-      future [patch] call diff against an incoming policy.
-    - [identities]: vPIFO and step IDs indexed by their tree position.
-    - [next_vpifo], [next_step]: the next IDs the counters would hand out, so
-      [patch] can keep allocating without colliding with previous assignments.
-*)
+      future [patch] call diff against an incoming policy. Because IDs are
+      content-addressed, [policy] is also enough to recover any node's IDs on
+      demand via [vpifo_of_path] / [step_of_path] — no separate identity table
+      is needed. *)
 
 val of_policy : Frontend.Policy.t -> compiled
 (** Compile a [Frontend.Policy.t] to IR. Supports trees of any height built from
     [FIFO], [UNION], [RR], [SP], and [WFQ]. Each node at depth [d] is placed on
-    PE [d] — so all siblings (and cousins) share a PE. Populates the identity
-    tables and the [next_vpifo]/[next_step] counter snapshots so that a
-    follow-up [patch] can extend this compile in place. *)
+    PE [d] — so all siblings (and cousins) share a PE. *)
 
 val patch : prev:compiled -> next:Frontend.Policy.t -> compiled option
 (** Incrementally extend [prev] to handle policy [next], returning the IR delta.
     The returned record's [prog] is the *delta only* — the new instructions to
     splice into a runtime that's already executing [prev.prog]. [policy] is set
-    to [next]; [identities] and the counter snapshots are extensions of
-    [prev]'s, working on a clone, so [prev] is left untouched.
+    to [next].
 
     Returns [None] when the change is too complex for this scope. The supported
     transitions are:
-
     - [next] is structurally equal to [prev.policy]: returns [Some] with an
       empty [prog].
     - [next] adds exactly one arm at the end of a [UNION], [RR], or [SP] parent
