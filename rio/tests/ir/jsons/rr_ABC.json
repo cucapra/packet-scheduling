@@ -1,24 +1,24 @@
 [
-  { "op": "spawn", "v": 100, "pe": 0 },
-  { "op": "spawn", "v": 101, "pe": 1 },
-  { "op": "spawn", "v": 102, "pe": 1 },
-  { "op": "spawn", "v": 103, "pe": 1 },
+  { "op": "spawn", "v": 1, "pe": 0 },
+  { "op": "spawn", "v": 10, "pe": 1 },
+  { "op": "spawn", "v": 11, "pe": 1 },
+  { "op": "spawn", "v": 12, "pe": 1 },
 
-  { "op": "adopt", "step": 1000, "parent": 100, "child": 101 },
-  { "op": "adopt", "step": 1001, "parent": 100, "child": 102 },
-  { "op": "adopt", "step": 1002, "parent": 100, "child": 103 },
+  { "op": "adopt", "step": 20, "parent": 1, "child": 10 },
+  { "op": "adopt", "step": 21, "parent": 1, "child": 11 },
+  { "op": "adopt", "step": 22, "parent": 1, "child": 12 },
 
-  { "op": "assoc", "v": 100, "class": "A" },
-  { "op": "assoc", "v": 100, "class": "B" },
-  { "op": "assoc", "v": 100, "class": "C" },
+  { "op": "assoc", "v": 1, "class": "A" },
+  { "op": "assoc", "v": 1, "class": "B" },
+  { "op": "assoc", "v": 1, "class": "C" },
 
-  { "op": "assoc", "v": 101, "class": "A" },
-  { "op": "assoc", "v": 102, "class": "B" },
-  { "op": "assoc", "v": 103, "class": "C" },
+  { "op": "assoc", "v": 10, "class": "A" },
+  { "op": "assoc", "v": 11, "class": "B" },
+  { "op": "assoc", "v": 12, "class": "C" },
 
-  { "op": "map", "v": 100, "class": "A", "step": 1000 },
-  { "op": "map", "v": 100, "class": "B", "step": 1001 },
-  { "op": "map", "v": 100, "class": "C", "step": 1002 },
+  { "op": "map", "v": 1, "class": "A", "step": 20 },
+  { "op": "map", "v": 1, "class": "B", "step": 21 },
+  { "op": "map", "v": 1, "class": "C", "step": 22 },
 
-  { "op": "change_pol", "v": 100, "pol": "RR", "n": 3 }
+  { "op": "change_pol", "v": 1, "pol": "RR", "n": 3 }
 ]
