@@ -33,16 +33,14 @@ type compiled = {
       only*.
     - [decorated]: the decorated source tree. Doubles as the source-policy
       record (recoverable by erasing decorations) so [patch] can diff against an
-      incoming policy without storing a separate [Frontend.Policy.t]. [patch]
-      also derives the next-free vPIFO/step IDs by walking [decorated] — there
-      are no separate counter snapshots to keep in sync. *)
+      incoming policy without storing a separate [Frontend.Policy.t]. *)
 
 val of_policy : Frontend.Policy.t -> compiled
-(** Compile a [Frontend.Policy.t] to IR. Supports trees of any height built from
-    [FIFO], [UNION], [RR], [SP], and [WFQ]. Each node at depth [d] is placed on
-    PE [d] — so all siblings (and cousins) share a PE. Builds the decorated
-    source tree alongside the instruction program; a follow-up [patch] can
-    derive the next-free IDs by walking [decorated]. *)
+(** Compile a [Frontend.Policy.t] to IR. Supports trees built from [FIFO],
+    [UNION], [RR], [SP], and [WFQ]. Each node at depth [d] is placed on PE [d] —
+    so all siblings (and cousins) share a PE. Builds the decorated source tree
+    alongside the instruction program; a follow-up [patch] can derive the
+    next-free IDs by walking [decorated]. *)
 
 val patch : prev:compiled -> next:Frontend.Policy.t -> compiled option
 (** Incrementally extend [prev] to handle policy [next], returning the IR delta.

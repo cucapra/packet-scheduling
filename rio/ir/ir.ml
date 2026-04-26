@@ -118,13 +118,9 @@ let rec compile_subtree ~fresh_v ~fresh_s ~depth (p : Frontend.Policy.t) :
       (frag, Decorated.WFQ (frag.root_v, weighted))
 
 (* Returns [(frag, edges)] where [edges] pairs each adopt-step with its
-   child's decorated subtree, in source order. The dispatch in
-   [compile_subtree] wraps these in the right [decorated] constructor and,
-   for WFQ, re-pairs them with the per-arm weights.
-
-   [weights] is empty for UNION/RR (they don't carry weights) and one-per-arm
-   for SP/WFQ. List length parity with [children] is the caller's
-   responsibility — [List.map2] below will raise on mismatch. *)
+   child's decorated subtree, in source order. [weights] is empty for 
+   UNION/RR (they don't carry weights) and one-per-arm for SP/WFQ. 
+   List length parity with [children] is the caller's responsibility. *)
 and compile_arm ~fresh_v ~fresh_s ~depth ~pol_ty ~weights children :
     frag * (step * Decorated.t) list =
   (* Spawn self first, so that we get a lower ID number than the kids. *)
