@@ -20,13 +20,15 @@ let compile_to_pretty filename =
 (* ----------------------------------------------------------------------- *)
 
 (* Handwritten IR for rr[A, B] — mirrors what [Ir.of_policy] produces for
-   [progs/work_conserving/rr_AB.sched] *)
+   [progs/work_conserving/rr_AB.sched]. IDs follow the content-addressed
+   encoding: root path [] → v1; children at [0],[1] → v10,v11; adopt steps
+   at ([],0..1) → 20,21. *)
 let rr_ab_program : program =
-  let root = 100 in
-  let a_leaf = 101 in
-  let b_leaf = 102 in
-  let s_a = 1000 in
-  let s_b = 1001 in
+  let root = 1 in
+  let a_leaf = 10 in
+  let b_leaf = 11 in
+  let s_a = 20 in
+  let s_b = 21 in
   let pe0 = 0 in
   let pe1 = 1 in
   [
@@ -47,18 +49,18 @@ let rr_ab_program : program =
 let expected_rr_ab =
   String.concat "\n"
     [
-      "v100 = spawn(pe0)";
-      "v101 = spawn(pe1)";
-      "v102 = spawn(pe1)";
-      "step_1000 = adopt(v100, v101)";
-      "step_1001 = adopt(v100, v102)";
-      "assoc(v100, A)";
-      "assoc(v100, B)";
-      "assoc(v101, A)";
-      "assoc(v102, B)";
-      "map(v100, A, step_1000)";
-      "map(v100, B, step_1001)";
-      "change_pol(v100, RR, 2)";
+      "v1 = spawn(pe0)";
+      "v10 = spawn(pe1)";
+      "v11 = spawn(pe1)";
+      "step_20 = adopt(v1, v10)";
+      "step_21 = adopt(v1, v11)";
+      "assoc(v1, A)";
+      "assoc(v1, B)";
+      "assoc(v10, A)";
+      "assoc(v11, B)";
+      "map(v1, A, step_20)";
+      "map(v1, B, step_21)";
+      "change_pol(v1, RR, 2)";
     ]
 
 let test_rr_ab_handwritten =
