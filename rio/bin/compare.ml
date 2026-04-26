@@ -132,29 +132,28 @@ let rec compare_lists ps1 ps2 =
     in
     loop 0 ps1 ps2
 
-(* SP/RR/UNION share a flat list-of-children shape. Greedy check first:
-   if the new list is the old list with exactly one element appended,
-   report [OneArmAppended] (the only thing the patcher knows how to do).
-   Otherwise fall back to the broader subsequence-based [ArmsAdded], or
-   recurse via [compare_lists]. *)
-and compare_strict ps1 ps2 =
+(* SP/RR/UNION share a flat list-of-children shape, so they share the same
+   diff strategy: greedy [one_arm_appended] (the only thing the patcher
+   knows how to do), then the broader subsequence-based [ArmsAdded], then
+   structural [compare_lists]. The only thing that varies between SP and
+   RR/UNION is how we describe the [ArmsAdded] case in human-readable
+   form, so we parameterize over [details_fn]. *)
+and compare_flat ~details_fn ps1 ps2 =
   match one_arm_appended ps1 ps2 with
   | Some arm -> Change ([], OneArmAppended arm)
   | None ->
       if is_ordered_subsequence ps1 ps2 then
-        arms_added_by_subseq details_strict_arm_added ps1 ps2
+        arms_added_by_subseq details_fn ps1 ps2
       else compare_lists ps1 ps2
+
+and compare_strict ps1 ps2 =
+  compare_flat ~details_fn:details_strict_arm_added ps1 ps2
 
 and compare_rr_like ps1 ps2 =
   (* for RR and Union *)
-  match one_arm_appended ps1 ps2 with
-  | Some arm -> Change ([], OneArmAppended arm)
-  | None ->
-      if is_ordered_subsequence ps1 ps2 then
-        arms_added_by_subseq
-          (fun xs1 xs2 -> details_rr_arm_added (list_diff xs2 xs1))
-          ps1 ps2
-      else compare_lists ps1 ps2
+  compare_flat
+    ~details_fn:(fun xs1 xs2 -> details_rr_arm_added (list_diff xs2 xs1))
+    ps1 ps2
 
 and compare_wfq ps1 ws1 ps2 ws2 =
   (* WFQ never reports [OneArmAppended] — the patcher is out of scope

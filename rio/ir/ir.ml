@@ -231,10 +231,14 @@ let parent_info = function
    itself is allowed and preserved. *)
 let rec splice_at_path (d : Decorated.t) path new_step new_child : Decorated.t =
   match path with
-  | [] -> append_at_root d new_step new_child
+  | [] -> append_arm d new_step new_child
   | i :: rest -> recurse_into d i rest new_step new_child
 
-and append_at_root (d : Decorated.t) new_step new_child : Decorated.t =
+(* Append [(new_step, new_child)] as a new last child of [d]. Reached when
+   [splice_at_path] has walked all the way down [path] and [d] is the
+   parent we're splicing into (not the global root, despite what an older
+   name might have suggested). *)
+and append_arm (d : Decorated.t) new_step new_child : Decorated.t =
   match d with
   | Decorated.UNION (v, edges) ->
       Decorated.UNION (v, edges @ [ (new_step, new_child) ])
