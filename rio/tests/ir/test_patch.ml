@@ -31,39 +31,40 @@ let make_delta_test name prev_file next_file (expected : program) =
 (* There's a walkthrough for this case in the topmatter of the PR. *)
 let strict_ab_to_abc_expected : program =
   [
-    Spawn (103, 1);
-    Adopt (1002, 100, 103);
-    Assoc (100, "C");
-    Assoc (103, "C");
-    Map (100, "C", 1002);
-    Change_pol (100, SP, 3);
-    Change_weight (100, 1002, 3.0);
+    Spawn (12, 1);
+    Adopt (22, 1, 12);
+    Assoc (1, "C");
+    Assoc (12, "C");
+    Map (1, "C", 22);
+    Change_pol (1, SP, 3);
+    Change_weight (1, 22, 3.0);
   ]
 
 (* RR arm appended at the root. Same shape as SP but no Change_weight. *)
 let rr_ab_to_abc_expected : program =
   [
-    Spawn (103, 1);
-    Adopt (1002, 100, 103);
-    Assoc (100, "C");
-    Assoc (103, "C");
-    Map (100, "C", 1002);
-    Change_pol (100, RR, 3);
+    Spawn (12, 1);
+    Adopt (22, 1, 12);
+    Assoc (1, "C");
+    Assoc (12, "C");
+    Map (1, "C", 22);
+    Change_pol (1, RR, 3);
   ]
 
 (* Deep arm add. complex_tree's normalized root is WFQ with children sorted
    to (UNION, SP, RR) at indices 0, 1, 2. The inner RR (at path [2]) has
-   parent vpifo 108 and arity 3; complex_tree leaves the counters at
-   next_vpifo=112, next_step=1011. New FIFO NEW lives one level below the
-   RR, so PE 2. *)
+   parent vpifo [vpifo_of_path [2]] = 12 and arity 3; the new FIFO NEW lives
+   at path [2; 3] (one level deeper than the RR), so its vpifo is
+   [vpifo_of_path [2;3]] = 123, its adopt step is [step_of_path [2] 3] = 223,
+   and PE = 2. *)
 let complex_tree_add_deep_expected : program =
   [
-    Spawn (112, 2);
-    Adopt (1011, 108, 112);
-    Assoc (108, "NEW");
-    Assoc (112, "NEW");
-    Map (108, "NEW", 1011);
-    Change_pol (108, RR, 4);
+    Spawn (123, 2);
+    Adopt (223, 12, 123);
+    Assoc (12, "NEW");
+    Assoc (123, "NEW");
+    Map (12, "NEW", 223);
+    Change_pol (12, RR, 4);
   ]
 
 let one_arm_app_tests =
