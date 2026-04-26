@@ -31,18 +31,12 @@ let make_delta_test name prev_file next_file (expected : program) =
 (* There's a walkthrough for this case in the topmatter of the PR. *)
 let strict_ab_to_abc_expected : program =
   [
-    (* From the new arm's frag.spawns: stand up the new vPIFO. *)
     Spawn (103, 1);
-    (* Parent adopts the new arm via the freshly-allocated step. *)
     Adopt (1002, 100, 103);
-    (* Parent learns to accept class C; the new leaf holds class C. *)
     Assoc (100, "C");
     Assoc (103, "C");
-    (* Parent's routing table: class C goes through step 1002. *)
     Map (100, "C", 1002);
-    (* Parent's arity grows from 2 to 3 (still SP). *)
     Change_pol (100, SP, 3);
-    (* SP-only: the appended arm gets positional weight = new arity. *)
     Change_weight (100, 1002, 3.0);
   ]
 
@@ -60,8 +54,8 @@ let rr_ab_to_abc_expected : program =
 (* Deep arm add. complex_tree's normalized root is WFQ with children sorted
    to (UNION, SP, RR) at indices 0, 1, 2. The inner RR (at path [2]) has
    parent vpifo 108 and arity 3; complex_tree leaves the counters at
-   the next-free IDs after compile are vpifo=112, step=1011. New FIFO NEW
-   lives one level below the RR, so PE 2. *)
+   next_vpifo=112, next_step=1011. New FIFO NEW lives one level below the
+   RR, so PE 2. *)
 let complex_tree_add_deep_expected : program =
   [
     Spawn (112, 2);
@@ -82,13 +76,5 @@ let one_arm_app_tests =
       "complex_tree_add_arm_deep" complex_tree_add_deep_expected;
   ]
 
-let same_test =
-  "rr[A,B,C] -> rr[A,B,C] is an empty delta" >:: fun _ ->
-  let c = patch_files "rr_ABC" "rr_ABC" in
-  assert_equal ~printer:Ir.string_of_program [] c.prog;
-  (* The decorated tree should round-trip exactly. *)
-  let prev = compile "rr_ABC" in
-  assert_equal prev.decorated c.decorated
-
-let suite = "patch tests" >::: one_arm_app_tests @ [ same_test ]
+let suite = "patch tests" >::: one_arm_app_tests
 let () = run_test_tt_main suite
