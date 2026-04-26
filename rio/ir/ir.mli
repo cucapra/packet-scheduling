@@ -45,10 +45,8 @@ val of_policy : Frontend.Policy.t -> compiled
 val patch : prev:compiled -> next:Frontend.Policy.t -> compiled option
 (** Incrementally extend [prev] to handle policy [next], returning the IR delta.
     The returned record's [prog] is the *delta only* — the new instructions to
-    splice into a runtime that's already executing [prev.prog]. [decorated] is
-    rebuilt to reflect [next]; [prev] is left untouched (the decorated tree is
-    immutable, so structural sharing makes the splice cheap and there's nothing
-    mutable to clone).
+    add to a runtime that's already executing [prev.prog]. [decorated] is
+    rebuilt to reflect [next].
 
     Returns [None] when the change is too complex for this scope. The supported
     transitions are:

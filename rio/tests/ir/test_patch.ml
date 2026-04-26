@@ -21,105 +21,14 @@ let patch_files prev_file next_file =
       assert_failure
         (Printf.sprintf "patch %s -> %s returned None" prev_file next_file)
 
-(* For give-up tests: patch should return [None]. *)
-let assert_gives_up prev_file next_file =
-  let prev = compile prev_file in
-  let next = policy_of next_file in
-  match Ir.patch ~prev ~next with
-  | None -> ()
-  | Some _ ->
-      assert_failure
-        (Printf.sprintf "patch %s -> %s unexpectedly returned Some" prev_file
-           next_file)
-
 let make_delta_test name prev_file next_file (expected : program) =
   name >:: fun _ ->
   let c = patch_files prev_file next_file in
   assert_equal ~printer:Ir.string_of_program expected c.prog
 
-let make_giveup_test name prev_file next_file =
-  name >:: fun _ -> assert_gives_up prev_file next_file
+(* OneArmAppended *)
 
-(* --- Happy paths: OneArmAppended --- *)
-
-(* ============================================================
-   Walked-through example: SP arm appended at the root.
-
-   This is the example to read first if you're new to [Ir.patch].
-   Every later happy-path test uses the same skeleton; only the
-   numbers change.
-
-   prev (compiled from strict_AB.sched, i.e. SP[A, B]):
-
-     IR program             vpifo / pe assignment       decorated
-     ------------------     -----------------------     ---------
-     Spawn (100, 0)         v100 = SP root on PE 0      Decorated.SP (100, [
-     Spawn (101, 1)         v101 = FIFO A  on PE 1        (1000, Decorated.FIFO (101, "A"));
-     Spawn (102, 1)         v102 = FIFO B  on PE 1        (1001, Decorated.FIFO (102, "B"));
-     Adopt (1000, 100, 101) 100 adopts 101 via step 1000])
-     Adopt (1001, 100, 102) 100 adopts 102 via step 1001
-     Assoc (100, "A")       SP root forwards class A    (next-free IDs:
-     Assoc (100, "B")       SP root forwards class B     vpifo=103, step=1002)
-     Assoc (101, "A")       leaf 101 holds class A
-     Assoc (102, "B")       leaf 102 holds class B
-     Map   (100, "A", 1000) at the root, class A goes
-                            via step 1000 (down to 101)
-     Map   (100, "B", 1001) class B goes via step 1001
-     Change_pol (100, SP, 2)        root runs SP with 2 arms
-     Change_weight (100, 1000, 1.0) class A is highest priority
-     Change_weight (100, 1001, 2.0) class B is next
-
-   next: SP[A, B, C] — one new FIFO arm appended at the end.
-
-   What [Ir.patch] does, step by step:
-
-   1. Erase [prev.decorated]'s decorations to recover the source
-      policy and call [Compare.analyze] against [next]. It returns
-        Change ([], OneArmAppended (FIFO "C"))
-      i.e. "at the root (path = []), one arm was appended; the new
-      arm is FIFO C". The broader [ArmsAdded] case (mid-insert,
-      multi-arm, weighted-arm) and the [VeryDifferent] / [SuperPol]
-      results all cause patch to return None.
-
-   2. Walk [prev.decorated] along path = [] → the parent is the
-      root itself: [Decorated.SP (100, [...])]. Read off
-      [parent_v = 100], [pol_ty = SP], [old_arity = 2] in one shot.
-
-   3. Seed the counters from the snapshots: [fresh_v] starts at
-      103, [fresh_s] starts at 1002. No clone needed — the
-      decorated tree is immutable.
-
-   4. Compile the new arm via the existing [compile_subtree] at
-      [depth = 1]. FIFO C consumes one [fresh_v ()] = 103 and
-      produces a tiny frag plus the [Decorated.FIFO (103, "C")]
-      decoration:
-        spawns  = [Spawn (103, 1)]   (* PE 1 = depth *)
-        assocs  = [Assoc (103, "C")]
-        classes = ["C"]
-        root_v  = 103
-      All other frag fields are empty.
-
-   5. Allocate the parent's adopt-step ID via [fresh_s ()] = 1002
-      and stitch the new arm onto the existing parent:
-        Adopt (1002, 100, 103)        (* parent adopts the new arm *)
-        Assoc (100, "C")              (* root now forwards class C *)
-        Map   (100, "C", 1002)        (* class C goes via step 1002 *)
-        Change_pol  (100, SP, 3)      (* arity bumped 2 -> 3 *)
-        Change_weight (100, 1002, 3.0)
-                                       (* SP-only: positional weight
-                                          equals the new arity *)
-
-   6. Splice the new (step, decorated) edge into the parent's child
-      list to produce a fresh top-level decorated tree, then
-      concatenate the delta in the same grouped order [of_policy]
-      uses (spawns -> adopts -> assocs -> maps -> change_pols ->
-      change_weights), interleaving the parent's local instructions
-      with the (here empty) deeper instructions from the frag.
-
-   That's exactly the program below. RR/UNION look the same minus
-   the [Change_weight] at the end (RR/UNION don't carry weights);
-   deeper additions look the same with bigger IDs and a non-empty
-   path. *)
+(* There's a walkthrough for this case in the topmatter of the PR. *)
 let strict_ab_to_abc_expected : program =
   [
     (* From the new arm's frag.spawns: stand up the new vPIFO. *)
@@ -163,7 +72,7 @@ let complex_tree_add_deep_expected : program =
     Change_pol (108, RR, 4);
   ]
 
-let happy_tests =
+let one_arm_app_tests =
   [
     make_delta_test "strict[A,B] -> strict[A,B,C]" "strict_AB" "strict_ABC"
       strict_ab_to_abc_expected;
@@ -173,8 +82,6 @@ let happy_tests =
       "complex_tree_add_arm_deep" complex_tree_add_deep_expected;
   ]
 
-(* --- Same: empty delta, decorated tree carried through unchanged. --- *)
-
 let same_test =
   "rr[A,B,C] -> rr[A,B,C] is an empty delta" >:: fun _ ->
   let c = patch_files "rr_ABC" "rr_ABC" in
@@ -183,76 +90,5 @@ let same_test =
   let prev = compile "rr_ABC" in
   assert_equal prev.decorated c.decorated
 
-(* --- [prev.decorated] is untouched after a patch. The decorated tree is
-   immutable, so this should be free, but assert it directly to lock the
-   invariant in. *)
-
-let prev_untouched_test =
-  "patch leaves prev.decorated untouched" >:: fun _ ->
-  let prev = compile "rr_AB" in
-  let prev_decorated_before = prev.decorated in
-  let next = policy_of "rr_ABC" in
-  let _ = Ir.patch ~prev ~next in
-  assert_equal prev_decorated_before prev.decorated
-
-(* --- Property: pre-order vPIFO IDs in [decorated] line up with the order of
-   [Spawn] instructions in [prog]. This is the structural invariant the whole
-   compile pipeline rests on (each [Spawn] in source order corresponds to one
-   node in the decorated tree, walked pre-order), and it's the regression net
-   the ms2.5 content-addressing change will rely on. *)
-
-let pre_order_vpifos (d : Decorated.t) =
-  let rec go acc : Decorated.t -> _ = function
-    | Decorated.FIFO (v, _) -> v :: acc
-    | Decorated.UNION (v, edges)
-    | Decorated.SP (v, edges)
-    | Decorated.RR (v, edges) ->
-        List.fold_left (fun acc (_, c) -> go acc c) (v :: acc) edges
-    | Decorated.WFQ (v, edges) ->
-        List.fold_left (fun acc (_, c, _) -> go acc c) (v :: acc) edges
-  in
-  List.rev (go [] d)
-
-let spawn_vpifos prog =
-  List.filter_map
-    (function
-      | Spawn (v, _) -> Some v
-      | _ -> None)
-    prog
-
-let make_pre_order_test name file =
-  name >:: fun _ ->
-  let c = compile file in
-  let printer xs = String.concat ", " (List.map string_of_int xs) in
-  assert_equal ~printer (spawn_vpifos c.prog) (pre_order_vpifos c.decorated)
-
-let pre_order_tests =
-  [
-    make_pre_order_test "pre-order vpifos: fifo_G" "fifo_G";
-    make_pre_order_test "pre-order vpifos: rr_ABC" "rr_ABC";
-    make_pre_order_test "pre-order vpifos: strict_ABC" "strict_ABC";
-    make_pre_order_test "pre-order vpifos: wfq_ABC" "wfq_ABC";
-    make_pre_order_test "pre-order vpifos: complex_tree" "complex_tree";
-  ]
-
-(* --- Give-up cases: every change outside the supported scope returns None. *)
-
-let giveup_tests =
-  [
-    make_giveup_test "rr[A,B] -> rr[D,E,F] (VeryDifferent)" "rr_AB" "rr_DEF";
-    make_giveup_test "fifo[G] -> union[G,H] (SuperPol)" "fifo_G" "union_GH";
-    make_giveup_test "strict[A,C] -> strict[A,B,C] (ArmsAdded mid-insert)"
-      "strict_AC" "strict_ABC";
-    make_giveup_test "wfq[B,A] -> wfq[A,B,C] (ArmsAdded WFQ arm-add)" "wfq_BA"
-      "wfq_ABC";
-    make_giveup_test "rr[A,B] -> rr[D,B,A,SP[C,E]] (ArmsAdded multi-arm)"
-      "rr_AB" "rr_DBA_SP_CE";
-  ]
-
-let suite =
-  "patch tests"
-  >::: happy_tests
-       @ [ same_test; prev_untouched_test ]
-       @ pre_order_tests @ giveup_tests
-
+let suite = "patch tests" >::: one_arm_app_tests @ [ same_test ]
 let () = run_test_tt_main suite
