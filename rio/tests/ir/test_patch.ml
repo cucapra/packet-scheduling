@@ -51,19 +51,19 @@ let make_giveup_test name prev_file next_file =
 
    prev (compiled from strict_AB.sched, i.e. SP[A, B]):
 
-     IR program             vpifo / pe assignment         identities
-     ------------------     -----------------------       ----------
-     Spawn (100, 0)         v100 = SP root  on PE 0       vpifos:
-     Spawn (101, 1)         v101 = FIFO A   on PE 1         []  -> 100
-     Spawn (102, 1)         v102 = FIFO B   on PE 1         [0] -> 101
-     Adopt (1000, 100, 101) "100 adopts 101 via step 1000"  [1] -> 102
-     Adopt (1001, 100, 102) "100 adopts 102 via step 1001"
-     Assoc (100, "A")       SP root forwards class A      steps:
-     Assoc (100, "B")       SP root forwards class B        ([], 0) -> 1000
-     Assoc (101, "A")       leaf 101 holds class A          ([], 1) -> 1001
+     IR program             vpifo / pe assignment       decorated
+     ------------------     -----------------------     ---------
+     Spawn (100, 0)         v100 = SP root on PE 0      Decorated.SP (100, [
+     Spawn (101, 1)         v101 = FIFO A  on PE 1        (1000, Decorated.FIFO (101, "A"));
+     Spawn (102, 1)         v102 = FIFO B  on PE 1        (1001, Decorated.FIFO (102, "B"));
+     Adopt (1000, 100, 101) 100 adopts 101 via step 1000])
+     Adopt (1001, 100, 102) 100 adopts 102 via step 1001
+     Assoc (100, "A")       SP root forwards class A    (next-free IDs:
+     Assoc (100, "B")       SP root forwards class B     vpifo=103, step=1002)
+     Assoc (101, "A")       leaf 101 holds class A
      Assoc (102, "B")       leaf 102 holds class B
-     Map   (100, "A", 1000) at the root, class A goes      next_vpifo = 103
-                            via step 1000 (down to 101)    next_step  = 1002
+     Map   (100, "A", 1000) at the root, class A goes
+                            via step 1000 (down to 101)
      Map   (100, "B", 1001) class B goes via step 1001
      Change_pol (100, SP, 2)        root runs SP with 2 arms
      Change_weight (100, 1000, 1.0) class A is highest priority
@@ -73,35 +73,34 @@ let make_giveup_test name prev_file next_file =
 
    What [Ir.patch] does, step by step:
 
-   1. [Compare.analyze prev.policy next] returns
+   1. Erase [prev.decorated]'s decorations to recover the source
+      policy and call [Compare.analyze] against [next]. It returns
         Change ([], OneArmAppended (FIFO "C"))
       i.e. "at the root (path = []), one arm was appended; the new
       arm is FIFO C". The broader [ArmsAdded] case (mid-insert,
       multi-arm, weighted-arm) and the [VeryDifferent] / [SuperPol]
       results all cause patch to return None.
 
-   2. Walk [prev.policy] along path = [] → the parent is the root
-      itself: SP[A, B], so [pol_ty = SP] and [old_arity = 2].
-      Look up the parent's vPIFO in [prev.identities.vpifos[[]]]:
-      [parent_v = 100].
+   2. Walk [prev.decorated] along path = [] → the parent is the
+      root itself: [Decorated.SP (100, [...])]. Read off
+      [parent_v = 100], [pol_ty = SP], [old_arity = 2] in one shot.
 
-   3. Clone [prev.identities] (so the original tables aren't
-      touched) and seed the counters from the snapshots:
-      [fresh_v] starts at 103, [fresh_s] starts at 1002.
+   3. Seed the counters from the snapshots: [fresh_v] starts at
+      103, [fresh_s] starts at 1002. No clone needed — the
+      decorated tree is immutable.
 
    4. Compile the new arm via the existing [compile_subtree] at
-      [depth = 1], [path = [2]] (next free child slot under the
-      root). FIFO C consumes one [fresh_v ()] = 103, registers
-      [vpifos[[2]] = 103], and produces a tiny frag:
+      [depth = 1]. FIFO C consumes one [fresh_v ()] = 103 and
+      produces a tiny frag plus the [Decorated.FIFO (103, "C")]
+      decoration:
         spawns  = [Spawn (103, 1)]   (* PE 1 = depth *)
         assocs  = [Assoc (103, "C")]
         classes = ["C"]
         root_v  = 103
       All other frag fields are empty.
 
-   5. Allocate the parent's adopt-step ID via [fresh_s ()] = 1002,
-      register [steps[([], 2)] = 1002], and stitch the new arm onto
-      the existing parent:
+   5. Allocate the parent's adopt-step ID via [fresh_s ()] = 1002
+      and stitch the new arm onto the existing parent:
         Adopt (1002, 100, 103)        (* parent adopts the new arm *)
         Assoc (100, "C")              (* root now forwards class C *)
         Map   (100, "C", 1002)        (* class C goes via step 1002 *)
@@ -110,7 +109,9 @@ let make_giveup_test name prev_file next_file =
                                        (* SP-only: positional weight
                                           equals the new arity *)
 
-   6. Concatenate the delta in the same grouped order [of_policy]
+   6. Splice the new (step, decorated) edge into the parent's child
+      list to produce a fresh top-level decorated tree, then
+      concatenate the delta in the same grouped order [of_policy]
       uses (spawns -> adopts -> assocs -> maps -> change_pols ->
       change_weights), interleaving the parent's local instructions
       with the (here empty) deeper instructions from the frag.
@@ -150,8 +151,8 @@ let rr_ab_to_abc_expected : program =
 (* Deep arm add. complex_tree's normalized root is WFQ with children sorted
    to (UNION, SP, RR) at indices 0, 1, 2. The inner RR (at path [2]) has
    parent vpifo 108 and arity 3; complex_tree leaves the counters at
-   next_vpifo=112, next_step=1011. New FIFO NEW lives one level below the
-   RR, so PE 2. *)
+   the next-free IDs after compile are vpifo=112, step=1011. New FIFO NEW
+   lives one level below the RR, so PE 2. *)
 let complex_tree_add_deep_expected : program =
   [
     Spawn (112, 2);
@@ -172,30 +173,67 @@ let happy_tests =
       "complex_tree_add_arm_deep" complex_tree_add_deep_expected;
   ]
 
-(* --- Same: empty delta, but [policy] and counters still tracked. --- *)
+(* --- Same: empty delta, decorated tree carried through unchanged. --- *)
 
 let same_test =
   "rr[A,B,C] -> rr[A,B,C] is an empty delta" >:: fun _ ->
   let c = patch_files "rr_ABC" "rr_ABC" in
   assert_equal ~printer:Ir.string_of_program [] c.prog;
-  (* Counters shouldn't have moved. *)
+  (* The decorated tree should round-trip exactly. *)
   let prev = compile "rr_ABC" in
-  assert_equal ~printer:string_of_int prev.next_vpifo c.next_vpifo;
-  assert_equal ~printer:string_of_int prev.next_step c.next_step
+  assert_equal prev.decorated c.decorated
 
-(* --- Identity tables on [prev] are untouched after a patch. --- *)
+(* --- [prev.decorated] is untouched after a patch. The decorated tree is
+   immutable, so this should be free, but assert it directly to lock the
+   invariant in. *)
 
 let prev_untouched_test =
-  "patch leaves prev.identities untouched" >:: fun _ ->
+  "patch leaves prev.decorated untouched" >:: fun _ ->
   let prev = compile "rr_AB" in
-  let prev_v_count = Hashtbl.length prev.identities.vpifos in
-  let prev_s_count = Hashtbl.length prev.identities.steps in
+  let prev_decorated_before = prev.decorated in
   let next = policy_of "rr_ABC" in
   let _ = Ir.patch ~prev ~next in
-  assert_equal ~printer:string_of_int prev_v_count
-    (Hashtbl.length prev.identities.vpifos);
-  assert_equal ~printer:string_of_int prev_s_count
-    (Hashtbl.length prev.identities.steps)
+  assert_equal prev_decorated_before prev.decorated
+
+(* --- Property: pre-order vPIFO IDs in [decorated] line up with the order of
+   [Spawn] instructions in [prog]. This is the structural invariant the whole
+   compile pipeline rests on (each [Spawn] in source order corresponds to one
+   node in the decorated tree, walked pre-order), and it's the regression net
+   the ms2.5 content-addressing change will rely on. *)
+
+let pre_order_vpifos (d : Decorated.t) =
+  let rec go acc : Decorated.t -> _ = function
+    | Decorated.FIFO (v, _) -> v :: acc
+    | Decorated.UNION (v, edges)
+    | Decorated.SP (v, edges)
+    | Decorated.RR (v, edges) ->
+        List.fold_left (fun acc (_, c) -> go acc c) (v :: acc) edges
+    | Decorated.WFQ (v, edges) ->
+        List.fold_left (fun acc (_, c, _) -> go acc c) (v :: acc) edges
+  in
+  List.rev (go [] d)
+
+let spawn_vpifos prog =
+  List.filter_map
+    (function
+      | Spawn (v, _) -> Some v
+      | _ -> None)
+    prog
+
+let make_pre_order_test name file =
+  name >:: fun _ ->
+  let c = compile file in
+  let printer xs = String.concat ", " (List.map string_of_int xs) in
+  assert_equal ~printer (spawn_vpifos c.prog) (pre_order_vpifos c.decorated)
+
+let pre_order_tests =
+  [
+    make_pre_order_test "pre-order vpifos: fifo_G" "fifo_G";
+    make_pre_order_test "pre-order vpifos: rr_ABC" "rr_ABC";
+    make_pre_order_test "pre-order vpifos: strict_ABC" "strict_ABC";
+    make_pre_order_test "pre-order vpifos: wfq_ABC" "wfq_ABC";
+    make_pre_order_test "pre-order vpifos: complex_tree" "complex_tree";
+  ]
 
 (* --- Give-up cases: every change outside the supported scope returns None. *)
 
@@ -213,6 +251,8 @@ let giveup_tests =
 
 let suite =
   "patch tests"
-  >::: happy_tests @ [ same_test; prev_untouched_test ] @ giveup_tests
+  >::: happy_tests
+       @ [ same_test; prev_untouched_test ]
+       @ pre_order_tests @ giveup_tests
 
 let () = run_test_tt_main suite
