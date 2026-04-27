@@ -3,13 +3,13 @@ open Frontend.Policy
 type path = int list
 
 (* A structural diff that can describe *where* a change occurs.
-   A change at the root has path = [].
-*)
+   A change at the root has path = []. *)
 type t =
   | Same
   | Change of path * change
 
 and change =
+  | OneArmAppended of Frontend.Policy.t
   | ArmsAdded of {
       old_count : int;
       new_count : int;
@@ -20,7 +20,9 @@ and change =
 
 let list_diff xs ys = List.filter (fun x -> not (List.mem x ys)) xs
 
-(* Check if lst1 appears as an order-preserving sub-sequence of lst2. E.g. [A,C] is an order-preserving sub-sequence of [A,B,C,D], but [C,A] is not. *)
+(* Check if lst1 appears as an order-preserving sub-sequence of lst2.
+   E.g. [A,C] is an order-preserving sub-sequence of [A,B,C,D], but
+   [C,A] is not. *)
 let rec is_ordered_subsequence lst1 lst2 =
   match (lst1, lst2) with
   | [], _ -> true (* Empty list is sub-sequence of anything *)
@@ -29,7 +31,15 @@ let rec is_ordered_subsequence lst1 lst2 =
       if h1 = h2 then is_ordered_subsequence t1 t2
       else is_ordered_subsequence lst1 t2
 
-(* This is a generic constructor of a `Change`, when arms are added. It takes a function to understand how the details string is to be constructed. *)
+(* Greedy single-arm-append check that matches before [OneArmAppended]. 
+   Returns the appended arm if [ps2] is exactly [ps1] with one extra element
+   tacked onto the end; otherwise [None]. Strictly narrower than
+   [is_ordered_subsequence]. *)
+let one_arm_appended ps1 ps2 =
+  match List.rev ps2 with
+  | last :: init_rev when List.rev init_rev = ps1 -> Some last
+  | _ -> None
+
 let arms_added_by_subseq details_fn lst1 lst2 =
   let old_count = List.length lst1 in
   let new_count = List.length lst2 in
@@ -55,9 +65,11 @@ let details_strict_arm_added ps1 ps2 =
   in
   loop 0 ps1 ps2 [] |> List.rev |> String.concat ", "
 
-(* The function we'll use to construct RR-RR or Union-Union details when arms are added *)
+(* The function we'll use to construct RR-RR or Union-Union details when
+   arms are added *)
 let details_rr_arm_added additions =
-  (* Sometimes we need text details but the policy doesn't care about the _index_ of the addition. *)
+  (* Sometimes we need text details but the policy doesn't care about
+     the _index_ of the addition. *)
   if additions = [] then ""
   else
     "added "
@@ -100,7 +112,8 @@ let rec is_sub_policy p1 p2 =
         loop 0 ps
 
 let rec compare_lists ps1 ps2 =
-  (* Compare lists of children structurally and report the index of the change. *)
+  (* Compare two equal-length lists of children structurally and report
+     the index of the first child that differs. *)
   let len1 = List.length ps1 in
   let len2 = List.length ps2 in
   if len1 <> len2 then Change ([], VeryDifferent)
@@ -119,20 +132,34 @@ let rec compare_lists ps1 ps2 =
     in
     loop 0 ps1 ps2
 
+(* SP/RR/UNION share a flat list-of-children shape, so they share the same
+   diff strategy: greedy [one_arm_appended] (the only thing the patcher
+   knows how to do), then the broader subsequence-based [ArmsAdded], then
+   structural [compare_lists]. The only thing that varies between SP and
+   RR/UNION is how we describe the [ArmsAdded] case in human-readable
+   form, so we parameterize over [details_fn]. *)
+and compare_flat ~details_fn ps1 ps2 =
+  match one_arm_appended ps1 ps2 with
+  | Some arm -> Change ([], OneArmAppended arm)
+  | None ->
+      if is_ordered_subsequence ps1 ps2 then
+        arms_added_by_subseq details_fn ps1 ps2
+      else compare_lists ps1 ps2
+
 and compare_strict ps1 ps2 =
-  if is_ordered_subsequence ps1 ps2 then
-    arms_added_by_subseq details_strict_arm_added ps1 ps2
-  else compare_lists ps1 ps2
+  compare_flat ~details_fn:details_strict_arm_added ps1 ps2
 
 and compare_rr_like ps1 ps2 =
-  (* for RR and Union, for now *)
-  if is_ordered_subsequence ps1 ps2 then
-    arms_added_by_subseq
-      (fun xs1 xs2 -> details_rr_arm_added (list_diff xs2 xs1))
-      ps1 ps2
-  else compare_lists ps1 ps2
+  (* for RR and Union *)
+  compare_flat
+    ~details_fn:(fun xs1 xs2 -> details_rr_arm_added (list_diff xs2 xs1))
+    ps1 ps2
 
 and compare_wfq ps1 ws1 ps2 ws2 =
+  (* WFQ never reports [OneArmAppended] — the patcher is out of scope
+     for WFQ either way (weight changes, weighted arm-adds), so we let
+     [analyze] describe the change as precisely as it can.
+     The patcher will give up later. *)
   let len1 = List.length ps1 in
   let len2 = List.length ps2 in
   let pairs1 = List.combine ps1 ws1 in
@@ -178,6 +205,8 @@ let rec to_string diff =
       Printf.sprintf "%s: %s" loc (change_to_string change)
 
 and change_to_string = function
+  | OneArmAppended arm ->
+      Printf.sprintf "OneArmAppended: %s" (Frontend.Policy.to_string arm)
   | ArmsAdded { old_count; new_count; details } ->
       if details = "" then
         Printf.sprintf "ArmsAdded %d → %d" old_count new_count

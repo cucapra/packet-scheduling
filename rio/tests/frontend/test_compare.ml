@@ -27,32 +27,44 @@ let same =
       "complex_tree" "complex_tree_swap_rr_arms" Same;
   ]
 
+(* OneArmAppended fires only on a single-arm append at a UNION/RR/SP
+   parent (after [Policy.normalize] has sorted UNION/RR children). It
+   binds greedily — when a change is *both* a one-arm append and a more
+   general ArmsAdded, OneArmAppended wins. WFQ never
+   reports OneArmAppended itself; see [armsadded] / [verydiff] for the
+   WFQ cases. *)
+let one_arm_appended =
+  [
+    (* SP(A,B) vs SP(A,B,C) — append *)
+    make_compare_test "strict arm added at end" "strict_AB" "strict_ABC"
+      (Change ([], OneArmAppended (Policy.FIFO "C")));
+    (* RR(A,B) vs RR(A,B,C) — append *)
+    make_compare_test "RR with arm added at end" "rr_AB" "rr_ABC"
+      (Change ([], OneArmAppended (Policy.FIFO "C")));
+    (* RR(A,B) vs RR(B,A,C) — both sort to [A,B,...], so still an append *)
+    make_compare_test "RR with arm added whilst reordering" "rr_AB" "rr_BAC"
+      (Change ([], OneArmAppended (Policy.FIFO "C")));
+    (* Adding an arm deep inside a tree with WFQ at root. The root WFQ
+       is a transparent passthrough (lengths and weights line up), so
+       the diff surfaces at the rr child (path [1]). *)
+    make_compare_test "WFQ with arm added deep" "wfq_complex"
+      "wfq_complex_add_arm_deep"
+      (Change ([ 1 ], OneArmAppended (Policy.FIFO "D")));
+    (* Adding an arm deep inside the complex tree. After normalize, the
+       WFQ pairs sort to (UNION, SP, RR), so the rr arm is at index 2. *)
+    make_compare_test "complex tree add arm deep" "complex_tree"
+      "complex_tree_add_arm_deep"
+      (Change ([ 2 ], OneArmAppended (Policy.FIFO "NEW")));
+  ]
+
 let armsadded =
   [
-    (* SP(A,B) vs SP(A,B,C) *)
-    make_compare_test "strict arm added" "strict_AB" "strict_ABC"
-      (Change
-         ( [],
-           ArmsAdded
-             { old_count = 2; new_count = 3; details = "added fifo[C] at 2" } ));
     (* SP(A,C) vs SP(A,B,C) *)
     make_compare_test "strict arm added in the middle" "strict_AC" "strict_ABC"
       (Change
          ( [],
            ArmsAdded
              { old_count = 2; new_count = 3; details = "added fifo[B] at 1" } ));
-    (* RR(A,B) vs RR(A,B,C) *)
-    make_compare_test "RR with arm added at end" "rr_AB" "rr_ABC"
-      (Change
-         ( [],
-           ArmsAdded { old_count = 2; new_count = 3; details = "added fifo[C]" }
-         ));
-    (* RR(A,B) vs RR(B,A,C) *)
-    make_compare_test "RR with arm added whilst reordering" "rr_AB" "rr_BAC"
-      (Change
-         ( [],
-           ArmsAdded { old_count = 2; new_count = 3; details = "added fifo[C]" }
-         ));
     (* RR(A,B) vs RR(D,B,A,SP(C,E)) *)
     make_compare_test "RR with two arms added whilst reordering" "rr_AB"
       "rr_DBA_SP_CE"
@@ -74,22 +86,9 @@ let armsadded =
                new_count = 3;
                details = "added fifo[C] with weight 3";
              } ));
-    (* Adding an arm deep inside a tree with WFQ at root *)
-    make_compare_test "WFQ with arm added deep" "wfq_complex"
-      "wfq_complex_add_arm_deep"
-      (Change
-         ( [ 1 ],
-           ArmsAdded { old_count = 2; new_count = 3; details = "added fifo[D]" }
-         ));
-    (* Adding an arm deep inside the complex tree *)
-    make_compare_test "complex tree add arm deep" "complex_tree"
-      "complex_tree_add_arm_deep"
-      (Change
-         ( [ 2 ],
-           ArmsAdded
-             { old_count = 3; new_count = 4; details = "added fifo[NEW]" } ));
-    (* Going from _part_ of complex_tree to the whole complex_tree, which requires adding a whole RR arm. This change is still at the root, not deeper, but the change involves adding more than just a FIFO. *)
-    make_compare_test "complex tree add arm deep" "complex_tree_partial"
+    (* complex_tree_partial vs complex_tree — a WFQ-level add at the root.
+       Adds an entire RR subtree as a new weighted arm. *)
+    make_compare_test "complex tree fill in missing arm" "complex_tree_partial"
       "complex_tree"
       (Change
          ( [],
@@ -125,10 +124,10 @@ let verydiff =
     (* RR(A,B) vs RR(A,D) *)
     make_compare_test "rr arm changed" "rr_AB" "rr_AD"
       (Change ([ 1 ], VeryDifferent));
-    (* WFQ(A_1,B_2,C_3) vs WFQ(A_2,B_2,C_4): classes same, weight different  *)
+    (* WFQ(A_1,B_2,C_3) vs WFQ(A_2,B_2,C_4): classes same, weight different *)
     make_compare_test "different WFQ weights" "wfq_ABC" "wfq_ABC_diff"
       (Change ([], VeryDifferent));
-    (* WFQ(A_1,B_2,C_3) vs WFQ(D_1,E_2,F_3) : classes different, weights same *)
+    (* WFQ(A_1,B_2,C_3) vs WFQ(D_1,E_2,F_3): classes different, weights same *)
     make_compare_test "different WFQ classes" "wfq_ABC" "wfq_DEF"
       (Change ([], VeryDifferent));
     (* RR(A,B) vs RR(D,E,F) *)
@@ -161,6 +160,7 @@ let superpol =
   ]
 
 let suite =
-  "compare tests" >::: same @ armsadded @ armsremoved @ verydiff @ superpol
+  "compare tests"
+  >::: same @ one_arm_appended @ armsadded @ armsremoved @ verydiff @ superpol
 
 let () = run_test_tt_main suite
