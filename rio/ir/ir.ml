@@ -31,6 +31,13 @@ let make_counter ~start =
     incr n;
     !n
 
+(* Split a non-empty list into its prefix and its last element.
+   E.g. [list_foot [1; 2; 3]] = ([1; 2], 3). Raises on empty input. *)
+let list_foot xs =
+  match List.rev xs with
+  | [] -> invalid_arg "list_foot: empty list"
+  | last :: rev_init -> (List.rev rev_init, last)
+
 (* The instructions for compiling a subtree, grouped by instruction "kind".
    By merging these [frags] with care, we can make a top-level
    concatenation that has all spawns first, then all adopts, etc. *)
@@ -222,7 +229,6 @@ let pol_ty_of_policy (p : Frontend.Policy.t) : pol_ty =
   | P.WFQ _ -> WFQ
 
 let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
-  let module P = Frontend.Policy in
   let open Rio_compare.Compare in
   match analyze prev.policy next with
   | Same ->
@@ -237,22 +243,14 @@ let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
           next_vpifo = prev.next_vpifo;
           next_step = prev.next_step;
         }
-  | Change
-      (_, (VeryDifferent | SuperPol | ArmsAdded _ | ArmsRemoved _ | WeightChanged _))
-    ->
-      None
-  | Change (path, OneArmAppended arm) ->
-      let parent_pol = walk_to prev.policy path in
-      let old_arity =
-        match parent_pol with
-        | P.UNION ps | P.SP ps | P.RR ps -> List.length ps
-        | P.WFQ (ps, _) -> List.length ps
-        | P.FIFO _ ->
-            failwith "Ir.patch: OneArmAppended reported a FIFO as the parent"
-      in
+  | VeryDifferent _ | SuperPol _ | ArmsAdded _ | ArmsRemoved _ | WeightChanged _
+    -> None
+  | OneArmAppended { path = arm_path; arm; weight = _ } ->
+      let parent_path, old_arity = list_foot arm_path in
+      let parent_pol = walk_to prev.policy parent_path in
       let pol_ty = pol_ty_of_policy parent_pol in
       let parent_v =
-        try Hashtbl.find prev.identities.vpifos path
+        try Hashtbl.find prev.identities.vpifos parent_path
         with Not_found ->
           failwith "Ir.patch: parent path missing from identity table"
       in
@@ -262,14 +260,13 @@ let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
       (* Compile the new arm first so its internal vPIFO/step IDs land
          lower than the parent's new adopt-step ID — mirroring the
          pre-order numbering [of_policy]/[compile_arm] use. *)
-      let arm_path = path @ [ old_arity ] in
-      let arm_depth = List.length path + 1 in
+      let arm_depth = List.length arm_path in
       let arm_frag =
         compile_subtree ~fresh_v ~fresh_s ~depth:arm_depth ~path:arm_path
           ~identities arm
       in
       let new_step = fresh_s () in
-      Hashtbl.add identities.steps (path, old_arity) new_step;
+      Hashtbl.add identities.steps (parent_path, old_arity) new_step;
       let new_arity = old_arity + 1 in
       (* Build the parent's local splice instructions as a frag, then
          interleave with the new arm's frag through the same canonical
