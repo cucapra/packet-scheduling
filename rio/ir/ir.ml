@@ -243,8 +243,12 @@ let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
           next_vpifo = prev.next_vpifo;
           next_step = prev.next_step;
         }
-  | VeryDifferent _ | SuperPol _ | ArmsAdded _ | ArmsRemoved _ | WeightChanged _
-    -> None
+  | VeryDifferent _
+  | SuperPol _
+  | ArmsAdded _
+  | ArmsRemoved _
+  | WeightChanged _
+  | OneArmReplaced _ -> None
   | OneArmAppended { path = arm_path; arm; weight = _ } ->
       let parent_path, old_arity = list_foot arm_path in
       let parent_pol = walk_to prev.policy parent_path in

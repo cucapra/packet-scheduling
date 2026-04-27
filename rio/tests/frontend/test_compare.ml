@@ -130,29 +130,40 @@ let weightchanged =
          ]);
   ]
 
+let onearmreplaced =
+  [
+    (* SP(A,B) vs SP(A,C): exactly one arm differs (index 1). *)
+    make_compare_test "strict arm changed" "strict_AB" "strict_AC"
+      (OneArmReplaced { path = [ 1 ]; arm = Policy.FIFO "C"; weight = None });
+    (* RR(A,B) vs RR(A,D): exactly one arm differs (index 1). *)
+    make_compare_test "rr arm changed" "rr_AB" "rr_AD"
+      (OneArmReplaced { path = [ 1 ]; arm = Policy.FIFO "D"; weight = None });
+  ]
+
 let verydiff =
   [
     (* SP(B,A) vs SP(A,B,C) *)
     make_compare_test "strict arm added whilst reordering arms" "strict_BA"
       "strict_ABC" (VeryDifferent []);
-    (* SP(A,B) vs SP(A,C) *)
-    make_compare_test "strict arm changed" "strict_AB" "strict_AC"
-      (VeryDifferent [ 1 ]);
-    (* RR(A,B) vs RR(A,D) *)
-    make_compare_test "rr arm changed" "rr_AB" "rr_AD" (VeryDifferent [ 1 ]);
     (* WFQ(A_1,B_2,C_3) vs WFQ(D_1,E_2,F_3): classes different, weights same *)
     make_compare_test "different WFQ classes" "wfq_ABC" "wfq_DEF"
       (VeryDifferent []);
     (* RR(A,B) vs RR(D,E,F) *)
     make_compare_test "RR big diff" "rr_AB" "rr_DEF" (VeryDifferent []);
-    (* SP(A,B) vs SP(B,A) *)
-    make_compare_test "Strict with arms reordered" "strict_AB" "strict_BA"
-      (VeryDifferent [ 0 ]);
     make_compare_test "WFQ with weights changed and arm added" "wfq_BA"
       "wfq_ABC_diff" (VeryDifferent []);
+    (* SP(A,B) vs SP(B,A): two positions differ (index 0 and index 1).
+       OneArmReplaced declines to fire when the change isn't pinpointable
+       to a single position; falls back to VeryDifferent at this level. *)
+    make_compare_test "Strict with arms reordered" "strict_AB" "strict_BA"
+      (VeryDifferent []);
+    (* Same shape as above, one level deeper: complex_tree's SP[A;B;C]
+       becomes SP[C;B;A] at root child 1. The inner SP has multi-divergence
+       (indices 0 and 2 both differ), so compare_lists returns
+       VeryDifferent [] for the SP. The outer compare_lists wraps that
+       with the SP's index in the WFQ root, giving VeryDifferent [1]. *)
     make_compare_test "complex tree with an SP reordering deep down"
-      "complex_tree" "complex_tree_swap_sp_arms"
-      (VeryDifferent [ 1; 0 ]);
+      "complex_tree" "complex_tree_swap_sp_arms" (VeryDifferent [ 1 ]);
   ]
 
 let superpol =
@@ -171,6 +182,6 @@ let superpol =
 let suite =
   "compare tests"
   >::: same @ one_arm_appended @ armsadded @ armsremoved @ weightchanged
-       @ verydiff @ superpol
+       @ onearmreplaced @ verydiff @ superpol
 
 let () = run_test_tt_main suite

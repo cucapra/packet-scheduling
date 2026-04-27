@@ -10,6 +10,7 @@ type t =
   | ArmsAdded of arm_diff list
   | ArmsRemoved of arm_diff list
   | WeightChanged of weight_change list
+  | OneArmReplaced of arm_diff
   | VeryDifferent of path
   | SuperPol of path
 
@@ -134,6 +135,7 @@ let prepend_path i diff =
   | ArmsAdded ads -> ArmsAdded (List.map prepend_arm ads)
   | ArmsRemoved ads -> ArmsRemoved (List.map prepend_arm ads)
   | WeightChanged wcs -> WeightChanged (List.map prepend_wc wcs)
+  | OneArmReplaced ad -> OneArmReplaced (prepend_arm ad)
   | VeryDifferent p -> VeryDifferent (i :: p)
   | SuperPol p -> SuperPol (i :: p)
 
@@ -161,24 +163,32 @@ let rec is_sub_policy p1 p2 =
         loop 0 ps
 
 let rec compare_lists ps1 ps2 =
-  (* Compare two equal-length lists of children structurally. The first
-     differing index becomes the path prefix on the child's diff. *)
-  let len1 = List.length ps1 in
-  let len2 = List.length ps2 in
-  if len1 <> len2 then VeryDifferent []
+  (* Compare two equal-length lists of children structurally. Scan every
+     position so we can tell whether exactly one child differs (precise
+     diff that we propagate, with the index baked into its path) or
+     several do (we can't pinpoint a single change, so [VeryDifferent]
+     at this level). The latter case is what gives [OneArmReplaced] its
+     "exactly one" guarantee. *)
+  if List.compare_lengths ps1 ps2 <> 0 then VeryDifferent []
   else
-    let rec loop i l1 l2 =
+    let rec scan i acc l1 l2 =
       match (l1, l2) with
-      | [], [] -> Same
-      | p1 :: t1, p2 :: t2 -> (
-          match analyze p1 p2 with
-          | Same -> loop (i + 1) t1 t2
-          | other -> prepend_path i other)
+      | [], [] -> List.rev acc
+      | p1 :: t1, p2 :: t2 ->
+          let acc' =
+            match analyze p1 p2 with
+            | Same -> acc
+            | other -> (i, other) :: acc
+          in
+          scan (i + 1) acc' t1 t2
       | _ ->
           failwith
             "same length guaranteed by outer condition; we'll never get here"
     in
-    loop 0 ps1 ps2
+    match scan 0 [] ps1 ps2 with
+    | [] -> Same
+    | [ (i, diff) ] -> prepend_path i diff
+    | _ :: _ :: _ -> VeryDifferent []
 
 (* SP/RR/UNION share a flat list-of-children shape, so they share the same
    diff strategy: greedy [one_arm_appended] (the only thing the patcher
@@ -234,12 +244,17 @@ and analyze p1 p2 =
     if found then SuperPol idx
     else
       match (p1, p2) with
-      | FIFO _, FIFO _ -> VeryDifferent []
       | UNION ps1, UNION ps2 -> compare_rr_like ps1 ps2
       | SP ps1, SP ps2 -> compare_strict ps1 ps2
       | RR ps1, RR ps2 -> compare_rr_like ps1 ps2
       | WFQ (ps1, ws1), WFQ (ps2, ws2) -> compare_wfq ps1 ws1 ps2 ws2
-      | _ -> VeryDifferent []
+      | _ ->
+          (* FIFO→FIFO with a different class, or any constructor mismatch
+             (FIFO↔SP, SP↔RR, etc.) — wholesale replacement at this
+             position. The leaf-level diff is path-empty; [compare_lists]'s
+             [prepend_path] tags on the child index when this bubbles up,
+             but only if it's the sole divergence at that level. *)
+          OneArmReplaced { path = []; arm = p2; weight = None }
 
 (* Pretty-printers — only used to format failure messages from the test
    suite; the patcher never goes through these. *)
@@ -277,5 +292,7 @@ let to_string = function
   | WeightChanged wcs ->
       Printf.sprintf "WeightChanged: %s"
         (List.map string_of_weight_change wcs |> String.concat ", ")
+  | OneArmReplaced ad ->
+      Printf.sprintf "OneArmReplaced: %s" (string_of_arm_diff ad)
   | VeryDifferent p -> Printf.sprintf "VeryDifferent at %s" (path_to_string p)
   | SuperPol p -> Printf.sprintf "SuperPol at %s" (path_to_string p)

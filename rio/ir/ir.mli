@@ -69,9 +69,11 @@ val patch : prev:compiled -> next:Frontend.Policy.t -> compiled option
       [Change_weight] for [SP]) instructions needed to splice the new arm in.
 
     Anything else — including the broader [Rio_compare.Compare.ArmsAdded] case
-    (mid-insert, multi-arm add, weighted-arm add), [Rio_compare.Compare.ArmsRemoved]
-    (any arm removal), [Rio_compare.Compare.WeightChanged] (WFQ weight
-    edits), and any [VeryDifferent] / [SuperPol] result — returns [None]. *)
+    (mid-insert, multi-arm add, weighted-arm add),
+    [Rio_compare.Compare.ArmsRemoved] (any arm removal),
+    [Rio_compare.Compare.WeightChanged] (WFQ weight edits),
+    [Rio_compare.Compare.OneArmReplaced] (in-place policy swap at a single
+    position), and any [VeryDifferent] / [SuperPol] result — returns [None]. *)
 
 (** JSON exporter for IR programs. *)
 module Json : sig
