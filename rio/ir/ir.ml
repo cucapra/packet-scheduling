@@ -4,19 +4,18 @@
 include Instr
 
 (* See [ir.mli] for the documented forms of these. *)
-type node_id = int list
-
-type identities = {
-  vpifos : (node_id, vpifo) Hashtbl.t;
-  steps : (node_id * int, step) Hashtbl.t;
-}
+module Decorated = struct
+  type t =
+    | FIFO of vpifo * clss
+    | UNION of vpifo * (step * t) list
+    | SP of vpifo * (step * t) list
+    | RR of vpifo * (step * t) list
+    | WFQ of vpifo * (step * t * float) list
+end
 
 type compiled = {
   prog : program;
-  policy : Frontend.Policy.t;
-  identities : identities;
-  next_vpifo : int;
-  next_step : int;
+  decorated : Decorated.t;
 }
 
 (* Starting IDs for the two ID spaces. *)
@@ -76,73 +75,78 @@ let combine_frags (local : frag) (children : frag list) : frag =
     classes = local.classes;
   }
 
-(** Complete all the necessary steps to stand up the FIFO. *)
-let compile_FIFO ~v ~depth ~path ~identities c =
-  Hashtbl.add identities.vpifos path v;
-  {
-    spawns = [ Spawn (v, depth) ];
-    assocs = [ Assoc (v, c) ];
-    root_v = v;
-    classes = [ c ];
-    adopts = [];
-    maps = [];
-    change_pols = [];
-    change_weights = [];
-  }
+(** Stand up a single FIFO leaf: register its spawn and assoc, decorate. *)
+let compile_FIFO ~v ~depth c : frag * Decorated.t =
+  ( {
+      spawns = [ Spawn (v, depth) ];
+      assocs = [ Assoc (v, c) ];
+      root_v = v;
+      classes = [ c ];
+      adopts = [];
+      maps = [];
+      change_pols = [];
+      change_weights = [];
+    },
+    Decorated.FIFO (v, c) )
 
-(* Compile a [Frontend.Policy.t] subtree rooted at [depth]. [path] is the tree
-   position of this subtree's root within the top-level policy, used to key
-   the identity tables. PE assignment is depth-based — every node at depth
-   [d] lives on [pe d]. This function is just a dispatcher: it picks the
-   right helper for the variant and synthesizes weights for SP. *)
-let rec compile_subtree ~fresh_v ~fresh_s ~depth ~path ~identities
-    (p : Frontend.Policy.t) : frag =
+(* Compile a [Frontend.Policy.t] subtree at [depth]. Returns both the
+   instruction fragment and the decorated-tree decoration that records the
+   vPIFO/step IDs assigned to this subtree. PE assignment is depth-based —
+   every node at depth [d] lives on PE [d]. Pure dispatcher: variant
+   selection and SP weight synthesis happen here, and each variant wraps
+   [compile_arm]'s edges in the matching [decorated] constructor. *)
+let rec compile_subtree ~fresh_v ~fresh_s ~depth (p : Frontend.Policy.t) :
+    frag * Decorated.t =
   let module P = Frontend.Policy in
   match p with
-  | P.FIFO c -> compile_FIFO ~v:(fresh_v ()) ~depth ~path ~identities c
+  | P.FIFO c -> compile_FIFO ~v:(fresh_v ()) ~depth c
   | P.UNION children ->
-      compile_arm ~fresh_v ~fresh_s ~depth ~path ~identities ~pol_ty:UNION
-        ~weights:[] children
+      let frag, edges =
+        compile_arm ~fresh_v ~fresh_s ~depth ~pol_ty:UNION ~weights:[] children
+      in
+      (frag, Decorated.UNION (frag.root_v, edges))
   | P.RR children ->
-      compile_arm ~fresh_v ~fresh_s ~depth ~path ~identities ~pol_ty:RR
-        ~weights:[] children
+      let frag, edges =
+        compile_arm ~fresh_v ~fresh_s ~depth ~pol_ty:RR ~weights:[] children
+      in
+      (frag, Decorated.RR (frag.root_v, edges))
   | P.SP children ->
       (* Strict priority: first child has priority 1.0 (highest), then 2.0, 3.0, … *)
       let weights = List.mapi (fun i _ -> float_of_int (i + 1)) children in
-      compile_arm ~fresh_v ~fresh_s ~depth ~path ~identities ~pol_ty:SP ~weights
-        children
+      let frag, edges =
+        compile_arm ~fresh_v ~fresh_s ~depth ~pol_ty:SP ~weights children
+      in
+      (frag, Decorated.SP (frag.root_v, edges))
   | P.WFQ (children, ws) ->
-      compile_arm ~fresh_v ~fresh_s ~depth ~path ~identities ~pol_ty:WFQ
-        ~weights:ws children
+      let frag, edges =
+        compile_arm ~fresh_v ~fresh_s ~depth ~pol_ty:WFQ ~weights:ws children
+      in
+      let weighted = List.map2 (fun (s, d) w -> (s, d, w)) edges ws in
+      (frag, Decorated.WFQ (frag.root_v, weighted))
 
-(* [weights] is empty for UNION/RR (they don't carry weights) and
-   one-per-arm for SP/WFQ. List length parity with [children] is the
-   caller's responsibility — [List.map2] below will raise on mismatch. *)
-and compile_arm ~fresh_v ~fresh_s ~depth ~path ~identities ~pol_ty ~weights
-    children =
+(* Returns [(frag, edges)] where [edges] pairs each adopt-step with its
+   child's decorated subtree, in source order. [weights] is empty for 
+   UNION/RR (they don't carry weights) and one-per-arm for SP/WFQ. 
+   List length parity with [children] is the caller's responsibility. *)
+and compile_arm ~fresh_v ~fresh_s ~depth ~pol_ty ~weights children :
+    frag * (step * Decorated.t) list =
   (* Spawn self first, so that we get a lower ID number than the kids. *)
   let v = fresh_v () in
-  Hashtbl.add identities.vpifos path v;
   let local_spawns = [ Spawn (v, depth) ] in
-  (* Recurse on each child first; List.mapi is left-to-right in the stdlib so
-     vpifo IDs come out in source order, and [i] gives us the child's index
-     for both the path extension and the (parent_path, child_index) step
-     key. *)
-  let child_frags =
-    List.mapi
-      (fun i child ->
-        compile_subtree ~fresh_v ~fresh_s ~depth:(depth + 1)
-          ~path:(path @ [ i ]) ~identities child)
+  (* Recurse on each child; List.map is left-to-right in the stdlib so vPIFO
+     IDs come out in source order. *)
+  let child_results =
+    List.map
+      (fun child -> compile_subtree ~fresh_v ~fresh_s ~depth:(depth + 1) child)
       children
   in
-  (* Adopt each child, and store the fresh step ID that we get at the moment
-     we adopt it. We register every step ID in [identities.steps] keyed by
-     (this node's path, the child's index). *)
+  let child_frags = List.map fst child_results in
+  let child_decorated = List.map snd child_results in
+  (* Adopt each child, capturing the fresh step ID we hand out for it. *)
   let adoption_records =
-    List.mapi
-      (fun i cf ->
+    List.map
+      (fun cf ->
         let s = fresh_s () in
-        Hashtbl.add identities.steps (path, i) s;
         (Adopt (s, v, cf.root_v), s, cf))
       child_frags
   in
@@ -175,103 +179,172 @@ and compile_arm ~fresh_v ~fresh_s ~depth ~path ~identities ~pol_ty ~weights
       classes = all_classes;
     }
   in
-  combine_frags local child_frags
+  let combined = combine_frags local child_frags in
+  let edges =
+    List.map2 (fun (_, s, _) d -> (s, d)) adoption_records child_decorated
+  in
+  (combined, edges)
+
+(* --- Decorated-tree helpers used by [patch]. ------------------------------ *)
+
+(* Erase IR decorations from a decorated tree, recovering the source
+   [Frontend.Policy.t]. Used by [patch] to feed [Rio_compare.Compare.analyze]
+   without storing the policy alongside the decorated form. *)
+let rec policy_of_decorated (d : Decorated.t) : Frontend.Policy.t =
+  let module P = Frontend.Policy in
+  match d with
+  | Decorated.FIFO (_, c) -> P.FIFO c
+  | Decorated.UNION (_, edges) ->
+      P.UNION (List.map (fun (_, c) -> policy_of_decorated c) edges)
+  | Decorated.SP (_, edges) ->
+      P.SP (List.map (fun (_, c) -> policy_of_decorated c) edges)
+  | Decorated.RR (_, edges) ->
+      P.RR (List.map (fun (_, c) -> policy_of_decorated c) edges)
+  | Decorated.WFQ (_, edges) ->
+      let policies = List.map (fun (_, c, _) -> policy_of_decorated c) edges in
+      let weights = List.map (fun (_, _, w) -> w) edges in
+      P.WFQ (policies, weights)
+
+(* Walk the decorated tree along [path] and return the subtree at that
+   position. [[]] is the tree itself; [[i]] is the i-th child of the root. *)
+let rec walk_to_decorated (d : Decorated.t) path =
+  match (path, d) with
+  | [], _ -> d
+  | ( i :: rest,
+      ( Decorated.UNION (_, edges)
+      | Decorated.SP (_, edges)
+      | Decorated.RR (_, edges) ) ) ->
+      let _, child = List.nth edges i in
+      walk_to_decorated child rest
+  | i :: rest, Decorated.WFQ (_, edges) ->
+      let _, child, _ = List.nth edges i in
+      walk_to_decorated child rest
+  | _ :: _, Decorated.FIFO _ ->
+      failwith "Ir.patch: path goes through a FIFO leaf"
+
+(* Inspect the decorated parent of a OneArmAppended splice point: returns
+   the parent's vPIFO, current arity, and IR-side pol_ty in one shot. *)
+let parent_info = function
+  | Decorated.FIFO _ ->
+      failwith "Ir.patch: OneArmAppended reported a FIFO as the parent"
+  | Decorated.UNION (v, edges) -> (v, List.length edges, UNION)
+  | Decorated.SP (v, edges) -> (v, List.length edges, SP)
+  | Decorated.RR (v, edges) -> (v, List.length edges, RR)
+  | Decorated.WFQ (v, edges) -> (v, List.length edges, WFQ)
+
+(* Rebuild [d] so that the parent at [path] gains [(new_step, new_child)] as
+   its new last child. WFQ-at-splice-point is unreachable under
+   OneArmAppended (Compare doesn't generate it for WFQ), but WFQ in the path
+   itself is allowed and preserved. *)
+let rec splice_at_path (d : Decorated.t) path new_step new_child : Decorated.t =
+  match path with
+  | [] -> append_arm d new_step new_child
+  | i :: rest -> recurse_into d i rest new_step new_child
+
+(* Append [(new_step, new_child)] as a new last child of [d]. Reached when
+   [splice_at_path] has walked all the way down [path] and [d] is the
+   parent we're splicing into (not the global root, despite what an older
+   name might have suggested). *)
+and append_arm (d : Decorated.t) new_step new_child : Decorated.t =
+  match d with
+  | Decorated.UNION (v, edges) ->
+      Decorated.UNION (v, edges @ [ (new_step, new_child) ])
+  | Decorated.SP (v, edges) ->
+      Decorated.SP (v, edges @ [ (new_step, new_child) ])
+  | Decorated.RR (v, edges) ->
+      Decorated.RR (v, edges @ [ (new_step, new_child) ])
+  | Decorated.WFQ _ ->
+      failwith "Ir.patch: WFQ-at-splice-point unreachable under OneArmAppended"
+  | Decorated.FIFO _ -> failwith "Ir.patch: cannot splice into a FIFO"
+
+and recurse_into (d : Decorated.t) i rest new_step new_child : Decorated.t =
+  let update_at_i edges =
+    List.mapi
+      (fun j (s, c) ->
+        if j = i then (s, splice_at_path c rest new_step new_child) else (s, c))
+      edges
+  in
+  let update_at_i_wfq edges =
+    List.mapi
+      (fun j (s, c, w) ->
+        if j = i then (s, splice_at_path c rest new_step new_child, w)
+        else (s, c, w))
+      edges
+  in
+  match d with
+  | Decorated.UNION (v, edges) -> Decorated.UNION (v, update_at_i edges)
+  | Decorated.SP (v, edges) -> Decorated.SP (v, update_at_i edges)
+  | Decorated.RR (v, edges) -> Decorated.RR (v, update_at_i edges)
+  | Decorated.WFQ (v, edges) -> Decorated.WFQ (v, update_at_i_wfq edges)
+  | Decorated.FIFO _ -> failwith "Ir.patch: path goes through a FIFO leaf"
+
+(* Count vPIFOs in [d] — one per node. Used by [patch] to seed its [fresh_v]
+   counter so newly-allocated vPIFOs don't collide with any already in [d]. *)
+let rec count_vpifos : Decorated.t -> int = function
+  | Decorated.FIFO _ -> 1
+  | Decorated.UNION (_, edges)
+  | Decorated.SP (_, edges)
+  | Decorated.RR (_, edges) ->
+      1 + List.fold_left (fun acc (_, c) -> acc + count_vpifos c) 0 edges
+  | Decorated.WFQ (_, edges) ->
+      1 + List.fold_left (fun acc (_, c, _) -> acc + count_vpifos c) 0 edges
+
+(* Count steps in [d] — one per parent→child edge. Used by [patch] to seed its
+   [fresh_s] counter so newly-allocated step IDs don't collide with any
+   already in [d]. *)
+let rec count_steps : Decorated.t -> int = function
+  | Decorated.FIFO _ -> 0
+  | Decorated.UNION (_, edges)
+  | Decorated.SP (_, edges)
+  | Decorated.RR (_, edges) ->
+      List.length edges
+      + List.fold_left (fun acc (_, c) -> acc + count_steps c) 0 edges
+  | Decorated.WFQ (_, edges) ->
+      List.length edges
+      + List.fold_left (fun acc (_, c, _) -> acc + count_steps c) 0 edges
+
+(* --- Public entry points. ------------------------------------------------- *)
 
 let of_policy (p : Frontend.Policy.t) : compiled =
   let fresh_v = make_counter ~start:vpifo_start in
   let fresh_s = make_counter ~start:step_start in
-  (* Identity tables are created here and mutated in place as
-     [compile_subtree]/[compile_arm] register each spawn and adopt. *)
-  let identities = { vpifos = Hashtbl.create 16; steps = Hashtbl.create 16 } in
-  let frag =
-    compile_subtree ~fresh_v ~fresh_s ~depth:0 ~path:[] ~identities p
-  in
-  (* Each [Hashtbl.add] in [compile_FIFO]/[compile_arm] corresponds to
-     exactly one tick of the counter, so the table sizes tell us how many
-     IDs were handed out and therefore what the next one would be. *)
-  {
-    prog = frag_to_program frag;
-    policy = p;
-    identities;
-    next_vpifo = vpifo_start + Hashtbl.length identities.vpifos;
-    next_step = step_start + Hashtbl.length identities.steps;
-  }
-
-(* Shallow copy of the identity tables. The values are ints, so a shallow
-   copy is sufficient to ensure later mutations on the result don't leak
-   back into the source. *)
-let clone_identities { vpifos; steps } =
-  { vpifos = Hashtbl.copy vpifos; steps = Hashtbl.copy steps }
-
-(* Walk a policy tree along [path] and return the subtree at that
-   position. Used to find the parent constructor (and arity) at the
-   location reported by [Compare.analyze]. *)
-let rec walk_to (p : Frontend.Policy.t) path =
-  let module P = Frontend.Policy in
-  match (path, p) with
-  | [], _ -> p
-  | i :: rest, (P.UNION ps | P.SP ps | P.RR ps) -> walk_to (List.nth ps i) rest
-  | i :: rest, P.WFQ (ps, _) -> walk_to (List.nth ps i) rest
-  | _ :: _, P.FIFO _ -> failwith "Ir.patch: path goes through a FIFO leaf"
-
-(* Translate a [Frontend.Policy.t] variant to its IR [pol_ty] counterpart.
-   Used in [patch] where the variant has been recovered via [walk_to] and
-   we need its IR-side label. [compile_subtree] doesn't go through this —
-   its surrounding pattern match makes the correspondence visible at a
-   glance. *)
-let pol_ty_of_policy (p : Frontend.Policy.t) : pol_ty =
-  let module P = Frontend.Policy in
-  match p with
-  | P.FIFO _ -> FIFO
-  | P.UNION _ -> UNION
-  | P.SP _ -> SP
-  | P.RR _ -> RR
-  | P.WFQ _ -> WFQ
+  let frag, decorated = compile_subtree ~fresh_v ~fresh_s ~depth:0 p in
+  { prog = frag_to_program frag; decorated }
 
 let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
   let open Rio_compare.Compare in
-  match analyze prev.policy next with
+  let prev_policy = policy_of_decorated prev.decorated in
+  match analyze prev_policy next with
   | Same ->
-      (* Nothing structural to do — return an empty delta. We still hand
-         back a fresh identities clone so the caller can mutate the
-         result without affecting [prev]. *)
-      Some
-        {
-          prog = [];
-          policy = next;
-          identities = clone_identities prev.identities;
-          next_vpifo = prev.next_vpifo;
-          next_step = prev.next_step;
-        }
-  | VeryDifferent _
-  | SuperPol _
-  | SubPol _
-  | ArmsAdded _
-  | OneArmRemoved _
-  | WeightChanged _
-  | OneArmReplaced _ -> None
+      (* Nothing structural to do — return an empty delta. The decorated
+         tree is immutable, so we hand back the same reference. *)
+      Some { prog = []; decorated = prev.decorated }
+  | VeryDifferent _ | SuperPol _ | SubPol _ | ArmsAdded _ | OneArmRemoved _
+  | WeightChanged _ | OneArmReplaced _ ->
+      None
   | OneArmAppended { path = arm_path; arm; weight = _ } ->
-      let parent_path, old_arity = list_foot arm_path in
-      let parent_pol = walk_to prev.policy parent_path in
-      let pol_ty = pol_ty_of_policy parent_pol in
-      let parent_v =
-        try Hashtbl.find prev.identities.vpifos parent_path
-        with Not_found ->
-          failwith "Ir.patch: parent path missing from identity table"
+      let parent_path, _ = list_foot arm_path in
+      let parent = walk_to_decorated prev.decorated parent_path in
+      let parent_v, old_arity, pol_ty = parent_info parent in
+      (* Seed the fresh-ID counters past whatever's already in [prev]. We
+         derive these from the decorated tree on each call rather than
+         caching them on [compiled] — [patch] is interactive (not a hot
+         loop) and the walks are the same complexity class as the splice
+         below, so the cost is noise. *)
+      let fresh_v =
+        make_counter ~start:(vpifo_start + count_vpifos prev.decorated)
       in
-      let identities = clone_identities prev.identities in
-      let fresh_v = make_counter ~start:prev.next_vpifo in
-      let fresh_s = make_counter ~start:prev.next_step in
+      let fresh_s =
+        make_counter ~start:(step_start + count_steps prev.decorated)
+      in
       (* Compile the new arm first so its internal vPIFO/step IDs land
          lower than the parent's new adopt-step ID — mirroring the
          pre-order numbering [of_policy]/[compile_arm] use. *)
       let arm_depth = List.length arm_path in
-      let arm_frag =
-        compile_subtree ~fresh_v ~fresh_s ~depth:arm_depth ~path:arm_path
-          ~identities arm
+      let arm_frag, arm_decorated =
+        compile_subtree ~fresh_v ~fresh_s ~depth:arm_depth arm
       in
       let new_step = fresh_s () in
-      Hashtbl.add identities.steps (parent_path, old_arity) new_step;
       let new_arity = old_arity + 1 in
       (* Build the parent's local splice instructions as a frag, then
          interleave with the new arm's frag through the same canonical
@@ -295,17 +368,17 @@ let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
           classes = arm_frag.classes;
         }
       in
+      let new_decorated =
+        splice_at_path prev.decorated parent_path new_step arm_decorated
+      in
       Some
         {
           prog = frag_to_program (combine_frags local [ arm_frag ]);
-          policy = next;
-          identities;
-          next_vpifo = vpifo_start + Hashtbl.length identities.vpifos;
-          next_step = step_start + Hashtbl.length identities.steps;
+          decorated = new_decorated;
         }
 
 (* Re-export the per-program / per-instruction JSON exporters as a submodule
-   so consumers say [Ir.Json.from_program]. The [identities] / counter
-   metadata on [compiled] is intentionally not serialized — it's runtime
-   state for [patch], not part of the IR's external surface. *)
+   so consumers say [Ir.Json.from_program]. The decorated tree on [compiled]
+   is intentionally not serialized — it's runtime state for [patch], not
+   part of the IR's external surface. *)
 module Json = Json

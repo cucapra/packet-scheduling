@@ -3,70 +3,60 @@
 
 include module type of Instr
 
-type node_id = int list
-(** Tree position of a node within a [Frontend.Policy.t]. [[]] is the root;
-    [[0; 2]] is the third child of the first child of the root; and so on. *)
+(** A decorated source tree: mirrors [Frontend.Policy.t] but annotates every
+    node with the [vpifo] assigned to it and every parent-to-child edge with the
+    [step] handed out at adoption time. WFQ edges additionally carry the per-arm
+    weight. The original [Frontend.Policy.t] is recoverable by erasing the
+    decorations.
 
-type identities = {
-  vpifos : (node_id, vpifo) Hashtbl.t;
-  steps : (node_id * int, step) Hashtbl.t;
-      (** [(parent_path, child_index)] → step ID assigned at the moment the
-          parent adopted that child. *)
-}
-(** Identity tables: which vPIFO/step IDs were assigned to which positions in
-    the source policy tree. Populated by [of_policy] and consulted by [patch]
-    (Milestone 2 PR3) to splice new arms onto an existing root.
-
-    [vpifos] is keyed by [node_id]: every node in the policy tree (every FIFO
-    leaf and every internal UNION/RR/SP/WFQ root) gets exactly one entry.
-    [steps] is keyed by [(parent_path, child_index)]: every adopt instruction
-    gets exactly one entry, recording the step ID that was handed out the moment
-    the parent adopted that child. *)
+    Lives in its own submodule so the constructors can mirror
+    [Frontend.Policy.t]'s names directly ([Decorated.RR], [Decorated.SP], …) *)
+module Decorated : sig
+  type t =
+    | FIFO of vpifo * clss
+    | UNION of vpifo * (step * t) list
+    | SP of vpifo * (step * t) list
+    | RR of vpifo * (step * t) list
+    | WFQ of vpifo * (step * t * float) list
+end
 
 type compiled = {
   prog : program;
-  policy : Frontend.Policy.t;
-  identities : identities;
-  next_vpifo : int;
-  next_step : int;
+  decorated : Decorated.t;
 }
 (** The result of compiling a [Frontend.Policy.t]. Carries enough state that a
-    subsequent [patch] call (Milestone 2) can extend the in-flight runtime
-    without recompiling from scratch:
+    subsequent [patch] call can extend the in-flight runtime without recompiling
+    from scratch:
 
     - [prog]: the IR program. When this record came from a fresh compile, [prog]
       is the full program; when it came from [patch], [prog] is the *delta
       only*.
-    - [policy]: the [Frontend.Policy.t] this record was built from. Lets a
-      future [patch] call diff against an incoming policy.
-    - [identities]: vPIFO and step IDs indexed by their tree position.
-    - [next_vpifo], [next_step]: the next IDs the counters would hand out, so
-      [patch] can keep allocating without colliding with previous assignments.
-*)
+    - [decorated]: the decorated source tree. Doubles as the source-policy
+      record (recoverable by erasing decorations) so [patch] can diff against an
+      incoming policy without storing a separate [Frontend.Policy.t]. *)
 
 val of_policy : Frontend.Policy.t -> compiled
-(** Compile a [Frontend.Policy.t] to IR. Supports trees of any height built from
-    [FIFO], [UNION], [RR], [SP], and [WFQ]. Each node at depth [d] is placed on
-    PE [d] — so all siblings (and cousins) share a PE. Populates the identity
-    tables and the [next_vpifo]/[next_step] counter snapshots so that a
-    follow-up [patch] can extend this compile in place. *)
+(** Compile a [Frontend.Policy.t] to IR. Supports trees built from [FIFO],
+    [UNION], [RR], [SP], and [WFQ]. Each node at depth [d] is placed on PE [d] —
+    so all siblings (and cousins) share a PE. Builds the decorated source tree
+    alongside the instruction program; a follow-up [patch] can derive the
+    next-free IDs by walking [decorated]. *)
 
 val patch : prev:compiled -> next:Frontend.Policy.t -> compiled option
 (** Incrementally extend [prev] to handle policy [next], returning the IR delta.
     The returned record's [prog] is the *delta only* — the new instructions to
-    splice into a runtime that's already executing [prev.prog]. [policy] is set
-    to [next]; [identities] and the counter snapshots are extensions of
-    [prev]'s, working on a clone, so [prev] is left untouched.
+    add to a runtime that's already executing [prev.prog]. [decorated] is
+    rebuilt to reflect [next].
 
     Returns [None] when the change is too complex for this scope. The supported
     transitions are:
 
-    - [next] is structurally equal to [prev.policy]: returns [Some] with an
+    - [next] is structurally equal to [prev]'s policy: returns [Some] with an
       empty [prog].
     - [next] adds exactly one arm at the end of a [UNION], [RR], or [SP] parent
-      in [prev.policy] (per [Rio_compare.Compare.OneArmAppended]): returns
-      [Some] with the [Spawn]/[Adopt]/[Assoc]/[Map]/[Change_pol] (and
-      [Change_weight] for [SP]) instructions needed to splice the new arm in.
+      (per [Rio_compare.Compare.OneArmAppended]): returns [Some] with the
+      [Spawn]/[Adopt]/[Assoc]/[Map]/[Change_pol] (and [Change_weight] for [SP])
+      instructions needed to splice the new arm in.
 
     Anything else — including the broader [Rio_compare.Compare.ArmsAdded] case
     (mid-insert, multi-arm add, weighted-arm add),

@@ -7,8 +7,8 @@ let prog_dir = root_dir ^ "progs/"
 
 (* [.sched] file -> [Ir.program]. Stops short of pretty-printing — that's
    [test_pretty]'s job. We project [Ir.of_policy]'s [compiled] result down to
-   its [.prog] field; the [identities] / counter snapshots are exercised in
-   [test_json]. *)
+   its [.prog] field; the [decorated] tree and counter snapshots are exercised
+   in [test_patch]. *)
 let compile filename =
   let c =
     prog_dir ^ filename |> Parser.parse_file |> Policy.of_program
