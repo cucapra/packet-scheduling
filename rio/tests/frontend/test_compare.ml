@@ -101,15 +101,32 @@ let armsadded =
   ]
 
 let armsremoved =
-  (* We just give up. *)
   [
+    (* RR(A,B,C) -> RR(A,B): one arm dropped from the end. *)
     make_compare_test "RR with arm removed" "rr_ABC" "rr_AB"
-      (Change ([], VeryDifferent));
+      (Change
+         ( [],
+           ArmsRemoved
+             { old_count = 3; new_count = 2; details = "removed fifo[C]" } ));
+    (* WFQ(A:2,B:1,C:3) -> WFQ(B:1,A:2): after normalize sorts pairs, prev =
+       [(A,2);(B,1);(C,3)] and next = [(A,2);(B,1)], so (C,3) was removed. *)
     make_compare_test "WFQ with arm removed" "wfq_ABC" "wfq_BA"
-      (Change ([], VeryDifferent));
+      (Change
+         ( [],
+           ArmsRemoved
+             {
+               old_count = 3;
+               new_count = 2;
+               details = "removed fifo[C] with weight 3";
+             } ));
+    (* Inverse of the deep-add test: drop NEW from the inner RR (path [2]). *)
     make_compare_test "complex tree remove arm deep" "complex_tree_add_arm_deep"
       "complex_tree"
-      (Change ([ 2 ], VeryDifferent));
+      (Change
+         ( [ 2 ],
+           ArmsRemoved
+             { old_count = 4; new_count = 3; details = "removed fifo[NEW]" }
+         ));
   ]
 
 let verydiff =
