@@ -73,7 +73,8 @@ val patch : prev:compiled -> next:Frontend.Policy.t -> compiled option
     [Rio_compare.Compare.ArmsRemoved] (any arm removal),
     [Rio_compare.Compare.WeightChanged] (WFQ weight edits),
     [Rio_compare.Compare.OneArmReplaced] (in-place policy swap at a single
-    position), and any [VeryDifferent] / [SuperPol] result — returns [None]. *)
+    position), and any [VeryDifferent] / [SuperPol] / [SubPol] result — returns
+    [None]. *)
 
 (** JSON exporter for IR programs. *)
 module Json : sig

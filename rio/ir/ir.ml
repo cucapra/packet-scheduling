@@ -245,6 +245,7 @@ let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
         }
   | VeryDifferent _
   | SuperPol _
+  | SubPol _
   | ArmsAdded _
   | ArmsRemoved _
   | WeightChanged _

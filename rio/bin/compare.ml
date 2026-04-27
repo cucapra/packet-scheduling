@@ -13,6 +13,13 @@ type t =
   | OneArmReplaced of arm_diff
   | VeryDifferent of path
   | SuperPol of path
+      (** [prev] is a sub-policy of [next]: the user kept the old policy and
+          wrapped/extended it. The carried [path] points to where [prev] lives
+          inside [next]. *)
+  | SubPol of path
+      (** [next] is a sub-policy of [prev]: the user collapsed the tree to one
+          of its existing subtrees. The carried [path] points to where [next]
+          lived inside [prev]. *)
 
 and arm_diff = {
   path : path;
@@ -138,6 +145,7 @@ let prepend_path i diff =
   | OneArmReplaced ad -> OneArmReplaced (prepend_arm ad)
   | VeryDifferent p -> VeryDifferent (i :: p)
   | SuperPol p -> SuperPol (i :: p)
+  | SubPol p -> SubPol (i :: p)
 
 let rec is_sub_policy p1 p2 =
   (* Is p1 a sub-policy of p2?
@@ -240,21 +248,24 @@ and compare_wfq ps1 ws1 ps2 ws2 =
 and analyze p1 p2 =
   if p1 = p2 then Same
   else
-    let found, idx = is_sub_policy p1 p2 in
-    if found then SuperPol idx
+    let super_found, super_idx = is_sub_policy p1 p2 in
+    if super_found then SuperPol super_idx
     else
-      match (p1, p2) with
-      | UNION ps1, UNION ps2 -> compare_rr_like ps1 ps2
-      | SP ps1, SP ps2 -> compare_strict ps1 ps2
-      | RR ps1, RR ps2 -> compare_rr_like ps1 ps2
-      | WFQ (ps1, ws1), WFQ (ps2, ws2) -> compare_wfq ps1 ws1 ps2 ws2
-      | _ ->
-          (* FIFO→FIFO with a different class, or any constructor mismatch
-             (FIFO↔SP, SP↔RR, etc.) — wholesale replacement at this
-             position. The leaf-level diff is path-empty; [compare_lists]'s
-             [prepend_path] tags on the child index when this bubbles up,
-             but only if it's the sole divergence at that level. *)
-          OneArmReplaced { path = []; arm = p2; weight = None }
+      let sub_found, sub_idx = is_sub_policy p2 p1 in
+      if sub_found then SubPol sub_idx
+      else
+        match (p1, p2) with
+        | UNION ps1, UNION ps2 -> compare_rr_like ps1 ps2
+        | SP ps1, SP ps2 -> compare_strict ps1 ps2
+        | RR ps1, RR ps2 -> compare_rr_like ps1 ps2
+        | WFQ (ps1, ws1), WFQ (ps2, ws2) -> compare_wfq ps1 ws1 ps2 ws2
+        | _ ->
+            (* FIFO→FIFO with a different class, or any constructor mismatch
+               (FIFO↔SP, SP↔RR, etc.) — wholesale replacement at this
+               position. The leaf-level diff is path-empty; [compare_lists]'s
+               [prepend_path] tags on the child index when this bubbles up,
+               but only if it's the sole divergence at that level. *)
+            OneArmReplaced { path = []; arm = p2; weight = None }
 
 (* Pretty-printers — only used to format failure messages from the test
    suite; the patcher never goes through these. *)
@@ -296,3 +307,4 @@ let to_string = function
       Printf.sprintf "OneArmReplaced: %s" (string_of_arm_diff ad)
   | VeryDifferent p -> Printf.sprintf "VeryDifferent at %s" (path_to_string p)
   | SuperPol p -> Printf.sprintf "SuperPol at %s" (path_to_string p)
+  | SubPol p -> Printf.sprintf "SubPol at %s" (path_to_string p)

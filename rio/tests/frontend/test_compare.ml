@@ -179,9 +179,24 @@ let superpol =
       "complex_tree" (SuperPol [ 0 ]);
   ]
 
+(* Inverses of [superpol]: [next] is a sub-policy of [prev] (the user
+   collapsed the tree to one of its existing subtrees). The carried path
+   is the position in [prev] where [next] used to live. *)
+let subpol =
+  [
+    make_compare_test "union[G,H] collapsed to fifo_G" "union_GH" "fifo_G"
+      (SubPol [ 0 ]);
+    make_compare_test "complex_tree collapsed to fifo_A" "complex_tree" "fifo_A"
+      (SubPol [ 1; 0 ]);
+    make_compare_test "complex_tree collapsed to strict_ABC" "complex_tree"
+      "strict_ABC" (SubPol [ 1 ]);
+    make_compare_test "complex_tree collapsed to union_GH" "complex_tree"
+      "union_GH" (SubPol [ 0 ]);
+  ]
+
 let suite =
   "compare tests"
   >::: same @ one_arm_appended @ armsadded @ armsremoved @ weightchanged
-       @ onearmreplaced @ verydiff @ superpol
+       @ onearmreplaced @ verydiff @ superpol @ subpol
 
 let () = run_test_tt_main suite
