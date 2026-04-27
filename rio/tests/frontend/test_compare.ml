@@ -103,18 +103,16 @@ let armsremoved =
   [
     (* RR(A,B,C) -> RR(A,B): one arm dropped from the end. *)
     make_compare_test "RR with arm removed" "rr_ABC" "rr_AB"
-      (ArmsRemoved [ { path = [ 2 ]; arm = Policy.FIFO "C"; weight = None } ]);
+      (OneArmRemoved { path = [ 2 ]; arm = Policy.FIFO "C"; weight = None });
     (* WFQ(A:2,B:1,C:3) -> WFQ(B:1,A:2): post-normalize prev has C at
        index 2 with weight 3; that's what was removed. *)
     make_compare_test "WFQ with arm removed" "wfq_ABC" "wfq_BA"
-      (ArmsRemoved
-         [ { path = [ 2 ]; arm = Policy.FIFO "C"; weight = Some 3.0 } ]);
+      (OneArmRemoved { path = [ 2 ]; arm = Policy.FIFO "C"; weight = Some 3.0 });
     (* Inverse of the deep-add test: drop NEW from the inner RR (path [2]).
        NEW lived at index 3 inside that RR → full path [2; 3]. *)
     make_compare_test "complex tree remove arm deep" "complex_tree_add_arm_deep"
       "complex_tree"
-      (ArmsRemoved
-         [ { path = [ 2; 3 ]; arm = Policy.FIFO "NEW"; weight = None } ]);
+      (OneArmRemoved { path = [ 2; 3 ]; arm = Policy.FIFO "NEW"; weight = None });
   ]
 
 let weightchanged =

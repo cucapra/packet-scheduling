@@ -8,7 +8,7 @@ type t =
   | Same
   | OneArmAppended of arm_diff
   | ArmsAdded of arm_diff list
-  | ArmsRemoved of arm_diff list
+  | OneArmRemoved of arm_diff
   | WeightChanged of weight_change
   | OneArmReplaced of arm_diff
   | VeryDifferent of path
@@ -25,7 +25,7 @@ and arm_diff = {
   path : path;
       (** Full path from the root of the policy tree to the position of this
           arm. For [ArmsAdded] / [OneArmAppended] this is a position in *next*;
-          for [ArmsRemoved] it is a position in *prev*. *)
+          for [OneArmRemoved] it is a position in *prev*. *)
   arm : Frontend.Policy.t;
   weight : float option;
       (** [Some w] for arms that carry an explicit weight (i.e. WFQ). [None] for
@@ -147,7 +147,7 @@ let prepend_path i diff =
   | Same -> Same
   | OneArmAppended ad -> OneArmAppended (prepend_arm ad)
   | ArmsAdded ads -> ArmsAdded (List.map prepend_arm ads)
-  | ArmsRemoved ads -> ArmsRemoved (List.map prepend_arm ads)
+  | OneArmRemoved ad -> OneArmRemoved (prepend_arm ad)
   | WeightChanged wc -> WeightChanged (prepend_wc wc)
   | OneArmReplaced ad -> OneArmReplaced (prepend_arm ad)
   | VeryDifferent p -> VeryDifferent (i :: p)
@@ -208,9 +208,11 @@ let rec compare_lists ps1 ps2 =
 (* SP/RR/UNION share a flat list-of-children shape, so they share the same
    diff strategy: greedy [one_arm_appended] (the only thing the patcher
    knows how to do), then the broader subsequence-based [ArmsAdded] /
-   [ArmsRemoved], then structural [compare_lists]. The two callers
+   [OneArmRemoved], then structural [compare_lists]. The two callers
    (SP and RR/UNION) differ only in how they compute the arm diffs, so we
-   parameterize over [added_fn] / [removed_fn]. *)
+   parameterize over [added_fn] / [removed_fn]. [OneArmRemoved] only fires
+   when exactly one arm was dropped; multi-arm removals degrade to
+   [VeryDifferent]. *)
 and compare_flat ~added_fn ~removed_fn ps1 ps2 =
   match one_arm_appended ps1 ps2 with
   | Some arm ->
@@ -219,7 +221,9 @@ and compare_flat ~added_fn ~removed_fn ps1 ps2 =
   | None ->
       if is_ordered_subsequence ps1 ps2 then ArmsAdded (added_fn ps1 ps2)
       else if is_ordered_subsequence ps2 ps1 then
-        ArmsRemoved (removed_fn ps1 ps2)
+        match removed_fn ps1 ps2 with
+        | [ ad ] -> OneArmRemoved ad
+        | _ -> VeryDifferent []
       else compare_lists ps1 ps2
 
 and compare_strict ps1 ps2 =
@@ -241,7 +245,9 @@ and compare_wfq ps1 ws1 ps2 ws2 =
   if is_ordered_subsequence pairs1 pairs2 then
     ArmsAdded (compute_wfq_arms_added pairs1 pairs2)
   else if is_ordered_subsequence pairs2 pairs1 then
-    ArmsRemoved (compute_wfq_arms_removed pairs1 pairs2)
+    match compute_wfq_arms_removed pairs1 pairs2 with
+    | [ ad ] -> OneArmRemoved ad
+    | _ -> VeryDifferent []
   else if ps1 = ps2 then
     (* Same arms in same positions, but weights changed. We only
        describe this precisely when *exactly one* weight moved;
@@ -308,9 +314,8 @@ let to_string = function
   | ArmsAdded ads ->
       Printf.sprintf "ArmsAdded: %s"
         (List.map string_of_arm_diff ads |> String.concat ", ")
-  | ArmsRemoved ads ->
-      Printf.sprintf "ArmsRemoved: %s"
-        (List.map string_of_arm_diff ads |> String.concat ", ")
+  | OneArmRemoved ad ->
+      Printf.sprintf "OneArmRemoved: %s" (string_of_arm_diff ad)
   | WeightChanged wc ->
       Printf.sprintf "WeightChanged: %s" (string_of_weight_change wc)
   | OneArmReplaced ad ->

@@ -247,7 +247,7 @@ let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
   | SuperPol _
   | SubPol _
   | ArmsAdded _
-  | ArmsRemoved _
+  | OneArmRemoved _
   | WeightChanged _
   | OneArmReplaced _ -> None
   | OneArmAppended { path = arm_path; arm; weight = _ } ->
