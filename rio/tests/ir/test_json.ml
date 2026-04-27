@@ -6,9 +6,9 @@ let prog_dir = root_dir ^ "progs/"
 let json_dir = "jsons/"
 
 (* [.sched] file -> JSON value, going via the IR. We project [Ir.of_policy]'s
-   [compiled] result down to its [.prog] field; the [identities] / counter
-   metadata is runtime state for [Ir.patch] and intentionally not part of the
-   JSON surface. *)
+   [compiled] result down to its [.prog] field; the [decorated] tree and
+   counter metadata are runtime state for [Ir.patch] and intentionally not
+   part of the JSON surface. *)
 let compile_to_json filename =
   let c =
     prog_dir ^ filename |> Parser.parse_file |> Policy.of_program
