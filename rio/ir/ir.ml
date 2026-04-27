@@ -237,7 +237,9 @@ let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
           next_vpifo = prev.next_vpifo;
           next_step = prev.next_step;
         }
-  | Change (_, (VeryDifferent | SuperPol | ArmsAdded _ | ArmsRemoved _)) ->
+  | Change
+      (_, (VeryDifferent | SuperPol | ArmsAdded _ | ArmsRemoved _ | WeightChanged _))
+    ->
       None
   | Change (path, OneArmAppended arm) ->
       let parent_pol = walk_to prev.policy path in

@@ -125,8 +125,17 @@ let armsremoved =
       (Change
          ( [ 2 ],
            ArmsRemoved
-             { old_count = 4; new_count = 3; details = "removed fifo[NEW]" }
-         ));
+             { old_count = 4; new_count = 3; details = "removed fifo[NEW]" } ));
+  ]
+
+let weightchanged =
+  [
+    (* WFQ(A:2, B:1, C:3) vs WFQ(A:2, B:2, C:4): same arms, two weights moved.
+       After [Policy.normalize] both sort to (FIFO A, FIFO B, FIFO C). *)
+    make_compare_test "different WFQ weights" "wfq_ABC" "wfq_ABC_diff"
+      (Change
+         ( [],
+           WeightChanged { details = "fifo[B]: 1 → 2, fifo[C]: 3 → 4" } ));
   ]
 
 let verydiff =
@@ -141,9 +150,6 @@ let verydiff =
     (* RR(A,B) vs RR(A,D) *)
     make_compare_test "rr arm changed" "rr_AB" "rr_AD"
       (Change ([ 1 ], VeryDifferent));
-    (* WFQ(A_1,B_2,C_3) vs WFQ(A_2,B_2,C_4): classes same, weight different *)
-    make_compare_test "different WFQ weights" "wfq_ABC" "wfq_ABC_diff"
-      (Change ([], VeryDifferent));
     (* WFQ(A_1,B_2,C_3) vs WFQ(D_1,E_2,F_3): classes different, weights same *)
     make_compare_test "different WFQ classes" "wfq_ABC" "wfq_DEF"
       (Change ([], VeryDifferent));
@@ -178,6 +184,7 @@ let superpol =
 
 let suite =
   "compare tests"
-  >::: same @ one_arm_appended @ armsadded @ armsremoved @ verydiff @ superpol
+  >::: same @ one_arm_appended @ armsadded @ armsremoved @ weightchanged
+       @ verydiff @ superpol
 
 let () = run_test_tt_main suite

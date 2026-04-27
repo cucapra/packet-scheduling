@@ -20,6 +20,10 @@ and change =
       new_count : int;
       details : string; (* human-readable description of what was removed *)
     }
+  | WeightChanged of {
+      details : string;
+          (* human-readable per-arm description of weight changes *)
+    }
   | VeryDifferent
   | SuperPol
 
@@ -117,7 +121,9 @@ let details_strict_arm_removed ps1 ps2 =
         else
           (* p1 is a removed arm *)
           loop (i1 + 1) t1 l2
-            (Printf.sprintf "removed %s from %d" (Frontend.Policy.to_string p1) i1
+            (Printf.sprintf "removed %s from %d"
+               (Frontend.Policy.to_string p1)
+               i1
             :: acc)
   in
   loop 0 ps1 ps2 [] |> List.rev |> String.concat ", "
@@ -142,6 +148,16 @@ let details_wfq_arm_removed pairs1 pairs2 =
             (Frontend.Policy.to_string p)
             w)
       |> String.concat ", "
+
+(* WFQ: per-arm "old → new" deltas, restricted to arms whose weight actually
+   changed. Caller guarantees [ps1 = ps2] and [List.length ws1 = List.length ws2]. *)
+let details_wfq_weight_changed ps ws1 ws2 =
+  List.map2 (fun w1 w2 -> (w1, w2)) ws1 ws2
+  |> List.combine ps
+  |> List.filter (fun (_, (w1, w2)) -> w1 <> w2)
+  |> List.map (fun (p, (w1, w2)) ->
+      Printf.sprintf "%s: %g → %g" (Frontend.Policy.to_string p) w1 w2)
+  |> String.concat ", "
 
 let rec is_sub_policy p1 p2 =
   (* Is p1 a sub-policy of p2?
@@ -225,11 +241,16 @@ and compare_wfq ps1 ws1 ps2 ws2 =
     arms_added_by_subseq details_wfq_arm_added pairs1 pairs2
   else if is_ordered_subsequence pairs2 pairs1 then
     arms_removed_by_subseq details_wfq_arm_removed pairs1 pairs2
+  else if ps1 = ps2 then
+    (* Same arms in same positions, but weights changed. (Pure weight diff
+       defeats both subseq checks because (policy, weight) pairs differ.) *)
+    Change
+      ([], WeightChanged { details = details_wfq_weight_changed ps1 ws1 ws2 })
   else if ws1 = ws2 then
     (* Same weights, so fall back to structural child diff on arms *)
     compare_lists ps1 ps2
   else
-    (* Weight changes, or mixed differences (e.g. remove-and-reweight) *)
+    (* Mixed differences (e.g. remove-and-reweight) *)
     Change ([], VeryDifferent)
 
 and analyze p1 p2 =
@@ -271,5 +292,8 @@ and change_to_string = function
       if details = "" then
         Printf.sprintf "ArmsRemoved %d → %d" old_count new_count
       else Printf.sprintf "ArmsRemoved %d → %d: %s" old_count new_count details
+  | WeightChanged { details } ->
+      if details = "" then "WeightChanged"
+      else Printf.sprintf "WeightChanged: %s" details
   | VeryDifferent -> "VeryDifferent"
   | SuperPol -> "SuperPol"
