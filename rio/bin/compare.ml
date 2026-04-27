@@ -9,7 +9,7 @@ type t =
   | OneArmAppended of arm_diff
   | ArmsAdded of arm_diff list
   | ArmsRemoved of arm_diff list
-  | WeightChanged of weight_change list
+  | WeightChanged of weight_change
   | OneArmReplaced of arm_diff
   | VeryDifferent of path
   | SuperPol of path
@@ -114,20 +114,27 @@ let compute_wfq_arms_removed pairs1 pairs2 =
   |> List.filter (fun (_, pw) -> not (List.mem pw pairs2))
   |> List.map (fun (i, (p, w)) -> { path = [ i ]; arm = p; weight = Some w })
 
-(* WFQ pure-weight: walk parallel weight lists, emit a [weight_change] for
-   each position where the weights differ. Caller guarantees equal length. *)
-let compute_weight_changes ws1 ws2 =
-  let rec loop i acc l1 l2 =
+(* WFQ pure-weight: walk parallel weight lists looking for *exactly one*
+   position whose weight changed. If zero positions differ, the caller
+   should never have ended up here; if two or more differ we give up
+   ([None]) and the caller emits [VeryDifferent]. Caller guarantees
+   equal length. *)
+let compute_single_weight_change ws1 ws2 =
+  let rec loop i found l1 l2 =
     match (l1, l2) with
-    | [], [] -> List.rev acc
-    | w1 :: t1, w2 :: t2 ->
-        let acc' =
-          if w1 = w2 then acc else { path = [ i ]; new_weight = w2 } :: acc
-        in
-        loop (i + 1) acc' t1 t2
-    | _ -> failwith "compute_weight_changes: ws1 and ws2 must have equal length"
+    | [], [] -> found
+    | w1 :: t1, w2 :: t2 -> (
+        if w1 = w2 then loop (i + 1) found t1 t2
+        else
+          let wc = { path = [ i ]; new_weight = w2 } in
+          match found with
+          | None -> loop (i + 1) (Some wc) t1 t2
+          | Some _ -> None)
+    | _ ->
+        failwith
+          "compute_single_weight_change: ws1 and ws2 must have equal length"
   in
-  loop 0 [] ws1 ws2
+  loop 0 None ws1 ws2
 
 (* Prepend [i] to every embedded [path] inside [diff]. Used by
    [compare_lists] when descending: a child's diff comes back parent-relative,
@@ -141,7 +148,7 @@ let prepend_path i diff =
   | OneArmAppended ad -> OneArmAppended (prepend_arm ad)
   | ArmsAdded ads -> ArmsAdded (List.map prepend_arm ads)
   | ArmsRemoved ads -> ArmsRemoved (List.map prepend_arm ads)
-  | WeightChanged wcs -> WeightChanged (List.map prepend_wc wcs)
+  | WeightChanged wc -> WeightChanged (prepend_wc wc)
   | OneArmReplaced ad -> OneArmReplaced (prepend_arm ad)
   | VeryDifferent p -> VeryDifferent (i :: p)
   | SuperPol p -> SuperPol (i :: p)
@@ -236,8 +243,12 @@ and compare_wfq ps1 ws1 ps2 ws2 =
   else if is_ordered_subsequence pairs2 pairs1 then
     ArmsRemoved (compute_wfq_arms_removed pairs1 pairs2)
   else if ps1 = ps2 then
-    (* Same arms in same positions, but weights changed. *)
-    WeightChanged (compute_weight_changes ws1 ws2)
+    (* Same arms in same positions, but weights changed. We only
+       describe this precisely when *exactly one* weight moved;
+       otherwise give up. *)
+    match compute_single_weight_change ws1 ws2 with
+    | Some wc -> WeightChanged wc
+    | None -> VeryDifferent []
   else if ws1 = ws2 then
     (* Same weights; the diff must be inside the children themselves. *)
     compare_lists ps1 ps2
@@ -300,9 +311,8 @@ let to_string = function
   | ArmsRemoved ads ->
       Printf.sprintf "ArmsRemoved: %s"
         (List.map string_of_arm_diff ads |> String.concat ", ")
-  | WeightChanged wcs ->
-      Printf.sprintf "WeightChanged: %s"
-        (List.map string_of_weight_change wcs |> String.concat ", ")
+  | WeightChanged wc ->
+      Printf.sprintf "WeightChanged: %s" (string_of_weight_change wc)
   | OneArmReplaced ad ->
       Printf.sprintf "OneArmReplaced: %s" (string_of_arm_diff ad)
   | VeryDifferent p -> Printf.sprintf "VeryDifferent at %s" (path_to_string p)

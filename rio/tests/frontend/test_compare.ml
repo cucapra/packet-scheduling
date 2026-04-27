@@ -119,15 +119,16 @@ let armsremoved =
 
 let weightchanged =
   [
-    (* WFQ(A:2, B:1, C:3) vs WFQ(A:2, B:2, C:4): two weights moved.
+    (* WFQ(A:2, B:1, C:3) vs WFQ(A:2, B:5, C:3): exactly one weight moved.
        After normalize both sort to (FIFO A, FIFO B, FIFO C); the weight
-       at index 1 went 1→2 and the one at index 2 went 3→4. *)
+       at index 1 went 1→5. *)
+    make_compare_test "one WFQ weight changed" "wfq_ABC" "wfq_ABC_one_weight"
+      (WeightChanged { path = [ 1 ]; new_weight = 5.0 });
+    (* WFQ(A:2, B:1, C:3) vs WFQ(A:2, B:2, C:4): two weights moved.
+       [WeightChanged] now describes only single-weight edits, so a
+       multi-weight change degrades to [VeryDifferent]. *)
     make_compare_test "different WFQ weights" "wfq_ABC" "wfq_ABC_diff"
-      (WeightChanged
-         [
-           { path = [ 1 ]; new_weight = 2.0 };
-           { path = [ 2 ]; new_weight = 4.0 };
-         ]);
+      (VeryDifferent []);
   ]
 
 let onearmreplaced =
