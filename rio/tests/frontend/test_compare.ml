@@ -108,7 +108,7 @@ let weightchanged =
        After normalize both sort to (FIFO A, FIFO B, FIFO C); the weight
        at index 1 went 1→5. *)
     make_compare_test "one WFQ weight changed" "wfq_ABC" "wfq_ABC_one_weight"
-      (VeryDifferent []);
+      (WeightChanged { path = [ 1 ]; new_weight = 5.0 });
     (* WFQ(A:2, B:1, C:3) vs WFQ(A:2, B:2, C:4): two weights moved.
        [WeightChanged] now describes only single-weight edits, so a
        multi-weight change degrades to [VeryDifferent]. *)
@@ -124,6 +124,18 @@ let onearmreplaced =
     (* RR(A,B) vs RR(A,D): exactly one arm differs (index 1). *)
     make_compare_test "rr arm changed" "rr_AB" "rr_AD"
       (OneArmReplaced { path = [ 1 ]; arm = Policy.FIFO "D"; weight = None });
+    (* WFQ(A:2,B:1,C:3) vs WFQ(A:2,B:1,Z:3): one slot's arm changed in
+       place, weight unchanged. The result still carries [Some 3.0] —
+       the IR can compare against the prev tree to skip a redundant
+       Change_weight if it wants. *)
+    make_compare_test "WFQ arm changed in place, same weight" "wfq_ABC"
+      "wfq_ABZ"
+      (OneArmReplaced { path = [ 2 ]; arm = Policy.FIFO "Z"; weight = Some 3.0 });
+    (* WFQ(A:2,B:1,C:3) vs WFQ(A:2,B:1,Z:7): one slot replaced and its
+       weight bumped to 7. *)
+    make_compare_test "WFQ arm changed in place, new weight" "wfq_ABC"
+      "wfq_ABZ_diff"
+      (OneArmReplaced { path = [ 2 ]; arm = Policy.FIFO "Z"; weight = Some 7.0 });
   ]
 
 let verydiff =
@@ -180,9 +192,23 @@ let subpol =
       "union_GH" (SubPol [ 0 ]);
   ]
 
+(* A growing menu of cases that come back [VeryDifferent] specifically
+   because the diff is a *combination* of changes each of which would be
+   legal in isolation. Useful for nailing down where the patcher gives up
+   even when the individual edits are tractable. *)
+let verydiff_combos =
+  [
+    (* wfq_complex = WFQ([(A,1), (RR[B,C],2)]). Next changes RR[B,C]→RR[B,D]
+       (a deeper [OneArmReplaced]) and bumps the weight 2→5 (a
+       [WeightChanged]) at the same slot. Either change alone would be
+       describable; together compare gives up. *)
+    make_compare_test "WFQ slot with deep diff and weight change" "wfq_complex"
+      "wfq_complex_deep_and_weight" (VeryDifferent []);
+  ]
+
 let suite =
   "compare tests"
   >::: same @ one_arm_added @ armsadded @ armsremoved @ weightchanged
-       @ onearmreplaced @ verydiff @ superpol @ subpol
+       @ onearmreplaced @ verydiff @ verydiff_combos @ superpol @ subpol
 
 let () = run_test_tt_main suite
