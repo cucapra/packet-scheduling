@@ -45,4 +45,4 @@ let from_instr (i : Instr.instr) : Yojson.Basic.t =
         ]
 
 let from_program (p : Instr.program) : Yojson.Basic.t =
-  `List (List.map from_instr p)
+  `List [ `List (List.map from_instr p) ]
