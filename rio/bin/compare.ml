@@ -82,24 +82,24 @@ let prepend_path i diff =
 
 let rec is_sub_policy p1 p2 =
   (* Is p1 a sub-policy of p2?
-     Returns (found, path).
-     path tells us where in p2 we found p1, if anywhere.
+     Returns [Some path], where [path] tells us where in p2 we found p1.
      When found at an *immediate* child i, path = [i].
      When found deeper, path = i :: deeper_path.
-     Returns (true, []) when p1 = p2.
-     Returns (false, []) if not found. *)
-  if p1 = p2 then (true, [])
+     Returns [Some []] when p1 = p2.
+     Returns None if not found. *)
+  if p1 = p2 then Some []
   else
     match p2 with
-    | FIFO _ -> (false, [])
+    | FIFO _ -> None
     | UNION ps | SP ps | RR ps | WFQ (ps, _) ->
         let rec loop i = function
-          | [] -> (false, [])
-          | p :: t ->
-              if p = p1 then (true, [ i ])
+          | [] -> None
+          | p :: t -> (
+              if p = p1 then Some [ i ]
               else
-                let found, path = is_sub_policy p1 p in
-                if found then (true, i :: path) else loop (i + 1) t
+                match is_sub_policy p1 p with
+                | None -> loop (i + 1) t
+                | Some path -> Some (i :: path))
         in
         loop 0 ps
 
@@ -178,12 +178,11 @@ and compare_wfq ps1 (ws1 : float list) ps2 (ws2 : float list) =
 and analyze p1 p2 =
   if p1 = p2 then Same
   else
-    let super_found, super_idx = is_sub_policy p1 p2 in
-    if super_found then SuperPol super_idx
-    else
-      let sub_found, sub_idx = is_sub_policy p2 p1 in
-      if sub_found then SubPol sub_idx
-      else
+    match (is_sub_policy p1 p2, is_sub_policy p2 p1) with
+    | Some _, Some _ -> Same (* Can't get here *)
+    | Some path, None -> SuperPol path
+    | None, Some path -> SubPol path
+    | _ -> (
         match (p1, p2) with
         | UNION ps1, UNION ps2 | SP ps1, SP ps2 | RR ps1, RR ps2 ->
             compare ps1 ps2
@@ -194,7 +193,7 @@ and analyze p1 p2 =
                position. The leaf-level diff is path-empty; [compare_lists]'s
                [prepend_path] tags on the child index when this bubbles up,
                but only if it's the sole divergence at that level. *)
-            OneArmReplaced { path = []; arm = p2 }
+            OneArmReplaced { path = []; arm = p2 })
 
 (* Pretty-printers — only used to format failure messages from the test
    suite; the patcher never goes through these. *)
