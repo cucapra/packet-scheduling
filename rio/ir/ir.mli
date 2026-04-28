@@ -60,10 +60,10 @@ val patch : prev:compiled -> next:Frontend.Policy.t -> compiled option
       shifts) instructions needed to splice the new arm in.
 
     Anything else — [Rio_compare.Compare.OneArmRemoved] (single-arm removal),
+    [Rio_compare.Compare.WeightChanged] (WFQ weight edits),
     [Rio_compare.Compare.OneArmReplaced] (in-place policy swap at a single
-    position; for WFQ slots this also covers same-arm/new-weight edits, with the
-    new weight in [arm_diff.weight]), and any [VeryDifferent] / [SuperPol] /
-    [SubPol] result — returns [None]. *)
+    position), and any [VeryDifferent] / [SuperPol] / [SubPol] result — returns
+    [None]. *)
 
 (** JSON exporter for IR programs. *)
 module Json : sig

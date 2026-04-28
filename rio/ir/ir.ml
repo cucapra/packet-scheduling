@@ -323,8 +323,12 @@ let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
       (* Nothing structural to do — return an empty delta. The decorated
          tree is immutable, so we hand back the same reference. *)
       Some { prog = []; decorated = prev.decorated }
-  | VeryDifferent _ | SuperPol _ | SubPol _ | OneArmRemoved _ | OneArmReplaced _
-    -> None
+  | VeryDifferent _
+  | SuperPol _
+  | SubPol _
+  | OneArmRemoved _
+  | WeightChanged _
+  | OneArmReplaced _ -> None
   | OneArmAdded { path = arm_path; arm; weight = _ } ->
       let parent_path, k = list_foot arm_path in
       let parent = walk_to_decorated prev.decorated parent_path in

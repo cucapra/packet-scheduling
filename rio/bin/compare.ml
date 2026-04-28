@@ -8,22 +8,25 @@ type t =
   | Same
   | OneArmAdded of arm_diff
   | OneArmRemoved of arm_diff
+  | WeightChanged of weight_change
   | OneArmReplaced of arm_diff
-      (** Carries the new arm and (for WFQ slots) its weight. The new arm may
-          equal the previous arm, and the new weight may equal the previous
-          weight. The IR can check for these cases and do no-ops. *)
   | VeryDifferent of path
   | SuperPol of path (* [path] points to [prev] inside [next]. *)
   | SubPol of path (* [path] points to [next] inside [prev]. *)
 
 and arm_diff = {
   path : path;
-      (* Path from the root to the position of this arm.
+      (* Path from the root to the position of this arm. 
       For [OneArmAdded] this is a position in *next*; for
           [OneArmRemoved] it is a position in *prev*. *)
   arm : Frontend.Policy.t;
   weight : float option;
       (* [Some w] for arms that carry an explicit weight (i.e. WFQ). *)
+}
+
+and weight_change = {
+  path : path;
+  new_weight : float;
 }
 
 (* Check if lst1 appears as an order-preserving sub-sequence of lst2.
@@ -101,10 +104,12 @@ let find_pair_diffs pairs1 pairs2 =
    (and so on up the recursion). *)
 let prepend_path i diff =
   let prepend_arm (ad : arm_diff) = { ad with path = i :: ad.path } in
+  let prepend_wc (wc : weight_change) = { wc with path = i :: wc.path } in
   match diff with
   | Same -> Same
   | OneArmAdded ad -> OneArmAdded (prepend_arm ad)
   | OneArmRemoved ad -> OneArmRemoved (prepend_arm ad)
+  | WeightChanged wc -> WeightChanged (prepend_wc wc)
   | OneArmReplaced ad -> OneArmReplaced (prepend_arm ad)
   | VeryDifferent p -> VeryDifferent (i :: p)
   | SuperPol p -> SuperPol (i :: p)
@@ -193,11 +198,12 @@ and compare_wfq ps1 ws1 ps2 ws2 =
      both directions: forward catches a single weighted insertion,
      reversed catches a single weighted removal. If neither fires and
      lengths match, [find_pair_diffs] tells us whether exactly one slot
-     diverged. A same-arm/new-weight slot and a different-arm slot both
-     fold into [OneArmReplaced { weight = Some w2k }] — the IR can recover
-     the weight-only sub-case via [prev_arm = next_arm]. A deeper diff
-     inside a slot whose weight is unchanged recurses normally; anything
-     more tangled is [VeryDifferent]. *)
+     diverged — a same-arm/new-weight slot is [WeightChanged]; a
+     different-arm slot wholesale-replaces to [OneArmReplaced] (carrying
+     the new weight, even if it matches the old — the IR decides whether
+     to emit a [Change_weight]); a deeper diff inside a slot whose
+     weight is unchanged recurses normally; anything more tangled is
+     [VeryDifferent]. *)
   let pairs1 = List.combine ps1 ws1 in
   let pairs2 = List.combine ps2 ws2 in
   match one_arm_added pairs1 pairs2 with
@@ -215,10 +221,7 @@ and compare_wfq ps1 ws1 ps2 ws2 =
                    policies, and [analyze] short-circuits Same before us. *)
                 Same
             | [ (k, (p1k, _w1k), (p2k, w2k)) ] when p1k = p2k ->
-                (* Same arm, different weight. Folded into OneArmReplaced
-                   so WFQ's surface stays uniform; the IR detects the
-                   weight-only case via [prev_arm = next_arm]. *)
-                OneArmReplaced { path = [ k ]; arm = p2k; weight = Some w2k }
+                WeightChanged { path = [ k ]; new_weight = w2k }
             | [ (k, (p1k, w1k), (p2k, w2k)) ] -> (
                 match analyze p1k p2k with
                 | OneArmReplaced { path = []; _ } ->
@@ -274,11 +277,16 @@ let string_of_arm_diff { path; arm; weight } =
   | None -> base
   | Some w -> Printf.sprintf "%s with weight %g" base w
 
+let string_of_weight_change { path; new_weight } =
+  Printf.sprintf "%s → %g" (path_to_string path) new_weight
+
 let to_string = function
   | Same -> "Same"
   | OneArmAdded ad -> Printf.sprintf "OneArmAdded: %s" (string_of_arm_diff ad)
   | OneArmRemoved ad ->
       Printf.sprintf "OneArmRemoved: %s" (string_of_arm_diff ad)
+  | WeightChanged wc ->
+      Printf.sprintf "WeightChanged: %s" (string_of_weight_change wc)
   | OneArmReplaced ad ->
       Printf.sprintf "OneArmReplaced: %s" (string_of_arm_diff ad)
   | VeryDifferent p -> Printf.sprintf "VeryDifferent at %s" (path_to_string p)
