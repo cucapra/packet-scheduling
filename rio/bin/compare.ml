@@ -19,9 +19,7 @@ and arm_diff = {
       (* Path from the root to the position of this arm. 
       For [OneArmAdded] this is a position in *next*; for
           [OneArmRemoved] it is a position in *prev*. *)
-  arm : Frontend.Policy.t;
-  weight : float option;
-      (* [Some w] for arms that carry an explicit weight (i.e. WFQ). *)
+  arm : Frontend.Policy.t; (* The arm itself. *)
 }
 
 and weight_change = {
@@ -64,12 +62,10 @@ let compute_strict_arms_removed ps1 ps2 =
   let rec loop i1 l1 l2 acc =
     match (l1, l2) with
     | [], _ -> List.rev acc
-    | p1 :: t1, [] ->
-        loop (i1 + 1) t1 [] ({ path = [ i1 ]; arm = p1; weight = None } :: acc)
+    | p1 :: t1, [] -> loop (i1 + 1) t1 [] ({ path = [ i1 ]; arm = p1 } :: acc)
     | p1 :: t1, p2 :: t2 ->
         if p1 = p2 then loop (i1 + 1) t1 t2 acc
-        else
-          loop (i1 + 1) t1 l2 ({ path = [ i1 ]; arm = p1; weight = None } :: acc)
+        else loop (i1 + 1) t1 l2 ({ path = [ i1 ]; arm = p1 } :: acc)
   in
   loop 0 ps1 ps2 []
 
@@ -78,7 +74,7 @@ let compute_strict_arms_removed ps1 ps2 =
 let compute_rr_arms_removed ps1 ps2 =
   List.mapi (fun i p -> (i, p)) ps1
   |> List.filter (fun (_, p) -> not (List.mem p ps2))
-  |> List.map (fun (i, p) -> { path = [ i ]; arm = p; weight = None })
+  |> List.map (fun (i, p) -> { path = [ i ]; arm = p })
 
 (* Walk two equal-length pair lists in parallel, accumulating (index,
    prev_pair, next_pair) records for positions where the pairs differ.
@@ -177,7 +173,7 @@ let rec compare_lists ps1 ps2 =
    [VeryDifferent]. *)
 and compare_flat ~removed_fn ps1 ps2 =
   match one_arm_added ps1 ps2 with
-  | Some (arm, idx) -> OneArmAdded { path = [ idx ]; arm; weight = None }
+  | Some (arm, idx) -> OneArmAdded { path = [ idx ]; arm }
   | None ->
       if is_ordered_subsequence ps1 ps2 then VeryDifferent []
       else if is_ordered_subsequence ps2 ps1 then
@@ -209,11 +205,15 @@ and compare_wfq ps1 ws1 ps2 ws2 =
   let pairs1 = List.combine ps1 ws1 in
   let pairs2 = List.combine ps2 ws2 in
   match one_arm_added pairs1 pairs2 with
-  | Some ((arm, w), idx) -> OneArmAdded { path = [ idx ]; arm; weight = Some w }
+  | Some _ ->
+      (* WFQ-add is logically [OneArmAdded + WeightChanged] — the new
+         slot needs both an arm and a weight, but [arm_diff] no longer
+         carries the weight. We can't describe the pair as a single
+         variant, so it is VeryDifferent until we can emit a list of changes. *)
+      VeryDifferent []
   | None -> (
       match one_arm_added pairs2 pairs1 with
-      | Some ((arm, w), idx) ->
-          OneArmRemoved { path = [ idx ]; arm; weight = Some w }
+      | Some ((arm, _w), idx) -> OneArmRemoved { path = [ idx ]; arm }
       | None -> (
           if List.compare_lengths pairs1 pairs2 <> 0 then VeryDifferent []
           else
@@ -229,8 +229,7 @@ and compare_wfq ps1 ws1 ps2 ws2 =
                 (* Arm changed at slot [k], weight unchanged. Recurse. *)
                 match analyze p1k p2k with
                 | OneArmReplaced { path = []; _ } ->
-                    OneArmReplaced
-                      { path = [ k ]; arm = p2k; weight = Some w2k }
+                    OneArmReplaced { path = [ k ]; arm = p2k }
                 | inner -> prepend_path k inner)
             | [ _ ] ->
                 (* Arm changed AND weight changed at the same slot — a
@@ -259,7 +258,7 @@ and analyze p1 p2 =
                position. The leaf-level diff is path-empty; [compare_lists]'s
                [prepend_path] tags on the child index when this bubbles up,
                but only if it's the sole divergence at that level. *)
-            OneArmReplaced { path = []; arm = p2; weight = None }
+            OneArmReplaced { path = []; arm = p2 }
 
 (* Pretty-printers — only used to format failure messages from the test
    suite; the patcher never goes through these. *)
@@ -271,15 +270,10 @@ let path_to_string = function
       let s = String.concat "->" (List.map string_of_int p) in
       Printf.sprintf "(path %s)" s
 
-let string_of_arm_diff { path; arm; weight } =
-  let base =
-    Printf.sprintf "%s at %s"
-      (Frontend.Policy.to_string arm)
-      (path_to_string path)
-  in
-  match weight with
-  | None -> base
-  | Some w -> Printf.sprintf "%s with weight %g" base w
+let string_of_arm_diff { path; arm } =
+  Printf.sprintf "%s at %s"
+    (Frontend.Policy.to_string arm)
+    (path_to_string path)
 
 let string_of_weight_change { path; new_weight } =
   Printf.sprintf "%s → %g" (path_to_string path) new_weight

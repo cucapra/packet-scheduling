@@ -28,78 +28,57 @@ let same =
   ]
 
 (* OneArmAdded fires on a single-arm insertion at any position of a
-   UNION/RR/SP/WFQ parent (after [Policy.normalize] has sorted
-   UNION/RR/WFQ children). For WFQ the [arm_diff.weight] field carries
-   the new arm's weight; for the others it's [None]. Multi-arm
-   insertions degrade to [VeryDifferent] — see [verydiff_combos].
-   The [path] inside [arm_diff] is the new arm's full position from the
+   UNION/RR/SP parent (after [Policy.normalize] has sorted UNION/RR
+   children). WFQ-add does *not* land here — see [verydiff_combos] —
+   because the new slot's weight can't ride along on [arm_diff], so a
+   WFQ-add is logically [OneArmAdded + WeightChanged]. 
+   Multi-arm insertions also degrade to [VeryDifferent]. The
+   [path] inside [arm_diff] is the new arm's full position from the
    root of [next]. *)
 let one_arm_added =
   [
     (* SP(A,B) vs SP(A,B,C) — append; new arm at root child 2. *)
     make_compare_test "strict arm added at end" "strict_AB" "strict_ABC"
-      (OneArmAdded { path = [ 2 ]; arm = Policy.FIFO "C"; weight = None });
+      (OneArmAdded { path = [ 2 ]; arm = Policy.FIFO "C" });
     (* SP(A,C) vs SP(A,B,C) — mid-insert; new arm at root child 1. *)
     make_compare_test "strict arm added in the middle" "strict_AC" "strict_ABC"
-      (OneArmAdded { path = [ 1 ]; arm = Policy.FIFO "B"; weight = None });
+      (OneArmAdded { path = [ 1 ]; arm = Policy.FIFO "B" });
     (* RR(A,B) vs RR(A,B,C) — append. *)
     make_compare_test "RR with arm added at end" "rr_AB" "rr_ABC"
-      (OneArmAdded { path = [ 2 ]; arm = Policy.FIFO "C"; weight = None });
+      (OneArmAdded { path = [ 2 ]; arm = Policy.FIFO "C" });
     (* RR(A,B) vs RR(B,A,C) — both sort to [A,B,...], so still an append. *)
     make_compare_test "RR with arm added whilst reordering" "rr_AB" "rr_BAC"
-      (OneArmAdded { path = [ 2 ]; arm = Policy.FIFO "C"; weight = None });
+      (OneArmAdded { path = [ 2 ]; arm = Policy.FIFO "C" });
     (* Adding an arm deep inside a tree with WFQ at root. The root WFQ
        is a transparent passthrough (lengths and weights line up), so
        the diff surfaces at the rr child (path [1]); the new D inside
        that RR sits at child index 2, giving a full path of [1; 2]. *)
     make_compare_test "WFQ with arm added deep" "wfq_complex"
       "wfq_complex_add_arm_deep"
-      (OneArmAdded { path = [ 1; 2 ]; arm = Policy.FIFO "D"; weight = None });
+      (OneArmAdded { path = [ 1; 2 ]; arm = Policy.FIFO "D" });
     (* Adding an arm deep inside the complex tree. After normalize, the
        WFQ pairs sort to (UNION, SP, RR), so the rr arm is at index 2;
        the new NEW inside that RR sits at child index 3 → [2; 3]. *)
     make_compare_test "complex tree add arm deep" "complex_tree"
       "complex_tree_add_arm_deep"
-      (OneArmAdded { path = [ 2; 3 ]; arm = Policy.FIFO "NEW"; weight = None });
-  ]
-
-let armsadded =
-  [
-    (* RR(A,B) vs RR(D,B,A,SP(C,E)). Post-normalize next is
-       [A; B; D; SP[C;E]]; the additions are D at index 2 and SP at 3. *)
-    make_compare_test "RR with two arms added whilst reordering" "rr_AB"
-      "rr_DBA_SP_CE" (VeryDifferent []);
-    (* WFQ(B,A) vs WFQ(A,B,C): post-normalize next is [(A,2);(B,1);(C,3)],
-       so (C, 3) was added at index 2. *)
-    make_compare_test "WFQ with arm added" "wfq_BA" "wfq_ABC"
-      (OneArmAdded { path = [ 2 ]; arm = Policy.FIFO "C"; weight = Some 3.0 });
-    (* complex_tree_partial vs complex_tree — a WFQ-level add at the root.
-       Post-normalize next has children sorted to (UNION, SP, RR); RR is the
-       new arm at index 2 with weight 2. *)
-    make_compare_test "complex tree fill in missing arm" "complex_tree_partial"
-      "complex_tree"
-      (OneArmAdded
-         {
-           path = [ 2 ];
-           arm = Policy.RR [ Policy.FIFO "D"; Policy.FIFO "E"; Policy.FIFO "F" ];
-           weight = Some 2.0;
-         });
+      (OneArmAdded { path = [ 2; 3 ]; arm = Policy.FIFO "NEW" });
   ]
 
 let armsremoved =
   [
     (* RR(A,B,C) -> RR(A,B): one arm dropped from the end. *)
     make_compare_test "RR with arm removed" "rr_ABC" "rr_AB"
-      (OneArmRemoved { path = [ 2 ]; arm = Policy.FIFO "C"; weight = None });
+      (OneArmRemoved { path = [ 2 ]; arm = Policy.FIFO "C" });
     (* WFQ(A:2,B:1,C:3) -> WFQ(B:1,A:2): post-normalize prev has C at
-       index 2 with weight 3; that's what was removed. *)
+       index 2; that's what was removed. The IR can recover the dropped
+       weight (3) from the prev decorated tree if it cares. *)
     make_compare_test "WFQ with arm removed" "wfq_ABC" "wfq_BA"
-      (OneArmRemoved { path = [ 2 ]; arm = Policy.FIFO "C"; weight = Some 3.0 });
+      (OneArmRemoved { path = [ 2 ]; arm = Policy.FIFO "C" });
     (* Inverse of the deep-add test: drop NEW from the inner RR (path [2]).
        NEW lived at index 3 inside that RR → full path [2; 3]. *)
     make_compare_test "complex tree remove arm deep" "complex_tree_add_arm_deep"
       "complex_tree"
-      (OneArmRemoved { path = [ 2; 3 ]; arm = Policy.FIFO "NEW"; weight = None });
+      (OneArmRemoved { path = [ 2; 3 ]; arm = Policy.FIFO "NEW" });
   ]
 
 let weightchanged =
@@ -115,16 +94,16 @@ let onearmreplaced =
   [
     (* SP(A,B) vs SP(A,C): exactly one arm differs (index 1). *)
     make_compare_test "strict arm changed" "strict_AB" "strict_AC"
-      (OneArmReplaced { path = [ 1 ]; arm = Policy.FIFO "C"; weight = None });
+      (OneArmReplaced { path = [ 1 ]; arm = Policy.FIFO "C" });
     (* RR(A,B) vs RR(A,D): exactly one arm differs (index 1). *)
     make_compare_test "rr arm changed" "rr_AB" "rr_AD"
-      (OneArmReplaced { path = [ 1 ]; arm = Policy.FIFO "D"; weight = None });
+      (OneArmReplaced { path = [ 1 ]; arm = Policy.FIFO "D" });
     (* WFQ(A:2,B:1,C:3) vs WFQ(A:2,B:1,Z:3): one slot's arm changed in
-       place, weight unchanged. The result still carries [Some 3.0] so
-       the IR knows the slot's weight without re-walking the tree. *)
+       place, weight unchanged. The IR recovers the slot's weight from
+       the prev decorated tree. *)
     make_compare_test "WFQ arm changed in place, same weight" "wfq_ABC"
       "wfq_ABZ"
-      (OneArmReplaced { path = [ 2 ]; arm = Policy.FIFO "Z"; weight = Some 3.0 });
+      (OneArmReplaced { path = [ 2 ]; arm = Policy.FIFO "Z" });
   ]
 
 let superpol =
@@ -172,6 +151,19 @@ let verydiff_combos =
        [WeightChanged]). Same slot, two distinct edits. *)
     make_compare_test "WFQ slot with arm change and weight change" "wfq_ABC"
       "wfq_ABZ_diff" (VeryDifferent []);
+    (* WFQ(B,A) → WFQ(A:2,B:1,C:3): adding a WFQ arm is logically
+       [OneArmAdded] (the arm) + [WeightChanged] (the new slot's
+       weight). [arm_diff] no longer carries a weight, so this combo
+       can't fold into a single variant. *)
+    make_compare_test "WFQ with arm added" "wfq_BA" "wfq_ABC" (VeryDifferent []);
+    (* complex_tree_partial → complex_tree: a WFQ-level arm-add at the
+       root (the RR subtree, weight 2). Same combo as above. *)
+    make_compare_test "complex tree fill in missing arm" "complex_tree_partial"
+      "complex_tree" (VeryDifferent []);
+    (* RR(A,B) → RR(D,B,A,SP(C,E)): two new arms (D and SP[C,E]) — a
+       multi-arm add, hence two [OneArmAdded]s. *)
+    make_compare_test "RR with two arms added whilst reordering" "rr_AB"
+      "rr_DBA_SP_CE" (VeryDifferent []);
     (* SP(B,A) → SP(A,B,C): swap (= two [OneArmReplaced] at indices 0/1)
        plus an [OneArmAdded] at index 2. *)
     make_compare_test "strict arm added whilst reordering arms" "strict_BA"
@@ -206,7 +198,7 @@ let verydiff_combos =
 
 let suite =
   "compare tests"
-  >::: same @ one_arm_added @ armsadded @ armsremoved @ weightchanged
-       @ onearmreplaced @ verydiff_combos @ superpol @ subpol
+  >::: same @ one_arm_added @ armsremoved @ weightchanged @ onearmreplaced
+       @ verydiff_combos @ superpol @ subpol
 
 let () = run_test_tt_main suite

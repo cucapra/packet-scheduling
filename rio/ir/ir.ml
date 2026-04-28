@@ -329,7 +329,7 @@ let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
   | OneArmRemoved _
   | WeightChanged _
   | OneArmReplaced _ -> None
-  | OneArmAdded { path = arm_path; arm; weight = _ } ->
+  | OneArmAdded { path = arm_path; arm } ->
       let parent_path, k = list_foot arm_path in
       let parent = walk_to_decorated prev.decorated parent_path in
       let parent_v, old_arity, pol_ty = parent_info parent in
