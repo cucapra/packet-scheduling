@@ -27,64 +27,42 @@ and weight_change = {
   new_weight : float;
 }
 
-(* Check if lst1 appears as an order-preserving sub-sequence of lst2.
-   E.g. [A,C] is an order-preserving sub-sequence of [A,B,C,D], but
-   [C,A] is not. *)
-let rec is_ordered_subsequence lst1 lst2 =
-  match (lst1, lst2) with
-  | [], _ -> true
-  | _, [] -> false
-  | h1 :: t1, h2 :: t2 ->
-      if h1 = h2 then is_ordered_subsequence t1 t2
-      else is_ordered_subsequence lst1 t2
-
-(* Single-arm-insertion check. Returns [Some (arm, idx)] iff [ps2] is [ps1]
-   with exactly one extra element [arm] inserted at position [idx]; otherwise
-   [None]. Walks both lists in lockstep, consuming equal heads, then declares
-   the first divergence to be the inserted element and demands that the
-   remainder line up exactly. We trust callers (per [Frontend.Policy]
-   normalize) not to feed us duplicate arms. *)
-let one_arm_added ps1 ps2 =
-  let rec loop i l1 l2 =
-    match (l1, l2) with
-    | _, [] -> None
-    | [], [ a ] -> Some (a, i)
-    | [], _ :: _ :: _ -> None
-    | x1 :: t1, x2 :: t2 when x1 = x2 -> loop (i + 1) t1 t2
-    | _, x2 :: t2 -> if l1 = t2 then Some (x2, i) else None
+(** [insertions prev next] determines whether [next] can be obtained by
+    inserting elements into [prev] without reordering existing elements. If so,
+    it returns [Some ins], where [ins] is a list of pairs [(i, x)]. Each pair
+    indicates that element [x] appears in [next] at index [i] and was not
+    present at that position in [prev] (i.e., it was inserted). If [next] cannot
+    be formed by inserting elements into [prev] (for example, if elements would
+    need to be removed or reordered), return [None]. *)
+let insertions prev next =
+  let rec loop i prev next acc =
+    match (prev, next) with
+    | [], [] -> Some (List.rev acc)
+    | [], x :: t ->
+        (* remaining elements in [next] are all insertions *)
+        loop (i + 1) [] t ((i, x) :: acc)
+    | x1 :: t1, x2 :: t2 ->
+        if x1 = x2 then loop (i + 1) t1 t2 acc
+        else
+          (* x2 was inserted at position i *)
+          loop (i + 1) prev t2 ((i, x2) :: acc)
+    | _ :: _, [] -> None (* ran out of [next] *)
   in
-  loop 0 ps1 ps2
+  loop 0 prev next []
 
-(* compute_*: turn two child lists into structured diffs. *)
-
-(* SP-SP removed arms: position is the index in the *prev* list. *)
-let compute_strict_arms_removed ps1 ps2 =
-  let rec loop i1 l1 l2 acc =
-    match (l1, l2) with
-    | [], _ -> List.rev acc
-    | p1 :: t1, [] -> loop (i1 + 1) t1 [] ({ path = [ i1 ]; arm = p1 } :: acc)
-    | p1 :: t1, p2 :: t2 ->
-        if p1 = p2 then loop (i1 + 1) t1 t2 acc
-        else loop (i1 + 1) t1 l2 ({ path = [ i1 ]; arm = p1 } :: acc)
+(** [changed prev next] returns a list of all positions at which the two input
+    lists differ. Returns a list of pairs, in which pair [(i, x)] appears iff
+    [prev[i] <> next[i] = x] *)
+let changed prev next =
+  let rec loop i prev next acc =
+    match (prev, next) with
+    | [], [] -> List.rev acc
+    | [], _ | _, [] -> failwith "changed: input lists of different lengths"
+    | x1 :: t1, x2 :: t2 ->
+        if x1 <> x2 then loop (i + 1) t1 t2 ((i, x2) :: acc)
+        else loop (i + 1) t1 t2 acc
   in
-  loop 0 ps1 ps2 []
-
-(* RR / UNION: post-normalize both child lists are sorted, so each removed
-   arm has a well-defined index in [ps1]. *)
-let compute_rr_arms_removed ps1 ps2 =
-  List.mapi (fun i p -> (i, p)) ps1
-  |> List.filter (fun (_, p) -> not (List.mem p ps2))
-  |> List.map (fun (i, p) -> { path = [ i ]; arm = p })
-
-(* Walk two equal-length lists in parallel and collect every position
-   where [cmp] reports a difference (i.e. returns [Some _]). Result is
-   [(index, payload)] pairs in order. Callers care only about the
-   [[]] / [[_]] / [_::_::_] cases — "no diffs", "exactly one diff", or
-   "many" — so they pattern-match on the result. *)
-let find_diffs cmp l1 l2 =
-  List.combine l1 l2
-  |> List.mapi (fun i (a, b) -> Option.map (fun v -> (i, v)) (cmp a b))
-  |> List.filter_map Fun.id
+  loop 0 prev next []
 
 (* Prepend [i] to every embedded [path] inside [diff]. Used by
    [compare_lists] when descending: a child's diff comes back parent-relative,
@@ -126,25 +104,6 @@ let rec is_sub_policy p1 p2 =
         in
         loop 0 ps
 
-let rec compare_lists ps1 ps2 =
-  (* Compare two equal-length lists of children structurally. Scan every
-     position so we can tell whether exactly one child differs (precise
-     diff that we propagate, with the index baked into its path) or
-     several do (we can't pinpoint a single change, so [VeryDifferent]
-     at this level). The latter case is what gives [OneArmReplaced] its
-     "exactly one" guarantee. *)
-  if List.compare_lengths ps1 ps2 <> 0 then VeryDifferent []
-  else
-    let cmp p1 p2 =
-      match analyze p1 p2 with
-      | Same -> None
-      | other -> Some other
-    in
-    match find_diffs cmp ps1 ps2 with
-    | [] -> Same
-    | [ (i, diff) ] -> prepend_path i diff
-    | _ -> VeryDifferent []
-
 (* SP/RR/UNION share a flat list-of-children shape, so they share the same
    diff strategy: precise [one_arm_added] (the patcher's main trick — works
    for inserts at any position, not just the end), then a subsequence-based
@@ -154,73 +113,62 @@ let rec compare_lists ps1 ps2 =
    exactly one arm was inserted; [OneArmRemoved] only when exactly one was
    dropped. Multi-arm changes in either direction degrade to
    [VeryDifferent]. *)
-and compare_flat ~removed_fn ps1 ps2 =
-  match one_arm_added ps1 ps2 with
-  | Some (arm, idx) -> OneArmAdded { path = [ idx ]; arm }
-  | None ->
-      if is_ordered_subsequence ps1 ps2 then VeryDifferent []
-      else if is_ordered_subsequence ps2 ps1 then
-        match removed_fn ps1 ps2 with
-        | [ ad ] -> OneArmRemoved ad
-        | _ -> VeryDifferent []
-      else compare_lists ps1 ps2
+and compare ps1 ps2 =
+  match List.compare_lengths ps1 ps2 with
+  | 0 ->
+      (* lists of same length *)
+      begin match changed ps1 ps2 with
+      | [] -> Same
+      | [ (i, c) ] -> OneArmReplaced { path = [ i ]; arm = c }
+      | _ ->
+          (* [changed] has detected more than one point of difference. We can't handle that yet. *)
+          VeryDifferent []
+      end
+  | -1 -> begin
+      (* ps1 was shorter, so we check for insertions into ps1 *)
+      match insertions ps1 ps2 with
+      | None ->
+          (* [insertions] is unable to create ps2 by inserting elements to ps1. Give up *)
+          VeryDifferent []
+      | Some [ (i, c) ] ->
+          (* One insertion into ps1 does the trick *)
+          OneArmAdded { path = [ i ]; arm = c }
+      | Some _ ->
+          (* More than one insertion. We can't handle that yet. *)
+          VeryDifferent []
+    end
+  | 1 ->
+      (* ps2 was shorter, so we check for deletions in ps1 *)
+      begin match insertions ps2 ps1 with
+      | None ->
+          (* [insertions] is unable to create ps1 by inserting elements to ps2. Give up *)
+          VeryDifferent []
+      | Some [ (i, c) ] ->
+          (* One insertion into ps2 creates ps1. So we can equivalently remove that arm from ps1 to create ps2 *)
+          OneArmRemoved { path = [ i ]; arm = c }
+      | Some _ ->
+          (* More than one point of deletion. We can't handle that yet. *)
+          VeryDifferent []
+      end
+  | _ -> failwith "Can't get here"
 
-and compare_strict ps1 ps2 =
-  compare_flat ~removed_fn:compute_strict_arms_removed ps1 ps2
-
-and compare_rr_like ps1 ps2 =
-  (* for RR and Union *)
-  compare_flat ~removed_fn:compute_rr_arms_removed ps1 ps2
-
-and compare_wfq ps1 ws1 ps2 ws2 =
-  (* WFQ comparisons run [one_arm_added] over (policy, weight) pairs in
-     both directions: forward catches a single weighted insertion,
-     reversed catches a single weighted removal. If neither fires and
-     lengths match, [find_pair_diffs] tells us whether exactly one slot
-     diverged. We split single-slot edits three ways:
-     - Same arm, new weight → [WeightChanged].
-     - New arm, same weight → recurse via [analyze]; if it returns a
-       root-level [OneArmReplaced] we enrich with the slot's weight, else
-       we just [prepend_path].
-     - New arm AND new weight → [VeryDifferent] (chain of two legal
-       edits; no single variant captures both).
-     Multiple-slot divergence is also [VeryDifferent]. *)
-  let pairs1 = List.combine ps1 ws1 in
-  let pairs2 = List.combine ps2 ws2 in
-  match one_arm_added pairs1 pairs2 with
-  | Some _ ->
-      (* WFQ-add is logically [OneArmAdded + WeightChanged] — the new
-         slot needs both an arm and a weight, but [arm_diff] no longer
-         carries the weight. We can't describe the pair as a single
-         variant, so it is VeryDifferent until we can emit a list of changes. *)
-      VeryDifferent []
-  | None -> (
-      match one_arm_added pairs2 pairs1 with
-      | Some ((arm, _w), idx) -> OneArmRemoved { path = [ idx ]; arm }
-      | None -> (
-          if List.compare_lengths pairs1 pairs2 <> 0 then VeryDifferent []
-          else
-            let cmp pr1 pr2 = if pr1 = pr2 then None else Some (pr1, pr2) in
-            match find_diffs cmp pairs1 pairs2 with
-            | [] ->
-                (* Unreachable: equal pairs in both lists would mean equal
-                   policies, and [analyze] short-circuits Same before us. *)
-                Same
-            | [ (k, ((p1k, _w1k), (p2k, w2k))) ] when p1k = p2k ->
-                (* Same arm, different weight. *)
-                WeightChanged { path = [ k ]; new_weight = w2k }
-            | [ (k, ((p1k, w1k), (p2k, w2k))) ] when w1k = w2k -> (
-                (* Arm changed at slot [k], weight unchanged. Recurse. *)
-                match analyze p1k p2k with
-                | OneArmReplaced { path = []; _ } ->
-                    OneArmReplaced { path = [ k ]; arm = p2k }
-                | inner -> prepend_path k inner)
-            | [ _ ] ->
-                (* Arm changed AND weight changed at the same slot — a
-                   chain of two individually-legal edits, no single
-                   variant captures both. *)
-                VeryDifferent []
-            | _ -> VeryDifferent []))
+and compare_wfq ps1 (ws1 : float list) ps2 (ws2 : float list) =
+  match (ps1 = ps2, ws1 = ws2) with
+  | true, true -> Same
+  | false, true ->
+      (* we think it's a policy change in-place *)
+      if List.length ps1 = List.length ps2 then compare ps1 ps2
+      else VeryDifferent []
+  | true, false -> begin
+      (* we think it's a weight change *)
+      match changed ws1 ws2 with
+      | [] -> Same
+      | [ (i, new_weight) ] -> WeightChanged { path = [ i ]; new_weight }
+      | _ ->
+          (* [changed] has detected more than one point of difference. We can't handle that yet. *)
+          VeryDifferent []
+    end
+  | false, false -> (* give up for now *) VeryDifferent []
 
 and analyze p1 p2 =
   if p1 = p2 then Same
@@ -232,9 +180,8 @@ and analyze p1 p2 =
       if sub_found then SubPol sub_idx
       else
         match (p1, p2) with
-        | UNION ps1, UNION ps2 -> compare_rr_like ps1 ps2
-        | SP ps1, SP ps2 -> compare_strict ps1 ps2
-        | RR ps1, RR ps2 -> compare_rr_like ps1 ps2
+        | UNION ps1, UNION ps2 | SP ps1, SP ps2 | RR ps1, RR ps2 ->
+            compare ps1 ps2
         | WFQ (ps1, ws1), WFQ (ps2, ws2) -> compare_wfq ps1 ws1 ps2 ws2
         | _ ->
             (* FIFO→FIFO with a different class, or any constructor mismatch
