@@ -2,8 +2,7 @@ open Frontend.Policy
 
 type path = int list
 
-(* A structural diff between two policies. Variants that describe local
-   changes carry their own [path] inline. *)
+(* A structural diff between two policies. *)
 type t =
   | Same
   | OneArmAdded of arm_diff
@@ -19,7 +18,7 @@ and arm_diff = {
       (* Path from the root to the position of this arm. 
       For [OneArmAdded] this is a position in *next*; for
           [OneArmRemoved] it is a position in *prev*. *)
-  arm : Frontend.Policy.t; (* The arm itself. *)
+  arm : Frontend.Policy.t;
 }
 
 and weight_change = {
@@ -27,14 +26,14 @@ and weight_change = {
   new_weight : float;
 }
 
-(** [insertions prev next] determines whether [next] can be obtained by
-    inserting elements into [prev] without reordering existing elements. If so,
-    it returns [Some ins], where [ins] is a list of pairs [(i, x)]. Each pair
+(** [inserted prev next] determines whether [next] can be obtained by inserting
+    elements into [prev] without reordering existing elements. If so, it returns
+    [Some ins], where [ins] is a list of pairs of the form [(i, x)]. Each pair
     indicates that element [x] appears in [next] at index [i] and was not
     present at that position in [prev] (i.e., it was inserted). If [next] cannot
     be formed by inserting elements into [prev] (for example, if elements would
-    need to be removed or reordered), return [None]. *)
-let insertions prev next =
+    need to be removed or reordered), we return [None]. *)
+let inserted prev next =
   let rec loop i prev next acc =
     match (prev, next) with
     | [], [] -> Some (List.rev acc)
@@ -121,14 +120,14 @@ and compare ps1 ps2 =
       | [] -> Same
       | [ (i, c) ] -> OneArmReplaced { path = [ i ]; arm = c }
       | _ ->
-          (* [changed] has detected more than one point of difference. We can't handle that yet. *)
+          (* Detected that more than one arm was changed in-place. We can't handle that yet, but eventually we'll set up a map over all such changes and just generate a list of OneArmReplaced. *)
           VeryDifferent []
       end
   | -1 -> begin
-      (* ps1 was shorter, so we check for insertions into ps1 *)
-      match insertions ps1 ps2 with
+      (* ps1 was shorter, so we check if insertions into ps1 could make ps2 *)
+      match inserted ps1 ps2 with
       | None ->
-          (* [insertions] is unable to create ps2 by inserting elements to ps1. Give up *)
+          (* Unable to create ps2 by inserting elements to ps1. Give up *)
           VeryDifferent []
       | Some [ (i, c) ] ->
           (* One insertion into ps1 does the trick *)
@@ -138,37 +137,43 @@ and compare ps1 ps2 =
           VeryDifferent []
     end
   | 1 ->
-      (* ps2 was shorter, so we check for deletions in ps1 *)
-      begin match insertions ps2 ps1 with
+      (* ps2 was shorter, so we check if insertions into ps2 could make ps1. 
+        Equivalently, we are checking if deletions from ps1 could make ps2. *)
+      begin match inserted ps2 ps1 with
       | None ->
-          (* [insertions] is unable to create ps1 by inserting elements to ps2. Give up *)
+          (* Unable to create ps1 by inserting elements to ps2. Give up *)
           VeryDifferent []
       | Some [ (i, c) ] ->
-          (* One insertion into ps2 creates ps1. So we can equivalently remove that arm from ps1 to create ps2 *)
+          (* One insertion into ps2 creates ps1. 
+          Equivalently: we can remove that arm from ps1 to create ps2 *)
           OneArmRemoved { path = [ i ]; arm = c }
       | Some _ ->
-          (* More than one point of deletion. We can't handle that yet. *)
+          (* More than one deletion needed. We can't handle that yet. *)
           VeryDifferent []
       end
-  | _ -> failwith "Can't get here"
+  | _ -> failwith "impossible"
 
 and compare_wfq ps1 (ws1 : float list) ps2 (ws2 : float list) =
   match (ps1 = ps2, ws1 = ws2) with
-  | true, true -> Same
+  | true, true -> Same (* Shoudn't get here; this is [Same] at a higher level *)
   | false, true ->
-      (* we think it's a policy change in-place *)
-      if List.length ps1 = List.length ps2 then compare ps1 ps2
+      (* We suspect it's a pure policy change in-place, with weights left unchanged. We can just pass this to [compare]. But first let's check if their lengths are the same *)
+      if List.length ps1 <> List.length ps2 then compare ps1 ps2
       else VeryDifferent []
   | true, false -> begin
-      (* we think it's a weight change *)
-      match changed ws1 ws2 with
-      | [] -> Same
-      | [ (i, new_weight) ] -> WeightChanged { path = [ i ]; new_weight }
-      | _ ->
-          (* [changed] has detected more than one point of difference. We can't handle that yet. *)
-          VeryDifferent []
+      (* We suspect it's a pure weight change in-place, but we need to check if the lengths are the same. *)
+      if List.length ws1 <> List.length ws2 then VeryDifferent []
+      else
+        match changed ws1 ws2 with
+        | [] -> Same
+        | [ (i, new_weight) ] -> WeightChanged { path = [ i ]; new_weight }
+        | _ ->
+            (* Detected more than one point of difference. We can't handle that yet. *)
+            VeryDifferent []
     end
-  | false, false -> (* give up for now *) VeryDifferent []
+  | false, false ->
+      (* Both the policy list and the weight list are different. We give up for now. *)
+      VeryDifferent []
 
 and analyze p1 p2 =
   if p1 = p2 then Same
