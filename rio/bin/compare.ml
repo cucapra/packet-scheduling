@@ -63,10 +63,10 @@ let changed prev next =
   in
   loop 0 prev next []
 
-(* Prepend [i] to every embedded [path] inside [diff]. Used by
-   [compare_lists] when descending: a child's diff comes back parent-relative,
-   and we tack on the child's own index to make it grandparent-relative
-   (and so on up the recursion). *)
+(* Prepend [i] to every embedded [path] inside [diff]. Used by [compare]
+   when descending: a child's diff comes back parent-relative, and we tack
+   on the child's own index to make it grandparent-relative (and so on up
+   the recursion). *)
 let prepend_path i diff =
   let prepend_arm (ad : arm_diff) = { ad with path = i :: ad.path } in
   let prepend_wc (wc : weight_change) = { wc with path = i :: wc.path } in
@@ -111,52 +111,39 @@ let rec is_sub_policy p1 p2 =
    parent-relative diff and we tack on [i] via [prepend_path]).
    Multi-arm changes in any direction degrade to [VeryDifferent]. *)
 and compare ps1 ps2 =
-  match List.compare_lengths ps1 ps2 with
-  | 0 ->
-      (* lists of same length *)
-      begin match changed ps1 ps2 with
-      | [] -> Same
-      | [ (i, _) ] ->
-          (* Exactly one slot differs. We recurse, since diff might be
-             a deep [OneArmAdded]/[OneArmRemoved] (path bubbles up through
-             [prepend_path]) or a leaf [OneArmReplaced { path = [] }] which
-             prepend_path turns into [{ path = [i] }]. A big divergence
-             below us comes back as [VeryDifferent] and prepend_path
-             tags it with [i]. *)
-          prepend_path i (analyze (List.nth ps1 i) (List.nth ps2 i))
-      | _ ->
-          (* Detected that more than one arm was changed in-place. We can't handle that yet, but eventually we'll set up a map over all such changes and just generate a list of OneArmReplaced. *)
-          VeryDifferent []
-      end
-  | -1 -> begin
-      (* ps1 was shorter, so we check if insertions into ps1 could make ps2 *)
-      match inserted ps1 ps2 with
-      | None ->
-          (* Unable to create ps2 by inserting elements to ps1. Give up *)
-          VeryDifferent []
-      | Some [ (i, c) ] ->
-          (* One insertion into ps1 does the trick *)
-          OneArmAdded { path = [ i ]; arm = c }
-      | Some _ ->
-          (* More than one insertion. We can't handle that yet. *)
-          VeryDifferent []
-    end
-  | 1 ->
-      (* ps2 was shorter, so we check if insertions into ps2 could make ps1. 
-        Equivalently, we are checking if deletions from ps1 could make ps2. *)
-      begin match inserted ps2 ps1 with
-      | None ->
-          (* Unable to create ps1 by inserting elements to ps2. Give up *)
-          VeryDifferent []
-      | Some [ (i, c) ] ->
-          (* One insertion into ps2 creates ps1. 
-          Equivalently: we can remove that arm from ps1 to create ps2 *)
-          OneArmRemoved { path = [ i ]; arm = c }
-      | Some _ ->
-          (* More than one deletion needed. We can't handle that yet. *)
-          VeryDifferent []
-      end
-  | _ -> failwith "impossible"
+  (* Lengths differ by some number of insertions in one direction. We can
+     only describe the case of a single insertion: [inserted prev next]
+     returning exactly one diff means [next] is [prev] with one element
+     added at index [i]; package it with [ctor] (either [OneArmAdded] or
+     [OneArmRemoved] depending on which direction we were checking). *)
+  let single_insert prev next ctor =
+    match inserted prev next with
+    | Some [ (i, arm) ] -> ctor { path = [ i ]; arm }
+    | _ -> VeryDifferent []
+  in
+  let n = List.compare_lengths ps1 ps2 in
+  if n = 0 then begin
+    (* lists of same length *)
+    match changed ps1 ps2 with
+    | [] -> Same
+    | [ (i, _) ] ->
+        (* Exactly one slot differs. We recurse, since diff might be
+           a deep [OneArmAdded]/[OneArmRemoved] (path bubbles up through
+           [prepend_path]) or a leaf [OneArmReplaced { path = [] }] which
+           prepend_path turns into [{ path = [i] }]. A big divergence
+           below us comes back as [VeryDifferent] and prepend_path
+           tags it with [i]. *)
+        prepend_path i (analyze (List.nth ps1 i) (List.nth ps2 i))
+    | _ ->
+        (* Detected that more than one arm was changed in-place. We can't handle that yet, but eventually we'll set up a map over all such changes and just generate a list of OneArmReplaced. *)
+        VeryDifferent []
+  end
+  else if n < 0 then
+    (* ps1 was shorter; an insertion into ps1 could make ps2. *)
+    single_insert ps1 ps2 (fun ad -> OneArmAdded ad)
+  else
+    (* ps2 was shorter; equivalently, we can remove an arm from ps1 to make ps2. *)
+    single_insert ps2 ps1 (fun ad -> OneArmRemoved ad)
 
 and compare_wfq ps1 (ws1 : float list) ps2 (ws2 : float list) =
   match (ps1 = ps2, ws1 = ws2) with
@@ -166,15 +153,15 @@ and compare_wfq ps1 (ws1 : float list) ps2 (ws2 : float list) =
       if List.length ps1 = List.length ps2 then compare ps1 ps2
       else VeryDifferent []
   | true, false -> begin
-      (* We suspect it's a pure weight change in-place, but we need to check if the lengths are the same. *)
-      if List.length ws1 <> List.length ws2 then VeryDifferent []
-      else
-        match changed ws1 ws2 with
-        | [] -> Same
-        | [ (i, new_weight) ] -> WeightChanged { path = [ i ]; new_weight }
-        | _ ->
-            (* Detected more than one point of difference. We can't handle that yet. *)
-            VeryDifferent []
+      (* Pure weight change in-place. [ps1 = ps2] guarantees the slot
+         counts match, so [ws1] and [ws2] are necessarily the same length
+         and [changed] is well-defined. The [[]] result is unreachable
+         because [ws1 <> ws2] in this branch. *)
+      match changed ws1 ws2 with
+      | [ (i, new_weight) ] -> WeightChanged { path = [ i ]; new_weight }
+      | _ ->
+          (* Detected more than one point of difference. We can't handle that yet. *)
+          VeryDifferent []
     end
   | false, false -> begin
       (* Both lists changed. The only single-edit story we can tell here
