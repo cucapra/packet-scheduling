@@ -53,18 +53,18 @@ val patch : prev:compiled -> next:Frontend.Policy.t -> compiled option
 
     - [next] is structurally equal to [prev]'s policy: returns [Some] with an
       empty [prog].
-    - [next] adds exactly one arm at the end of a [UNION], [RR], or [SP] parent
-      (per [Rio_compare.Compare.OneArmAppended]): returns [Some] with the
-      [Spawn]/[Adopt]/[Assoc]/[Map]/[Change_pol] (and [Change_weight] for [SP])
-      instructions needed to splice the new arm in.
+    - [next] adds exactly one arm at any position of a [UNION], [RR], or [SP]
+      parent (per [Rio_compare.Compare.OneArmAdded]): returns [Some] with the
+      [Spawn]/[Adopt]/[Assoc]/[Map]/[Change_pol] (and [Change_weight] for [SP],
+      both for the new arm and for any existing arms whose positional priority
+      shifts) instructions needed to splice the new arm in.
 
     Anything else — including the broader [Rio_compare.Compare.ArmsAdded] case
-    (mid-insert, multi-arm add, weighted-arm add),
-    [Rio_compare.Compare.OneArmRemoved] (single-arm removal),
-    [Rio_compare.Compare.WeightChanged] (WFQ weight edits),
-    [Rio_compare.Compare.OneArmReplaced] (in-place policy swap at a single
-    position), and any [VeryDifferent] / [SuperPol] / [SubPol] result — returns
-    [None]. *)
+    (multi-arm add, weighted-arm add), [Rio_compare.Compare.OneArmRemoved]
+    (single-arm removal), [Rio_compare.Compare.WeightChanged] (WFQ weight
+    edits), [Rio_compare.Compare.OneArmReplaced] (in-place policy swap at a
+    single position), and any [VeryDifferent] / [SuperPol] / [SubPol] result —
+    returns [None]. *)
 
 (** JSON exporter for IR programs. *)
 module Json : sig

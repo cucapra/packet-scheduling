@@ -222,52 +222,56 @@ let rec walk_to_decorated (d : Decorated.t) path =
   | _ :: _, Decorated.FIFO _ ->
       failwith "Ir.patch: path goes through a FIFO leaf"
 
-(* Inspect the decorated parent of a OneArmAppended splice point: returns
+(* Inspect the decorated parent of a OneArmAdded splice point: returns
    the parent's vPIFO, current arity, and IR-side pol_ty in one shot. *)
 let parent_info = function
   | Decorated.FIFO _ ->
-      failwith "Ir.patch: OneArmAppended reported a FIFO as the parent"
+      failwith "Ir.patch: OneArmAdded reported a FIFO as the parent"
   | Decorated.UNION (v, edges) -> (v, List.length edges, UNION)
   | Decorated.SP (v, edges) -> (v, List.length edges, SP)
   | Decorated.RR (v, edges) -> (v, List.length edges, RR)
   | Decorated.WFQ (v, edges) -> (v, List.length edges, WFQ)
 
-(* Rebuild [d] so that the parent at [path] gains [(new_step, new_child)] as
-   its new last child. WFQ-at-splice-point is unreachable under
-   OneArmAppended (Compare doesn't generate it for WFQ), but WFQ in the path
-   itself is allowed and preserved. *)
-let rec splice_at_path (d : Decorated.t) path new_step new_child : Decorated.t =
-  match path with
-  | [] -> append_arm d new_step new_child
-  | i :: rest -> recurse_into d i rest new_step new_child
+(* Rebuild [d] so that the parent at [parent_path] gains
+   [(new_step, new_child)] as a new child at index [k]. End-append is the
+   special case [k = old arity of parent]. WFQ-at-splice-point is unreachable
+   under OneArmAdded (Compare doesn't generate it for WFQ), but WFQ in the
+   path itself is allowed and preserved. *)
+let rec splice_at_path (d : Decorated.t) parent_path k new_step new_child :
+    Decorated.t =
+  match parent_path with
+  | [] -> insert_arm d k new_step new_child
+  | i :: rest -> recurse_into d i rest k new_step new_child
 
-(* Append [(new_step, new_child)] as a new last child of [d]. Reached when
-   [splice_at_path] has walked all the way down [path] and [d] is the
-   parent we're splicing into (not the global root, despite what an older
-   name might have suggested). *)
-and append_arm (d : Decorated.t) new_step new_child : Decorated.t =
+(* Insert [(new_step, new_child)] at position [k] in [d]'s child list. *)
+and insert_arm (d : Decorated.t) k new_step new_child : Decorated.t =
+  let edge = (new_step, new_child) in
+  let rec ins n lst =
+    if n <= 0 then edge :: lst
+    else
+      match lst with
+      | [] -> [ edge ]
+      | h :: t -> h :: ins (n - 1) t
+  in
   match d with
-  | Decorated.UNION (v, edges) ->
-      Decorated.UNION (v, edges @ [ (new_step, new_child) ])
-  | Decorated.SP (v, edges) ->
-      Decorated.SP (v, edges @ [ (new_step, new_child) ])
-  | Decorated.RR (v, edges) ->
-      Decorated.RR (v, edges @ [ (new_step, new_child) ])
+  | Decorated.UNION (v, edges) -> Decorated.UNION (v, ins k edges)
+  | Decorated.SP (v, edges) -> Decorated.SP (v, ins k edges)
+  | Decorated.RR (v, edges) -> Decorated.RR (v, ins k edges)
   | Decorated.WFQ _ ->
-      failwith "Ir.patch: WFQ-at-splice-point unreachable under OneArmAppended"
+      failwith "Ir.patch: WFQ-at-splice-point unreachable under OneArmAdded"
   | Decorated.FIFO _ -> failwith "Ir.patch: cannot splice into a FIFO"
 
-and recurse_into (d : Decorated.t) i rest new_step new_child : Decorated.t =
+and recurse_into (d : Decorated.t) i rest k new_step new_child : Decorated.t =
   let update_at_i edges =
     List.mapi
       (fun j (s, c) ->
-        if j = i then (s, splice_at_path c rest new_step new_child) else (s, c))
+        if j = i then (s, splice_at_path c rest k new_step new_child) else (s, c))
       edges
   in
   let update_at_i_wfq edges =
     List.mapi
       (fun j (s, c, w) ->
-        if j = i then (s, splice_at_path c rest new_step new_child, w)
+        if j = i then (s, splice_at_path c rest k new_step new_child, w)
         else (s, c, w))
       edges
   in
@@ -319,11 +323,15 @@ let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
       (* Nothing structural to do — return an empty delta. The decorated
          tree is immutable, so we hand back the same reference. *)
       Some { prog = []; decorated = prev.decorated }
-  | VeryDifferent _ | SuperPol _ | SubPol _ | ArmsAdded _ | OneArmRemoved _
-  | WeightChanged _ | OneArmReplaced _ ->
-      None
-  | OneArmAppended { path = arm_path; arm; weight = _ } ->
-      let parent_path, _ = list_foot arm_path in
+  | VeryDifferent _
+  | SuperPol _
+  | SubPol _
+  | ArmsAdded _
+  | OneArmRemoved _
+  | WeightChanged _
+  | OneArmReplaced _ -> None
+  | OneArmAdded { path = arm_path; arm; weight = _ } ->
+      let parent_path, k = list_foot arm_path in
       let parent = walk_to_decorated prev.decorated parent_path in
       let parent_v, old_arity, pol_ty = parent_info parent in
       (* Seed the fresh-ID counters past whatever's already in [prev]. We
@@ -346,6 +354,31 @@ let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
       in
       let new_step = fresh_s () in
       let new_arity = old_arity + 1 in
+      (* SP weights are positional: index [j] carries weight [j+1]. A
+         mid-insert at [k] shifts every existing child at index [j ≥ k] to
+         new index [j+1], so its weight must bump from [j+1] to [j+2]. The
+         new arm itself takes weight [k+1]. RR/UNION carry no per-arm
+         weights, so they emit nothing here. WFQ never reaches this branch
+         (Compare doesn't emit OneArmAdded for WFQ). *)
+      let change_weights =
+        match pol_ty with
+        | SP ->
+            let existing_edges =
+              match parent with
+              | Decorated.SP (_, edges) -> edges
+              | _ -> failwith "Ir.patch: parent_info said SP but parent wasn't"
+            in
+            let shifted =
+              List.filter_map
+                (fun (j, (s, _)) ->
+                  if j >= k then
+                    Some (Change_weight (parent_v, s, float_of_int (j + 2)))
+                  else None)
+                (List.mapi (fun j e -> (j, e)) existing_edges)
+            in
+            Change_weight (parent_v, new_step, float_of_int (k + 1)) :: shifted
+        | _ -> []
+      in
       (* Build the parent's local splice instructions as a frag, then
          interleave with the new arm's frag through the same canonical
          ordering [of_policy] uses. *)
@@ -357,19 +390,13 @@ let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
           maps =
             List.map (fun c -> Map (parent_v, c, new_step)) arm_frag.classes;
           change_pols = [ Change_pol (parent_v, pol_ty, new_arity) ];
-          change_weights =
-            (match pol_ty with
-            | SP ->
-                (* Strict priority: the new arm goes to the back of the
-                   line, so its positional weight is the new arity. *)
-                [ Change_weight (parent_v, new_step, float_of_int new_arity) ]
-            | _ -> []);
+          change_weights;
           root_v = parent_v;
           classes = arm_frag.classes;
         }
       in
       let new_decorated =
-        splice_at_path prev.decorated parent_path new_step arm_decorated
+        splice_at_path prev.decorated parent_path k new_step arm_decorated
       in
       Some
         {
