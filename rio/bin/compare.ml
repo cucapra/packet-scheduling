@@ -104,21 +104,26 @@ let rec is_sub_policy p1 p2 =
         loop 0 ps
 
 (* SP/RR/UNION share a flat list-of-children shape, so they share the same
-   diff strategy: precise [one_arm_added] (the patcher's main trick — works
-   for inserts at any position, not just the end), then a subsequence-based
-   [OneArmRemoved], then structural [compare_lists]. The two callers (SP
-   and RR/UNION) differ only in how they compute the removed-arm indices,
-   so we parameterize over [removed_fn]. [OneArmAdded] only fires when
-   exactly one arm was inserted; [OneArmRemoved] only when exactly one was
-   dropped. Multi-arm changes in either direction degrade to
-   [VeryDifferent]. *)
+   diff strategy. [OneArmAdded] only fires when exactly one arm was
+   inserted; [OneArmRemoved] only when exactly one was dropped; a single
+   in-place divergence recurses into the differing children (which is
+   how deep diffs get recognized: the inner [analyze] returns a 
+   parent-relative diff and we tack on [i] via [prepend_path]).
+   Multi-arm changes in any direction degrade to [VeryDifferent]. *)
 and compare ps1 ps2 =
   match List.compare_lengths ps1 ps2 with
   | 0 ->
       (* lists of same length *)
       begin match changed ps1 ps2 with
       | [] -> Same
-      | [ (i, c) ] -> OneArmReplaced { path = [ i ]; arm = c }
+      | [ (i, _) ] ->
+          (* Exactly one slot differs. We recurse, since diff might be
+             a deep [OneArmAdded]/[OneArmRemoved] (path bubbles up through
+             [prepend_path]) or a leaf [OneArmReplaced { path = [] }] which
+             prepend_path turns into [{ path = [i] }]. A big divergence
+             below us comes back as [VeryDifferent] and prepend_path
+             tags it with [i]. *)
+          prepend_path i (analyze (List.nth ps1 i) (List.nth ps2 i))
       | _ ->
           (* Detected that more than one arm was changed in-place. We can't handle that yet, but eventually we'll set up a map over all such changes and just generate a list of OneArmReplaced. *)
           VeryDifferent []
@@ -158,7 +163,7 @@ and compare_wfq ps1 (ws1 : float list) ps2 (ws2 : float list) =
   | true, true -> Same (* Shoudn't get here; this is [Same] at a higher level *)
   | false, true ->
       (* We suspect it's a pure policy change in-place, with weights left unchanged. We can just pass this to [compare]. But first let's check if their lengths are the same *)
-      if List.length ps1 <> List.length ps2 then compare ps1 ps2
+      if List.length ps1 = List.length ps2 then compare ps1 ps2
       else VeryDifferent []
   | true, false -> begin
       (* We suspect it's a pure weight change in-place, but we need to check if the lengths are the same. *)
@@ -171,9 +176,19 @@ and compare_wfq ps1 (ws1 : float list) ps2 (ws2 : float list) =
             (* Detected more than one point of difference. We can't handle that yet. *)
             VeryDifferent []
     end
-  | false, false ->
-      (* Both the policy list and the weight list are different. We give up for now. *)
-      VeryDifferent []
+  | false, false -> begin
+      (* Both lists changed. The only single-edit story we can tell here
+         is an arm _removal_: dropping one (arm, weight) pair changes both
+         [ps] and [ws]. We require the same drop position in both — that
+         confirms we're looking at one consistent slot removal rather
+         than two coincidental edits. WFQ-add isn't expressible (the new
+         slot's weight has nowhere to ride on [arm_diff]), so we don't
+         look the other direction. *)
+      match (inserted ps2 ps1, inserted ws2 ws1) with
+      | Some [ (i, arm) ], Some [ (j, _) ] when i = j ->
+          OneArmRemoved { path = [ i ]; arm }
+      | _ -> VeryDifferent []
+    end
 
 and analyze p1 p2 =
   if p1 = p2 then Same
