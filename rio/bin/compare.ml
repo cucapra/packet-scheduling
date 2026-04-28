@@ -11,25 +11,17 @@ type t =
   | WeightChanged of weight_change
   | OneArmReplaced of arm_diff
   | VeryDifferent of path
-  | SuperPol of path
-      (** [prev] is a sub-policy of [next]: the user kept the old policy and
-          wrapped/extended it. The carried [path] points to where [prev] lives
-          inside [next]. *)
-  | SubPol of path
-      (** [next] is a sub-policy of [prev]: the user collapsed the tree to one
-          of its existing subtrees. The carried [path] points to where [next]
-          lived inside [prev]. *)
+  | SuperPol of path (* [path] points to [prev] inside [next]. *)
+  | SubPol of path (* [path] points to [next] inside [prev]. *)
 
 and arm_diff = {
   path : path;
-      (** Full path from the root of the policy tree to the position of this
-          arm. For [OneArmAdded] this is a position in *next*; for
+      (* Path from the root to the position of this arm. 
+      For [OneArmAdded] this is a position in *next*; for
           [OneArmRemoved] it is a position in *prev*. *)
   arm : Frontend.Policy.t;
   weight : float option;
-      (** [Some w] for arms that carry an explicit weight (i.e. WFQ). [None] for
-          SP / RR / UNION, where the patcher synthesizes the weight from
-          position. *)
+      (* [Some w] for arms that carry an explicit weight (i.e. WFQ). *)
 }
 
 and weight_change = {
