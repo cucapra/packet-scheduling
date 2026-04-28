@@ -76,23 +76,15 @@ let compute_rr_arms_removed ps1 ps2 =
   |> List.filter (fun (_, p) -> not (List.mem p ps2))
   |> List.map (fun (i, p) -> { path = [ i ]; arm = p })
 
-(* Walk two equal-length pair lists in parallel, accumulating (index,
-   prev_pair, next_pair) records for positions where the pairs differ.
-   Stops early once the caller can no longer use the extra information —
-   i.e. as soon as we've seen 2 differences (more never matters since
-   2+ all collapse to [VeryDifferent]). Caller guarantees equal length. *)
-let find_pair_diffs pairs1 pairs2 =
-  let rec loop i acc l1 l2 =
-    if List.length acc >= 2 then List.rev acc
-    else
-      match (l1, l2) with
-      | [], [] -> List.rev acc
-      | p1 :: t1, p2 :: t2 ->
-          let acc = if p1 = p2 then acc else (i, p1, p2) :: acc in
-          loop (i + 1) acc t1 t2
-      | _ -> failwith "find_pair_diffs: ps1 and ps2 must have equal length"
-  in
-  loop 0 [] pairs1 pairs2
+(* Walk two equal-length lists in parallel and collect every position
+   where [cmp] reports a difference (i.e. returns [Some _]). Result is
+   [(index, payload)] pairs in order. Callers care only about the
+   [[]] / [[_]] / [_::_::_] cases — "no diffs", "exactly one diff", or
+   "many" — so they pattern-match on the result. *)
+let find_diffs cmp l1 l2 =
+  List.combine l1 l2
+  |> List.mapi (fun i (a, b) -> Option.map (fun v -> (i, v)) (cmp a b))
+  |> List.filter_map Fun.id
 
 (* Prepend [i] to every embedded [path] inside [diff]. Used by
    [compare_lists] when descending: a child's diff comes back parent-relative,
@@ -143,24 +135,15 @@ let rec compare_lists ps1 ps2 =
      "exactly one" guarantee. *)
   if List.compare_lengths ps1 ps2 <> 0 then VeryDifferent []
   else
-    let rec scan i acc l1 l2 =
-      match (l1, l2) with
-      | [], [] -> List.rev acc
-      | p1 :: t1, p2 :: t2 ->
-          let acc' =
-            match analyze p1 p2 with
-            | Same -> acc
-            | other -> (i, other) :: acc
-          in
-          scan (i + 1) acc' t1 t2
-      | _ ->
-          failwith
-            "same length guaranteed by outer condition; we'll never get here"
+    let cmp p1 p2 =
+      match analyze p1 p2 with
+      | Same -> None
+      | other -> Some other
     in
-    match scan 0 [] ps1 ps2 with
+    match find_diffs cmp ps1 ps2 with
     | [] -> Same
     | [ (i, diff) ] -> prepend_path i diff
-    | _ :: _ :: _ -> VeryDifferent []
+    | _ -> VeryDifferent []
 
 (* SP/RR/UNION share a flat list-of-children shape, so they share the same
    diff strategy: precise [one_arm_added] (the patcher's main trick — works
@@ -217,15 +200,16 @@ and compare_wfq ps1 ws1 ps2 ws2 =
       | None -> (
           if List.compare_lengths pairs1 pairs2 <> 0 then VeryDifferent []
           else
-            match find_pair_diffs pairs1 pairs2 with
+            let cmp pr1 pr2 = if pr1 = pr2 then None else Some (pr1, pr2) in
+            match find_diffs cmp pairs1 pairs2 with
             | [] ->
                 (* Unreachable: equal pairs in both lists would mean equal
                    policies, and [analyze] short-circuits Same before us. *)
                 Same
-            | [ (k, (p1k, _w1k), (p2k, w2k)) ] when p1k = p2k ->
+            | [ (k, ((p1k, _w1k), (p2k, w2k))) ] when p1k = p2k ->
                 (* Same arm, different weight. *)
                 WeightChanged { path = [ k ]; new_weight = w2k }
-            | [ (k, (p1k, w1k), (p2k, w2k)) ] when w1k = w2k -> (
+            | [ (k, ((p1k, w1k), (p2k, w2k))) ] when w1k = w2k -> (
                 (* Arm changed at slot [k], weight unchanged. Recurse. *)
                 match analyze p1k p2k with
                 | OneArmReplaced { path = []; _ } ->
