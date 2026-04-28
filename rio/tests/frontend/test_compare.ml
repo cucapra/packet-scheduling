@@ -120,17 +120,11 @@ let onearmreplaced =
     make_compare_test "rr arm changed" "rr_AB" "rr_AD"
       (OneArmReplaced { path = [ 1 ]; arm = Policy.FIFO "D"; weight = None });
     (* WFQ(A:2,B:1,C:3) vs WFQ(A:2,B:1,Z:3): one slot's arm changed in
-       place, weight unchanged. The result still carries [Some 3.0] —
-       the IR can compare against the prev tree to skip a redundant
-       Change_weight if it wants. *)
+       place, weight unchanged. The result still carries [Some 3.0] so
+       the IR knows the slot's weight without re-walking the tree. *)
     make_compare_test "WFQ arm changed in place, same weight" "wfq_ABC"
       "wfq_ABZ"
       (OneArmReplaced { path = [ 2 ]; arm = Policy.FIFO "Z"; weight = Some 3.0 });
-    (* WFQ(A:2,B:1,C:3) vs WFQ(A:2,B:1,Z:7): one slot replaced and its
-       weight bumped to 7. *)
-    make_compare_test "WFQ arm changed in place, new weight" "wfq_ABC"
-      "wfq_ABZ_diff"
-      (OneArmReplaced { path = [ 2 ]; arm = Policy.FIFO "Z"; weight = Some 7.0 });
   ]
 
 let superpol =
@@ -173,6 +167,11 @@ let verydiff_combos =
        [WeightChanged]) at the same slot. *)
     make_compare_test "WFQ slot with deep diff and weight change" "wfq_complex"
       "wfq_complex_deep_and_weight" (VeryDifferent []);
+    (* WFQ(A:2,B:1,C:3) → WFQ(A:2,B:1,Z:7): one slot's arm changed
+       (C→Z, an [OneArmReplaced]) and its weight changed (3→7, a
+       [WeightChanged]). Same slot, two distinct edits. *)
+    make_compare_test "WFQ slot with arm change and weight change" "wfq_ABC"
+      "wfq_ABZ_diff" (VeryDifferent []);
     (* SP(B,A) → SP(A,B,C): swap (= two [OneArmReplaced] at indices 0/1)
        plus an [OneArmAdded] at index 2. *)
     make_compare_test "strict arm added whilst reordering arms" "strict_BA"

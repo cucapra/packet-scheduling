@@ -198,12 +198,14 @@ and compare_wfq ps1 ws1 ps2 ws2 =
      both directions: forward catches a single weighted insertion,
      reversed catches a single weighted removal. If neither fires and
      lengths match, [find_pair_diffs] tells us whether exactly one slot
-     diverged — a same-arm/new-weight slot is [WeightChanged]; a
-     different-arm slot wholesale-replaces to [OneArmReplaced] (carrying
-     the new weight, even if it matches the old — the IR decides whether
-     to emit a [Change_weight]); a deeper diff inside a slot whose
-     weight is unchanged recurses normally; anything more tangled is
-     [VeryDifferent]. *)
+     diverged. We split single-slot edits three ways:
+     - Same arm, new weight → [WeightChanged].
+     - New arm, same weight → recurse via [analyze]; if it returns a
+       root-level [OneArmReplaced] we enrich with the slot's weight, else
+       we just [prepend_path].
+     - New arm AND new weight → [VeryDifferent] (chain of two legal
+       edits; no single variant captures both).
+     Multiple-slot divergence is also [VeryDifferent]. *)
   let pairs1 = List.combine ps1 ws1 in
   let pairs2 = List.combine ps2 ws2 in
   match one_arm_added pairs1 pairs2 with
@@ -221,18 +223,20 @@ and compare_wfq ps1 ws1 ps2 ws2 =
                    policies, and [analyze] short-circuits Same before us. *)
                 Same
             | [ (k, (p1k, _w1k), (p2k, w2k)) ] when p1k = p2k ->
+                (* Same arm, different weight. *)
                 WeightChanged { path = [ k ]; new_weight = w2k }
-            | [ (k, (p1k, w1k), (p2k, w2k)) ] -> (
+            | [ (k, (p1k, w1k), (p2k, w2k)) ] when w1k = w2k -> (
+                (* Arm changed at slot [k], weight unchanged. Recurse. *)
                 match analyze p1k p2k with
                 | OneArmReplaced { path = []; _ } ->
                     OneArmReplaced
                       { path = [ k ]; arm = p2k; weight = Some w2k }
-                | inner when w1k = w2k -> prepend_path k inner
-                | _ ->
-                    (* Deeper structural diff at slot [k] *and* a weight
-                       change at the same slot — two distinct edits, no
-                       single variant captures both. *)
-                    VeryDifferent [])
+                | inner -> prepend_path k inner)
+            | [ _ ] ->
+                (* Arm changed AND weight changed at the same slot — a
+                   chain of two individually-legal edits, no single
+                   variant captures both. *)
+                VeryDifferent []
             | _ -> VeryDifferent []))
 
 and analyze p1 p2 =
