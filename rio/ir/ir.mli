@@ -59,12 +59,11 @@ val patch : prev:compiled -> next:Frontend.Policy.t -> compiled option
       both for the new arm and for any existing arms whose positional priority
       shifts) instructions needed to splice the new arm in.
 
-    Anything else — including the broader [Rio_compare.Compare.ArmsAdded] case
-    (multi-arm add, weighted-arm add), [Rio_compare.Compare.OneArmRemoved]
-    (single-arm removal), [Rio_compare.Compare.WeightChanged] (WFQ weight
-    edits), [Rio_compare.Compare.OneArmReplaced] (in-place policy swap at a
-    single position), and any [VeryDifferent] / [SuperPol] / [SubPol] result —
-    returns [None]. *)
+    Anything else — [Rio_compare.Compare.OneArmRemoved] (single-arm removal),
+    [Rio_compare.Compare.WeightChanged] (WFQ weight edits),
+    [Rio_compare.Compare.OneArmReplaced] (in-place policy swap at a single
+    position), and any [VeryDifferent] / [SuperPol] / [SubPol] result — returns
+    [None]. *)
 
 (** JSON exporter for IR programs. *)
 module Json : sig

@@ -28,12 +28,12 @@ let same =
   ]
 
 (* OneArmAdded fires on a single-arm insertion at any position of a
-   UNION/RR/SP parent (after [Policy.normalize] has sorted UNION/RR
-   children). It binds greedily — when a change is *both* a one-arm
-   insertion and a more general multi-arm ArmsAdded, OneArmAdded wins.
-   WFQ never reports OneArmAdded itself; see [armsadded] / [verydiff]
-   for the WFQ cases. The [path] inside [arm_diff] is the new arm's
-   full position from the root of [next]. *)
+   UNION/RR/SP/WFQ parent (after [Policy.normalize] has sorted
+   UNION/RR/WFQ children). For WFQ the [arm_diff.weight] field carries
+   the new arm's weight; for the others it's [None]. Multi-arm
+   insertions degrade to [VeryDifferent] — see [armsadded] / [verydiff].
+   The [path] inside [arm_diff] is the new arm's full position from the
+   root of [next]. *)
 let one_arm_added =
   [
     (* SP(A,B) vs SP(A,B,C) — append; new arm at root child 2. *)

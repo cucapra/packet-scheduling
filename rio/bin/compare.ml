@@ -73,24 +73,14 @@ let compute_strict_arms_removed ps1 ps2 =
   in
   loop 0 ps1 ps2 []
 
-(* RR / UNION: post-normalize both child lists are sorted, so each added
-   (resp. removed) arm has a well-defined index in [ps2] (resp. [ps1]). *)
-let compute_rr_arms_added ps1 ps2 =
-  List.mapi (fun i p -> (i, p)) ps2
-  |> List.filter (fun (_, p) -> not (List.mem p ps1))
-  |> List.map (fun (i, p) -> { path = [ i ]; arm = p; weight = None })
-
+(* RR / UNION: post-normalize both child lists are sorted, so each removed
+   arm has a well-defined index in [ps1]. *)
 let compute_rr_arms_removed ps1 ps2 =
   List.mapi (fun i p -> (i, p)) ps1
   |> List.filter (fun (_, p) -> not (List.mem p ps2))
   |> List.map (fun (i, p) -> { path = [ i ]; arm = p; weight = None })
 
 (* WFQ: same shape as RR/UNION but elements are (policy, weight) pairs. *)
-let compute_wfq_arms_added pairs1 pairs2 =
-  List.mapi (fun i pw -> (i, pw)) pairs2
-  |> List.filter (fun (_, pw) -> not (List.mem pw pairs1))
-  |> List.map (fun (i, (p, w)) -> { path = [ i ]; arm = p; weight = Some w })
-
 let compute_wfq_arms_removed pairs1 pairs2 =
   List.mapi (fun i pw -> (i, pw)) pairs1
   |> List.filter (fun (_, pw) -> not (List.mem pw pairs2))
@@ -188,12 +178,13 @@ let rec compare_lists ps1 ps2 =
 
 (* SP/RR/UNION share a flat list-of-children shape, so they share the same
    diff strategy: precise [one_arm_added] (the patcher's main trick — works
-   for inserts at any position, not just the end), then the broader
-   subsequence-based [ArmsAdded] / [OneArmRemoved], then structural
-   [compare_lists]. The two callers (SP and RR/UNION) differ only in how
-   they compute the multi-arm diffs, so we parameterize over [added_fn] /
-   [removed_fn]. [OneArmRemoved] only fires when exactly one arm was
-   dropped; multi-arm removals degrade to [VeryDifferent]. *)
+   for inserts at any position, not just the end), then a subsequence-based
+   [OneArmRemoved], then structural [compare_lists]. The two callers (SP
+   and RR/UNION) differ only in how they compute the removed-arm indices,
+   so we parameterize over [removed_fn]. [OneArmAdded] only fires when
+   exactly one arm was inserted; [OneArmRemoved] only when exactly one was
+   dropped. Multi-arm changes in either direction degrade to
+   [VeryDifferent]. *)
 and compare_flat ~removed_fn ps1 ps2 =
   match one_arm_added ps1 ps2 with
   | Some (arm, idx) -> OneArmAdded { path = [ idx ]; arm; weight = None }
@@ -213,10 +204,10 @@ and compare_rr_like ps1 ps2 =
   compare_flat ~removed_fn:compute_rr_arms_removed ps1 ps2
 
 and compare_wfq ps1 ws1 ps2 ws2 =
-  (* WFQ never reports [OneArmAdded] — the patcher is out of scope
-     for WFQ either way (weight changes, weighted arm-adds), so we let
-     [analyze] describe the change as precisely as it can.
-     The patcher will give up later. *)
+  (* WFQ comparisons run [one_arm_added] over (policy, weight) pairs, so a
+     single weighted insertion surfaces as [OneArmAdded] with [weight =
+     Some w]. After that we fall back through the same removed / weight-
+     change / [compare_lists] cascade as before. *)
   let pairs1 = List.combine ps1 ws1 in
   let pairs2 = List.combine ps2 ws2 in
   match one_arm_added pairs1 pairs2 with
