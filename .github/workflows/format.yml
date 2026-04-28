@@ -1,6 +1,9 @@
 name: Format
 
 on:
+  # Run on pushes to main (i.e. post-merge) and on PRs targeting main. Limiting
+  # the push trigger to main avoids the duplicate run that otherwise happens
+  # when a commit is pushed to a PR branch (push + pull_request both fire).
   push:
     branches: [main]
   pull_request:
