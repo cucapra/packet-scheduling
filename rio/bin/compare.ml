@@ -7,7 +7,6 @@ type path = int list
 type t =
   | Same
   | OneArmAdded of arm_diff
-  | ArmsAdded of arm_diff list
   | OneArmRemoved of arm_diff
   | WeightChanged of weight_change
   | OneArmReplaced of arm_diff
@@ -24,7 +23,7 @@ type t =
 and arm_diff = {
   path : path;
       (** Full path from the root of the policy tree to the position of this
-          arm. For [ArmsAdded] / [OneArmAdded] this is a position in *next*; for
+          arm. For [OneArmAdded] this is a position in *next*; for
           [OneArmRemoved] it is a position in *prev*. *)
   arm : Frontend.Policy.t;
   weight : float option;
@@ -37,10 +36,6 @@ and weight_change = {
   path : path;
   new_weight : float;
 }
-
-(* List utilities *)
-
-let list_diff xs ys = List.filter (fun x -> not (List.mem x ys)) xs
 
 (* Check if lst1 appears as an order-preserving sub-sequence of lst2.
    E.g. [A,C] is an order-preserving sub-sequence of [A,B,C,D], but
@@ -71,20 +66,6 @@ let one_arm_added ps1 ps2 =
   loop 0 ps1 ps2
 
 (* compute_*: turn two child lists into structured diffs. *)
-
-(* SP-SP removed arms: position is the index in the *next* list. *)
-let compute_strict_arms_added ps1 ps2 =
-  let rec loop i2 l1 l2 acc =
-    match (l1, l2) with
-    | _, [] -> List.rev acc
-    | [], p2 :: t2 ->
-        loop (i2 + 1) [] t2 ({ path = [ i2 ]; arm = p2; weight = None } :: acc)
-    | p1 :: t1, p2 :: t2 ->
-        if p1 = p2 then loop (i2 + 1) t1 t2 acc
-        else
-          loop (i2 + 1) l1 t2 ({ path = [ i2 ]; arm = p2; weight = None } :: acc)
-  in
-  loop 0 ps1 ps2 []
 
 (* SP-SP removed arms: position is the index in the *prev* list. *)
 let compute_strict_arms_removed ps1 ps2 =
@@ -155,7 +136,6 @@ let prepend_path i diff =
   match diff with
   | Same -> Same
   | OneArmAdded ad -> OneArmAdded (prepend_arm ad)
-  | ArmsAdded ads -> ArmsAdded (List.map prepend_arm ads)
   | OneArmRemoved ad -> OneArmRemoved (prepend_arm ad)
   | WeightChanged wc -> WeightChanged (prepend_wc wc)
   | OneArmReplaced ad -> OneArmReplaced (prepend_arm ad)
@@ -222,11 +202,11 @@ let rec compare_lists ps1 ps2 =
    they compute the multi-arm diffs, so we parameterize over [added_fn] /
    [removed_fn]. [OneArmRemoved] only fires when exactly one arm was
    dropped; multi-arm removals degrade to [VeryDifferent]. *)
-and compare_flat ~added_fn ~removed_fn ps1 ps2 =
+and compare_flat ~removed_fn ps1 ps2 =
   match one_arm_added ps1 ps2 with
   | Some (arm, idx) -> OneArmAdded { path = [ idx ]; arm; weight = None }
   | None ->
-      if is_ordered_subsequence ps1 ps2 then ArmsAdded (added_fn ps1 ps2)
+      if is_ordered_subsequence ps1 ps2 then VeryDifferent []
       else if is_ordered_subsequence ps2 ps1 then
         match removed_fn ps1 ps2 with
         | [ ad ] -> OneArmRemoved ad
@@ -234,13 +214,11 @@ and compare_flat ~added_fn ~removed_fn ps1 ps2 =
       else compare_lists ps1 ps2
 
 and compare_strict ps1 ps2 =
-  compare_flat ~added_fn:compute_strict_arms_added
-    ~removed_fn:compute_strict_arms_removed ps1 ps2
+  compare_flat ~removed_fn:compute_strict_arms_removed ps1 ps2
 
 and compare_rr_like ps1 ps2 =
   (* for RR and Union *)
-  compare_flat ~added_fn:compute_rr_arms_added
-    ~removed_fn:compute_rr_arms_removed ps1 ps2
+  compare_flat ~removed_fn:compute_rr_arms_removed ps1 ps2
 
 and compare_wfq ps1 ws1 ps2 ws2 =
   (* WFQ never reports [OneArmAdded] — the patcher is out of scope
@@ -249,25 +227,28 @@ and compare_wfq ps1 ws1 ps2 ws2 =
      The patcher will give up later. *)
   let pairs1 = List.combine ps1 ws1 in
   let pairs2 = List.combine ps2 ws2 in
-  if is_ordered_subsequence pairs1 pairs2 then
-    ArmsAdded (compute_wfq_arms_added pairs1 pairs2)
-  else if is_ordered_subsequence pairs2 pairs1 then
-    match compute_wfq_arms_removed pairs1 pairs2 with
-    | [ ad ] -> OneArmRemoved ad
-    | _ -> VeryDifferent []
-  else if ps1 = ps2 then
-    (* Same arms in same positions, but weights changed. We only
+  match one_arm_added pairs1 pairs2 with
+  | Some ((arm, weight), idx) ->
+      OneArmAdded { path = [ idx ]; arm; weight = Some weight }
+  | None ->
+      if is_ordered_subsequence ps1 ps2 then VeryDifferent []
+      else if is_ordered_subsequence pairs2 pairs1 then
+        match compute_wfq_arms_removed pairs1 pairs2 with
+        | [ ad ] -> OneArmRemoved ad
+        | _ -> VeryDifferent []
+      else if ps1 = ps2 then
+        (* Same arms in same positions, but weights changed. We only
        describe this precisely when *exactly one* weight moved;
        otherwise give up. *)
-    match compute_single_weight_change ws1 ws2 with
-    | Some wc -> WeightChanged wc
-    | None -> VeryDifferent []
-  else if ws1 = ws2 then
-    (* Same weights; the diff must be inside the children themselves. *)
-    compare_lists ps1 ps2
-  else
-    (* Mixed differences (e.g. remove-and-reweight). *)
-    VeryDifferent []
+        match compute_single_weight_change ws1 ws2 with
+        | Some wc -> WeightChanged wc
+        | None -> VeryDifferent []
+      else if ws1 = ws2 then
+        (* Same weights; the diff must be inside the children themselves. *)
+        compare_lists ps1 ps2
+      else
+        (* Mixed differences (e.g. remove-and-reweight). *)
+        VeryDifferent []
 
 and analyze p1 p2 =
   if p1 = p2 then Same
@@ -317,9 +298,6 @@ let string_of_weight_change { path; new_weight } =
 let to_string = function
   | Same -> "Same"
   | OneArmAdded ad -> Printf.sprintf "OneArmAdded: %s" (string_of_arm_diff ad)
-  | ArmsAdded ads ->
-      Printf.sprintf "ArmsAdded: %s"
-        (List.map string_of_arm_diff ads |> String.concat ", ")
   | OneArmRemoved ad ->
       Printf.sprintf "OneArmRemoved: %s" (string_of_arm_diff ad)
   | WeightChanged wc ->

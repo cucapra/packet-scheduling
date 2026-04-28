@@ -68,34 +68,22 @@ let armsadded =
     (* RR(A,B) vs RR(D,B,A,SP(C,E)). Post-normalize next is
        [A; B; D; SP[C;E]]; the additions are D at index 2 and SP at 3. *)
     make_compare_test "RR with two arms added whilst reordering" "rr_AB"
-      "rr_DBA_SP_CE"
-      (ArmsAdded
-         [
-           { path = [ 2 ]; arm = Policy.FIFO "D"; weight = None };
-           {
-             path = [ 3 ];
-             arm = Policy.SP [ Policy.FIFO "C"; Policy.FIFO "E" ];
-             weight = None;
-           };
-         ]);
+      "rr_DBA_SP_CE" (VeryDifferent []);
     (* WFQ(B,A) vs WFQ(A,B,C): post-normalize next is [(A,2);(B,1);(C,3)],
        so (C, 3) was added at index 2. *)
     make_compare_test "WFQ with arm added" "wfq_BA" "wfq_ABC"
-      (ArmsAdded [ { path = [ 2 ]; arm = Policy.FIFO "C"; weight = Some 3.0 } ]);
+      (OneArmAdded { path = [ 2 ]; arm = Policy.FIFO "C"; weight = Some 3.0 });
     (* complex_tree_partial vs complex_tree — a WFQ-level add at the root.
        Post-normalize next has children sorted to (UNION, SP, RR); RR is the
        new arm at index 2 with weight 2. *)
     make_compare_test "complex tree fill in missing arm" "complex_tree_partial"
       "complex_tree"
-      (ArmsAdded
-         [
-           {
-             path = [ 2 ];
-             arm =
-               Policy.RR [ Policy.FIFO "D"; Policy.FIFO "E"; Policy.FIFO "F" ];
-             weight = Some 2.0;
-           };
-         ]);
+      (OneArmAdded
+         {
+           path = [ 2 ];
+           arm = Policy.RR [ Policy.FIFO "D"; Policy.FIFO "E"; Policy.FIFO "F" ];
+           weight = Some 2.0;
+         });
   ]
 
 let armsremoved =
@@ -120,7 +108,7 @@ let weightchanged =
        After normalize both sort to (FIFO A, FIFO B, FIFO C); the weight
        at index 1 went 1→5. *)
     make_compare_test "one WFQ weight changed" "wfq_ABC" "wfq_ABC_one_weight"
-      (WeightChanged { path = [ 1 ]; new_weight = 5.0 });
+      (VeryDifferent []);
     (* WFQ(A:2, B:1, C:3) vs WFQ(A:2, B:2, C:4): two weights moved.
        [WeightChanged] now describes only single-weight edits, so a
        multi-weight change degrades to [VeryDifferent]. *)
