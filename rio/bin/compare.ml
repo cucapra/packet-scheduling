@@ -38,7 +38,7 @@ let inserted prev next =
     match (prev, next) with
     | [], [] -> Some (List.rev acc)
     | [], x :: t ->
-        (* remaining elements in [next] are all insertions *)
+        (* elements in [next] are all insertions *)
         loop (i + 1) [] t ((i, x) :: acc)
     | x1 :: t1, x2 :: t2 ->
         if x1 = x2 then loop (i + 1) t1 t2 acc
