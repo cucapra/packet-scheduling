@@ -80,33 +80,23 @@ let compute_rr_arms_removed ps1 ps2 =
   |> List.filter (fun (_, p) -> not (List.mem p ps2))
   |> List.map (fun (i, p) -> { path = [ i ]; arm = p; weight = None })
 
-(* WFQ: same shape as RR/UNION but elements are (policy, weight) pairs. *)
-let compute_wfq_arms_removed pairs1 pairs2 =
-  List.mapi (fun i pw -> (i, pw)) pairs1
-  |> List.filter (fun (_, pw) -> not (List.mem pw pairs2))
-  |> List.map (fun (i, (p, w)) -> { path = [ i ]; arm = p; weight = Some w })
-
-(* WFQ pure-weight: walk parallel weight lists looking for *exactly one*
-   position whose weight changed. If zero positions differ, the caller
-   should never have ended up here; if two or more differ we give up
-   ([None]) and the caller emits [VeryDifferent]. Caller guarantees
-   equal length. *)
-let compute_single_weight_change ws1 ws2 =
-  let rec loop i found l1 l2 =
-    match (l1, l2) with
-    | [], [] -> found
-    | w1 :: t1, w2 :: t2 -> (
-        if w1 = w2 then loop (i + 1) found t1 t2
-        else
-          let wc = { path = [ i ]; new_weight = w2 } in
-          match found with
-          | None -> loop (i + 1) (Some wc) t1 t2
-          | Some _ -> None)
-    | _ ->
-        failwith
-          "compute_single_weight_change: ws1 and ws2 must have equal length"
+(* Walk two equal-length pair lists in parallel, accumulating (index,
+   prev_pair, next_pair) records for positions where the pairs differ.
+   Stops early once the caller can no longer use the extra information —
+   i.e. as soon as we've seen 2 differences (more never matters since
+   2+ all collapse to [VeryDifferent]). Caller guarantees equal length. *)
+let find_pair_diffs pairs1 pairs2 =
+  let rec loop i acc l1 l2 =
+    if List.length acc >= 2 then List.rev acc
+    else
+      match (l1, l2) with
+      | [], [] -> List.rev acc
+      | p1 :: t1, p2 :: t2 ->
+          let acc = if p1 = p2 then acc else (i, p1, p2) :: acc in
+          loop (i + 1) acc t1 t2
+      | _ -> failwith "find_pair_diffs: ps1 and ps2 must have equal length"
   in
-  loop 0 None ws1 ws2
+  loop 0 [] pairs1 pairs2
 
 (* Prepend [i] to every embedded [path] inside [diff]. Used by
    [compare_lists] when descending: a child's diff comes back parent-relative,
@@ -204,34 +194,46 @@ and compare_rr_like ps1 ps2 =
   compare_flat ~removed_fn:compute_rr_arms_removed ps1 ps2
 
 and compare_wfq ps1 ws1 ps2 ws2 =
-  (* WFQ comparisons run [one_arm_added] over (policy, weight) pairs, so a
-     single weighted insertion surfaces as [OneArmAdded] with [weight =
-     Some w]. After that we fall back through the same removed / weight-
-     change / [compare_lists] cascade as before. *)
+  (* WFQ comparisons run [one_arm_added] over (policy, weight) pairs in
+     both directions: forward catches a single weighted insertion,
+     reversed catches a single weighted removal. If neither fires and
+     lengths match, [find_pair_diffs] tells us whether exactly one slot
+     diverged — a same-arm/new-weight slot is [WeightChanged]; a
+     different-arm slot wholesale-replaces to [OneArmReplaced] (carrying
+     the new weight, even if it matches the old — the IR decides whether
+     to emit a [Change_weight]); a deeper diff inside a slot whose
+     weight is unchanged recurses normally; anything more tangled is
+     [VeryDifferent]. *)
   let pairs1 = List.combine ps1 ws1 in
   let pairs2 = List.combine ps2 ws2 in
   match one_arm_added pairs1 pairs2 with
-  | Some ((arm, weight), idx) ->
-      OneArmAdded { path = [ idx ]; arm; weight = Some weight }
-  | None ->
-      if is_ordered_subsequence ps1 ps2 then VeryDifferent []
-      else if is_ordered_subsequence pairs2 pairs1 then
-        match compute_wfq_arms_removed pairs1 pairs2 with
-        | [ ad ] -> OneArmRemoved ad
-        | _ -> VeryDifferent []
-      else if ps1 = ps2 then
-        (* Same arms in same positions, but weights changed. We only
-       describe this precisely when *exactly one* weight moved;
-       otherwise give up. *)
-        match compute_single_weight_change ws1 ws2 with
-        | Some wc -> WeightChanged wc
-        | None -> VeryDifferent []
-      else if ws1 = ws2 then
-        (* Same weights; the diff must be inside the children themselves. *)
-        compare_lists ps1 ps2
-      else
-        (* Mixed differences (e.g. remove-and-reweight). *)
-        VeryDifferent []
+  | Some ((arm, w), idx) -> OneArmAdded { path = [ idx ]; arm; weight = Some w }
+  | None -> (
+      match one_arm_added pairs2 pairs1 with
+      | Some ((arm, w), idx) ->
+          OneArmRemoved { path = [ idx ]; arm; weight = Some w }
+      | None -> (
+          if List.compare_lengths pairs1 pairs2 <> 0 then VeryDifferent []
+          else
+            match find_pair_diffs pairs1 pairs2 with
+            | [] ->
+                (* Unreachable: equal pairs in both lists would mean equal
+                   policies, and [analyze] short-circuits Same before us. *)
+                Same
+            | [ (k, (p1k, _w1k), (p2k, w2k)) ] when p1k = p2k ->
+                WeightChanged { path = [ k ]; new_weight = w2k }
+            | [ (k, (p1k, w1k), (p2k, w2k)) ] -> (
+                match analyze p1k p2k with
+                | OneArmReplaced { path = []; _ } ->
+                    OneArmReplaced
+                      { path = [ k ]; arm = p2k; weight = Some w2k }
+                | inner when w1k = w2k -> prepend_path k inner
+                | _ ->
+                    (* Deeper structural diff at slot [k] *and* a weight
+                       change at the same slot — two distinct edits, no
+                       single variant captures both. *)
+                    VeryDifferent [])
+            | _ -> VeryDifferent []))
 
 and analyze p1 p2 =
   if p1 = p2 then Same
