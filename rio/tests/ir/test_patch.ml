@@ -246,10 +246,53 @@ let rr_ab_to_rr_def_expected : program =
     GC 102;
   ]
 
+(* Whole-tree replacement via constructor mismatch at the root (Compare
+   returns [OneArmReplaced { path = []; arm = RR[A,B] }]). prev =
+   sp[A,B] (vpifos 100/101/102, steps 1000/1001); next = rr[A,B] —
+   same children, different root policy, so Compare can't ride the
+   existing slots. Same handler as the [VeryDifferent []] case above:
+   builds the new tree off fresh ids, [Designate]s, drains, rewrites
+   the fake root's classifier. The class sets coincide here so
+   {Unmap,Deassoc,Assoc,Map} on the fake root cancel semantically, but
+   the instructions are still emitted. *)
+let strict_ab_to_rr_ab_expected : program =
+  [
+    Spawn (103, 0);
+    Spawn (104, 1);
+    Spawn (105, 1);
+    Adopt (1002, 103, 104);
+    Adopt (1003, 103, 105);
+    Assoc (103, "A");
+    Assoc (103, "B");
+    Assoc (104, "A");
+    Assoc (105, "B");
+    Map (103, "A", 1002);
+    Map (103, "B", 1003);
+    Change_pol (103, RR, 2);
+    Designate (100, 103);
+    Deassoc (100, "A");
+    Deassoc (100, "B");
+    Deassoc (101, "A");
+    Deassoc (102, "B");
+    Unmap (99, "A", 999);
+    Unmap (99, "B", 999);
+    Deassoc (99, "A");
+    Deassoc (99, "B");
+    Assoc (99, "A");
+    Assoc (99, "B");
+    Map (99, "A", 999);
+    Map (99, "B", 999);
+    GC 100;
+    GC 101;
+    GC 102;
+  ]
+
 let whole_tree_replace_tests =
   [
     make_delta_test "rr[A,B] -> rr[D,E,F] (whole-tree replace)" "rr_AB" "rr_DEF"
       rr_ab_to_rr_def_expected;
+    make_delta_test "strict[A,B] -> rr[A,B] (root constructor change)"
+      "strict_AB" "rr_AB" strict_ab_to_rr_ab_expected;
   ]
 
 (* SubPol *)
