@@ -108,5 +108,57 @@ let weight_changed_tests =
       wfq_abc_to_one_weight_expected;
   ]
 
-let suite = "patch tests" >::: one_arm_added_tests @ weight_changed_tests
+(* OneArmRemoved *)
+
+(* SP[A,B,C] -> SP[A,B]: drop C (last, index 2). No SP weight shifts since
+   no siblings sit at j > k. C is FIFO leaf -> single GC and a single
+   Deassoc inside the removed subtree. *)
+let strict_abc_to_ab_expected : program =
+  [
+    Change_pol (100, SP, 2);
+    Unmap (100, "C", 1002);
+    Deassoc (100, "C");
+    Deassoc (103, "C");
+    Emancipate (1002, 100, 103);
+    GC 103;
+  ]
+
+(* SP[A,B,C] -> SP[A,C]: drop B (mid, index 1). C, formerly at index 2 with
+   weight 3.0, shifts to index 1 with weight 2.0. *)
+let strict_abc_to_ac_expected : program =
+  [
+    Change_weight (100, 1002, 2.0);
+    Change_pol (100, SP, 2);
+    Unmap (100, "B", 1001);
+    Deassoc (100, "B");
+    Deassoc (102, "B");
+    Emancipate (1001, 100, 102);
+    GC 102;
+  ]
+
+(* RR[A,B,C] -> RR[A,B]: drop C from RR. No weight shifts (RR is unweighted). *)
+let rr_abc_to_ab_expected : program =
+  [
+    Change_pol (100, RR, 2);
+    Unmap (100, "C", 1002);
+    Deassoc (100, "C");
+    Deassoc (103, "C");
+    Emancipate (1002, 100, 103);
+    GC 103;
+  ]
+
+let one_arm_removed_tests =
+  [
+    make_delta_test "strict[A,B,C] -> strict[A,B]" "strict_ABC" "strict_AB"
+      strict_abc_to_ab_expected;
+    make_delta_test "strict[A,B,C] -> strict[A,C]" "strict_ABC" "strict_AC"
+      strict_abc_to_ac_expected;
+    make_delta_test "rr[A,B,C] -> rr[A,B]" "rr_ABC" "rr_AB"
+      rr_abc_to_ab_expected;
+  ]
+
+let suite =
+  "patch tests"
+  >::: one_arm_added_tests @ weight_changed_tests @ one_arm_removed_tests
+
 let () = run_test_tt_main suite

@@ -15,6 +15,14 @@ let from_instr (i : Instr.instr) : Yojson.Basic.t =
           ("parent", `Int parent);
           ("child", `Int child);
         ]
+  | Instr.Emancipate (s, parent, child) ->
+      `Assoc
+        [
+          ("op", `String "emancipate");
+          ("step", `Int s);
+          ("parent", `Int parent);
+          ("child", `Int child);
+        ]
   | Instr.Assoc (v, c) ->
       `Assoc [ ("op", `String "assoc"); ("v", `Int v); ("class", `String c) ]
   | Instr.Deassoc (v, c) ->
@@ -23,6 +31,14 @@ let from_instr (i : Instr.instr) : Yojson.Basic.t =
       `Assoc
         [
           ("op", `String "map");
+          ("v", `Int v);
+          ("class", `String c);
+          ("step", `Int s);
+        ]
+  | Instr.Unmap (v, c, s) ->
+      `Assoc
+        [
+          ("op", `String "unmap");
           ("v", `Int v);
           ("class", `String c);
           ("step", `Int s);
@@ -43,6 +59,7 @@ let from_instr (i : Instr.instr) : Yojson.Basic.t =
           ("step", `Int s);
           ("weight", `Float w);
         ]
+  | Instr.GC v -> `Assoc [ ("op", `String "gc"); ("v", `Int v) ]
 
 let from_program (p : Instr.program) : Yojson.Basic.t =
   `List (List.map from_instr p)

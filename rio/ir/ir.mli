@@ -61,11 +61,16 @@ val patch : prev:compiled -> next:Frontend.Policy.t -> compiled option
     - [next] differs from [prev] only in the weight of one [WFQ] arm (per
       [Rio_compare.Compare.WeightChanged]): returns [Some] with a single
       [Change_weight] instruction for the affected slot.
+    - [next] removes exactly one arm at any position of a [UNION], [RR], or [SP]
+      parent (per [Rio_compare.Compare.OneArmRemoved]): returns [Some] with the
+      [Change_weight] (for [SP] siblings whose positional priority shifts down),
+      [Change_pol], [Unmap], [Deassoc], [Emancipate], and [GC] instructions
+      needed to detach the arm and clean up routing state cached on its ancestor
+      chain.
 
-    Anything else — [Rio_compare.Compare.OneArmRemoved] (single-arm removal),
-    [Rio_compare.Compare.OneArmReplaced] (in-place policy swap at a single
-    position), and any [VeryDifferent] / [SuperPol] / [SubPol] result — returns
-    [None]. *)
+    Anything else — [Rio_compare.Compare.OneArmReplaced] (in-place policy swap
+    at a single position) and any [VeryDifferent] / [SuperPol] / [SubPol] result
+    — returns [None]. *)
 
 (** JSON exporter for IR programs. *)
 module Json : sig

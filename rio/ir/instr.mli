@@ -18,17 +18,26 @@ type instr =
   | Adopt of step * vpifo * vpifo
       (** [Adopt (s, parent, child)]: tell [parent] that [child] is its child;
           [s] is the step [parent] uses to refer to [child]. *)
+  | Emancipate of step * vpifo * vpifo
+      (** [Emancipate (s, parent, child)]: inverse of [Adopt]. Detach [child]
+          from [parent]; [s] is the step that was used to reach [child]. *)
   | Assoc of vpifo * clss
       (** [Assoc (v, c)]: [v] begins to accept packets of class [c]. *)
   | Deassoc of vpifo * clss
       (** [Deassoc (v, c)]: [v] stops accepting packets of class [c]. *)
   | Map of vpifo * clss * step
       (** [Map (v, c, s)]: in [v]'s brain, map class [c] to step [s]. *)
+  | Unmap of vpifo * clss * step
+      (** [Unmap (v, c, s)]: inverse of [Map]. Forget [v]'s mapping from class
+          [c] to step [s]. *)
   | Change_pol of vpifo * pol_ty * int
       (** [Change_pol (v, pol, n)]: set [v]'s policy to [pol] with [n] arms. *)
   | Change_weight of vpifo * step * float
       (** [Change_weight (v, s, w)]: the child reached via step [s] has weight
           [w]. *)
+  | GC of vpifo
+      (** [GC v]: tell the garbage collector that [v] is available for
+          collection. *)
 
 type program = instr list
 

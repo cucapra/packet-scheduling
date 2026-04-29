@@ -15,11 +15,14 @@ type pol_ty =
 type instr =
   | Spawn of vpifo * pe
   | Adopt of step * vpifo * vpifo
+  | Emancipate of step * vpifo * vpifo
   | Assoc of vpifo * clss
   | Deassoc of vpifo * clss
   | Map of vpifo * clss * step
+  | Unmap of vpifo * clss * step
   | Change_pol of vpifo * pol_ty * int
   | Change_weight of vpifo * step * float
+  | GC of vpifo
 
 type program = instr list
 
@@ -40,15 +43,22 @@ let string_of_instr = function
   | Adopt (s, parent, child) ->
       Printf.sprintf "%s = adopt(%s, %s)" (string_of_step s)
         (string_of_vpifo parent) (string_of_vpifo child)
+  | Emancipate (s, parent, child) ->
+      Printf.sprintf "emancipate(%s, %s, %s)" (string_of_step s)
+        (string_of_vpifo parent) (string_of_vpifo child)
   | Assoc (v, c) -> Printf.sprintf "assoc(%s, %s)" (string_of_vpifo v) c
   | Deassoc (v, c) -> Printf.sprintf "deassoc(%s, %s)" (string_of_vpifo v) c
   | Map (v, c, s) ->
       Printf.sprintf "map(%s, %s, %s)" (string_of_vpifo v) c (string_of_step s)
+  | Unmap (v, c, s) ->
+      Printf.sprintf "unmap(%s, %s, %s)" (string_of_vpifo v) c
+        (string_of_step s)
   | Change_pol (v, pt, n) ->
       Printf.sprintf "change_pol(%s, %s, %d)" (string_of_vpifo v)
         (string_of_pol_ty pt) n
   | Change_weight (v, s, w) ->
       Printf.sprintf "change_weight(%s, %s, %F)" (string_of_vpifo v)
         (string_of_step s) w
+  | GC v -> Printf.sprintf "gc(%s)" (string_of_vpifo v)
 
 let string_of_program p = p |> List.map string_of_instr |> String.concat "\n"

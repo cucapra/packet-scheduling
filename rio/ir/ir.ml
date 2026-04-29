@@ -326,13 +326,112 @@ let rec set_weight_at_path (d : Decorated.t) parent_path k new_weight :
       | Decorated.WFQ (v, edges) -> Decorated.WFQ (v, bump_wfq edges)
       | Decorated.FIFO _ -> failwith "Ir.patch: path goes through a FIFO leaf")
 
-(* Fetch the step ID on the [k]-th edge of a WFQ parent. *)
-let wfq_step_at parent k =
+(* Fetch the step ID on the [k]-th edge of any non-FIFO parent. *)
+let parent_step_at parent k =
   match parent with
+  | Decorated.UNION (_, edges)
+  | Decorated.SP (_, edges)
+  | Decorated.RR (_, edges) ->
+      let s, _ = List.nth edges k in
+      s
   | Decorated.WFQ (_, edges) ->
       let s, _, _ = List.nth edges k in
       s
-  | _ -> failwith "Ir.patch: WeightChanged parent is not a WFQ"
+  | Decorated.FIFO _ -> failwith "Ir.patch: cannot index a FIFO leaf"
+
+(* Walk [path] from the root of [d] to (but not into) the node at [path];
+   return one [(ancestor_v, step_toward_path_child)] entry per ancestor
+   traversed, in root-to-immediate-parent order. Length equals [List.length
+   path]. Used by [OneArmRemoved] to enumerate the ancestor chain that
+   carries [Map]/[Assoc] state for the removed subtree's classes. *)
+let rec ancestor_chain (d : Decorated.t) (path : int list) : (vpifo * step) list
+    =
+  match path with
+  | [] -> []
+  | i :: rest ->
+      let v_step, child = step_in d i in
+      v_step :: ancestor_chain child rest
+
+and step_in (d : Decorated.t) i : (vpifo * step) * Decorated.t =
+  match d with
+  | Decorated.UNION (v, edges)
+  | Decorated.SP (v, edges)
+  | Decorated.RR (v, edges) ->
+      let s, c = List.nth edges i in
+      ((v, s), c)
+  | Decorated.WFQ (v, edges) ->
+      let s, c, _ = List.nth edges i in
+      ((v, s), c)
+  | Decorated.FIFO _ -> failwith "Ir.patch: path goes through a FIFO leaf"
+
+(* All classes carried by leaves of [d], in pre-order. Mirrors how
+   [compile_arm] propagates [classes] up the tree, so each ancestor of [d]
+   holds an [Assoc] for every class in this list. *)
+let rec subtree_classes : Decorated.t -> clss list = function
+  | Decorated.FIFO (_, c) -> [ c ]
+  | Decorated.UNION (_, edges)
+  | Decorated.SP (_, edges)
+  | Decorated.RR (_, edges) ->
+      List.concat_map (fun (_, c) -> subtree_classes c) edges
+  | Decorated.WFQ (_, edges) ->
+      List.concat_map (fun (_, c, _) -> subtree_classes c) edges
+
+(* All vPIFO IDs in [d], pre-order. Used by [OneArmRemoved] to emit one
+   [GC] per vPIFO in the removed subtree. *)
+let rec subtree_vpifos : Decorated.t -> vpifo list = function
+  | Decorated.FIFO (v, _) -> [ v ]
+  | Decorated.UNION (v, edges)
+  | Decorated.SP (v, edges)
+  | Decorated.RR (v, edges) ->
+      v :: List.concat_map (fun (_, c) -> subtree_vpifos c) edges
+  | Decorated.WFQ (v, edges) ->
+      v :: List.concat_map (fun (_, c, _) -> subtree_vpifos c) edges
+
+(* For each node in [d], pair its vPIFO with the classes it was [Assoc]'d
+   to during compilation: a leaf carries its single class, and an internal
+   node carries the union of its descendants' classes (matching the
+   [all_classes] computation in [compile_arm]). Used by [OneArmRemoved] to
+   emit a [Deassoc] per (vPIFO, class) inside the removed subtree. *)
+let rec subtree_class_assocs (d : Decorated.t) : (vpifo * clss list) list =
+  match d with
+  | Decorated.FIFO (v, c) -> [ (v, [ c ]) ]
+  | Decorated.UNION (v, edges)
+  | Decorated.SP (v, edges)
+  | Decorated.RR (v, edges) ->
+      let kid_assocs =
+        List.concat_map (fun (_, c) -> subtree_class_assocs c) edges
+      in
+      (v, subtree_classes d) :: kid_assocs
+  | Decorated.WFQ (v, edges) ->
+      let kid_assocs =
+        List.concat_map (fun (_, c, _) -> subtree_class_assocs c) edges
+      in
+      (v, subtree_classes d) :: kid_assocs
+
+(* Rebuild [d] dropping the arm at index [k] of the parent at [parent_path].
+   Used by [OneArmRemoved] to produce the next decorated tree. *)
+let rec remove_at_path (d : Decorated.t) parent_path k : Decorated.t =
+  match parent_path with
+  | [] -> drop_arm d k
+  | i :: rest -> (
+      let recurse c = remove_at_path c rest k in
+      let bump = list_replace_nth i (fun (s, c) -> (s, recurse c)) in
+      let bump_wfq = list_replace_nth i (fun (s, c, w) -> (s, recurse c, w)) in
+      match d with
+      | Decorated.UNION (v, edges) -> Decorated.UNION (v, bump edges)
+      | Decorated.SP (v, edges) -> Decorated.SP (v, bump edges)
+      | Decorated.RR (v, edges) -> Decorated.RR (v, bump edges)
+      | Decorated.WFQ (v, edges) -> Decorated.WFQ (v, bump_wfq edges)
+      | Decorated.FIFO _ -> failwith "Ir.patch: path goes through a FIFO leaf")
+
+and drop_arm (d : Decorated.t) k : Decorated.t =
+  let drop l = List.filteri (fun j _ -> j <> k) l in
+  match d with
+  | Decorated.UNION (v, edges) -> Decorated.UNION (v, drop edges)
+  | Decorated.SP (v, edges) -> Decorated.SP (v, drop edges)
+  | Decorated.RR (v, edges) -> Decorated.RR (v, drop edges)
+  | Decorated.WFQ (v, edges) -> Decorated.WFQ (v, drop edges)
+  | Decorated.FIFO _ -> failwith "Ir.patch: cannot drop arm from a FIFO"
 
 (* --- Public entry points. ------------------------------------------------- *)
 
@@ -350,8 +449,91 @@ let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
       (* Nothing structural to do — return an empty delta. The decorated
          tree is immutable, so we hand back the same reference. *)
       Some { prog = []; decorated = prev.decorated }
-  | VeryDifferent _ | SuperPol _ | SubPol _ | OneArmRemoved _ | OneArmReplaced _
-    -> None
+  | VeryDifferent _ | SuperPol _ | SubPol _ | OneArmReplaced _ -> None
+  | OneArmRemoved { path = arm_path; arm = _ } ->
+      let parent_path, k = list_foot arm_path in
+      let parent = walk_to_decorated prev.decorated parent_path in
+      let parent_v, old_arity, pol_ty =
+        match parent with
+        | Decorated.FIFO _ ->
+            failwith "Ir.patch: OneArmRemoved reported a FIFO as the parent"
+        | Decorated.UNION (v, edges) -> (v, List.length edges, UNION)
+        | Decorated.SP (v, edges) -> (v, List.length edges, SP)
+        | Decorated.RR (v, edges) -> (v, List.length edges, RR)
+        | Decorated.WFQ (v, edges) -> (v, List.length edges, WFQ)
+      in
+      let removed = walk_to_decorated prev.decorated arm_path in
+      let removed_v =
+        match removed with
+        | Decorated.FIFO (v, _)
+        | Decorated.UNION (v, _)
+        | Decorated.SP (v, _)
+        | Decorated.RR (v, _)
+        | Decorated.WFQ (v, _) -> v
+      in
+      let step_k = parent_step_at parent k in
+      let new_arity = old_arity - 1 in
+      (* SP weights are positional: arm at index [j] carries weight [j+1].
+         Removing index [k] shifts every sibling at [j > k] down to [j-1],
+         so its weight drops from [j+1] to [j]. RR/UNION carry no per-arm
+         weights. WFQ never reaches this branch (Compare doesn't emit
+         OneArmRemoved for WFQ). *)
+      let change_weights =
+        match pol_ty with
+        | SP ->
+            let existing_edges =
+              match parent with
+              | Decorated.SP (_, edges) -> edges
+              | _ -> failwith "Ir.patch: pol_ty SP but parent isn't SP"
+            in
+            List.filter_map
+              (fun (j, (s, _)) ->
+                if j > k then Some (Change_weight (parent_v, s, float_of_int j))
+                else None)
+              (List.mapi (fun j e -> (j, e)) existing_edges)
+        | _ -> []
+      in
+      let change_pol = [ Change_pol (parent_v, pol_ty, new_arity) ] in
+      (* Cleanup of routing state cached on each ancestor of the removed
+         subtree. Every ancestor holds a [Map] and an [Assoc] per class in
+         the removed subtree; we emit the matching [Unmap]/[Deassoc]. *)
+      let chain = ancestor_chain prev.decorated arm_path in
+      let removed_classes = subtree_classes removed in
+      let unmaps =
+        List.concat_map
+          (fun (anc_v, anc_step) ->
+            List.map (fun c -> Unmap (anc_v, c, anc_step)) removed_classes)
+          chain
+      in
+      let ancestor_deassocs =
+        List.concat_map
+          (fun (anc_v, _) ->
+            List.map (fun c -> Deassoc (anc_v, c)) removed_classes)
+          chain
+      in
+      (* Inside the removed subtree, every node was [Assoc]'d to the union
+         of its descendants' classes; emit a matching [Deassoc] per pair. *)
+      let inner_deassocs =
+        List.concat_map
+          (fun (v, cs) -> List.map (fun c -> Deassoc (v, c)) cs)
+          (subtree_class_assocs removed)
+      in
+      let emancipate = [ Emancipate (step_k, parent_v, removed_v) ] in
+      let gcs = List.map (fun v -> GC v) (subtree_vpifos removed) in
+      let prog =
+        List.concat
+          [
+            change_weights;
+            change_pol;
+            unmaps;
+            ancestor_deassocs;
+            inner_deassocs;
+            emancipate;
+            gcs;
+          ]
+      in
+      let new_decorated = remove_at_path prev.decorated parent_path k in
+      Some { prog; decorated = new_decorated }
   | WeightChanged { path; new_weight } ->
       let parent_path, k = list_foot path in
       let parent = walk_to_decorated prev.decorated parent_path in
@@ -360,7 +542,7 @@ let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
         | Decorated.WFQ (v, _) -> v
         | _ -> failwith "Ir.patch: WeightChanged parent is not a WFQ"
       in
-      let step_k = wfq_step_at parent k in
+      let step_k = parent_step_at parent k in
       let new_decorated =
         set_weight_at_path prev.decorated parent_path k new_weight
       in
