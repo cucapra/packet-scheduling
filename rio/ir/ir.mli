@@ -58,9 +58,11 @@ val patch : prev:compiled -> next:Frontend.Policy.t -> compiled option
       [Spawn]/[Adopt]/[Assoc]/[Map]/[Change_pol] (and [Change_weight] for [SP],
       both for the new arm and for any existing arms whose positional priority
       shifts) instructions needed to splice the new arm in.
+    - [next] differs from [prev] only in the weight of one [WFQ] arm (per
+      [Rio_compare.Compare.WeightChanged]): returns [Some] with a single
+      [Change_weight] instruction for the affected slot.
 
     Anything else — [Rio_compare.Compare.OneArmRemoved] (single-arm removal),
-    [Rio_compare.Compare.WeightChanged] (WFQ weight edits),
     [Rio_compare.Compare.OneArmReplaced] (in-place policy swap at a single
     position), and any [VeryDifferent] / [SuperPol] / [SubPol] result — returns
     [None]. *)

@@ -37,6 +37,11 @@ let list_foot xs =
   | [] -> invalid_arg "list_foot: empty list"
   | last :: rev_init -> (List.rev rev_init, last)
 
+(* Replace element at index [i] in [xs] by applying [f] to the existing value.
+   Other elements are left untouched. Out-of-range [i] silently leaves the
+   list unchanged — every caller in this file has already validated [i]. *)
+let list_replace_nth i f xs = List.mapi (fun j x -> if j = i then f x else x) xs
+
 (* The instructions for compiling a subtree, grouped by instruction "kind".
    By merging these [frags] with care, we can make a top-level
    concatenation that has all spawns first, then all adopts, etc. *)
@@ -262,24 +267,14 @@ and insert_arm (d : Decorated.t) k new_step new_child : Decorated.t =
   | Decorated.FIFO _ -> failwith "Ir.patch: cannot splice into a FIFO"
 
 and recurse_into (d : Decorated.t) i rest k new_step new_child : Decorated.t =
-  let update_at_i edges =
-    List.mapi
-      (fun j (s, c) ->
-        if j = i then (s, splice_at_path c rest k new_step new_child) else (s, c))
-      edges
-  in
-  let update_at_i_wfq edges =
-    List.mapi
-      (fun j (s, c, w) ->
-        if j = i then (s, splice_at_path c rest k new_step new_child, w)
-        else (s, c, w))
-      edges
-  in
+  let recurse c = splice_at_path c rest k new_step new_child in
+  let bump = list_replace_nth i (fun (s, c) -> (s, recurse c)) in
+  let bump_wfq = list_replace_nth i (fun (s, c, w) -> (s, recurse c, w)) in
   match d with
-  | Decorated.UNION (v, edges) -> Decorated.UNION (v, update_at_i edges)
-  | Decorated.SP (v, edges) -> Decorated.SP (v, update_at_i edges)
-  | Decorated.RR (v, edges) -> Decorated.RR (v, update_at_i edges)
-  | Decorated.WFQ (v, edges) -> Decorated.WFQ (v, update_at_i_wfq edges)
+  | Decorated.UNION (v, edges) -> Decorated.UNION (v, bump edges)
+  | Decorated.SP (v, edges) -> Decorated.SP (v, bump edges)
+  | Decorated.RR (v, edges) -> Decorated.RR (v, bump edges)
+  | Decorated.WFQ (v, edges) -> Decorated.WFQ (v, bump_wfq edges)
   | Decorated.FIFO _ -> failwith "Ir.patch: path goes through a FIFO leaf"
 
 (* Count vPIFOs in [d] — one per node. Used by [patch] to seed its [fresh_v]
@@ -307,6 +302,38 @@ let rec count_steps : Decorated.t -> int = function
       List.length edges
       + List.fold_left (fun acc (_, c, _) -> acc + count_steps c) 0 edges
 
+(* Update the WFQ edge at index [k] of the parent at [parent_path] to carry
+   [new_weight]. The parent must be a [Decorated.WFQ]; anything else is a
+   [Compare] bug, since [WeightChanged] is only emitted for WFQ. *)
+let rec set_weight_at_path (d : Decorated.t) parent_path k new_weight :
+    Decorated.t =
+  match parent_path with
+  | [] -> begin
+      match d with
+      | Decorated.WFQ (v, edges) ->
+          let set_weight (s, c, _) = (s, c, new_weight) in
+          Decorated.WFQ (v, list_replace_nth k set_weight edges)
+      | _ -> failwith "Ir.patch: WeightChanged parent is not a WFQ"
+    end
+  | i :: rest -> (
+      let recurse c = set_weight_at_path c rest k new_weight in
+      let bump = list_replace_nth i (fun (s, c) -> (s, recurse c)) in
+      let bump_wfq = list_replace_nth i (fun (s, c, w) -> (s, recurse c, w)) in
+      match d with
+      | Decorated.UNION (v, edges) -> Decorated.UNION (v, bump edges)
+      | Decorated.SP (v, edges) -> Decorated.SP (v, bump edges)
+      | Decorated.RR (v, edges) -> Decorated.RR (v, bump edges)
+      | Decorated.WFQ (v, edges) -> Decorated.WFQ (v, bump_wfq edges)
+      | Decorated.FIFO _ -> failwith "Ir.patch: path goes through a FIFO leaf")
+
+(* Fetch the step ID on the [k]-th edge of a WFQ parent. *)
+let wfq_step_at parent k =
+  match parent with
+  | Decorated.WFQ (_, edges) ->
+      let s, _, _ = List.nth edges k in
+      s
+  | _ -> failwith "Ir.patch: WeightChanged parent is not a WFQ"
+
 (* --- Public entry points. ------------------------------------------------- *)
 
 let of_policy (p : Frontend.Policy.t) : compiled =
@@ -323,12 +350,25 @@ let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
       (* Nothing structural to do — return an empty delta. The decorated
          tree is immutable, so we hand back the same reference. *)
       Some { prog = []; decorated = prev.decorated }
-  | VeryDifferent _
-  | SuperPol _
-  | SubPol _
-  | OneArmRemoved _
-  | WeightChanged _
-  | OneArmReplaced _ -> None
+  | VeryDifferent _ | SuperPol _ | SubPol _ | OneArmRemoved _ | OneArmReplaced _
+    -> None
+  | WeightChanged { path; new_weight } ->
+      let parent_path, k = list_foot path in
+      let parent = walk_to_decorated prev.decorated parent_path in
+      let parent_v =
+        match parent with
+        | Decorated.WFQ (v, _) -> v
+        | _ -> failwith "Ir.patch: WeightChanged parent is not a WFQ"
+      in
+      let step_k = wfq_step_at parent k in
+      let new_decorated =
+        set_weight_at_path prev.decorated parent_path k new_weight
+      in
+      Some
+        {
+          prog = [ Change_weight (parent_v, step_k, new_weight) ];
+          decorated = new_decorated;
+        }
   | OneArmAdded { path = arm_path; arm } ->
       let parent_path, k = list_foot arm_path in
       let parent = walk_to_decorated prev.decorated parent_path in

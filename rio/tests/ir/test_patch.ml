@@ -94,5 +94,19 @@ let one_arm_added_tests =
       "complex_tree_add_arm_deep" complex_tree_add_deep_expected;
   ]
 
-let suite = "patch tests" >::: one_arm_added_tests
+(* WeightChanged *)
+
+(* WFQ root with three FIFO arms: vpifo IDs 100 (root), 101/102/103 (A/B/C);
+   adopt steps 1000/1001/1002. Bumping B's weight 1 -> 5 should emit a single
+   Change_weight on the root for B's step. *)
+let wfq_abc_to_one_weight_expected : program =
+  [ Change_weight (100, 1001, 5.0) ]
+
+let weight_changed_tests =
+  [
+    make_delta_test "wfq[A,B,C] -> wfq[A,B(5),C]" "wfq_ABC" "wfq_ABC_one_weight"
+      wfq_abc_to_one_weight_expected;
+  ]
+
+let suite = "patch tests" >::: one_arm_added_tests @ weight_changed_tests
 let () = run_test_tt_main suite
