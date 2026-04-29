@@ -157,8 +157,50 @@ let one_arm_removed_tests =
       rr_abc_to_ab_expected;
   ]
 
+(* OneArmReplaced *)
+
+(* RR[A,B] -> RR[A,D]: replace B (vpifo 102, step 1001) with FIFO D. The
+   new arm rides on step 1001; B's super-node is set up via Designate(102,
+   103). Ancestor routing on root vpifo 100 shifts B → D (Unmap/Deassoc
+   then Assoc/Map). Inner Deassoc drains the old leaf, GC marks 102. *)
+let rr_ab_to_ad_expected : program =
+  [
+    Spawn (103, 1);
+    Assoc (103, "D");
+    Designate (102, 103);
+    Deassoc (102, "B");
+    Unmap (100, "B", 1001);
+    Deassoc (100, "B");
+    Assoc (100, "D");
+    Map (100, "D", 1001);
+    GC 102;
+  ]
+
+(* SP[A,B] -> SP[A,C]: same shape as RR but in an SP parent. Positional
+   weights stay (slot 1 is still 2.0), so no Change_weight is emitted. *)
+let strict_ab_to_ac_expected : program =
+  [
+    Spawn (103, 1);
+    Assoc (103, "C");
+    Designate (102, 103);
+    Deassoc (102, "B");
+    Unmap (100, "B", 1001);
+    Deassoc (100, "B");
+    Assoc (100, "C");
+    Map (100, "C", 1001);
+    GC 102;
+  ]
+
+let one_arm_replaced_tests =
+  [
+    make_delta_test "rr[A,B] -> rr[A,D]" "rr_AB" "rr_AD" rr_ab_to_ad_expected;
+    make_delta_test "strict[A,B] -> strict[A,C]" "strict_AB" "strict_AC"
+      strict_ab_to_ac_expected;
+  ]
+
 let suite =
   "patch tests"
   >::: one_arm_added_tests @ weight_changed_tests @ one_arm_removed_tests
+       @ one_arm_replaced_tests
 
 let () = run_test_tt_main suite

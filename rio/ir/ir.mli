@@ -67,10 +67,19 @@ val patch : prev:compiled -> next:Frontend.Policy.t -> compiled option
       [Change_pol], [Unmap], [Deassoc], [Emancipate], and [GC] instructions
       needed to detach the arm and clean up routing state cached on its ancestor
       chain.
+    - [next] swaps in a different subtree at exactly one position (per
+      [Rio_compare.Compare.OneArmReplaced]) at a non-empty path: returns [Some]
+      with the new arm's
+      [Spawn]/[Adopt]/[Assoc]/[Map]/[Change_pol]/[Change_weight] instructions, a
+      [Designate] that fuses the old and new roots into a super-node riding on
+      the existing parent step, [Deassoc]s that drain the old classes out of the
+      displaced subtree and its ancestors, [Assoc]/[Map] entries that route the
+      new classes to the same step, and a [GC] per node of the displaced subtree
+      so it's collected once it underflows. The whole-tree case ([path = []])
+      returns [None].
 
-    Anything else — [Rio_compare.Compare.OneArmReplaced] (in-place policy swap
-    at a single position) and any [VeryDifferent] / [SuperPol] / [SubPol] result
-    — returns [None]. *)
+    Anything else — any [VeryDifferent] / [SuperPol] / [SubPol] result — returns
+    [None]. *)
 
 (** JSON exporter for IR programs. *)
 module Json : sig

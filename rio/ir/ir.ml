@@ -192,6 +192,18 @@ module Decorated = struct
     | WFQ (v, es) ->
         WFQ (v, list_replace_nth k (fun (s, c, _) -> (s, c, new_w)) es)
     | _ -> failwith "Decorated.set_weight: WFQ-only"
+
+  (* Replace child at index [k], preserving the parent→child step (and WFQ
+     weight). Used by [OneArmReplaced]: the new arm rides on the existing
+     [step_k], with the old root [Designate]d as the new root's predecessor. *)
+  let replace_arm k new_child = function
+    | FIFO _ -> failwith "Decorated.replace_arm: FIFO"
+    | UNION (v, es) ->
+        UNION (v, list_replace_nth k (fun (s, _) -> (s, new_child)) es)
+    | SP (v, es) -> SP (v, list_replace_nth k (fun (s, _) -> (s, new_child)) es)
+    | RR (v, es) -> RR (v, list_replace_nth k (fun (s, _) -> (s, new_child)) es)
+    | WFQ (v, es) ->
+        WFQ (v, list_replace_nth k (fun (s, _, w) -> (s, new_child, w)) es)
 end
 
 type compiled = {
@@ -401,7 +413,90 @@ let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
       (* Nothing structural to do — return an empty delta. The decorated
          tree is immutable, so we hand back the same reference. *)
       Some { prog = []; decorated = prev.decorated }
-  | VeryDifferent _ | SuperPol _ | SubPol _ | OneArmReplaced _ -> None
+  | VeryDifferent _ | SuperPol _ | SubPol _ -> None
+  | OneArmReplaced { path = []; _ } ->
+      (* Whole-tree replacement: nothing to ride on — let the caller
+         re-[of_policy]. *)
+      None
+  | OneArmReplaced { path = arm_path; arm } ->
+      let parent_path, k = list_foot arm_path in
+      let parent = Decorated.walk prev.decorated parent_path in
+      let _ = parent_info parent in
+      let removed = Decorated.nth_child parent k in
+      let removed_v = Decorated.vpifo removed in
+      let fresh_v =
+        make_counter ~start:(vpifo_start + Decorated.count_vpifos prev.decorated)
+      in
+      let fresh_s =
+        make_counter ~start:(step_start + Decorated.count_steps prev.decorated)
+      in
+      (* Compile the new arm at the depth of the slot it's replacing. The
+         parent never [Adopt]s the new root directly — instead [Designate]
+         fuses the old root and new root into a super-node that occupies
+         the existing slot, riding on [step_k]. *)
+      let arm_depth = List.length arm_path in
+      let arm_frag, arm_decorated =
+        compile_subtree ~fresh_v ~fresh_s ~depth:arm_depth arm
+      in
+      let new_root_v = arm_frag.root_v in
+      let new_classes = arm_frag.classes in
+      let removed_classes = Decorated.subtree_classes removed in
+      let chain = Decorated.ancestor_chain prev.decorated arm_path in
+      (* Each ancestor of the slot held [Assoc]/[Map] entries for every
+         class in the removed subtree; rewrite that routing state to the
+         new subtree's classes instead, reusing the same step. *)
+      let unmaps_old =
+        List.concat_map
+          (fun (anc_v, anc_step) ->
+            List.map (fun c -> Unmap (anc_v, c, anc_step)) removed_classes)
+          chain
+      in
+      let deassocs_old_anc =
+        List.concat_map
+          (fun (anc_v, _) ->
+            List.map (fun c -> Deassoc (anc_v, c)) removed_classes)
+          chain
+      in
+      let assocs_new_anc =
+        List.concat_map
+          (fun (anc_v, _) -> List.map (fun c -> Assoc (anc_v, c)) new_classes)
+          chain
+      in
+      let maps_new =
+        List.concat_map
+          (fun (anc_v, anc_step) ->
+            List.map (fun c -> Map (anc_v, c, anc_step)) new_classes)
+          chain
+      in
+      (* Inside the removed subtree, each node was [Assoc]'d to the union
+         of its descendants' classes. The subtree itself stays adopted
+         under the super-node and drains naturally, but it must stop
+         accepting new traffic of the old classes. *)
+      let inner_deassocs =
+        List.concat_map
+          (fun (v, cs) -> List.map (fun c -> Deassoc (v, c)) cs)
+          (Decorated.subtree_class_assocs removed)
+      in
+      let designate = [ Designate (removed_v, new_root_v) ] in
+      let gcs = List.map (fun v -> GC v) (Decorated.subtree_vpifos removed) in
+      let prog =
+        List.concat
+          [
+            frag_to_program arm_frag;
+            designate;
+            inner_deassocs;
+            unmaps_old;
+            deassocs_old_anc;
+            assocs_new_anc;
+            maps_new;
+            gcs;
+          ]
+      in
+      let new_decorated =
+        Decorated.rewrite_at prev.decorated parent_path
+          (Decorated.replace_arm k arm_decorated)
+      in
+      Some { prog; decorated = new_decorated }
   | WeightChanged { path; new_weight } ->
       let parent_path, k = list_foot path in
       let parent = Decorated.walk prev.decorated parent_path in
