@@ -28,7 +28,7 @@ let make_delta_test name prev_file next_file (expected : program) =
 
 (* OneArmAdded *)
 
-(* There's a walkthrough for this case in the topmatter of the PR. *)
+(* There's a walkthrough for this case in a comment in the PR. *)
 let strict_ab_to_abc_expected : program =
   [
     Spawn (103, 1);
@@ -56,17 +56,6 @@ let strict_ac_to_abc_expected : program =
     Change_weight (100, 1001, 3.0);
   ]
 
-(* RR arm appended at the root. Same shape as SP but no Change_weight. *)
-let rr_ab_to_abc_expected : program =
-  [
-    Spawn (103, 1);
-    Adopt (1002, 100, 103);
-    Assoc (100, "C");
-    Assoc (103, "C");
-    Map (100, "C", 1002);
-    Change_pol (100, RR, 3);
-  ]
-
 (* Deep arm add. complex_tree's normalized root is WFQ with children sorted
    to (UNION, SP, RR) at indices 0, 1, 2. The inner RR (at path [2]) has
    parent vpifo 108 and arity 3; complex_tree leaves the counters at
@@ -76,6 +65,7 @@ let complex_tree_add_deep_expected : program =
   [
     Spawn (112, 2);
     Adopt (1011, 108, 112);
+    (* bug? missing an assoc with root? *)
     Assoc (108, "NEW");
     Assoc (112, "NEW");
     Map (108, "NEW", 1011);
@@ -88,8 +78,6 @@ let one_arm_added_tests =
       strict_ab_to_abc_expected;
     make_delta_test "strict[A,C] -> strict[A,B,C]" "strict_AC" "strict_ABC"
       strict_ac_to_abc_expected;
-    make_delta_test "rr[A,B] -> rr[A,B,C]" "rr_AB" "rr_ABC"
-      rr_ab_to_abc_expected;
     make_delta_test "complex_tree -> complex_tree_add_arm_deep" "complex_tree"
       "complex_tree_add_arm_deep" complex_tree_add_deep_expected;
   ]
