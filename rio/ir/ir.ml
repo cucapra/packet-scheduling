@@ -3,7 +3,6 @@
 
 include Instr
 
-(* See [ir.mli] for the documented forms of these. *)
 module Decorated = struct
   type t =
     | FIFO of vpifo * clss
@@ -22,24 +21,20 @@ type compiled = {
 let vpifo_start = 100
 let step_start = 1000
 
-(* A counter starting at [start]: returns a thunk that hands out fresh
-   integers, the first being [start]. *)
 let make_counter ~start =
   let n = ref (start - 1) in
   fun () ->
     incr n;
     !n
 
-(* Split a non-empty list into its prefix and its last element.
-   E.g. [list_foot [1; 2; 3]] = ([1; 2], 3). *)
 let list_foot xs =
   match List.rev xs with
   | [] -> invalid_arg "list_foot: empty list"
   | last :: rev_init -> (List.rev rev_init, last)
 
 (* The instructions for compiling a subtree, grouped by instruction "kind".
-   By merging these [frags] with care, we can make a top-level
-   concatenation that has all spawns first, then all adopts, etc. *)
+   By merging these [frags] with care (see [combine_frags] below) we can make a 
+   top-level concatenation that has all spawns first, then all adopts, etc. *)
 type frag = {
   spawns : instr list;
   adopts : instr list;
@@ -59,9 +54,7 @@ let frag_to_program (f : frag) : program =
 (* Interleave a parent's [local] frag with each of its [children] frags,
    kindwise: every kind list is local-first, then children in order. The
    result inherits [root_v] and [classes] from [local] — the parent's local
-   instructions were built around its own identity. Used by [compile_arm] to
-   combine self with recursive child results, and by [patch] to combine the
-   splice instructions with the new arm's frag. *)
+   instructions were built around its own identity. *)
 let combine_frags (local : frag) (children : frag list) : frag =
   let collect proj = proj local @ List.concat_map proj children in
   {
@@ -92,7 +85,7 @@ let compile_FIFO ~v ~depth c : frag * Decorated.t =
 (* Compile a [Frontend.Policy.t] subtree at [depth]. Returns both the
    instruction fragment and the decorated-tree decoration that records the
    vPIFO/step IDs assigned to this subtree. PE assignment is depth-based —
-   every node at depth [d] lives on PE [d]. Pure dispatcher: variant
+   every node at depth [d] lives on PE [d]. This is just a dispatcher: variant
    selection and SP weight synthesis happen here, and each variant wraps
    [compile_arm]'s edges in the matching [decorated] constructor. *)
 let rec compile_subtree ~fresh_v ~fresh_s ~depth (p : Frontend.Policy.t) :
@@ -184,8 +177,6 @@ and compile_arm ~fresh_v ~fresh_s ~depth ~pol_ty ~weights children :
     List.map2 (fun (_, s, _) d -> (s, d)) adoption_records child_decorated
   in
   (combined, edges)
-
-(* --- Decorated-tree helpers used by [patch]. ------------------------------ *)
 
 (* Erase IR decorations from a decorated tree, recovering the source
    [Frontend.Policy.t]. Used by [patch] to feed [Rio_compare.Compare.analyze]
@@ -290,7 +281,7 @@ let rec count_vpifos : Decorated.t -> int = function
   | Decorated.WFQ (_, edges) ->
       1 + List.fold_left (fun acc (_, c, _) -> acc + count_vpifos c) 0 edges
 
-(* Count steps in [d] — one per parent→child edge. Used by [patch] to seed its
+(* Count steps in [d], one per parent-to-child edge. Used by [patch] to seed its
    [fresh_s] counter so newly-allocated step IDs don't collide with any
    already in [d]. *)
 let rec count_steps : Decorated.t -> int = function
@@ -303,8 +294,6 @@ let rec count_steps : Decorated.t -> int = function
   | Decorated.WFQ (_, edges) ->
       List.length edges
       + List.fold_left (fun acc (_, c, _) -> acc + count_steps c) 0 edges
-
-(* --- Public entry points. ------------------------------------------------- *)
 
 let of_policy (p : Frontend.Policy.t) : compiled =
   let fresh_v = make_counter ~start:vpifo_start in
@@ -330,35 +319,27 @@ let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
       let parent_path, k = list_foot arm_path in
       let parent = walk_to_decorated prev.decorated parent_path in
       let parent_v, old_arity, pol_ty = parent_info parent in
-      (* Seed the fresh-ID counters past whatever's already in [prev]. We
-         derive these from the decorated tree on each call rather than
-         caching them on [compiled] — [patch] is interactive (not a hot
-         loop) and the walks are the same complexity class as the splice
-         below, so the cost is noise. *)
+      (* Seed the fresh-ID counters past whatever's already in [prev]. *)
       let fresh_v =
         make_counter ~start:(vpifo_start + count_vpifos prev.decorated)
       in
       let fresh_s =
         make_counter ~start:(step_start + count_steps prev.decorated)
       in
-      (* Compile the new arm first so its internal vPIFO/step IDs land
-         lower than the parent's new adopt-step ID — mirroring the
-         pre-order numbering [of_policy]/[compile_arm] use. *)
       let arm_depth = List.length arm_path in
       let arm_frag, arm_decorated =
         compile_subtree ~fresh_v ~fresh_s ~depth:arm_depth arm
       in
       let new_step = fresh_s () in
       let new_arity = old_arity + 1 in
-      (* SP weights are positional: index [j] carries weight [j+1]. A
-         mid-insert at [k] shifts every existing child at index [j ≥ k] to
-         new index [j+1], so its weight must be bumped. The
-         new arm itself takes weight [k+1]. RR/UNION carry no per-arm
-         weights, so they emit nothing here. WFQ never reaches this branch
-         (Compare doesn't emit OneArmAdded for WFQ). *)
+
       let change_weights =
         match pol_ty with
         | SP ->
+            (* SP weights are positional: index [j] carries weight [j+1]. A
+         mid-insert at [k] shifts every existing child at index [j ≥ k] to
+         new index [j+1], so its weight must be bumped. The
+         new arm itself takes weight [k+1]. *)
             let existing_edges =
               match parent with
               | Decorated.SP (_, edges) -> edges
@@ -373,11 +354,15 @@ let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
                 (List.mapi (fun j e -> (j, e)) existing_edges)
             in
             Change_weight (parent_v, new_step, float_of_int (k + 1)) :: shifted
-        | _ -> []
+        | _ ->
+            (* RR/UNION carry no per-arm
+         weights, so they emit nothing here. WFQ never reaches this branch
+         (Compare doesn't yet emit OneArmAdded for WFQ). *)
+            []
       in
       (* Build the parent's local splice instructions as a frag, then
-         interleave with the new arm's frag through the same canonical
-         ordering [of_policy] uses. *)
+         interleave with the new arm's frag. 
+         Also splice the new decorated arm into the decorated tree. *)
       let local =
         {
           spawns = [];

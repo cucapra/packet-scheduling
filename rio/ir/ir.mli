@@ -7,9 +7,7 @@ include module type of Instr
     node with the [vpifo] assigned to it and every parent-to-child edge with the
     [step] handed out at adoption time. WFQ edges additionally carry the per-arm
     weight. The original [Frontend.Policy.t] is recoverable by erasing the
-    decorations.
-
-    Lives in its own submodule so the constructors can mirror
+    decorations. Lives in its own submodule so the constructors can mirror
     [Frontend.Policy.t]'s names directly ([Decorated.RR], [Decorated.SP], …) *)
 module Decorated : sig
   type t =
@@ -27,7 +25,6 @@ type compiled = {
 (** The result of compiling a [Frontend.Policy.t]. Carries enough state that a
     subsequent [patch] call can extend the in-flight runtime without recompiling
     from scratch:
-
     - [prog]: the IR program. When this record came from a fresh compile, [prog]
       is the full program; when it came from [patch], [prog] is the *delta
       only*.
@@ -46,11 +43,8 @@ val patch : prev:compiled -> next:Frontend.Policy.t -> compiled option
 (** Incrementally extend [prev] to handle policy [next], returning the IR delta.
     The returned record's [prog] is the *delta only* — the new instructions to
     add to a runtime that's already executing [prev.prog]. [decorated] is
-    rebuilt to reflect [next].
-
-    Returns [None] when the change is too complex for this scope. The supported
-    transitions are:
-
+    rebuilt to reflect [next]. Returns [None] when the change is too complex for
+    this scope. The supported transitions are:
     - [next] is structurally equal to [prev]'s policy: returns [Some] with an
       empty [prog].
     - [next] adds exactly one arm at any position of a [UNION], [RR], or [SP]
@@ -58,12 +52,7 @@ val patch : prev:compiled -> next:Frontend.Policy.t -> compiled option
       [Spawn]/[Adopt]/[Assoc]/[Map]/[Change_pol] (and [Change_weight] for [SP],
       both for the new arm and for any existing arms whose positional priority
       shifts) instructions needed to splice the new arm in.
-
-    Anything else — [Rio_compare.Compare.OneArmRemoved] (single-arm removal),
-    [Rio_compare.Compare.WeightChanged] (WFQ weight edits),
-    [Rio_compare.Compare.OneArmReplaced] (in-place policy swap at a single
-    position), and any [VeryDifferent] / [SuperPol] / [SubPol] result — returns
-    [None]. *)
+    - Anything else returns [None] for now. *)
 
 (** JSON exporter for IR programs. *)
 module Json : sig
