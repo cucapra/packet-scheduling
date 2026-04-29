@@ -60,6 +60,11 @@ let from_instr (i : Instr.instr) : Yojson.Basic.t =
           ("weight", `Float w);
         ]
   | Instr.GC v -> `Assoc [ ("op", `String "gc"); ("v", `Int v) ]
+  | Instr.Designate (v, survivor) ->
+      `Assoc
+        [
+          ("op", `String "designate"); ("v", `Int v); ("survivor", `Int survivor);
+        ]
 
 let from_program (p : Instr.program) : Yojson.Basic.t =
   `List (List.map from_instr p)

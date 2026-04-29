@@ -38,6 +38,12 @@ type instr =
   | GC of vpifo
       (** [GC v]: tell the garbage collector that [v] is available for
           collection. *)
+  | Designate of vpifo * vpifo
+      (** [Designate (v, survivor)]: form a super-node in which [v] designates
+          [survivor] as its successor. While the super-node exists, traffic
+          arriving at [v] continues to flow through [v]; once [v] underflows and
+          is collected (per a prior [GC]), the super-node collapses to
+          [survivor]. Chains across multiple [Designate]s are allowed. *)
 
 type program = instr list
 

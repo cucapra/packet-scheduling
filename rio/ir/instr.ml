@@ -23,6 +23,7 @@ type instr =
   | Change_pol of vpifo * pol_ty * int
   | Change_weight of vpifo * step * float
   | GC of vpifo
+  | Designate of vpifo * vpifo
 
 type program = instr list
 
@@ -60,5 +61,8 @@ let string_of_instr = function
       Printf.sprintf "change_weight(%s, %s, %F)" (string_of_vpifo v)
         (string_of_step s) w
   | GC v -> Printf.sprintf "gc(%s)" (string_of_vpifo v)
+  | Designate (v, survivor) ->
+      Printf.sprintf "designate(%s, %s)" (string_of_vpifo v)
+        (string_of_vpifo survivor)
 
 let string_of_program p = p |> List.map string_of_instr |> String.concat "\n"
