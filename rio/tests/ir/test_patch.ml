@@ -298,12 +298,24 @@ let whole_tree_replace_tests =
 (* SubPol *)
 
 (* SP[A, B, C] -> FIFO A. The FIFO leaf already lives inside prev as v101,
-   adopted via step_1000 from the root v100. Re-rooting drops B (v102), C
-   (v103) and the SP root (v100); we Emancipate v101 from its parent first
-   so the runtime knows the relationship was severed before the parent gets
-   collected. *)
+   adopted via step_1000 from the root v100. Re-rooting detaches v101 from
+   its prev parent, then swings the fake root's single step from v100 to
+   v101 via [Emancipate]/[Adopt]. The dropped classes B and C are
+   [Unmap]/[Deassoc]'d off the fake root, and the SP root v100 along with
+   v102/v103 are GC'd. *)
 let strict_abc_to_fifo_a_expected : program =
-  [ Emancipate (1000, 100, 101); Change_root 101; GC 100; GC 102; GC 103 ]
+  [
+    Emancipate (1000, 100, 101);
+    Emancipate (999, 99, 100);
+    Adopt (999, 99, 101);
+    Unmap (99, "B", 999);
+    Unmap (99, "C", 999);
+    Deassoc (99, "B");
+    Deassoc (99, "C");
+    GC 100;
+    GC 102;
+    GC 103;
+  ]
 
 let sub_pol_tests =
   [
@@ -325,8 +337,9 @@ let sub_pol_tests =
    [Adopt]s the WFQ root's three children via steps 1008 (UNION), 1009
    (prev's root v=100), 1010 (RR). Each ancestor [Assoc]/[Map]s every
    class in its subtree; WFQ weights mirror the (pol, weight) sort
-   order: 3, 1, 2. Final [Change_root 104] retargets the runtime at the
-   new top. None of prev's vpifos are respawned. *)
+   order: 3, 1, 2. Final [Emancipate]/[Adopt] on the fake root swings its
+   single step from prev's old real root v100 to the new top v104. None of
+   prev's vpifos are respawned. *)
 let strict_abc_to_complex_tree_expected : program =
   [
     Spawn (104, 2);
@@ -382,7 +395,8 @@ let strict_abc_to_complex_tree_expected : program =
     Change_weight (104, 1008, 3.0);
     Change_weight (104, 1009, 1.0);
     Change_weight (104, 1010, 2.0);
-    Change_root 104;
+    Emancipate (999, 99, 100);
+    Adopt (999, 99, 104);
   ]
 
 let super_pol_tests =

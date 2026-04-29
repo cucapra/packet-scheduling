@@ -508,11 +508,8 @@ let of_policy (p : Frontend.Policy.t) : compiled =
     }
   in
   let combined = combine_frags fake_frag [ frag ] in
-  (* Tell the runtime which vPIFO is the entry point. Always last so the
-     tree's structure is fully wired before traffic can arrive at it. *)
-  let set_root = [ Change_root fake_root_v ] in
   let pes = List.init (policy_depth p + 1) (fun d -> d) in
-  { prog = frag_to_program combined @ set_root; decorated; pes }
+  { prog = frag_to_program combined; decorated; pes }
 
 (* Whole-tree replacement, riding on the fake root. Used both for
    [Compare.OneArmReplaced { path = []; _ }] (constructor mismatch /
@@ -634,7 +631,17 @@ let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
         compile_subtree ~fresh_v ~fresh_s ~pe_of_depth ~depth:0
           ~splice:(path, prev.decorated) next
       in
-      let prog = frag_to_program frag @ [ Change_root frag.root_v ] in
+      (* Repoint the fake root's single step from prev's real root to
+         next's. The class set is unchanged (SuperPol preserves leaves),
+         so the fake root's [Assoc]/[Map] entries don't move. *)
+      let old_real_root_v = Decorated.vpifo prev.decorated in
+      let rewire =
+        [
+          Emancipate (fake_root_step, fake_root_v, old_real_root_v);
+          Adopt (fake_root_step, fake_root_v, frag.root_v);
+        ]
+      in
+      let prog = frag_to_program frag @ rewire in
       Some { prog; decorated; pes = new_pes }
   | SubPol path ->
       (* [next] sits inside [prev] at [path]. Re-root the tree to that
@@ -649,6 +656,7 @@ let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
       let step_k = Decorated.nth_step parent k in
       let new_root = Decorated.nth_child parent k in
       let new_root_v = Decorated.vpifo new_root in
+      let old_real_root_v = Decorated.vpifo prev.decorated in
       let kept = Decorated.subtree_vpifos new_root in
       let kept_set = List.fold_left (fun s v -> v :: s) [] kept in
       let to_gc =
@@ -656,10 +664,26 @@ let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
           (fun v -> not (List.mem v kept_set))
           (Decorated.subtree_vpifos prev.decorated)
       in
+      (* The fake root's class set shrinks to whatever the kept subtree
+         covers; everything else gets [Unmap]'d and [Deassoc]'d off it. *)
+      let old_classes = Decorated.subtree_classes prev.decorated in
+      let kept_classes = Decorated.subtree_classes new_root in
+      let dropped_classes =
+        List.filter (fun c -> not (List.mem c kept_classes)) old_classes
+      in
+      let unmaps_dropped =
+        List.map
+          (fun c -> Unmap (fake_root_v, c, fake_root_step))
+          dropped_classes
+      in
+      let deassocs_dropped =
+        List.map (fun c -> Deassoc (fake_root_v, c)) dropped_classes
+      in
       let prog =
         Emancipate (step_k, parent_v, new_root_v)
-        :: Change_root new_root_v
-        :: List.map (fun v -> GC v) to_gc
+        :: Emancipate (fake_root_step, fake_root_v, old_real_root_v)
+        :: Adopt (fake_root_step, fake_root_v, new_root_v)
+        :: (unmaps_dropped @ deassocs_dropped @ List.map (fun v -> GC v) to_gc)
       in
       (* Re-rooting drops [List.length parent_path + 1] layers off the top
          of [prev.pes] — the survivors are everything from the new root

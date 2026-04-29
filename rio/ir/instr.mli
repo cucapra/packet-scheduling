@@ -44,10 +44,6 @@ type instr =
           arriving at [v] continues to flow through [v]; once [v] underflows and
           is collected (per a prior [GC]), the super-node collapses to
           [survivor]. Chains across multiple [Designate]s are allowed. *)
-  | Change_root of vpifo
-      (** [Change_root v]: [v] becomes the root of the tree — the entry point
-          for incoming traffic. Emitted once per fresh compile, and again by
-          [patch] when the tree is re-rooted to one of its existing subtrees. *)
 
 type program = instr list
 

@@ -42,7 +42,6 @@ let rr_ab_program : program =
     Map (root, "A", s_a);
     Map (root, "B", s_b);
     Change_pol (root, RR, 2);
-    Change_root root;
   ]
 
 (* Pretty-print of [rr_ab_program] above — the handwritten IR without a
@@ -62,7 +61,6 @@ let expected_rr_ab_handwritten =
       "map(v100, A, step_1000)";
       "map(v100, B, step_1001)";
       "change_pol(v100, RR, 2)";
-      "change_root(v100)";
     ]
 
 (* Pretty-print of what [Ir.of_policy] actually emits for rr[A, B]: the
@@ -89,7 +87,6 @@ let expected_rr_ab_compiled =
       "map(v100, B, step_1001)";
       "change_pol(v99, UNION, 1)";
       "change_pol(v100, RR, 2)";
-      "change_root(v99)";
     ]
 
 let test_rr_ab_handwritten =

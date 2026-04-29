@@ -31,7 +31,6 @@ let fifo_a_expected : program =
     Assoc (100, "A");
     Map (99, "A", 999);
     Change_pol (99, UNION, 1);
-    Change_root 99;
   ]
 
 let strict_abc_expected : program =
@@ -66,7 +65,6 @@ let strict_abc_expected : program =
     Change_weight (100, 1000, 1.0);
     Change_weight (100, 1001, 2.0);
     Change_weight (100, 1002, 3.0);
-    Change_root 99;
   ]
 
 let compile_tests =

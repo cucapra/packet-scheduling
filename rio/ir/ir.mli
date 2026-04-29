@@ -94,18 +94,21 @@ val patch : prev:compiled -> next:Frontend.Policy.t -> compiled option
 
     - [next] is structurally equal to a strict subtree of [prev] at a non-empty
       path (per [Rio_compare.Compare.SubPol]): returns [Some] with an
-      [Emancipate] detaching that subtree from its parent, a [Change_root]
-      pointing the runtime at it, and a [GC] per displaced node so the
-      surrounding structure is collected. The whole-tree case ([path = []])
-      returns [None].
+      [Emancipate] detaching that subtree from its parent, a second
+      [Emancipate]/[Adopt] pair on the fake root that repoints its single step
+      from [prev]'s old real root to the new one, [Unmap]/[Deassoc] entries on
+      the fake root for any classes that no longer apply, and a [GC] per
+      displaced node so the surrounding structure is collected. The whole-tree
+      case ([path = []]) returns [None].
 
     - [prev]'s policy appears as a strict subtree of [next] at a non-empty path
       (per [Rio_compare.Compare.SuperPol]): returns [Some] with the
       [Spawn]/[Adopt]/[Assoc]/[Map]/[Change_pol]/[Change_weight] instructions
       for the new structure surrounding [prev], a single [Adopt] that grafts
-      [prev]'s existing root in at the splice point, and a [Change_root] that
-      retargets the runtime at [next]'s new top. [prev]'s in-flight nodes are
-      not respawned. The whole-tree case ([path = []]) returns [None].
+      [prev]'s existing root in at the splice point, and an [Emancipate]/
+      [Adopt] pair that repoints the fake root's single step from [prev]'s old
+      real root to [next]'s new top. [prev]'s in-flight nodes are not respawned.
+      The whole-tree case ([path = []]) returns [None].
 
     Anything else returns [None]. *)
 
