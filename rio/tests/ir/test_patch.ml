@@ -214,9 +214,56 @@ let sub_pol_tests =
       strict_abc_to_fifo_a_expected;
   ]
 
+(* SuperPol *)
+
+(* prev = strict[A,B,C] (vpifos 100..103, pes [0;1]) sits inside
+   complex_tree's normalized form at path [1]. The delta builds the new
+   WFQ root and the UNION/RR siblings, [Adopt]s prev's root vpifo 100 in
+   via a fresh step, and re-roots to the new WFQ. We assert structural
+   invariants rather than an exact program: prev's vpifos must not be
+   respawned, and the new pes must place the WFQ layer on a fresh PE
+   (above prev's max PE 1) while reusing prev's PEs at depths >= 1. *)
+let super_pol_tests =
+  let prev_vpifos = [ 100; 101; 102; 103 ] in
+  [
+    ( "strict[A,B,C] -> complex_tree (no respawn, fresh PE above prev)"
+    >:: fun _ ->
+      let c = patch_files "strict_ABC" "complex_tree" in
+      assert_equal
+        ~printer:(fun pes ->
+          "[" ^ String.concat "; " (List.map string_of_int pes) ^ "]")
+        [ 2; 0; 1 ] c.pes;
+      List.iter
+        (fun instr ->
+          match instr with
+          | Spawn (v, _) ->
+              assert_bool
+                (Printf.sprintf
+                   "delta should not respawn prev's vpifo %d (instr: %s)" v
+                   (string_of_instr instr))
+                (not (List.mem v prev_vpifos))
+          | _ -> ())
+        c.prog;
+      let roots =
+        List.filter_map
+          (function Change_root v -> Some v | _ -> None)
+          c.prog
+      in
+      assert_equal ~msg:"expected exactly one Change_root" 1 (List.length roots);
+      assert_bool "Change_root target must not be a prev vpifo"
+        (not (List.mem (List.hd roots) prev_vpifos));
+      let adopts_of_prev_root =
+        List.filter
+          (function Adopt (_, _, child) -> child = 100 | _ -> false)
+          c.prog
+      in
+      assert_equal ~msg:"prev's root should be Adopted exactly once" 1
+        (List.length adopts_of_prev_root) );
+  ]
+
 let suite =
   "patch tests"
   >::: one_arm_added_tests @ weight_changed_tests @ one_arm_removed_tests
-       @ one_arm_replaced_tests @ sub_pol_tests
+       @ one_arm_replaced_tests @ sub_pol_tests @ super_pol_tests
 
 let () = run_test_tt_main suite

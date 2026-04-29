@@ -23,6 +23,7 @@ end
 type compiled = {
   prog : program;
   decorated : Decorated.t;
+  pes : pe list;
 }
 (** The result of compiling a [Frontend.Policy.t]. Carries enough state that a
     subsequent [patch] call can extend the in-flight runtime without recompiling
@@ -33,7 +34,12 @@ type compiled = {
       only*.
     - [decorated]: the decorated source tree. Doubles as the source-policy
       record (recoverable by erasing decorations) so [patch] can diff against an
-      incoming policy without storing a separate [Frontend.Policy.t]. *)
+      incoming policy without storing a separate [Frontend.Policy.t].
+    - [pes]: the PE assignment, indexed by depth. Every node at depth [d] lives
+      on PE [List.nth pes d]. A fresh [of_policy] produces [[0; 1; …;
+      max_depth]]; [patch] (notably [SuperPol]) may introduce non-contiguous
+      PEs to honor the "same depth ⇒ same PE" invariant without re-spawning
+      previously installed nodes. *)
 
 val of_policy : Frontend.Policy.t -> compiled
 (** Compile a [Frontend.Policy.t] to IR. Supports trees built from [FIFO],
@@ -85,7 +91,15 @@ val patch : prev:compiled -> next:Frontend.Policy.t -> compiled option
       surrounding structure is collected. The whole-tree case ([path = []])
       returns [None].
 
-    Anything else — any [VeryDifferent] / [SuperPol] result — returns [None]. *)
+    - [prev]'s policy appears as a strict subtree of [next] at a non-empty path
+      (per [Rio_compare.Compare.SuperPol]): returns [Some] with the
+      [Spawn]/[Adopt]/[Assoc]/[Map]/[Change_pol]/[Change_weight] instructions
+      for the new structure surrounding [prev], a single [Adopt] that grafts
+      [prev]'s existing root in at the splice point, and a [Change_root] that
+      retargets the runtime at [next]'s new top. [prev]'s in-flight nodes are
+      not respawned. The whole-tree case ([path = []]) returns [None].
+
+    Anything else — any [VeryDifferent] result — returns [None]. *)
 
 (** JSON exporter for IR programs. *)
 module Json : sig

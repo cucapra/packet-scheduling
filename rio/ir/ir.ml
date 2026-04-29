@@ -209,6 +209,7 @@ end
 type compiled = {
   prog : program;
   decorated : Decorated.t;
+  pes : pe list;
 }
 
 (* --- Compile a [Frontend.Policy.t] to IR --------------------------------- *)
@@ -256,9 +257,9 @@ let combine_frags (local : frag) (children : frag list) : frag =
   }
 
 (** Stand up a single FIFO leaf: register its spawn and assoc, decorate. *)
-let compile_FIFO ~v ~depth c : frag * Decorated.t =
+let compile_FIFO ~v ~pe c : frag * Decorated.t =
   ( {
-      spawns = [ Spawn (v, depth) ];
+      spawns = [ Spawn (v, pe) ];
       assocs = [ Assoc (v, c) ];
       root_v = v;
       classes = [ c ];
@@ -269,55 +270,99 @@ let compile_FIFO ~v ~depth c : frag * Decorated.t =
     },
     Decorated.FIFO (v, c) )
 
+(* A "stub" frag that stands in for an already-installed subtree (during a
+   [SuperPol] splice). Carries the existing subtree's [root_v] and the
+   classes its leaves cover, but emits no instructions: every spawn/adopt
+   inside the subtree was issued during a prior compile and is still live. *)
+let stub_frag (prev_d : Decorated.t) : frag =
+  {
+    spawns = [];
+    adopts = [];
+    assocs = [];
+    maps = [];
+    change_pols = [];
+    change_weights = [];
+    root_v = Decorated.vpifo prev_d;
+    classes = Decorated.subtree_classes prev_d;
+  }
+
 (* Compile a [Frontend.Policy.t] subtree at [depth]. Returns both the
    instruction fragment and the decorated-tree decoration that records the
-   vPIFO/step IDs assigned to this subtree. PE assignment is depth-based —
-   every node at depth [d] lives on PE [d]. Pure dispatcher: variant
-   selection and SP weight synthesis happen here, and each variant wraps
-   [compile_arm]'s edges in the matching [decorated] constructor. *)
-let rec compile_subtree ~fresh_v ~fresh_s ~depth (p : Frontend.Policy.t) :
-    frag * Decorated.t =
-  let module P = Frontend.Policy in
-  match p with
-  | P.FIFO c -> compile_FIFO ~v:(fresh_v ()) ~depth c
-  | P.UNION children ->
-      let frag, edges =
-        compile_arm ~fresh_v ~fresh_s ~depth ~pol_ty:UNION ~weights:[] children
-      in
-      (frag, Decorated.UNION (frag.root_v, edges))
-  | P.RR children ->
-      let frag, edges =
-        compile_arm ~fresh_v ~fresh_s ~depth ~pol_ty:RR ~weights:[] children
-      in
-      (frag, Decorated.RR (frag.root_v, edges))
-  | P.SP children ->
-      (* Strict priority: first child has priority 1.0 (highest), then 2.0, 3.0, … *)
-      let weights = List.mapi (fun i _ -> float_of_int (i + 1)) children in
-      let frag, edges =
-        compile_arm ~fresh_v ~fresh_s ~depth ~pol_ty:SP ~weights children
-      in
-      (frag, Decorated.SP (frag.root_v, edges))
-  | P.WFQ (children, ws) ->
-      let frag, edges =
-        compile_arm ~fresh_v ~fresh_s ~depth ~pol_ty:WFQ ~weights:ws children
-      in
-      let weighted = List.map2 (fun (s, d) w -> (s, d, w)) edges ws in
-      (frag, Decorated.WFQ (frag.root_v, weighted))
+   vPIFO/step IDs assigned to this subtree. The PE for each layer is
+   resolved through [pe_of_depth] — the invariant is that all nodes at the
+   same depth share a PE; what PE that is depends on the surrounding
+   compile context (a fresh [of_policy] uses [d → d]; [SuperPol] uses a
+   custom mapping that respects [prev]'s existing PE assignments). Pure
+   dispatcher: variant selection and SP weight synthesis happen here, and
+   each variant wraps [compile_arm]'s edges in the matching [decorated]
+   constructor.
+
+   [splice], when supplied, names a path inside this subtree at which an
+   already-installed [Decorated.t] should be grafted in instead of compiled
+   afresh. When [splice = Some ([], prev_d)], we short-circuit to
+   [stub_frag prev_d] / [prev_d] — caller's parent then [Adopt]s
+   [Decorated.vpifo prev_d] and propagates [Decorated.subtree_classes
+   prev_d] up the new ancestor chain. *)
+let rec compile_subtree ~fresh_v ~fresh_s ~pe_of_depth ~depth ?splice
+    (p : Frontend.Policy.t) : frag * Decorated.t =
+  match splice with
+  | Some ([], prev_d) -> (stub_frag prev_d, prev_d)
+  | _ -> (
+      let module P = Frontend.Policy in
+      match p with
+      | P.FIFO c -> compile_FIFO ~v:(fresh_v ()) ~pe:(pe_of_depth depth) c
+      | P.UNION children ->
+          let frag, edges =
+            compile_arm ~fresh_v ~fresh_s ~pe_of_depth ~depth ~pol_ty:UNION
+              ~weights:[] ?splice children
+          in
+          (frag, Decorated.UNION (frag.root_v, edges))
+      | P.RR children ->
+          let frag, edges =
+            compile_arm ~fresh_v ~fresh_s ~pe_of_depth ~depth ~pol_ty:RR
+              ~weights:[] ?splice children
+          in
+          (frag, Decorated.RR (frag.root_v, edges))
+      | P.SP children ->
+          (* Strict priority: first child has priority 1.0 (highest), then 2.0, 3.0, … *)
+          let weights = List.mapi (fun i _ -> float_of_int (i + 1)) children in
+          let frag, edges =
+            compile_arm ~fresh_v ~fresh_s ~pe_of_depth ~depth ~pol_ty:SP
+              ~weights ?splice children
+          in
+          (frag, Decorated.SP (frag.root_v, edges))
+      | P.WFQ (children, ws) ->
+          let frag, edges =
+            compile_arm ~fresh_v ~fresh_s ~pe_of_depth ~depth ~pol_ty:WFQ
+              ~weights:ws ?splice children
+          in
+          let weighted = List.map2 (fun (s, d) w -> (s, d, w)) edges ws in
+          (frag, Decorated.WFQ (frag.root_v, weighted)))
 
 (* Returns [(frag, edges)] where [edges] pairs each adopt-step with its
    child's decorated subtree, in source order. [weights] is empty for
    UNION/RR (they don't carry weights) and one-per-arm for SP/WFQ.
-   List length parity with [children] is the caller's responsibility. *)
-and compile_arm ~fresh_v ~fresh_s ~depth ~pol_ty ~weights children :
-    frag * (step * Decorated.t) list =
+   List length parity with [children] is the caller's responsibility.
+
+   [splice], when [Some (i :: rest, prev_d)], hands the splice down to the
+   [i]-th child with the head consumed; siblings get [None]. *)
+and compile_arm ~fresh_v ~fresh_s ~pe_of_depth ~depth ~pol_ty ~weights ?splice
+    children : frag * (step * Decorated.t) list =
   (* Spawn self first, so that we get a lower ID number than the kids. *)
   let v = fresh_v () in
-  let local_spawns = [ Spawn (v, depth) ] in
-  (* Recurse on each child; List.map is left-to-right in the stdlib so vPIFO
-     IDs come out in source order. *)
+  let local_spawns = [ Spawn (v, pe_of_depth depth) ] in
+  (* Recurse on each child; List.mapi is left-to-right in the stdlib so
+     vPIFO IDs come out in source order. *)
   let child_results =
-    List.map
-      (fun child -> compile_subtree ~fresh_v ~fresh_s ~depth:(depth + 1) child)
+    List.mapi
+      (fun i child ->
+        let child_splice =
+          match splice with
+          | Some (j :: rest, prev_d) when i = j -> Some (rest, prev_d)
+          | _ -> None
+        in
+        compile_subtree ~fresh_v ~fresh_s ~pe_of_depth ~depth:(depth + 1)
+          ?splice:child_splice child)
       children
   in
   let child_frags = List.map fst child_results in
@@ -399,14 +444,47 @@ let sp_edges = function
 
 (* --- Public entry points -------------------------------------------------- *)
 
+(* Max depth (root = 0) of a [Frontend.Policy.t]. Used to size the
+   depth→PE list. *)
+let rec policy_depth (p : Frontend.Policy.t) : int =
+  let module P = Frontend.Policy in
+  match p with
+  | P.FIFO _ -> 0
+  | P.UNION ps | P.SP ps | P.RR ps ->
+      1 + List.fold_left max 0 (List.map policy_depth ps)
+  | P.WFQ (ps, _) ->
+      1 + List.fold_left max 0 (List.map policy_depth ps)
+
+(* Append [n] consecutive PEs starting at [start] to [pes]. Used when a
+   patch lands new layers below the deepest existing layer. *)
+let extend_pes_with_fresh ~n ~start pes =
+  let rec extra k cur =
+    if k <= 0 then [] else cur :: extra (k - 1) (cur + 1)
+  in
+  pes @ extra n start
+
+(* Grow [pes] so it covers [target_depth], allocating fresh PEs (above
+   anything already in use) for any new layers. No-op when [pes] is
+   already long enough. *)
+let pes_extended_to_depth target_depth pes =
+  let cur = List.length pes in
+  if target_depth < cur then pes
+  else
+    let max_pe = List.fold_left max (-1) pes in
+    extend_pes_with_fresh ~n:(target_depth - cur + 1) ~start:(max_pe + 1) pes
+
 let of_policy (p : Frontend.Policy.t) : compiled =
   let fresh_v = make_counter ~start:vpifo_start in
   let fresh_s = make_counter ~start:step_start in
-  let frag, decorated = compile_subtree ~fresh_v ~fresh_s ~depth:0 p in
+  let pe_of_depth d = d in
+  let frag, decorated =
+    compile_subtree ~fresh_v ~fresh_s ~pe_of_depth ~depth:0 p
+  in
   (* Tell the runtime which vPIFO is the entry point. Always last so the
      tree's structure is fully wired before traffic can arrive at it. *)
   let set_root = [ Change_root frag.root_v ] in
-  { prog = frag_to_program frag @ set_root; decorated }
+  let pes = List.init (policy_depth p + 1) (fun d -> d) in
+  { prog = frag_to_program frag @ set_root; decorated; pes }
 
 let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
   let open Rio_compare.Compare in
@@ -415,9 +493,53 @@ let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
   | Same ->
       (* Nothing structural to do — return an empty delta. The decorated
          tree is immutable, so we hand back the same reference. *)
-      Some { prog = []; decorated = prev.decorated }
-  | VeryDifferent _ | SuperPol _ -> None
-  | SubPol [] -> None
+      Some { prog = []; decorated = prev.decorated; pes = prev.pes }
+  | VeryDifferent _ -> None
+  | SuperPol [] | SubPol [] -> None
+  | SuperPol path ->
+      (* [prev]'s policy sits inside [next] at [path]. We compile only the
+         "extra" structure that [next] adds around [prev] — the chain of
+         ancestors from [next]'s root down to the splice, plus their
+         non-path siblings — and graft [prev]'s already-installed root in
+         at the splice via [Adopt]. The propagation of [prev]'s classes
+         up through the new ancestor chain falls out of [compile_arm]'s
+         existing assoc/map plumbing once [stub_frag] reports them. *)
+      let len = List.length path in
+      let prev_max_depth = List.length prev.pes - 1 in
+      let next_max_depth = policy_depth next in
+      (* Build [new_pes] depth by depth: layers above [prev] (depths
+         [0..len-1]) get fresh PEs that don't collide with [prev.pes];
+         layers at [len..len + prev_max_depth] reuse [prev.pes] so
+         already-installed nodes keep their PEs; any layers further below
+         (new sibling subtrees that reach deeper than [prev]) get more
+         fresh PEs. *)
+      let pe_counter =
+        make_counter ~start:(List.fold_left max (-1) prev.pes + 1)
+      in
+      let rec build d =
+        if d > next_max_depth then []
+        else
+          let pe =
+            if d < len then pe_counter ()
+            else if d - len <= prev_max_depth then List.nth prev.pes (d - len)
+            else pe_counter ()
+          in
+          pe :: build (d + 1)
+      in
+      let new_pes = build 0 in
+      let pe_of_depth d = List.nth new_pes d in
+      let fresh_v =
+        make_counter ~start:(vpifo_start + Decorated.count_vpifos prev.decorated)
+      in
+      let fresh_s =
+        make_counter ~start:(step_start + Decorated.count_steps prev.decorated)
+      in
+      let frag, decorated =
+        compile_subtree ~fresh_v ~fresh_s ~pe_of_depth ~depth:0
+          ~splice:(path, prev.decorated) next
+      in
+      let prog = frag_to_program frag @ [ Change_root frag.root_v ] in
+      Some { prog; decorated; pes = new_pes }
   | SubPol path ->
       (* [next] sits inside [prev] at [path]. Re-root the tree to that
          existing subtree: detach it from its parent, point the runtime at
@@ -443,7 +565,14 @@ let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
         :: Change_root new_root_v
         :: List.map (fun v -> GC v) to_gc
       in
-      Some { prog; decorated = new_root }
+      (* Re-rooting drops [List.length parent_path + 1] layers off the top
+         of [prev.pes] — the survivors are everything from the new root
+         downward. *)
+      let drop = List.length path in
+      let new_pes =
+        List.filteri (fun i _ -> i >= drop) prev.pes
+      in
+      Some { prog; decorated = new_root; pes = new_pes }
   | OneArmReplaced { path = []; _ } ->
       (* Whole-tree replacement: nothing to ride on — let the caller
          re-[of_policy]. *)
@@ -465,8 +594,10 @@ let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
          fuses the old root and new root into a super-node that occupies
          the existing slot, riding on [step_k]. *)
       let arm_depth = List.length arm_path in
+      let new_pes = pes_extended_to_depth (arm_depth + policy_depth arm) prev.pes in
+      let pe_of_depth d = List.nth new_pes d in
       let arm_frag, arm_decorated =
-        compile_subtree ~fresh_v ~fresh_s ~depth:arm_depth arm
+        compile_subtree ~fresh_v ~fresh_s ~pe_of_depth ~depth:arm_depth arm
       in
       let new_root_v = arm_frag.root_v in
       let new_classes = arm_frag.classes in
@@ -526,7 +657,7 @@ let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
         Decorated.rewrite_at prev.decorated parent_path
           (Decorated.replace_arm k arm_decorated)
       in
-      Some { prog; decorated = new_decorated }
+      Some { prog; decorated = new_decorated; pes = new_pes }
   | WeightChanged { path; new_weight } ->
       let parent_path, k = list_foot path in
       let parent = Decorated.walk prev.decorated parent_path in
@@ -544,6 +675,7 @@ let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
         {
           prog = [ Change_weight (parent_v, step_k, new_weight) ];
           decorated = new_decorated;
+          pes = prev.pes;
         }
   | OneArmAdded { path = arm_path; arm } ->
       let parent_path, k = list_foot arm_path in
@@ -564,8 +696,10 @@ let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
          lower than the parent's new adopt-step ID — mirroring the
          pre-order numbering [of_policy]/[compile_arm] use. *)
       let arm_depth = List.length arm_path in
+      let new_pes = pes_extended_to_depth (arm_depth + policy_depth arm) prev.pes in
+      let pe_of_depth d = List.nth new_pes d in
       let arm_frag, arm_decorated =
-        compile_subtree ~fresh_v ~fresh_s ~depth:arm_depth arm
+        compile_subtree ~fresh_v ~fresh_s ~pe_of_depth ~depth:arm_depth arm
       in
       let new_step = fresh_s () in
       let new_arity = old_arity + 1 in
@@ -613,6 +747,7 @@ let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
         {
           prog = frag_to_program (combine_frags local [ arm_frag ]);
           decorated = new_decorated;
+          pes = new_pes;
         }
   | OneArmRemoved { path = arm_path; arm = _ } ->
       let parent_path, k = list_foot arm_path in
@@ -679,7 +814,10 @@ let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
       let new_decorated =
         Decorated.rewrite_at prev.decorated parent_path (Decorated.drop_arm k)
       in
-      Some { prog; decorated = new_decorated }
+      (* Removal can leave [pes] over-long if the dropped arm was the
+         deepest in the tree, but extra trailing entries are harmless —
+         they just go unreferenced until a future patch needs them. *)
+      Some { prog; decorated = new_decorated; pes = prev.pes }
 
 (* Re-export the per-program / per-instruction JSON exporters as a submodule
    so consumers say [Ir.Json.from_program]. The decorated tree on [compiled]
