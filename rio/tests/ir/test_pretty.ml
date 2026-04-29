@@ -45,7 +45,9 @@ let rr_ab_program : program =
     Change_root root;
   ]
 
-let expected_rr_ab =
+(* Pretty-print of [rr_ab_program] above — the handwritten IR without a
+   fake root, used to exercise [string_of_program] in isolation. *)
+let expected_rr_ab_handwritten =
   String.concat "\n"
     [
       "v100 = spawn(pe0)";
@@ -63,13 +65,41 @@ let expected_rr_ab =
       "change_root(v100)";
     ]
 
+(* Pretty-print of what [Ir.of_policy] actually emits for rr[A, B]: the
+   real tree above plus the fake root [v99] on PE -1 wrapping it. *)
+let expected_rr_ab_compiled =
+  String.concat "\n"
+    [
+      "v99 = spawn(pe-1)";
+      "v100 = spawn(pe0)";
+      "v101 = spawn(pe1)";
+      "v102 = spawn(pe1)";
+      "step_999 = adopt(v99, v100)";
+      "step_1000 = adopt(v100, v101)";
+      "step_1001 = adopt(v100, v102)";
+      "assoc(v99, A)";
+      "assoc(v99, B)";
+      "assoc(v100, A)";
+      "assoc(v100, B)";
+      "assoc(v101, A)";
+      "assoc(v102, B)";
+      "map(v99, A, step_999)";
+      "map(v99, B, step_999)";
+      "map(v100, A, step_1000)";
+      "map(v100, B, step_1001)";
+      "change_pol(v99, UNION, 1)";
+      "change_pol(v100, RR, 2)";
+      "change_root(v99)";
+    ]
+
 let test_rr_ab_handwritten =
   "rr[A, B] handwritten IR pretty-prints correctly" >:: fun _ ->
-  assert_equal ~printer:Fun.id expected_rr_ab (string_of_program rr_ab_program)
+  assert_equal ~printer:Fun.id expected_rr_ab_handwritten
+    (string_of_program rr_ab_program)
 
 let test_rr_ab_pipeline =
   "rr[A, B] compiled from .sched matches the same golden" >:: fun _ ->
-  assert_equal ~printer:Fun.id expected_rr_ab
+  assert_equal ~printer:Fun.id expected_rr_ab_compiled
     (compile_to_pretty "work_conserving/rr_AB.sched")
 
 let suite =

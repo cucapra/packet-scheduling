@@ -1,4 +1,5 @@
 [
+  { "op": "spawn", "v": 99, "pe": -1 },
   { "op": "spawn", "v": 100, "pe": 0 },
   { "op": "spawn", "v": 101, "pe": 1 },
   { "op": "spawn", "v": 102, "pe": 2 },
@@ -11,6 +12,8 @@
   { "op": "spawn", "v": 109, "pe": 2 },
   { "op": "spawn", "v": 110, "pe": 2 },
   { "op": "spawn", "v": 111, "pe": 2 },
+
+  { "op": "adopt", "step": 999, "parent": 99, "child": 100 },
 
   { "op": "adopt", "step": 1008, "parent": 100, "child": 101 },
   { "op": "adopt", "step": 1009, "parent": 100, "child": 104 },
@@ -26,6 +29,15 @@
   { "op": "adopt", "step": 1005, "parent": 108, "child": 109 },
   { "op": "adopt", "step": 1006, "parent": 108, "child": 110 },
   { "op": "adopt", "step": 1007, "parent": 108, "child": 111 },
+
+  { "op": "assoc", "v": 99, "class": "G" },
+  { "op": "assoc", "v": 99, "class": "H" },
+  { "op": "assoc", "v": 99, "class": "A" },
+  { "op": "assoc", "v": 99, "class": "B" },
+  { "op": "assoc", "v": 99, "class": "C" },
+  { "op": "assoc", "v": 99, "class": "D" },
+  { "op": "assoc", "v": 99, "class": "E" },
+  { "op": "assoc", "v": 99, "class": "F" },
 
   { "op": "assoc", "v": 100, "class": "G" },
   { "op": "assoc", "v": 100, "class": "H" },
@@ -55,6 +67,15 @@
   { "op": "assoc", "v": 110, "class": "E" },
   { "op": "assoc", "v": 111, "class": "F" },
 
+  { "op": "map", "v": 99, "class": "G", "step": 999 },
+  { "op": "map", "v": 99, "class": "H", "step": 999 },
+  { "op": "map", "v": 99, "class": "A", "step": 999 },
+  { "op": "map", "v": 99, "class": "B", "step": 999 },
+  { "op": "map", "v": 99, "class": "C", "step": 999 },
+  { "op": "map", "v": 99, "class": "D", "step": 999 },
+  { "op": "map", "v": 99, "class": "E", "step": 999 },
+  { "op": "map", "v": 99, "class": "F", "step": 999 },
+
   { "op": "map", "v": 100, "class": "G", "step": 1008 },
   { "op": "map", "v": 100, "class": "H", "step": 1008 },
   { "op": "map", "v": 100, "class": "A", "step": 1009 },
@@ -75,6 +96,7 @@
   { "op": "map", "v": 108, "class": "E", "step": 1006 },
   { "op": "map", "v": 108, "class": "F", "step": 1007 },
 
+  { "op": "change_pol", "v": 99, "pol": "UNION", "n": 1 },
   { "op": "change_pol", "v": 100, "pol": "WFQ", "n": 3 },
   { "op": "change_pol", "v": 101, "pol": "UNION", "n": 2 },
   { "op": "change_pol", "v": 104, "pol": "SP", "n": 3 },
@@ -88,5 +110,5 @@
   { "op": "change_weight", "v": 104, "step": 1003, "weight": 2.0 },
   { "op": "change_weight", "v": 104, "step": 1004, "weight": 3.0 },
 
-  { "op": "change_root", "v": 100 }
+  { "op": "change_root", "v": 99 }
 ]

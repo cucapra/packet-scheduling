@@ -1,12 +1,18 @@
 [
+  { "op": "spawn", "v": 99, "pe": -1 },
   { "op": "spawn", "v": 100, "pe": 0 },
   { "op": "spawn", "v": 101, "pe": 1 },
   { "op": "spawn", "v": 102, "pe": 1 },
   { "op": "spawn", "v": 103, "pe": 1 },
 
+  { "op": "adopt", "step": 999, "parent": 99, "child": 100 },
   { "op": "adopt", "step": 1000, "parent": 100, "child": 101 },
   { "op": "adopt", "step": 1001, "parent": 100, "child": 102 },
   { "op": "adopt", "step": 1002, "parent": 100, "child": 103 },
+
+  { "op": "assoc", "v": 99, "class": "A" },
+  { "op": "assoc", "v": 99, "class": "B" },
+  { "op": "assoc", "v": 99, "class": "C" },
 
   { "op": "assoc", "v": 100, "class": "A" },
   { "op": "assoc", "v": 100, "class": "B" },
@@ -16,11 +22,16 @@
   { "op": "assoc", "v": 102, "class": "B" },
   { "op": "assoc", "v": 103, "class": "C" },
 
+  { "op": "map", "v": 99, "class": "A", "step": 999 },
+  { "op": "map", "v": 99, "class": "B", "step": 999 },
+  { "op": "map", "v": 99, "class": "C", "step": 999 },
+
   { "op": "map", "v": 100, "class": "A", "step": 1000 },
   { "op": "map", "v": 100, "class": "B", "step": 1001 },
   { "op": "map", "v": 100, "class": "C", "step": 1002 },
 
+  { "op": "change_pol", "v": 99, "pol": "UNION", "n": 1 },
   { "op": "change_pol", "v": 100, "pol": "RR", "n": 3 },
 
-  { "op": "change_root", "v": 100 }
+  { "op": "change_root", "v": 99 }
 ]

@@ -218,6 +218,18 @@ type compiled = {
 let vpifo_start = 100
 let step_start = 1000
 
+(* The fake root sits one level above every real root. It exists so that
+   the real root always has an editable parent classifier — which lets
+   [patch] handle whole-tree replacement, [SuperPol], and [SubPol] as
+   ordinary parent-side edits rather than special-cased re-rootings.
+   Reserved IDs below [vpifo_start]/[step_start] keep the existing
+   numbering of every real node intact. The fake root lives on PE -1; the
+   simulator never sees it as a runtime node — [of_policy] emits the
+   instructions that wire it up, and that's the entire surface. *)
+let fake_root_v : vpifo = 99
+let fake_root_step : step = 999
+let fake_root_pe : pe = -1
+
 (* The instructions for compiling a subtree, grouped by instruction "kind".
    By merging these [frags] with care, we can make a top-level
    concatenation that has all spawns first, then all adopts, etc. *)
@@ -477,11 +489,30 @@ let of_policy (p : Frontend.Policy.t) : compiled =
   let frag, decorated =
     compile_subtree ~fresh_v ~fresh_s ~pe_of_depth ~depth:0 p
   in
+  (* Wrap the real root in the fake root. The fake root carries every
+     class the real tree handles, all routed via its single step to the
+     real root. [decorated] continues to describe only the real tree —
+     the fake root is a known constant ([fake_root_v]/[fake_root_step]/
+     [fake_root_pe]) that [patch] re-derives without storing. *)
+  let fake_frag =
+    {
+      spawns = [ Spawn (fake_root_v, fake_root_pe) ];
+      adopts = [ Adopt (fake_root_step, fake_root_v, frag.root_v) ];
+      assocs = List.map (fun c -> Assoc (fake_root_v, c)) frag.classes;
+      maps =
+        List.map (fun c -> Map (fake_root_v, c, fake_root_step)) frag.classes;
+      change_pols = [ Change_pol (fake_root_v, UNION, 1) ];
+      change_weights = [];
+      root_v = fake_root_v;
+      classes = frag.classes;
+    }
+  in
+  let combined = combine_frags fake_frag [ frag ] in
   (* Tell the runtime which vPIFO is the entry point. Always last so the
      tree's structure is fully wired before traffic can arrive at it. *)
-  let set_root = [ Change_root frag.root_v ] in
+  let set_root = [ Change_root fake_root_v ] in
   let pes = List.init (policy_depth p + 1) (fun d -> d) in
-  { prog = frag_to_program frag @ set_root; decorated; pes }
+  { prog = frag_to_program combined @ set_root; decorated; pes }
 
 let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
   let open Rio_compare.Compare in
