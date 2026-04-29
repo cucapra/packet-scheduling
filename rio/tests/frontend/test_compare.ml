@@ -141,14 +141,13 @@ let subpol =
    chain of legal changes that together overwhelm the analyzer. *)
 let verydiff_combos =
   [
-    (* wfq_complex = WFQ([(A,1), (RR[B,C],2)]). Next changes RR[B,C]→RR[B,D]
-       (a deeper [OneArmReplaced]) and bumps the weight 2→5 (a
-       [WeightChanged]) at the same slot. *)
-    make_compare_test "WFQ slot with deep diff and weight change" "wfq_complex"
-      "wfq_complex_deep_and_weight" (VeryDifferent []);
     (* WFQ(A:2,B:1,C:3) → WFQ(A:2,B:1,Z:7): one slot's arm changed
        (C→Z, an [OneArmReplaced]) and its weight changed (3→7, a
-       [WeightChanged]). Same slot, two distinct edits. *)
+       [WeightChanged]). Same slot, two distinct edits. The arm-change
+       could equally be a deep policy swap (e.g., a leaf becoming an
+       RR subtree) — depth doesn't change [compare_wfq]'s behavior;
+       once it sees both [ps] and [ws] changed, it gives up without
+       recursing. *)
     make_compare_test "WFQ slot with arm change and weight change" "wfq_ABC"
       "wfq_ABZ_diff" (VeryDifferent []);
     (* WFQ(B,A) → WFQ(A:2,B:1,C:3): adding a WFQ arm is logically
