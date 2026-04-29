@@ -84,14 +84,6 @@ val patch : prev:compiled -> next:Frontend.Policy.t -> compiled option
       rides on the fake root's single step instead of an internal parent — the
       shape of the emitted instructions is the same.
 
-    - [next] is wholesale different from [prev] (per
-      [Rio_compare.Compare.VeryDifferent []]): same handler as the whole-tree
-      [OneArmReplaced] case above. The fake root's classifier is rewritten from
-      [prev]'s classes to [next]'s, the old root is [Designate]d so its
-      in-flight traffic drains, and every prev vpifo is [GC]'d. A
-      [VeryDifferent] result with a non-empty path (a deep multi-arm divergence)
-      still returns [None].
-
     - [next] is structurally equal to a strict subtree of [prev] at a non-empty
       path (per [Rio_compare.Compare.SubPol]): returns [Some] with an
       [Emancipate] detaching that subtree from its parent, a second

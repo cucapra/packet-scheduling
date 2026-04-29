@@ -9,7 +9,14 @@ type t =
   | OneArmRemoved of arm_diff
   | WeightChanged of weight_change
   | OneArmReplaced of arm_diff
-  | VeryDifferent of path
+    (* Wholesale replacement of the subtree at [path] with [arm]. Covers
+         both clean single-arm divergence (sniffed precisely) and the
+         "give up" case where the diff sniffer can't break the change
+         down further at this level — in the latter case [arm] is the
+         next-side parent itself, and the IR replaces the whole subtree
+         via [Designate]. As [compare] gets smarter, individual cases
+         will move from "give up" to a more specific variant (or, later,
+         a list of edits). *)
   | SuperPol of path (* [path] points to [prev] inside [next]. *)
   | SubPol of path (* [path] points to [next] inside [prev]. *)
 
@@ -76,7 +83,6 @@ let prepend_path i diff =
   | OneArmRemoved ad -> OneArmRemoved (prepend_arm ad)
   | WeightChanged wc -> WeightChanged (prepend_wc wc)
   | OneArmReplaced ad -> OneArmReplaced (prepend_arm ad)
-  | VeryDifferent p -> VeryDifferent (i :: p)
   | SuperPol p -> SuperPol (i :: p)
   | SubPol p -> SubPol (i :: p)
 
@@ -107,19 +113,24 @@ let rec is_sub_policy p1 p2 =
    diff strategy. [OneArmAdded] only fires when exactly one arm was
    inserted; [OneArmRemoved] only when exactly one was dropped; a single
    in-place divergence recurses into the differing children (which is
-   how deep diffs get recognized: the inner [analyze] returns a 
-   parent-relative diff and we tack on [i] via [prepend_path]).
-   Multi-arm changes in any direction degrade to [VeryDifferent]. *)
-and compare ps1 ps2 =
+   how deep diffs get recognized: the inner [analyze] returns a
+   parent-relative diff and we tack on [i] via [prepend_path]). When the
+   sniffer can't break the change down at this level (multi-arm
+   divergence, mismatched insertions, etc.), we "give up" by emitting
+   [OneArmReplaced { path = []; arm = p2 }] — the IR will replace the
+   whole subtree at this position via [Designate]. [p2] is threaded in
+   so we can carry that fallback. *)
+and compare ~next:p2 ps1 ps2 =
   (* Lengths differ by some number of insertions in one direction. We can
      only describe the case of a single insertion: [inserted prev next]
      returning exactly one diff means [next] is [prev] with one element
      added at index [i]; package it with [ctor] (either [OneArmAdded] or
      [OneArmRemoved] depending on which direction we were checking). *)
+  let give_up = OneArmReplaced { path = []; arm = p2 } in
   let single_insert prev next ctor =
     match inserted prev next with
     | Some [ (i, arm) ] -> ctor { path = [ i ]; arm }
-    | _ -> VeryDifferent []
+    | _ -> give_up
   in
   let n = List.compare_lengths ps1 ps2 in
   if n = 0 then begin
@@ -130,13 +141,13 @@ and compare ps1 ps2 =
         (* Exactly one slot differs. We recurse, since diff might be
            a deep [OneArmAdded]/[OneArmRemoved] (path bubbles up through
            [prepend_path]) or a leaf [OneArmReplaced { path = [] }] which
-           prepend_path turns into [{ path = [i] }]. A big divergence
-           below us comes back as [VeryDifferent] and prepend_path
-           tags it with [i]. *)
+           prepend_path turns into [{ path = [i] }]. A multi-arm give-up
+           below us also comes back as [OneArmReplaced { path = [] }]
+           and prepend_path tags it with [i]. *)
         prepend_path i (analyze (List.nth ps1 i) (List.nth ps2 i))
     | _ ->
-        (* Detected that more than one arm was changed in-place. We can't handle that yet, but eventually we'll set up a map over all such changes and just generate a list of OneArmReplaced. *)
-        VeryDifferent []
+        (* More than one arm changed in-place. Give up at this level. *)
+        give_up
   end
   else if n < 0 then
     (* ps1 was shorter; an insertion into ps1 could make ps2. *)
@@ -145,13 +156,14 @@ and compare ps1 ps2 =
     (* ps2 was shorter; equivalently, we can remove an arm from ps1 to make ps2. *)
     single_insert ps2 ps1 (fun ad -> OneArmRemoved ad)
 
-and compare_wfq ps1 (ws1 : float list) ps2 (ws2 : float list) =
+and compare_wfq ~next:p2 ps1 (ws1 : float list) ps2 (ws2 : float list) =
+  let give_up = OneArmReplaced { path = []; arm = p2 } in
   match (ps1 = ps2, ws1 = ws2) with
   | true, true -> Same (* Shoudn't get here; this is [Same] at a higher level *)
   | false, true ->
       (* We suspect it's a pure policy change in-place, with weights left unchanged. We can just pass this to [compare]. But first let's check if their lengths are the same *)
-      if List.length ps1 = List.length ps2 then compare ps1 ps2
-      else VeryDifferent []
+      if List.length ps1 = List.length ps2 then compare ~next:p2 ps1 ps2
+      else give_up
   | true, false -> begin
       (* Pure weight change in-place. [ps1 = ps2] guarantees the slot
          counts match, so [ws1] and [ws2] are necessarily the same length
@@ -160,8 +172,8 @@ and compare_wfq ps1 (ws1 : float list) ps2 (ws2 : float list) =
       match changed ws1 ws2 with
       | [ (i, new_weight) ] -> WeightChanged { path = [ i ]; new_weight }
       | _ ->
-          (* Detected more than one point of difference. We can't handle that yet. *)
-          VeryDifferent []
+          (* More than one weight differs. Give up at this level. *)
+          give_up
     end
   | false, false -> begin
       (* Both lists changed. The only single-edit story we can tell here
@@ -174,7 +186,7 @@ and compare_wfq ps1 (ws1 : float list) ps2 (ws2 : float list) =
       match (inserted ps2 ps1, inserted ws2 ws1) with
       | Some [ (i, arm) ], Some [ (j, _) ] when i = j ->
           OneArmRemoved { path = [ i ]; arm }
-      | _ -> VeryDifferent []
+      | _ -> give_up
     end
 
 and analyze p1 p2 =
@@ -187,8 +199,8 @@ and analyze p1 p2 =
     | _ -> (
         match (p1, p2) with
         | UNION ps1, UNION ps2 | SP ps1, SP ps2 | RR ps1, RR ps2 ->
-            compare ps1 ps2
-        | WFQ (ps1, ws1), WFQ (ps2, ws2) -> compare_wfq ps1 ws1 ps2 ws2
+            compare ~next:p2 ps1 ps2
+        | WFQ (ps1, ws1), WFQ (ps2, ws2) -> compare_wfq ~next:p2 ps1 ws1 ps2 ws2
         | _ ->
             (* FIFO→FIFO with a different class, or any constructor mismatch
                (FIFO↔SP, SP↔RR, etc.) — wholesale replacement at this
@@ -224,6 +236,5 @@ let to_string = function
       Printf.sprintf "WeightChanged: %s" (string_of_weight_change wc)
   | OneArmReplaced ad ->
       Printf.sprintf "OneArmReplaced: %s" (string_of_arm_diff ad)
-  | VeryDifferent p -> Printf.sprintf "VeryDifferent at %s" (path_to_string p)
   | SuperPol p -> Printf.sprintf "SuperPol at %s" (path_to_string p)
   | SubPol p -> Printf.sprintf "SubPol at %s" (path_to_string p)

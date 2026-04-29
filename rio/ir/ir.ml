@@ -511,10 +511,11 @@ let of_policy (p : Frontend.Policy.t) : compiled =
   let pes = List.init (policy_depth p + 1) (fun d -> d) in
   { prog = frag_to_program combined; decorated; pes }
 
-(* Whole-tree replacement, riding on the fake root. Used both for
-   [Compare.OneArmReplaced { path = []; _ }] (constructor mismatch /
-   FIFO-class swap at the root) and [Compare.VeryDifferent []] (multi-arm
-   divergence at the root). The fake root
+(* Whole-tree replacement, riding on the fake root. Reached via
+   [Compare.OneArmReplaced { path = []; _ }] — both the precise leaf
+   case (constructor mismatch / FIFO-class swap at the root) and the
+   "give up" case where [Compare] hit a multi-arm divergence and
+   wholesale-replaces. The fake root
    ([fake_root_v]/[fake_root_step]/[fake_root_pe]) plays the same
    structural role here that an internal parent plays in the non-root
    [OneArmReplaced] handler: its classifier is rewritten to route new
@@ -585,9 +586,7 @@ let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
       (* Nothing structural to do — return an empty delta. The decorated
          tree is immutable, so we hand back the same reference. *)
       Some { prog = []; decorated = prev.decorated; pes = prev.pes }
-  | VeryDifferent [] | OneArmReplaced { path = []; _ } ->
-      whole_tree_replace ~prev ~next
-  | VeryDifferent _ -> None
+  | OneArmReplaced { path = []; _ } -> whole_tree_replace ~prev ~next
   | SuperPol [] | SubPol [] -> None
   | SuperPol path ->
       (* [prev]'s policy sits inside [next] at [path]. We compile only the

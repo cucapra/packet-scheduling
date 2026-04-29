@@ -17,3 +17,8 @@ val of_program : Ast.program -> t
 
 val to_string : t -> string
 val to_json : t -> Yojson.Basic.t
+
+val walk : t -> int list -> t
+(** [walk p path] descends into [p] following each child index in [path].
+    [walk p []] is [p]. Raises if the path goes through a [FIFO] leaf or out of
+    bounds. *)

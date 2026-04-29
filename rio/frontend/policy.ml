@@ -81,3 +81,10 @@ let rec to_json p : Yojson.Basic.t =
   | WFQ (ps, ws) ->
       let pairs = List.map2 (fun p w -> `List [ to_json p; `Float w ]) ps ws in
       `Assoc [ ("WFQ", `List pairs) ]
+
+let rec walk p path =
+  match (p, path) with
+  | _, [] -> p
+  | FIFO _, _ :: _ -> failwith "Policy.walk: path through FIFO leaf"
+  | (UNION ps | SP ps | RR ps | WFQ (ps, _)), i :: rest ->
+      walk (List.nth ps i) rest

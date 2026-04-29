@@ -465,10 +465,27 @@ let one_arm_added_extends_pes_test =
 
 let pes_extension_tests = [ one_arm_added_extends_pes_test ]
 
+(* Deep give-up: complex_tree -> complex_tree_swap_sp_arms differs only
+   inside the SP subtree at root child 1 (multi-arm reorder). Compare
+   gives up at that level and emits [OneArmReplaced { path = [1]; arm }];
+   IR's existing OneArmReplaced handler routes through [Designate] on the
+   parent's existing step. Smoke-test that patch returns [Some] — the
+   exact instruction sequence is exercised by the precise OneArmReplaced
+   tests at non-empty paths above. *)
+let deep_giveup_test =
+  "complex_tree -> swap_sp_arms (deep give-up)" >:: fun _ ->
+  let prev = compile "complex_tree" in
+  let next = policy_of "complex_tree_swap_sp_arms" in
+  match Ir.patch ~prev ~next with
+  | Some _ -> ()
+  | None -> assert_failure "patch returned None for deep give-up"
+
+let deep_giveup_tests = [ deep_giveup_test ]
+
 let suite =
   "patch tests"
   >::: one_arm_added_tests @ weight_changed_tests @ one_arm_removed_tests
        @ one_arm_replaced_tests @ whole_tree_replace_tests @ sub_pol_tests
-       @ super_pol_tests @ pes_extension_tests
+       @ super_pol_tests @ pes_extension_tests @ deep_giveup_tests
 
 let () = run_test_tt_main suite
