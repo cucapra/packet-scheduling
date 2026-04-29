@@ -216,54 +216,148 @@ let sub_pol_tests =
 
 (* SuperPol *)
 
-(* prev = strict[A,B,C] (vpifos 100..103, pes [0;1]) sits inside
-   complex_tree's normalized form at path [1]. The delta builds the new
-   WFQ root and the UNION/RR siblings, [Adopt]s prev's root vpifo 100 in
-   via a fresh step, and re-roots to the new WFQ. We assert structural
-   invariants rather than an exact program: prev's vpifos must not be
-   respawned, and the new pes must place the WFQ layer on a fresh PE
-   (above prev's max PE 1) while reusing prev's PEs at depths >= 1. *)
-let super_pol_tests =
-  let prev_vpifos = [ 100; 101; 102; 103 ] in
+(* prev = strict[A,B,C] compiles to vpifos 100 (root)/101/102/103 with
+   adopt steps 1000/1001/1002 and pes [0; 1]; counters end at next_v=104,
+   next_s=1003. complex_tree normalizes to
+   wfq[(union[G,H], 3); (sp[A,B,C], 1); (rr[D,E,F], 2)] (children sort by
+   variant tag UNION < SP < RR), so prev sits at path [1]. The delta
+   builds the new WFQ root (v=104, PE 2 — fresh, above prev's max PE 1),
+   the UNION sibling (v=105 on PE 0, leaves v=106/107 on PE 1, internal
+   adopt steps 1003/1004) and the RR sibling (v=108 on PE 0, leaves
+   v=109/110/111 on PE 1, internal adopt steps 1005/1006/1007), then
+   [Adopt]s the WFQ root's three children via steps 1008 (UNION), 1009
+   (prev's root v=100), 1010 (RR). Each ancestor [Assoc]/[Map]s every
+   class in its subtree; WFQ weights mirror the (pol, weight) sort
+   order: 3, 1, 2. Final [Change_root 104] retargets the runtime at the
+   new top. None of prev's vpifos are respawned. *)
+let strict_abc_to_complex_tree_expected : program =
   [
-    ( "strict[A,B,C] -> complex_tree (no respawn, fresh PE above prev)"
-    >:: fun _ ->
+    Spawn (104, 2);
+    Spawn (105, 0);
+    Spawn (106, 1);
+    Spawn (107, 1);
+    Spawn (108, 0);
+    Spawn (109, 1);
+    Spawn (110, 1);
+    Spawn (111, 1);
+    Adopt (1008, 104, 105);
+    Adopt (1009, 104, 100);
+    Adopt (1010, 104, 108);
+    Adopt (1003, 105, 106);
+    Adopt (1004, 105, 107);
+    Adopt (1005, 108, 109);
+    Adopt (1006, 108, 110);
+    Adopt (1007, 108, 111);
+    Assoc (104, "G");
+    Assoc (104, "H");
+    Assoc (104, "A");
+    Assoc (104, "B");
+    Assoc (104, "C");
+    Assoc (104, "D");
+    Assoc (104, "E");
+    Assoc (104, "F");
+    Assoc (105, "G");
+    Assoc (105, "H");
+    Assoc (106, "G");
+    Assoc (107, "H");
+    Assoc (108, "D");
+    Assoc (108, "E");
+    Assoc (108, "F");
+    Assoc (109, "D");
+    Assoc (110, "E");
+    Assoc (111, "F");
+    Map (104, "G", 1008);
+    Map (104, "H", 1008);
+    Map (104, "A", 1009);
+    Map (104, "B", 1009);
+    Map (104, "C", 1009);
+    Map (104, "D", 1010);
+    Map (104, "E", 1010);
+    Map (104, "F", 1010);
+    Map (105, "G", 1003);
+    Map (105, "H", 1004);
+    Map (108, "D", 1005);
+    Map (108, "E", 1006);
+    Map (108, "F", 1007);
+    Change_pol (104, WFQ, 3);
+    Change_pol (105, UNION, 2);
+    Change_pol (108, RR, 3);
+    Change_weight (104, 1008, 3.0);
+    Change_weight (104, 1009, 1.0);
+    Change_weight (104, 1010, 2.0);
+    Change_root 104;
+  ]
+
+let super_pol_tests =
+  [
+    ( "strict[A,B,C] -> complex_tree (pes invariant)" >:: fun _ ->
       let c = patch_files "strict_ABC" "complex_tree" in
       assert_equal
         ~printer:(fun pes ->
           "[" ^ String.concat "; " (List.map string_of_int pes) ^ "]")
-        [ 2; 0; 1 ] c.pes;
-      List.iter
-        (fun instr ->
-          match instr with
-          | Spawn (v, _) ->
-              assert_bool
-                (Printf.sprintf
-                   "delta should not respawn prev's vpifo %d (instr: %s)" v
-                   (string_of_instr instr))
-                (not (List.mem v prev_vpifos))
-          | _ -> ())
-        c.prog;
-      let roots =
-        List.filter_map
-          (function Change_root v -> Some v | _ -> None)
-          c.prog
-      in
-      assert_equal ~msg:"expected exactly one Change_root" 1 (List.length roots);
-      assert_bool "Change_root target must not be a prev vpifo"
-        (not (List.mem (List.hd roots) prev_vpifos));
-      let adopts_of_prev_root =
-        List.filter
-          (function Adopt (_, _, child) -> child = 100 | _ -> false)
-          c.prog
-      in
-      assert_equal ~msg:"prev's root should be Adopted exactly once" 1
-        (List.length adopts_of_prev_root) );
+        [ 2; 0; 1 ] c.pes );
+    make_delta_test "strict[A,B,C] -> complex_tree" "strict_ABC" "complex_tree"
+      strict_abc_to_complex_tree_expected;
   ]
+
+(* pes-extension regressions: when a OneArmAdded or OneArmReplaced inserts
+   an arm whose internal depth pushes the tree deeper than [prev.pes]
+   covered, [pes_extended_to_depth] should grow [pes] with fresh PEs above
+   the existing max — keeping the "same depth ⇒ same PE" invariant for
+   the new layers. No fixture pair fits this shape, so we build the
+   policies inline. *)
+
+(* prev = sp[A] (depth 1, pes [0; 1]); next = sp[A, rr[B, C]] (depth 2).
+   The new arm at index 1 is rr[B, C]. arm_depth = 1, internal depth = 1,
+   so the tree reaches depth 2 — one below prev's max. New layer takes
+   PE 2 (fresh, above prev's max PE 1). *)
+let one_arm_added_extends_pes_test =
+  "sp[A] -> sp[A, rr[B,C]] (extends pes)" >:: fun _ ->
+  let prev = Ir.of_policy (Policy.SP [ Policy.FIFO "A" ]) in
+  let next =
+    Policy.SP
+      [ Policy.FIFO "A"; Policy.RR [ Policy.FIFO "B"; Policy.FIFO "C" ] ]
+  in
+  let c =
+    match Ir.patch ~prev ~next with
+    | Some c -> c
+    | None -> assert_failure "patch returned None"
+  in
+  assert_equal
+    ~printer:(fun pes ->
+      "[" ^ String.concat "; " (List.map string_of_int pes) ^ "]")
+    [ 0; 1; 2 ] c.pes;
+  let expected : program =
+    [
+      Spawn (102, 1);
+      Spawn (103, 2);
+      Spawn (104, 2);
+      Adopt (1003, 100, 102);
+      Adopt (1001, 102, 103);
+      Adopt (1002, 102, 104);
+      Assoc (100, "B");
+      Assoc (100, "C");
+      Assoc (102, "B");
+      Assoc (102, "C");
+      Assoc (103, "B");
+      Assoc (104, "C");
+      Map (100, "B", 1003);
+      Map (100, "C", 1003);
+      Map (102, "B", 1001);
+      Map (102, "C", 1002);
+      Change_pol (100, SP, 2);
+      Change_pol (102, RR, 2);
+      Change_weight (100, 1003, 2.0);
+    ]
+  in
+  assert_equal ~printer:Ir.string_of_program expected c.prog
+
+let pes_extension_tests = [ one_arm_added_extends_pes_test ]
 
 let suite =
   "patch tests"
   >::: one_arm_added_tests @ weight_changed_tests @ one_arm_removed_tests
        @ one_arm_replaced_tests @ sub_pol_tests @ super_pol_tests
+       @ pes_extension_tests
 
 let () = run_test_tt_main suite

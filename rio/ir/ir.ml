@@ -452,15 +452,12 @@ let rec policy_depth (p : Frontend.Policy.t) : int =
   | P.FIFO _ -> 0
   | P.UNION ps | P.SP ps | P.RR ps ->
       1 + List.fold_left max 0 (List.map policy_depth ps)
-  | P.WFQ (ps, _) ->
-      1 + List.fold_left max 0 (List.map policy_depth ps)
+  | P.WFQ (ps, _) -> 1 + List.fold_left max 0 (List.map policy_depth ps)
 
 (* Append [n] consecutive PEs starting at [start] to [pes]. Used when a
    patch lands new layers below the deepest existing layer. *)
 let extend_pes_with_fresh ~n ~start pes =
-  let rec extra k cur =
-    if k <= 0 then [] else cur :: extra (k - 1) (cur + 1)
-  in
+  let rec extra k cur = if k <= 0 then [] else cur :: extra (k - 1) (cur + 1) in
   pes @ extra n start
 
 (* Grow [pes] so it covers [target_depth], allocating fresh PEs (above
@@ -569,9 +566,7 @@ let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
          of [prev.pes] — the survivors are everything from the new root
          downward. *)
       let drop = List.length path in
-      let new_pes =
-        List.filteri (fun i _ -> i >= drop) prev.pes
-      in
+      let new_pes = List.filteri (fun i _ -> i >= drop) prev.pes in
       Some { prog; decorated = new_root; pes = new_pes }
   | OneArmReplaced { path = []; _ } ->
       (* Whole-tree replacement: nothing to ride on — let the caller
@@ -594,7 +589,9 @@ let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
          fuses the old root and new root into a super-node that occupies
          the existing slot, riding on [step_k]. *)
       let arm_depth = List.length arm_path in
-      let new_pes = pes_extended_to_depth (arm_depth + policy_depth arm) prev.pes in
+      let new_pes =
+        pes_extended_to_depth (arm_depth + policy_depth arm) prev.pes
+      in
       let pe_of_depth d = List.nth new_pes d in
       let arm_frag, arm_decorated =
         compile_subtree ~fresh_v ~fresh_s ~pe_of_depth ~depth:arm_depth arm
@@ -696,7 +693,9 @@ let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
          lower than the parent's new adopt-step ID — mirroring the
          pre-order numbering [of_policy]/[compile_arm] use. *)
       let arm_depth = List.length arm_path in
-      let new_pes = pes_extended_to_depth (arm_depth + policy_depth arm) prev.pes in
+      let new_pes =
+        pes_extended_to_depth (arm_depth + policy_depth arm) prev.pes
+      in
       let pe_of_depth d = List.nth new_pes d in
       let arm_frag, arm_decorated =
         compile_subtree ~fresh_v ~fresh_s ~pe_of_depth ~depth:arm_depth arm

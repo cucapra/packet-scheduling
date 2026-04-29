@@ -36,10 +36,10 @@ type compiled = {
       record (recoverable by erasing decorations) so [patch] can diff against an
       incoming policy without storing a separate [Frontend.Policy.t].
     - [pes]: the PE assignment, indexed by depth. Every node at depth [d] lives
-      on PE [List.nth pes d]. A fresh [of_policy] produces [[0; 1; …;
-      max_depth]]; [patch] (notably [SuperPol]) may introduce non-contiguous
-      PEs to honor the "same depth ⇒ same PE" invariant without re-spawning
-      previously installed nodes. *)
+      on PE [List.nth pes d]. A fresh [of_policy] produces
+      [[0; 1; …; max_depth]]; [patch] (notably [SuperPol]) may introduce
+      non-contiguous PEs to honor the "same depth ⇒ same PE" invariant without
+      re-spawning previously installed nodes. *)
 
 val of_policy : Frontend.Policy.t -> compiled
 (** Compile a [Frontend.Policy.t] to IR. Supports trees built from [FIFO],
