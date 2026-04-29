@@ -2,214 +2,228 @@ open Frontend.Policy
 
 type path = int list
 
-(* A structural diff that can describe *where* a change occurs.
-   A change at the root has path = []. *)
+(* A structural diff between two policies. *)
 type t =
   | Same
-  | Change of path * change
+  | OneArmAdded of arm_diff
+  | OneArmRemoved of arm_diff
+  | WeightChanged of weight_change
+  | OneArmReplaced of arm_diff
+  | VeryDifferent of path
+  | SuperPol of path (* [path] points to [prev] inside [next]. *)
+  | SubPol of path (* [path] points to [next] inside [prev]. *)
 
-and change =
-  | OneArmAppended of Frontend.Policy.t
-  | ArmsAdded of {
-      old_count : int;
-      new_count : int;
-      details : string; (* human-readable description of what was added *)
-    }
-  | VeryDifferent
-  | SuperPol
+and arm_diff = {
+  path : path;
+      (* Path from the root to the position of this arm. 
+      For [OneArmAdded] this is a position in *next*; for
+          [OneArmRemoved] it is a position in *prev*. *)
+  arm : Frontend.Policy.t;
+}
 
-let list_diff xs ys = List.filter (fun x -> not (List.mem x ys)) xs
+and weight_change = {
+  path : path;
+  new_weight : float;
+}
 
-(* Check if lst1 appears as an order-preserving sub-sequence of lst2.
-   E.g. [A,C] is an order-preserving sub-sequence of [A,B,C,D], but
-   [C,A] is not. *)
-let rec is_ordered_subsequence lst1 lst2 =
-  match (lst1, lst2) with
-  | [], _ -> true (* Empty list is sub-sequence of anything *)
-  | _, [] -> false (* Non-empty list can't be sub-sequence of empty *)
-  | h1 :: t1, h2 :: t2 ->
-      if h1 = h2 then is_ordered_subsequence t1 t2
-      else is_ordered_subsequence lst1 t2
-
-(* Greedy single-arm-append check that matches before [OneArmAppended]. 
-   Returns the appended arm if [ps2] is exactly [ps1] with one extra element
-   tacked onto the end; otherwise [None]. Strictly narrower than
-   [is_ordered_subsequence]. *)
-let one_arm_appended ps1 ps2 =
-  match List.rev ps2 with
-  | last :: init_rev when List.rev init_rev = ps1 -> Some last
-  | _ -> None
-
-let arms_added_by_subseq details_fn lst1 lst2 =
-  let old_count = List.length lst1 in
-  let new_count = List.length lst2 in
-  let details = details_fn lst1 lst2 in
-  Change ([], ArmsAdded { old_count; new_count; details })
-
-(* The function we'll use to construct SP-SP details when arms are added *)
-let details_strict_arm_added ps1 ps2 =
-  let rec loop i2 l1 l2 acc =
-    match (l1, l2) with
-    | _, [] -> acc
-    | [], p2 :: t2 ->
-        loop (i2 + 1) [] t2
-          (Printf.sprintf "added %s at %d" (Frontend.Policy.to_string p2) i2
-          :: acc)
-    | p1 :: t1, p2 :: t2 ->
-        if p1 = p2 then loop (i2 + 1) t1 t2 acc
+(** [inserted prev next] determines whether [next] can be obtained by inserting
+    elements into [prev] without reordering existing elements. If so, it returns
+    [Some ins], where [ins] is a list of pairs of the form [(i, x)]. Each pair
+    indicates that element [x] appears in [next] at index [i] and was not
+    present at that position in [prev] (i.e., it was inserted). If [next] cannot
+    be formed by inserting elements into [prev] (for example, if elements would
+    need to be removed or reordered), we return [None]. *)
+let inserted prev next =
+  let rec loop i prev next acc =
+    match (prev, next) with
+    | [], [] -> Some (List.rev acc)
+    | [], x :: t ->
+        (* elements in [next] are all insertions *)
+        loop (i + 1) [] t ((i, x) :: acc)
+    | x1 :: t1, x2 :: t2 ->
+        if x1 = x2 then loop (i + 1) t1 t2 acc
         else
-          (* p2 is an inserted arm *)
-          loop (i2 + 1) l1 t2
-            (Printf.sprintf "added %s at %d" (Frontend.Policy.to_string p2) i2
-            :: acc)
+          (* x2 was inserted at position i *)
+          loop (i + 1) prev t2 ((i, x2) :: acc)
+    | _ :: _, [] -> None (* ran out of [next] *)
   in
-  loop 0 ps1 ps2 [] |> List.rev |> String.concat ", "
+  loop 0 prev next []
 
-(* The function we'll use to construct RR-RR or Union-Union details when
-   arms are added *)
-let details_rr_arm_added additions =
-  (* Sometimes we need text details but the policy doesn't care about
-     the _index_ of the addition. *)
-  if additions = [] then ""
-  else
-    "added "
-    ^ (additions |> List.map Frontend.Policy.to_string |> String.concat ", ")
+(** [changed prev next] returns a list of all positions at which the two input
+    lists differ. Returns a list of pairs, in which pair [(i, x)] appears iff
+    [prev[i] <> next[i] = x] *)
+let changed prev next =
+  let rec loop i prev next acc =
+    match (prev, next) with
+    | [], [] -> List.rev acc
+    | [], _ | _, [] -> failwith "changed: input lists of different lengths"
+    | x1 :: t1, x2 :: t2 ->
+        if x1 <> x2 then loop (i + 1) t1 t2 ((i, x2) :: acc)
+        else loop (i + 1) t1 t2 acc
+  in
+  loop 0 prev next []
 
-(* WFQ: build details for added (policy,weight) arms *)
-let details_wfq_arm_added pairs1 pairs2 =
-  let added_pairs = List.filter (fun pw -> not (List.mem pw pairs1)) pairs2 in
-  match added_pairs with
-  | [] -> ""
-  | _ ->
-      added_pairs
-      |> List.map (fun (p, w) ->
-          Printf.sprintf "added %s with weight %g"
-            (Frontend.Policy.to_string p)
-            w)
-      |> String.concat ", "
+(* Prepend [i] to every embedded [path] inside [diff]. Used by [compare]
+   when descending: a child's diff comes back parent-relative, and we tack
+   on the child's own index to make it grandparent-relative (and so on up
+   the recursion). *)
+let prepend_path i diff =
+  let prepend_arm (ad : arm_diff) = { ad with path = i :: ad.path } in
+  let prepend_wc (wc : weight_change) = { wc with path = i :: wc.path } in
+  match diff with
+  | Same -> Same
+  | OneArmAdded ad -> OneArmAdded (prepend_arm ad)
+  | OneArmRemoved ad -> OneArmRemoved (prepend_arm ad)
+  | WeightChanged wc -> WeightChanged (prepend_wc wc)
+  | OneArmReplaced ad -> OneArmReplaced (prepend_arm ad)
+  | VeryDifferent p -> VeryDifferent (i :: p)
+  | SuperPol p -> SuperPol (i :: p)
+  | SubPol p -> SubPol (i :: p)
 
 let rec is_sub_policy p1 p2 =
   (* Is p1 a sub-policy of p2?
-     Returns (found, path).
-     path tells us where in p2 we found p1, if anywhere.
+     Returns [Some path], where [path] tells us where in p2 we found p1.
      When found at an *immediate* child i, path = [i].
      When found deeper, path = i :: deeper_path.
-     Returns (true, []) when p1 = p2.
-     Returns (false, []) if not found. *)
-  if p1 = p2 then (true, [])
+     Returns [Some []] when p1 = p2.
+     Returns None if not found. *)
+  if p1 = p2 then Some []
   else
     match p2 with
-    | FIFO _ -> (false, []) (* No sub-policies inside FIFO *)
+    | FIFO _ -> None
     | UNION ps | SP ps | RR ps | WFQ (ps, _) ->
         let rec loop i = function
-          | [] -> (false, [])
-          | p :: t ->
-              if p = p1 then (true, [ i ])
+          | [] -> None
+          | p :: t -> (
+              if p = p1 then Some [ i ]
               else
-                let found, path = is_sub_policy p1 p in
-                if found then (true, i :: path) else loop (i + 1) t
+                match is_sub_policy p1 p with
+                | None -> loop (i + 1) t
+                | Some path -> Some (i :: path))
         in
         loop 0 ps
 
-let rec compare_lists ps1 ps2 =
-  (* Compare two equal-length lists of children structurally and report
-     the index of the first child that differs. *)
-  let len1 = List.length ps1 in
-  let len2 = List.length ps2 in
-  if len1 <> len2 then Change ([], VeryDifferent)
-  else
-    let rec loop i l1 l2 =
-      match (l1, l2) with
-      | [], [] -> Same
-      | p1 :: t1, p2 :: t2 -> (
-          match analyze p1 p2 with
-          | Same -> loop (i + 1) t1 t2
-          | Change (child_path, child_change) ->
-              Change (i :: child_path, child_change))
-      | _ ->
-          failwith
-            "same length guaranteed by outer condition; we'll never get here"
-    in
-    loop 0 ps1 ps2
-
 (* SP/RR/UNION share a flat list-of-children shape, so they share the same
-   diff strategy: greedy [one_arm_appended] (the only thing the patcher
-   knows how to do), then the broader subsequence-based [ArmsAdded], then
-   structural [compare_lists]. The only thing that varies between SP and
-   RR/UNION is how we describe the [ArmsAdded] case in human-readable
-   form, so we parameterize over [details_fn]. *)
-and compare_flat ~details_fn ps1 ps2 =
-  match one_arm_appended ps1 ps2 with
-  | Some arm -> Change ([], OneArmAppended arm)
-  | None ->
-      if is_ordered_subsequence ps1 ps2 then
-        arms_added_by_subseq details_fn ps1 ps2
-      else compare_lists ps1 ps2
-
-and compare_strict ps1 ps2 =
-  compare_flat ~details_fn:details_strict_arm_added ps1 ps2
-
-and compare_rr_like ps1 ps2 =
-  (* for RR and Union *)
-  compare_flat
-    ~details_fn:(fun xs1 xs2 -> details_rr_arm_added (list_diff xs2 xs1))
-    ps1 ps2
-
-and compare_wfq ps1 ws1 ps2 ws2 =
-  (* WFQ never reports [OneArmAppended] — the patcher is out of scope
-     for WFQ either way (weight changes, weighted arm-adds), so we let
-     [analyze] describe the change as precisely as it can.
-     The patcher will give up later. *)
-  let len1 = List.length ps1 in
-  let len2 = List.length ps2 in
-  let pairs1 = List.combine ps1 ws1 in
-  let pairs2 = List.combine ps2 ws2 in
-  if is_ordered_subsequence pairs1 pairs2 then
-    arms_added_by_subseq details_wfq_arm_added pairs1 pairs2
-  else if len1 > len2 then
-    (* Arms removed *)
-    Change ([], VeryDifferent)
-  else if ws1 = ws2 then
-    (* Same weights, so fall back to structural child diff on arms *)
-    compare_lists ps1 ps2
+   diff strategy. [OneArmAdded] only fires when exactly one arm was
+   inserted; [OneArmRemoved] only when exactly one was dropped; a single
+   in-place divergence recurses into the differing children (which is
+   how deep diffs get recognized: the inner [analyze] returns a 
+   parent-relative diff and we tack on [i] via [prepend_path]).
+   Multi-arm changes in any direction degrade to [VeryDifferent]. *)
+and compare ps1 ps2 =
+  (* Lengths differ by some number of insertions in one direction. We can
+     only describe the case of a single insertion: [inserted prev next]
+     returning exactly one diff means [next] is [prev] with one element
+     added at index [i]; package it with [ctor] (either [OneArmAdded] or
+     [OneArmRemoved] depending on which direction we were checking). *)
+  let single_insert prev next ctor =
+    match inserted prev next with
+    | Some [ (i, arm) ] -> ctor { path = [ i ]; arm }
+    | _ -> VeryDifferent []
+  in
+  let n = List.compare_lengths ps1 ps2 in
+  if n = 0 then begin
+    (* lists of same length *)
+    match changed ps1 ps2 with
+    | [] -> Same
+    | [ (i, _) ] ->
+        (* Exactly one slot differs. We recurse, since diff might be
+           a deep [OneArmAdded]/[OneArmRemoved] (path bubbles up through
+           [prepend_path]) or a leaf [OneArmReplaced { path = [] }] which
+           prepend_path turns into [{ path = [i] }]. A big divergence
+           below us comes back as [VeryDifferent] and prepend_path
+           tags it with [i]. *)
+        prepend_path i (analyze (List.nth ps1 i) (List.nth ps2 i))
+    | _ ->
+        (* Detected that more than one arm was changed in-place. We can't handle that yet, but eventually we'll set up a map over all such changes and just generate a list of OneArmReplaced. *)
+        VeryDifferent []
+  end
+  else if n < 0 then
+    (* ps1 was shorter; an insertion into ps1 could make ps2. *)
+    single_insert ps1 ps2 (fun ad -> OneArmAdded ad)
   else
-    (* Weight changes, or mixed differences *)
-    Change ([], VeryDifferent)
+    (* ps2 was shorter; equivalently, we can remove an arm from ps1 to make ps2. *)
+    single_insert ps2 ps1 (fun ad -> OneArmRemoved ad)
+
+and compare_wfq ps1 (ws1 : float list) ps2 (ws2 : float list) =
+  match (ps1 = ps2, ws1 = ws2) with
+  | true, true -> Same (* Shoudn't get here; this is [Same] at a higher level *)
+  | false, true ->
+      (* We suspect it's a pure policy change in-place, with weights left unchanged. We can just pass this to [compare]. But first let's check if their lengths are the same *)
+      if List.length ps1 = List.length ps2 then compare ps1 ps2
+      else VeryDifferent []
+  | true, false -> begin
+      (* Pure weight change in-place. [ps1 = ps2] guarantees the slot
+         counts match, so [ws1] and [ws2] are necessarily the same length
+         and [changed] is well-defined. The [[]] result is unreachable
+         because [ws1 <> ws2] in this branch. *)
+      match changed ws1 ws2 with
+      | [ (i, new_weight) ] -> WeightChanged { path = [ i ]; new_weight }
+      | _ ->
+          (* Detected more than one point of difference. We can't handle that yet. *)
+          VeryDifferent []
+    end
+  | false, false -> begin
+      (* Both lists changed. The only single-edit story we can tell here
+         is an arm _removal_: dropping one (arm, weight) pair changes both
+         [ps] and [ws]. We require the same drop position in both — that
+         confirms we're looking at one consistent slot removal rather
+         than two coincidental edits. WFQ-add isn't expressible (the new
+         slot's weight has nowhere to ride on [arm_diff]), so we don't
+         look the other direction. *)
+      match (inserted ps2 ps1, inserted ws2 ws1) with
+      | Some [ (i, arm) ], Some [ (j, _) ] when i = j ->
+          OneArmRemoved { path = [ i ]; arm }
+      | _ -> VeryDifferent []
+    end
 
 and analyze p1 p2 =
   if p1 = p2 then Same
   else
-    let found, idx = is_sub_policy p1 p2 in
-    if found then Change (idx, SuperPol)
-    else
-      match (p1, p2) with
-      | FIFO _, FIFO _ -> Change ([], VeryDifferent)
-      | UNION ps1, UNION ps2 -> compare_rr_like ps1 ps2
-      | SP ps1, SP ps2 -> compare_strict ps1 ps2
-      | RR ps1, RR ps2 -> compare_rr_like ps1 ps2
-      | WFQ (ps1, ws1), WFQ (ps2, ws2) -> compare_wfq ps1 ws1 ps2 ws2
-      | _ -> Change ([], VeryDifferent)
+    match (is_sub_policy p1 p2, is_sub_policy p2 p1) with
+    | Some _, Some _ -> Same (* Can't get here *)
+    | Some path, None -> SuperPol path
+    | None, Some path -> SubPol path
+    | _ -> (
+        match (p1, p2) with
+        | UNION ps1, UNION ps2 | SP ps1, SP ps2 | RR ps1, RR ps2 ->
+            compare ps1 ps2
+        | WFQ (ps1, ws1), WFQ (ps2, ws2) -> compare_wfq ps1 ws1 ps2 ws2
+        | _ ->
+            (* FIFO→FIFO with a different class, or any constructor mismatch
+               (FIFO↔SP, SP↔RR, etc.) — wholesale replacement at this
+               position. The leaf-level diff is path-empty; [compare_lists]'s
+               [prepend_path] tags on the child index when this bubbles up,
+               but only if it's the sole divergence at that level. *)
+            OneArmReplaced { path = []; arm = p2 })
 
-let rec to_string diff =
-  match diff with
+(* Pretty-printers — only used to format failure messages from the test
+   suite; the patcher never goes through these. *)
+
+let path_to_string = function
+  | [] -> "(root)"
+  | [ i ] -> Printf.sprintf "(child %d)" i
+  | p ->
+      let s = String.concat "->" (List.map string_of_int p) in
+      Printf.sprintf "(path %s)" s
+
+let string_of_arm_diff { path; arm } =
+  Printf.sprintf "%s at %s"
+    (Frontend.Policy.to_string arm)
+    (path_to_string path)
+
+let string_of_weight_change { path; new_weight } =
+  Printf.sprintf "%s → %g" (path_to_string path) new_weight
+
+let to_string = function
   | Same -> "Same"
-  | Change (path, change) ->
-      let loc =
-        match path with
-        | [] -> "(root)"
-        | [ i ] -> Printf.sprintf "(child %d)" i
-        | path ->
-            let s = String.concat "->" (List.map string_of_int path) in
-            Printf.sprintf "(path %s)" s
-      in
-      Printf.sprintf "%s: %s" loc (change_to_string change)
-
-and change_to_string = function
-  | OneArmAppended arm ->
-      Printf.sprintf "OneArmAppended: %s" (Frontend.Policy.to_string arm)
-  | ArmsAdded { old_count; new_count; details } ->
-      if details = "" then
-        Printf.sprintf "ArmsAdded %d → %d" old_count new_count
-      else Printf.sprintf "ArmsAdded %d → %d: %s" old_count new_count details
-  | VeryDifferent -> "VeryDifferent"
-  | SuperPol -> "SuperPol"
+  | OneArmAdded ad -> Printf.sprintf "OneArmAdded: %s" (string_of_arm_diff ad)
+  | OneArmRemoved ad ->
+      Printf.sprintf "OneArmRemoved: %s" (string_of_arm_diff ad)
+  | WeightChanged wc ->
+      Printf.sprintf "WeightChanged: %s" (string_of_weight_change wc)
+  | OneArmReplaced ad ->
+      Printf.sprintf "OneArmReplaced: %s" (string_of_arm_diff ad)
+  | VeryDifferent p -> Printf.sprintf "VeryDifferent at %s" (path_to_string p)
+  | SuperPol p -> Printf.sprintf "SuperPol at %s" (path_to_string p)
+  | SubPol p -> Printf.sprintf "SubPol at %s" (path_to_string p)
