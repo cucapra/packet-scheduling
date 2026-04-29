@@ -76,6 +76,7 @@ let complex_tree_add_deep_expected : program =
   [
     Spawn (112, 2);
     Adopt (1011, 108, 112);
+    (* bug? missing an assoc with root? *)
     Assoc (108, "NEW");
     Assoc (112, "NEW");
     Map (108, "NEW", 1011);
