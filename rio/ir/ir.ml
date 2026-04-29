@@ -31,7 +31,7 @@ let make_counter ~start =
     !n
 
 (* Split a non-empty list into its prefix and its last element.
-   E.g. [list_foot [1; 2; 3]] = ([1; 2], 3). Raises on empty input. *)
+   E.g. [list_foot [1; 2; 3]] = ([1; 2], 3). *)
 let list_foot xs =
   match List.rev xs with
   | [] -> invalid_arg "list_foot: empty list"
@@ -232,11 +232,8 @@ let parent_info = function
   | Decorated.RR (v, edges) -> (v, List.length edges, RR)
   | Decorated.WFQ (v, edges) -> (v, List.length edges, WFQ)
 
-(* Rebuild [d] so that the parent at [parent_path] gains
-   [(new_step, new_child)] as a new child at index [k]. End-append is the
-   special case [k = old arity of parent]. WFQ-at-splice-point is unreachable
-   under OneArmAdded (Compare doesn't generate it for WFQ), but WFQ in the
-   path itself is allowed and preserved. *)
+(* Rebuild decorated tree [d] so that the parent at [parent_path] gains
+   [(new_step, new_child)] as a new child at index [k]. *)
 let rec splice_at_path (d : Decorated.t) parent_path k new_step new_child :
     Decorated.t =
   match parent_path with
@@ -355,7 +352,7 @@ let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
       let new_arity = old_arity + 1 in
       (* SP weights are positional: index [j] carries weight [j+1]. A
          mid-insert at [k] shifts every existing child at index [j ≥ k] to
-         new index [j+1], so its weight must bump from [j+1] to [j+2]. The
+         new index [j+1], so its weight must be bumped. The
          new arm itself takes weight [k+1]. RR/UNION carry no per-arm
          weights, so they emit nothing here. WFQ never reaches this branch
          (Compare doesn't emit OneArmAdded for WFQ). *)
