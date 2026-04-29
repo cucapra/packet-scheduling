@@ -42,6 +42,7 @@ let rr_ab_program : program =
     Map (root, "A", s_a);
     Map (root, "B", s_b);
     Change_pol (root, RR, 2);
+    Change_root root;
   ]
 
 let expected_rr_ab =
@@ -59,6 +60,7 @@ let expected_rr_ab =
       "map(v100, A, step_1000)";
       "map(v100, B, step_1001)";
       "change_pol(v100, RR, 2)";
+      "change_root(v100)";
     ]
 
 let test_rr_ab_handwritten =

@@ -65,6 +65,8 @@ let from_instr (i : Instr.instr) : Yojson.Basic.t =
         [
           ("op", `String "designate"); ("v", `Int v); ("survivor", `Int survivor);
         ]
+  | Instr.Change_root v ->
+      `Assoc [ ("op", `String "change_root"); ("v", `Int v) ]
 
 let from_program (p : Instr.program) : Yojson.Basic.t =
   `List (List.map from_instr p)

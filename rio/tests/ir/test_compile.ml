@@ -21,7 +21,8 @@ let make_test name filename (expected : program) =
   assert_equal ~printer:Ir.string_of_program expected (compile filename)
 
 (* Single FIFO leaf [A] living on PE0 as v100. *)
-let fifo_a_expected : program = [ Spawn (100, 0); Assoc (100, "A") ]
+let fifo_a_expected : program =
+  [ Spawn (100, 0); Assoc (100, "A"); Change_root 100 ]
 
 let strict_abc_expected : program =
   [
@@ -46,6 +47,7 @@ let strict_abc_expected : program =
     Change_weight (100, 1000, 1.0);
     Change_weight (100, 1001, 2.0);
     Change_weight (100, 1002, 3.0);
+    Change_root 100;
   ]
 
 let compile_tests =

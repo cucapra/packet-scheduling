@@ -78,8 +78,14 @@ val patch : prev:compiled -> next:Frontend.Policy.t -> compiled option
       so it's collected once it underflows. The whole-tree case ([path = []])
       returns [None].
 
-    Anything else — any [VeryDifferent] / [SuperPol] / [SubPol] result — returns
-    [None]. *)
+    - [next] is structurally equal to a strict subtree of [prev] at a non-empty
+      path (per [Rio_compare.Compare.SubPol]): returns [Some] with an
+      [Emancipate] detaching that subtree from its parent, a [Change_root]
+      pointing the runtime at it, and a [GC] per displaced node so the
+      surrounding structure is collected. The whole-tree case ([path = []])
+      returns [None].
+
+    Anything else — any [VeryDifferent] / [SuperPol] result — returns [None]. *)
 
 (** JSON exporter for IR programs. *)
 module Json : sig

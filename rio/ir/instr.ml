@@ -24,6 +24,7 @@ type instr =
   | Change_weight of vpifo * step * float
   | GC of vpifo
   | Designate of vpifo * vpifo
+  | Change_root of vpifo
 
 type program = instr list
 
@@ -64,5 +65,6 @@ let string_of_instr = function
   | Designate (v, survivor) ->
       Printf.sprintf "designate(%s, %s)" (string_of_vpifo v)
         (string_of_vpifo survivor)
+  | Change_root v -> Printf.sprintf "change_root(%s)" (string_of_vpifo v)
 
 let string_of_program p = p |> List.map string_of_instr |> String.concat "\n"

@@ -198,9 +198,25 @@ let one_arm_replaced_tests =
       strict_ab_to_ac_expected;
   ]
 
+(* SubPol *)
+
+(* SP[A, B, C] -> FIFO A. The FIFO leaf already lives inside prev as v101,
+   adopted via step_1000 from the root v100. Re-rooting drops B (v102), C
+   (v103) and the SP root (v100); we Emancipate v101 from its parent first
+   so the runtime knows the relationship was severed before the parent gets
+   collected. *)
+let strict_abc_to_fifo_a_expected : program =
+  [ Emancipate (1000, 100, 101); Change_root 101; GC 100; GC 102; GC 103 ]
+
+let sub_pol_tests =
+  [
+    make_delta_test "strict[A,B,C] -> fifo[A]" "strict_ABC" "fifo_A"
+      strict_abc_to_fifo_a_expected;
+  ]
+
 let suite =
   "patch tests"
   >::: one_arm_added_tests @ weight_changed_tests @ one_arm_removed_tests
-       @ one_arm_replaced_tests
+       @ one_arm_replaced_tests @ sub_pol_tests
 
 let () = run_test_tt_main suite

@@ -403,7 +403,10 @@ let of_policy (p : Frontend.Policy.t) : compiled =
   let fresh_v = make_counter ~start:vpifo_start in
   let fresh_s = make_counter ~start:step_start in
   let frag, decorated = compile_subtree ~fresh_v ~fresh_s ~depth:0 p in
-  { prog = frag_to_program frag; decorated }
+  (* Tell the runtime which vPIFO is the entry point. Always last so the
+     tree's structure is fully wired before traffic can arrive at it. *)
+  let set_root = [ Change_root frag.root_v ] in
+  { prog = frag_to_program frag @ set_root; decorated }
 
 let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
   let open Rio_compare.Compare in
@@ -413,7 +416,34 @@ let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
       (* Nothing structural to do — return an empty delta. The decorated
          tree is immutable, so we hand back the same reference. *)
       Some { prog = []; decorated = prev.decorated }
-  | VeryDifferent _ | SuperPol _ | SubPol _ -> None
+  | VeryDifferent _ | SuperPol _ -> None
+  | SubPol [] -> None
+  | SubPol path ->
+      (* [next] sits inside [prev] at [path]. Re-root the tree to that
+         existing subtree: detach it from its parent, point the runtime at
+         it, and GC every node that's no longer reachable. The discarded
+         ancestors are best-effort cleaned via [Emancipate]/[GC] only — we
+         don't bother [Unmap]/[Deassoc]ing routing state on them since
+         they're collectable as a unit. *)
+      let parent_path, k = list_foot path in
+      let parent = Decorated.walk prev.decorated parent_path in
+      let parent_v = Decorated.vpifo parent in
+      let step_k = Decorated.nth_step parent k in
+      let new_root = Decorated.nth_child parent k in
+      let new_root_v = Decorated.vpifo new_root in
+      let kept = Decorated.subtree_vpifos new_root in
+      let kept_set = List.fold_left (fun s v -> v :: s) [] kept in
+      let to_gc =
+        List.filter
+          (fun v -> not (List.mem v kept_set))
+          (Decorated.subtree_vpifos prev.decorated)
+      in
+      let prog =
+        Emancipate (step_k, parent_v, new_root_v)
+        :: Change_root new_root_v
+        :: List.map (fun v -> GC v) to_gc
+      in
+      Some { prog; decorated = new_root }
   | OneArmReplaced { path = []; _ } ->
       (* Whole-tree replacement: nothing to ride on — let the caller
          re-[of_policy]. *)
