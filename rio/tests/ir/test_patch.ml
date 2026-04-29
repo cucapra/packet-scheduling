@@ -198,6 +198,60 @@ let one_arm_replaced_tests =
       strict_ab_to_ac_expected;
   ]
 
+(* Whole-tree replacement (Compare returns [VeryDifferent []]). prev =
+   rr[A,B] (vpifos 100/101/102, steps 1000/1001); next = rr[D,E,F] which
+   shares no arms, so Compare gives up at the root. The patch builds the
+   new rr[D,E,F] off fresh ids (root v=103 on PE 0, leaves 104/105/106
+   on PE 1; steps 1002/1003/1004), [Designate]s the old root (100) with
+   the new root (103) so the fake root's single step drains old before
+   servicing new, drains the prev subtree (Deassoc per node/class), and
+   rewrites the fake root's classifier from {A,B} → {D,E,F} all riding
+   on [fake_root_step]. GCs cover every prev vpifo. *)
+let rr_ab_to_rr_def_expected : program =
+  [
+    Spawn (103, 0);
+    Spawn (104, 1);
+    Spawn (105, 1);
+    Spawn (106, 1);
+    Adopt (1002, 103, 104);
+    Adopt (1003, 103, 105);
+    Adopt (1004, 103, 106);
+    Assoc (103, "D");
+    Assoc (103, "E");
+    Assoc (103, "F");
+    Assoc (104, "D");
+    Assoc (105, "E");
+    Assoc (106, "F");
+    Map (103, "D", 1002);
+    Map (103, "E", 1003);
+    Map (103, "F", 1004);
+    Change_pol (103, RR, 3);
+    Designate (100, 103);
+    Deassoc (100, "A");
+    Deassoc (100, "B");
+    Deassoc (101, "A");
+    Deassoc (102, "B");
+    Unmap (99, "A", 999);
+    Unmap (99, "B", 999);
+    Deassoc (99, "A");
+    Deassoc (99, "B");
+    Assoc (99, "D");
+    Assoc (99, "E");
+    Assoc (99, "F");
+    Map (99, "D", 999);
+    Map (99, "E", 999);
+    Map (99, "F", 999);
+    GC 100;
+    GC 101;
+    GC 102;
+  ]
+
+let whole_tree_replace_tests =
+  [
+    make_delta_test "rr[A,B] -> rr[D,E,F] (whole-tree replace)" "rr_AB" "rr_DEF"
+      rr_ab_to_rr_def_expected;
+  ]
+
 (* SubPol *)
 
 (* SP[A, B, C] -> FIFO A. The FIFO leaf already lives inside prev as v101,
@@ -357,7 +411,7 @@ let pes_extension_tests = [ one_arm_added_extends_pes_test ]
 let suite =
   "patch tests"
   >::: one_arm_added_tests @ weight_changed_tests @ one_arm_removed_tests
-       @ one_arm_replaced_tests @ sub_pol_tests @ super_pol_tests
-       @ pes_extension_tests
+       @ one_arm_replaced_tests @ whole_tree_replace_tests @ sub_pol_tests
+       @ super_pol_tests @ pes_extension_tests
 
 let () = run_test_tt_main suite

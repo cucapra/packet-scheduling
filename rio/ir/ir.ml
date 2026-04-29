@@ -514,6 +514,72 @@ let of_policy (p : Frontend.Policy.t) : compiled =
   let pes = List.init (policy_depth p + 1) (fun d -> d) in
   { prog = frag_to_program combined @ set_root; decorated; pes }
 
+(* Whole-tree replacement, riding on the fake root. Used both for
+   [Compare.OneArmReplaced { path = []; _ }] (constructor mismatch /
+   FIFO-class swap at the root) and [Compare.VeryDifferent []] (multi-arm
+   divergence at the root). The fake root
+   ([fake_root_v]/[fake_root_step]/[fake_root_pe]) plays the same
+   structural role here that an internal parent plays in the non-root
+   [OneArmReplaced] handler: its classifier is rewritten to route new
+   classes through the same step to the new real root, while the old
+   real root is [Designate]d so its in-flight traffic drains. *)
+let whole_tree_replace ~prev ~(next : Frontend.Policy.t) : compiled option =
+  let fresh_v =
+    make_counter ~start:(vpifo_start + Decorated.count_vpifos prev.decorated)
+  in
+  let fresh_s =
+    make_counter ~start:(step_start + Decorated.count_steps prev.decorated)
+  in
+  let new_pes = pes_extended_to_depth (policy_depth next) prev.pes in
+  let pe_of_depth d = List.nth new_pes d in
+  let new_frag, new_decorated =
+    compile_subtree ~fresh_v ~fresh_s ~pe_of_depth ~depth:0 next
+  in
+  let new_root_v = new_frag.root_v in
+  let new_classes = new_frag.classes in
+  let old_root_v = Decorated.vpifo prev.decorated in
+  let old_classes = Decorated.subtree_classes prev.decorated in
+  (* Fake-root classifier edits: stop routing the prev tree's classes,
+     start routing next's — all via [fake_root_step] to the new real root. *)
+  let unmaps_old =
+    List.map (fun c -> Unmap (fake_root_v, c, fake_root_step)) old_classes
+  in
+  let deassocs_old_anc =
+    List.map (fun c -> Deassoc (fake_root_v, c)) old_classes
+  in
+  let assocs_new_anc = List.map (fun c -> Assoc (fake_root_v, c)) new_classes in
+  let maps_new =
+    List.map (fun c -> Map (fake_root_v, c, fake_root_step)) new_classes
+  in
+  (* Drain semantics on the prev tree: each node stops accepting its
+     classes; [Designate] then fuses the old root with the new root so
+     the fake root's single step becomes a super-node that drains old
+     before servicing new. GC marks every prev node for collection once
+     it underflows. *)
+  let inner_deassocs =
+    List.concat_map
+      (fun (v, cs) -> List.map (fun c -> Deassoc (v, c)) cs)
+      (Decorated.subtree_class_assocs prev.decorated)
+  in
+  let designate = [ Designate (old_root_v, new_root_v) ] in
+  let gcs =
+    List.map (fun v -> GC v) (Decorated.subtree_vpifos prev.decorated)
+  in
+  let prog =
+    List.concat
+      [
+        frag_to_program new_frag;
+        designate;
+        inner_deassocs;
+        unmaps_old;
+        deassocs_old_anc;
+        assocs_new_anc;
+        maps_new;
+        gcs;
+      ]
+  in
+  Some { prog; decorated = new_decorated; pes = new_pes }
+
 let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
   let open Rio_compare.Compare in
   let prev_policy = policy_of_decorated prev.decorated in
@@ -522,6 +588,8 @@ let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
       (* Nothing structural to do — return an empty delta. The decorated
          tree is immutable, so we hand back the same reference. *)
       Some { prog = []; decorated = prev.decorated; pes = prev.pes }
+  | VeryDifferent [] | OneArmReplaced { path = []; _ } ->
+      whole_tree_replace ~prev ~next
   | VeryDifferent _ -> None
   | SuperPol [] | SubPol [] -> None
   | SuperPol path ->
@@ -599,10 +667,6 @@ let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
       let drop = List.length path in
       let new_pes = List.filteri (fun i _ -> i >= drop) prev.pes in
       Some { prog; decorated = new_root; pes = new_pes }
-  | OneArmReplaced { path = []; _ } ->
-      (* Whole-tree replacement: nothing to ride on — let the caller
-         re-[of_policy]. *)
-      None
   | OneArmReplaced { path = arm_path; arm } ->
       let parent_path, k = list_foot arm_path in
       let parent = Decorated.walk prev.decorated parent_path in

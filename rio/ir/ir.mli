@@ -74,15 +74,23 @@ val patch : prev:compiled -> next:Frontend.Policy.t -> compiled option
       needed to detach the arm and clean up routing state cached on its ancestor
       chain.
     - [next] swaps in a different subtree at exactly one position (per
-      [Rio_compare.Compare.OneArmReplaced]) at a non-empty path: returns [Some]
-      with the new arm's
+      [Rio_compare.Compare.OneArmReplaced]): returns [Some] with the new arm's
       [Spawn]/[Adopt]/[Assoc]/[Map]/[Change_pol]/[Change_weight] instructions, a
       [Designate] that fuses the old and new roots into a super-node riding on
       the existing parent step, [Deassoc]s that drain the old classes out of the
       displaced subtree and its ancestors, [Assoc]/[Map] entries that route the
       new classes to the same step, and a [GC] per node of the displaced subtree
       so it's collected once it underflows. The whole-tree case ([path = []])
-      returns [None].
+      rides on the fake root's single step instead of an internal parent — the
+      shape of the emitted instructions is the same.
+
+    - [next] is wholesale different from [prev] (per
+      [Rio_compare.Compare.VeryDifferent []]): same handler as the whole-tree
+      [OneArmReplaced] case above. The fake root's classifier is rewritten from
+      [prev]'s classes to [next]'s, the old root is [Designate]d so its
+      in-flight traffic drains, and every prev vpifo is [GC]'d. A
+      [VeryDifferent] result with a non-empty path (a deep multi-arm divergence)
+      still returns [None].
 
     - [next] is structurally equal to a strict subtree of [prev] at a non-empty
       path (per [Rio_compare.Compare.SubPol]): returns [Some] with an
@@ -99,7 +107,7 @@ val patch : prev:compiled -> next:Frontend.Policy.t -> compiled option
       retargets the runtime at [next]'s new top. [prev]'s in-flight nodes are
       not respawned. The whole-tree case ([path = []]) returns [None].
 
-    Anything else — any [VeryDifferent] result — returns [None]. *)
+    Anything else returns [None]. *)
 
 (** JSON exporter for IR programs. *)
 module Json : sig
