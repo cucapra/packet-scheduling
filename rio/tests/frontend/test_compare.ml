@@ -4,17 +4,26 @@ open Rio_compare.Compare
 
 let prog_dir = "../../../../../progs/"
 
+let prog_to_policy file =
+  let filewithpath = prog_dir ^ "work_conserving/" ^ file ^ ".sched" in
+  filewithpath |> Parser.parse_file |> Policy.of_program
+
 let make_compare_test name file1 file2 expected_diff =
-  let prog_to_policy file =
-    let filewithpath = prog_dir ^ "work_conserving/" ^ file ^ ".sched" in
-    filewithpath |> Parser.parse_file |> Policy.of_program
-  in
   let policy1 = prog_to_policy file1 in
   let policy2 = prog_to_policy file2 in
   let actual_diff = analyze policy1 policy2 in
   name >:: fun _ ->
   assert_equal expected_diff actual_diff ~printer:(fun d ->
       Rio_compare.Compare.to_string d)
+
+(* Helper for the "give up" cases below: [Compare] couldn't break the
+   diff down at depth [List.length path], so it emits
+   [OneArmReplaced { path; arm = walk policy2 path }] — the IR-side
+   instruction is "wholesale replace this subtree with next's." *)
+let make_giveup_test name file1 file2 path =
+  let policy2 = prog_to_policy file2 in
+  let arm = Policy.walk policy2 path in
+  make_compare_test name file1 file2 (OneArmReplaced { path; arm })
 
 let same =
   [
@@ -32,7 +41,8 @@ let same =
    children). WFQ-add does *not* land here — see [verydiff_combos] —
    because the new slot's weight can't ride along on [arm_diff], so a
    WFQ-add is logically [OneArmAdded + WeightChanged]. 
-   Multi-arm insertions also degrade to [VeryDifferent]. The
+   Multi-arm insertions instead "give up" to a wholesale-replace
+   [OneArmReplaced] (see [verydiff_combos]). The
    [path] inside [arm_diff] is the new arm's full position from the
    root of [next]. *)
 let one_arm_added =
@@ -134,65 +144,65 @@ let subpol =
       "union_GH" (SubPol [ 0 ]);
   ]
 
-(* A menu of cases that come back [VeryDifferent] specifically because the
-   diff is a *combination* of changes each of which would be legal in
-   isolation. Useful for nailing down where the patcher gives up even when
-   the individual edits are tractable. Each entry's comment names the
-   chain of legal changes that together overwhelm the analyzer. *)
+(* A menu of cases where the diff is a *combination* of changes each of
+   which would be legal in isolation, so [Compare] gives up at the level
+   of the divergence and emits [OneArmReplaced { path; arm = next_at_path }]
+   — the IR will replace that subtree wholesale via [Designate]. As
+   [Compare] gets smarter (e.g., learns to emit a list of edits), entries
+   here will migrate to more precise variants. Each entry's comment names
+   the chain of legal changes that together overwhelm the analyzer. *)
 let verydiff_combos =
   [
+    (* wfq_complex = WFQ([(A,1), (RR[B,C],2)]). Next changes RR[B,C]→RR[B,D]
+       (a deeper [OneArmReplaced]) and bumps the weight 2→5 (a
+       [WeightChanged]) at the same slot. *)
+    make_giveup_test "WFQ slot with deep diff and weight change" "wfq_complex"
+      "wfq_complex_deep_and_weight" [];
     (* WFQ(A:2,B:1,C:3) → WFQ(A:2,B:1,Z:7): one slot's arm changed
        (C→Z, an [OneArmReplaced]) and its weight changed (3→7, a
-       [WeightChanged]). Same slot, two distinct edits. The arm-change
-       could equally be a deep policy swap (e.g., a leaf becoming an
-       RR subtree) — depth doesn't change [compare_wfq]'s behavior;
-       once it sees both [ps] and [ws] changed, it gives up without
-       recursing. *)
-    make_compare_test "WFQ slot with arm change and weight change" "wfq_ABC"
-      "wfq_ABZ_diff" (VeryDifferent []);
+       [WeightChanged]). Same slot, two distinct edits. *)
+    make_giveup_test "WFQ slot with arm change and weight change" "wfq_ABC"
+      "wfq_ABZ_diff" [];
     (* WFQ(B,A) → WFQ(A:2,B:1,C:3): adding a WFQ arm is logically
        [OneArmAdded] (the arm) + [WeightChanged] (the new slot's
        weight). [arm_diff] no longer carries a weight, so this combo
        can't fold into a single variant. *)
-    make_compare_test "WFQ with arm added" "wfq_BA" "wfq_ABC" (VeryDifferent []);
+    make_giveup_test "WFQ with arm added" "wfq_BA" "wfq_ABC" [];
     (* complex_tree_partial → complex_tree: a WFQ-level arm-add at the
        root (the RR subtree, weight 2). Same combo as above. *)
-    make_compare_test "complex tree fill in missing arm" "complex_tree_partial"
-      "complex_tree" (VeryDifferent []);
+    make_giveup_test "complex tree fill in missing arm" "complex_tree_partial"
+      "complex_tree" [];
     (* RR(A,B) → RR(D,B,A,SP(C,E)): two new arms (D and SP[C,E]) — a
        multi-arm add, hence two [OneArmAdded]s. *)
-    make_compare_test "RR with two arms added whilst reordering" "rr_AB"
-      "rr_DBA_SP_CE" (VeryDifferent []);
+    make_giveup_test "RR with two arms added whilst reordering" "rr_AB"
+      "rr_DBA_SP_CE" [];
     (* SP(B,A) → SP(A,B,C): swap (= two [OneArmReplaced] at indices 0/1)
        plus an [OneArmAdded] at index 2. *)
-    make_compare_test "strict arm added whilst reordering arms" "strict_BA"
-      "strict_ABC" (VeryDifferent []);
+    make_giveup_test "strict arm added whilst reordering arms" "strict_BA"
+      "strict_ABC" [];
     (* WFQ(A:1,B:2,C:3) → WFQ(D:1,E:2,F:3): three [OneArmReplaced]s, one
        per slot. *)
-    make_compare_test "different WFQ classes" "wfq_ABC" "wfq_DEF"
-      (VeryDifferent []);
+    make_giveup_test "different WFQ classes" "wfq_ABC" "wfq_DEF" [];
     (* RR(A,B) → RR(D,E,F): two [OneArmRemoved] (A and B drop) plus three
        [OneArmAdded] (D, E, F appear). *)
-    make_compare_test "RR big diff" "rr_AB" "rr_DEF" (VeryDifferent []);
+    make_giveup_test "RR big diff" "rr_AB" "rr_DEF" [];
     (* WFQ(B,A) → WFQ(A:2,B:2,C:4): one [OneArmAdded] (C) plus multiple
        [WeightChanged]s on the existing arms. *)
-    make_compare_test "WFQ with weights changed and arm added" "wfq_BA"
-      "wfq_ABC_diff" (VeryDifferent []);
+    make_giveup_test "WFQ with weights changed and arm added" "wfq_BA"
+      "wfq_ABC_diff" [];
     (* SP(A,B) → SP(B,A): two [OneArmReplaced]s — both positions
        diverge. *)
-    make_compare_test "Strict with arms reordered" "strict_AB" "strict_BA"
-      (VeryDifferent []);
+    make_giveup_test "Strict with arms reordered" "strict_AB" "strict_BA" [];
     (* Same swap one level deep inside complex_tree's SP[A;B;C]→SP[C;B;A].
        The inner SP has multi-divergence (indices 0 and 2 both differ);
-       the outer compare_lists tags the SP's parent index, giving
-       [VeryDifferent [1]]. Two [OneArmReplaced]s deep. *)
-    make_compare_test "complex tree with an SP reordering deep down"
-      "complex_tree" "complex_tree_swap_sp_arms" (VeryDifferent [ 1 ]);
+       the outer compare_lists tags the SP's parent index, giving a
+       deep give-up at path [1]. *)
+    make_giveup_test "complex tree with an SP reordering deep down"
+      "complex_tree" "complex_tree_swap_sp_arms" [ 1 ];
     (* WFQ(A:2,B:1,C:3) → WFQ(A:2,B:2,C:4): two [WeightChanged]s — only
        a single-weight edit lands as [WeightChanged]; multi-weight is
        this combo. *)
-    make_compare_test "different WFQ weights" "wfq_ABC" "wfq_ABC_diff"
-      (VeryDifferent []);
+    make_giveup_test "different WFQ weights" "wfq_ABC" "wfq_ABC_diff" [];
   ]
 
 let suite =

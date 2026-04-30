@@ -76,8 +76,10 @@ let complex_tree_add_deep_expected : program =
   [
     Spawn (112, 2);
     Adopt (1011, 108, 112);
+    Assoc (100, "NEW");
     Assoc (108, "NEW");
     Assoc (112, "NEW");
+    Map (100, "NEW", 1010);
     Map (108, "NEW", 1011);
     Change_pol (108, RR, 4);
   ]
@@ -94,5 +96,383 @@ let one_arm_added_tests =
       "complex_tree_add_arm_deep" complex_tree_add_deep_expected;
   ]
 
-let suite = "patch tests" >::: one_arm_added_tests
+(* WeightChanged *)
+
+(* WFQ root with three FIFO arms: vpifo IDs 100 (root), 101/102/103 (A/B/C);
+   adopt steps 1000/1001/1002. Bumping B's weight 1 -> 5 should emit a single
+   Change_weight on the root for B's step. *)
+let wfq_abc_to_one_weight_expected : program =
+  [ Change_weight (100, 1001, 5.0) ]
+
+let weight_changed_tests =
+  [
+    make_delta_test "wfq[A,B,C] -> wfq[A,B(5),C]" "wfq_ABC" "wfq_ABC_one_weight"
+      wfq_abc_to_one_weight_expected;
+  ]
+
+(* OneArmRemoved *)
+
+(* SP[A,B,C] -> SP[A,B]: drop C (last, index 2). No SP weight shifts. *)
+let strict_abc_to_ab_expected : program =
+  [
+    Change_pol (100, SP, 2);
+    Unmap (100, "C", 1002);
+    Deassoc (100, "C");
+    Emancipate (1002, 100, 103);
+    GC 103;
+  ]
+
+(* SP[A,B,C] -> SP[A,C]: drop B (mid, index 1). C, formerly at index 2 with
+   weight 3.0, shifts to index 1 with weight 2.0. *)
+let strict_abc_to_ac_expected : program =
+  [
+    Change_weight (100, 1002, 2.0);
+    Change_pol (100, SP, 2);
+    Unmap (100, "B", 1001);
+    Deassoc (100, "B");
+    Emancipate (1001, 100, 102);
+    GC 102;
+  ]
+
+(* RR[A,B,C] -> RR[A,B]: drop C from RR. No weight shifts (RR is unweighted). *)
+let rr_abc_to_ab_expected : program =
+  [
+    Change_pol (100, RR, 2);
+    Unmap (100, "C", 1002);
+    Deassoc (100, "C");
+    Emancipate (1002, 100, 103);
+    GC 103;
+  ]
+
+let one_arm_removed_tests =
+  [
+    make_delta_test "strict[A,B,C] -> strict[A,B]" "strict_ABC" "strict_AB"
+      strict_abc_to_ab_expected;
+    make_delta_test "strict[A,B,C] -> strict[A,C]" "strict_ABC" "strict_AC"
+      strict_abc_to_ac_expected;
+    make_delta_test "rr[A,B,C] -> rr[A,B]" "rr_ABC" "rr_AB"
+      rr_abc_to_ab_expected;
+  ]
+
+(* OneArmReplaced *)
+
+(* RR[A,B] -> RR[A,D]: replace B (vpifo 102, step 1001) with FIFO D. The
+   new arm rides on step 1001; B's super-node is set up via Designate(102,
+   103). Ancestor routing on root vpifo 100 shifts B → D (Unmap/Deassoc
+   then Assoc/Map). GC marks 102. *)
+let rr_ab_to_ad_expected : program =
+  [
+    Spawn (103, 1);
+    Assoc (103, "D");
+    Designate (102, 103);
+    Unmap (100, "B", 1001);
+    Deassoc (100, "B");
+    Assoc (100, "D");
+    Map (100, "D", 1001);
+    GC 102;
+  ]
+
+(* SP[A,B] -> SP[A,C]: same shape as RR but in an SP parent. Positional
+   weights stay (slot 1 is still 2.0), so no Change_weight is emitted. *)
+let strict_ab_to_ac_expected : program =
+  [
+    Spawn (103, 1);
+    Assoc (103, "C");
+    Designate (102, 103);
+    Unmap (100, "B", 1001);
+    Deassoc (100, "B");
+    Assoc (100, "C");
+    Map (100, "C", 1001);
+    GC 102;
+  ]
+
+let one_arm_replaced_tests =
+  [
+    make_delta_test "rr[A,B] -> rr[A,D]" "rr_AB" "rr_AD" rr_ab_to_ad_expected;
+    make_delta_test "strict[A,B] -> strict[A,C]" "strict_AB" "strict_AC"
+      strict_ab_to_ac_expected;
+  ]
+
+(* Whole-tree replacement (Compare returns [VeryDifferent []]). prev =
+   rr[A,B] (vpifos 100/101/102, steps 1000/1001); next = rr[D,E,F] which
+   shares no arms, so Compare gives up at the root. The patch builds the
+   new rr[D,E,F] off fresh ids (root v=103 on PE 0, leaves 104/105/106
+   on PE 1; steps 1002/1003/1004), [Designate]s the old root (100) with
+   the new root (103) so the fake root's single step drains old before
+   servicing new, and rewrites the fake root's classifier from
+   {A,B} → {D,E,F} all riding on [fake_root_step]. GCs cover every prev
+   vpifo. *)
+let rr_ab_to_rr_def_expected : program =
+  [
+    Spawn (103, 0);
+    Spawn (104, 1);
+    Spawn (105, 1);
+    Spawn (106, 1);
+    Adopt (1002, 103, 104);
+    Adopt (1003, 103, 105);
+    Adopt (1004, 103, 106);
+    Assoc (103, "D");
+    Assoc (103, "E");
+    Assoc (103, "F");
+    Assoc (104, "D");
+    Assoc (105, "E");
+    Assoc (106, "F");
+    Map (103, "D", 1002);
+    Map (103, "E", 1003);
+    Map (103, "F", 1004);
+    Change_pol (103, RR, 3);
+    Designate (100, 103);
+    Unmap (99, "A", 999);
+    Unmap (99, "B", 999);
+    Deassoc (99, "A");
+    Deassoc (99, "B");
+    Assoc (99, "D");
+    Assoc (99, "E");
+    Assoc (99, "F");
+    Map (99, "D", 999);
+    Map (99, "E", 999);
+    Map (99, "F", 999);
+    GC 100;
+    GC 101;
+    GC 102;
+  ]
+
+(* Whole-tree replacement via constructor mismatch at the root (Compare
+   returns [OneArmReplaced { path = []; arm = RR[A,B] }]). prev =
+   sp[A,B] (vpifos 100/101/102, steps 1000/1001); next = rr[A,B] —
+   same children, different root policy, so Compare can't ride the
+   existing slots. Same handler as the [VeryDifferent []] case above:
+   builds the new tree off fresh ids, [Designate]s, drains, rewrites
+   the fake root's classifier. The class sets coincide here so
+   {Unmap,Deassoc,Assoc,Map} on the fake root cancel semantically, but
+   the instructions are still emitted. *)
+let strict_ab_to_rr_ab_expected : program =
+  [
+    Spawn (103, 0);
+    Spawn (104, 1);
+    Spawn (105, 1);
+    Adopt (1002, 103, 104);
+    Adopt (1003, 103, 105);
+    Assoc (103, "A");
+    Assoc (103, "B");
+    Assoc (104, "A");
+    Assoc (105, "B");
+    Map (103, "A", 1002);
+    Map (103, "B", 1003);
+    Change_pol (103, RR, 2);
+    Designate (100, 103);
+    Unmap (99, "A", 999);
+    Unmap (99, "B", 999);
+    Deassoc (99, "A");
+    Deassoc (99, "B");
+    Assoc (99, "A");
+    Assoc (99, "B");
+    Map (99, "A", 999);
+    Map (99, "B", 999);
+    GC 100;
+    GC 101;
+    GC 102;
+  ]
+
+let whole_tree_replace_tests =
+  [
+    make_delta_test "rr[A,B] -> rr[D,E,F] (whole-tree replace)" "rr_AB" "rr_DEF"
+      rr_ab_to_rr_def_expected;
+    make_delta_test "strict[A,B] -> rr[A,B] (root constructor change)"
+      "strict_AB" "rr_AB" strict_ab_to_rr_ab_expected;
+  ]
+
+(* SubPol *)
+
+(* SP[A, B, C] -> FIFO A. The FIFO leaf already lives inside prev as v101,
+   adopted via step_1000 from the root v100. Re-rooting detaches v101 from
+   its prev parent, then swings the fake root's single step from v100 to
+   v101 via [Emancipate]/[Adopt]. The dropped classes B and C are
+   [Unmap]/[Deassoc]'d off the fake root, and the SP root v100 along with
+   v102/v103 are GC'd. *)
+let strict_abc_to_fifo_a_expected : program =
+  [
+    Emancipate (1000, 100, 101);
+    Emancipate (999, 99, 100);
+    Adopt (999, 99, 101);
+    Unmap (99, "B", 999);
+    Unmap (99, "C", 999);
+    Deassoc (99, "B");
+    Deassoc (99, "C");
+    GC 100;
+    GC 102;
+    GC 103;
+  ]
+
+let sub_pol_tests =
+  [
+    make_delta_test "strict[A,B,C] -> fifo[A]" "strict_ABC" "fifo_A"
+      strict_abc_to_fifo_a_expected;
+  ]
+
+(* SuperPol *)
+
+(* prev = strict[A,B,C] compiles to vpifos 100 (root)/101/102/103 with
+   adopt steps 1000/1001/1002 and pes [0; 1]; counters end at next_v=104,
+   next_s=1003. complex_tree normalizes to
+   wfq[(union[G,H], 3); (sp[A,B,C], 1); (rr[D,E,F], 2)] (children sort by
+   variant tag UNION < SP < RR), so prev sits at path [1]. The delta
+   builds the new WFQ root (v=104, PE 2 — fresh, above prev's max PE 1),
+   the UNION sibling (v=105 on PE 0, leaves v=106/107 on PE 1, internal
+   adopt steps 1003/1004) and the RR sibling (v=108 on PE 0, leaves
+   v=109/110/111 on PE 1, internal adopt steps 1005/1006/1007), then
+   [Adopt]s the WFQ root's three children via steps 1008 (UNION), 1009
+   (prev's root v=100), 1010 (RR). Each ancestor [Assoc]/[Map]s every
+   class in its subtree; WFQ weights mirror the (pol, weight) sort
+   order: 3, 1, 2. Final [Emancipate]/[Adopt] on the fake root swings its
+   single step from prev's old real root v100 to the new top v104. None of
+   prev's vpifos are respawned. *)
+let strict_abc_to_complex_tree_expected : program =
+  [
+    Spawn (104, 2);
+    Spawn (105, 0);
+    Spawn (106, 1);
+    Spawn (107, 1);
+    Spawn (108, 0);
+    Spawn (109, 1);
+    Spawn (110, 1);
+    Spawn (111, 1);
+    Adopt (1008, 104, 105);
+    Adopt (1009, 104, 100);
+    Adopt (1010, 104, 108);
+    Adopt (1003, 105, 106);
+    Adopt (1004, 105, 107);
+    Adopt (1005, 108, 109);
+    Adopt (1006, 108, 110);
+    Adopt (1007, 108, 111);
+    Assoc (104, "G");
+    Assoc (104, "H");
+    Assoc (104, "A");
+    Assoc (104, "B");
+    Assoc (104, "C");
+    Assoc (104, "D");
+    Assoc (104, "E");
+    Assoc (104, "F");
+    Assoc (105, "G");
+    Assoc (105, "H");
+    Assoc (106, "G");
+    Assoc (107, "H");
+    Assoc (108, "D");
+    Assoc (108, "E");
+    Assoc (108, "F");
+    Assoc (109, "D");
+    Assoc (110, "E");
+    Assoc (111, "F");
+    Map (104, "G", 1008);
+    Map (104, "H", 1008);
+    Map (104, "A", 1009);
+    Map (104, "B", 1009);
+    Map (104, "C", 1009);
+    Map (104, "D", 1010);
+    Map (104, "E", 1010);
+    Map (104, "F", 1010);
+    Map (105, "G", 1003);
+    Map (105, "H", 1004);
+    Map (108, "D", 1005);
+    Map (108, "E", 1006);
+    Map (108, "F", 1007);
+    Change_pol (104, WFQ, 3);
+    Change_pol (105, UNION, 2);
+    Change_pol (108, RR, 3);
+    Change_weight (104, 1008, 3.0);
+    Change_weight (104, 1009, 1.0);
+    Change_weight (104, 1010, 2.0);
+    Emancipate (999, 99, 100);
+    Adopt (999, 99, 104);
+  ]
+
+let super_pol_tests =
+  [
+    ( "strict[A,B,C] -> complex_tree (pes invariant)" >:: fun _ ->
+      let c = patch_files "strict_ABC" "complex_tree" in
+      assert_equal
+        ~printer:(fun pes ->
+          "[" ^ String.concat "; " (List.map string_of_int pes) ^ "]")
+        [ 2; 0; 1 ] c.pes );
+    make_delta_test "strict[A,B,C] -> complex_tree" "strict_ABC" "complex_tree"
+      strict_abc_to_complex_tree_expected;
+  ]
+
+(* pes-extension regressions: when a OneArmAdded or OneArmReplaced inserts
+   an arm whose internal depth pushes the tree deeper than [prev.pes]
+   covered, [pes_extended_to_depth] should grow [pes] with fresh PEs above
+   the existing max — keeping the "same depth ⇒ same PE" invariant for
+   the new layers. No fixture pair fits this shape, so we build the
+   policies inline. *)
+
+(* prev = sp[A] (depth 1, pes [0; 1]); next = sp[A, rr[B, C]] (depth 2).
+   The new arm at index 1 is rr[B, C]. arm_depth = 1, internal depth = 1,
+   so the tree reaches depth 2 — one below prev's max. New layer takes
+   PE 2 (fresh, above prev's max PE 1). *)
+let one_arm_added_extends_pes_test =
+  "sp[A] -> sp[A, rr[B,C]] (extends pes)" >:: fun _ ->
+  let prev = Ir.of_policy (Policy.SP [ Policy.FIFO "A" ]) in
+  let next =
+    Policy.SP
+      [ Policy.FIFO "A"; Policy.RR [ Policy.FIFO "B"; Policy.FIFO "C" ] ]
+  in
+  let c =
+    match Ir.patch ~prev ~next with
+    | Some c -> c
+    | None -> assert_failure "patch returned None"
+  in
+  assert_equal
+    ~printer:(fun pes ->
+      "[" ^ String.concat "; " (List.map string_of_int pes) ^ "]")
+    [ 0; 1; 2 ] c.pes;
+  let expected : program =
+    [
+      Spawn (102, 1);
+      Spawn (103, 2);
+      Spawn (104, 2);
+      Adopt (1003, 100, 102);
+      Adopt (1001, 102, 103);
+      Adopt (1002, 102, 104);
+      Assoc (100, "B");
+      Assoc (100, "C");
+      Assoc (102, "B");
+      Assoc (102, "C");
+      Assoc (103, "B");
+      Assoc (104, "C");
+      Map (100, "B", 1003);
+      Map (100, "C", 1003);
+      Map (102, "B", 1001);
+      Map (102, "C", 1002);
+      Change_pol (100, SP, 2);
+      Change_pol (102, RR, 2);
+      Change_weight (100, 1003, 2.0);
+    ]
+  in
+  assert_equal ~printer:Ir.string_of_program expected c.prog
+
+let pes_extension_tests = [ one_arm_added_extends_pes_test ]
+
+(* Deep give-up: complex_tree -> complex_tree_swap_sp_arms differs only
+   inside the SP subtree at root child 1 (multi-arm reorder). Compare
+   gives up at that level and emits [OneArmReplaced { path = [1]; arm }];
+   IR's existing OneArmReplaced handler routes through [Designate] on the
+   parent's existing step. Smoke-test that patch returns [Some] — the
+   exact instruction sequence is exercised by the precise OneArmReplaced
+   tests at non-empty paths above. *)
+let deep_giveup_test =
+  "complex_tree -> swap_sp_arms (deep give-up)" >:: fun _ ->
+  let prev = compile "complex_tree" in
+  let next = policy_of "complex_tree_swap_sp_arms" in
+  match Ir.patch ~prev ~next with
+  | Some _ -> ()
+  | None -> assert_failure "patch returned None for deep give-up"
+
+let deep_giveup_tests = [ deep_giveup_test ]
+
+let suite =
+  "patch tests"
+  >::: one_arm_added_tests @ weight_changed_tests @ one_arm_removed_tests
+       @ one_arm_replaced_tests @ whole_tree_replace_tests @ sub_pol_tests
+       @ super_pol_tests @ pes_extension_tests @ deep_giveup_tests
+
 let () = run_test_tt_main suite
