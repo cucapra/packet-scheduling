@@ -6,9 +6,15 @@ let root_dir = "../../../../../"
 let prog_dir = root_dir ^ "progs/"
 
 (* [.sched] file -> [Ir.program]. Stops short of pretty-printing — that's
-   [test_pretty]'s job. *)
+   [test_pretty]'s job. We project [Ir.of_policy]'s [compiled] result down to
+   its [.prog] field; the [decorated] tree and counter snapshots are exercised
+   in [test_patch]. *)
 let compile filename =
-  prog_dir ^ filename |> Parser.parse_file |> Policy.of_program |> Ir.of_policy
+  let c =
+    prog_dir ^ filename |> Parser.parse_file |> Policy.of_program
+    |> Ir.of_policy
+  in
+  c.prog
 
 let make_test name filename (expected : program) =
   name >:: fun _ ->
