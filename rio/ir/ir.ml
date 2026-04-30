@@ -828,6 +828,30 @@ let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
             Change_weight (parent_v, new_step, float_of_int (k + 1)) :: shifted
         | _ -> []
       in
+      (* Routing state is replicated up the chain: every ancestor of the
+         splice point holds an [Assoc]/[Map] entry for every class in its
+         descendant subtree (see [compile_subtree]). Adding a new arm
+         deep in the tree therefore has to teach every ancestor — not
+         just the immediate parent — about the new classes. Strict
+         ancestors above [parent_v] reuse their existing step toward
+         [parent_v]; [parent_v] itself uses the freshly minted
+         [new_step]. *)
+      let chain =
+        Decorated.ancestor_chain prev.decorated parent_path
+        @ [ (parent_v, new_step) ]
+      in
+      let ancestor_assocs =
+        List.concat_map
+          (fun (anc_v, _) ->
+            List.map (fun c -> Assoc (anc_v, c)) arm_frag.classes)
+          chain
+      in
+      let ancestor_maps =
+        List.concat_map
+          (fun (anc_v, anc_step) ->
+            List.map (fun c -> Map (anc_v, c, anc_step)) arm_frag.classes)
+          chain
+      in
       (* Build the parent's local splice instructions as a frag, then
          interleave with the new arm's frag through the same canonical
          ordering [of_policy] uses. *)
@@ -835,9 +859,8 @@ let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
         {
           spawns = [];
           adopts = [ Adopt (new_step, parent_v, arm_frag.root_v) ];
-          assocs = List.map (fun c -> Assoc (parent_v, c)) arm_frag.classes;
-          maps =
-            List.map (fun c -> Map (parent_v, c, new_step)) arm_frag.classes;
+          assocs = ancestor_assocs;
+          maps = ancestor_maps;
           change_pols = [ Change_pol (parent_v, pol_ty, new_arity) ];
           change_weights;
           root_v = parent_v;

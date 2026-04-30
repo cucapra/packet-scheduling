@@ -71,14 +71,17 @@ let rr_ab_to_abc_expected : program =
    to (UNION, SP, RR) at indices 0, 1, 2. The inner RR (at path [2]) has
    parent vpifo 108 and arity 3; complex_tree leaves the counters at
    next_vpifo=112, next_step=1011. New FIFO NEW lives one level below the
-   RR, so PE 2. *)
+   RR, so PE 2. The WFQ root (v100) reaches the inner RR via step_1010,
+   so it picks up [Assoc]/[Map] for "NEW" too — every ancestor of the
+   splice point holds routing state for every class in its subtree. *)
 let complex_tree_add_deep_expected : program =
   [
     Spawn (112, 2);
     Adopt (1011, 108, 112);
-    (* bug? missing an assoc with root? *)
+    Assoc (100, "NEW");
     Assoc (108, "NEW");
     Assoc (112, "NEW");
+    Map (100, "NEW", 1010);
     Map (108, "NEW", 1011);
     Change_pol (108, RR, 4);
   ]
