@@ -89,8 +89,6 @@ let prepend_path i diff =
 let rec is_sub_policy p1 p2 =
   (* Is p1 a sub-policy of p2?
      Returns [Some path], where [path] tells us where in p2 we found p1.
-     When found at an *immediate* child i, path = [i].
-     When found deeper, path = i :: deeper_path.
      Returns [Some []] when p1 = p2.
      Returns None if not found. *)
   if p1 = p2 then Some []
@@ -109,18 +107,16 @@ let rec is_sub_policy p1 p2 =
         in
         loop 0 ps
 
-(* SP/RR/UNION share a flat list-of-children shape, so they share the same
-   diff strategy. We arrive here when two parents have the same policy, so we
-   now need to compare their children against each other. [OneArmAdded] only
+(* We arrive here when two parents have the same policy, so we
+   need to compare their children against each other. [OneArmAdded] only
    fires when exactly one arm was inserted; [OneArmRemoved] only when exactly
    one was dropped; a single in-place divergence recurses into the differing
    children (this is how deep diffs get recognized: the inner [analyze]
    returns a parent-relative diff and we tack on [i] using [prepend_path]).
    When the sniffer can't break the change down at this level (multi-arm
    divergence, mismatched insertions, etc.), we "give up" by emitting
-   [OneArmReplaced { path = []; arm = p2 }] — the IR will replace the
-   whole subtree at this position via [Designate]. [p2] is threaded in
-   so we can carry that fallback. *)
+   [OneArmReplaced { path = []; arm = p2 }], and the IR will replace the
+   whole subtree at this position via [Designate]. *)
 and compare_children ~next:p2 ps1 ps2 =
   (* Lengths differ by some number of insertions in one direction. We can
      only describe the case of a single insertion: [insertions prev next]
@@ -182,13 +178,10 @@ and compare_wfq_children ~next:p2 ps1 (ws1 : float list) ps2 (ws2 : float list)
           give_up
     end
   | false, false -> begin
-      (* Both lists changed. The only single-edit story we can tell here
-         is an arm _removal_: dropping one (arm, weight) pair changes both
-         [ps] and [ws]. We require the same drop position in both — that
+      (* Both lists changed. The only way this is a single edit is if it's an 
+         arm _removal_. We require the same drop position in both, as that
          confirms we're looking at one consistent slot removal rather
-         than two coincidental edits. WFQ-add isn't expressible (the new
-         slot's weight has nowhere to ride on [arm_diff]), so we don't
-         look the other direction. *)
+         than two coincidental edits. *)
       match (insertions ps2 ps1, insertions ws2 ws1) with
       | Some [ (i, arm) ], Some [ (j, _) ] when i = j ->
           OneArmRemoved { path = [ i ]; arm }
