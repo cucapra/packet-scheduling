@@ -115,14 +115,12 @@ let weight_changed_tests =
 (* OneArmRemoved *)
 
 (* SP[A,B,C] -> SP[A,B]: drop C (last, index 2). No SP weight shifts since
-   no siblings sit at j > k. C is FIFO leaf -> single GC and a single
-   Deassoc inside the removed subtree. *)
+   no siblings sit at j > k. C is FIFO leaf -> single GC. *)
 let strict_abc_to_ab_expected : program =
   [
     Change_pol (100, SP, 2);
     Unmap (100, "C", 1002);
     Deassoc (100, "C");
-    Deassoc (103, "C");
     Emancipate (1002, 100, 103);
     GC 103;
   ]
@@ -135,7 +133,6 @@ let strict_abc_to_ac_expected : program =
     Change_pol (100, SP, 2);
     Unmap (100, "B", 1001);
     Deassoc (100, "B");
-    Deassoc (102, "B");
     Emancipate (1001, 100, 102);
     GC 102;
   ]
@@ -146,7 +143,6 @@ let rr_abc_to_ab_expected : program =
     Change_pol (100, RR, 2);
     Unmap (100, "C", 1002);
     Deassoc (100, "C");
-    Deassoc (103, "C");
     Emancipate (1002, 100, 103);
     GC 103;
   ]
@@ -166,13 +162,12 @@ let one_arm_removed_tests =
 (* RR[A,B] -> RR[A,D]: replace B (vpifo 102, step 1001) with FIFO D. The
    new arm rides on step 1001; B's super-node is set up via Designate(102,
    103). Ancestor routing on root vpifo 100 shifts B → D (Unmap/Deassoc
-   then Assoc/Map). Inner Deassoc drains the old leaf, GC marks 102. *)
+   then Assoc/Map). GC marks 102. *)
 let rr_ab_to_ad_expected : program =
   [
     Spawn (103, 1);
     Assoc (103, "D");
     Designate (102, 103);
-    Deassoc (102, "B");
     Unmap (100, "B", 1001);
     Deassoc (100, "B");
     Assoc (100, "D");
@@ -187,7 +182,6 @@ let strict_ab_to_ac_expected : program =
     Spawn (103, 1);
     Assoc (103, "C");
     Designate (102, 103);
-    Deassoc (102, "B");
     Unmap (100, "B", 1001);
     Deassoc (100, "B");
     Assoc (100, "C");
@@ -208,9 +202,9 @@ let one_arm_replaced_tests =
    new rr[D,E,F] off fresh ids (root v=103 on PE 0, leaves 104/105/106
    on PE 1; steps 1002/1003/1004), [Designate]s the old root (100) with
    the new root (103) so the fake root's single step drains old before
-   servicing new, drains the prev subtree (Deassoc per node/class), and
-   rewrites the fake root's classifier from {A,B} → {D,E,F} all riding
-   on [fake_root_step]. GCs cover every prev vpifo. *)
+   servicing new, and rewrites the fake root's classifier from
+   {A,B} → {D,E,F} all riding on [fake_root_step]. GCs cover every prev
+   vpifo. *)
 let rr_ab_to_rr_def_expected : program =
   [
     Spawn (103, 0);
@@ -231,10 +225,6 @@ let rr_ab_to_rr_def_expected : program =
     Map (103, "F", 1004);
     Change_pol (103, RR, 3);
     Designate (100, 103);
-    Deassoc (100, "A");
-    Deassoc (100, "B");
-    Deassoc (101, "A");
-    Deassoc (102, "B");
     Unmap (99, "A", 999);
     Unmap (99, "B", 999);
     Deassoc (99, "A");
@@ -274,10 +264,6 @@ let strict_ab_to_rr_ab_expected : program =
     Map (103, "B", 1003);
     Change_pol (103, RR, 2);
     Designate (100, 103);
-    Deassoc (100, "A");
-    Deassoc (100, "B");
-    Deassoc (101, "A");
-    Deassoc (102, "B");
     Unmap (99, "A", 999);
     Unmap (99, "B", 999);
     Deassoc (99, "A");

@@ -257,13 +257,6 @@ let chain_deassocs chain classes =
     (fun (v, _) -> List.map (fun c -> Deassoc (v, c)) classes)
     chain
 
-(* Inside a subtree, every node was [Assoc]'d to the union of its descendants'
-   classes. Emit the matching [Deassoc]s so it stops accepting old traffic. *)
-let inner_deassocs subtree =
-  List.concat_map
-    (fun (v, cs) -> List.map (fun c -> Deassoc (v, c)) cs)
-    (Decorated.subtree_class_assocs subtree)
-
 let gc_subtree subtree =
   List.map (fun v -> GC v) (Decorated.subtree_vpifos subtree)
 
@@ -318,7 +311,6 @@ let replace_at ~prev ~chain ~removed ~arm_depth ~arm ~rewrite_decorated =
       [
         frag_to_program arm_frag;
         [ Designate (removed_v, arm_frag.root_v) ];
-        inner_deassocs removed;
         chain_unmaps chain removed_classes;
         chain_deassocs chain removed_classes;
         chain_assocs chain arm_frag.classes;
@@ -451,7 +443,6 @@ let patch_one_arm_removed ~prev ~arm_path =
         [ Change_pol (parent_v, pol_ty, old_arity - 1) ];
         chain_unmaps chain removed_classes;
         chain_deassocs chain removed_classes;
-        inner_deassocs removed;
         [ Emancipate (step_k, parent_v, removed_v) ];
         gc_subtree removed;
       ]
