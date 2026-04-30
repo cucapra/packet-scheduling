@@ -3,8 +3,6 @@
 
 include Instr
 
-(* --- Small list utilities ------------------------------------------------ *)
-
 (* Split a non-empty list into its prefix and its last element.
    E.g. [list_foot [1; 2; 3]] = ([1; 2], 3). Raises on empty input. *)
 let list_foot xs =
@@ -38,8 +36,6 @@ let make_counter ~start =
     incr n;
     !n
 
-(* --- Decorated source tree + read/edit helpers --------------------------- *)
-
 (* The decorated source tree mirrors [Frontend.Policy.t] but annotates every
    node with its assigned vPIFO and every parent→child edge with its adopt
    step. WFQ edges additionally carry the per-arm weight. *)
@@ -52,7 +48,7 @@ module Decorated = struct
     | WFQ of vpifo * (step * t * float) list
 
   (* The vPIFO at the root of [d]. *)
-  let vpifo = function
+  let root_vpifo = function
     | FIFO (v, _) | UNION (v, _) | SP (v, _) | RR (v, _) | WFQ (v, _) -> v
 
   (* The IR-side [pol_ty] of [d]. *)
@@ -110,7 +106,8 @@ module Decorated = struct
       0 d
 
   (* All vPIFO IDs in [d], pre-order. *)
-  let subtree_vpifos d = List.rev (fold (fun a node -> vpifo node :: a) [] d)
+  let subtree_vpifos d =
+    List.rev (fold (fun a node -> root_vpifo node :: a) [] d)
 
   (* All leaf classes in [d], pre-order. Mirrors how [compile_arm]
      propagates [classes] up the tree, so each ancestor of [d] holds an
@@ -131,10 +128,10 @@ module Decorated = struct
     match d with
     | FIFO (v, c) -> [ (v, [ c ]) ]
     | UNION (_, es) | SP (_, es) | RR (_, es) ->
-        (vpifo d, subtree_classes d)
+        (root_vpifo d, subtree_classes d)
         :: List.concat_map (fun (_, c) -> subtree_class_assocs c) es
     | WFQ (_, es) ->
-        (vpifo d, subtree_classes d)
+        (root_vpifo d, subtree_classes d)
         :: List.concat_map (fun (_, c, _) -> subtree_class_assocs c) es
 
   (* Subtree at [path]; [[]] is [d] itself. Errors on a path that goes
@@ -151,7 +148,7 @@ module Decorated = struct
     match path with
     | [] -> []
     | i :: rest ->
-        (vpifo d, nth_step d i) :: ancestor_chain (nth_child d i) rest
+        (root_vpifo d, nth_step d i) :: ancestor_chain (nth_child d i) rest
 
   (* Apply [f] to the subtree at [path], leaving the surrounding structure
      (including WFQ weights along the path) untouched. Generalizes the
@@ -169,9 +166,6 @@ module Decorated = struct
         | SP (v, es) -> SP (v, bump es)
         | RR (v, es) -> RR (v, bump es)
         | WFQ (v, es) -> WFQ (v, bump_w es))
-
-  (* --- Parent-local edits, designed to be passed as the [f] of
-     [rewrite_at]. ------------------------------------------------------- *)
 
   let insert_arm k new_step new_child = function
     | FIFO _ -> failwith "Decorated.insert_arm: FIFO"
@@ -211,8 +205,6 @@ type compiled = {
   decorated : Decorated.t;
   pes : pe list;
 }
-
-(* --- Compile a [Frontend.Policy.t] to IR --------------------------------- *)
 
 (* Starting IDs for the two ID spaces. *)
 let vpifo_start = 100
@@ -294,7 +286,7 @@ let stub_frag (prev_d : Decorated.t) : frag =
     maps = [];
     change_pols = [];
     change_weights = [];
-    root_v = Decorated.vpifo prev_d;
+    root_v = Decorated.root_vpifo prev_d;
     classes = Decorated.subtree_classes prev_d;
   }
 
@@ -422,8 +414,6 @@ and compile_arm ~fresh_v ~fresh_s ~pe_of_depth ~depth ~pol_ty ~weights ?splice
   in
   (combined, edges)
 
-(* --- Patch-side helpers -------------------------------------------------- *)
-
 (* Erase IR decorations to recover the source [Frontend.Policy.t]. Used by
    [patch] to feed [Rio_compare.Compare.analyze] without storing the policy
    alongside the decorated form. *)
@@ -446,15 +436,13 @@ let rec policy_of_decorated (d : Decorated.t) : Frontend.Policy.t =
    Errors if the parent is somehow a FIFO — that's a [Compare] bug. *)
 let parent_info = function
   | Decorated.FIFO _ -> failwith "Ir.patch: parent is a FIFO leaf"
-  | d -> (Decorated.vpifo d, Decorated.arity d, Decorated.pol_ty d)
+  | d -> (Decorated.root_vpifo d, Decorated.arity d, Decorated.pol_ty d)
 
 (* The [(step * Decorated.t) list] of an SP parent. Used by both the
    [OneArmAdded] and [OneArmRemoved] SP-weight-shift loops. *)
 let sp_edges = function
   | Decorated.SP (_, es) -> es
   | _ -> failwith "Ir.patch: expected an SP parent"
-
-(* --- Public entry points -------------------------------------------------- *)
 
 (* Max depth (root = 0) of a [Frontend.Policy.t]. Used to size the
    depth→PE list. *)
@@ -535,7 +523,7 @@ let whole_tree_replace ~prev ~(next : Frontend.Policy.t) : compiled option =
   in
   let new_root_v = new_frag.root_v in
   let new_classes = new_frag.classes in
-  let old_root_v = Decorated.vpifo prev.decorated in
+  let old_root_v = Decorated.root_vpifo prev.decorated in
   let old_classes = Decorated.subtree_classes prev.decorated in
   (* Fake-root classifier edits: stop routing the prev tree's classes,
      start routing next's — all via [fake_root_step] to the new real root. *)
@@ -633,7 +621,7 @@ let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
       (* Repoint the fake root's single step from prev's real root to
          next's. The class set is unchanged (SuperPol preserves leaves),
          so the fake root's [Assoc]/[Map] entries don't move. *)
-      let old_real_root_v = Decorated.vpifo prev.decorated in
+      let old_real_root_v = Decorated.root_vpifo prev.decorated in
       let rewire =
         [
           Emancipate (fake_root_step, fake_root_v, old_real_root_v);
@@ -651,11 +639,11 @@ let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
          they're collectable as a unit. *)
       let parent_path, k = list_foot path in
       let parent = Decorated.walk prev.decorated parent_path in
-      let parent_v = Decorated.vpifo parent in
+      let parent_v = Decorated.root_vpifo parent in
       let step_k = Decorated.nth_step parent k in
       let new_root = Decorated.nth_child parent k in
-      let new_root_v = Decorated.vpifo new_root in
-      let old_real_root_v = Decorated.vpifo prev.decorated in
+      let new_root_v = Decorated.root_vpifo new_root in
+      let old_real_root_v = Decorated.root_vpifo prev.decorated in
       let kept = Decorated.subtree_vpifos new_root in
       let kept_set = List.fold_left (fun s v -> v :: s) [] kept in
       let to_gc =
@@ -695,7 +683,7 @@ let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
       let parent = Decorated.walk prev.decorated parent_path in
       let _ = parent_info parent in
       let removed = Decorated.nth_child parent k in
-      let removed_v = Decorated.vpifo removed in
+      let removed_v = Decorated.root_vpifo removed in
       let fresh_v =
         make_counter ~start:(vpifo_start + Decorated.count_vpifos prev.decorated)
       in
@@ -871,7 +859,7 @@ let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
       let parent = Decorated.walk prev.decorated parent_path in
       let parent_v, old_arity, pol_ty = parent_info parent in
       let removed = Decorated.nth_child parent k in
-      let removed_v = Decorated.vpifo removed in
+      let removed_v = Decorated.root_vpifo removed in
       let step_k = Decorated.nth_step parent k in
       let new_arity = old_arity - 1 in
       (* SP weights are positional: arm at index [j] carries weight [j+1].
