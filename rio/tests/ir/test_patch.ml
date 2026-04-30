@@ -71,9 +71,7 @@ let rr_ab_to_abc_expected : program =
    to (UNION, SP, RR) at indices 0, 1, 2. The inner RR (at path [2]) has
    parent vpifo 108 and arity 3; complex_tree leaves the counters at
    next_vpifo=112, next_step=1011. New FIFO NEW lives one level below the
-   RR, so PE 2. The WFQ root (v100) reaches the inner RR via step_1010,
-   so it picks up [Assoc]/[Map] for "NEW" too — every ancestor of the
-   splice point holds routing state for every class in its subtree. *)
+   RR, so PE 2. *)
 let complex_tree_add_deep_expected : program =
   [
     Spawn (112, 2);
@@ -114,8 +112,7 @@ let weight_changed_tests =
 
 (* OneArmRemoved *)
 
-(* SP[A,B,C] -> SP[A,B]: drop C (last, index 2). No SP weight shifts since
-   no siblings sit at j > k. C is FIFO leaf -> single GC. *)
+(* SP[A,B,C] -> SP[A,B]: drop C (last, index 2). No SP weight shifts. *)
 let strict_abc_to_ab_expected : program =
   [
     Change_pol (100, SP, 2);

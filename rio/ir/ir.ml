@@ -230,8 +230,6 @@ let pes_extended_to_depth target_depth pes =
     in
     pes @ extra n (max_pe + 1)
 
-(* ───────── shared patch helpers ───────── *)
-
 let counters_after prev =
   ( make_counter ~start:(vpifo_start + Decorated.count_vpifos prev.decorated),
     make_counter ~start:(step_start + Decorated.count_steps prev.decorated) )
@@ -260,8 +258,6 @@ let chain_deassocs chain classes =
 let gc_subtree subtree =
   List.map (fun v -> GC v) (Decorated.subtree_vpifos subtree)
 
-(* ───────── of_policy ───────── *)
-
 let of_policy (p : Frontend.Policy.t) : compiled =
   let fresh_v = make_counter ~start:vpifo_start in
   let fresh_s = make_counter ~start:step_start in
@@ -285,8 +281,6 @@ let of_policy (p : Frontend.Policy.t) : compiled =
   in
   let pes = List.init (policy_depth p + 1) (fun d -> d) in
   { prog = frag_to_program (combine_frags fake_frag [ frag ]); decorated; pes }
-
-(* ───────── per-case patch helpers ───────── *)
 
 (* Replace the subtree [removed] (sitting under ancestor [chain]) with a
    freshly compiled [arm]. Used both for whole-tree replacement (chain =
@@ -525,8 +519,6 @@ let patch_sub_pol ~prev ~path =
   in
   let new_pes = List.filteri (fun i _ -> i >= List.length path) prev.pes in
   Some { prog; decorated = new_root; pes = new_pes }
-
-(* ───────── patch dispatch ───────── *)
 
 let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
   let open Rio_compare.Compare in

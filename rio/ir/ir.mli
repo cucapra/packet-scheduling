@@ -7,9 +7,7 @@ include module type of Instr
     node with the [vpifo] assigned to it and every parent-to-child edge with the
     [step] handed out at adoption time. WFQ edges additionally carry the per-arm
     weight. The original [Frontend.Policy.t] is recoverable by erasing the
-    decorations.
-
-    Lives in its own submodule so the constructors can mirror
+    decorations. Lives in its own submodule so the constructors can mirror
     [Frontend.Policy.t]'s names directly ([Decorated.RR], [Decorated.SP], …) *)
 module Decorated : sig
   type t =
@@ -28,7 +26,6 @@ type compiled = {
 (** The result of compiling a [Frontend.Policy.t]. Carries enough state that a
     subsequent [patch] call can extend the in-flight runtime without recompiling
     from scratch:
-
     - [prog]: the IR program. When this record came from a fresh compile, [prog]
       is the full program; when it came from [patch], [prog] is the *delta
       only*.
@@ -36,8 +33,8 @@ type compiled = {
       record (recoverable by erasing decorations) so [patch] can diff against an
       incoming policy without storing a separate [Frontend.Policy.t].
     - [pes]: the PE assignment, indexed by depth. Every node at depth [d] lives
-      on PE [List.nth pes d]. A fresh [of_policy] produces
-      [[0; 1; …; max_depth]]; [patch] (notably [SuperPol]) may introduce
+      on PE [List.nth pes d]. A fresh [of_policy] produces a very boring [pes]:
+      [[0; 1; …; max_depth]]. But [patch] (notably [SuperPol]) may introduce
       non-contiguous PEs to honor the "same depth ⇒ same PE" invariant without
       re-spawning previously installed nodes. *)
 
@@ -52,57 +49,47 @@ val patch : prev:compiled -> next:Frontend.Policy.t -> compiled option
 (** Incrementally extend [prev] to handle policy [next], returning the IR delta.
     The returned record's [prog] is the *delta only* — the new instructions to
     add to a runtime that's already executing [prev.prog]. [decorated] is
-    rebuilt to reflect [next].
-
-    Returns [None] when the change is too complex for this scope. The supported
-    transitions are:
-
+    rebuilt to reflect [next]. Returns [None] when the change is too complex for
+    this scope. The supported transitions are:
     - [next] is structurally equal to [prev]'s policy: returns [Some] with an
       empty [prog].
     - [next] adds exactly one arm at any position of a [UNION], [RR], or [SP]
-      parent (per [Rio_compare.Compare.OneArmAdded]): returns [Some] with the
+      parent (per [OneArmAdded]): returns [Some] with the
       [Spawn]/[Adopt]/[Assoc]/[Map]/[Change_pol] (and [Change_weight] for [SP],
       both for the new arm and for any existing arms whose positional priority
       shifts) instructions needed to splice the new arm in.
     - [next] differs from [prev] only in the weight of one [WFQ] arm (per
-      [Rio_compare.Compare.WeightChanged]): returns [Some] with a single
-      [Change_weight] instruction for the affected slot.
+      [WeightChanged]): returns [Some] with a single [Change_weight] instruction
+      for the affected slot.
     - [next] removes exactly one arm at any position of a [UNION], [RR], or [SP]
-      parent (per [Rio_compare.Compare.OneArmRemoved]): returns [Some] with the
-      [Change_weight] (for [SP] siblings whose positional priority shifts down),
+      parent (per [OneArmRemoved]): returns [Some] with the [Change_weight]
+      (only for [SP] siblings whose positional priority shifts down),
       [Change_pol], [Unmap], [Deassoc], [Emancipate], and [GC] instructions
       needed to detach the arm and clean up routing state cached on its ancestor
       chain.
     - [next] swaps in a different subtree at exactly one position (per
-      [Rio_compare.Compare.OneArmReplaced]): returns [Some] with the new arm's
+      [OneArmReplaced]): returns [Some] with the new arm's
       [Spawn]/[Adopt]/[Assoc]/[Map]/[Change_pol]/[Change_weight] instructions, a
       [Designate] that fuses the old and new roots into a super-node riding on
       the existing parent step, [Deassoc]s that drain the old classes out of the
       displaced subtree and its ancestors, [Assoc]/[Map] entries that route the
       new classes to the same step, and a [GC] per node of the displaced subtree
-      so it's collected once it underflows. The whole-tree case ([path = []])
-      rides on the fake root's single step instead of an internal parent — the
-      shape of the emitted instructions is the same.
-
+      so they are collected once the displaced tree underflows.
     - [next] is structurally equal to a strict subtree of [prev] at a non-empty
-      path (per [Rio_compare.Compare.SubPol]): returns [Some] with an
-      [Emancipate] detaching that subtree from its parent, a second
-      [Emancipate]/[Adopt] pair on the fake root that repoints its single step
-      from [prev]'s old real root to the new one, [Unmap]/[Deassoc] entries on
-      the fake root for any classes that no longer apply, and a [GC] per
-      displaced node so the surrounding structure is collected. The whole-tree
-      case ([path = []]) returns [None].
-
+      path (per [SubPol]): returns [Some] with an [Emancipate] detaching that
+      subtree from its parent, a second [Emancipate]/[Adopt] pair on the fake
+      root that re-points its single step from [prev]'s old real root to the new
+      one, [Unmap]/[Deassoc] entries on the fake root for any classes that no
+      longer apply, and one [GC] per displaced node so the surrounding structure
+      is collected. The whole-tree case ([path = []]) returns [None].
     - [prev]'s policy appears as a strict subtree of [next] at a non-empty path
-      (per [Rio_compare.Compare.SuperPol]): returns [Some] with the
+      (per [SuperPol]): returns [Some] with the
       [Spawn]/[Adopt]/[Assoc]/[Map]/[Change_pol]/[Change_weight] instructions
       for the new structure surrounding [prev], a single [Adopt] that grafts
       [prev]'s existing root in at the splice point, and an [Emancipate]/
       [Adopt] pair that repoints the fake root's single step from [prev]'s old
       real root to [next]'s new top. [prev]'s in-flight nodes are not respawned.
-      The whole-tree case ([path = []]) returns [None].
-
-    Anything else returns [None]. *)
+      The whole-tree case ([path = []]) returns [None]. *)
 
 (** JSON exporter for IR programs. *)
 module Json : sig

@@ -4,9 +4,15 @@
 
 open Instr
 
+type t =
+  | FIFO of vpifo * clss
+  | UNION of vpifo * (step * t) list
+  | SP of vpifo * (step * t) list
+  | RR of vpifo * (step * t) list
+  | WFQ of vpifo * (step * t * float) list
+
 (* Replace element at index [i] in [xs] by applying [f]; other elements
-   untouched. Out-of-range [i] silently leaves the list unchanged — every
-   caller in this file has already validated [i]. *)
+   untouched. Out-of-range [i] silently leaves the list unchanged. *)
 let list_replace_nth i f xs = List.mapi (fun j x -> if j = i then f x else x) xs
 
 (* Drop the element at index [i]; other elements untouched. *)
@@ -21,13 +27,6 @@ let list_insert_at i x xs =
     | h :: t -> h :: ins (n - 1) t
   in
   ins i xs
-
-type t =
-  | FIFO of vpifo * clss
-  | UNION of vpifo * (step * t) list
-  | SP of vpifo * (step * t) list
-  | RR of vpifo * (step * t) list
-  | WFQ of vpifo * (step * t * float) list
 
 (* The vPIFO at the root of [d]. *)
 let root_vpifo = function
@@ -65,8 +64,7 @@ let nth_child d k =
       let _, c, _ = List.nth es k in
       c
 
-(* Pre-order fold over all nodes of [d]. Visits a node before its
-   descendants. *)
+(* Pre-order fold over all nodes of [d]. *)
 let rec fold (f : 'a -> t -> 'a) (acc : 'a) (d : t) : 'a =
   let acc = f acc d in
   match d with

@@ -29,10 +29,10 @@ val nth_child : t -> int -> t
 (** The k-th child subtree. Errors on FIFO. *)
 
 val count_vpifos : t -> int
-(** One vPIFO per node — the size of the tree. *)
+(** One vPIFO per node. *)
 
 val count_steps : t -> int
-(** One step per parent→child edge. *)
+(** One step per parent-to-child edge. *)
 
 val subtree_vpifos : t -> vpifo list
 (** All vPIFO IDs in [d], pre-order. *)
@@ -42,13 +42,13 @@ val subtree_classes : t -> clss list
     for every class in this list. *)
 
 val subtree_class_assocs : t -> (vpifo * clss list) list
-(** Pair every node's vPIFO with the classes it was [Assoc]'d to during
+(** Pair every node's vPIFO with the classes it was [Assoc]'d with during
     compilation: a leaf carries its single class, an internal node carries the
     union of its descendants' classes. *)
 
 val walk : t -> int list -> t
-(** Subtree at [path]; [[]] is [d] itself. Errors on a path that goes through a
-    FIFO leaf. *)
+(** Subtree at [path]; [[]] is the tree itself. Errors on a path that goes
+    through a FIFO leaf. *)
 
 val ancestor_chain : t -> int list -> (vpifo * step) list
 (** For each ancestor of the node at [path], return its vPIFO and the step it
@@ -61,7 +61,7 @@ val rewrite_at : t -> int list -> (t -> t) -> t
 
 val insert_arm : int -> step -> t -> t -> t
 (** [insert_arm k new_step new_child d] splices [new_child] in at index [k] in
-    the children of [d], using [new_step] as the parent→child step. Errors on
+    the children of [d], using [new_step] as the parent-to-child step. Errors on
     FIFO and WFQ. *)
 
 val drop_arm : int -> t -> t
@@ -71,5 +71,5 @@ val set_weight : int -> float -> t -> t
 (** Set the weight of the [k]-th WFQ child. Errors on anything but WFQ. *)
 
 val replace_arm : int -> t -> t -> t
-(** Replace child at index [k], preserving the parent→child step (and WFQ
+(** Replace child at index [k], preserving the parent-to-child step (and WFQ
     weight). Errors on FIFO. *)
