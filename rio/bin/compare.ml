@@ -9,14 +9,7 @@ type t =
   | OneArmRemoved of arm_diff
   | WeightChanged of weight_change
   | OneArmReplaced of arm_diff
-    (* Wholesale replacement of the subtree at [path] with [arm]. Covers
-         both clean single-arm divergence (sniffed precisely) and the
-         "give up" case where the diff sniffer can't break the change
-         down further at this level — in the latter case [arm] is the
-         next-side parent itself, and the IR replaces the whole subtree
-         via [Designate]. As [compare] gets smarter, individual cases
-         will move from "give up" to a more specific variant (or, later,
-         a list of edits). *)
+    (* Wholesale replacement of the subtree at [path] with [arm]. If [path] is nil, that means we're not (yet) clever enough to specify the change and the arm being replaced is the whole tree. *)
   | SuperPol of path (* [path] points to [prev] inside [next]. *)
   | SubPol of path (* [path] points to [next] inside [prev]. *)
 
@@ -107,22 +100,22 @@ let rec is_sub_policy p1 p2 =
         in
         loop 0 ps
 
-(* We arrive here when two parents have the same policy, so we
-   need to compare their children against each other. [OneArmAdded] only
-   fires when exactly one arm was inserted; [OneArmRemoved] only when exactly
-   one was dropped; a single in-place divergence recurses into the differing
-   children (this is how deep diffs get recognized: the inner [analyze]
+(* We arrive here when two parents have the same policy, so we now need to
+   compare their children against each other. 
+   [OneArmAdded] only fires when exactly one arm was inserted; 
+   [OneArmRemoved] only when exactly one was dropped; 
+   a single in-place divergence recurses into the differing children 
+   (this is how deep diffs get recognized: the inner [analyze]
    returns a parent-relative diff and we tack on [i] using [prepend_path]).
    When the sniffer can't break the change down at this level (multi-arm
    divergence, mismatched insertions, etc.), we "give up" by emitting
-   [OneArmReplaced { path = []; arm = p2 }], and the IR will replace the
-   whole subtree at this position via [Designate]. *)
+   [OneArmReplaced { path = []; arm = p2 }]. *)
 and compare_children ~next:p2 ps1 ps2 =
   (* Lengths differ by some number of insertions in one direction. We can
      only describe the case of a single insertion: [insertions prev next]
      returning exactly one diff means [next] is [prev] with one element
-     added at index [i]; package it with [constructor] (either [OneArmAdded]
-     or [OneArmRemoved] depending on which direction we were checking). *)
+     added at index [i]; package it with [constructor] (either [OneArmAdded] or 
+     [OneArmRemoved] depending on which direction we were checking). *)
   let give_up = OneArmReplaced { path = []; arm = p2 } in
   let single_insert prev next constructor =
     match insertions prev next with
@@ -133,14 +126,14 @@ and compare_children ~next:p2 ps1 ps2 =
   if n = 0 then begin
     (* lists of same length *)
     match changes ps1 ps2 with
-    | [] -> Same
+    | [] -> Same (* Shoudn't get here; this is [Same] at a higher level *)
     | [ (i, _) ] ->
         (* Exactly one slot differs. We recurse, since diff might be
            a deep [OneArmAdded]/[OneArmRemoved] (path bubbles up through
            [prepend_path]) or a leaf [OneArmReplaced { path = [] }] which
            prepend_path turns into [{ path = [i] }]. A multi-arm give-up
-           below us also comes back as [OneArmReplaced { path = [] }]
-           and prepend_path tags it with [i]. *)
+           below us also comes back as [OneArmReplaced { path = something }]
+           and prepend_path tags that path with [i]. *)
         prepend_path i (analyze (List.nth ps1 i) (List.nth ps2 i))
     | _ ->
         (* More than one arm changed in-place. Give up at this level. *)
@@ -153,16 +146,16 @@ and compare_children ~next:p2 ps1 ps2 =
     (* ps2 was shorter; equivalently, we can remove an arm from ps1 to make ps2. *)
     single_insert ps2 ps1 (fun ad -> OneArmRemoved ad)
 
-(* When the parents are WFQ, comparing their children is a little more
-   complicated: we have to keep weights and arms in step. *)
+(* When the parents are WFQ, comparing their children is a little more complicated. *)
 and compare_wfq_children ~next:p2 ps1 (ws1 : float list) ps2 (ws2 : float list)
     =
   let give_up = OneArmReplaced { path = []; arm = p2 } in
   match (ps1 = ps2, ws1 = ws2) with
   | true, true -> Same (* Shoudn't get here; this is [Same] at a higher level *)
   | false, true ->
-      (* Pure policy change in-place, with weights left unchanged. We can pass
-         this to [compare_children] — but first check that the lengths match. *)
+      (* We suspect it's a pure policy change in-place, with weights left 
+         unchanged. We can just pass this to [compare]. But first let's 
+         check if their lengths are the same *)
       if List.length ps1 = List.length ps2 then
         compare_children ~next:p2 ps1 ps2
       else give_up
@@ -174,7 +167,7 @@ and compare_wfq_children ~next:p2 ps1 (ws1 : float list) ps2 (ws2 : float list)
       match changes ws1 ws2 with
       | [ (i, new_weight) ] -> WeightChanged { path = [ i ]; new_weight }
       | _ ->
-          (* More than one weight differs. Give up at this level. *)
+          (* Detected more than one point of difference. We can't handle that yet. *)
           give_up
     end
   | false, false -> begin
