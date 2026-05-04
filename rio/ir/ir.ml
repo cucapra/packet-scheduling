@@ -120,41 +120,34 @@ and compile_arm ~fresh_v ~fresh_s ~pe_of_depth ~depth ~pol_ty ~weights ?splice
   in
   let child_frags = List.map fst child_results in
   let child_decorated = List.map snd child_results in
-  let adoption_records =
-    List.map
-      (fun (cf : Frag.t) ->
-        let s = fresh_s () in
-        (Adopt (s, v, cf.root_v), s, cf))
-      child_frags
-  in
+  let child_steps = List.map (fun _ -> fresh_s ()) child_frags in
   let all_classes =
     List.concat_map (fun (cf : Frag.t) -> cf.classes) child_frags
   in
   let local : Frag.t =
     {
       spawns = [ Spawn (v, pe_of_depth depth) ];
-      adopts = List.map (fun (a, _, _) -> a) adoption_records;
+      adopts =
+        List.map2
+          (fun s (cf : Frag.t) -> Adopt (s, v, cf.root_v))
+          child_steps child_frags;
       assocs = List.map (fun c -> Assoc (v, c)) all_classes;
       maps =
-        List.concat_map
-          (fun (_, s, (cf : Frag.t)) ->
-            List.map (fun c -> Map (v, c, s)) cf.classes)
-          adoption_records;
+        List.concat
+          (List.map2
+             (fun s (cf : Frag.t) ->
+               List.map (fun c -> Map (v, c, s)) cf.classes)
+             child_steps child_frags);
       change_pols = [ Change_pol (v, pol_ty, List.length children) ];
       change_weights =
         (match weights with
         | [] -> []
-        | ws ->
-            List.map2
-              (fun (_, s, _) w -> Change_weight (v, s, w))
-              adoption_records ws);
+        | ws -> List.map2 (fun s w -> Change_weight (v, s, w)) child_steps ws);
       root_v = v;
       classes = all_classes;
     }
   in
-  let edges =
-    List.map2 (fun (_, s, _) d -> (s, d)) adoption_records child_decorated
-  in
+  let edges = List.map2 (fun s d -> (s, d)) child_steps child_decorated in
   (Frag.combine local child_frags, edges)
 
 let of_policy (p : Frontend.Policy.t) : compiled =
@@ -212,10 +205,7 @@ let pes_extended_to_depth target_depth pes =
   else
     let max_pe = List.fold_left max (-1) pes in
     let n = target_depth - cur + 1 in
-    let rec extra k cur =
-      if k <= 0 then [] else cur :: extra (k - 1) (cur + 1)
-    in
-    pes @ extra n (max_pe + 1)
+    pes @ List.init n (fun i -> max_pe + 1 + i)
 
 (* ------------------------------------------------------------------ *)
 (* Patch: arm replacement (covers OneArmReplaced and whole-tree).     *)
@@ -256,7 +246,6 @@ let replace_at ~prev ~chain ~removed ~arm_depth ~arm ~rewrite_decorated =
 let patch_one_arm_replaced ~prev ~arm_path ~arm =
   let parent_path, k = list_foot arm_path in
   let parent = Decorated.walk prev.decorated parent_path in
-  ignore (parent_info parent);
   replace_at ~prev ~chain:(Decorated.ancestor_chain prev.decorated arm_path)
     ~removed:(Decorated.nth_child parent k)
     ~arm_depth:(List.length arm_path) ~arm ~rewrite_decorated:(fun arm_d ->
@@ -415,17 +404,12 @@ let patch_super_pol ~prev ~next ~path =
      by [prev] reuse [prev.pes] (so already-installed nodes keep their PEs),
      layers deeper than [prev] get more fresh PEs. *)
   let pe_counter = make_counter ~start:(List.fold_left max (-1) prev.pes + 1) in
-  let rec build d =
-    if d > next_max_depth then []
-    else
-      let pe =
+  let new_pes =
+    List.init (next_max_depth + 1) (fun d ->
         if d < len then pe_counter ()
         else if d - len <= prev_max_depth then List.nth prev.pes (d - len)
-        else pe_counter ()
-      in
-      pe :: build (d + 1)
+        else pe_counter ())
   in
-  let new_pes = build 0 in
   let pe_of_depth d = List.nth new_pes d in
   let fresh_v, fresh_s = counters_after prev in
   let frag, decorated =
