@@ -176,3 +176,15 @@ let replace_arm k new_child = function
   | RR (v, es) -> RR (v, list_replace_nth k (fun (s, _) -> (s, new_child)) es)
   | WFQ (v, es) ->
       WFQ (v, list_replace_nth k (fun (s, _, w) -> (s, new_child, w)) es)
+
+let rec to_policy (d : t) : Frontend.Policy.t =
+  let module P = Frontend.Policy in
+  match d with
+  | FIFO (_, c) -> P.FIFO c
+  | UNION (_, es) -> P.UNION (List.map (fun (_, c) -> to_policy c) es)
+  | SP (_, es) -> P.SP (List.map (fun (_, c) -> to_policy c) es)
+  | RR (_, es) -> P.RR (List.map (fun (_, c) -> to_policy c) es)
+  | WFQ (_, es) ->
+      P.WFQ
+        ( List.map (fun (_, c, _) -> to_policy c) es,
+          List.map (fun (_, _, w) -> w) es )

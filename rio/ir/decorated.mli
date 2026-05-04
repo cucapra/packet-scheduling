@@ -73,3 +73,7 @@ val set_weight : int -> float -> t -> t
 val replace_arm : int -> t -> t -> t
 (** Replace child at index [k], preserving the parent-to-child step (and WFQ
     weight). Errors on FIFO. *)
+
+val to_policy : t -> Frontend.Policy.t
+(** Erase decorations to recover the underlying source policy. Inverse of the
+    pairing produced by [Ir.of_policy]. *)

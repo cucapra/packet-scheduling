@@ -3,6 +3,16 @@
 
 include Instr
 
+type compiled = {
+  prog : program;
+  decorated : Decorated.t;
+  pes : pe list;
+}
+
+(* ------------------------------------------------------------------ *)
+(* Generic helpers.                                                   *)
+(* ------------------------------------------------------------------ *)
+
 let list_foot xs =
   match List.rev xs with
   | [] -> invalid_arg "list_foot: empty list"
@@ -14,19 +24,24 @@ let make_counter ~start =
     incr n;
     !n
 
-type compiled = {
-  prog : program;
-  decorated : Decorated.t;
-  pes : pe list;
-}
+let rec policy_depth (p : Frontend.Policy.t) : int =
+  let module P = Frontend.Policy in
+  match p with
+  | P.FIFO _ -> 0
+  | P.UNION ps | P.SP ps | P.RR ps ->
+      1 + List.fold_left max 0 (List.map policy_depth ps)
+  | P.WFQ (ps, _) -> 1 + List.fold_left max 0 (List.map policy_depth ps)
+
+(* ------------------------------------------------------------------ *)
+(* ID-space and fake-root constants.                                  *)
+(* ------------------------------------------------------------------ *)
 
 (* Starting IDs for the two ID spaces. *)
 let vpifo_start = 100
 let step_start = 1000
 
 (* The fake root sits one level above every real root, on PE -1. It exists so
-   the real root always has an editable parent classifier — letting [patch]
-   handle whole-tree replacement, [SuperPol], and [SubPol] as ordinary
+   the real root always has an editable parent classifier, which means that we can handle whole-tree replacement, [SuperPol], and [SubPol] as ordinary
    parent-side edits. Reserved IDs below [vpifo_start]/[step_start] keep
    real-node numbering intact. The simulator never sees the fake root as a
    runtime node — [of_policy] just emits the wiring. *)
@@ -39,61 +54,13 @@ let fake_root_pe : pe = -1
    the whole tree. *)
 let fake_chain = [ (fake_root_v, fake_root_step) ]
 
-(* Compilation produces frags grouped by instruction kind so that the top-level
-   program can be flattened with all spawns first, then all adopts, etc. *)
-type frag = {
-  spawns : instr list;
-  adopts : instr list;
-  assocs : instr list;
-  maps : instr list;
-  change_pols : instr list;
-  change_weights : instr list;
-  root_v : vpifo;
-  classes : clss list;
-}
+(* ------------------------------------------------------------------ *)
+(* Compile.                                                           *)
+(* ------------------------------------------------------------------ *)
 
-let empty_frag ~root_v ~classes =
-  {
-    spawns = [];
-    adopts = [];
-    assocs = [];
-    maps = [];
-    change_pols = [];
-    change_weights = [];
-    root_v;
-    classes;
-  }
-
-let frag_to_program (f : frag) : program =
-  List.concat
-    [ f.spawns; f.adopts; f.assocs; f.maps; f.change_pols; f.change_weights ]
-
-(* Interleave a parent's [local] frag with each [children] frag, kindwise.
-   [root_v] and [classes] are inherited from [local]. *)
-let combine_frags (local : frag) (children : frag list) : frag =
-  let collect proj = proj local @ List.concat_map proj children in
-  {
-    spawns = collect (fun f -> f.spawns);
-    adopts = collect (fun f -> f.adopts);
-    assocs = collect (fun f -> f.assocs);
-    maps = collect (fun f -> f.maps);
-    change_pols = collect (fun f -> f.change_pols);
-    change_weights = collect (fun f -> f.change_weights);
-    root_v = local.root_v;
-    classes = local.classes;
-  }
-
-(* A stub frag stands in for an already-installed subtree during a [SuperPol]
-   splice. Carries [root_v] and [classes] so the parent can [Adopt] and
-   propagate routing state, but emits no instructions. *)
-let stub_frag (prev_d : Decorated.t) : frag =
-  empty_frag
-    ~root_v:(Decorated.root_vpifo prev_d)
-    ~classes:(Decorated.subtree_classes prev_d)
-
-let compile_FIFO ~v ~pe c : frag * Decorated.t =
+let compile_FIFO ~v ~pe c : Frag.t * Decorated.t =
   ( {
-      (empty_frag ~root_v:v ~classes:[ c ]) with
+      (Frag.empty ~root_v:v ~classes:[ c ]) with
       spawns = [ Spawn (v, pe) ];
       assocs = [ Assoc (v, c) ];
     },
@@ -103,9 +70,9 @@ let compile_FIFO ~v ~pe c : frag * Decorated.t =
    names a path inside this subtree at which an already-installed [Decorated.t]
    should be grafted in instead of compiled afresh. *)
 let rec compile_subtree ~fresh_v ~fresh_s ~pe_of_depth ~depth ?splice
-    (p : Frontend.Policy.t) : frag * Decorated.t =
+    (p : Frontend.Policy.t) : Frag.t * Decorated.t =
   match splice with
-  | Some ([], prev_d) -> (stub_frag prev_d, prev_d)
+  | Some ([], prev_d) -> (Frag.stub prev_d, prev_d)
   | _ -> (
       let module P = Frontend.Policy in
       let arm ~pol_ty ~weights children =
@@ -135,7 +102,7 @@ let rec compile_subtree ~fresh_v ~fresh_s ~pe_of_depth ~depth ?splice
    per arm for SP/WFQ. [splice], when [Some (i :: rest, prev_d)], hands the
    splice down to the [i]-th child with its head consumed. *)
 and compile_arm ~fresh_v ~fresh_s ~pe_of_depth ~depth ~pol_ty ~weights ?splice
-    children : frag * (step * Decorated.t) list =
+    children : Frag.t * (step * Decorated.t) list =
   (* Self first, so that we get a lower vPIFO ID than the kids. *)
   let v = fresh_v () in
   let child_results =
@@ -154,20 +121,23 @@ and compile_arm ~fresh_v ~fresh_s ~pe_of_depth ~depth ~pol_ty ~weights ?splice
   let child_decorated = List.map snd child_results in
   let adoption_records =
     List.map
-      (fun cf ->
+      (fun (cf : Frag.t) ->
         let s = fresh_s () in
         (Adopt (s, v, cf.root_v), s, cf))
       child_frags
   in
-  let all_classes = List.concat_map (fun cf -> cf.classes) child_frags in
-  let local =
+  let all_classes =
+    List.concat_map (fun (cf : Frag.t) -> cf.classes) child_frags
+  in
+  let local : Frag.t =
     {
       spawns = [ Spawn (v, pe_of_depth depth) ];
       adopts = List.map (fun (a, _, _) -> a) adoption_records;
       assocs = List.map (fun c -> Assoc (v, c)) all_classes;
       maps =
         List.concat_map
-          (fun (_, s, cf) -> List.map (fun c -> Map (v, c, s)) cf.classes)
+          (fun (_, s, (cf : Frag.t)) ->
+            List.map (fun c -> Map (v, c, s)) cf.classes)
           adoption_records;
       change_pols = [ Change_pol (v, pol_ty, List.length children) ];
       change_weights =
@@ -184,55 +154,39 @@ and compile_arm ~fresh_v ~fresh_s ~pe_of_depth ~depth ~pol_ty ~weights ?splice
   let edges =
     List.map2 (fun (_, s, _) d -> (s, d)) adoption_records child_decorated
   in
-  (combine_frags local child_frags, edges)
+  (Frag.combine local child_frags, edges)
 
-let rec policy_of_decorated (d : Decorated.t) : Frontend.Policy.t =
-  let module P = Frontend.Policy in
-  match d with
-  | Decorated.FIFO (_, c) -> P.FIFO c
-  | Decorated.UNION (_, es) ->
-      P.UNION (List.map (fun (_, c) -> policy_of_decorated c) es)
-  | Decorated.SP (_, es) ->
-      P.SP (List.map (fun (_, c) -> policy_of_decorated c) es)
-  | Decorated.RR (_, es) ->
-      P.RR (List.map (fun (_, c) -> policy_of_decorated c) es)
-  | Decorated.WFQ (_, es) ->
-      P.WFQ
-        ( List.map (fun (_, c, _) -> policy_of_decorated c) es,
-          List.map (fun (_, _, w) -> w) es )
+let of_policy (p : Frontend.Policy.t) : compiled =
+  let fresh_v = make_counter ~start:vpifo_start in
+  let fresh_s = make_counter ~start:step_start in
+  let frag, decorated =
+    compile_subtree ~fresh_v ~fresh_s ~pe_of_depth:(fun d -> d) ~depth:0 p
+  in
+  (* Wrap the real root in the fake root: a UNION-of-1 carrying every class
+     in the real tree, all routed via [fake_root_step]. *)
+  let fake_frag : Frag.t =
+    {
+      spawns = [ Spawn (fake_root_v, fake_root_pe) ];
+      adopts = [ Adopt (fake_root_step, fake_root_v, frag.root_v) ];
+      assocs = List.map (fun c -> Assoc (fake_root_v, c)) frag.classes;
+      maps =
+        List.map (fun c -> Map (fake_root_v, c, fake_root_step)) frag.classes;
+      change_pols = [ Change_pol (fake_root_v, UNION, 1) ];
+      change_weights = [];
+      root_v = fake_root_v;
+      classes = frag.classes;
+    }
+  in
+  let pes = List.init (policy_depth p + 1) (fun d -> d) in
+  { prog = Frag.to_program (Frag.combine fake_frag [ frag ]); decorated; pes }
+
+(* ------------------------------------------------------------------ *)
+(* Patch: helpers shared across the patch_* functions.                *)
+(* ------------------------------------------------------------------ *)
 
 let parent_info = function
   | Decorated.FIFO _ -> failwith "Ir.patch: parent is a FIFO leaf"
   | d -> (Decorated.root_vpifo d, Decorated.arity d, Decorated.pol_ty d)
-
-let sp_edges = function
-  | Decorated.SP (_, es) -> es
-  | _ -> failwith "Ir.patch: expected an SP parent"
-
-let rec policy_depth (p : Frontend.Policy.t) : int =
-  let module P = Frontend.Policy in
-  match p with
-  | P.FIFO _ -> 0
-  | P.UNION ps | P.SP ps | P.RR ps ->
-      1 + List.fold_left max 0 (List.map policy_depth ps)
-  | P.WFQ (ps, _) -> 1 + List.fold_left max 0 (List.map policy_depth ps)
-
-(* Grow [pes] so it covers [target_depth], allocating fresh PEs (above
-   anything already in use) for any new layers. *)
-let pes_extended_to_depth target_depth pes =
-  let cur = List.length pes in
-  if target_depth < cur then pes
-  else
-    let max_pe = List.fold_left max (-1) pes in
-    let n = target_depth - cur + 1 in
-    let rec extra k cur =
-      if k <= 0 then [] else cur :: extra (k - 1) (cur + 1)
-    in
-    pes @ extra n (max_pe + 1)
-
-let counters_after prev =
-  ( make_counter ~start:(vpifo_start + Decorated.count_vpifos prev.decorated),
-    make_counter ~start:(step_start + Decorated.count_steps prev.decorated) )
 
 (* Routing-state edits along an ancestor chain. Each ancestor caches an
    [Assoc]/[Map] entry per class in its descendant subtree (see
@@ -258,29 +212,26 @@ let chain_deassocs chain classes =
 let gc_subtree subtree =
   List.map (fun v -> GC v) (Decorated.subtree_vpifos subtree)
 
-let of_policy (p : Frontend.Policy.t) : compiled =
-  let fresh_v = make_counter ~start:vpifo_start in
-  let fresh_s = make_counter ~start:step_start in
-  let frag, decorated =
-    compile_subtree ~fresh_v ~fresh_s ~pe_of_depth:(fun d -> d) ~depth:0 p
-  in
-  (* Wrap the real root in the fake root: a UNION-of-1 carrying every class
-     in the real tree, all routed via [fake_root_step]. *)
-  let fake_frag =
-    {
-      spawns = [ Spawn (fake_root_v, fake_root_pe) ];
-      adopts = [ Adopt (fake_root_step, fake_root_v, frag.root_v) ];
-      assocs = List.map (fun c -> Assoc (fake_root_v, c)) frag.classes;
-      maps =
-        List.map (fun c -> Map (fake_root_v, c, fake_root_step)) frag.classes;
-      change_pols = [ Change_pol (fake_root_v, UNION, 1) ];
-      change_weights = [];
-      root_v = fake_root_v;
-      classes = frag.classes;
-    }
-  in
-  let pes = List.init (policy_depth p + 1) (fun d -> d) in
-  { prog = frag_to_program (combine_frags fake_frag [ frag ]); decorated; pes }
+let counters_after prev =
+  ( make_counter ~start:(vpifo_start + Decorated.count_vpifos prev.decorated),
+    make_counter ~start:(step_start + Decorated.count_steps prev.decorated) )
+
+(* Grow [pes] so it covers [target_depth], allocating fresh PEs (above
+   anything already in use) for any new layers. *)
+let pes_extended_to_depth target_depth pes =
+  let cur = List.length pes in
+  if target_depth < cur then pes
+  else
+    let max_pe = List.fold_left max (-1) pes in
+    let n = target_depth - cur + 1 in
+    let rec extra k cur =
+      if k <= 0 then [] else cur :: extra (k - 1) (cur + 1)
+    in
+    pes @ extra n (max_pe + 1)
+
+(* ------------------------------------------------------------------ *)
+(* Patch: arm replacement (covers OneArmReplaced and whole-tree).     *)
+(* ------------------------------------------------------------------ *)
 
 (* Replace the subtree [removed] (sitting under ancestor [chain]) with a
    freshly compiled [arm]. Used both for whole-tree replacement (chain =
@@ -303,7 +254,7 @@ let replace_at ~prev ~chain ~removed ~arm_depth ~arm ~rewrite_decorated =
   let prog =
     List.concat
       [
-        frag_to_program arm_frag;
+        Frag.to_program arm_frag;
         [ Designate (removed_v, arm_frag.root_v) ];
         chain_unmaps chain removed_classes;
         chain_deassocs chain removed_classes;
@@ -328,6 +279,10 @@ let patch_whole_tree_replace ~prev ~next =
   replace_at ~prev ~chain:fake_chain ~removed:prev.decorated ~arm_depth:0
     ~arm:next ~rewrite_decorated:(fun d -> d)
 
+(* ------------------------------------------------------------------ *)
+(* Patch: weight change (WFQ-only, structurally a no-op).             *)
+(* ------------------------------------------------------------------ *)
+
 let patch_weight_changed ~prev ~path ~new_weight =
   let parent_path, k = list_foot path in
   let parent = Decorated.walk prev.decorated parent_path in
@@ -347,6 +302,14 @@ let patch_weight_changed ~prev ~path ~new_weight =
       decorated = new_decorated;
       pes = prev.pes;
     }
+
+(* ------------------------------------------------------------------ *)
+(* Patch: arm add / remove.                                           *)
+(* ------------------------------------------------------------------ *)
+
+let sp_edges = function
+  | Decorated.SP (_, es) -> es
+  | _ -> failwith "Ir.patch: expected an SP parent"
 
 (* SP weights are positional: arm at index [j] carries weight [j+1]. Inserting
    at [k] shifts every existing arm at [j ≥ k] up by one slot; removing at [k]
@@ -393,7 +356,7 @@ let patch_one_arm_added ~prev ~arm_path ~arm =
     Decorated.ancestor_chain prev.decorated parent_path
     @ [ (parent_v, new_step) ]
   in
-  let local =
+  let local : Frag.t =
     {
       spawns = [];
       adopts = [ Adopt (new_step, parent_v, arm_frag.root_v) ];
@@ -411,7 +374,7 @@ let patch_one_arm_added ~prev ~arm_path ~arm =
   in
   Some
     {
-      prog = frag_to_program (combine_frags local [ arm_frag ]);
+      prog = Frag.to_program (Frag.combine local [ arm_frag ]);
       decorated = new_decorated;
       pes = new_pes;
     }
@@ -447,6 +410,10 @@ let patch_one_arm_removed ~prev ~arm_path =
   (* Removal can leave [pes] over-long if the dropped arm was the deepest
      in the tree, but extra trailing entries are harmless. *)
   Some { prog; decorated = new_decorated; pes = prev.pes }
+
+(* ------------------------------------------------------------------ *)
+(* Patch: super- and sub-policy.                                      *)
+(* ------------------------------------------------------------------ *)
 
 (* [prev]'s policy sits inside [next] at [path]: compile only the new structure
    surrounding [prev] and graft [prev]'s installed root in at the splice via
@@ -484,7 +451,7 @@ let patch_super_pol ~prev ~next ~path =
       Adopt (fake_root_step, fake_root_v, frag.root_v);
     ]
   in
-  Some { prog = frag_to_program frag @ rewire; decorated; pes = new_pes }
+  Some { prog = Frag.to_program frag @ rewire; decorated; pes = new_pes }
 
 (* [next] sits inside [prev] at [path]: re-root the tree to that existing
    subtree by detaching it from its parent and repointing the fake root.
@@ -520,9 +487,13 @@ let patch_sub_pol ~prev ~path =
   let new_pes = List.filteri (fun i _ -> i >= List.length path) prev.pes in
   Some { prog; decorated = new_root; pes = new_pes }
 
+(* ------------------------------------------------------------------ *)
+(* Patch: top-level dispatch.                                         *)
+(* ------------------------------------------------------------------ *)
+
 let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
   let open Rio_compare.Compare in
-  match analyze (policy_of_decorated prev.decorated) next with
+  match analyze (Decorated.to_policy prev.decorated) next with
   | Same -> Some { prog = []; decorated = prev.decorated; pes = prev.pes }
   | OneArmReplaced { path = []; _ } -> patch_whole_tree_replace ~prev ~next
   | OneArmReplaced { path; arm } ->
