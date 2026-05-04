@@ -41,7 +41,8 @@ let vpifo_start = 100
 let step_start = 1000
 
 (* The fake root sits one level above every real root, on PE -1. It exists so
-   the real root always has an editable parent classifier, which means that we can handle whole-tree replacement, [SuperPol], and [SubPol] as ordinary
+   the real root always has an editable parent classifier, which means that we 
+   can handle whole-tree replacement, [SuperPol], and [SubPol] as ordinary
    parent-side edits. Reserved IDs below [vpifo_start]/[step_start] keep
    real-node numbering intact. The simulator never sees the fake root as a
    runtime node — [of_policy] just emits the wiring. *)
@@ -190,24 +191,11 @@ let parent_info = function
 
 (* Routing-state edits along an ancestor chain. Each ancestor caches an
    [Assoc]/[Map] entry per class in its descendant subtree (see
-   [compile_arm]); add/remove these as classes enter or leave. *)
-let chain_assocs chain classes =
-  List.concat_map (fun (v, _) -> List.map (fun c -> Assoc (v, c)) classes) chain
-
-let chain_maps chain classes =
-  List.concat_map
-    (fun (v, s) -> List.map (fun c -> Map (v, c, s)) classes)
-    chain
-
-let chain_unmaps chain classes =
-  List.concat_map
-    (fun (v, s) -> List.map (fun c -> Unmap (v, c, s)) classes)
-    chain
-
-let chain_deassocs chain classes =
-  List.concat_map
-    (fun (v, _) -> List.map (fun c -> Deassoc (v, c)) classes)
-    chain
+   [compile_arm]); add/remove these as classes enter or leave. Callers pick
+   the per-(v, s, c) constructor — typically [Assoc]/[Deassoc] (which ignore
+   [s]) or [Map]/[Unmap]. *)
+let chain_emit f chain classes =
+  List.concat_map (fun (v, s) -> List.map (fun c -> f v s c) classes) chain
 
 let gc_subtree subtree =
   List.map (fun v -> GC v) (Decorated.subtree_vpifos subtree)
@@ -256,10 +244,10 @@ let replace_at ~prev ~chain ~removed ~arm_depth ~arm ~rewrite_decorated =
       [
         Frag.to_program arm_frag;
         [ Designate (removed_v, arm_frag.root_v) ];
-        chain_unmaps chain removed_classes;
-        chain_deassocs chain removed_classes;
-        chain_assocs chain arm_frag.classes;
-        chain_maps chain arm_frag.classes;
+        chain_emit (fun v s c -> Unmap (v, c, s)) chain removed_classes;
+        chain_emit (fun v _ c -> Deassoc (v, c)) chain removed_classes;
+        chain_emit (fun v _ c -> Assoc (v, c)) chain arm_frag.classes;
+        chain_emit (fun v s c -> Map (v, c, s)) chain arm_frag.classes;
         gc_subtree removed;
       ]
   in
@@ -360,8 +348,8 @@ let patch_one_arm_added ~prev ~arm_path ~arm =
     {
       spawns = [];
       adopts = [ Adopt (new_step, parent_v, arm_frag.root_v) ];
-      assocs = chain_assocs chain arm_frag.classes;
-      maps = chain_maps chain arm_frag.classes;
+      assocs = chain_emit (fun v _ c -> Assoc (v, c)) chain arm_frag.classes;
+      maps = chain_emit (fun v s c -> Map (v, c, s)) chain arm_frag.classes;
       change_pols = [ Change_pol (parent_v, pol_ty, old_arity + 1) ];
       change_weights;
       root_v = parent_v;
@@ -398,8 +386,8 @@ let patch_one_arm_removed ~prev ~arm_path =
       [
         change_weights;
         [ Change_pol (parent_v, pol_ty, old_arity - 1) ];
-        chain_unmaps chain removed_classes;
-        chain_deassocs chain removed_classes;
+        chain_emit (fun v s c -> Unmap (v, c, s)) chain removed_classes;
+        chain_emit (fun v _ c -> Deassoc (v, c)) chain removed_classes;
         [ Emancipate (step_k, parent_v, removed_v) ];
         gc_subtree removed;
       ]
@@ -480,8 +468,8 @@ let patch_sub_pol ~prev ~path =
     Emancipate (step_k, parent_v, new_root_v)
     :: Emancipate (fake_root_step, fake_root_v, old_real_root_v)
     :: Adopt (fake_root_step, fake_root_v, new_root_v)
-    :: (chain_unmaps fake_chain dropped_classes
-       @ chain_deassocs fake_chain dropped_classes
+    :: (chain_emit (fun v s c -> Unmap (v, c, s)) fake_chain dropped_classes
+       @ chain_emit (fun v _ c -> Deassoc (v, c)) fake_chain dropped_classes
        @ List.map (fun v -> GC v) to_gc)
   in
   let new_pes = List.filteri (fun i _ -> i >= List.length path) prev.pes in
