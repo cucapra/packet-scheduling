@@ -28,9 +28,8 @@ let rec policy_depth (p : Frontend.Policy.t) : int =
   let module P = Frontend.Policy in
   match p with
   | P.FIFO _ -> 0
-  | P.UNION ps | P.SP ps | P.RR ps ->
+  | P.UNION ps | P.SP ps | P.RR ps | P.WFQ (ps, _) ->
       1 + List.fold_left max 0 (List.map policy_depth ps)
-  | P.WFQ (ps, _) -> 1 + List.fold_left max 0 (List.map policy_depth ps)
 
 (* ------------------------------------------------------------------ *)
 (* ID-space and fake-root constants.                                  *)
@@ -69,7 +68,7 @@ let compile_FIFO ~v ~pe c : Frag.t * Decorated.t =
 
 (* Compile a [Frontend.Policy.t] subtree at [depth]. [splice], when supplied,
    names a path inside this subtree at which an already-installed [Decorated.t]
-   should be grafted in instead of compiled afresh. *)
+   should be grafted in instead of being compiled afresh. *)
 let rec compile_subtree ~fresh_v ~fresh_s ~pe_of_depth ~depth ?splice
     (p : Frontend.Policy.t) : Frag.t * Decorated.t =
   match splice with
@@ -208,7 +207,7 @@ let pes_extended_to_depth target_depth pes =
     pes @ List.init n (fun i -> max_pe + 1 + i)
 
 (* ------------------------------------------------------------------ *)
-(* Patch: arm replacement (covers OneArmReplaced and whole-tree).     *)
+(* Patch: arm replacement.                                            *)
 (* ------------------------------------------------------------------ *)
 
 (* Replace the subtree [removed] (sitting under ancestor [chain]) with a
@@ -257,7 +256,7 @@ let patch_whole_tree_replace ~prev ~next =
     ~arm:next ~rewrite_decorated:(fun d -> d)
 
 (* ------------------------------------------------------------------ *)
-(* Patch: weight change (WFQ-only, structurally a no-op).             *)
+(* Patch: weight change (WFQ-only, structure of tree unchanged.       *)
 (* ------------------------------------------------------------------ *)
 
 let patch_weight_changed ~prev ~path ~new_weight =
