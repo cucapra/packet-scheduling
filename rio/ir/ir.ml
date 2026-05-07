@@ -462,11 +462,16 @@ let patch_sub_pol ~prev ~path =
 (* Patch: top-level dispatch.                                         *)
 (* ------------------------------------------------------------------ *)
 
-let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
+(* Apply a single change to [prev]. Used by the fold in [patch] when the
+   diff is a list of edits (currently: WFQ arm-add = [OneArmAdded;
+   WeightChanged]). [SuperPol]/[SubPol] never appear inside a multi-edit
+   list — they are handled directly by [patch] as singletons because they
+   need access to the original [next]. *)
+let patch_one ~prev (change : Rio_compare.Compare.change) : compiled option =
   let open Rio_compare.Compare in
-  match analyze (Decorated.to_policy prev.decorated) next with
-  | Same -> Some { prog = []; decorated = prev.decorated; pes = prev.pes }
-  | OneArmReplaced { path = []; _ } -> patch_whole_tree_replace ~prev ~next
+  match change with
+  | OneArmReplaced { path = []; arm } ->
+      patch_whole_tree_replace ~prev ~next:arm
   | OneArmReplaced { path; arm } ->
       patch_one_arm_replaced ~prev ~arm_path:path ~arm
   | OneArmAdded { path; arm } -> patch_one_arm_added ~prev ~arm_path:path ~arm
@@ -474,9 +479,37 @@ let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
       patch_one_arm_removed ~prev ~arm_path:path
   | WeightChanged { path; new_weight } ->
       patch_weight_changed ~prev ~path ~new_weight
-  | SuperPol [] | SubPol [] -> None
-  | SuperPol path -> patch_super_pol ~prev ~next ~path
-  | SubPol path -> patch_sub_pol ~prev ~path
+  | SuperPol _ | SubPol _ -> None
+
+let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
+  let open Rio_compare.Compare in
+  match analyze (Decorated.to_policy prev.decorated) next with
+  | [] -> Some { prog = []; decorated = prev.decorated; pes = prev.pes }
+  | [ SuperPol [] ] | [ SubPol [] ] -> None
+  | [ SuperPol path ] -> patch_super_pol ~prev ~next ~path
+  | [ SubPol path ] -> patch_sub_pol ~prev ~path
+  | changes ->
+      (* Fold each edit against the intermediate state. Each step's
+         [decorated] becomes the next step's [prev], so paths and IDs in
+         later edits refer to the post-prior-edit tree. *)
+      let init =
+        Some { prog = []; decorated = prev.decorated; pes = prev.pes }
+      in
+      List.fold_left
+        (fun acc change ->
+          match acc with
+          | None -> None
+          | Some cur -> (
+              match patch_one ~prev:cur change with
+              | None -> None
+              | Some step ->
+                  Some
+                    {
+                      prog = cur.prog @ step.prog;
+                      decorated = step.decorated;
+                      pes = step.pes;
+                    }))
+        init changes
 
 module Decorated = Decorated
 module Json = Json

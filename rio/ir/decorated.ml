@@ -151,7 +151,10 @@ let insert_arm k new_step new_child = function
   | UNION (v, es) -> UNION (v, list_insert_at k (new_step, new_child) es)
   | SP (v, es) -> SP (v, list_insert_at k (new_step, new_child) es)
   | RR (v, es) -> RR (v, list_insert_at k (new_step, new_child) es)
-  | WFQ _ -> failwith "Decorated.insert_arm: WFQ unreachable under OneArmAdded"
+  | WFQ (v, es) ->
+      (* The new slot gets a placeholder weight of 0.0; a [WeightChanged]
+         step is expected to follow immediately and set the real weight. *)
+      WFQ (v, list_insert_at k (new_step, new_child, 0.0) es)
 
 let drop_arm k = function
   | FIFO _ -> failwith "Decorated.drop_arm: FIFO"
