@@ -176,14 +176,17 @@ and compare_wfq_children ~next:p2 ps1 (ws1 : float list) ps2 (ws2 : float list)
           give_up
     end
   | false, false -> begin
-      (* Both lists changed. Two single-edit shapes are recognizable here:
+      (* Both lists changed. Three single-edit shapes are recognizable here:
          - WFQ arm removal: [ps1] has one extra element vs [ps2], at the
            same slot in both ps and ws.
          - WFQ arm addition: [ps2] has one extra element vs [ps1], at the
            same slot in both ps and ws. Since [arm_diff] doesn't carry a
            weight, this is emitted as a two-step list: an [OneArmAdded]
            that splices the new arm into the slot, followed by a
-           [WeightChanged] that sets that slot's weight. *)
+           [WeightChanged] that sets that slot's weight.
+         - In-place arm change at slot [i] with the same slot's weight
+           also changed: recurse into the arm and append a [WeightChanged]
+           for slot [i]. *)
       match
         ( insertions ps2 ps1,
           insertions ws2 ws1,
@@ -197,6 +200,13 @@ and compare_wfq_children ~next:p2 ps1 (ws1 : float list) ps2 (ws2 : float list)
             OneArmAdded { path = [ i ]; arm };
             WeightChanged { path = [ i ]; new_weight = w };
           ]
+      | _ when List.length ps1 = List.length ps2 -> begin
+          match (changes ps1 ps2, changes ws1 ws2) with
+          | [ (i, _) ], [ (j, w) ] when i = j ->
+              prepend_path i (analyze (List.nth ps1 i) (List.nth ps2 i))
+              @ [ WeightChanged { path = [ i ]; new_weight = w } ]
+          | _ -> give_up
+        end
       | _ -> give_up
     end
 

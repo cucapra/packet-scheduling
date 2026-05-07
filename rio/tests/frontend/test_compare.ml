@@ -145,6 +145,27 @@ let onearmreplaced =
       [ OneArmReplaced { path = [ 2 ]; arm = Policy.FIFO "Z" } ];
   ]
 
+(* WFQ slot's arm and weight both changed at the same index. Compare
+   recurses into the arm and appends a [WeightChanged] for the slot. *)
+let wfq_arm_and_weight =
+  [
+    (* WFQ(A:2,B:1,C:3) → WFQ(A:2,B:1,Z:7): slot 2 arm C→Z and weight 3→7. *)
+    make_compare_test "WFQ slot with arm change and weight change" "wfq_ABC"
+      "wfq_ABZ_diff"
+      [
+        OneArmReplaced { path = [ 2 ]; arm = Policy.FIFO "Z" };
+        WeightChanged { path = [ 2 ]; new_weight = 7.0 };
+      ];
+    (* wfq_complex = WFQ([(A,1), (RR[B,C],2)]). Next changes RR[B,C]→RR[B,D]
+       (a deeper [OneArmReplaced]) and bumps the weight 2→5 at slot 1. *)
+    make_compare_test "WFQ slot with deep diff and weight change" "wfq_complex"
+      "wfq_complex_deep_and_weight"
+      [
+        OneArmReplaced { path = [ 1; 1 ]; arm = Policy.FIFO "D" };
+        WeightChanged { path = [ 1 ]; new_weight = 5.0 };
+      ];
+  ]
+
 let superpol =
   [
     make_compare_test "fifo_G is sub-pol of union[G,H]" "fifo_G" "union_GH"
@@ -185,16 +206,6 @@ let subpol =
    analyzer. *)
 let verydiff_combos =
   [
-    (* wfq_complex = WFQ([(A,1), (RR[B,C],2)]). Next changes RR[B,C]→RR[B,D]
-       (a deeper [OneArmReplaced]) and bumps the weight 2→5 (a
-       [WeightChanged]) at the same slot. *)
-    make_giveup_test "WFQ slot with deep diff and weight change" "wfq_complex"
-      "wfq_complex_deep_and_weight" [];
-    (* WFQ(A:2,B:1,C:3) → WFQ(A:2,B:1,Z:7): one slot's arm changed
-       (C→Z, an [OneArmReplaced]) and its weight changed (3→7, a
-       [WeightChanged]). Same slot, two distinct edits. *)
-    make_giveup_test "WFQ slot with arm change and weight change" "wfq_ABC"
-      "wfq_ABZ_diff" [];
     (* RR(A,B) → RR(D,B,A,SP(C,E)): two new arms (D and SP[C,E]) — a
        multi-arm add, hence two [OneArmAdded]s. *)
     make_giveup_test "RR with two arms added whilst reordering" "rr_AB"
@@ -231,6 +242,7 @@ let verydiff_combos =
 let suite =
   "compare tests"
   >::: same @ one_arm_added @ wfq_arm_added @ armsremoved @ weightchanged
-       @ onearmreplaced @ verydiff_combos @ superpol @ subpol
+       @ onearmreplaced @ wfq_arm_and_weight @ verydiff_combos @ superpol
+       @ subpol
 
 let () = run_test_tt_main suite
