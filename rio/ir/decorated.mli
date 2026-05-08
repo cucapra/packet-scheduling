@@ -62,7 +62,12 @@ val rewrite_at : t -> int list -> (t -> t) -> t
 val insert_arm : int -> step -> t -> t -> t
 (** [insert_arm k new_step new_child d] splices [new_child] in at index [k] in
     the children of [d], using [new_step] as the parent-to-child step. Errors on
-    FIFO and WFQ. *)
+    FIFO and WFQ; use [insert_arm_wfq] for WFQ. *)
+
+val insert_arm_wfq : int -> step -> t -> float -> t -> t
+(** [insert_arm_wfq k new_step new_child new_weight d] splices [new_child] in at
+    index [k] in the children of WFQ-rooted [d], pairing it with [new_step] and
+    [new_weight]. Errors on anything but WFQ. *)
 
 val drop_arm : int -> t -> t
 (** Remove the child at index [k]. Errors on FIFO. *)
