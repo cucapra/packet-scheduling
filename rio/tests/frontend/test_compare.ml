@@ -38,9 +38,8 @@ let same =
 
 (* OneArmAdded fires on a single-arm insertion at any position of a
    UNION/RR/SP parent (after [Policy.normalize] has sorted UNION/RR
-   children). WFQ-add does *not* land here — see [verydiff_combos] —
-   because the new slot's weight can't ride along on [arm_diff], so a
-   WFQ-add is logically [OneArmAdded + WeightChanged]. 
+   children). WFQ-add lands in the dedicated [OneArmAddedWFQ] variant
+   (see [one_arm_added_wfq]) since the new slot also carries a weight.
    Multi-arm insertions instead "give up" to a wholesale-replace
    [OneArmReplaced] (see [verydiff_combos]). The
    [path] inside [arm_diff] is the new arm's full position from the
@@ -72,6 +71,31 @@ let one_arm_added =
     make_compare_test "complex tree add arm deep" "complex_tree"
       "complex_tree_add_arm_deep"
       (OneArmAdded { path = [ 2; 3 ]; arm = Policy.FIFO "NEW" });
+  ]
+
+(* OneArmAddedWFQ: a WFQ parent gains exactly one slot. Detected when the
+   policy list and the weight list each show a single insertion at the
+   same index. The carried [weight] is the new slot's weight in [next]. *)
+let one_arm_added_wfq =
+  [
+    (* WFQ(B,A) → WFQ(A:2,B:1,C:3): after normalize the prev pairs sort to
+       [(A,2),(B,1)] and next to [(A,2),(B,1),(C,3)]. The C slot is the
+       lone insertion (index 2, weight 3). *)
+    make_compare_test "WFQ with arm added at end" "wfq_BA" "wfq_ABC"
+      (OneArmAddedWFQ { path = [ 2 ]; arm = Policy.FIFO "C"; weight = 3.0 });
+    (* complex_tree_partial → complex_tree: at the root WFQ a new
+       (rr[D,E,F], 2) slot appears. Children sort by variant tag
+       (UNION < SP < RR), so prev pairs are [(UNION,3),(SP,1)] and next
+       pairs are [(UNION,3),(SP,1),(RR,2)]: insertion at index 2,
+       weight 2. *)
+    make_compare_test "complex tree fill in missing arm" "complex_tree_partial"
+      "complex_tree"
+      (OneArmAddedWFQ
+         {
+           path = [ 2 ];
+           arm = Policy.RR [ Policy.FIFO "D"; Policy.FIFO "E"; Policy.FIFO "F" ];
+           weight = 2.0;
+         });
   ]
 
 let armsremoved =
@@ -163,15 +187,6 @@ let verydiff_combos =
        [WeightChanged]). Same slot, two distinct edits. *)
     make_giveup_test "WFQ slot with arm change and weight change" "wfq_ABC"
       "wfq_ABZ_diff" [];
-    (* WFQ(B,A) → WFQ(A:2,B:1,C:3): adding a WFQ arm is logically
-       [OneArmAdded] (the arm) + [WeightChanged] (the new slot's
-       weight). [arm_diff] no longer carries a weight, so this combo
-       can't fold into a single variant. *)
-    make_giveup_test "WFQ with arm added" "wfq_BA" "wfq_ABC" [];
-    (* complex_tree_partial → complex_tree: a WFQ-level arm-add at the
-       root (the RR subtree, weight 2). Same combo as above. *)
-    make_giveup_test "complex tree fill in missing arm" "complex_tree_partial"
-      "complex_tree" [];
     (* RR(A,B) → RR(D,B,A,SP(C,E)): two new arms (D and SP[C,E]) — a
        multi-arm add, hence two [OneArmAdded]s. *)
     make_giveup_test "RR with two arms added whilst reordering" "rr_AB"
@@ -207,7 +222,7 @@ let verydiff_combos =
 
 let suite =
   "compare tests"
-  >::: same @ one_arm_added @ armsremoved @ weightchanged @ onearmreplaced
-       @ verydiff_combos @ superpol @ subpol
+  >::: same @ one_arm_added @ one_arm_added_wfq @ armsremoved @ weightchanged
+       @ onearmreplaced @ verydiff_combos @ superpol @ subpol
 
 let () = run_test_tt_main suite
