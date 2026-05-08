@@ -6,6 +6,9 @@ type path = int list
 type t =
   | Same
   | OneArmAdded of arm_diff
+  | OneArmAddedWFQ of arm_diff_w
+    (* WFQ-specific arm addition. Adding a slot to a WFQ parent always
+       carries a weight, so the new arm and its weight are a single edit. *)
   | OneArmRemoved of arm_diff
   | WeightChanged of weight_change
   | OneArmReplaced of arm_diff
@@ -15,10 +18,16 @@ type t =
 
 and arm_diff = {
   path : path;
-      (* Path from the root to the position of this arm. 
+      (* Path from the root to the position of this arm.
       For [OneArmAdded] this is a position in *next*; for
           [OneArmRemoved] it is a position in *prev*. *)
   arm : Frontend.Policy.t;
+}
+
+and arm_diff_w = {
+  path : path;
+  arm : Frontend.Policy.t;
+  weight : float;
 }
 
 and weight_change = {
@@ -69,10 +78,12 @@ let changes prev next =
    the recursion). *)
 let prepend_path i diff =
   let prepend_arm (ad : arm_diff) = { ad with path = i :: ad.path } in
+  let prepend_arm_w (ad : arm_diff_w) = { ad with path = i :: ad.path } in
   let prepend_wc (wc : weight_change) = { wc with path = i :: wc.path } in
   match diff with
   | Same -> Same
   | OneArmAdded ad -> OneArmAdded (prepend_arm ad)
+  | OneArmAddedWFQ ad -> OneArmAddedWFQ (prepend_arm_w ad)
   | OneArmRemoved ad -> OneArmRemoved (prepend_arm ad)
   | WeightChanged wc -> WeightChanged (prepend_wc wc)
   | OneArmReplaced ad -> OneArmReplaced (prepend_arm ad)
@@ -171,14 +182,18 @@ and compare_wfq_children ~next:p2 ps1 (ws1 : float list) ps2 (ws2 : float list)
           give_up
     end
   | false, false -> begin
-      (* Both lists changed. The only way this is a single edit is if it's an 
-         arm _removal_. We require the same drop position in both, as that
-         confirms we're looking at one consistent slot removal rather
-         than two coincidental edits. *)
-      match (insertions ps2 ps1, insertions ws2 ws1) with
-      | Some [ (i, arm) ], Some [ (j, _) ] when i = j ->
-          OneArmRemoved { path = [ i ]; arm }
-      | _ -> give_up
+      (* Both lists changed. A single edit could be either an arm
+         removal or a WFQ-style arm addition. In each case the same
+         slot must show up as the lone difference in both the policy
+         list and the weight list, confirming one consistent edit. *)
+      match (insertions ps1 ps2, insertions ws1 ws2) with
+      | Some [ (i, arm) ], Some [ (j, weight) ] when i = j ->
+          OneArmAddedWFQ { path = [ i ]; arm; weight }
+      | _ -> (
+          match (insertions ps2 ps1, insertions ws2 ws1) with
+          | Some [ (i, arm) ], Some [ (j, _) ] when i = j ->
+              OneArmRemoved { path = [ i ]; arm }
+          | _ -> give_up)
     end
 
 and analyze p1 p2 =
@@ -217,12 +232,19 @@ let string_of_arm_diff { path; arm } =
     (Frontend.Policy.to_string arm)
     (path_to_string path)
 
+let string_of_arm_diff_w { path; arm; weight } =
+  Printf.sprintf "%s (weight %g) at %s"
+    (Frontend.Policy.to_string arm)
+    weight (path_to_string path)
+
 let string_of_weight_change { path; new_weight } =
   Printf.sprintf "%s → %g" (path_to_string path) new_weight
 
 let to_string = function
   | Same -> "Same"
   | OneArmAdded ad -> Printf.sprintf "OneArmAdded: %s" (string_of_arm_diff ad)
+  | OneArmAddedWFQ ad ->
+      Printf.sprintf "OneArmAddedWFQ: %s" (string_of_arm_diff_w ad)
   | OneArmRemoved ad ->
       Printf.sprintf "OneArmRemoved: %s" (string_of_arm_diff ad)
   | WeightChanged wc ->
