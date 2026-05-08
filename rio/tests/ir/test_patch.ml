@@ -274,8 +274,8 @@ let wfq_abc_to_abz_diff_expected : program =
     Deassoc (100, "C");
     Assoc (100, "Z");
     Map (100, "Z", 1002);
-    Change_weight (100, 1002, 7.0);
     GC 103;
+    Change_weight (100, 1002, 7.0);
   ]
 
 let one_arm_replaced_wfq_tests =
