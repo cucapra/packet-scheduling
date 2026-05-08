@@ -214,12 +214,12 @@ let pes_extended_to_depth target_depth pes =
    freshly compiled [arm]. Used both for whole-tree replacement (chain =
    [fake_chain], removed = prev.decorated) and for per-arm replacement
    (chain = ancestor_chain prev arm_path, removed = nth_child parent k).
-
    The parent never adopts the new root directly: [Designate] fuses the old
    and new roots into a super-node that occupies the existing slot, so
    in-flight traffic on the old root drains while new traffic goes to the
    new root via the same step. *)
-let replace_at ~prev ~chain ~removed ~arm_depth ~arm ~rewrite_decorated =
+let replace_at ~prev ~chain ~removed ~arm_depth ~arm ~rewrite_decorated
+    ?(extra_prog = []) () =
   let fresh_v, fresh_s = counters_after prev in
   let new_pes = pes_extended_to_depth (arm_depth + policy_depth arm) prev.pes in
   let pe_of_depth d = List.nth new_pes d in
@@ -237,23 +237,42 @@ let replace_at ~prev ~chain ~removed ~arm_depth ~arm ~rewrite_decorated =
         chain_emit (fun v _ c -> Deassoc (v, c)) chain removed_classes;
         chain_emit (fun v _ c -> Assoc (v, c)) chain arm_frag.classes;
         chain_emit (fun v s c -> Map (v, c, s)) chain arm_frag.classes;
+        extra_prog;
         gc_subtree removed;
       ]
   in
   Some { prog; decorated = rewrite_decorated arm_decorated; pes = new_pes }
 
-let patch_one_arm_replaced ~prev ~arm_path ~arm =
+(* WFQ slot replacement layers a slot weight bump on top of the plain
+   replacement: the existing parent→slot step is reused (so [Designate]
+   still fuses old/new on it), and we tack on a [Change_weight] for the
+   new weight plus a [set_weight] in the decorated rewrite. [wfq_weight]
+   is [Some w] iff this is a WFQ slot whose weight also changed. *)
+let patch_one_arm_replaced ~prev ~arm_path ~arm ~wfq_weight =
   let parent_path, k = list_foot arm_path in
   let parent = Decorated.walk prev.decorated parent_path in
-  replace_at ~prev ~chain:(Decorated.ancestor_chain prev.decorated arm_path)
+  let extra_prog, extra_rewrite =
+    match wfq_weight with
+    | None -> ([], fun d -> d)
+    | Some w ->
+        let parent_v = Decorated.root_vpifo parent in
+        let step_k = Decorated.nth_step parent k in
+        ([ Change_weight (parent_v, step_k, w) ], Decorated.set_weight k w)
+  in
+  replace_at ~prev
+    ~chain:(Decorated.ancestor_chain prev.decorated arm_path)
     ~removed:(Decorated.nth_child parent k)
-    ~arm_depth:(List.length arm_path) ~arm ~rewrite_decorated:(fun arm_d ->
-      Decorated.rewrite_at prev.decorated parent_path
-        (Decorated.replace_arm k arm_d))
+    ~arm_depth:(List.length arm_path) ~arm
+    ~rewrite_decorated:(fun arm_d ->
+      Decorated.rewrite_at prev.decorated parent_path (fun p ->
+          p |> Decorated.replace_arm k arm_d |> extra_rewrite))
+    ~extra_prog ()
 
 let patch_whole_tree_replace ~prev ~next =
   replace_at ~prev ~chain:fake_chain ~removed:prev.decorated ~arm_depth:0
-    ~arm:next ~rewrite_decorated:(fun d -> d)
+    ~arm:next
+    ~rewrite_decorated:(fun d -> d)
+    ()
 
 (* ------------------------------------------------------------------ *)
 (* Patch: weight change (WFQ-only, structure of tree unchanged.       *)
@@ -480,7 +499,9 @@ let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
   | Same -> Some { prog = []; decorated = prev.decorated; pes = prev.pes }
   | OneArmReplaced { path = []; _ } -> patch_whole_tree_replace ~prev ~next
   | OneArmReplaced { path; arm } ->
-      patch_one_arm_replaced ~prev ~arm_path:path ~arm
+      patch_one_arm_replaced ~prev ~arm_path:path ~arm ~wfq_weight:None
+  | OneArmReplacedWFQ { path; arm; weight } ->
+      patch_one_arm_replaced ~prev ~arm_path:path ~arm ~wfq_weight:(Some weight)
   | OneArmAdded { path; arm } ->
       patch_one_arm_added ~prev ~arm_path:path ~arm ~wfq_weight:None
   | OneArmAddedWFQ { path; arm; weight } ->

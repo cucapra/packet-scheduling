@@ -259,6 +259,31 @@ let one_arm_replaced_tests =
       strict_ab_to_ac_expected;
   ]
 
+(* OneArmReplacedWFQ. wfq_ABC has root WFQ v=100 with leaves v=101/102/103
+   for A/B/C on steps 1000/1001/1002. Replacing slot 2's arm (C → FIFO Z)
+   *and* its weight (3 → 7) reuses step 1002: the new FIFO Z spawns on
+   v=104 (PE 1), is [Designate]d onto v=103, ancestor routing on v=100
+   swings C → Z, the slot's weight gets a single [Change_weight], and
+   v=103 is GC'd. *)
+let wfq_abc_to_abz_diff_expected : program =
+  [
+    Spawn (104, 1);
+    Assoc (104, "Z");
+    Designate (103, 104);
+    Unmap (100, "C", 1002);
+    Deassoc (100, "C");
+    Assoc (100, "Z");
+    Map (100, "Z", 1002);
+    Change_weight (100, 1002, 7.0);
+    GC 103;
+  ]
+
+let one_arm_replaced_wfq_tests =
+  [
+    make_delta_test "wfq[A,B,C] -> wfq[A,B,Z(7)]" "wfq_ABC" "wfq_ABZ_diff"
+      wfq_abc_to_abz_diff_expected;
+  ]
+
 (* Whole-tree replacement (Compare returns [VeryDifferent []]). prev =
    rr[A,B] (vpifos 100/101/102, steps 1000/1001); next = rr[D,E,F] which
    shares no arms, so Compare gives up at the root. The patch builds the
@@ -539,7 +564,7 @@ let suite =
   "patch tests"
   >::: one_arm_added_tests @ one_arm_added_wfq_tests @ weight_changed_tests
        @ one_arm_removed_tests @ one_arm_replaced_tests
-       @ whole_tree_replace_tests @ sub_pol_tests @ super_pol_tests
-       @ pes_extension_tests @ deep_giveup_tests
+       @ one_arm_replaced_wfq_tests @ whole_tree_replace_tests @ sub_pol_tests
+       @ super_pol_tests @ pes_extension_tests @ deep_giveup_tests
 
 let () = run_test_tt_main suite

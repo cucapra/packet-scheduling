@@ -13,6 +13,10 @@ type t =
   | WeightChanged of weight_change
   | OneArmReplaced of arm_diff
     (* Wholesale replacement of the subtree at [path] with [arm]. If [path] is nil, that means we're not (yet) clever enough to specify the change and the arm being replaced is the whole tree. *)
+  | OneArmReplacedWFQ of arm_diff_w
+    (* WFQ-specific arm replacement: a single WFQ slot's arm and weight
+       both changed. Bundles the new arm and the new weight together so
+       it doesn't decompose into [OneArmReplaced] + [WeightChanged]. *)
   | SuperPol of path (* [path] points to [prev] inside [next]. *)
   | SubPol of path (* [path] points to [next] inside [prev]. *)
 
@@ -87,6 +91,7 @@ let prepend_path i diff =
   | OneArmRemoved ad -> OneArmRemoved (prepend_arm ad)
   | WeightChanged wc -> WeightChanged (prepend_wc wc)
   | OneArmReplaced ad -> OneArmReplaced (prepend_arm ad)
+  | OneArmReplacedWFQ ad -> OneArmReplacedWFQ (prepend_arm_w ad)
   | SuperPol p -> SuperPol (i :: p)
   | SubPol p -> SubPol (i :: p)
 
@@ -181,20 +186,39 @@ and compare_wfq_children ~next:p2 ps1 (ws1 : float list) ps2 (ws2 : float list)
           (* Detected more than one point of difference. We can't handle that yet. *)
           give_up
     end
-  | false, false -> begin
-      (* Both lists changed. A single edit could be either an arm
-         removal or a WFQ-style arm addition. In each case the same
-         slot must show up as the lone difference in both the policy
-         list and the weight list, confirming one consistent edit. *)
-      match (insertions ps1 ps2, insertions ws1 ws2) with
-      | Some [ (i, arm) ], Some [ (j, weight) ] when i = j ->
-          OneArmAddedWFQ { path = [ i ]; arm; weight }
-      | _ -> (
-          match (insertions ps2 ps1, insertions ws2 ws1) with
-          | Some [ (i, arm) ], Some [ (j, _) ] when i = j ->
-              OneArmRemoved { path = [ i ]; arm }
-          | _ -> give_up)
-    end
+  | false, false ->
+      (* Both lists changed. We can describe a single edit in three
+         shapes: an arm-add (one new slot in [next]), an arm-remove (one
+         dropped slot), or an arm-replace at one slot whose arm and
+         weight both changed. In each case the same slot index must
+         show up as the lone difference in both the policy list and
+         the weight list, confirming one consistent edit. *)
+      if List.length ps1 = List.length ps2 then begin
+        (* Same length: only a WFQ arm-replace can land here. The slot
+           must show as a single in-place difference in both [ps] and
+           [ws], and that slot's arm-vs-arm diff must itself be a
+           leaf-level replacement (otherwise we'd be folding a deep
+           arm change with a weight change into one variant, which
+           [Ir.patch] can't currently express). *)
+        match (changes ps1 ps2, changes ws1 ws2) with
+        | [ (i, _) ], [ (j, weight) ] when i = j -> begin
+            match analyze (List.nth ps1 i) (List.nth ps2 i) with
+            | OneArmReplaced { path = []; arm } ->
+                OneArmReplacedWFQ { path = [ i ]; arm; weight }
+            | _ -> give_up
+          end
+        | _ -> give_up
+      end
+      else begin
+        match (insertions ps1 ps2, insertions ws1 ws2) with
+        | Some [ (i, arm) ], Some [ (j, weight) ] when i = j ->
+            OneArmAddedWFQ { path = [ i ]; arm; weight }
+        | _ -> (
+            match (insertions ps2 ps1, insertions ws2 ws1) with
+            | Some [ (i, arm) ], Some [ (j, _) ] when i = j ->
+                OneArmRemoved { path = [ i ]; arm }
+            | _ -> give_up)
+      end
 
 and analyze p1 p2 =
   if p1 = p2 then Same
@@ -251,5 +275,7 @@ let to_string = function
       Printf.sprintf "WeightChanged: %s" (string_of_weight_change wc)
   | OneArmReplaced ad ->
       Printf.sprintf "OneArmReplaced: %s" (string_of_arm_diff ad)
+  | OneArmReplacedWFQ ad ->
+      Printf.sprintf "OneArmReplacedWFQ: %s" (string_of_arm_diff_w ad)
   | SuperPol p -> Printf.sprintf "SuperPol at %s" (path_to_string p)
   | SubPol p -> Printf.sprintf "SubPol at %s" (path_to_string p)
