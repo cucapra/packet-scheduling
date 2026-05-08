@@ -307,7 +307,12 @@ let sp_removed_weight_shifts ~parent_v ~parent ~k =
       if j > k then Some (Change_weight (parent_v, s, float_of_int j)) else None)
     (List.mapi (fun j e -> (j, e)) (sp_edges parent))
 
-let patch_one_arm_added ~prev ~arm_path ~arm =
+(* Single-arm insertion under [parent]. [wfq_weight] is [Some w] iff the
+   parent is a WFQ (the new slot rides with weight [w]).
+   The [Change_weight]s to emit and the decorated-tree update are the only 
+   things that vary by policy, so they are computed up front
+   and the rest of the body is shared between SP/UNION/RR/WFQ. *)
+let patch_one_arm_added ~prev ~arm_path ~arm ~wfq_weight =
   let parent_path, k = list_foot arm_path in
   let parent = Decorated.walk prev.decorated parent_path in
   let parent_v, old_arity, pol_ty = parent_info parent in
@@ -321,10 +326,18 @@ let patch_one_arm_added ~prev ~arm_path ~arm =
     compile_subtree ~fresh_v ~fresh_s ~pe_of_depth ~depth:arm_depth arm
   in
   let new_step = fresh_s () in
-  let change_weights =
-    match pol_ty with
-    | SP -> sp_inserted_weight_shifts ~parent_v ~parent ~k ~new_step
-    | _ -> []
+  let change_weights, decorated_update =
+    match (pol_ty, wfq_weight) with
+    | SP, None ->
+        ( sp_inserted_weight_shifts ~parent_v ~parent ~k ~new_step,
+          Decorated.insert_arm k new_step arm_decorated )
+    | WFQ, Some w ->
+        ( [ Change_weight (parent_v, new_step, w) ],
+          Decorated.insert_arm_wfq k new_step arm_decorated w )
+    | (UNION | RR), None -> ([], Decorated.insert_arm k new_step arm_decorated)
+    | _ ->
+        failwith
+          "Ir.patch.patch_one_arm_added: parent pol_ty / wfq_weight mismatch"
   in
   (* Strict ancestors above [parent_v] reuse their existing step toward
      [parent_v]; [parent_v] itself uses the freshly minted [new_step]. *)
@@ -345,54 +358,7 @@ let patch_one_arm_added ~prev ~arm_path ~arm =
     }
   in
   let new_decorated =
-    Decorated.rewrite_at prev.decorated parent_path
-      (Decorated.insert_arm k new_step arm_decorated)
-  in
-  Some
-    {
-      prog = Frag.to_program (Frag.combine local [ arm_frag ]);
-      decorated = new_decorated;
-      pes = new_pes;
-    }
-
-(* WFQ counterpart to [patch_one_arm_added]: the parent is a WFQ, so the new
-   slot rides with a [weight] that we install via [Change_weight] on the
-   freshly minted step. No SP-style positional weight shifts happen — WFQ
-   weights are independent per slot. *)
-let patch_one_arm_added_wfq ~prev ~arm_path ~arm ~weight =
-  let parent_path, k = list_foot arm_path in
-  let parent = Decorated.walk prev.decorated parent_path in
-  let parent_v, old_arity, pol_ty = parent_info parent in
-  (match pol_ty with
-  | WFQ -> ()
-  | _ -> failwith "Ir.patch: OneArmAddedWFQ parent is not a WFQ");
-  let fresh_v, fresh_s = counters_after prev in
-  let arm_depth = List.length arm_path in
-  let new_pes = pes_extended_to_depth (arm_depth + policy_depth arm) prev.pes in
-  let pe_of_depth d = List.nth new_pes d in
-  let arm_frag, arm_decorated =
-    compile_subtree ~fresh_v ~fresh_s ~pe_of_depth ~depth:arm_depth arm
-  in
-  let new_step = fresh_s () in
-  let chain =
-    Decorated.ancestor_chain prev.decorated parent_path
-    @ [ (parent_v, new_step) ]
-  in
-  let local : Frag.t =
-    {
-      spawns = [];
-      adopts = [ Adopt (new_step, parent_v, arm_frag.root_v) ];
-      assocs = chain_emit (fun v _ c -> Assoc (v, c)) chain arm_frag.classes;
-      maps = chain_emit (fun v s c -> Map (v, c, s)) chain arm_frag.classes;
-      change_pols = [ Change_pol (parent_v, pol_ty, old_arity + 1) ];
-      change_weights = [ Change_weight (parent_v, new_step, weight) ];
-      root_v = parent_v;
-      classes = arm_frag.classes;
-    }
-  in
-  let new_decorated =
-    Decorated.rewrite_at prev.decorated parent_path
-      (Decorated.insert_arm_wfq k new_step arm_decorated weight)
+    Decorated.rewrite_at prev.decorated parent_path decorated_update
   in
   Some
     {
@@ -515,9 +481,10 @@ let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
   | OneArmReplaced { path = []; _ } -> patch_whole_tree_replace ~prev ~next
   | OneArmReplaced { path; arm } ->
       patch_one_arm_replaced ~prev ~arm_path:path ~arm
-  | OneArmAdded { path; arm } -> patch_one_arm_added ~prev ~arm_path:path ~arm
+  | OneArmAdded { path; arm } ->
+      patch_one_arm_added ~prev ~arm_path:path ~arm ~wfq_weight:None
   | OneArmAddedWFQ { path; arm; weight } ->
-      patch_one_arm_added_wfq ~prev ~arm_path:path ~arm ~weight
+      patch_one_arm_added ~prev ~arm_path:path ~arm ~wfq_weight:(Some weight)
   | OneArmRemoved { path; arm = _ } ->
       patch_one_arm_removed ~prev ~arm_path:path
   | WeightChanged { path; new_weight } ->
