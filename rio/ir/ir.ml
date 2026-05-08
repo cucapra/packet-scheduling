@@ -355,6 +355,52 @@ let patch_one_arm_added ~prev ~arm_path ~arm =
       pes = new_pes;
     }
 
+(* WFQ counterpart to [patch_one_arm_added]: the parent is a WFQ, so the new
+   slot rides with a [weight] that we install via [Change_weight] on the
+   freshly minted step. No SP-style positional weight shifts happen — WFQ
+   weights are independent per slot. *)
+let patch_one_arm_added_wfq ~prev ~arm_path ~arm ~weight =
+  let parent_path, k = list_foot arm_path in
+  let parent = Decorated.walk prev.decorated parent_path in
+  let parent_v, old_arity, pol_ty = parent_info parent in
+  (match pol_ty with
+  | WFQ -> ()
+  | _ -> failwith "Ir.patch: OneArmAddedWFQ parent is not a WFQ");
+  let fresh_v, fresh_s = counters_after prev in
+  let arm_depth = List.length arm_path in
+  let new_pes = pes_extended_to_depth (arm_depth + policy_depth arm) prev.pes in
+  let pe_of_depth d = List.nth new_pes d in
+  let arm_frag, arm_decorated =
+    compile_subtree ~fresh_v ~fresh_s ~pe_of_depth ~depth:arm_depth arm
+  in
+  let new_step = fresh_s () in
+  let chain =
+    Decorated.ancestor_chain prev.decorated parent_path
+    @ [ (parent_v, new_step) ]
+  in
+  let local : Frag.t =
+    {
+      spawns = [];
+      adopts = [ Adopt (new_step, parent_v, arm_frag.root_v) ];
+      assocs = chain_emit (fun v _ c -> Assoc (v, c)) chain arm_frag.classes;
+      maps = chain_emit (fun v s c -> Map (v, c, s)) chain arm_frag.classes;
+      change_pols = [ Change_pol (parent_v, pol_ty, old_arity + 1) ];
+      change_weights = [ Change_weight (parent_v, new_step, weight) ];
+      root_v = parent_v;
+      classes = arm_frag.classes;
+    }
+  in
+  let new_decorated =
+    Decorated.rewrite_at prev.decorated parent_path
+      (Decorated.insert_arm_wfq k new_step arm_decorated weight)
+  in
+  Some
+    {
+      prog = Frag.to_program (Frag.combine local [ arm_frag ]);
+      decorated = new_decorated;
+      pes = new_pes;
+    }
+
 let patch_one_arm_removed ~prev ~arm_path =
   let parent_path, k = list_foot arm_path in
   let parent = Decorated.walk prev.decorated parent_path in
@@ -470,6 +516,8 @@ let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
   | OneArmReplaced { path; arm } ->
       patch_one_arm_replaced ~prev ~arm_path:path ~arm
   | OneArmAdded { path; arm } -> patch_one_arm_added ~prev ~arm_path:path ~arm
+  | OneArmAddedWFQ { path; arm; weight } ->
+      patch_one_arm_added_wfq ~prev ~arm_path:path ~arm ~weight
   | OneArmRemoved { path; arm = _ } ->
       patch_one_arm_removed ~prev ~arm_path:path
   | WeightChanged { path; new_weight } ->
