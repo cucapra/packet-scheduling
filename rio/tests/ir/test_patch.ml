@@ -242,10 +242,9 @@ let rr_ab_to_rr_def_expected : program =
    sp[A,B] (vpifos 100/101/102, steps 1000/1001); next = rr[A,B] —
    same children, different root policy, so Compare can't ride the
    existing slots. Same handler as the [VeryDifferent []] case above:
-   builds the new tree off fresh ids, [Designate]s, drains, rewrites
-   the fake root's classifier. The class sets coincide here so
-   {Unmap,Deassoc,Assoc,Map} on the fake root cancel semantically, but
-   the instructions are still emitted. *)
+   builds the new tree off fresh ids, [Designate]s, drains. The class
+   sets coincide here so the fake root's existing routing is preserved
+   and no {Unmap,Deassoc,Assoc,Map} land on it. *)
 let strict_ab_to_rr_ab_expected : program =
   [
     Spawn (103, 0);
@@ -261,14 +260,6 @@ let strict_ab_to_rr_ab_expected : program =
     Map (103, "B", 1003);
     Change_pol (103, RR, 2);
     Designate (100, 103);
-    Unmap (99, "A", 999);
-    Unmap (99, "B", 999);
-    Deassoc (99, "A");
-    Deassoc (99, "B");
-    Assoc (99, "A");
-    Assoc (99, "B");
-    Map (99, "A", 999);
-    Map (99, "B", 999);
     GC 100;
     GC 101;
     GC 102;
