@@ -5,10 +5,15 @@ open OUnit2
 let root_dir = "../../../../../"
 let prog_dir = root_dir ^ "progs/"
 
-(* [.sched] file -> pretty-printed IR string. *)
+(* [.sched] file -> pretty-printed IR string. We project [Ir.of_policy]'s
+   [compiled] result down to its [.prog] field, since [string_of_program]
+   only knows about the bare instruction list. *)
 let compile_to_pretty filename =
-  prog_dir ^ filename |> Parser.parse_file |> Policy.of_program |> Ir.of_policy
-  |> string_of_program
+  let c =
+    prog_dir ^ filename |> Parser.parse_file |> Policy.of_program
+    |> Ir.of_policy
+  in
+  string_of_program c.prog
 
 (* ----------------------------------------------------------------------- *)
 (* rr[A, B]                                                                *)

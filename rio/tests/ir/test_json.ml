@@ -7,8 +7,11 @@ let json_dir = "jsons/"
 
 (* [.sched] file -> JSON value, going via the IR. *)
 let compile_to_json filename =
-  prog_dir ^ filename |> Parser.parse_file |> Policy.of_program |> Ir.of_policy
-  |> Ir.Json.from_program
+  let c =
+    prog_dir ^ filename |> Parser.parse_file |> Policy.of_program
+    |> Ir.of_policy
+  in
+  Ir.Json.from_program c.prog
 
 let make_golden_test name sched_file json_file =
   name >:: fun _ ->
