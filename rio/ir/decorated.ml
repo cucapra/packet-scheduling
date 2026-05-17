@@ -151,7 +151,11 @@ let insert_arm k new_step new_child = function
   | UNION (v, es) -> UNION (v, list_insert_at k (new_step, new_child) es)
   | SP (v, es) -> SP (v, list_insert_at k (new_step, new_child) es)
   | RR (v, es) -> RR (v, list_insert_at k (new_step, new_child) es)
-  | WFQ _ -> failwith "Decorated.insert_arm: WFQ unreachable under OneArmAdded"
+  | WFQ _ -> failwith "Decorated.insert_arm: WFQ — use insert_arm_wfq"
+
+let insert_arm_wfq k new_step new_child new_weight = function
+  | WFQ (v, es) -> WFQ (v, list_insert_at k (new_step, new_child, new_weight) es)
+  | _ -> failwith "Decorated.insert_arm_wfq: WFQ-only"
 
 let drop_arm k = function
   | FIFO _ -> failwith "Decorated.drop_arm: FIFO"

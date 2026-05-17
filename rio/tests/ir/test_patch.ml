@@ -96,6 +96,72 @@ let one_arm_added_tests =
       "complex_tree_add_arm_deep" complex_tree_add_deep_expected;
   ]
 
+(* OneArmAddedWFQ *)
+
+(* wfq_BA compiles with vpifos 100 (root WFQ), 101 (A), 102 (B); steps 1000
+   (A), 1001 (B). Adding FIFO C at slot 2 with weight 3 mints v=103 (PE 1)
+   and step 1002, plus a single Change_weight on the new step (no SP-style
+   shifts: WFQ slots are independent). *)
+let wfq_ba_to_abc_expected : program =
+  [
+    Spawn (103, 1);
+    Adopt (1002, 100, 103);
+    Assoc (100, "C");
+    Assoc (103, "C");
+    Map (100, "C", 1002);
+    Change_pol (100, WFQ, 3);
+    Change_weight (100, 1002, 3.0);
+  ]
+
+(* complex_tree_partial: WFQ at root with two children — UNION[G,H] (weight 3)
+   and SP[A,B,C] (weight 1). After normalize: pairs sort by variant tag
+   (UNION < SP), giving children at indices 0, 1.
+     v=100 root WFQ; v=101 UNION; v=102 G; v=103 H; v=104 SP; v=105/106/107
+     A/B/C. Steps: 1000 (root→UNION), 1001/1002 (UNION→G/H), 1003
+     (root→SP), 1004/1005/1006 (SP→A/B/C). pes=[0;1;2].
+   Patch adds the RR[D,E,F] subtree with weight 2 at slot 2: arm internals
+   land on v=108 (RR, PE 1) plus 109/110/111 (D/E/F, PE 2); arm-internal
+   adopts on steps 1007/1008/1009. The new parent→child step is 1010, with
+   Change_weight(100, 1010, 2.0). *)
+let complex_tree_partial_to_full_expected : program =
+  [
+    Spawn (108, 1);
+    Spawn (109, 2);
+    Spawn (110, 2);
+    Spawn (111, 2);
+    Adopt (1010, 100, 108);
+    Adopt (1007, 108, 109);
+    Adopt (1008, 108, 110);
+    Adopt (1009, 108, 111);
+    Assoc (100, "D");
+    Assoc (100, "E");
+    Assoc (100, "F");
+    Assoc (108, "D");
+    Assoc (108, "E");
+    Assoc (108, "F");
+    Assoc (109, "D");
+    Assoc (110, "E");
+    Assoc (111, "F");
+    Map (100, "D", 1010);
+    Map (100, "E", 1010);
+    Map (100, "F", 1010);
+    Map (108, "D", 1007);
+    Map (108, "E", 1008);
+    Map (108, "F", 1009);
+    Change_pol (100, WFQ, 3);
+    Change_pol (108, RR, 3);
+    Change_weight (100, 1010, 2.0);
+  ]
+
+let one_arm_added_wfq_tests =
+  [
+    make_delta_test "wfq[B,A] -> wfq[A,B,C]" "wfq_BA" "wfq_ABC"
+      wfq_ba_to_abc_expected;
+    make_delta_test "complex_tree_partial -> complex_tree"
+      "complex_tree_partial" "complex_tree"
+      complex_tree_partial_to_full_expected;
+  ]
+
 (* WeightChanged *)
 
 (* WFQ root with three FIFO arms: vpifo IDs 100 (root), 101/102/103 (A/B/C);
@@ -191,6 +257,31 @@ let one_arm_replaced_tests =
     make_delta_test "rr[A,B] -> rr[A,D]" "rr_AB" "rr_AD" rr_ab_to_ad_expected;
     make_delta_test "strict[A,B] -> strict[A,C]" "strict_AB" "strict_AC"
       strict_ab_to_ac_expected;
+  ]
+
+(* OneArmReplacedWFQ. wfq_ABC has root WFQ v=100 with leaves v=101/102/103
+   for A/B/C on steps 1000/1001/1002. Replacing slot 2's arm (C → FIFO Z)
+   *and* its weight (3 → 7) reuses step 1002: the new FIFO Z spawns on
+   v=104 (PE 1), is [Designate]d onto v=103, ancestor routing on v=100
+   swings C → Z, the slot's weight gets a single [Change_weight], and
+   v=103 is GC'd. *)
+let wfq_abc_to_abz_diff_expected : program =
+  [
+    Spawn (104, 1);
+    Assoc (104, "Z");
+    Designate (103, 104);
+    Unmap (100, "C", 1002);
+    Deassoc (100, "C");
+    Assoc (100, "Z");
+    Map (100, "Z", 1002);
+    GC 103;
+    Change_weight (100, 1002, 7.0);
+  ]
+
+let one_arm_replaced_wfq_tests =
+  [
+    make_delta_test "wfq[A,B,C] -> wfq[A,B,Z(7)]" "wfq_ABC" "wfq_ABZ_diff"
+      wfq_abc_to_abz_diff_expected;
   ]
 
 (* Whole-tree replacement (Compare returns [VeryDifferent []]). prev =
@@ -462,8 +553,9 @@ let deep_giveup_tests = [ deep_giveup_test ]
 
 let suite =
   "patch tests"
-  >::: one_arm_added_tests @ weight_changed_tests @ one_arm_removed_tests
-       @ one_arm_replaced_tests @ whole_tree_replace_tests @ sub_pol_tests
+  >::: one_arm_added_tests @ one_arm_added_wfq_tests @ weight_changed_tests
+       @ one_arm_removed_tests @ one_arm_replaced_tests
+       @ one_arm_replaced_wfq_tests @ whole_tree_replace_tests @ sub_pol_tests
        @ super_pol_tests @ pes_extension_tests @ deep_giveup_tests
 
 let () = run_test_tt_main suite
