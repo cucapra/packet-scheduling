@@ -228,15 +228,27 @@ let replace_at ~prev ~chain ~removed ~arm_depth ~arm ~rewrite_decorated =
   in
   let removed_v = Decorated.root_vpifo removed in
   let removed_classes = Decorated.subtree_classes removed in
+  let new_classes = arm_frag.classes in
+  (* Classes shared between the removed subtree and the new arm keep their
+     existing routing on every ancestor: the chain steps are preserved (the
+     bottom-of-chain step survives because [Designate] reuses the parent's
+     existing step, and ancestors above are untouched). So the only edits
+     needed are on the symmetric difference. *)
+  let only_removed =
+    List.filter (fun c -> not (List.mem c new_classes)) removed_classes
+  in
+  let only_added =
+    List.filter (fun c -> not (List.mem c removed_classes)) new_classes
+  in
   let prog =
     List.concat
       [
         Frag.to_program arm_frag;
         [ Designate (removed_v, arm_frag.root_v) ];
-        chain_emit (fun v s c -> Unmap (v, c, s)) chain removed_classes;
-        chain_emit (fun v _ c -> Deassoc (v, c)) chain removed_classes;
-        chain_emit (fun v _ c -> Assoc (v, c)) chain arm_frag.classes;
-        chain_emit (fun v s c -> Map (v, c, s)) chain arm_frag.classes;
+        chain_emit (fun v s c -> Unmap (v, c, s)) chain only_removed;
+        chain_emit (fun v _ c -> Deassoc (v, c)) chain only_removed;
+        chain_emit (fun v _ c -> Assoc (v, c)) chain only_added;
+        chain_emit (fun v s c -> Map (v, c, s)) chain only_added;
         gc_subtree removed;
       ]
   in
