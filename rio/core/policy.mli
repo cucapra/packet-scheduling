@@ -16,7 +16,6 @@ val of_program : Ast.program -> t
     semantics. *)
 
 val to_string : t -> string
-val to_json : t -> Yojson.Basic.t
 
 val walk : t -> int list -> t
 (** [walk p path] descends into [p] following each child index in [path].
