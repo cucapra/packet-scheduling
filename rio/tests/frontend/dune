@@ -1,6 +1,6 @@
 (tests
  (names test_parsing test_serialize test_compare)
  (deps
-  (:json
-   (glob_files jsons/*.json)))
+  (glob_files jsons/*.json)
+  (glob_files_rec %{workspace_root}/tests/progs/*.sched))
  (libraries rio.core rio.frontend rio_compare ounit2 yojson))

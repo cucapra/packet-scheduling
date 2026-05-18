@@ -3,8 +3,7 @@ open Frontend
 open OUnit2
 open Ir
 
-let root_dir = "../../../../../"
-let prog_dir = root_dir ^ "progs/work_conserving/"
+let prog_dir = "../progs/work_conserving/"
 
 let policy_of file =
   prog_dir ^ file ^ ".sched" |> Parser.parse_file |> Policy.of_program

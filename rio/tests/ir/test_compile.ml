@@ -3,8 +3,7 @@ open Frontend
 open OUnit2
 open Ir
 
-let root_dir = "../../../../../"
-let prog_dir = root_dir ^ "progs/"
+let prog_dir = "../progs/"
 
 (* [.sched] file -> [Ir.program]. Stops short of pretty-printing — that's
    [test_pretty]'s job. We project [Ir.of_policy]'s [compiled] result down to

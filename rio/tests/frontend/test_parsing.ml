@@ -2,7 +2,7 @@ open Rio_core
 open Frontend
 open OUnit2
 
-let prog_dir = "../../../../../progs/"
+let prog_dir = "../progs/"
 
 let parse filename =
   filename |> ( ^ ) prog_dir |> Parser.parse_file |> Policy.of_program

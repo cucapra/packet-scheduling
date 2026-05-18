@@ -3,7 +3,7 @@ open Frontend
 open OUnit2
 open Rio_compare.Compare
 
-let prog_dir = "../../../../../progs/"
+let prog_dir = "../progs/"
 
 let prog_to_policy file =
   let filewithpath = prog_dir ^ "work_conserving/" ^ file ^ ".sched" in

@@ -4,11 +4,12 @@ open Simulator
 open OUnit2
 
 let fmt = Printf.sprintf
-let root_dir = "../../../../../"
+let prog_dir = "../progs/enq-deq-equiv/"
+let pcap_dir = "../pcaps/"
 
-let prog_dir, pcap_dir, graph_dir =
-  (root_dir ^ "progs/enq-deq-equiv/", root_dir ^ "pcaps/", root_dir ^ "graphs/")
-
+(* CSV output for [GEN_CSV=YES] is dev-only tooling; [graphs/] lives at the
+   repo root, outside the dune project. *)
+let graph_dir = "../../../../../graphs/"
 let parse_prog name = prog_dir ^ name |> Parser.parse_file |> Policy.of_program
 let parse_pcap name = pcap_dir ^ name |> Packet.pkts_from_file
 

@@ -2,8 +2,7 @@ open Rio_core
 open Frontend
 open OUnit2
 
-let root_dir = "../../../../../"
-let prog_dir = root_dir ^ "progs/"
+let prog_dir = "../progs/"
 let json_dir = "jsons/"
 
 (* [.sched] file -> JSON value, going via the IR. *)
