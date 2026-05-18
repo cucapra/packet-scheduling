@@ -3,12 +3,12 @@
 
 include module type of Instr
 
-(** A decorated source tree: mirrors [Frontend.Policy.t] but annotates every
+(** A decorated source tree: mirrors [Rio_core.Policy.t] but annotates every
     node with the [vpifo] assigned to it and every parent-to-child edge with the
     [step] handed out at adoption time. WFQ edges additionally carry the per-arm
-    weight. The original [Frontend.Policy.t] is recoverable by erasing the
+    weight. The original [Rio_core.Policy.t] is recoverable by erasing the
     decorations. Lives in its own submodule so the constructors can mirror
-    [Frontend.Policy.t]'s names directly ([Decorated.RR], [Decorated.SP], …) *)
+    [Rio_core.Policy.t]'s names directly ([Decorated.RR], [Decorated.SP], …) *)
 module Decorated : sig
   type t =
     | FIFO of vpifo * clss
@@ -23,7 +23,7 @@ type compiled = {
   decorated : Decorated.t;
   pes : pe list;
 }
-(** The result of compiling a [Frontend.Policy.t]. Carries enough state that a
+(** The result of compiling a [Rio_core.Policy.t]. Carries enough state that a
     subsequent [patch] call can extend the in-flight runtime without recompiling
     from scratch:
     - [prog]: the IR program. When this record came from a fresh compile, [prog]
@@ -31,21 +31,21 @@ type compiled = {
       only*.
     - [decorated]: the decorated source tree. Doubles as the source-policy
       record (recoverable by erasing decorations) so [patch] can diff against an
-      incoming policy without storing a separate [Frontend.Policy.t].
+      incoming policy without storing a separate [Rio_core.Policy.t].
     - [pes]: the PE assignment, indexed by depth. Every node at depth [d] lives
       on PE [List.nth pes d]. A fresh [of_policy] produces a very boring [pes]:
       [[0; 1; …; max_depth]]. But [patch] (notably [SuperPol]) may introduce
       non-contiguous PEs to honor the "same depth ⇒ same PE" invariant without
       re-spawning previously installed nodes. *)
 
-val of_policy : Frontend.Policy.t -> compiled
-(** Compile a [Frontend.Policy.t] to IR. Supports trees built from [FIFO],
+val of_policy : Rio_core.Policy.t -> compiled
+(** Compile a [Rio_core.Policy.t] to IR. Supports trees built from [FIFO],
     [UNION], [RR], [SP], and [WFQ]. Each node at depth [d] is placed on PE [d] —
     so all siblings (and cousins) share a PE. Builds the decorated source tree
     alongside the instruction program; a follow-up [patch] can derive the
     next-free IDs by walking [decorated]. *)
 
-val patch : prev:compiled -> next:Frontend.Policy.t -> compiled option
+val patch : prev:compiled -> next:Rio_core.Policy.t -> compiled option
 (** Incrementally extend [prev] to handle policy [next], returning the IR delta.
     The returned record's [prog] is the *delta only* — the new instructions to
     add to a runtime that's already executing [prev.prog]. [decorated] is

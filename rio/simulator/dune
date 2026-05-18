@@ -1,6 +1,6 @@
 (library
- (name Simulator)
+ (name simulator)
  (public_name rio.simulator)
- (libraries rio.frontend core_kernel.fheap pcap-format hex csv mmap)
+ (libraries rio.core core_kernel.fheap pcap-format hex csv mmap)
  (preprocess
   (pps ppx_cstruct)))

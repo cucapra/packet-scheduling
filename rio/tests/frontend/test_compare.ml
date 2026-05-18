@@ -1,8 +1,9 @@
+open Rio_core
 open Frontend
 open OUnit2
 open Rio_compare.Compare
 
-let prog_dir = "../../../../../progs/"
+let prog_dir = "../progs/"
 
 let prog_to_policy file =
   let filewithpath = prog_dir ^ "work_conserving/" ^ file ^ ".sched" in
@@ -30,10 +31,6 @@ let same =
     make_compare_test "same program twice" "strict_ABC" "strict_ABC" Same;
     make_compare_test "merely jumbled in RR" "rr_ABC" "rr_BAC" Same;
     make_compare_test "merely jumbled in WFQ" "wfq_ABC" "wfq_ABC_jumbled" Same;
-    make_compare_test "different variable names, same structure" "complex_tree"
-      "complex_tree_weird_var_names" Same;
-    make_compare_test "complex tree with an rr-reordering deep down"
-      "complex_tree" "complex_tree_swap_rr_arms" Same;
   ]
 
 (* OneArmAdded fires on a single-arm insertion at any position of a

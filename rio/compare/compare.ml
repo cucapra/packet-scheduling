@@ -1,4 +1,4 @@
-open Frontend.Policy
+open Rio_core.Policy
 
 type path = int list
 
@@ -25,12 +25,12 @@ and arm_diff = {
       (* Path from the root to the position of this arm.
       For [OneArmAdded] this is a position in *next*; for
           [OneArmRemoved] it is a position in *prev*. *)
-  arm : Frontend.Policy.t;
+  arm : Rio_core.Policy.t;
 }
 
 and arm_diff_w = {
   path : path;
-  arm : Frontend.Policy.t;
+  arm : Rio_core.Policy.t;
   weight : float;
 }
 
@@ -263,12 +263,12 @@ let path_to_string = function
 
 let string_of_arm_diff { path; arm } =
   Printf.sprintf "%s at %s"
-    (Frontend.Policy.to_string arm)
+    (Rio_core.Policy.to_string arm)
     (path_to_string path)
 
 let string_of_arm_diff_w { path; arm; weight } =
   Printf.sprintf "%s (weight %g) at %s"
-    (Frontend.Policy.to_string arm)
+    (Rio_core.Policy.to_string arm)
     weight (path_to_string path)
 
 let string_of_weight_change { path; new_weight } =

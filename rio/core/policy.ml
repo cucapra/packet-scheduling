@@ -72,16 +72,6 @@ let rec to_string p =
       let to_string (p, w) = fmt "(%s, %f)" (to_string p) w in
       fmt "wfq[%s]" (join pws to_string)
 
-let rec to_json p : Yojson.Basic.t =
-  match p with
-  | FIFO c -> `Assoc [ ("FIFO", `String c) ]
-  | UNION ps -> `Assoc [ ("Union", `List (List.map to_json ps)) ]
-  | SP ps -> `Assoc [ ("Strict", `List (List.map to_json ps)) ]
-  | RR ps -> `Assoc [ ("RR", `List (List.map to_json ps)) ]
-  | WFQ (ps, ws) ->
-      let pairs = List.map2 (fun p w -> `List [ to_json p; `Float w ]) ps ws in
-      `Assoc [ ("WFQ", `List pairs) ]
-
 let rec walk p path =
   match (p, path) with
   | _, [] -> p

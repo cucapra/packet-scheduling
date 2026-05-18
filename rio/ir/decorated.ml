@@ -1,4 +1,4 @@
-(** The decorated source tree mirrors [Frontend.Policy.t] but annotates every
+(** The decorated source tree mirrors [Rio_core.Policy.t] but annotates every
     node with its assigned vPIFO and every parent→child edge with its adopt
     step. WFQ edges additionally carry the per-arm weight. *)
 
@@ -181,8 +181,8 @@ let replace_arm k new_child = function
   | WFQ (v, es) ->
       WFQ (v, list_replace_nth k (fun (s, _, w) -> (s, new_child, w)) es)
 
-let rec to_policy (d : t) : Frontend.Policy.t =
-  let module P = Frontend.Policy in
+let rec to_policy (d : t) : Rio_core.Policy.t =
+  let module P = Rio_core.Policy in
   match d with
   | FIFO (_, c) -> P.FIFO c
   | UNION (_, es) -> P.UNION (List.map (fun (_, c) -> to_policy c) es)

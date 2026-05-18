@@ -1,9 +1,9 @@
+open Rio_core
 open Frontend
 open Ir
 open OUnit2
 
-let root_dir = "../../../../../"
-let prog_dir = root_dir ^ "progs/"
+let prog_dir = "../progs/"
 
 (* [.sched] file -> pretty-printed IR string. We project [Ir.of_policy]'s
    [compiled] result down to its [.prog] field, since [string_of_program]

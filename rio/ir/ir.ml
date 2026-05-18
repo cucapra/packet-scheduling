@@ -24,8 +24,8 @@ let make_counter ~start =
     incr n;
     !n
 
-let rec policy_depth (p : Frontend.Policy.t) : int =
-  let module P = Frontend.Policy in
+let rec policy_depth (p : Rio_core.Policy.t) : int =
+  let module P = Rio_core.Policy in
   match p with
   | P.FIFO _ -> 0
   | P.UNION ps | P.SP ps | P.RR ps | P.WFQ (ps, _) ->
@@ -66,15 +66,15 @@ let compile_FIFO ~v ~pe c : Frag.t * Decorated.t =
     },
     Decorated.FIFO (v, c) )
 
-(* Compile a [Frontend.Policy.t] subtree at [depth]. [splice], when supplied,
+(* Compile a [Rio_core.Policy.t] subtree at [depth]. [splice], when supplied,
    names a path inside this subtree at which an already-installed [Decorated.t]
    should be grafted in instead of being compiled afresh. *)
 let rec compile_subtree ~fresh_v ~fresh_s ~pe_of_depth ~depth ?splice
-    (p : Frontend.Policy.t) : Frag.t * Decorated.t =
+    (p : Rio_core.Policy.t) : Frag.t * Decorated.t =
   match splice with
   | Some ([], prev_d) -> (Frag.stub prev_d, prev_d)
   | _ -> (
-      let module P = Frontend.Policy in
+      let module P = Rio_core.Policy in
       let arm ~pol_ty ~weights children =
         compile_arm ~fresh_v ~fresh_s ~pe_of_depth ~depth ~pol_ty ~weights
           ?splice children
@@ -149,7 +149,7 @@ and compile_arm ~fresh_v ~fresh_s ~pe_of_depth ~depth ~pol_ty ~weights ?splice
   let edges = List.map2 (fun s d -> (s, d)) child_steps child_decorated in
   (Frag.combine local child_frags, edges)
 
-let of_policy (p : Frontend.Policy.t) : compiled =
+let of_policy (p : Rio_core.Policy.t) : compiled =
   let fresh_v = make_counter ~start:vpifo_start in
   let fresh_s = make_counter ~start:step_start in
   let frag, decorated =
@@ -493,7 +493,7 @@ let patch_sub_pol ~prev ~path =
 (* Patch: top-level dispatch.                                         *)
 (* ------------------------------------------------------------------ *)
 
-let patch ~prev ~(next : Frontend.Policy.t) : compiled option =
+let patch ~prev ~(next : Rio_core.Policy.t) : compiled option =
   let open Rio_compare.Compare in
   match analyze (Decorated.to_policy prev.decorated) next with
   | Same -> Some { prog = []; decorated = prev.decorated; pes = prev.pes }

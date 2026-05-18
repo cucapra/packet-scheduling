@@ -1,6 +1,6 @@
 (tests
  (names test_pretty test_compile test_json test_patch)
  (deps
-  (:json
-   (glob_files jsons/*.json)))
- (libraries rio.ir rio.frontend ounit2 yojson))
+  (glob_files jsons/*.json)
+  (glob_files_rec %{workspace_root}/tests/progs/*.sched))
+ (libraries rio.core rio.ir rio.frontend ounit2 yojson))

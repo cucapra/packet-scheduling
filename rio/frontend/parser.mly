@@ -1,5 +1,5 @@
 %{
-    open Ast
+    open Rio_core.Ast
 
     exception FormatError of string
 

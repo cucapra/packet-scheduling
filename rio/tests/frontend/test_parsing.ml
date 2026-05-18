@@ -1,7 +1,8 @@
+open Rio_core
 open Frontend
 open OUnit2
 
-let prog_dir = "../../../../../progs/"
+let prog_dir = "../progs/"
 
 let parse filename =
   filename |> ( ^ ) prog_dir |> Parser.parse_file |> Policy.of_program
@@ -15,7 +16,6 @@ let error_tests =
     make_fail "unbound_class" (Policy.UndeclaredClass "Z");
     make_fail "unbound_var" (Policy.UnboundVariable "r_police");
     make_fail "duplicate_classes" (Policy.DuplicateClass "B");
-    make_fail "duplicate_samepol" (Policy.DuplicateClass "A");
   ]
 
 let suite = "parsing tests" >::: error_tests

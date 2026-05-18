@@ -1,3 +1,6 @@
 (tests
  (names test_pifo_tree test_rio_tree test_enq_deq_equiv)
- (libraries rio.frontend rio.simulator ounit2))
+ (deps
+  (glob_files_rec %{workspace_root}/tests/progs/*.sched)
+  (glob_files %{workspace_root}/tests/pcaps/*.pcap))
+ (libraries rio.core rio.frontend rio.simulator ounit2))
