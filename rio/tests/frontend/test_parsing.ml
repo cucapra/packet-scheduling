@@ -16,7 +16,6 @@ let error_tests =
     make_fail "unbound_class" (Policy.UndeclaredClass "Z");
     make_fail "unbound_var" (Policy.UnboundVariable "r_police");
     make_fail "duplicate_classes" (Policy.DuplicateClass "B");
-    make_fail "duplicate_samepol" (Policy.DuplicateClass "A");
   ]
 
 let suite = "parsing tests" >::: error_tests

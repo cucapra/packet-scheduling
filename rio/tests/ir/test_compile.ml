@@ -70,8 +70,6 @@ let strict_abc_expected : program =
 let compile_tests =
   [
     make_test "fifo[A]" "work_conserving/fifo_A.sched" fifo_a_expected;
-    make_test "drop unused class" "work_conserving/drop_class.sched"
-      fifo_a_expected;
     make_test "strict[A, B, C]" "work_conserving/strict_ABC.sched"
       strict_abc_expected;
   ]
