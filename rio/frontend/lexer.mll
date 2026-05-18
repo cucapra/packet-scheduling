@@ -1,7 +1,7 @@
 {
    open Parser
 
-   exception LexerError of Ast.error_info
+   exception LexerError of Rio_core.Ast.error_info
 }
 
 let whitespace = [' ' '\t']+

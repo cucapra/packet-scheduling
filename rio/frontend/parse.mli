@@ -1,4 +1,4 @@
-exception ParserError of Ast.error_info
+exception ParserError of Rio_core.Ast.error_info
 
-val parse_string : string -> Ast.program
-val parse_file : string -> Ast.program
+val parse_string : string -> Rio_core.Ast.program
+val parse_file : string -> Rio_core.Ast.program

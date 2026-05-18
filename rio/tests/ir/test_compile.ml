@@ -1,3 +1,4 @@
+open Rio_core
 open Frontend
 open OUnit2
 open Ir

@@ -1,9 +1,9 @@
-exception ParserError of Ast.error_info
+exception ParserError of Rio_core.Ast.error_info
 exception FileNotFound of string
 
 (* `syntax_error_msg lexbuf` is the "information" for a syntax error at the 
     current position *)
-let syntax_error_msg lexbuf : Ast.error_info =
+let syntax_error_msg lexbuf : Rio_core.Ast.error_info =
   let pos = Lexing.lexeme_start_p lexbuf in
   let row, col, char =
     (Some pos.pos_lnum, Some (pos.pos_cnum - pos.pos_bol), None)
