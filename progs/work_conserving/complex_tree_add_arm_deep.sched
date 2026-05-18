@@ -20,6 +20,6 @@ return wfq[(left, 1), (mid, 2), (right, 3)];
 //         /     |     \
 //     strict    rr     union
 //     / | \    / | \    /  \
-//    A  B  C  D  E  F  G    H
+//    A  B  C  F  E  D  G    H
 //
 // A naive move is to claim that the present file is totally different from complex_tree, because of the new class NEW. But in fact, the structure of the tree is the same, and the only difference is that we have added a new class as a leaf under rr. So we should be able to match up the two trees and identify the point of difference precisely as an "arms added".
