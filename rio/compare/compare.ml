@@ -155,29 +155,29 @@ let rec is_sub_policy p1 p2 =
 and compare_children ~next:p2 ps1 ps2 =
   let give_up = OneArmReplaced { path = []; arm = p2 } in
   match List.compare_lengths ps1 ps2 with
-  | 0 -> begin
+  | 0 ->
       (* Same length. Exactly one slot differing means we recurse on it
          (the inner diff might be deep — an [OneArmAdded]/[OneArmRemoved]
          whose path bubbles up via [prepend_path], or a leaf
          [OneArmReplaced { path = [] }] which [prepend_path] turns into
          [{ path = [i] }]). Anything else is a multi-arm give-up. *)
-      match single_change ps1 ps2 with
+      begin match single_change ps1 ps2 with
       | Some (i, _) ->
           prepend_path i (analyze (List.nth ps1 i) (List.nth ps2 i))
       | None -> if ps1 = ps2 then Same else give_up
-    end
-  | -1 -> begin
+      end
+  | -1 ->
       (* ps1 shorter; an insertion into ps1 could make ps2. *)
-      match single_insertion ps1 ps2 with
+      begin match single_insertion ps1 ps2 with
       | Some (i, arm) -> OneArmAdded { path = [ i ]; arm }
       | None -> give_up
-    end
-  | 1 -> begin
+      end
+  | 1 ->
       (* ps2 shorter; equivalently, an arm was removed from ps1. *)
-      match single_insertion ps2 ps1 with
+      begin match single_insertion ps2 ps1 with
       | Some (i, arm) -> OneArmRemoved { path = [ i ]; arm }
       | None -> give_up
-    end
+      end
   | _ -> failwith "Can't get here"
 
 (* When the parents are WFQ, comparing their children is a little more
@@ -191,43 +191,43 @@ and compare_wfq_children ~next:p2 ps1 (ws1 : float list) ps2 (ws2 : float list)
       (* Pure policy edit in-place; weights unchanged. Defer to the
          non-WFQ comparator. *)
       compare_children ~next:p2 ps1 ps2
-  | 0 when ps1 = ps2 -> begin
+  | 0 when ps1 = ps2 ->
       (* Pure weight edit in-place. Same slot counts ⇒ [changes] on the
          weights is well-defined, and the empty result is unreachable
          because [ws1 <> ws2] here. *)
-      match single_change ws1 ws2 with
+      begin match single_change ws1 ws2 with
       | Some (i, new_weight) -> WeightChanged { path = [ i ]; new_weight }
       | None -> give_up
-    end
-  | 0 -> begin
+      end
+  | 0 ->
       (* Same length but both lists differ. The only single edit we could
          describe is a WFQ arm-replace: one slot must be the lone
          in-place difference in both [ps] and [ws], and the slot's
          arm-vs-arm diff must itself be a leaf-level replacement
          (otherwise we'd be folding a deep arm change with a weight
          change into one variant, which [Ir.patch] can't express). *)
-      match single_change_lockstep ps1 ps2 ws1 ws2 with
-      | Some (i, _, weight) -> begin
-          match analyze (List.nth ps1 i) (List.nth ps2 i) with
+      begin match single_change_lockstep ps1 ps2 ws1 ws2 with
+      | Some (i, _, weight) ->
+          begin match analyze (List.nth ps1 i) (List.nth ps2 i) with
           | OneArmReplaced { path = []; arm } ->
               OneArmReplacedWFQ { path = [ i ]; arm; weight }
           | _ -> give_up
-        end
+          end
       | None -> give_up
-    end
-  | -1 -> begin
+      end
+  | -1 ->
       (* ps1 shorter: a slot was added to make ps2, with its weight. *)
-      match single_insertion_lockstep ps1 ps2 ws1 ws2 with
+      begin match single_insertion_lockstep ps1 ps2 ws1 ws2 with
       | Some (i, arm, weight) -> OneArmAddedWFQ { path = [ i ]; arm; weight }
       | None -> give_up
-    end
-  | 1 -> begin
+      end
+  | 1 ->
       (* ps2 shorter: a slot was removed from ps1. The dropped weight
          isn't needed to describe the removal, so we use [OneArmRemoved]. *)
-      match single_insertion_lockstep ps2 ps1 ws2 ws1 with
+      begin match single_insertion_lockstep ps2 ps1 ws2 ws1 with
       | Some (i, arm, _) -> OneArmRemoved { path = [ i ]; arm }
       | None -> give_up
-    end
+      end
   | _ -> failwith "Can't get here"
 
 and analyze p1 p2 =

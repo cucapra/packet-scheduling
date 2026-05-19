@@ -9,8 +9,10 @@ on:
   pull_request:
     branches: [main]
 
+# The group is scoped by workflow so this workflow only cancels its own stale
+# runs, not those of other workflows.
 concurrency:
-  group: ${{ github.head_ref || github.run_id }}
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
 jobs:
