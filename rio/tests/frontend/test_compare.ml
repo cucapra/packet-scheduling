@@ -167,6 +167,30 @@ let nested_superpol_subpol_demotion =
       (ArmReplaced { path = [ 1 ]; arm = Policy.FIFO "B" });
   ]
 
+(* Nested-recursion regression tests for #112. When [compare_children]
+   recurses into a single differing slot and the child's [analyze] returns
+   [SuperPol]/[SubPol], the path inside that variant only describes the
+   inner embedding (child1 inside child2 or vice versa) — NOT the
+   whole-prev embedding the variant documents at the top level. We demote
+   such results to [OneArmReplaced] at the slot, so [Ir.patch] can act on
+   them. *)
+let nested_superpol_subpol_demotion =
+  [
+    (* SP(A, B) vs SP(A, rr[B, C]): at the differing slot 1, the inner
+       analyze(B, rr[B, C]) yields SuperPol [0]. Pre-fix, this bubbled up
+       as SuperPol [1; 0], whose path does not point to prev inside next.
+       Now demoted to OneArmReplaced { path = [1]; arm = rr[B, C] }. *)
+    make_compare_test "nested SuperPol demotes to OneArmReplaced" "strict_AB"
+      "strict_A_rrBC"
+      (OneArmReplaced
+         { path = [ 1 ]; arm = Policy.RR [ Policy.FIFO "B"; Policy.FIFO "C" ] });
+    (* Inverse: SP(A, rr[B, C]) vs SP(A, B). Inner analyze yields SubPol [0];
+       demoted to OneArmReplaced { path = [1]; arm = B }. *)
+    make_compare_test "nested SubPol demotes to OneArmReplaced" "strict_A_rrBC"
+      "strict_AB"
+      (OneArmReplaced { path = [ 1 ]; arm = Policy.FIFO "B" });
+  ]
+
 let superpol =
   [
     make_compare_test "fifo_G is sub-pol of union[G,H]" "fifo_G" "union_GH"
