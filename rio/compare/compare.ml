@@ -17,8 +17,16 @@ type t =
     (* WFQ-specific arm replacement: a single WFQ slot's arm and weight
        both changed. Bundles the new arm and the new weight together so
        it doesn't decompose into [OneArmReplaced] + [WeightChanged]. *)
-  | SuperPol of path (* [path] points to [prev] inside [next]. *)
-  | SubPol of path (* [path] points to [next] inside [prev]. *)
+  | SuperPol of path
+    (* [SuperPol]/[SubPol] are only emitted at the top level of [analyze]:
+       [SuperPol path] means [path] points to [prev] inside [next];
+       [SubPol path] means [path] points to [next] inside [prev]. When
+       nested comparisons would otherwise bubble one of these up through
+       [compare_children], we demote to [OneArmReplaced] at the differing
+       slot — the inner sub-policy path would no longer describe "prev
+       sits inside next" (or vice versa), just "child1 sits inside
+       child2", which is not actionable from [Ir.patch]. *)
+  | SubPol of path
 
 and arm_diff = {
   path : path;
@@ -163,7 +171,20 @@ and compare_children ~next:p2 ps1 ps2 =
          [{ path = [i] }]). Anything else is a multi-arm give-up. *)
       begin match single_change ps1 ps2 with
       | Some (i, _) ->
-          prepend_path i (analyze (List.nth ps1 i) (List.nth ps2 i))
+          let child1 = List.nth ps1 i in
+          let child2 = List.nth ps2 i in
+          let inner =
+            match analyze child1 child2 with
+            | SuperPol _ | SubPol _ ->
+                (* A nested [SuperPol]/[SubPol] only says "child1 embeds in
+                   child2" (or vice versa) — it does NOT say "prev embeds
+                   in next" at the outer position, so bubbling it up with
+                   [prepend_path] would mis-describe the edit. Demote to a
+                   wholesale slot replacement. *)
+                OneArmReplaced { path = []; arm = child2 }
+            | d -> d
+          in
+          prepend_path i inner
       | None -> if ps1 = ps2 then Same else give_up
       end
   | -1 ->
