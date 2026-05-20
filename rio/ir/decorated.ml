@@ -170,7 +170,7 @@ let set_weight k new_w = function
   | _ -> failwith "Decorated.set_weight: WFQ-only"
 
 (* Replace child at index [k], preserving the parent→child step (and WFQ
-   weight). Used by [OneArmReplaced]: the new arm rides on the existing
+   weight). Used by [ArmReplaced]: the new arm rides on the existing
    [step_k], with the old root [Designate]d as the new root's predecessor. *)
 let replace_arm k new_child = function
   | FIFO _ -> failwith "Decorated.replace_arm: FIFO"

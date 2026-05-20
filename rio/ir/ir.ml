@@ -497,17 +497,16 @@ let patch ~prev ~(next : Rio_core.Policy.t) : compiled option =
   let open Rio_compare.Compare in
   match analyze (Decorated.to_policy prev.decorated) next with
   | Same -> Some { prog = []; decorated = prev.decorated; pes = prev.pes }
-  | OneArmReplaced { path = []; _ } -> patch_whole_tree_replace ~prev ~next
-  | OneArmReplaced { path; arm } ->
+  | ArmReplaced { path = []; _ } -> patch_whole_tree_replace ~prev ~next
+  | ArmReplaced { path; arm } ->
       patch_one_arm_replaced ~prev ~arm_path:path ~arm ~wfq_weight:None
-  | OneArmReplacedWFQ { path; arm; weight } ->
+  | ArmReplacedWFQ { path; arm; weight } ->
       patch_one_arm_replaced ~prev ~arm_path:path ~arm ~wfq_weight:(Some weight)
-  | OneArmAdded { path; arm } ->
+  | ArmAdded { path; arm } ->
       patch_one_arm_added ~prev ~arm_path:path ~arm ~wfq_weight:None
-  | OneArmAddedWFQ { path; arm; weight } ->
+  | ArmAddedWFQ { path; arm; weight } ->
       patch_one_arm_added ~prev ~arm_path:path ~arm ~wfq_weight:(Some weight)
-  | OneArmRemoved { path; arm = _ } ->
-      patch_one_arm_removed ~prev ~arm_path:path
+  | ArmRemoved { path; arm = _ } -> patch_one_arm_removed ~prev ~arm_path:path
   | WeightChanged { path; new_weight } ->
       patch_weight_changed ~prev ~path ~new_weight
   | SuperPol [] | SubPol [] -> None

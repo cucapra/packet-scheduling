@@ -26,7 +26,7 @@ let make_delta_test name prev_file next_file (expected : program) =
   let c = patch_files prev_file next_file in
   assert_equal ~printer:Ir.string_of_program expected c.prog
 
-(* OneArmAdded *)
+(* ArmAdded *)
 
 (* There's a walkthrough for this case in the topmatter of the PR. *)
 let strict_ab_to_abc_expected : program =
@@ -96,7 +96,7 @@ let one_arm_added_tests =
       "complex_tree_add_arm_deep" complex_tree_add_deep_expected;
   ]
 
-(* OneArmAddedWFQ *)
+(* ArmAddedWFQ *)
 
 (* wfq_BA compiles with vpifos 100 (root WFQ), 101 (A), 102 (B); steps 1000
    (A), 1001 (B). Adding FIFO C at slot 2 with weight 3 mints v=103 (PE 1)
@@ -176,7 +176,7 @@ let weight_changed_tests =
       wfq_abc_to_one_weight_expected;
   ]
 
-(* OneArmRemoved *)
+(* ArmRemoved *)
 
 (* SP[A,B,C] -> SP[A,B]: drop C (last, index 2). No SP weight shifts. *)
 let strict_abc_to_ab_expected : program =
@@ -220,7 +220,7 @@ let one_arm_removed_tests =
       rr_abc_to_ab_expected;
   ]
 
-(* OneArmReplaced *)
+(* ArmReplaced *)
 
 (* RR[A,B] -> RR[A,D]: replace B (vpifo 102, step 1001) with FIFO D. The
    new arm rides on step 1001; B's super-node is set up via Designate(102,
@@ -259,7 +259,7 @@ let one_arm_replaced_tests =
       strict_ab_to_ac_expected;
   ]
 
-(* OneArmReplacedWFQ. wfq_ABC has root WFQ v=100 with leaves v=101/102/103
+(* ArmReplacedWFQ. wfq_ABC has root WFQ v=100 with leaves v=101/102/103
    for A/B/C on steps 1000/1001/1002. Replacing slot 2's arm (C → FIFO Z)
    *and* its weight (3 → 7) reuses step 1002: the new FIFO Z spawns on
    v=104 (PE 1), is [Designate]d onto v=103, ancestor routing on v=100
@@ -329,7 +329,7 @@ let rr_ab_to_rr_def_expected : program =
   ]
 
 (* Whole-tree replacement via constructor mismatch at the root (Compare
-   returns [OneArmReplaced { path = []; arm = RR[A,B] }]). prev =
+   returns [ArmReplaced { path = []; arm = RR[A,B] }]). prev =
    sp[A,B] (vpifos 100/101/102, steps 1000/1001); next = rr[A,B] —
    same children, different root policy, so Compare can't ride the
    existing slots. Same handler as the [VeryDifferent []] case above:
@@ -480,7 +480,7 @@ let super_pol_tests =
       strict_abc_to_complex_tree_expected;
   ]
 
-(* pes-extension regressions: when a OneArmAdded or OneArmReplaced inserts
+(* pes-extension regressions: when a ArmAdded or ArmReplaced inserts
    an arm whose internal depth pushes the tree deeper than [prev.pes]
    covered, [pes_extended_to_depth] should grow [pes] with fresh PEs above
    the existing max — keeping the "same depth ⇒ same PE" invariant for
@@ -536,10 +536,10 @@ let pes_extension_tests = [ one_arm_added_extends_pes_test ]
 
 (* Deep give-up: complex_tree -> complex_tree_swap_sp_arms differs only
    inside the SP subtree at root child 1 (multi-arm reorder). Compare
-   gives up at that level and emits [OneArmReplaced { path = [1]; arm }];
-   IR's existing OneArmReplaced handler routes through [Designate] on the
+   gives up at that level and emits [ArmReplaced { path = [1]; arm }];
+   IR's existing ArmReplaced handler routes through [Designate] on the
    parent's existing step. Smoke-test that patch returns [Some] — the
-   exact instruction sequence is exercised by the precise OneArmReplaced
+   exact instruction sequence is exercised by the precise ArmReplaced
    tests at non-empty paths above. *)
 let deep_giveup_test =
   "complex_tree -> swap_sp_arms (deep give-up)" >:: fun _ ->
