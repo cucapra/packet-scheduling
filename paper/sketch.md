@@ -4,17 +4,17 @@
 
 - Programmable packet scheduling. Emphasize that policies are often hierarchical, and that clients demand line rate.
 
-- The reconfiguration problem. Running example: a small-office gateway runs `SP(gmail , zoom)` — strictly prioritizing `gmail` traffic over `zoom` traffic. The operator wants to add a new `spotify` flow, and has two natural ways to do it:
+- The reconfiguration problem. Running example: a small-office gateway runs `SP(gmail, zoom)` — strictly prioritizing `gmail` traffic over `zoom` traffic. The operator wants to add a new `spotify` flow, and has two natural ways to do it:
   1. `SP(gmail, zoom, spotify)`: just extend the strict-priority list with `spotify` at the lowest rank.
-  2. `SP(gmail, RR(zoom, spotify))`: keep `gmail ` on top, but have `zoom` and `spotify` share the lower tier via round-robin.
+  2. `SP(gmail, RR(zoom, spotify))`: keep `gmail` on top, but have `zoom` and `spotify` share the lower tier via round-robin.
 
   In either of these cases, SOTA would stop the world, drop/recirculate buffered packets, recompile, and reinstall. Costs: dropped or recirculated (read, delayed!) packets, downtime, and a full respawn of nodes that did not need respawning.
 
 - The alternate is to reprogram a scheduler without stopping the world. Let's revisit the examples from earlier.
-- Transitioning to `SP(gmail, zoom, spotify)` is actually quite easy. We can achive the following gold standard:
-  - time1: `SP(gmail , zoom)` is running
-  - time2: the request to move to `SP(gmail , zoom, spotify)` is received. `SP(gmail , zoom)` is still running
-  - time3: we move to `SP(gmail , zoom, spotify)`. Whatever user-observable interaction (push/pop) happened immediately before time3 happened in the `SP(gmail , zoom)` regime, and whatever push/pop happened immediately after time3 happened in the `SP(gmail , zoom, spotify)` regime. We refer to the transition at time3 as _atomic_.
+- Transitioning to `SP(gmail, zoom, spotify)` is actually quite easy. We can achieve the following gold standard:
+  - time1: `SP(gmail, zoom)` is running
+  - time2: the request to move to `SP(gmail, zoom, spotify)` is received. `SP(gmail, zoom)` is still running
+  - time3: we move to `SP(gmail, zoom, spotify)`. Whatever user-observable interaction (push/pop) happened immediately before time3 happened in the `SP(gmail, zoom)` regime, and whatever push/pop happened immediately after time3 happened in the `SP(gmail, zoom, spotify)` regime. We refer to the transition at time3 as _atomic_.
 - What about transitioning to `SP(gmail, RR(zoom, spotify))`? It is not as easy. We atomically enter into a _transitionary period_ during which the scheduler still accepts and emits packets. After some conditions are met, we atomically leave this transitionary period and enter into the user-requested policy.
 - It is crucial to note that, although the user never described to us the semantics of the transitionary period, it _is_ in fact a de facto packet scheduling regime with some semantics! It is useful to recognize it as a scheduling policy in its own right (give it the name `link`). There are clearly better and worse transitions from a network operator's point of view. SOTA has more-or-less unintentionally adopted a trivial stop-the-world `link`. Our contributions include both being clear about what `link` is and improving on it.
 - Concretely:
@@ -38,5 +38,5 @@
 
 ### 2.3 Revisiting our running examples
 
-- Moving from `SP(gmail , zoom)` to `SP(gmail , zoom, spotify)`. This is the easy case: the diff is a leaf append, and the existing siblings' ranks are preserved. In principle, a substrate could install the new child without a transitionary period — a targeted append to the OGT and Address Table, leaving the rest of the scheduler running. In practice, vPIFO does not do this: its §8 prescribes "pause the packet scheduler, update the OGT and Address Table, and then resume" for _any_ policy change, structural or not. That is, even Way 1 stops the world under vPIFO as published. The cheap path is left on the table because vPIFO has no notion of a diff between old and new policies; everything is a wholesale table swap. This is exactly the gap our layer fills: given the (small) diff here, we can drive the substrate to install it in place.
-- Moving from `SP(gmail , zoom)` to `SP(gmail , RR(zoom, spotify))` is where the real problem lives. The diff is structural: an internal node appears between `SP` and `zoom`, and `zoom` is re-parented. No single atomic operation realizes this on hardware that maps depth-to-PE; some in-flight packets are already enqueued under the old shape. We must enter a transitionary `link` policy that is well-defined on both old and new arriving packets, drain or migrate the residue, and then atomically jump to the user's request.
+- Moving from `SP(gmail, zoom)` to `SP(gmail, zoom, spotify)`. This is the easy case: the diff is a leaf append, and the existing siblings' ranks are preserved. In principle, a substrate could install the new child without a transitionary period — a targeted append to the OGT and Address Table, leaving the rest of the scheduler running. In practice, vPIFO does not do this: its §8 prescribes "pause the packet scheduler, update the OGT and Address Table, and then resume" for _any_ policy change, structural or not. That is, even Way 1 stops the world under vPIFO as published. The cheap path is left on the table because vPIFO has no notion of a diff between old and new policies; everything is a wholesale table swap. This is exactly the gap our layer fills: given the (small) diff here, we can drive the substrate to install it in place.
+- Moving from `SP(gmail, zoom)` to `SP(gmail, RR(zoom, spotify))` is where the real problem lives. The diff is structural: an internal node appears between `SP` and `zoom`, and `zoom` is re-parented. No single atomic operation realizes this on hardware that maps depth-to-PE; some in-flight packets are already enqueued under the old shape. We must enter a transitionary `link` policy that is well-defined on both old and new arriving packets, drain or migrate the residue, and then atomically jump to the user's request.
