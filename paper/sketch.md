@@ -38,5 +38,45 @@
 
 ### 2.3 Revisiting our running examples
 
-- Moving from `SP(gmail, zoom)` to `SP(gmail, zoom, spotify)`. This is the easy case: the diff is a leaf append, and the existing siblings' ranks are preserved. In principle, a substrate could install the new child without a transitionary period — a targeted append to the OGT and Address Table, leaving the rest of the scheduler running. In practice, vPIFO does not do this: its §8 prescribes "pause the packet scheduler, update the OGT and Address Table, and then resume" for _any_ policy change, structural or not. That is, even Way 1 stops the world under vPIFO as published. The cheap path is left on the table because vPIFO has no notion of a diff between old and new policies; everything is a wholesale table swap. This is exactly the gap our layer fills: given the (small) diff here, we can drive the substrate to install it in place.
+- Moving from `SP(gmail, zoom)` to `SP(gmail, zoom, spotify)`. This is the easy case: the diff is a leaf append, and the existing siblings' ranks are preserved. In principle, a substrate could install the new child without a transitionary period — a targeted append to the OGT and Address Table, leaving the rest of the scheduler running. In practice, vPIFO does not do this: its §8 prescribes "pause the packet scheduler, update the OGT and Address Table, and then resume" for _any_ policy change, structural or not. That is, even the easy case stops the world under vPIFO as published. The cheap path is left on the table because vPIFO has no notion of a diff between old and new policies; everything is a wholesale table swap. This is exactly the gap our layer fills: given the (small) diff here, we can drive the substrate to install it in place.
 - Moving from `SP(gmail, zoom)` to `SP(gmail, RR(zoom, spotify))` is where the real problem lives. The diff is structural: an internal node appears between `SP` and `zoom`, and `zoom` is re-parented. No single atomic operation realizes this on hardware that maps depth-to-PE; some in-flight packets are already enqueued under the old shape. We must enter a transitionary `link` policy that is well-defined on both old and new arriving packets, drain or migrate the residue, and then atomically jump to the user's request.
+
+## 3. Formalizing the Transition Phase `link`
+
+### 3.1 Review §3 of _Formal Abstractions_.
+
+### 3.2 A Grammar for Tree Diffs
+
+Introduce `compare.ml`, done up as a BNF.
+
+### 3.3 Preserving Wins (claude, you can rename this subsection)
+
+Show how a well-formed tree in _Formal Abstractions_ would absorb a primitive from the BNF in 3.2 and become a new well-formed tree. This is the core proof.
+
+At the IRL meeting on May 20 we agreed to do this proof _at this level_ (where primitives are coarse, like `ArmAdded`, `WeightChanged`, etc). A benefit of this choice is that _we believe that the core proof is tractible at this level!_
+
+After this, there is a simple and mechanical compilation from the tree diff language to the IL-gen language. At the IL-gen language level, primitives look like `spawn`, `adopt`, etc, and _is_ possible to create malformed trees. But we can informally argue that our proof at the tree-diff level carries over to the IL level because:
+
+- We show our command-to-commands compilation, and assert that it's uncontroversial.
+- We wrap IL-level commands into transactional commits, so that no user would actually get to see the malformed state (and, key to our point, no push/pop would be able to reach the scheduler when it is malformed).
+
+We reuse this trick to again argue that our proof is preserved from the IL level to the h/w level.
+
+## 4. Identifying Better Transitions
+
+Now that we're on firm ground, we can go back and revisit our diff-sniffer. SOTA is to stop the world. Our give-up case is to do a full-scale drain. Here we show how we can identify diffs more precisely, and thereby contain the transition to a smaller blast zone.
+
+There are lots of examples to show here, and possibly some beefing-up of compare.ml itself.
+
+## 5. Compiling to Hardware
+
+Leaving for Zhiyuan. We should emphasize that:
+
+- We have rolled our own PIFO substrate; in practice you can use ours or swap it out (e.g., with vPIFO). This is not the point of the contribution. We compose well with any PIFO substrate.
+- Focus on the gadgetry we built to handle transitions nicely.
+
+## 6. Evaluation
+
+## 7. Related Work
+
+## 8. Conclusion
