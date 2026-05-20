@@ -5,26 +5,34 @@ type path = int list
 (* A structural diff between two policies. *)
 type t =
   | Same
-  | OneArmAdded of arm_diff
-  | OneArmAddedWFQ of arm_diff_w
+  | ArmAdded of arm_diff
+  | ArmAddedWFQ of arm_diff_w
     (* WFQ-specific arm addition. Adding a slot to a WFQ parent always
        carries a weight, so the new arm and its weight are a single edit. *)
-  | OneArmRemoved of arm_diff
+  | ArmRemoved of arm_diff
   | WeightChanged of weight_change
-  | OneArmReplaced of arm_diff
+  | ArmReplaced of arm_diff
     (* Wholesale replacement of the subtree at [path] with [arm]. If [path] is nil, that means we're not (yet) clever enough to specify the change and the arm being replaced is the whole tree. *)
-  | OneArmReplacedWFQ of arm_diff_w
+  | ArmReplacedWFQ of arm_diff_w
     (* WFQ-specific arm replacement: a single WFQ slot's arm and weight
        both changed. Bundles the new arm and the new weight together so
-       it doesn't decompose into [OneArmReplaced] + [WeightChanged]. *)
-  | SuperPol of path (* [path] points to [prev] inside [next]. *)
-  | SubPol of path (* [path] points to [next] inside [prev]. *)
+       it doesn't decompose into [ArmReplaced] + [WeightChanged]. *)
+  | SuperPol of path
+    (* [SuperPol]/[SubPol] are only emitted at the top level of [analyze]:
+       [SuperPol path] means [path] points to [prev] inside [next];
+       [SubPol path] means [path] points to [next] inside [prev]. When
+       nested comparisons would otherwise bubble one of these up through
+       [compare_children], we demote to [ArmReplaced] at the differing
+       slot — the inner sub-policy path would no longer describe "prev
+       sits inside next" (or vice versa), just "child1 sits inside
+       child2", which is not actionable from [Ir.patch]. *)
+  | SubPol of path
 
 and arm_diff = {
   path : path;
       (* Path from the root to the position of this arm.
-      For [OneArmAdded] this is a position in *next*; for
-          [OneArmRemoved] it is a position in *prev*. *)
+      For [ArmAdded] this is a position in *next*; for
+          [ArmRemoved] it is a position in *prev*. *)
   arm : Rio_core.Policy.t;
 }
 
@@ -112,12 +120,12 @@ let prepend_path i diff =
   let prepend_wc (wc : weight_change) = { wc with path = i :: wc.path } in
   match diff with
   | Same -> Same
-  | OneArmAdded ad -> OneArmAdded (prepend_arm ad)
-  | OneArmAddedWFQ ad -> OneArmAddedWFQ (prepend_arm_w ad)
-  | OneArmRemoved ad -> OneArmRemoved (prepend_arm ad)
+  | ArmAdded ad -> ArmAdded (prepend_arm ad)
+  | ArmAddedWFQ ad -> ArmAddedWFQ (prepend_arm_w ad)
+  | ArmRemoved ad -> ArmRemoved (prepend_arm ad)
   | WeightChanged wc -> WeightChanged (prepend_wc wc)
-  | OneArmReplaced ad -> OneArmReplaced (prepend_arm ad)
-  | OneArmReplacedWFQ ad -> OneArmReplacedWFQ (prepend_arm_w ad)
+  | ArmReplaced ad -> ArmReplaced (prepend_arm ad)
+  | ArmReplacedWFQ ad -> ArmReplacedWFQ (prepend_arm_w ad)
   | SuperPol p -> SuperPol (i :: p)
   | SubPol p -> SubPol (i :: p)
 
@@ -144,38 +152,51 @@ let rec is_sub_policy p1 p2 =
 
 (* We arrive here when two parents have the same policy, so we now need to
    compare their children against each other. 
-   [OneArmAdded] only fires when exactly one arm was inserted; 
-   [OneArmRemoved] only when exactly one was dropped; 
+   [ArmAdded] only fires when exactly one arm was inserted; 
+   [ArmRemoved] only when exactly one was dropped; 
    a single in-place divergence recurses into the differing children 
    (this is how deep diffs get recognized: the inner [analyze]
    returns a parent-relative diff and we tack on [i] using [prepend_path]).
    When the sniffer can't break the change down at this level (multi-arm
    divergence, mismatched insertions, etc.), we "give up" by emitting
-   [OneArmReplaced { path = []; arm = p2 }]. *)
+   [ArmReplaced { path = []; arm = p2 }]. *)
 and compare_children ~next:p2 ps1 ps2 =
-  let give_up = OneArmReplaced { path = []; arm = p2 } in
+  let give_up = ArmReplaced { path = []; arm = p2 } in
   match List.compare_lengths ps1 ps2 with
   | 0 ->
       (* Same length. Exactly one slot differing means we recurse on it
-         (the inner diff might be deep — an [OneArmAdded]/[OneArmRemoved]
+         (the inner diff might be deep — an [ArmAdded]/[ArmRemoved]
          whose path bubbles up via [prepend_path], or a leaf
-         [OneArmReplaced { path = [] }] which [prepend_path] turns into
+         [ArmReplaced { path = [] }] which [prepend_path] turns into
          [{ path = [i] }]). Anything else is a multi-arm give-up. *)
       begin match single_change ps1 ps2 with
       | Some (i, _) ->
-          prepend_path i (analyze (List.nth ps1 i) (List.nth ps2 i))
+          let child1 = List.nth ps1 i in
+          let child2 = List.nth ps2 i in
+          let inner =
+            match analyze child1 child2 with
+            | SuperPol _ | SubPol _ ->
+                (* A nested [SuperPol]/[SubPol] only says "child1 embeds in
+                   child2" (or vice versa) — it does NOT say "prev embeds
+                   in next" at the outer position, so bubbling it up with
+                   [prepend_path] would mis-describe the edit. Demote to a
+                   wholesale slot replacement. *)
+                ArmReplaced { path = []; arm = child2 }
+            | d -> d
+          in
+          prepend_path i inner
       | None -> if ps1 = ps2 then Same else give_up
       end
   | -1 ->
       (* ps1 shorter; an insertion into ps1 could make ps2. *)
       begin match single_insertion ps1 ps2 with
-      | Some (i, arm) -> OneArmAdded { path = [ i ]; arm }
+      | Some (i, arm) -> ArmAdded { path = [ i ]; arm }
       | None -> give_up
       end
   | 1 ->
       (* ps2 shorter; equivalently, an arm was removed from ps1. *)
       begin match single_insertion ps2 ps1 with
-      | Some (i, arm) -> OneArmRemoved { path = [ i ]; arm }
+      | Some (i, arm) -> ArmRemoved { path = [ i ]; arm }
       | None -> give_up
       end
   | _ -> failwith "Can't get here"
@@ -185,7 +206,7 @@ and compare_children ~next:p2 ps1 ps2 =
    both the policy list and the weight list. *)
 and compare_wfq_children ~next:p2 ps1 (ws1 : float list) ps2 (ws2 : float list)
     =
-  let give_up = OneArmReplaced { path = []; arm = p2 } in
+  let give_up = ArmReplaced { path = []; arm = p2 } in
   match List.compare_lengths ps1 ps2 with
   | 0 when ws1 = ws2 ->
       (* Pure policy edit in-place; weights unchanged. Defer to the
@@ -209,8 +230,8 @@ and compare_wfq_children ~next:p2 ps1 (ws1 : float list) ps2 (ws2 : float list)
       begin match single_change_lockstep ps1 ps2 ws1 ws2 with
       | Some (i, _, weight) ->
           begin match analyze (List.nth ps1 i) (List.nth ps2 i) with
-          | OneArmReplaced { path = []; arm } ->
-              OneArmReplacedWFQ { path = [ i ]; arm; weight }
+          | ArmReplaced { path = []; arm } ->
+              ArmReplacedWFQ { path = [ i ]; arm; weight }
           | _ -> give_up
           end
       | None -> give_up
@@ -218,14 +239,14 @@ and compare_wfq_children ~next:p2 ps1 (ws1 : float list) ps2 (ws2 : float list)
   | -1 ->
       (* ps1 shorter: a slot was added to make ps2, with its weight. *)
       begin match single_insertion_lockstep ps1 ps2 ws1 ws2 with
-      | Some (i, arm, weight) -> OneArmAddedWFQ { path = [ i ]; arm; weight }
+      | Some (i, arm, weight) -> ArmAddedWFQ { path = [ i ]; arm; weight }
       | None -> give_up
       end
   | 1 ->
       (* ps2 shorter: a slot was removed from ps1. The dropped weight
-         isn't needed to describe the removal, so we use [OneArmRemoved]. *)
+         isn't needed to describe the removal, so we use [ArmRemoved]. *)
       begin match single_insertion_lockstep ps2 ps1 ws2 ws1 with
-      | Some (i, arm, _) -> OneArmRemoved { path = [ i ]; arm }
+      | Some (i, arm, _) -> ArmRemoved { path = [ i ]; arm }
       | None -> give_up
       end
   | _ -> failwith "Can't get here"
@@ -249,7 +270,7 @@ and analyze p1 p2 =
                position. The leaf-level diff is path-empty; [compare_lists]'s
                [prepend_path] tags on the child index when this bubbles up,
                but only if it's the sole divergence at that level. *)
-            OneArmReplaced { path = []; arm = p2 })
+            ArmReplaced { path = []; arm = p2 })
 
 (* Pretty-printers — only used to format failure messages from the test
    suite; the patcher never goes through these. *)
@@ -276,16 +297,13 @@ let string_of_weight_change { path; new_weight } =
 
 let to_string = function
   | Same -> "Same"
-  | OneArmAdded ad -> Printf.sprintf "OneArmAdded: %s" (string_of_arm_diff ad)
-  | OneArmAddedWFQ ad ->
-      Printf.sprintf "OneArmAddedWFQ: %s" (string_of_arm_diff_w ad)
-  | OneArmRemoved ad ->
-      Printf.sprintf "OneArmRemoved: %s" (string_of_arm_diff ad)
+  | ArmAdded ad -> Printf.sprintf "ArmAdded: %s" (string_of_arm_diff ad)
+  | ArmAddedWFQ ad -> Printf.sprintf "ArmAddedWFQ: %s" (string_of_arm_diff_w ad)
+  | ArmRemoved ad -> Printf.sprintf "ArmRemoved: %s" (string_of_arm_diff ad)
   | WeightChanged wc ->
       Printf.sprintf "WeightChanged: %s" (string_of_weight_change wc)
-  | OneArmReplaced ad ->
-      Printf.sprintf "OneArmReplaced: %s" (string_of_arm_diff ad)
-  | OneArmReplacedWFQ ad ->
-      Printf.sprintf "OneArmReplacedWFQ: %s" (string_of_arm_diff_w ad)
+  | ArmReplaced ad -> Printf.sprintf "ArmReplaced: %s" (string_of_arm_diff ad)
+  | ArmReplacedWFQ ad ->
+      Printf.sprintf "ArmReplacedWFQ: %s" (string_of_arm_diff_w ad)
   | SuperPol p -> Printf.sprintf "SuperPol at %s" (path_to_string p)
   | SubPol p -> Printf.sprintf "SubPol at %s" (path_to_string p)

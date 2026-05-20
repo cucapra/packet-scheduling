@@ -54,7 +54,7 @@ val patch : prev:compiled -> next:Rio_core.Policy.t -> compiled option
     - [next] is structurally equal to [prev]'s policy: returns [Some] with an
       empty [prog].
     - [next] adds exactly one arm at any position of a [UNION], [RR], or [SP]
-      parent (per [OneArmAdded]): returns [Some] with the
+      parent (per [ArmAdded]): returns [Some] with the
       [Spawn]/[Adopt]/[Assoc]/[Map]/[Change_pol] (and [Change_weight] for [SP],
       both for the new arm and for any existing arms whose positional priority
       shifts) instructions needed to splice the new arm in.
@@ -62,13 +62,12 @@ val patch : prev:compiled -> next:Rio_core.Policy.t -> compiled option
       [WeightChanged]): returns [Some] with a single [Change_weight] instruction
       for the affected slot.
     - [next] removes exactly one arm at any position of a [UNION], [RR], or [SP]
-      parent (per [OneArmRemoved]): returns [Some] with the [Change_weight]
-      (only for [SP] siblings whose positional priority shifts down),
-      [Change_pol], [Unmap], [Deassoc], [Emancipate], and [GC] instructions
-      needed to detach the arm and clean up routing state cached on its ancestor
-      chain.
+      parent (per [ArmRemoved]): returns [Some] with the [Change_weight] (only
+      for [SP] siblings whose positional priority shifts down), [Change_pol],
+      [Unmap], [Deassoc], [Emancipate], and [GC] instructions needed to detach
+      the arm and clean up routing state cached on its ancestor chain.
     - [next] swaps in a different subtree at exactly one position (per
-      [OneArmReplaced]): returns [Some] with the new arm's
+      [ArmReplaced]): returns [Some] with the new arm's
       [Spawn]/[Adopt]/[Assoc]/[Map]/[Change_pol]/[Change_weight] instructions, a
       [Designate] that fuses the old and new roots into a super-node riding on
       the existing parent step, [Deassoc]s that drain the old classes out of the
