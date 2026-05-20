@@ -47,7 +47,32 @@
 
 ### 3.2 A Grammar for Tree Diffs
 
-Introduce `compare.ml`, done up as a BNF.
+We fix a small grammar of structural edits between two well-formed policy trees `prev` and `next`. An edit names _where_ in the tree the change lands (a path from the root) and _what_ the change is. Paths are interpreted in `next` for additions and in `prev` for removals; for in-place edits the path is unambiguous.
+
+```
+diff   ::= Same
+         | ArmAdded       (path, arm)
+         | ArmAddedWFQ    (path, arm, weight)
+         | ArmRemoved     (path, arm)
+         | WeightChanged  (path, weight)
+         | ArmReplaced    (path, arm)
+         | ArmReplacedWFQ (path, arm, weight)
+         | SuperPol       (path)
+         | SubPol         (path)
+
+path   ::= []  |  i :: path        // i is a child index
+arm    ::= a well-formed policy subtree
+weight ::= a positive real
+```
+
+Let us revisit the two transitions from §1 and see what the sniffer produces.
+
+- `SP(gmail, zoom)` -> `SP(gmail, zoom, spotify)`. The two roots agree on constructor (`SP`); their child lists differ only in that `spotify` has been appended at index 2. The sniffer returns `ArmAdded { path = [2]; arm = spotify }`. This is the easy case: one well-localized edit, no give-up.
+- `SP(gmail, zoom)` -> `SP(gmail, RR(zoom, spotify))`. The roots again agree on constructor, and the child lists differ at exactly one slot — index 1, where the leaf `zoom` has been swapped for the subtree `RR(zoom, spotify)`. The sniffer recurses into that slot and, finding _no finer single edit to describe the change_, falls back to a slot-level replacement: `ArmReplaced { path = [1]; arm = RR(zoom, spotify) }`. This _is_ a kind of give-up, but a localized one! The path `[1]` tells the substrate that everything outside child 1 of the root is untouched. The transitionary `link` only needs to handle the residue under `zoom`, so `gmail` and the root `SP` keep running.
+
+Note that this is a _single-edit sniffer._ Every non-`Same` variant describes exactly one structural change at one path. A multi-arm divergence is not expressible directly; the diff-sniffer collapses it to `ArmReplaced` at the closest enclosing path, with `path = []` meaning "I could not localize it any further than the whole tree." Indeed, above we could have "succeeded with": `ArmReplaced { path = []; arm = SP(gmail, RR(zoom, spotify)) }`. In general we can _always_ succeed with `ArmReplaced { path = []; arm = _the whole new tree_)) }`. This is functionally the give-up token; §4 is in large part the story of pushing give-ups deeper into the tree and therefore minimizing the splash zone of the change.
+
+We make no claim that the sniffer is canonical or minimal; we claim only that whatever it returns is a sound description of the transition from `prev` to `next`, and that §3.3 will show every variant absorbs cleanly into a well-formed tree.
 
 ### 3.3 Preserving Wins (claude, you can rename this subsection)
 
