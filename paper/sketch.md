@@ -43,7 +43,17 @@
 
 ## 3. Formalizing the Transition Phase `link`
 
-### 3.1 Review §3 of _Formal Abstractions_.
+### 3.1 Background: PIFO trees, formally
+
+We build on the PIFO-tree model of Mohan et al. [Formal Abstractions, OOPSLA '23, §3], so we review the pieces of their formalism that this paper actually leans on.
+
+**Topology vs. contents.** A _topology_ `t` is a finite tree carrying no data — either a single node `*` or `Node(ts)` for a list of child topologies. A _PIFO tree_ of topology `t`, written `q : PIFOTree(t)`, layers data onto `t`: each leaf holds a PIFO containing _packets_, and each internal node holds a PIFO containing _child indices_ along with PIFO-tree children whose topologies in turn follow `t`. This separation is key to making the diff grammar of §3.2 well-defined: a structural edit is a change to the topology `t`, distinct from the running contents.
+
+**The two user-observable operations.** `push(q, pkt, pt)` enqueues `pkt` along a precomputed path `pt = (i_1, r_1) :: ... :: (i_n, r_n) :: r_{n+1}`. The path is richly decorated: it tells the PIFO of each internal node along the path what child index to enqueue and what rank to use for that enqueue. At the leaf level it tells the leaf's PIFO what rank to use when admitting the packet itself. `pop(q)` returns the most favorably ranked packet by popping the root to yield a child index, recursing into that child, and finally emitting a packet from the leaf. These are the _only_ user-visible interactions with a scheduler, which is why §1's notion of an _atomic_ transition is stated in terms of them: every push/pop is observed under exactly one of `prev` or `next`, never a half-edited intermediate scheduler.
+
+**Well-formedness.** A PIFO tree `q` is well-formed (`|- q`) when, at every internal node with index-PIFO `p` and children `qs`, the number of occurrences of `i` in `p` equals the number of packets held under `qs[i]`, for every legal `i`. This is the invariant that keeps `pop` from getting stuck: an index `i` is enqueued in the parent _exactly when_ there is a packet underneath waiting to be released by it. Lemma 3.9 of _Formal Abstractions_ shows that `push` and `pop` preserve `|- q`. Our §3.3 proof obligation is the analogous statement one level up: each structural edit in the §3.2 grammar, applied to a well-formed `prev`, yields a well-formed `next`.
+
+**Control.** Op. cit. factors the scheduling _policy_ — which, given an arriving packet and the current state, produces the path that `push` will follow — into a separate _control_ object holding that state and a scheduling transaction. We inherit this factoring without modification; the reconfiguration problem this paper tackles is the change of `q`'s topology, with the control updated in lockstep.
 
 ### 3.2 A Grammar for Tree Diffs
 
@@ -74,7 +84,7 @@ Note that this is a _single-edit sniffer._ Every non-`Same` variant describes ex
 
 We make no claim that the sniffer is canonical or minimal; we claim only that whatever it returns is a sound description of the transition from `prev` to `next`, and that §3.3 will show every variant absorbs cleanly into a well-formed tree.
 
-### 3.3 Preserving Wins (claude, you can rename this subsection)
+### 3.3 Edits Preserve Well-Formedness
 
 Show how a well-formed tree in _Formal Abstractions_ would absorb a primitive from the BNF in 3.2 and become a new well-formed tree. This is the core proof.
 
