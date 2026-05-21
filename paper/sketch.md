@@ -108,7 +108,7 @@ Casting the proof in this shape buys us two things.
 
 We use `ArmAdded` as a warm-up, develop the full menu for `ArmRemoved`, and then point out what is interesting about the remaining variants.
 
-#### 3.3.1. `ArmAdded(path, arm, weight?)` (warm-up; degenerate `link`).
+#### 3.3.1. `ArmAdded(path, arm, weight?)`
 
 Example: `SP(gmail, zoom)` --atomic--> `SP(gmail, zoom, spotify)`.
 The diff computed according to the grammar in §3.2 is: `ArmAdded { path = [2]; arm = spotify }`.
@@ -132,6 +132,43 @@ _The snap is atomic, and `link` is degenerate._ Two facts do the work.
 _Deeper paths._ The example edits the root, but `path` may be any prefix; `ArmAdded { path = [1, 2]; arm = ... }` adds a slot inside a grandchild of the root. Nothing in the argument changes. The descent from the root to `c` passes only through nodes that `q` and `q'` share verbatim, and, because the new arm is empty, it adds zero packets beneath every ancestor of `c`. So each ancestor's occurrence-tally for the child it forwards through is exactly what it was, no ancestor PIFO is rewritten, and the edit is confined to `c` and the fresh arm below it.
 
 _Mid-order insertion._ We led with an append because it is the cleanest case, but the sniffer can place the new arm at any index, e.g: `SP(gmail, zoom)` --atomic--> `SP(gmail, **spotify**, zoom)`. When `k` is not the last index, the children formerly at indices `>= k` shift up by one to make room, and `p` becomes a `p'` that follows the renumbering: every entry naming an old index `>= k` is bumped up by one. This relabels index _values_ only; it moves no packets and changes no ranks, so each old slot keeps its matched count of occurrences and packets, now under a shifted name. At the instant after the snap, `p'` still does not name `k` (the old `>= k` entries were all bumped to `>= k+1`), so the `0 = 0` argument at slot `k` goes through unchanged and the snap is again atomic with degenerate `link`.
+
+#### 3.3.2. `ArmRemoved(path, arm)`
+
+Example: `SP(gmail, zoom, spotify)` --> `SP(gmail, zoom)`, the operator is decommissioning `spotify`. The diff is `ArmRemoved { path = [2]; arm = spotify }`. As before, we write `c` for the parent (in our example, the root `SP`) and `k` for the doomed slot (in our example, `k=2`); write `d` for the doomed arm (the `spotify` subtree) and `R` for the set of packets buffered under `d` at the relevant instant. The new difficulty, absent from `ArmAdded`, is that `d` may be non-empty: by well-formedness `c`'s index-PIFO `p` holds exactly one occurrence of `k` for each packet in `R`, so we cannot simply delete `d` and leave `p` with indices to a child that is gone.
+
+Dual to §3.3.1's freshness convention, we read `ArmRemoved` as a genuine _retirement_: under `next` the doomed class is no longer admitted anywhere, and is not re-homed onto a surviving arm.
+
+`ArmRemoved` is the first edit whose `link` is genuinely substantive. We present three choices for how to negotiate the transition:
+
+1. _Drop._ Discard the doomed arm's buffered packets and land in `next` in one snap. Lossy, but instant.
+2. _Drain._ Snap into `link` by suspending new traffic to the doomed arm, let it empty under normal service, then snap out to `next` once the arm has drained. Lossless, but the wait is unbounded.
+3. _Drain with deadline._ Like (2), but set a `T`-millisecond deadline for the second snap (at which point, drop). Lossless if it drains in time, otherwise bounded latency.
+
+##### **Choice 1.**
+
+_The tree, `q -> q'`._ Remove `d` from parent `c`'s child list and, in the _same_ transaction, tell `c` that all instances of the index `k` are to be interpreted as a _tombstone_. We do not actually rewrite `c`'s index-PIFO `p`: its occurrences of `k`, scattered through the PIFO by rank, are left in place, and `pop` is extended by one rule: if `pop` yields an index that has been marked a tombstone, then discard that index and re-`pop`. [TODO AM: should we go back to §3.1 and write about well-formedness modulo tombstones?]
+
+_The transaction, `z -> z'`._ `z'` is `next`'s transaction; the retired class is admitted nowhere, and every surviving route is unchanged, since `next` is `prev` minus the arm.
+
+_The state, `s -> s'`._ Drop `d`'s scheduling state and `c`'s per-slot bookkeeping for `k`; nothing else moves.
+
+_The snap._ `q'` is well-formed modulo tombstones: the surviving slots `0, 1` keep their packets and their occurrences in `p`, so they inherit `|- q` verbatim, and the leftover occurrences of `k` are exactly the tombstoned indices that `pop` now skips. No surviving packet straddles the snap; the packets of `R` simply cease to exist. So a `pop` after the snap behaves exactly as a `next` pop, skipping the dead index, and we are observationally in `next`. This instantiates the three-slot template degenerately, exactly as `ArmAdded` did: the entry snap and the exit snap coincide and `link` is empty. _Cost:_ `R` is dropped. _Latency:_ none.
+
+##### **Choice 2.**
+
+The entry snap installs `next`'s transaction while leaving topology and contents untouched. With `k` last, `next`'s surviving arms keep `prev`'s indices `0, 1`, so `next`'s `z` emits only those indices and never `k`; lifted onto `prev`'s still-present topology it is a well-typed transaction that simply declines to route into `d`. (A mid-slot removal needs the same cosmetic index relabeling as §3.3.1's mid-insert, so that `next`'s routing is expressed in `prev`'s current numbering until the exit GC renumbers for real.) The tree and state are untouched: `d` is still present, still holding `R`, and `c`'s `p` still holds `R`-many occurrences of `k`.
+
+This entry snap carries `prev` into a substantive `link` whose topology is `prev`'s and whose transaction is `next`'s. The first two slots of the template hold:
+
+- (i) The entry snap preserves `|- q` trivially, since it touches only `z`, not the tree.
+- (ii) `link` is closed under its own `push`/`pop`. A `push` follows `z'`, so `d` gains no new members and the surviving arms behave as in `next`; Lemma 3.9 keeps `|- q`. A `pop` proceeds over `prev`'s tree; whenever it serves a packet of `R` it decrements `R` and `c`'s `k`-occurrence count by one in lockstep, preserving the invariant. `R` therefore only shrinks and never grows.
+
+The exit, slot (iii), is enabled when `R` is empty. The instant it holds, the invariant forces `c`'s `k`-occurrence count to zero, so the exit snap (unhook the now-empty `d`, drop slot `k`, renumber any higher siblings) moves no packet and rewrites no live occurrence: it is a pure rewiring into `next`. _Cost:_ none; nothing is dropped. _Latency:_ unbounded: a steady stream of `gmail` or `zoom` traffic can starve `spotify` indefinitely, so the exit may never fire.
+
+##### **Choice 3.**
+
+The entry snap and the `link` are identical to choice 2; only the exit condition changes, to "`R` empty _or_ a wall-clock budget of `T` milliseconds elapsed, whichever comes first." If `R` drains before `T`, the exit is choice 2's free rewiring and nothing is lost. If `T` fires first with `R` non-empty, the exit snap is choice 1's drop applied to the residue: discard the leftover packets of `R` and tombstone their occurrences in `p` as it unhooks `d`. _Cost:_ at most the residue that did not drain in time. _Latency:_ bounded by `T`.
 
 ### Preserving this proof down to hardware
 
