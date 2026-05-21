@@ -39,50 +39,43 @@
 
 ## 3. Formalizing the Transition Phase `link`
 
+We recap the PIFO-tree model (§3.1), extend it with tombstones (§3.2), fix a grammar of policy diffs (§3.3), show that every diff induces a sound transition through a well-formed `link` (§3.4), and argue that the guarantee survives down to hardware (§3.5).
+
 ### 3.1 Background: PIFO trees, formally
 
 We build on the PIFO-tree model of Mohan et al. [Formal Abstractions, OOPSLA '23, §3], so we review the pieces of their formalism that this paper actually leans on.
 
 #### Topology vs. contents
 
-A _topology_ `t` is a finite tree carrying no data: either a single node `*` or `Node(ts)` for a list of child topologies. A _PIFO tree_ of topology `t`, written `q : PIFOTree(t)`, layers data onto `t`. A leaf `Leaf(p)` holds a packet-carrying PIFO `p`. An internal node `Internal(qs, p)` carries two things: a list `qs` of well-formed PIFO-tree children whose topologies match the corresponding sub-topologies of `t`, and a PIFO `p` whose entries are child indices into `qs`. This separation is key to making the diff grammar of §3.3 well-defined: a structural edit is a change to the topology `t`, distinct from the running contents.
+A _topology_ `t` is a finite tree carrying no data: either a single node `*` or `Node(ts)` for a list of child topologies. A _PIFO tree_ of topology `t`, written `q : PIFOTree(t)`, layers data onto `t`. A leaf `Leaf(p)` holds a packet-carrying PIFO `p`. An internal node `Internal(qs, p)` carries two things: a list `qs` of well-formed PIFO-tree children whose topologies match the corresponding sub-topologies of `t`, and a PIFO `p` whose entries are child indices into `qs`. This separation between the topology and the carried contents is key to making the diff grammar of §3.3 well-defined: a structural edit is a change to the topology `t`, distinct from the running contents.
 
 #### The two user-observable operations
 
-`push(q, pkt, pt)` enqueues `pkt` along a precomputed path `pt = (i_1, r_1) :: ... :: (i_n, r_n) :: r_{n+1}`. The path is richly decorated: it tells the PIFO of each internal node along the path what child index to enqueue and what rank to use for that enqueue. At the leaf level it tells the leaf's PIFO what rank to use when admitting the packet itself. `pop(q)` returns the most favorably ranked packet by popping the root to yield a child index, recursing into that child, and finally emitting a packet from the leaf. These are the _only_ user-visible interactions with a scheduler, which is why §1's notion of an _atomic_ transition is stated in terms of them: every push/pop is observed under exactly one of `prev` or `next`, never a half-edited intermediate scheduler.
+`push(q, pkt, pt)` enqueues `pkt` along a precomputed path `pt = (i_1, r_1) :: ... :: (i_n, r_n) :: r_{n+1}`. The path is richly decorated: it tells the PIFO of each internal node along the path what child index to enqueue and what rank to use for that enqueue. At the leaf level it tells the leaf's PIFO what rank to use when enqueuing the packet itself. `pop(q)` returns the most favorably ranked packet by popping the root to yield a child index, recursing into that child, until finally emitting a packet from the leaf. These are the _only_ user-visible interactions with a scheduler, which is why §1's notion of an _atomic_ transition is stated in terms of `push`/`pop` observability: every `push`/`pop` happens agains a well-defined scheduler, never a half-edited intermediate scheduler.
 
 #### Well-formedness
 
-A PIFO tree `q` is well-formed (`|- q`) when, at every internal node with index-PIFO `p` and children `qs`, the number of occurrences of `i` in `p` equals the number of packets held under `qs[i]`, for every legal `i`. This is the invariant that keeps `pop` from getting stuck: an index `i` is enqueued in the parent _exactly when_ there is a packet underneath waiting to be released by it. Lemma 3.9 of _Formal Abstractions_ shows that `push` always preserves `|- q`, and that `pop` does too whenever `q` is non-empty (which is precisely the condition under which `pop` is defined). Our §3.4 proof obligation is the analogous statement one level up: any structural edit applied to a well-formed tree `prev` using the grammar from §3.3 yields a well-formed tree `next`.
+A PIFO tree `q` is well-formed (`|- q`, following _Formal Abstractions_' notation) when, at every internal node with index-PIFO `p` and children `qs`, the number of occurrences of `i` in `p` equals the number of packets held under `qs[i]`, for every legal `i`. This is the invariant that keeps `pop` from getting stuck. Lemma 3.9 of _FA_ shows that `push` always preserves `|- q`, and that `pop` preserves it when `q` is non-empty (which is precisely the condition under which `pop` is defined).
 
 #### Control
 
-_FA_ factors the scheduling _policy_ (which, given an arriving packet and the current state, produces the path that `push` will follow) into a _control_ object. A control over `t` is a triple `(s, q, z)`: a current state `s` drawn from some fixed set, the PIFO tree `q` of topology `t` itself, and a _scheduling transaction_ `z` that, given a state and a packet, returns a path of the right topology together with an updated state. We inherit this factoring without modification; the reconfiguration problem this paper tackles is the change of `q`'s topology, with the rest of the control updated in lockstep.
+_FA_ factors the scheduling _policy_ (which, given an arriving packet and the current state, produces the path that `push` will follow) into a _control_ object. A control over `t` is a triple `(s, q, z)`: a current state `s` drawn from some fixed set, the PIFO tree `q` of topology `t` itself, and a _scheduling transaction_ `z` that, given a state and a packet, returns a path of the correct shape together with an updated state.
 
 ### 3.2 Extending the model
 
-The model of §3.1 suffices to state our diff grammar, but the transition proofs of §3.4 lean on a small extension to it. We isolate such conveniences here, so that later sections can cite them rather than re-derive them in passing.
+The model of §3.1 suffices to state our diff grammar, but the transition proofs of §3.4 lean on a small extension to it. We discuss such conveniences here.
 
 #### Tombstones
 
-Sometimes we need to delete a child PIFO tree. If the child is nonempty, then the parent still has occurrences of `k` (the index used by the parent to refer to the deleted child) in its index-PIFO `p`. Expunging those occurrences is possible but expensive, since they sit scattered through `p` by rank. Further, removing such instances of `k` in the parent actually creates additional removal obligations in the parent's _own_ ancestors. Instead of getting into all this, we let a node carry a finite set `T` of _tombstone_ indices, disjoint from its live child indices, and relax the §3.1 invariant to match.
+Sometimes we need to delete a child PIFO tree. If the child had packets, then the parent still has occurrences of `k` (the index used by the parent to refer to the deleted child) in its index-PIFO `p`. Expunging those occurrences is possible but expensive: (i) they sit scattered through `p` by rank, and (ii) removing such instances of `k` from `p` actually bubbles up and creates additional removal obligations in the parent's _own_ ancestors.
 
-If a PIFO has index `k` but `k` is in that PIFO's set `T`, we call `k` a _phantom_. We call other indices _live_.
+Instead of getting into all this, we let a node carry a finite set `T` of _tombstone_ indices. If a PIFO has entry `k` but `k` is in that PIFO's set `T`, we call `k` a _phantom_. We call non-phantom entries _live_. `pop` gains a single rule: if popping `p` yields a phantom, `pop` again. This keeps `pop` from getting stuck on a phantom. A tombstone thus lets us delete a subtree in one transaction without rewriting its parent. The cost is a bounded number of phantom-pops. The device is borrowed from the database community, where a deletion is recorded as a _tombstone_ and storage is reclaimed lazily by later compaction rather than rewritten in place.
 
-`pop` gains a single rule: if popping `p` yields a phantom, `pop` again. This keeps `pop` from getting stuck on a phantom, just as the §3.1 invariant kept it from getting stuck on an empty child.
+We say `q` is _well-formed modulo tombstones_, written `|-_T q`, when at every internal node with index-PIFO `p`, children `qs`, and tombstone set `T`, the occurrences of every _live_ index `i` in `p` equal the packets held under `qs[i]`, exactly as in §3.1.
 
-A tombstone thus lets an edit delete a subtree in one transaction without rewriting its parent, at the price of a bounded number of phantom-pops.
+Two facts make our changes to `pop` harmless:
 
-#### Well-formedness modulo tombstones
-
-We say `q` is _well-formed modulo tombstones_, written `|-_T q`, when at every internal node with index-PIFO `p`, children `qs`, and tombstone set `T`:
-
-- for every _live_ index `i`, the occurrences of `i` in `p` equal the packets held under `qs[i]`, exactly as in §3.1; and
-- every phantom index in `p` is also in `T`.
-
-Two facts make the relaxation of `pop` harmless:
-
-- _Phantoms only vanish._ A phantom-pop removes one occurrence of a tombstone index, and a `push` never adds one, because the transition that adds `k` to the tombstone set `T` also installs a new scheduling transaction that routes nothing new to `k`. So each node's phantom count is monotonically non-increasing.
+- _Phantoms only vanish._ A phantom-pop removes one occurrence of a phantom index, and a `push` never adds one (the transition that adds `k` to the tombstone set `T` also installs a new scheduling transaction that routes nothing new to `k`). So each node's phantom count is monotonically non-increasing.
 - _Reclamation recovers `|-`._ Once a tombstoned index's phantom count hits zero, `p` no longer needs to name the index in `T`; the dead slot may be recycled and its higher-indexed siblings renumbered, leaving an ordinary `|-` tree. Until then `|-_T` is exactly the invariant we need, and `|-` is the special case with `T` empty on all PIFOs.
 
 ### 3.3 A Grammar for Tree Diffs
@@ -234,6 +227,8 @@ The exit condition `φ` here is "`R` empty," reached in the natural course of `p
 ##### Choice 3.
 
 The entry snap and the `link` are identical to choice 2; only the exit condition changes, to "`R` empty _or_ a wall-clock budget of `T` milliseconds elapsed, whichever comes first." If `R` drains before `T`, the exit is choice 2's free rewiring and nothing is lost. If `T` fires first with `R` non-empty, the exit snap is choice 1's drop applied to the residue: discard the leftover packets of `R` and tombstone their occurrences in `p` as it unhooks `d`. _Cost:_ at most the packets of `R` that did not drain in time. _Latency:_ bounded by `T`. The deadline is precisely what restores the _liveness_ condition (iv) that choice 2 lacked.
+
+#### [AM: leaving for now, but here we'd discuss the other elements of the grammar, giving an element a subsubsection if warranted]
 
 ### 3.5 Preserving this proof down to hardware
 
