@@ -246,9 +246,15 @@ We reuse this trick to again argue that our proof is preserved from the IL level
 
 ## 4. Identifying Better Transitions
 
-Now that we're on firm ground, we can go back and revisit our diff-sniffer. Our give-up case is the whole-tree `ArmReplaced { path = []; arm = next }`; §3.4 showed that this routes through the maximally pessimistic `link`, whose realizations span a full-tree drain (lossless, slow) and a stop-the-world drop (lossy); the latter is SOTA. Either way the blast zone is the entire tree. Here we show how we can identify diffs more precisely, and how we can give up at a deeper part of the tree if we need to, so that the transition routes through a `link` confined to a small subtree and leaves the rest of the scheduler running.
+§3 established that our grammar is _safe_: whatever diff the sniffer emits, the transition it induces is sound, routing through a well-formed `link` and landing in `next`. With safety settled, the question this section takes up is whether we wield the grammar _well_.
 
-There are lots of examples to show here, and possibly some beefing-up of compare.ml itself. TK.
+Our fallback is to emit the whole-tree `ArmReplaced { path = []; arm = next }`. It admits several realizations (lossless but slow, lossy but atomic, and others [AM: leaving this vague until I actually write up ArmReplaced in §3]), but all of them route through a `link` over the entire tree: the splash zone is as big as possible; no part of the scheduler can keep running unaffected.
+
+This section shows how to do better: sniff diffs more precisely, and, when we must give up, give up _deep_ in the tree rather than at the root. Either way the transition routes through a `link` confined to a small subtree, leaving the rest of the scheduler untouched.
+
+As a preview, take the harder of our two running examples, `SP(gmail, zoom)` to `SP(gmail, RR(zoom, spotify))`. Rather than give up at the root, the sniffer localizes it to a _partial_ replacement, `ArmReplaced { path = [1]; arm = RR(zoom, spotify) }`: only one child of `SP` is touched. The `link` is then confined to `zoom`'s subtree, while `gmail` and the root `SP` keep running untouched.
+
+Many examples remain to work through here, and possibly some strengthening of `compare.ml` itself. TK.
 
 ## 5. Compiling to Hardware
 
