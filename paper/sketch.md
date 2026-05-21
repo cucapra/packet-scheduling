@@ -47,13 +47,21 @@
 
 We build on the PIFO-tree model of Mohan et al. [Formal Abstractions, OOPSLA '23, §3], so we review the pieces of their formalism that this paper actually leans on.
 
-**Topology vs. contents.** A _topology_ `t` is a finite tree carrying no data: either a single node `*` or `Node(ts)` for a list of child topologies. A _PIFO tree_ of topology `t`, written `q : PIFOTree(t)`, layers data onto `t`. A leaf `Leaf(p)` holds a packet-carrying PIFO `p`. An internal node `Internal(qs, p)` carries two things: a list `qs` of well-formed PIFO-tree children whose topologies match the corresponding sub-topologies of `t`, and a PIFO `p` whose entries are child indices into `qs`. This separation is key to making the diff grammar of §3.3 well-defined: a structural edit is a change to the topology `t`, distinct from the running contents.
+#### Topology vs. contents
 
-**The two user-observable operations.** `push(q, pkt, pt)` enqueues `pkt` along a precomputed path `pt = (i_1, r_1) :: ... :: (i_n, r_n) :: r_{n+1}`. The path is richly decorated: it tells the PIFO of each internal node along the path what child index to enqueue and what rank to use for that enqueue. At the leaf level it tells the leaf's PIFO what rank to use when admitting the packet itself. `pop(q)` returns the most favorably ranked packet by popping the root to yield a child index, recursing into that child, and finally emitting a packet from the leaf. These are the _only_ user-visible interactions with a scheduler, which is why §1's notion of an _atomic_ transition is stated in terms of them: every push/pop is observed under exactly one of `prev` or `next`, never a half-edited intermediate scheduler.
+A _topology_ `t` is a finite tree carrying no data: either a single node `*` or `Node(ts)` for a list of child topologies. A _PIFO tree_ of topology `t`, written `q : PIFOTree(t)`, layers data onto `t`. A leaf `Leaf(p)` holds a packet-carrying PIFO `p`. An internal node `Internal(qs, p)` carries two things: a list `qs` of well-formed PIFO-tree children whose topologies match the corresponding sub-topologies of `t`, and a PIFO `p` whose entries are child indices into `qs`. This separation is key to making the diff grammar of §3.3 well-defined: a structural edit is a change to the topology `t`, distinct from the running contents.
 
-**Well-formedness.** A PIFO tree `q` is well-formed (`|- q`) when, at every internal node with index-PIFO `p` and children `qs`, the number of occurrences of `i` in `p` equals the number of packets held under `qs[i]`, for every legal `i`. This is the invariant that keeps `pop` from getting stuck: an index `i` is enqueued in the parent _exactly when_ there is a packet underneath waiting to be released by it. Lemma 3.9 of _Formal Abstractions_ shows that `push` always preserves `|- q`, and that `pop` does too whenever `q` is non-empty (which is precisely the condition under which `pop` is defined). Our §3.4 proof obligation is the analogous statement one level up: any structural edit applied to a well-formed tree `prev` using the grammar from §3.3 grammar yields a well-formed tree `next`.
+#### The two user-observable operations
 
-**Control.** _FA_ factors the scheduling _policy_ (which, given an arriving packet and the current state, produces the path that `push` will follow) into a _control_ object. A control over `t` is a triple `(s, q, z)`: a current state `s` drawn from some fixed set, the PIFO tree `q` of topology `t` itself, and a _scheduling transaction_ `z` that, given a state and a packet, returns a path of the right topology together with an updated state. We inherit this factoring without modification; the reconfiguration problem this paper tackles is the change of `q`'s topology, with the rest of the control updated in lockstep.
+`push(q, pkt, pt)` enqueues `pkt` along a precomputed path `pt = (i_1, r_1) :: ... :: (i_n, r_n) :: r_{n+1}`. The path is richly decorated: it tells the PIFO of each internal node along the path what child index to enqueue and what rank to use for that enqueue. At the leaf level it tells the leaf's PIFO what rank to use when admitting the packet itself. `pop(q)` returns the most favorably ranked packet by popping the root to yield a child index, recursing into that child, and finally emitting a packet from the leaf. These are the _only_ user-visible interactions with a scheduler, which is why §1's notion of an _atomic_ transition is stated in terms of them: every push/pop is observed under exactly one of `prev` or `next`, never a half-edited intermediate scheduler.
+
+#### Well-formedness
+
+A PIFO tree `q` is well-formed (`|- q`) when, at every internal node with index-PIFO `p` and children `qs`, the number of occurrences of `i` in `p` equals the number of packets held under `qs[i]`, for every legal `i`. This is the invariant that keeps `pop` from getting stuck: an index `i` is enqueued in the parent _exactly when_ there is a packet underneath waiting to be released by it. Lemma 3.9 of _Formal Abstractions_ shows that `push` always preserves `|- q`, and that `pop` does too whenever `q` is non-empty (which is precisely the condition under which `pop` is defined). Our §3.4 proof obligation is the analogous statement one level up: any structural edit applied to a well-formed tree `prev` using the grammar from §3.3 yields a well-formed tree `next`.
+
+#### Control
+
+_FA_ factors the scheduling _policy_ (which, given an arriving packet and the current state, produces the path that `push` will follow) into a _control_ object. A control over `t` is a triple `(s, q, z)`: a current state `s` drawn from some fixed set, the PIFO tree `q` of topology `t` itself, and a _scheduling transaction_ `z` that, given a state and a packet, returns a path of the right topology together with an updated state. We inherit this factoring without modification; the reconfiguration problem this paper tackles is the change of `q`'s topology, with the rest of the control updated in lockstep.
 
 ### 3.2 Extending the model
 
@@ -61,14 +69,11 @@ The model of §3.1 suffices to state our diff grammar, but the transition proofs
 
 #### Tombstones
 
-Sometimes we need to delete a child PIFO tree. If the child is nonempty, then the parent still has occurances of `k` (the index used by the parent to refer to the deleted child) in its index-PIFO `p`. Expunging those occurrences is possible but expensive, since they sit scattered through `p` by rank. Further, removing such instances of `k` in the parent actually creates additional removal obligations in the parent's _own_ ancestors. Instead of getting into all this, we let a node carry a finite set `T` of _tombstone_ indices, disjoint from its live child indices, and relax the §3.1 invariant to match.
+Sometimes we need to delete a child PIFO tree. If the child is nonempty, then the parent still has occurrences of `k` (the index used by the parent to refer to the deleted child) in its index-PIFO `p`. Expunging those occurrences is possible but expensive, since they sit scattered through `p` by rank. Further, removing such instances of `k` in the parent actually creates additional removal obligations in the parent's _own_ ancestors. Instead of getting into all this, we let a node carry a finite set `T` of _tombstone_ indices, disjoint from its live child indices, and relax the §3.1 invariant to match.
 
 If a PIFO has index `k` but `k` is in that PIFO's set `T`, we call `k` a _phantom_. We call other indices _live_.
 
-`pop` gains a single rule: if popping `p` yields a phantom, `pop` again. This keeps `pop` from getting stuck on a phantom, just as the §3.1 invariant kept it from getting stuck on an empty child. Two facts make the relaxation harmless:
-
-- _Phantoms only vanish._ A phantom-pop removes one occurrence of a tombstone index, and a `push` never adds one, because the transition that adds `k` to the tombstone set `T` also installs a new scheduling transaction that routes nothing new to `k`. So each node's phantom count is monotonically non-increasing.
-- _Reclamation recovers `|-`._ Once a tombstoned index's phantom count hits zero, `p` no longer needs to name the index in `T`; the dead slot may be recycled and its higher-indexed siblings renumbered, leaving an ordinary `|-` tree. Until then `|-_T` is exactly the invariant we need, and `|-` is the special case with `T` empty on all PIFOs.
+`pop` gains a single rule: if popping `p` yields a phantom, `pop` again. This keeps `pop` from getting stuck on a phantom, just as the §3.1 invariant kept it from getting stuck on an empty child.
 
 A tombstone thus lets an edit delete a subtree in one transaction without rewriting its parent, at the price of a bounded number of phantom-pops.
 
@@ -77,7 +82,12 @@ A tombstone thus lets an edit delete a subtree in one transaction without rewrit
 We say `q` is _well-formed modulo tombstones_, written `|-_T q`, when at every internal node with index-PIFO `p`, children `qs`, and tombstone set `T`:
 
 - for every _live_ index `i`, the occurrences of `i` in `p` equal the packets held under `qs[i]`, exactly as in §3.1; and
-- every phanom index in `p` is also in `T`.
+- every phantom index in `p` is also in `T`.
+
+Two facts make the relaxation of `pop` harmless:
+
+- _Phantoms only vanish._ A phantom-pop removes one occurrence of a tombstone index, and a `push` never adds one, because the transition that adds `k` to the tombstone set `T` also installs a new scheduling transaction that routes nothing new to `k`. So each node's phantom count is monotonically non-increasing.
+- _Reclamation recovers `|-`._ Once a tombstoned index's phantom count hits zero, `p` no longer needs to name the index in `T`; the dead slot may be recycled and its higher-indexed siblings renumbered, leaving an ordinary `|-` tree. Until then `|-_T` is exactly the invariant we need, and `|-` is the special case with `T` empty on all PIFOs.
 
 ### 3.3 A Grammar for Tree Diffs
 
@@ -131,29 +141,41 @@ We first make `snap`, `link`, and `transition` precise and state the conditions 
 
 The transitionary regime looks daunting only if we expect it to be a new kind of object. It is not. `link` is an ordinary control in the sense of §3.1: a triple `(s, q, z)` with the `push`/`pop` already defined there. What is new is not a semantics but the way two controls are spliced in time, and that is what we now pin down.
 
-**Snap.** A _snap_ `σ` atomically replaces the live control with another control. So every operation is served by exactly one control, by construction. A snap may move, synthesize, or drop contents, but we require it to be _sound_: `|-_T C` implies `|-_T σ(C)` (the modulo-tombstones judgment of §3.2; for a tombstone-free control this is just `|-`).
+##### Snap
 
-**Transition.** A _transition_ realizing a diff, from the running control `C_prev` to the target `C_next`, is a tuple `(σ_in, L, φ, σ_out)`:
+A _snap_ `σ` atomically replaces the live control with another, between two user operations, so that every operation is served by exactly one control, by construction. A snap may move, synthesize, or drop contents, but we require it to be _sound_: `|-_T C` implies `|-_T σ(C)` (the modulo-tombstones judgment of §3.2; for a tombstone-free control this is just `|-`).
+
+##### Transition
+
+A _transition_ realizing a diff, from the running control `C_prev` to the target `C_next`, is a tuple `(σ_in, L, φ, σ_out)`:
 
 - an _entry snap_ `σ_in`, with link control `L = σ_in(C_prev)`;
 - the _link control_ `L`, run under the `push`/`pop` of §3.1, evolving without our intervention to some `L'` as packets flow;
 - an _exit condition_ `φ`, a predicate on `L`'s state and, optionally, on an external clock;
 - an _exit snap_ `σ_out`, fired at the first instant `φ` holds, with `σ_out(L') = C_next`.
 
-**Soundness.** The transition is _sound_ when its four _conditions_ hold:
+##### Soundness
+
+The transition is _sound_ when its four _conditions_ hold:
 
 - (i) _entry-soundness_, so that `|- C_prev` gives `|-_T L`
 - (ii) _closure_, so that `L`'s own `push`/`pop` preserve `|-_T L`
-- (iii) _exit-soundness_, so that `|-_T L'` gives `|- C_next`
+- (iii) _exit-soundness_, so that `|-_T L'` gives `|-_T C_next`
 - (iv) _liveness_, that `φ` eventually holds.
 
-Conditions (i)-(iii) are _safety_, keeping the live scheduler a well-formed control at every instant; liveness (iv) is what makes the transition actually reach `next`.
+Conditions (i)-(iii) are _safety_, keeping the live scheduler well-formed modulo tombstones at every instant; liveness (iv) is what drives the transition to `next`. Exit-soundness lands us in `next` well-formed modulo tombstones; where the exit leaves phantoms, §3.2 reclamation upgrades `|-_T C_next` to plain `|- C_next` within bounded time, so we reach `next` truly, not merely observably.
 
-**Degenerate `link`.** When `L = C_next` and `φ = true`, the exit snap is the identity and fires at once: the two snaps fuse, and `prev` abuts `next` with no observable transitionary regime. Closure (ii) and liveness (iv) are then vacuous, and entry-soundness (i) and exit-soundness (iii) collapse into one well-formedness check. See `ArmAdded` (§3.4.2).
+##### Degenerate `link`
 
-**The menu.** A diff does not determine its transition. In general many tuples `(σ_in, L, φ, σ_out)` realize the same `prev`-to-`next` change at different costs in lossiness and latency, and each is independently sound. We call this set of sound transitions the _menu_. SOTA offers exactly one item, a whole-tree stop-the-world `link`; §4 is largely about choosing more intelligently from the menu.
+When `L = C_next` (exactly, or modulo tombstones that §3.2 reclaims in bounded time) and `φ = true`, the exit snap is the identity and fires at once: the two snaps fuse, and `prev` abuts `next` with no observable transitionary regime. Closure (ii) and liveness (iv) are then vacuous, and entry-soundness (i) and exit-soundness (iii) collapse into one well-formedness check. See `ArmAdded` (§3.4.2; no tombstones) and `ArmRemoved` Choice 1 (§3.4.3; modulo tombstones).
 
-**Theorem (the transitionary period is just scheduling).** For every diff variant, and every realization given in §3.4.2 onward, the tuple `(σ_in, L, φ, σ_out)` is a sound transition. Hence at every instant the live scheduler is a well-formed control (`|-` of §3.1, or `|-_T` of §3.2 where a realization tombstones), and the user-observable trace is a sequence of ordinary `push`/`pop` operations served first by `C_prev`, then by `L`, then by `C_next`. The "semantics of `link`" is therefore nothing more than the §3.1 semantics of the control we install; each variant's job is to supply the four components and discharge the four conditions.
+##### The menu
+
+A diff does not determine its transition. In general many tuples `(σ_in, L, φ, σ_out)` realize the same `prev`-to-`next` change at different costs in lossiness and latency, and each is independently sound. We call this set of sound transitions the _menu_. SOTA offers exactly one item, a whole-tree stop-the-world `link`; §4 is largely about choosing more intelligently from the menu.
+
+##### Theorem (the transitionary period is just scheduling)
+
+For every diff variant, and every realization given in §3.4.2 onward, the tuple `(σ_in, L, φ, σ_out)` is a sound transition. Hence at every instant the live scheduler is a well-formed control (`|-` of §3.1, or `|-_T` of §3.2 where a realization tombstones), and the user-observable trace is a sequence of ordinary `push`/`pop` operations served first by `C_prev`, then by `L`, then by `C_next`. The "semantics of `link`" is therefore nothing more than the §3.1 semantics of the control we install; each variant's job is to supply the four components and discharge the four conditions.
 
 #### 3.4.2. `ArmAdded(path, arm, weight?)`
 
@@ -200,7 +222,7 @@ _The transaction, `z -> z'`._ `z'` is `next`'s transaction; the retired class is
 
 _The state, `s -> s'`._ Drop `d`'s scheduling state and `c`'s per-slot bookkeeping for `k`; nothing else moves.
 
-_The snap._ `q'` is well-formed modulo tombstones (`|-_T q'`, §3.2): the surviving slots `0, 1` keep their packets and their occurrences in `p`, so their balance is inherited from `prev`'s `|- q` verbatim, and the leftover occurrences of `k` are exactly the phantom indices that `pop` now knows how to skip. No surviving packet straddles the snap; the packets of `R` simply cease to exist. So a `pop` after the snap behaves exactly as a `next` pop, skipping the dead index, and we are observationally in `next`. This is §3.4.1's degenerate case, exactly as `ArmAdded` was: the entry and exit snaps coincide and `link` is empty. _Cost:_ `R` is dropped. _Latency:_ none.
+_The snap._ `q'` is well-formed modulo tombstones (`|-_T q'`, §3.2): the surviving slots `0, 1` keep their packets and their occurrences in `p`, so their balance is inherited from `prev`'s `|- q` verbatim, and the leftover occurrences of `k` are exactly the phantom indices that `pop` now knows how to skip. No surviving packet straddles the snap; the packets of `R` simply cease to exist. So a `pop` after the snap behaves exactly as a `next` pop, skipping phantoms; we are in `next` modulo tombstones at once, and §3.2 reclamation upgrades `|-_T q'` to plain `|- next` within bounded time (at most `|R|` phantom-pops). This is §3.4.1's degenerate case modulo tombstones: the entry and exit snaps coincide and `link` is empty. _Cost:_ `R` is dropped. _Latency:_ none.
 
 ##### Choice 2.
 
@@ -211,7 +233,7 @@ This entry snap carries `prev` into a substantive `link` whose topology is `prev
 - _Entry-soundness_ (i): the entry snap preserves `|- q` trivially, since it touches only `z`, not the tree.
 - _Closure_ (ii): `link` is closed under its own `push`/`pop`. A `push` follows `z'`, so `d` gains no new members and the surviving arms behave as in `next`; Lemma 3.9 keeps `|- q`. A `pop` proceeds over `prev`'s tree; whenever it serves a packet of `R` it decrements `R` and `c`'s `k`-occurrence count by one in lockstep, preserving the invariant. `R` therefore only shrinks and never grows.
 
-The exit (_exit-soundness_, (iii)) is enabled when `R` runs empty in the natural course of time. The instant it holds, the invariant forces `c`'s `k`-occurrence count to zero, so the exit snap (unhook the now-empty `d`, drop slot `k`, renumber any higher siblings) moves no packet and rewrites no live occurrence: it is a pure rewiring into `next`. _Cost:_ none; nothing is dropped. _Latency:_ unbounded: a steady stream of `gmail` or `zoom` traffic can starve `spotify` indefinitely, so the exit may never fire. This is the choice that fails _liveness_ (iv): it satisfies conditions (i)-(iii) but cannot promise to reach `next`.
+The exit condition `φ` here is "`R` empty," reached in the natural course of `pop`s. The instant it holds, the invariant forces `c`'s `k`-occurrence count to zero, so the exit snap (unhook the now-empty `d`, drop slot `k`, renumber any higher siblings) moves no packet and rewrites no live occurrence: it is a pure rewiring into `next`, so exit-soundness (iii) holds. _Cost:_ none; nothing is dropped. _Latency:_ unbounded: a steady stream of `gmail` or `zoom` traffic can starve `spotify` indefinitely, so the exit may never fire. This is the choice that fails _liveness_ (iv): it satisfies conditions (i)-(iii) but cannot promise to reach `next`.
 
 ##### Choice 3.
 
