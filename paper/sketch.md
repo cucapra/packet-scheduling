@@ -171,22 +171,29 @@ For every diff variant, and every realization given in §3.4.2 onward, the tuple
 
 Example: `SP(gmail, zoom)` --atomic--> `SP(gmail, zoom, spotify)`.
 The diff computed according to the grammar in §3.3 is: `ArmAdded { path = [2]; arm = spotify }`.
-By the grammar of §3.3, `ArmAdded` means an arm is _truly_ added: the new arm carries fresh traffic that intersects nothing `prev` was already serving (it was being rejected thus far, say). No `prev`-era packet therefore belongs under the new arm, the `link` is degenerate, and the two snaps fuse into one.
+By the grammar of §3.3, `ArmAdded` means that the new arm carries fresh traffic that intersects nothing `prev` was already serving (it was being rejected thus far, say). No `prev`-era packet therefore belongs under the new arm.
 
-We work entirely with the control triple `(s, q, z)` of §3.1 and develop the new control `(s', q', z')` that the snap installs. We write `c` for the parent node named by `path` (here the root `SP`) and `k` for the index of the new slot (here `2`). We take the append case first, where `spotify` lands at the end of the child list, and handle a mid-order insert afterward.
+We instantiate the template of §3.4.1. We write `c` for the parent named by `path` (here the root `SP`) and `k` for the new slot's index (here `2`); we take the append case first and a mid-order insert afterward.
 
-_The tree, `q -> q'`._ At `c = Internal(qs, p)` we append the new arm to the child list, so its slot `k` is the new last index: `q' = Internal(qs ++ [a], p)`. Here `a` is the _empty_ PIFO tree having whatever topology `arm` described. The parent's index-PIFO `p` is left exactly as it was, because it only ever named the old indices `0..k-1` and so does not name `k` at all.
+##### The four components of the transition
 
-_The transaction, `z -> z'`._ `z'` is the scheduling transaction compiled from `next`. It is a _conservative extension_ of `z`: for any packet that does not classify into the new arm it defers to `z`, and for a packet that does classify into the new arm it returns a path whose step at `c` selects `k` and then descends through the PIFO tree `a`. Because `k` was not a legal index under `prev`, `z` could never have emitted such a path, so the two transactions differ only on routes that land in the previously-nonexistent subtree.
+The _entry snap_ `σ_in` installs a new control `(s', q', z')`, which we build piece by piece.
 
-_The state, `s -> s'`._ `s'` agrees with `s` everywhere, except that it records the initial local state for the new slot: the new arm's own scheduling state at its from-scratch value (it is empty), plus whatever per-slot bookkeeping `c`'s scheduler keeps (an RR cursor, the slot's weight taken from the edit's `weight?`, a virtual-finish accumulator, etc.). No existing slot's state is disturbed.
+- _The state, `s -> s'`._ `s'` agrees with `s` everywhere, except that it records the initial local state for the new slot: the new arm's own scheduling state, plus whatever per-slot bookkeeping `c`'s scheduler keeps (an RR cursor, the slot's weight taken from the edit's `weight?`, a virtual-finish accumulator, etc.). No existing slot's state is disturbed.
+- _The tree, `q -> q'`._ At `c = Internal(qs, p)` we append the new arm to the child list, so its slot `k` is the new last index: `q' = Internal(qs ++ [a], p)`. Here `a` is the _empty_ PIFO tree having whatever topology `arm` described. The parent's index-PIFO `p` is left exactly as it was, because it only ever named the old indices `0..k-1` and so does not name `k` at all.
+- _The transaction, `z -> z'`._ `z'` is the scheduling transaction compiled from `next`. It is a _conservative extension_ of `z`: for any packet that does not classify into the new arm it defers to `z`, and for a packet that does classify into the new arm it returns a path whose step at `c` selects `k` and then descends through the PIFO tree `a`. Because `k` was not a legal index under `prev`, `z` could never have emitted such a path, so the two transactions differ only on routes that land in the previously-nonexistent subtree.
 
-_The snap is atomic, and `link` is degenerate._ Two facts do the work.
+_The other three components._ The arm `a` is empty, so the control that `σ_in` just installed is already `next`: the `link` is degenerate, with `L = C_next`, `φ = true`, and `σ_out` the identity function.
 
-- First, `q'` is well-formed. The parent `c` has exactly zero occurrences of `k` (its index-PIFO `p` does not yet feature `k`, as established above) and the new arm `a` holds zero packets or indices, so the well-formedness obligation (§3.1) reads `0 = 0`. Every other slot is the same child it was in `q`, with the same packets beneath it and the same entries in `p`, so its obligation is inherited verbatim from `|- q`. So `q'` needs no repair.
-- Second, no in-flight packet straddles the snap: every packet resident at the snap instant lives in the shared structure `qs`, carried into `q'` unchanged, and none is under `k`.
-  - A `pop` issued immediately after the snap returns exactly what a `pop` issued immediately before would have: the empty new slot contributes nothing, and the existing arms keep their contents and their relative priority, since neither `p` nor their subtrees changed.
-  - The first `push` governed by `z'` _that routes to `k`_ is the first packet ever to occupy `a`, which Lemma 3.9 from _FA_ admits while preserving `|- q'`.
+##### The four conditions of soundness
+
+Closure (ii) and liveness (iv) are vacuous. Entry-soundness (i) and exit-soundness (iii) collapse into a single well-formedness check. Let us discharge it.
+
+We must show that `|-_T C_prev` gives `|-_T C_next`. The parent `c` has exactly zero occurrences of `k` (its index-PIFO `p` does not name `k`, having only ever named `0..k-1`), and the new arm `a` holds zero packets or indices, so the well-formedness obligation at slot `k` reads `0 = 0`. Every other slot is the child it was in `q`, with the same packets beneath it and the same entries in `p`, so its obligation is inherited verbatim. Nothing needs repair.
+
+##### Notes
+
+_Atomicity._ No in-flight packet straddles the snap: every packet resident at the snap instant lives in the shared structure `qs`, carried into `q'` unchanged, and none is under `k`. So a `pop` immediately after the snap returns exactly what a `pop` immediately before would have, the empty new slot contributing nothing and the existing arms keeping their contents and relative priority; and the first `push` that `z'` routes to `k` is the first packet ever to occupy `a`, which Lemma 3.9 from _FA_ admits while preserving `|- q'`.
 
 _Deeper paths._ The example edits the root, but `path` may be any prefix; `ArmAdded { path = [1, 2]; arm = ... }` adds a slot inside a grandchild of the root. Nothing in the argument changes. The descent from the root to `c` passes only through nodes that `q` and `q'` share verbatim, and, because the new arm is empty, it adds zero packets beneath every ancestor of `c`. So each ancestor's occurrence-tally for the child it forwards through is exactly what it was, no ancestor PIFO is rewritten, and the edit is confined to `c` and the fresh arm below it.
 
