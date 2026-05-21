@@ -201,40 +201,42 @@ _Mid-order insertion._ We led with an append because it is the cleanest case, bu
 
 #### 3.4.3. `ArmRemoved(path, arm)`
 
-Example: `SP(gmail, zoom, spotify)` --> `SP(gmail, zoom)`, the operator is decommissioning `spotify`. The diff is `ArmRemoved { path = [2]; arm = spotify }`. As before, we write `c` for the parent (in our example, the root `SP`) and `k` for the doomed slot (in our example, `k=2`); write `d` for the doomed arm (the `spotify` subtree) and `R` for the set of packets buffered under `d` at the relevant instant. The new difficulty, absent from `ArmAdded`, is that `d` may be non-empty: by well-formedness `c`'s index-PIFO `p` holds exactly one occurrence of `k` for each packet in `R`, so we cannot simply delete `d` and leave `p` with indices to a child that is gone.
+Example: `SP(gmail, zoom, spotify)` --> `SP(gmail, zoom)`, the operator is decommissioning `spotify`. The diff-sniffer gives us `ArmRemoved { path = [2]; arm = spotify }`. As before, we write `c` for the parent (in our example, the root `SP`) and `k` for the index of the doomed subtree (in our example, `k=2`); write `d` for the doomed subtree itself (in our example, the `spotify` subtree) and `R` for the set of packets buffered under `d` at the relevant instant. The new challenge, absent from `ArmAdded`, is that `d` may be non-empty: by well-formedness `c`'s index-PIFO `p` holds one occurrence of `k` for each packet in `R`, so we cannot simply delete `d` and leave `p` with indices to a child that is gone.
 
-Dual to §3.4.2's freshness convention, we read `ArmRemoved` as a genuine _retirement_: under `next` the doomed class is no longer admitted anywhere, and is not re-homed onto a surviving arm.
+Dual to §3.4.2's freshness convention, we read `ArmRemoved` as a genuine _retirement_: under `next`, packets from the doomed class are no longer admitted anywhere, and are not re-homed onto a surviving arm.
 
 `ArmRemoved` is the first edit whose `link` is genuinely substantive. We present three choices for how to negotiate the transition:
 
-1. _Drop._ Discard the doomed arm's buffered packets and land in `next` in one snap. Lossy, but instant.
+1. _Drop._ Discard the doomed arm's buffered packets and land in `next` in one snap. Lossy but instant.
 2. _Drain._ Snap into `link` by suspending new traffic to the doomed arm, let it empty under normal service, then snap out to `next` once the arm has drained. Lossless, but the wait is unbounded.
-3. _Drain with deadline._ Like (2), but set a `T`-millisecond deadline for the second snap (at which point, drop). Lossless if it drains in time, otherwise bounded latency.
+3. _Drain with deadline._ Like (2), but set a `B`-millisecond deadline for the second snap (at which point, drop). Lossless if it drains in time, otherwise bounded latency.
+
+Each is a transition in the sense of §3.4.1; we give its four components and discharge its four conditions.
 
 ##### Choice 1.
 
-_The tree, `q -> q'`._ Remove `d` from parent `c`'s child list and, in the _same_ transaction, add `k` to `c`'s tombstone set (§3.2). We do not rewrite `c`'s index-PIFO `p`; its occurrences of `k` become phantoms that `pop` discards on sight, so we pay nothing to hunt them down.
+_The four components._ The entry snap `σ_in` installs `(s', q', z')`. Piece by piece: `q'` removes `d` from `c`'s child list and, in the _same_ transaction, adds `k` to `c`'s tombstone set (§3.2), leaving `p`'s occurrences of `k` as phantoms that `pop` discards on sight (so we pay nothing to hunt them down); `z'` is `next`'s transaction, which denies entry to the retired class and leaves every surviving route unchanged; and `s'` drops `d`'s scheduling state and `c`'s bookkeeping for `k`. Since the packets of `R` are dropped, the result is already `next` modulo the phantoms, so the `link` is degenerate: `L = C_next`, `φ = true`, and `σ_out` is the identity function.
 
-_The transaction, `z -> z'`._ `z'` is `next`'s transaction; the retired class is admitted nowhere, and every surviving route is unchanged, since `next` is `prev` minus the arm.
-
-_The state, `s -> s'`._ Drop `d`'s scheduling state and `c`'s per-slot bookkeeping for `k`; nothing else moves.
-
-_The snap._ `q'` is well-formed modulo tombstones (`|-_T q'`, §3.2): the surviving slots `0, 1` keep their packets and their occurrences in `p`, so their balance is inherited from `prev`'s `|- q` verbatim, and the leftover occurrences of `k` are exactly the phantom indices that `pop` now knows how to skip. No surviving packet straddles the snap; the packets of `R` simply cease to exist. So a `pop` after the snap behaves exactly as a `next` pop, skipping phantoms; we are in `next` modulo tombstones at once, and §3.2 reclamation upgrades `|-_T q'` to plain `|- next` within bounded time (at most `|R|` phantom-pops). This is §3.4.1's degenerate case modulo tombstones: the entry and exit snaps coincide and `link` is empty. _Cost:_ `R` is dropped. _Latency:_ none.
+_The four conditions._ Closure (ii) and liveness (iv) are vacuous, and entry-soundness (i) and exit-soundness (iii) collapse into a single well-formedness check: show that `|-_T C_prev` gives `|-_T C_next`. The surviving slots (`0` and `1` in our example) keep their packets and their occurrences in `p`, so their well-formedness obligation is inherited from `prev`'s `|- q` verbatim, and the leftover occurrences of `k` are exactly the phantoms (§3.2). The packets of `R` cease to exist, so a `pop` after the snap behaves exactly as a `next` pop, skipping phantoms, and §3.2 reclamation upgrades `|-_T q'` to plain `|- next` within bounded time (at most `|R|` phantom-pops). _Cost:_ `R` is dropped. _Latency:_ none.
 
 ##### Choice 2.
 
-The entry snap installs `next`'s transaction while leaving topology and contents untouched. With `k` last, `next`'s surviving arms keep `prev`'s indices `0, 1`, so `next`'s `z` emits only those indices and never `k`; lifted onto `prev`'s still-present topology it is a well-typed transaction that simply declines to route into `d`. (A mid-slot removal needs the same cosmetic index relabeling as §3.4.2's mid-insert, so that `next`'s routing is expressed in `prev`'s current numbering until the exit GC renumbers for real.) The tree and state are untouched: `d` is still present, still holding `R`, and `c`'s `p` still holds `R`-many occurrences of `k`.
+_The four components._ The entry snap `σ_in` installs `next`'s transaction while leaving topology and contents untouched: `d` is still present, still holding `R`, and `c`'s `p` still holds `R`-many occurrences of `k`. With `k` last, `next`'s surviving arms keep `prev`'s indices `0, 1`, so `next`'s `z` emits only those and never `k`; lifted onto `prev`'s still-present topology, `z` is _well-typed but simply declines to route into `d`_. (A mid-slot removal needs the cosmetic index relabeling of §3.4.2's mid-insert until the exit GC renumbers for real.) The link control `L` is thus `prev`'s topology under `next`'s transaction, and _it is substantive_. The exit condition `φ` is "`R` empty", and `σ_out` unhooks the now-empty `d`, drops slot `k`, and renumbers any higher siblings.
 
-This entry snap carries `prev` into a substantive `link` whose topology is `prev`'s and whose transaction is `next`'s. Entry-soundness (i) and closure (ii) of §3.4.1 hold:
+_The four conditions._
 
 - _Entry-soundness_ (i): the entry snap preserves `|- q` trivially, since it touches only `z`, not the tree.
-- _Closure_ (ii): `link` is closed under its own `push`/`pop`. A `push` follows `z'`, so `d` gains no new members and the surviving arms behave as in `next`; Lemma 3.9 keeps `|- q`. A `pop` proceeds over `prev`'s tree; whenever it serves a packet of `R` it decrements `R` and `c`'s `k`-occurrence count by one in lockstep, preserving the invariant. `R` therefore only shrinks and never grows.
+- _Closure_ (ii): `L` is closed under its own `push`/`pop`. A `push` follows `z'`, so `d` gains no new members and the surviving arms behave as in `next` (Lemma 3.9). A `pop` over `prev`'s tree decrements `R` and `c`'s `k`-occurrence count by one in lockstep whenever it serves a packet of `R`, so `R` only shrinks and never grows.
+- _Exit-soundness_ (iii): the moment `φ` holds, the invariant forces `c`'s `k`-occurrence count to zero, so `σ_out` moves no packets and rewrites no live occurrences: a pure rewiring into `next`.
+- _Liveness_ (iv): _fails!_ A steady stream of `gmail` or `zoom` traffic can starve `spotify` indefinitely, so `φ` may never fire; this choice satisfies (i)-(iii) but cannot promise to reach `next`.
 
-The exit condition `φ` here is "`R` empty," reached in the natural course of `pop`s. The instant it holds, the invariant forces `c`'s `k`-occurrence count to zero, so the exit snap (unhook the now-empty `d`, drop slot `k`, renumber any higher siblings) moves no packet and rewrites no live occurrence: it is a pure rewiring into `next`, so exit-soundness (iii) holds. _Cost:_ none; nothing is dropped. _Latency:_ unbounded: a steady stream of `gmail` or `zoom` traffic can starve `spotify` indefinitely, so the exit may never fire. This is the choice that fails _liveness_ (iv): it satisfies conditions (i)-(iii) but cannot promise to reach `next`.
+_Cost:_ none; nothing is dropped. _Latency:_ unbounded.
 
 ##### Choice 3.
 
-The entry snap and the `link` are identical to choice 2; only the exit condition changes, to "`R` empty _or_ a wall-clock budget of `T` milliseconds elapsed, whichever comes first." If `R` drains before `T`, the exit is choice 2's free rewiring and nothing is lost. If `T` fires first with `R` non-empty, the exit snap is choice 1's drop applied to the residue: discard the leftover packets of `R` and tombstone their occurrences in `p` as it unhooks `d`. _Cost:_ at most the packets of `R` that did not drain in time. _Latency:_ bounded by `T`. The deadline is precisely what restores the _liveness_ condition (iv) that choice 2 lacked.
+_The four components._ As Choice 2, except the exit. `φ` becomes "`R` empty _or_ a wall-clock budget of `B` milliseconds elapsed, whichever comes first," and `σ_out` branches: if `R` drained, it is Choice 2's free rewiring; if the deadline fired with `R` non-empty, it is Choice 1's drop applied to the residue (discard the leftover packets of `R` and tombstone their occurrences in `p` as it unhooks `d`).
+
+_The four conditions._ Entry-soundness (i) and closure (ii) are exactly Choice 2's. Exit-soundness (iii) holds on both branches: the drained branch is Choice 2's rewiring, the deadline branch is Choice 1's tombstoning drop, each sound. Liveness (iv) now _holds_: the deadline bounds `φ`, so we always reach `next`. _Cost:_ at most the packets of `R` that did not drain in time. _Latency:_ bounded by `B`.
 
 #### [AM: leaving for now, but here we'd discuss the other elements of the grammar, giving an element a subsubsection if warranted]
 
