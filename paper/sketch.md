@@ -237,12 +237,14 @@ The entry snap and the `link` are identical to choice 2; only the exit condition
 
 ### 3.5 Preserving this proof down to hardware
 
-After this, there is a simple and mechanical compilation from the tree diff language to the IL-gen language. At the IL-gen language level, primitives look like `spawn`, `adopt`, etc, and it _is_ possible to create malformed trees. But we can informally argue that our proof at the tree-diff level carries over to the IL level because:
+§3.4 proves soundness at the tree-diff level, where the primitives are coarse (`ArmAdded`, `ArmRemoved`, ...) and every edit carries a well-formed tree to a well-formed tree. To run on hardware, each edit is lowered, by a simple and mechanical compilation, into a sequence of fine-grained instructions in our IR: `Spawn`, `Adopt`, `Emancipate`, `Assoc`, `Deassoc`, `Map`, `Unmap`, `GC`, `Designate`, and the like. A single IR instruction, unlike a whole tree-diff edit, _can_ leave the tree transiently malformed: a freshly `Spawn`ed node is not yet `Adopt`ed by its parent, a class may be `Unmap`ped before its old subtree is `GC`ed, and so on.
 
-- We show our command-to-commands compilation, and assert that it's uncontroversial.
-- We wrap IL-level commands into transactional commits, so that no user would actually get to see the malformed state (and, key to our point, no push/pop would be able to reach the scheduler when it is malformed).
+We do not prove soundness at the IL level, but instead informally make the case for why the §3.4 proof survives the lowering. There are two reasons.
 
-We reuse this trick to again argue that our proof is preserved from the IL level to the h/w level.
+- The compilation is _faithful_: each tree-diff edit expands to a fixed instruction sequence that, when run to completion, realizes exactly that edit. We give the command-to-commands translation and take its faithfulness to be uncontroversial.
+- Our substrate runs each such sequence as a single _transactional commit_: no `push` or `pop` interleaves with a commit's instructions, so the transiently-malformed intermediate trees are never observed. That commit is precisely how the substrate _realizes_ the atomic snap of §3.4.1: the snap was defined as an instantaneous control replacement between two user operations, and the commit is what collapses a multi-instruction lowering into one such instant. Every `push`/`pop` therefore still lands on a well-formed control (`prev`, `link`, or `next`), exactly as §3.4 proved; the IR's transient malformedness lives entirely inside commits, invisible to the user.
+
+The same argument carries from the IR down to hardware: the hardware executes a committed sequence atomically with respect to user operations, so what it exhibits is again what §3.4 proved. The compilation itself, and the substrate machinery that makes a commit atomic, are the subject of §5.
 
 ## 4. Identifying Better Transitions
 
@@ -262,6 +264,7 @@ Leaving for Zhiyuan. We should emphasize that:
 
 - We have rolled our own PIFO substrate; in practice you can use ours or swap it out (e.g., with vPIFO). This is not the point of the contribution. We compose well with any PIFO substrate.
 - Focus on the gadgetry we built to handle transitions nicely.
+- [AM: question for Zhiyuan: §3.5 leans on our substrate executing each lowered instruction sequence as an atomic transactional commit, and that commit is exactly what realizes the §3.4.1 "snap". But we also claim that we compose with _any_ PIFO substrate. So what do we actually require from a substrate? Must it support atomic commits / an atomic install that hides the transiently-malformed intermediate states? Do you know if vPIFO supports this? If a substrate cannot hide those states, does composition break? What do we genuinely need to assume?]
 
 ## 6. Evaluation
 
