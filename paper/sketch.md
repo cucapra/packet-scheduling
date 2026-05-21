@@ -217,7 +217,9 @@ Each is a transition in the sense of §3.4.1; we give its four components and di
 
 _The four components._ The entry snap `σ_in` installs `(s', q', z')`. Piece by piece: `q'` removes `d` from `c`'s child list and, in the _same_ transaction, adds `k` to `c`'s tombstone set (§3.2), leaving `p`'s occurrences of `k` as phantoms that `pop` discards on sight (so we pay nothing to hunt them down); `z'` is `next`'s transaction, which denies entry to the retired class and leaves every surviving route unchanged; and `s'` drops `d`'s scheduling state and `c`'s bookkeeping for `k`. Since the packets of `R` are dropped, the result is already `next` modulo the phantoms, so the `link` is degenerate: `L = C_next`, `φ = true`, and `σ_out` is the identity function.
 
-_The four conditions._ Closure (ii) and liveness (iv) are vacuous, and entry-soundness (i) and exit-soundness (iii) collapse into a single well-formedness check: show that `|-_T C_prev` gives `|-_T C_next`. The surviving slots (`0` and `1` in our example) keep their packets and their occurrences in `p`, so their well-formedness obligation is inherited from `prev`'s `|- q` verbatim, and the leftover occurrences of `k` are exactly the phantoms (§3.2). The packets of `R` cease to exist, so a `pop` after the snap behaves exactly as a `next` pop, skipping phantoms, and §3.2 reclamation upgrades `|-_T q'` to plain `|- next` within bounded time (at most `|R|` phantom-pops). _Cost:_ `R` is dropped. _Latency:_ none.
+_The four conditions._ Closure (ii) and liveness (iv) are vacuous, and entry-soundness (i) and exit-soundness (iii) collapse into a single well-formedness check: show that `|-_T C_prev` gives `|-_T C_next`. The surviving slots (`0` and `1` in our example) keep their packets and their occurrences in `p`, so their well-formedness obligation is inherited from `prev`'s `|- q` verbatim, and the leftover occurrences of `k` are exactly the phantoms (§3.2). The packets of `R` cease to exist, so a `pop` after the snap behaves exactly as a `next` pop, skipping phantoms, and §3.2 reclamation upgrades `|-_T q'` to plain `|- next` within bounded time (at most `|R|` phantom-pops).
+
+_Cost:_ `R` is dropped. _Latency:_ none.
 
 ##### Choice 2.
 
@@ -236,7 +238,9 @@ _Cost:_ none; nothing is dropped. _Latency:_ unbounded.
 
 _The four components._ As Choice 2, except the exit. `φ` becomes "`R` empty _or_ a wall-clock budget of `B` milliseconds elapsed, whichever comes first," and `σ_out` branches: if `R` drained, it is Choice 2's free rewiring; if the deadline fired with `R` non-empty, it is Choice 1's drop applied to the residue (discard the leftover packets of `R` and tombstone their occurrences in `p` as it unhooks `d`).
 
-_The four conditions._ Entry-soundness (i) and closure (ii) are exactly Choice 2's. Exit-soundness (iii) holds on both branches: the drained branch is Choice 2's rewiring, the deadline branch is Choice 1's tombstoning drop, each sound. Liveness (iv) now _holds_: the deadline bounds `φ`, so we always reach `next`. _Cost:_ at most the packets of `R` that did not drain in time. _Latency:_ bounded by `B`.
+_The four conditions._ Entry-soundness (i) and closure (ii) are exactly Choice 2's. Exit-soundness (iii) holds on both branches: the drained branch is Choice 2's rewiring, the deadline branch is Choice 1's tombstoning drop, each sound. Liveness (iv) now _holds_: the deadline bounds `φ`, so we always reach `next`.
+
+_Cost:_ at most the packets of `R` that did not drain in time. _Latency:_ bounded by `B`.
 
 #### [AM: leaving for now, but here we'd discuss the other elements of the grammar, giving an element a subsubsection if warranted]
 
