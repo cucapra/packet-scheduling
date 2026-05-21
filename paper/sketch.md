@@ -125,28 +125,35 @@ prev  --atomic-->  link  --atomic-->  next
 
 We call each atomic regime-change a _snap_. The two arrows are atomic in the §1 sense: every user-observable push/pop happens entirely under `prev`, `link`, or `next`, and never straddles a snap. `link` is itself a packet-scheduling regime over a well-formed PIFO tree, with its own `push`/`pop`. For many edits `link` is _degenerate_: zero-duration, sharing topology and contents with `next` at the instant the entry snap completes, so the two arrows fuse and `prev` abuts `next` directly. For others `link` is substantive, with real duration and stated `push`/`pop`, and the exit snap waits for some stated enabling condition.
 
-We first make `snap`, `link`, and `transition` precise and state the obligations every transition must discharge (§3.4.1). We then instantiate the definition: `ArmAdded` as a warm-up, where `link` is degenerate (§3.4.2); the full menu for `ArmRemoved`, where it is substantive (§3.4.3); and the remaining variants after.
+We first make `snap`, `link`, and `transition` precise and state the conditions every transition must discharge (§3.4.1). We then instantiate the definition: `ArmAdded` as a warm-up, where `link` is degenerate (§3.4.2); the full menu for `ArmRemoved`, where it is substantive (§3.4.3); and the remaining variants after.
 
 #### 3.4.1. Transitions, formally
 
 The transitionary regime looks daunting only if we expect it to be a new kind of object. It is not. `link` is an ordinary control in the sense of §3.1: a triple `(s, q, z)` with the `push`/`pop` already defined there. What is new is not a semantics but the way two controls are spliced in time, and that is what we now pin down.
 
-**Snap.** A _snap_ `σ` replaces the live control by another at a single instant, placed _between_ two user operations. Since no `push` or `pop` straddles that instant, every operation is served by exactly one control; this is the atomicity §1 asked for, and here it holds by construction. A snap may move, synthesize, or drop contents, but we require it to be _sound_: `|- C` implies `|- σ(C)` (well-formedness modulo tombstones, where §3.2 admits them).
+**Snap.** A _snap_ `σ` atomically replaces the live control with another control. So every operation is served by exactly one control, by construction. A snap may move, synthesize, or drop contents, but we require it to be _sound_: `|-_T C` implies `|-_T σ(C)` (the modulo-tombstones judgment of §3.2; for a tombstone-free control this is just `|-`).
 
 **Transition.** A _transition_ realizing a diff, from the running control `C_prev` to the target `C_next`, is a tuple `(σ_in, L, φ, σ_out)`:
 
 - an _entry snap_ `σ_in`, with link control `L = σ_in(C_prev)`;
-- the _link control_ `L`, run under the `push`/`pop` of §3.1, evolving to some `L'` as packets flow;
+- the _link control_ `L`, run under the `push`/`pop` of §3.1, evolving without our intervention to some `L'` as packets flow;
 - an _exit condition_ `φ`, a predicate on `L`'s state and, optionally, on an external clock;
 - an _exit snap_ `σ_out`, fired at the first instant `φ` holds, with `σ_out(L') = C_next`.
 
-**Soundness.** The transition is _sound_ when (i) `σ_in` is sound, so `|- C_prev` gives `|- L`; (ii) `L` is closed, its `push`/`pop` preserving `|- L`; (iii) `σ_out` is sound, so `|- L'` gives `|- C_next`; and (iv) `φ` eventually holds. Obligations (i)-(iii) are _safety_, that the live scheduler is a well-formed control at every instant; (iv) is _liveness_, that we actually reach `next`.
+**Soundness.** The transition is _sound_ when its four _conditions_ hold:
 
-**Degenerate `link`.** When `L = C_next` and `φ = true`, the exit snap is the identity and fires at once: the two snaps fuse, and `prev` abuts `next` with no observable transitionary regime. Obligations (ii) and (iv) are then vacuous and (i), (iii) collapse into one well-formedness check. See `ArmAdded` (§3.4.2).
+- (i) _entry-soundness_, so that `|- C_prev` gives `|-_T L`
+- (ii) _closure_, so that `L`'s own `push`/`pop` preserve `|-_T L`
+- (iii) _exit-soundness_, so that `|-_T L'` gives `|- C_next`
+- (iv) _liveness_, that `φ` eventually holds.
+
+Conditions (i)-(iii) are _safety_, keeping the live scheduler a well-formed control at every instant; liveness (iv) is what makes the transition actually reach `next`.
+
+**Degenerate `link`.** When `L = C_next` and `φ = true`, the exit snap is the identity and fires at once: the two snaps fuse, and `prev` abuts `next` with no observable transitionary regime. Closure (ii) and liveness (iv) are then vacuous, and entry-soundness (i) and exit-soundness (iii) collapse into one well-formedness check. See `ArmAdded` (§3.4.2).
 
 **The menu.** A diff does not determine its transition. In general many tuples `(σ_in, L, φ, σ_out)` realize the same `prev`-to-`next` change at different costs in lossiness and latency, and each is independently sound. We call this set of sound transitions the _menu_. SOTA offers exactly one item, a whole-tree stop-the-world `link`; §4 is largely about choosing more intelligently from the menu.
 
-**Theorem (the transitionary period is just scheduling).** For every diff variant, and every realization given in §3.4.2 onward, the tuple `(σ_in, L, φ, σ_out)` is a sound transition. Hence at every instant the live scheduler is a well-formed control of §3.1, and the user-observable trace is a sequence of ordinary `push`/`pop` operations served first by `C_prev`, then by `L`, then by `C_next`. The "semantics of `link`" is therefore nothing more than the §3.1 semantics of the control we install; each variant's job is to supply the four components and discharge (i)-(iv).
+**Theorem (the transitionary period is just scheduling).** For every diff variant, and every realization given in §3.4.2 onward, the tuple `(σ_in, L, φ, σ_out)` is a sound transition. Hence at every instant the live scheduler is a well-formed control (`|-` of §3.1, or `|-_T` of §3.2 where a realization tombstones), and the user-observable trace is a sequence of ordinary `push`/`pop` operations served first by `C_prev`, then by `L`, then by `C_next`. The "semantics of `link`" is therefore nothing more than the §3.1 semantics of the control we install; each variant's job is to supply the four components and discharge the four conditions.
 
 #### 3.4.2. `ArmAdded(path, arm, weight?)`
 
@@ -193,22 +200,22 @@ _The transaction, `z -> z'`._ `z'` is `next`'s transaction; the retired class is
 
 _The state, `s -> s'`._ Drop `d`'s scheduling state and `c`'s per-slot bookkeeping for `k`; nothing else moves.
 
-_The snap._ `q'` is well-formed modulo tombstones (§3.2): the surviving slots `0, 1` keep their packets and their occurrences in `p`, so they inherit `|- q` verbatim, and the leftover occurrences of `k` are exactly the phantom indices that `pop` now knows how to skip. No surviving packet straddles the snap; the packets of `R` simply cease to exist. So a `pop` after the snap behaves exactly as a `next` pop, skipping the dead index, and we are observationally in `next`. This is §3.4.1's degenerate case, exactly as `ArmAdded` was: the entry and exit snaps coincide and `link` is empty. _Cost:_ `R` is dropped. _Latency:_ none.
+_The snap._ `q'` is well-formed modulo tombstones (`|-_T q'`, §3.2): the surviving slots `0, 1` keep their packets and their occurrences in `p`, so their balance is inherited from `prev`'s `|- q` verbatim, and the leftover occurrences of `k` are exactly the phantom indices that `pop` now knows how to skip. No surviving packet straddles the snap; the packets of `R` simply cease to exist. So a `pop` after the snap behaves exactly as a `next` pop, skipping the dead index, and we are observationally in `next`. This is §3.4.1's degenerate case, exactly as `ArmAdded` was: the entry and exit snaps coincide and `link` is empty. _Cost:_ `R` is dropped. _Latency:_ none.
 
 ##### Choice 2.
 
 The entry snap installs `next`'s transaction while leaving topology and contents untouched. With `k` last, `next`'s surviving arms keep `prev`'s indices `0, 1`, so `next`'s `z` emits only those indices and never `k`; lifted onto `prev`'s still-present topology it is a well-typed transaction that simply declines to route into `d`. (A mid-slot removal needs the same cosmetic index relabeling as §3.4.2's mid-insert, so that `next`'s routing is expressed in `prev`'s current numbering until the exit GC renumbers for real.) The tree and state are untouched: `d` is still present, still holding `R`, and `c`'s `p` still holds `R`-many occurrences of `k`.
 
-This entry snap carries `prev` into a substantive `link` whose topology is `prev`'s and whose transaction is `next`'s. The soundness obligations (i) and (ii) of §3.4.1 hold:
+This entry snap carries `prev` into a substantive `link` whose topology is `prev`'s and whose transaction is `next`'s. Entry-soundness (i) and closure (ii) of §3.4.1 hold:
 
-- (i) The entry snap preserves `|- q` trivially, since it touches only `z`, not the tree.
-- (ii) `link` is closed under its own `push`/`pop`. A `push` follows `z'`, so `d` gains no new members and the surviving arms behave as in `next`; Lemma 3.9 keeps `|- q`. A `pop` proceeds over `prev`'s tree; whenever it serves a packet of `R` it decrements `R` and `c`'s `k`-occurrence count by one in lockstep, preserving the invariant. `R` therefore only shrinks and never grows.
+- _Entry-soundness_ (i): the entry snap preserves `|- q` trivially, since it touches only `z`, not the tree.
+- _Closure_ (ii): `link` is closed under its own `push`/`pop`. A `push` follows `z'`, so `d` gains no new members and the surviving arms behave as in `next`; Lemma 3.9 keeps `|- q`. A `pop` proceeds over `prev`'s tree; whenever it serves a packet of `R` it decrements `R` and `c`'s `k`-occurrence count by one in lockstep, preserving the invariant. `R` therefore only shrinks and never grows.
 
-The exit (obligation (iii)) is enabled when `R` runs empty in the natural course of time. The instant it holds, the invariant forces `c`'s `k`-occurrence count to zero, so the exit snap (unhook the now-empty `d`, drop slot `k`, renumber any higher siblings) moves no packet and rewrites no live occurrence: it is a pure rewiring into `next`. _Cost:_ none; nothing is dropped. _Latency:_ unbounded: a steady stream of `gmail` or `zoom` traffic can starve `spotify` indefinitely, so the exit may never fire. This is the choice that fails the liveness obligation (iv): it is sound on (i)-(iii) but cannot promise to reach `next`.
+The exit (_exit-soundness_, (iii)) is enabled when `R` runs empty in the natural course of time. The instant it holds, the invariant forces `c`'s `k`-occurrence count to zero, so the exit snap (unhook the now-empty `d`, drop slot `k`, renumber any higher siblings) moves no packet and rewrites no live occurrence: it is a pure rewiring into `next`. _Cost:_ none; nothing is dropped. _Latency:_ unbounded: a steady stream of `gmail` or `zoom` traffic can starve `spotify` indefinitely, so the exit may never fire. This is the choice that fails _liveness_ (iv): it satisfies conditions (i)-(iii) but cannot promise to reach `next`.
 
 ##### Choice 3.
 
-The entry snap and the `link` are identical to choice 2; only the exit condition changes, to "`R` empty _or_ a wall-clock budget of `T` milliseconds elapsed, whichever comes first." If `R` drains before `T`, the exit is choice 2's free rewiring and nothing is lost. If `T` fires first with `R` non-empty, the exit snap is choice 1's drop applied to the residue: discard the leftover packets of `R` and tombstone their occurrences in `p` as it unhooks `d`. _Cost:_ at most the residue that did not drain in time. _Latency:_ bounded by `T`. The deadline is precisely what restores the liveness obligation (iv) that choice 2 lacked.
+The entry snap and the `link` are identical to choice 2; only the exit condition changes, to "`R` empty _or_ a wall-clock budget of `T` milliseconds elapsed, whichever comes first." If `R` drains before `T`, the exit is choice 2's free rewiring and nothing is lost. If `T` fires first with `R` non-empty, the exit snap is choice 1's drop applied to the residue: discard the leftover packets of `R` and tombstone their occurrences in `p` as it unhooks `d`. _Cost:_ at most the packets of `R` that did not drain in time. _Latency:_ bounded by `T`. The deadline is precisely what restores the _liveness_ condition (iv) that choice 2 lacked.
 
 ### 3.5 Preserving this proof down to hardware
 
