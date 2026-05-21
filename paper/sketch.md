@@ -104,22 +104,21 @@ We call each atomic regime-change a _snap_. The two arrows are atomic in the §1
 Casting the proof in this shape buys us two things.
 
 - First, the well-formedness obligation always has the same three slots: (i) the entry snap preserves the invariant from §3.1, (ii) `link` is itself closed under its own `push`/`pop` over a well-formed tree, and (iii) the exit snap, the moment its condition fires, preserves the invariant on the way into `next`. When `link` is degenerate, (ii) is vacuous and (i) and (iii) merge.
-- Second, several edits admit more than one realization. These differ in whether `link` is degenerate or substantive, what `link`'s `push`/`pop` actually do, and what the exit condition is, and they carry different lossiness and latency tradeoffs. That "menu" is part of the contribution (see §3.3.2); SOTA exposes only one option (stop-the-world over the whole tree, which in our vocabulary is the maximally pessimistic `link`).
+- Second, several edits admit more than one realization. These differ in whether `link` is degenerate or substantive, what `link`'s `push`/`pop` actually do, and what the exit condition is, and they carry different lossiness and latency tradeoffs. That "menu" is part of the contribution (developed for `ArmRemoved` below); SOTA exposes only one option (stop-the-world over the whole tree, which in our vocabulary is the maximally pessimistic `link`).
 
 We use `ArmAdded` as a warm-up, develop the full menu for `ArmRemoved`, and then point out what is interesting about the remaining variants.
 
 #### 3.3.1. `ArmAdded(path, arm, weight?)` (warm-up; degenerate `link`).
 
 Example: `SP(gmail, zoom)` --atomic--> `SP(gmail, zoom, spotify)`.
-The diff computed according to the grammar in §3.2 is: `ArmAdded { path = [2]; arm = spotify }`. This is an example where the `link` is degenerate, and so the two snaps fuse into one.
+The diff computed according to the grammar in §3.2 is: `ArmAdded { path = [2]; arm = spotify }`.
+By the grammar of §3.2, `ArmAdded` means an arm is _truly_ added: the new arm carries fresh traffic that intersects nothing `prev` was already serving (it was being rejected thus far, say). No `prev`-era packet therefore belongs under the new arm, the `link` is degenerate, and the two snaps fuse into one.
 
 We work entirely with the control triple `(s, q, z)` of §3.1 and develop the new control `(s', q', z')` that the snap installs. We write `c` for the parent node named by `path` (here the root `SP`) and `k` for the index of the new slot (here `2`). We take the append case first, where `spotify` lands at the end of the child list, and handle a mid-order insert afterward.
 
 _The tree, `q -> q'`._ At `c = Internal(qs, p)` we append the new arm to the child list, so its slot `k` is the new last index: `q' = Internal(qs ++ [a], p)`. Here `a` is the _empty_ PIFO tree having whatever topology `arm` described. The parent's index-PIFO `p` is left exactly as it was, because it only ever named the old indices `0..k-1` and so does not name `k` at all.
 
 _The transaction, `z -> z'`._ `z'` is the scheduling transaction compiled from `next`. It is a _conservative extension_ of `z`: for any packet that does not classify into the new arm it defers to `z`, and for a packet that does classify into the new arm it returns a path whose step at `c` selects `k` and then descends through the PIFO tree `a`. Because `k` was not a legal index under `prev`, `z` could never have emitted such a path, so the two transactions differ only on routes that land in the previously-nonexistent subtree.
-
-Above, `spotify`'s traffic is assumed disjoint from `gmail`'s and `zoom`'s, so no `prev`-era packet belongs under the new arm in the `next` era. That is exactly what makes the move atomic. If `next` instead _reclassifies_ a flow that `prev` already routed to an existing arm, then `z` and `z'` disagree on that flow and the move is no longer atomic: previously buffered packets stay enqueued under the old arm, where `prev` placed them, and only future arrivals reach `k`, where `next` places them. They drain at the old arm's priority rather than `k`'s, which an observer can see by popping, so the post-snap regime is a substantive `link`, not `next`, until that residue clears. How best to realize the link (drain the residue in place, or migrate it into `k` at the snap) is TK.
 
 _The state, `s -> s'`._ `s'` agrees with `s` everywhere, except that it records the initial local state for the new slot: the new arm's own scheduling state at its from-scratch value (it is empty), plus whatever per-slot bookkeeping `c`'s scheduler keeps (an RR cursor, the slot's weight taken from the edit's `weight?`, a virtual-finish accumulator, etc.). No existing slot's state is disturbed.
 
