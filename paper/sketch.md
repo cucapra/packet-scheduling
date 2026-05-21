@@ -76,7 +76,7 @@ We say `q` is _well-formed modulo tombstones_, written `|-_T q`, when at every i
 Two facts make our changes to `pop` harmless:
 
 - _Phantoms only vanish._ A phantom-pop removes one occurrence of a phantom index, and a `push` never adds one (the transition that adds `k` to the tombstone set `T` also installs a new scheduling transaction that routes nothing new to `k`). So each node's phantom count is monotonically non-increasing.
-- _Reclamation recovers `|-`._ Once a tombstoned index's phantom count hits zero, `p` no longer needs to name the index in `T`; the dead slot may be recycled and its higher-indexed siblings renumbered, leaving an ordinary `|-` tree. Until then `|-_T` is exactly the invariant we need, and `|-` is the special case with `T` empty on all PIFOs.
+- _Reclamation recovers `|-`._ Once a tombstoned index's phantom count hits zero, `p` no longer needs to name the index in `T`; the dead slot may be recycled and its higher-indexed siblings renumbered, leaving an ordinary `|-` tree. Until then `|-_T` is exactly the invariant we need, and `|-` is the special case with `T` empty on all PIFOs. Of course, if `q` has no tombstones, then `|-_T q` implies `|- q`.
 
 ### 3.3 A Grammar for Tree Diffs
 
@@ -123,9 +123,9 @@ Every transition from `prev` to `next` factors through a third regime that we na
 prev  --atomic-->  link  --atomic-->  next
 ```
 
-We call each atomic regime-change a _snap_. The two arrows are atomic in the §1 sense: every user-observable push/pop happens entirely under `prev`, `link`, or `next`, and never straddles a snap. `link` is itself a packet-scheduling regime over a well-formed PIFO tree, with its own `push`/`pop`. For many edits `link` is _degenerate_: zero-duration, sharing topology and contents with `next` at the instant the entry snap completes, so the two arrows fuse and `prev` abuts `next` directly. For others `link` is substantive, with real duration and stated `push`/`pop`, and the exit snap waits for some stated enabling condition.
+We call each atomic regime-change a _snap_. The two arrows are atomic in the §1 sense: every user-observable `push`/`pop` happens entirely under `prev`, `link`, or `next`, never straddling the instantaneous snap between them. `link` is itself a packet-scheduling regime over a well-formed PIFO tree. For some edits `link` is _degenerate_: zero-duration, sharing topology and contents with `next` at the instant the entry snap completes, so the two arrows fuse and `prev` abuts `next` directly. For others `link` is substantive, with real duration and stated `push`/`pop` semantics, and the exit snap waits for some stated enabling condition.
 
-We first make `snap`, `link`, and `transition` precise and state the conditions every transition must discharge (§3.4.1). We then instantiate the definition: `ArmAdded` as a warm-up, where `link` is degenerate (§3.4.2); the full menu for `ArmRemoved`, where it is substantive (§3.4.3); and the remaining variants after.
+We first make `snap`, `link`, and `transition` precise and state the conditions every transition must discharge (§3.4.1). We then instantiate the definition: `ArmAdded` as a warm-up, where `link` is degenerate (§3.4.2); the full repertoire for `ArmRemoved`, where it is substantive (§3.4.3); and the remaining variants after. §3.5 carries our hard-won guarantees down to hardware.
 
 #### 3.4.1. Transitions, formally
 
@@ -133,39 +133,39 @@ The transitionary regime looks daunting only if we expect it to be a new kind of
 
 ##### Snap
 
-A _snap_ `σ` atomically replaces the live control with another, between two user operations, so that every operation is served by exactly one control, by construction. A snap may move, synthesize, or drop contents, but we require it to be _sound_: `|-_T C` implies `|-_T σ(C)` (the modulo-tombstones judgment of §3.2; for a tombstone-free control this is just `|-`).
+A _snap_ `σ` atomically replaces the live control with another, between two user operations, so that every operation is served by exactly one control, by construction. A snap may move, synthesize, or drop contents, but we require it to be _sound_: `|-_T C` must imply `|-_T σ(C)`.
 
 ##### Transition
 
 A _transition_ realizing a diff, from the running control `C_prev` to the target `C_next`, is a tuple `(σ_in, L, φ, σ_out)`:
 
-- an _entry snap_ `σ_in`, with link control `L = σ_in(C_prev)`;
-- the _link control_ `L`, run under the `push`/`pop` of §3.1, evolving without our intervention to some `L'` as packets flow;
-- an _exit condition_ `φ`, a predicate on `L`'s state and, optionally, on an external clock;
-- an _exit snap_ `σ_out`, fired at the first instant `φ` holds, with `σ_out(L') = C_next`.
+- an _entry snap_ `σ_in`, with link control `L = σ_in(C_prev)`
+- the _link control_ `L`, run under the `push`/`pop` of §3.1, evolving without our further intervention into some `L'` as packets flow
+- an _exit condition_ `φ`, a predicate on `L`'s state and, optionally, on an external clock
+- an _exit snap_ `σ_out`, fired at the first instant `φ` holds, with `σ_out(L')` being `C_next`, perhaps featuring some phantoms that are reclaimed with time
 
 ##### Soundness
 
 The transition is _sound_ when its four _conditions_ hold:
 
-- (i) _entry-soundness_, so that `|- C_prev` gives `|-_T L`
-- (ii) _closure_, so that `L`'s own `push`/`pop` preserve `|-_T L`
-- (iii) _exit-soundness_, so that `|-_T L'` gives `|-_T C_next`
-- (iv) _liveness_, that `φ` eventually holds.
+- (i) _entry-soundness_: `|-_T C_prev` gives `|-_T L`
+- (ii) _closure_: `L`'s own `push`/`pop` preserve `|-_T L`
+- (iii) _exit-soundness_: `|-_T L'` gives `|-_T C_next`
+- (iv) _liveness_: `φ` eventually holds.
 
-Conditions (i)-(iii) are _safety_, keeping the live scheduler well-formed modulo tombstones at every instant; liveness (iv) is what drives the transition to `next`. Exit-soundness lands us in `next` well-formed modulo tombstones; where the exit leaves phantoms, §3.2 reclamation upgrades `|-_T C_next` to plain `|- C_next` within bounded time, so we reach `next` truly, not merely observably.
+Conditions (i)-(iii) are _safety_, keeping the live scheduler well-formed modulo tombstones at every instant; condition (iv) is what drives the transition to `next`. Exit-soundness lands us in `next` well-formed modulo tombstones. Although the exit may leave phantoms in the tree, §3.2 shows that reclamation upgrades `|-_T C_next` to plain `|- C_next` within bounded time, so we reach `next` truly, not merely observably.
 
 ##### Degenerate `link`
 
-When `L = C_next` (exactly, or modulo tombstones that §3.2 reclaims in bounded time) and `φ = true`, the exit snap is the identity and fires at once: the two snaps fuse, and `prev` abuts `next` with no observable transitionary regime. Closure (ii) and liveness (iv) are then vacuous, and entry-soundness (i) and exit-soundness (iii) collapse into one well-formedness check. See `ArmAdded` (§3.4.2; no tombstones) and `ArmRemoved` Choice 1 (§3.4.3; modulo tombstones).
+When `L = C_next` (either exactly, or modulo tombstones) and `φ = true`, the exit snap is the identity and fires at once: the two snaps fuse, and `prev` abuts `next` with no observable transitionary regime. Closure (ii) and liveness (iv) are then vacuous, and entry-soundness (i) and exit-soundness (iii) collapse into one well-formedness check. See `ArmAdded` (§3.4.2; no tombstones) and `ArmRemoved`'s Choice 1 (§3.4.3; modulo tombstones).
 
-##### The menu
+##### The repertoire
 
-A diff does not determine its transition. In general many tuples `(σ_in, L, φ, σ_out)` realize the same `prev`-to-`next` change at different costs in lossiness and latency, and each is independently sound. We call this set of sound transitions the _menu_. SOTA offers exactly one item, a whole-tree stop-the-world `link`; §4 is largely about choosing more intelligently from the menu.
+A diff does not totally determine its transition. In general many tuples `(σ_in, L, φ, σ_out)` realize the same `prev`-to-`next` change at different costs in lossiness and latency, and each is independently sound. We call this set of sound transitions the _repertoire_. SOTA offers exactly one item, a whole-tree stop-the-world `link`; §4 is largely about choosing more intelligently from the repertoire.
 
 ##### Theorem (the transitionary period is just scheduling)
 
-For every diff variant, and every realization given in §3.4.2 onward, the tuple `(σ_in, L, φ, σ_out)` is a sound transition. Hence at every instant the live scheduler is a well-formed control (`|-` of §3.1, or `|-_T` of §3.2 where a realization tombstones), and the user-observable trace is a sequence of ordinary `push`/`pop` operations served first by `C_prev`, then by `L`, then by `C_next`. The "semantics of `link`" is therefore nothing more than the §3.1 semantics of the control we install; each variant's job is to supply the four components and discharge the four conditions.
+For every diff variant, and every realization given in §3.4.2 onward, the tuple `(σ_in, L, φ, σ_out)` is a sound transition. Hence at every instant the live scheduler is a well-formed control (`|-` of §3.1, or `|-_T` of §3.2 where a realization has tombstones), and the user-observable trace is a sequence of ordinary `push`/`pop` operations served first by `C_prev`, then by `L`, then by `C_next`. The "semantics of `link`" is therefore nothing more than the §3.1 semantics of the control we install; each variant's job is to supply the four components (`σ_in`, `L`, `φ`, `σ_out`) and discharge the four conditions (entry-soundness, closure, exit-soundness, liveness).
 
 #### 3.4.2. `ArmAdded(path, arm, weight?)`
 
