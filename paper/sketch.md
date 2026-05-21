@@ -38,8 +38,8 @@
 
 ### 2.3 Revisiting our running examples
 
-- Moving from `SP(gmail, zoom)` to `SP(gmail, zoom, spotify)`. This is the easy case: the diff is a leaf append, and the existing siblings' ranks are preserved. In principle, a substrate could install the new child without a transitionary period. This could be a targeted append to the Operation Generation Table and PIFO Instance Address Table, leaving the rest of the scheduler running. vPIFO as published cannot do this, but for a more basic reason than one might guess: it offers no runtime update mechanism at all, cheap or otherwise. Even when the user's intent is a single leaf append, there is no published path from "new SDL program" to "live hardware" that does anything finer than a full reinitialization. That is what our layer adds: given the (small) diff here, we can drive a compatible substrate to install it in place.
-- Moving from `SP(gmail, zoom)` to `SP(gmail, RR(zoom, spotify))` is where the real problem lives. The diff is structural: an internal node appears between `SP` and `zoom`, and `zoom` is re-parented. No single atomic operation realizes this on hardware that maps depth-to-PE; some in-flight packets are already enqueued under the old shape. We must enter a transitionary `link` policy that is well-defined on both old and new arriving packets, drop or recirculate the residue, and then atomically jump to the user's request.
+- Moving from `SP(gmail, zoom)` to `SP(gmail, zoom, spotify)`. This is the easy case: the diff is a leaf append, and the existing siblings' ranks are preserved. In principle, a substrate could install the new child without a transitionary period. In vPIFO's setup, this could be a targeted append to the Operation Generation Table and PIFO Instance Address Table, leaving the rest of the scheduler running. vPIFO as published cannot do this, but for a more basic reason than one might guess: it offers no runtime update mechanism at all, cheap or otherwise. Even when the user's intent is a single leaf append, there is no published path from "new SDL program" to "live hardware" that does anything finer than a full reinitialization. That is what our layer adds: given the (small) diff here, we can drive a compatible substrate to install it in place.
+- Moving from `SP(gmail, zoom)` to `SP(gmail, RR(zoom, spotify))` is where the real problem lives. The diff is structural: an internal node appears between `SP` and `zoom`, and `zoom` is re-parented. No single atomic operation realizes this on hardware that maps depth-to-PE; some in-flight packets are already enqueued under the old shape. We must atomically enter a transitionary `link` policy that is well-defined on both old and new arriving packets, drop or recirculate the residue, and then atomically jump to the user's requested policy.
 
 ## 3. Formalizing the Transition Phase `link`
 
@@ -61,24 +61,24 @@ We fix a small grammar of structural edits between two well-formed policy trees 
 
 ```
 diff   ::= Same
-         | ArmAdded       (path, arm)
-         | ArmAddedWFQ    (path, arm, weight)
-         | ArmRemoved     (path, arm)
-         | WeightChanged  (path, weight)
-         | ArmReplaced    (path, arm)
-         | ArmReplacedWFQ (path, arm, weight)
-         | SuperPol       (path)
-         | SubPol         (path)
+         | ArmAdded      (path, arm, weight?)
+         | ArmRemoved    (path, arm)
+         | WeightChanged (path, weight)
+         | ArmReplaced   (path, arm, weight?)
+         | SuperPol      (path)
+         | SubPol        (path)
 
 path   ::= []  |  i :: path        // i is a child index
 arm    ::= a well-formed policy subtree
 weight ::= a positive real
 ```
 
+`ArmAdded` and `ArmReplaced` carry a `weight` exactly when the slot they edit hangs off a WFQ parent, which needs a weight to schedule the arm; for any other parent the weight is absent. Our implementation splits each of these into two constructors, one with the weight and one without (`ArmAdded`/`ArmAddedWFQ`, `ArmReplaced`/`ArmReplacedWFQ`), so the field is never an ill-typed optional; we fold them here to keep the presentation light.
+
 A note on the more subtle variants:
 
 - `WeightChanged (path, weight)` targets the arm whose root sits at `path`; it overwrites the weight that arm's parent uses for it. It is well-defined only when the parent at `path`'s prefix runs WFQ and `path` is non-empty.
-- `SubPol (path)` fires when `next` appears verbatim as a subtree of `prev` at `path` — the transition prunes `prev` down to that subtree and discards everything around it. The retained subtree keeps its in-flight contents; the surrounding structure is garbage-collected.
+- `SubPol (path)` fires when `next` appears verbatim as a subtree of `prev` at `path`. The transition prunes `prev` down to that subtree and discards everything around it. The retained subtree keeps its in-flight contents; the surrounding structure is garbage-collected.
 - `SuperPol (path)` is the converse: it fires when `prev` appears verbatim as a subtree of `next` at `path`. The transition grafts the new surrounding structure around `prev`, which is re-parented at `path` and keeps its in-flight contents.
 - `SubPol`/`SuperPol` need neither a constructor nor a description of the displaced/added structure: the patcher recovers everything it needs from `prev` and `next` themselves, which it already has.
 
@@ -93,9 +93,37 @@ We make no claim that the sniffer is canonical or minimal; we claim only that wh
 
 ### 3.3 Edits Preserve Well-Formedness
 
-Show how a well-formed tree in _Formal Abstractions_ would absorb a primitive from the BNF in 3.2 and become a new well-formed tree. This is the core proof.
+Every transition from `prev` to `next` factors through a third regime that we name `link`:
 
-At the IRL meeting on May 20 we agreed to do this proof _at this level_ (where primitives are coarse, like `ArmAdded`, `WeightChanged`, etc). A benefit of this choice is that we believe that the core proof is tractable at this level!
+```
+prev  --atomic-->  link  --atomic-->  next
+```
+
+We call each atomic regime-change a _snap_. The two arrows are atomic in the §1 sense: every user-observable push/pop happens entirely under `prev`, `link`, or `next`, and never straddles a snap. `link` is itself a packet-scheduling regime over a well-formed PIFO tree, with its own `push`/`pop`. For many edits `link` is _degenerate_: zero-duration, sharing topology and contents with `next` at the instant the entry snap completes, so the two arrows fuse and `prev` abuts `next` directly. For others `link` is substantive, with real duration and stated `push`/`pop`, and the exit snap waits for some stated enabling condition.
+
+Casting the proof in this shape buys us two things.
+
+- First, the well-formedness obligation always has the same three slots: (i) the entry snap preserves the invariant from §3.1, (ii) `link` is itself closed under its own `push`/`pop` over a well-formed tree, and (iii) the exit snap, the moment its condition fires, preserves the invariant on the way into `next`. When `link` is degenerate, (ii) is vacuous and (i) and (iii) merge.
+- Second, several edits admit more than one realization. These differ in whether `link` is degenerate or substantive, what `link`'s `push`/`pop` actually do, and what the exit condition is, and they carry different lossiness and latency tradeoffs. That "menu" is part of the contribution (see §3.3.2); SOTA exposes only one option (stop-the-world over the whole tree, which in our vocabulary is the maximally pessimistic `link`).
+
+We use `ArmAdded` as a warm-up, develop the full menu for `ArmRemoved`, and then point out what is interesting about the remaining variants.
+
+#### 3.3.1. `ArmAdded(path, arm, weight?)` (warm-up; degenerate `link`).
+
+Example: `SP(gmail, zoom)` --atomic--> `SP(gmail, zoom, spotify)`.
+The diff computed according to the grammar in §3.2 is: `ArmAdded { path = [2]; arm = spotify }`. This is an example where the `link` is degenerate and so we have fused to two snaps into one.
+
+We work entirely with the control triple `(s, q, z)` of §3.1 and develop the new control `(s', q', z')` that the snap installs. Write `c` for the parent node named by `path` (here the root `SP`) and `k` for the index of the new slot (here `2`).
+
+_The tree, `q -> q'`._ At `c = Internal(qs, p)` we splice the new arm into the child list at index `k`: `q' = Internal(qs', p')`, where `qs'` is `qs` with a fresh PIFO tree `a` inserted at index `k`. Here `a` is the _empty_ PIFO tree having whatever topology `arm` described: an empty packet-PIFO if `arm` is a leaf, and empty index-PIFOs throughout if it is internal. The children formerly at indices `>= k` shift up by one to make room (in an append, `k` is last, so nothing shifts). The parent's index-PIFO `p` becomes `p'` only to follow that renumbering: every entry naming an old index `>= k` is bumped up by one. This relabels index _values_ but moves no packet and changes no rank. Immediately after the splice, no entry of `p'` names `k`: in an append because `p` only ever named the old indices `0..k-1`, and in a middle insert because the old `>= k` entries were all bumped past `k`.
+
+_The transaction, `z -> z'`._ `z'` is the scheduling transaction compiled from `next`. It is a _conservative extension_ of `z`: for any packet that does not classify into the new arm it returns the identical decorated path and ranks that `z` did, and for a packet that does classify into the new arm it returns a path whose step at `c` selects `k` and then descends through `a`. Because `k` was not a legal index under `prev`, `z` could never have emitted such a path, so the two transactions differ only on routes that land in the previously-nonexistent slot.
+
+_The state, `s -> s'`._ `s'` agrees with `s` everywhere, except that it records the initial local state for the new slot: the new arm's own scheduling state at its from-scratch value (it is empty), plus whatever per-slot bookkeeping `c`'s discipline keeps (an RR cursor entry, or, for the WFQ flavor, the slot's weight taken from the edit's `weight?` together with a zeroed virtual-finish accumulator). No existing slot's state is disturbed.
+
+_The snap is atomic, and `link` is degenerate._ Two facts do the work. First, `q'` is well-formed: at slot `k` the parent has exactly zero occurrences of `k` (no entry of `p'` names `k`, as established above) and the new arm `a` holds zero packets (it is empty), so the well-formedness obligation (§3.1) reads `0 = 0`, and every other slot inherits its obligation verbatim from `|- q` (the renumbering carried each old slot's matched count of occurrences and packets up together). So `q'` needs no repair. Second, no in-flight packet straddles the snap: every packet resident at the snap instant lives in the shared structure `qs`, carried into `q'` unchanged, and none is under `k`. Hence a `pop` issued immediately after the snap returns exactly what a `pop` issued immediately before would have, ranked identically, since the empty new slot contributes nothing; and the first `push` governed by `z'` that routes to `k` is the first packet ever to occupy `a`, which Lemma 3.9 admits while preserving `|- q'`. There is nothing for a transitionary regime to do: the two snaps of the general picture fuse, `link` has zero duration, and we pass directly from `prev`'s control to `next`'s. This is the formal counterpart of the "easy case" of §2.3.
+
+### Preserving this proof down to hardware
 
 After this, there is a simple and mechanical compilation from the tree diff language to the IL-gen language. At the IL-gen language level, primitives look like `spawn`, `adopt`, etc, and it _is_ possible to create malformed trees. But we can informally argue that our proof at the tree-diff level carries over to the IL level because:
 
@@ -106,9 +134,9 @@ We reuse this trick to again argue that our proof is preserved from the IL level
 
 ## 4. Identifying Better Transitions
 
-Now that we're on firm ground, we can go back and revisit our diff-sniffer. SOTA is to stop the world. Our give-up case is to do a full-scale drain. Here we show how we can identify diffs more precisely, and thereby contain the transition to a smaller blast zone.
+Now that we're on firm ground, we can go back and revisit our diff-sniffer. Our give-up case is the whole-tree `ArmReplaced { path = []; arm = next }`; §3.3 showed that this routes through the maximally pessimistic `link`, whose realizations span a full-tree drain (lossless, slow) and a stop-the-world drop (lossy); the latter is SOTA. Either way the blast zone is the entire tree. Here we show how we can identify diffs more precisely, and how we can give up at a deeper part of the tree if we need to, so that the transition routes through a `link` confined to a small subtree and leaves the rest of the scheduler running.
 
-There are lots of examples to show here, and possibly some beefing-up of compare.ml itself.
+There are lots of examples to show here, and possibly some beefing-up of compare.ml itself. TK.
 
 ## 5. Compiling to Hardware
 
