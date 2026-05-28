@@ -15,7 +15,7 @@
   - time1: `SP(gmail, zoom)` is running
   - time2: the request to move to `SP(gmail, zoom, spotify)` is received. `SP(gmail, zoom)` is still running
   - time3: we move to `SP(gmail, zoom, spotify)`. Whatever user-observable interaction (push/pop) happened immediately before time3 happened entirely in the `SP(gmail, zoom)` regime, and whatever push/pop happened immediately after time3 happened entirely in the `SP(gmail, zoom, spotify)` regime. We therefore refer to the transition at time3 as _atomic_.
-  - [AM note: time3 = time2 in this case? I don't want to make that change here since it would conflate atomicity with immediacy, but do we think someone will scratch their head and ask why any time is needed at all?]
+  - [AM note: time2 = time3 in this case? I don't want to make that change here since it would conflate atomicity with immediacy, but do we think someone will scratch their head and ask why any time is needed at all?]
 - What about transitioning to `SP(gmail, RR(zoom, spotify))`? It is not as easy. We atomically step into a _transitionary period_ during which the scheduler still accepts and emits packets, and once certain well-defined conditions are met we atomically step into the user-requested policy.
 - It is crucial to note that, although the user never described to us the semantics of the transitionary period, it _is_ in fact a _de facto_ packet scheduling regime with some semantics! It is useful to recognize it as a scheduling policy in its own right (we give it the name `link`). There are clearly better and worse transitions from a network operator's point of view. SOTA has more-or-less unintentionally adopted a trivial stop-the-world `link`. Our contributions include both being clear about what `link` is and improving on it.
 - Concretely:
@@ -52,7 +52,7 @@ A _topology_ `t` is a finite tree carrying no data: either a single node `*` or 
 
 #### The two user-observable operations
 
-`push(q, pkt, pt)` enqueues `pkt` along a precomputed path `pt = (i_1, r_1) :: ... :: (i_n, r_n) :: r_{n+1}`. The path is richly decorated: it tells the PIFO of each internal node along the path what child index to enqueue and what rank to use for that enqueue. At the leaf level it tells the leaf's PIFO what rank to use when enqueuing the packet itself. `pop(q)` returns the most favorably ranked packet by popping the root to yield a child index, recursing into that child, until finally emitting a packet from the leaf. These are the _only_ user-visible interactions with a scheduler, which is why §1's notion of an _atomic_ transition is stated in terms of `push`/`pop` observability: every `push`/`pop` happens agains a well-defined scheduler, never a half-edited intermediate scheduler.
+`push(q, pkt, pt)` enqueues `pkt` along a precomputed path `pt = (i_1, r_1) :: ... :: (i_n, r_n) :: r_{n+1}`. The path is richly decorated: it tells the PIFO of each internal node along the path what child index to enqueue and what rank to use for that enqueue. At the leaf level it tells the leaf's PIFO what rank to use when enqueuing the packet itself. `pop(q)` returns the most favorably ranked packet by popping the root to yield a child index, recursing into that child, until finally emitting a packet from the leaf. These are the _only_ user-visible interactions with a scheduler, which is why §1's notion of an _atomic_ transition is stated in terms of `push`/`pop` observability: every `push`/`pop` happens against a well-defined scheduler, never a half-edited intermediate scheduler.
 
 #### Well-formedness
 
@@ -88,14 +88,14 @@ Notes on the individual edits:
 
 - `AddArm` carries a `weight` exactly when the slot it edits hangs off a WFQ parent, which needs a weight to schedule the arm; for any other parent the weight is absent.
 - `Quiesce (path)` stops routing new traffic to the arm at `path`. It is a transaction-only edit: topology and contents are untouched, so the quiesced arm keeps being served and drains under load. It adds no structure and removes none.
-- `Designate (path, tree)` spawns `tree` as a sibling of the subtree that `path` points to. The new tree is the _designated survivor_ of the original subtree: the new tree can receive new packets, but, while the original subtree has packets, the original subtree gets strict preference. Once the original subtree is empty, the `tree` takes its place.
+- `Designate (path, tree)` spawns `tree` as a sibling of the subtree that `path` points to. The new tree is the _designated survivor_ of the original subtree: the new tree can receive new packets, but, while the original subtree has packets, the new tree cannot be popped.
 - `RemoveArm (path)` structurally removes the subtree at `path`, dropping its slot and renumbering any higher siblings. The subtree must be _empty_: removing an occupied subtree would leave its parent with dangling indices.
 - `ChangeWeight (path, weight)` targets the arm whose root sits at `path`; it overwrites the weight that arm's parent uses for it. It is well-defined only when the parent at `path`'s prefix runs WFQ and `path` is non-empty.
 - `GraftInto (tree_h)` fires when `prev` is to become a subtree of a larger `next`. The edit spawns `tree_h` and fills its single hole with `prev`, which keeps its in-flight contents. The ancestor nodes of `prev` in `tree_h[prev]` are populated with the (unexciting) indices required to make `tree_h[prev]` well-formed. The rest of the tree is spawned empty.
 
 ### 3.3 Edits Preserve Well-Formedness
 
-[TK: pulled out to `closed.md` for reworking; will return here.]
+[AM TK: pulled out for reworking; will return here.]
 
 ### 3.4 Preserving this proof down to hardware
 
