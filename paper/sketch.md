@@ -84,34 +84,37 @@ We fix a small grammar of structural edits between two well-formed policy trees 
 
 ```
 diff   ::= Same
-         | ArmAdded      (path, arm, weight?)
-         | ArmRemoved    (path, arm)
+         | ArmAdded      (path, tree, weight?)
+         | ArmRemoved    (path, tree)
          | WeightChanged (path, weight)
-         | ArmReplaced   (path, arm, weight?)
-         | SuperPol      (path)
-         | SubPol        (path)
+         | ArmReplaced   (path, tree, weight?)
+         | Graft         (tree_h)
+         | PruneDownTo   (path)
 
 path   ::= []  |  i :: path        // i is a child index
-arm    ::= a well-formed policy subtree
+tree   ::= a well-formed policy subtree
+tree_h ::= a well-formed policy tree with a single _hole_ (see below)
 weight ::= a positive real
 ```
 
 `ArmAdded` and `ArmReplaced` carry a `weight` exactly when the slot they edit hangs off a WFQ parent, which needs a weight to schedule the arm; for any other parent the weight is absent. Our implementation splits each of these into two constructors, one with the weight and one without (`ArmAdded`/`ArmAddedWFQ`, `ArmReplaced`/`ArmReplacedWFQ`), so the field is never an ill-typed optional; we fold them here to keep the presentation light.
 
+The `tree_h` carried by `Graft` is a _tree with a hole_: an ordinary policy tree in which exactly one child slot holds a distinguished _hole_ rather than an arm. The hole is a reserved, empty slot, not an absence of a slot. Importantly, the policy at the _parent_ of the hole has an arity that includes the hole. `RR(A, B, hole)` is a round-robin node of arity three whose third slot is vacant; it is different from `RR(A, B)`, a round-robin node of arity two. We write `tree_h[s]` for the ordinary, hole-free tree obtained by replacing the unique hole of `tree_h` with the subtree `s`; the fill is total, and well-formed whenever `s` and `tree_h` are well-formed.
+
 A note on the more subtle variants:
 
 - `WeightChanged (path, weight)` targets the arm whose root sits at `path`; it overwrites the weight that arm's parent uses for it. It is well-defined only when the parent at `path`'s prefix runs WFQ and `path` is non-empty.
-- `SubPol (path)` fires when `next` appears verbatim as a subtree of `prev` at `path`. The transition prunes `prev` down to that subtree and discards everything around it. The retained subtree `next` keeps its in-flight contents; the surrounding structure is garbage-collected.
-- `SuperPol (path)` is the converse: it fires when `prev` appears verbatim as a subtree of `next` at `path`. The transition grafts the new surrounding structure around `prev`, which is re-parented at `path` and keeps its in-flight contents.
+- `PruneDownTo (path)` fires when `next` appears verbatim as a subtree of `prev` at `path`. Since `next` already lives inside `prev` (it is `prev[path]`, the subtree of `prev` reached by following `path`), the path alone is enough to identify it. The transition removes arms of `prev` such that the subtree `prev[path]` is all that remains. The subtree keeps its in-flight contents, and the surrounding structure is garbage-collected.
+- `Graft (tree_h)` is the converse: it fires when `prev` appears verbatim as a subtree of `next`. Now `prev` is the inner piece, so the surrounding structure of `next` cannot be read off `prev`; `Graft` carries it as `tree_h`, whose hole marks where `prev` belongs, such that `next = tree_h[prev]`. The transition spawns `tree_h` and fills its one hole with `prev`. The subtree `prev` keeps its in-flight contents. This creates `next = tree_h[prev]`, a regular tree without a hole.
 
 Let us revisit the two transitions from §1 and see what our diff-sniffer (§4), produces.
 
-- `SP(gmail, zoom)` -> `SP(gmail, zoom, spotify)`. The two roots agree on constructor (`SP`); their child lists differ only in that `spotify` has been appended at index 2. The sniffer returns `ArmAdded { path = [2]; arm = spotify }`.
-- `SP(gmail, zoom)` -> `SP(gmail, RR(zoom, spotify))`. The roots again agree on constructor, and the child lists differ at exactly one slot: index 1, where the leaf `zoom` has been swapped for the subtree `RR(zoom, spotify)`. The sniffer recurses into the slot and, finding _no finer single edit_, falls back and claims that the entire `zoom` arm has been replaced: `ArmReplaced { path = [1]; arm = RR(zoom, spotify) }`. The path `[1]` tells the substrate that everything outside child 1 of the root is untouched. The transitionary `link` only needs to handle the residue under `zoom`, so `gmail` and the root `SP` keep running.
+- `SP(gmail, zoom)` -> `SP(gmail, zoom, spotify)`. The two roots agree on constructor (`SP`); their child lists differ only in that `spotify` has been appended at index 2. The sniffer returns `ArmAdded { path = [2]; tree = spotify }`.
+- `SP(gmail, zoom)` -> `SP(gmail, RR(zoom, spotify))`. The roots again agree on constructor, and the child lists differ at exactly one slot: index 1, where the leaf `zoom` has been swapped for the subtree `RR(zoom, spotify)`. The sniffer recurses into the slot and, finding _no finer single edit_, falls back and claims that the entire `zoom` arm has been replaced: `ArmReplaced { path = [1]; tree = RR(zoom, spotify) }`. The path `[1]` tells the substrate that everything outside child 1 of the root is untouched. The transitionary `link` only needs to handle the residue under `zoom`, so `gmail` and the root `SP` keep running.
 
 Note that ours is a _single-edit sniffer._ Every non-`Same` variant describes exactly one structural change at one path. A multi-arm divergence is not expressible directly; the diff-sniffer collapses it to `ArmReplaced` at the closest enclosing path. If `ArmReplaced` has `path = []`, that means "I could not localize the changes any further than the whole tree."
 
-Indeed, in the `SP(gmail, zoom)` -> `SP(gmail, RR(zoom, spotify))` example we could have "succeeded" with: `ArmReplaced { path = []; arm = SP(gmail, RR(zoom, spotify)) }`. In general we can _always_ succeed with `ArmReplaced { path = []; arm = _the whole new tree_}`. This is functionally our give-up-entirely token; §4 is in large part the story of pushing give-ups deeper into the tree and therefore minimizing the splash zone of the change.
+Indeed, in the `SP(gmail, zoom)` -> `SP(gmail, RR(zoom, spotify))` example we could have "succeeded" with: `ArmReplaced { path = []; tree = SP(gmail, RR(zoom, spotify)) }`. In general we can _always_ succeed with `ArmReplaced { path = []; tree = _the whole new tree_}`. This is functionally our give-up-entirely token; §4 is in large part the story of pushing give-ups deeper into the tree and therefore minimizing the splash zone of the change.
 
 We make no claim that the sniffer is canonical or minimal; we claim only that whatever it returns is a sound description of the transition from `prev` to `next`, and that §3.4 will show every variant absorbs cleanly into a well-formed tree.
 
@@ -167,10 +170,10 @@ A diff does not totally determine its transition. In general many tuples `(σ_in
 
 For every diff variant, and every realization given in §3.4.2 onward, the tuple `(σ_in, L, φ, σ_out)` is a sound transition. Hence at every instant the live scheduler is a well-formed control (`|-` of §3.1, or `|-_T` of §3.2 where a realization has tombstones), and the user-observable trace is a sequence of ordinary `push`/`pop` operations served first by `C_prev`, then by `L`, then by `C_next`. The "semantics of `link`" is therefore nothing more than the §3.1 semantics of the control we install; each variant's job is to supply the four components (`σ_in`, `L`, `φ`, `σ_out`) and discharge the four conditions (entry-soundness, closure, exit-soundness, liveness).
 
-#### 3.4.2. `ArmAdded(path, arm, weight?)`
+#### 3.4.2. `ArmAdded(path, tree, weight?)`
 
 Example: `SP(gmail, zoom)` --atomic--> `SP(gmail, zoom, spotify)`.
-The diff computed according to the grammar in §3.3 is: `ArmAdded { path = [2]; arm = spotify }`.
+The diff computed according to the grammar in §3.3 is: `ArmAdded { path = [2]; tree = spotify }`.
 By the grammar of §3.3, `ArmAdded` means that the new arm carries fresh traffic that intersects nothing `prev` was already serving (it was being rejected thus far, say). No `prev`-era packet therefore belongs under the new arm.
 
 We instantiate the template of §3.4.1. We write `c` for the parent named by `path` (here the root `SP`) and `k` for the new slot's index (here `2`); we take the append case first and a mid-order insert afterward.
@@ -180,7 +183,7 @@ We instantiate the template of §3.4.1. We write `c` for the parent named by `pa
 The _entry snap_ `σ_in` installs a new control `(s', q', z')`, which we build piece by piece.
 
 - _The state, `s -> s'`._ `s'` agrees with `s` everywhere, except that it records the initial local state for the new slot: the new arm's own scheduling state, plus whatever per-slot bookkeeping `c`'s scheduler keeps (an RR cursor, the slot's weight taken from the edit's `weight?`, a virtual-finish accumulator, etc.). No existing slot's state is disturbed.
-- _The tree, `q -> q'`._ At `c = Internal(qs, p)` we append the new arm to the child list, so its slot `k` is the new last index: `q' = Internal(qs ++ [a], p)`. Here `a` is the _empty_ PIFO tree having whatever topology `arm` described. The parent's index-PIFO `p` is left exactly as it was, because it only ever named the old indices `0..k-1` and so does not name `k` at all.
+- _The tree, `q -> q'`._ At `c = Internal(qs, p)` we append the new arm to the child list, so its slot `k` is the new last index: `q' = Internal(qs ++ [a], p)`. Here `a` is the _empty_ PIFO tree having whatever topology `tree` described. The parent's index-PIFO `p` is left exactly as it was, because it only ever named the old indices `0..k-1` and so does not name `k` at all.
 - _The transaction, `z -> z'`._ `z'` is the scheduling transaction compiled from `next`. It is a _conservative extension_ of `z`: for any packet that does not classify into the new arm it defers to `z`, and for a packet that does classify into the new arm it returns a path whose step at `c` selects `k` and then descends through the PIFO tree `a`. Because `k` was not a legal index under `prev`, `z` could never have emitted such a path, so the two transactions differ only on routes that land in the previously-nonexistent subtree.
 
 _The other three components._ The arm `a` is empty, so the control that `σ_in` just installed is already `next`: the `link` is degenerate, with `L = C_next`, `φ = true`, and `σ_out` the identity function.
@@ -195,13 +198,13 @@ We must show that `|-_T C_prev` gives `|-_T C_next`. The parent `c` has exactly 
 
 _Atomicity._ No in-flight packet straddles the snap: every packet resident at the snap instant lives in the shared structure `qs`, carried into `q'` unchanged, and none is under `k`. So a `pop` immediately after the snap returns exactly what a `pop` immediately before would have, the empty new slot contributing nothing and the existing arms keeping their contents and relative priority; and the first `push` that `z'` routes to `k` is the first packet ever to occupy `a`, which Lemma 3.9 from _FA_ admits while preserving `|- q'`.
 
-_Deeper paths._ The example edits the root, but `path` may be any prefix; `ArmAdded { path = [1, 2]; arm = ... }` adds a slot inside a grandchild of the root. Nothing in the argument changes. The descent from the root to `c` passes only through nodes that `q` and `q'` share verbatim, and, because the new arm is empty, it adds zero packets beneath every ancestor of `c`. So each ancestor's occurrence-tally for the child it forwards through is exactly what it was, no ancestor PIFO is rewritten, and the edit is confined to `c` and the fresh arm below it.
+_Deeper paths._ The example edits the root, but `path` may be any prefix; `ArmAdded { path = [1, 2]; tree = ... }` adds a slot inside a grandchild of the root. Nothing in the argument changes. The descent from the root to `c` passes only through nodes that `q` and `q'` share verbatim, and, because the new arm is empty, it adds zero packets beneath every ancestor of `c`. So each ancestor's occurrence-tally for the child it forwards through is exactly what it was, no ancestor PIFO is rewritten, and the edit is confined to `c` and the fresh arm below it.
 
 _Mid-order insertion._ We led with an append because it is the cleanest case, but the sniffer can place the new arm at any index, e.g: `SP(gmail, zoom)` --atomic--> `SP(gmail, **spotify**, zoom)`. When `k` is not the last index, the children formerly at indices `>= k` shift up by one to make room, and `p` becomes a `p'` that follows the renumbering: every entry naming an old index `>= k` is bumped up by one. This relabels index _values_ only; it moves no packets and changes no ranks, so each old slot keeps its matched count of occurrences and packets, now under a shifted name. At the instant after the snap, `p'` still does not name `k` (the old `>= k` entries were all bumped to `>= k+1`), so the `0 = 0` argument at slot `k` goes through unchanged and the snap is again atomic with degenerate `link`.
 
-#### 3.4.3. `ArmRemoved(path, arm)`
+#### 3.4.3. `ArmRemoved(path, tree)`
 
-Example: `SP(gmail, zoom, spotify)` --> `SP(gmail, zoom)`, the operator is decommissioning `spotify`. The diff-sniffer gives us `ArmRemoved { path = [2]; arm = spotify }`. As before, we write `c` for the parent (in our example, the root `SP`) and `k` for the index of the doomed subtree (in our example, `k=2`); write `d` for the doomed subtree itself (in our example, the `spotify` subtree) and `R` for the set of packets buffered under `d` at the relevant instant. The new challenge, absent from `ArmAdded`, is that `d` may be non-empty: by well-formedness `c`'s index-PIFO `p` holds one occurrence of `k` for each packet in `R`, so we cannot simply delete `d` and leave `p` with indices to a child that is gone.
+Example: `SP(gmail, zoom, spotify)` --> `SP(gmail, zoom)`, the operator is decommissioning `spotify`. The diff-sniffer gives us `ArmRemoved { path = [2]; tree = spotify }`. As before, we write `c` for the parent (in our example, the root `SP`) and `k` for the index of the doomed subtree (in our example, `k=2`); write `d` for the doomed subtree itself (in our example, the `spotify` subtree) and `R` for the set of packets buffered under `d` at the relevant instant. The new challenge, absent from `ArmAdded`, is that `d` may be non-empty: by well-formedness `c`'s index-PIFO `p` holds one occurrence of `k` for each packet in `R`, so we cannot simply delete `d` and leave `p` with indices to a child that is gone.
 
 Dual to §3.4.2's freshness convention, we read `ArmRemoved` as a genuine _retirement_: under `next`, packets from the doomed class are no longer admitted anywhere, and are not re-homed onto a surviving arm.
 
@@ -259,11 +262,11 @@ The same argument carries from the IR down to hardware: the hardware executes a 
 
 §3 established that our grammar is _safe_: whatever diff the sniffer emits, the transition it induces is sound, routing through a well-formed `link` and landing in `next`. With safety settled, the question this section takes up is whether we wield the grammar _well_.
 
-Our fallback is to emit the whole-tree `ArmReplaced { path = []; arm = next }`. It admits several realizations (lossless but slow, lossy but atomic, and others [AM: leaving this vague until I actually write up ArmReplaced in §3]), but all of them route through a `link` over the entire tree: the splash zone is as big as possible; no part of the scheduler can keep running unaffected.
+Our fallback is to emit the whole-tree `ArmReplaced { path = []; tree = next }`. It admits several realizations (lossless but slow, lossy but atomic, and others [AM: leaving this vague until I actually write up ArmReplaced in §3]), but all of them route through a `link` over the entire tree: the splash zone is as big as possible; no part of the scheduler can keep running unaffected.
 
 This section shows how to do better: sniff diffs more precisely, and, when we must give up, give up _deep_ in the tree rather than at the root. Either way the transition routes through a `link` confined to a small subtree, leaving the rest of the scheduler untouched.
 
-As a preview, take the harder of our two running examples, `SP(gmail, zoom)` to `SP(gmail, RR(zoom, spotify))`. Rather than give up at the root, the sniffer localizes it to a _partial_ replacement, `ArmReplaced { path = [1]; arm = RR(zoom, spotify) }`: only one child of `SP` is touched. The `link` is then confined to `zoom`'s subtree, while `gmail` and the root `SP` keep running untouched.
+As a preview, take the harder of our two running examples, `SP(gmail, zoom)` to `SP(gmail, RR(zoom, spotify))`. Rather than give up at the root, the sniffer localizes it to a _partial_ replacement, `ArmReplaced { path = [1]; tree = RR(zoom, spotify) }`: only one child of `SP` is touched. The `link` is then confined to `zoom`'s subtree, while `gmail` and the root `SP` keep running untouched.
 
 Many examples remain to work through here, and possibly some strengthening of `compare.ml` itself. TK.
 
