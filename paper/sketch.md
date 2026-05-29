@@ -123,6 +123,8 @@ State `s` is bookkeeping threaded along by `δ` and is governed by neither oblig
 
 The denotational rules frequently read, overwrite, and splice child lists. Let us fix some notation. We write `ts[i]` for the `i`-th child and `ts[t/i]` for `ts` with its `i`-th child overwritten by `t`; this leaves the arity unchanged. The two arity-changing edits carry a sign: `ts[+t/i]` is `ts` with `t` spliced in as the new `i`-th child (the old `i`-th and later children shift one place to the right), and `ts[-/i]` is `ts` with its `i`-th child dropped (later children shift left). Indices follow the `path` convention of §3.2.
 
+The operational diffs of §3.3 manipulate two parallel structures at an internal node: a child list `qs` of PIFO-tree children, to which the list-manipulation notation introduced above applies verbatim, and an index-PIFO `p` recording child indices. For `p` the same `[±/k]` notation _renumbers_ rather than splices, becasue we often need to open up or close a slot by shifting indices. `p[+/k]` is `p` with every entry `>= k` bumped up by one (opening up slot `k`); `p[-/k]` is `p` with every entry `> k` brought down by one. Entries below the edit point are left alone.
+
 #### 3.3.1. `Add(path, tree, weight?)`
 
 ##### Denotation
@@ -142,31 +144,30 @@ Add (i :: [])   (w, s) (WFQ cs) = WFQ ( cs[ +(w, s) / i ] )
 Add (i :: rest) arg    (WFQ cs) = WFQ ( cs[ (w_i, Add rest arg s_i) / i ] )   where (w_i, s_i) = cs[i]
 ```
 
-Our running edit denotes `Strict( ts[+spotify / 2] ) = Strict(gmail, zoom, spotify) = next`, as intended.
+Our running edit denotes `Add [2] spotify Strict(gmail, zoom) = Strict( (gmail, zoom)[+spotify / 2] ) = Strict(gmail, zoom, spotify) = next`, as intended. A mid-tree edit is no different: `Add [1] spotify Strict(gmail, zoom) = Strict( (gmail, zoom)[+spotify / 1] ) = Strict(gmail, spotify, zoom)`, with the old `zoom` sliding from index `1` to index `2`.
 
 ##### The diff
 
-We write `c` for the parent of the new slot (here the root `Strict`) and `k` for the new slot's index (here `2`); we take the append case first and a mid-order insert afterward.
-
-`Add` installs a new control `(s', q', z')` that we build piece by piece.
+We write `c` for the parent of the new slot (here the root `Strict`) and `k` for the new slot's index. The operational diff rewrites the live control `(s, q, z)` componentwise into `(s', q', z')`:
 
 - _The state, `s -> s'`._ `s'` agrees with `s` everywhere, except that it records the initial local state for the new slot: the new subtree's own scheduling state, plus whatever per-slot bookkeeping `c`'s scheduler keeps (a RoundRobin cursor, the slot's weight taken from the edit's `weight?`, a virtual-finish accumulator, etc.). No existing slot's state is disturbed.
-- _The tree, `q -> q'`._ At `c = Internal(qs, p)` we append the new subtree to the child list, so its slot `k` is the new last index: `q' = Internal(qs ++ [a], p)`. Here `a` is the _empty_ PIFO tree having whatever topology `tree` described. The parent's index-PIFO `p` is left exactly as it was, because it only ever named the old indices `0..k-1` and so does not name `k` at all.
-- _The transaction, `z -> z'`._ `z'` is the scheduling transaction compiled from `next`. It is a _conservative extension_ of `z`: for any packet that does not classify into the new subtree it defers to `z`, and for a packet that does classify into the new subtree it returns a path whose step at `c` selects `k` and then descends through the PIFO tree `a`. Because `k` was not a legal index under `prev`, `z` could never have emitted such a path, so the two transactions differ only on routes that land in the previously-nonexistent subtree.
+- _The tree, `q -> q'`._ At `c = Internal(qs, p)` we splice the new subtree in at index `k`: `q' = Internal(qs[+tree/k], p[+/k])`. Here `tree` enters as a PIFO tree with empty queues at every node. Splicing at `k` shifts the old children at indices `>= k` one place to the right, and renumbering `p` to `p[+/k]` tracks exactly that shift: every entry naming an old index `>= k` is bumped up by one, so each old slot keeps its matched count of occurrences and packets, now under a new name. When `k` is the last index (the append case) nothing is `>= k`, so `qs[+tree/k] = qs ++ [tree]` and `p[+/k] = p`: no child shifts and the parent's index-PIFO is untouched.
+- _The transaction, `z -> z'`._ `z'` is the scheduling transaction compiled from `next`. It extends `z` up to the renumbering at `c`: a packet that does not classify into the new subtree gets the same path that `z` would have emitted, with its step at `c` bumped by one whenever that step named an old index `>= k` (the path-level image of `p[+/k]`). A packet that _does_ classify into the new subtree gets a path whose step at `c` selects `k` and then descends through the new tree. No `prev` packet was ever routed to `k`: under `next`, `k` names the new subtree, and the old occupant of `k`, if any, now lives at `k+1`.
 
-Because the new subtree `a` is empty, the control just installed is already `next`: applied to `prev`, `Add` lands directly in `next`, with nothing buffered under `k` to drain.
+Because the new subtree `tree` is empty, the control just installed is already `next`: applied to `prev`, `Add` lands directly in `next`, with nothing buffered under `k` to drain.
 
 ##### Soundness
 
-The two obligations. _Realization:_ the tree step above sets `q'` to `qs ++ [a]` under the same parent, and `z'` is compiled from `next`, so `⌊C_next⌋ = Add(path, tree)(⌊C_prev⌋)`: the new shape and transaction are together exactly what the edit denotes. _Soundness:_ `|- C_prev` gives `|- C_next`. The parent `c` has exactly zero occurrences of `k` (its index-PIFO `p` does not name `k`, having only ever named `0..k-1`), and the new subtree `a` holds zero packets or indices, so the well-formedness obligation at slot `k` reads `0 = 0`. Every other slot is the child it was in `q`, with the same packets beneath it and the same entries in `p`, so its obligation is inherited verbatim. Nothing needs repair.
+Recall that we have two obligations.
+
+- _Realization:_ the tree step above sets `q'` to `Internal(qs[+tree/k], p[+/k])`, which is `prev`'s tree with an empty `tree`-shaped slot spliced in at `k`, and `z'` is compiled from `next`, so `⌊C_next⌋ = Add(path, tree)(⌊C_prev⌋)`: the new shape and transaction are together exactly what the edit denotes.
+- _Soundness:_ `|- C_prev` gives `|- C_next`. The parent `c` has exactly zero occurrences of `k`: its index-PIFO is now `p[+/k]`, which by construction names no `k` (old entries `< k` stay put, old entries `>= k` were bumped to `>= k+1`). The new subtree `tree` holds zero packets or indices, so the well-formedness obligation at slot `k` reads `0 = 0`. Every other slot is a child it was in `q`, with the same packets beneath it; its entries in `p[+/k]` are the old entries under a possibly-shifted name, so its matched count is inherited verbatim. Nothing needs repair.
 
 ##### Notes
 
-_Atomicity._ No in-flight packet straddles the diff: every packet resident at the diff instant lives in the shared structure `qs`, carried into `q'` unchanged, and none is under `k`. So a `pop` immediately after the diff returns exactly what a `pop` immediately before would have, the empty new slot contributing nothing and the existing subtrees keeping their contents and relative priority; and the first `push` that `z'` routes to `k` is the first packet ever to occupy `a`, which Lemma 3.9 from _FA_ admits while preserving `|- q'`.
+_Atomicity._ No in-flight packet straddles the diff: every packet resident at the diff instant lives in the shared structure `qs`, carried into `q'` unchanged, and none is under `k`. The renumbering `p[+/k]` relabels index _values_ only; it moves no packets and changes no ranks. So a `pop` immediately after the diff returns exactly what a `pop` immediately before would have, the empty new slot contributing nothing and the existing subtrees keeping their contents and relative priority (mid-tree, under shifted index names); and the first `push` that `z'` routes to `k` is the first packet ever to occupy `tree`, which Lemma 3.9 from _FA_ admits while preserving `|- q'`.
 
 _Deeper paths._ The example edits the root, but `path` may be any prefix; `Add { path = [1, 2]; tree = ... }` adds a slot inside a grandchild of the root. Nothing in the argument changes. The descent from the root to `c` passes only through nodes that `q` and `q'` share verbatim, and, because the new subtree is empty, it adds zero packets beneath every ancestor of `c`. So each ancestor's occurrence-tally for the child it forwards through is exactly what it was, no ancestor PIFO is rewritten, and the edit is confined to `c` and the fresh subtree below it.
-
-_Mid-order insertion._ We led with an append because it is the cleanest case, but the new subtree can be placed at any index, e.g: `Strict(gmail, zoom)` --Add--> `Strict(gmail, **spotify**, zoom)`. When `k` is not the last index, the children formerly at indices `>= k` shift up by one to make room, and `p` becomes a `p'` that follows the renumbering: every entry naming an old index `>= k` is bumped up by one. This relabels index _values_ only; it moves no packets and changes no ranks, so each old slot keeps its matched count of occurrences and packets, now under a shifted name. At the instant after the diff, `p'` still does not name `k` (the old `>= k` entries were all bumped to `>= k+1`), so the `0 = 0` argument at slot `k` goes through unchanged and the soundness argument is unchanged.
 
 ### 3.4 Preserving this proof down to hardware
 
