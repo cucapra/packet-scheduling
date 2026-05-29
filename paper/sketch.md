@@ -38,9 +38,9 @@
 - vPIFO's own §8 ("Runtime Updating of the Scheduling Policy") names our exact problem as future work: "Ensuring correct scheduling of packets during the transitional phase between modifications is part of our future work." The accompanying sentence says the runtime interface itself (P4-runtime-style) is still under development.
 - The relationship, stated plainly. We are not competing with vPIFO and do not claim a better PIFO substrate. We supply the layer _above_ a PIFO substrate (which could well be vPIFO). That is, the formal transition between two policies, the small patch that realizes it, and the transitionary semantics. The works compose.
 
-## 3. Formalizing the Transition Phase `link`
+## 3. A Grammar of Atomic Policy Diffs
 
-We recap the PIFO-tree model (§3.1), fix a grammar of atomic policy diffs (§3.2), show that any production of the grammar keeps the live scheduler well-formed (§3.3), and argue that the guarantee survives down to hardware (§3.4).
+We recap the PIFO-tree model (§3.1), fix a grammar of atomic policy diffs (§3.2), show that each production of the grammar carries a well-formed scheduler to a well-formed scheduler (§3.3), and argue that this guarantee survives down to hardware (§3.4). Composing diffs into the sequences that realize a full reconfiguration, and the `link` schedulers that arise between them, is deferred to §4.
 
 ### 3.1 Background: PIFO trees, formally
 
@@ -86,7 +86,7 @@ A _tree with a hole_ is a policy tree in which exactly one child slot holds a di
 
 Notes on the individual edits:
 
-- `Add` carries a `weight` exactly when the slot it edits hangs off a WFQ parent, which needs a weight to schedule the subtree; for any other parent the weight is absent. It adds subtree `tree` at the new slot `next@path`. The queues of `tree` are empty.
+- `Add` carries a `weight` exactly when the slot it edits hangs off a WFQ parent, which needs a weight to schedule the subtree; for any other parent the weight is absent. It adds subtree `tree` at the new slot `next@path`. The queues of `tree` are empty. The new subtree carries fresh traffic that intersects nothing `prev` was already serving (it was being rejected thus far, say).
 - `Quiesce (path)` stops routing any new traffic to `prev@path`. It is a transaction-only edit: topology and contents are untouched, so the quiesced subtree keeps being served and drains under load. It adds no structure and removes none.
 - `Designate (path, tree)` spawns `tree` as a sibling of `prev@path`. The new tree is the _designated survivor_ of `prev@path`: the new tree can receive new packets, but, while `prev@path` has packets, the new tree cannot be popped.
 - `Remove (path)` structurally removes `prev@path`, dropping its slot and renumbering any higher siblings. The subtree must be _empty_: removing an occupied subtree would leave its parent with dangling indices.
@@ -95,24 +95,56 @@ Notes on the individual edits:
 
 ### 3.3 Edits Preserve Well-Formedness
 
-[AM TK: pulled out for reworking; will return here.]
+Each production of §3.2 is an _atomic diff_: a transformation `δ` that, applied to the live control `C`, replaces it with another control `δ(C)` between two user `push`/`pop` operations, so that every operation is served by exactly one control. We require a diff to be _sound_: `|- C` must imply `|- δ(C)`. In this section we prove that this holds for all the productions of `diff`.
+
+#### 3.3.1. `Add(path, tree, weight?)`
+
+Example: `SP(gmail, zoom)` --Add--> `SP(gmail, zoom, spotify)`. The diff computed according to the grammar of §3.2 is `Add { path = [2]; tree = spotify }`. By the grammar, the new subtree carries fresh traffic that intersects nothing `prev` was already serving (it was being rejected thus far, say); no `prev`-era packet belongs under the new subtree.
+
+We write `c` for the parent of the new slot (here the root `SP`) and `k` for the new slot's index (here `2`); we take the append case first and a mid-order insert afterward.
+
+##### The diff
+
+`Add` installs a new control `(s', q', z')` that we build piece by piece.
+
+- _The state, `s -> s'`._ `s'` agrees with `s` everywhere, except that it records the initial local state for the new slot: the new subtree's own scheduling state, plus whatever per-slot bookkeeping `c`'s scheduler keeps (an RR cursor, the slot's weight taken from the edit's `weight?`, a virtual-finish accumulator, etc.). No existing slot's state is disturbed.
+- _The tree, `q -> q'`._ At `c = Internal(qs, p)` we append the new subtree to the child list, so its slot `k` is the new last index: `q' = Internal(qs ++ [a], p)`. Here `a` is the _empty_ PIFO tree having whatever topology `tree` described. The parent's index-PIFO `p` is left exactly as it was, because it only ever named the old indices `0..k-1` and so does not name `k` at all.
+- _The transaction, `z -> z'`._ `z'` is the scheduling transaction compiled from `next`. It is a _conservative extension_ of `z`: for any packet that does not classify into the new subtree it defers to `z`, and for a packet that does classify into the new subtree it returns a path whose step at `c` selects `k` and then descends through the PIFO tree `a`. Because `k` was not a legal index under `prev`, `z` could never have emitted such a path, so the two transactions differ only on routes that land in the previously-nonexistent subtree.
+
+Because the new subtree `a` is empty, the control just installed is already `next`: applied to `prev`, `Add` lands directly in `next`, with nothing buffered under `k` to drain.
+
+##### Soundness
+
+The whole obligation is the single well-formedness check: `|- C_prev` gives `|- C_next`. The parent `c` has exactly zero occurrences of `k` (its index-PIFO `p` does not name `k`, having only ever named `0..k-1`), and the new subtree `a` holds zero packets or indices, so the well-formedness obligation at slot `k` reads `0 = 0`. Every other slot is the child it was in `q`, with the same packets beneath it and the same entries in `p`, so its obligation is inherited verbatim. Nothing needs repair.
+
+##### Notes
+
+_Atomicity._ No in-flight packet straddles the diff: every packet resident at the diff instant lives in the shared structure `qs`, carried into `q'` unchanged, and none is under `k`. So a `pop` immediately after the diff returns exactly what a `pop` immediately before would have, the empty new slot contributing nothing and the existing subtrees keeping their contents and relative priority; and the first `push` that `z'` routes to `k` is the first packet ever to occupy `a`, which Lemma 3.9 from _FA_ admits while preserving `|- q'`.
+
+_Deeper paths._ The example edits the root, but `path` may be any prefix; `Add { path = [1, 2]; tree = ... }` adds a slot inside a grandchild of the root. Nothing in the argument changes. The descent from the root to `c` passes only through nodes that `q` and `q'` share verbatim, and, because the new subtree is empty, it adds zero packets beneath every ancestor of `c`. So each ancestor's occurrence-tally for the child it forwards through is exactly what it was, no ancestor PIFO is rewritten, and the edit is confined to `c` and the fresh subtree below it.
+
+_Mid-order insertion._ We led with an append because it is the cleanest case, but the new subtree can be placed at any index, e.g: `SP(gmail, zoom)` --Add--> `SP(gmail, **spotify**, zoom)`. When `k` is not the last index, the children formerly at indices `>= k` shift up by one to make room, and `p` becomes a `p'` that follows the renumbering: every entry naming an old index `>= k` is bumped up by one. This relabels index _values_ only; it moves no packets and changes no ranks, so each old slot keeps its matched count of occurrences and packets, now under a shifted name. At the instant after the diff, `p'` still does not name `k` (the old `>= k` entries were all bumped to `>= k+1`), so the `0 = 0` argument at slot `k` goes through unchanged and the soundness argument is unchanged.
 
 ### 3.4 Preserving this proof down to hardware
 
 §3.3 proves soundness at the tree-diff level, where each atomic edit (`Add`, `Quiesce`, `Remove`, ...) carries a well-formed tree to a well-formed tree. To run on hardware, each edit is lowered, by a simple and mechanical compilation, into a sequence of fine-grained instructions in our IR: `Spawn`, `Adopt`, `Emancipate`, `Assoc`, `Deassoc`, and the like. A single IR instruction, unlike a whole tree-diff edit, _can_ leave the tree malformed: a freshly `Spawn`ed node is not yet `Adopt`ed by its parent, for example.
 
-We do not prove soundness at the IL level, but instead informally make the case for why the §3.3 proof survives the lowering. There are two reasons.
+We do not prove soundness at the IR level, but instead informally make the case for why the §3.3 proof survives the lowering. There are two reasons.
 
 - The compilation is _faithful_: each tree-diff edit expands to a fixed instruction sequence that, when run to completion, realizes exactly that edit. We give the command-to-commands translation and take its faithfulness to be uncontroversial.
-- Our substrate runs each such sequence as a single _transactional commit_: no `push` or `pop` interleaves with a commit's instructions, so the transiently-malformed intermediate trees are never observed. That commit is precisely how the substrate _realizes_ an atomic diff of §3.3.1: a diff was defined as an instantaneous control replacement between two user operations, and the commit is what collapses a multi-instruction lowering into one such instant. Every `push`/`pop` therefore still lands on a well-formed control (`prev`, a `link`, or `next`), exactly as §3.3 proved; the IR's transient malformedness lives entirely inside commits, invisible to the user.
+- Our substrate runs each such sequence as a single _transactional commit_: no `push` or `pop` interleaves with a commit's instructions, so the transiently-malformed intermediate trees are never observed. That commit is precisely how the substrate _realizes_ an atomic diff of §3.3: a diff was defined as an instantaneous control replacement between two user operations, and the commit is what collapses a multi-instruction lowering into one such instant. Every `push`/`pop` therefore still lands on a well-formed control (`prev`, a `link`, or `next`), exactly as §3.3 proved; the IR's transient malformedness lives entirely inside commits, invisible to the user.
 
-The same argument carries from the IR down to hardware: the hardware executes a committed sequence atomically with respect to user operations, so what it exhibits is again what §3.3 proved. The compilation itself, and the substrate machinery that makes a commit atomic, are the subject of §5.
+The same argument carries from the IR down to hardware: the hardware executes a committed sequence atomically with respect to user operations, so what it exhibits is again what §3.3 proved. The compilation itself, and the substrate machinery that makes a commit atomic, are the subject of §6.
 
-## 4. Identifying Better Transitions
+## 4. Realizing Reconfigurations as Sequences
 
-§3 established that our grammar is _safe_: every atomic diff is a sound control replacement (§3.3.1), so any sequence the planner emits keeps the live scheduler well-formed at every instant and, once its exit conditions fire, lands in `next`. With safety settled, the question this section takes up is whether the planner wields the grammar _well_.
+[AM TK: stub. §3 proved each grammar production a sound atomic diff. This section composes diffs into _sequences_ `δ ; (φ ; δ)*`, separated by _exit conditions_ `φ`, to realize reconfigurations no single diff can express. It formalizes the transitionary scheduler `link` as an ordinary §3.1 control (the "transitionary period is just scheduling" theorem), and it considers _liveness_: whether and when a sequence's exit conditions fire.]
 
-The transition planner's output is a sequence `diff ; (φ ; diff)*` (§3.3.1). Two things make one sequence better than another: how _confined_ it is, that is, how little of the running scheduler its diffs and intervening `link`s disturb; and how readily its exit conditions `φ` fire, that is, its liveness, which §3.3.1 left for us to pursue here.
+## 5. Identifying Better Transitions
+
+§3 established that our grammar is _safe_: every atomic diff is a sound control replacement (§3.3), so any sequence the planner emits (§4) keeps the live scheduler well-formed at every instant and, once its exit conditions fire, lands in `next`. With safety settled, the question this section takes up is whether the planner wields the grammar _well_.
+
+The transition planner's output is a sequence `diff ; (φ ; diff)*` (§4). What makes one sequence better than another is how _confined_ it is: how little of the running scheduler its diffs and intervening `link`s disturb. [AM TK: liveness now lives in §4; this section is about confinement. Reconcile the framing.]
 
 There is always a fallback. To reach any `next` from any `prev`, the planner issues `Designate([], next)`, making `next` the survivor of the whole of `prev` (§3.2). All new traffic flows to `next`, all `pop`s are served by `prev` until `prev` runs out of packets. Then `Remove` clears `prev` and only `next` is left standing, and pushes and pops are both serviced by `next`. This is our give-up-entirely option, with the splash zone as large as possible and no part of the scheduler left running undisturbed, but it always works and drops nothing. This section is the story of doing better: localize the change, so the sequence and its `link`s touch only a small subtree and the rest of the scheduler keeps running.
 
@@ -120,7 +152,7 @@ We make no claim that the planner is canonical or minimal. We claim only that wh
 
 [AM note: Many examples remain to work through here, and possibly some strengthening of `compare.ml` itself. TK.]
 
-## 5. Compiling to Hardware
+## 6. Compiling to Hardware
 
 Leaving for Zhiyuan. We should emphasize that:
 
@@ -128,8 +160,8 @@ Leaving for Zhiyuan. We should emphasize that:
 - Focus on the gadgetry we built to handle transitions nicely.
 - [AM: question for Zhiyuan: §3.4 leans on our substrate executing each lowered instruction sequence as an atomic transactional commit, and that commit is exactly what realizes an atomic §3.3.1 diff. But we also claim that we compose with _any_ PIFO substrate. So what do we actually require from a substrate? Must it support atomic commits / an atomic install that hides the transiently-malformed intermediate states? Do you know if vPIFO supports this? If a substrate cannot hide those states, does composition break? What do we genuinely need to assume?]
 
-## 6. Evaluation
+## 7. Evaluation
 
-## 7. Related Work
+## 8. Related Work
 
-## 8. Conclusion
+## 9. Conclusion
