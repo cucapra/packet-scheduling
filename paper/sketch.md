@@ -66,20 +66,20 @@ _FA_ introduces a _control_ `(s, q, z)`: a current state `s` drawn from some fix
 
 _FA_ tells us how a control _runs_, but never how to _build_ one. There is no "constructor" that takes a user's wish (e.g., `Strict(gmail, zoom)`) and emits a control with the appropriate state variables, a PIFO tree with the right topology and empty queues, and a scheduling transaction that actually implements strict prioritization via the paths that it emits. Nor, given two controls, does _FA_ offer any way to compare them: `z` is just a function, and one cannot pattern-match on a function. These are the same gap. So before we can either construct the controls _FA_ reasons about or diff one against another, as the transition planner of §4 must, we take a small step back and make that syntactic source explicit.
 
-A _policy_ is a labeled tree: every internal node carries a _scheduling discipline_ over its children (`Strict`, `RoundRobin`, `WFQ` with a weight per child, etc.) and every leaf carries a flow label. We write `P(ts)` for a non-leaf policy with discipline `P` over a child list `ts` of sub-policies; this is the `Strict(gmail, zoom)` notation we have already been using informally. A policy is _valid_ when it is syntactically sensible: every discipline is applied at its proper arity, a child carries a weight exactly when its parent runs `WFQ`, and leaf labels are distinct. This is a purely syntactic condition on the source, not to be confused with the invariant `|- q`.
+A `policy` is a labeled tree: every internal node carries a _scheduling discipline_ over its children (`Strict`, `RoundRobin`, `WFQ` with a weight per child, etc.) and every leaf carries a flow label. We write `P(ts)` for a non-leaf `policy` with discipline `P` over a child list `ts` of sub-policies; this is the `Strict(gmail, zoom)` notation we have already been using informally. A `policy` is _valid_ when it is syntactically sensible: every discipline is applied at its proper arity, a child carries a weight exactly when its parent runs `WFQ`, and leaf labels are distinct. This is a purely syntactic condition on the source, not to be confused with the invariant `|- q`.
 
-A policy gives us a control `(s, q, z)` straightforwardly.
+A `policy` gives us a control `(s, q, z)` straightforwardly.
 
 - Erase the labels, and what remains is the topology. Instantiate that topology with an empty PIFO at every node, and you have the tree `q`.
 - Read the disciplines of the policy, and they mechanically show how to:
   - Generate a short program per node that determines how to rank incoming packets at that node. These node-local choices glue together into the single `z`.
   - Seed each node's local bookkeeping with initial state variables, e.g. a `RoundRobin` cursor at the first child, a `WFQ` virtual-finish accumulator at zero, and so on. This gives the state `s`.
 
-We write `⌊C⌋` for the policy from which control `C` was compiled. We say that `C` _realizes_ `⌊C⌋`. The grammar of §3.2 and the denotations of §3.3 act on policies, the operational diffs of §3.3 act on controls, and `⌊·⌋` is the bridge that lets us state when a diff realizes its denotation.
+We write `⌊C⌋` for the `policy` from which control `C` was compiled. We say that `C` _realizes_ `⌊C⌋`. The grammar of §3.2 and the denotations of §3.3 act on policies, the operational diffs of §3.3 act on controls, and `⌊·⌋` is the bridge that lets us state when a diff realizes its denotation.
 
 ### 3.2 A Grammar for Tree Diffs
 
-We fix a small grammar of structural edits between two valid policy trees `prev` and `next`. An edit names _where_ in the tree the change lands (a path from the root) and _what_ the change is. We write `t@path` for the subtree of `t` reached by following `path` down from `t`'s root. Depending on the production being used, `t` is instantiated to `prev` or `next`; see below.
+We fix a small grammar of structural edits between the valid `policy` `prev` and the valid `policy` `next`. An edit names _where_ in the tree the change lands (a path from the root) and _what_ the change is. We write `t@path` for the subtree of `t` reached by following `path` down from `t`'s root. Depending on the production being used, `t` is instantiated to `prev` or `next`; see below.
 
 ```
 diff   ::= Add          (path, tree, weight?)
@@ -112,11 +112,11 @@ Notes on the individual edits:
 
 Each production of §3.2 is an _atomic diff_: a transformation `δ` that, applied to the live control `C`, replaces it with another control `δ(C)` between two user `push`/`pop` operations, so that every operation is served by exactly one control. We require a diff to be _sound_: `|- C` must imply `|- δ(C)`. In this section we prove that this holds for all the productions of `diff`.
 
-The operational diff `δ` is the object that does the work: it rewrites all of `(s, q, z)` at once. It is useful to snap it open and look at a much lighter object that makes `δ` work. This is the edit's _denotation_: a partial function on policies (§3.1), `policy -> policy`, defined by recursion on the `path`, that says which `next` the edit produces from a given `prev`. This denotation is purely static: a policy carries only topology, disciplines, and labels, and no live contents or state.
+The operational diff `δ` is the object that does the work: it rewrites all of `(s, q, z)` at once. It is useful to snap it open and look at a much lighter object that makes `δ` work. This is the edit's _denotation_: a partial function on policies (§3.1), `policy -> policy`, defined by recursion on the `path`, that says which `next` the edit produces from a given `prev`. This denotation is purely static: a `policy` carries only topology, disciplines, and labels, and no live contents or state.
 
 These two objects pin down complementary parts of the control `δ` produces, and each gives the section one obligation.
 
-- _Realization_ constrains the static skeleton. The policy denoted by `δ(C)` must be the edit's denotation applied to the policy `C` that denotes. An example in mathematical notation: `⌊δ(C)⌋ = Add(path, tree)(⌊C⌋)`. That same example in a more human-readable form: `Strict(gmail, zoom, spotify) = Add(path = [2], tree = spotify) Strict(gmail, zoom)`. Because a policy fixes both the topology of `q` and the transaction `z`, this one equation constrains the new tree's _shape_ and the new transaction together, and says nothing about contents.
+- _Realization_ constrains the static skeleton. The `policy` denoted by `δ(C)` must be the edit's denotation applied to the `policy` `C` that denotes. An example in mathematical notation: `⌊δ(C)⌋ = Add(path, tree)(⌊C⌋)`. That same example in a more human-readable form: `Strict(gmail, zoom, spotify) = Add(path = [2], tree = spotify) Strict(gmail, zoom)`. Because a `policy` fixes both the topology of `q` and the transaction `z`, this one equation constrains the new tree's _shape_ and the new transaction together, and says nothing about contents.
 - _Soundness_ constrains the live contents. `|- C` must imply `|- δ(C)`. Well-formedness (§3.1) is a property of `q`'s contents alone, so this is the obligation that the packets and index entries `δ` leaves behind or introduces still satisfy `|-`.
 
 State `s` is bookkeeping threaded along by `δ` and is governed by neither obligation directly. The denotation also doubles as the correctness statement for the transition planner of §4, which only ever sees static policies: the edit it emits between `prev` and `next` is correct exactly when the edit's denotation carries `prev` to `next`.
