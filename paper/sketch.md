@@ -16,7 +16,7 @@
   - time2: the request to move to `SP(gmail, zoom, spotify)` is received. `SP(gmail, zoom)` is still running
   - time3: we move to `SP(gmail, zoom, spotify)`. Whatever user-observable interaction (push/pop) happened immediately before time3 happened entirely in the `SP(gmail, zoom)` regime, and whatever push/pop happened immediately after time3 happened entirely in the `SP(gmail, zoom, spotify)` regime. We therefore refer to the transition at time3 as _atomic_.
   - [AM note: time2 = time3 in this case? I don't want to make that change here since it would conflate atomicity with immediacy, but do we think someone will scratch their head and ask why any time is needed at all?]
-- What about transitioning to `SP(gmail, RR(zoom, spotify))`? It is not as easy. We atomically step into a _transitionary period_ during which the scheduler still accepts and emits packets, and once certain well-defined conditions are met we atomically step into the user-requested policy.
+- What about transitioning to `SP(gmail, RR(zoom, spotify))`? It is not as easy. We atomically step into a _transitionary period_ during which the scheduler still accepts and emits packets, and once certain well-defined conditions are met, we atomically step into the user-requested policy.
 - It is crucial to note that, although the user never described to us the semantics of the transitionary period, it _is_ in fact a _de facto_ packet scheduling regime with some semantics! It is useful to recognize it as a scheduling policy in its own right (we give it the name `link`). There are clearly better and worse transitions from a network operator's point of view. SOTA has more-or-less unintentionally adopted a trivial stop-the-world `link`. Our contributions include both being clear about what `link` is and improving on it.
 - Concretely:
   - Obligation 1. Formalize the semantics of `link`. This is tricky because the transition period is motivated by grody hardware-level manipulations _on the way to realizing `next`_; it is not designed to have a clean human-readable semantics.
@@ -64,34 +64,34 @@ _FA_ factors the scheduling _policy_ (which, given an arriving packet and the cu
 
 ### 3.2 A Grammar for Tree Diffs
 
-We fix a small grammar of structural edits between two well-formed policy trees `prev` and `next`. An edit names _where_ in the tree the change lands (a path from the root) and _what_ the change is. Paths are interpreted in `next` for additions and in `prev` for removals; for in-place edits the path is unambiguous.
+We fix a small grammar of structural edits between two well-formed policy trees `prev` and `next`. An edit names _where_ in the tree the change lands (a path from the root) and _what_ the change is. We write `t@path` for the subtree of `t` reached by following `path` down from `t`'s root. Depending on the production being used, `t` is instantiated to `prev` or `next`; see below.
 
 ```
-diff   ::= AddArm       (path, tree, weight?)
+diff   ::= Add          (path, tree, weight?)
          | Quiesce      (path)
          | Designate    (path, tree)
-         | RemoveArm    (path)
+         | Remove       (path)
          | ChangeWeight (path, weight)
-         | GraftInto    (tree_h)
+         | Graft        (tree_□)
 
 path   ::= []  |  i :: path        // i is a child index
 tree   ::= a well-formed policy subtree
-tree_h ::= a well-formed policy tree with a single _hole_ (see below)
+tree_□ ::= a well-formed policy tree with a single _hole_ (see below)
 weight ::= a positive real
 ```
 
-Every edit in this grammar is _atomic_: it carries a well-formed scheduler to a well-formed scheduler in a single step, with no transitionary period of its own (we make this precise in §3.3.1). This is a deliberate restriction. Edits that would have to destroy structure still holding packets are _not_ in the grammar: our one structural deletion, `RemoveArm`, fires only on an arm that is already empty. The richer reconfigurations a user may want (retiring an occupied arm, replacing an arm in place, pruning down to a subtree) are realized instead as _sequences_ of these atomic edits, separated by _exit conditions_; §3.3.1 makes the sequencing precise and §3.3.3 works the retirement case in full.
+Every edit in this grammar is _atomic_: it carries a well-formed scheduler to a well-formed scheduler in a single step. This is a deliberate restriction. Edits that would have to destroy structure still holding packets are _not_ in the grammar: our one structural deletion, `Remove`, fires only on a subtree that is already empty. The richer reconfigurations a user may want (retiring a subtree that has packets buffered in it, replacing a subtree in-place, pruning a tree down to a subtree) are realized instead as _sequences_ of these atomic edits; §3.3.1 makes the sequencing precise and §3.3.3 works the retirement case in full.
 
-A _tree with a hole_ is an ordinary policy tree in which exactly one child slot holds a distinguished _hole_ rather than an arm. The hole is a reserved, empty slot, not an absence of a slot. Importantly, the policy at the _parent_ of the hole has an arity that includes the hole. `RR(A, B, hole)` runs a round-robin policy of arity three whose third slot is vacant; it is different from `RR(A, B)`, which just runs a round-robin policy of arity two. We write `tree_h[s]` for the ordinary, hole-free tree obtained by replacing the unique hole of `tree_h` with the subtree `s`; the fill is total, and well-formed whenever `s` and `tree_h` are well-formed.
+A _tree with a hole_ is a policy tree in which exactly one child slot holds a distinguished _hole_ rather than a subtree. The hole is a reserved, empty slot, not an absence of a slot. Importantly, the policy at the _parent_ of the hole has an arity that includes the hole. The node `RR(A, B, □)` runs a round-robin policy of arity three whose third slot is vacant; it is different from `RR(A, B)`, which just runs a round-robin policy of arity two. We write `tree_□[s]` for the ordinary, hole-free tree obtained by replacing the unique hole of `tree_□` with the subtree `s`; the fill is total, and well-formed whenever `s` and `tree_□` are well-formed.
 
 Notes on the individual edits:
 
-- `AddArm` carries a `weight` exactly when the slot it edits hangs off a WFQ parent, which needs a weight to schedule the arm; for any other parent the weight is absent.
-- `Quiesce (path)` stops routing new traffic to the arm at `path`. It is a transaction-only edit: topology and contents are untouched, so the quiesced arm keeps being served and drains under load. It adds no structure and removes none.
-- `Designate (path, tree)` spawns `tree` as a sibling of the subtree that `path` points to. The new tree is the _designated survivor_ of the original subtree: the new tree can receive new packets, but, while the original subtree has packets, the new tree cannot be popped.
-- `RemoveArm (path)` structurally removes the subtree at `path`, dropping its slot and renumbering any higher siblings. The subtree must be _empty_: removing an occupied subtree would leave its parent with dangling indices.
-- `ChangeWeight (path, weight)` targets the arm whose root sits at `path`; it overwrites the weight that arm's parent uses for it. It is well-defined only when the parent at `path`'s prefix runs WFQ and `path` is non-empty.
-- `GraftInto (tree_h)` fires when `prev` is to become a subtree of a larger `next`. The edit spawns `tree_h` and fills its single hole with `prev`, which keeps its in-flight contents. The ancestor nodes of `prev` in `tree_h[prev]` are populated with the (unexciting) indices required to make `tree_h[prev]` well-formed. The rest of the tree is spawned empty.
+- `Add` carries a `weight` exactly when the slot it edits hangs off a WFQ parent, which needs a weight to schedule the subtree; for any other parent the weight is absent. It adds subtree `tree` at the new slot `next@path`. The queues of `tree` are empty.
+- `Quiesce (path)` stops routing any new traffic to `prev@path`. It is a transaction-only edit: topology and contents are untouched, so the quiesced subtree keeps being served and drains under load. It adds no structure and removes none.
+- `Designate (path, tree)` spawns `tree` as a sibling of `prev@path`. The new tree is the _designated survivor_ of `prev@path`: the new tree can receive new packets, but, while `prev@path` has packets, the new tree cannot be popped.
+- `Remove (path)` structurally removes `prev@path`, dropping its slot and renumbering any higher siblings. The subtree must be _empty_: removing an occupied subtree would leave its parent with dangling indices.
+- `ChangeWeight (path, weight)` targets `prev@path`; it overwrites the weight that `prev@path`'s parent uses for it. It is well-defined only when the parent at `path`'s prefix runs WFQ and `path` is non-empty.
+- `Graft (tree_□)` spawns `tree_□` and fills its single hole with `prev`, which keeps its in-flight contents. The ancestor nodes of `prev` in `tree_□[prev]` are populated with the (unexciting) indices required to make `tree_□[prev]` well-formed. The rest of the tree is spawned empty.
 
 ### 3.3 Edits Preserve Well-Formedness
 
@@ -99,7 +99,7 @@ Notes on the individual edits:
 
 ### 3.4 Preserving this proof down to hardware
 
-§3.3 proves soundness at the tree-diff level, where each atomic edit (`AddArm`, `Quiesce`, `RemoveArm`, ...) carries a well-formed tree to a well-formed tree. To run on hardware, each edit is lowered, by a simple and mechanical compilation, into a sequence of fine-grained instructions in our IR: `Spawn`, `Adopt`, `Emancipate`, `Assoc`, `Deassoc`, `Map`, `Unmap`, `GC`, `Designate`, and the like. A single IR instruction, unlike a whole tree-diff edit, _can_ leave the tree malformed: a freshly `Spawn`ed node is not yet `Adopt`ed by its parent, a class may be `Unmap`ped before its old subtree is `GC`ed, and so on.
+§3.3 proves soundness at the tree-diff level, where each atomic edit (`Add`, `Quiesce`, `Remove`, ...) carries a well-formed tree to a well-formed tree. To run on hardware, each edit is lowered, by a simple and mechanical compilation, into a sequence of fine-grained instructions in our IR: `Spawn`, `Adopt`, `Emancipate`, `Assoc`, `Deassoc`, and the like. A single IR instruction, unlike a whole tree-diff edit, _can_ leave the tree malformed: a freshly `Spawn`ed node is not yet `Adopt`ed by its parent, for example.
 
 We do not prove soundness at the IL level, but instead informally make the case for why the §3.3 proof survives the lowering. There are two reasons.
 
@@ -114,7 +114,7 @@ The same argument carries from the IR down to hardware: the hardware executes a 
 
 The transition planner's output is a sequence `diff ; (φ ; diff)*` (§3.3.1). Two things make one sequence better than another: how _confined_ it is, that is, how little of the running scheduler its diffs and intervening `link`s disturb; and how readily its exit conditions `φ` fire, that is, its liveness, which §3.3.1 left for us to pursue here.
 
-There is always a fallback. To reach any `next` from any `prev`, the planner issues `Designate([], next)`, making `next` the survivor of the whole of `prev` (§3.2): new traffic flows to `next` at once, `prev` drains behind it, and a closing `RemoveArm` collapses onto `next`. This is our give-up-entirely option, with the splash zone as large as possible and no part of the scheduler left running undisturbed, but it always works and drops nothing. This section is the story of doing better: localize the change, so the sequence and its `link`s touch only a small subtree and the rest of the scheduler keeps running.
+There is always a fallback. To reach any `next` from any `prev`, the planner issues `Designate([], next)`, making `next` the survivor of the whole of `prev` (§3.2). All new traffic flows to `next`, all `pop`s are served by `prev` until `prev` runs out of packets. Then `Remove` clears `prev` and only `next` is left standing, and pushes and pops are both serviced by `next`. This is our give-up-entirely option, with the splash zone as large as possible and no part of the scheduler left running undisturbed, but it always works and drops nothing. This section is the story of doing better: localize the change, so the sequence and its `link`s touch only a small subtree and the rest of the scheduler keeps running.
 
 We make no claim that the planner is canonical or minimal. We claim only that whatever sequence it emits is safe (§3.3), and that the work of this section is to make those sequences confined and live.
 
