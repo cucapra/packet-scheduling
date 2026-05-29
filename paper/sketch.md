@@ -4,19 +4,19 @@
 
 - Programmable packet scheduling. Emphasize that policies are often hierarchical, and that clients demand line rate.
 
-- The reconfiguration problem. Running example: a small-office gateway runs `SP(gmail, zoom)`, i.e., strictly prioritizing `gmail` traffic over `zoom` traffic. The operator wants to add a new `spotify` flow, and has two natural ways to do it:
-  1. `SP(gmail, zoom, spotify)`: just extend the strict-priority list with `spotify` having lowest priority.
-  2. `SP(gmail, RR(zoom, spotify))`: keep `gmail` on top, but have `zoom` and `spotify` share the lower tier via round-robin.
+- The reconfiguration problem. Running example: a small-office gateway runs `Strict(gmail, zoom)`, i.e., strictly prioritizing `gmail` traffic over `zoom` traffic. The operator wants to add a new `spotify` flow, and has two natural ways to do it:
+  1. `Strict(gmail, zoom, spotify)`: just extend the strict-priority list with `spotify` having lowest priority.
+  2. `Strict(gmail, RoundRobin(zoom, spotify))`: keep `gmail` on top, but have `zoom` and `spotify` share the lower tier via round-robin.
 
   In either of these cases, SOTA would stop the world, drop/recirculate buffered packets, recompile, and reinstall. Costs: dropped or recirculated (read, delayed!) packets, downtime, and a full respawn of nodes that did not need respawning.
 
 - The alternate is to reprogram a scheduler without stopping the world. Let's revisit the examples from earlier.
-- Transitioning to `SP(gmail, zoom, spotify)` is actually quite easy. We can achieve the following gold standard:
-  - time1: `SP(gmail, zoom)` is running
-  - time2: the request to move to `SP(gmail, zoom, spotify)` is received. `SP(gmail, zoom)` is still running
-  - time3: we move to `SP(gmail, zoom, spotify)`. Whatever user-observable interaction (push/pop) happened immediately before time3 happened entirely in the `SP(gmail, zoom)` regime, and whatever push/pop happened immediately after time3 happened entirely in the `SP(gmail, zoom, spotify)` regime. We therefore refer to the transition at time3 as _atomic_.
+- Transitioning to `Strict(gmail, zoom, spotify)` is actually quite easy. We can achieve the following gold standard:
+  - time1: `Strict(gmail, zoom)` is running
+  - time2: the request to move to `Strict(gmail, zoom, spotify)` is received. `Strict(gmail, zoom)` is still running
+  - time3: we move to `Strict(gmail, zoom, spotify)`. Whatever user-observable interaction (push/pop) happened immediately before time3 happened entirely in the `Strict(gmail, zoom)` regime, and whatever push/pop happened immediately after time3 happened entirely in the `Strict(gmail, zoom, spotify)` regime. We therefore refer to the transition at time3 as _atomic_.
   - [AM note: time2 = time3 in this case? I don't want to make that change here since it would conflate atomicity with immediacy, but do we think someone will scratch their head and ask why any time is needed at all?]
-- What about transitioning to `SP(gmail, RR(zoom, spotify))`? It is not as easy. We atomically step into a _transitionary period_ during which the scheduler still accepts and emits packets, and once certain well-defined conditions are met, we atomically step into the user-requested policy.
+- What about transitioning to `Strict(gmail, RoundRobin(zoom, spotify))`? It is not as easy. We atomically step into a _transitionary period_ during which the scheduler still accepts and emits packets, and once certain well-defined conditions are met, we atomically step into the user-requested policy.
 - It is crucial to note that, although the user never described to us the semantics of the transitionary period, it _is_ in fact a _de facto_ packet scheduling regime with some semantics! It is useful to recognize it as a scheduling policy in its own right (we give it the name `link`). There are clearly better and worse transitions from a network operator's point of view. SOTA has more-or-less unintentionally adopted a trivial stop-the-world `link`. Our contributions include both being clear about what `link` is and improving on it.
 - Concretely:
   - Obligation 1. Formalize the semantics of `link`. This is tricky because the transition period is motivated by grody hardware-level manipulations _on the way to realizing `next`_; it is not designed to have a clean human-readable semantics.
@@ -34,7 +34,7 @@
 - vPIFO (Zhang et al., SIGCOMM 2024) is the closest related work, and it explicitly leaves our problem open.
 - What vPIFO does. It virtualizes a single physical PIFO into many logical "PIFO instances," with a Scheduling Description Language (SDL) and compiler, so their PIFO Visor can _flexibly establish_ hierarchical PIFO trees of arbitrary shape on fixed hardware. Its contribution is the reconfigurable substrate.
 - What vPIFO does not do. As published, vPIFO has no notion of a diff between old and new policies, no formal semantics for what a policy change means, and no account of in-flight packets during a change. The SDL IR is for _rank computation_ compiled to P4 or CPU, quite different from our structural/topological one.
-- Our two running examples make the gap concrete. The easy append, to get to `SP(gmail, zoom, spotify)`, is exactly the kind of edit vPIFO's substrate _could_ have absorbed in place: a targeted append to the Operation Generation Table and the PIFO Instance Address Table would register the one new PIFO instance and its operations, leaving every running instance untouched. vPIFO as published does not engage with this question; their only option is a full reinitialization. Driving such a substrate to install the edit in place, straight from the (small) diff, is exactly what our layer adds. The harder restructuring, to `SP(gmail, RR(zoom, spotify))`, is not even clearly within reach: it inserts an internal node and re-parents `zoom`, so on a substrate that (correctly) maps tree depth to PEs, some in-flight packets already sit under the old shape, and it is unclear that vPIFO's substrate could realize the change at runtime at all. vPIFO neither claims it can nor explains how it would.
+- Our two running examples make the gap concrete. The easy append, to get to `Strict(gmail, zoom, spotify)`, is exactly the kind of edit vPIFO's substrate _could_ have absorbed in place: a targeted append to the Operation Generation Table and the PIFO Instance Address Table would register the one new PIFO instance and its operations, leaving every running instance untouched. vPIFO as published does not engage with this question; their only option is a full reinitialization. Driving such a substrate to install the edit in place, straight from the (small) diff, is exactly what our layer adds. The harder restructuring, to `Strict(gmail, RoundRobin(zoom, spotify))`, is not even clearly within reach: it inserts an internal node and re-parents `zoom`, so on a substrate that (correctly) maps tree depth to PEs, some in-flight packets already sit under the old shape, and it is unclear that vPIFO's substrate could realize the change at runtime at all. vPIFO neither claims it can nor explains how it would.
 - vPIFO's own §8 ("Runtime Updating of the Scheduling Policy") names our exact problem as future work: "Ensuring correct scheduling of packets during the transitional phase between modifications is part of our future work." The accompanying sentence says the runtime interface itself (P4-runtime-style) is still under development.
 - The relationship, stated plainly. We are not competing with vPIFO and do not claim a better PIFO substrate. We supply the layer _above_ a PIFO substrate (which could well be vPIFO). That is, the formal transition between two policies, the small patch that realizes it, and the transitionary semantics. The works compose.
 
@@ -60,11 +60,26 @@ A PIFO tree `q` is well-formed (`|- q`, following _Formal Abstractions_' notatio
 
 #### Control
 
-_FA_ factors the scheduling _policy_ (which, given an arriving packet and the current state, produces the path that `push` will follow) into a _control_ object. A control over `t` is a triple `(s, q, z)`: a current state `s` drawn from some fixed set, the PIFO tree `q` of topology `t` itself, and a _scheduling transaction_ `z` that, given a state and a packet, returns a path of the correct shape together with an updated state.
+_FA_ introduces a _control_ `(s, q, z)`: a current state `s` drawn from some fixed set, the PIFO tree `q` of topology `t` itself, and a _scheduling transaction_ `z` that, given a state and a packet, returns a path of the correct shape together with an updated state.
+
+#### Policies
+
+_FA_ tells us how a control _runs_, but never how to _build_ one. There is no "constructor" that takes a user's wish (e.g., `Strict(gmail, zoom)`) and emits a control with the appropriate state variables, a PIFO tree with the right topology and empty queues, and a scheduling transaction that actually implements strict prioritization via the paths that it emits. Nor, given two controls, does _FA_ offer any way to compare them: `z` is just a function, and one cannot pattern-match on a function. These are the same gap. So before we can either construct the controls _FA_ reasons about or diff one against another, as the transition planner of §4 must, we take a small step back and make that syntactic source explicit.
+
+A _policy_ is a labeled tree: every internal node carries a _scheduling discipline_ over its children (`Strict`, `RoundRobin`, `WFQ` with a weight per child, etc.) and every leaf carries a flow label. We write `P(ts)` for a non-leaf policy with discipline `P` over a child list `ts` of sub-policies; this is the `Strict(gmail, zoom)` notation we have already been using informally. A policy is _valid_ when it is syntactically sensible: every discipline is applied at its proper arity, a child carries a weight exactly when its parent runs `WFQ`, and leaf labels are distinct. This is a purely syntactic condition on the source, not to be confused with the invariant `|- q`.
+
+A policy gives us a control `(s, q, z)` straightforwardly.
+
+- Erase the labels, and what remains is the topology. Instantiate that topology with an empty PIFO at every node, and you have the tree `q`.
+- Read the disciplines of the policy, and they mechanically show how to:
+  - Generate a short program per node that determines how to rank incoming packets at that node. These node-local choices glue together into the single `z`.
+  - Seed each node's local bookkeeping with initial state variables, e.g. a `RoundRobin` cursor at the first child, a `WFQ` virtual-finish accumulator at zero, and so on. This gives the state `s`.
+
+We write `⌊C⌋` for the policy from which control `C` was compiled. We say that `C` _realizes_ `⌊C⌋`. The grammar of §3.2 and the denotations of §3.3 act on policies, the operational diffs of §3.3 act on controls, and `⌊·⌋` is the bridge that lets us state when a diff realizes its denotation.
 
 ### 3.2 A Grammar for Tree Diffs
 
-We fix a small grammar of structural edits between two well-formed policy trees `prev` and `next`. An edit names _where_ in the tree the change lands (a path from the root) and _what_ the change is. We write `t@path` for the subtree of `t` reached by following `path` down from `t`'s root. Depending on the production being used, `t` is instantiated to `prev` or `next`; see below.
+We fix a small grammar of structural edits between two valid policy trees `prev` and `next`. An edit names _where_ in the tree the change lands (a path from the root) and _what_ the change is. We write `t@path` for the subtree of `t` reached by following `path` down from `t`'s root. Depending on the production being used, `t` is instantiated to `prev` or `next`; see below.
 
 ```
 diff   ::= Add          (path, tree, weight?)
@@ -75,14 +90,14 @@ diff   ::= Add          (path, tree, weight?)
          | Graft        (tree_□)
 
 path   ::= []  |  i :: path        // i is a child index
-tree   ::= a well-formed policy subtree
-tree_□ ::= a well-formed policy tree with a single _hole_ (see below)
+tree   ::= a valid policy subtree
+tree_□ ::= a valid policy tree with a single _hole_ (see below)
 weight ::= a positive real
 ```
 
 Every edit in this grammar is _atomic_: it carries a well-formed scheduler to a well-formed scheduler in a single step. This is a deliberate restriction. Edits that would have to destroy structure still holding packets are _not_ in the grammar: our one structural deletion, `Remove`, fires only on a subtree that is already empty. The richer reconfigurations a user may want (retiring a subtree that has packets buffered in it, replacing a subtree in-place, pruning a tree down to a subtree) are realized instead as _sequences_ of these atomic edits; §3.3.1 makes the sequencing precise and §3.3.3 works the retirement case in full.
 
-A _tree with a hole_ is a policy tree in which exactly one child slot holds a distinguished _hole_ rather than a subtree. The hole is a reserved, empty slot, not an absence of a slot. Importantly, the policy at the _parent_ of the hole has an arity that includes the hole. The node `RR(A, B, □)` runs a round-robin policy of arity three whose third slot is vacant; it is different from `RR(A, B)`, which just runs a round-robin policy of arity two. We write `tree_□[s]` for the ordinary, hole-free tree obtained by replacing the unique hole of `tree_□` with the subtree `s`; the fill is total, and well-formed whenever `s` and `tree_□` are well-formed.
+A _tree with a hole_ is a policy tree in which exactly one child slot holds a distinguished _hole_ rather than a subtree. The hole is a reserved, empty slot, not an absence of a slot. Importantly, the policy at the _parent_ of the hole has an arity that includes the hole. The node `RoundRobin(A, B, □)` runs a round-robin policy of arity three whose third slot is vacant; it is different from `RoundRobin(A, B)`, which just runs a round-robin policy of arity two. We write `tree_□[s]` for the ordinary, hole-free tree obtained by replacing the unique hole of `tree_□` with the subtree `s`; the fill is total, and valid whenever `s` and `tree_□` are valid.
 
 Notes on the individual edits:
 
@@ -97,17 +112,45 @@ Notes on the individual edits:
 
 Each production of §3.2 is an _atomic diff_: a transformation `δ` that, applied to the live control `C`, replaces it with another control `δ(C)` between two user `push`/`pop` operations, so that every operation is served by exactly one control. We require a diff to be _sound_: `|- C` must imply `|- δ(C)`. In this section we prove that this holds for all the productions of `diff`.
 
+The operational diff `δ` is the object that does the work: it rewrites all of `(s, q, z)` at once. It is useful to snap it open and look at a much lighter object that makes `δ` work. This is the edit's _denotation_: a partial function on policies (§3.1), `policy -> policy`, defined by recursion on the `path`, that says which `next` the edit produces from a given `prev`. This denotation is purely static: a policy carries only topology, disciplines, and labels, and no live contents or state.
+
+These two objects pin down complementary parts of the control `δ` produces, and each gives the section one obligation.
+
+- _Realization_ constrains the static skeleton. The policy denoted by `δ(C)` must be the edit's denotation applied to the policy `C` that denotes. An example in mathematical notation: `⌊δ(C)⌋ = Add(path, tree)(⌊C⌋)`. That same example in a more human-readable form: `Strict(gmail, zoom, spotify) = Add(path = [2], tree = spotify) Strict(gmail, zoom)`. Because a policy fixes both the topology of `q` and the transaction `z`, this one equation constrains the new tree's _shape_ and the new transaction together, and says nothing about contents.
+- _Soundness_ constrains the live contents. `|- C` must imply `|- δ(C)`. Well-formedness (§3.1) is a property of `q`'s contents alone, so this is the obligation that the packets and index entries `δ` leaves behind or introduces still satisfy `|-`.
+
+State `s` is bookkeeping threaded along by `δ` and is governed by neither obligation directly. The denotation also doubles as the correctness statement for the transition planner of §4, which only ever sees static policies: the edit it emits between `prev` and `next` is correct exactly when the edit's denotation carries `prev` to `next`.
+
+The denotational rules frequently read, overwrite, and splice child lists. Let us fix some notation. We write `ts[i]` for the `i`-th child and `ts[t/i]` for `ts` with its `i`-th child overwritten by `t`; this leaves the arity unchanged. The two arity-changing edits carry a sign: `ts[+t/i]` is `ts` with `t` spliced in as the new `i`-th child (the old `i`-th and later children shift one place to the right), and `ts[-/i]` is `ts` with its `i`-th child dropped (later children shift left). Indices follow the `path` convention of §3.2.
+
 #### 3.3.1. `Add(path, tree, weight?)`
 
-Example: `SP(gmail, zoom)` --Add--> `SP(gmail, zoom, spotify)`. The diff computed according to the grammar of §3.2 is `Add { path = [2]; tree = spotify }`. By the grammar, the new subtree carries fresh traffic that intersects nothing `prev` was already serving (it was being rejected thus far, say); no `prev`-era packet belongs under the new subtree.
+##### Denotation
 
-We write `c` for the parent of the new slot (here the root `SP`) and `k` for the new slot's index (here `2`); we take the append case first and a mid-order insert afterward.
+`Add` is the structural map
+
+```
+Add : path -> tree -> policy -> policy
+Add (i :: [])   s  (P ts) = P ( ts[+s / i] )
+Add (i :: rest) s  (P ts) = P ( ts[ (Add rest s ts[i]) / i ] )
+```
+
+The base case fires once `path` reaches the new slot's parent: the subtree `s` is spliced in as the new `i`-th child. (Recall from §3.2 that `Add`'s `path` is read in `next` and names the new slot, so its final index `i` is the insertion point.) The recursive case walks down a shared ancestor, recurses into child `i`, and writes the result back. A WFQ parent also needs the new slot's weight; with children zipped as `(weight, subtree)` pairs `cs`, the weight enters only at the insertion site, and descent leaves the weights untouched:
+
+```
+Add (i :: [])   (w, s) (WFQ cs) = WFQ ( cs[ +(w, s) / i ] )
+Add (i :: rest) arg    (WFQ cs) = WFQ ( cs[ (w_i, Add rest arg s_i) / i ] )   where (w_i, s_i) = cs[i]
+```
+
+Our running edit denotes `Strict( ts[+spotify / 2] ) = Strict(gmail, zoom, spotify) = next`, as intended.
 
 ##### The diff
 
+We write `c` for the parent of the new slot (here the root `Strict`) and `k` for the new slot's index (here `2`); we take the append case first and a mid-order insert afterward.
+
 `Add` installs a new control `(s', q', z')` that we build piece by piece.
 
-- _The state, `s -> s'`._ `s'` agrees with `s` everywhere, except that it records the initial local state for the new slot: the new subtree's own scheduling state, plus whatever per-slot bookkeeping `c`'s scheduler keeps (an RR cursor, the slot's weight taken from the edit's `weight?`, a virtual-finish accumulator, etc.). No existing slot's state is disturbed.
+- _The state, `s -> s'`._ `s'` agrees with `s` everywhere, except that it records the initial local state for the new slot: the new subtree's own scheduling state, plus whatever per-slot bookkeeping `c`'s scheduler keeps (a RoundRobin cursor, the slot's weight taken from the edit's `weight?`, a virtual-finish accumulator, etc.). No existing slot's state is disturbed.
 - _The tree, `q -> q'`._ At `c = Internal(qs, p)` we append the new subtree to the child list, so its slot `k` is the new last index: `q' = Internal(qs ++ [a], p)`. Here `a` is the _empty_ PIFO tree having whatever topology `tree` described. The parent's index-PIFO `p` is left exactly as it was, because it only ever named the old indices `0..k-1` and so does not name `k` at all.
 - _The transaction, `z -> z'`._ `z'` is the scheduling transaction compiled from `next`. It is a _conservative extension_ of `z`: for any packet that does not classify into the new subtree it defers to `z`, and for a packet that does classify into the new subtree it returns a path whose step at `c` selects `k` and then descends through the PIFO tree `a`. Because `k` was not a legal index under `prev`, `z` could never have emitted such a path, so the two transactions differ only on routes that land in the previously-nonexistent subtree.
 
@@ -115,7 +158,7 @@ Because the new subtree `a` is empty, the control just installed is already `nex
 
 ##### Soundness
 
-The whole obligation is the single well-formedness check: `|- C_prev` gives `|- C_next`. The parent `c` has exactly zero occurrences of `k` (its index-PIFO `p` does not name `k`, having only ever named `0..k-1`), and the new subtree `a` holds zero packets or indices, so the well-formedness obligation at slot `k` reads `0 = 0`. Every other slot is the child it was in `q`, with the same packets beneath it and the same entries in `p`, so its obligation is inherited verbatim. Nothing needs repair.
+The two obligations. _Realization:_ the tree step above sets `q'` to `qs ++ [a]` under the same parent, and `z'` is compiled from `next`, so `⌊C_next⌋ = Add(path, tree)(⌊C_prev⌋)`: the new shape and transaction are together exactly what the edit denotes. _Soundness:_ `|- C_prev` gives `|- C_next`. The parent `c` has exactly zero occurrences of `k` (its index-PIFO `p` does not name `k`, having only ever named `0..k-1`), and the new subtree `a` holds zero packets or indices, so the well-formedness obligation at slot `k` reads `0 = 0`. Every other slot is the child it was in `q`, with the same packets beneath it and the same entries in `p`, so its obligation is inherited verbatim. Nothing needs repair.
 
 ##### Notes
 
@@ -123,7 +166,7 @@ _Atomicity._ No in-flight packet straddles the diff: every packet resident at th
 
 _Deeper paths._ The example edits the root, but `path` may be any prefix; `Add { path = [1, 2]; tree = ... }` adds a slot inside a grandchild of the root. Nothing in the argument changes. The descent from the root to `c` passes only through nodes that `q` and `q'` share verbatim, and, because the new subtree is empty, it adds zero packets beneath every ancestor of `c`. So each ancestor's occurrence-tally for the child it forwards through is exactly what it was, no ancestor PIFO is rewritten, and the edit is confined to `c` and the fresh subtree below it.
 
-_Mid-order insertion._ We led with an append because it is the cleanest case, but the new subtree can be placed at any index, e.g: `SP(gmail, zoom)` --Add--> `SP(gmail, **spotify**, zoom)`. When `k` is not the last index, the children formerly at indices `>= k` shift up by one to make room, and `p` becomes a `p'` that follows the renumbering: every entry naming an old index `>= k` is bumped up by one. This relabels index _values_ only; it moves no packets and changes no ranks, so each old slot keeps its matched count of occurrences and packets, now under a shifted name. At the instant after the diff, `p'` still does not name `k` (the old `>= k` entries were all bumped to `>= k+1`), so the `0 = 0` argument at slot `k` goes through unchanged and the soundness argument is unchanged.
+_Mid-order insertion._ We led with an append because it is the cleanest case, but the new subtree can be placed at any index, e.g: `Strict(gmail, zoom)` --Add--> `Strict(gmail, **spotify**, zoom)`. When `k` is not the last index, the children formerly at indices `>= k` shift up by one to make room, and `p` becomes a `p'` that follows the renumbering: every entry naming an old index `>= k` is bumped up by one. This relabels index _values_ only; it moves no packets and changes no ranks, so each old slot keeps its matched count of occurrences and packets, now under a shifted name. At the instant after the diff, `p'` still does not name `k` (the old `>= k` entries were all bumped to `>= k+1`), so the `0 = 0` argument at slot `k` goes through unchanged and the soundness argument is unchanged.
 
 ### 3.4 Preserving this proof down to hardware
 
