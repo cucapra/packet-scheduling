@@ -34,8 +34,8 @@
 - vPIFO (Zhang et al., SIGCOMM 2024) is the closest related work, and it explicitly leaves our problem open.
 - What vPIFO does. It virtualizes a single physical PIFO into many logical "PIFO instances," with a Scheduling Description Language (SDL) and compiler, so their PIFO Visor can _flexibly establish_ hierarchical PIFO trees of arbitrary shape on fixed hardware. Its contribution is the reconfigurable substrate.
 - What vPIFO does not do. As published, vPIFO has no notion of a diff between old and new policies, no formal semantics for what a policy change means, and no account of in-flight packets during a change. The SDL IR is for _rank computation_ compiled to P4 or CPU, quite different from our structural/topological one.
-- Our two running examples make the gap concrete. The easy append, to get to `Strict(gmail, zoom, spotify)`, is exactly the kind of edit vPIFO's substrate _could_ have absorbed in place: a targeted append to the Operation Generation Table and the PIFO Instance Address Table would register the one new PIFO instance and its operations, leaving every running instance untouched. vPIFO as published does not engage with this question; their only option is a full reinitialization. Driving such a substrate to install the edit in place, straight from the (small) diff, is exactly what our layer adds. The harder restructuring, to `Strict(gmail, RoundRobin(zoom, spotify))`, is not even clearly within reach: it inserts an internal node and re-parents `zoom`, so on a substrate that (correctly) maps tree depth to PEs, some in-flight packets already sit under the old shape, and it is unclear that vPIFO's substrate could realize the change at runtime at all. vPIFO neither claims it can nor explains how it would.
-- vPIFO's own §8 ("Runtime Updating of the Scheduling Policy") names our exact problem as future work: "Ensuring correct scheduling of packets during the transitional phase between modifications is part of our future work." The accompanying sentence says the runtime interface itself (P4-runtime-style) is still under development.
+- Our two running examples make the gap concrete. The easy append, to get to `Strict(gmail, zoom, spotify)`, is exactly the kind of edit vPIFO's substrate _could_ have absorbed in place: a targeted append to the Operation Generation Table and the PIFO Instance Address Table would register the one new PIFO instance and its operations, leaving every running instance untouched. vPIFO as published does not engage with this question; their only option is a full reinitialization. Driving such a substrate to install the edit in place, straight from the (small) diff, is exactly what our layer adds. The harder restructuring, to `Strict(gmail, RoundRobin(zoom, spotify))`, may not be realizeable using vPIFO at all.
+- vPIFO's own §9 ("Runtime Updating of the Scheduling Policy") names our exact problem as future work: "Ensuring correct scheduling of packets during the transitional phase between modifications is part of our future work." The accompanying sentence says the runtime interface itself (P4-runtime-style) is still under development.
 - The relationship, stated plainly. We are not competing with vPIFO and do not claim a better PIFO substrate. We supply the layer _above_ a PIFO substrate (which could well be vPIFO). That is, the formal transition between two policies, the small patch that realizes it, and the transitionary semantics. The works compose.
 
 ## 3. A Grammar of Atomic Policy Diffs
@@ -56,7 +56,7 @@ A _topology_ `t` is a finite tree carrying no data: either a single node `*` or 
 
 #### Well-formedness
 
-A PIFO tree `q` is well-formed (`|- q`, following _Formal Abstractions_' notation) when, at every internal node with index-PIFO `p` and children `qs`, the number of occurrences of `i` in `p` equals the number of packets held under `qs[i]`, for every legal `i`. This is the invariant that keeps `pop` from getting stuck. Lemma 3.9 of _FA_ shows that `push` always preserves `|- q`, and that `pop` preserves it when `q` is non-empty (which is precisely the condition under which `pop` is defined).
+A PIFO tree `q` is well-formed (`|- q`, following _Formal Abstractions_' notation) when, at every internal node with index-PIFO `p` and children `qs`, the number of occurrences of `i` in `p` equals the number of packets held under `qs[i]`, for every legal `i`. This is the invariant that keeps `pop` from getting stuck. _FA_ shows that `push` always preserves `|- q`, and that `pop` preserves it when `q` is non-empty (which is precisely the condition under which `pop` is defined).
 
 #### Control
 
@@ -95,7 +95,7 @@ tree_□ ::= a valid policy tree with a single _hole_ (see below)
 weight ::= a positive real
 ```
 
-Every edit in this grammar is _atomic_: it carries a well-formed scheduler to a well-formed scheduler in a single step. This is a deliberate restriction. Edits that would have to destroy structure still holding packets are _not_ in the grammar: our one structural deletion, `Remove`, fires only on a subtree that is already empty. The richer reconfigurations a user may want (retiring a subtree that has packets buffered in it, replacing a subtree in-place, pruning a tree down to a subtree) are realized instead as _sequences_ of these atomic edits; §3.3.1 makes the sequencing precise and §3.3.3 works the retirement case in full.
+Every edit in this grammar is _atomic_: it carries a well-formed scheduler to a well-formed scheduler in a single step. This is a deliberate restriction. Edits that would have to destroy structure still holding packets are _not_ in the grammar: our one structural deletion, `Remove`, fires only on a subtree that is already empty. The richer reconfigurations a user may want (retiring a subtree that has packets buffered in it, replacing a subtree in-place, pruning a tree down to a subtree) are realized instead as _sequences_ of these atomic edits; §4 makes the sequencing precise.
 
 A _tree with a hole_ is a policy tree in which exactly one child slot holds a distinguished _hole_ rather than a subtree. The hole is a reserved, empty slot, not an absence of a slot. Importantly, the policy at the _parent_ of the hole has an arity that includes the hole. The node `RoundRobin(A, B, □)` runs a round-robin policy of arity three whose third slot is vacant; it is different from `RoundRobin(A, B)`, which just runs a round-robin policy of arity two. We write `tree_□[s]` for the ordinary, hole-free tree obtained by replacing the unique hole of `tree_□` with the subtree `s`; the fill is total, and valid whenever `s` and `tree_□` are valid.
 
@@ -108,7 +108,7 @@ Notes on the individual edits:
 - `ChangeWeight (path, weight)` targets `prev@path`; it overwrites the weight that `prev@path`'s parent uses for it. It is well-defined only when the parent at `path`'s prefix runs WFQ and `path` is non-empty.
 - `Graft (tree_□)` spawns `tree_□` and fills its single hole with `prev`, which keeps its in-flight contents. The ancestor nodes of `prev` in `tree_□[prev]` are populated with the (unexciting) indices required to make `tree_□[prev]` well-formed. The rest of the tree is spawned empty.
 
-### 3.3 Edits Preserve Well-Formedness
+### 3.3 All Productions of `diff` are Sound
 
 Each production of §3.2 is an _atomic diff_: a transformation `δ` that, applied to the live control `C`, replaces it with another control `δ(C)` between two user `push`/`pop` operations, so that every operation is served by exactly one control. We require a diff to be _sound_: `|- C` must imply `|- δ(C)`. In this section we prove that this holds for all the productions of `diff`.
 
@@ -116,7 +116,7 @@ The operational diff `δ` is the object that does the work: it rewrites all of `
 
 These two objects pin down complementary parts of the control `δ` produces, and each gives the section one obligation.
 
-- _Realization_ constrains the static skeleton. The `policy` denoted by `δ(C)` must be the edit's denotation applied to the `policy` `C` that denotes. An example in mathematical notation: `⌊δ(C)⌋ = Add(path, tree)(⌊C⌋)`. That same example in a more human-readable form: `Strict(gmail, zoom, spotify) = Add(path = [2], tree = spotify) Strict(gmail, zoom)`. Because a `policy` fixes both the topology of `q` and the transaction `z`, this one equation constrains the new tree's _shape_ and the new transaction together, and says nothing about contents.
+- _Realization_ constrains the static skeleton. The `policy` denoted by `δ(C)` must be the edit's denotation applied to the `policy` that `C` denotes. An example in mathematical notation: `⌊δ(C)⌋ = Add(path, tree)(⌊C⌋)`. That same example in a more human-readable form: `Strict(gmail, zoom, spotify) = Add(path = [2], tree = spotify) Strict(gmail, zoom)`. Because a `policy` fixes both the topology of `q` and the transaction `z`, this one equation constrains the new tree's _shape_ and the new transaction together, and says nothing about contents.
 - _Soundness_ constrains the live contents. `|- C` must imply `|- δ(C)`. Well-formedness (§3.1) is a property of `q`'s contents alone, so this is the obligation that the packets and index entries `δ` leaves behind or introduces still satisfy `|-`.
 
 State `s` is bookkeeping threaded along by `δ` and is governed by neither obligation directly. The denotation also doubles as the correctness statement for the transition planner of §4, which only ever sees static policies: the edit it emits between `prev` and `next` is correct exactly when the edit's denotation carries `prev` to `next`.
@@ -165,7 +165,7 @@ Recall that we have two obligations.
 
 ##### Notes
 
-_Atomicity._ No in-flight packet straddles the diff: every packet resident at the diff instant lives in the shared structure `qs`, carried into `q'` unchanged, and none is under `k`. The renumbering `p[+/k]` relabels index _values_ only; it moves no packets and changes no ranks. So a `pop` immediately after the diff returns exactly what a `pop` immediately before would have, the empty new slot contributing nothing and the existing subtrees keeping their contents and relative priority (mid-tree, under shifted index names); and the first `push` that `z'` routes to `k` is the first packet ever to occupy `tree`, which Lemma 3.9 from _FA_ admits while preserving `|- q'`.
+_Atomicity._ No in-flight packet straddles the diff: every packet resident at the diff instant lives in the shared structure `qs`, carried into `q'` unchanged, and none is under `k`. The renumbering `p[+/k]` relabels index _values_ only; it moves no packets and changes no ranks. So a `pop` immediately after the diff returns exactly what a `pop` immediately before would have, the empty new slot contributing nothing and the existing subtrees keeping their contents and relative priority under shifted index names. The first `push` that `z'` routes to `k` is the first packet ever to occupy `tree`.
 
 _Deeper paths._ The example edits the root, but `path` may be any prefix; `Add { path = [1, 2]; tree = ... }` adds a slot inside a grandchild of the root. Nothing in the argument changes. The descent from the root to `c` passes only through nodes that `q` and `q'` share verbatim, and, because the new subtree is empty, it adds zero packets beneath every ancestor of `c`. So each ancestor's occurrence-tally for the child it forwards through is exactly what it was, no ancestor PIFO is rewritten, and the edit is confined to `c` and the fresh subtree below it.
 
@@ -192,7 +192,7 @@ The transition planner's output is a sequence `diff ; (φ ; diff)*` (§4). What 
 
 There is always a fallback. To reach any `next` from any `prev`, the planner issues `Designate([], next)`, making `next` the survivor of the whole of `prev` (§3.2). All new traffic flows to `next`, all `pop`s are served by `prev` until `prev` runs out of packets. Then `Remove` clears `prev` and only `next` is left standing, and pushes and pops are both serviced by `next`. This is our give-up-entirely option, with the splash zone as large as possible and no part of the scheduler left running undisturbed, but it always works and drops nothing. This section is the story of doing better: localize the change, so the sequence and its `link`s touch only a small subtree and the rest of the scheduler keeps running.
 
-We make no claim that the planner is canonical or minimal. We claim only that whatever sequence it emits is safe (§3.3), and that the work of this section is to make those sequences confined and live.
+We make no claim that the planner is canonical or minimal. We claim only that whatever sequence it emits is safe (§3.3), and is no worse than the worst-case full retirement option.
 
 [AM note: Many examples remain to work through here, and possibly some strengthening of `compare.ml` itself. TK.]
 
