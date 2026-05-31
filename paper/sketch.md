@@ -34,7 +34,7 @@
 - vPIFO (Zhang et al., SIGCOMM 2024) is the closest related work, and it explicitly leaves our problem open.
 - What vPIFO does. It virtualizes a single physical PIFO into many logical "PIFO instances," with a Scheduling Description Language (SDL) and compiler, so their PIFO Visor can _flexibly establish_ hierarchical PIFO trees of arbitrary shape on fixed hardware. Its contribution is the reconfigurable substrate.
 - What vPIFO does not do. As published, vPIFO has no notion of a diff between old and new policies, no formal semantics for what a policy change means, and no account of in-flight packets during a change. The SDL IR is for _rank computation_ compiled to P4 or CPU, quite different from our structural/topological one.
-- Our two running examples make the gap concrete. The easy append, to get to `Strict(gmail, zoom, spotify)`, looks like the kind of edit vPIFO's substrate is well placed to absorb in place: a targeted append to the structures that encode the tree shape and per-instance storage (the Operation Generation Table and the PIFO Instance Address Table) would plausibly register the new traffic and its operations while leaving the running instances untouched. vPIFO as published does not engage with this question; their only option is a full reinitialization. Driving such a substrate to install the edit in place, straight from the (small) diff, is exactly what our layer adds. The harder restructuring, to `Strict(gmail, RoundRobin(zoom, spotify))`, may not be realizeable using vPIFO at all.
+- Our two running examples make the gap concrete. The easy append, to get to `Strict(gmail, zoom, spotify)`, looks like the kind of edit vPIFO's substrate is well placed to absorb in place: a targeted append to the structures that encode the tree shape and per-instance storage (the Operation Generation Table and the PIFO Instance Address Table) would plausibly register the new traffic and its operations while leaving the running instances untouched. vPIFO as published does not engage with this question; their only option is a full reinitialization. Driving such a substrate to install the edit in place, straight from the (small) diff, is exactly what our layer adds. The harder restructuring, to `Strict(gmail, RoundRobin(zoom, spotify))`, may not be realizable using vPIFO at all.
 - vPIFO's own §9 ("Runtime Updating of the Scheduling Policy") names our exact problem as future work: "Ensuring correct scheduling of packets during the transitional phase between modifications is part of our future work." The accompanying sentence says the runtime interface itself (P4-runtime-style) is still under development.
 - The relationship, stated plainly. We are not competing with vPIFO and do not claim a better PIFO substrate. We supply the layer _above_ a PIFO substrate (which could well be vPIFO). That is, the formal transition between two policies, the small patch that realizes it, and the transitionary semantics. The works compose.
 
@@ -95,7 +95,7 @@ tree_□ ::= a valid policy tree with a single _hole_ (see below)
 weight ::= a positive real
 ```
 
-Every edit in this grammar is _atomic_: it carries a well-formed scheduler to a well-formed scheduler in a single step. This is a deliberate restriction. Edits that would have to destroy structure still holding packets are _not_ in the grammar: our one structural deletion, `Remove`, fires only on a subtree that is already empty. The richer reconfigurations a user may want (retiring a subtree that has packets buffered in it, replacing a subtree in-place, pruning a tree down to a subtree) are realized instead as _sequences_ of these atomic edits; §4 makes the sequencing precise.
+Every edit in this grammar is _atomic_: it carries a well-formed scheduler to a well-formed scheduler in a single step. This is a deliberate restriction. Edits that would have to destroy structure still holding packets are _not_ in the grammar: our one structural deletion, `Remove`, is emitted by our transition planner (§5) only after ensuring that the subtree being removed is empty. The richer reconfigurations a user may want (retiring a subtree that has packets buffered in it, replacing a subtree in-place, pruning a tree down to a subtree) are realized instead as _sequences_ of these atomic edits; §4 makes the sequencing precise.
 
 A _tree with a hole_ is a policy tree in which exactly one child slot holds a distinguished _hole_ rather than a subtree. The hole is a reserved, empty slot, not an absence of a slot. Importantly, the policy at the _parent_ of the hole has an arity that includes the hole. The node `RoundRobin(A, B, □)` runs a round-robin policy of arity three whose third slot is vacant; it is different from `RoundRobin(A, B)`, which just runs a round-robin policy of arity two. We write `tree_□[s]` for the ordinary, hole-free tree obtained by replacing the unique hole of `tree_□` with the subtree `s`; the fill is total, and valid whenever `s` and `tree_□` are valid.
 
@@ -154,8 +154,6 @@ We write `c` for the parent of the new slot (here the root `Strict`) and `k` for
 - _The tree, `q -> q'`._ At `c = Internal(qs, p)` we splice the new subtree in at index `k`: `q' = Internal(qs[+tree/k], p[+/k])`. Here `tree` enters as a PIFO tree with empty queues at every node. Splicing at `k` shifts the old children at indices `>= k` one place to the right, and renumbering `p` to `p[+/k]` tracks exactly that shift: every entry naming an old index `>= k` is bumped up by one, so each old slot keeps its matched count of occurrences and packets, now under a new name. When `k` is the last index (the append case) nothing is `>= k`, so `qs[+tree/k] = qs ++ [tree]` and `p[+/k] = p`: no child shifts and the parent's index-PIFO is untouched.
 - _The transaction, `z -> z'`._ `z'` is the scheduling transaction compiled from `next`. It extends `z` up to the renumbering at `c`: a packet that does not classify into the new subtree gets the same path that `z` would have emitted, with its step at `c` bumped by one whenever that step named an old index `>= k` (the path-level image of `p[+/k]`). A packet that _does_ classify into the new subtree gets a path whose step at `c` selects `k` and then descends through the new tree. No `prev` packet was ever routed to `k`: under `next`, `k` names the new subtree, and the old occupant of `k`, if any, now lives at `k+1`.
 
-Because the new subtree `tree` is empty, the control just installed is already `next`: applied to `prev`, `Add` lands directly in `next`, with nothing buffered under `k` to drain.
-
 ##### Soundness
 
 Recall that we have two obligations.
@@ -167,7 +165,74 @@ Recall that we have two obligations.
 
 _Atomicity._ No in-flight packet straddles the diff: every packet resident at the diff instant lives in the shared structure `qs`, carried into `q'` unchanged, and none is under `k`. The renumbering `p[+/k]` relabels index _values_ only; it moves no packets and changes no ranks. So a `pop` immediately after the diff returns exactly what a `pop` immediately before would have, the empty new slot contributing nothing and the existing subtrees keeping their contents and relative priority under shifted index names. The first `push` that `z'` routes to `k` is the first packet ever to occupy `tree`.
 
-_Deeper paths._ The example edits the root, but `path` may be any prefix; `Add { path = [1, 2]; tree = ... }` adds a slot inside a grandchild of the root. Nothing in the argument changes. The descent from the root to `c` passes only through nodes that `q` and `q'` share verbatim, and, because the new subtree is empty, it adds zero packets beneath every ancestor of `c`. So each ancestor's occurrence-tally for the child it forwards through is exactly what it was, no ancestor PIFO is rewritten, and the edit is confined to `c` and the fresh subtree below it.
+_Deeper paths._ The running example edits the root, but `path` may be any prefix; `Add { path = [1, 2]; tree = ... }` adds a slot inside a grandchild of the root. Nothing in the argument changes. The descent from the root to `c` passes only through nodes that `q` and `q'` share verbatim, and, because the new subtree is empty, it adds zero packets beneath every ancestor of `c`. So each ancestor's occurrence-tally for the child it forwards through is exactly what it was, no ancestor PIFO is rewritten, and the edit is confined to `c` and the fresh subtree below it.
+
+#### 3.3.2. `Remove(path)`
+
+`Remove` is the grammar's one structural deletion. It unhooks the subtree `prev@path` from its parent, drops the vacated slot, and renumbers any higher siblings. It is defined only when `prev@path` is _empty_. Retiring or replacing a subtree that still holds packets is therefore not `Remove`'s job alone: it is realized as a _sequence_ that first drains the subtree and only then removes it (see §4).
+
+##### Discussion
+
+Why do we insist that `Remove` fire only on an empty subtree? Because deleting an _occupied_ child has no canonical local realization. Consider `P(Q(A, B), C)`. In the diagram below each internal node is labeled with its index-PIFO and each leaf with the packets it holds. We draw every PIFO with its most favorably ranked entry, the next one to be popped, on the far right: so the leaf `[a2,a1]` releases `a1` before `a2`.
+
+```
+                        P
+           [2,2,1,1,2,2,1,1,1,2]
+               /             \
+              Q               C
+          [2,1,2,1,2]   [c5,c4,c3,c2,c1]
+            /     \
+           A       B
+        [a2,a1]  [b3,b2,b1]
+```
+
+Here `Q` refers to `A` using the index `1`, and to `B` using `2`. `P` refers to `Q` using `1` and to `C` using `2`. The tree is clearly well-formed. Say we delete `B`, dropping its packets. To restore well-formedness, we need to remove three instances of the index `2` from `Q`'s PIFO and three instances of the number `1` from `P`'s PIFO.
+
+At `Q` the edit is unambiguous. Well-formedness of the original tree implies that `Q`'s PIFO must have had exactly three instances of `2`; we just find and delete them. The trouble is one level up. `P`'s PIFO originally had five instances of the number `1`, and well-formedness demands that we remove three of them. But _which_ three? No entry in `P` is intrinsically "for `A`" or "for `B`": an entry `1` just means "service subtree `Q` once". [AM: I kind of need to teach them here that _this fact about PIFO trees is a good and powerful thing_, not just a nuisance that we are living with.]
+
+So we could only pick three instances of `1` arbitrarily, and our choice is silently a scheduling decision, as it affects how `P` intermixes `C` and `Q` traffic. For example:
+
+a. _Keep the two leftmost `1`s_ (strike the three on the right):
+
+```
+                          P
+           [2,2,1,1,2,2,~1~,~1~,~1~,2]
+                  /             \
+                 Q               C
+               [1,1]      [c5,c4,c3,c2,c1]
+                 |
+                 A
+              [a2,a1]
+```
+
+Here `~1~` indicates an instance of `1` that we dropped. Seven pops drain `P` and yield `c1, c2, c3, a1, a2, c4, c5`: `A` lands in the middle of `C`'s run.
+
+b. _Keep the two rightmost `1`s instead_ (strike the three on the left):
+
+```
+                          P
+           [2,2,~1~,~1~,2,2,~1~,1,1,2]
+                  /             \
+                 Q               C
+               [1,1]      [c5,c4,c3,c2,c1]
+                 |
+                 A
+              [a2,a1]
+```
+
+The same seven pops now yield `c1, a1, a2, c2, c3, c4, c5`: `A` is served almost immediately, ahead of all but one of `C`'s packets.
+
+Same tree, same surviving packets, two different service orders. The choice of _which_ `1`s to drop silently reschedules `A` against `C`, and nothing in `prev` or the deletion request records which the user wanted.
+
+We do not wish to make a scheduling decision for the user, so our only other option is to reconstruct the tree as if `B` had never been admitted: drain everything out, filter the `B`-packets, and re-push, recomputing every rank and cursor along the way. This is a stop-the-world rebuild.
+
+Our grammar sidesteps the question entirely. By draining `B` to empty before removing it (§4), every ancestor's count of entries for `B` is already zero at the instant `Remove` fires, so there is nothing to reconcile and no hidden policy choice to make: the structural deletion is unambiguous.
+
+##### Denotation
+
+##### The diff
+
+##### Soundness
 
 ### 3.4 Preserving this proof down to hardware
 
