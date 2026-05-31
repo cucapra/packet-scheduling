@@ -176,53 +176,53 @@ _Deeper paths._ The running example edits the root, but `path` may be any prefix
 Why do we insist that `Remove` fire only on an empty subtree? Because deleting an _occupied_ child has no canonical local realization. Consider `P(Q(A, B), C)`. In the diagram below each internal node is labeled with its index-PIFO and each leaf with the packets it holds. We draw every PIFO with its most favorably ranked entry, the next one to be popped, on the far right: so the leaf `[a2,a1]` releases `a1` before `a2`.
 
 ```
-                        P
-           [2,2,1,1,2,2,1,1,1,2]
+                    P
+            [1,2,1,2,1,2,1,2]
                /             \
               Q               C
-          [2,1,2,1,2]   [c5,c4,c3,c2,c1]
+          [1,1,2,2]    [c4,c3,c2,c1]
             /     \
            A       B
-        [a2,a1]  [b3,b2,b1]
+        [a2,a1]   [b2,b1]
 ```
 
-Here `Q` refers to `A` using the index `1`, and to `B` using `2`. `P` refers to `Q` using `1` and to `C` using `2`. The tree is clearly well-formed. Say we delete `B`, dropping its packets. To restore well-formedness, we need to remove three instances of the index `2` from `Q`'s PIFO and three instances of the number `1` from `P`'s PIFO.
+Here `Q` refers to `A` using the index `1`, and to `B` using `2`. `P` refers to `Q` using `1` and to `C` using `2`. The tree is well-formed. `P` appears to be running a round-robin style policy and `Q` appears to be prioritizing `B` strictly over `A`. Say the user asks us to delete `B`, dropping its packets. To restore well-formedness, we need to remove two instances of the index `2` from `Q`'s PIFO and two instances of the index `1` from `P`'s PIFO.
 
-At `Q` the edit is unambiguous. Well-formedness of the original tree implies that `Q`'s PIFO must have had exactly three instances of `2`; we just find and delete them. The trouble is one level up. `P`'s PIFO originally had five instances of the number `1`, and well-formedness demands that we remove three of them. But _which_ three? No entry in `P` is intrinsically "for `A`" or "for `B`": an entry `1` just means "service subtree `Q` once". [AM: I kind of need to teach them here that _this fact about PIFO trees is a good and powerful thing_, not just a nuisance that we are living with.]
+At `Q` the edit is unambiguous. Well-formedness of the original tree forces `Q`'s PIFO to have exactly two instances of `2`; we just find and delete them. The trouble is one level up. `P`'s PIFO originally had four instances of `1`, and well-formedness demands that we remove two of them. But _which_ two? No entry in `P` remembers the meta-information "I was enqueued when a packet was inserted into `B`"; an entry `1` in `P` just means "when this index is popped, recursively ask subtree `Q` to emit the next packet" (see §2.1). This forgetting of meta-information is a feature of PIFO trees, not a defect: an entry must be detached from the packet it was enqueued with; this is exactly what lets each node schedule its own discipline alone, and lets a subtree be reconfigured without rewriting its ancestors. We could facilitate an unambiguous deletion by tagging each entry at `push` with the leaf it is destined for, but that throws the abstraction away: every internal node would then have to track the entire downstream flow structure, and the composability that makes PIFO trees scale would be lost.
 
-So we could only pick three instances of `1` arbitrarily, and our choice is silently a scheduling decision, as it affects how `P` intermixes `C` and `Q` traffic. For example:
+Given this, _we can only pick two instances of `1` arbitrarily_. Our choice is silently a scheduling decision, as it affects how `P` intermixes `C` and `Q` traffic. For example:
 
-a. _Keep the two leftmost `1`s_ (strike the three on the right):
+a. _Keep the two leftmost `1`s_ (strike the two on the right):
 
 ```
                           P
-           [2,2,1,1,2,2,~1~,~1~,~1~,2]
+           [1,2,1,2,~1~,2,~1~,2]
                   /             \
                  Q               C
-               [1,1]      [c5,c4,c3,c2,c1]
+               [1,1]      [c4,c3,c2,c1]
                  |
                  A
               [a2,a1]
 ```
 
-Here `~1~` indicates an instance of `1` that we dropped. Seven pops drain `P` and yield `c1, c2, c3, a1, a2, c4, c5`: `A` lands in the middle of `C`'s run.
+Here `~1~` indicates an instance of `1` that we dropped. Six pops drain `P` and yield `c1, c2, c3, a1, c4, a2`: `A` is pushed to the back, both its packets emerging only after `C`'s run is mostly spent.
 
-b. _Keep the two rightmost `1`s instead_ (strike the three on the left):
+b. _Keep the two rightmost `1`s instead_ (strike the two on the left):
 
 ```
                           P
-           [2,2,~1~,~1~,2,2,~1~,1,1,2]
+           [~1~,2,~1~,2,1,2,1,2]
                   /             \
                  Q               C
-               [1,1]      [c5,c4,c3,c2,c1]
+               [1,1]      [c4,c3,c2,c1]
                  |
                  A
               [a2,a1]
 ```
 
-The same seven pops now yield `c1, a1, a2, c2, c3, c4, c5`: `A` is served almost immediately, ahead of all but one of `C`'s packets.
+The same six pops now yield `c1, a1, c2, a2, c3, c4`: this is exactly the round-robin schedule `P` was configured for, alternating `C` and `A` until `A` is exhausted and `C` drains alone.
 
-Same tree, same surviving packets, two different service orders. The choice of _which_ `1`s to drop silently reschedules `A` against `C`, and nothing in `prev` or the deletion request records which the user wanted.
+Same tree, same surviving packets, two different service orders. The _choice of which_ `1`s to drop\_ silently reschedules `A` against `C`, and nothing in `prev` or the deletion request records which the user wanted.
 
 We do not wish to make a scheduling decision for the user, so our only other option is to reconstruct the tree as if `B` had never been admitted: drain everything out, filter the `B`-packets, and re-push, recomputing every rank and cursor along the way. This is a stop-the-world rebuild.
 
