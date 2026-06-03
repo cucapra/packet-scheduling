@@ -4,12 +4,6 @@ The existence of `Quiesce` suggests that the "domain" of edits is not only a tre
 
 There may also be an alternative where we say that we only want to apply diffs to trees (not control tuples)? Which would mean that `Quiesce` exist, and we'd have to handle that at a different level of abstraction.
 
-> Notes on the individual edits:
-
-> Each production of §3.2 is an _atomic diff_: a transformation `δ`
-
-Sorry this is nitpicky, but I would say that each production _denotes_ such a function, not that it _is_ such a function. To keep these separate, we will want to introduce some sort of notation that means "the transition function denoted by a diff," which can probably be semantic brackets `[[•]]`.
-
 > This denotation is purely static: a `policy` carries only topology, disciplines, and labels, and no live contents or state.
 
 Hmm… I thought that `policy` was a control tuple `(s, q, z)`, but isn't `s` the state? So I think one of two things must be true:

@@ -115,18 +115,18 @@ Notes on the individual edits:
 
 ### 3.3 All Productions of `diff` are Sound
 
-An _atomic diff_ is a transformation `δ` that replaces the live control `C` with `δ(C)` in the gap between two `push`/`pop` operations. Concretely: in any sequence of `push`/`pop` operations `op_1, op_2, ...` served by the scheduler, if `δ` fires between `op_N` and `op_{N+1}`, then `op_1, ..., op_N` are served entirely by `C` and `op_{N+1}, ...` are served entirely by `δ(C)`. No operation straddles the edit, and no operation sees an intermediate state. This is the property §1's running example flagged informally; the rest of this section makes it precise for each production of §3.2.
+A `diff` (§3.2) is a syntactic object. We write `δ` for a generic syntactic diff and `[[δ]] : control -> control` for the transition function it denotes. An _atomic diff_ is one whose `[[δ]]` replaces the live control `C` with `[[δ]](C)` in the gap between two `push`/`pop` operations. Concretely: in any sequence of `push`/`pop` operations `op_1, op_2, ...` served by the scheduler, if `δ` fires between `op_N` and `op_{N+1}`, then `op_1, ..., op_N` are served entirely by `C` and `op_{N+1}, ...` entirely by `[[δ]](C)`. No operation straddles the edit, and no operation sees an intermediate state. This is the property §1's running example flagged informally; the rest of this section makes it precise for each production of §3.2.
 
-We require each atomic diff to be _sound_: `|- C` must imply `|- δ(C)`. In this section we prove that this holds for all the productions of `diff`.
+We require each atomic diff to be _sound_: `|- C` must imply `|- [[δ]](C)`. In this section we prove that this holds for all the productions of `diff`.
 
-The operational diff `δ` is the object that does the work: it rewrites all of `(s, q, z)` at once. It is useful to snap it open and look at a much lighter object that makes `δ` work. This is the edit's _denotation_: a partial function on policies (§3.1), `pol -> pol`, defined by recursion on the `path`, that says which `next` the edit produces from a given `prev`. This denotation is purely static: a `pol` carries only topology, disciplines, and labels, and no live contents or state.
+`[[δ]]` rewrites all of `(s, q, z)` at once and is the object that does the live work. It is useful to also pin down a much lighter object: the edit's _`pol`-level denotation_, written `den(δ) : pol -> pol`, a partial map on policies (§3.1) defined by recursion on the `path` that says which `next` shape the edit produces from a given `prev`. `den(δ)` is purely static: a `pol` carries only topology, disciplines, and labels, no live contents or state.
 
-These two objects pin down complementary parts of the control `δ` produces, and each gives the section one obligation.
+These two objects pin down complementary parts of the control `[[δ]]` produces, and each gives the section one obligation.
 
-- _Realization_ constrains the static skeleton. The `pol` denoted by `δ(C)` must be the edit's denotation applied to the `pol` that `C` denotes. An example in mathematical notation: `⌊δ(C)⌋ = Add(path, pol)(⌊C⌋)`. That same example in a more human-readable form: `Strict(gmail, zoom, spotify) = Add(path = [2], pol = spotify) Strict(gmail, zoom)`. Because a `pol` fixes both the topology of `q` and the transaction `z`, this one equation constrains the new tree's _shape_ and the new transaction together, and says nothing about contents.
-- _Soundness_ constrains the live contents. `|- C` must imply `|- δ(C)`. Well-formedness (§3.1) is a property of `q`'s contents alone, so this is the obligation that the packets and index entries `δ` leaves behind or introduces still satisfy `|-`.
+- _Realization_ constrains the static skeleton: `⌊[[δ]](C)⌋ = den(δ)(⌊C⌋)`. The `pol` of the new control must equal the pol-level denotation applied to the `pol` of the old control. For our running example, `δ = Add([2], spotify)`, so `den(δ)(Strict(gmail, zoom)) = Strict(gmail, zoom, spotify)`, and realization says `⌊[[δ]](C)⌋ = Strict(gmail, zoom, spotify)` for any `C` with `⌊C⌋ = Strict(gmail, zoom)`. Because a `pol` fixes both the topology of `q` and the transaction `z`, this one equation constrains the new tree's _shape_ and the new transaction together, and says nothing about contents.
+- _Soundness_ constrains the live contents: `|- C` must imply `|- [[δ]](C)`. Well-formedness (§3.1) is a property of `q`'s contents alone, so this is the obligation that the packets and index entries `[[δ]]` leaves behind or introduces still satisfy `|-`.
 
-State `s` is bookkeeping threaded along by `δ` and is governed by neither obligation directly. The denotation also doubles as the correctness statement for the transition planner of §4, which only ever sees static policies: the edit it emits between `prev` and `next` is correct exactly when the edit's denotation carries `prev` to `next`.
+State `s` is bookkeeping threaded along by `[[δ]]` and is governed by neither obligation directly. `den(·)` also doubles as the correctness statement for the transition planner of §4, which only ever sees static policies: the syntactic diff it emits between `prev` and `next` is correct exactly when `den(δ)(prev) = next`.
 
 The denotational rules frequently read, overwrite, and splice child lists. Let us fix some notation. We write `ts[i]` for the `i`-th child and `ts[t/i]` for `ts` with its `i`-th child overwritten by `t`; this leaves the arity unchanged. The two arity-changing edits carry a sign: `ts[+t/i]` is `ts` with `t` spliced in as the new `i`-th child (the old `i`-th and later children shift one place to the right), and `ts[-/i]` is `ts` with its `i`-th child dropped (later children shift left). Indices follow the `path` convention of §3.2.
 
@@ -134,28 +134,28 @@ The operational diffs of §3.3 manipulate two parallel structures at an internal
 
 #### 3.3.1. `Add(path, pol, weight?)`
 
-##### Denotation
+##### Pol-level denotation
 
-`Add` is the structural map
-
-```
-Add : path -> pol -> pol -> pol
-Add (i :: [])   s  (P ts) = P ( ts[+s / i] )
-Add (i :: rest) s  (P ts) = P ( ts[ (Add rest s ts[i]) / i ] )
-```
-
-The base case fires once `path` reaches the new slot's parent: the subtree `s` is spliced in as the new `i`-th child. (Recall from §3.2 that `Add`'s `path` is read in `next` and names the new slot, so its final index `i` is the insertion point.) The recursive case walks down a shared ancestor, recurses into child `i`, and writes the result back. A WFQ parent also needs the new slot's weight; with children zipped as `(weight, subtree)` pairs `cs`, the weight enters only at the insertion site, and descent leaves the weights untouched:
+`den(Add(path, s))` is the structural map, defined by recursion on `path`:
 
 ```
-Add (i :: [])   (w, s) (WFQ cs) = WFQ ( cs[ +(w, s) / i ] )
-Add (i :: rest) arg    (WFQ cs) = WFQ ( cs[ (w_i, Add rest arg s_i) / i ] )   where (w_i, s_i) = cs[i]
+den(Add(i :: [],   s)) (P ts) = P ( ts[+s / i] )
+den(Add(i :: rest, s)) (P ts) = P ( ts[ den(Add(rest, s)) (ts[i]) / i ] )
 ```
 
-Our running edit denotes `Add [2] spotify Strict(gmail, zoom) = Strict( (gmail, zoom)[+spotify / 2] ) = Strict(gmail, zoom, spotify) = next`, as intended. A mid-tree edit is no different: `Add [1] spotify Strict(gmail, zoom) = Strict( (gmail, zoom)[+spotify / 1] ) = Strict(gmail, spotify, zoom)`, with the old `zoom` sliding from index `1` to index `2`.
+The base case fires once `path` reaches the new slot's parent: the subtree `s` is spliced in as the new `i`-th child. (Recall from §3.2 that `Add`'s `path` is read in `next` and names the new slot, so its final index `i` is the insertion point.) The recursive case walks down a shared ancestor, recurses into child `i`, and writes the result back. A WFQ parent also needs the new slot's weight; the syntactic diff is `Add(path, s, w)` in this case. With children zipped as `(weight, subtree)` pairs `cs`, the weight enters only at the insertion site, and descent leaves the weights untouched:
 
-##### The diff
+```
+den(Add(i :: [],   s, w)) (WFQ cs) = WFQ ( cs[ +(w, s) / i ] )
+den(Add(i :: rest, s, w)) (WFQ cs) = WFQ ( cs[ (w_i, den(Add(rest, s, w)) s_i) / i ] )
+                                                                     where (w_i, s_i) = cs[i]
+```
 
-We write `c` for the parent of the new slot (here the root `Strict`) and `k` for the new slot's index. The operational diff rewrites the live control `(s, q, z)` componentwise into `(s', q', z')`:
+Our running example denotes `den(Add([2], spotify)) Strict(gmail, zoom) = Strict( (gmail, zoom)[+spotify / 2] ) = Strict(gmail, zoom, spotify) = next`, as intended. In our example we appended a new arm, but a mid-tree edit would be no more complicated: `den(Add([1], spotify)) Strict(gmail, zoom) = Strict( (gmail, zoom)[+spotify / 1] ) = Strict(gmail, spotify, zoom)`, with the old `zoom` sliding from index `1` to index `2`.
+
+##### Operational transition
+
+We write `c` for the parent of the new slot (here the root `Strict`) and `k` for the new slot's index. The transition function `[[Add(path, pol, weight?)]]` rewrites the live control `(s, q, z)` componentwise into `(s', q', z')`:
 
 - _The state, `s -> s'`._ `s'` agrees with `s` everywhere, except that it records the initial local state for the new slot: the new subtree's own scheduling state, plus whatever per-slot bookkeeping `c`'s scheduler keeps (a RoundRobin cursor, the slot's weight taken from the edit's `weight?`, a virtual-finish accumulator, etc.). No existing slot's state is disturbed.
 - _The tree, `q -> q'`._ At `c = Internal(qs, p)` we splice the new subtree in at index `k`: `q' = Internal(qs[+a/k], p[+/k])`, where `a` is the empty PIFO tree compiled from the inserted `pol` (the topology of `pol` with an empty PIFO at every node). Splicing at `k` shifts the old children at indices `>= k` one place to the right, and renumbering `p` to `p[+/k]` tracks exactly that shift: every entry naming an old index `>= k` is bumped up by one, so each old slot keeps its matched count of occurrences and packets, now under a new name. When `k` is the last index (the append case) nothing is `>= k`, so `qs[+a/k] = qs ++ [a]` and `p[+/k] = p`: no child shifts and the parent's index-PIFO is untouched.
@@ -165,7 +165,7 @@ We write `c` for the parent of the new slot (here the root `Strict`) and `k` for
 
 Recall that we have two obligations.
 
-- _Realization:_ the tree step above sets `q'` to `Internal(qs[+a/k], p[+/k])`, which is `prev`'s tree with an empty `pol`-shaped slot spliced in at `k`, and `z'` is compiled from `next`, so `⌊C_next⌋ = Add(path, pol)(⌊C_prev⌋)`: the new shape and transaction are together exactly what the edit denotes.
+- _Realization:_ writing `C_next = [[Add(path, pol, weight?)]](C_prev)`, the tree step above sets `q'` to `Internal(qs[+a/k], p[+/k])`, which is `prev`'s tree with an empty `pol`-shaped slot spliced in at `k`, and `z'` is compiled from `next`, so `⌊C_next⌋ = den(Add(path, pol, weight?))(⌊C_prev⌋)`: the new shape and transaction are together exactly what the edit denotes.
 - _Soundness:_ `|- C_prev` gives `|- C_next`. The parent `c` has exactly zero occurrences of `k`: its index-PIFO is now `p[+/k]`, which by construction names no `k` (old entries `< k` stay put, old entries `>= k` were bumped to `>= k+1`). The new subtree `a` holds zero packets or indices, so the well-formedness obligation at slot `k` reads `0 = 0`. Every other slot is a child it was in `q`, with the same packets beneath it; its entries in `p[+/k]` are the old entries under a possibly-shifted name, so its matched count is inherited verbatim. Nothing needs repair.
 
 ##### Notes
