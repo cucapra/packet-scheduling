@@ -66,7 +66,12 @@ _FA_ introduces a _control_ `(s, q, z)`: a current state `s` drawn from some fix
 
 _FA_ tells us how a control _runs_, but never how to _build_ one. There is no "constructor" that takes a user's wish (e.g., `Strict(gmail, zoom)`) and emits a control with the appropriate state variables, a PIFO tree with the right topology and empty queues, and a scheduling transaction that actually implements strict prioritization via the paths that it emits. Nor, given two controls, does _FA_ offer any way to compare them: `z` is just a function, and one cannot pattern-match on a function. These are the same gap. So before we can either construct the controls _FA_ reasons about or diff one against another, as the transition planner of §4 must, we take a small step back and make that syntactic source explicit.
 
-A `policy` is a labeled tree: every internal node carries a _scheduling discipline_ over its children (`Strict`, `RoundRobin`, `WFQ` with a weight per child, etc.) and every leaf carries a flow label. We write `P(ts)` for a non-leaf `policy` with discipline `P` over a child list `ts` of sub-policies; this is the `Strict(gmail, zoom)` notation we have already been using informally. A `policy` is _valid_ when it is syntactically sensible: every discipline is applied at its proper arity, a child carries a weight exactly when its parent runs `WFQ`, and leaf labels are distinct. This is a purely syntactic condition on the source, not to be confused with the invariant `|- q`.
+```
+policy ::= flow                                   // leaf, labeled by a flow of traffic
+         | D_n(policy_1, ..., policy_n)           // internal node, n-ary discipline D
+```
+
+`D` ranges over scheduling disciplines (`Strict`, `RoundRobin`, `WFQ`, ...). The subscript `n` is the arity, which we drop when it is clear from the children: `Strict(gmail, zoom)` for `Strict_2(gmail, zoom)`. WFQ pairs each child with a weight, elided from the grammar above. A `policy` is _valid_ when every discipline is applied at a proper arity, a child carries a weight exactly when its parent runs `WFQ`, and leaf labels are distinct. Validity is a purely syntactic condition on the source, not to be confused with the invariant `|- q`.
 
 A `policy` gives us a control `(s, q, z)` straightforwardly.
 
@@ -90,18 +95,14 @@ diff   ::= Add          (path, policy, weight?)
          | Graft        (ctx)
 
 path   ::= []  |  i :: path                       // i is a child index
-policy ::= flow                                   // leaf, labeled by a flow of traffic
-         | D(policy, ..., policy)                 // internal node, discipline D over its children
 ctx    ::= □                                      // the unique hole; takes no children
-         | D(policy, ..., ctx, ..., policy)       // exactly one child slot is itself a context
+         | D_n(policy, ..., ctx, ..., policy)     // n children total; exactly one is itself a context
 weight ::= a positive real
 ```
 
-`D` ranges over the scheduling disciplines of §3.1 (`Strict`, `RoundRobin`, `WFQ`, ...); WFQ pairs each child with a weight, which is elided from the grammar above. A _policy tree context_, written `ctx`, is a `policy` with exactly one distinguished _hole_ `□`.
+`policy` is the nonterminal of §3.1. A _policy tree context_, written `ctx`, is built like a `policy`, except that exactly one of its slots is the distinguished _hole_ `□` rather than a subtree. The hole is a reserved slot, not an absence of a slot: the parent of the hole has an arity that includes the hole, e.g `RoundRobin_3(A, B, □)` is distinct from `RoundRobin_2(A, B)`; both are valid. We write `ctx[s]` for the ordinary, hole-free tree obtained by plugging the hole of `ctx` with the subtree `s`. The plug is total, and `ctx[s]` is a valid `policy` whenever `s` and `ctx` are individually valid and their leaf labels are disjoint.
 
 Every edit in this grammar is _atomic_: it carries a well-formed scheduler to a well-formed scheduler in a single step. This is a deliberate restriction. Edits that would have to destroy structure still holding packets are _not_ in the grammar: our one structural deletion, `Remove`, is emitted by our transition planner (§5) only after ensuring that the subtree being removed is empty. The richer reconfigurations a user may want (retiring a subtree that has packets buffered in it, replacing a subtree in-place, pruning a tree down to a subtree) are realized instead as _sequences_ of these atomic edits; §4 makes the sequencing precise.
-
-A few words on contexts. The hole is a reserved, leaf-shaped slot, not an absence of a slot: the policy at the _parent_ of the hole has an arity that includes the hole. The node `RoundRobin(A, B, □)` runs a round-robin policy of arity three whose third slot is vacant; it is different from `RoundRobin(A, B)`, which just runs a round-robin policy of arity two. We write `ctx[s]` for the ordinary, hole-free tree obtained by plugging the hole of `ctx` with the subtree `s`; the plug is total, and valid whenever `s` and `ctx` are valid.
 
 Notes on the individual edits:
 
