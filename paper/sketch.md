@@ -82,6 +82,10 @@ A `pol` gives us a control `(s, q, z)` straightforwardly.
   - Generate a short program per node that determines how to rank incoming packets at that node. These node-local choices glue together into the single `z`.
   - Seed each node's local bookkeeping with initial state variables, e.g. a `RoundRobin` cursor at the first child, a `WFQ` virtual-finish accumulator at zero, and so on. This gives the state `s`.
 
+We commit to slightly more structure on `s` than _FA_ does. We treat `s` as a partial map from positions in the topology to local state, `s : path ⇀ LocalState`, where a position is a (possibly empty) sequence of child indices addressing a node from the root (the same `path` syntax §3.2 uses for the diff grammar), and `s(p)` is defined exactly when `p` reaches a node of `t`. A `LocalState` is a pair `(node_state, slot_state list)`: a `node_state` for the discipline's per-node bookkeeping (an `RR` cursor, a `WFQ` global virtual time), and a list of `slot_state` entries (one per arm, in slot order) for per-arm bookkeeping (a `WFQ` per-arm virtual finish, a `WRR` per-arm credit, the arm's weight under `WFQ`). Disciplines without per-arm bookkeeping (`Strict`, pure `RR`) have an empty `slot_state` list. _FA_ leaves all of this abstract; making it explicit lets the diff rules of §3.3 write equations on `s` instead of prose.
+
+Each discipline `D` also fixes a _slot-seed function_, `init_D : node_state × pol × weight? -> slot_state`, that decides what per-arm bookkeeping a fresh arm receives when it is spliced into a running `D`-parent. This becomes load-bearing in §3.3.1, when `Add` splices a new arm under an existing `D`-parent: at that moment, `init_D` reads the parent's current `node_state` and the new arm's `pol` and weight and returns the new `slot_state` entry. Choosing `init_D` is a scheduling decision, not a structural one, since the choice changes how the new arm competes with the established arms. We commit throughout to a _join fairly_ reading: `init_Strict` and `init_RR` return the empty tuple (no per-arm bookkeeping to seed); `init_WFQ((_, vt), _, w) = (w, vt)`, so a new `WFQ` arm carries its weight and starts at the parent's current virtual time, neither accumulating debt nor stealing a head start. Other choices are defensible: starting `WFQ`'s new arm at virtual time zero would give it a long head start; making it a parameter of the diff would expose the choice to the operator. We pick "join fairly" once and use it everywhere.
+
 We write `⌊C⌋` for the `pol` from which control `C` was compiled. We say that `C` _realizes_ `⌊C⌋`. This `pol`/`control` split is what structures §3.3: a syntactic diff (§3.2) admits two semantic readings, a `pol`-level denotation `den(δ) : pol -> pol` that fixes the static skeleton it produces and an operational transition `[[δ]] : control -> control` that does the live rewrite, and `⌊·⌋` is the bridge that lets us state when the two agree.
 
 ### 3.2 A Grammar for Tree Diffs
@@ -164,9 +168,20 @@ Our running example denotes `den(Add([2], spotify)) Strict(gmail, zoom) = Strict
 
 ##### Operational transition
 
-We write `c` for the parent of the new slot (here the root `Strict`) and `k` for the new slot's index. The transition function `[[Add(path, pol, weight?)]]` rewrites the live control `(s, q, z)` componentwise into `(s', q', z')`:
+We write `c` for the parent node of the new slot (here the root `Strict`), `path_c` for the path to `c` from the root, and `k` for the new slot's index, so `path = path_c ++ [k]`. The transition function `[[Add(path, pol, weight?)]]` rewrites the live control `(s, q, z)` componentwise into `(s', q', z')`:
 
-- _The state, `s -> s'`._ `s'` agrees with `s` everywhere, except that it records the initial local state for the new slot: the new subtree's own scheduling state, plus whatever per-slot bookkeeping `c`'s scheduler keeps (a RoundRobin cursor, the slot's weight taken from the edit's `weight?`, a virtual-finish accumulator, etc.). No existing slot's state is disturbed.
+- _The state, `s -> s'`._ Let `D` be `c`'s discipline. With `s` structured as in §3.1, the update splits by position into three cases:
+  - _At every position outside the new subtree, other than `path_c` itself:_ `s'(p) = s(p)`.
+  - _At `path_c`:_ the parent's `node_state` is unchanged, while its `slot_state` vector splices in a fresh entry at index `k`,
+    ```
+    s'(path_c).node_state = s(path_c).node_state
+    s'(path_c).slot_state = s(path_c).slot_state[ + init_D(s(path_c).node_state, pol, weight?) / k ]
+    ```
+    (a plain append when `k` is last). The fresh entry is whatever per-arm bookkeeping `D` decided a freshly spliced arm receives, via the `init_D` of §3.1.
+  - _At every position inside the new subtree:_ for every position `q` in `pol`'s topology, `s'(path_c ++ [k] ++ q) = s_pol(q)`, where `(s_pol, q_pol, z_pol)` is the control compiled from `pol`.
+
+  No existing slot's state is disturbed.
+
 - _The tree, `q -> q'`._ At `c = Internal(qs, p)` we splice the new subtree in at index `k`: `q' = Internal(qs[+a/k], p[+/k])`, where `a` is the empty PIFO tree compiled from the inserted `pol` (the topology of `pol` with an empty PIFO at every node). Splicing at `k` shifts the old children at indices `>= k` one place to the right, and renumbering `p` to `p[+/k]` tracks exactly that shift: every entry naming an old index `>= k` is bumped up by one, so each old slot keeps its matched count of occurrences and packets, now under a new name. When `k` is the last index (the append case) nothing is `>= k`, so `qs[+a/k] = qs ++ [a]` and `p[+/k] = p`: no child shifts and the parent's index-PIFO is untouched.
 - _The transaction, `z -> z'`._ `z'` is the scheduling transaction compiled from `next`. It both _extends_ `z`'s domain and _renumbers_ paths at `c`. On the existing domain of `z`, a packet gets the same path that `z` would have emitted, with its step at `c` bumped by one whenever that step named an old index `>= k` (the path-level image of `p[+/k]`). On the freshly admitted domain (packets that classify into the new subtree, formerly undefined for `z`), `z'` emits a path whose step at `c` selects `k` and then descends through the new tree. No `prev` packet was ever routed to `k`: under `next`, `k` names the new subtree, and the old occupant of `k`, if any, now lives at `k+1`.
 
