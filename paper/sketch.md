@@ -80,7 +80,7 @@ A `pol` gives us a control `(s, q, z)` straightforwardly.
   - Generate a short program per node that determines how to rank incoming packets at that node. These node-local choices glue together into the single `z`.
   - Seed each node's local bookkeeping with initial state variables, e.g. a `RoundRobin` cursor at the first child, a `WFQ` virtual-finish accumulator at zero, and so on. This gives the state `s`.
 
-We write `⌊C⌋` for the `pol` from which control `C` was compiled. We say that `C` _realizes_ `⌊C⌋`. The grammar of §3.2 and the denotations of §3.3 act on policies, the operational diffs of §3.3 act on controls, and `⌊·⌋` is the bridge that lets us state when a diff realizes its denotation.
+We write `⌊C⌋` for the `pol` from which control `C` was compiled. We say that `C` _realizes_ `⌊C⌋`. This `pol`/`control` split is what structures §3.3: a syntactic diff (§3.2) admits two semantic readings, a `pol`-level denotation `den(δ) : pol -> pol` that fixes the static skeleton it produces and an operational transition `[[δ]] : control -> control` that does the live rewrite, and `⌊·⌋` is the bridge that lets us state when the two agree.
 
 ### 3.2 A Grammar for Tree Diffs
 
