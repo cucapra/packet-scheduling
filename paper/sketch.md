@@ -117,18 +117,25 @@ Notes on the individual edits:
 
 ### 3.3 All Productions of `diff` are Sound
 
-A `diff` (§3.2) is a syntactic object. We write `δ` for a generic syntactic diff and `[[δ]] : control -> control` for the transition function it denotes. An _atomic diff_ is one whose `[[δ]]` replaces the live control `C` with `[[δ]](C)` in the gap between two `push`/`pop` operations. Concretely: in any sequence of `push`/`pop` operations `op_1, op_2, ...` served by the scheduler, if `δ` fires between `op_N` and `op_{N+1}`, then `op_1, ..., op_N` are served entirely by `C` and `op_{N+1}, ...` entirely by `[[δ]](C)`. No operation straddles the edit, and no operation sees an intermediate state. This is the property §1's running example flagged informally; the rest of this section makes it precise for each production of §3.2.
+A `diff` (§3.2) is a syntactic object: we write `δ` for a generic syntactic diff. Before assigning `δ` any semantics, we cut down to the policies against which the syntax actually makes sense.
 
-We require each atomic diff to be _sound_: `|- C` must imply `|- [[δ]](C)`. In this section we prove that this holds for all the productions of `diff`.
+We say `δ` is _well-formed against_ `prev` when every `path` is consistent with `prev`'s shape (resolving to an existing slot for `Quiesce`/`Designate`/`Remove`/`ChangeWeight`, and to a fresh slot of an existing internal node for `Add`); any `weight?` is present exactly when the edited slot's parent runs WFQ; the parent at `path`'s prefix runs WFQ when `δ = ChangeWeight(...)`; and any new leaf labels introduced by an `Add`'s `pol` or a `Graft`'s `ctx` are disjoint from `prev`'s surviving labels. This is just the natural lifting of `pol`-validity (§3.1) from a single tree to an edit between two. Throughout §3.3, the two semantic readings of `δ` developed below are stated on `(δ, prev)` pairs that satisfy this condition; §4's transition planner emits only such pairs by construction.
 
-`[[δ]]` rewrites all of `(s, q, z)` at once and is the object that does the live work. It is useful to also pin down a much lighter object: the edit's _`pol`-level denotation_, written `den(δ) : pol -> pol`, a partial map on policies (§3.1) defined by recursion on the `path` that says which `next` shape the edit produces from a given `prev`. `den(δ)` is purely static: a `pol` carries only topology, disciplines, and labels, no live contents or state.
+Each `δ` admits two semantic readings, and the rest of the paper leans on both.
 
-These two objects pin down complementary parts of the control `[[δ]]` produces, and each gives the section one obligation.
+- The _pol-level denotation_, `den(δ) : pol -> pol`, is defined by recursion on `path` and acts on the policies against which `δ` is well-formed. It says what `next` shape `δ` produces from a given such `prev`, and nothing more. A `pol` carries only topology, disciplines, and labels (no live contents and no state), so `den(δ)` is a purely static map. This is the reading §4's transition planner manipulates: the planner only ever sees static policies, and the syntactic diff it emits between `prev` and `next` is correct exactly when `den(δ)(prev) = next`.
+- The _operational transition_, `[[δ]] : control -> control`, is the live rewrite. It acts on the full control tuple `(s, q, z)`: state, tree, and transaction together. This is the reading the substrate actually runs, and it is the object every soundness obligation in this section is stated against.
 
-- _Realization_ constrains the static skeleton: `⌊[[δ]](C)⌋ = den(δ)(⌊C⌋)`. The `pol` of the new control must equal the pol-level denotation applied to the `pol` of the old control. For our running example, `δ = Add([2], spotify)`, so `den(δ)(Strict(gmail, zoom)) = Strict(gmail, zoom, spotify)`, and realization says `⌊[[δ]](C)⌋ = Strict(gmail, zoom, spotify)` for any `C` with `⌊C⌋ = Strict(gmail, zoom)`. Because a `pol` fixes both the topology of `q` and the transaction `z`, this one equation constrains the new tree's _shape_ and the new transaction together, and says nothing about contents.
+The two readings are linked through the `⌊·⌋` bridge of §3.1, which strips a live control down to its source `pol`. So `⌊[[δ]](C)⌋` and `den(δ)(⌊C⌋)` are two ways of asking the same question (_what `pol` does the post-edit control realize?_), and they had better agree.
+
+An _atomic diff_ is one whose `[[δ]]` replaces the live control `C` with `[[δ]](C)` in the gap between two `push`/`pop` operations. Concretely: in any sequence of `push`/`pop` operations `op_1, op_2, ...` served by the scheduler, if `δ` fires between `op_N` and `op_{N+1}`, then `op_1, ..., op_N` are served entirely by `C` and `op_{N+1}, ...` entirely by `[[δ]](C)`. No operation straddles the edit, and no operation sees an intermediate state. This is the property §1's running example flagged informally; the rest of this section makes it precise for each production of §3.2.
+
+For each production we discharge two obligations, one per reading.
+
+- _Realization_ constrains the static skeleton: `⌊[[δ]](C)⌋ = den(δ)(⌊C⌋)`. The `pol` of the post-edit control must equal the pol-level denotation applied to the `pol` of the pre-edit control. For our running example, `δ = Add([2], spotify)`, so `den(δ)(Strict(gmail, zoom)) = Strict(gmail, zoom, spotify)`, and realization says `⌊[[δ]](C)⌋ = Strict(gmail, zoom, spotify)` for any `C` with `⌊C⌋ = Strict(gmail, zoom)`. Because a `pol` fixes both the topology of `q` and the transaction `z`, this one equation constrains the new tree's _shape_ and the new transaction together, and says nothing about contents.
 - _Soundness_ constrains the live contents: `|- C` must imply `|- [[δ]](C)`. Well-formedness (§3.1) is a property of `q`'s contents alone, so this is the obligation that the packets and index entries `[[δ]]` leaves behind or introduces still satisfy `|-`.
 
-State `s` is bookkeeping threaded along by `[[δ]]` and is governed by neither obligation directly. `den(·)` also doubles as the correctness statement for the transition planner of §4, which only ever sees static policies: the syntactic diff it emits between `prev` and `next` is correct exactly when `den(δ)(prev) = next`.
+State `s` is bookkeeping threaded along by `[[δ]]` and is governed by neither obligation directly.
 
 The denotational rules frequently read, overwrite, and splice child lists. Let us fix some notation. We write `ts[i]` for the `i`-th child and `ts[t/i]` for `ts` with its `i`-th child overwritten by `t`; this leaves the arity unchanged. The two arity-changing edits carry a sign: `ts[+t/i]` is `ts` with `t` spliced in as the new `i`-th child (the old `i`-th and later children shift one place to the right), and `ts[-/i]` is `ts` with its `i`-th child dropped (later children shift left). Indices follow the `path` convention of §3.2.
 
@@ -237,9 +244,9 @@ We do not wish to make a scheduling decision for the operator, so our only other
 
 Our grammar sidesteps the question entirely. By draining `B` to empty before removing it (§4), every ancestor's count of entries for `B` is already zero at the instant `Remove` fires, so there is nothing to reconcile and no hidden policy choice to make: the structural deletion is unambiguous.
 
-##### Denotation
+##### Pol-level denotation
 
-##### The diff
+##### Operational transition
 
 ##### Soundness
 
