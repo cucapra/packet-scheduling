@@ -4,10 +4,6 @@ The existence of `Quiesce` suggests that the "domain" of edits is not only a tre
 
 There may also be an alternative where we say that we only want to apply diffs to trees (not control tuples)? Which would mean that `Quiesce` exist, and we'd have to handle that at a different level of abstraction.
 
-> `Designate (path, tree)` spawns `tree` as a sibling of `prev@path`. The new tree is the _designated survivor_ of `prev@path`: the new tree can receive new packets, but, while `prev@path` has packets, the new tree cannot be popped.
-
-Sorry to be back on my usual nonsense, but is this (for our purposes) equivalent to saying that we're inserting a `Strict` node at that path? If so, let's describe it that way. If not, this seems to require more work to formalize...
-
 > Notes on the individual edits:
 
 > Each production of §3.2 is an _atomic diff_: a transformation `δ`
