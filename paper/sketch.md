@@ -40,15 +40,15 @@
 
 ## 3. A Grammar of Atomic Policy Diffs
 
-We recap the PIFO-tree model (§3.1), fix a grammar of atomic policy diffs (§3.2), show that each production of the grammar carries a well-formed scheduler to a well-formed scheduler (§3.3), and argue that this guarantee survives down to hardware (§3.4). Composing diffs into the sequences that realize a full reconfiguration, and the `link` schedulers that arise between them, is deferred to §4.
+We recap the PIFO tree model (§3.1), fix a grammar of atomic policy diffs (§3.2), show that each production of the grammar carries a well-formed scheduler to a well-formed scheduler (§3.3), and argue that this guarantee survives down to hardware (§3.4). Composing diffs into the sequences that realize a full reconfiguration, and the `link` schedulers that arise between them, is deferred to §4.
 
 ### 3.1 Background: PIFO trees, formally
 
-We build on the PIFO-tree model of Mohan et al. [Formal Abstractions, OOPSLA '23, §3], so we review the pieces of their formalism that this paper actually leans on.
+We build on the PIFO tree model of Mohan et al. [Formal Abstractions, OOPSLA '23, §3], so we review the pieces of their formalism that this paper actually leans on.
 
 #### Topology vs. contents
 
-A _topology_ `t` is a finite tree carrying no data: either a single node `*` or `Node(ts)` for a list of child topologies. A _PIFO tree_ of topology `t`, written `q : PIFOTree(t)`, layers data onto `t`. A leaf `Leaf(p)` holds a packet-carrying PIFO `p`. An internal node `Internal(qs, p)` carries two things: a list `qs` of well-formed PIFO-tree children whose topologies match the corresponding sub-topologies of `t`, and a PIFO `p` whose entries are child indices into `qs`. This separation between the topology and the carried contents is key to making the diff grammar of §3.2 well-defined: a structural edit is a change to the topology `t`, distinct from the running contents.
+A _topology_ `t` is a finite tree carrying no data: either a single node `*` or `Node(ts)` for a list of child topologies. A _PIFO tree_ of topology `t`, written `q : PIFOTree(t)`, layers data onto `t`. A leaf `Leaf(p)` holds a packet-carrying PIFO `p`. An internal node `Internal(qs, p)` carries two things: a list `qs` of well-formed PIFO tree children whose topologies match the corresponding sub-topologies of `t`, and a PIFO `p` whose entries are child indices into `qs`. This separation between the topology and the carried contents is key to making the diff grammar of §3.2 well-defined: a structural edit is a change to the topology `t`, distinct from the running contents.
 
 #### The two user-observable operations
 
@@ -67,48 +67,48 @@ _FA_ introduces a _control_ `(s, q, z)`: a current state `s` drawn from some fix
 _FA_ tells us how a control _runs_, but never how to _build_ one. There is no "constructor" that takes a user's wish (e.g., `Strict(gmail, zoom)`) and emits a control with the appropriate state variables, a PIFO tree with the right topology and empty queues, and a scheduling transaction that actually implements strict prioritization via the paths that it emits. Nor, given two controls, does _FA_ offer any way to compare them: `z` is just a function, and one cannot pattern-match on a function. These are the same gap. So before we can either construct the controls _FA_ reasons about or diff one against another, as the transition planner of §4 must, we take a small step back and make that syntactic source explicit.
 
 ```
-policy ::= flow                                   // leaf, labeled by a flow of traffic
-         | D_n(policy_1, ..., policy_n)           // internal node, n-ary discipline D
+pol    ::= flow                                   // leaf, labeled by a flow of traffic
+         | D_n(pol_1, ..., pol_n)                 // internal node, n-ary discipline D
 ```
 
-`D` ranges over scheduling disciplines (`Strict`, `RoundRobin`, `WFQ`, ...). The subscript `n` is the arity, which we drop when it is clear from the children: `Strict(gmail, zoom)` for `Strict_2(gmail, zoom)`. WFQ pairs each child with a weight, elided from the grammar above. A `policy` is _valid_ when every discipline is applied at a proper arity, a child carries a weight exactly when its parent runs `WFQ`, and leaf labels are distinct. Validity is a purely syntactic condition on the source, not to be confused with the invariant `|- q`.
+This yields a tree-shaped structure with unbounded arity. `D` ranges over scheduling disciplines (`Strict`, `RoundRobin`, `WFQ`, ...). The subscript `n` is the arity, which we drop when it is clear from the children: `Strict(gmail, zoom)` for `Strict_2(gmail, zoom)`. WFQ pairs each child with a weight, elided from the grammar above. A `pol` is _valid_ when every discipline is applied at a proper arity, a child carries a weight exactly when its parent runs `WFQ`, and leaf labels are distinct. Validity is a purely syntactic condition on the source, not to be confused with the invariant `|- q`.
 
-A `policy` gives us a control `(s, q, z)` straightforwardly.
+A `pol` gives us a control `(s, q, z)` straightforwardly.
 
 - Erase the labels, and what remains is the topology. Instantiate that topology with an empty PIFO at every node, and you have the tree `q`.
 - Read the disciplines of the policy, and they mechanically show how to:
   - Generate a short program per node that determines how to rank incoming packets at that node. These node-local choices glue together into the single `z`.
   - Seed each node's local bookkeeping with initial state variables, e.g. a `RoundRobin` cursor at the first child, a `WFQ` virtual-finish accumulator at zero, and so on. This gives the state `s`.
 
-We write `⌊C⌋` for the `policy` from which control `C` was compiled. We say that `C` _realizes_ `⌊C⌋`. The grammar of §3.2 and the denotations of §3.3 act on policies, the operational diffs of §3.3 act on controls, and `⌊·⌋` is the bridge that lets us state when a diff realizes its denotation.
+We write `⌊C⌋` for the `pol` from which control `C` was compiled. We say that `C` _realizes_ `⌊C⌋`. The grammar of §3.2 and the denotations of §3.3 act on policies, the operational diffs of §3.3 act on controls, and `⌊·⌋` is the bridge that lets us state when a diff realizes its denotation.
 
 ### 3.2 A Grammar for Tree Diffs
 
-We fix a small grammar of structural edits between the valid `policy` `prev` and the valid `policy` `next`. An edit names _where_ in the tree the change lands (a path from the root) and _what_ the change is. We write `t@path` for the subtree of `t` reached by following `path` down from `t`'s root. Depending on the production being used, `t` is instantiated to `prev` or `next`; see below.
+We fix a small grammar of structural edits between the valid `pol` `prev` and the valid `pol` `next`. An edit names _where_ in the tree the change lands (a path from the root) and _what_ the change is. We write `t@path` for the subtree of `t` reached by following `path` down from `t`'s root. Depending on the production being used, `t` is instantiated to `prev` or `next`; see below.
 
 ```
-diff   ::= Add          (path, policy, weight?)
+diff   ::= Add          (path, pol, weight?)
          | Quiesce      (path)
-         | Designate    (path, policy)
+         | Designate    (path, pol)
          | Remove       (path)
          | ChangeWeight (path, weight)
          | Graft        (ctx)
 
 path   ::= []  |  i :: path                       // i is a child index
 ctx    ::= □                                      // the unique hole; takes no children
-         | D_n(policy, ..., ctx, ..., policy)     // n children total; exactly one is itself a context
+         | D_n(pol, ..., ctx, ..., pol)           // n children total; exactly one is itself a context
 weight ::= a positive real
 ```
 
-`policy` is the nonterminal of §3.1. A _policy tree context_, written `ctx`, is built like a `policy`, except that exactly one of its slots is the distinguished _hole_ `□` rather than a subtree. The hole is a reserved slot, not an absence of a slot: the parent of the hole has an arity that includes the hole, e.g `RoundRobin_3(A, B, □)` is distinct from `RoundRobin_2(A, B)`; both are valid. We write `ctx[s]` for the ordinary, hole-free tree obtained by plugging the hole of `ctx` with the subtree `s`. The plug is total, and `ctx[s]` is a valid `policy` whenever `s` and `ctx` are individually valid and their leaf labels are disjoint.
+`pol` is the nonterminal of §3.1. A _policy context_, written `ctx`, is built like a `pol`, except that exactly one of its slots is the distinguished _hole_ `□` rather than a subtree. The hole is a reserved slot, not an absence of a slot: the parent of the hole has an arity that includes the hole, e.g `RoundRobin_3(A, B, □)` is distinct from `RoundRobin_2(A, B)`; both are valid. We write `ctx[s]` for the ordinary, hole-free tree obtained by plugging the hole of `ctx` with the subtree `s`. The plug is total, and `ctx[s]` is a valid `pol` whenever `s` and `ctx` are individually valid and their leaf labels are disjoint.
 
 Every edit in this grammar is _atomic_: it carries a well-formed scheduler to a well-formed scheduler in a single step. This is a deliberate restriction. Edits that would have to destroy structure still holding packets are _not_ in the grammar: our one structural deletion, `Remove`, is emitted by our transition planner (§5) only after ensuring that the subtree being removed is empty. The richer reconfigurations a user may want (retiring a subtree that has packets buffered in it, replacing a subtree in-place, pruning a tree down to a subtree) are realized instead as _sequences_ of these atomic edits; §4 makes the sequencing precise.
 
 Notes on the individual edits:
 
-- `Add` carries a `weight` exactly when the slot it edits hangs off a WFQ parent, which needs a weight to schedule the subtree; for any other parent the weight is absent. It adds the subtree `policy` at the new slot `next@path`, with empty queues throughout. The new subtree carries fresh traffic that intersects nothing `prev` was already serving (it was being rejected thus far, say).
+- `Add` carries a `weight` exactly when the slot it edits hangs off a WFQ parent, which needs a weight to schedule the subtree; for any other parent the weight is absent. It adds the subtree `pol` at the new slot `next@path`, with empty queues throughout. The new subtree carries fresh traffic that intersects nothing `prev` was already serving (it was being rejected thus far, say).
 - `Quiesce (path)` stops routing any new traffic to `prev@path`. It is a transaction-only edit: topology and contents are untouched, so the quiesced subtree keeps being served and drains under load. It adds no structure and removes none.
-- `Designate (path, policy)` spawns `policy` as a sibling of `prev@path`. The new subtree is the _designated survivor_ of `prev@path`: it can receive new packets, but, while `prev@path` has packets, it cannot be popped.
+- `Designate (path, pol)` spawns `pol` as a sibling of `prev@path`. The new subtree is the _designated survivor_ of `prev@path`: it can receive new packets, but, while `prev@path` has packets, it cannot be popped.
 - `Remove (path)` structurally removes `prev@path`, dropping its slot and renumbering any higher siblings. The subtree must be _empty_: removing an occupied subtree would leave its parent with dangling indices.
 - `ChangeWeight (path, weight)` targets `prev@path`; it overwrites the weight that `prev@path`'s parent uses for it. It is well-defined only when the parent at `path`'s prefix runs WFQ and `path` is non-empty.
 - `Graft (ctx)` spawns `ctx` and plugs its hole with `prev`, which keeps its in-flight contents. The ancestor nodes of `prev` in `ctx[prev]` are populated with the indices required to make `ctx[prev]` well-formed. The rest of the tree is spawned empty.
@@ -117,27 +117,27 @@ Notes on the individual edits:
 
 Each production of §3.2 is an _atomic diff_: a transformation `δ` that, applied to the live control `C`, replaces it with another control `δ(C)` between two user `push`/`pop` operations, so that every operation is served by exactly one control. We require a diff to be _sound_: `|- C` must imply `|- δ(C)`. In this section we prove that this holds for all the productions of `diff`.
 
-The operational diff `δ` is the object that does the work: it rewrites all of `(s, q, z)` at once. It is useful to snap it open and look at a much lighter object that makes `δ` work. This is the edit's _denotation_: a partial function on policies (§3.1), `policy -> policy`, defined by recursion on the `path`, that says which `next` the edit produces from a given `prev`. This denotation is purely static: a `policy` carries only topology, disciplines, and labels, and no live contents or state.
+The operational diff `δ` is the object that does the work: it rewrites all of `(s, q, z)` at once. It is useful to snap it open and look at a much lighter object that makes `δ` work. This is the edit's _denotation_: a partial function on policies (§3.1), `pol -> pol`, defined by recursion on the `path`, that says which `next` the edit produces from a given `prev`. This denotation is purely static: a `pol` carries only topology, disciplines, and labels, and no live contents or state.
 
 These two objects pin down complementary parts of the control `δ` produces, and each gives the section one obligation.
 
-- _Realization_ constrains the static skeleton. The `policy` denoted by `δ(C)` must be the edit's denotation applied to the `policy` that `C` denotes. An example in mathematical notation: `⌊δ(C)⌋ = Add(path, policy)(⌊C⌋)`. That same example in a more human-readable form: `Strict(gmail, zoom, spotify) = Add(path = [2], policy = spotify) Strict(gmail, zoom)`. Because a `policy` fixes both the topology of `q` and the transaction `z`, this one equation constrains the new tree's _shape_ and the new transaction together, and says nothing about contents.
+- _Realization_ constrains the static skeleton. The `pol` denoted by `δ(C)` must be the edit's denotation applied to the `pol` that `C` denotes. An example in mathematical notation: `⌊δ(C)⌋ = Add(path, pol)(⌊C⌋)`. That same example in a more human-readable form: `Strict(gmail, zoom, spotify) = Add(path = [2], pol = spotify) Strict(gmail, zoom)`. Because a `pol` fixes both the topology of `q` and the transaction `z`, this one equation constrains the new tree's _shape_ and the new transaction together, and says nothing about contents.
 - _Soundness_ constrains the live contents. `|- C` must imply `|- δ(C)`. Well-formedness (§3.1) is a property of `q`'s contents alone, so this is the obligation that the packets and index entries `δ` leaves behind or introduces still satisfy `|-`.
 
 State `s` is bookkeeping threaded along by `δ` and is governed by neither obligation directly. The denotation also doubles as the correctness statement for the transition planner of §4, which only ever sees static policies: the edit it emits between `prev` and `next` is correct exactly when the edit's denotation carries `prev` to `next`.
 
 The denotational rules frequently read, overwrite, and splice child lists. Let us fix some notation. We write `ts[i]` for the `i`-th child and `ts[t/i]` for `ts` with its `i`-th child overwritten by `t`; this leaves the arity unchanged. The two arity-changing edits carry a sign: `ts[+t/i]` is `ts` with `t` spliced in as the new `i`-th child (the old `i`-th and later children shift one place to the right), and `ts[-/i]` is `ts` with its `i`-th child dropped (later children shift left). Indices follow the `path` convention of §3.2.
 
-The operational diffs of §3.3 manipulate two parallel structures at an internal node: a child list `qs` of PIFO-tree children, to which the list-manipulation notation introduced above applies verbatim, and an index-PIFO `p` recording child indices. For `p` the same `[±/k]` notation _renumbers_ rather than splices, because we often need to open up or close a slot by shifting indices. `p[+/k]` is `p` with every entry `>= k` bumped up by one (opening up slot `k`); `p[-/k]` is `p` with every entry `> k` brought down by one. Entries below the edit point are left alone.
+The operational diffs of §3.3 manipulate two parallel structures at an internal node: a child list `qs` of PIFO tree children, to which the list-manipulation notation introduced above applies verbatim, and an index-PIFO `p` recording child indices. For `p` the same `[±/k]` notation _renumbers_ rather than splices, because we often need to open up or close a slot by shifting indices. `p[+/k]` is `p` with every entry `>= k` bumped up by one (opening up slot `k`); `p[-/k]` is `p` with every entry `> k` brought down by one. Entries below the edit point are left alone.
 
-#### 3.3.1. `Add(path, policy, weight?)`
+#### 3.3.1. `Add(path, pol, weight?)`
 
 ##### Denotation
 
 `Add` is the structural map
 
 ```
-Add : path -> policy -> policy -> policy
+Add : path -> pol -> pol -> pol
 Add (i :: [])   s  (P ts) = P ( ts[+s / i] )
 Add (i :: rest) s  (P ts) = P ( ts[ (Add rest s ts[i]) / i ] )
 ```
@@ -156,21 +156,21 @@ Our running edit denotes `Add [2] spotify Strict(gmail, zoom) = Strict( (gmail, 
 We write `c` for the parent of the new slot (here the root `Strict`) and `k` for the new slot's index. The operational diff rewrites the live control `(s, q, z)` componentwise into `(s', q', z')`:
 
 - _The state, `s -> s'`._ `s'` agrees with `s` everywhere, except that it records the initial local state for the new slot: the new subtree's own scheduling state, plus whatever per-slot bookkeeping `c`'s scheduler keeps (a RoundRobin cursor, the slot's weight taken from the edit's `weight?`, a virtual-finish accumulator, etc.). No existing slot's state is disturbed.
-- _The tree, `q -> q'`._ At `c = Internal(qs, p)` we splice the new subtree in at index `k`: `q' = Internal(qs[+a/k], p[+/k])`, where `a` is the empty PIFO tree compiled from the inserted `policy` (the topology of `policy` with an empty PIFO at every node). Splicing at `k` shifts the old children at indices `>= k` one place to the right, and renumbering `p` to `p[+/k]` tracks exactly that shift: every entry naming an old index `>= k` is bumped up by one, so each old slot keeps its matched count of occurrences and packets, now under a new name. When `k` is the last index (the append case) nothing is `>= k`, so `qs[+a/k] = qs ++ [a]` and `p[+/k] = p`: no child shifts and the parent's index-PIFO is untouched.
+- _The tree, `q -> q'`._ At `c = Internal(qs, p)` we splice the new subtree in at index `k`: `q' = Internal(qs[+a/k], p[+/k])`, where `a` is the empty PIFO tree compiled from the inserted `pol` (the topology of `pol` with an empty PIFO at every node). Splicing at `k` shifts the old children at indices `>= k` one place to the right, and renumbering `p` to `p[+/k]` tracks exactly that shift: every entry naming an old index `>= k` is bumped up by one, so each old slot keeps its matched count of occurrences and packets, now under a new name. When `k` is the last index (the append case) nothing is `>= k`, so `qs[+a/k] = qs ++ [a]` and `p[+/k] = p`: no child shifts and the parent's index-PIFO is untouched.
 - _The transaction, `z -> z'`._ `z'` is the scheduling transaction compiled from `next`. It extends `z` up to the renumbering at `c`: a packet that does not classify into the new subtree gets the same path that `z` would have emitted, with its step at `c` bumped by one whenever that step named an old index `>= k` (the path-level image of `p[+/k]`). A packet that _does_ classify into the new subtree gets a path whose step at `c` selects `k` and then descends through the new tree. No `prev` packet was ever routed to `k`: under `next`, `k` names the new subtree, and the old occupant of `k`, if any, now lives at `k+1`.
 
 ##### Soundness
 
 Recall that we have two obligations.
 
-- _Realization:_ the tree step above sets `q'` to `Internal(qs[+a/k], p[+/k])`, which is `prev`'s tree with an empty `policy`-shaped slot spliced in at `k`, and `z'` is compiled from `next`, so `⌊C_next⌋ = Add(path, policy)(⌊C_prev⌋)`: the new shape and transaction are together exactly what the edit denotes.
+- _Realization:_ the tree step above sets `q'` to `Internal(qs[+a/k], p[+/k])`, which is `prev`'s tree with an empty `pol`-shaped slot spliced in at `k`, and `z'` is compiled from `next`, so `⌊C_next⌋ = Add(path, pol)(⌊C_prev⌋)`: the new shape and transaction are together exactly what the edit denotes.
 - _Soundness:_ `|- C_prev` gives `|- C_next`. The parent `c` has exactly zero occurrences of `k`: its index-PIFO is now `p[+/k]`, which by construction names no `k` (old entries `< k` stay put, old entries `>= k` were bumped to `>= k+1`). The new subtree `a` holds zero packets or indices, so the well-formedness obligation at slot `k` reads `0 = 0`. Every other slot is a child it was in `q`, with the same packets beneath it; its entries in `p[+/k]` are the old entries under a possibly-shifted name, so its matched count is inherited verbatim. Nothing needs repair.
 
 ##### Notes
 
 _Atomicity._ No in-flight packet straddles the diff: every packet resident at the diff instant lives in the shared structure `qs`, carried into `q'` unchanged, and none is under `k`. The renumbering `p[+/k]` relabels index _values_ only; it moves no packets and changes no ranks. So a `pop` immediately after the diff returns exactly what a `pop` immediately before would have, the empty new slot contributing nothing and the existing subtrees keeping their contents and relative priority under shifted index names. The first `push` that `z'` routes to `k` is the first packet ever to occupy `a`.
 
-_Deeper paths._ The running example edits the root, but `path` may be any prefix; `Add { path = [1, 2]; policy = ... }` adds a slot inside a grandchild of the root. Nothing in the argument changes. The descent from the root to `c` passes only through nodes that `q` and `q'` share verbatim, and, because the new subtree is empty, it adds zero packets beneath every ancestor of `c`. So each ancestor's occurrence-tally for the child it forwards through is exactly what it was, no ancestor PIFO is rewritten, and the edit is confined to `c` and the fresh subtree below it.
+_Deeper paths._ The running example edits the root, but `path` may be any prefix; `Add { path = [1, 2]; pol = ... }` adds a slot inside a grandchild of the root. Nothing in the argument changes. The descent from the root to `c` passes only through nodes that `q` and `q'` share verbatim, and, because the new subtree is empty, it adds zero packets beneath every ancestor of `c`. So each ancestor's occurrence-tally for the child it forwards through is exactly what it was, no ancestor PIFO is rewritten, and the edit is confined to `c` and the fresh subtree below it.
 
 #### 3.3.2. `Remove(path)`
 
