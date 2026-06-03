@@ -1,9 +1,3 @@
-> Every edit in this grammar is _atomic_: it carries a well-formed scheduler to a well-formed scheduler in a single step.
-
-To hopefully keep this as clear as possible, maybe let's introduce the notation of hardware capability here? As in, what we want to say is that we have picked this set of edits because _we have designed ways to carry them out atomically_ (see Section 6, where we describe in detail how to implement each edit atomically).
-
-I'm not sure if it's here, but we should somewhere probably also spell out exactly what we mean by atomic: i.e., packets ..N are handled according to `prev`, and packets N+1.. are handled according to `next`.
-
 > `Quiesce (path)` stops routing any new traffic to `prev@path`. It is a transaction-only edit...
 
 The existence of `Quiesce` suggests that the "domain" of edits is not only a tree but also the associated control tuple. So I think that means that diffs are not tree-to-tree functions but X-to-X functions for some larger value of X---probably the control tuple, `(s, q, z)`. If so, let's try to make that clear: e.g., at the beginning of Section 3.2, when we refer to `prev` and `next`, those things have to be control tuples, not trees. (The text there currently refers to trees.)
