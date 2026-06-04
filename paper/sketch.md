@@ -44,29 +44,37 @@ We recap the PIFO tree model (§3.1), fix a grammar of atomic policy diffs (§3.
 
 ### 3.1 Background: PIFO trees, formally
 
-We build on the PIFO tree model of Mohan et al. [Formal Abstractions, OOPSLA '23, §3], so we review the pieces of their formalism that this paper actually leans on.
+We build on the PIFO tree model of Mohan et al. [Formal Abstractions, OOPSLA '23, §3]. §3.1.1 recaps the pieces of _FA_'s formalism that this paper actually leans on; §3.1.2 lays out the small extensions our diff grammar requires.
 
-#### Topology vs. contents
+#### 3.1.1 From _Formal Abstractions_
+
+##### Topology vs. contents
 
 A _topology_ `t` is a finite tree carrying no data: either a single node `*` or `Node(ts)` for a list of child topologies. A _PIFO tree_ of topology `t`, written `q : PIFOTree(t)`, layers data onto `t`. A leaf `Leaf(p)` holds a packet-carrying PIFO `p`. An internal node `Internal(qs, p)` carries two things: a list `qs` of well-formed PIFO tree children whose topologies match the corresponding sub-topologies of `t`, and a PIFO `p` whose entries are child indices into `qs`. This separation between the topology and the carried contents is key to making the diff grammar of §3.2 well-defined: a structural edit is a change to the topology `t`, distinct from the running contents.
 
-#### The two observable operations
+##### The two observable operations
 
 `push(q, pkt, pt)` enqueues `pkt` along a precomputed path `pt = (i_1, r_1) :: ... :: (i_n, r_n) :: r_{n+1}`. The path is richly decorated: it tells the PIFO of each internal node along the path what child index to enqueue and what rank to use for that enqueue. At the leaf level it tells the leaf's PIFO what rank to use when enqueuing the packet itself. `pop(q)` returns the most favorably ranked packet by popping the root to yield a child index, recursing into that child, until finally emitting a packet from the leaf. These are the _only_ observable interactions with a scheduler, which is why §1's notion of an _atomic_ transition is stated in terms of `push`/`pop` observability: every `push`/`pop` happens against a well-defined scheduler, never a half-edited intermediate scheduler.
 
-#### Well-formedness
+##### Well-formedness
 
 A PIFO tree `q` is well-formed (`|- q`, following _Formal Abstractions_' notation) when, at every internal node with index-PIFO `p` and children `qs`, the number of occurrences of `i` in `p` equals the number of packets held under `qs[i]`, for every legal `i`. This is the invariant that keeps `pop` from getting stuck. _FA_ shows that `push` always preserves `|- q`, and that `pop` preserves it when `q` is non-empty (which is precisely the condition under which `pop` is defined).
 
-#### Control
+##### Control
 
-_FA_ introduces a _control_ `(s, q, z)`: a current state `s` drawn from some fixed set `St`, the PIFO tree `q` of topology `t` itself, and a _scheduling transaction_ `z` that, given a state and a packet, returns a path of the correct shape together with an updated state. That path pins down both _where_ a packet goes (via its index sequence) and _with what priority_ it competes for service at every level (via its rank decorations), so `z` is the sole locus of routing, admission, classification, and ranking.
+_FA_ introduces a _control_ `(s, q, z)`: a current state `s` drawn from some fixed set `St`, the PIFO tree `q` of topology `t` itself, and a _scheduling transaction_ `z : St × Pkt -> Path(t) × St` that, given a state and a packet, returns a path of the correct shape together with an updated state. That path pins down both _where_ a packet goes (via its index sequence) and _with what priority_ it competes for service at every level (via its rank decorations), so `z` is the sole locus of routing and ranking.
 
-We extend _FA_'s `z` from total to partial: `z : St × Pkt ⇀ Path(t) × St`, where an undefined entry means the packet is dropped (no path, no state update, `q` untouched). _FA_'s total typing is the special case where the domain is all of `St × Pkt`, and every _FA_ result we lean on carries through verbatim because a dropped packet never reaches `q`.
+#### 3.1.2 Our extensions
 
-#### Policies
+_FA_ describes how a control _runs_, but the diff grammar of §3.2 needs four things _FA_ does not provide: a way to _drop_ packets at `z`, a syntactic source from which a control is _built_ (and against which two controls can be _compared_), an explicit structure on the state `s` so that diff rules can write equations on it, and a small per-discipline hook for splicing fresh arms into a running parent. We fix these here, then close with the bridge `⌊·⌋` that links syntactic source and live control.
 
-_FA_ tells us how a control _runs_, but never how to _build_ one. There is no "constructor" that takes an operator's wish (e.g., `Strict(gmail, zoom)`) and emits a control with the appropriate state variables, a PIFO tree with the right topology and empty queues, and a scheduling transaction that actually implements strict prioritization via the paths that it emits. Nor, given two controls, does _FA_ offer any way to compare them: `z` is just a function, and one cannot pattern-match on a function. These are the same gap. So before we can either construct the controls _FA_ reasons about or diff one against another, as the transition planner of §4 must, we take a small step back and make that syntactic source explicit.
+##### Dropping packets: `z` made partial
+
+We extend _FA_'s `z` from total to partial: `z : St × Pkt ⇀ Path(t) × St`, where an undefined entry means the packet is dropped (no path, no state update, `q` untouched). This means that our `z` is also in charge of _packet admission_. _FA_'s total typing is the special case where the domain is all of `St × Pkt`, and every _FA_ result we lean on carries through verbatim because a dropped packet never reaches `q`.
+
+##### Policies: a syntactic source for controls
+
+_FA_ never says how to _build_ a control. There is no "constructor" that takes an operator's wish (e.g., `Strict(gmail, zoom)`) and emits a control with the appropriate state variables, a PIFO tree with the right topology and empty queues, and a scheduling transaction that actually implements strict prioritization via the paths that it emits. Nor, given two controls, does _FA_ offer any way to compare them: `z` is just a function, and one cannot pattern-match on a function. These are the same gap. So before we can either construct the controls _FA_ reasons about or diff one against another, as the transition planner of §4 must, we make the syntactic source explicit.
 
 ```
 pol    ::= flow                                   // leaf, labeled by a flow of traffic
@@ -75,6 +83,8 @@ pol    ::= flow                                   // leaf, labeled by a flow of 
 
 This yields a tree-shaped structure with unbounded arity. `D` ranges over scheduling disciplines (`Strict`, `RoundRobin`, `WFQ`, ...). The subscript `n` is the arity, which we drop when it is clear from the children: `Strict(gmail, zoom)` for `Strict_2(gmail, zoom)`. WFQ pairs each child with a weight, elided from the grammar above. A `pol` is _valid_ when every discipline is applied at a proper arity, a child carries a weight exactly when its parent runs `WFQ`, and leaf labels are distinct. Validity is a purely syntactic condition on the source, not to be confused with the invariant `|- q`.
 
+##### Compilation: `pol` to control
+
 A `pol` gives us a control `(s, q, z)` straightforwardly.
 
 - Erase the labels, and what remains is the topology. Instantiate that topology with an empty PIFO at every node, and you have the tree `q`.
@@ -82,9 +92,15 @@ A `pol` gives us a control `(s, q, z)` straightforwardly.
   - Generate a short program per node that determines how to rank incoming packets at that node. These node-local choices glue together into the single `z`.
   - Seed each node's local bookkeeping with initial state variables, e.g. a `RoundRobin` cursor at the first child, a `WFQ` virtual-finish accumulator at zero, and so on. This gives the state `s`.
 
+##### Local state, made explicit
+
 We commit to slightly more structure on `s` than _FA_ does. We treat `s` as a partial map from positions in the topology to local state, `s : path ⇀ LocalState`, where a position is a (possibly empty) sequence of child indices addressing a node from the root (the same `path` syntax §3.2 uses for the diff grammar), and `s(p)` is defined exactly when `p` reaches a node of `t`. A `LocalState` is a pair `(node_state, slot_state list)`: a `node_state` for the discipline's per-node bookkeeping (an `RR` cursor, a `WFQ` global virtual time), and a list of `slot_state` entries (one per arm, in slot order) for per-arm bookkeeping (a `WFQ` per-arm virtual finish, a `WRR` per-arm credit, the arm's weight under `WFQ`). Disciplines without per-arm bookkeeping (`Strict`, pure `RR`) have an empty `slot_state` list. _FA_ leaves all of this abstract; making it explicit lets the diff rules of §3.3 write equations on `s` instead of prose.
 
+##### Slot-seeding: `init_D`
+
 Each discipline `D` also fixes a _slot-seed function_, `init_D : node_state × pol × weight? -> slot_state`, that decides what per-arm bookkeeping a fresh arm receives when it is spliced into a running `D`-parent. This becomes load-bearing in §3.3.1, when `Add` splices a new arm under an existing `D`-parent: at that moment, `init_D` reads the parent's current `node_state` and the new arm's `pol` and weight and returns the new `slot_state` entry. Choosing `init_D` is a scheduling decision, not a structural one, since the choice changes how the new arm competes with the established arms. We commit throughout to a _join-the-current-round_ reading. `init_Strict` and `init_RR` return the empty tuple (no per-arm bookkeeping to seed). For `WFQ`, the `node_state` at a parent is the scalar virtual time `vt`, and we set `init_WFQ(vt, _, w) = (w, vt)`: a new arm carries its weight `w` and inherits the parent's current `vt` as its last-finish tag. By WFQ's standard finish-time recurrence the first packet on this arm posts a tag of `max(virtual_clock, vt) + 1/w`, which slots it into the round the established arms are currently in.
+
+##### The bridge: `⌊·⌋`
 
 We write `⌊C⌋` for the `pol` from which control `C` was compiled. We say that `C` _realizes_ `⌊C⌋`. This `pol`/`control` split is what structures §3.3: a syntactic diff (§3.2) admits two semantic readings, a `pol`-level denotation `den(δ) : pol -> pol` that fixes the static skeleton it produces and an operational transition `[[δ]] : control -> control` that does the live rewrite, and `⌊·⌋` is the bridge that lets us state when the two agree.
 
