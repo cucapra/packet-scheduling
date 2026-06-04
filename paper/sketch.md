@@ -66,7 +66,7 @@ _FA_ introduces a _control_ `(s, q, z)`: a current state `s` drawn from some fix
 
 #### 3.1.2 Our extensions
 
-_FA_ describes how a control _runs_, but the diff grammar of §3.2 needs five things _FA_ does not provide: a way to _drop_ packets at `z`, a syntactic source from which a control is _built_ (and against which two controls can be _compared_), a mechanical compilation from that source to a live control, an explicit structure on the state `s` so that diff rules can write equations on it, and a small per-discipline hook for splicing fresh arms into a running parent. We fix these here, then close with the bridge `⌊·⌋` that links syntactic source and live control.
+_FA_ describes how a control _runs_, but the diff grammar of §3.2 needs more than what _FA_ provides. We stash our extensions in this subsection.
 
 ##### Dropping packets: `z` made partial
 
@@ -83,13 +83,6 @@ pol    ::= flow                                   // leaf, labeled by a flow of 
 
 This yields a tree-shaped structure with unbounded arity. `D` ranges over scheduling disciplines (`Strict`, `RoundRobin`, `WFQ`, ...). The subscript `n` is the arity, which we drop when it is clear from the children: `Strict(gmail, zoom)` for `Strict_2(gmail, zoom)`. WFQ pairs each child with a weight, elided from the grammar above. A `pol` is _valid_ when every discipline is applied at a proper arity, a child carries a weight exactly when its parent runs `WFQ`, and leaf labels are distinct. Validity is a purely syntactic condition on the source, not to be confused with the invariant `|- q`.
 
-##### Compilation: `pol` to control
-
-A `pol` gives us a control `(s, q, z)` straightforwardly, driven entirely by the per-discipline hook `init_D` introduced below.
-
-- Erase the labels, and what remains is the topology. Instantiate that topology with an empty PIFO at every node, and you have the tree `q`.
-- Walk the policy and apply `init_D` at every node. `init_D` mechanically realizes discipline `D`: it produces a short per-node ranking program (which glues with its siblings into the single global `z`) and seeds the node's bookkeeping (which slots into the state `s`). The global `z` is the glue of these per-node programs; the state `s` is the union of these per-node seeds.
-
 ##### Local state, made explicit
 
 We commit to slightly more structure on `s` than _FA_ does. We treat `s` as a partial map from positions in the topology to local state, `s : path ⇀ LocalState`, where a position is a (possibly empty) sequence of child indices addressing a node from the root (the same `path` syntax §3.2 uses for the diff grammar), and `s(p)` is defined exactly when `p` reaches a node of `t`. A `LocalState` is a pair `(node_state, slot_state list)`: a `node_state` for the discipline's per-node bookkeeping (an `RR` cursor, a `WFQ` global virtual time), and a list of `slot_state` entries (one per arm, in slot order) for per-arm bookkeeping (a `WFQ` per-arm virtual finish, a `WRR` per-arm credit, the arm's weight under `WFQ`). Disciplines without per-arm bookkeeping (`Strict`, pure `RR`) have an empty `slot_state` list. _FA_ leaves all of this abstract; making it explicit lets the diff rules of §3.3 write equations on `s` instead of prose.
@@ -105,6 +98,13 @@ init_D : node_state × pol × weight? -> slot_state
 This is used in two places. At _compile time_, walking the source pol, `init_D` is called once per node to seed `node_state`, then once per child arm to seed that child's `slot_state` (the parent's just-seeded `node_state` is the first input). At _Add time_ (§3.3.1), when a new arm is spliced under an already-running `D`-parent, `init_D` is called once with the parent's _current_ `node_state` to produce the new arm's `slot_state`. The function is the same in both cases; only the source of the parent's `node_state` differs.
 
 Choosing `init_D` is a scheduling decision, not a structural one, since the choice changes how the new arm competes with the established arms. We commit throughout to a _join-the-current-round_ reading. `init_Strict` and `init_RR` return the empty tuple (no per-arm bookkeeping to seed). For `WFQ`, the `node_state` at a parent is the scalar virtual time `vt`, and we set `init_WFQ(vt, _, w) = (w, vt)`: a new arm carries its weight `w` and inherits the parent's current `vt` as its last-finish tag. By WFQ's standard finish-time recurrence the first packet on this arm posts a tag of `max(virtual_clock, vt) + 1/w`, which slots it into the round the established arms are currently in. At compile time the parent's `vt` is freshly initialized (to zero), so all original arms get `(w, 0)` and the round is "the zeroth"; at Add time the parent's `vt` is whatever the clock has advanced to.
+
+##### Compilation: `pol` to control
+
+With `init_D` in hand, a `pol` gives us a control `(s, q, z)` straightforwardly.
+
+- Erase the labels, and what remains is the topology. Instantiate that topology with an empty PIFO at every node, and you have the tree `q`.
+- Walk the policy and apply `init_D` at every node, gluing the per-node ranking programs into the global `z` and unioning the per-node seeds into the global `s`.
 
 ##### The bridge: `⌊·⌋`
 
@@ -132,14 +132,14 @@ weight ::= a positive real
 
 Every edit in this grammar is _atomic_: it carries a well-formed scheduler to a well-formed scheduler in a single step. The grammar is shaped by what we can realize atomically in hardware (§6): each production is exactly an edit for which we have a substrate-level commit. Edits that would have to destroy structure still holding packets are _not_ in the grammar: our one structural deletion, `Remove`, is emitted by our transition planner (§5) only after ensuring that the subtree being removed is empty. The richer reconfigurations an operator may want (retiring a subtree that has packets buffered in it, replacing a subtree in-place, pruning a tree down to a subtree) are realized instead as _sequences_ of these atomic edits; §4 makes the sequencing precise.
 
-Notes on the individual edits:
+Notes on the individual edits, at the syntactic level only; what each production does to a running control is the subject of §3.3.
 
-- `Add` carries a `weight` exactly when the slot it edits hangs off a WFQ parent, which needs a weight to schedule the subtree; for any other parent the weight is absent. It adds the subtree `pol` at the new slot `next@path`, with empty queues throughout. The new subtree carries fresh traffic that intersects nothing `prev` was already serving: packets that classify into `pol` lie outside the domain of `prev`'s `z` and would have been dropped, had they arrived; `Add` extends the domain so they route into the new subtree.
-- `Quiesce (path)` shrinks the domain of `z` to exclude packets that would have classified into `prev@path`: those packets are dropped, no new traffic enters the subtree, and the quiesced subtree keeps being served pops until it eventually drains to empty. It is a transaction-only edit: topology and contents are untouched. In the framing of §3.3, `den(Quiesce) = id_pol` while `[[Quiesce]]` rewrites the transaction `z`. [AM note: this last sentence is misplaced here, but I'm leaving it here for a sec since we want to discuss it. Eventually it belongs in a sub-sub-section in 3.3.]
-- `Designate (path, pol)` semantically replaces `prev@path` with `Strict(prev@path, pol)`. That is, the subtree at `prev@path` gets high priority and the new `pol` is spawned as its low-priority sibling. Standard strict-priority semantics deliver exactly the property we want: `prev@path` must drain completely before any pop returns a packet from `pol`. `Designate` also rewires `z`: incoming traffic that used to classify into `prev@path`'s domain is redirected to `pol`, so `prev@path` receives no new pushes and drains under ordinary service. We call `pol` the _designated survivor_ of `prev@path` because, once `prev@path` drains, only `pol` remains under the parent's slot. Two notes. First, the super-node that realizes the strict prioritization takes `prev@path`'s slot and (if the parent runs WFQ) inherits `prev@path`'s old weight; prev and pol are scheduled strictly _inside_ the super-node, so no per-arm weight is needed for `pol` and `Designate` carries none. Second, the hardware does not literally insert a Strict node here, since that would push all of `prev@path` one PE level deeper and force a re-mapping of an otherwise-untouched subtree; §6 describes the in-place gadget that realizes the same semantics without changing PE depth.
-- `Remove (path)` structurally removes `prev@path`, dropping its slot and renumbering any higher siblings. The subtree must be _empty_: removing an occupied subtree would leave its parent with dangling indices.
-- `ChangeWeight (path, weight)` targets `prev@path`; it overwrites the weight that `prev@path`'s parent uses for it. It is well-defined only when the parent at `path`'s prefix runs WFQ and `path` is non-empty.
-- `Graft (ctx)` spawns `ctx` and plugs its hole with `prev`, which keeps its in-flight contents. The ancestor nodes of `prev` in `ctx[prev]` are populated with the indices required to make `ctx[prev]` well-formed. The rest of the tree is spawned empty. `Graft` carries no `path`: it always wraps the whole of `prev` at the root, sliding `prev` into `ctx`'s hole. Localized graft-style edits, deeper in the tree, are realized as a sequence (§4), not by a path-bearing `Graft`.
+- `Add(path, pol, weight?)` splices `pol` in as the new slot `next@path`. The production carries a `weight` exactly when the slot it edits hangs off a WFQ parent.
+- `Quiesce(path)` names the subtree `prev@path`. Topology and shape are unchanged.
+- `Designate(path, pol)` replaces `prev@path` with `Strict(prev@path, pol)` at the pol level: the existing subtree becomes the high-priority sibling, and `pol` becomes the low-priority _designated survivor_. The production does not need to carry a weight even when the parent at `path`'s prefix runs WFQ, since the new `Strict` node inherits `prev@path`'s slot and weight, and `pol` competes against `prev@path` strictly _inside_ that wrapper.
+- `Remove(path)` structurally removes `prev@path`, dropping its slot and renumbering any higher siblings. The subtree must be empty; §3.3.2 discusses why.
+- `ChangeWeight(path, weight)` overwrites the weight that `prev@path`'s parent uses for it. It is well-defined only when the parent at `path`'s prefix runs WFQ and `path` is non-empty.
+- `Graft(ctx)` produces `ctx[prev]`: the policy context `ctx` is spawned around `prev`, with `prev` plugged into the context's sole hole. `Graft` carries no `path`: localized graft-style edits, deeper in the tree, are realized as a sequence (§4), not by a path-bearing `Graft`.
 
 When `prev = next` the grammar emits no diff at all: the reconfiguration is the empty sequence (§4), and the live control is left untouched.
 
@@ -300,19 +300,19 @@ We do not prove soundness at the IR level, but instead informally make the case 
 
 The same argument carries from the IR down to hardware: the hardware executes a committed sequence atomically with respect to user operations, so what it exhibits is again what §3.3 proved. The compilation itself, and the substrate machinery that makes a commit atomic, are the subject of §6.
 
+[AM note for Zhiyuan: the §3.4 argument leans on the substrate supporting _atomic transactional commits_: a multi-instruction lowering must install as a single instant from the user's perspective, so that the transiently-malformed intermediate trees inside a commit are never observed. Our own substrate provides this. The open question for §6 is whether composition with a third-party substrate (e.g., vPIFO) requires the same property and, if so, whether vPIFO offers it. Flagged here so the §3.4 claim "the proof survives the lowering" is not read as substrate-independent.]
+
 ## 4. Realizing Reconfigurations as Sequences
 
-[AM TK: stub. §3 proved each grammar production a sound atomic diff. This section composes diffs into _sequences_ `δ ; (φ ; δ)*`, separated by _exit conditions_ `φ`, to realize reconfigurations no single diff can express. It formalizes the transitionary scheduler `link` as an ordinary §3.1 control (the "transitionary period is just scheduling" theorem), and it considers _liveness_: whether and when a sequence's exit conditions fire.]
+[AM TK: stub. §3 proved each grammar production a sound atomic diff. This section composes diffs into _sequences_ `δ ; (φ ; δ)*`, separated by _exit conditions_ `φ`, to realize reconfigurations no single diff can express. The headline result will be that the transitionary scheduler `link` between two consecutive diffs is itself an ordinary §3.1 control, so the "transitionary period" needs no new semantics: this is Obligation 1 of §1, discharged. The section also considers _liveness_: whether and when a sequence's exit conditions fire.]
 
 ## 5. Identifying Better Transitions
 
-§3 established that our grammar is _safe_: every atomic diff is a sound control replacement (§3.3), so any sequence the planner emits (§4) keeps the live scheduler well-formed at every instant and, once its exit conditions fire, lands in `next`. With safety settled, the question this section takes up is whether the planner wields the grammar _well_.
+§3 gave us a toolkit of atomic diffs and §4 sequenced them through `link`s into full reconfigurations. With those tools in hand, this section asks how the transition planner can wield them well. The metric we adopt is _confinement_: a good sequence is one whose diffs and intervening `link`s disturb as little of the running scheduler as possible, leaving the parts of the tree that did not need to change running undisturbed.
 
-The transition planner's output is a sequence `diff ; (φ ; diff)*` (§4). What makes one sequence better than another is how _confined_ it is: how little of the running scheduler its diffs and intervening `link`s disturb. [AM TK: liveness now lives in §4; this section is about confinement. Reconcile the framing.]
+There is always a maximally unconfined fallback. To reach any `next` from any `prev`, the planner can issue `Designate([], next)`, making the whole of `next` the survivor of the whole of `prev` (§3.2). All new traffic flows to `next` at once, every `pop` is served by `prev` until `prev` drains, and a closing `Remove([])` collapses the super-node onto `next`. Nothing is dropped, the sequence is safe by §3.3, and no part of the scheduler is left running undisturbed. This is the floor. The rest of §5 is the story of doing better: localizing the change so that the sequence and its `link`s touch only a small subtree while the rest of the scheduler keeps running.
 
-There is always a fallback. To reach any `next` from any `prev`, the planner issues `Designate([], next)`, making `next` the survivor of the whole of `prev` (§3.2). All new traffic goes to `next`, all `pop`s are served by `prev` until `prev` runs out of packets. Then `Remove` clears `prev` and only `next` is left standing, and pushes and pops are both serviced by `next`. This is our give-up-entirely option, with the splash zone as large as possible and no part of the scheduler left running undisturbed, but it always works and drops nothing. This section is the story of doing better: localize the change, so the sequence and its `link`s touch only a small subtree and the rest of the scheduler keeps running.
-
-We make no claim that the planner is canonical or minimal. We claim only that whatever sequence it emits is safe (§3.3), and is no worse than the worst-case full retirement option.
+We make no claim that the planner is canonical or minimal. We claim only that whatever sequence it emits is safe (§3.3) and no worse than this fallback.
 
 [AM note: Many examples remain to work through here, and possibly some strengthening of `compare.ml` itself. TK.]
 
