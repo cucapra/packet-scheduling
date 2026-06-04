@@ -1,3 +1,0 @@
-Also related to my confusion around domains: I am not sure what the difference is between "denotation" and "the diff" is. Maybe the former is just about the tree, and the latter is about the whole control tuple?
-
-If so, I get why the latter exists (we need to describe how to change the state, for example). I admit I am a little wary of the subtle-but-informal descriptions of these manipulations, such as "`s'` agrees with `s` everywhere, except that it records the initial local state for the new slot." This seems like something that we probably want to describe formally, in math? Is that too much to shoot for?
