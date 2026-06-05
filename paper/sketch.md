@@ -118,9 +118,9 @@ With `init_node_D` and `init_slot_D` in hand, a `pol` gives us a control `(s, q,
 
 ##### The bridge: `⌊·⌋`
 
-We write `⌊C⌋` for the `pol` from which control `C` was compiled, and say that `C` _realizes_ `⌊C⌋`. This `pol`/`control` split is the handle §3.4 leans on to track which `pol` a live control realizes after each edit.
+Reading the topology, disciplines, weights, and leaf labels off a control `C` recovers a `pol`. We write `⌊C⌋` for the `pol` recovered from control `C` and say that `C` _realizes_ `⌊C⌋`. The correctness condition for the compiler above is then `⌊compile(pol)⌋ = pol`.
 
-[AM note: `⌊C⌋` as defined here works only on freshly-compiled controls. Once `C` has been edited in place, the live `C'` is no longer the output of `compile` on any single `pol`, so the statement "the pol from which `C` was compiled" stops being well-defined. §3.4's realization equation `⌊[[δ]](C)⌋ = den(δ)(⌊C⌋)` nonetheless treats `⌊·⌋` as defined on post-edit controls. Discuss IRL.]
+The map `⌊·⌋ : control -> pol` is many-to-one: `pol` records only the structural skeleton, while a control also carries live `s` and `q` contents. In particular, every control that arises by running `compile(pol)` and then serving traffic for a while still realizes `pol`. We need this split so that, when we later edit a running control in place, we can formally ask _what `pol` that modified control realizes_.
 
 ### 3.3 A Grammar for Tree Diffs
 
