@@ -40,7 +40,7 @@
 
 ## 3. A Grammar of Atomic Policy Diffs
 
-§3.1 recaps the PIFO tree model. §3.2 defines a small policy DSL and a compiler from it into an _FA_-style control, giving us the syntactic handle on controls that the rest of the section needs. §3.3 fixes a grammar of structural edits (_`diff`s_) over that DSL, where every `diff` is atomic by construction. §3.4 restates atomicity once the operational rewrite `[[δ]]` is in hand and discharges three obligations per production: realization of the pol-level denotation, preservation of well-formedness, and preservation of shared state. §3.5 argues that all of this survives the lowering to hardware. Composing diffs into the sequences that realize a full reconfiguration, and the `link` schedulers that arise between them, is deferred to §4.
+§3.1 recaps the PIFO tree model. §3.2 defines a small policy DSL and a compiler from it into an _FA_-style control, giving us the syntactic handle on controls that the rest of the section needs. §3.3 fixes a grammar of structural edits (_diffs_) over that DSL, where every diff is atomic by construction. §3.4 restates atomicity once the operational rewrite `[[δ]]` is in hand and discharges three obligations per production: realization of the pol-level denotation, preservation of well-formedness, and preservation of shared state. §3.5 argues that all of this survives the lowering to hardware. Composing diffs into the sequences that realize a full reconfiguration, and the `link` schedulers that arise between them, is deferred to §4.
 
 ### 3.1 Background: PIFO trees, formally
 
@@ -133,7 +133,7 @@ We fix a small grammar of atomic edits. Each production is a single primitive th
 An edit names _where_ in the tree the change lands (a path from the root) and _what_ the change is. We write `t@path` for the subtree of `t` reached by following `path` down from `t`'s root. Depending on the production being used, `t` is instantiated to `prev` or `next`; see below.
 
 ```
-diff   ::= Add          (path, pol, weight?)
+δ      ::= Add          (path, pol, weight?)
          | Quiesce      (path)
          | Designate    (path, pol)
          | Remove       (path)
@@ -163,9 +163,9 @@ Notes on the individual edits.
 
 When `prev = next` the grammar emits no diff at all: the reconfiguration is the empty sequence (§4), and the live control is left untouched.
 
-### 3.4 All Productions of `diff` are Sound
+### 3.4 All Productions of `δ` are Sound
 
-A `diff` (§3.3) is a syntactic object: we write `δ` for a generic syntactic diff. Before assigning `δ` any semantics, we cut down to the policies against which the syntax actually makes sense.
+Before assigning `δ` (§3.3) any semantics, we need to understand the range of policies against which the syntax actually makes sense.
 
 We say `δ` is _compatible with_ a live control `C` (where `prev = ⌊C⌋`) when:
 
