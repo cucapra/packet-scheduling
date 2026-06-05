@@ -85,11 +85,12 @@ This is morally what the vPIFO paper's _Scheduling Description Language_ does in
 ##### Policy syntax: `pol`
 
 ```
-pol    ::= flow                                   // leaf, labeled by a flow of traffic
-         | D_n(pol_1, ..., pol_n)                 // internal node, n-ary discipline D
+pol    ::= flow                                          // leaf, labeled by a flow of traffic
+         | D_n(pol_1, ..., pol_n)                        // internal node, unweighted n-ary discipline D
+         | W_n((w_1, pol_1), ..., (w_n, pol_n))          // internal node, weighted n-ary discipline W
 ```
 
-This grammar naturally admits policy trees with unbounded arity. `D` ranges over a known set of scheduling disciplines (`Strict`, `RoundRobin`, `WFQ`, ...). The subscript `n` is the arity, which we elide when it is clear from counting children: we write `Strict(gmail, zoom)` for `Strict_2(gmail, zoom)`. WFQ pairs each child with a weight, elided from the grammar above. A `pol` is _valid_ when every discipline is applied at a proper arity, a child carries a weight exactly when its parent runs `WFQ`, and leaf labels are distinct. Validity is a purely syntactic condition on the source, not to be confused with the invariant `|- q`.
+This grammar naturally admits policy trees with unbounded arity. `D` ranges over the unweighted disciplines (`Strict`, `RoundRobin`, ...) and `W` over the weighted ones (just `WFQ` for now); each `w_i` is a positive real. The subscript `n` is the arity, which we elide when it is clear from counting children: we write `Strict(gmail, zoom)` for `Strict_2(gmail, zoom)`. A `pol` is _valid_ when every discipline is applied at a proper arity and leaf labels are distinct. Validity is a purely syntactic condition on the source, not to be confused with the invariant `|- q`.
 
 ##### Discipline compilation: `init_node_D` and `init_slot_D`
 
