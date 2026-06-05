@@ -165,33 +165,19 @@ When `prev = next` the grammar emits no diff at all: the reconfiguration is the 
 
 ### 3.4 All Productions of `δ` are Sound
 
-Before assigning `δ` (§3.3) any semantics, we need to understand the range of policies against which the syntax actually makes sense.
+Each `δ` (§3.3) admits two semantic readings, both _partial_. The operational reading is primary; the pol-level reading is a projection of it.
 
-We say `δ` is _compatible with_ a live control `C` (where `prev = ⌊C⌋`) when:
+- The _operational transition_, `[[δ]] : control ⇀ control`, is the live rewrite acting on the full control tuple `(s, q, z)`. The per-production rules below state where `[[δ]]` is defined; in other cases we say `δ` is _incompatible_ with the input control, and `[[δ]](C)` returns nothing. §4's transition planner only emits a `δ` whose `[[δ]]` is defined on the live `C`. The preconditions vary by production, e.g.:
+  - For `Add` we require the path to land at an internal node, a weight to be present iff the parent runs WFQ, the new leaf labels to be fresh, and the new classifier predicates to be disjoint from the domain of `C`'s live `z`.
+  - For `Remove` we require the target subtree to be empty.
+  - For `ChangeWeight` we require the parent at `path`'s prefix to run WFQ.
+- The _pol-level denotation_, `den(δ) : pol ⇀ pol`, is the projection of `[[δ]]` through the `⌊·⌋` bridge of §3.2. It is partial for the same syntactic reasons (paths must resolve, leaf labels must be fresh, weights must match), but, because `pol` carries no live contents or transaction, it never fails for operational reasons like `Remove`'s emptiness or `Add`'s classifier disjointness. It captures the pol-visible part of the edit. For most primitives (`Add`, `Remove`, `ChangeWeight`, `Graft`, and `Designate`'s wrap-and-rename), `den(δ)` is non-trivial and matches what a reader would extract from comparing `prev` against `next`. `Quiesce`, whose whole effect is in `z`, has `den(Quiesce)(p) = p`. The z-rewiring inside `Designate` lives only in `[[Designate]]`, not in `den(Designate)`. So `den(δ)` is a purely static map, and effects that live entirely in `z` are invisible to it. §4's planner works at this level: it searches for a sequence of edits such that composing their `den`otations together carries `prev` to `next`.
 
-- every `path` is consistent with `prev`'s shape: resolving to an existing slot for `Quiesce` / `Designate` / `Remove` / `ChangeWeight`, and to a slot of an existing internal node for `Add`;
-- any `weight?` is present exactly when the edited slot's parent runs WFQ;
-- the parent at `path`'s prefix runs WFQ when `δ = ChangeWeight(...)`;
-- any new leaf labels introduced by an `Add`'s `pol` or a `Graft`'s `ctx` are disjoint from `prev`'s surviving labels.
+The two readings are linked through `⌊·⌋`: whenever `[[δ]](C)` is defined, so is `den(δ)(⌊C⌋)`, and in fact `⌊[[δ]](C)⌋ = den(δ)(⌊C⌋)`.
 
-`Add` carries one further side condition that the bullets above cannot express, because it is semantic rather than syntactic: the classifier predicates routing into `pol`'s leaves must be disjoint from the domain of `C`'s live `z`. This is what lets us require, informally, that an `Add` introduces "fresh traffic that intersects nothing `prev` was already serving" (§3.3), and what lets the operational transition of §3.4.1 extend `z`'s domain without colliding with `C`'s routes.
+In the language of `[[δ]]`, _atomicity_ can be redefined crisply: when `δ` is compatible with `C`, `[[δ]]` replaces the live control `C` with `[[δ]](C)` between two consecutive `push`/`pop` operations. Modeling `[[δ]]` as a single (partial) function `control ⇀ control` builds the indivisibility into the abstraction; the obligations below ensure that the result of this single step is correct.
 
-The rest of §3.4 assumes `δ` is compatible with `C`. §4's transition planner discharges this assumption: it only ever emits a `δ` that is compatible with the live `C` at the moment of emission.
-
-Each `δ` admits two semantic readings, and the rest of the paper leans on both. The operational reading is primary; the pol-level reading is a projection of it that is total but lossy.
-
-- The _operational transition_, `[[δ]] : control -> control`, is the live rewrite. It acts on the full control tuple `(s, q, z)`: state, tree, and transaction together. This is the reading the substrate actually runs, the meaning carried by the syntactic edits the planner emits, and the object every soundness obligation in this section is stated against.
-- The _pol-level denotation_, `den(δ) : pol -> pol`, is the projection of `[[δ]]` through the `⌊·⌋` bridge of §3.2. It captures the pol-visible part of the edit. For most primitives (`Add`, `Remove`, `ChangeWeight`, `Graft`, and `Designate`'s wrap-and-rename), `den(δ)` is non-trivial and matches what a reader would extract from comparing `prev` against `next`. `Quiesce`, whose whole effect is in `z`, has `den(Quiesce) = id_pol`. The z-rewiring inside `Designate` lives only in `[[Designate]]`, not in `den(Designate)`. A `pol` carries only topology, disciplines, weights, and leaf labels (no live contents and no transaction), so `den(δ)` is a purely static map, and effects that live entirely in `z` are invisible to it. §4's planner works at this level: it searches for a sequence of edits such that composing their `den`otations together carries `prev` to `next`.
-
-The two readings are linked through `⌊·⌋`. Concretely, the following three mean the same thing:
-
-- `⌊[[δ]](C)⌋`
-- `den(δ)(⌊C⌋)`
-- "If control `C` is running and edit `δ` is requested, then what `pol` does the post-edit control realize?"
-
-In the language of `[[δ]]`, _atomicity_ can be redefined crisply: `[[δ]]` replaces the live control `C` with `[[δ]](C)` between two consecutive `push`/`pop` operations. Modeling `[[δ]]` as a single function `control -> control` builds the indivisibility into the abstraction; the obligations below ensure that the result of this single step is correct.
-
-For each production we discharge three obligations.
+For each production we discharge three obligations, all implicitly conditioned on `[[δ]](C)` being defined.
 
 - _Realization_ constrains the `pol`-visible skeleton: `⌊[[δ]](C)⌋ = den(δ)(⌊C⌋)`. The `pol` summary of the post-edit control must equal the pol-level denotation applied to the `pol` summary of the pre-edit control. For our running example, `δ = Add([2], spotify)`, so `den(δ)(Strict(gmail, zoom)) = Strict(gmail, zoom, spotify)`, and realization says `⌊[[δ]](C)⌋ = Strict(gmail, zoom, spotify)` for any `C` with `⌊C⌋ = Strict(gmail, zoom)`. The equation pins down the new topology, disciplines, weights, and labels. Transaction-only effects (`Quiesce`'s shrinking of `z`'s domain, `Designate`'s rerouting) lie outside `⌊·⌋` and are pinned down by the per-production operational rule below, not by realization. Realization says nothing about contents.
 - _Soundness_ constrains the live contents: `|- C` must imply `|- [[δ]](C)`. Well-formedness (§3.1) is a property of `q`'s contents alone, so this is the obligation that the packets and index entries that `[[δ]]` drops or adds must still satisfy `|-`.
