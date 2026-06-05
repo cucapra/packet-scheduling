@@ -117,14 +117,9 @@ With `init_node_D` and `init_slot_D` in hand, a `pol` gives us a control `(s, q,
 
 ##### The bridge: `⌊·⌋`
 
-We write `⌊C⌋` for the `pol` from which control `C` was compiled. We say that `C` _realizes_ `⌊C⌋`. This `pol`/`control` split is what structures §3.4: a syntactic diff (§3.3) admits two semantic readings:
+We write `⌊C⌋` for the `pol` from which control `C` was compiled, and say that `C` _realizes_ `⌊C⌋`. This `pol`/`control` split is the handle §3.4 leans on to track which `pol` a live control realizes after each edit.
 
-- A `pol`-level denotation `den(δ) : pol -> pol` that fixes the static skeleton it produces.
-- An operational transition `[[δ]] : control -> control` that does the live rewrite.
-
-`⌊·⌋` is the bridge that lets us state when the two semantic readings agree.
-
-[AM note: `⌊C⌋` as defined here works only on freshly-compiled controls. Once `C` has been edited in place, the live `C'` is no longer the output of `compile` on any single `pol`, so statement "the pol from which `C` was compiled" stops being well-defined. §3.4's realization equation `⌊[[δ]](C)⌋ = den(δ)(⌊C⌋)` nonetheless treats `⌊·⌋` as defined on post-edit controls. Discuss IRL.]
+[AM note: `⌊C⌋` as defined here works only on freshly-compiled controls. Once `C` has been edited in place, the live `C'` is no longer the output of `compile` on any single `pol`, so the statement "the pol from which `C` was compiled" stops being well-defined. §3.4's realization equation `⌊[[δ]](C)⌋ = den(δ)(⌊C⌋)` nonetheless treats `⌊·⌋` as defined on post-edit controls. Discuss IRL.]
 
 ### 3.3 A Grammar for Tree Diffs
 
