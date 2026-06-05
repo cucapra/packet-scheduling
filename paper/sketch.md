@@ -62,7 +62,7 @@ A PIFO tree `q` is well-formed (written `|- q`, following _Formal Abstractions_'
 
 ##### Control
 
-_FA_ introduces a _control_ `(s, q, z)`: a current state `s` drawn from some fixed set `St`, the PIFO tree `q` of topology `t` itself, and a _scheduling transaction_ `z : St × Pkt -> Path(t) × St` that, given a state and a packet, returns a path of the correct shape together with an updated state. That path pins down both _where_ a packet goes (via its index sequence) and _with what priority_ it competes for service at every level (via its rank decorations), so `z` is the sole locus of routing and ranking.
+_FA_ introduces a _control_ `C = (s, q, z)`: a current state `s` drawn from some fixed set `St`, the PIFO tree `q` of topology `t` itself, and a _scheduling transaction_ `z : St × Pkt -> Path(t) × St` that, given a state and a packet, returns a path of the correct shape together with an updated state. That path pins down both _where_ a packet goes (via its index sequence) and _with what priority_ it competes for service at every level (via its rank decorations), so `z` is the sole locus of routing and ranking. We write `C` for a generic control throughout.
 
 #### 3.1.2 Our extensions to _FA_'s model
 
