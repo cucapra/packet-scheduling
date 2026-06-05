@@ -10,6 +10,8 @@ object SimUtils {
     def RioSimConfig = SimConfig.withIVerilog
       .addSimulatorFlag("-g2012")
       .withFstWave
+
+    val DefaultControlSocketPath = "/tmp/rio-control.sock"
 }
 
 // TODO(zhiyuang): check the pifos and flow ids are valid
@@ -24,6 +26,16 @@ case class PifoMeshSimController(
   config: EngineConfig,
   dut: PifoMesh
 ) {
+  private val controlCommandByName = Map(
+    "UpdateMapperPre" -> ControlCommand.UpdateMapperPre,
+    "UpdateMapperPost" -> ControlCommand.UpdateMapperPost,
+    "UpdateMapperNonExist" -> ControlCommand.UpdateMapperNonExist,
+    "CommitMapper" -> ControlCommand.CommitMapper,
+    "UpdateBrainEngine" -> ControlCommand.UpdateBrainEngine,
+    "UpdateBrainState" -> ControlCommand.UpdateBrainState,
+    "UpdateBrainFlowState" -> ControlCommand.UpdateBrainFlowState
+  )
+  private val controlSocketFields = Set("command", "engineId", "vPifoId", "flowId", "data")
 
   // compound functions
   def enque(vPifoId: Int) = {
@@ -68,7 +80,13 @@ case class PifoMeshSimController(
     dut.io.dataRequest.valid #= false
   }
 
-  def start = {
+  def start: Unit = start(enableControlSocket = false)
+
+  def start(enableControlSocket: Boolean): Unit = {
+    start(enableControlSocket, SimUtils.DefaultControlSocketPath)
+  }
+
+  def start(enableControlSocket: Boolean, controlSocketPath: String): Unit = {
     // Clock generation
     fork {
       while (true) {
@@ -94,7 +112,54 @@ case class PifoMeshSimController(
         }
       }
     }
+
+    if (enableControlSocket) {
+      UnixDomainSocketLineServer.startKeyValue(controlSocketPath, "ControlSocket") { message =>
+        handleControlSocketMessage(message)
+      }
+    }
   }
+
+  private def handleControlSocketMessage(message: UnixDomainSocketLineServer.KeyValueLine): Unit = {
+    val unknownFields = message.fields.keySet.diff(controlSocketFields)
+    if (unknownFields.nonEmpty) {
+      throw new IllegalArgumentException(s"unknown fields: ${unknownFields.mkString(", ")}")
+    }
+    val commandName = message.requireString("command")
+    val command = controlCommandByName.getOrElse(
+      commandName,
+      throw new IllegalArgumentException(s"unknown command '$commandName'")
+    )
+    sendControl(
+      command,
+      message.requireInt("engineId"),
+      message.requireInt("data"),
+      vPifoId = message.requireInt("vPifoId"),
+      flowId = message.requireInt("flowId")
+    )
+  }
+
+  /*
+   * PIFO control socket message format:
+   *
+   *   One key=value command per line:
+   *     command=<ControlCommand> engineId=<int> vPifoId=<int> flowId=<int> data=<int>
+   *
+   *   These five keys and the command names are exact. No aliases or positional fields are accepted.
+   *   Blank lines and text after '#' are ignored. Integers may be decimal or 0x-prefixed.
+   *
+   *   Supported command values:
+   *     UpdateMapperPre       writes enque mapper: inputId=vPifoId, outputId=data
+   *     UpdateMapperPost      writes deque mapper: inputId=flowId, outputId=data
+   *     UpdateMapperNonExist  writes non-exist mapper: inputId=vPifoId, outputId=data
+   *     CommitMapper          emits a commit command; payload fields are still required
+   *     UpdateBrainEngine     writes brain engine type: inputId=vPifoId, outputId=data
+   *     UpdateBrainState      writes brain state: inputId=vPifoId, outputId=data
+   *     UpdateBrainFlowState  writes flow state: inputId=vPifoId @@ flowId, outputId=data
+   *
+   *   Example:
+   *     command=UpdateBrainFlowState engineId=1 vPifoId=10 flowId=3 data=20
+   */
 
   // high-level configuration interface
   case class Configer(transactional: Boolean = false) {

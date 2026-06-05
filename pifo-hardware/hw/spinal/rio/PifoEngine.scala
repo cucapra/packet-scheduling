@@ -15,7 +15,8 @@ case class EngineConfig (
     brainStateWidth : Int = 32,
     flowStateWidth : Int = 32,
 
-    configDataWidth : Int = 32
+    configDataWidth : Int = 32,
+    commitQueueLength : Int = 4
 ) {
     def vpifoIdWidth = log2Up(numVPIFOs)
     def numFlows = numVPIFOs * numEngines

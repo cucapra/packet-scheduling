@@ -2,6 +2,7 @@ package rio
 
 import spinal.core._
 import spinal.lib._
+import spinal.core
 
 case class MessageCrossBar(config : EngineConfig) extends Component {
     val numPorts = config.numEngines + 1
@@ -67,8 +68,22 @@ case class PifoMesh(config: EngineConfig) extends Component {
     }
 
     // all controlpath. currently only write the memories
+    // transaction controller logic
+    // TODO(zhiyuang): better control signal logic?
+    val commitReady = StreamFifo(Bits(0 bits), config.commitQueueLength)
+    val controlQueue = io.controlRequest.queue(config.commitQueueLength)
+
+    // make one queue control another
+    val pendingCommit = controlQueue.payload.command === ControlCommand.CommitMapper
+    val controlTransaction = controlQueue.haltWhen(
+        pendingCommit && !commitReady.io.pop.valid
+    )
+    commitReady.io.pop.throwWhen(
+        pendingCommit && controlQueue.fire
+    )
+
     val translatedEngineId = (io.controlRequest.payload.engineId - 1).resized
-    val controlCommand = StreamDemux(io.controlRequest, translatedEngineId, config.numEngines)
+    val controlCommand = StreamDemux(controlTransaction, translatedEngineId, config.numEngines)
     (controlCommand zip pifoEngines).foreach { case (cmdStream, engine) =>
         engine.io.control << cmdStream
     }
