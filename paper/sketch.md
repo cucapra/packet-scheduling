@@ -99,7 +99,7 @@ At each node of `pol`'s topology, running discipline `D`, compilation seeds the 
 - `pifo` is an empty PIFO: an index-PIFO at an internal node, a packet-PIFO at a leaf.
 - `z` is `D`'s ranking program at the node: at an internal node, it picks a child index and the rank to enqueue at that index; at a leaf, it picks the rank for the packet's own PIFO entry. `z` may be partial: a packet for which `z` is undefined is dropped on the spot, with no descent and no state change.
 
-We address nodes by `path` (§3.3): the local triple at the node reached by following `path` from `C`'s root is written `C@path`, with fields `C@path.state`, `C@path.pifo`, and `C@path.z`. We also write `C@path.node_state` and `C@path.slot_state` for the two components of `C@path.state`.
+We address nodes by `path` (§3.3): the local triple at the node reached by following `path` from `C`'s root is written `C@path`, with fields `C@path.state`, `C@path.pifo`, and `C@path.z`. We also write `C@path.node_state` and `C@path.slot_states` for the two components of `C@path.state` (with the plural `slot_states` reflecting that it is a list, one entry per child arm).
 
 ##### Well-formedness: `|- C`
 
@@ -203,31 +203,31 @@ Our running example denotes `den(Add([2], spotify)) Strict(gmail, zoom) = Strict
 
 ##### Operational transition
 
-We write `c` for the parent node of the new slot (here the root `Strict`) and `k` for the new slot's index, so `path` lands at `c`'s `k`-th child. Let `D` be `c`'s discipline. The transition `C' = [[Add(path, pol, weight?)]](C)` is stated per node.
+Let `π` be the path to the new slot's parent (here `π = []`, the root `Strict`) and `k` the new slot's index, so `path = π ++ [k]`. Let `D` be the discipline at `π`. The transition `C' = [[Add(path, pol, weight?)]](C)` is stated per node.
 
-The topology gains a new arm at `c`, indexed `k`; the old arms at `c` with indices `>= k` shift right by one. The local controls update as follows.
+The topology gains a new arm at `π`, indexed `k`; the old arms at `π` with indices `>= k` shift right by one. The local controls update as follows.
 
-- _At every node outside the new subtree, other than `c`:_ the local control is preserved verbatim.
-- _At `c`:_
-  - `C'@c.node_state = C@c.node_state` (unchanged).
-  - `C'@c.slot_state = C@c.slot_state[ + init_slot_D(C@c.node_state, weight?) / k ]` (a plain append when `k` is last). The fresh entry is the per-arm bookkeeping `init_slot_D` of §3.2 prescribes for an arm newly spliced under a running `D`-parent.
-  - `C'@c.pifo = C@c.pifo[+/k]`: every index-PIFO entry naming an old index `>= k` is bumped up by one, tracking the shift, so each pre-existing slot keeps its matched count of entries and packets under its new name. When `k` is the last index (the append case) nothing is `>= k` and the pifo is untouched.
-  - `C'@c.z` extends `C@c.z` in two ways. First, it admits packets that classify into the new subtree, mapping them to child index `k` at `c` (with descent handed off to the new subtree's `z` pieces below). Second, it renumbers any old mapping whose chosen index at `c` was `>= k` to that index plus one, the path-level image of the pifo renumbering above. No `C` packet was ever routed to `k`: under `C'`, `k` names the new subtree, and the old occupant of `k`, if any, now lives at `k+1`.
+- _At every node outside the new subtree, other than `π`:_ the local control is preserved verbatim.
+- _At `π`:_
+  - `C'@π.node_state = C@π.node_state` (unchanged).
+  - `C'@π.slot_states = C@π.slot_states[ + init_slot_D(C@π.node_state, weight?) / k ]` (a plain append when `k` is last). The fresh entry is the per-arm bookkeeping `init_slot_D` of §3.2 prescribes for an arm newly spliced under a running `D`-parent.
+  - `C'@π.pifo = C@π.pifo[+/k]`: every index-PIFO entry naming an old index `>= k` is bumped up by one, tracking the shift, so each pre-existing slot keeps its matched count of entries and packets under its new name. When `k` is the last index (the append case) nothing is `>= k` and the pifo is untouched.
+  - `C'@π.z` extends `C@π.z` in two ways. First, it admits packets that classify into the new subtree, mapping them to child index `k` at `π` (with descent handed off to the new subtree's `z` pieces below). Second, it renumbers any old mapping whose chosen index at `π` was `>= k` to that index plus one, the path-level image of the pifo renumbering above. No `C` packet was ever routed to `k`: under `C'`, `k` names the new subtree, and the old occupant of `k`, if any, now lives at `k+1`.
 - _At every node inside the new subtree:_ the local control is the freshly-compiled one §3.2's compilation rule prescribes for that node.
 
 ##### Soundness
 
 We discharge the three obligations of §3.4 in turn (recall `C' = [[Add(path, pol, weight?)]](C)`).
 
-- _Realization._ The updates above leave every pre-existing arm structurally intact (modulo renumbering of `c`'s pifo, which is invisible to `⌊·⌋`) and add a new arm at `c`'s slot `k` whose subtree is the freshly-compiled `pol`. So `⌊C'⌋ = den(Add(path, pol, weight?))(⌊C⌋)`: the new shape is exactly what the edit denotes.
-- _Soundness._ `|- C` gives `|- C'`. At `c`, `C'@c.pifo = C@c.pifo[+/k]` by construction names no `k` (old entries `< k` stay put, old entries `>= k` were bumped to `>= k+1`), and the new subtree under slot `k` holds zero packets, so the well-formedness count at slot `k` reads `0 = 0`. Every other slot at `c` is the child it was, with the same packets beneath it; its entries in `C'@c.pifo` are the old entries under a possibly-shifted name, so its matched count is inherited verbatim. Every other node's pifo is untouched. Nothing needs repair.
-- _State preservation._ The first and third bullets of the operational transition above discharge it directly: outside the edit site, the local control (and thus its `state`) is preserved verbatim; inside the new subtree, the state is freshly compiled per §3.2. At `c`, `node_state` is unchanged and `slot_state` splices in exactly `init_slot_D(C@c.node_state, weight?)` as §3.4 demands at the edit site.
+- _Realization._ The updates above leave every pre-existing arm structurally intact (modulo renumbering of `π`'s pifo, which is invisible to `⌊·⌋`) and add a new arm at `π`'s slot `k` whose subtree is the freshly-compiled `pol`. So `⌊C'⌋ = den(Add(path, pol, weight?))(⌊C⌋)`: the new shape is exactly what the edit denotes.
+- _Soundness._ `|- C` gives `|- C'`. At `π`, `C'@π.pifo = C@π.pifo[+/k]` by construction names no `k` (old entries `< k` stay put, old entries `>= k` were bumped to `>= k+1`), and the new subtree under slot `k` holds zero packets, so the well-formedness count at slot `k` reads `0 = 0`. Every other slot at `π` is the child it was, with the same packets beneath it; its entries in `C'@π.pifo` are the old entries under a possibly-shifted name, so its matched count is inherited verbatim. Every other node's pifo is untouched. Nothing needs repair.
+- _State preservation._ The first and third bullets of the operational transition above discharge it directly: outside the edit site, the local control (and thus its `state`) is preserved verbatim; inside the new subtree, the state is freshly compiled per §3.2. At `π`, `node_state` is unchanged and `slot_states` splices in exactly `init_slot_D(C@π.node_state, weight?)` as §3.4 demands at the edit site.
 
 ##### Notes
 
-_Atomicity._ No in-flight packet straddles the diff: every packet resident at the diff instant lives in the `pifo` of some pre-existing node, carried into that same node's `pifo` in `C'` unchanged, and none lives under the new slot `k`. The renumbering `C@c.pifo[+/k]` relabels index _values_ only; it moves no packets and changes no ranks. So a `pop` immediately after the diff returns exactly what a `pop` immediately before would have, the empty new slot contributing nothing and the existing subtrees keeping their contents and relative priority under shifted index names. The first `push` that `C'@c.z` routes to `k` is the first packet ever to occupy the new subtree.
+_Atomicity._ No in-flight packet straddles the diff: every packet resident at the diff instant lives in the `pifo` of some pre-existing node, carried into that same node's `pifo` in `C'` unchanged, and none lives under the new slot `k`. The renumbering `C@π.pifo[+/k]` relabels index _values_ only; it moves no packets and changes no ranks. So a `pop` immediately after the diff returns exactly what a `pop` immediately before would have, the empty new slot contributing nothing and the existing subtrees keeping their contents and relative priority under shifted index names. The first `push` that `C'@π.z` routes to `k` is the first packet ever to occupy the new subtree.
 
-_Deeper paths._ The running example edits the root, but `path` may be any prefix; `Add([1, 2], pol)` adds a slot inside a grandchild of the root. Nothing in the argument changes. The descent from the root to `c` passes only through nodes whose local control is preserved verbatim, and, because the new subtree is empty, it adds zero packets beneath every ancestor of `c`. So each ancestor's occurrence-tally for the child it forwards through is exactly what it was, no ancestor pifo is rewritten, and the edit is confined to `c` and the fresh subtree below it.
+_Deeper paths._ The running example edits the root, but `path` may be any prefix; `Add([1, 2], pol)` adds a slot inside a grandchild of the root. Nothing in the argument changes. The descent from the root to `π` passes only through nodes whose local control is preserved verbatim, and, because the new subtree is empty, it adds zero packets beneath every ancestor of `π`. So each ancestor's occurrence-tally for the child it forwards through is exactly what it was, no ancestor pifo is rewritten, and the edit is confined to `π` and the fresh subtree below it.
 
 #### 3.4.2. `Remove(path)`
 
