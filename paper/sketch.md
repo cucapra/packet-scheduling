@@ -132,6 +132,7 @@ An edit names _where_ in the tree the change lands (a path from the root) and _w
          | Remove       (path)
          | ChangeWeight (path, weight)
          | Graft        (ctx)
+         | ChangeRoot   (path)
 
 path   ::= []  |  i :: path                       // i is a child index
 ctx    ::= □                                      // the unique hole; takes no children
@@ -153,6 +154,7 @@ Notes on the individual edits.
 - `Remove(path)` structurally removes `prev@path`, dropping its slot and renumbering any higher siblings. The subtree must be empty; §3.4.2 discusses why.
 - `ChangeWeight(path, weight)` overwrites the weight that `prev@path`'s parent uses for it. It is well-defined only when the parent at `path`'s prefix runs WFQ and `path` is non-empty.
 - `Graft(ctx)` produces `ctx[prev]`: the policy context `ctx` is spawned around `prev`, with `prev` plugged into the context's sole hole. `Graft` carries no `path`: if the user wants localized graft-style edits, deeper in the tree, they must be realized as a sequence (§4), not by a path-bearing `Graft`.
+- `ChangeRoot(path)` promotes `prev@path` to the new root, discarding every ancestor above it. It is well-defined only when `path` is non-empty and each internal node strictly above `prev@path` has a single arm (the one continuing toward `prev@path`), so the discarded ancestor chain carries no traffic of its own. The richer reconfiguration of pruning a tree down to a subtree that originally shared ancestors with packet-bearing siblings is realized as a sequence (§4) that first drains and `Remove`s those siblings, reducing the chain above `prev@path` to the unary shape `ChangeRoot` requires.
 
 When `prev = next` the grammar emits no diff at all: the reconfiguration is the empty sequence (§4), and the live control is left untouched.
 
