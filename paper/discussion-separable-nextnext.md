@@ -1,9 +1,9 @@
-# Discussion: serving a separable `nextnext` faster
+# Discussion: serving a `*`-separable `nextnext` faster
 
 ## The setting
 
 The paper's transition planner (§4) takes a single `prev -> next` request and emits a sequence `(φ_0 ; δ_0) ; (φ_1 ; δ_1) ; ... ; (φ_n ; δ_n)` of guarded atomic diffs.
-Every diff carries a guard; a guard `φ` is a predicate on the state of the live control, and the paired `δ` fires when its `φ` becomes true.
+A guard `φ` is a predicate on the state of the live control, and the paired `δ` fires when its `φ` becomes true.
 The constant `φ = true` is allowed; the typical non-trivial guard waits for some subtree to drain.
 
 A `prev -> next` sequence with at least one non-trivial guard is _in flight_ from the moment `δ_0` fires until the moment its last guard becomes true.
@@ -24,13 +24,15 @@ Every interleaving step is still a sound §3 atomic diff applied to a sound §3 
 
 ## A worked example
 
+### Common Setup
+
 Let `P` be any discipline (the example does not depend on its scheduling policy, only on its tree shape; we assume `P` is not WFQ purely so the `Add` below does not need to carry a weight).
 
 - `p1 = P(A, B)` is running at t1.
 - `p2 = P(C, B)` is requested at t2.
-  The planner emits `(true, Designate([0], C)) ; (true, Quiesce(A)); (A empty, Undesignate([0]))`.
-  The first two diffs fire at t2. Together they install the super-node `{A -> C}` at `P`'s 0th slot, with `A` set to receive no new packets and with `C` admitting all new traffic that used to classify into `A`. So the tree looks like `P({A->C}, B)`.
-  The pending diff (which would collapse `{A->C}` into just `C`) waits for `A` to drain.
+  The planner emits `(true, Designate([0], C)) ; (true, Quiesce([0, 0])) ; (A empty, Undesignate([0]))`.
+  The first two diffs fire immediately at t2. `Designate([0], C)` installs the super-node `{A -> C}` at `P`'s 0th slot; the immediately-firing `Quiesce([0, 0])` makes it so no new traffic reaches `A`. `C` is open for business: new traffic for `C`'s labels classifies naturally into `C`, and for any label `A` and `C` share, we steer fresh traffic into `C` rather than `A`. So the tree looks like `P({A->C}, B)`, with `A` draining and `C` admitting.
+  The pending diff (which would collapse `{A->C}` into just `C`) waits for `A` to drain to empty.
 - `p3 = P(C, B, D)` is requested at t3.
   The `prev -> next` planner would have emitted `Add([2], D)` to go from `p2` to `p3`.
 - A drains to empty at t4 > t3, satisfying the pending guard.
@@ -40,14 +42,14 @@ The still-pending part of the in-flight sequence consists of one guarded diff `(
 
 ### Cop-out trace
 
-- t2: fire `Designate([0], C)`.
+- t2: fire `Designate([0], C)` and the immediately-following `Quiesce([0, 0])` (both with trivially-true guards).
   Live control realizes `P(Strict(A, C), B)`.
 - t3: `nextnext = p3` arrives.
   Queue it.
   New traffic for `D` is rejected during the wait.
-- t4: `A` drains.
-  Fire `Remove([0, 0])`.
-  Super-node collapses.
+- t4: `A` drains to empty.
+  Fire `Undesignate([0])`.
+  The super-node collapses.
   Live control realizes `P(C, B) = p2`.
 - t4+: planner begins work on the queued `p2 -> p3` request and fires `Add([2], D)`.
   Live control realizes `P(C, B, D) = p3`.
@@ -55,28 +57,26 @@ The still-pending part of the in-flight sequence consists of one guarded diff `(
 
 ### Clever trace
 
-- t2: fire `Designate([0], C)`.
-  Live control realizes `P(Strict(A, C), B)`, with the pending guarded diff `(A empty, Remove([0, 0]))`.
+- t2: fire `Designate([0], C)` and the immediately-following `Quiesce([0, 0])` (both with trivially-true guards).
+  Live control realizes `P(Strict(A, C), B)`, with the pending guarded diff `(A empty, Undesignate([0]))`.
 - t3: `nextnext = p3` arrives.
-  The planner observes that `Add([2], D)` and the pending `Remove([0, 0])` are footprint-disjoint, and that `Add([2], D)` is an append (no index renumbering at root).
+  The planner observes that `Add([2], D)` and the pending `Undesignate([0])` are footprint-disjoint, and that `Add([2], D)` is an append (no index renumbering at root).
   Fire `Add([2], D)` immediately.
   Live control now realizes `P(Strict(A, C), B, D)`.
   D admits traffic from this point on.
   The pending guarded diff is unchanged.
-- t4: `A` drains.
-  Fire `Remove([0, 0])`.
-  Super-node collapses.
+- t4: `A` drains to empty.
+  Fire `Undesignate([0])`.
+  The super-node collapses.
   Live control realizes `P(C, B, D) = p3`.
 
 ### What the clever version actually buys
 
 Both traces _land_ at `p3` at the same instant: t4.
-The system genuinely realizes `p3` only when `A` has drained, and that does not happen earlier in the clever version.
-What the clever version buys is the early bring-up of `D`'s admission, from t4 down to t3.
-New packets that classify into `D` and arrive between t3 and t4 are served in the clever version and rejected (by the partial-`z` extension of §3.1.2; see also `Quiesce`, §3.3) in the cop-out version, because `D`'s classifier predicates do not enter `z` until the Add fires.
+The system genuinely realizes `p3` only when `A` has drained, and that does not happen any earlier in the clever version.
 
-This is not "we install `p3` faster."
-It is "we install the parts of `p3` that are independent of the still-draining region, faster."
+The win is this.
+New packets that classify into `D` and arrive between t3 and t4 are served in the clever version and rejected in the cop-out version.
 
 ## Why the example is sound
 
@@ -86,17 +86,17 @@ It needs to satisfy §3.4.1's preconditions on that live control, not on `p2` an
 - The path `[2]` lands at an internal node (the root), and by assumption `P` is not WFQ, so no weight is required.
 - `D`'s leaf label is fresh against the live tree, which contains `Strict(A, C)` at slot 0 and `B` at slot 1.
 - `D`'s classifier predicates must be disjoint from the domain of the live `z` at t3.
-  Crucially, the live `z` at t3 routes the old `A`-bound packets to the super-node's high-priority slot and the old `A`-classified new arrivals to the survivor `C`.
-  The Add can fire only if `D`'s classifier does not overlap with any of `C`'s, `B`'s, or the residual `A`'s.
-  This is a real precondition; it is the same precondition the cop-out version would face at t4 (because `C`'s classifier is in `z` at t4 too).
+  The live `z` at t3 routes new traffic for `C`'s labels into the survivor `C` and new traffic for `B`'s labels into `B`; the doomed `A` is no longer receiving new traffic, courtesy of the immediately-firing `Quiesce`, but its labels remain in `z` to the extent the planner has not chosen to strip them.
+  The Add can fire only if `D`'s classifier does not overlap with the live `z`'s active domain.
+  This is a real precondition; the cop-out version faces an analogous check at t4 (`C`'s classifier is in `z` at t4 too).
   The clever version does not weaken this constraint; it just checks it earlier.
 
 State preservation at the root is undisturbed: `Designate` at t2 inserted a super-node into root slot 0 without touching root's `node_state` or the `slot_state` for slot 1, so at t3 the root's bookkeeping is exactly what it was at t1, and `init_slot_D` for the new `D`-slot reads off that bookkeeping as §3.4.1 prescribes.
 
 Realization: applying `den(Add([2], D))` to `P(Strict(A, C), B)` gives `P(Strict(A, C), B, D)`, which matches what `⌊.⌋` reads off the live control after the Add.
-At t4, `Remove([0, 0])` collapses the single-armed Strict to its lone survivor `C`, giving `P(C, B, D) = p3`.
+At t4, `Undesignate([0])` collapses the super-node onto its survivor `C`, giving `P(C, B, D) = p3`.
 
-The atomicity of each individual step is inherited from §3.4: the Add at t3 is atomic by §3.4.1, the Remove at t4 is atomic by §3.4.2.
+The atomicity of each individual step is inherited from §3.4: the Add at t3 is atomic by §3.4.1, the Undesignate at t4 is atomic by §3.4.
 The clever version is not introducing a new compound atomic step; it is just admitting that two perfectly ordinary atomic steps from two different `prev -> next` sequences can be interleaved if their footprints do not collide.
 
 ## When is this possible in general?
@@ -104,13 +104,13 @@ The clever version is not introducing a new compound atomic step; it is just adm
 The example works because three conditions all hold simultaneously:
 
 1. **Footprint disjointness.**
-   The pending guarded diff `Remove([0, 0])` acts inside the super-node at root slot 0.
+   The pending guarded diff `Undesignate([0])` acts on the super-node at root slot 0, collapsing it in place without disturbing root's child list.
    The new diff `Add([2], D)` acts on the root's child list at index 2 and on a fresh subtree below it.
    No position is in both footprints, and neither edit's footprint is a prefix of the other's.
 2. **Index stability across the new edit.**
    `Add([2], D)` happens to be an append at the root; it does not renumber any sibling.
-   Had the new edit been `Add([1], D)` (a mid-insertion), the root's child list would shift, and the pending `Remove`'s path `[0, 0]` would have to be re-resolved on the shifted tree.
-   It happens that any path of the form `[0, ...]` is unaffected by an insertion at root index 1 or later, so this particular example would still go through.
+   Had the new edit been `Add([1], D)` (a mid-insertion), the root's child list would shift, and the pending `Undesignate`'s path `[0]` would have to be re-resolved on the shifted tree.
+   It happens that any path with prefix `[0]` is unaffected by an insertion at root index 1 or later, so this particular example would still go through.
    But in general, the planner must reason about path stability, not just disjointness.
 3. **Classifier disjointness.**
    `D`'s classifier predicates must be disjoint from everything currently in `z`, including the survivor `C`.
@@ -133,8 +133,8 @@ In the easy case (the example above), the plan is "fire the whole new sequence n
   A planner doing the clever interleave at a shared parent must commit to an ordering and resolve the indices accordingly.
   We have not tried to characterize when this is or is not safe in general.
 - **Classifier interference, especially via `Designate`.**
-  A pending `Designate` installs a survivor whose classifier inherits part of the retiring subtree's domain.
-  Any new `Add` or `Designate` in flight must check disjointness against the survivor's classifier as well as the original tree's; the survivor is part of the live `z` from the moment its `Designate` fired.
+  A pending `Designate` installs a survivor alongside the doomed subtree, so the survivor's classifier is part of the live `z` from the moment the `Designate` fired (with the partner `Quiesce`, if it has also fired, having shrunk the doomed side's active domain).
+  Any new `Add` or `Designate` in flight must check disjointness against the survivor's classifier the same way it would check against any other live arm.
 - **No earlier semantic landing.**
   The clever version does not make the system realize `p3` earlier.
   It admits a part of `p3` (here, `D`'s classifier and queueing) earlier, while the rest of `p3` continues to wait on the in-flight drain.
