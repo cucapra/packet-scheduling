@@ -320,26 +320,27 @@ Modeling `[[δ]]` as a single (partial) function `control ⇀ control` bakes ind
 
 For each production we discharge three obligations, all assuming `[[δ]](C)` is defined.
 
-- _Realization_ constrains the `pol`-visible skeleton: `⌊[[δ]](C)⌋ = den(δ)(⌊C⌋)`.
-  The `pol` summary of the post-edit control must equal the pol-level denotation applied to the `pol` summary of the pre-edit control.
-  For our running example, `δ = Add([2], spotify)`, so `den(δ)(Strict(gmail, zoom)) = Strict(gmail, zoom, spotify)`, and realization says `⌊[[δ]](C)⌋ = Strict(gmail, zoom, spotify)` for any `C` with `⌊C⌋ = Strict(gmail, zoom)`.
+Throughout, we write `C` for the pre-edit control and `C'` for the post-edit control.
+
+- _Realization_ constrains the `pol`-visible skeleton: `⌊C'⌋ = den(δ)(⌊C⌋)`.
+  For our running example, `δ = Add([2], spotify)`, so `den(δ)(Strict(gmail, zoom)) = Strict(gmail, zoom, spotify)`, and realization says `⌊C'⌋ = Strict(gmail, zoom, spotify)` for any `C` with `⌊C⌋ = Strict(gmail, zoom)`.
   The equation pins down the new topology, disciplines, weights, and labels.
-  Transaction-only effects (e.g., `Quiesce`'s shrinking of `z`'s domain) lie outside `⌊·⌋` and are pinned down by the per-production operational rule below, not by realization.
+  Transaction-only effects (e.g., `Quiesce`'s shrinking of `z`'s domain) lie outside `⌊·⌋` and are fixed by the per-production operational rule below, not by realization.
   Realization says nothing about contents.
-- _Soundness_ constrains the live contents: `|- C` must imply `|- [[δ]](C)`.
+- _Soundness_ constrains the live contents: `|- C` must imply `|- C'`.
   Well-formedness (§3.2) is about per-node pifos and the packets stored under them, so this obligation says that any packets and index entries `[[δ]]` drops or adds must leave the counts in balance.
 - _State preservation_ constrains each local control's state.
-  Writing `C` for the pre-edit control and `C'` for the post-edit control, at every node structurally shared between `prev` and `next` and outside the production's local edit site, the local `state` is preserved verbatim.
-  At the edit site and at every node inside a freshly-spawned subtree, the state is exactly what the production's `init`-rule prescribes, where the `init`-rule is the per-discipline `init_node_D` / `init_slot_D` of §3.2 invoked as specified per-production below.
+  At every node structurally shared between `prev` and `next` and outside the production's local edit site, the local `state` is preserved verbatim.
+  At the edit site, and at every node inside a freshly-spawned subtree, the state is exactly what the production's `init`-rule prescribes, with the specific invocation of `init_node_D` / `init_slot_D` (§3.2) given per-production below.
 
 The denotational rules frequently read, overwrite, and splice child lists.
 Let us fix some notation.
 We write `ts[i]` for the `i`-th child and `ts[t/i]` for `ts` with its `i`-th child overwritten by `t`; this leaves the arity unchanged.
-The two arity-changing edits carry a sign: `ts[+t/i]` is `ts` with `t` spliced in as the new `i`-th child (the old `i`-th and later children shift one place to the right), and `ts[-/i]` is `ts` with its `i`-th child dropped (later children shift left).
+We mark arity-changing edits with `+` and `-`: `ts[+t/i]` splices `t` in as the new `i`-th child (the old `i`-th and later children shift one place to the right), and `ts[-/i]` drops the `i`-th child (later children shift left).
 Indices follow the `path` convention of §3.3.
 
 The operational diffs of §3.4 manipulate two parallel structures at an internal node: a child list `qs` of PIFO tree children, to which the list-manipulation notation introduced above applies verbatim, and an index-PIFO `p` recording child indices.
-For `p` the same `[±/k]` notation _renumbers_ rather than splices, because we often need to open up or close a slot by shifting indices.
+For `p` the same `[±/k]` notation _renumbers_ rather than splices, since the PIFO holds index _values_ that have to track a shift in the child list.
 `p[+/k]` is `p` with every entry `>= k` bumped up by one (opening up slot `k`); `p[-/k]` is `p` with every entry `> k` brought down by one.
 Entries below the edit point are left alone.
 
@@ -383,13 +384,14 @@ The local controls update as follows.
   - `C'@π.node_state = C@π.node_state` (unchanged).
   - `C'@π.slot_states = C@π.slot_states[ + init_slot_D(C@π.node_state, weight?) / k ]` (a plain append when `k` is last).
     The fresh entry is the per-arm bookkeeping `init_slot_D` of §3.2 prescribes for an arm newly spliced under a running `D`-parent.
-  - `C'@π.pifo = C@π.pifo[+/k]`: every index-PIFO entry naming an old index `>= k` is bumped up by one, tracking the shift, so each pre-existing slot keeps its matched count of entries and packets under its new name.
+  - `C'@π.pifo = C@π.pifo[+/k]`: every entry `>= k` is bumped up by one to track the shift.
+    Each pre-existing slot keeps its matched count of entries and packets, now under its new name.
     When `k` is the last index (the append case) nothing is `>= k` and the pifo is untouched.
   - `C'@π.z` extends `C@π.z` in two ways.
     First, it admits packets that classify into the new subtree, mapping them to child index `k` at `π` (with descent handed off to the new subtree's `z` pieces below).
-    Second, it renumbers any old mapping whose chosen index at `π` was `>= k` to that index plus one, the path-level image of the pifo renumbering above.
+    Second, mirroring the pifo renumbering at the path level, it renumbers any old mapping whose chosen index at `π` was `>= k` to that index plus one.
     No `C` packet was ever routed to `k`: under `C'`, `k` names the new subtree, and the old occupant of `k`, if any, now lives at `k+1`.
-- _At every node inside the new subtree:_ the local control is the freshly-compiled one §3.2's compilation rule prescribes for that node.
+- _At every node inside the new subtree:_ the local control is what §3.2's compiler produces for that node.
 
 ##### Soundness
 
@@ -400,27 +402,31 @@ We discharge the three obligations of §3.4 in turn (recall `C' = [[Add(path, po
   So `⌊C'⌋ = den(Add(path, pol, weight?))(⌊C⌋)`: the new shape is exactly what the edit denotes.
 - _Soundness._
   `|- C` gives `|- C'`.
-  At `π`, `C'@π.pifo = C@π.pifo[+/k]` by construction names no `k` (old entries `< k` stay put, old entries `>= k` were bumped to `>= k+1`), and the new subtree under slot `k` holds zero packets, so the well-formedness count at slot `k` reads `0 = 0`.
+  At `π`, `C'@π.pifo = C@π.pifo[+/k]` contains no entry equal to `k`: old entries `< k` stay put, old entries `>= k` were bumped to `>= k+1`.
+  The new subtree under slot `k` holds zero packets, so the well-formedness count at slot `k` reads `0 = 0`.
   Every other slot at `π` is the child it was, with the same packets beneath it; its entries in `C'@π.pifo` are the old entries under a possibly-shifted name, so its matched count is inherited verbatim.
   Every other node's pifo is untouched.
   Nothing needs repair.
 - _State preservation._
   The first and third bullets of the operational transition above discharge it directly: outside the edit site, the local control (and thus its `state`) is preserved verbatim; inside the new subtree, the state is freshly compiled per §3.2.
-  At `π`, `node_state` is unchanged and `slot_states` splices in exactly `init_slot_D(C@π.node_state, weight?)` as §3.4 demands at the edit site.
+  At `π`, `node_state` is unchanged and `slot_states` splices in exactly `init_slot_D(C@π.node_state, weight?)`, as §3.4 prescribes at the edit site.
 
 ##### Notes
 
 _Atomicity._
-No in-flight packet straddles the diff: every packet resident at the diff instant lives in the `pifo` of some pre-existing node, carried into that same node's `pifo` in `C'` unchanged, and none lives under the new slot `k`.
+No in-flight packet straddles the diff.
+At the diff instant, every packet sits in some pre-existing node's `pifo`, and each such packet survives into the same `pifo` in `C'` unchanged.
+The new slot `k` holds nothing.
 The renumbering `C@π.pifo[+/k]` relabels index _values_ only; it moves no packets and changes no ranks.
-So a `pop` immediately after the diff returns exactly what a `pop` immediately before would have, the empty new slot contributing nothing and the existing subtrees keeping their contents and relative priority under shifted index names.
+So a `pop` immediately after the diff returns exactly what a `pop` immediately before would have.
+The new slot contributes nothing; the existing subtrees keep their contents and relative priority, just under shifted names.
 The first `push` that `C'@π.z` routes to `k` is the first packet ever to occupy the new subtree.
 
 _Deeper paths._
 The running example edits the root, but `path` may be any prefix; `Add([1, 2], pol)` adds a slot inside a grandchild of the root.
 Nothing in the argument changes.
 The descent from the root to `π` passes only through nodes whose local control is preserved verbatim, and, because the new subtree is empty, it adds zero packets beneath every ancestor of `π`.
-So each ancestor's occurrence-tally for the child it forwards through is exactly what it was, no ancestor pifo is rewritten, and the edit is confined to `π` and the fresh subtree below it.
+So each ancestor's count for the child it forwards through is exactly what it was, no ancestor pifo is rewritten, and the edit is confined to `π` and the fresh subtree below it.
 
 #### 3.4.2. `Remove(path)`
 
@@ -471,7 +477,7 @@ This absence of meta-information is a feature of PIFO trees, not a defect: an en
 We could make deletion unambiguous by tagging each entry at `push` with the leaf it is destined for, but that would discard the abstraction: every internal node would then have to track the entire downstream structure, and the composability that makes PIFO trees scale would be lost.
 
 Given this, _we can only pick two instances of `1` arbitrarily_.
-Our choice is silently a scheduling decision, as it affects how `P` intermixes `C` and `Q` traffic.
+Our choice is, in effect, a scheduling decision, as it affects how `P` intermixes `C` and `Q` traffic.
 For example:
 
 a. _Keep the two leftmost `1`s_ (strike the two on the right):
@@ -508,7 +514,7 @@ The same six pops now yield `c1, a1, c2, a2, c3, c4`: this is exactly the round-
 Same tree, same surviving packets, two different service orders.
 The _choice of which_ `1`s to drop _silently reschedules `A` against `C`_, and nothing in `prev` or the deletion request records which the operator wanted.
 
-We do not wish to make a scheduling decision for the operator, so our only other option is to reconstruct the tree as if `B` had never been admitted: drain everything out, filter the `B`-packets, and re-push, recomputing every rank and cursor along the way.
+We do not wish to make a scheduling decision for the operator, so our only other option is to reconstruct the tree as if `B` had never been admitted: drain the tree completely, filter the `B`-packets, and re-push, recomputing every rank and cursor along the way.
 This is a stop-the-world rebuild.
 
 Our grammar sidesteps the question entirely.
