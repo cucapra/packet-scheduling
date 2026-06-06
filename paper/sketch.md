@@ -11,10 +11,10 @@
   1. `Strict(gmail, zoom, spotify)`: just extend the strict-priority list with `spotify` having lowest priority.
   2. `Strict(gmail, RoundRobin(zoom, spotify))`: keep `gmail` on top, but have `zoom` and `spotify` share the lower tier via round-robin.
 
-  In either of these cases, SOTA would stop the world, drop/recirculate buffered packets, recompile, and reinstall.
-  Costs: dropped or recirculated (read, delayed!) packets, downtime, and a full respawn of nodes that did not need respawning.
+  In either of these cases, the state of the art would stop the world, drop or recirculate buffered packets, recompile, and reinstall.
+  The costs are dropped or recirculated (and so delayed) packets, downtime, and the rebuilding of nodes that did not need to be rebuilt.
 
-- The alternate is to reprogram a scheduler without stopping the world.
+- The alternative is to reprogram a scheduler without stopping the world.
   Let's revisit the examples from earlier.
 - Transitioning to `Strict(gmail, zoom, spotify)` is actually quite easy.
   We can achieve the strongest property we could ask for:
@@ -29,20 +29,19 @@
 - What about transitioning to `Strict(gmail, RoundRobin(zoom, spotify))`?
   It is not as easy.
   We need to atomically step into a _transitionary period_ during which the scheduler still accepts and emits packets, and once certain well-defined conditions are met, we atomically step into the user-requested policy.
-- It is crucial to note that, although the user never described to us the semantics of the transitionary period, it _is_ in fact a _de facto_ packet scheduling regime with some semantics!
-  It is useful to recognize it as a scheduling policy in its own right (we give it the name `link`).
-  There are clearly better and worse transitions from a network operator's point of view.
-  SOTA has more-or-less unintentionally adopted a trivial stop-the-world `link`.
-  Our contributions include both being clear about what `link` is and improving on it.
+- Although the user never specified the semantics of this transitionary period, the period is itself a _de facto_ packet scheduling regime.
+  It is worth recognizing as a scheduling policy in its own right; we call it `link`.
+  Some transitions are better than others from a network operator's point of view, and the state of the art has, perhaps inadvertently, settled on a trivial stop-the-world `link`.
+  Our contributions are to be clear about what `link` is and to improve on it.
 - Concretely:
   - Obligation 1.
     Show that `link` is just scheduling.
-    The transition period is motivated by hardware-level manipulations on the way to realizing `next` and is not designed for a clean human-readable semantics, so the natural fear is that we owe the reader a new formalism for it.
-    Our result is the opposite: each `link` is an ordinary scheduling control in the sense of §3.1, no new semantics is required.
+    The transition period is shaped by hardware-level manipulations on the way to realizing `next`, not by a clean human-readable semantics, so one might worry that we owe the reader a new formalism for it.
+    We find that we do not: each `link` is an ordinary scheduling control in the sense of §3.1.
   - Obligation 2.
-    Improve upon SOTA.
-    We will give the semantics of SOTA's stop-the-world `link` and use it as a baseline.
-    We have a set of practical goals that may guide us as we search for the ideal way to transition from some `prev` to some `next`.
+    Improve upon the state of the art.
+    We will give the semantics of the stop-the-world `link` and use it as a baseline.
+    Several practical goals guide us as we look for better ways to transition from a given `prev` to a given `next`.
     Can we minimize the length of the transition period?
     Can we avoid dropped/delayed packets?
     [AM: more to come here; the cost model is a legit open question!].
@@ -67,18 +66,18 @@
   As published, vPIFO has no notion of a diff between old and new policies, no formal semantics for what a policy change means, and no account of in-flight packets during a change.
   The SDL IR is for _rank computation_ compiled to P4 or CPU, quite different from our structural/topological one.
 - Our two running examples make the gap concrete.
-  The easy append, to get to `Strict(gmail, zoom, spotify)`, looks like the kind of edit vPIFO's substrate is well placed to absorb in place: a targeted append to the structures that encode the tree shape and per-instance storage (the Operation Generation Table and the PIFO Instance Address Table) would plausibly register the new traffic and its operations while leaving the running instances untouched.
-  vPIFO as published does not engage with this question; their only option is a full reinitialization.
-  Driving such a substrate to install the edit in place, straight from the (small) diff, is exactly what our layer adds.
-  The harder restructuring, to `Strict(gmail, RoundRobin(zoom, spotify))`, is beyond what the vPIFO substrate can absorb in place at all: it changes the running tree's shape (inserting a new internal node and re-parenting `zoom` under it), which is not exposed as an in-place edit on the Operation Generation Table or the PIFO Instance Address Table.
-  The closest vPIFO comes is a full reinitialization onto the new shape, which is exactly the stop-the-world baseline we are trying to improve on.
+  The easy append, to `Strict(gmail, zoom, spotify)`, looks like the kind of edit vPIFO's substrate could absorb in place: a targeted append to the structures that encode the tree shape and per-instance storage (the Operation Generation Table and the PIFO Instance Address Table) would plausibly register the new traffic and its operations while leaving the running instances untouched.
+  vPIFO as published does not address this; its only option is a full reinitialization.
+  Issuing the small diff to such a substrate, so that it installs the edit in place, is exactly what our layer adds.
+  The harder restructuring, to `Strict(gmail, RoundRobin(zoom, spotify))`, lies beyond what the vPIFO substrate can absorb in place: it changes the running tree's shape (inserting a new internal node and re-parenting `zoom` under it), which is not exposed as an in-place edit on the Operation Generation Table or the PIFO Instance Address Table.
+  The closest vPIFO comes is a full reinitialization onto the new shape, which is precisely the stop-the-world baseline we want to improve on.
 - vPIFO's own §9 ("Runtime Updating of the Scheduling Policy") names our exact problem as future work: "Ensuring correct scheduling of packets during the transitional phase between modifications is part of our future work."
   The accompanying sentence says the runtime interface itself (P4-runtime-style) is still under development.
 - The relationship, stated plainly.
   We are not competing with vPIFO and do not claim a better PIFO substrate.
   We supply the layer _above_ a PIFO substrate (which could well be vPIFO).
   That is, the formal transition between two policies, the small patch that realizes it, and the transitionary semantics.
-  The works compose.
+  The two layers compose.
 
 ## 3. A Grammar of Atomic Policy Diffs
 
@@ -119,12 +118,12 @@ This is the invariant that keeps `pop` from getting stuck.
 ### 3.2 A Policy DSL
 
 A PIFO tree is a runtime representation, not a programming surface.
-To engage with reconfigurations we lift one level: a small policy DSL the operator writes in, and a compiler from DSL terms to runnable _controls_ (defined below).
-The transition planner of §4 needs both a way to materialize a starting control `C` from an operator's wish and a way to compare two wishes; the DSL gives us both.
+To talk about reconfigurations we step up a level: a small policy DSL the operator writes in, and a compiler from DSL terms to runnable _controls_ (defined below).
+The transition planner of §4 needs both a way to compile a starting control `C` from an operator's request and a way to compare two such requests; the DSL gives us both.
 
-This is morally what the vPIFO paper's _Scheduling Description Language_ does informally [cite vPIFO, §4].
+This is essentially what the vPIFO paper's _Scheduling Description Language_ does informally [cite vPIFO, §4].
 They do not pin down a grammar for SDL or formalize the compilation, so our DSL can be read as a formal core of their concrete language.
-The compiled object differs (they target a virtualized PIFO substrate; we target a control) but the strategy is similar: give the operator a syntactic handle, then compile.
+The compilation targets differ (they target a virtualized PIFO substrate; we target a control), but the strategy is the same: give the operator a syntactic surface, then compile.
 
 ##### Policy syntax: `pol`
 
@@ -134,7 +133,7 @@ pol    ::= flow                                          // leaf, labeled by a f
          | W((w_1, pol_1), ..., (w_n, pol_n))            // internal node, weighted discipline W
 ```
 
-This grammar naturally admits policy trees with unbounded arity.
+This grammar allows policy trees of arbitrary arity.
 `D` ranges over the unweighted disciplines (`Strict`, `RoundRobin`, ...) and `W` over the weighted ones (just `WFQ` for now); each `w_i` is a positive real.
 We read the arity off by counting children, so `Strict(gmail, zoom)` is the 2-ary instance.
 A `pol` is _valid_ when every discipline is applied at a proper arity and leaf labels are distinct.
@@ -220,7 +219,7 @@ No operation straddles the change, and no operation sees an intermediate state.
 
 We fix a small grammar of atomic edits.
 Each production denotes a single primitive that acts on a live control `C` and produces a new control.
-The grammar discussed in this section is the alphabet using which the transition planner (§4) assembles a sequence whose operational composition takes `C` to a control realizing `next` _without clobbering_.
+The grammar in this section is the alphabet from which the transition planner (§4) assembles a sequence whose operational composition takes `C` to a control realizing `next` _without clobbering_.
 Most productions are `pol`-visible: their effect shows up in `next`, and a comparison of `prev` against `next` is enough to understand them.
 Others are transaction-only: their effect lives entirely in `z`, leaving the `pol`-level skeleton untouched.
 
@@ -297,7 +296,7 @@ Each `δ` (§3.3) admits two semantic readings, both _partial_.
 The operational reading is primary; the pol-level reading is a projection of it.
 
 - The _operational transition_, `[[δ]] : control ⇀ control`, is the live rewrite acting on the control `C`.
-  The per-production rules below state where `[[δ]]` is defined; in other cases we say `δ` is _incompatible_ with the input control, and `[[δ]](C)` returns nothing.
+  The per-production rules below state where `[[δ]]` is defined; outside that, we say `δ` is _incompatible_ with the input control and `[[δ]](C)` is undefined.
   §4's transition planner only emits a `δ` whose `[[δ]]` is defined on the live `C`.
   The preconditions vary by production, e.g.:
   - For `Add` we require the path to land at an internal node, a weight to be present iff the parent runs WFQ, the new leaf labels to be fresh, and the new classifier predicates to be disjoint from the domain of `C`'s live `z`.
@@ -316,10 +315,10 @@ The operational reading is primary; the pol-level reading is a projection of it.
 The two readings are linked through `⌊·⌋`: whenever `[[δ]](C)` is defined, so is `den(δ)(⌊C⌋)`, and in fact `⌊[[δ]](C)⌋ = den(δ)(⌊C⌋)`.
 To put it in notation: `den(δ) : pol -> pol` is defined to be the relation `{ (⌊C⌋, ⌊C'⌋) | [[δ]](C) = C' }`.
 
-In the language of `[[δ]]`, _atomicity_ can be redefined crisply: when `δ` is compatible with `C`, `[[δ]]` replaces the live control `C` with `[[δ]](C)` between two consecutive `push`/`pop` operations.
-Modeling `[[δ]]` as a single (partial) function `control ⇀ control` builds the indivisibility into the abstraction; the obligations below ensure that the result of this single step is correct.
+In the language of `[[δ]]`, _atomicity_ can be restated crisply: when `δ` is compatible with `C`, `[[δ]]` replaces the live control `C` with `[[δ]](C)` between two consecutive `push`/`pop` operations.
+Modeling `[[δ]]` as a single (partial) function `control ⇀ control` bakes indivisibility into the abstraction; the obligations below ensure that the result of this single step is correct.
 
-For each production we discharge three obligations, all implicitly conditioned on `[[δ]](C)` being defined.
+For each production we discharge three obligations, all assuming `[[δ]](C)` is defined.
 
 - _Realization_ constrains the `pol`-visible skeleton: `⌊[[δ]](C)⌋ = den(δ)(⌊C⌋)`.
   The `pol` summary of the post-edit control must equal the pol-level denotation applied to the `pol` summary of the pre-edit control.
@@ -328,7 +327,7 @@ For each production we discharge three obligations, all implicitly conditioned o
   Transaction-only effects (e.g., `Quiesce`'s shrinking of `z`'s domain) lie outside `⌊·⌋` and are pinned down by the per-production operational rule below, not by realization.
   Realization says nothing about contents.
 - _Soundness_ constrains the live contents: `|- C` must imply `|- [[δ]](C)`.
-  Well-formedness (§3.2) is about per-node pifos and the packets stored under them, so this is the obligation that the packets and index entries that `[[δ]]` drops or adds must still satisfy the counts.
+  Well-formedness (§3.2) is about per-node pifos and the packets stored under them, so this obligation says that any packets and index entries `[[δ]]` drops or adds must leave the counts in balance.
 - _State preservation_ constrains each local control's state.
   Writing `C` for the pre-edit control and `C'` for the post-edit control, at every node structurally shared between `prev` and `next` and outside the production's local edit site, the local `state` is preserved verbatim.
   At the edit site and at every node inside a freshly-spawned subtree, the state is exactly what the production's `init`-rule prescribes, where the `init`-rule is the per-discipline `init_node_D` / `init_slot_D` of §3.2 invoked as specified per-production below.
@@ -355,9 +354,9 @@ den(Add(i :: [],   pol)) (P ts) = P ( ts[+pol / i] )
 den(Add(i :: rest, pol)) (P ts) = P ( ts[ den(Add(rest, pol)) (ts[i]) / i ] )
 ```
 
-The base case fires once `path` reaches the new slot's parent: the subtree `pol` is spliced in as the new `i`-th child.
+The base case applies once `path` reaches the new slot's parent: the subtree `pol` is spliced in as the new `i`-th child.
 (Recall from §3.3 that `Add`'s `path` is read in `next` and names the new slot, so its final index `i` is the insertion point.)
-The recursive case walks down a shared ancestor, recurses into child `i`, and writes the result back.
+The recursive case walks down a shared ancestor, recurses into child `i`, and writes the result back in place.
 A WFQ parent also needs the new slot's weight; the syntactic diff is `Add(path, pol, w)` in this case.
 With children zipped as `(weight, subtree)` pairs `cs`, the weight enters only at the insertion site, and descent leaves the weights untouched:
 
@@ -463,13 +462,13 @@ Say the user asks us to delete `B`, dropping its packets.
 To restore well-formedness, we need to remove two instances of the index `2` from `Q`'s PIFO and two instances of the index `1` from `P`'s PIFO.
 
 At `Q` the edit is unambiguous.
-Well-formedness of the original tree forces `Q`'s PIFO to have exactly two instances of `2`; we just find and delete them.
+Well-formedness of the original tree forces `Q`'s PIFO to have exactly two instances of `2`, and we delete those two.
 The trouble is one level up.
 `P`'s PIFO originally had four instances of `1`, and well-formedness demands that we remove two of them.
 But _which_ two?
-No entry in `P` remembers the meta-information "I was enqueued when a packet was inserted into `B`"; an entry `1` in `P` just means "when this index is popped, recursively ask subtree `Q` to emit the next packet" (see §2.1).
-This forgetting of meta-information is a feature of PIFO trees, not a defect: an entry must be detached from the packet it was enqueued with; this is exactly what lets each node schedule its own discipline alone, and lets a subtree be reconfigured without rewriting its ancestors.
-We could facilitate an unambiguous deletion by tagging each entry at `push` with the leaf it is destined for, but that throws the abstraction away: every internal node would then have to track the entire downstream structure, and the composability that makes PIFO trees scale would be lost.
+No entry in `P` carries the meta-information "I was enqueued when a packet was inserted into `B`"; an entry `1` in `P` only means "when this index is popped, recursively ask subtree `Q` to emit the next packet" (see §2.1).
+This absence of meta-information is a feature of PIFO trees, not a defect: an entry is deliberately detached from the packet it was enqueued with, which is what lets each node schedule its own discipline in isolation and lets a subtree be reconfigured without rewriting its ancestors.
+We could make deletion unambiguous by tagging each entry at `push` with the leaf it is destined for, but that would discard the abstraction: every internal node would then have to track the entire downstream structure, and the composability that makes PIFO trees scale would be lost.
 
 Given this, _we can only pick two instances of `1` arbitrarily_.
 Our choice is silently a scheduling decision, as it affects how `P` intermixes `C` and `Q` traffic.
@@ -513,7 +512,7 @@ We do not wish to make a scheduling decision for the operator, so our only other
 This is a stop-the-world rebuild.
 
 Our grammar sidesteps the question entirely.
-By draining `B` to empty before removing it (§4), every pop that served a packet from `B` has already removed the matching index-entries from `B`'s ancestors as ordinary `pop` requires: a packet leaving `B` consumes a `2` at `Q` and a `1` at `P`, bringing each ancestor's count into accord with its post-drain contents.
+By draining `B` to empty before removing it (§4), every pop that served a packet from `B` has already removed the matching index-entries from `B`'s ancestors in the ordinary course of `pop`: a packet leaving `B` consumes a `2` at `Q` and a `1` at `P`, bringing each ancestor's count into accord with its post-drain contents.
 At the instant `Remove` fires, `Q`'s `2`-count is zero (`B` is empty) and `P`'s `1`-count is exactly the number of packets still under `Q` (here `2`, all attributable to `A`).
 There is nothing left to reconcile and no hidden policy choice to make: the structural deletion is unambiguous.
 
@@ -563,10 +562,10 @@ The metric we adopt is _confinement_: a good sequence is one whose diffs and int
 
 There is always a maximally unconfined fallback.
 To reach any `next` from any `prev`, the planner can issue `Designate([], next)`, making the whole of `next` the survivor of the whole of `prev`.
-All new traffic flows to `next` at once, every `pop` is served by `prev` until `prev` drains, and a closing `Remove` throws away `prev` and leaves `next`.
-Nothing is dropped, the sequence is safe by §3.4, and no part of the scheduler is left running undisturbed.
-This is the floor.
-The rest of §5 is the story of doing better: localizing the change so that the sequence and its `link`s touch only a small subtree while the rest of the scheduler keeps running.
+All new traffic flows to `next` at once, every `pop` is served by `prev` until `prev` drains, and a closing `Remove` discards `prev` and leaves `next`.
+Nothing is dropped and the sequence is safe by §3.4, but no part of the scheduler is left undisturbed.
+This is the worst case the planner ever falls back on.
+The rest of §5 is about doing better: localizing the change so that the sequence and its `link`s touch only a small subtree, while the rest of the scheduler keeps running undisturbed.
 
 We make no claim that the planner is canonical or minimal.
 We claim only that whatever sequence it emits is safe (§3.4) and no worse than this fallback.
