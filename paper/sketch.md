@@ -35,9 +35,10 @@
   Our contributions are to be clear about what `link` is and to improve on it.
 - Concretely:
   - Obligation 1.
-    Show that `link` is just scheduling.
-    The transition period is shaped by hardware-level manipulations on the way to realizing `next`, not by a clean human-readable semantics, so one might worry that we owe the reader a new formalism for it.
-    We find that we do not: each `link` is an ordinary scheduling control in the sense of §3.1.
+    Give a semantics to `link`.
+    The transition period is shaped by hardware-level manipulations on the way to realizing `next`, and not by a clean human-readable semantics.
+    One might naturally worry that it will be hard to pin down the semantics of this transitional regime.
+    We develop a grammar of atomic transitions (§4) that carries us from `prev` through `link` to `next`, and any `link` produced by that grammar is itself an ordinary scheduling control in the sense of §3.1: so it _does_ have a human-readable semantics, just as `prev` and `next` do.
   - Obligation 2.
     Improve upon the state of the art.
     We will give the semantics of the stop-the-world `link` and use it as a baseline.
@@ -118,7 +119,7 @@ This is the invariant that keeps `pop` from getting stuck.
 ### 3.2 A Policy DSL
 
 A PIFO tree is a runtime representation, not a programming surface.
-To talk about reconfigurations we step up a level: a small policy DSL the operator writes in, and a compiler from DSL terms to runnable _controls_ (defined below).
+To talk about reconfigurations we step up a level: a small policy DSL the operator writes in, and a compiler from DSL terms to runnable PIFO tree _controls_ (defined below).
 The transition planner of §4 needs both a way to compile a starting control `C` from an operator's request and a way to compare two such requests; the DSL gives us both.
 
 This is essentially what the vPIFO paper's _Scheduling Description Language_ does informally [cite vPIFO, §4].
@@ -141,7 +142,7 @@ Validity is a purely syntactic condition on the source, not to be confused with 
 
 ##### Discipline compilation: `init_node_D` and `init_slot_D`
 
-Each discipline `D` comes with a mechanical recipe for compiling a node that runs it: (a) a per-node ranking program (the node's `z`), (b) an initial `node_state` for the node, and (c) a `slot_state` for each arm attached under the node.
+Each discipline `D` comes with a mechanical recipe for compiling a node that runs it: (a) a per-node ranking program, (b) an initial `node_state` for the node, and (c) a `slot_state` for each arm attached under the node.
 We name the two state-seeding projections; the ranking program is handled by the compilation walk below and needs no separate name.
 
 ```
@@ -156,28 +157,28 @@ At `Add` (§3.4.1), when a new arm is spliced under an already-running `D`-paren
 The function is the same in both cases; only the source of the parent's `node_state` differs.
 
 Choosing `init_slot_D` is a scheduling decision, not just a structural one, since the choice changes how a freshly spliced arm competes with the established arms.
-Our plan is to "join the current round".
-For example, if we go from `WFQ(A,B)` to `WFQ(A,B,C)`, the newly added `C` does not reap a huge benefit for having been silent all this while; it just joins the others with neither a huge penalty nor a huge advantage.
+We make the choice to "join the current round".
+For example, if we go from `WFQ(A,B)` to `WFQ(A,B,C)`, we do not want the newly added `C` to reap a huge benefit for having been silent all this while; we just want it to join the others with neither a penalty nor an advantage.
 
 To this end: `init_slot_Strict` and `init_slot_RR` return the empty tuple (no per-arm bookkeeping to seed).
-For `WFQ`, the `node_state` at a parent is the scalar virtual time `vt`, and we set `init_slot_WFQ(vt, w) = (w, vt)`: a new arm carries its weight `w` and inherits the parent's current `vt` as its last-finish tag.
-By WFQ's standard finish-time recurrence the first packet on this arm posts a tag of `max(virtual_clock, vt) + 1/w`, which slots it into the round the established arms are currently in.
+For `WFQ`, the `node_state` at a parent is the virtual time `vt`, and we set `init_slot_WFQ(vt, w) = (w, vt)`: a new arm carries its weight `w` and inherits the parent's current `vt` as its last-finish tag.
+By WFQ's standard finish-time recurrence the first packet on this arm gets a tag of `max(virtual_clock, vt) + 1/w`, which slots it into the round that the established arms are currently in.
 At compile time the parent's `vt` is freshly initialized (to zero), so all original arms get `(w, 0)` and the round is "the zeroth"; at `Add` the parent's `vt` is whatever the clock has advanced to.
 
-##### Compilation: `pol` to control
+##### Policy Compilation: `pol` to control
 
-A _control_ `C` is a tree of node-local triples `(state, pifo, z)`, one per node of the topology.
+A PIFO tree _control_ `C` is a tree of node-local triples `(state, pifo, z)`, one per node of the topology.
 The tree shape exactly matches that of `pol`, as each node of `C` lines up with a node of the source `pol`.
-The diffs of §3.4 act on one (occasionally a few) of these node-local triples; the whole control is just the assembled tree.
+Each diff of §3.4 acts on a small local neighborhood of these triples; the whole control is just the assembled tree.
 
 At each node of `pol`'s topology, running discipline `D`, compilation seeds the three pieces:
 
 - `state` is a pair `(node_state, slot_state list)`.
   The `node_state` carries `D`'s per-node bookkeeping (an `RR` cursor, a `WFQ` global virtual time), seeded by `init_node_D()`.
-  The `slot_state` list carries per-arm bookkeeping, one entry per child arm in slot order (a `WFQ` per-arm virtual finish, a `WRR` per-arm credit, the arm's weight under `WFQ`), each entry seeded by `init_slot_D`.
+  The `slot_state` list carries per-arm bookkeeping, one entry per child arm in slot order (a `WFQ` per-arm virtual finish, the arm's weight under `WFQ`), each entry seeded by `init_slot_D`.
   Disciplines without per-arm bookkeeping (`Strict`, pure `RR`) have an empty `slot_state` list.
 - `pifo` is an empty PIFO: an index-PIFO at an internal node, a packet-PIFO at a leaf.
-- `z` is `D`'s ranking program at the node: at an internal node, it picks a child index and the rank to enqueue at that index; at a leaf, it picks the rank for the packet's own PIFO entry.
+- `z` is `D`'s ranking program at the node: at an internal node, it picks a child index and the rank with which to enqueue at that index; at a leaf, it picks the rank for the packet's own PIFO entry.
   `z` may be partial: a packet for which `z` is undefined is dropped on the spot, with no descent and no state change.
 
 We address nodes by `path` (§3.3): the local triple at the node reached by following `path` from `C`'s root is written `C@path`, with fields `C@path.state`, `C@path.pifo`, and `C@path.z`.
