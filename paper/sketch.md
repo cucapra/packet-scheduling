@@ -217,7 +217,7 @@ The user writes down `pol` objects, like `prev`.
 Say that we compile the user's request `prev` into some control `C`, s.t. `C` realizes `prev` (written `prev = ⌊C⌋`).
 Then the user requests a change to a new `pol` object called `next`.
 SOTA would compile `next` into some control `C'` and clobber the running `C` with `C'`.
-We wish to achieve the same result while being less disruptive to unaffected parts of the running control.
+We wish to achieve the same user-observable result while being less disruptive to unaffected parts of the running control.
 
 A change to the live control is _atomic_ when its effect falls between two observable operations: in any sequence of `push`/`pop` operations `op_1, op_2, ...` served by the scheduler, if the change fires between `op_N` and `op_{N+1}`, then `op_1, ..., op_N` are served entirely by the pre-change control and `op_{N+1}, ...` are served entirely by the post-change control.
 No operation straddles the change, and no operation sees an intermediate state.
@@ -234,17 +234,17 @@ We write `t@path` for the subtree of `t` reached by following `path` down from `
 Depending on the production being used, `t` is instantiated to `prev` or `next`; see below.
 
 ```
-δ      ::= Add          (path, pol, weight?)
-         | Quiesce      (path)
-         | Designate    (path, pol)
-         | Undesignate  (path)
-         | Remove       (path)
-         | ChangeWeight (path, weight)
-         | Graft        (ctx)
-         | ChangeRoot   (path)
+δ ::= Add          (path, pol, weight?)
+    | Quiesce      (path)
+    | Designate    (path, pol)
+    | Undesignate  (path)
+    | Remove       (path)
+    | ChangeWeight (path, weight)
+    | Graft        (ctx)
+    | ChangeRoot   (path)
 
-path   ::= []  |  i :: path                       // i is a child index
-ctx    ::= □                                      // the unique hole; takes no children
+path ::= []  |  i :: path                       // i is a child index
+ctx  ::= □                                      // the unique hole; takes no children
          | D(pol, ..., ctx, ..., pol)             // n children total; exactly one is itself a context
 weight ::= a positive real
 ```
@@ -254,12 +254,12 @@ A _policy context_, written `ctx`, is built like a `pol`, except that exactly on
 The hole is a reserved slot, not an absence of a slot: the parent of the hole has an arity that includes the hole, e.g., `RoundRobin(A, B, □)` is a 3-ary `RoundRobin` whose third slot is the hole, distinct from the 2-ary `RoundRobin(A, B)`; both are valid.
 We write `ctx[s]` for the ordinary, hole-free tree obtained by plugging the hole of `ctx` with the subtree `s`.
 A `ctx` is _valid_ iff `ctx[s]` is a valid `pol` for some valid `s`.
-The plug is total, and for any valid `ctx` and any valid `s`, `ctx[s]` is a valid `pol` whenever their leaf labels are disjoint.
+The plug is total, and for any valid `ctx` and any valid `s`, `ctx[s]` is a valid `pol` whenever the leaf labels of `ctx` and `s` are disjoint.
 
 The grammar is shaped by what we can realize atomically in hardware (§6): each production is exactly an edit for which we have a substrate-level commit.
 That commit slips in between two consecutive `push`/`pop` operations.
 
-Edits that would have to destroy structure still holding packets are _not_ in the grammar: our one structural deletion, `Remove`, is emitted by our transition planner (§5) only after ensuring that the subtree being removed is empty.
+Edits that would have to destroy structure still holding packets are expressly _not_ in the grammar: our one structural deletion, `Remove`, is emitted by our transition planner (§5) only after ensuring that the subtree being removed is empty.
 The richer reconfigurations an operator may want (retiring a subtree that has packets buffered in it, replacing a subtree in-place, pruning a tree down to a subtree) are realized instead as _sequences_ of these atomic edits; §4 makes the sequencing precise.
 
 Notes on the individual edits.
