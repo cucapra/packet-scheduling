@@ -305,7 +305,7 @@ The operational reading is primary; the pol-level reading is a projection of it.
   The per-production rules below state where `[[δ]]` is defined; outside that, we say `δ` is _incompatible_ with the input control and `[[δ]](C)` is undefined.
   §4's transition planner only emits a `δ` whose `[[δ]]` is defined on the live `C`.
   The preconditions vary by production, e.g.:
-  - For `Add` we require the path to land at an internal node, a weight to be present iff the parent runs WFQ, the new leaf labels to be fresh, and the new classifier predicates to be disjoint from the domain of `C`'s live `z`.
+  - For `Add` we require the path's parent prefix to land at an internal node, the path's final index to be a legal insertion slot (at most the parent's current arity), a weight to be present iff the parent runs WFQ, the new leaf labels to be fresh, and the new classifier predicates to be disjoint from the domain of `C`'s live `z`.
   - For `Remove` we require the target subtree to be empty.
   - For `Undesignate` we require the target node to be a `Strict*(A, B)` with `A`'s subtree empty.
   - For `ChangeWeight` we require the parent at `path`'s prefix to run WFQ.
