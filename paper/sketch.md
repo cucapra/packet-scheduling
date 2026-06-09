@@ -178,25 +178,25 @@ At each node of `pol`'s topology, running discipline `D`, compilation seeds the 
   The `slot_state` list carries per-arm bookkeeping, one entry per child arm in slot order (a `WFQ` per-arm virtual finish, the arm's weight under `WFQ`), each entry seeded by `init_slot_D`.
   Disciplines without per-arm bookkeeping (`Strict`, pure `RR`) have an empty `slot_state` list.
 - `pifo` is an empty PIFO: an index-PIFO at an internal node, a packet-PIFO at a leaf.
-- `z` is `D`'s ranking program at the node. It is a partial function from the local `state` and an incoming packet to one path segment plus an updated `state`. The shape of that segment differs between internal nodes and leaves:
+- `z` is `D`'s ranking program at the node. It maps the local `state` and an incoming packet to one path segment plus an updated `state`. The shape of that segment differs between internal nodes and leaves:
   - at an internal node, `z : state × Pkt ⇀ (idx × rank) × state`: pick a child index `i` and the rank `r` with which to enqueue `i` at this node's index-PIFO;
   - at a leaf, `z : state × Pkt ⇀ rank × state`: pick the rank `r` for the packet's own PIFO entry.
-    When `z` is undefined for a packet, the per-node action is empty: nothing is enqueued at this node and `state` is unchanged.
+
+  When `z` is undefined for a packet, the per-node action is empty: nothing is enqueued at this node and `state` is unchanged. The global consequence (the walk halts, the packet is dropped from the system entirely) is a property of how per-node `z`s are composed, made precise in the FA-compatibility paragraph below.
 
 We address nodes by `path` (§3.3): the local triple at the node reached by following `path` from `C`'s root is written `C@path`, with fields `C@path.state`, `C@path.pifo`, and `C@path.z`.
 We also write `C@path.node_state` and `C@path.slot_states` for the two components of `C@path.state` (with the plural `slot_states` reflecting that it is a list, one entry per child arm).
 
 ##### Well-formedness: `|- C`
 
-A control `C` is _well-formed_ (written `|- C`) when, at every internal node of `C`, the `pifo` has, for each legal child index `i`, exactly as many occurrences of `i` as there are packets stored in the leaf pifos of the subtree under the `i`-th child.
-This is the per-node lift of `|- q` from §3.1 and is stated directly on `C`: no global PIFO tree need be assembled to check it.
+In §3.1 we defined well-formedness on a PIFO tree, written `|- q`. Now we redefine it, lifting it to act on a control `C`. A control `C` is _well-formed_ (written `|- C`) when, at every internal node of `C`, the `pifo` has, for each legal child index `i`, exactly as many occurrences of `i` as there are packets stored in the leaf pifos of the subtree under the `i`-th child. This is stated directly on `C`: no global PIFO tree need be assembled to check it.
 
 ##### Compatibility with Formal Abstractions
 
 FA's controls are a single triple `(s, q, z)` with a state map `s`, a PIFO tree `q`, and a single transaction `z : St × Pkt -> Path(t) × St` (total).
-One can flatten our `C` into such a triple by `glue(C)`: `glue(C).q` is the tree of our `pifo` pieces, `glue(C).s` collects the `state` pieces indexed by path, and `glue(C).z` walks the topology applying each `z` piece in turn.
-The partiality our per-node `z`s allow shows up as partiality on `glue(C).z` (a drop anywhere along the descent leaves the global function undefined for that packet).
-The rest of the paper has no need for `glue(C)` (`|- C` is stated directly per the previous paragraph, and the diff rules of §3.4 act node-locally), but a reader more at home in FA's framing can recover it this way.
+One can flatten our `C` into such a triple by gluing the pieces together. The FA-style tree `q` is the tree of our `pifo` pieces. The FA-style state `s` collects the `state` pieces indexed by path. The FA-style path-emitting scheduling transaction `z` walks the topology applying each `z` piece in turn and appending the emitted path segments into paths.
+The partiality that our per-node `z`s allow shows up as partiality on the FA-style global `z` (a drop anywhere along the descent leaves the global function undefined for that packet).
+The rest of the paper has no need for gluing a control together in this way (`|- C` is stated directly per the previous paragraph, and the diff rules of §3.4 act node-locally), but a reader more at home in FA's framing can recover it in this way.
 
 ##### The bridge: `⌊·⌋`
 
