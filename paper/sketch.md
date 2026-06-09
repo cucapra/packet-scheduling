@@ -129,15 +129,15 @@ The compilation targets differ (they target a virtualized PIFO substrate; we tar
 ##### Policy syntax: `pol`
 
 ```
-pol    ::= flow                                          // leaf, labeled by a flow of traffic
-         | D(pol_1, ..., pol_n)                          // internal node, unweighted discipline D
-         | W((w_1, pol_1), ..., (w_n, pol_n))            // internal node, weighted discipline W
+pol    ::= flow                   // leaf, labeled by a flow of traffic
+         | D(pol_1, ..., pol_n)   // internal node, discipline D
 ```
 
 This grammar allows policy trees of arbitrary arity.
-`D` ranges over the unweighted disciplines (`Strict`, `RoundRobin`, ...) and `W` over the weighted ones (just `WFQ` for now); each `w_i` is a positive real.
+`D` ranges over the disciplines (`Strict`, `RoundRobin`, `WFQ`, etc.).
+The grammar makes no structural distinction between disciplines that carry per-arm weights and those that don't: `WFQ` takes a positive real weight per arm, which the operator specifies in the surface syntax, but the weights live in the arm's `slot_state` once compiled (see `init_slot_WFQ` below) and `push`/`pop` only read them.
 We read the arity off by counting children, so `Strict(gmail, zoom)` is the 2-ary instance.
-Each leaf label denotes a flow: a predicate over packets. A `pol` is _valid_ when (a) every discipline is applied at a proper arity, and (b) the flows at the leaves are pairwise disjoint, in the sense that every incoming packet is either dropped or is routed to one leaf.
+Each leaf label denotes a flow: a predicate over packets. A `pol` is _valid_ when (a) every discipline is applied at a proper arity and (b) the flows at the leaves are pairwise disjoint, in the sense that every incoming packet is either dropped or is routed to one leaf.
 Validity is a condition on the source `pol`, not to be confused with the runtime invariant `|- q`.
 
 ##### Discipline compilation: `init_node_D` and `init_slot_D`
@@ -203,7 +203,7 @@ The rest of the paper has no need for gluing a control together in this way (`|-
 
 ##### The bridge: `⌊·⌋`
 
-Each node of `C` carries enough source-level metadata to recover the corresponding `pol` node directly: the topology comes from the tree shape, the discipline at each internal node from `C@path.D`, the per-arm weights (when `D` is weighted) from `C@path.slot_states`, and the flow label at each leaf from `C@path.flow`.
+Each node of `C` carries enough source-level metadata to recover the corresponding `pol` node directly: the topology comes from the tree shape, the discipline at each internal node from `C@path.D`, the per-arm metadata (e.g., when `D` is `WFQ`) from `C@path.slot_states`, and the flow label at each leaf from `C@path.flow`.
 We write `⌊C⌋` for the `pol` recovered from control `C` and say that `C` _realizes_ `⌊C⌋`.
 The correctness condition for the compiler above is then `⌊compile(pol)⌋ = pol`.
 
@@ -234,7 +234,7 @@ We write `t@path` for the subtree of `t` reached by following `path` down from `
 Depending on the production being used, `t` is instantiated to `prev` or `next`; see below.
 
 ```
-δ ::= Add          (path, pol, weight?)
+δ ::= Add          (path, pol)
     | Quiesce      (path)
     | Designate    (path, pol)
     | Undesignate  (path)
@@ -243,9 +243,9 @@ Depending on the production being used, `t` is instantiated to `prev` or `next`;
     | Graft        (ctx)
     | ChangeRoot   (path)
 
-path ::= []  |  i :: path                       // i is a child index
-ctx  ::= □                                      // the unique hole; takes no children
-         | D(pol, ..., ctx, ..., pol)             // n children total; exactly one is itself a context
+path   ::= []  |  i :: path             // i is a child index
+ctx    ::= □                            // the unique hole; takes no children
+         | D(pol, ..., ctx, ..., pol)   // n children total; exactly one is itself a context
 weight ::= a positive real
 ```
 
@@ -264,8 +264,8 @@ The richer reconfigurations an operator may want (retiring a subtree that has pa
 
 Notes on the individual edits.
 
-- `Add(path, pol, weight?)` splices `pol` in as the new slot `next@path`.
-  The production carries a `weight` exactly when the slot it edits hangs off a WFQ parent.
+- `Add(path, pol)` splices `pol` in as the new slot `next@path`.
+  When the target parent runs `WFQ`, the operator also supplies a weight for the new arm alongside the request; this weight is what `init_slot_WFQ` reads when seeding the new arm's `slot_state` (§3.4.1).
 - `Quiesce(path)` prevents `prev@path` from receiving new traffic. The patch lives at the root: the root's `z` becomes undefined on any packet bound for a leaf under `prev@path`. Since every descent starts at the root, this single patch halts those packets before any new enqueue can go through, so no ancestor's `pifo` ever holds a new index pointing toward the quiesced subtree.
   Topology, disciplines, and labels are unchanged; the edit's whole effect is in the root's `z`, so it is `pol`-invisible.
 - `Designate(path, pol)` converts `prev@path` into `Strict*(prev@path, pol)` in place.
@@ -282,6 +282,7 @@ Notes on the individual edits.
   The subtree `prev@path` must be empty; §3.4.2 discusses why.
   `Remove`'s precondition rules out `Strict*` targets.
 - `ChangeWeight(path, weight)` overwrites the weight that `prev@path`'s parent uses for it.
+  Concretely it writes the `weight` field of `prev@path`'s `slot_state` (one of the per-arm fields seeded by `init_slot_WFQ`); `push`/`pop` only read this field, so the only way it changes is via this diff.
   It is well-defined only when the parent at `path`'s prefix runs WFQ and `path` is non-empty.
 - `Graft(ctx)` produces `ctx[prev]`: the policy context `ctx` is spawned around `prev`, with `prev` plugged into the context's sole hole.
   `Graft` carries no `path`: if the user wants localized graft-style edits, deeper in the tree, they must be realized as an idiom (§4), not by a path-bearing `Graft`.
@@ -305,7 +306,7 @@ The operational reading is primary; the pol-level reading is a projection of it.
   The per-production rules below state where `[[δ]]` is defined; outside that, we say `δ` is _incompatible_ with the input control and `[[δ]](C)` is undefined.
   §4's transition planner only emits a `δ` whose `[[δ]]` is defined on the live `C`.
   The preconditions vary by production, e.g.:
-  - For `Add` we require the path's parent prefix to land at an internal node, the path's final index to be a legal insertion slot (at most the parent's current arity), a weight to be present iff the parent runs WFQ, the new leaf labels to be fresh, and the new classifier predicates to be disjoint from the domain of `C`'s live `z`.
+  - For `Add` we require the path's parent prefix to land at an internal node, the path's final index to be a legal insertion slot (at most the parent's current arity), a weight to be supplied alongside the request iff the parent runs `WFQ`, the new leaf labels to be fresh, and the new classifier predicates to be disjoint from the domain of `C`'s live `z`.
   - For `Remove` we require the target subtree to be empty.
   - For `Undesignate` we require the target node to be a `Strict*(A, B)` with `A`'s subtree empty.
   - For `ChangeWeight` we require the parent at `path`'s prefix to run WFQ.
@@ -349,28 +350,22 @@ For `p` the same `[±/k]` notation _renumbers_ rather than splices, since the PI
 `p[+/k]` is `p` with every entry `>= k` bumped up by one (opening up slot `k`); `p[-/k]` is `p` with every entry `> k` brought down by one.
 Entries below the edit point are left alone.
 
-#### 3.4.1. `Add(path, pol, weight?)`
+#### 3.4.1. `Add(path, pol)`
 
 ##### Pol-level denotation
 
 `den(Add(path, pol))` is the structural map, defined by recursion on `path`:
 
 ```
-den(Add(i :: [],   pol)) (P ts) = P ( ts[+pol / i] )
-den(Add(i :: rest, pol)) (P ts) = P ( ts[ den(Add(rest, pol)) (ts[i]) / i ] )
+den(Add(i :: [],   pol)) (D ts) = D ( ts[+pol / i] )
+den(Add(i :: rest, pol)) (D ts) = D ( ts[ den(Add(rest, pol)) (ts[i]) / i ] )
 ```
 
 The base case applies once `path` reaches the new slot's parent: the subtree `pol` is spliced in as the new `i`-th child.
 (Recall from §3.3 that `Add`'s `path` is read in `next` and names the new slot, so its final index `i` is the insertion point.)
 The recursive case walks down a shared ancestor, recurses into child `i`, and writes the result back in place.
-A WFQ parent also needs the new slot's weight; the syntactic diff is `Add(path, pol, w)` in this case.
-With children zipped as `(weight, subtree)` pairs `cs`, the weight enters only at the insertion site, and descent leaves the weights untouched:
-
-```
-den(Add(i :: [],   pol, w)) (WFQ cs) = WFQ ( cs[ +(w, pol) / i ] )
-den(Add(i :: rest, pol, w)) (WFQ cs) = WFQ ( cs[ (w_i, den(Add(rest, pol, w)) pol_i) / i ] )
-                                                                     where (w_i, pol_i) = cs[i]
-```
+When the parent runs `WFQ`, the operator's request also carries the new arm's weight.
+This is what `init_slot_WFQ` reads at the operational level (below), but it does not appear in `den(Add)` itself.
 
 Our running example denotes `den(Add([2], spotify)) Strict(gmail, zoom) = Strict( (gmail, zoom)[+spotify / 2] ) = Strict(gmail, zoom, spotify) = next`, as intended.
 In our example we appended a new arm, but a mid-tree edit would be no more complicated: `den(Add([1], spotify)) Strict(gmail, zoom) = Strict( (gmail, zoom)[+spotify / 1] ) = Strict(gmail, spotify, zoom)`, with the old `zoom` sliding from index `1` to index `2`.
@@ -379,7 +374,7 @@ In our example we appended a new arm, but a mid-tree edit would be no more compl
 
 Let `π` be the path to the new slot's parent (here `π = []`, the root `Strict`) and `k` the new slot's index, so `path = π ++ [k]`.
 Let `D` be the discipline at `π`.
-The transition `C' = [[Add(path, pol, weight?)]](C)` is stated per node.
+The transition `C' = [[Add(path, pol)]](C)` is stated per node.
 
 The topology gains a new arm at `π`, indexed `k`; the old arms at `π` with indices `>= k` shift right by one.
 The local controls update as follows.
@@ -389,7 +384,7 @@ The local controls update as follows.
   The local `z` is extended to admit packets that classify into the new subtree, mapping them to whichever child slot at this ancestor lies on the path down to `π`.
 - _At `π`:_
   - `C'@π.node_state = C@π.node_state` (unchanged).
-  - `C'@π.slot_states = C@π.slot_states[ + init_slot_D(C@π.node_state, weight?) / k ]` (a plain append when `k` is last).
+  - `C'@π.slot_states = C@π.slot_states[ + init_slot_D(C@π.node_state, weight?) / k ]` (a plain append when `k` is last; the `weight?` is the operator-supplied weight when `D = WFQ`, absent otherwise).
     The fresh entry is the per-arm bookkeeping `init_slot_D` of §3.2 prescribes for an arm newly spliced under a running `D`-parent.
   - `C'@π.pifo = C@π.pifo[+/k]`: every entry `>= k` is bumped up by one to track the shift.
     Each pre-existing slot keeps its matched count of entries and packets, now under its new name.
@@ -402,11 +397,11 @@ The local controls update as follows.
 
 ##### Soundness
 
-We discharge the three obligations of §3.4 in turn (recall `C' = [[Add(path, pol, weight?)]](C)`).
+We discharge the three obligations of §3.4 in turn (recall `C' = [[Add(path, pol)]](C)`).
 
 - _Realization._
   The updates above leave every pre-existing arm structurally intact (modulo renumbering of `π`'s pifo and the `z` extensions along the ancestor chain, neither of which `⌊·⌋` reads) and add a new arm at `π`'s slot `k` whose subtree is the freshly-compiled `pol`.
-  So `⌊C'⌋ = den(Add(path, pol, weight?))(⌊C⌋)`: the new shape is exactly what the edit denotes.
+  So `⌊C'⌋ = den(Add(path, pol))(⌊C⌋)`: the new shape is exactly what the edit denotes.
 - _Soundness._
   `|- C` gives `|- C'`.
   At `π`, `C'@π.pifo = C@π.pifo[+/k]` contains no entry equal to `k`: old entries `< k` stay put, old entries `>= k` were bumped to `>= k+1`.
