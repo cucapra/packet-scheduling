@@ -167,12 +167,15 @@ At compile time the parent's `vt` is freshly initialized (to zero), so all origi
 
 ##### Policy Compilation: `pol` to control
 
-A PIFO tree _control_ `C` is a tree of node-local triples `(state, pifo, z)`, one per node of the topology.
+A PIFO tree _control_ `C` is a tree of node-local 4-tuples, one per node of the topology.
+At an internal node the 4-tuple is `(D, state, pifo, z)`, where `D` names the discipline running at that node.
+At a leaf it is `(flow, state, pifo, z)`, where `flow` is the leaf's flow label.
 The tree shape exactly matches that of `pol`, as each node of `C` lines up with a node of the source `pol`.
-Each diff of §3.4 acts on a small local neighborhood of these triples; the whole control is just the assembled tree.
+Each diff of §3.4 acts on a small local neighborhood of these 4-tuples; the whole control is just the assembled tree.
 
-At each node of `pol`'s topology, running discipline `D`, compilation seeds the three pieces:
+At each node of `pol`'s topology, compilation seeds the four pieces:
 
+- The source-level tag (`D` at an internal node, `flow` at a leaf) is copied verbatim from the source `pol`. It is what `⌊·⌋` (below) reads to recover `pol` from `C`.
 - `state` is a pair `(node_state, slot_state list)`.
   The `node_state` carries `D`'s per-node bookkeeping (an `RR` cursor, a `WFQ` global virtual time), seeded by `init_node_D()`.
   The `slot_state` list carries per-arm bookkeeping, one entry per child arm in slot order (a `WFQ` per-arm virtual finish, the arm's weight under `WFQ`), each entry seeded by `init_slot_D`.
@@ -184,7 +187,7 @@ At each node of `pol`'s topology, running discipline `D`, compilation seeds the 
 
   When `z` is undefined for a packet, the per-node action is empty: nothing is enqueued at this node and `state` is unchanged. The global consequence (the walk halts, the packet is dropped from the system entirely) is a property of how per-node `z`s are composed, made precise in the FA-compatibility paragraph below.
 
-We address nodes by `path` (§3.3): the local triple at the node reached by following `path` from `C`'s root is written `C@path`, with fields `C@path.state`, `C@path.pifo`, and `C@path.z`.
+We address nodes by `path` (§3.3): the local 4-tuple at the node reached by following `path` from `C`'s root is written `C@path`, with fields `C@path.D` (at an internal node) or `C@path.flow` (at a leaf), and `C@path.state`, `C@path.pifo`, `C@path.z`.
 We also write `C@path.node_state` and `C@path.slot_states` for the two components of `C@path.state` (with the plural `slot_states` reflecting that it is a list, one entry per child arm).
 
 ##### Well-formedness: `|- C`
@@ -194,13 +197,13 @@ In §3.1 we defined well-formedness on a PIFO tree, written `|- q`. Now we redef
 ##### Compatibility with Formal Abstractions
 
 FA's controls are a single triple `(s, q, z)` with a state map `s`, a PIFO tree `q`, and a single transaction `z : St × Pkt -> Path(t) × St` (total).
-One can flatten our `C` into such a triple by gluing the pieces together. The FA-style tree `q` is the tree of our `pifo` pieces. The FA-style state `s` collects the `state` pieces indexed by path. The FA-style path-emitting scheduling transaction `z` walks the topology applying each `z` piece in turn and appending the emitted path segments into paths.
+One can flatten our `C` into such a triple by gluing the pieces together. The FA-style tree `q` is the tree of our `pifo` pieces. The FA-style state `s` collects the `state` pieces indexed by path. The FA-style path-emitting scheduling transaction `z` walks the topology applying each `z` piece in turn and appending the emitted path segments into paths. The per-node source tags (`D` and `flow`) are extra metadata we maintain alongside `C` to support `⌊·⌋` below; they have no counterpart in the FA triple and do not participate in the gluing.
 The partiality that our per-node `z`s allow shows up as partiality on the FA-style global `z` (a drop anywhere along the descent leaves the global function undefined for that packet).
 The rest of the paper has no need for gluing a control together in this way (`|- C` is stated directly per the previous paragraph, and the diff rules of §3.4 act node-locally), but a reader more at home in FA's framing can recover it in this way.
 
 ##### The bridge: `⌊·⌋`
 
-Reading the topology, disciplines, weights, and leaf labels off a control `C` recovers a `pol`.
+Each node of `C` carries enough source-level metadata to recover the corresponding `pol` node directly: the topology comes from the tree shape, the discipline at each internal node from `C@path.D`, the per-arm weights (when `D` is weighted) from `C@path.slot_states`, and the flow label at each leaf from `C@path.flow`.
 We write `⌊C⌋` for the `pol` recovered from control `C` and say that `C` _realizes_ `⌊C⌋`.
 The correctness condition for the compiler above is then `⌊compile(pol)⌋ = pol`.
 
