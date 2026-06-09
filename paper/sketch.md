@@ -311,10 +311,10 @@ The operational reading is primary; the pol-level reading is a projection of it.
   - For `ChangeWeight` we require the parent at `path`'s prefix to run WFQ.
 - The _pol-level denotation_, `den(δ) : pol ⇀ pol`, is the projection of `[[δ]]` through the `⌊·⌋` bridge of §3.2.
   It is partial for the same syntactic reasons (paths must resolve, leaf labels must be fresh, weights must match), but, because `pol` carries no live contents or transaction, it never fails for operational reasons like `Remove`'s emptiness or `Add`'s classifier disjointness.
-  It captures the pol-visible part of the edit.
+  It captures the `pol`-visible part of the edit.
   For most primitives (`Add`, `Remove`, `ChangeWeight`, `Graft`, `Designate`'s wrap-and-rename, and `Undesignate`'s collapse onto the survivor), `den(δ)` is non-trivial and matches what a reader would extract from comparing `prev` against `next`.
   `Quiesce`, whose whole effect is in `z`, has `den(Quiesce)` equal to the identity on `pol`.
-  The star on a `Strict*` node is invisible to `⌊·⌋` (by design, since the star is operational, not denotational), so `den(Designate)` produces a plain `Strict(A, B)` at the pol level and `den(Undesignate)` consumes a plain `Strict(A, B)`; at this level the two are exact inverses at `path`.
+  The star on a `Strict*` node is invisible to `⌊·⌋` (by design, since the star is operational, not denotational), so at the pol level `den(Designate(path, B))` wraps `pol@path = A` into `Strict(A, B)`, and `den(Undesignate(path))` consumes a `Strict(A, B)` at `path` and yields `B`. Composed in that order they act as a replacement at `path`.
   So `den(δ)` is a purely static map, and effects that live entirely in `z` are invisible to it.
   §4's planner works at this level: it searches for a sequence of edits such that composing their `den`otations together carries `prev` to `next`.
 
@@ -325,7 +325,6 @@ In the language of `[[δ]]`, _atomicity_ can be restated crisply: when `δ` is c
 Modeling `[[δ]]` as a single (partial) function `control ⇀ control` bakes indivisibility into the abstraction; the obligations below ensure that the result of this single step is correct.
 
 For each production we discharge three obligations, all assuming `[[δ]](C)` is defined.
-
 Throughout, we write `C` for the pre-edit control and `C'` for the post-edit control.
 
 - _Realization_ constrains the `pol`-visible skeleton: `⌊C'⌋ = den(δ)(⌊C⌋)`.
@@ -385,7 +384,9 @@ The transition `C' = [[Add(path, pol, weight?)]](C)` is stated per node.
 The topology gains a new arm at `π`, indexed `k`; the old arms at `π` with indices `>= k` shift right by one.
 The local controls update as follows.
 
-- _At every node outside the new subtree, other than `π`:_ the local control is preserved verbatim.
+- _At every node outside the new subtree, other than `π` and its proper ancestors:_ the local control is preserved verbatim.
+- _At each proper ancestor of `π` (including the root):_ `node_state`, `slot_states`, and `pifo` are preserved verbatim.
+  The local `z` is extended to admit packets that classify into the new subtree, mapping them to whichever child slot at this ancestor lies on the path down to `π`.
 - _At `π`:_
   - `C'@π.node_state = C@π.node_state` (unchanged).
   - `C'@π.slot_states = C@π.slot_states[ + init_slot_D(C@π.node_state, weight?) / k ]` (a plain append when `k` is last).
@@ -404,17 +405,18 @@ The local controls update as follows.
 We discharge the three obligations of §3.4 in turn (recall `C' = [[Add(path, pol, weight?)]](C)`).
 
 - _Realization._
-  The updates above leave every pre-existing arm structurally intact (modulo renumbering of `π`'s pifo, which is invisible to `⌊·⌋`) and add a new arm at `π`'s slot `k` whose subtree is the freshly-compiled `pol`.
+  The updates above leave every pre-existing arm structurally intact (modulo renumbering of `π`'s pifo and the `z` extensions along the ancestor chain, neither of which `⌊·⌋` reads) and add a new arm at `π`'s slot `k` whose subtree is the freshly-compiled `pol`.
   So `⌊C'⌋ = den(Add(path, pol, weight?))(⌊C⌋)`: the new shape is exactly what the edit denotes.
 - _Soundness._
   `|- C` gives `|- C'`.
   At `π`, `C'@π.pifo = C@π.pifo[+/k]` contains no entry equal to `k`: old entries `< k` stay put, old entries `>= k` were bumped to `>= k+1`.
   The new subtree under slot `k` holds zero packets, so the well-formedness count at slot `k` reads `0 = 0`.
   Every other slot at `π` is the child it was, with the same packets beneath it; its entries in `C'@π.pifo` are the old entries under a possibly-shifted name, so its matched count is inherited verbatim.
-  Every other node's pifo is untouched.
+  Every other node's pifo is untouched (the ancestor `z` extensions touch no pifo at this instant; they only affect the classification of packets that arrive later).
   Nothing needs repair.
 - _State preservation._
-  The first and third bullets of the operational transition above discharge it directly: outside the edit site, the local control (and thus its `state`) is preserved verbatim; inside the new subtree, the state is freshly compiled per §3.2.
+  Outside the edit site the local control (and thus its `state`) is preserved verbatim, including at each proper ancestor of `π`, where only `z` changes.
+  Inside the new subtree, the state is freshly compiled per §3.2.
   At `π`, `node_state` is unchanged and `slot_states` splices in exactly `init_slot_D(C@π.node_state, weight?)`, as §3.4 prescribes at the edit site.
 
 ##### Notes
@@ -431,8 +433,9 @@ The first `push` that `C'@π.z` routes to `k` is the first packet ever to occupy
 _Deeper paths._
 The running example edits the root, but `path` may be any prefix; `Add([1, 2], pol)` adds a slot inside a grandchild of the root.
 Nothing in the argument changes.
-The descent from the root to `π` passes only through nodes whose local control is preserved verbatim, and, because the new subtree is empty, it adds zero packets beneath every ancestor of `π`.
-So each ancestor's count for the child it forwards through is exactly what it was, no ancestor pifo is rewritten, and the edit is confined to `π` and the fresh subtree below it.
+The descent from the root to `π` passes through ancestors whose only change is the `z` extension above; their `node_state`, `slot_states`, and `pifo` are untouched.
+Because the new subtree is empty, no packet is yet routed through any ancestor's `z` extension, so each ancestor's count for the child it forwards through is exactly what it was.
+No ancestor pifo is rewritten, and the edit is otherwise confined to `π` and the fresh subtree below it.
 
 #### 3.4.2. `Remove(path)`
 
