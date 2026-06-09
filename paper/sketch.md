@@ -178,8 +178,10 @@ At each node of `pol`'s topology, running discipline `D`, compilation seeds the 
   The `slot_state` list carries per-arm bookkeeping, one entry per child arm in slot order (a `WFQ` per-arm virtual finish, the arm's weight under `WFQ`), each entry seeded by `init_slot_D`.
   Disciplines without per-arm bookkeeping (`Strict`, pure `RR`) have an empty `slot_state` list.
 - `pifo` is an empty PIFO: an index-PIFO at an internal node, a packet-PIFO at a leaf.
-- `z` is `D`'s ranking program at the node: at an internal node, it picks a child index and the rank with which to enqueue at that index; at a leaf, it picks the rank for the packet's own PIFO entry.
-  `z` may be partial: a packet for which `z` is undefined is dropped on the spot, with no descent and no state change.
+- `z` is `D`'s ranking program at the node. It is a partial function from the local `state` and an incoming packet to one path segment plus an updated `state`. The shape of that segment differs between internal nodes and leaves:
+  - at an internal node, `z : state × Pkt ⇀ (idx × rank) × state`: pick a child index `i` and the rank `r` with which to enqueue `i` at this node's index-PIFO;
+  - at a leaf, `z : state × Pkt ⇀ rank × state`: pick the rank `r` for the packet's own PIFO entry.
+    When `z` is undefined for a packet, the per-node action is empty: nothing is enqueued at this node and `state` is unchanged.
 
 We address nodes by `path` (§3.3): the local triple at the node reached by following `path` from `C`'s root is written `C@path`, with fields `C@path.state`, `C@path.pifo`, and `C@path.z`.
 We also write `C@path.node_state` and `C@path.slot_states` for the two components of `C@path.state` (with the plural `slot_states` reflecting that it is a list, one entry per child arm).
