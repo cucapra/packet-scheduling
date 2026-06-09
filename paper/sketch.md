@@ -266,16 +266,16 @@ Notes on the individual edits.
 
 - `Add(path, pol, weight?)` splices `pol` in as the new slot `next@path`.
   The production carries a `weight` exactly when the slot it edits hangs off a WFQ parent.
-- `Quiesce(path)` prevents `prev@path` from receiving new traffic: incoming traffic that used to classify into its leaves is dropped, and the subtree drains under ordinary service of its already-buffered packets.
-  Topology, disciplines, and labels are unchanged; the edit's whole effect is in `z`, so it is `pol`-invisible.
+- `Quiesce(path)` prevents `prev@path` from receiving new traffic. The patch lives at the root: the root's `z` becomes undefined on any packet bound for a leaf under `prev@path`. Since every descent starts at the root, this single patch halts those packets before any new enqueue can go through, so no ancestor's `pifo` ever holds a new index pointing toward the quiesced subtree.
+  Topology, disciplines, and labels are unchanged; the edit's whole effect is in the root's `z`, so it is `pol`-invisible.
 - `Designate(path, pol)` converts `prev@path` into `Strict*(prev@path, pol)` in place.
   That is, we introduce a new node with discipline `Strict*`, with the existing subtree `prev@path` as its high-priority sibling and `pol` as its low-priority sibling.
   `pol` is the _designated survivor_ of `prev@path`.
-  We make no assumption about how much overlap there is between `prev@path`'s flows and the `pol`'s.
+  We make no assumption about how much overlap there is between `prev@path`'s flows and `pol`'s flows.
   In case there is overlap, we simply use timing information (the moment of the request) to distinguish old `prev@path` traffic from new `pol` traffic.
   This keeps the mid-sequence `pol`'s leaf labels disjoint by construction.
-  Literally inserting this `Strict*`node in the middle of the running tree would be expensive, as it would require relocating the entire subtree`prev@path`one PE deeper (because siblings and cousins must share a PE, see §2.1).
-  §6 features a new in-place hardware gadget that gives us the`Strict*` semantics described here without incurring that relocation cost.
+  Literally inserting this `Strict*` node in the middle of the running tree would be expensive, as it would require relocating the entire subtree `prev@path` one PE deeper (because siblings and cousins must share a PE, see §2.1).
+  §6 features a new in-place hardware gadget that gives us the `Strict*` semantics described here without incurring that relocation cost.
 - `Undesignate(path)` collapses `prev@path`, which must be a `Strict*(A, B)` node where `A` is empty, into `B`.
   The edit is in place, in the sense that `B` inherits `Strict*(A,B)`'s slot and weight under the parent, and the parent now routes through that slot directly to `B`.
 - `Remove(path)` structurally removes `prev@path`, dropping its slot and renumbering any higher siblings.
@@ -292,7 +292,7 @@ Notes on the individual edits.
 A `Strict*` node is one introduced by `Designate`, a plain `Strict` one written by the user.
 Semantically the two are identical; every push, pop, and well-formedness check treats `Strict*(A, B)` exactly as `Strict(A, B)`.
 The star exists only so that `Undesignate`'s precondition ("path lands on a `Strict*`") and the hardware story in §6 ("`Strict*` adds no PE depth") can be stated structurally.
-The §3.2 DSL the operator writes parses only `Strict`, never `Strict*`, so a `Strict*` is unreachable in any user-written `pol` and arises only in the middle of a planner sequence, between a `Designate` and its eventual `Undesignate`.
+The §3.2 DSL that the operator writes can parse only `Strict`, never `Strict*`, so a `Strict*` is unreachable in any user-written `pol` and arises only in the middle of a planner sequence, between a `Designate` and its eventual `Undesignate`.
 
 When `prev = next` the grammar emits no diff at all: the reconfiguration is the empty sequence (§4), and the live control is left untouched.
 
