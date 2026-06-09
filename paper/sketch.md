@@ -137,8 +137,8 @@ pol    ::= flow                                          // leaf, labeled by a f
 This grammar allows policy trees of arbitrary arity.
 `D` ranges over the unweighted disciplines (`Strict`, `RoundRobin`, ...) and `W` over the weighted ones (just `WFQ` for now); each `w_i` is a positive real.
 We read the arity off by counting children, so `Strict(gmail, zoom)` is the 2-ary instance.
-A `pol` is _valid_ when every discipline is applied at a proper arity and leaf labels are distinct.
-Validity is a purely syntactic condition on the source, not to be confused with the invariant `|- q`.
+Each leaf label denotes a flow: a predicate over packets. A `pol` is _valid_ when (a) every discipline is applied at a proper arity, and (b) the flows at the leaves are pairwise disjoint, in the sense that every incoming packet is either dropped or is routed to one leaf.
+Validity is a condition on the source `pol`, not to be confused with the runtime invariant `|- q`.
 
 ##### Discipline compilation: `init_node_D` and `init_slot_D`
 
@@ -251,7 +251,7 @@ weight ::= a positive real
 
 `pol` is the nonterminal of §3.2.
 A _policy context_, written `ctx`, is built like a `pol`, except that exactly one of its slots is the distinguished _hole_ `□` rather than a subtree.
-The hole is a reserved slot, not an absence of a slot: the parent of the hole has an arity that includes the hole, e.g., `RoundRobin(A, B, □)` is a 3-ary `RoundRobin` whose third slot is the hole, distinct from the 2-ary `RoundRobin(A, B)`; both are valid.
+The hole is a reserved slot, not an absence of a slot: the parent of the hole has an arity that includes the hole, e.g., `RoundRobin(A, B, □)` is a 3-ary `RoundRobin` whose third slot is the hole, distinct from the 2-ary `RoundRobin(A, B)`.
 We write `ctx[s]` for the ordinary, hole-free tree obtained by plugging the hole of `ctx` with the subtree `s`.
 A `ctx` is _valid_ iff `ctx[s]` is a valid `pol` for some valid `s`.
 The plug is total, and for any valid `ctx` and any valid `s`, `ctx[s]` is a valid `pol` whenever the leaf labels of `ctx` and `s` are disjoint.
