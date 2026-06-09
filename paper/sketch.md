@@ -260,7 +260,7 @@ The grammar is shaped by what we can realize atomically in hardware (§6): each 
 That commit slips in between two consecutive `push`/`pop` operations.
 
 Edits that would have to destroy structure still holding packets are expressly _not_ in the grammar: our one structural deletion, `Remove`, is emitted by our transition planner (§5) only after ensuring that the subtree being removed is empty.
-The richer reconfigurations an operator may want (retiring a subtree that has packets buffered in it, replacing a subtree in-place, pruning a tree down to a subtree) are realized instead as _sequences_ of these atomic edits; §4 makes the sequencing precise.
+The richer reconfigurations an operator may want (retiring a subtree that has packets buffered in it, replacing a subtree in-place, pruning a tree down to a subtree) are realized instead as _idioms_: sequences of these atomic edits. §4 makes these precise.
 
 Notes on the individual edits.
 
@@ -284,10 +284,10 @@ Notes on the individual edits.
 - `ChangeWeight(path, weight)` overwrites the weight that `prev@path`'s parent uses for it.
   It is well-defined only when the parent at `path`'s prefix runs WFQ and `path` is non-empty.
 - `Graft(ctx)` produces `ctx[prev]`: the policy context `ctx` is spawned around `prev`, with `prev` plugged into the context's sole hole.
-  `Graft` carries no `path`: if the user wants localized graft-style edits, deeper in the tree, they must be realized as a sequence (§4), not by a path-bearing `Graft`.
+  `Graft` carries no `path`: if the user wants localized graft-style edits, deeper in the tree, they must be realized as an idiom (§4), not by a path-bearing `Graft`.
 - `ChangeRoot(path)` promotes `prev@path` to the new root, discarding every ancestor above it.
   It is well-defined only when `path` is non-empty and each internal node strictly above `prev@path` has a single arm (the one continuing toward `prev@path`), so the discarded ancestor chain carries no traffic of its own.
-  The richer reconfiguration of pruning a tree down to a subtree that originally shared ancestors with packet-bearing siblings is realized as a sequence (§4) that first drains and `Remove`s those siblings, reducing the chain above `prev@path` to the unary shape `ChangeRoot` requires.
+  The richer reconfiguration of pruning a tree down to a subtree that originally shared ancestors with packet-bearing siblings is realized as an idiom (§4) that first drains and `Remove`s those siblings, reducing the chain above `prev@path` to the unary shape `ChangeRoot` requires.
 
 A `Strict*` node is one introduced by `Designate`, a plain `Strict` one written by the user.
 Semantically the two are identical; every push, pop, and well-formedness check treats `Strict*(A, B)` exactly as `Strict(A, B)`.
@@ -556,13 +556,62 @@ Flagged here so the §3.5 claim "the proof survives the lowering" is not read as
 
 ## 4. Realizing Reconfigurations as Sequences
 
-[AM TK: stub.
 §3 proved each grammar production a sound atomic diff.
-This section composes diffs into _sequences_ `(φ ; δ)*` of `(guard, diff)` pairs, where a guard `φ` is a predicate on the state of the live control `C` (any `φ` may be `true`, meaning the paired diff fires at once; `φ_0 = true` is the common case), to realize reconfigurations no single diff can express.
-The headline result will be that the transitionary scheduler `link` between two consecutive diffs is itself an ordinary §3.1 control, so the "transitionary period" needs no new semantics: this is Obligation 1 of §1, discharged.
-The section also considers _liveness_: whether and when a sequence's guards become true.
-We discussed IRL that this will be a nice-to-have that we press upon the user.
-If the user requests a new change while the old change has not fully landed, then their new change will just be postponed until the old change lands.]
+This section composes diffs into _sequences_ `(φ ; δ)*` of `(guard, diff)` pairs, where a guard `φ` is a predicate on the state of the live control `C` (any `φ` may be `true`, meaning the paired diff fires at once; `φ_0 = true` is the common case).
+Sequences are the universal substrate of reconfiguration: they realize the changes no single diff can express.
+
+Two authoring modes produce sequences.
+In _declarative mode_, the operator writes a `pol` and, to reconfigure, writes a second `pol`; a differ produces the sequence.
+The differ is intentionally simple: it sees only pol-level diffs whose translation to a sequence is straightforward, and falls back to the generic `Designate([], next) ; Undesignate([])` pair (§5) for anything richer.
+Multi-step reconfigurations with operator choice (e.g., `Retire` vs. `SlowRetire` below), graft-style local edits the differ cannot infer, and other confined strategies are outside its scope.
+In _imperative mode_, the operator writes the `(φ; δ)*` sequence directly, possibly using a small vocabulary of _idioms_ (§4.1).
+Most operators stay in declarative mode; imperative mode is for the cases where the differ's choices are wrong or insufficient.
+
+The two modes are not formally distinct: the sequences they produce live in the same substrate and discharge the same soundness obligations from §3.4.
+Imperative mode buys expressivity, not a different proof obligation.
+It admits sequences the differ might not never emit, but fundamentally still emits `(φ; δ)*` sequences.
+
+The headline result of the section is that the transitionary scheduler `link` between two consecutive diffs is itself an ordinary §3.1 control, so the "transitionary period" needs no new semantics: this is Obligation 1 of §1, discharged.
+
+[AM TK: liveness — whether and when a sequence's guards become true — is a nice-to-have to press upon the user. The simplest behavior: if the operator requests a new change before the previous one has fully landed, the new change is queued until the old one finishes.]
+
+### 4.1 Idioms: Named Sequences
+
+Our imperative mode above needs a vocabulary.
+The atomic diffs of §3 cover individual edits; many useful reconfigurations are multi-diff.
+_Idioms_ are imperative mode's vocabulary: named multi-diff patterns the operator can write directly, just as they can write a single atomic diff.
+The operator can also define their own idioms.
+
+An idiom is a macro over the diff grammar (and, recursively, over other idioms).
+It expands into a fixed `(φ; δ)*` sequence: a list of atomic diffs with the guards between them spelling out what the system waits for.
+Soundness is compositional: each step of the expansion is sound by §3.4, and the sequence inherits the §4 sequence-level reasoning above.
+An idiom expansion that would hit an undefined production on the current control is rejected — the soundness checks fire on the expanded sequence just as they would on a hand-written one.
+
+We name four starter idioms.
+New ones can be added later without changing the framework, since an idiom is, in the end, just a named `(φ; δ)*` shorthand.
+
+- **`Retire(path)`** = `(true; Quiesce(path)) ; (empty(path); Remove(path))`.
+  Quiesces the subtree at `path`, waits for it to drain, then `Remove`s it.
+  The operator-facing way to say "tear this subtree down gracefully."
+
+- **`SlowRetire(path)`** = `(empty(path); Remove(path))`.
+  Waits for the subtree at `path` to drain, then `Remove`s it.
+  The user may use this if the subtree at `path` needs to receive a little more traffic but is generally being phased out.
+
+- **`Replace(path, B)`** =
+
+  ```
+  (true; Designate(path, B)) ;
+  (true; Quiesce(path ++ [0])) ;
+  (empty(path ++ [0]); Undesignate(path))
+  ```
+
+  Designates `B` as the survivor of the current `pol@path` (which, after Designate, sits at `path ++ [0]` as the first arm of the inserted `Strict*` node), quiesces it, waits for it to drain, then collapses the `Strict*` onto `B`.
+  At the pol level this is the `Replace` of §3.4 (`den(Undesignate) ∘ den(Designate(_, B))`); the operator-facing idiom adds the `Quiesce` + drain in the middle so that the original subtree empties out before the collapse fires.
+
+- **`PruneDownTo(path)`** = `Retire(p_1) ; ... ; Retire(p_m) ; (true; ChangeRoot(path))`, where `p_1, ..., p_m` are the off-path subtrees along the route from the root to `path`.
+  Each `Retire` brings one ancestor a step closer to being unary; once all of them have fired, every ancestor along the path is unary, satisfying `ChangeRoot`'s precondition (§3.3).
+  The operator-facing way to say "abandon everything except this subtree."
 
 [AM TK: short note on `nextnext`.
 This paper's transition planner engages with one `prev -> next` pair at a time.
