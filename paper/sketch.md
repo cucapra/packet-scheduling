@@ -135,9 +135,12 @@ pol    ::= flow                   // leaf, labeled by a flow of traffic
 
 This grammar allows policy trees of arbitrary arity.
 `D` ranges over the disciplines (`Strict`, `RoundRobin`, `WFQ`, etc.).
-The grammar makes no structural distinction between disciplines that carry per-arm weights and those that don't: `WFQ` takes a positive real weight per arm, which the operator specifies in the surface syntax, but the weights live in the arm's `slot_state` once compiled (see `init_slot_WFQ` below) and `push`/`pop` only read them.
+A discipline may attach per-arm metadata that shapes how the arm is scheduled.
+`WFQ` takes a positive real weight per arm; `Strict` takes a priority rank per arm; `RoundRobin` takes nothing.
+The grammar carries no structural mark of any of this: the operator writes the metadata in the surface syntax (e.g., `WFQ(w_1: pol_1, ..., w_n: pol_n)`, or positional sugar like `Strict(A, B)` which desugars to `Strict(hi: A, lo: B)`), but the metadata lives in the arm's `slot_state` once compiled (see `init_slot_D` below) and `push`/`pop` can only read it.
+Arm order in the surface notation is a presentation choice, not a scheduling-meaningful one: `Strict(hi: A, lo: B)` and `Strict(lo: B, hi: A)` describe the same scheduler. §3 stays positional throughout (paths address slots); the §4 sniffer can benefit from this equivalence when comparing `prev` against `next`.
 We read the arity off by counting children, so `Strict(gmail, zoom)` is the 2-ary instance.
-Each leaf label denotes a flow: a predicate over packets. A `pol` is _valid_ when (a) every discipline is applied at a proper arity and (b) the flows at the leaves are pairwise disjoint, in the sense that every incoming packet is either dropped or is routed to one leaf.
+Each leaf label denotes a flow: a predicate over packets. A `pol` is _valid_ when (a) every discipline is applied at a proper arity (with the per-arm metadata that the discipline requires) and (b) the flows at the leaves are pairwise disjoint, in the sense that every incoming packet is either dropped or is routed to one leaf.
 Validity is a condition on the source `pol`, not to be confused with the runtime invariant `|- q`.
 
 ##### Discipline compilation: `init_node_D` and `init_slot_D`
@@ -147,20 +150,21 @@ We name the two state-seeding projections; the ranking program is handled by the
 
 ```
 init_node_D : () -> node_state
-init_slot_D : node_state × weight? -> slot_state
+init_slot_D : node_state × meta? -> slot_state
 ```
 
+The `meta?` argument is the per-arm metadata that `D` requires (a weight for `WFQ`, a priority rank for `Strict`, absent for `RoundRobin`).
 `init_node_D` is called only at _compile time_, once per node, to seed that node's `node_state`.
 `init_slot_D` is called in two places.
-At _compile time_, walking the source pol, it is called once per child arm to seed that child's `slot_state`, taking the parent's just-seeded `node_state` as input.
-At `Add` (§3.4.1), when a new arm is spliced under an already-running `D`-parent, `init_slot_D` is called once with the parent's _current_ `node_state` to produce the new arm's `slot_state`.
+At _compile time_, walking the source pol, it is called once per child arm to seed that child's `slot_state`, taking the parent's just-seeded `node_state` and the arm's `meta?` as input.
+At `Add` (§3.4.1), when a new arm is spliced under an already-running `D`-parent, `init_slot_D` is called once with the parent's _current_ `node_state` and the new arm's `meta?` to produce the arm's `slot_state`.
 The function is the same in both cases; only the source of the parent's `node_state` differs.
 
 Choosing `init_slot_D` is a scheduling decision, not just a structural one, since the choice changes how a freshly spliced arm competes with the established arms.
 We make the choice to "join the current round".
 For example, if we go from `WFQ(A,B)` to `WFQ(A,B,C)`, we do not want the newly added `C` to reap a huge benefit for having been silent all this while; we just want it to join the others with neither a penalty nor an advantage.
 
-To this end: `init_slot_Strict` and `init_slot_RR` return the empty tuple (no per-arm bookkeeping to seed).
+To this end: `init_slot_RR` returns the empty tuple (no per-arm bookkeeping to seed); `init_slot_Strict(_, p) = p` (the arm's `slot_state` is just its priority rank, drawn from a dense total order such as the rationals so that a fresh priority can always be slotted strictly between two existing ones).
 For `WFQ`, the `node_state` at a parent is the virtual time `vt`, and we set `init_slot_WFQ(vt, w) = (w, vt)`: a new arm carries its weight `w` and inherits the parent's current `vt` as its last-finish tag.
 By WFQ's standard finish-time recurrence the first packet on this arm gets a tag of `max(virtual_clock, vt) + 1/w`, which slots it into the round that the established arms are currently in.
 At compile time the parent's `vt` is freshly initialized (to zero), so all original arms get `(w, 0)` and the round is "the zeroth"; at `Add` the parent's `vt` is whatever the clock has advanced to.
@@ -178,8 +182,8 @@ At each node of `pol`'s topology, compilation seeds the four pieces:
 - The source-level tag (`D` at an internal node, `flow` at a leaf) is copied verbatim from the source `pol`. It is what `⌊·⌋` (below) reads to recover `pol` from `C`.
 - `state` is a pair `(node_state, slot_state list)`.
   The `node_state` carries `D`'s per-node bookkeeping (an `RR` cursor, a `WFQ` global virtual time), seeded by `init_node_D()`.
-  The `slot_state` list carries per-arm bookkeeping, one entry per child arm in slot order (a `WFQ` per-arm virtual finish, the arm's weight under `WFQ`), each entry seeded by `init_slot_D`.
-  Disciplines without per-arm bookkeeping (`Strict`, pure `RR`) have an empty `slot_state` list.
+  The `slot_state` list carries per-arm bookkeeping, one entry per child arm in slot order (a `WFQ` arm's weight and virtual finish; a `Strict` arm's priority rank), each entry seeded by `init_slot_D`.
+  Disciplines without per-arm bookkeeping (`RR`) have an empty `slot_state` list.
 - `pifo` is an empty PIFO: an index-PIFO at an internal node, a packet-PIFO at a leaf.
 - `z` is `D`'s ranking program at the node. It maps the local `state` and an incoming packet to one path segment plus an updated `state`. The shape of that segment differs between internal nodes and leaves:
   - at an internal node, `z : state × Pkt ⇀ (idx × rank) × state`: pick a child index `i` and the rank `r` with which to enqueue `i` at this node's index-PIFO;
@@ -203,7 +207,7 @@ The rest of the paper has no need for gluing a control together in this way (`|-
 
 ##### The bridge: `⌊·⌋`
 
-Each node of `C` carries enough source-level metadata to recover the corresponding `pol` node directly: the topology comes from the tree shape, the discipline at each internal node from `C@path.D`, the per-arm metadata (e.g., when `D` is `WFQ`) from `C@path.slot_states`, and the flow label at each leaf from `C@path.flow`.
+Each node of `C` carries enough source-level metadata to recover the corresponding `pol` node directly: the topology comes from the tree shape, the discipline at each internal node from `C@path.D`, the per-arm metadata (weights for `WFQ`, priorities for `Strict`) from `C@path.slot_states`, and the flow label at each leaf from `C@path.flow`.
 We write `⌊C⌋` for the `pol` recovered from control `C` and say that `C` _realizes_ `⌊C⌋`.
 The correctness condition for the compiler above is then `⌊compile(pol)⌋ = pol`.
 
@@ -265,7 +269,11 @@ The richer reconfigurations an operator may want (retiring a subtree that has pa
 Notes on the individual edits.
 
 - `Add(path, pol)` splices `pol` in as the new slot `next@path`.
-  When the target parent runs `WFQ`, the operator also supplies a weight for the new arm alongside the request; this weight is what `init_slot_WFQ` reads when seeding the new arm's `slot_state` (§3.4.1).
+  When the target parent's discipline requires per-arm metadata, the operator supplies the new arm's `meta?` alongside the request: a weight for a `WFQ` parent, a priority rank for a `Strict` parent.
+  `init_slot_D` reads `meta?` when seeding the new arm's `slot_state` (§3.4.1).
+  Add is _non-disturbing_: it writes only the new arm's `slot_state`; every existing arm's `slot_state` is preserved verbatim.
+  The dense-order convention on `Strict` priorities (§3.2) is what makes this hold uniformly: whether the new arm goes at the end or strictly between two existing arms in priority order, the operator can always pick a fresh `meta?` that needs no renumbering of existing arms.
+  The `WFQ` case is non-disturbing in the same sense (a new arm carries its own weight, leaving the others' weights untouched), and `RR` is trivially so (no per-arm `slot_state` to disturb).
 - `Quiesce(path)` prevents `prev@path` from receiving new traffic. The patch lives at the root: the root's `z` becomes undefined on any packet bound for a leaf under `prev@path`. Since every descent starts at the root, this single patch halts those packets before any new enqueue can go through, so no ancestor's `pifo` ever holds a new index pointing toward the quiesced subtree.
   Topology, disciplines, and labels are unchanged; the edit's whole effect is in the root's `z`, so it is `pol`-invisible.
 - `Designate(path, pol)` converts `prev@path` into `Strict*(prev@path, pol)` in place.
@@ -277,7 +285,7 @@ Notes on the individual edits.
   Literally inserting this `Strict*` node in the middle of the running tree would be expensive, as it would require relocating the entire subtree `prev@path` one PE deeper (because siblings and cousins must share a PE, see §2.1).
   §6 features a new in-place hardware gadget that gives us the `Strict*` semantics described here without incurring that relocation cost.
 - `Undesignate(path)` collapses `prev@path`, which must be a `Strict*(A, B)` node where `A` is empty, into `B`.
-  The edit is in place, in the sense that `B` inherits `Strict*(A,B)`'s slot and weight under the parent, and the parent now routes through that slot directly to `B`.
+  The edit is in place, in the sense that `B` inherits `Strict*(A,B)`'s slot and per-arm `meta?` under the parent, and the parent now routes through that slot directly to `B`.
 - `Remove(path)` structurally removes `prev@path`, dropping its slot and renumbering any higher siblings.
   The subtree `prev@path` must be empty; §3.4.2 discusses why.
   `Remove`'s precondition rules out `Strict*` targets.
@@ -306,7 +314,7 @@ The operational reading is primary; the pol-level reading is a projection of it.
   The per-production rules below state where `[[δ]]` is defined; outside that, we say `δ` is _incompatible_ with the input control and `[[δ]](C)` is undefined.
   §4's transition planner only emits a `δ` whose `[[δ]]` is defined on the live `C`.
   The preconditions vary by production, e.g.:
-  - For `Add` we require the path's parent prefix to land at an internal node, the path's final index to be a legal insertion slot (at most the parent's current arity), a weight to be supplied alongside the request iff the parent runs `WFQ`, the new leaf labels to be fresh, and the new classifier predicates to be disjoint from the domain of `C`'s live `z`.
+  - For `Add` we require the path's parent prefix to land at an internal node, the path's final index to be a legal insertion slot (at most the parent's current arity), the operator-supplied `meta?` to match what the parent discipline requires (a weight for `WFQ`, a priority rank for `Strict`, absent for `RR`), the new leaf labels to be fresh, and the new classifier predicates to be disjoint from the domain of `C`'s live `z`.
   - For `Remove` we require the target subtree to be empty.
   - For `Undesignate` we require the target node to be a `Strict*(A, B)` with `A`'s subtree empty.
   - For `ChangeWeight` we require the parent at `path`'s prefix to run WFQ.
@@ -384,7 +392,7 @@ The local controls update as follows.
   The local `z` is extended to admit packets that classify into the new subtree, mapping them to whichever child slot at this ancestor lies on the path down to `π`.
 - _At `π`:_
   - `C'@π.node_state = C@π.node_state` (unchanged).
-  - `C'@π.slot_states = C@π.slot_states[ + init_slot_D(C@π.node_state, weight?) / k ]` (a plain append when `k` is last; the `weight?` is the operator-supplied weight when `D = WFQ`, absent otherwise).
+  - `C'@π.slot_states = C@π.slot_states[ + init_slot_D(C@π.node_state, meta?) / k ]` (a plain append when `k` is last; `meta?` is the operator-supplied per-arm metadata `D` requires, per §3.2).
     The fresh entry is the per-arm bookkeeping `init_slot_D` of §3.2 prescribes for an arm newly spliced under a running `D`-parent.
   - `C'@π.pifo = C@π.pifo[+/k]`: every entry `>= k` is bumped up by one to track the shift.
     Each pre-existing slot keeps its matched count of entries and packets, now under its new name.
@@ -412,7 +420,7 @@ We discharge the three obligations of §3.4 in turn (recall `C' = [[Add(path, po
 - _State preservation._
   Outside the edit site the local control (and thus its `state`) is preserved verbatim, including at each proper ancestor of `π`, where only `z` changes.
   Inside the new subtree, the state is freshly compiled per §3.2.
-  At `π`, `node_state` is unchanged and `slot_states` splices in exactly `init_slot_D(C@π.node_state, weight?)`, as §3.4 prescribes at the edit site.
+  At `π`, `node_state` is unchanged and `slot_states` splices in exactly `init_slot_D(C@π.node_state, meta?)`, as §3.4 prescribes at the edit site.
 
 ##### Notes
 
