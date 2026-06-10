@@ -611,12 +611,14 @@ Flagged here so the §3.5 claim "the proof survives the lowering" is not read as
 This section composes diffs into _sequences_ `(φ ; δ)*` of `(guard, diff)` pairs, where a guard `φ` is a predicate on the state of the live control `C` (any `φ` may be `true`, meaning the paired diff fires at once; `φ_0 = true` is the common case).
 Sequences are the universal substrate of reconfiguration: they realize the changes no single diff can express.
 
-Two authoring modes produce sequences.
-In _declarative mode_, the operator writes a `pol` and, to reconfigure, writes a second `pol`; a differ produces the sequence.
+Two authoring modes produce sequences, and the operator chooses freely between them.
+In _declarative mode_, the operator writes a `pol` and, to reconfigure, writes a second `pol`; a differ proposes a sequence, and the operator either accepts it (in which case we apply the sequence to the running control) or declines it.
 The differ is intentionally simple: it sees only pol-level diffs whose translation to a sequence is straightforward, and falls back to the generic `Designate([], next) ; Undesignate([])` pair (§5) for anything richer.
 Multi-step reconfigurations with operator choice (e.g., `Retire` vs. `SlowRetire` below), graft-style local edits the differ cannot infer, and other confined strategies are outside its scope.
-In _imperative mode_, the operator writes the `(φ; δ)*` sequence directly, possibly using a small vocabulary of _idioms_ (§4.1).
-Most operators stay in declarative mode; imperative mode is for the cases where the differ's choices are wrong or insufficient.
+In _imperative mode_, the operator writes both their desired `next` and a `(φ; δ)*` sequence intended to reach it, drawing on a small vocabulary of _idioms_ (§4.1) and on raw atomic diffs.
+Before running the sequence we check it for the operator at the pol level: we fold each diff's `den(δ_i)` (§3.4) along the sequence, producing a chain `⌊prev⌋ -[den(δ_1)]-> p_1 -[den(δ_2)]-> ... -[den(δ_n)]-> p_n`, and accept the request iff every `den(δ_i)` is defined on the intermediate pol it sees and `p_n = next`.
+Guards play no role in this check; they govern the operational timing of when each `δ_i` fires on the live control, and are pol-invisible (§3.4).
+If the chain fails to reach `next`, or some `den(δ_i)` is undefined on its intermediate pol, we reject the request.
 
 The two modes are not formally distinct: the sequences they produce live in the same substrate and discharge the same soundness obligations from §3.4.
 Imperative mode buys expressivity, not a different proof obligation.
