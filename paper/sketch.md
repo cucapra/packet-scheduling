@@ -85,7 +85,7 @@
 §3.1 recaps the PIFO tree model.
 §3.2 defines a small policy DSL and a compiler from it into a runnable _control_, giving us the syntactic handle on controls that the rest of the section needs.
 §3.3 fixes a grammar of structural edits (_diffs_) over that DSL, where every diff is atomic by construction.
-§3.4 restates atomicity once the operational rewrite `[[δ]]` is in hand, then, for each production, proves a `pol`-level characterization theorem based on `[[δ]]` and discharges two obligations: preservation of well-formedness, and preservation of shared state.
+§3.4 restates atomicity once the operational rewrite `[[δ]]` is in hand, then, for each production, states the pol-level effect `den(δ)`, proves the informal characterization theorem `⌊[[δ]](C)⌋ = den(δ)(⌊C⌋)`, and discharges two further obligations: preservation of well-formedness, and preservation of shared state.
 §3.5 argues that all of this survives the lowering to hardware.
 Composing diffs into the sequences that realize a full reconfiguration, and the `link` schedulers that arise between them, is deferred to §4.
 
@@ -171,15 +171,12 @@ At compile time the parent's `vt` is freshly initialized (to zero), so all origi
 
 ##### Policy Compilation: `pol` to control
 
-A PIFO tree _control_ `C` is a tree of node-local 4-tuples, one per node of the topology.
-At an internal node the 4-tuple is `(D, state, pifo, z)`, where `D` names the discipline running at that node.
-At a leaf it is `(flow, state, pifo, z)`, where `flow` is the leaf's flow label.
+A PIFO tree _control_ `C` is a tree of triples `(state, pifo, z)`, one per node of the topology.
 The tree shape exactly matches that of `pol`, as each node of `C` lines up with a node of the source `pol`.
-Each diff of §3.4 acts on a small local neighborhood of these 4-tuples; the whole control is just the assembled tree.
+Each diff of §3.4 acts on a small local neighborhood of these node-local triples; the whole control is just the tree of triples.
 
-At each node of `pol`'s topology, compilation seeds the four pieces:
+At each node of `pol`'s topology, we compile to a control as follows:
 
-- The source-level tag (`D` at an internal node, `flow` at a leaf) is copied verbatim from the source `pol`. It is what `⌊·⌋` (below) reads to recover `pol` from `C`.
 - `state` is a pair `(node_state, slot_state list)`.
   The `node_state` carries `D`'s per-node bookkeeping (an `RR` cursor, a `WFQ` global virtual time), seeded by `init_node_D()`.
   The `slot_state` list carries per-arm bookkeeping, one entry per child arm in slot order (a `WFQ` arm's weight and virtual finish; a `Strict` arm's priority rank), each entry seeded by `init_slot_D`.
@@ -191,8 +188,8 @@ At each node of `pol`'s topology, compilation seeds the four pieces:
 
   When `z` is undefined for a packet, the per-node action is empty: nothing is enqueued at this node and `state` is unchanged. The global consequence (the walk halts, the packet is dropped from the system entirely) is a property of how per-node `z`s are composed, made precise in the FA-compatibility paragraph below.
 
-We address nodes by `path` (§3.3): the local 4-tuple at the node reached by following `path` from `C`'s root is written `C@path`, with fields `C@path.D` (at an internal node) or `C@path.flow` (at a leaf), and `C@path.state`, `C@path.pifo`, `C@path.z`.
-We also write `C@path.node_state` and `C@path.slot_states` for the two components of `C@path.state` (with the plural `slot_states` reflecting that it is a list, one entry per child arm).
+We address nodes by `path` (§3.3): the local triple at the node reached by following `path` from `C`'s root is written `C@path`, with fields `C@path.state`, `C@path.pifo`, `C@path.z`.
+We also write `C@path.node_state` and `C@path.slot_states` for the two components of `C@path.state` (with the plural `slot_states` reflecting that it is a list, one entry per child arm), and `C@path.designated` for the flag on an internal node.
 
 ##### Well-formedness: `|- C`
 
@@ -201,26 +198,57 @@ In §3.1 we defined well-formedness on a PIFO tree, written `|- q`. Now we redef
 ##### Compatibility with Formal Abstractions
 
 FA's controls are a single triple `(s, q, z)` with a state map `s`, a PIFO tree `q`, and a single transaction `z : St × Pkt -> Path(t) × St` (total).
-One can flatten our `C` into such a triple by gluing the pieces together. The FA-style tree `q` is the tree of our `pifo` pieces. The FA-style state `s` collects the `state` pieces indexed by path. The FA-style path-emitting scheduling transaction `z` walks the topology applying each `z` piece in turn and appending the emitted path segments into paths. The per-node source tags (`D` and `flow`) are extra metadata we maintain alongside `C` to support `⌊·⌋` below; they have no counterpart in the FA triple and do not participate in the gluing.
+Our `C` flattens into such a triple by gluing the pieces together: the FA-style tree `q` is the tree of our `pifo` pieces; the FA-style state `s` collects the `state` pieces indexed by path; the FA-style scheduling transaction `z` walks the topology applying each per-node `z` in turn and appending the emitted path segments into paths.
 The partiality that our per-node `z`s allow shows up as partiality on the FA-style global `z` (a drop anywhere along the descent leaves the global function undefined for that packet).
 The rest of the paper has no need for gluing a control together in this way (`|- C` is stated directly per the previous paragraph, and the diff rules of §3.4 act node-locally), but a reader more at home in FA's framing can recover it in this way.
 
+##### Equivalence modulo pushes and pops: `~`
+
+`push` and `pop` change the live `pifo`s and `state`s of a control but leave its structural skeleton untouched.
+We write `C ~ C'` for the equivalence relation on well-formed controls that identifies any two controls related by a finite sequence of `push` / `pop` operations.
+
 ##### The bridge: `⌊·⌋`
 
-Each node of `C` carries enough source-level metadata to recover the corresponding `pol` node directly: the topology comes from the tree shape, the discipline at each internal node from `C@path.D`, the per-arm metadata (weights for `WFQ`, priorities for `Strict`) from `C@path.slot_states`, and the flow label at each leaf from `C@path.flow`.
-We write `⌊C⌋` for the `pol` recovered from control `C` and say that `C` _realizes_ `⌊C⌋`.
-The correctness condition for the compiler above is then `⌊compile(pol)⌋ = pol`.
+We write `⌊C⌋` to mean "the `pol` that `C` realizes".
+`⌊·⌋` is pinned down by three rules that propagate from compilation outward:
 
-The map `⌊·⌋ : control -> pol` is many-to-one: `pol` records only the structural skeleton, while a control also carries the live `state` and `pifo` at each node.
-In particular, every control that arises by running `compile(pol)` and then serving traffic for a while still realizes `pol`.
-We need this split so that, when we later edit a running control in place, we can formally ask _what `pol` that modified control realizes_.
+1. _Base case (compilation)._ `⌊compile(p)⌋ = p`, by definition.
+2. _Closure under pushes and pops._ If `C ~ C'`, then `⌊C⌋ = ⌊C'⌋`. Pushes and pops touch only live `state` and `pifo` contents; they leave the topology and `z` of every node verbatim, so the pol-level skeleton that `⌊·⌋` names is untouched.
+3. _Closure under diffs._ `⌊[[δ]](C)⌋ = den(δ)(⌊C⌋)`, where `den(δ)` is the per-production recursion on `pol` defined in §3.4.
+
+The three rules together let us propagate `⌊·⌋` from any `compile(p)` along any sequence of pushes, pops, and diffs.
+This is how we will discharge Obligation 1 of §1: telling the operator what `pol` is running even when no user has explicitly requested the `pol`.
+
+The interplay of the three rules is captured by the following diagram.
+
+```
+       p1  -------------den(δ)------------> p2
+       |                                     |
+    compile                               compile
+       |                                     |
+       v                                     v
+       C1 ~ C1'  --------[[δ]]-------> C2' ~ C2
+```
+
+The unprimed controls on each side (`C1`, `C2`) are freshly compiled with no traffic yet; the primed ones (`C1'`, `C2'`) are live, with whatever `pifo` contents and accumulated `state` have built up by then.
+On the left, `C1 = compile(p1)` and `C1 ~ C1'` records that the operator's request `p1` has been compiled and then served some traffic.
+On the right, `C2 = compile(p2)` is the control we would have built had `p2` been the operator's request; `C2'` is what `[[δ]]` actually produces, and `C2' ~ C2` says that the two live in the same `~`-class.
+The diagram thus commutes at the level of `⌊·⌋`: both routes from `p1` to `p2`-via-controls realize `p2`.
+Four `⌊·⌋ = p` claims sit implicitly on the controls.
+
+- `⌊C1⌋ = p1` and `⌊C2⌋ = p2` by rule 1,
+- `⌊C1'⌋ = p1` by rule 2, and
+- `⌊C2'⌋ = p2` by rule 3.
+
+The right-hand `~` is strict for pol-visible diffs and informal for pol-invisible ones like `Quiesce` (whose `z`-domain restriction is not reachable by any push/pop of `C2`); the diagram's commutation at the `⌊·⌋` level holds in either case.
 
 ### 3.3 A Grammar for Tree Diffs
 
-The user writes down `pol` objects, like `prev`.
-Say that we compile the user's request `prev` into some control `C`, s.t. `C` realizes `prev` (written `prev = ⌊C⌋`).
-Then the user requests a change to a new `pol` object called `next`.
-SOTA would compile `next` into some control `C'` and clobber the running `C` with `C'`.
+The user writes down `pol` objects, like `p1`.
+We compile the user's request `p1` into a control `C1` with `p1 = ⌊C1⌋`.
+The live control may then change because of pushes and pops, becoming some `C1'` with `C1 ~ C1'`; `p1 = ⌊C'⌋` continues to hold.
+Then the user requests a change to a new `pol` object called `p2`.
+SOTA would compile `p2` into some control `C2` and clobber the running `C'` with `C2`.
 We wish to achieve the same user-observable result while being less disruptive to unaffected parts of the running control.
 
 A change to the live control is _atomic_ when its effect falls between two observable operations: in any sequence of `push`/`pop` operations `op_1, op_2, ...` served by the scheduler, if the change fires between `op_N` and `op_{N+1}`, then `op_1, ..., op_N` are served entirely by the pre-change control and `op_{N+1}, ...` are served entirely by the post-change control.
@@ -229,7 +257,7 @@ No operation straddles the change, and no operation sees an intermediate state.
 
 We fix a small grammar of atomic edits.
 Each production denotes a single primitive that acts on a live control `C` and produces a new control.
-The grammar in this section is the alphabet from which the transition planner (§4) assembles a sequence whose operational composition takes `C` to a control realizing `next` _without clobbering_.
+The grammar in this section is the alphabet from which the transition planner (§4) assembles a sequence whose operational composition takes the presently running control `C` (which realizes `pol` `prev`) to a new control realizing the the user's next-requested `pol` `next` _without clobbering_ `C`.
 Most productions are `pol`-visible: their effect shows up in `next`, and a comparison of `prev` against `next` is enough to understand them.
 Others are transaction-only: their effect lives entirely in `z`, leaving the `pol`-level skeleton untouched.
 
@@ -298,7 +326,10 @@ Notes on the individual edits.
   It is well-defined only when `path` is non-empty and each internal node strictly above `prev@path` has a single arm (the one continuing toward `prev@path`), so the discarded ancestor chain carries no traffic of its own.
   The richer reconfiguration of pruning a tree down to a subtree that originally shared ancestors with packet-bearing siblings is realized as an idiom (§4) that first drains and `Remove`s those siblings, reducing the chain above `prev@path` to the unary shape `ChangeRoot` requires.
 
-A `Strict*` node is one introduced by `Designate`, a plain `Strict` one written by the user.
+A `Strict*` node is one introduced by `Designate`, a plain `Strict` is compiled from user input.
+Operationally we model the distinction as a one-bit `designated` flag that each node carries.
+`Designate` sets it, `Undesignate` clears it.
+The star is just shorthand for that bit being set, not a separate discipline.
 Semantically the two are identical; every push, pop, and well-formedness check treats `Strict*(A, B)` exactly as `Strict(A, B)`.
 The star exists only so that `Undesignate`'s precondition ("path lands on a `Strict*`") and the hardware story in §6 ("`Strict*` adds no PE depth") can be stated structurally.
 The §3.2 DSL that the operator writes can parse only `Strict`, never `Strict*`, so a `Strict*` is unreachable in any user-written `pol` and arises only in the middle of a planner sequence, between a `Designate` and its eventual `Undesignate`.
@@ -324,32 +355,38 @@ The preconditions vary by production, e.g.:
 - For `Undesignate` we require the target node to be a `Strict*(A, B)` with `A`'s subtree empty.
 - For `ChangeWeight` we require the parent at `path`'s prefix to run WFQ.
 
-Projecting `[[δ]]` through `⌊·⌋` (§3.2) induces a `pol`-level view of the edit,
+Independently of `[[δ]]`, we describe each diff's intended pol-level effect
 
 ```
-den(δ) : pol ⇀ pol  :=  { (⌊C⌋, ⌊C'⌋)  |  [[δ]](C) = C' }
+den(δ) : pol ⇀ pol
 ```
 
-which captures the part of the edit that is visible at the policy level.
-For each production, we will present a closed-form recursion on `pol` and prove it as a _characterization theorem_ from the operational rule: the theorem says how `den(δ)` acts on an arbitrary `pol`, computed directly without going through any particular `C`.
-Working at this level, §4's planner searches for a sequence of edits that, when viewed via `den` and then composed, carries `prev` to `next`.
-Each characterization theorem is what makes that search well-defined.
+by recursion on `pol`.
+This is what the operator means when they say "after this diff, the running pol is <this>"
+For each production we state `den(δ)` in closed form and prove the following informal characterization from the operational rule.
 
-`den(δ)` is partial for the same syntactic reasons as `[[δ]]` (paths must resolve, leaf labels must be fresh, weights must match), but, because `pol` carries no live contents or transaction, it never fails for operational reasons like `Remove`'s emptiness or `Add`'s classifier disjointness.
-Effects that live entirely in `z` are invisible to `⌊·⌋`: in particular, `den(Quiesce) = id_pol`.
-The star on a `Strict*` node is likewise invisible (by design, since the star is operational, not denotational), so `den(Designate(path, B))` wraps `pol@path = A` into `Strict(A, B)`, and `den(Undesignate(path))` consumes a `Strict(A, B)` at `path` and yields `B`.
+> _Characterization._
+> Assume `⌊C⌋` is defined and `[[δ]](C)` is defined.
+> Then `⌊[[δ]](C)⌋ = den(δ)(⌊C⌋)`.
+
+In words: applying a diff to a live control yields a new control whose running pol is the one the operator intended.
+This is rule 3 of `⌊·⌋` (§3.2), made concrete for each production by the closed-form `den(δ)`.
+Working at this level, §4's planner searches for a sequence of edits that, when viewed via `den` and composed together, carries `prev` to `next`.
+
+`den(δ)` is partial for the same syntactic reasons that `[[δ]]` is (paths must resolve, leaf labels must be fresh, weights must match), but, because `pol` carries no live contents or transaction, it never fails for operational reasons like `Remove`'s emptiness or `Add`'s classifier disjointness.
+Effects that live entirely in `z` are pol-invisible: `den(Quiesce) = id_pol`, so by rule 3, `⌊[[Quiesce]](C)⌋ = ⌊C⌋`; the running pol after a `Quiesce` is unchanged, even though `[[Quiesce]]` has done real work on `z`.
+The `designated` bit on a `Strict*` node is likewise pol-invisible (it is operational, not part of any `pol`), so `den(Designate(path, B))` wraps `pol@path = A` into `Strict(A, B)`, and `den(Undesignate(path))` consumes a `Strict(A, B)` at `path` and yields `B`.
 Composed in that order, they act as a replacement at `path`.
 
 _Atomicity_ can be restated crisply: when `δ` is compatible with `C`, `[[δ]]` replaces the live control `C` with `[[δ]](C)` between two consecutive `push`/`pop` operations.
 Modeling `[[δ]]` as a single (partial) function `control ⇀ control` bakes indivisibility into the abstraction; the obligations below ensure that the result of this single step is correct.
 
-For each production we prove one characterization theorem and discharge two obligations, all assuming `[[δ]](C)` is defined.
+For each production we state `den(δ)`, prove the characterization theorem above, and discharge two further obligations, all assuming `[[δ]](C)` is defined.
 Throughout, we write `C` for the pre-edit control and `C'` for the post-edit control.
 
-- _Pol-level characterization_ pins down the `pol`-visible skeleton in closed form: a recursion on `pol` that, computed on `⌊C⌋`, yields `⌊C'⌋`.
-  The proof computes `⌊[[δ]](C)⌋` from the per-production rule and matches it against the closed form.
+- _Pol-level characterization_ pins down the structural skeleton: the closed-form recursion `den(δ)`, plus the proof that `⌊C'⌋ = den(δ)(⌊C⌋)` whenever both sides are defined.
   For our running example, `δ = Add([2], spotify)`, the closed form gives `den(δ)(Strict(gmail, zoom)) = Strict(gmail, zoom, spotify)`, and the theorem says `⌊C'⌋ = Strict(gmail, zoom, spotify)` for any `C` with `⌊C⌋ = Strict(gmail, zoom)`.
-  Transaction-only effects (e.g., `Quiesce`'s shrinking of `z`'s domain) lie outside `⌊·⌋` and are fixed by the per-production operational rule below, not by the characterization.
+  Transaction-only effects (e.g., `Quiesce`'s shrinking of `z`'s domain) lie outside the scope of `den` and are fixed by the per-production operational rule below, not by the characterization.
   The characterization says nothing about contents.
 - _Soundness_ constrains the live contents: `|- C` must imply `|- C'`.
   Well-formedness (§3.2) is about per-node pifos and the packets stored under them, so this obligation says that any packets and index entries `[[δ]]` drops or adds must leave the counts in balance.
@@ -397,7 +434,7 @@ The local controls update as follows.
 
 ##### Characterization
 
-The projection of `[[Add(path, pol)]]` through `⌊·⌋` is the structural map on `pol`, given by recursion on `path`:
+The pol-level effect of `Add(path, pol)` is the structural map on `pol`, given by recursion on `path`:
 
 ```
 den(Add(i :: [],   pol)) (D ts) = D ( ts[+pol / i] )
@@ -409,12 +446,13 @@ Recall from §3.3 that `Add`'s `path` is read in `next` and names the new slot, 
 The recursive case walks down a shared ancestor, recurses into child `i`, and writes the result back in place.
 When the parent runs `WFQ`, the operator's request also carries the new arm's weight; this is what `init_slot_WFQ` reads in the operational rule above, but it does not appear in the closed form.
 
-_Proof._
-The operational rule above leaves every pre-existing arm structurally intact (modulo renumbering of `π`'s pifo and the `z` extensions along the ancestor chain, neither of which `⌊·⌋` reads) and adds a new arm at `π`'s slot `k` whose subtree is the freshly-compiled `pol`.
+_Proof of characterization._
+We argue that the structural skeleton of `C'` matches `den(Add(path, pol))(⌊C⌋)`, which justifies rule 3 of `⌊·⌋` (§3.2) for this production.
+The operational rule above leaves every pre-existing arm structurally intact (modulo renumbering of `π`'s pifo and the `z` extensions along the ancestor chain, both pol-invisible) and adds a new arm at `π`'s slot `k` whose subtree is exactly what §3.2's compiler emits for the operator-supplied `pol`.
 Walking `path` from the root through `⌊C⌋`, this matches the recursion: at each proper ancestor we recurse into the child on the path; at `π` we splice `pol` into the child list at index `k`.
 So `⌊C'⌋ = den(Add(path, pol))(⌊C⌋)`.
 
-Our running example denotes `den(Add([2], spotify)) Strict(gmail, zoom) = Strict( (gmail, zoom)[+spotify / 2] ) = Strict(gmail, zoom, spotify) = next`, as intended.
+Our running example computes `den(Add([2], spotify)) Strict(gmail, zoom) = Strict( (gmail, zoom)[+spotify / 2] ) = Strict(gmail, zoom, spotify) = next`, as intended.
 In our example we appended a new arm, but a mid-tree edit would be no more complicated: `den(Add([1], spotify)) Strict(gmail, zoom) = Strict( (gmail, zoom)[+spotify / 1] ) = Strict(gmail, spotify, zoom)`, with the old `zoom` sliding from index `1` to index `2`.
 
 ##### Soundness
