@@ -532,13 +532,87 @@ It unhooks the subtree `prev@path` from its parent, drops the vacated slot, and 
 It is defined only when `prev@path` is _empty_.
 Retiring or replacing a subtree that still holds packets is therefore not `Remove`'s job alone: it is realized as a _sequence_ that first drains the subtree and only then removes it (see §4).
 
-##### Pol-level denotation
-
 ##### Operational transition
+
+Let `path = π ++ [k]`, where `π` is the path to the parent of the removed subtree and `k` is the slot index at that parent.
+Let `D` be the discipline at `π`.
+The transition `C' = [[Remove(path)]](C)` is stated per node.
+
+The topology loses the arm at slot `k` of `π`; arms at slots `0, ..., k-1` keep their indices; arms at slots `k+1, ...` shift down by one.
+The local controls update as follows.
+
+- _At every node outside the removed subtree, other than `π`:_ the local control is preserved verbatim.
+  This includes every proper ancestor of `π` (whose `z` is unchanged) and every sibling arm at `π` other than slot `k`, together with the subtrees under them.
+- _At `π`:_
+  - `C'@π.node_state = C@π.node_state` (unchanged).
+  - `C'@π.slot_states = C@π.slot_states[-/k]`: the entry at slot `k` is dropped; entries at slots `> k` shift down by one to track the renumbered arms.
+  - `C'@π.pifo = C@π.pifo[-/k]`: the precondition (subtree at `path` empty) plus `|- C` forces `C@π.pifo` to contain no entry equal to `k`, so this renumbering deletes no values; it only decrements entries `> k` by one to track the renumbered arms.
+  - `C'@π.z` is restricted on inputs and renumbered on outputs. Packets that `C@π.z` would have routed to slot `k` are no longer in `C'@π.z`'s domain; for surviving inputs, an output of `(i, r)` with `i > k` becomes `(i - 1, r)`. Slots `< k` are untouched on either axis.
+
+A standalone `Remove` thus restricts classification at `π` so that packets bound for the removed subtree are dropped before they reach a non-existent slot.
+In the typical planner usage (`Retire` of §4.1), a preceding `Quiesce` has already restricted the root's `z` on these packets, so they never descend as far as `π`; the input restriction at `π` is then redundant but harmless, while the output renumbering at `π` is still needed.
+
+##### Characterization
+
+The pol-level effect of `Remove(path)` is the structural map on `pol`, given by recursion on `path`:
+
+```
+den(Remove([k]))         (D ts) = D ( ts[-/k] )
+den(Remove(i :: rest))   (D ts) = D ( ts[ den(Remove(rest)) (ts[i]) / i ] )      when rest is non-empty
+```
+
+The base case fires once `path` has been walked down to the parent of the removed arm: the `k`-th child is dropped from the arm list.
+`Remove`'s `path` resolves in `prev` and names the subtree being deleted, so the recursion bottoms out one step shallower, at that subtree's parent.
+The recursive case walks one step deeper into child `i` and writes the result back in place.
+
+`den(Remove(path))` is defined when `path` is non-empty and resolves in the input pol.
+The emptiness precondition that `[[Remove(path)]]` imposes is operational, not visible at `pol` level.
+
+_Proof of characterization._
+We argue that the structural skeleton of `C'` matches `den(Remove(path))(⌊C⌋)`, justifying rule 3 of `⌊·⌋` (§3.2) for this production.
+The operational rule above leaves every node outside the removed subtree structurally intact: every proper ancestor of `π` is preserved verbatim (the `z` is untouched), as is every sibling arm at `π` other than slot `k`.
+At `π`, the child list shrinks by dropping slot `k`.
+Walking `path` from the root through `⌊C⌋`, this matches the recursion: at each proper ancestor we recurse into the child on the path; at `π` (where the remaining path has length one) we drop the named child from the arm list, exactly as the closed form prescribes.
+Equality is on the nose, but we state the characterization mod `=R` for uniformity with the other productions.
+So `⌊C'⌋ =R den(Remove(path))(⌊C⌋)`.
 
 ##### Soundness
 
+`|- C` gives `|- C'`.
+
+At `π`: by `|- C`, the count of `k`-entries in `C@π.pifo` equals the number of packets stored under slot `k`, which the precondition fixes at zero, so `C@π.pifo` contains no entry equal to `k`.
+The renumbering `[-/k]` therefore deletes no values from `C@π.pifo`; it only decrements entries `> k`.
+For each surviving slot `i' < k` of `C'@π`, the matched count is inherited from slot `i'` of `C@π`: the subtree is the same and the pifo entries equal to `i'` were left alone by `[-/k]`.
+For each surviving slot `i' >= k` of `C'@π`, the matched count is inherited from slot `i' + 1` of `C@π`: the same subtree, with the pifo entries that were `i' + 1` now renumbered to `i'`.
+
+At every proper ancestor of `π`, the local pifo and local child subtrees are unchanged in packet count.
+The subtree under the relevant child of `π` lost zero packets (the removed subtree was empty), so the ancestor's count for the child it forwards through is exactly what it was.
+No ancestor pifo is rewritten.
+
+At every other node, the local control is preserved verbatim, and its well-formedness count is inherited.
+
+##### State preservation
+
+Outside the edit site the local control (and thus its `state`) is preserved verbatim, including at each proper ancestor of `π`, where nothing changes at all, and at every surviving sibling of slot `k`, with the full subtree under it.
+At `π`, no `init`-rule fires: `Remove` introduces no new arm or node, so there is nothing to seed.
+`node_state` is preserved verbatim.
+`slot_states` drops the entry at slot `k`; every other entry is preserved verbatim, with its position shifted to match the new arm order.
+This is "state preservation" for a deletion: surviving siblings keep what they had.
+
 ##### Notes
+
+_Atomicity._
+No in-flight packet straddles the diff.
+The precondition forces the subtree at `path` to be empty at the diff instant, so no packet sits in the about-to-be-deleted region.
+Every other packet sits in some pre-existing `pifo` that survives into `C'`, at the same slot index (if `< k`) or one slot lower (if `> k`); each such packet is held under the same surviving subtree as before, just at the renumbered position.
+Every surviving `pifo` entry similarly points to the same child subtree as before, after renumbering.
+A `pop` immediately after the diff returns exactly what a `pop` immediately before would have.
+The restriction at `C'@π.z` comes into play only for `push`es that arrive after the diff fires.
+
+_Deeper paths._
+The walkthrough above is stated for an arbitrary `path`.
+The descent from the root to `π` passes through ancestors whose local control is untouched; the edit is confined to `π` and the (vanished) subtree at slot `k`.
+Removing a deeper subtree differs only in how far we walk before reaching `π`.
 
 _Why an empty subtree?_
 Deleting an _occupied_ child has no canonical local realization.
