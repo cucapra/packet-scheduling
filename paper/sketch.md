@@ -780,7 +780,7 @@ The natural sequence `Quiesce(path); let the subtree at prev@path drain to empty
 
 The remaining productions all reuse the same obligations and arguments as `Add`, `Remove`, and `Quiesce`.
 We present them in compact form: closed-form `den`, the operationally interesting bits of the per-node rule, and the points where the soundness or atomicity argument differs in substance from what has already been shown.
-`Graft` is the one production whose argument is genuinely new, so we promote it back to the full treatment in §3.4.7.
+`Graft` is the one production whose argument is genuinely new, so we promote it back to the full treatment in §3.4.8.
 
 #### 3.4.4. `Designate(path, pol)`
 
@@ -869,6 +869,58 @@ Proof: every node's `node_state`, `slot_states.discipline`, `pifo`, and child li
 No `pifo` entry is rewritten, no subtree is touched, no packet is relocated, so well-formedness is inherited everywhere. State preservation: the targeted weight field is the intended edit; every other field at `π` and everywhere else is verbatim. Atomicity: ranks for in-flight `pifo` entries were burned in by `push` at the old weight and remain fixed; the new weight affects only the rank computation for future pushes. So a `pop` immediately after the diff returns exactly what a `pop` immediately before would have.
 
 The virtual-finish tag at slot `k` is deliberately preserved rather than reset: resetting would either reward or penalize the arm by yanking it out of the current round, whereas `init_slot_WFQ` (§3.2) was designed precisely to let a fresh arm "join the current round" without disturbing siblings, and the same principle applies to a weight change on an already-running arm.
+
+#### 3.4.7. `ChangeRoot(path)`
+
+`ChangeRoot` promotes `prev@path` to the new root, discarding every ancestor above it (§3.3).
+It is the only production that erases structural ancestors, and the only one whose `pol`-level effect is to shrink the tree from above rather than edit it locally.
+The mechanics are short; the Notes below carry most of the substance.
+
+##### Operational transition
+
+Defined when `path` is non-empty, resolves to a node in `C`, and every internal node strictly above `C@path` is _unary_, with its sole arm continuing toward `path`.
+Under these preconditions the discarded ancestor chain carries scheduling metadata but no off-path traffic.
+
+- _At `C@path` and inside its subtree:_ preserved verbatim. The result `C'` is exactly `C@path` standing alone as a tree.
+- _At every proper ancestor of `path`:_ discarded entirely, together with the local `node_state`, `slot_states`, `pifo`, and `z`.
+
+##### Characterization
+
+```
+den(ChangeRoot(path)) p = p@path
+```
+
+defined whenever `path` is non-empty and resolves in `p`.
+The realizes-relation propagates structurally: if `C` realizes `p`, then `C@path` realizes `p@path`, since compilation is per-node and the discipline at each surviving node is unchanged.
+Equality is on the nose, so `⌊C'⌋ =R p@path = den(ChangeRoot(path))(⌊C⌋)`.
+
+##### Soundness, state preservation, atomicity
+
+Soundness: `|- C` is a conjunction of per-node well-formedness obligations, and the subset of those obligations attached to `C@path`'s nodes constitutes `|- C@path`, which is exactly `|- C'`. The discarded ancestors' obligations are simply forgotten. State preservation: standard verbatim within `C@path`; ancestor state is gone. Atomicity in our formal sense (§3.3) holds: every in-flight packet sits in some `pifo` within `C@path`'s subtree (the ancestor `pifo`s held routing entries, not packets), all preserved verbatim. A pop immediately after the diff returns exactly what a pop immediately before would have: a pre-diff pop descends through the unary chain by reading some slot-`0` entry at each ancestor (regardless of which entry, since with a single arm every choice resolves to "recurse via arm 0") and ultimately pops from `C@path`'s root; a post-diff pop acts on `C@path`'s root directly.
+
+##### Notes
+
+_Why the unary precondition._
+The precondition rules out, by construction, any silently-dropped packet-bearing siblings.
+A non-unary ancestor would have arms branching off the path to `C@path`; those subtrees would vanish with their ancestor, taking their packets with them.
+Allowing this would make `ChangeRoot` a structural deletion of arbitrarily many off-path subtrees masquerading as a root change, with no semantic story for those packets.
+The richer reconfiguration of pruning to a subtree whose ancestor chain branches off into packet-bearing relatives is realized as the `PruneDownTo` idiom (§4.1), which first drains and `Remove`s those siblings in sequence, reducing the chain above `C@path` to the unary shape that `ChangeRoot` then accepts.
+
+_What the chain carries, and what is discarded._
+An internal node's `node_state`, rank function, and `pifo` ordering exist to pick among siblings.
+For the concrete disciplines this paper targets, those mechanisms therefore degenerate at a unary node: Strict's all-zero ranks reduce to FIFO, RR's cursor is irrelevant with one arm, and WFQ's virtual-finish times under a single weight are monotone in arrival order.
+For these disciplines the unary chain is operationally a passthrough, and the immediate-pop atomicity above extends to every subsequent pop and push.
+
+This is not, however, a universal property of unary internal nodes.
+A discipline whose rank function depends on per-packet attributes rather than on arm selection (LSTF being the canonical example, with rank determined by each packet's deadline) can keep its `pifo` non-FIFO at a unary node, and that ordering may shape what an external observer sees downstream depending on the surrounding PIFO-tree semantics.
+In those cases the discarded chain is _not_ a no-op: `ChangeRoot` removes whatever schedule shaping the chain was performing on the traffic now living under `C@path`.
+That is precisely the production's intended role: it is the atomic step by which the operator says "promote `prev@path` to the root and discard the ancestor shaping above it."
+The `PruneDownTo` idiom packages this with the upstream draining and `Remove`s that make the chain unary in the first place, so the operator's request ("prune to this subtree") is realized as a sequence whose final step discards exactly the ancestor influence that the operator has chosen to abandon.
+
+_Pol-level effect._
+The `pol` changes from the unary chain wrapping `prev@path` (e.g., `Strict(prev@path)` or `LSTF(prev@path)`) to just `prev@path`.
+This is `pol`-visible: the root discipline observably changes, which is the substantive content of the production.
+For the concrete disciplines (Strict, RR, WFQ) the `pol`-visible change happens to coincide with no in-flight reordering, per the previous Note; for more general disciplines the operator has chosen to give up whatever the chain was shaping.
 
 ### 3.5 Preserving this proof down to hardware
 
