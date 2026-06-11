@@ -699,23 +699,45 @@ New ones can be added later without changing the framework, since an idiom is, i
   Designates `B` as the survivor of the current `pol@path` (which, after Designate, sits at `path ++ [0]` as the first arm of the inserted `Strict*` node), quiesces it, waits for it to drain, then collapses the `Strict*` onto `B`.
   At the pol level this is the `Replace` of §3.4 (`den(Undesignate) ∘ den(Designate(_, B))`); the operator-facing idiom adds the `Quiesce` + drain in the middle so that the original subtree empties out before the collapse fires.
 
-- **`PruneDownTo(path)`** = `Retire(p_1) ; ... ; Retire(p_m) ; (true; ChangeRoot(path))`, where `p_1, ..., p_m` are the off-path subtrees along the route from the root to `path`.
+- **`PruneDownTo(path)`** = `Retire(p_1) ; ... ; Retire(p_m) ; (true; ChangeRoot(path))`, where `p_1, ..., p_m` are the off-path subtrees along the route from the root to `path`. This idiom is the operator-facing way to say "abandon everything except this subtree."
+
   Each `Retire` removes one off-path subtree; once all `m` have fired, every ancestor along the path is unary, satisfying `ChangeRoot`'s precondition (§3.3).
   (If no off-path subtrees exist, `m = 0` and the idiom reduces to `(true; ChangeRoot(path))` alone.)
-  This idiom is the operator-facing way to say "abandon everything except this subtree."
 
-  For instance, if the running tree is `A(B(D, E(F, G)), C)` and the operator wants to retain only `D`, the off-path subtrees are `E(F, G)` and `C`, so `PruneDownTo` expands to `Retire(path-to-E) ; Retire(path-to-C) ; (true; ChangeRoot(path-to-D))`.
-  After both `Retire`s the tree is `A(B(D))`, every ancestor above `D` is unary, and `ChangeRoot` then promotes `D` to the new root.
+  For instance, suppose the running tree is `A(B(E(F, G), D), C)`:
 
-  [AM TODO: path stability across sequences.
-  In the example above, removing `E(F,G)` and `C` happens to leave `D`'s index path unchanged at `[0, 0]`, so `path-to-D` resolves the same way before and after the `Retire`s.
-  In a tree like `A(X, B(D, E), Y)`, removing `X` shifts `B` from `[1]` to `[0]` and `D` from `[1, 0]` to `[0, 0]`, so a path written at expansion time would be stale by the time `ChangeRoot` fires.
-  Two options: (i) declare that all paths in an idiom expansion are resolved against the _current_ tree at firing time, not the expansion-time tree. This is more in line with our writing so far, but this does mean that the operator needs to do a tremendous piece of mental math when specifying the path to `D`. (ii) let the operator state the paths against the tree that they are seeing, and let the system adjust those paths to make sense against the tree as it evolves.]
+  ```
+  A
+  ├── B
+  │   ├── E
+  │   │   ├── F
+  │   │   └── G
+  │   └── D
+  └── C
+  ```
 
-[AM TK: short note on `nextnext`.
+  The index paths to its nodes are:
+  - `A` at `[]`
+  - `B` at `[0]`
+  - `C` at `[1]`
+  - `E(F, G)` at `[0, 0]`
+  - `F` at `[0, 0, 0]`
+  - `G` at `[0, 0, 1]`
+  - `D` at `[0, 1]`
+
+  The operator wants to retain only `D`, so they issue `PruneDownTo([0, 1])`.
+
+  The off-path subtrees are `E(F, G)` (at `[0, 0]`) and `C` (at `[1]`).
+  So `PruneDownTo([0, 1])` expands to: `Retire([0, 0]) ; Retire([1]) ; (true; ChangeRoot([0, 0]))`.
+
+  Note that the path `[0, 0]` appears twice in this expansion with different referents: in `Retire([0, 0])` it points to `E(F, G)` (the operand at the moment that `Retire` fires), and in the final `ChangeRoot([0, 0])` it points to `D`, which moved from `[0, 1]` to `[0, 0]` once `E(F, G)` was retired.
+  The path-resolution system computes these targets for the operator; the operator only writes `PruneDownTo([0, 1])`, naming `D` by its location at the moment of request.
+
+### Short note on `nextnext`.
+
 This paper's transition planner engages with one `prev -> next` pair at a time.
 If the operator submits a follow-up `nextnext` while a `prev -> next` sequence is still mid-flight (i.e., while some guard `φ` has not yet become true), our answer is the simplest possible one: `nextnext` is queued and the transition planner does not begin work on it until the in-flight sequence completes.
-See `paper/discussion-separable-nextnext.md` for a stronger possibility.]
+See `paper/discussion-separable-nextnext.md` for a stronger possibility.
 
 ## 5. Identifying Better Transitions
 
