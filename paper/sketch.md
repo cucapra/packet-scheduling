@@ -85,7 +85,7 @@
 §3.1 recaps the PIFO tree model.
 §3.2 defines a small policy DSL and a compiler from it into a runnable _control_, giving us the syntactic handle on controls that the rest of the section needs.
 §3.3 fixes a grammar of structural edits (_diffs_) over that DSL, where every diff is atomic by construction.
-§3.4 restates atomicity once the operational rewrite `[[δ]]` is in hand, then, for each production, states the pol-level effect `den(δ)`, proves the informal characterization theorem `⌊[[δ]](C)⌋ = den(δ)(⌊C⌋)`, and discharges two further obligations: preservation of well-formedness, and preservation of shared state.
+§3.4 restates atomicity once the operational rewrite `[[δ]]` is in hand, then, for each production, states the pol-level effect `den(δ)`, proves the informal characterization theorem `⌊[[δ]](C)⌋ =R den(δ)(⌊C⌋)`, and discharges two further obligations: preservation of well-formedness, and preservation of shared state.
 §3.5 argues that all of this survives the lowering to hardware.
 Composing diffs into the sequences that realize a full reconfiguration, and the `link` schedulers that arise between them, is deferred to §4.
 
@@ -138,7 +138,10 @@ This grammar allows policy trees of arbitrary arity.
 A discipline may attach per-arm metadata that shapes how the arm is scheduled.
 `WFQ` takes a positive real weight per arm; `Strict` takes a priority rank per arm; `RoundRobin` takes nothing.
 The grammar carries no structural mark of any of this: the operator writes the metadata in the surface syntax (e.g., `WFQ(w_1: pol_1, ..., w_n: pol_n)`, or positional sugar like `Strict(A, B)` which desugars to `Strict(hi: A, lo: B)`), but the metadata lives in the arm's `slot_state` once compiled (see `init_slot_D` below) and `push`/`pop` can only read it.
-Arm order in the surface notation is a presentation choice, not a scheduling-meaningful one: `Strict(hi: A, lo: B)` and `Strict(lo: B, hi: A)` describe the same scheduler. §3 stays positional throughout (paths address slots); the §4 sniffer can benefit from this equivalence when comparing `prev` against `next`.
+Arm order in the surface notation is a presentation choice, not a scheduling-meaningful one: `Strict(hi: A, lo: B)` and `Strict(lo: B, hi: A)` describe the same scheduler.
+We formalize this below as the _reorder-congruence_ `=R` on `pol`, the smallest congruence under which permuting siblings at any internal node is a no-op.
+From §3 onward we use `=R` as a degree of freedom: the compiler is free to pick any representative of an `=R`-class when laying out or editing a control.
+Further, the pipeline echoes back to the operator the specific representative that the compiler chose, so the operator can address slots positionally against what is actually running.
 We read the arity off by counting children, so `Strict(gmail, zoom)` is the 2-ary instance.
 Each leaf label denotes a flow: a predicate over packets. A `pol` is _valid_ when (a) every discipline is applied at a proper arity (with the per-arm metadata that the discipline requires) and (b) the flows at the leaves are pairwise disjoint, in the sense that every incoming packet is either dropped or is routed to one leaf.
 Validity is a condition on the source `pol`, not to be confused with the runtime invariant `|- q`.
@@ -207,14 +210,28 @@ The rest of the paper has no need for gluing a control together in this way (`|-
 `push` and `pop` change the live `pifo`s and `state`s of a control but leave its structural skeleton untouched.
 We write `C ~ C'` for the equivalence relation on well-formed controls that identifies any two controls related by a finite sequence of `push` / `pop` operations.
 
+##### Reorder-congruence on `pol`: `=R`
+
+We write `p =R p'` for the smallest congruence on `pol` such that, at any internal `D`-node, permuting the child arms gives a congruent pol: `D(p_1, ..., p_n) =R D(p_{σ(1)}, ..., p_{σ(n)})` for any permutation `σ`.
+The per-arm metadata that discipline `D` requires (a `WFQ` weight, a `Strict` priority rank) travels with its arm under the permutation; the metadata is what carries the scheduling-meaningful content, so a permutation does not change the scheduler.
+From now on, we state equality on `pol`s using `=R`.
+
+##### Equivalence on controls modulo presentation: `~R`
+
+Two controls whose child lists at some internal node are permutations of one another (with the parent's `pifo` and `z` renumbered accordingly) present different positional layouts but realize the same scheduler.
+We write `C ~R C'` for the equivalence obtained by closing `~` under such sibling permutations.
+Every `~`-equivalent pair is `~R`-equivalent; the converse fails.
+The R suffix marks "closure under sibling reorder" uniformly across relations: `=R` is `=` with R-slack and `~R` is `~` with R-slack.
+We will typeset the `R` as a subscript in print.
+
 ##### The bridge: `⌊·⌋`
 
 We write `⌊C⌋` to mean "the `pol` that `C` realizes".
 `⌊·⌋` is pinned down by three rules that propagate from compilation outward:
 
-1. _Base case (compilation)._ `⌊compile(p)⌋ = p`, by definition.
+1. _Base case (compilation)._ `⌊compile(p)⌋ =R p`. The compiler is free to pick any sibling order when laying out `C`; `⌊C⌋` reads off the order the control _actually_ presents, and that representative is the `pol` `p'` such that `⌊compile(p)⌋ = p'` (note, literal equality). The pipeline echoes `p'` back to the operator.
 2. _Closure under pushes and pops._ If `C ~ C'`, then `⌊C⌋ = ⌊C'⌋`. Pushes and pops touch only live `state` and `pifo` contents; they leave the topology and `z` of every node verbatim, so the pol-level skeleton that `⌊·⌋` names is untouched.
-3. _Closure under diffs._ `⌊[[δ]](C)⌋ = den(δ)(⌊C⌋)`, where `den(δ)` is the per-production recursion on `pol` defined in §3.4.
+3. _Closure under diffs._ `⌊[[δ]](C)⌋ =R den(δ)(⌊C⌋)`, where `den(δ)` is the per-production recursion on `pol` defined in §3.4. We need the `=R`-slack in rules 1 and 3 because the compiler has arm-order freedom both times.
 
 The three rules together let us propagate `⌊·⌋` from any `compile(p)` along any sequence of pushes, pops, and diffs.
 This is how we will discharge Obligation 1 of §1: telling the operator what `pol` is running even when no user has explicitly requested the `pol`.
@@ -227,29 +244,54 @@ The interplay of the three rules is captured by the following diagram.
     compile                               compile
        |                                     |
        v                                     v
-       C1 ~ C1'  --------[[δ]]-------> C2' ~ C2
+       C1 ~ C1'  -------[[δ]]------> C2' ~R C2
 ```
 
-The unprimed controls on each side (`C1`, `C2`) are freshly compiled with no traffic yet; the primed ones (`C1'`, `C2'`) are live, with whatever `pifo` contents and accumulated `state` have built up by then.
-On the left, `C1 = compile(p1)` and `C1 ~ C1'` records that the operator's request `p1` has been compiled and then served some traffic.
-On the right, `C2 = compile(p2)` is the control we would have built had `p2` been the operator's request; `C2'` is what `[[δ]]` actually produces, and `C2' ~ C2` says that the two live in the same `~`-class.
-The diagram thus commutes at the level of `⌊·⌋`: both routes from `p1` to `p2`-via-controls realize `p2`.
-Four `⌊·⌋ = p` claims sit implicitly on the controls.
+The unprimed controls on each side (`C1`, `C2`) are freshly compiled with no traffic; the primed ones (`C1'`, `C2'`) are live, with whatever `pifo` contents and accumulated `state` have built up by then.
+Let us study this diagram with an eye to the user's experience.
+Our final goal will be to correctly relate `C2'` and `C2`.
 
-- `⌊C1⌋ = p1` and `⌊C2⌋ = p2` by rule 1,
-- `⌊C1'⌋ = p1` by rule 2, and
-- `⌊C2'⌋ = p2` by rule 3.
+- The operator writes `p1`; `compile` produces `C1`, with `⌊C1⌋ =R p1` by rule 1.
+- Not shown in this diagram is that we read off `⌊C1⌋` to find the `pol` `p1'` such that `⌊C1⌋ = p1'` (note, this equality is _not_ modulo reordering) and we echo `p1'` back to the user.
+- Push and pop operations carry `C1` to `C1'`. `C1 ~ C1'` by the definition of `~`, and `⌊C1'⌋ = ⌊C1⌋` by rule 2, so the live `C1'` still realizes both `p1` and `p1'`.
+- The operator writes `p2`; the sniffer (§4) produces a `δ` such that `den(δ)(p1') =R p2`. It is key that we work in the frame of the actually-running representative `p1'` rather than the operator's original `p1`, since `den` has semantically meaningful paths.
+- Applying `[[δ]]` to `C1'` lands at `C2'`, and by rule 3 `⌊C2'⌋ =R den(δ)(p1')`. Chaining these, we get: `⌊C2'⌋ =R p2`.
+- We again read off `⌊C2'⌋` to find the `pol` `p2'` such that `⌊C2'⌋ = p2'` (note, this equality is _not_ modulo reordering) and we echo `p2'` back to the user.
+- `C2 = compile(p2)` is the control we would have built had we taken the SOTA stop-the-world path; we do not actually construct it, but it is the correct reference point and it is crucial that we now relate `C2'` to `C2`. By rule 1, `⌊C2⌋ =R p2`, hence `⌊C2'⌋ =R ⌊C2⌋`. The right-hand link we write is `C2' ~R C2`, which absorbs two gaps at once:
+  - `C2'` carries the live `pifo`/`state` accumulated since `C1` while `C2` is freshly compiled and bare. The `~` component covers this.
+  - `[[δ]]` and `compile` are free to pick different sibling orders at internal nodes, so `C2'` and `C2` may also differ in child arrangements. The R-closure covers this.
 
-The right-hand `~` is strict for pol-visible diffs and informal for pol-invisible ones like `Quiesce` (whose `z`-domain restriction is not reachable by any push/pop of `C2`); the diagram's commutation at the `⌊·⌋` level holds in either case.
+The diagram thus commutes at the level of `⌊·⌋` modulo `=R`: both routes from `p1` to a control realizing `p2` land in the same `~R`-class. The commutation holds verbatim for `pol`-visible diffs and informally for pol-invisible ones like `Quiesce` (whose `z`-domain restriction is not reachable by any push or pop of `C2`).
+
+When writing `p2`, the operator would do well to state their request against `p1'`, the actually-running `pol` that we echo back to them.
+This keeps the diff small and aligns paths with what is running.
+They may state it against the unprimed `p1` they originally wrote, but at their own risk. The risks are of two flavors:
+
+- The diff sniffer may infer a larger diff than necessary, or may give up.
+- The more serious issue is that the user may use Imperative Mode (§4) to directly specify what edits to make, and if they use the unprimed `p1` to base their paths, they may inadvertently touch the wrong node, give a malformed path, etc.
+
+##### A worked example
+
+The operator initially requests `p1 = Strict(B_hi, A_lo)`: strict priority with `B` on top of `A`.
+The compiler uses its degree of freedom to yield control `C1` with `⌊C1⌋ = Strict(A_lo, B_hi)`. Note that the children have been sorted.
+We echo back `p1' = Strict(A_lo, B_hi)`.
+`p1 =R p1'`, so the scheduler the operator gets is the one they asked for; only the slot numbering differs.
+
+Later, the operator requests `p2 = Strict(A_lo, C_mid, B_hi)`: a three-arm strict priority.
+The runtime can again use its freedom.
+Instead of literally splicing `C` in between running arms `A` and `B`, it chooses to append `C` to the end.
+After the diff is applied, the running control realizes `p2' = Strict(A_lo, B_hi, C_mid)`, which we echo back.
+
+Now the operator changes to Imperative Mode (§4) and writes the path-bearing edit `(True, Quiesce([2]))`.
+It is not worth getting distrated by the syntax here; the key thing is that the operator has requested an edit and has identified the target via a path.
+Paths are interpreted against the _actually running_ representative `p2'`, so the edit affects `C_mid` (`p2'`'s slot 2), not `B_hi` (`p2`'s slot 2).
+If the operator had based the path on `p2` they would have edited the wrong arm; the system has no way to detect or recover from that.
 
 ### 3.3 A Grammar for Tree Diffs
 
-The user writes down `pol` objects, like `p1`.
-We compile the user's request `p1` into a control `C1` with `p1 = ⌊C1⌋`.
-The live control may then change because of pushes and pops, becoming some `C1'` with `C1 ~ C1'`; `p1 = ⌊C'⌋` continues to hold.
-Then the user requests a change to a new `pol` object called `p2`.
-SOTA would compile `p2` into some control `C2` and clobber the running `C'` with `C2`.
-We wish to achieve the same user-observable result while being less disruptive to unaffected parts of the running control.
+§3.2 set up the operator-system loop: the operator writes `p1`, we compile and echo back `p1' = ⌊C1⌋`, and pushes and pops carry the running control to some `C1'` still realizing `p1'`.
+When the operator asks for a new `p2`, SOTA would compile `p2` into a fresh `C2` and clobber `C1'` with it.
+We want the same user-observable result while being less disruptive to unaffected parts of the running control.
 
 A change to the live control is _atomic_ when its effect falls between two observable operations: in any sequence of `push`/`pop` operations `op_1, op_2, ...` served by the scheduler, if the change fires between `op_N` and `op_{N+1}`, then `op_1, ..., op_N` are served entirely by the pre-change control and `op_{N+1}, ...` are served entirely by the post-change control.
 No operation straddles the change, and no operation sees an intermediate state.
@@ -257,7 +299,7 @@ No operation straddles the change, and no operation sees an intermediate state.
 
 We fix a small grammar of atomic edits.
 Each production denotes a single primitive that acts on a live control `C` and produces a new control.
-The grammar in this section is the alphabet from which the transition planner (§4) assembles a sequence whose operational composition takes the presently running control `C` (which realizes `pol` `prev`) to a new control realizing the the user's next-requested `pol` `next` _without clobbering_ `C`.
+The grammar in this section is the alphabet from which the transition planner (§4) assembles a sequence whose operational composition takes the presently running control `C` (which realizes `pol` `prev`) to a new control realizing the user's next-requested `pol` `next` _without clobbering_ `C`.
 Most productions are `pol`-visible: their effect shows up in `next`, and a comparison of `prev` against `next` is enough to understand them.
 Others are transaction-only: their effect lives entirely in `z`, leaving the `pol`-level skeleton untouched.
 
@@ -367,7 +409,7 @@ For each production we state `den(δ)` in closed form and prove the following in
 
 > _Characterization._
 > Assume `⌊C⌋` is defined and `[[δ]](C)` is defined.
-> Then `⌊[[δ]](C)⌋ = den(δ)(⌊C⌋)`.
+> Then `⌊[[δ]](C)⌋ =R den(δ)(⌊C⌋)`.
 
 In words: applying a diff to a live control yields a new control whose running pol is the one the operator intended.
 This is rule 3 of `⌊·⌋` (§3.2), made concrete for each production by the closed-form `den(δ)`.
@@ -384,8 +426,8 @@ Modeling `[[δ]]` as a single (partial) function `control ⇀ control` bakes ind
 For each production we state `den(δ)`, prove the characterization theorem above, and discharge two further obligations, all assuming `[[δ]](C)` is defined.
 Throughout, we write `C` for the pre-edit control and `C'` for the post-edit control.
 
-- _Pol-level characterization_ pins down the structural skeleton: the closed-form recursion `den(δ)`, plus the proof that `⌊C'⌋ = den(δ)(⌊C⌋)` whenever both sides are defined.
-  For our running example, `δ = Add([2], spotify)`, the closed form gives `den(δ)(Strict(gmail, zoom)) = Strict(gmail, zoom, spotify)`, and the theorem says `⌊C'⌋ = Strict(gmail, zoom, spotify)` for any `C` with `⌊C⌋ = Strict(gmail, zoom)`.
+- _Pol-level characterization_ pins down the structural skeleton up to `=R`: the closed-form recursion `den(δ)`, plus the proof that `⌊C'⌋ =R den(δ)(⌊C⌋)` whenever both sides are defined. `den` returns a definite pol (a definite representative of an `=R`-class); the implementation is free to lay out `C'` so that `⌊C'⌋` is any other representative of the same class.
+  For our running example, `δ = Add([2], spotify)`, the closed form gives `den(δ)(Strict(gmail, zoom)) = Strict(gmail, zoom, spotify)`, and the theorem says `⌊C'⌋ =R Strict(gmail, zoom, spotify)` for any `C` with `⌊C⌋ =R Strict(gmail, zoom)`.
   Transaction-only effects (e.g., `Quiesce`'s shrinking of `z`'s domain) lie outside the scope of `den` and are fixed by the per-production operational rule below, not by the characterization.
   The characterization says nothing about contents.
 - _Soundness_ constrains the live contents: `|- C` must imply `|- C'`.
@@ -447,10 +489,11 @@ The recursive case walks down a shared ancestor, recurses into child `i`, and wr
 When the parent runs `WFQ`, the operator's request also carries the new arm's weight; this is what `init_slot_WFQ` reads in the operational rule above, but it does not appear in the closed form.
 
 _Proof of characterization._
-We argue that the structural skeleton of `C'` matches `den(Add(path, pol))(⌊C⌋)`, which justifies rule 3 of `⌊·⌋` (§3.2) for this production.
-The operational rule above leaves every pre-existing arm structurally intact (modulo renumbering of `π`'s pifo and the `z` extensions along the ancestor chain, both pol-invisible) and adds a new arm at `π`'s slot `k` whose subtree is exactly what §3.2's compiler emits for the operator-supplied `pol`.
-Walking `path` from the root through `⌊C⌋`, this matches the recursion: at each proper ancestor we recurse into the child on the path; at `π` we splice `pol` into the child list at index `k`.
-So `⌊C'⌋ = den(Add(path, pol))(⌊C⌋)`.
+We argue that the structural skeleton of `C'` matches `den(Add(path, pol))(⌊C⌋)` up to `=R`, which justifies rule 3 of `⌊·⌋` (§3.2) for this production.
+The operational rule above leaves every pre-existing arm structurally intact (modulo renumbering of `π`'s pifo and the `z` extensions along the ancestor chain, both pol-invisible) and adds a new arm at `π` whose subtree is exactly what §3.2's compiler emits for the operator-supplied `pol`.
+We described the rule with the new arm at slot `k` (the operator's stated insertion point) for concreteness, but, since arm order at `π` is `=R`-irrelevant, the implementation is free to place the new arm at any slot of `π`; appending is the common choice and disturbs nothing.
+Walking `path` from the root through `⌊C⌋`, this matches the recursion up to a permutation of `π`'s children: at each proper ancestor we recurse into the child on the path; at `π` we splice `pol` into the child list at whatever slot the implementation chose, and the result is `=R`-congruent to the representative `den` returns (which splices at `k`).
+So `⌊C'⌋ =R den(Add(path, pol))(⌊C⌋)`.
 
 Our running example computes `den(Add([2], spotify)) Strict(gmail, zoom) = Strict( (gmail, zoom)[+spotify / 2] ) = Strict(gmail, zoom, spotify) = next`, as intended.
 In our example we appended a new arm, but a mid-tree edit would be no more complicated: `den(Add([1], spotify)) Strict(gmail, zoom) = Strict( (gmail, zoom)[+spotify / 1] ) = Strict(gmail, spotify, zoom)`, with the old `zoom` sliding from index `1` to index `2`.
@@ -616,7 +659,7 @@ In _declarative mode_, the operator writes a `pol` and, to reconfigure, writes a
 The differ is intentionally simple: it sees only pol-level diffs whose translation to a sequence is straightforward, and falls back to the generic `Designate([], next) ; Undesignate([])` pair (§5) for anything richer.
 Multi-step reconfigurations with operator choice (e.g., `Retire` vs. `SlowRetire` below), graft-style local edits the differ cannot infer, and other confined strategies are outside its scope.
 In _imperative mode_, the operator writes both their desired `next` and a `(φ; δ)*` sequence intended to reach it, drawing on a small vocabulary of _idioms_ (§4.1) and on raw atomic diffs.
-Before running the sequence we check it for the operator at the pol level: we fold each diff's `den(δ_i)` (§3.4) along the sequence, producing a chain `⌊prev⌋ -[den(δ_1)]-> p_1 -[den(δ_2)]-> ... -[den(δ_n)]-> p_n`, and accept the request iff every `den(δ_i)` is defined on the intermediate pol it sees and `p_n = next`.
+Before running the sequence we check it for the operator at the pol level: we fold each diff's `den(δ_i)` (§3.4) along the sequence, producing a chain `⌊prev⌋ -[den(δ_1)]-> p_1 -[den(δ_2)]-> ... -[den(δ_n)]-> p_n`, and accept the request iff every `den(δ_i)` is defined on the intermediate pol it sees and `p_n =R next`.
 Guards play no role in this check; they govern the operational timing of when each `δ_i` fires on the live control, and are pol-invisible (§3.4).
 If the chain fails to reach `next`, or some `den(δ_i)` is undefined on its intermediate pol, we reject the request.
 
