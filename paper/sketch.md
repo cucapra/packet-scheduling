@@ -344,8 +344,8 @@ Notes on the individual edits.
   `init_slot_D` reads `meta?` when seeding the new arm's `slot_state` (§3.4.1).
   Add is _non-disturbing_: it writes only the new arm's `slot_state`; every existing arm's `slot_state` is preserved verbatim.
   The new arm carries its own `meta?`, leaving the others' untouched.
-- `Quiesce(path)` prevents `prev@path` from receiving new traffic. The patch lives at the root: the root's `z` becomes undefined on any packet bound for a leaf under `prev@path`. Since every descent starts at the root, this single patch halts those packets before any new enqueue can go through, so no ancestor's `pifo` ever holds a new index pointing toward the quiesced subtree.
-  Topology, disciplines, and labels are unchanged; the edit's whole effect is in the root's `z`, so it is `pol`-invisible.
+- `Quiesce(path)` prevents `prev@path` from receiving new traffic. For every leaf `L` under `prev@path`, `L`'s `z` is restricted to reject all traffic it used to accept, and every ancestor of `L`, up to and including the system root, has its `z` correspondingly restricted to no accept that traffic.
+  Topology, disciplines, and labels are unchanged; the edit's whole effect is in the touched `z`s, so it is `pol`-invisible.
 - `Designate(path, pol)` converts `prev@path` into `Strict*(prev@path, pol)` in place.
   That is, we introduce a new node with discipline `Strict*`, with the existing subtree `prev@path` as its high-priority sibling and `pol` as its low-priority sibling.
   `pol` is the _designated survivor_ of `prev@path`.
@@ -550,8 +550,8 @@ The local controls update as follows.
   - `C'@π.pifo = C@π.pifo[-/k]`: the precondition (subtree at `path` empty) plus `|- C` forces `C@π.pifo` to contain no entry equal to `k`, so this renumbering deletes no values; it only decrements entries `> k` by one to track the renumbered arms.
   - `C'@π.z` is restricted on inputs and renumbered on outputs. Packets that `C@π.z` would have routed to slot `k` are no longer in `C'@π.z`'s domain; for surviving inputs, an output of `(i, r)` with `i > k` becomes `(i - 1, r)`. Slots `< k` are untouched on either axis.
 
-A standalone `Remove` thus restricts classification at `π` so that packets bound for the removed subtree are dropped before they reach a non-existent slot.
-In the typical planner usage (`Retire` of §4.1), a preceding `Quiesce` has already restricted the root's `z` on these packets, so they never descend as far as `π`; the input restriction at `π` is then redundant but harmless, while the output renumbering at `π` is still needed.
+A standalone `Remove` thus restricts classification at `π` so that packets bound for the removed subtree are dropped at `π` rather than being routed to a non-existent slot.
+In the typical planner usage (`Retire` of §4.1), a preceding `Quiesce` has already restricted every `z` on every push path to the soon-to-be-removed leaves (§3.4.3), so no new packet bound for the removed subtree is even being admitted; the input restriction at `π` is then redundant but harmless, while the output renumbering at `π` is still needed.
 
 ##### Characterization
 
@@ -703,23 +703,18 @@ Topology, disciplines, slot states, and pifo entries are all unchanged, so `Quie
 
 ##### Operational transition
 
-Let `r` denote the root, i.e., the empty path `[]`.
 The transition `C' = [[Quiesce(path)]](C)` is defined when `path` is non-empty and resolves to a node in `C`.
-There is no precondition on the subtree's contents.
-We state the transition per node.
+There is no precondition on the subtree's contents: `Quiesce` is the production that stops further admissions, regardless of what is currently held below `path`.
 
-The topology, the discipline at every node, and every arm's slot index are unchanged.
-The local controls update as follows.
+Let `T` denote the set of leaves of `prev@path` (the leaves we are silencing), and let `A` denote the set of internal nodes that lie on the path from some leaf in `T` to the system root. Equivalently, `A` is the union of ancestor chains of the leaves in `T`, and includes every internal node within `prev@path`'s subtree, the node `C@path` itself, and every ancestor of `C@path` up to and including the root.
 
-- _At every node other than the root:_ the local control is preserved verbatim.
-  This includes every proper ancestor of `path` other than the root, the node `C@path` itself, and every descendant of `C@path`.
-- _At the root:_
-  - `C'@r.node_state = C@r.node_state` (unchanged).
-  - `C'@r.slot_states = C@r.slot_states` (unchanged).
-  - `C'@r.pifo = C@r.pifo` (unchanged): no pifo entry is rewritten, and any entry currently pointing toward the quiesced subtree continues to be honored on `pop`.
-  - `C'@r.z` restricts `C@r.z` on its inputs: packets whose classifier predicate matches any leaf label under `prev@path` are no longer in `C'@r.z`'s domain. For surviving inputs, the output is `C@r.z`'s output verbatim.
+We state the transition per node. The topology, the discipline at every node, and every arm's slot index are unchanged.
 
-The restriction at the root suffices because every descent begins there: a packet that the root refuses is never offered to any deeper `z`, so no ancestor's `pifo` ever acquires a new index pointing toward the quiesced subtree.
+- _At every node outside `T ∪ A`:_ the local control is preserved verbatim.
+- _At each leaf `L` in `T`:_ `node_state`, `slot_states`, and `pifo` preserved verbatim (including any packets `L` currently holds). `C'@L.z` restricts `C@L.z`: every packet that `L` used to admit is removed from `C'@L.z`'s domain. `L` therefore refuses to enqueue any new packet bound for it.
+- _At each internal node `n` in `A`:_ `node_state`, `slot_states`, and `pifo` preserved verbatim (including any pre-existing entries pointing toward the quiesced subtree, which continue to be honored on `pop`). `C'@n.z` restricts `C@n.z`: packets whose classifier predicate matches any leaf label in `T` are no longer in `C'@n.z`'s domain. For surviving inputs the output is `C@n.z`'s output verbatim. `n` therefore refuses to mint a new index for any packet bound for a quiesced leaf.
+
+Under §3.2's parallel `push`, every node on the path from a destination leaf to the root is offered the packet and each `z` mints independently. The uniform restriction across `T ∪ A` is what makes the rejection well-defined: every node on every push path to a quiesced leaf refuses in lockstep, so no `pifo` anywhere acquires a new entry for the quiesced packet, and no leaf enqueues it.
 
 ##### Characterization
 
@@ -734,7 +729,7 @@ defined whenever `path` is non-empty and resolves in `p`.
 
 _Proof of characterization._
 We argue that `⌊C'⌋ = ⌊C⌋`, justifying rule 3 of `⌊·⌋` (§3.2) for this production.
-The operational rule above leaves the `node_state`, `slot_states`, `pifo`, and child list at every node (including the root) structurally intact; only the root's `z` is restricted, and `z` is not visible at `pol`-level.
+The operational rule above leaves the `node_state`, `slot_states`, `pifo`, and child list at every node structurally intact; only the `z`s at nodes in `T ∪ A` are restricted, and `z` is not visible at `pol`-level.
 Walking any path from the root through `⌊C'⌋`, every discipline and every arm matches `⌊C⌋` exactly.
 Equality is on the nose, so `⌊C'⌋ =R ⌊C⌋ = den(Quiesce(path))(⌊C⌋)`.
 
@@ -744,13 +739,13 @@ As §3.4's preface anticipated, this is the showcase case of a diff whose real s
 
 `|- C` gives `|- C'`.
 Every node's `node_state`, `slot_states`, `pifo`, and child subtree are preserved verbatim, so every well-formedness count at every node is inherited from `C`.
-The root's `z` restriction touches no `pifo` entry and no stored packet; it only refuses future `push`es.
+The `z` restrictions across `T ∪ A` touch no `pifo` entry and no stored packet; they only refuse future `push`es.
 Nothing needs repair.
 
 ##### State preservation
 
-Outside the edit site every local control is preserved verbatim.
-At the root, `node_state` and `slot_states` are unchanged; only `z` is restricted, and `z` is not part of `state`.
+Outside `T ∪ A` every local control is preserved verbatim.
+At each touched node (leaf or internal), `node_state` and `slot_states` are unchanged; only `z` is restricted, and `z` is not part of `state`.
 No `init`-rule fires anywhere: `Quiesce` neither spawns nodes nor introduces new arms.
 
 ##### Notes
@@ -759,24 +754,19 @@ _Atomicity._
 No in-flight packet straddles the diff.
 Every `pifo` at every node is preserved verbatim, with every packet still held under the same subtree at the same slot index.
 A `pop` immediately after the diff returns exactly what a `pop` immediately before would have.
-The restriction at `C'@r.z` comes into play only for `push`es that arrive after the diff fires.
+The `z` restrictions across `T ∪ A` come into play only for `push`es that arrive after the diff fires.
 
 _Deeper paths._
 The argument does not depend on the depth of `path`.
-A deeper `Quiesce` simply names a subtree closer to the leaves; the root's `z` is restricted on the same set of leaf-label predicates either way, since classification flows top-down from the root.
+A deeper `Quiesce` simply names a subtree closer to the leaves; the sets `T` and `A` are computed from `path` the same way regardless. The `A` chain is shorter in absolute terms when `path` is deeper (more of the tree sits above `prev@path`), but the touch pattern (every leaf under `prev@path`, plus every ancestor of every such leaf) is unchanged.
 
-_Why patch the root, not the immediate parent?_
-Classification is a top-down walk: every packet that would have descended through any ancestor of `prev@path` first passes through the root's `z`.
-Restricting the root is therefore the smallest change that halts every relevant packet.
-If we just rejected packets at `prev@path`'s root, the ancestors of `prev@path` would still enqueue indices relevant to the packet pointing eventually to `prev@path`.
-This is a recipe for ill-formedness!
-So we would then need to walk up the entire ancestor chain, chaning `z`s along the way.
-Editing the root of the whole scheduler is a very neat solution in comparison.
+_Why touch every node on every quiesced push path._
+Under §3.2's parallel `push`, every node on the path from a packet's destination leaf to the system root mints an index via its local `z` independently of the others. If we restricted `z` only at a strict subset of those nodes (only the root of the tree, or only inside `C@path`), the rest would happily mint indices and enqueue them, leaving the tree in an ill-formed state. `Quiesce` therefore restricts uniformly, at the leaf (so it refuses to enqueue) and at every ancestor of every quiesced leaf (so no one mints a stray index). The cost is touching `|T|` leaves and the union of their ancestor chains; the gain is a rejection that preserves `|- C'`.
 
 _Cooperates with `Remove`._
 `Quiesce` does not by itself delete or drain the subtree; it only stops new traffic.
 The natural sequence `Quiesce(path); let the subtree at prev@path drain to empty; Remove(path)` is the `Retire` idiom of §4.1: after the `Quiesce`, no new packet enters `prev@path`; the drain consumes the packets already there through ordinary `pop` operations; and the `Remove` is then defined, since `prev@path` is empty.
-`Quiesce`'s restriction of the root's `z` makes the input restriction at `π` that `Remove` performs (§3.4.2) redundant in this sequence, but `Remove`'s output renumbering at `π` is still needed.
+`Quiesce`'s `z` restrictions on every push path to a quiesced leaf make the input restriction at `π` that `Remove` performs (§3.4.2) redundant in this sequence, but `Remove`'s output renumbering at `π` is still needed.
 
 The remaining productions all reuse the same obligations and arguments as `Add`, `Remove`, and `Quiesce`.
 We present them in compact form: closed-form `den`, the operationally interesting bits of the per-node rule, and the points where the soundness or atomicity argument differs in substance from what has already been shown.
