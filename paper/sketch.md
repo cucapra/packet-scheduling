@@ -365,8 +365,9 @@ Notes on the individual edits.
 - `Graft(ctx)` produces `ctx[prev]`: the policy context `ctx` is spawned around `prev`, with `prev` plugged into the context's sole hole.
   `Graft` carries no `path`: if the user wants localized graft-style edits, deeper in the tree, they must be realized as an idiom (§4), not by a path-bearing `Graft`.
 - `ChangeRoot(path)` promotes `prev@path` to the new root, discarding every ancestor above it.
-  It is well-defined only when `path` is non-empty and each internal node strictly above `prev@path` has a single arm (the one continuing toward `prev@path`), so the discarded ancestor chain carries no traffic of its own.
-  The richer reconfiguration of pruning a tree down to a subtree that originally shared ancestors with packet-bearing siblings is realized as an idiom (§4) that first drains and `Remove`s those siblings, reducing the chain above `prev@path` to the unary shape `ChangeRoot` requires.
+  It is well-defined only when `path` is non-empty and each internal node strictly above `prev@path` has a single arm (the one continuing toward `prev@path`), so the discarded ancestor chain carries only scheduling metadata, no traffic.
+  The chain may have been shaping `prev@path`'s pop order, and `ChangeRoot` discards that influence.
+  The richer reconfiguration of pruning a tree down to a subtree that originally shared ancestors with packet-bearing relatives is realized as the `PruneDownTo` idiom (§4), which first drains and `Remove`s those off-path subtrees, reducing the chain above `prev@path` to the unary shape `ChangeRoot` requires.
 
 A `Strict*` node is one introduced by `Designate`, a plain `Strict` is compiled from user input.
 Operationally we model the distinction as a one-bit `designated` flag that each node carries.
@@ -699,8 +700,17 @@ New ones can be added later without changing the framework, since an idiom is, i
   At the pol level this is the `Replace` of §3.4 (`den(Undesignate) ∘ den(Designate(_, B))`); the operator-facing idiom adds the `Quiesce` + drain in the middle so that the original subtree empties out before the collapse fires.
 
 - **`PruneDownTo(path)`** = `Retire(p_1) ; ... ; Retire(p_m) ; (true; ChangeRoot(path))`, where `p_1, ..., p_m` are the off-path subtrees along the route from the root to `path`.
-  Each `Retire` brings one ancestor a step closer to being unary; once all of them have fired, every ancestor along the path is unary, satisfying `ChangeRoot`'s precondition (§3.3).
-  The operator-facing way to say "abandon everything except this subtree."
+  Each `Retire` removes one off-path subtree; once all `m` have fired, every ancestor along the path is unary, satisfying `ChangeRoot`'s precondition (§3.3).
+  (If no off-path subtrees exist, `m = 0` and the idiom reduces to `(true; ChangeRoot(path))` alone.)
+  This idiom is the operator-facing way to say "abandon everything except this subtree."
+
+  For instance, if the running tree is `A(B(D, E(F, G)), C)` and the operator wants to retain only `D`, the off-path subtrees are `E(F, G)` and `C`, so `PruneDownTo` expands to `Retire(path-to-E) ; Retire(path-to-C) ; (true; ChangeRoot(path-to-D))`.
+  After both `Retire`s the tree is `A(B(D))`, every ancestor above `D` is unary, and `ChangeRoot` then promotes `D` to the new root.
+
+  [AM TODO: path stability across sequences.
+  In the example above, removing `E(F,G)` and `C` happens to leave `D`'s index path unchanged at `[0, 0]`, so `path-to-D` resolves the same way before and after the `Retire`s.
+  In a tree like `A(X, B(D, E), Y)`, removing `X` shifts `B` from `[1]` to `[0]` and `D` from `[1, 0]` to `[0, 0]`, so a path written at expansion time would be stale by the time `ChangeRoot` fires.
+  Two options: (i) declare that all paths in an idiom expansion are resolved against the _current_ tree at firing time, not the expansion-time tree. This is more in line with our writing so far, but this does mean that the operator needs to do a tremendous piece of mental math when specifying the path to `D`. (ii) let the operator state the paths against the tree that they are seeing, and let the system adjust those paths to make sense against the tree as it evolves.]
 
 [AM TK: short note on `nextnext`.
 This paper's transition planner engages with one `prev -> next` pair at a time.
