@@ -778,6 +778,98 @@ _Cooperates with `Remove`._
 The natural sequence `Quiesce(path); let the subtree at prev@path drain to empty; Remove(path)` is the `Retire` idiom of §4.1: after the `Quiesce`, no new packet enters `prev@path`; the drain consumes the packets already there through ordinary `pop` operations; and the `Remove` is then defined, since `prev@path` is empty.
 `Quiesce`'s restriction of the root's `z` makes the input restriction at `π` that `Remove` performs (§3.4.2) redundant in this sequence, but `Remove`'s output renumbering at `π` is still needed.
 
+The remaining productions all reuse the same obligations and arguments as `Add`, `Remove`, and `Quiesce`.
+We present them in compact form: closed-form `den`, the operationally interesting bits of the per-node rule, and the points where the soundness or atomicity argument differs in substance from what has already been shown.
+`Graft` is the one production whose argument is genuinely new, so we promote it back to the full treatment in §3.4.7.
+
+#### 3.4.4. `Designate(path, pol)`
+
+`Designate` wraps the existing subtree `prev@path` in a fresh `Strict*` node whose high-priority arm is that subtree and whose low-priority arm is the operator-supplied `pol`.
+The wrap is `pol`-visible as a `Strict`: the `designated` bit is operational only (§3.3).
+Per §3.3, every push, pop, and well-formedness check treats `Strict*(A, B)` exactly as `Strict(A, B)`, so the obligations below are stated against the ordinary `Strict` semantics of §3.2.
+
+##### Operational transition
+
+The transition `C' = [[Designate(path, pol)]](C)` is defined when `path` resolves to a node in `C` and the leaf labels of `pol` are disjoint from those of `C` (the time-stamp trick of §3.3 keeps this so even when the operator's `pol` syntactically overlaps `prev@path`).
+Let `P0` be the number of packets currently held under `C@path`, and let `N` denote the freshly introduced `Strict*` node.
+
+- _Outside the subtree at `path`, outside `N`, and off the ancestor chain to `path`:_ preserved verbatim. If `path` is non-empty, let `π ++ [k] = path`: at `π` the `node_state`, `slot_states`, and `pifo` are unchanged; the slot `k` that used to point to `C@path` now points to `N`, inheriting `C@π.slot_states[k]` (the per-arm meta is held by `π`, not by `N`, so the wrap is transparent to `π`); `z` is extended as described in the next bullet.
+- _At each proper ancestor of `path` (including the root, and including `π`):_ `node_state`, `slot_states`, and `pifo` preserved verbatim. The local `z` is extended to admit packets that classify into the new arm-1 subtree under `N`, mapping them to whichever child slot at this ancestor lies on the path down to `N`. Pre-existing mappings are untouched. This is the exact analog of `Add`'s ancestor `z`-extensions (§3.4.1).
+- _At `N`:_ `node_state = init_node_Strict()`; `slot_states = [init_slot_Strict(node_state, hi), init_slot_Strict(node_state, lo)]` for any priority ranks `hi < lo`; arm 0 is the old `C@path` (verbatim, including its entire subtree and contents); arm 1 is the §3.2-compiled control for `pol`; `pifo` is seeded with `P0` copies of `0` (one per packet still held under arm 0); `z` routes leaf-label predicates of the old subtree to slot `0` and leaf-label predicates of `pol` to slot `1`.
+- _Inside arm 1:_ the local control is what §3.2's compiler produces for `pol`.
+
+If `path` is empty, the entire control becomes `N`, with the old root sitting as arm 0.
+
+##### Characterization
+
+```
+den(Designate([],     p_low)) A      = Strict(A, p_low)
+den(Designate(i :: r, p_low)) (D ts) = D ( ts[ den(Designate(r, p_low)) (ts[i]) / i ] )
+```
+
+`den` returns `Strict`, not `Strict*`: the designated bit is `pol`-invisible.
+The proof is the same shape as `Add`'s: the operational rule leaves every node outside the wrap structurally intact, the new arm 1 is freshly compiled per §3.2, and the new `Strict*` reads as `Strict` at `pol`-level. Equality is on the nose, so `⌊C'⌋ =R den(Designate(path, pol))(⌊C⌋)`.
+
+##### Soundness, state preservation, atomicity
+
+Soundness holds at `N`: by construction the `0`-count in `N.pifo` equals the packet count under arm 0, and arm 1 holds no packets and no `1`-entries in `N.pifo`. Every node inside arm 0 is preserved verbatim, so its well-formedness count is inherited. At `π` (if `path` non-empty), `pifo` is unchanged, and the slot-`k` count `P0 + 0` matches the count that `C@path` had under `π`. The ancestor `z`-extensions touch no `pifo` and route no in-flight packet, so they affect only `push`es that arrive after the diff. State preservation is the standard split: arm 0 is verbatim; arm 1 is freshly compiled; `N`'s `node_state` and `slot_states` come from the listed `init` calls; everything else is verbatim. Atomicity: every in-flight packet under arm 0 sits at exactly the same position it did in `C@path`, since arm 0 is `C@path` verbatim. If `P0 > 0`, the smallest entry in `N.pifo` is `0`, so any pop that descends to `N` continues into arm 0 and returns exactly the packet a pre-diff pop would have. If `P0 = 0`, then by `|- C` no pop ever descends to `N` (the subtree at `path` was already empty), so the question is vacuous. Arm 1 first sees traffic only after a future `push`.
+
+Hardware realizes the `pifo` seeding of `P0` zeros in O(1) via the in-place super-node gadget of §6, rather than literally writing `P0` entries.
+
+#### 3.4.5. `Undesignate(path)`
+
+`Undesignate` unwraps a `Strict*(A, B)` at `path` whose `A`-arm is empty, leaving `B` in its slot.
+It is the structural inverse of `Designate` and the second half of the `Replace` idiom (§4.1).
+
+##### Operational transition
+
+Defined when `path` resolves to `C@path`, `C@path` carries the `designated` bit (so it is a `Strict*` introduced by an earlier `Designate`), and arm 0 of `C@path` is empty.
+Let `N = C@path`.
+
+- _Inside `B` (arm 1 of `N`):_ preserved verbatim, every node.
+- _At `π = parent(path)`_ (if `path` is non-empty, with `k` the last index): `node_state`, `pifo`, and `z` unchanged; `slot_states[k]` preserved verbatim (the wrapper inherited it at `Designate` time, and the unwrap returns it unchanged); slot `k` now points to `B` rather than to `N`. `N` itself and its arm-0 stub are discarded.
+- If `path` is empty, the new root is `B`.
+
+##### Characterization
+
+```
+den(Undesignate([]))     (Strict(A, B)) = B
+den(Undesignate(i :: r)) (D ts)         = D ( ts[ den(Undesignate(r)) (ts[i]) / i ] )
+```
+
+The base case consumes the `Strict` wrapper (which on the `pol` side is what the `Strict*` reads as). Proof shape is `Remove`'s: outside `N` nothing structural moves, and at `N` the `Strict` wrapper is dropped. So `⌊C'⌋ =R den(Undesignate(path))(⌊C⌋)`.
+
+##### Soundness, state preservation, atomicity
+
+At `π`, `pifo` is unchanged; slot `k`'s count was `0 + |B|` under `N` and is now `|B|` under `B` directly, so the count matches. Inside `B`, every node is verbatim. `N`'s `node_state`, `slot_states`, and `pifo` are discarded together with `N`: by precondition `N.pifo` contains no `0`-entries, and its `1`-entries are also discarded harmlessly, since `π.pifo`'s unchanged `k`-entries now route pops directly to `B` rather than through `N` (the only step we skip is the redundant "Strict* says go to arm 1" routing, which arm 0 being empty had already forced). State preservation: standard verbatim everywhere outside `N`; `N`'s local state vanishes. Atomicity: arm 0 holds no packet by precondition, so `Strict*`'s "favor arm 0" behavior was already routing every pop to arm 1; the unwrap preserves this routing on the nose.
+
+#### 3.4.6. `ChangeWeight(path, weight)`
+
+`ChangeWeight` overwrites the WFQ weight that `prev@path`'s parent uses for it (§3.3).
+Weights live in `slot_state`, not in `pol`: `pol`'s WFQ records only an arity, and per-arm weights are operator-supplied at compile or `Add` time and held thereafter only in the running control's `slot_state.weight` field.
+`ChangeWeight` is therefore `pol`-invisible, in the same sense as `Quiesce` (§3.4.3): its entire effect lies in operational state that `pol` does not record.
+`path` must be non-empty and the parent at `π = path[:-1]` must run WFQ; let `k` be the last index of `path`.
+
+##### Operational transition
+
+- _At `π`:_ `node_state` (the parent's WFQ virtual time) unchanged; `slot_states[k].weight` overwritten with the new weight; every other field of `slot_states[k]` preserved verbatim, including the virtual-finish tag that records how far slot `k` has run in the current round; other `slot_states`, `pifo`, and `z` unchanged.
+- _Everywhere else:_ preserved verbatim.
+
+##### Characterization
+
+```
+den(ChangeWeight(path, w)) p = p
+```
+
+defined whenever `path` resolves in `p` and the parent at `path`'s prefix is `WFQ`.
+Proof: every node's `node_state`, `slot_states.discipline`, `pifo`, and child list are preserved verbatim (the rewritten field is in `slot_state`, which the compilation rule strips), so `⌊C'⌋ = ⌊C⌋` on the nose. Hence `⌊C'⌋ =R den(ChangeWeight(path, weight))(⌊C⌋)`.
+
+##### Soundness, state preservation, atomicity
+
+No `pifo` entry is rewritten, no subtree is touched, no packet is relocated, so well-formedness is inherited everywhere. State preservation: the targeted weight field is the intended edit; every other field at `π` and everywhere else is verbatim. Atomicity: ranks for in-flight `pifo` entries were burned in by `push` at the old weight and remain fixed; the new weight affects only the rank computation for future pushes. So a `pop` immediately after the diff returns exactly what a `pop` immediately before would have.
+
+The virtual-finish tag at slot `k` is deliberately preserved rather than reset: resetting would either reward or penalize the arm by yanking it out of the current round, whereas `init_slot_WFQ` (§3.2) was designed precisely to let a fresh arm "join the current round" without disturbing siblings, and the same principle applies to a weight change on an already-running arm.
+
 ### 3.5 Preserving this proof down to hardware
 
 §3.4 proves soundness at the tree-diff level, where each atomic edit (`Add`, `Quiesce`, `Remove`, ...) carries a well-formed tree to a well-formed tree.
