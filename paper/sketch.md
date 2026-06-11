@@ -536,7 +536,8 @@ Retiring or replacing a subtree that still holds packets is therefore not `Remov
 
 Let `path = π ++ [k]`, where `π` is the path to the parent of the removed subtree and `k` is the slot index at that parent.
 Let `D` be the discipline at `π`.
-The transition `C' = [[Remove(path)]](C)` is stated per node.
+The transition `C' = [[Remove(path)]](C)` is defined when (i) `path` is non-empty and resolves to a node in `C`, (ii) the subtree at `path` is empty, and (iii) `C@path` does not carry the `Strict*` flag (the planner reaches a `Strict*` only through `Undesignate`, §3.4.4).
+We state it per node.
 
 The topology loses the arm at slot `k` of `π`; arms at slots `0, ..., k-1` keep their indices; arms at slots `k+1, ...` shift down by one.
 The local controls update as follows.
