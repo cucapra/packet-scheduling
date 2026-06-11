@@ -770,7 +770,6 @@ The natural sequence `Quiesce(path); let the subtree at prev@path drain to empty
 
 The remaining productions all reuse the same obligations and arguments as `Add`, `Remove`, and `Quiesce`.
 We present them in compact form: closed-form `den`, the operationally interesting bits of the per-node rule, and the points where the soundness or atomicity argument differs in substance from what has already been shown.
-`Graft` is the one production whose argument is genuinely new, so we promote it back to the full treatment in §3.4.8.
 
 #### 3.4.4. `Designate(path, pol)`
 
@@ -911,6 +910,10 @@ _Pol-level effect._
 The `pol` changes from the unary chain wrapping `prev@path` (e.g., `Strict(prev@path)` or `LSTF(prev@path)`) to just `prev@path`.
 This is `pol`-visible: the root discipline observably changes, which is the substantive content of the production.
 For the concrete disciplines (Strict, RR, WFQ) the `pol`-visible change happens to coincide with no in-flight reordering, per the previous Note; for more general disciplines the operator has chosen to give up whatever the chain was shaping.
+
+#### 3.4.8. `Graft(ctx)`
+
+[AM TODO: Anshuman wants to discuss this IRL.]
 
 ### 3.5 Preserving this proof down to hardware
 
