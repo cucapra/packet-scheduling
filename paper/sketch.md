@@ -348,7 +348,7 @@ Brief notes on each production:
 - `Add(path, pol, meta?)` appends `pol` as a new child of `p1@path`. `meta?` carries per-arm bookkeeping for the new arm, if `p1@path` requires it.
 - `ChangeWeight(path, weight)` overwrites the WFQ weight that `p1@path`'s parent uses for it.
 - `Quiesce(path)` prevents the subtree `p1@path` from receiving any new traffic.
-- `Remove(path)` removes `p1@path`, which must be empty.
+- `Remove(path)` removes `p1@path`; the subtree at `path` must be empty.
 - `Designate(path, pol)` wraps `p1@path` into `Strict*(p1@path, pol)` in place, making `pol` the _designated survivor_ of `p1@path`. The need for the distinguished discipline `Strict*` is explained in §3.4.5.
 - `Undesignate(path)` collapses the `Strict*(A, B)` that lives at `p1@path` into `B`, with `B` inheriting the slot and per-arm `meta?`. `A` must be empty.
 - `ChangeRoot(path)` promotes `p1@path` to the new root, discarding the ancestor chain above it. The ancestor chain must be a unary "vine".
@@ -358,23 +358,23 @@ When `p1 =R p2` the grammar emits no diff at all: the reconfiguration is the emp
 
 ### 3.4 Discharging the Per-Production Obligations
 
-Each production of §3.3's grammar carries five obligations.
-§3.3's _hardware-realizable_ demand maps onto the definition obligation (exhibit `[[δ]]`) and the atomicity obligation (the rewrite is invisible to the user's pop stream); the substrate-side promise that the commit lands as a single instant is deferred to §6.
-§3.3's _pol-explainable_ demand maps onto the characterization obligation (give `den(δ)` matched to `[[δ]]` via `⌊·⌋`).
-The remaining two, preservation of `|-` and preservation of state, are new to §3.4: they ensure `[[δ]](C)` is itself a well-formed control with fully specified state, without which the characterization equation would be vacuous and §4's transition planner would have no firm ground to stand on.
+The two demands that we stated at a high level in §3.3 turn into five concrete obligations that we must discharge for every production of the grammar.
+
+- **Hardware-realizable** creates four obligations.
+  For the substrate to install `[[δ]]` atomically, the per-production rule must specify what `[[δ]]` does, produce a target that is a valid control with fully specified state, and leave the user's `pop` stream undisturbed. Each of these is a concrete obligation:
+  - _Definition._ Specify `[[δ]] : control ⇀ control` together with the preconditions under which it is defined; outside that region `δ` is _incompatible_ with `C` and `[[δ]](C)` is undefined.
+  - _Preservation of `|-`._ `|- C` implies `|- C'`.
+    Any packets or index entries `[[δ]]` drops or adds must leave the per-node pifo and packet counts in balance.
+  - _Preservation of state._ At every node structurally shared between `C` and `C'` and outside the production's local edit site, the local `state` is preserved verbatim.
+    At the edit site, and at every node of a freshly-spawned subtree, the state is exactly what the production's `init_node_D` / `init_slot_D` (§3.2) invocation prescribes.
+  - _Preservation of observation._ Modeling `[[δ]]` as a function pins down what it means to be "atomic": the substrate commits the rewrite specified by `[[δ]]` _between two consecutive `push`/`pop` operations_, so there is no intermediate state for downstream sections to reason about. We defer to §6 that the substrate can slip this change in. In this section, we must show per production that the commit is invisible to the user's `pop` stream. Concretely: every in-flight packet in `C` sits in some `pifo` that survives verbatim into `C'`, and no live `pifo` entry is rewritten, so a `pop` immediately after the diff returns exactly what a `pop` immediately before would have returned.
+- **Pol-explainable** creates one obligation:
+  - _Characterization._ Give `den(δ)` in closed form and prove `⌊C'⌋ =R den(δ)(⌊C⌋)`.
+    The equation is up to `=R`, not literal `=`: `den` returns a definite representative of an `=R`-class, and `[[δ]]` is free to land on any other representative of the same class.
+    Transaction-only effects (e.g., `Quiesce`'s shrinking of `z`'s domain) sit outside `den`; they are fixed by the operational rule, not by this equation.
 
 Write `C` for the pre-edit control and `C'` for the post-edit control.
 The last four obligations assume `[[δ]](C)` is defined.
-
-- _Definition._ Specify `[[δ]] : control ⇀ control` together with the preconditions under which it is defined; outside that region `δ` is _incompatible_ with `C` and `[[δ]](C)` is undefined. Modeling `[[δ]]` as a single (partial) function pins down what it means to be "atomic": the substrate commits the rewrite specified by `[[δ]]` _between two consecutive `push`/`pop` operations_, so there is no intermediate state for downstream sections to reason about.
-- _Atomicity._ The notion just defined holds at this level: every in-flight packet in `C` sits in some `pifo` that survives verbatim into `C'`, and no live `pifo` entry is rewritten, so a `pop` immediately after the diff returns exactly what a `pop` immediately before would have.
-- _Preservation of `|-`._ `|- C` implies `|- C'`.
-  Any packets or index entries `[[δ]]` drops or adds must leave the per-node pifo and packet counts in balance.
-- _Preservation of state._ At every node structurally shared between `p1` and `p2` and outside the production's local edit site, the local `state` is preserved verbatim.
-  At the edit site, and at every node of a freshly-spawned subtree, the state is exactly what the production's `init_node_D` / `init_slot_D` (§3.2) invocation prescribes.
-- _Characterization._ Give `den(δ)` in closed form and prove `⌊C'⌋ =R den(δ)(⌊C⌋)`.
-  The equation is up to `=R`, not literal `=`: `den` returns a definite representative of an `=R`-class, and `[[δ]]` is free to land on any other representative of the same class.
-  Transaction-only effects (e.g., `Quiesce`'s shrinking of `z`'s domain) sit outside `den`; they are fixed by the operational rule, not by this equation.
 
 The denotational rules below frequently read, overwrite, and splice child lists.
 Let us fix some notation.
@@ -447,9 +447,9 @@ Nothing needs repair.
 
 Outside the edit site the local control (and thus its `state`) is preserved verbatim, including at each proper ancestor of `π`, where only `z` changes.
 Inside the new subtree, the state is freshly compiled per §3.2.
-At `π`, `node_state` is unchanged and `slot_states` is appended with exactly `init_slot_D(C@π.node_state, meta?)`, as §3.4 prescribes at the edit site.
+At `π`, `node_state` is unchanged and `slot_states` is appended with exactly `init_slot_D(C@π.node_state, meta?)`, as the Preservation of state obligation prescribes at the edit site.
 
-##### Atomicity
+##### Preservation of observation
 
 No in-flight packet straddles the diff.
 At the diff instant, every packet sits in some pre-existing node's `pifo`, and each such packet survives into the same `pifo` at the same slot index in `C'`.
@@ -467,7 +467,7 @@ Because the new subtree is empty, no packet is yet routed through any ancestor's
 No ancestor pifo is rewritten, and the edit is otherwise confined to `π` and the fresh subtree below it.
 
 The remaining productions all reuse the same obligations and arguments as `Add`.
-We present them in compact form: closed-form `den`, the operationally interesting bits of the per-node rule, and the points where any of the preservation or atomicity arguments differs in substance from what has already been shown.
+We present them in compact form: closed-form `den`, the operationally interesting bits of the per-node rule, and the points where any of the preservation arguments differs in substance from what has already been shown.
 
 #### 3.4.2. `ChangeWeight(path, weight)`
 
@@ -491,11 +491,11 @@ defined whenever `path` resolves in `p` and the parent at `path`'s prefix is `WF
 Proof: every node's `node_state`, `slot_states.discipline`, `pifo`, and child list are preserved verbatim (the rewritten field is in `slot_state`, which the compilation rule strips), so `⌊C'⌋ = ⌊C⌋` on the nose.
 Hence `⌊C'⌋ =R den(ChangeWeight(path, weight))(⌊C⌋)`.
 
-##### Preservation of |-, state, atomicity
+##### Preservation of |-, state, observation
 
-No `pifo` entry is rewritten, no subtree is touched, no packet is relocated, so well-formedness is inherited everywhere.
+Preservation of `|-`: no `pifo` entry is rewritten, no subtree is touched, no packet is relocated, so well-formedness is inherited everywhere.
 Preservation of state: the targeted weight field is the intended edit; every other field at `π` and everywhere else is verbatim.
-Atomicity: ranks for in-flight `pifo` entries were burned in by `push` at the old weight and remain fixed; the new weight affects only the rank computation for future pushes.
+Preservation of observation: ranks for in-flight `pifo` entries were burned in by `push` at the old weight and remain fixed; the new weight affects only the rank computation for future pushes.
 So a `pop` immediately after the diff returns exactly what a `pop` immediately before would have.
 
 The virtual-finish tag at slot `k` is deliberately preserved rather than reset: resetting would either reward or penalize the arm by yanking it out of the current round, whereas `init_slot_WFQ` (§3.2) was designed precisely to let a fresh arm "join the current round" without disturbing siblings, and the same principle applies to a weight change on an already-running arm.
@@ -535,11 +535,11 @@ Every node's `node_state`, `slot_states`, `pifo`, and child list are preserved v
 Equality is on the nose, so `⌊C'⌋ =R ⌊C⌋ = den(Quiesce(path))(⌊C⌋)`.
 This is the showcase case of a diff whose semantic content lives entirely in `z`: the characterization theorem honestly reports it as a no-op on `pol`, because nothing structural moved.
 
-##### Preservation of |-, state, atomicity
+##### Preservation of |-, state, observation
 
-Every node's `node_state`, `slot_states`, `pifo`, and child subtree are preserved verbatim, so well-formedness counts are inherited everywhere and `state` is preserved at every node.
+Preservation of `|-` and state: every node's `node_state`, `slot_states`, `pifo`, and child subtree are preserved verbatim, so well-formedness counts are inherited everywhere and `state` is preserved at every node.
 The `z` restrictions across `T ∪ A` touch no `pifo` entry and no stored packet; they only refuse future `push`es.
-Atomicity follows from §3.4.1's argument: every in-flight packet sits in some pre-existing `pifo` that survives verbatim, so a `pop` immediately after the diff returns exactly what a `pop` immediately before would have.
+Preservation of observation follows from §3.4.1's argument: every in-flight packet sits in some pre-existing `pifo` that survives verbatim, so a `pop` immediately after the diff returns exactly what a `pop` immediately before would have.
 
 ##### Notes
 
@@ -551,14 +551,14 @@ The cost is touching `|T|` leaves and the union of their ancestor chains; the ga
 
 _Cooperates with `Remove`._
 `Quiesce` does not by itself delete or drain the subtree; it only stops new traffic.
-The natural sequence `Quiesce(path); let the subtree at p1@path drain to empty; Remove(path)` is the `Retire` idiom of §4.1: after the `Quiesce`, no new packet enters `p1@path`; the drain consumes the packets already there through ordinary `pop` operations; and the `Remove` is then defined, since `p1@path` is empty.
+The natural sequence `Quiesce(path); let the subtree at path drain to empty; Remove(path)` is the `Retire` idiom of §4.1: after the `Quiesce`, no new packet enters the subtree at `path`; the drain consumes the packets already there through ordinary `pop` operations; and the `Remove` is then defined, since the subtree at `path` is empty.
 `Quiesce`'s `z` restrictions on every push path to a quiesced leaf make the input restriction at `π` that `Remove` performs (§3.4.4) redundant in this sequence, but `Remove`'s output renumbering at `π` is still needed.
 
 #### 3.4.4. `Remove(path)`
 
 `Remove` is the grammar's one structural deletion.
 It unhooks the subtree `p1@path` from its parent, drops the vacated slot, and renumbers any higher siblings.
-It is defined only when `p1@path` is _empty_; the Notes below explain why.
+It is defined only when the subtree at `path` is _empty_; the Notes below explain why.
 Retiring or replacing a subtree that still holds packets is therefore not `Remove`'s job alone: it is realized as a _sequence_ that first drains the subtree and only then removes it (see §4).
 
 ##### Definition
@@ -596,12 +596,12 @@ The recursive case walks one step deeper into child `i` and writes the result ba
 Proof shape is `Add`'s: outside the removed subtree every node is structurally intact (ancestors verbatim, surviving siblings verbatim), and at `π` the child list shrinks by dropping slot `k`.
 Equality is on the nose, so `⌊C'⌋ =R den(Remove(path))(⌊C⌋)`.
 
-##### Preservation of |-, state, atomicity
+##### Preservation of |-, state, observation
 
-At `π`, the precondition gives `C@π.pifo` no entry equal to `k`, so the renumbering `[-/k]` deletes no values; surviving slots `i' < k` of `C'@π` inherit their matched counts from slot `i'` of `C@π`, and surviving slots `i' >= k` inherit theirs from slot `i' + 1` (same subtree, renumbered entries).
-Every proper ancestor and every surviving sibling is verbatim, so its well-formedness count is inherited and its `state` is preserved.
-No `init`-rule fires; `slot_states` drops slot `k`'s entry but every other entry is preserved verbatim, with its position shifted to match the new arm order.
-Atomicity follows from §3.4.1's argument applied to the surviving structure: every in-flight packet sits in a preserved `pifo` at the same slot (if `< k`) or one slot lower (if `> k`), and every surviving `pifo` entry points to the same child subtree after renumbering, so a `pop` immediately after the diff returns exactly what a `pop` immediately before would have.
+Preservation of `|-`: at `π`, the precondition gives `C@π.pifo` no entry equal to `k`, so the renumbering `[-/k]` deletes no values; surviving slots `i' < k` of `C'@π` inherit their matched counts from slot `i'` of `C@π`, and surviving slots `i' >= k` inherit theirs from slot `i' + 1` (same subtree, renumbered entries).
+Every proper ancestor and every surviving sibling is verbatim, so its well-formedness count is inherited.
+Preservation of state: every proper ancestor and surviving sibling preserves its `state` verbatim; no `init`-rule fires, and `slot_states` drops slot `k`'s entry while every other entry is preserved verbatim, with its position shifted to match the new arm order.
+Preservation of observation follows from §3.4.1's argument applied to the surviving structure: every in-flight packet sits in a preserved `pifo` at the same slot (if `< k`) or one slot lower (if `> k`), and every surviving `pifo` entry points to the same child subtree after renumbering, so a `pop` immediately after the diff returns exactly what a `pop` immediately before would have.
 The restriction at `C'@π.z` comes into play only for `push`es that arrive after the diff fires.
 
 ##### Notes
@@ -723,18 +723,21 @@ den(Designate(i :: r, p_low)) (D ts) = D ( ts[ den(Designate(r, p_low)) (ts[i]) 
 The proof is the same shape as `Add`'s: the operational rule leaves every node outside the wrap structurally intact, the new arm 1 is freshly compiled per §3.2, and the new `Strict*` reads as `Strict` at `pol`-level.
 Equality is on the nose, so `⌊C'⌋ =R den(Designate(path, pol))(⌊C⌋)`.
 
-##### Preservation of |-, state, atomicity
+##### Preservation of |-, state, observation
 
 Preservation of `|-` holds at `N`: by construction the `0`-count in `N.pifo` equals the packet count under arm 0, and arm 1 holds no packets and no `1`-entries in `N.pifo`.
 Every node inside arm 0 is preserved verbatim, so its well-formedness count is inherited.
 At `π` (if `path` non-empty), `pifo` is unchanged, and the slot-`k` count `P0 + 0` matches the count that `C@path` had under `π`.
 The ancestor `z`-extensions touch no `pifo` and route no in-flight packet, so they affect only `push`es that arrive after the diff.
 Preservation of state is the standard split: arm 0 is verbatim; arm 1 is freshly compiled; `N`'s `node_state` and `slot_states` come from the listed `init` calls; everything else is verbatim.
-Atomicity: every in-flight packet under arm 0 sits at exactly the same position it did in `C@path`, since arm 0 is `C@path` verbatim.
+Preservation of observation: every in-flight packet under arm 0 sits at exactly the same position it did in `C@path`, since arm 0 is `C@path` verbatim.
 If `P0 > 0`, the smallest entry in `N.pifo` is `0`, so any pop that descends to `N` continues into arm 0 and returns exactly the packet a pre-diff pop would have.
 If `P0 = 0`, then by `|- C` no pop ever descends to `N` (the subtree at `path` was already empty), so the question is vacuous.
 Arm 1 first sees traffic only after a future `push`.
 
+##### Notes
+
+_Hardware realization._
 Hardware realizes the `pifo` seeding of `P0` zeros in O(1) via the in-place super-node gadget of §6, rather than literally writing `P0` entries.
 
 #### 3.4.6. `Undesignate(path)`
@@ -763,13 +766,13 @@ The base case consumes the `Strict` wrapper (which on the `pol` side is what the
 Proof shape is `Remove`'s: outside `N` nothing structural moves, and at `N` the `Strict` wrapper is dropped.
 So `⌊C'⌋ =R den(Undesignate(path))(⌊C⌋)`.
 
-##### Preservation of |-, state, atomicity
+##### Preservation of |-, state, observation
 
-At `π`, `pifo` is unchanged; slot `k`'s count was `0 + |B|` under `N` and is now `|B|` under `B` directly, so the count matches.
+Preservation of `|-`: at `π`, `pifo` is unchanged; slot `k`'s count was `0 + |B|` under `N` and is now `|B|` under `B` directly, so the count matches.
 Inside `B`, every node is verbatim.
 `N`'s `node_state`, `slot_states`, and `pifo` are discarded together with `N`: by precondition `N.pifo` contains no `0`-entries, and its `1`-entries are also discarded harmlessly, since `π.pifo`'s unchanged `k`-entries now route pops directly to `B` rather than through `N` (the only step we skip is the redundant "Strict* says go to arm 1" routing, which arm 0 being empty had already forced).
 Preservation of state: standard verbatim everywhere outside `N`; `N`'s local state vanishes.
-Atomicity: arm 0 holds no packet by precondition, so `Strict*`'s "favor arm 0" behavior was already routing every pop to arm 1; the unwrap preserves this routing on the nose.
+Preservation of observation: arm 0 holds no packet by precondition, so `Strict*`'s "favor arm 0" behavior was already routing every pop to arm 1; the unwrap preserves this routing on the nose.
 
 #### 3.4.7. `ChangeRoot(path)`
 
@@ -796,12 +799,12 @@ defined whenever `path` is non-empty and resolves in `p`.
 The realizes-relation propagates structurally: if `C` realizes `p`, then `C@path` realizes `p@path`, since compilation is per-node and the discipline at each surviving node is unchanged.
 Equality is on the nose, so `⌊C'⌋ =R p@path = den(ChangeRoot(path))(⌊C⌋)`.
 
-##### Preservation of |-, state, atomicity
+##### Preservation of |-, state, observation
 
 Preservation of `|-`: `|- C` is a conjunction of per-node well-formedness obligations, and the subset of those obligations attached to `C@path`'s nodes constitutes `|- C@path`, which is exactly `|- C'`.
 The discarded ancestors' obligations are simply forgotten.
 Preservation of state: standard verbatim within `C@path`; ancestor state is gone.
-Atomicity in our formal sense (§3.3) holds: every in-flight packet sits in some `pifo` within `C@path`'s subtree (the ancestor `pifo`s held routing entries, not packets), all preserved verbatim.
+Preservation of observation holds: every in-flight packet sits in some `pifo` within `C@path`'s subtree (the ancestor `pifo`s held routing entries, not packets), all preserved verbatim.
 A pop immediately after the diff returns exactly what a pop immediately before would have: a pre-diff pop descends through the unary chain by reading some slot-`0` entry at each ancestor (regardless of which entry, since with a single arm every choice resolves to "recurse via arm 0") and ultimately pops from `C@path`'s root; a post-diff pop acts on `C@path`'s root directly.
 
 ##### Notes
@@ -815,7 +818,7 @@ The richer reconfiguration of pruning to a subtree whose ancestor chain branches
 _What the chain carries, and what is discarded._
 An internal node's `node_state`, rank function, and `pifo` ordering exist to pick among siblings.
 For the concrete disciplines this paper targets, those mechanisms therefore degenerate at a unary node: Strict's all-zero ranks reduce to FIFO, RR's cursor is irrelevant with one arm, and WFQ's virtual-finish times under a single weight are monotone in arrival order.
-For these disciplines the unary chain is operationally a passthrough, and the immediate-pop atomicity above extends to every subsequent pop and push.
+For these disciplines the unary chain is operationally a passthrough, and the immediate-pop observation-preservation above extends to every subsequent pop and push.
 
 This is not, however, a universal property of unary internal nodes.
 A discipline whose rank function depends on per-packet attributes rather than on arm selection (LSTF being the canonical example, with rank determined by each packet's deadline) can keep its `pifo` non-FIFO at a unary node, and that ordering may shape what an external observer sees downstream depending on the surrounding PIFO-tree semantics.
