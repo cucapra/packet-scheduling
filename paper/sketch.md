@@ -306,36 +306,30 @@ The risks are of two flavors:
 
 ### 3.3 A Grammar for Tree Diffs
 
-§3.2 set up the operator-system loop: the operator writes `p1`, we compile and echo back `p1' = ⌊C1⌋`, and pushes and pops carry the running control to some `C1'` still realizing `p1'`.
-When the operator asks for a new `p2`, SOTA would compile `p2` into a fresh `C2` and clobber `C1'` with it.
-We want the same user-observable result while being less disruptive to unaffected parts of the running control.
+We fix a small grammar `δ` of atomic edits (we use "atomic" informally here; §3.4 pins it down formally).
+Each production of the grammar has two readings, both defined per-production in §3.4: an operational rewrite `[[δ]] : control ⇀ control`, and a closed-form pol-level effect `den(δ) : pol ⇀ pol`.
+The grammar is shaped by two demands.
 
-A change to the live control is _atomic_ when its effect falls between two observable operations: in any sequence of `push`/`pop` operations `op_1, op_2, ...` served by the scheduler, if the change fires between `op_N` and `op_{N+1}`, then `op_1, ..., op_N` are served entirely by the pre-change control and `op_{N+1}, ...` are served entirely by the post-change control.
-No operation straddles the change, and no operation sees an intermediate state.
-§1's running example described this informally.
+- **Hardware-realizable.** A production is admitted into the grammar iff `[[δ]]` can be committed atomically by the hardware substrate (§6).
+- **Pol-explainable.** Every production has a `den(δ)`; for transaction-only diffs (whose effect lives entirely in `z`), `den(δ)` is the identity on `pol`. This is what lets §4 sniff, check, and echo back the `pol`-level meaning of the running control to the user.
 
-We fix a small grammar of atomic edits.
-Each production denotes a single primitive that acts on a live control `C` and produces a new control.
-The grammar in this section is the alphabet from which the transition planner (§4) assembles a sequence whose operational composition takes the presently running control `C` (which realizes the operator's prior request `p1`) to a new control realizing the operator's new request `p2` _without clobbering_ `C`.
-Most productions are `pol`-visible: their effect shows up in `p2`, and a comparison of `p1` against `p2` is enough to understand them.
-Others are transaction-only: their effect lives entirely in `z`, leaving the `pol`-level skeleton untouched.
+§3.4's per-production soundness theorem ties the two readings together: `⌊[[δ]](C)⌋ =R den(δ)(⌊C⌋)`.
 
-An edit names _where_ in the tree the change lands (a path from the root) and _what_ the change is.
-We write `p1@path` for the subtree of `p1` reached by following `path` down from its root.
+Each edit names _where_ in the tree the change lands and _what_ the change is; we write `p1@path` for the subtree of `p1` reached by following `path` down from its root.
 
 ```
 δ ::= Add          (path, pol, meta?)
+    | ChangeWeight (path, weight)
     | Quiesce      (path)
+    | Remove       (path)
     | Designate    (path, pol)
     | Undesignate  (path)
-    | Remove       (path)
-    | ChangeWeight (path, weight)
-    | Graft        (ctx)
     | ChangeRoot   (path)
+    | Graft        (ctx)
 
 path   ::= []  |  i :: path             // i is a child index
-ctx    ::= □                            // the unique hole; takes no children
-         | D(pol, ..., ctx, ..., pol)   // n children total; exactly one is itself a context
+ctx    ::= □                            // the unique hole
+         | D(pol, ..., ctx, ..., pol)   // exactly one child is itself a context
 weight ::= a positive real
 ```
 
@@ -346,56 +340,21 @@ We write `ctx[s]` for the ordinary, hole-free tree obtained by plugging the hole
 A `ctx` is _valid_ iff `ctx[s]` is a valid `pol` for some valid `s`.
 The plug is total, and for any valid `ctx` and any valid `s`, `ctx[s]` is a valid `pol` whenever the leaf labels of `ctx` and `s` are disjoint.
 
-The grammar is shaped by what we can realize atomically in hardware (§6): each production is exactly an edit for which we have a substrate-level commit.
-That commit slips in between two consecutive `push`/`pop` operations.
+Edits that would have to destroy structure still holding packets are expressly _not_ in the grammar: our one structural deletion, `Remove`, is emitted by our transition planner (§4) only after ensuring that the subtree being removed is empty.
+The richer reconfigurations an operator may want (retiring a subtree that has packets buffered in it, replacing a subtree in-place, pruning a tree down to a subtree) are realized as _sequences_ of these productions (§4).
 
-Edits that would have to destroy structure still holding packets are expressly _not_ in the grammar: our one structural deletion, `Remove`, is emitted by our transition planner (§5) only after ensuring that the subtree being removed is empty.
-The richer reconfigurations an operator may want (retiring a subtree that has packets buffered in it, replacing a subtree in-place, pruning a tree down to a subtree) are realized instead as _idioms_: named sequences of these atomic edits.
-§4 makes these precise.
+Brief notes on each production:
 
-Notes on the individual edits.
+- `Add(path, pol, meta?)` appends `pol` as a new child of `p1@path`. `meta?` carries per-arm bookkeeping for the new arm, if `p1@path` requires it.
+- `ChangeWeight(path, weight)` overwrites the WFQ weight that `p1@path`'s parent uses for it.
+- `Quiesce(path)` prevents the subtree `p1@path` from receiving any new traffic.
+- `Remove(path)` removes `p1@path`, which must be empty.
+- `Designate(path, pol)` wraps `p1@path` into `Strict*(p1@path, pol)` in place, making `pol` the _designated survivor_ of `p1@path`. The need for the distinguished discipline `Strict*` is explained in §3.4.5.
+- `Undesignate(path)` collapses the `Strict*(A, B)` that lives at `p1@path` into `B`, with `B` inheriting the slot and per-arm `meta?`. `A` must be empty.
+- `ChangeRoot(path)` promotes `p1@path` to the new root, discarding the ancestor chain above it. The ancestor chain must be a unary "vine".
+- `Graft(ctx)` produces `ctx[p1]` by plugging the running `p1` into `ctx`'s hole.
 
-- `Add(path, pol, meta?)` appends `pol` as a new arm under `p1@path`.
-  Since arm order at any internal node is `=R`-irrelevant (§3.2), we have the freedom to just _append_ the new arm, leaving other arms undisturbed.
-  The third argument `meta?` is the new arm's per-arm metadata: a weight for a `WFQ` parent, a priority rank for a `Strict` parent, absent (`ε`) for an `RR` parent.
-  `init_slot_D` reads `meta?` when seeding the new arm's `slot_state` (§3.4.1).
-  Add is _non-disturbing_: it writes only the new arm's `slot_state`; every existing arm's `slot_state` is preserved verbatim.
-  The new arm carries its own `meta?`, leaving the others' untouched.
-- `Quiesce(path)` prevents `p1@path` from receiving new traffic.
-  For every leaf `L` under `p1@path`, `L`'s `z` is restricted to reject all traffic it used to accept, and every ancestor of `L`, up to and including the scheduler's root, has its `z` correspondingly restricted to not accept that traffic.
-  Topology, disciplines, and labels are unchanged; the edit's whole effect is in the touched `z`s, so it is `pol`-invisible.
-- `Designate(path, pol)` converts `p1@path` into `Strict*(p1@path, pol)` in place.
-  That is, we introduce a new node with discipline `Strict*`, with the existing subtree `p1@path` as its high-priority sibling and `pol` as its low-priority sibling.
-  `pol` is the _designated survivor_ of `p1@path`.
-  We make no assumption about how much overlap there is between `p1@path`'s flows and `pol`'s flows.
-  In case there is overlap, we simply use timing information (the moment of the request) to distinguish old `p1@path` traffic from new `pol` traffic.
-  This keeps the mid-sequence `pol`'s leaf labels disjoint by construction.
-  Literally inserting this `Strict*` node in the middle of the running tree would be expensive, as it would require relocating the entire subtree `p1@path` one PE deeper (because siblings and cousins must share a PE, see §2.1).
-  §6 features a new in-place hardware gadget that gives us the `Strict*` semantics described here without incurring that relocation cost.
-- `Undesignate(path)` collapses `p1@path`, which must be a `Strict*(A, B)` node where `A` is empty, into `B`.
-  The edit is in place, in the sense that `B` inherits `Strict*(A,B)`'s slot and per-arm `meta?` under the parent, and the parent now routes through that slot directly to `B`.
-- `Remove(path)` structurally removes `p1@path`, dropping its slot and renumbering any higher siblings.
-  The subtree `p1@path` must be empty; §3.4.4 discusses why.
-  `Remove`'s precondition rules out `Strict*` targets.
-- `ChangeWeight(path, weight)` overwrites the weight that `p1@path`'s parent uses for it.
-  Concretely it writes the `weight` field of `p1@path`'s `slot_state` (one of the per-arm fields seeded by `init_slot_WFQ`); `push`/`pop` only read this field, so the only way it changes is via this diff.
-  It is well-defined only when the parent at `path`'s prefix runs WFQ and `path` is non-empty.
-- `Graft(ctx)` produces `ctx[p1]`: the policy context `ctx` is spawned around `p1`, with `p1` plugged into the context's sole hole.
-  `Graft` carries no `path`: if the user wants localized graft-style edits, deeper in the tree, they must be realized as an idiom (§4), not by a path-bearing `Graft`.
-- `ChangeRoot(path)` promotes `p1@path` to the new root, discarding every ancestor above it.
-  It is well-defined only when `path` is non-empty and each internal node strictly above `p1@path` has a single arm (the one continuing toward `p1@path`), so the discarded ancestor chain carries only scheduling metadata, no traffic.
-  The chain may have been shaping `p1@path`'s pop order, and `ChangeRoot` discards that influence.
-  The richer reconfiguration of pruning a tree down to a subtree that originally shared ancestors with packet-bearing relatives is realized as the `PruneDownTo` idiom (§4), which first drains and `Remove`s those off-path subtrees, reducing the chain above `p1@path` to the unary shape `ChangeRoot` requires.
-
-A `Strict*` node is one introduced by `Designate`; a plain `Strict` is compiled from user input.
-Operationally we model the distinction as a one-bit `designated` flag that each node carries.
-`Designate` sets it, `Undesignate` clears it.
-The star is just shorthand for that bit being set, not a separate discipline.
-Semantically the two are identical; every push, pop, and well-formedness check treats `Strict*(A, B)` exactly as `Strict(A, B)`.
-The star exists only so that `Undesignate`'s precondition ("path lands on a `Strict*`") and the hardware story in §6 ("`Strict*` adds no PE depth") can be stated structurally.
-The §3.2 DSL that the operator writes can parse only `Strict`, never `Strict*`, so a `Strict*` is unreachable in any user-written `pol` and arises only in the middle of a planner sequence, between a `Designate` and its eventual `Undesignate`.
-
-When `p1 = p2` the grammar emits no diff at all: the reconfiguration is the empty sequence (§4), and the live control is left untouched.
+When `p1 =R p2` the grammar emits no diff at all: the reconfiguration is the empty sequence (§4), and the live control is left untouched.
 
 ### 3.4 All Productions of `δ` are Sound
 
@@ -768,12 +727,17 @@ There is nothing left to reconcile and no hidden policy choice to make: the stru
 #### 3.4.5. `Designate(path, pol)`
 
 `Designate` wraps the existing subtree `p1@path` in a fresh `Strict*` node whose high-priority arm is that subtree and whose low-priority arm is the operator-supplied `pol`.
-The wrap is `pol`-visible as a `Strict`: the `designated` bit is operational only (§3.3).
-Per §3.3, every push, pop, and well-formedness check treats `Strict*(A, B)` exactly as `Strict(A, B)`, so the obligations below are stated against the ordinary `Strict` semantics of §3.2.
+
+`Strict*` is the same discipline as `Strict`, distinguished only by a one-bit `designated` flag that each node carries: `Designate` sets the bit, `Undesignate` (§3.4.6) clears it.
+Semantically the two are identical; every push, pop, and well-formedness check treats `Strict*(A, B)` exactly as `Strict(A, B)`, so the obligations below are stated against the ordinary `Strict` semantics of §3.2.
+The star exists only so that `Undesignate`'s precondition ("path lands on a `Strict*`") and the hardware story in §6 ("`Strict*` adds no PE depth") can be stated structurally.
+The §3.2 DSL that the operator writes can parse only `Strict`, never `Strict*`, so a `Strict*` is unreachable in any user-written `pol` and arises only in the middle of a planner sequence, between a `Designate` and its eventual `Undesignate`.
+The wrap is therefore `pol`-visible only as a `Strict`, with the `designated` bit operational and not part of any `pol`.
 
 ##### Operational transition
 
-The transition `C' = [[Designate(path, pol)]](C)` is defined when `path` resolves to a node in `C` and the leaf labels of `pol` are disjoint from those of `C` (the time-stamp trick of §3.3 keeps this so even when the operator's `pol` syntactically overlaps `p1@path`).
+The transition `C' = [[Designate(path, pol)]](C)` is defined when `path` resolves to a node in `C` and the leaf labels of `pol` are disjoint from those of `C`.
+The operator's `pol` may syntactically overlap `p1@path`'s flows; we then use timing (the moment of the request) to distinguish old traffic from new, keeping the leaf labels disjoint by construction.
 Let `P0` be the number of packets currently held under `C@path`, and let `N` denote the freshly introduced `Strict*` node.
 
 - _Outside the subtree at `path`, outside `N`, and off the ancestor chain to `path`:_ preserved verbatim.
