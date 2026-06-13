@@ -885,17 +885,18 @@ Flagged here so the §3.5 claim "the proof survives the lowering" is not read as
 
 ## 4. Realizing Reconfigurations as Sequences
 
-This section composes the productions of `δ` into _guarded sequences_ `(φ ; δ)*`, where a guard `φ` is a predicate on the state of the live control and a diff `δ` is a production of the grammar from §3.3.
-The `δ` fires as soon as its guard is true.
+This section composes the atomic diffs of §3 into _guarded sequences_ `(φ ; δ)*`, where a guard `φ` is a predicate on the state of the live control and a diff `δ` is a production of the grammar from §3.3.
+Each `δ` fires as soon as its guard becomes true.
 Sequences realize changes no single diff can express.
 
-The headline result of the section, proved below, is that the transitionary scheduler `link` between two consecutive diffs is itself an ordinary §3.1 control, so the "transitionary period" needs no new semantics: this is Obligation 1 of §1.
+A guarded sequence threads the live control through a chain of intermediate controls, one per pair of consecutive diffs.
+We call each such intermediate control a `link`, writing `link_i` for the control left behind by the `i`-th diff.
+
+The headline result of the section, proved below, is that each `link` is itself an ordinary §3.1 control, so the "transitionary period" needs no new semantics: this is Obligation 1 of §1.
 Moreover, since every production of §3 is _pol-explainable_ (each `δ` has a `den(δ)` that tracks its pol-level effect), we can echo to the operator, at every step of the sequence, the `pol` that the live control currently realizes.
 The chain of `den`s starting from `⌊C⌋` gives `⌊link_i⌋` for each `i`, so the operator is never in the dark about what is running.
 
 ### 4.1 Guarded Sequences
-
-We formalize the surface introduced informally above: the guards `φ`, the guarded sequences they appear in, and the idiom invocations §4.2 will name.
 
 ##### Grammar
 
@@ -913,9 +914,6 @@ I      ::= Retire(path)
          | PruneDownTo(path)
 ```
 
-Having just those two guard forms has sufficed for every sequence we have needed; we take the minimality as a small design win.
-The framework does not depend on it, and a richer predicate language can be slotted in without disturbing the rest of §4.
-
 We write `gseq` short for "guarded sequence."
 A guard is always paired with exactly one atomic diff `δ` drawn from §3.
 An idiom `I` appears in a `gseq` _without_ a guard because an idiom expands into a `gseq` of its own whose internal guards carry the synchronization (§4.2).
@@ -929,23 +927,27 @@ mixing bare idiom invocations with one explicitly-guarded atomic diff.
 After idiom expansion (§4.2), every step is a `(φ ; δ)` pair, and that is the form on which the rest of §4 reasons.
 When we write `(φ ; δ)*` informally we mean this fully-expanded form: a finite sequence of `(guard, atomic diff)` pairs.
 
+Having just those two guard forms has sufficed for every sequence we have needed; we take the minimality as a small design win.
+The framework does not depend on it, and a richer predicate language can be slotted in without disturbing the rest of §4.
+
 ##### Sequence semantics
 
-§3 wrote `C` for the pre-edit control and `C'` for the post-edit one; here we wake up to the reality that this change may have to happen over a chain of steps rather than a single step.
+The grammar above gives a `gseq` its shape; this subsection gives it operational meaning.
+§3 wrote `C` for the pre-edit control and `C'` for the post-edit one; here we generalize from a single-step replacement to a chain of steps.
 A _transition planner_ realizes a reconfiguration from `C` to `C'` as a guarded sequence
 
 ```
 (φ_0 ; δ_0) ; (φ_1 ; δ_1) ; ... ; (φ_n ; δ_n).
 ```
 
-Write `link_0 = C` and `link_{i+1} = [[δ_i]](link_i)` for `0 <= i <= n`, with, finally, `link_{n+1} = C'`.
+Write `link_0 = C` and `link_{i+1} = [[δ_i]](link_i)` for `0 <= i <= n`, with `link_{n+1} = C'`.
 Pairs fire in order: `link_i` runs and serves ordinary pushes and pops until `φ_i` becomes true on its state, at which instant `δ_i` fires and produces `link_{i+1}`; only then is the next pair `(φ_{i+1}; δ_{i+1})` in play.
 Crucially, `φ_{i+1}` is evaluated on `link_{i+1}`, which exists only after `δ_i` has fired, so the sequence is genuinely sequential and not a set of independent guards racing on the same control.
 
 A guard may be `true`, in which case `δ_i` fires the moment `link_i` is installed, with no waiting; but a `true` later in the sequence is still gated by every preceding pair.
 For instance, the closing `(true ; ChangeRoot(path))` of §4.2's `PruneDownTo` is nominally guarded by `true` but in the global timeline cannot fire until every preceding `Retire` has emptied its target and run its `Remove`: the `true` says "install at the moment the predecessor's link is installed," not "install at sequence start."
 A length-one sequence with `φ_0 = true` is a single atomic diff applied immediately, with `C` abutting `C'` and no intervening link.
-The empty sequence is the case `⌊C⌋ =R p2`: the live control is left untouched.
+The empty sequence is the case `⌊C⌋ =R ⌊C'⌋`: the live control is left untouched.
 
 ##### Safety
 
@@ -968,7 +970,7 @@ For the case of follow-up requests arriving mid-flight, see §4.4.
 
 ### 4.2 Idioms: Named Sequences
 
-_Idioms_ are the an operator-facing vocabulary for frequently-used guarded sequences.
+_Idioms_ are an operator-facing vocabulary for frequently-used guarded sequences.
 They are the typical building block of imperative-mode sequences (§4.3).
 
 An idiom is a macro over the diff grammar (and, recursively, over other idioms).
@@ -977,7 +979,7 @@ Soundness is compositional: each step of the expansion is sound by §3.4, and th
 An idiom expansion that would hit an undefined production on the current control is rejected: the soundness checks fire on the expanded sequence just as they would on a hand-written one.
 
 We name four starter idioms.
-New ones can be added later without changing the framework, since an idiom is, in the end, just a named `(φ; δ)*` shorthand.
+New ones can be added later without changing the framework, since an idiom is just a named `(φ; δ)*` shorthand.
 
 - **`Retire(path)`** = `(true; Quiesce(path)) ; (empty(path); Remove(path))`.
   Quiesces the subtree at `path`, waits for it to drain, then `Remove`s it.
@@ -985,7 +987,7 @@ New ones can be added later without changing the framework, since an idiom is, i
 
 - **`SlowRetire(path)`** = `(empty(path); Remove(path))`.
   Waits for the subtree at `path` to drain, then `Remove`s it.
-  The user may use this if the subtree at `path` needs to receive a little more traffic but is generally being phased out.
+  The operator may use this if the subtree at `path` needs to receive a little more traffic but is generally being phased out.
 
 - **`Replace(path, B)`** =
 
@@ -1001,8 +1003,8 @@ New ones can be added later without changing the framework, since an idiom is, i
 - **`PruneDownTo(path)`** = `Retire(π_a) ; ... ; Retire(π_z) ; (true; ChangeRoot(path))`, where `π_a, ..., π_z` are paths to the off-path subtrees along the route from the root to `path`.
   This idiom is the operator-facing way to say "abandon everything except this subtree."
 
-  Each `Retire` removes one off-path subtree; once all `m` have fired, every ancestor along the path is unary, satisfying `ChangeRoot`'s precondition (§3.3).
-  (If no off-path subtrees exist, `m = 0` and the idiom reduces to `(true; ChangeRoot(path))` alone.)
+  Each `Retire` removes one off-path subtree; once they have all fired, every ancestor along the path is unary, satisfying `ChangeRoot`'s precondition (§3.4.7).
+  (If no off-path subtrees exist, the idiom reduces to `(true; ChangeRoot(path))` alone.)
 
   For instance, suppose the running tree is `A(B(E(F, G), D), C)`:
 
@@ -1040,25 +1042,29 @@ Two authoring modes produce sequences, and the operator chooses freely between t
 - In _declarative mode_, the operator writes a `pol`, say `p1`, and, to reconfigure, writes a second `pol`, say `p2`.
   A differ (§5) proposes a guarded sequence that achieves this change, and the operator either accepts it (in which case we apply the sequence to the running control) or declines it.
   The differ is intentionally simple: it sees only `pol`-level diffs whose translation to a sequence is straightforward, and falls back to the generic `Designate([], p2) ; Undesignate([])` pair (§5) for anything richer.
-- In _imperative mode_, the operator writes both their desired `p2` and a `(φ; δ)*` sequence intended to reach it.
-  The operator's guarded sequence can include _idioms_ (§4.2).
-  Before running the sequence we check it for the operator at the pol level: we fold each diff's `den(δ_i)` (§3.4) along the sequence, producing a chain
+- In _imperative mode_, the operator writes both their desired `p2` and a `(φ; δ)*` sequence intended to reach it; the sequence may include idioms from §4.2.
+  Before running it we check the sequence at the pol level, as described next.
 
-  `p1' -[den(δ_1)]-> ip_1 -[den(δ_2)]-> ip_2 -[den(δ_3)]-> ... -[den(δ_n)]-> ip_n`
+The two modes are not formally distinct: they produce sequences over the same substrate that discharge the same per-production obligations from §3.4.
+Imperative mode buys expressivity, not a different proof obligation; it admits sequences the differ might never produce, but they are still `(φ; δ)*` sequences.
 
-  of _intermediate pols_ starting from the running representative `p1' = ⌊C⌋` (the pol we echoed to the operator), and accept the request iff every `den(δ_i)` is defined on the intermediate pol it sees (with `ip_0 := p1'`) and `ip_n =R p2`.
-  That is, the user-provided sequence actually takes `p1'` to `p2`.
-  This check is exactly Rule 3 of `⌊·⌋` (§3.2) chained across the sequence: each step's `den(δ_i)` was proved to match its operational counterpart `[[δ_i]]` per-production in §3.4, so a fold that lands at `ip_n =R p2` certifies that the live operational chain ends in a control whose `⌊·⌋` is `p2`.
-  Each `ip_i` is itself a valid pol with an explainable scheduling semantics, not a transient artifact of the proof.
-  For instance, after the first step of `Replace(path, B)`'s expansion the intermediate pol holds `Strict(pol@path, B)` at `path`: a temporary strict-priority node favoring the outgoing `pol@path` over the incoming `B`, with a perfectly readable scheduling interpretation in its own right.
-  The "defined when" clauses on each `den(δ_i)` are the per-production preconditions listed in §3.4.1-3.4.8.
-  Guards play no role in this check; they govern the operational timing of when each `δ_i` fires on the live control, and are pol-invisible (§3.4).
-  For instance, a `(empty(path); Remove(path))` step folds at the pol level exactly as if its guard were `true`, since `den` only sees `δ`.
-  If the chain fails to reach `p2`, or some `den(δ_i)` is undefined on its intermediate pol, we reject the request.
+##### The pol-level check on imperative sequences
 
-The two modes are not formally distinct: the sequences they produce live in the same substrate and discharge the same per-production obligations from §3.4.
-Imperative mode buys expressivity, not a different proof obligation.
-It admits sequences the differ might never emit, but fundamentally still emits `(φ; δ)*` sequences.
+We fold each diff's `den(δ_i)` (§3.4) along the sequence, producing a chain
+
+`p1' -[den(δ_1)]-> ip_1 -[den(δ_2)]-> ip_2 -[den(δ_3)]-> ... -[den(δ_n)]-> ip_n`
+
+of _intermediate pols_ starting from the running representative `p1' = ⌊C⌋` (the pol we echoed to the operator), and accept the request iff every `den(δ_i)` is defined on the intermediate pol it sees (with `ip_0 := p1'`) and `ip_n =R p2`.
+That is, the user-provided sequence actually takes `p1'` to `p2`.
+This check is exactly Rule 3 of `⌊·⌋` (§3.2) chained across the sequence: each step's `den(δ_i)` was proved to match its operational counterpart `[[δ_i]]` per-production in §3.4, so a fold that lands at `ip_n =R p2` certifies that the live operational chain ends in a control whose `⌊·⌋` is `p2`.
+
+Each `ip_i` is itself a valid pol with an explainable scheduling semantics, not a transient artifact of the proof.
+For instance, after the first step of `Replace(path, B)`'s expansion the intermediate pol holds `Strict(pol@path, B)` at `path`: a temporary strict-priority node favoring the outgoing `pol@path` over the incoming `B`, with a perfectly readable scheduling interpretation in its own right.
+
+The "defined when" clauses on each `den(δ_i)` are the per-production preconditions listed in §3.4.1-3.4.8.
+Guards play no role in this check; they govern the operational timing of when each `δ_i` fires on the live control, and are pol-invisible (§3.4).
+For instance, a `(empty(path); Remove(path))` step folds at the pol level exactly as if its guard were `true`, since `den` only sees `δ`.
+If the chain fails to reach `p2`, or some `den(δ_i)` is undefined on its intermediate pol, we reject the request.
 
 ### 4.4 Handling follow-up requests
 
