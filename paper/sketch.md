@@ -476,27 +476,26 @@ We still phrase the characterization mod `=R` to keep a uniform shape across pro
 #### 3.4.2. `ChangeWeight(target, weight)`
 
 Throughout, `target : path` is the path to the arm whose weight changes.
+The path is non-empty (see precondition below) and so we break it into two pieces `π` and `[k]` such that `target = π ++ [k]`.
+That is, `π` is the path to the target node's parent, and the target node is that parent's `k`-th child.
 
-`ChangeWeight` overwrites the WFQ weight that `p1@target`'s parent uses for it (§3.3).
-Weights live in `slot_state`, not in `pol`: `pol`'s WFQ records only an arity, and per-arm weights are operator-supplied at compile or `Add` time and held thereafter only in the running control's `slot_state.weight` field.
-`ChangeWeight` is therefore `pol`-invisible, in the same sense as `Quiesce` (§3.4.3): its entire effect lies in operational state that `pol` does not record.
+Intuitively, `ChangeWeight` overwrites `C@π.slot_states[k].weight` with the new value.
 
 ##### Definition
 
-`[[ChangeWeight(target, weight)]](C)` is defined when `target` is non-empty and the parent at `π = target[:-1]` runs WFQ.
-Let `k` be the last index of `target`.
+`[[ChangeWeight(target, weight)]](C)` is defined when `target` is non-empty and the parent at `π` runs WFQ.
 
-- _At `π`:_ `node_state` (the parent's WFQ virtual time) unchanged; `slot_states[k].weight` overwritten with the new weight; every other field of `slot_states[k]` preserved verbatim, including the virtual-finish tag that records how far slot `k` has run in the current round; other `slot_states`, `pifo`, and `z` unchanged.
+- _At `π`:_ `node_state` is unchanged; `slot_states[k].weight` is overwritten with the new weight. Every other field of `slot_states[k]` is preserved verbatim, including the virtual-finish tag that records how far slot `k` has run in the current round. Other `slot_states`, `pifo`, and `z` are unchanged.
 - _Everywhere else:_ preserved verbatim.
 
-##### Preservation of |-, state, observation
+##### Preservation
 
 Preservation of `|-`: no `pifo` entry is rewritten, no subtree is touched, no packet is relocated, so well-formedness is inherited everywhere.
 Preservation of state: the targeted weight field is the intended edit; every other field at `π` and everywhere else is verbatim.
-Preservation of observation: ranks for in-flight `pifo` entries were burned in by `push` at the old weight and remain fixed; the new weight affects only the rank computation for future pushes.
-So a `pop` immediately after the diff returns exactly what a `pop` immediately before would have.
+Preservation of observation: ranks for in-flight `pifo` entries were determined when they were pushed. They remain fixed; the new weight affects only the rank computation for future pushes.
+So a `pop` immediately after this `[[ChangeWeight(target, weight)]]` returns exactly what a `pop` immediately before would have.
 
-The virtual-finish tag at slot `k` is deliberately preserved rather than reset: resetting would either reward or penalize the arm by yanking it out of the current round, whereas `init_slot_WFQ` (§3.2) was designed precisely to let a fresh arm "join the current round" without disturbing siblings, and the same principle applies to a weight change on an already-running arm.
+The virtual-finish tag at slot `k` is deliberately preserved rather than reset: resetting would either reward or penalize the targeted arm by yanking it out of the current round, whereas `init_slot_WFQ` (§3.2) was designed precisely to let a fresh arm "join the current round" without disturbing siblings, and the same principle applies to a weight change on an already-running arm.
 
 ##### Characterization
 
@@ -504,8 +503,8 @@ The virtual-finish tag at slot `k` is deliberately preserved rather than reset: 
 den(ChangeWeight(target, w)) p = p
 ```
 
-defined whenever `target` resolves in `p` and the parent at `target`'s prefix is `WFQ`.
-Proof: every node's `node_state`, `slot_states.discipline`, `pifo`, and child list are preserved verbatim (the rewritten field is in `slot_state`, which the compilation rule strips), so `⌊C'⌋ = ⌊C⌋` on the nose.
+is defined whenever `target` resolves in `p` and the parent at `π` runs WFQ.
+Every node's `node_state`, `slot_states.discipline`, `pifo`, and child list are preserved verbatim (the rewritten field is in `slot_state`, which the compilation rule strips), so `⌊C'⌋ = ⌊C⌋`.
 Hence `⌊C'⌋ =R den(ChangeWeight(target, weight))(⌊C⌋)`.
 
 #### 3.4.3. `Quiesce(target)`
