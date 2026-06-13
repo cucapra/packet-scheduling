@@ -885,21 +885,29 @@ Flagged here so the §3.5 claim "the proof survives the lowering" is not read as
 
 ## 4. Realizing Reconfigurations as Sequences
 
-§3 proved each grammar production a sound atomic diff.
-This section composes diffs into _guarded sequences_ `(φ ; δ)*` of `(guard, diff)` pairs, where a guard `φ` is a predicate on the state of the live control `C` and a diff `δ` is a production of the grammar from §3.3.
+This section composes the productions of `δ` into _guarded sequences_ `(φ ; δ)*`, where a guard `φ` is a predicate on the state of the live control and a diff `δ` is a production of the grammar from §3.3.
 The `δ` fires as soon as its guard is true.
-Sequences realize the changes no single diff can express.
+Sequences realize changes no single diff can express.
 
 Two authoring modes produce sequences, and the operator chooses freely between them.
 
 - In _declarative mode_, the operator writes a `pol`, say `p1`, and, to reconfigure, writes a second `pol`, say `p2`.
-  A differ proposes a sequence, and the operator either accepts it (in which case we apply the sequence to the running control) or declines it.
+  A differ (§5) proposes a guarded sequence that achieves this change, and the operator either accepts it (in which case we apply the sequence to the running control) or declines it.
   The differ is intentionally simple: it sees only `pol`-level diffs whose translation to a sequence is straightforward, and falls back to the generic `Designate([], p2) ; Undesignate([])` pair (§5) for anything richer.
 - In _imperative mode_, the operator writes both their desired `p2` and a `(φ; δ)*` sequence intended to reach it.
   The operator's guarded sequence can include _idioms_ (§4.2).
-  Before running the sequence we check it for the operator at the pol level: we fold each diff's `den(δ_i)` (§3.4) along the sequence, producing a chain `⌊p1⌋ -[den(δ_1)]-> p_a -[den(δ_2)]-> p_b -[den(δ_3)]-> ... -[den(δ_n)]-> p_z`, and accept the request iff every `den(δ_i)` is defined on the intermediate pol it sees and `p_z =R p2`.
-  That is, the user-provided sequence actually takes `p1` to `p2`.
+  Before running the sequence we check it for the operator at the pol level: we fold each diff's `den(δ_i)` (§3.4) along the sequence, producing a chain
+
+  `p1' -[den(δ_1)]-> ip_1 -[den(δ_2)]-> ip_2 -[den(δ_3)]-> ... -[den(δ_n)]-> ip_n`
+
+  of _intermediate pols_ starting from the running representative `p1' = ⌊C⌋` (the pol we echoed to the operator), and accept the request iff every `den(δ_i)` is defined on the intermediate pol it sees (with `ip_0 := p1'`) and `ip_n =R p2`.
+  That is, the user-provided sequence actually takes `p1'` to `p2`.
+  This check is exactly Rule 3 of `⌊·⌋` (§3.2) chained across the sequence: each step's `den(δ_i)` was proved to match its operational counterpart `[[δ_i]]` per-production in §3.4, so a fold that lands at `ip_n =R p2` certifies that the live operational chain ends in a control whose `⌊·⌋` is `p2`.
+  Each `ip_i` is itself a valid pol with an explainable scheduling semantics, not a transient artifact of the proof.
+  For instance, after the first step of `Replace(path, B)`'s expansion the intermediate pol holds `Strict(pol@path, B)` at `path`: a temporary strict-priority node favoring the outgoing `pol@path` over the incoming `B`, with a perfectly readable scheduling interpretation in its own right.
+  The "defined when" clauses on each `den(δ_i)` are the per-production preconditions listed in §3.4.1-3.4.8.
   Guards play no role in this check; they govern the operational timing of when each `δ_i` fires on the live control, and are pol-invisible (§3.4).
+  For instance, a `(empty(path); Remove(path))` step folds at the pol level exactly as if its guard were `true`, since `den` only sees `δ`.
   If the chain fails to reach `p2`, or some `den(δ_i)` is undefined on its intermediate pol, we reject the request.
 
 The two modes are not formally distinct: the sequences they produce live in the same substrate and discharge the same per-production obligations from §3.4.
@@ -910,7 +918,7 @@ The headline result of the section, proved below, is that the transitionary sche
 Moreover, since every production of §3 is _pol-explainable_ (each `δ` has a `den(δ)` that tracks its pol-level effect), we can echo to the operator, at every step of the sequence, the `pol` that the live control currently realizes.
 The chain of `den`s starting from `⌊C⌋` gives `⌊link_i⌋` for each `i`, so the operator is never in the dark about what is running.
 
-### 4.1 Sequences, guards, and idioms
+### 4.1 Guarded Sequences
 
 We formalize the surface introduced informally above: the guards `φ`, the guarded sequences they appear in, and the idiom invocations §4.2 will name.
 
@@ -931,8 +939,10 @@ I      ::= Retire(path)
          | SlowRetire(path)
          | Replace(path, pol)
          | PruneDownTo(path)
-         | ...                    // §4.2 names a starter set; the operator can define more
 ```
+
+These two guard forms have sufficed for every idiom we have needed; we take the minimality as a small design win.
+The framework does not depend on it, and a richer predicate language can be slotted in without disturbing the rest of §4.
 
 We write `gseq` short for "guarded sequence."
 A guard is always paired with exactly one atomic diff `δ` drawn from §3.
@@ -940,7 +950,7 @@ An idiom `I` appears in a `gseq` _without_ a guard because an idiom expands into
 For instance, §4.2's `PruneDownTo` expansion reads
 
 ```
-Retire(p_a) ; ... ; Retire(p_z) ; (true ; ChangeRoot(path))
+Retire(π_a) ; ... ; Retire(π_z) ; (true ; ChangeRoot(path))
 ```
 
 mixing bare idiom invocations with one explicitly-guarded atomic diff.
@@ -971,7 +981,9 @@ Every sequence the planner emits is safe in the sense that the live scheduler is
 Each `δ_i` preserves `|-` by the per-production obligation discharged in §3.4.
 Each `link_i` itself preserves `|-` under ordinary `push`/`pop`, since §3.1's `push` carries a well-formed PIFO tree to a well-formed one and `pop` does likewise on non-empty inputs.
 So the user-observable trace is a stream of ordinary `push`/`pop` operations served in turn by well-formed controls `C, link_1, ..., link_n, C'`.
+Each intervening `link_i` is therefore an ordinary §3.1 control, and the "semantics of `link`" is nothing more than the §3.1 semantics of the controls we install: each diff's job is to be a sound atomic replacement, and the planner's job is to order them behind sensible guards.
 Safety is entirely local: it follows from the soundness of the individual diffs, with no global argument about the sequence.
+This discharges Obligation 1 of §1.
 
 ##### Liveness
 
@@ -979,21 +991,13 @@ A sequence reaches `C'` only if each `φ_i` eventually becomes true on `link_i`,
 A `Quiesce`d subtree may never drain if higher-priority siblings starve it; a guard `empty(path)` on a subtree fed by an adversarial higher-priority neighbor may never fire.
 We therefore treat liveness as a _nice-to-have_, the planner's and the operator's joint concern, not a soundness condition.
 Every sequence we emit is safe; whether and how fast it completes is a function of how well the planner chose its guards and of the traffic the live scheduler meets.
-The simplest planner-side rule, in the face of follow-up requests: if the operator requests a new change while a sequence is still in flight, queue the new request until the in-flight one completes (see the note on `nextnext` at the end of §4).
-
-##### Theorem (the transitionary period is just scheduling)
-
-For every reconfiguration, and every sequence the planner emits for it, each `δ_i` is a sound atomic control replacement (§3.4) and each intervening `link_i` is an ordinary §3.1 control.
-At every instant the live scheduler is well-formed, and the user-observable trace is ordinary `push`/`pop` served by the chain `C, link_1, ..., link_n, C'`.
-The "semantics of `link`" is therefore nothing more than the §3.1 semantics of the controls we install: each diff's job is to be a sound atomic replacement, and the planner's job is to order them behind sensible guards.
-This discharges Obligation 1 of §1.
+For the case of follow-up requests arriving mid-flight, see §4.3.
 
 ### 4.2 Idioms: Named Sequences
 
 Our imperative mode above needs a vocabulary.
 The atomic diffs of §3 cover individual edits; many useful reconfigurations are multi-diff.
 _Idioms_ are imperative mode's vocabulary: named multi-diff patterns the operator can write directly, just as they can write a single atomic diff.
-The operator can also define their own idioms.
 
 An idiom is a macro over the diff grammar (and, recursively, over other idioms).
 It expands into a fixed `(φ; δ)*` sequence: a list of atomic diffs with the guards between them spelling out what the system waits for.
@@ -1020,9 +1024,9 @@ New ones can be added later without changing the framework, since an idiom is, i
   ```
 
   Designates `B` as the survivor of the current `pol@path` (which, after Designate, sits at `path ++ [0]` as the first arm of the inserted `Strict*` node), quiesces it, waits for it to drain, then collapses the `Strict*` onto `B`.
-  At the pol level this is the `Replace` of §3.4 (`den(Undesignate) ∘ den(Designate(_, B))`); the operator-facing idiom adds the `Quiesce` + drain in the middle so that the original subtree empties out before the collapse fires.
+  At the pol level the composite effect is wholesale replacement of `pol@path` by `B`, computed as `den(Undesignate) ∘ den(Designate(_, B))` against the §3.4 productions; the operator-facing idiom adds the `Quiesce` + drain in the middle so that the original subtree empties out before the collapse fires.
 
-- **`PruneDownTo(path)`** = `Retire(p_a) ; ... ; Retire(p_z) ; (true; ChangeRoot(path))`, where `p_a, ..., p_z` are the off-path subtrees along the route from the root to `path`.
+- **`PruneDownTo(path)`** = `Retire(π_a) ; ... ; Retire(π_z) ; (true; ChangeRoot(path))`, where `π_a, ..., π_z` are paths to the off-path subtrees along the route from the root to `path`.
   This idiom is the operator-facing way to say "abandon everything except this subtree."
 
   Each `Retire` removes one off-path subtree; once all `m` have fired, every ancestor along the path is unary, satisfying `ChangeRoot`'s precondition (§3.3).
@@ -1057,11 +1061,15 @@ New ones can be added later without changing the framework, since an idiom is, i
   Note that the path `[0, 0]` appears twice in this expansion with different referents: in `Retire([0, 0])` it points to `E(F, G)` (the operand at the moment that `Retire` fires), and in the final `ChangeRoot([0, 0])` it points to `D`, which moved from `[0, 1]` to `[0, 0]` once `E(F, G)` was retired.
   The path-resolution system computes these targets for the operator; the operator only writes `PruneDownTo([0, 1])`, naming `D` by its location at the moment of request.
 
-### Short note on `nextnext`.
+### 4.3 Handling follow-up requests
 
-This paper's transition planner engages with one `p1 -> p2` pair at a time.
-If the operator submits a follow-up `nextnext` while a `p1 -> p2` sequence is still mid-flight (i.e., while some guard `φ` has not yet become true), our answer is the simplest possible one: `nextnext` is queued and the transition planner does not begin work on it until the in-flight sequence completes.
-See `paper/discussion-separable-nextnext.md` for a stronger possibility.
+This paper's transition planner engages with one reconfiguration at a time, and commits to a simple answer when the operator submits a follow-up request `p3` while a `p1 -> p2` sequence is still mid-flight (i.e., while some guard `φ_i` has not yet become true): we queue `p3`, and the planner does not begin work on it until the in-flight sequence completes, which is to say until the live control `C_z` satisfies `⌊C_z⌋ =R p2` (equivalently, until the echoed `p2'` is the running pol).
+At that instant the planner pulls `p3` from the queue, treats `p2'` as the new starting point, and produces a fresh `(φ; δ)*` sequence to reach `p3` exactly as in §4's main loop.
+
+We commit to this rather than defaulting to it.
+A more aggressive strategy is possible: the planner could begin work on `p3` mid-flight, splicing or canceling the in-flight sequence to converge on `p3` directly, sometimes at lower total cost than running `p1 -> p2 -> p3` in series.
+We do not pursue this here, because the splicing analysis introduces its own correctness obligations (atomicity of the splice, what guarantees the operator has during an aborted in-flight sequence, what `link` the operator observes between the splice and `p3`) that are out of scope of this paper.
+See https://github.com/cucapra/packet-scheduling/discussions/115 for a sketch of the stronger possibility.
 
 ## 5. Identifying Better Transitions
 
