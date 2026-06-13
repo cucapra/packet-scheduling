@@ -390,84 +390,88 @@ Entries below the edit point are left alone.
 As a warm-up, we discharge the five obligations in some detail for the production `Add`.
 The remaining productions reuse the same obligations and arguments, so for them we present only what differs in substance: the closed-form `den`, the operationally interesting bits of the per-node rule, and the points where any of the preservation arguments departs from `Add`'s.
 
-#### 3.4.1. `Add(path, pol, meta?)`
+#### 3.4.1. `Add(parent, newpol, meta?)`
+
+We rename §3.3's positional arguments for clarity: `parent : path` is the path to the node under which the new arm goes, and `newpol : pol` is the policy of the new arm; `meta?` is the discipline-dependent per-arm metadata of §3.3.
 
 ##### Definition
 
-Let `π = path` be the parent under which the new arm goes (here `π = []`, the root `Strict`); let `D` be the discipline at `π` and `k = |C@π.slot_states|` be the new arm's slot index (since our intention is just to append).
-The transition `C' = [[Add(path, pol, meta?)]](C)` is stated per node.
+We must define `[[Add(parent, newpol, meta?)]] : control ⇀ control` together with the preconditions on the already running control under which `Add` is defined.
 
-The topology gains a new arm at `π`, indexed `k`; every pre-existing arm at `π` keeps its index.
-The local controls update as follows.
+Intuitively, `Add` inserts a freshly compiled subtree `⌈newpol⌉` as the new last child of the subtree at `parent`.
+It also extends the scheduling transaction `z` at each proper ancestor of `⌈newpol⌉`, so that traffic can reach `⌈newpol⌉`.
 
-- _At every node outside the new subtree, other than `π` and its proper ancestors:_ the local control is preserved verbatim.
-- _At each proper ancestor of `π` (including the root):_ `node_state`, `slot_states`, and `pifo` are preserved verbatim.
-  The local `z` is extended to admit packets that classify into the new subtree, mapping them to whichever child slot at this ancestor lies on the path down to `π`.
-- _At `π`:_
-  - `C'@π.node_state = C@π.node_state` (unchanged).
-  - `C'@π.slot_states = C@π.slot_states ++ [ init_slot_D(C@π.node_state, meta?) ]`: whatever per-arm bookkeeping that `init_slot_D` prescribes for an arm newly spliced under a running `D`-parent is appended at index `k`.
-  - `C'@π.pifo = C@π.pifo` (unchanged): no pre-existing entry needs renumbering, and the new arm holds no packets yet.
-  - `C'@π.z` extends `C@π.z` to admit packets that classify into the new subtree, mapping them to child index `k` at `π` (with descent handed off to the new subtree's `z` pieces below).
-    Pre-existing mappings are untouched.
-- _At every node inside the new subtree:_ the local control is what §3.2's compiler produces for that node.
+`[[Add(parent, newpol, meta?)]](C)` is defined when:
 
-##### Characterization
+- `parent` resolves in `C` to an internal node, and
+- `meta?` matches the slot-initialization schema of the discipline at that node (present iff `init_slot_D` for that discipline requires it).
 
-The pol-level effect of `Add(path, pol, meta?)` is the structural map on `pol`, given by recursion on `path`:
+Outside this region, `Add(parent, newpol, meta?)` is _incompatible_ with `C` and the transition is undefined.
 
-```
-den(Add([],        pol, meta?)) (D ts) = D ( ts ++ [pol] )
-den(Add(i :: rest, pol, meta?)) (D ts) = D ( ts[ den(Add(rest, pol, meta?)) (ts[i]) / i ] )
-```
+The transition `C' = [[Add(parent, newpol, meta?)]](C)` is stated per node.
+Let `k = |C@parent.slot_states|` be the new arm's slot index.
 
-The base case applies once `path` has walked down to the new arm's parent: `pol` is appended as the last child.
-Recall from §3.3 that `Add`'s `path` resolves in `p1` and names the new arm's parent, so the base case lands at that parent.
-The recursive case walks one step deeper into child `i` and writes the result back in place.
-The `meta?` argument is threaded through the recursion but does not appear in the closed form: it is per-arm bookkeeping consumed by `init_slot_D` at the operational level (§3.2's note that pol's grammar carries no structural mark of meta), so it is pol-invisible.
-
-_Proof of characterization._
-We argue that the structural skeleton of `C'` matches `den(Add(path, pol, meta?))(⌊C⌋)`, which justifies rule 3 of `⌊·⌋` (§3.2) for this production.
-The operational rule above leaves every pre-existing arm structurally intact (the `z` extensions along the ancestor chain are pol-invisible) and adds a new arm at `π` whose subtree is exactly what §3.2's compiler emits for the operator-supplied `pol`.
-Walking `path` from the root through `⌊C⌋`, this matches the recursion: at each proper ancestor we recurse into the child on the path; at `π` we append `pol` to the child list, exactly as the closed form prescribes.
-Equality is on the nose, but we state the characterization mod `=R` for uniformity with the other productions.
-So `⌊C'⌋ =R den(Add(path, pol, meta?))(⌊C⌋)`.
-
-Our running example computes `den(Add([], spotify, mid)) Strict(gmail, zoom) = Strict((gmail, zoom) ++ [spotify]) = Strict(gmail, zoom, spotify) =R Strict(gmail, spotify, zoom) = p2`, as intended.
-The closed form appends `spotify` at the end, while the operator wrote it in the middle slot.
-Both layouts are `=R`-equivalent: priority lives in each arm's `meta?` (§3.2), not in the slot index, so the runtime is free to lay out the children in any slot order it likes.
-The realized control is `Strict(gmail_hi, zoom_lo, spotify_mid)`, with `spotify` appended at slot 2 even though its priority sits between `gmail`'s and `zoom`'s.
-A deeper edit looks the same modulo descent: `den(Add([1], spotify, ε)) Strict(gmail, RR(zoom, youtube)) = Strict(gmail, RR(zoom, youtube, spotify))` recurses into the `RR` child at slot `1` and appends `spotify` there; `meta?` is `ε` since the parent runs `RR`.
+- _At each proper ancestor of `parent`:_
+  - `node_state`, `slot_states`, and `pifo` are preserved verbatim.
+  - The local `z` is extended to admit packets that classify into the new subtree, mapping them to whichever child slot lies on the path down to `parent`.
+- _At `parent`:_
+  - `node_state` is unchanged.
+  - `C'@parent.slot_states = C@parent.slot_states ++ [ init_slot_D(C@parent.node_state, meta?) ]`. In English: we call `init_slot_D` to find the per-arm bookkeeping that is needed for a new arm under `D`, and we append that bookkeeping in at the end. Our arm-order freedom (§3.2) lets us simply append the new child.
+  - `pifo` is unchanged: no pre-existing entry needs renumbering, and the new arm holds no packets yet.
+  - `C'@parent.z` extends `C@parent.z` to admit packets that classify into the new subtree, mapping them to child index `k` at `parent`.
+- _At every node inside `⌈newpol⌉`:_ the local control is `⌈newpol⌉`'s, verbatim.
+- _At every other node (outside `⌈newpol⌉` and not `parent` or one of `parent`'s proper ancestors):_ the local control is preserved verbatim.
 
 ##### Preservation of |-
 
-`|- C` gives `|- C'`.
-At `π`, `C'@π.pifo = C@π.pifo` contains no entry equal to `k` (no pre-existing entry can name a slot that did not exist in `C`), and the new arm at slot `k` holds zero packets, so its well-formedness count reads `0 = 0`.
-Every other slot at `π` keeps its index, its packets, and its entries in `C'@π.pifo` verbatim, so its matched count is inherited.
+We must show that `|- C` implies `|- C'`: any pifo entries or packets that `[[Add(parent, newpol, meta?)]]` introduces must leave the per-node pifo and packet counts in balance.
+
+At `parent`, `C'@parent.pifo = C@parent.pifo` contains no entry equal to `k` (no pre-existing entry can name a slot that did not exist in `C`), and the new arm at slot `k` holds no packets, so its well-formedness count reads `0 = 0`.
+Every other slot at `parent` keeps its index, its packets, and its entries in `C'@parent.pifo` verbatim, so its matched count is inherited.
 Every other node's pifo is untouched (the ancestor `z` extensions touch no pifo at this instant; they only affect the classification of packets that arrive later).
 Nothing needs repair.
 
 ##### Preservation of state
 
-Outside the edit site the local control (and thus its `state`) is preserved verbatim, including at each proper ancestor of `π`, where only `z` changes.
-Inside the new subtree, the state is freshly compiled per §3.2.
-At `π`, `node_state` is unchanged and `slot_states` is appended with exactly `init_slot_D(C@π.node_state, meta?)`, as the Preservation of state obligation prescribes at the edit site.
+We must show that at every node structurally shared between `C` and `C'` and outside the edit site, the local `state` is preserved verbatim; and that at the edit site, and at every node of the freshly spawned subtree, the `state` is exactly what `init_node_D` / `init_slot_D` (§3.2) prescribes.
+
+Outside the edit site the local control (and thus its `state`) is preserved verbatim, including at each proper ancestor of `parent`, where only `z` changes.
+Inside `⌈newpol⌉`, every node's `node_state` and `slot_states` are what `init_node_D` / `init_slot_D` (§3.2) prescribe, by construction of `⌈newpol⌉`.
+At `parent`, `node_state` is unchanged and `slot_states` is appended with exactly `init_slot_D(C@parent.node_state, meta?)`, as required at the edit site.
 
 ##### Preservation of observation
+
+We must show that the commit is invisible to the user's `pop` stream: every in-flight packet in `C` sits in some `pifo` that survives verbatim into `C'`, and no live `pifo` entry is rewritten, so a `pop` immediately after the diff returns exactly what a `pop` immediately before would have returned.
 
 No in-flight packet straddles the diff.
 At the diff instant, every packet sits in some pre-existing node's `pifo`, and each such packet survives into the same `pifo` at the same slot index in `C'`.
 The new slot `k` holds nothing, and no pifo entry is rewritten.
 So a `pop` immediately after the diff returns exactly what a `pop` immediately before would have.
-The first `push` that `C'@π.z` routes to `k` is the first packet ever to occupy the new subtree.
+Observation is preserved.
 
-##### Notes
+##### Characterization
 
-_Deeper paths._
-The running example edits the root, but `path` may be arbitrary; `Add([1, 2], pol, meta?)` appends a new arm under the grandchild at `[1, 2]`.
-Nothing in the argument changes.
-The descent from the root to `π` passes through ancestors whose only change is the `z` extension above; their `node_state`, `slot_states`, and `pifo` are untouched.
-Because the new subtree is empty, no packet is yet routed through any ancestor's `z` extension, so each ancestor's count for the child it forwards through is exactly what it was.
-No ancestor pifo is rewritten, and the edit is otherwise confined to `π` and the fresh subtree below it.
+We must state `den(Add(parent, newpol, meta?))` in closed form and prove `⌊C'⌋ =R den(Add(parent, newpol, meta?))(⌊C⌋)`.
+
+We define `den` by recursion on `parent`:
+
+```
+den(Add([],        newpol, meta?)) (D ts) = D ( ts ++ [newpol] )
+den(Add(i :: rest, newpol, meta?)) (D ts) = D ( ts[ den(Add(rest, newpol, meta?)) (ts[i]) / i ] )
+```
+
+The base case applies once `parent = []`: the recursion has reached the node where the new arm goes, and `newpol` is appended as the last child.
+The recursive case walks one step deeper into child `i` and writes the result back in place.
+The `meta?` argument is threaded through the recursion but does not appear in the closed form: it is per-arm bookkeeping consumed by `init_slot_D` at the operational level, so it is pol-invisible.
+
+_Proof of characterization._
+We argue that the structural skeleton of `C'` matches `den(Add(parent, newpol, meta?))(⌊C⌋)`.
+The operational rule above leaves every pre-existing arm structurally intact (the `z` extensions along the ancestor chain are pol-invisible) and adds a new arm at `parent`.
+That new arm is exactly `⌈newpol⌉`.
+Descending `parent` in `⌊C⌋` traces the recursion step for step: at each proper ancestor, step into the child named by `parent`; at `parent`, append `newpol` to the child list.
+For `Add`, `⌊C'⌋` and `den(Add(parent, newpol, meta?))(⌊C⌋)` are in fact _equal_ as pol-trees, not just `=R`-equivalent: at each proper ancestor of `parent` the child lists agree pointwise, and at `parent` both child lists are `ts ++ [newpol]`.
+We still phrase the characterization mod `=R` to keep a uniform shape across productions:
+`⌊C'⌋ =R den(Add(parent, newpol, meta?))(⌊C⌋)`.
 
 #### 3.4.2. `ChangeWeight(path, weight)`
 
