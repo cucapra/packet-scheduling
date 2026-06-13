@@ -346,8 +346,8 @@ The richer reconfigurations an operator may want (retiring a subtree that has pa
 Brief notes on each production:
 
 - `Add(path, pol, meta?)` appends `pol` as a new child of `p1@path`. `meta?` carries per-arm bookkeeping for the new arm, if `p1@path` requires it.
-- `ChangeWeight(path, weight)` overwrites the WFQ weight that `p1@path`'s parent uses for it.
-- `Quiesce(path)` prevents the subtree `p1@path` from receiving any new traffic.
+- `ChangeWeight(path, weight)` overwrites the WFQ weight assigned to the arm at `path`.
+- `Quiesce(path)` prevents the subtree at `path` from receiving any new traffic.
 - `Remove(path)` removes `p1@path`; the subtree at `path` must be empty.
 - `Designate(path, pol)` wraps `p1@path` into `Strict*(p1@path, pol)` in place, making `pol` the _designated survivor_ of `p1@path`. The need for the distinguished discipline `Strict*` is explained in §3.4.5.
 - `Undesignate(path)` collapses the `Strict*(A, B)` that lives at `p1@path` into `B`, with `B` inheriting the slot and per-arm `meta?`. `A` must be empty.
@@ -702,8 +702,8 @@ The wrap is therefore `pol`-visible only as a `Strict`, with the `designated` bi
 
 ##### Definition
 
-`[[Designate(target, survivor)]](C)` is defined when `target` resolves to a node in `C` and the leaf labels of `survivor` are disjoint from those of `C`.
-The operator's `survivor` may syntactically overlap `p1@target`'s flows; we then use timing (the moment of the request) to distinguish old traffic from new, keeping the leaf labels disjoint by construction.
+`[[Designate(target, survivor)]](C)` is defined when `target` resolves to a node in `C` and `survivor`'s leaf labels are disjoint from those of `C` outside the subtree `C@target`.
+Overlap with `C@target`'s own leaves is explicitly permitted: the moment the diff fires becomes the boundary between old traffic (which continues to drain from `C@target`) and new traffic (which the new arm 1 admits), so the leaves stay operationally disjoint.
 Let `P0` be the number of packets currently held under `C@target`, and let `N` denote the freshly introduced `Strict*` node.
 
 - _Outside the subtree at `target`, outside `N`, and off the ancestor chain to `target`:_ preserved verbatim.
@@ -827,19 +827,18 @@ The richer reconfiguration of pruning to a subtree whose ancestor chain branches
 
 _What the chain carries, and what is discarded._
 An internal node's `node_state`, rank function, and `pifo` ordering exist to pick among siblings.
-For the concrete disciplines this paper targets, those mechanisms therefore degenerate at a unary node: Strict's all-zero ranks reduce to FIFO, RR's cursor is irrelevant with one arm, and WFQ's virtual-finish times under a single weight are monotone in arrival order.
-For these disciplines the unary chain is operationally a passthrough, and the immediate-pop observation-preservation above extends to every subsequent pop and push.
+At a unary node the sibling-picking role degenerates: with one arm, every pop is forced into it.
 
-This is not, however, a universal property of unary internal nodes.
-A discipline whose rank function depends on per-packet attributes rather than on arm selection (LSTF being the canonical example, with rank determined by each packet's deadline) can keep its `pifo` non-FIFO at a unary node, and that ordering may shape what an external observer sees downstream depending on the surrounding PIFO-tree semantics.
-In those cases the discarded chain is _not_ a no-op: `ChangeRoot` removes whatever schedule shaping the chain was performing on the traffic now living under `C@newroot`.
-That is precisely the production's intended role: it is the atomic step by which the operator says "promote `p1@newroot` to the root and discard the ancestor shaping above it."
+What can remain active at a unary node is rank computation that depends on per-packet attributes rather than on sibling identity.
+If a chain's disciplines do no such per-packet reordering, each unary node along the chain is operationally a passthrough, and the immediate-pop observation-preservation above extends to every subsequent pop and push.
+If they do (LSTF is a canonical example, with rank determined by each packet's deadline), the chain is actively shaping traffic, and `ChangeRoot` removes that shaping.
+That is precisely the production's intended role: the atomic step by which the operator says "promote `p1@newroot` to the root and discard the ancestor shaping above it."
 The `PruneDownTo` idiom packages this with the upstream draining and `Remove`s that make the chain unary in the first place, so the operator's request ("prune to this subtree") is realized as a sequence whose final step discards exactly the ancestor influence that the operator has chosen to abandon.
 
 _Pol-level effect._
 The `pol` changes from the unary chain wrapping `p1@newroot` (e.g., `Strict(p1@newroot)` or `LSTF(p1@newroot)`) to just `p1@newroot`.
 This is `pol`-visible: the root discipline observably changes, which is the substantive content of the production.
-For the concrete disciplines (Strict, RR, WFQ) the `pol`-visible change happens to coincide with no in-flight reordering, per the previous Note; for more general disciplines the operator has chosen to give up whatever the chain was shaping.
+Whether that pol-visible change reorders in-flight traffic depends on whether the discarded chain was doing per-packet reordering (see previous Note).
 
 #### 3.4.8. `Graft(ctx)`
 
