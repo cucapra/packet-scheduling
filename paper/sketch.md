@@ -295,14 +295,14 @@ The risks are of two flavors:
 
 ##### A worked example
 
-- The operator initially requests `p1 = Strict(Q_hi, P_lo)`.
-- The compiler uses its degree of freedom to yield control `C1` such that `⌊C1⌋ = Strict(P_lo, Q_hi)`. Note that the children have been reordered for some compiler-internal reason.
-- We echo back `p1' := ⌊C1⌋ = Strict(P_lo, Q_hi)`. We know that `p1 =R p1'`, so the scheduler the operator gets is the one they asked for; only the slot numbering differs.
+- The operator initially requests `p1 = Strict(gmail_hi, zoom_lo)`.
+- The compiler uses its degree of freedom to yield control `C1` such that `⌊C1⌋ = Strict(zoom_lo, gmail_hi)`. Note that the children have been reordered for some compiler-internal reason.
+- We echo back `p1' := ⌊C1⌋ = Strict(zoom_lo, gmail_hi)`. We know that `p1 =R p1'`, so the scheduler the operator gets is the one they asked for; only the slot numbering differs.
 - As the control serves pushes and pops, it transforms into `C1'`.
-- Later, the operator requests `p2 = Strict(P_lo, R_mid, Q_hi)`.
-- The runtime can again use its freedom. Instead of literally splicing `R` in between running arms `P` and `Q`, it chooses to append `R` to the end. This converts the running control `C1'` into control `C2'` such that `⌊C2'⌋ = Strict(P_lo, Q_hi, R_mid)`.
-- We echo back `p2' := ⌊C2'⌋ = Strict(P_lo, Q_hi, R_mid)` to the user.
-- Now the operator changes to Imperative Mode (§4) and writes the path-bearing edit `(True, Quiesce([2]))`. It is not worth getting distracted by the syntax or the semantics; the key thing is that the operator has requested an edit and has identified the target via a path `[2]`. Paths are interpreted against the _actually running_ representative `p2'`, so we `Quiesce` the subtree `R_mid` (`p2'`'s third slot), not `Q_hi` (`p2`'s third slot). If the operator had based the path on `p2` they would have edited the wrong arm; the system has no way to detect or recover from that.
+- Later, the operator requests `p2 = Strict(zoom_lo, spotify_mid, gmail_hi)`. Note that the operator has cleverly written `p2` based on `p1'`, not `p1`.
+- The runtime can again use its freedom. Instead of literally splicing `spotify` in between running arms `zoom` and `gmail`, it chooses to append `spotify` to the end. This converts the running control `C1'` into control `C2'` such that `⌊C2'⌋ = Strict(zoom_lo, gmail_hi, spotify_mid)`.
+- We echo back `p2' := ⌊C2'⌋ = Strict(zoom_lo, gmail_hi, spotify_mid)` to the user.
+- Now the operator changes to Imperative Mode (§4) and writes the path-bearing edit `(True, Quiesce([2]))`. It is not worth getting distracted by the syntax or the semantics; the key thing is that the operator has requested an edit and has identified the target via a path `[2]`. Paths are interpreted against the _actually running_ representative `p2'`, so we `Quiesce` the subtree `spotify_mid` (`p2'`'s third slot), not `zoom_lo` (`p2`'s third slot). If the operator had based the path on `p2` they would have edited the wrong arm; the system has no way to detect or recover from that.
 
 ### 3.3 A Grammar for Tree Diffs
 
@@ -387,6 +387,9 @@ For `p` the same `[±/k]` notation _renumbers_ rather than splices, since the PI
 `p[+/k]` is `p` with every entry `>= k` bumped up by one (opening up slot `k`); `p[-/k]` is `p` with every entry `> k` brought down by one.
 Entries below the edit point are left alone.
 
+As a warm-up, we discharge the five obligations in some detail for the production `Add`.
+The remaining productions reuse the same obligations and arguments, so for them we present only what differs in substance: the closed-form `den`, the operationally interesting bits of the per-node rule, and the points where any of the preservation arguments departs from `Add`'s.
+
 #### 3.4.1. `Add(path, pol, meta?)`
 
 ##### Definition
@@ -465,9 +468,6 @@ Nothing in the argument changes.
 The descent from the root to `π` passes through ancestors whose only change is the `z` extension above; their `node_state`, `slot_states`, and `pifo` are untouched.
 Because the new subtree is empty, no packet is yet routed through any ancestor's `z` extension, so each ancestor's count for the child it forwards through is exactly what it was.
 No ancestor pifo is rewritten, and the edit is otherwise confined to `π` and the fresh subtree below it.
-
-The remaining productions all reuse the same obligations and arguments as `Add`.
-We present them in compact form: closed-form `den`, the operationally interesting bits of the per-node rule, and the points where any of the preservation arguments differs in substance from what has already been shown.
 
 #### 3.4.2. `ChangeWeight(path, weight)`
 
