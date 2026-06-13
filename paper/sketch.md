@@ -886,28 +886,109 @@ Flagged here so the §3.5 claim "the proof survives the lowering" is not read as
 ## 4. Realizing Reconfigurations as Sequences
 
 §3 proved each grammar production a sound atomic diff.
-This section composes diffs into _sequences_ `(φ ; δ)*` of `(guard, diff)` pairs, where a guard `φ` is a predicate on the state of the live control `C` (any `φ` may be `true`, meaning the paired diff fires at once; `φ_0 = true` is the common case).
-Sequences are the universal substrate of reconfiguration: they realize the changes no single diff can express.
+This section composes diffs into _guarded sequences_ `(φ ; δ)*` of `(guard, diff)` pairs, where a guard `φ` is a predicate on the state of the live control `C` and a diff `δ` is a production of the grammar from §3.3.
+The `δ` fires as soon as its guard is true.
+Sequences realize the changes no single diff can express.
 
 Two authoring modes produce sequences, and the operator chooses freely between them.
-In _declarative mode_, the operator writes a `pol` and, to reconfigure, writes a second `pol`; a differ proposes a sequence, and the operator either accepts it (in which case we apply the sequence to the running control) or declines it.
-The differ is intentionally simple: it sees only pol-level diffs whose translation to a sequence is straightforward, and falls back to the generic `Designate([], p2) ; Undesignate([])` pair (§5) for anything richer.
-Multi-step reconfigurations with operator choice (e.g., `Retire` vs. `SlowRetire` below), graft-style local edits the differ cannot infer, and other confined strategies are outside its scope.
-In _imperative mode_, the operator writes both their desired `p2` and a `(φ; δ)*` sequence intended to reach it, drawing on a small vocabulary of _idioms_ (§4.1) and on raw atomic diffs.
-Before running the sequence we check it for the operator at the pol level: we fold each diff's `den(δ_i)` (§3.4) along the sequence, producing a chain `⌊p1⌋ -[den(δ_1)]-> p_a -[den(δ_2)]-> p_b -[den(δ_3)]-> ... -[den(δ_n)]-> p_z`, and accept the request iff every `den(δ_i)` is defined on the intermediate pol it sees and `p_z =R p2`.
-Guards play no role in this check; they govern the operational timing of when each `δ_i` fires on the live control, and are pol-invisible (§3.4).
-If the chain fails to reach `p2`, or some `den(δ_i)` is undefined on its intermediate pol, we reject the request.
+
+- In _declarative mode_, the operator writes a `pol`, say `p1`, and, to reconfigure, writes a second `pol`, say `p2`.
+  A differ proposes a sequence, and the operator either accepts it (in which case we apply the sequence to the running control) or declines it.
+  The differ is intentionally simple: it sees only `pol`-level diffs whose translation to a sequence is straightforward, and falls back to the generic `Designate([], p2) ; Undesignate([])` pair (§5) for anything richer.
+- In _imperative mode_, the operator writes both their desired `p2` and a `(φ; δ)*` sequence intended to reach it.
+  The operator's guarded sequence can include _idioms_ (§4.2).
+  Before running the sequence we check it for the operator at the pol level: we fold each diff's `den(δ_i)` (§3.4) along the sequence, producing a chain `⌊p1⌋ -[den(δ_1)]-> p_a -[den(δ_2)]-> p_b -[den(δ_3)]-> ... -[den(δ_n)]-> p_z`, and accept the request iff every `den(δ_i)` is defined on the intermediate pol it sees and `p_z =R p2`.
+  That is, the user-provided sequence actually takes `p1` to `p2`.
+  Guards play no role in this check; they govern the operational timing of when each `δ_i` fires on the live control, and are pol-invisible (§3.4).
+  If the chain fails to reach `p2`, or some `den(δ_i)` is undefined on its intermediate pol, we reject the request.
 
 The two modes are not formally distinct: the sequences they produce live in the same substrate and discharge the same per-production obligations from §3.4.
 Imperative mode buys expressivity, not a different proof obligation.
 It admits sequences the differ might never emit, but fundamentally still emits `(φ; δ)*` sequences.
 
-The headline result of the section is that the transitionary scheduler `link` between two consecutive diffs is itself an ordinary §3.1 control, so the "transitionary period" needs no new semantics: this is Obligation 1 of §1, discharged.
+The headline result of the section, proved below, is that the transitionary scheduler `link` between two consecutive diffs is itself an ordinary §3.1 control, so the "transitionary period" needs no new semantics: this is Obligation 1 of §1.
+Moreover, since every production of §3 is _pol-explainable_ (each `δ` has a `den(δ)` that tracks its pol-level effect), we can echo to the operator, at every step of the sequence, the `pol` that the live control currently realizes.
+The chain of `den`s starting from `⌊C⌋` gives `⌊link_i⌋` for each `i`, so the operator is never in the dark about what is running.
 
-[AM TK: liveness (whether and when a sequence's guards become true) is a nice-to-have feature that the user needs to achieve.
-The simplest behavior: if the operator requests a new change while the previous one is still in flight, the new change is queued until the old one finishes.]
+### 4.1 Sequences, guards, and idioms
 
-### 4.1 Idioms: Named Sequences
+We formalize the surface introduced informally above: the guards `φ`, the guarded sequences they appear in, and the idiom invocations §4.2 will name.
+
+##### Grammar
+
+A guard `φ` is a predicate on the live control's state at a given path.
+We need only two forms:
+
+```
+φ      ::= true                   // trivially satisfied
+         | empty(path)            // the subtree at `path` holds no packets
+
+gseq   ::= ε                      // empty sequence
+         | (φ ; δ) ; gseq         // a guarded atomic diff, then more
+         | I ; gseq               // an idiom invocation, then more
+
+I      ::= Retire(path)
+         | SlowRetire(path)
+         | Replace(path, pol)
+         | PruneDownTo(path)
+         | ...                    // §4.2 names a starter set; the operator can define more
+```
+
+We write `gseq` short for "guarded sequence."
+A guard is always paired with exactly one atomic diff `δ` drawn from §3.
+An idiom `I` appears in a `gseq` _without_ a guard because an idiom expands into a `gseq` of its own whose internal guards carry the synchronization (§4.2).
+For instance, §4.2's `PruneDownTo` expansion reads
+
+```
+Retire(p_a) ; ... ; Retire(p_z) ; (true ; ChangeRoot(path))
+```
+
+mixing bare idiom invocations with one explicitly-guarded atomic diff.
+After idiom expansion (§4.2), every step is a `(φ ; δ)` pair, and that is the form on which the rest of §4 reasons.
+When we write `(φ ; δ)*` informally we mean this fully-expanded form: a finite sequence of `(guard, atomic diff)` pairs.
+
+##### Sequence semantics
+
+§3 wrote `C` for the pre-edit control and `C'` for the post-edit one; here we want a chain rather than a single step.
+A _transition planner_ realizes a reconfiguration from `C` to `C'` as a guarded sequence
+
+```
+(φ_0 ; δ_0) ; (φ_1 ; δ_1) ; ... ; (φ_n ; δ_n).
+```
+
+Write `link_0 = C` and `link_{i+1} = [[δ_i]](link_i)` for `0 <= i <= n`, with `link_{n+1} = C'`.
+Pairs fire in order: `link_i` runs and serves ordinary pushes and pops until `φ_i` becomes true on its state, at which instant `δ_i` fires and produces `link_{i+1}`; only then is the next pair `(φ_{i+1}; δ_{i+1})` in play.
+Crucially, `φ_{i+1}` is evaluated on `link_{i+1}`, which exists only after `δ_i` has fired, so the sequence is genuinely sequential and not a set of independent guards racing on the same control.
+A guard may be `true`, in which case `δ_i` fires the moment `link_i` is installed, with no waiting; but a `true` later in the sequence is still gated by every preceding pair.
+For instance, the closing `(true ; ChangeRoot(path))` of §4.2's `PruneDownTo` is nominally guarded by `true` but in the global timeline cannot fire until every preceding `Retire` has emptied its target and run its `Remove`: the `true` says "install at the moment the predecessor's link is installed," not "install at sequence start."
+A length-one sequence with `φ_0 = true` is a single atomic diff applied immediately, with `C` abutting `C'` and no intervening link.
+The empty sequence is the case `⌊C⌋ =R p2`: the live control is left untouched.
+
+##### Safety
+
+Every sequence the planner emits is safe in the sense that the live scheduler is well-formed at every instant.
+`|- link_0` by assumption.
+Each `δ_i` preserves `|-` by the per-production obligation discharged in §3.4.
+Each `link_i` itself preserves `|-` under ordinary `push`/`pop`, since §3.1's `push` carries a well-formed PIFO tree to a well-formed one and `pop` does likewise on non-empty inputs.
+So the user-observable trace is a stream of ordinary `push`/`pop` operations served in turn by well-formed controls `C, link_1, ..., link_n, C'`.
+Safety is entirely local: it follows from the soundness of the individual diffs, with no global argument about the sequence.
+
+##### Liveness
+
+A sequence reaches `C'` only if each `φ_i` eventually becomes true on `link_i`, and safety says nothing about that.
+A `Quiesce`d subtree may never drain if higher-priority siblings starve it; a guard `empty(path)` on a subtree fed by an adversarial higher-priority neighbor may never fire.
+We therefore treat liveness as a _nice-to-have_, the planner's and the operator's joint concern, not a soundness condition.
+Every sequence we emit is safe; whether and how fast it completes is a function of how well the planner chose its guards and of the traffic the live scheduler meets.
+The simplest planner-side rule, in the face of follow-up requests: if the operator requests a new change while a sequence is still in flight, queue the new request until the in-flight one completes (see the note on `nextnext` at the end of §4).
+
+##### Theorem (the transitionary period is just scheduling)
+
+For every reconfiguration, and every sequence the planner emits for it, each `δ_i` is a sound atomic control replacement (§3.4) and each intervening `link_i` is an ordinary §3.1 control.
+At every instant the live scheduler is well-formed, and the user-observable trace is ordinary `push`/`pop` served by the chain `C, link_1, ..., link_n, C'`.
+The "semantics of `link`" is therefore nothing more than the §3.1 semantics of the controls we install: each diff's job is to be a sound atomic replacement, and the planner's job is to order them behind sensible guards.
+This discharges Obligation 1 of §1.
+
+### 4.2 Idioms: Named Sequences
 
 Our imperative mode above needs a vocabulary.
 The atomic diffs of §3 cover individual edits; many useful reconfigurations are multi-diff.
