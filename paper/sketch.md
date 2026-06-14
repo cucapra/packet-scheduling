@@ -1169,8 +1169,10 @@ When an entry's opcodes name an unmentioned parameter at `π` (e.g., `Change_pol
 - `Quiesce(path)`:
   for each `f ∈ flows(path)`, `walk(Deassoc, chain(f), f)`.
 - `Add(path, pol, meta?)`:
+  - Let `n` be `path`'s current arm count; the new subtree will occupy `path`'s rightmost slot, index `n`, so existing children's indices are undisturbed.
   - Lay out the subtree `pol` in hardware. That is, for each new lPIFO in the subtree compiled from `pol`, `Spawn`+`Adopt`+`Change_pol` is issued. Per-arm `Isa_change_weight`s are issued where the discipline requires them.
-  - The subtree's root is `Adopt`ed by the existing lPIFO at `path`.
+  - `Change_pol(path, t, n+1)` grows `path` to arity `n+1`; where the discipline requires it, `Isa_change_weight(path, n, w)` initializes the new slot's metadata from `meta?`.
+  - `Adopt(n, path, root_of_pol)` attaches the new subtree at index `n`.
   - Start serving traffic to the new subtree. That is, for each `f ∈ flows(pol)`: `walk(Assoc, chain(f), f)`; `walk(Map, internals(f), f)`.
 - `Remove(π ++ [k])`:
   `Change_pol(π, t, n-1)`; `Emancipate(k, π, π ++ [k])`; one `GC` per lPIFO in the freed subtree.
