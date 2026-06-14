@@ -1097,6 +1097,33 @@ TK.]
 
 ## 6. Compiling to Hardware
 
+### 6.1 The commit model
+
+The substrate exposes its services to the planner as an atomic-commit interface.
+The ISA has exactly one unit: a `commit`, which is a list of ISA instructions (coming up next) that the substrate installs _atomically_.
+The entire list lands between two consecutive `push`/`pop` operations, with no intermediate state visible to the user.
+This is precisely the atomicity that §3.4's _Preservation of observation_ obligation demanded.
+
+Each §3.3 atomic diff `δ` lowers to one `commit`; that is the entire ISA-level contract.
+The ISA itself is unconditional: each instruction describes what to do, not what to check.
+The substrate trusts that its caller has issued a well-formed commit and acts accordingly.
+Any situation-dependent reasoning (e.g., "the subtree we are about to collapse is empty") lives at §4, in a guard `φ` that gated the surrounding diff's firing, not in the substrate.
+
+§4 sequences `(φ ; δ)*` are an orchestration concern, not an ISA concern.
+The planner walks the sequence, observes live control state, and dispatches the lowering of `δ_i` to the substrate once `φ_i` becomes true; it then waits for `φ_{i+1}` to become true before dispatching the next commit.
+
+### 6.2 ISA listing (TBD)
+
+### 6.3 Per-diff lowering (TBD)
+
+### 6.4 The super-node gadget (TBD)
+
+### 6.5 Substrate portability (TBD)
+
+---
+
+The remainder of this section is scaffolding from earlier passes; it will be reorganized into §§6.2-6.5 above.
+
 Leaving for Zhiyuan.
 We should emphasize that:
 
