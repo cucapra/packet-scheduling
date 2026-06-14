@@ -1229,35 +1229,47 @@ Three items in the list deserve a sentence of unpacking.
 The chain walk is what §3.4.3 calls _restricting `z` uniformly_.
 Quiesce stops short of `Isa_unmap`: silenced flows' Map entries must outlive the silencing so packets already pushed can route through the chain on the way to pop. `Remove` pairs `Isa_emancipate` with `Isa_unmap` precisely because it fires after the drain, when there is no longer any in-flight traffic to preserve.
 
-`Designate`'s `Isa_designate(path, surv_root)` performs no edit on `path`'s parent: the super-node `{path -> surv_root}` reuses `path`'s slot, so the parent's index, weight, and per-arm metadata are untouched.
-This is what lets the pre-existing per-arm metadata at `path` continue to apply after the give-up; the substrate consults `surv_root` only on a later `Isa_undesignate`.
+At the tree level, §3 treats `Designate(path, surv)` as wrapping `path` in a fresh `Strict*` arm with `surv` as the second arm; a faithful substrate could spawn a Strict-2 lPIFO and adopt it where `path` used to sit.
+`Isa_designate` instead realizes the wrap in place as a _super-node_ `{path -> surv_root}` that occupies `path`'s existing slot in the parent's view, sparing the tree an added PE level and an extra pop hop.
+This is also why `Isa_designate(path, surv_root)` performs no edit on `path`'s parent: the slot is reused, so the parent's index, weight, and per-arm metadata are untouched.
+The pre-existing per-arm metadata at `path` continues to apply after the give-up; the substrate consults `surv_root` only on a later `Isa_undesignate`.
 
 `ChangeRoot` writes no flow tables: `path`'s `Assoc` and `Map` already describe the post-commit live tree, since collapsing the unary vine above `path` leaves the flows-to-leaves mapping unchanged.
 
-### 6.4 The super-node gadget (TBD)
+### 6.4 Substrate portability
 
-### 6.5 Substrate portability (TBD)
+§3.5's argument that each `δ`'s soundness proof survives the lowering leans on the substrate running each commit as an atomic transactional install.
+Two properties make this work, and they are also what any third-party substrate would need in order to host our compilation.
 
----
+First, the substrate must provide the thirteen opcodes of §6.2, or compositions equivalent to them.
+This is a vocabulary requirement, not a semantic one: a substrate that lacks a native super-node (§6.4) can still host `Designate` by installing a Strict-2 lPIFO at the parent's slot, at the cost of one PE level per active give-up.
 
-The remainder of this section is scaffolding from earlier passes; it will be reorganized into §§6.2-6.5 above.
+Second, the substrate must guarantee that no `push` or `pop` interleaves between a commit's first and last instruction.
+This is what hides §3.5's transiently-malformed intermediate frames.
+`Graft`'s commit produces a moment in which the old root has two parents.
+`Remove`'s sibling-shift cascade produces moments in which the parent's arity is not yet aligned with its index map.
+`ChangeRoot`'s vine collapse produces moments in which the freed vine nodes are detached but not yet released.
+None of these frames survive an atomic commit's install.
+A non-atomic substrate would expose some of them, and whether that breaks observable soundness depends on the substrate's pop-arbitration policy against an in-progress commit, a detail we do not pin down here.
 
-Leaving for Zhiyuan.
-We should emphasize that:
+The requirement is weaker than a general-purpose transaction manager.
+The planner knows each commit's length and shape statically, and the substrate need only honor an install-without-interleave guarantee for that fixed shape.
+Several diffs need even less.
+`ChangeWeight` is a single instruction.
+A single-flow `Quiesce` walks one chain and modifies only `Assoc`; each intermediate frame is well-formed because the as-yet-unsilenced interior nodes still route via their existing Assocs.
 
-- We have rolled our own PIFO substrate; in practice you can use ours or swap it out (e.g., with vPIFO).
-  This is not the point of the contribution.
-  We compose well with any PIFO substrate.
-- Focus on the gadgetry we built to handle transitions nicely.
-- `Designate` (§3.3) realizes the `Strict` wrap as an in-place gadget: a _super-node_ `{A -> B}` that occupies `A`'s slot directly, exposes a pop order strictly favoring `A` over `B`, and adds no PE depth.
-  Detail the gadget's representation, its commit sequence, and the `{A -> B} -> B` collapse that `Remove(path)` triggers once `A` is empty.
-- [AM: question for Zhiyuan: §3.5 leans on our substrate executing each lowered instruction sequence as an atomic transactional commit, and that commit is exactly what realizes an atomic §3.4.1 diff.
-  But we also claim that we compose with _any_ PIFO substrate.
-  So what do we actually require from a substrate?
-  Must it support atomic commits / an atomic install that hides the transiently-malformed intermediate states?
-  Do you know if vPIFO supports this?
-  If a substrate cannot hide those states, does composition break?
-  What do we genuinely need to assume?]
+The closest hardware contemporary, vPIFO (Zhang et al., SIGCOMM 2024), virtualizes a single physical PIFO across many logical instances at line rate but explicitly defers correct scheduling of packets _during the transitional phase between modifications_ to future work.
+Our two contributions read as complementary: vPIFO addresses the scaling and topology-flexibility question (many logical trees over one physical scheduler) while leaving transition correctness open, and the present work addresses transition correctness while taking the substrate as given.
+The bridge, namely what a vPIFO-class substrate would need to add to host our compilation, comes down to the install-without-interleave guarantee above.
+
+[AM question for Zhiyuan: §3.5 leans on our substrate executing each lowered instruction sequence as an atomic transactional commit, and that commit is exactly what realizes an atomic §3.4 diff.
+But we also claim that we compose with _any_ PIFO substrate.
+So what do we actually require from a substrate?
+Must it support atomic commits, i.e., an atomic install that hides the transiently-malformed intermediate states?
+Do you know if vPIFO supports this?
+If a substrate cannot hide those states, does composition break?
+What do we genuinely need to assume?
+The §6.5 prose above is my best current answer; please poke at it.]
 
 ## 7. Evaluation
 
