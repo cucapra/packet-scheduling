@@ -1112,7 +1112,34 @@ Any situation-dependent reasoning (e.g., "the subtree we are about to collapse i
 §4 sequences `(φ ; δ)*` are an orchestration concern, not an ISA concern.
 The planner walks the sequence, observes live control state, and dispatches the lowering of `δ_i` to the substrate once `φ_i` becomes true; it then waits for `φ_{i+1}` to become true before dispatching the next commit.
 
-### 6.2 ISA listing (TBD)
+### 6.2 The ISA
+
+Three pieces of substrate vocabulary appear in the listing below:
+
+- **lPIFO** ("logical PIFO"): one PIFO-tree node, addressed by an opaque id `v`. Many lPIFOs may co-host on one PE; by convention, all sibling and cousin lPIFOs at one depth of one tree share a PE.
+- **PE** (processing element): hosts one or more lPIFOs and owns their per-node state and logic.
+- **flow**: a traffic class.
+- **index**: opaque per-lPIFO handle naming one of that lPIFO's children; what an lPIFO uses internally to refer to a child arm.
+
+The ISA has twelve opcodes:
+
+| Opcode                   | Parameters                | Effect                                                                                                                                                                                                                                               |
+| ------------------------ | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Spawn(v, pe)`           | fresh lPIFO id, PE id     | Allocate an empty lPIFO `v` on PE `pe`.                                                                                                                                                                                                              |
+| `Adopt(i, p, c)`         | index, parent, child      | Parent `p` gains `c` as a child, reachable via index `i`.                                                                                                                                                                                            |
+| `Emancipate(i, p, c)`    | index, parent, child      | Inverse of `Adopt`: detach `c` from `p`; `i` was the index used to reach `c`.                                                                                                                                                                        |
+| `Assoc(v, f)`            | lPIFO, flow               | `v` begins to accept packets of flow `f`.                                                                                                                                                                                                            |
+| `Deassoc(v, f)`          | lPIFO, flow               | `v` stops accepting packets of flow `f`.                                                                                                                                                                                                             |
+| `Map(v, f, i)`           | lPIFO, flow, index        | In `v`'s brain, route flow `f` to index `i`.                                                                                                                                                                                                         |
+| `Unmap(v, f, i)`         | lPIFO, flow, index        | Forget `v`'s flow-`f`-to-index-`i` entry.                                                                                                                                                                                                            |
+| `Change_pol(v, t, n)`    | lPIFO, policy type, arity | Set `v`'s policy to `t` with `n` arms; `t` ranges over {FIFO, RoundRobin, Strict, WFQ, Union}.                                                                                                                                                       |
+| `Change_weight(v, i, w)` | lPIFO, index, new weight  | The child reached via `i` now carries weight `w`.                                                                                                                                                                                                    |
+| `Isa_designate(v, surv)` | two lPIFOs                | Form the super-node `{v -> surv}` in `v`'s slot: pops favor `v`; the substrate records `surv` as `v`'s designated successor for an eventual `Isa_undes`.                                                                                             |
+| `GC(v)`                  | lPIFO                     | Release `v`'s PE slot.                                                                                                                                                                                                                               |
+| `Isa_undes(v)`           | lPIFO                     | Collapse the super-node `{v -> surv}` to `surv`: the parent index that pointed at `{v -> surv}` now points directly at `surv`, and `surv` inherits the slot's per-arm metadata. `v` itself remains allocated and is reclaimed by a separate `GC(v)`. |
+
+Each opcode performs exactly one job, even where the planner uses two of them together. `Isa_undes(v)` only rewires the parent's index, leaving `v` itself allocated; the planner pairs it with `GC(v)` (in the same commit) to reclaim `v`'s slot.
+The clean separation lets the substrate avoid checking live state to figure out what the planner meant: consistent with the unconditional ISA style (§6.1), the planner has already discharged any "is `v` actually empty?" / "is `v` actually the top of a super-node?" question via a §4 guard `φ` that gated the surrounding diff.
 
 ### 6.3 Per-diff lowering (TBD)
 
