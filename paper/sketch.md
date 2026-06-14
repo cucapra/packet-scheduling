@@ -1196,9 +1196,12 @@ When an entry's opcodes name an unmentioned parameter at `π` (e.g., `Change_pol
   let the live tree be `port_root -> a_0 -> a_1 -> ... -> a_m -> path` (the §3.3 restriction makes `a_0 .. a_m` a unary vine).
   `Emancipate(port_step, port_root, a_0)`; `Adopt(port_step, port_root, path)`; `GC(a_0), GC(a_1), ..., GC(a_m)`.
 - `Graft(ctx)`:
-  let `prev_root` be `port_root`'s current child (the live tree's actual root) and `new_ctx_root` be the root of `ctx`'s compiled subtree.
-  Compile `ctx` exactly as in `Add`, with one modification at the hole: instead of spawning a fresh subtree for the hole, feed the hole's `Adopt` the existing `prev_root`'s id directly.
-  Change what `port_root` points at: `Emancipate(port_step, port_root, prev_root)`; `Adopt(port_step, port_root, new_ctx_root)`.
+  - Let `prev_root` be `port_root`'s current child (the live tree's actual root), `new_ctx_root` be the root of `ctx`'s compiled subtree, and `π` be the lPIFO parent of `ctx`'s hole.
+  - Lay out `ctx`'s subtree in hardware as in `Add`'s "lay out the subtree" step, with one modification at the hole: instead of spawning a fresh subtree, use `Adopt` to make `π` have the child `prev_root`.
+  - Swap `port_root`'s child: `Emancipate(port_step, port_root, prev_root)`; `Adopt(port_step, port_root, new_ctx_root)`.
+  - Wire flow tables. Partition the post-commit `flows(new_ctx_root)` into `F_ctx` (flows whose leaves lie strictly inside `ctx`) and `F_thru = flows(prev_root)` (flows that descend through the hole).
+    - For each `f ∈ F_ctx`: `walk(Assoc, chain(f), f)`; `walk(Map, internals(f), f)`. Fresh end-to-end wiring, as in `Add`.
+    - For each `f ∈ F_thru`: only the new spine (from `new_ctx_root` to `prev_root`) needs writing. Issue `Assoc(v, f)` and `Map(v, f, i_{v,f})` at each `v` from `new_ctx_root` down through `π_hole`. The in-`prev_root` segments of `chain(f)` and `internals(f)` are unchanged from `prev_root`'s original setup; `port_root` already Assocs `f`, and its `Map(port_root, f, port_step)` survives the swap because `port_step` is the index name, unbound to any particular child.
 
 Three items in the list deserve a sentence of unpacking.
 
