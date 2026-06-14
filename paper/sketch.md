@@ -400,6 +400,10 @@ For `p` the same `[±/k]` notation _renumbers_ rather than splices, since the PI
 `p[+/k]` is `p` with every entry `>= k` bumped up by one (opening up slot `k`); `p[-/k]` is `p` with every entry `> k` brought down by one.
 Entries below the edit point are left alone.
 
+Several productions edit a single arm relative to its parent.
+When the per-production rule hinges on this relation, we destruct the diff's path as `π ++ [k]`, with `π` the parent's path and `k` the local index by which that parent reaches the target.
+§6 reuses this destructuring when lowering the same diffs to hardware.
+
 As a warm-up, we discharge the five obligations in some detail for the production `Add`.
 The remaining productions reuse the same obligations and arguments, so for them we present only what differs in substance: the closed-form `den`, the operationally interesting bits of the per-node rule, and the points where any of the preservation arguments departs from `Add`'s.
 
@@ -488,9 +492,7 @@ We still phrase the characterization mod `=R` to keep a uniform shape across pro
 
 #### 3.4.2. `ChangeWeight(target, weight)`
 
-Throughout, `target : path` is the path to the arm whose weight changes.
-The path is non-empty (see precondition below) and so we break it into two pieces `π` and `[k]` such that `target = π ++ [k]`.
-That is, `π` is the path to the target node's parent, and the target node is that parent's `k`-th child.
+Throughout, `target : path` is the path to the arm whose weight changes; it is non-empty (see precondition below) and we destruct it as `π ++ [k]`.
 
 Say the presently running control is `C`.
 Intuitively, `ChangeWeight` overwrites `C@π.slot_states[k].weight` with the new weight provided.
@@ -571,9 +573,7 @@ The cost is touching `|T|` leaves and the union of their ancestor chains; the ga
 
 #### 3.4.4. `Remove(target)`
 
-Throughout, `target : path` is the path to the arm being removed.
-The path is non-empty (see precondition below) and so we break it into two pieces `π` and `[k]` such that `target = π ++ [k]`.
-That is, `π` is the path to the parent of the removed arm, and the removed arm is that parent's `k`-th child.
+Throughout, `target : path` is the path to the arm being removed; it is non-empty (see precondition below) and we destruct it as `π ++ [k]`.
 
 Say the presently running control is `C`.
 Intuitively, `Remove` unhooks the subtree at slot `k` of `C@π` and renumbers higher siblings down by one.
@@ -722,7 +722,7 @@ Overlap with `C@target`'s own leaves is explicitly permitted: the moment the dif
 Let `N` denote the freshly introduced `Strict*` node, and let `P0` denote the number of packets currently held under `C@target`.
 
 - _Outside the subtree at `target`, outside `N`, and off the ancestor chain to `target`:_ preserved verbatim.
-  If `target` is non-empty, let `π ++ [k] = target`: at `π` the `node_state`, `slot_states`, and `pifo` are unchanged; the slot `k` that used to point to `C@target` now points to `N`, inheriting `C@π.slot_states[k]` (the per-arm meta is held by `π`, not by `N`, so the wrap is transparent to `π`); `z` is extended as described in the next bullet.
+  If `target = π ++ [k]` is non-empty: at `π` the `node_state`, `slot_states`, and `pifo` are unchanged; the slot `k` that used to point to `C@target` now points to `N`, inheriting `C@π.slot_states[k]` (the per-arm meta is held by `π`, not by `N`, so the wrap is transparent to `π`); `z` is extended as described in the next bullet.
 - _At each proper ancestor of `target` (including the root, and including `π`):_ `node_state`, `slot_states`, and `pifo` preserved verbatim.
   The local `z` is extended to admit packets that classify into the new arm-1 subtree under `N`, mapping them to whichever child slot at this ancestor lies on the path down to `N`.
   Pre-existing mappings are untouched.
@@ -771,7 +771,7 @@ It is the structural inverse of `Designate`.
 Let `N = C@target`.
 
 - _Inside `B` (arm 1 of `N`):_ preserved verbatim, every node.
-- _At `π = parent(target)`_ (if `target` is non-empty, with `k` the last index): `node_state`, `pifo`, and `z` unchanged; `slot_states[k]` preserved verbatim (the wrapper inherited it at `Designate` time, and the unwrap returns it unchanged); slot `k` now points to `B` rather than to `N`.
+- _At `π`_ (if `target = π ++ [k]` is non-empty): `node_state`, `pifo`, and `z` unchanged; `slot_states[k]` preserved verbatim (the wrapper inherited it at `Designate` time, and the unwrap returns it unchanged); slot `k` now points to `B` rather than to `N`.
   `N` itself and its arm-0 stub are discarded.
 - If `target` is empty, the new root is `B`, inheriting `B`'s own `node_state`, `slot_states`, `pifo`, `z`, and child list verbatim; `N` and its arm-0 stub are discarded.
 
@@ -1155,7 +1155,7 @@ The wrapper exists so that "swap the root" can be expressed as one `Emancipate`/
 The lowerings follow, one row per diff in the order of the §3.3 grammar.
 We fix three reading conventions for the table below.
 First, we identify a tree position with the lPIFO that lives there.
-Second, when the lowering hinges on the relation between a target and its parent, we destruct the diff's path as `π ++ [i]`, with `π` the parent's path and `i` the local index by which that parent reaches the target.
+Second, when the lowering hinges on the relation between a target and its parent, we destruct the diff's path as `π ++ [k]` (reusing §3.4's convention: `π` is the parent's path, `k` is the local index by which that parent reaches the target).
 Third, we use shorthand for the chain walks that recur across rows.
 Write `flows(path)` for the set of flows admitted by some leaf under `path`.
 Write `chain(f)` for the unique sequence of lPIFOs from `port_root` down to the leaf admitting `f`, and `internals(f)` for that sequence minus the leaf.
@@ -1163,13 +1163,13 @@ Write `walk(op, C, f)` for issuing `op(v, f, ...)` at each `v ∈ C` in chain or
 
 | diff                        | commit                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ChangeWeight(π ++ [i], w)` | `Change_weight(π, i, w)`.                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `ChangeWeight(π ++ [k], w)` | `Change_weight(π, k, w)`.                                                                                                                                                                                                                                                                                                                                                                                                    |
 | `Quiesce(path)`             | For each `f ∈ flows(path)`: `walk(Deassoc, chain(f), f)`; `walk(Unmap, internals(f), f)`.                                                                                                                                                                                                                                                                                                                                    |
 | `Add(path, pol, meta?)`     | For each lPIFO in the subtree compiled from `pol`, a `Spawn`+`Adopt`+`Change_pol`, with per-arm `Change_weight`s where the discipline requires them. Then for each `f ∈ flows(pol)`: `walk(Assoc, chain(f), f)`; `walk(Map, internals(f), f)`.                                                                                                                                                                               |
-| `Remove(π ++ [i])`          | `Change_pol(π, t, n-1)` (plus a per-arm `Change_weight` chain on the survivors if `t` is `Strict` or `WFQ`); `Emancipate(i, π, π ++ [i])`; one `GC` per lPIFO in the freed subtree.                                                                                                                                                                                                                                          |
+| `Remove(π ++ [k])`          | `Change_pol(π, t, n-1)` (plus a per-arm `Change_weight` chain on the survivors if `t` is `Strict` or `WFQ`); `Emancipate(k, π, π ++ [k])`; one `GC` per lPIFO in the freed subtree.                                                                                                                                                                                                                                          |
 | `Designate(path, pol)`      | Stand up `pol`'s subtree exactly as in `Add` (the `Spawn`+`Adopt`+`Change_pol`+`Change_weight` cluster on every new lPIFO), and call its root `surv_root`. Then `Isa_designate(path, surv_root)`. Then for each `f ∈ flows(surv_root) \ flows(path)`: `walk(Assoc, chain(f), f)`; `walk(Map, internals(f), f)`. For each `f ∈ flows(path) \ flows(surv_root)`: `walk(Deassoc, chain(f), f)`; `walk(Unmap, internals(f), f)`. |
 | `Undesignate(path)`         | `Isa_undes(path)`; `GC(path)`.                                                                                                                                                                                                                                                                                                                                                                                               |
-| `ChangeRoot(path)`          | Let the live tree be `port_root -> a_0 -> a_1 -> ... -> a_k -> path` (the §3.3 restriction makes `a_0 .. a_k` a unary vine). Then: `Emancipate(port_step, port_root, a_0)`; `Adopt(port_step, port_root, path)`; `GC(a_0), GC(a_1), ..., GC(a_k)`.                                                                                                                                                                           |
+| `ChangeRoot(path)`          | Let the live tree be `port_root -> a_0 -> a_1 -> ... -> a_m -> path` (the §3.3 restriction makes `a_0 .. a_m` a unary vine). Then: `Emancipate(port_step, port_root, a_0)`; `Adopt(port_step, port_root, path)`; `GC(a_0), GC(a_1), ..., GC(a_m)`.                                                                                                                                                                           |
 | `Graft(ctx)`                | Compile `ctx` exactly as in `Add`, with one modification at the hole: instead of spawning a fresh subtree for the hole, feed the hole's `Adopt` the existing `prev_root`'s id directly. Then swing `port_root`: `Emancipate(port_step, port_root, prev_root)`; `Adopt(port_step, port_root, new_ctx_root)`.                                                                                                                  |
 
 Three compressions in the table deserve a sentence of unpacking.
