@@ -1201,7 +1201,7 @@ When an entry's opcodes name an unmentioned parameter at `π` (e.g., `Change_pol
   - Swap `port_root`'s child: `Emancipate(port_step, port_root, prev_root)`; `Adopt(port_step, port_root, new_ctx_root)`.
   - Wire flow tables. Partition the post-commit `flows(new_ctx_root)` into `F_ctx` (flows whose leaves lie strictly inside `ctx`) and `F_thru = flows(prev_root)` (flows that descend through the hole).
     - For each `f ∈ F_ctx`: `walk(Assoc, chain(f), f)`; `walk(Map, internals(f), f)`. Fresh end-to-end wiring, as in `Add`.
-    - For each `f ∈ F_thru`: only the new spine (from `new_ctx_root` to `prev_root`) needs writing. Issue `Assoc(v, f)` and `Map(v, f, i_{v,f})` at each `v` from `new_ctx_root` down through `π_hole`. The in-`prev_root` segments of `chain(f)` and `internals(f)` are unchanged from `prev_root`'s original setup; `port_root` already Assocs `f`, and its `Map(port_root, f, port_step)` survives the swap because `port_step` is the index name, unbound to any particular child.
+    - For each `f ∈ F_thru`: only the new spine (from `new_ctx_root` down to `π`) needs writing. Issue `Assoc(v, f)` and `Map(v, f, i_{v,f})` at each `v` from `new_ctx_root` down through `π`. The in-`prev_root` segments of `chain(f)` and `internals(f)` are unchanged from `prev_root`'s original setup; `port_root` already Assocs `f`, and its `Map(port_root, f, port_step)` survives the swap because `port_step` is the index name, unbound to any particular child.
 
 Three items in the list deserve a sentence of unpacking.
 
