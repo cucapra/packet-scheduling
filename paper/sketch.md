@@ -1103,6 +1103,7 @@ The substrate exposes its services to the planner as an atomic-commit interface.
 The ISA has exactly one unit: a `commit`, which is a list of ISA instructions (§6.2) that the substrate installs _atomically_.
 The entire list lands between two consecutive `push`/`pop` operations, with no intermediate state visible to the user's `pop` stream.
 This is precisely the atomicity that §3.4's _Preservation of observation_ obligation demanded.
+A commit's _length_ may depend on live control state (how many flows are admitted, how many siblings need shifting), but its _atomicity_ does not.
 
 Each §3.3 atomic diff `δ` lowers to one `commit`; that is the entire ISA-level contract.
 The ISA itself is unconditional: each instruction describes what to do, not what to check.
@@ -1111,6 +1112,10 @@ Any situation-dependent reasoning (e.g., "the subtree we are about to collapse i
 
 §4 sequences `(φ ; δ)*` are an orchestration concern, not an ISA concern.
 The planner walks the sequence, observes live control state, and dispatches the lowering of `δ_i` to the substrate once `φ_i` becomes true; it then waits for `φ_{i+1}` to become true before dispatching the next commit.
+
+One more piece of setup we will lean on in §6.3: _PE deployment_.
+We treat the assignment of an lPIFO to a PE as a deterministic function `pe(path)` of the lPIFO's tree position, fixed at compile time.
+The planner consults `pe(path)` when it needs an `Isa_spawn`'s `pe` argument; the function's definition is a property of the target substrate and is not otherwise observable at the ISA.
 
 ### 6.2 The ISA
 
@@ -1144,6 +1149,14 @@ The clean separation lets the substrate avoid checking live state to figure out 
 
 For instance, `Isa_undesignate(v)` only rewires the parent's index, leaving `v` itself allocated; the planner pairs it with `Isa_gc(v)` (in the same commit) to reclaim `v`'s slot.
 
+Single-purpose opcodes also mean that the tree can drift transiently malformed _within_ a commit, in ways that the commit's atomicity hides from any observer.
+For an instance from §6.3: `Graft`'s commit first adopts the live tree's current root as a child of the new context's hole, then emancipates that same node from `port_root`.
+Between those two instructions, the old root has two parents.
+The atomic install means no `push` or `pop` ever sees this state, but the planner is free to issue commits whose intermediate frames would not satisfy the §3.1 well-formedness invariants.
+
+One last convention applies throughout §6.3.
+We name lPIFOs by their tree path, writing `Isa_emancipate(k, π, π ++ [k])` rather than threading explicit opaque ids; this only abuses notation, since paths and live-tree lPIFOs are in bijection at any commit boundary.
+
 ### 6.3 Lowering atomic diffs
 
 Each §3.3 diff lowers to an `instr list`.
@@ -1153,7 +1166,11 @@ The substrate itself sees only a finished commit and does no live-state checking
 Before working through the diffs, we set up one structural convention.
 A switch with `P` output ports has `P` separate trees, and at the ISA we put a uniform thin wrapper around each.
 Every port hosts a reserved lPIFO `port_root`, allocated at boot on a reserved PE, whose sole child is the actual tree root.
-`port_root` runs a fixed 1-arm policy. Its `Assoc` set mirrors that of the live tree's actual root; its `Map` sends each Assoc'd flow through its single index `port_step`. Both are maintained automatically by the §6.3 walks (which start at `port_root`); only `ChangeRoot` and `Graft` rewire `port_root`'s child.
+`port_root` runs a fixed 1-arm policy.
+Its `Assoc` set mirrors that of the live tree's actual root; its `Map` sends each Assoc'd flow through its single index `port_step`.
+This `port_root` state is load-bearing for the two root-touching diffs, and it is maintained by two complementary mechanisms.
+On every diff except `ChangeRoot` and `Graft`, the `walk(...)` calls that touch `Assoc`/`Map` start at `port_root` and so update its tables in lockstep with the actual root's.
+On `ChangeRoot` and `Graft`, the lowering issues no flow-table writes against `port_root` at all: the swap is exactly one `Isa_emancipate`/`Isa_adopt` pair against `port_root`, and the existing `Assoc`/`Map` state survives the swap because `port_step` is the index _name_, unbound to any particular child.
 The wrapper exists so that "swap the root" can be expressed as one `Isa_emancipate`/`Isa_adopt` pair against `port_root`, in the same vocabulary as any child-level edit; there is no opcode for changing the root directly.
 
 The lowerings follow, one per diff in the order of the §3.3 grammar.
@@ -1165,7 +1182,7 @@ Write `flows(path)` for the set of flows admitted by some leaf under `path`.
 Write `chain(f)` for the unique sequence of lPIFOs from `port_root` down to the leaf admitting `f`, and `internals(f)` for that sequence minus the leaf.
 Write `walk(op, C, f)` for issuing `op(v, f, ...)` at each `v ∈ C` in chain order; positional remainders such as `Isa_map`'s routing index `i_{v,f}` are read off the live tree.
 When an entry's opcodes name an unmentioned parameter at `π` (e.g., `Isa_set_policy`'s discipline `t` or `Isa_set_arity`'s arity `n`), it is the live value at `π` at the time the command is issued.
-`Isa_spawn`'s `pe` argument is similarly elided in the entries: it is `pe(path)` for the new lPIFO's position, computed from the §6.1 deployment convention.
+`Isa_spawn`'s `pe` argument is similarly elided: it is `pe(path)` for the new lPIFO's position, drawn from §6.1's deployment convention.
 
 - `ChangeWeight(π ++ [k], w)`:
   `Isa_change_weight(π, k, w)`.
@@ -1182,10 +1199,10 @@ When an entry's opcodes name an unmentioned parameter at `π` (e.g., `Isa_set_po
   - Shift higher-indexed siblings down to fill the gap. For each `j ∈ {k+1, ..., n-1}` in increasing order, let `child_j` be the live child at slot `j`: `Isa_emancipate(j, π, child_j); Isa_adopt(j-1, π, child_j)`; where the discipline keeps per-arm metadata, `Isa_change_weight(π, j-1, w_j)` carries slot `j`'s live metadata along. [AM note: this is a little crazy! Zhiyuan, possible to make do without this massive emancipate-adopt cascade?]
   - Rewrite `π`'s flow-to-index Map for the same shift: for each `j ∈ {k+1, ..., n-1}` and each `f ∈ flows(π ++ [j])`, `Isa_unmap(π, f, j); Isa_map(π, f, j-1)`. [AM note: this is a little crazy! Zhiyuan, possible to make do without this massive emancipate-adopt cascade?]
   - `Isa_set_arity(π, n-1)`.
-  - For each `f ∈ flows(π ++ [k])`, `walk(Isa_unmap, internals(f), f)` clears the doomed flows' routing through the chain above `π ++ [k]` (including `π` itself, whose `f → k` entry vanishes).
+  - For each `f ∈ flows(π ++ [k])`, `walk(Isa_unmap, internals(f), f)` clears the doomed flows' routing through the chain above `π ++ [k]` (including `π` itself, whose `f -> k` entry vanishes).
   - One `Isa_gc` per lPIFO in the now-detached subtree.
 - `Designate(path, pol)`:
-  - Stand up `pol`'s subtree as in `Add`, except that the subtree's root `surv_root` is left unattached.
+  - Stand up `pol`'s subtree as in `Add`'s "lay out the subtree" step, with one departure: skip the `Isa_adopt` that would have attached the subtree's root `surv_root` to a parent. The per-arm `Isa_change_weight`s that the discipline requires for `surv_root`'s children are still issued; only `surv_root` itself is left unattached, since the super-node trick (next step) is what installs it.
   - `Isa_designate(path, surv_root)` attaches the subtree's root via the super-node trick.
   - Serve traffic to the designated survivor.
     For each `f ∈ flows(surv_root) \ flows(path)`: `walk(Isa_assoc, chain(f), f)`; `walk(Isa_map, internals(f), f)`.
@@ -1206,7 +1223,7 @@ When an entry's opcodes name an unmentioned parameter at `π` (e.g., `Isa_set_po
     - For each `f ∈ F_ctx`: `walk(Isa_assoc, chain(f), f)`; `walk(Isa_map, internals(f), f)`. Fresh end-to-end wiring, as in `Add`.
     - For each `f ∈ F_thru`: only the new spine (from `new_ctx_root` down to `π`) needs writing. Issue `Isa_assoc(v, f)` and `Isa_map(v, f, i_{v,f})` at each `v` from `new_ctx_root` down through `π`. The in-`prev_root` segments of `chain(f)` and `internals(f)` are unchanged from `prev_root`'s original setup; `port_root` already Assocs `f`, and its `Isa_map(port_root, f, port_step)` survives the swap because `port_step` is the index name, unbound to any particular child.
 
-Four items in the list deserve a sentence of unpacking.
+Three items in the list deserve a sentence of unpacking.
 
 `Quiesce`'s wide reach (root-to-`path` chain, plus the subtree under `path`) is forced by §3.2's parallel push: every node on a packet's path mints its own routing index independently, so dropping `f` only at a strict subset would leave the rest happy to mint stray indices that would leave the tree malformed.
 The chain walk is what §3.4.3 calls _restricting `z` uniformly_.
@@ -1216,9 +1233,6 @@ Quiesce stops short of `Isa_unmap`: silenced flows' Map entries must outlive the
 This is what lets the pre-existing per-arm metadata at `path` continue to apply after the give-up; the substrate consults `surv_root` only on a later `Isa_undesignate`.
 
 `ChangeRoot` writes no flow tables: `path`'s `Assoc` and `Map` already describe the post-commit live tree, since collapsing the unary vine above `path` leaves the flows-to-leaves mapping unchanged.
-
-`ChangeRoot` and `Graft` are the only diffs that touch `port_root`.
-In both cases the root swap is exactly one `Isa_emancipate`/`Isa_adopt` pair against `port_root`; the rest of the commit is the diff-specific build-up or tear-down of the surrounding structure.
 
 ### 6.4 The super-node gadget (TBD)
 
