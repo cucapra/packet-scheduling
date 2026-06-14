@@ -1141,7 +1141,42 @@ The ISA has twelve opcodes:
 Each opcode performs exactly one job, even where the planner uses two of them together. `Isa_undes(v)` only rewires the parent's index, leaving `v` itself allocated; the planner pairs it with `GC(v)` (in the same commit) to reclaim `v`'s slot.
 The clean separation lets the substrate avoid checking live state to figure out what the planner meant: consistent with the unconditional ISA style (§6.1), the planner has already discharged any "is `v` actually empty?" / "is `v` actually the top of a super-node?" question via a §4 guard `φ` that gated the surrounding diff.
 
-### 6.3 Per-diff lowering (TBD)
+### 6.3 Lowering atomic diffs
+
+Each §3.3 diff lowers to an `instr list`.
+The lowering is mechanical and consults no live control state; it is just function of the diff and its parameters.
+
+Before working through the diffs, we set up one structural convention.
+A switch with `k` output ports has `k` separate trees, and at the IL we put a uniform thin wrapper around each.
+Every port hosts a reserved lPIFO `port_root`, allocated at boot on a reserved PE, whose sole child is the actual tree root.
+`port_root` runs a fixed 1-arm policy and a fixed `Map` that sends every flow through its single index `port_step`.
+The wrapper exists so that "swap the root" can be expressed as one `Emancipate`/`Adopt` pair against `port_root`, in the same vocabulary as any child-level edit; there is no opcode for changing the root directly.
+
+The lowerings follow, one row per diff in the order of the §3.3 grammar.
+In a row, we identify a tree position with the lPIFO that lives there.
+When the lowering hinges on the relation between a target and its parent, we destruct the diff's path as `π ++ [i]`, with `π` the parent's path and `i` the local index by which that parent reaches the target.
+
+| diff                        | commit                                                                                                                                                                                                                                                                                                                                                             |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `ChangeWeight(π ++ [i], w)` | `Change_weight(π, i, w)`.                                                                                                                                                                                                                                                                                                                                          |
+| `Quiesce(path)`             | For each flow `f` admitted by some leaf under `path`: `Deassoc(v, f)` at every node `v` that admits `f` along the chain from `port_root` to `path` and inside `path`'s subtree; `Unmap(v, f, i_{v,f})` at every internal `v` on that walk whose brain had a `Map` for `f`.                                                                                         |
+| `Add(path, pol, meta?)`     | For each lPIFO in the subtree compiled from `pol`, a `Spawn`+`Adopt`+`Change_pol`, with per-arm `Change_weight`s where the discipline requires them and an `Assoc` on every new interior lPIFO for the flows it carries. Then on every ancestor from `port_root` to `path` and every flow `f` newly introduced by `pol`, an `Assoc(v, f)`+`Map(v, f, i_{v,f})`.    |
+| `Remove(π ++ [i])`          | `Change_pol(π, t, n-1)` (plus a per-arm `Change_weight` chain on the survivors if `t` is `Strict` or `WFQ`); `Emancipate(i, π, π ++ [i])`; one `GC` per lPIFO in the freed subtree.                                                                                                                                                                                |
+| `Designate(path, pol)`      | Stand up `pol`'s subtree exactly as in `Add` (the `Spawn`+`Adopt`+`Change_pol`+`Change_weight`+`Assoc` cluster on every new lPIFO), and call its root `surv_root`. Then `Isa_designate(path, surv_root)`. Then on every ancestor and every flow in the symmetric difference of `path`'s and `surv_root`'s flow sets, the matching `Assoc`/`Deassoc`+`Map`/`Unmap`. |
+| `Undesignate(path)`         | `Isa_undes(path)`; `GC(path)`.                                                                                                                                                                                                                                                                                                                                     |
+| `ChangeRoot(path)`          | Let the live tree be `port_root -> a_0 -> a_1 -> ... -> a_k -> path` (the §3.3 restriction makes `a_0 .. a_k` a unary vine). Then: `Emancipate(port_step, port_root, a_0)`; `Adopt(port_step, port_root, path)`; `GC(a_0), GC(a_1), ..., GC(a_k)`.                                                                                                                 |
+| `Graft(ctx)`                | Compile `ctx` exactly as in `Add`, with one modification at the hole: instead of spawning a fresh subtree for the hole, feed the hole's `Adopt` the existing `prev_root`'s id directly. Then swing `port_root`: `Emancipate(port_step, port_root, prev_root)`; `Adopt(port_step, port_root, new_ctx_root)`.                                                        |
+
+Three compressions in the table deserve a sentence of unpacking.
+
+`Quiesce`'s wide reach (root-to-`path` chain plus the subtree under `path`) is forced by §3.2's parallel push: every node on a packet's path mints its own routing index independently, so dropping `f` only at a strict subset would leave the rest happy to mint stray indices that the substrate would then dutifully chase into a malformed state.
+The chain walk is what §3.4.3 calls _restricting `z` uniformly_.
+
+`Designate`'s `Isa_designate(path, surv_root)` performs no edit on `path`'s parent: the super-node `{path -> surv_root}` reuses `path`'s slot, so the parent's index, weight, and per-arm metadata are untouched.
+This is what lets the pre-existing per-arm metadata at `path` continue to apply after the give-up; the substrate consults `surv_root` only on a later `Isa_undes`.
+
+`ChangeRoot` and `Graft` are the only diffs that touch `port_root`.
+In both cases the root swap is exactly one `Emancipate`/`Adopt` pair against `port_root`; the rest of the commit is the diff-specific build-up or tear-down of the surrounding structure.
 
 ### 6.4 The super-node gadget (TBD)
 
