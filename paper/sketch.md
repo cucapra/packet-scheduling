@@ -1150,7 +1150,7 @@ The substrate itself still sees only a finished commit and does no live-state ch
 Before working through the diffs, we set up one structural convention.
 A switch with `P` output ports has `P` separate trees, and at the ISA we put a uniform thin wrapper around each.
 Every port hosts a reserved lPIFO `port_root`, allocated at boot on a reserved PE, whose sole child is the actual tree root.
-`port_root` runs a fixed 1-arm policy and a fixed `Map` that sends every flow through its single index `port_step`.
+`port_root` runs a fixed 1-arm policy. Its `Assoc` set mirrors that of the live tree's actual root; its `Map` sends each Assoc'd flow through its single index `port_step`. Both are maintained automatically by the §6.3 walks (which start at `port_root`); only `ChangeRoot` and `Graft` rewire `port_root`'s child.
 The wrapper exists so that "swap the root" can be expressed as one `Emancipate`/`Adopt` pair against `port_root`, in the same vocabulary as any child-level edit; there is no opcode for changing the root directly.
 
 The lowerings follow, one per diff in the order of the §3.3 grammar.
@@ -1190,7 +1190,8 @@ When an entry's opcodes name an unmentioned parameter at `π` (e.g., `Change_pol
   - A partial Quiesce-style silencing restricted to flows absent from the new policy.
     That is, for each `f ∈ flows(path) \ flows(surv_root)`: `walk(Deassoc, chain(f), f)`; `walk(Unmap, internals(f), f)`.
 - `Undesignate(path)`:
-  `Isa_undes(path)`; one `GC` per lPIFO in the freed subtree rooted at `path`.
+  let `v` be the retiring arm of the super-node formed at `path` by the prior `Designate`.
+  `Isa_undes(path)`; one `GC` per lPIFO in the now-detached subtree rooted at `v`.
 - `ChangeRoot(path)`:
   let the live tree be `port_root -> a_0 -> a_1 -> ... -> a_m -> path` (the §3.3 restriction makes `a_0 .. a_m` a unary vine).
   `Emancipate(port_step, port_root, a_0)`; `Adopt(port_step, port_root, path)`; `GC(a_0), GC(a_1), ..., GC(a_m)`.
@@ -1203,6 +1204,7 @@ Three items in the list deserve a sentence of unpacking.
 
 `Quiesce`'s wide reach (root-to-`path` chain, plus the subtree under `path`) is forced by §3.2's parallel push: every node on a packet's path mints its own routing index independently, so dropping `f` only at a strict subset would leave the rest happy to mint stray indices that would leave the tree malformed.
 The chain walk is what §3.4.3 calls _restricting `z` uniformly_.
+Quiesce stops short of `Unmap`: silenced flows' Map entries must outlive the silencing so packets already pushed can route through the chain on the way to pop. `Remove` pairs `Emancipate` with `Unmap` precisely because it fires after the drain, when there is no longer any in-flight traffic to preserve.
 
 `Designate`'s `Isa_designate(path, surv_root)` performs no edit on `path`'s parent: the super-node `{path -> surv_root}` reuses `path`'s slot, so the parent's index, weight, and per-arm metadata are untouched.
 This is what lets the pre-existing per-arm metadata at `path` continue to apply after the give-up; the substrate consults `surv_root` only on a later `Isa_undes`.
