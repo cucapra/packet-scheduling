@@ -1097,10 +1097,10 @@ TK.]
 
 ## 6. Compiling to Hardware
 
-### 6.1 The commit model
+### 6.1 The commit model and the ISA
 
 The substrate exposes its services to the planner as an atomic-commit interface.
-The ISA has exactly one unit: a `commit`, which is a list of ISA instructions (§6.2) that the substrate installs _atomically_.
+The ISA has exactly one unit: a `commit`, which is a list of instructions that the substrate installs _atomically_.
 The entire list lands between two consecutive `push`/`pop` operations, with no intermediate state visible to the user's `pop` stream.
 This is precisely the atomicity that §3.4's _Preservation of observation_ obligation demanded.
 A commit's _length_ may depend on live control state (how many flows are admitted, how many siblings need shifting), but its _atomicity_ does not.
@@ -1112,12 +1112,6 @@ Any situation-dependent reasoning (e.g., "the subtree we are about to collapse i
 
 §4 sequences `(φ ; δ)*` are an orchestration concern, not an ISA concern.
 The planner walks the sequence, observes live control state, and dispatches the lowering of `δ_i` to the substrate once `φ_i` becomes true; it then waits for `φ_{i+1}` to become true before dispatching the next commit.
-
-One more piece of setup we will lean on in §6.3: _PE deployment_.
-We treat the assignment of an lPIFO to a PE as a deterministic function `pe(path)` of the lPIFO's tree position, fixed at compile time.
-The planner consults `pe(path)` when it needs an `Isa_spawn`'s `pe` argument; the function's definition is a property of the target substrate and is not otherwise observable at the ISA.
-
-### 6.2 The ISA
 
 Four pieces of substrate vocabulary appear in the listing below:
 
@@ -1145,19 +1139,20 @@ The ISA has thirteen opcodes:
 | `Isa_undesignate(v)`         | lPIFO                    | Collapse the super-node `{v -> surv}` to `surv`: the parent index that pointed at `{v -> surv}` now points directly at `surv`, and `surv` inherits the slot's per-arm metadata.                                                                                                                                                                                                                                                                                                                    |
 
 Each opcode performs exactly one job, even where the planner uses two of them together.
-The clean separation lets the substrate avoid checking live state to figure out what the planner meant: consistent with the unconditional ISA style (§6.1), the planner has already discharged any "is `v` actually empty?" / "is `v` actually the top of a super-node?" question via a §4 guard `φ` that gated the surrounding diff.
+The clean separation lets the substrate avoid checking live state to figure out what the planner meant: consistent with the unconditional ISA style above, the planner has already discharged any "is `v` actually empty?" / "is `v` actually the top of a super-node?" question via a §4 guard `φ` that gated the surrounding diff.
 
 For instance, `Isa_undesignate(v)` only rewires the parent's index, leaving `v` itself allocated; the planner pairs it with `Isa_gc(v)` (in the same commit) to reclaim `v`'s slot.
 
 Single-purpose opcodes also mean that the tree can drift transiently malformed _within_ a commit, in ways that the commit's atomicity hides from any observer.
-For an instance from §6.3: `Graft`'s commit first adopts the live tree's current root as a child of the new context's hole, then emancipates that same node from `port_root`.
+For an instance from §6.2: `Graft`'s commit first adopts the live tree's current root as a child of the new context's hole, then emancipates that same node from `port_root`.
 Between those two instructions, the old root has two parents.
 The atomic install means no `push` or `pop` ever sees this state, but the planner is free to issue commits whose intermediate frames would not satisfy the §3.1 well-formedness invariants.
 
-One last convention applies throughout §6.3.
-We name lPIFOs by their tree path, writing `Isa_emancipate(k, π, π ++ [k])` rather than threading explicit opaque ids; this only abuses notation, since paths and live-tree lPIFOs are in bijection at any commit boundary.
+One last piece of setup the lowerings in §6.2 will lean on: _PE deployment_.
+We treat the assignment of an lPIFO to a PE as a deterministic function `pe(path)` of the lPIFO's tree position, fixed at compile time.
+The planner consults `pe(path)` when it needs an `Isa_spawn`'s `pe` argument; the function's definition is a property of the target substrate and is not otherwise observable at the ISA.
 
-### 6.3 Lowering atomic diffs
+### 6.2 Lowering atomic diffs
 
 Each §3.3 diff lowers to an `instr list`.
 The lowering _schema_ is mechanical: each diff names a fixed sequence of opcodes, and the planner reads live state at issue time to instantiate the schema's positional parameters (flow lists, chain shapes, routing indices) before dispatching the commit.
@@ -1236,13 +1231,13 @@ The pre-existing per-arm metadata at `path` continues to apply after the give-up
 
 `ChangeRoot` writes no flow tables: `path`'s `Assoc` and `Map` already describe the post-commit live tree, since collapsing the unary vine above `path` leaves the flows-to-leaves mapping unchanged.
 
-### 6.4 Substrate portability
+### 6.3 Substrate portability
 
 §3.5's argument that each `δ`'s soundness proof survives the lowering leans on the substrate running each commit as an atomic transactional install.
 Two properties make this work, and they are also what any third-party substrate would need in order to host our compilation.
 
-First, the substrate must provide the thirteen opcodes of §6.2, or compositions equivalent to them.
-This is a vocabulary requirement, not a semantic one: a substrate that lacks a native super-node (§6.4) can still host `Designate` by installing a Strict-2 lPIFO at the parent's slot, at the cost of one PE level per active give-up.
+First, the substrate must provide the thirteen opcodes of §6.1, or compositions equivalent to them.
+This is a vocabulary requirement, not a semantic one: a substrate that lacks a native super-node (§6.2) can still host `Designate` by installing a Strict-2 lPIFO at the parent's slot, at the cost of one PE level per active give-up.
 
 Second, the substrate must guarantee that no `push` or `pop` interleaves between a commit's first and last instruction.
 This is what hides §3.5's transiently-malformed intermediate frames.
@@ -1269,7 +1264,7 @@ Must it support atomic commits, i.e., an atomic install that hides the transient
 Do you know if vPIFO supports this?
 If a substrate cannot hide those states, does composition break?
 What do we genuinely need to assume?
-The §6.5 prose above is my best current answer; please poke at it.]
+The §6.3 prose above is my best current answer; please poke at it.]
 
 ## 7. Evaluation
 
