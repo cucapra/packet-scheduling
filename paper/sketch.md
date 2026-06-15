@@ -424,48 +424,48 @@ When the per-production rule hinges on this relation, we destruct `δ`'s path as
 As a warm-up, we discharge the five obligations in some detail for the production `Add`.
 The remaining productions reuse the same obligations and arguments, so for them we present only what differs in substance: the closed-form `den`, the operationally interesting bits of the per-node rule, and the points where any of the preservation arguments departs from `Add`'s.
 
-#### 3.4.1. `Add(parent, newpol, meta?)`
+#### 3.4.1. `Add(π, newpol, meta?)`
 
-We rename §3.3's positional arguments for clarity: `parent : path` is the path to the node under which the new arm goes, and `newpol : pol` is the policy of the new arm; `meta?` is the discipline-dependent per-arm metadata of §3.3.
+We rename §3.3's positional arguments for clarity: `π : path` is the path to the parent node under which the new arm goes, and `newpol : pol` is the policy of the new arm; `meta?` is the discipline-dependent per-arm metadata of §3.3.
 
 ##### Definition
 
-We must define `[[Add(parent, newpol, meta?)]] : control ⇀ control` together with the preconditions on the already running control under which `Add` is defined.
+We must define `[[Add(π, newpol, meta?)]] : control ⇀ control` together with the preconditions on the already running control under which `Add` is defined.
 
 Say the presently running control is `C`.
-Intuitively, `Add` inserts a freshly compiled subtree `⌈newpol⌉` as the new last child of the subtree at `C@parent`.
+Intuitively, `Add` inserts a freshly compiled subtree `⌈newpol⌉` as the new last child of the subtree at `C@π`.
 It also extends the scheduling transaction `z` at each proper ancestor of `⌈newpol⌉`, so that traffic can reach `⌈newpol⌉`.
 
-`[[Add(parent, newpol, meta?)]](C)` is defined when:
+`[[Add(π, newpol, meta?)]](C)` is defined when:
 
-- the path `parent` resolves in `C` to an internal node,
+- the path `π` resolves in `C` to an internal node,
 - `meta?` matches the slot-initialization schema of the discipline at that node (present iff `init_slot_D` for that discipline requires it), and
 - `newpol`'s leaf labels are disjoint from those of `C`.
 
 The disjointness precondition rules out _splitting_ an already-running flow into two (e.g., splitting `gmail` into `gmail_business` and `gmail_personal`): such a split has to relocate already-admitted packets, which `Add` cannot do.
 Such flow-splitting is realized as a `Designate` + drain + `Undesignate` sequence (§4), not by `Add`.
 
-The transition `C' = [[Add(parent, newpol, meta?)]](C)` is stated per node.
-Let `k = |C@parent.slot_states|` be the new arm's slot index.
+The transition `C' = [[Add(π, newpol, meta?)]](C)` is stated per node.
+Let `k = |C@π.slot_states|` be the new arm's slot index.
 
-- _At each proper ancestor of `parent`:_
+- _At each proper ancestor of `π`:_
   - `node_state`, `slot_states`, and `pifo` are preserved verbatim.
-  - The local `z` is extended to admit packets that classify into the new subtree, mapping them to whichever child slot lies on the path down to `parent`.
+  - The local `z` is extended to admit packets that classify into the new subtree, mapping them to whichever child slot lies on the path down to `π`.
     The new entries do not collide with existing ones: the disjointness precondition forces the new leaf labels to lie outside every ancestor `z`'s domain in `C`, so the extension only adds to `z`'s domain.
-- _At `parent`:_
+- _At `C@π`:_
   - `node_state` is unchanged.
-  - `C'@parent.slot_states = C@parent.slot_states ++ [ init_slot_D(C@parent.node_state, meta?) ]`. In English: we call `init_slot_D` to find the per-arm bookkeeping that is needed for a new arm under `D`, and we append that bookkeeping in at the end. Our arm-order freedom (§3.2) lets us simply append the new child.
+  - `C'@π.slot_states = C@π.slot_states ++ [ init_slot_D(C@π.node_state, meta?) ]`. In English: we call `init_slot_D` to find the per-arm bookkeeping that is needed for a new arm under `D`, and we append that bookkeeping in at the end. Our arm-order freedom (§3.2) lets us simply append the new child.
   - `pifo` is unchanged: no pre-existing entry needs renumbering, and the new arm holds no packets yet.
-  - `C'@parent.z` extends `C@parent.z` to admit packets that classify into the new subtree, mapping them to child index `k` at `parent`.
+  - `C'@π.z` extends `C@π.z` to admit packets that classify into the new subtree, mapping them to child index `k` at `C@π`.
 - _At every node inside `⌈newpol⌉`:_ the local control is `⌈newpol⌉`'s, verbatim.
-- _At every other node (outside `⌈newpol⌉` and not `parent` or one of `parent`'s proper ancestors):_ the local control is preserved verbatim.
+- _At every other node (outside `⌈newpol⌉` and not `C@π` or one of its proper ancestors):_ the local control is preserved verbatim.
 
 ##### Preservation of |-
 
-We must show that `|- C` implies `|- C'`: any pifo entries or packets that `[[Add(parent, newpol, meta?)]]` introduces must leave the per-node pifo and packet counts in balance.
+We must show that `|- C` implies `|- C'`: any pifo entries or packets that `[[Add(π, newpol, meta?)]]` introduces must leave the per-node pifo and packet counts in balance.
 
-At `parent`, `C'@parent.pifo = C@parent.pifo` contains no entry equal to `k` (no pre-existing entry can name a slot that did not exist in `C`), and the new arm at slot `k` holds no packets, so its well-formedness count reads `0 = 0`.
-Every other slot at `parent` keeps its index, its packets, and its entries in `C'@parent.pifo` verbatim, so its matched count is inherited.
+At `C@π`, `C'@π.pifo = C@π.pifo` contains no entry equal to `k` (no pre-existing entry can name a slot that did not exist in `C`), and the new arm at slot `k` holds no packets, so its well-formedness count reads `0 = 0`.
+Every other slot at `C@π` keeps its index, its packets, and its entries in `C'@π.pifo` verbatim, so its matched count is inherited.
 Every other node's pifo is untouched (the ancestor `z` extensions touch no pifo at this instant; they only affect the classification of packets that arrive later).
 Nothing needs repair.
 
@@ -473,9 +473,9 @@ Nothing needs repair.
 
 We must show that at every node structurally shared between `C` and `C'` and outside the edit site, the local `state` is preserved verbatim; and that at the edit site, and at every node of the freshly spawned subtree, the `state` is exactly what `init_node_D` / `init_slot_D` (§3.2) prescribes.
 
-Outside the edit site the local control (and thus its `state`) is preserved verbatim, including at each proper ancestor of `parent`, where only `z` changes.
+Outside the edit site the local control (and thus its `state`) is preserved verbatim, including at each proper ancestor of `π`, where only `z` changes.
 Inside `⌈newpol⌉`, every node's `node_state` and `slot_states` are what `init_node_D` / `init_slot_D` (§3.2) prescribe, by construction of `⌈newpol⌉`.
-At `parent`, `node_state` is unchanged and `slot_states` is appended with exactly `init_slot_D(C@parent.node_state, meta?)`, as required at the edit site.
+At `C@π`, `node_state` is unchanged and `slot_states` is appended with exactly `init_slot_D(C@π.node_state, meta?)`, as required at the edit site.
 
 ##### Preservation of observation
 
@@ -489,77 +489,77 @@ Observation is preserved.
 
 ##### Characterization
 
-We must state `den(Add(parent, newpol, meta?))` in closed form and prove `⌊C'⌋ =R den(Add(parent, newpol, meta?))(⌊C⌋)`.
+We must state `den(Add(π, newpol, meta?))` in closed form and prove `⌊C'⌋ =R den(Add(π, newpol, meta?))(⌊C⌋)`.
 
-We define `den` by recursion on `parent`:
+We define `den` by recursion on `π`:
 
 ```
 den(Add([],        newpol, meta?)) (D ts) = D ( ts ++ [newpol] )
 den(Add(i :: rest, newpol, meta?)) (D ts) = D ( ts[ den(Add(rest, newpol, meta?)) (ts[i]) / i ] )
 ```
 
-The base case applies once `parent = []`: the recursion has reached the node where the new arm goes, and `newpol` is appended as the last child.
+The base case applies once `π = []`: the recursion has reached the node where the new arm goes, and `newpol` is appended as the last child.
 The recursive case walks one step deeper into child `i` and writes the result back in place.
 The `meta?` argument is threaded through the recursion but does not appear in the closed form: it is per-arm bookkeeping consumed by `init_slot_D` at the operational level, so it is pol-invisible.
 
 _Proof of characterization._
-We argue that the structural skeleton of `C'` matches `den(Add(parent, newpol, meta?))(⌊C⌋)`.
-The operational rule above leaves every pre-existing arm structurally intact (the `z` extensions along the ancestor chain are pol-invisible) and adds a new arm at `parent`.
+We argue that the structural skeleton of `C'` matches `den(Add(π, newpol, meta?))(⌊C⌋)`.
+The operational rule above leaves every pre-existing arm structurally intact (the `z` extensions along the ancestor chain are pol-invisible) and adds a new arm at `C@π`.
 That new arm is exactly `⌈newpol⌉`.
-Descending `parent` in `⌊C⌋` traces the recursion step for step: at each proper ancestor, step into the child named by `parent`; at `parent`, append `newpol` to the child list.
-For `Add`, `⌊C'⌋` and `den(Add(parent, newpol, meta?))(⌊C⌋)` are in fact _equal_ as pol-trees, not just `=R`-equivalent: at each proper ancestor of `parent` the child lists agree pointwise, and at `parent` both child lists are `ts ++ [newpol]`.
+Descending down the path `π` in `⌊C⌋` traces the recursion step for step: at each proper ancestor, step into the child named by `π`; at the node `π` reaches, append `newpol` to the child list.
+For `Add`, `⌊C'⌋` and `den(Add(π, newpol, meta?))(⌊C⌋)` are in fact _equal_ as pol-trees, not just `=R`-equivalent: at each proper ancestor of `π` the child lists agree pointwise, and at `C@π` both child lists are `ts ++ [newpol]`.
 We still phrase the characterization mod `=R` to keep a uniform shape across productions:
-`⌊C'⌋ =R den(Add(parent, newpol, meta?))(⌊C⌋)`.
+`⌊C'⌋ =R den(Add(π, newpol, meta?))(⌊C⌋)`.
 
-#### 3.4.2. `ChangeWeight(target, weight)`
+#### 3.4.2. `ChangeWeight(τ, weight)`
 
-Throughout, `target : path` is the path to the arm whose weight changes; it is non-empty (see precondition below) and we destruct it as `π ++ [k]`.
+Throughout, `τ : path` is the path to the target arm whose weight changes; it is non-empty (see precondition below) and we destruct it as `π ++ [k]`, with `π` the path to the parent and `k` the slot at that parent.
 
 Say the presently running control is `C`.
 Intuitively, `ChangeWeight` overwrites `C@π.slot_states[k].weight` with the new weight provided.
 
 ##### Definition
 
-`[[ChangeWeight(target, weight)]](C)` is defined when `target` is non-empty and the parent at `π` runs WFQ.
+`[[ChangeWeight(τ, weight)]](C)` is defined when `τ` is non-empty and the parent at `π` runs WFQ.
 
-- _At `π`:_ `node_state` is unchanged; `slot_states[k].weight` is overwritten with the new weight. Every other field of `slot_states[k]` is preserved verbatim, including the virtual-finish tag that records how far slot `k` has run in the current round. Other `slot_states`, `pifo`, and `z` are unchanged.
+- _At `C@π`:_ `node_state` is unchanged; `slot_states[k].weight` is overwritten with the new weight. Every other field of `slot_states[k]` is preserved verbatim, including the virtual-finish tag that records how far slot `k` has run in the current round. Other `slot_states`, `pifo`, and `z` are unchanged.
 - _Everywhere else:_ preserved verbatim.
 
 ##### Preservation
 
 Preservation of `|-`: no `pifo` entry is rewritten, no subtree is touched, no packet is relocated, so well-formedness is inherited everywhere.
-Preservation of state: the targeted weight field is the intended edit; every other field at `π` and everywhere else is verbatim.
+Preservation of state: the targeted weight field is the intended edit; every other field at `C@π` and everywhere else is verbatim.
 Preservation of observation: ranks for in-flight `pifo` entries were determined when they were pushed. They remain fixed; the new weight affects only the rank computation for future pushes.
-So a `pop` immediately after this `[[ChangeWeight(target, weight)]]` returns exactly what a `pop` immediately before would have.
+So a `pop` immediately after this `[[ChangeWeight(τ, weight)]]` returns exactly what a `pop` immediately before would have.
 
 ##### Note: Why the virtual-finish tag is preserved
 
-The virtual-finish tag at slot `k` is deliberately preserved rather than reset: resetting would either reward or penalize the targeted arm by yanking it out of the current round, whereas `init_slot_WFQ` (§3.2) was designed precisely to let a fresh arm "join the current round" without disturbing siblings, and the same principle applies to a weight change on an already-running arm.
+The virtual-finish tag at slot `k` is deliberately _preserved_ and not _reset_: resetting would either reward or penalize the targeted arm by yanking it out of the current round, whereas `init_slot_WFQ` (§3.2) was designed precisely to let a fresh arm "join the current round" without disturbing siblings, and the same principle applies to a weight change on an already-running arm.
 
 ##### Characterization
 
 ```
-den(ChangeWeight(target, w)) p = p
+den(ChangeWeight(τ, w)) p = p
 ```
 
-is defined whenever `target` resolves in `p` and the parent at `π` runs WFQ.
+is defined whenever `τ` resolves in `p` and the parent at `π` runs WFQ.
 Every node's `node_state`, `slot_states.discipline`, `pifo`, and child list are preserved verbatim (the rewritten field is in `slot_state`, which the compilation rule strips), so `⌊C'⌋ = ⌊C⌋`.
-Hence `⌊C'⌋ =R den(ChangeWeight(target, weight))(⌊C⌋)`.
+Hence `⌊C'⌋ =R den(ChangeWeight(τ, weight))(⌊C⌋)`.
 
-#### 3.4.3. `Quiesce(target)`
+#### 3.4.3. `Quiesce(τ)`
 
-Throughout, `target : path` is the path to the subtree to silence.
+Throughout, `τ : path` is the path to the target subtree to silence.
 
 Say the presently running control is `C`.
-Intuitively, `Quiesce` restricts `z`s at various parts of the control to ensure that any packet bound for a leaf under `C@target` is refused admission.
+Intuitively, `Quiesce` restricts `z`s at various parts of the control to ensure that any packet bound for a leaf under `C@τ` is refused admission.
 
 ##### Definition
 
-`[[Quiesce(target)]](C)` is defined whenever `target` resolves to a node in `C`.
-The empty path is permitted: a root-`Quiesce` silences every leaf in the tree, which is meaningful as the first step of a whole-tree retirement.
-There is no precondition on the subtree's contents: `Quiesce` is the production that stops further admissions, regardless of what is currently held below `target`.
+`[[Quiesce(τ)]](C)` is defined whenever `τ` resolves to a node in `C`.
+The empty path is permitted: a root-`Quiesce` silences every leaf in the tree.
+There is no precondition on the subtree's contents: `Quiesce` is the production that stops further admissions, regardless of what is currently held below `C@τ`.
 
-Let `T` denote the set of leaves of `C@target` (the leaves we are silencing), and let `A` denote the union of their ancestor chains: every internal node within `C@target`'s subtree, the node `C@target` itself, and every ancestor of `C@target` up to and including the root.
+Let `T` denote the set of leaves of `C@τ` (the leaves we are silencing), and let `A` denote the union of their ancestor chains: every internal node within `C@τ`'s subtree, the node `C@τ` itself, and every ancestor of `C@τ` up to and including the root.
 The topology, the discipline at every node, and every arm's slot index are unchanged.
 
 - _Outside `T ∪ A`:_ the local control is preserved verbatim.
@@ -573,61 +573,62 @@ The topology, the discipline at every node, and every arm's slot index are uncha
 
 Preservation of `|-` and state: every node's `node_state`, `slot_states`, `pifo`, and child subtree are preserved verbatim, so well-formedness counts are inherited everywhere and `state` is preserved at every node.
 The `z` restrictions across `T ∪ A` touch no `pifo` entry and no stored packet. They only refuse future `push`es.
-Preservation of observation follows from §3.4.1's argument: every in-flight packet sits in some pre-existing `pifo` that survives verbatim, so a `pop` immediately after this `[[Quiesce(target)]]` returns exactly what a `pop` immediately before would have.
+Preservation of observation follows from §3.4.1's argument: every in-flight packet sits in some pre-existing `pifo` that survives verbatim, so a `pop` immediately after this `[[Quiesce(τ)]]` returns exactly what a `pop` immediately before would have.
 
 ##### Characterization
 
 `Quiesce` is `pol`-invisible: its entire effect lies in `z`'s domain, which `pol` does not record.
 
 ```
-den(Quiesce(target)) p = p
+den(Quiesce(τ)) p = p
 ```
 
-is defined whenever `target` resolves in `p`.
+is defined whenever `τ` resolves in `p`.
 Every node's `node_state`, `slot_states`, `pifo`, and child list are preserved verbatim. Only the `z`s at nodes in `T ∪ A` are restricted, and `z` is not visible at `pol`-level.
-So `⌊C'⌋ =R ⌊C⌋ = den(Quiesce(target))(⌊C⌋)`.
+So `⌊C'⌋ =R ⌊C⌋ = den(Quiesce(τ))(⌊C⌋)`.
 
 ##### Note: Why touch every node on every quiesced push path
 
 Under §3.2's parallel `push`, every node on the path from a packet's destination leaf to the system root mints an index via its local `z` independently of the others.
-If we restricted `z` only at a strict subset of those nodes (only the root of the tree, or only inside `C@target`), the rest would happily mint indices and enqueue them, leaving the tree in a malformed state.
+If we restricted `z` only at a strict subset of those nodes (only the root of the tree, or only inside `C@τ`), the rest would happily mint indices and enqueue them, leaving the tree in a malformed state.
 `Quiesce` therefore restricts uniformly, at the leaf (so it refuses to enqueue) and at every ancestor of every quiesced leaf (so no one mints a stray index).
 The cost is touching `|T|` leaves and the union of their ancestor chains; the gain is a rejection that preserves `|- C'`.
 
-#### 3.4.4. `Remove(target)`
+#### 3.4.4. `Remove(τ)`
 
-Throughout, `target : path` is the path to the arm being removed; it is non-empty (see precondition below) and we destruct it as `π ++ [k]`.
+Throughout, `τ : path` is the path to the target arm being removed; it is non-empty (see precondition below) and we destruct it as `π ++ [k]`, with `π` the path to the parent and `k` the slot at that parent.
 
 Say the presently running control is `C`.
 Intuitively, `Remove` unhooks the subtree at slot `k` of `C@π` and renumbers higher siblings down by one.
-It is defined only when the subtree at `target` is empty; we explain this restriction below.
+It is defined only when the subtree at `τ` is empty; we explain this restriction below.
 
 ##### Definition
 
-`[[Remove(target)]](C)` is defined when `target` is non-empty and resolves to a node in `C`, the subtree at `target` is empty, and `C@target` does not carry the `Strict*` flag (the planner reaches a `Strict*` only through `Undesignate`, see §3.4.6).
+`[[Remove(τ)]](C)` is defined when `τ` is non-empty and resolves to a node in `C`, the subtree at `τ` is empty, and `C@τ` does not carry the `Strict*` flag (the planner reaches a `Strict*` only through `Undesignate`, see §3.4.6).
 
-The topology loses the arm at slot `k` of `π`; arms at slots `0, ..., k-1` keep their indices; arms at slots `k+1, ...` shift down by one.
+The topology loses the arm at slot `k` of `C@π`; arms at slots `0, ..., k-1` keep their indices; arms at slots `k+1, ...` shift down by one.
 
-- _Outside `π` and the removed subtree:_ the local control is preserved verbatim.
-  This includes every proper ancestor of `π` (whose `z` is unchanged) and every sibling arm at `π` other than slot `k`, together with the subtrees under them.
-- _At `π`:_
+- _Outside `C@π` and the removed subtree:_ the local control is preserved verbatim.
+  This includes every proper ancestor of `π` (whose `z` is unchanged) and every sibling arm at `C@π` other than slot `k`, together with the subtrees under them.
+- _At `C@π`:_
   - `node_state` is unchanged.
   - `slot_states = C@π.slot_states[-/k]`: the entry at slot `k` is dropped. Entries at slots `> k` shift down by one to track the renumbered arms.
-  - `pifo = C@π.pifo[-/k]`: the precondition (subtree at `target` is empty) plus `|- C` forces `C@π.pifo` to contain _no entry equal to `k`_, so this renumbering deletes no values; it only decrements entries `> k` by one.
+  - `pifo = C@π.pifo[-/k]`: the precondition (subtree at `τ` is empty) plus `|- C` forces `C@π.pifo` to contain _no entry equal to `k`_, so this renumbering deletes no values; it only decrements entries `> k` by one.
   - `z` is restricted on inputs and renumbered on outputs.
     Packets that `C@π.z` would have routed to slot `k` are no longer in `C'@π.z`'s domain. For surviving inputs, an output of `(i, r)` with `i > k` becomes `(i - 1, r)`.
     Slots `< k` are untouched on either axis.
 
-A standalone `Remove` thus restricts classification at `π` so that packets bound for the removed subtree are dropped at `π` rather than being routed to a non-existent slot.
-In the typical planner usage, a preceding `Quiesce` has already restricted every `z` on every push path to the soon-to-be-removed leaves (§3.4.3), so no new packet bound for the removed subtree is even being admitted; the input restriction at `π` is then redundant but harmless, while the output renumbering at `π` is still needed.
+A standalone `Remove` thus restricts classification at `C@π` so that packets bound for the removed subtree are dropped at `C@π` rather than being routed to a non-existent slot.
+In the typical planner usage, a preceding `Quiesce` has already restricted every `z` on every push path to the soon-to-be-removed leaves (§3.4.3), so no new packet bound for the removed subtree is even being admitted; the input restriction at `C@π` is then redundant but harmless, while the output renumbering at `C@π` is still needed.
 
 ##### Preservation
 
-Preservation of `|-`: at `π`, the precondition gives `C@π.pifo` no entry equal to `k`, so the renumbering `[-/k]` deletes no values; surviving slots `i' < k` of `C'@π` inherit their matched counts from slot `i'` of `C@π`, and surviving slots `i' >= k` inherit theirs from slot `i' + 1` (same subtree, renumbered entries).
+Preservation of `|-`: at `C@π`, the precondition gives `C@π.pifo` no entry equal to `k`, so the renumbering `[-/k]` deletes no values; surviving slots `i' < k` of `C'@π` inherit their matched counts from slot `i'` of `C@π`, and surviving slots `i' >= k` inherit theirs from slot `i' + 1` (same subtree, renumbered entries).
 Every proper ancestor and every surviving sibling is verbatim, so its well-formedness count is inherited.
-Preservation of state: every proper ancestor and surviving sibling preserves its `state` verbatim. No `init`-rule fires, and `slot_states` drops slot `k`'s entry while every other entry is preserved verbatim, with its position shifted to match the new arm order.
-Preservation of observation follows from §3.4.1's argument applied to the surviving structure: every in-flight packet sits in a preserved `pifo` at the same slot (if `< k`) or one slot lower (if `> k`), and every surviving `pifo` entry points to the same child subtree after renumbering, so a `pop` immediately after this `[[Remove(target)]]` returns exactly what a `pop` immediately before would have.
-The restriction at `C'@π.z` comes into play only for `push`es that arrive after this `[[Remove(target)]]` fires.
+Preservation of state: every proper ancestor and surviving sibling preserves its `state` verbatim.
+No `init`-rule fires, and `slot_states` drops slot `k`'s entry while every other entry is preserved verbatim, with its position shifted to match the new arm order.
+Preservation of observation follows from §3.4.1's argument applied to the surviving structure: every in-flight packet sits in a preserved `pifo` at the same slot (if `< k`) or one slot lower (if `> k`), and every surviving `pifo` entry points to the same child subtree after renumbering, so a `pop` immediately after this `[[Remove(τ)]]` returns exactly what a `pop` immediately before would have.
+The restriction at `C'@π.z` comes into play only for `push`es that arrive after this `[[Remove(τ)]]` fires.
 
 ##### Characterization
 
@@ -636,12 +637,12 @@ den(Remove([k]))         (D ts) = D ( ts[-/k] )
 den(Remove(i :: rest))   (D ts) = D ( ts[ den(Remove(rest)) (ts[i]) / i ] )      when rest is non-empty
 ```
 
-The base case fires once `target` has been walked down to the parent of the removed arm: the `k`-th child is dropped from the arm list.
+The base case fires once `τ` has been walked down to the parent of the removed arm: the `k`-th child is dropped from the arm list.
 The recursive case walks one step deeper into child `i` and writes the result back in place.
-`den(Remove(target))` is defined when `target` is non-empty and resolves in the input pol; the emptiness precondition that `[[Remove(target)]]` imposes is operational, not visible at `pol` level.
+`den(Remove(τ))` is defined when `τ` is non-empty and resolves in the input pol; the emptiness precondition that `[[Remove(τ)]]` imposes is operational, not visible at `pol` level.
 
-Proof shape is the same as `Add`'s: outside the removed subtree every node is structurally intact (ancestors verbatim, surviving siblings verbatim), and at `π` the child list shrinks by dropping slot `k`.
-So `⌊C'⌋ =R den(Remove(target))(⌊C⌋)`.
+Proof shape is the same as `Add`'s: outside the removed subtree every node is structurally intact (ancestors verbatim, surviving siblings verbatim), and at `C@π` the child list shrinks by dropping slot `k`.
+So `⌊C'⌋ =R den(Remove(τ))(⌊C⌋)`.
 
 ##### Note: Why an empty subtree
 
@@ -725,54 +726,55 @@ By draining `B` to empty before removing it (§4), every pop that served a packe
 At the instant `Remove` fires, `Q`'s `2`-count is zero (`B` is empty) and `P`'s `1`-count is exactly the number of packets still under `Q` (here `2`, all attributable to `A`).
 There is nothing left to reconcile and no hidden policy choice to make: the structural deletion is unambiguous.
 
-#### 3.4.5. `Designate(target, survivor)`
+#### 3.4.5. `Designate(τ, survivor)`
 
-Throughout, `target : path` is the path to the subtree being wrapped, and `survivor : pol` is the designated-survivor policy that becomes the wrap's low-priority arm.
+Throughout, `τ : path` is the path to the target subtree being wrapped, and `survivor : pol` is the designated-survivor policy that becomes the wrap's low-priority arm.
 
 Say the presently running control is `C`.
-Intuitively, `Designate` replaces `C@target` in place with `Strict*(C@target, ⌈survivor⌉)`.
+Intuitively, `Designate` replaces `C@τ` in place with `Strict*(C@τ, ⌈survivor⌉)`.
 
 `Strict*` is the same discipline as `Strict`, distinguished only by a one-bit `designated` flag that each node carries: `Designate` sets the bit, `Undesignate` (§3.4.6) clears it.
 Semantically the two are identical; every push, pop, and well-formedness check treats `Strict*(A, B)` exactly as `Strict(A, B)`, so the obligations below are stated against the ordinary `Strict` semantics of §3.2.
-The star exists only so that `Undesignate`'s precondition ("target lands on a `Strict*`") and a key hardware-level argument in §6 (that `Strict*` adds no PE depth) can be stated structurally.
+The star exists only so that `Undesignate`'s precondition ("`τ` lands on a `Strict*`") and a key hardware-level argument in §6 (that `Strict*` adds no PE depth) can be stated structurally.
 The §3.2 DSL in which the operator writes policies can parse only `Strict`, never `Strict*`, so a `Strict*` is unreachable in any user-written `pol` and arises only in the middle of a planner sequence, between a `Designate` and its eventual `Undesignate`.
 The wrap is therefore `pol`-visible only as a `Strict`, with the `designated` bit operational and not part of any `pol`.
 
 ##### Definition
 
-`[[Designate(target, survivor)]](C)` is defined when `target` resolves to a node in `C` and `survivor`'s leaf labels are disjoint from those of `C` outside the subtree `C@target`.
-Overlap with `C@target`'s own leaves is explicitly permitted; we explain why in a separate Note below.
-Let `N` denote the freshly introduced `Strict*` node, and let `P0` denote the number of packets currently held under `C@target`.
+`[[Designate(τ, survivor)]](C)` is defined when `τ` resolves to a node in `C` and `survivor`'s leaf labels are disjoint from those of `C` outside the subtree `C@τ`.
+Overlap with `C@τ`'s own leaves is explicitly permitted; we explain why in a separate Note below.
+Let `N` denote the freshly introduced `Strict*` node, and let `P0` denote the number of packets currently held under `C@τ`.
 
-- _Outside the subtree at `target`, outside `N`, and off the ancestor chain to `target`:_ preserved verbatim.
-  If `target = π ++ [k]` is non-empty: at `π` the `node_state`, `slot_states`, and `pifo` are unchanged; the slot `k` that used to point to `C@target` now points to `N`, inheriting `C@π.slot_states[k]` (the per-arm meta is held by `π`, not by `N`, so the wrap is transparent to `π`); `z` is extended as described in the next bullet.
-- _At each proper ancestor of `target` (including the root, and including `π`):_ `node_state`, `slot_states`, and `pifo` preserved verbatim.
+- _Outside the subtree at `τ`, outside `N`, and off the ancestor chain to `τ`:_ preserved verbatim.
+  If `τ = π ++ [k]` is non-empty: at `C@π` the `node_state`, `slot_states`, and `pifo` are unchanged; the slot `k` that used to point to `C@τ` now points to `N`, inheriting `C@π.slot_states[k]` (the per-arm meta is held by `C@π`, not by `N`, so the wrap is transparent to the parent); `z` is extended as described in the next bullet.
+- _At each proper ancestor of `τ` (including the root, and including `π`):_ `node_state`, `slot_states`, and `pifo` preserved verbatim.
   The local `z` is extended to admit packets that classify into the new arm-1 subtree under `N`, mapping them to whichever child slot at this ancestor lies on the path down to `N`.
   Pre-existing mappings are untouched.
   This is the exact analog of `Add`'s ancestor `z`-extensions (§3.4.1).
-- _At `N`:_ `node_state = init_node_Strict()`; `slot_states = [init_slot_Strict(node_state, hi), init_slot_Strict(node_state, lo)]` for any priority ranks `hi < lo`; arm 0 is the old `C@target` (verbatim, including its entire subtree and contents); arm 1 is `⌈survivor⌉`; `pifo` is seeded with `P0` entries with slot value `0` and rank `hi` (one per packet still held under arm 0; later pushes at slot 0 would produce entries at the same rank).
+- _At `N`:_ `node_state = init_node_Strict()`; `slot_states = [init_slot_Strict(node_state, hi), init_slot_Strict(node_state, lo)]` for any priority ranks `hi < lo`; arm 0 is the old `C@τ` (verbatim, including its entire subtree and contents); arm 1 is `⌈survivor⌉`; `pifo` is seeded with `P0` entries with slot value `0` and rank `hi` (one per packet still held under arm 0; later pushes at slot 0 would produce entries at the same rank).
+  [AM note: we are still pretending to use a true Strict arm whose slots we must fill. We need to decide when we drop that facade. Perhaps it's right move to keep it up here and drop it in Section 6? Or do we drop it now?]
   `z` routes packets by leaf label: a packet whose label exists in `⌈survivor⌉` goes to slot `1`, otherwise (label exists only in the old subtree) it goes to slot `0`.
   This rule is total on `N`'s admitted labels and resolves the overlap case toward the survivor: a label shared between the old subtree and `survivor` belongs to the survivor from `δ`'s firing onward, while the residual packets under arm 0 drain on their existing entries.
 - _Inside `⌈survivor⌉`:_ the local control is `⌈survivor⌉`'s, verbatim.
 
-If `target` is empty, the entire control becomes `N`, with the old root sitting as arm 0.
+If `τ` is empty, the entire control becomes `N`, with the old root sitting as arm 0.
 
 ##### Note: Overlap between the old subtree and `survivor`
 
-Overlap of leaf labels between `C@target` and `survivor` is explicitly permitted.
-The moment `δ` fires becomes the boundary between old traffic (which continues to drain from arm 0, `C@target`) and new traffic (which arm 1 admits): from this instant on, an arriving packet whose label appears in `⌈survivor⌉` is routed by `N.z` to slot 1, while the residual packets already under arm 0 drain on their existing `pifo` entries.
+Overlap of leaf labels between `C@τ` and `survivor` is explicitly permitted.
+The moment `δ` fires becomes the boundary between old traffic (which continues to drain from arm 0, `C@τ`) and new traffic (which arm 1 admits): from this instant on, an arriving packet whose label appears in `⌈survivor⌉` is routed by `N.z` to slot 1, while the residual packets already under arm 0 drain on their existing `pifo` entries.
 The two arms thus stay operationally disjoint even when their label sets overlap, which is the very property that lets `Designate` express in-place subtree replacement (§4).
 
 ##### Preservation
 
 Preservation of `|-` holds at `N`: by construction the `0`-count in `N.pifo` equals the packet count under arm 0, and arm 1 holds no packets and no `1`-entries in `N.pifo`.
 Every node inside arm 0 is preserved verbatim, so its well-formedness count is inherited.
-At `π` (if `target` non-empty), `pifo` is unchanged, and the slot-`k` count `P0 + 0` matches the count that `C@target` had under `π`.
-The ancestor `z`-extensions touch no `pifo` and route no in-flight packet, so they affect only `push`es that arrive after this `[[Designate(target, survivor)]]`.
+At `C@π` (if `τ` non-empty), `pifo` is unchanged, and the slot-`k` count `P0 + 0` matches the count that `C@τ` had under `C@π`.
+The ancestor `z`-extensions touch no `pifo` and route no in-flight packet, so they affect only `push`es that arrive after this `[[Designate(τ, survivor)]]`.
 Preservation of state is the standard split: arm 0 is verbatim; arm 1 is `⌈survivor⌉` by construction; `N`'s `node_state` and `slot_states` come from the listed `init` calls; everything else is verbatim.
-Preservation of observation: every in-flight packet under arm 0 sits at exactly the same position it did in `C@target`, since arm 0 is `C@target` verbatim.
+Preservation of observation: every in-flight packet under arm 0 sits at exactly the same position it did in `C@τ`, since arm 0 is `C@τ` verbatim.
 If `P0 > 0`, the smallest entry in `N.pifo` is `0`, so any pop that descends to `N` continues into arm 0 and returns exactly the packet a pop before `δ` fired would have.
-If `P0 = 0`, then by `|- C` no pop ever descends to `N` (the subtree at `target` was already empty), so the question is vacuous.
+If `P0 = 0`, then by `|- C` no pop ever descends to `N` (the subtree at `τ` was already empty), so the question is vacuous.
 Arm 1 first sees traffic only after a future `push`.
 
 ##### Characterization
@@ -784,32 +786,32 @@ den(Designate(i :: r, survivor)) (D ts) = D ( ts[ den(Designate(r, survivor)) (t
 
 `den` returns `Strict`, not `Strict*`: the designated bit is `pol`-invisible.
 The proof is the same shape as `Add`'s: the operational rule leaves every node outside the wrap structurally intact, the new arm 1 is `⌈survivor⌉`, and the new `Strict*` reads as `Strict` at `pol`-level.
-So `⌊C'⌋ =R den(Designate(target, survivor))(⌊C⌋)`.
+So `⌊C'⌋ =R den(Designate(τ, survivor))(⌊C⌋)`.
 
-#### 3.4.6. `Undesignate(target)`
+#### 3.4.6. `Undesignate(τ)`
 
-Throughout, `target : path` is the path to the `Strict*` node being unwrapped.
+Throughout, `τ : path` is the path to the target `Strict*` node being unwrapped.
 
 Say the presently running control is `C`.
-Intuitively, `Undesignate` unwraps the `Strict*(A, B)` at `C@target` whose `A`-arm is empty, leaving `B` in its slot.
+Intuitively, `Undesignate` unwraps the `Strict*(A, B)` at `C@τ` whose `A`-arm is empty, leaving `B` in its slot.
 It is the structural inverse of `Designate`.
 
 ##### Definition
 
-`[[Undesignate(target)]](C)` is defined when `target` resolves to `C@target`, `C@target` carries the `designated` bit (so it is a `Strict*` introduced by an earlier `Designate`), and arm 0 of `C@target` is empty.
-Let `N = C@target`.
+`[[Undesignate(τ)]](C)` is defined when `τ` resolves to `C@τ`, `C@τ` carries the `designated` bit (so it is a `Strict*` introduced by an earlier `Designate`), and arm 0 of `C@τ` is empty.
+Let `N = C@τ`.
 
 - _Inside `B` (arm 1 of `N`):_ preserved verbatim, every node.
-- _At `π`_ (if `target = π ++ [k]` is non-empty): `node_state`, `pifo`, and `z` unchanged; `slot_states[k]` preserved verbatim (the wrapper inherited it at `Designate` time, and the unwrap returns it unchanged); slot `k` now points to `B` rather than to `N`.
+- _At `C@π`_ (if `τ = π ++ [k]` is non-empty): `node_state`, `pifo`, and `z` unchanged; `slot_states[k]` preserved verbatim (the wrapper inherited it at `Designate` time, and the unwrap returns it unchanged); slot `k` now points to `B` rather than to `N`.
   `N` itself and its arm-0 stub are discarded.
-- If `target` is empty, the new root is `B`, inheriting `B`'s own `node_state`, `slot_states`, `pifo`, `z`, and child list verbatim; `N` and its arm-0 stub are discarded.
+- If `τ` is empty, the new root is `B`, inheriting `B`'s own `node_state`, `slot_states`, `pifo`, `z`, and child list verbatim; `N` and its arm-0 stub are discarded.
 
 ##### Preservation
 
-Preservation of `|-`: at `π`, `pifo` is unchanged; slot `k`'s count was `0 + |B|` under `N` and is now `|B|` under `B` directly, so the count matches.
+Preservation of `|-`: at `C@π`, `pifo` is unchanged; slot `k`'s count was `0 + |B|` under `N` and is now `|B|` under `B` directly, so the count matches.
 Inside `B`, every node is verbatim.
-The discarded `N.pifo` was carrying its own count of arm-1 entries one level too deep: by `|- C` and the empty-arm-0 precondition, that count equals `|B|`, which is exactly what `π.pifo`'s `k`-entries already carry one level up.
-After the unwrap, those `k`-entries route directly to `B`, whose pifo count is still `|B|`, so the well-formedness obligation at `π` reads `|B| = |B|` and inside `B` reads as before.
+The discarded `N.pifo` was carrying its own count of arm-1 entries one level too deep: by `|- C` and the empty-arm-0 precondition, that count equals `|B|`, which is exactly what `C@π.pifo`'s `k`-entries already carry one level up.
+After the unwrap, those `k`-entries route directly to `B`, whose pifo count is still `|B|`, so the well-formedness obligation at `C@π` reads `|B| = |B|` and inside `B` reads as before.
 The previously-redundant routing step ("`Strict*` says go to arm 1," which arm 0 being empty had already forced) is the only step elided.
 Preservation of state: standard verbatim everywhere outside `N`; `N`'s local state vanishes.
 Preservation of observation: arm 0 holds no packet by precondition, so `Strict*`'s "favor arm 0" behavior was already routing every pop to arm 1, and the unwrap preserves this routing exactly.
@@ -821,55 +823,55 @@ den(Undesignate([]))     (Strict(A, B)) = B
 den(Undesignate(i :: r)) (D ts)         = D ( ts[ den(Undesignate(r)) (ts[i]) / i ] )
 ```
 
-The base case is defined when the input matches `Strict(_, _)`; the operational rule additionally requires that arm 0 of `C@target` be empty at the moment `δ` fires.
+The base case is defined when the input matches `Strict(_, _)`; the operational rule additionally requires that arm 0 of `C@τ` be empty at the moment `δ` fires.
 The base case consumes the `Strict` wrapper (which on the `pol` side is what the `Strict*` reads as).
 Proof shape is `Remove`'s: outside `N` nothing structural moves, and at `N` the `Strict` wrapper is dropped.
-So `⌊C'⌋ =R den(Undesignate(target))(⌊C⌋)`.
+So `⌊C'⌋ =R den(Undesignate(τ))(⌊C⌋)`.
 
-#### 3.4.7. `ChangeRoot(newroot)`
+#### 3.4.7. `ChangeRoot(ν)`
 
-Throughout, `newroot : path` is the path to the subtree being promoted to the new root.
+Throughout, `ν : path` is the path to the subtree being promoted to the new root.
 
 Say the presently running control is `C`.
-Intuitively, `ChangeRoot` promotes `C@newroot` to the new root, discarding every ancestor above it.
+Intuitively, `ChangeRoot` promotes `C@ν` to the new root, discarding every ancestor above it.
 It is the only production that erases structural ancestors, and the only one whose `pol`-level effect is to shrink the tree from above rather than edit it locally.
 The mechanics are short; the notes below are substantive.
 
 ##### Definition
 
-`[[ChangeRoot(newroot)]](C)` is defined when `newroot` is non-empty, resolves to a node in `C`, and every internal node strictly above `C@newroot` is _unary_, with its sole arm continuing toward `newroot`.
+`[[ChangeRoot(ν)]](C)` is defined when `ν` is non-empty, resolves to a node in `C`, and every internal node strictly above `C@ν` is _unary_, with its sole arm continuing toward `C@ν`.
 Under these preconditions the discarded ancestor chain carries scheduling metadata but no off-path traffic.
 
-- _At `C@newroot` and inside its subtree:_ preserved verbatim.
-  The result `C'` is exactly `C@newroot` standing alone as a tree.
-- _At every proper ancestor of `newroot`:_ discarded entirely, together with the local `node_state`, `slot_states`, `pifo`, and `z`.
+- _At `C@ν` and inside its subtree:_ preserved verbatim.
+  The result `C'` is exactly `C@ν` standing alone as a tree.
+- _At every proper ancestor of `ν`:_ discarded entirely, together with the local `node_state`, `slot_states`, `pifo`, and `z`.
 
 ##### Preservation
 
-Preservation of `|-`: `|- C` is a conjunction of per-node well-formedness obligations, and the subset of those obligations attached to `C@newroot`'s nodes constitutes `|- C@newroot`, which is exactly `|- C'`.
+Preservation of `|-`: `|- C` is a conjunction of per-node well-formedness obligations, and the subset of those obligations attached to `C@ν`'s nodes constitutes `|- C@ν`, which is exactly `|- C'`.
 The discarded ancestors' obligations are simply forgotten.
-Preservation of state: standard verbatim within `C@newroot`; ancestor state is gone.
-Preservation of observation: every in-flight packet sits in some `pifo` within `C@newroot`'s subtree (the ancestor `pifo`s held routing entries, not packets), all preserved verbatim.
-A pop immediately after this `[[ChangeRoot(newroot)]]` returns exactly what a pop immediately before would have: a pop before `δ` fires descends through the unary chain by popping each ancestor's PIFO in turn, and since each such PIFO has a single slot (slot `0`), the popped entry is forced to be a slot-`0` entry regardless of its rank; the descent therefore lands at `C@newroot`'s root and pops from there.
-A pop after `δ` fires acts on `C@newroot`'s root directly, returning the same packet.
+Preservation of state: standard verbatim within `C@ν`; ancestor state is gone.
+Preservation of observation: every in-flight packet sits in some `pifo` within `C@ν`'s subtree (the ancestor `pifo`s held routing entries, not packets), all preserved verbatim.
+A pop immediately after this `[[ChangeRoot(ν)]]` returns exactly what a pop immediately before would have: a pop before `δ` fires descends through the unary chain by popping each ancestor's PIFO in turn, and since each such PIFO has a single slot (slot `0`), the popped entry is forced to be a slot-`0` entry regardless of its rank; the descent therefore lands at `C@ν`'s root and pops from there.
+A pop after `δ` fires acts on `C@ν`'s root directly, returning the same packet.
 
 ##### Characterization
 
 ```
-den(ChangeRoot(newroot)) p = p@newroot
+den(ChangeRoot(ν)) p = p@ν
 ```
 
-is defined whenever `newroot` is non-empty and resolves in `p`.
-The realizes-relation propagates structurally: if `C` realizes `p`, then `C@newroot` realizes `p@newroot`, since compilation is per-node and the discipline at each surviving node is unchanged.
-So `⌊C'⌋ =R p@newroot = den(ChangeRoot(newroot))(⌊C⌋)`.
+is defined whenever `ν` is non-empty and resolves in `p`.
+The realizes-relation propagates structurally: if `C` realizes `p`, then `C@ν` realizes `p@ν`, since compilation is per-node and the discipline at each surviving node is unchanged.
+So `⌊C'⌋ =R p@ν = den(ChangeRoot(ν))(⌊C⌋)`.
 
 ##### Notes
 
 _Why the unary precondition._
 The precondition rules out, by construction, any silently-dropped packet-bearing siblings.
-A non-unary ancestor would have arms branching off the path to `C@newroot`; those subtrees would vanish with their ancestor, taking their packets with them.
+A non-unary ancestor would have arms branching off the path to `C@ν`; those subtrees would vanish with their ancestor, taking their packets with them.
 Allowing this would make `ChangeRoot` a structural deletion of arbitrarily many off-path subtrees masquerading as a root change, with no semantic story for those packets.
-The richer reconfiguration of pruning to a subtree whose ancestor chain branches off into packet-bearing relatives is realized as the `PruneDownTo` idiom (§4.1), which first drains and `Remove`s those siblings in sequence, reducing the chain above `C@newroot` to the unary shape that `ChangeRoot` then accepts.
+The richer reconfiguration of pruning to a subtree whose ancestor chain branches off into packet-bearing relatives is realized as the `PruneDownTo` idiom (§4.1), which first drains and `Remove`s those siblings in sequence, reducing the chain above `C@ν` to the unary shape that `ChangeRoot` then accepts.
 
 _What the chain carries, and what is discarded._
 An internal node's `node_state`, rank function, and `pifo` ordering exist to pick among siblings.
@@ -878,11 +880,11 @@ At a unary node the sibling-picking role degenerates: with one arm, every pop is
 What can remain active at a unary node is rank computation that depends on per-packet attributes rather than on sibling identity.
 If a chain's disciplines do no such per-packet reordering, each unary node along the chain is operationally a passthrough, and the immediate-pop observation-preservation above extends to every subsequent pop and push.
 If they do (LSTF is a canonical example, with rank determined by each packet's deadline), the chain is actively shaping traffic, and `ChangeRoot` removes that shaping.
-That is precisely the production's intended role: the atomic step by which the operator says "promote `p1@newroot` to the root and discard the ancestor shaping above it."
+That is precisely the production's intended role: the atomic step by which the operator says "promote `p1@ν` to the root and discard the ancestor shaping above it."
 The `PruneDownTo` idiom packages this with the upstream draining and `Remove`s that make the chain unary in the first place, so the operator's request ("prune to this subtree") is realized as a sequence whose final step discards exactly the ancestor influence that the operator has chosen to abandon.
 
 _Pol-level effect._
-The `pol` changes from the unary chain wrapping `p1@newroot` (e.g., `Strict(p1@newroot)` or `LSTF(p1@newroot)`) to just `p1@newroot`.
+The `pol` changes from the unary chain wrapping `p1@ν` (e.g., `Strict(p1@ν)` or `LSTF(p1@ν)`) to just `p1@ν`.
 This is `pol`-visible: the root discipline observably changes, which is the substantive content of the production.
 Whether that pol-visible change reorders in-flight traffic depends on whether the discarded chain was doing per-packet reordering (see previous Note).
 
