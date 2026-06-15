@@ -2,17 +2,16 @@
 
 ## Open Items
 
-A burn-down list of AM-notes scattered through the draft, to be resolved before submission.
-Strip this section before submitting.
+A list of AM-notes scattered through the draft.
 
 - §1 (line ~28): a nice example of an atomic-but-not-immediate transition.
 - §1 (line ~50): the cost model is a legit open question.
-- §3.4.5 (line ~755): decide when to drop the Strict-facade pretense for `Strict*`.
+- §3.4.5 (line ~755): decide when in the paper to drop the Strict-facade pretense for `Strict*`.
 - §3.4.8 (line ~897): spell out the five obligations for `Graft` under the whole-tree restriction.
 - §3.5 (line ~918): confirm with Zhiyuan what we need from the substrate atomicity story.
 - §4.1 (line ~1008): no withdraw/abort mechanism today; flagged in case we revisit.
 - §5 (line ~1158): more examples to work through, possible strengthening of `compare.ml`.
-- §6.2 (line ~1238): port-routing across the `P` trees; GH-link removal also outstanding (review nit 62).
+- §6.2 (line ~1238): port-routing across the `P` trees.
 - §6.2 (lines ~1266, ~1267): `Remove` sibling-shift cascade cost.
 - §6.3 (line ~1330): confirm substrate-requirements prose with Zhiyuan.
 
