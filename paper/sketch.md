@@ -331,11 +331,14 @@ Each production of the grammar has two readings, both defined per-production in 
 The grammar is shaped by two demands.
 
 - **Hardware-realizable.** A production is admitted into the grammar iff `[[δ]]` can be committed atomically by the hardware substrate (§6).
-- **Pol-explainable.** Every production has a `den(δ)`; for transaction-only productions (whose effect lives entirely in `z`), `den(δ)` is the identity on `pol`. This is what lets the sniffer (§4) infer a `δ` whose `pol`-level meaning can be checked and echoed back to the user.
+- **Pol-explainable.** Every production has a `den(δ)`[footnote: for transaction-only productions (whose effect lives entirely in `z`), `den(δ)` is the identity on `pol`]. This is what lets the sniffer (§4) infer a `δ` whose `pol`-level meaning can be checked and echoed back to the user.
 
 §3.4's per-production soundness theorem ties the two readings together: `⌊[[δ]](C)⌋ =R den(δ)(⌊C⌋)`.
 
-Each edit names _where_ in the tree the change lands and _what_ the change is; we write `p1@path` for the subtree of `p1` reached by following `path` down from its root.
+Each edit names _where_ in the tree the change lands and _what_ the change is.
+Throughout this section, `p1` is the presently running policy; we write `p1@path` for the subtree of `p1` reached by following `path` down from its root.
+Two productions are irregular in this respect: `ChangeRoot` gives the path to the surviving subtree, and `Graft` has no path at all because its rewrite acts on the whole tree.
+We explain these in §3.4.
 
 ```
 δ ::= Add          (path, pol, meta?)
@@ -357,24 +360,24 @@ weight ::= a positive real
 A _policy context_, written `ctx`, is built like a `pol`, except that exactly one of its slots is the distinguished _hole_ `□` rather than a subtree.
 The hole is a reserved slot, not an absence of a slot: the parent of the hole has an arity that includes the hole, e.g., `RoundRobin(A, B, □)` is a 3-ary `RoundRobin` whose third slot is the hole, distinct from the 2-ary `RoundRobin(A, B)`.
 We write `ctx[s]` for the ordinary, hole-free tree obtained by plugging the hole of `ctx` with the subtree `s`.
-A `ctx` is _valid_ iff `ctx[s]` is a valid `pol` for some valid `s`.
-The plug is total, and for any valid `ctx` and any valid `s`, `ctx[s]` is a valid `pol` whenever the leaf labels of `ctx` and `s` are disjoint.
+A `ctx` is _valid_ when `ctx[s]` is a valid `pol` for any valid `s` whose leaf labels are disjoint from those of `ctx`.
 
-Edits that would have to destroy structure still holding packets are expressly _not_ in the grammar: our one structural deletion, `Remove`, is emitted by our transition planner (§4) only after ensuring that the subtree being removed is empty.
+Edits that would have to destroy structure still holding packets are expressly not in the grammar.
+For example, structural deletion, `Remove`, is emitted by our transition planner (§4) only after ensuring that the subtree being removed is empty.
 The richer reconfigurations an operator may want (retiring a subtree that has packets buffered in it, replacing a subtree in-place, pruning a tree down to a subtree) are realized as _sequences_ of these productions (§4).
 
 Brief notes on each production:
 
 - `Add(path, pol, meta?)` appends `pol` as a new child of `p1@path`. `meta?` carries per-arm bookkeeping for the new arm, if `p1@path` requires it.
-- `ChangeWeight(path, weight)` overwrites the WFQ weight assigned to the arm at `path`.
-- `Quiesce(path)` prevents the subtree at `path` from receiving any new traffic.
-- `Remove(path)` removes `p1@path`; the subtree at `path` must be empty.
+- `ChangeWeight(path, weight)` overwrites the WFQ weight assigned to `p1@path`.
+- `Quiesce(path)` prevents `p1@path` from receiving any new traffic.
+- `Remove(path)` removes `p1@path`, which must be empty.
 - `Designate(path, pol)` wraps `p1@path` into `Strict*(p1@path, pol)` in place, making `pol` the _designated survivor_ of `p1@path`. The need for the distinguished discipline `Strict*` is explained in §3.4.5.
 - `Undesignate(path)` collapses the `Strict*(A, B)` that lives at `p1@path` into `B`, with `B` inheriting the slot and per-arm `meta?`. `A` must be empty.
-- `ChangeRoot(path)` promotes `p1@path` to the new root, discarding the ancestor chain above it. The ancestor chain must be a unary "vine".
+- `ChangeRoot(path)` promotes `p1@path` to the new root, discarding the ancestor chain above it. The ancestor chain must be a unary "vine". The `path` argument is interpreted in the pre-edit tree; in the post-edit tree the same node sits at `[]`.
 - `Graft(ctx)` produces `ctx[p1]` by plugging the running `p1` into `ctx`'s hole.
 
-When `p1 =R p2` the grammar emits no `δ` at all: the reconfiguration is the empty sequence (§4), and the live control is left untouched.
+When `p1 =R p2`, the planner emits the empty sequence (§4), and the live control is left untouched.
 
 ### 3.4 Per-Production Soundness
 
@@ -869,7 +872,11 @@ Whether that pol-visible change reorders in-flight traffic depends on whether th
 
 #### 3.4.8. `Graft(ctx)`
 
-[AM TODO: Anshuman wants to discuss this IRL.]
+We restrict `Graft` to _whole-tree_ splicing: the hole `□` in `ctx` is plugged with the running root `p1`, and nothing else.
+Richer maneuvers an operator might want, such as plugging the hole with a particular sub-control or relocating a flow from one subtree to another, are not productions of `δ`.
+Such maneuvers are realized by the operator in Imperative Mode (§4.3) as an explicit sequence of the other productions; the planner has no recipe for them.
+
+[AM TODO: spell out the five obligations under the whole-tree restriction.]
 
 ### 3.5 Preserving this proof down to hardware
 
