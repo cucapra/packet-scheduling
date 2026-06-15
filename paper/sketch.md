@@ -98,10 +98,9 @@ The PE budget is fixed by the silicon, so the running tree's shape is constraine
 §3.5 argues that this per-production soundness survives the lowering to hardware.
 The productions of `δ` need to be arranged in guarded sequences in order to realize a full reconfiguration; this is deferred to §4.
 
-### 3.1 Background: PIFO trees
+### 3.1 PIFO trees
 
-The PIFO tree model of Mohan et al. [Formal Abstractions, OOPSLA '23, §3] is what we build on.
-We recap topology, the two observable operations, and well-formedness.
+A _PIFO tree_ is a hierarchy of PIFO queues: leaves hold packets, while internal nodes hold child indices that route each `pop` down to a chosen leaf.
 
 ##### Topology vs. contents
 
@@ -126,16 +125,19 @@ A PIFO tree `q` is well-formed (written `|- q`) when, at every internal node wit
 This is the invariant that keeps `pop` from ever getting stuck.
 `push` always preserves `|- q`, and `pop` preserves it when `q` is non-empty (which is precisely the condition under which `pop` is defined).
 
+We adopt this much from Mohan et al. [Formal Abstractions, OOPSLA '23]; the rest of the formalism in this paper is ours, and we preserve backward compatibility with theirs (§3.2).
+
 ### 3.2 A Policy DSL
 
-_FA_ treats PIFO trees as fully-formed runtime representations; there is no "constructor" for a network operator to create an _FA_-style formal object.
+The formalism we have inherited from §3.1 is a runtime model: a PIFO tree is the object that runs in the scheduler, with no source-level surface for an operator to express a desired policy.
 To talk about reconfigurations, we need to expose a programming interface for the network operator.
-We design a small policy DSL `pol` using which the operator can specify their desired policy, and a compiler from `pol` terms to runnable PIFO tree _controls_ (defined below).
-The transition planner of §4 needs both a way to compile a starting control `C` from an operator's request and a way to compare two such requests; `pol` is the common syntactic surface both rely on.
+We design a small policy DSL `pol` using which the operator can specify their desired policy, and a compiler from `pol` terms to runnable PIFO tree _controls_ (the per-node triples defined below).
+The transition planner of §4 needs both a way to compile a starting control `C` from an operator's request and a way to compare two user requests to identify how they differ.
+`pol` is the common syntactic surface both rely on.
 
-This is essentially what the vPIFO paper's _Scheduling Description Language_ does informally [cite vPIFO, §4].
+This is essentially what the vPIFO paper's _Scheduling Description Language_ does informally [cite vPIFO].
 They do not pin down a grammar for SDL or formalize the compilation, so our DSL can be read as a formal core of their concrete language.
-The compilation targets differ: they compile straight to a virtualized PIFO substrate, whereas we compile first to a control (the abstraction that this section reasons over) and only then lower to a substrate (§6).
+The compilation targets differ: vPIFO compiles straight to a virtualized PIFO substrate, whereas we compile first to a control (the abstraction that this section reasons over) and only then lower to a substrate (§6).
 The strategy, though, is the same: give the operator a syntactic surface, then compile.
 
 ##### Policy syntax: `pol`
@@ -152,14 +154,14 @@ A discipline may need per-arm metadata that shapes how the arm is scheduled.
 The grammar carries no structural mark of any of this.
 The operator writes the metadata in the surface syntax (e.g., `WFQ(w_1: pol_1, ..., w_n: pol_n)`, or positional sugar like `Strict(A, B)` which desugars to `Strict(hi: A, lo: B)`).
 Once compiled, the metadata lives in the arm's `slot_state` (see `init_slot_D` below), where `push`/`pop` can read it but not modify it.
-We read the arity off by counting children, so `Strict(gmail, zoom)` is the 2-ary instance.
-Each leaf label denotes a flow: a predicate over packets.
+We read the arity off by counting children, so `Strict(gmail, zoom)` is the 2-ary instance of the discipline `Strict`.
+Each leaf label denotes a _flow_: a predicate over packets.
 
 Arm order in the surface notation is a presentation choice, not a scheduling-meaningful one: `Strict(hi: A, lo: B)` and `Strict(lo: B, hi: A)` describe the same scheduler.
-We formalize this below as the _reorder-congruence_ `=R` on `pol`, the smallest congruence under which permuting siblings at any internal node is a no-op.
-From §3 onward we use `=R` as a degree of freedom: the compiler is free to pick any representative of an `=R`-class when laying out or editing a control.
+We formalize this below as the _reorder-congruence_ `=R` on `pol`.
+We use `=R` as a degree of freedom: the compiler is free to pick any representative of an `=R`-class when laying out or editing a control.
 
-A `pol` is _valid_ when (a) every discipline is applied at a proper arity, (b) every discipline is provided with the per-arm metadata that the discipline requires, and (c) the flows at the leaves are pairwise disjoint, in the sense that every incoming packet is either dropped or is routed to exactly one leaf.
+A `pol` is _valid_ when (a) every discipline is applied at a proper arity, (b) every discipline is provided with the per-arm metadata that the discipline requires, and (c) the flows at the leaves are pairwise disjoint, in the sense that every incoming packet is either dropped altogether or is routed to exactly one leaf.
 Validity is a condition on the source `pol`, not to be confused with the runtime invariant `|- q`.
 
 ##### Discipline compilation: `init_node_D` and `init_slot_D`
@@ -173,31 +175,36 @@ init_slot_D : node_state × meta? -> slot_state
 meta?  ::= ε  |  priority-rank  |  weight
 ```
 
-The `meta?` argument is the per-arm metadata that `D` requires (a weight for `WFQ`, a priority rank for `Strict`, absent for `RoundRobin`).
+The `meta?` argument is the per-arm metadata that discipline `D` requires: a weight for `WFQ`, a priority rank for `Strict`, absent for `RoundRobin`.
 `init_node_D` is called only at _compile time_, once per node, to seed that node's `node_state`.
 `init_slot_D` is called in two places.
 At _compile time_, walking the source pol, it is called once per child arm to seed that child's `slot_state`, taking the parent's just-seeded `node_state` and the arm's `meta?` as input.
 When a new arm is spliced under an already-running `D`-parent (§3.4.1), `init_slot_D` is called once with the parent's _current_ `node_state` and the new arm's `meta?` to produce the new arm's `slot_state`.
 
 Choosing `init_slot_D` is a scheduling decision, not just a structural one, since the choice changes how a freshly spliced arm competes with the established arms.
-We make the choice to "join the current round".
-For example, if we go from `WFQ(A,B)` to `WFQ(A,B,C)`, we do not want the newly added `C` to reap a huge benefit for "having been silent all this while"; we just want it to join the others with neither a penalty nor an advantage.
-To this end: `init_slot_RoundRobin` returns the empty tuple (no per-arm bookkeeping to seed); `init_slot_Strict(_, p) = p` (the arm's `slot_state` is just its priority rank, drawn from a dense total order such as the rationals so that a fresh priority can always be slotted strictly between two existing ones).
-For `WFQ`, the `node_state` at a parent is the virtual time `vt`, and we set `init_slot_WFQ(vt, w) = (w, vt)`: a new arm carries its weight `w` and inherits the parent's current `vt` as its last-finish tag.
-This is enough: any standard WFQ tagging that derives the next packet's tag from the slot's last-finish tag and the parent's `vt` (e.g., the GPS-style `max(virtual_clock, vt) + 1/w`) will slot the first packet on this arm into the round that the established arms are currently in.
-At compile time the parent's `vt` is freshly initialized (to zero), so all original arms get `(w, 0)` and the round is "the zeroth"; at `Add` the parent's `vt` is whatever the clock has advanced to.
+We broadly make the choice to "join the current round".
+For example, if going from `WFQ(A,B)` to `WFQ(A,B,C)`, we do not want the newly added `C` to reap a huge benefit for "having been silent all this while"; we just want it to join the others with neither a penalty nor an advantage.
+The choice plays out as follows for each `D`.
+
+- **`RoundRobin`.** `init_slot_RoundRobin` returns the empty tuple; RR has no per-arm bookkeeping.
+  The round-robin cursor lives in `node_state` instead, and at `Add` we splice the new arm into the child list at the cursor's current position, so its first turn lands in the round already in progress.
+  The cursor itself is left pointing at the same physical arm it was pointing at before the splice.
+- **`Strict`.** `init_slot_Strict(_, p) = p`: the arm's `slot_state` is just its priority rank, drawn from a dense total order such as the rationals so that a fresh priority can always be slotted strictly between two existing ones.
+- **`WFQ`.** The `node_state` at a parent is the virtual time `vt`, and `init_slot_WFQ(vt, w) = (w, vt)`: a new arm carries its weight `w` and inherits the parent's current `vt` as its last-finish tag.
+  Any standard WFQ tagging that derives the next packet's tag from the slot's last-finish tag and the parent's `vt` (e.g., the GPS-style `max(virtual_clock, vt) + 1/w`) then slots the first packet on this arm into the round that the established arms are currently in.
+  At compile time the parent's `vt` is freshly initialized (to zero), so all original arms get `(w, 0)` and the round is "the zeroth"; at `Add` the parent's `vt` is whatever the clock has advanced to.
 
 ##### Policy Compilation: `pol` to control
 
 A PIFO tree _control_ `C` is a tree of triples `(state, pifo, z)`, one per node of the topology.
 The tree shape exactly matches that of `pol`, as each node of `C` lines up with a node of the source `pol`.
 
-We write `⌈p⌉` for the control compiled from `pol` `p`; the compile rule fills in the local triple at each node of `p`'s topology as follows:
+We write `⌈p⌉` for the control compiled from `p`; the compile rule fills in the local triple at each node of `p`'s topology as follows:
 
 - `state` is a pair `(node_state, slot_state list)`.
   The `node_state` is seeded by `init_node_D()`.
   The `slot_state` list carries per-arm bookkeeping, each entry seeded by `init_slot_D`.
-  Disciplines without per-arm bookkeeping (e.g., `RR`) have an empty `slot_state` list.
+  When the node runs a discipline without per-arm bookkeeping (e.g., `RR`), it has an empty `slot_state` list.
 - `pifo` is an empty PIFO: an index-PIFO at an internal node, a packet-PIFO at a leaf.
 - `z` is `D`'s _scheduling transaction_ at the node.
   It examines the local `state` and the incoming packet and produces a path segment and an updated `state`.
@@ -206,7 +213,7 @@ We write `⌈p⌉` for the control compiled from `pol` `p`; the compile rule fil
   - at an internal node, `z : state × Pkt ⇀ (idx × rank) × state`: pick a child index `i` and the rank `r` with which to enqueue `i` at this node's index-PIFO;
   - at a leaf, `z : state × Pkt ⇀ rank × state`: pick the rank `r` for the packet's own PIFO entry.
 
-  When `z` is undefined for a packet, this node's contribution to the global `push` is empty: nothing is enqueued at this node and `state` is unchanged.
+  When `z` is undefined for a packet, nothing is enqueued at this node and `state` is unchanged.
   It is important for well-formedness that, when `z` is defined (resp. undefined) for a packet, it is defined (resp. undefined) along the entire path from leaf to root.
   This global property is not a concern of node-local `z`s.
 
@@ -217,31 +224,26 @@ We also write `C@path.node_state` and `C@path.slot_states` for the two component
 ##### Well-formedness: `|- C`
 
 In §3.1 we defined well-formedness on a PIFO tree, written `|- q`.
-Now we redefine it, lifting it to act on a control `C`.
+Now we redefine it, lifting it to act on controls.
 A control `C` is _well-formed_ (written `|- C`) when, at every internal node of `C`, the `pifo` has, for each legal child index `i`, exactly as many occurrences of `i` as there are packets stored in the leaf pifos of the subtree under the `i`-th child.
 This is stated the same well-formedness property as before, and maintaining it has the same effect (preventing `pop`s from getting stuck).
 We just state it directly on `C` so that no global PIFO tree needs to be assembled to check it.
 
-##### Compatibility with Formal Abstractions
+##### Backward compatibility
 
-_FA_ also has the notion of a control triple, but theirs is a monolithic control that is attached to the entire PIFO tree, not an individual node.
-The control `(s, q, z)` has a state map `s`, a PIFO tree `q`, and a single transaction `z : St × Pkt -> Path(t) × St`.
-Our control, which is distributed to nodes, can easily be flattened into an _FA_-style triple.
-The FA-style tree `q` is the tree of our `pifo` pieces; the FA-style state `s` collects the `state` pieces indexed by path; the FA-style scheduling transaction `z` walks the topology applying each per-node `z` in turn and appending the emitted path segments into paths.
-The partiality that our per-node `z`s allow shows up as partiality on the FA-style global `z` (a drop anywhere along the descent leaves the global function undefined for that packet).
-The rest of the paper has no need for gluing a control together in this way (`|- C` is stated directly per the previous paragraph, and the per-production rules of §3.4 act node-locally), but the reader who prefers FA's framing can recover the global triple by this gluing.
+A control of the kind we have just defined is sometimes packaged instead as a single _monolithic triple_ `(s, q, z)`: a state map `s` indexed by path, a single global PIFO tree `q`, and a single global scheduling transaction `z : St × Pkt -> Path(t) × St`.
+Our distributed controls flatten into such a triple by gluing the per-node pieces: the tree of our `pifo`s assembles into `q`, the `state`s indexed by path assemble into `s`, and a top-down composition of the per-node `z`s yields the global `z`, with partiality preserved (a drop anywhere along the descent leaves the global function undefined for that packet).
+The rest of the paper has no need for this gluing, since `|- C` is stated directly above and the per-production rules of §3.4 act node-locally; we record it so that any apparatus stated against the monolithic shape can still be applied on top of ours.
 
-##### Equivalence modulo pushes and pops: `~`
+##### Equivalences: `~`, `=R`, `~R`
+
+We need three equivalence relations: one on controls under live operation (`~`), one on `pol`s under sibling permutation (`=R`), and one on controls under sibling permutation (`~R`).
 
 `push` and `pop` change the live `pifo`s and `state`s of a control but leave its structural skeleton untouched.
 We write `C ~ C'` for the equivalence relation on well-formed controls that identifies any two controls related by a finite sequence of `push` / `pop` operations.
 
-##### Reorder-congruence on `pol`: `=R`
-
 We write `p =R p'` for the smallest congruence on `pol` such that, at any internal `D`-node, permuting the child arms gives a congruent pol: `D(p_a, ..., p_z) =R D(p_{σ(a)}, ..., p_{σ(z)})` for any permutation `σ`.
 The per-arm metadata that discipline `D` requires (a `WFQ` weight, a `Strict` priority rank) travels with its arm under the permutation; the metadata is what carries the scheduling-meaningful content, so a permutation does not change the scheduler.
-
-##### Equivalence on controls modulo presentation: `~R`
 
 Two controls whose child lists at some internal node are permutations of one another (with the parent's `pifo` and `z` renumbered accordingly) present different positional layouts but realize the same scheduler.
 We write `C ~R C'` for the equivalence obtained by closing `~` under such sibling permutations.
@@ -253,11 +255,11 @@ We write `⌊C⌋` to mean "the `pol` that `C` realizes".
 `⌊·⌋` is pinned down by three rules:
 
 1. _Base case (compilation)._ `⌊⌈p⌉⌋ =R p`.
-   The compiler is free to pick any sibling order when laying out `pol` `p` as a control, which is why we need the flexibility that `=R` affords us.
+   The compiler is free to pick any sibling order when laying `p` out as a control (creating `⌈p⌉`), and then we read off the exact `pol` that `⌈p⌉` realizes using `⌊⌈p⌉⌋`. This is not exactly equal to `p`, but we can use the flexibility that `=R` affords us to relate them.
 2. _Closure under pushes and pops._ If `C ~ C'`, then `⌊C⌋ = ⌊C'⌋`.
    Pushes and pops touch only live `state` and `pifo` contents; they leave the topology and `z` of every node verbatim, so the pol-level skeleton that `⌊·⌋` names is untouched.
 3. _Closure under `δ`._ Each `δ` has two readings, both defined per-production in §3.4: an operational rewrite on the live control, written `[[δ]] : control ⇀ control`, and a closed-form pol-level effect, written `den(δ) : pol ⇀ pol`.
-   §3.3 fixes the grammar; for now, take it on faith that for every `δ` we will define both readings.
+   §3.3 fixes the grammar; for now, we just assert that every `δ` we will define both readings.
    Rule 3 says the two readings agree: `⌊[[δ]](C)⌋ =R den(δ)(⌊C⌋)`.
    The `=R` slack is needed here because the operational rewrite has arm-order freedom, just as the compiler does.
 
@@ -290,7 +292,7 @@ Our final goal will be to correctly relate `C2'` and `C2`.
 
 The transformation is complete at this point, but we need to ground ourselves.
 `C2 := ⌈p2⌉` is the control we _would have built_ had we taken the SOTA stop-the-world path: the state-of-the-art response to a `p1 -> p2` request is to drain `C1'`, throw it away, and freshly compile `⌈p2⌉` (§1).
-We do not actually construct it, but it is the correct reference point and it is crucial that we now relate `C2'` (which we have just produced after a fashion) to `C2` (which SOTA would have produced).
+We do not actually construct `C2`, but it is the correct reference point and it is crucial that we now relate `C2'` (which we have just produced after a fashion) to `C2` (which SOTA would have produced).
 By rule 1, `⌊C2⌋ =R p2`, hence `⌊C2'⌋ =R ⌊C2⌋`.
 But we would like to relate the controls directly, not just their `pol`-level projections.
 The relation we write is `C2' ~R C2`, which absorbs two gaps at once:
