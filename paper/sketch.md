@@ -6,39 +6,41 @@
   Emphasize that policies are often hierarchical, and that clients demand line rate.
 
 - The reconfiguration problem.
-  Running example: a small-office gateway runs `Strict(gmail, zoom)`, i.e., strictly prioritizing `gmail` traffic over `zoom` traffic.
-  The operator wants to add a new `spotify` flow, and has two natural ways to do it:
-  1. `Strict(gmail, spotify, zoom)`: extend the strict-priority list with `spotify` slotting between `gmail` and `zoom` in priority.
-  2. `Strict(gmail, RoundRobin(zoom, spotify))`: keep `gmail` on top, but have `zoom` and `spotify` share the lower tier via round-robin.
+  Running example: a small-office gateway runs `Strict(hi: gmail, lo: zoom)`, i.e., strictly prioritizing `gmail` traffic over `zoom` traffic.
+  The operator wants to add a new `spotify` flow, and is considering the following two candidates:
+  1. `Strict(hi: gmail, mid: spotify, lo: zoom)`: extend the strict-priority list with `spotify` slotting between `gmail` and `zoom` in priority.
+  2. `Strict(hi: gmail, lo: RoundRobin(zoom, spotify))`: keep `gmail` on top, but have `zoom` and `spotify` share the lower tier via round-robin.
 
-  In either of these cases, the state of the art would stop the world, drop or recirculate buffered packets, recompile, and reinstall.
-  The costs are dropped or recirculated (and so delayed) packets, downtime, and the rebuilding of nodes that did not need to be rebuilt.
+  In either of these cases, the state of the art [cite vPIFO] would stop the world, drop or recirculate buffered packets, recompile, and reinstall.
+  The costs are dropped or recirculated (and therefore delayed) packets, downtime, and the rebuilding of nodes that did not need to be rebuilt.
 
 - The alternative is to reprogram a scheduler without stopping the world.
   Let's revisit the examples from earlier.
-- Transitioning to `Strict(gmail, spotify, zoom)` is actually quite easy.
+- Transitioning to `Strict(hi: gmail, mid: spotify, lo: zoom)` is actually quite easy.
   We can achieve the strongest property we could ask for:
-  - time1: `Strict(gmail, zoom)` is running
-  - time2: the request to move to `Strict(gmail, spotify, zoom)` is received.
-    `Strict(gmail, zoom)` is still running
-  - time3: we move to `Strict(gmail, spotify, zoom)`.
-    Whatever user-observable interaction (push/pop) happened immediately before time3 happened entirely in the `Strict(gmail, zoom)` regime, and whatever push/pop happened immediately after time3 happened entirely in the `Strict(gmail, spotify, zoom)` regime.
-    We therefore refer to the transition at time3 as _atomic_.
-  - [AM note: time2 = time3 in this case?
-    I don't want to say it like that here, since it would conflate atomicity with immediacy, but do we think someone will scratch their head and ask why any time is needed at all?]
-- What about transitioning to `Strict(gmail, RoundRobin(zoom, spotify))`?
+  - time1: `Strict(hi: gmail, lo: zoom)` is running.
+  - time2: the request to move to `Strict(hi: gmail, mid: spotify, lo: zoom)` is received.
+    `Strict(hi: gmail, lo: zoom)` is still running at this time.
+  - time3: we move to `Strict(hi: gmail, mid: spotify, lo: zoom)`.
+    Whatever user-observable interaction (push/pop) happened immediately before time3 happened entirely in the `Strict(hi: gmail, lo: zoom)` regime, and whatever push/pop happened immediately after time3 happened entirely in the `Strict(hi: gmail, mid: spotify, lo: zoom)` regime.
+    We refer to the transition at time3 as _atomic_.
+  - time2 and time3 collide for an `Add`-shaped transition because the entire change lowers to one commit; the wider time2-to-time3 gap appears for transitions that require draining.
+    [AM note: Can we think of a nice example that is atomic but not immediate?]
+- What about transitioning to `Strict(hi: gmail, lo: RoundRobin(zoom, spotify))`?
   It is not as easy.
   We need to atomically step into a _transitionary period_ during which the scheduler still accepts and emits packets, and once certain well-defined conditions are met, we atomically step into the user-requested policy.
-- Although the user never specified the semantics of this transitionary period, the period is itself a _de facto_ packet scheduling regime.
+- Although the user never specified the semantics of this transitionary period, the period is itself a _de facto_ packet scheduling regime: the transition is unavoidable, it persists for nonzero time, and during it the scheduler must continue to field pushes and pops.
+  Something is making scheduling decisions during that window, whether we acknowledge it or not!
   It is worth recognizing as a scheduling policy in its own right; we call it `link`.
   Some transitions are better than others from a network operator's point of view, and the state of the art has, perhaps inadvertently, settled on a trivial stop-the-world `link`.
   Our contributions are to be clear about what `link` is and to improve on it.
 - Concretely:
   - Obligation 1.
     Give a semantics to `link`.
-    The transition period is shaped by hardware-level manipulations on the way to realizing `p2`, and not by a clean human-readable semantics.
+    The transitionary period is shaped by hardware-level manipulations on the way to realizing `p2`, and not by a clean human-readable semantics.
     One might naturally worry that it will be hard to pin down the semantics of this transitional regime.
-    We develop a grammar of atomic transitions (§4) that carries us from `p1` through `link` to `p2`, and any `link` produced by that grammar is itself an ordinary scheduling control in the sense of §3.1: so it _does_ have a human-readable semantics, just as `p1` and `p2` do.
+    We develop a grammar of atomic edits (§3) and a sequencing layer (§4) that carries us from `p1` through one or more `link`s to `p2`.
+    The grammar is carefully designed, such that _any `link` produced by that grammar is itself an ordinary scheduling control in the sense of §3.2_: so it _does_ have a human-readable semantics, just as user-written policies `p1` and `p2` do.
   - Obligation 2.
     Improve upon the state of the art.
     We will give the semantics of the stop-the-world `link` and use it as a baseline.
@@ -304,14 +306,14 @@ The risks are of two flavors:
 
 ##### A worked example
 
-- The operator initially requests `p1 = Strict(gmail_hi, zoom_lo)`.
-- The compiler uses its degree of freedom to yield control `C1` such that `⌊C1⌋ = Strict(zoom_lo, gmail_hi)`. Note that the children have been reordered for some compiler-internal reason.
-- We echo back `p1' := ⌊C1⌋ = Strict(zoom_lo, gmail_hi)`. We know that `p1 =R p1'`, so the scheduler the operator gets is the one they asked for; only the slot numbering differs.
+- The operator initially requests `p1 = Strict(hi: gmail, lo: zoom)`.
+- The compiler uses its degree of freedom to yield control `C1` such that `⌊C1⌋ = Strict(lo: zoom, hi: gmail)`. Note that the children have been reordered for some compiler-internal reason.
+- We echo back `p1' := ⌊C1⌋ = Strict(lo: zoom, hi: gmail)`. We know that `p1 =R p1'`, so the scheduler the operator gets is the one they asked for; only the slot numbering differs.
 - As the control serves pushes and pops, it transforms into `C1'`.
-- Later, the operator requests `p2 = Strict(zoom_lo, spotify_mid, gmail_hi)`. Note that the operator has cleverly written `p2` based on `p1'`, not `p1`.
-- The runtime can again use its freedom. Instead of literally splicing `spotify` in between running arms `zoom` and `gmail`, it chooses to append `spotify` to the end. This converts the running control `C1'` into control `C2'` such that `⌊C2'⌋ = Strict(zoom_lo, gmail_hi, spotify_mid)`.
-- We echo back `p2' := ⌊C2'⌋ = Strict(zoom_lo, gmail_hi, spotify_mid)` to the user.
-- Now the operator changes to Imperative Mode (§4) and writes the path-bearing edit `(True, Quiesce([2]))`. It is not worth getting distracted by the syntax or the semantics; the key thing is that the operator has requested an edit and has identified the target via a path `[2]`. Paths are interpreted against the _actually running_ representative `p2'`, so we `Quiesce` the subtree `spotify_mid` (`p2'`'s third slot), not `zoom_lo` (`p2`'s third slot). If the operator had based the path on `p2` they would have edited the wrong arm; the system has no way to detect or recover from that.
+- Later, the operator requests `p2 = Strict(lo: zoom, mid: spotify, hi: gmail)`. Note that the operator has cleverly written `p2` based on `p1'`, not `p1`.
+- The runtime can again use its freedom. Instead of literally splicing `spotify` in between running arms `zoom` and `gmail`, it chooses to append `spotify` to the end. This converts the running control `C1'` into control `C2'` such that `⌊C2'⌋ = Strict(lo: zoom, hi: gmail, mid: spotify)`.
+- We echo back `p2' := ⌊C2'⌋ = Strict(lo: zoom, hi: gmail, mid: spotify)` to the user.
+- Now the operator changes to Imperative Mode (§4) and writes the path-bearing edit `(True, Quiesce([2]))`. It is not worth getting distracted by the syntax or the semantics; the key thing is that the operator has requested an edit and has identified the target via a path `[2]`. Paths are interpreted against the _actually running_ representative `p2'`, so we `Quiesce` the subtree `mid: spotify` (`p2'`'s third slot), not `lo: zoom` (`p2`'s third slot). If the operator had based the path on `p2` they would have edited the wrong arm; the system has no way to detect or recover from that.
 
 ### 3.3 A Grammar for Tree Diffs
 
@@ -1168,6 +1170,11 @@ On every diff except `ChangeRoot` and `Graft`, the `walk(...)` calls that touch 
 On `ChangeRoot` and `Graft`, the lowering issues no flow-table writes against `port_root` at all: the swap is exactly one `Isa_emancipate`/`Isa_adopt` pair against `port_root`, and the existing `Assoc`/`Map` state survives the swap because `port_step` is the index _name_, unbound to any particular child.
 The wrapper exists so that "swap the root" can be expressed as one `Isa_emancipate`/`Isa_adopt` pair against `port_root`, in the same vocabulary as any child-level edit; there is no opcode for changing the root directly.
 
+[AM note on push routing across the `P` trees: we said earlier (GH discussion #93, Comments 27-28) that on a switch with `P` ports the planner offers each push to all `P` trees and `Isa_assoc` is the sole gating mechanism, so exactly one lPIFO in the forest accepts.
+The alternatives we considered were a global class-to-root table (~20k entries, churned by `ChangeRoot`) and a class-to-port plus port-to-root split (felt roundabout).
+We said this earlier but it feels like overkill, especially as `P` scales.
+Let's discuss IRL.]
+
 The lowerings follow, one per diff in the order of the §3.3 grammar.
 We fix three reading conventions for the list below.
 First, we identify a tree position with the lPIFO that lives there.
@@ -1257,7 +1264,7 @@ The closest hardware contemporary, vPIFO (Zhang et al., SIGCOMM 2024), virtualiz
 Our two contributions read as complementary: vPIFO addresses the scaling and topology-flexibility question (many logical trees over one physical scheduler) while leaving transition correctness open, and the present work addresses transition correctness while taking the substrate as given.
 The bridge, namely what a vPIFO-class substrate would need to add to host our compilation, comes down to the install-without-interleave guarantee above.
 
-[AM question for Zhiyuan: §3.5 leans on our substrate executing each lowered instruction sequence as an atomic transactional commit, and that commit is exactly what realizes an atomic §3.4 diff.
+[AM question for Zhiyuan: §3.5 leans on our substrate executing each lowered instruction sequence as an atomic transactional commit,and that commit is exactly what realizes an atomic §3.4 diff.
 But we also claim that we compose with _any_ PIFO substrate.
 So what do we actually require from a substrate?
 Must it support atomic commits, i.e., an atomic install that hides the transiently-malformed intermediate states?
