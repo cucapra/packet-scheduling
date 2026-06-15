@@ -387,10 +387,10 @@ The two demands that we stated at a high level in §3.3 turn into five concrete 
   For the substrate to install `[[δ]]` atomically, the per-production rule must specify what `[[δ]]` does, produce a target that is a valid control with fully specified state, and leave the user's `pop` stream undisturbed. Each of these is a concrete obligation:
   - _Definition._ Specify `[[δ]] : control ⇀ control` together with the preconditions under which it is defined; outside that region `δ` is _incompatible_ with `C` and `[[δ]](C)` is undefined.
   - _Preservation of `|-`._ `|- C` implies `|- C'`.
-    Any packets or index entries `[[δ]]` drops or adds must leave the per-node pifo and packet counts in balance.
+    Any packets or index entries that `[[δ]]` drops or adds must leave the per-node pifo and packet counts in balance.
   - _Preservation of state._ At every node structurally shared between `C` and `C'` and outside the production's local edit site, the local `state` is preserved verbatim.
     At the edit site, and at every node of a freshly-spawned subtree, the state is exactly what the production's `init_node_D` / `init_slot_D` (§3.2) invocation prescribes.
-  - _Preservation of observation._ Modeling `[[δ]]` as a function pins down what it means to be "atomic": the substrate commits the rewrite specified by `[[δ]]` _between two consecutive `push`/`pop` operations_, so there is no intermediate state for downstream sections to reason about. We defer to §6 that the substrate can slip this change in. In this section, we must show per production that the commit is invisible to the user's `pop` stream. Concretely: every in-flight packet in `C` sits in some `pifo` that survives verbatim into `C'`, and no live `pifo` entry is rewritten, so a `pop` immediately after `δ` fires returns exactly what a `pop` immediately before would have returned.
+  - _Preservation of observation._ Modeling `[[δ]]` as a function pins down what it means to be "atomic": the substrate commits the rewrite specified by `[[δ]]` _between two consecutive `push`/`pop` operations_, so there is no intermediate state for downstream sections to reason about. We defer to §6 that the substrate can slip this change in. In this section, we must show per production that the commit is _invisible to the user's `pop` stream_. Concretely: every in-flight packet in `C` sits in some `pifo` that survives verbatim into `C'`, and no live `pifo` entry is rewritten, so a `pop` immediately after `δ` fires returns exactly what a `pop` immediately before would have returned.
 - **Pol-explainable** creates one obligation:
   - _Characterization._ Give `den(δ)` in closed form and prove `⌊C'⌋ =R den(δ)(⌊C⌋)`.
     The equation is up to `=R`, not literal `=`: `den` returns a definite representative of an `=R`-class, and `[[δ]]` is free to land on any other representative of the same class.
@@ -402,6 +402,9 @@ We do not repeat this boilerplate at every production.
 
 For transaction-only productions (those whose effect lives entirely in some `z`, like `Quiesce` and `ChangeWeight`), `den(δ)` is the identity on `pol` and Characterization reduces to `⌊C'⌋ =R ⌊C⌋` by inspection: no node's `node_state`, `slot_states`, `pifo`, or child list moves, and `z` is not visible at `pol`-level.
 We still state `den` explicitly at each production for uniformity.
+
+Several productions (`Add`, `Quiesce`, `Remove`, `Designate`) modify `z` at proper ancestors of the edit site, even though those nodes' `state` is preserved verbatim.
+There is no separate obligation for these `z` edits: their `pol`-invisible content is absorbed by Characterization (which is up to `=R`, and `z` does not appear in `pol`), and their effect on the in-flight stream is absorbed by Observation (every live `pifo` entry survives a `z` edit verbatim).
 
 The denotational rules below frequently read, overwrite, and splice child lists.
 Let us fix some notation.
@@ -435,16 +438,20 @@ It also extends the scheduling transaction `z` at each proper ancestor of `⌈ne
 
 `[[Add(parent, newpol, meta?)]](C)` is defined when:
 
-- `parent` resolves in `C` to an internal node,
+- the path `parent` resolves in `C` to an internal node,
 - `meta?` matches the slot-initialization schema of the discipline at that node (present iff `init_slot_D` for that discipline requires it), and
 - `newpol`'s leaf labels are disjoint from those of `C`.
+
+The disjointness precondition rules out _splitting_ an already-running flow into two (e.g., splitting `gmail` into `gmail_business` and `gmail_personal`): such a split has to relocate already-admitted packets, which `Add` cannot do.
+Such flow-splitting is realized as a `Designate` + drain + `Undesignate` sequence (§4), not by `Add`.
 
 The transition `C' = [[Add(parent, newpol, meta?)]](C)` is stated per node.
 Let `k = |C@parent.slot_states|` be the new arm's slot index.
 
 - _At each proper ancestor of `parent`:_
   - `node_state`, `slot_states`, and `pifo` are preserved verbatim.
-  - The local `z` is extended to admit packets that classify into the new subtree (the new leaf labels were outside every ancestor `z`'s domain in `C`, by the disjointness precondition), mapping them to whichever child slot lies on the path down to `parent`.
+  - The local `z` is extended to admit packets that classify into the new subtree, mapping them to whichever child slot lies on the path down to `parent`.
+    The new entries do not collide with existing ones: the disjointness precondition forces the new leaf labels to lie outside every ancestor `z`'s domain in `C`, so the extension only adds to `z`'s domain.
 - _At `parent`:_
   - `node_state` is unchanged.
   - `C'@parent.slot_states = C@parent.slot_states ++ [ init_slot_D(C@parent.node_state, meta?) ]`. In English: we call `init_slot_D` to find the per-arm bookkeeping that is needed for a new arm under `D`, and we append that bookkeeping in at the end. Our arm-order freedom (§3.2) lets us simply append the new child.
@@ -525,6 +532,8 @@ Preservation of state: the targeted weight field is the intended edit; every oth
 Preservation of observation: ranks for in-flight `pifo` entries were determined when they were pushed. They remain fixed; the new weight affects only the rank computation for future pushes.
 So a `pop` immediately after this `[[ChangeWeight(target, weight)]]` returns exactly what a `pop` immediately before would have.
 
+##### Note: Why the virtual-finish tag is preserved
+
 The virtual-finish tag at slot `k` is deliberately preserved rather than reset: resetting would either reward or penalize the targeted arm by yanking it out of the current round, whereas `init_slot_WFQ` (§3.2) was designed precisely to let a fresh arm "join the current round" without disturbing siblings, and the same principle applies to a weight change on an already-running arm.
 
 ##### Characterization
@@ -578,7 +587,7 @@ is defined whenever `target` resolves in `p`.
 Every node's `node_state`, `slot_states`, `pifo`, and child list are preserved verbatim. Only the `z`s at nodes in `T ∪ A` are restricted, and `z` is not visible at `pol`-level.
 So `⌊C'⌋ =R ⌊C⌋ = den(Quiesce(target))(⌊C⌋)`.
 
-##### Note: Why touch every node on every quiesced push path.
+##### Note: Why touch every node on every quiesced push path
 
 Under §3.2's parallel `push`, every node on the path from a packet's destination leaf to the system root mints an index via its local `z` independently of the others.
 If we restricted `z` only at a strict subset of those nodes (only the root of the tree, or only inside `C@target`), the rest would happily mint indices and enqueue them, leaving the tree in a malformed state.
@@ -634,7 +643,7 @@ The recursive case walks one step deeper into child `i` and writes the result ba
 Proof shape is the same as `Add`'s: outside the removed subtree every node is structurally intact (ancestors verbatim, surviving siblings verbatim), and at `π` the child list shrinks by dropping slot `k`.
 So `⌊C'⌋ =R den(Remove(target))(⌊C⌋)`.
 
-##### Note: Why an empty subtree?
+##### Note: Why an empty subtree
 
 Deleting an _occupied_ child has no canonical local realization.
 Consider `P(Q(A, B), C)`.
@@ -732,7 +741,7 @@ The wrap is therefore `pol`-visible only as a `Strict`, with the `designated` bi
 ##### Definition
 
 `[[Designate(target, survivor)]](C)` is defined when `target` resolves to a node in `C` and `survivor`'s leaf labels are disjoint from those of `C` outside the subtree `C@target`.
-Overlap with `C@target`'s own leaves is explicitly permitted: the moment `δ` fires becomes the boundary between old traffic (which continues to drain from `C@target`) and new traffic (which the new arm 1 admits), so the leaves stay operationally disjoint.
+Overlap with `C@target`'s own leaves is explicitly permitted; we explain why in a separate Note below.
 Let `N` denote the freshly introduced `Strict*` node, and let `P0` denote the number of packets currently held under `C@target`.
 
 - _Outside the subtree at `target`, outside `N`, and off the ancestor chain to `target`:_ preserved verbatim.
@@ -747,6 +756,12 @@ Let `N` denote the freshly introduced `Strict*` node, and let `P0` denote the nu
 - _Inside `⌈survivor⌉`:_ the local control is `⌈survivor⌉`'s, verbatim.
 
 If `target` is empty, the entire control becomes `N`, with the old root sitting as arm 0.
+
+##### Note: Overlap between the old subtree and `survivor`
+
+Overlap of leaf labels between `C@target` and `survivor` is explicitly permitted.
+The moment `δ` fires becomes the boundary between old traffic (which continues to drain from arm 0, `C@target`) and new traffic (which arm 1 admits): from this instant on, an arriving packet whose label appears in `⌈survivor⌉` is routed by `N.z` to slot 1, while the residual packets already under arm 0 drain on their existing `pifo` entries.
+The two arms thus stay operationally disjoint even when their label sets overlap, which is the very property that lets `Designate` express in-place subtree replacement (§4).
 
 ##### Preservation
 
@@ -763,7 +778,7 @@ Arm 1 first sees traffic only after a future `push`.
 ##### Characterization
 
 ```
-den(Designate([],     survivor)) A      = Strict(A, survivor)
+den(Designate([],     survivor)) p      = Strict(p, survivor)
 den(Designate(i :: r, survivor)) (D ts) = D ( ts[ den(Designate(r, survivor)) (ts[i]) / i ] )
 ```
 
@@ -806,6 +821,7 @@ den(Undesignate([]))     (Strict(A, B)) = B
 den(Undesignate(i :: r)) (D ts)         = D ( ts[ den(Undesignate(r)) (ts[i]) / i ] )
 ```
 
+The base case is defined when the input matches `Strict(_, _)`; the operational rule additionally requires that arm 0 of `C@target` be empty at the moment `δ` fires.
 The base case consumes the `Strict` wrapper (which on the `pol` side is what the `Strict*` reads as).
 Proof shape is `Remove`'s: outside `N` nothing structural moves, and at `N` the `Strict` wrapper is dropped.
 So `⌊C'⌋ =R den(Undesignate(target))(⌊C⌋)`.
