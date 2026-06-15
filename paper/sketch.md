@@ -74,12 +74,12 @@ The PE budget is fixed by the silicon, so the running tree's shape is constraine
   It virtualizes a single physical PIFO into many logical "PIFO instances," with a Scheduling Description Language (SDL) and compiler, so their PIFO Visor can _flexibly establish_ hierarchical PIFO trees of arbitrary shape on fixed hardware.
   Its contribution is the reconfigurable substrate.
 - What vPIFO does not do.
-  As published, vPIFO has no notion of a diff between old and new policies, no formal semantics for what a policy change means, and no account of in-flight packets during a change.
+  As published, vPIFO has no notion of a difference between old and new policies, no formal semantics for what a policy change means, and no account of in-flight packets during a change.
   Their SDL IR is for _rank computation_ compiled to P4 or CPU, quite different from our structural/topological one (our `pol` and `δ`, §3.2 and §3.3).
 - Our two running examples make the gap concrete.
   To briefly break into terms introduced by vPIFO: the Operation Generation Table and the PIFO Instance Address Table are the structures that encode the running tree's shape and per-instance storage.
   The easy append, to `Strict(hi: gmail, mid: spotify, lo: zoom)`, looks like the kind of edit that vPIFO's substrate could absorb in place: a targeted append to those tables would plausibly register the new traffic and its operations while leaving the running instances untouched.
-  Issuing the small diff to such a substrate, so that it installs the edit in place, is exactly what our layer adds.
+  Issuing the small difference to such a substrate, so that it installs the edit in place, is exactly what our layer adds.
   The harder restructuring, to `Strict(hi: gmail, lo: RoundRobin(zoom, spotify))`, lies beyond what the vPIFO substrate can absorb in place: it changes the running tree's shape (inserting a new internal node and re-parenting `zoom` under it), which is not exposed as an in-place edit on either table.
   The closest vPIFO comes is a full reinitialization onto the new shape, which is precisely the stop-the-world baseline we want to improve on.
 - vPIFO names runtime updating as future work, observing that the scheduling of packets during a modification's transitional phase is unresolved.
@@ -89,12 +89,12 @@ The PE budget is fixed by the silicon, so the running tree's shape is constraine
   That is, the formal transition between two policies, the small patch that realizes it, and the transitionary semantics.
   The two layers compose.
 
-## 3. A Grammar of Atomic Policy Diffs
+## 3. A Grammar of Atomic Policy Differences
 
 §3.1 recaps the PIFO tree model.
 §3.2 defines a small policy DSL and a compiler from the DSL into a runnable _control_, giving us the syntactic handle on controls that the rest of the section needs.
 §3.3 fixes a grammar `δ` of structural edits over that DSL, where every production of `δ` is, by construction, atomically realizable in hardware.
-§3.4 proves each production sound: for every production of `δ`, we say what running it does to the live tree, show that this matches the policy-level edit we were expecting, and check that the rest of the tree is left alone, with unrelated nodes keeping their state and the live packets staying accounted for.
+§3.4 proves each production is _sound_: for every production of `δ`, we say what running it does to the scheduler that is actually running in hardware, show that this matches the policy-level edit we were expecting, and check that the rest of the tree is left alone, with unrelated nodes keeping their state and the live packets staying accounted for.
 §3.5 argues that this per-production soundness survives the lowering to hardware.
 The productions of `δ` need to be arranged in guarded sequences in order to realize a full reconfiguration; this is deferred to §4.
 
@@ -110,7 +110,7 @@ A _PIFO tree_ of topology `t`, written `q : PIFOTree(t)`, layers data onto `t`.
 The data is of two forms.
 A leaf `Leaf(p)` holds a packet-carrying PIFO `p`.
 An internal node `Internal(qs, p)` itself carries two kinds of data: a list `qs` of well-formed PIFO tree children whose topologies match the corresponding sub-topologies of `t`, and a PIFO `p` whose entries are child indices into `qs`.
-This separation between the topology and the carried contents is key to making the diff grammar of §3.3 well-defined: a structural edit is a change to the topology `t`, distinct from the running contents.
+This separation between the topology and the carried contents is key to making the grammar `δ` of §3.3 well-defined: a structural edit is a change to the topology `t`, distinct from the running contents.
 
 ##### The two observable operations
 
@@ -229,7 +229,7 @@ The control `(s, q, z)` has a state map `s`, a PIFO tree `q`, and a single trans
 Our control, which is distributed to nodes, can easily be flattened into an _FA_-style triple.
 The FA-style tree `q` is the tree of our `pifo` pieces; the FA-style state `s` collects the `state` pieces indexed by path; the FA-style scheduling transaction `z` walks the topology applying each per-node `z` in turn and appending the emitted path segments into paths.
 The partiality that our per-node `z`s allow shows up as partiality on the FA-style global `z` (a drop anywhere along the descent leaves the global function undefined for that packet).
-The rest of the paper has no need for gluing a control together in this way (`|- C` is stated directly per the previous paragraph, and the diff rules of §3.4 act node-locally), but the reader who prefers FA's framing can recover the global triple by this gluing.
+The rest of the paper has no need for gluing a control together in this way (`|- C` is stated directly per the previous paragraph, and the per-production rules of §3.4 act node-locally), but the reader who prefers FA's framing can recover the global triple by this gluing.
 
 ##### Equivalence modulo pushes and pops: `~`
 
@@ -256,12 +256,12 @@ We write `⌊C⌋` to mean "the `pol` that `C` realizes".
    The compiler is free to pick any sibling order when laying out `pol` `p` as a control, which is why we need the flexibility that `=R` affords us.
 2. _Closure under pushes and pops._ If `C ~ C'`, then `⌊C⌋ = ⌊C'⌋`.
    Pushes and pops touch only live `state` and `pifo` contents; they leave the topology and `z` of every node verbatim, so the pol-level skeleton that `⌊·⌋` names is untouched.
-3. _Closure under diffs._ Each grammar diff `δ` has two readings, both defined per-production in §3.4: an operational rewrite on the live control, written `[[δ]] : control ⇀ control`, and a closed-form pol-level effect, written `den(δ) : pol ⇀ pol`.
+3. _Closure under `δ`._ Each `δ` has two readings, both defined per-production in §3.4: an operational rewrite on the live control, written `[[δ]] : control ⇀ control`, and a closed-form pol-level effect, written `den(δ) : pol ⇀ pol`.
    §3.3 fixes the grammar; for now, take it on faith that for every `δ` we will define both readings.
    Rule 3 says the two readings agree: `⌊[[δ]](C)⌋ =R den(δ)(⌊C⌋)`.
    The `=R` slack is needed here because the operational rewrite has arm-order freedom, just as the compiler does.
 
-The three rules together let us propagate `⌊·⌋` from any `⌈p⌉` along any sequence of pushes, pops, and diffs.
+The three rules together let us propagate `⌊·⌋` from any `⌈p⌉` along any sequence of pushes, pops, and productions of `δ`.
 This is how we will discharge Obligation 1 of §1: telling the operator what `pol` is running even when no user has explicitly requested the `pol`.
 Note that `⌊·⌋` is defined here only by closure from the base case `⌈p⌉`; controls that arise outside this closure (e.g., a transiently-malformed intermediate produced by an IR-level lowering, §3.5) do not have a `⌊·⌋` reading at the control level, and we recover their `pol`-level meaning only at the next commit boundary.
 
@@ -283,7 +283,7 @@ Our final goal will be to correctly relate `C2'` and `C2`.
 - We echo `p1' := ⌊C1⌋` back to the user. This is not shown in the diagram but will become important shortly. `p1'` faithfully represents the arm ordering that the compiler may have done.
 - Push and pop operations carry `C1` to `C1'`.
   `C1 ~ C1'` by the definition of `~`, and `⌊C1'⌋ = ⌊C1⌋` by rule 2, so the live `C1'` still realizes both `p1` and `p1'`.
-- The operator writes `p2`; the sniffer (§4) produces a `δ` such that `den(δ)(p1') =R p2`.
+- The operator writes `p2`; the _sniffer_, a tool that infers a `δ` between two `pol`s (§4), produces a `δ` such that `den(δ)(p1') =R p2`.
   It is key that we work in the frame of the actually-running representative `p1'` rather than the operator's original `p1`, since `den` is stated using semantically meaningful paths.
 - Applying `[[δ]]` to `C1'` brings us to control `C2'`, and by rule 3 `⌊C2'⌋ =R den(δ)(p1')`. Further, we can chain this with the fact `den(δ)(p1') =R p2` (established just above) to get `⌊C2'⌋ =R p2`.
 - We again echo `p2 := ⌊C2'⌋` to the user.
@@ -300,15 +300,15 @@ The relation we write is `C2' ~R C2`, which absorbs two gaps at once:
 
 The diagram thus commutes at the level of `⌊·⌋` modulo `=R`: both routes from `p1` to a control realizing `p2` land in the same `~R`-class.
 We do not actually construct the right-hand side `C2`; the commutation is asserted against a virtual reference point whose `⌊C2⌋ =R p2` holds by Rule 1.
-The commutation holds verbatim for `pol`-visible diffs.
+The commutation holds verbatim for `pol`-visible productions.
 For `pol`-invisible ones like `Quiesce`, the commutation is vacuous on the SOTA side: a freshly compiled `C2 = ⌈p2⌉` carries no `z`-domain restriction, so there is nothing on that side to match against.
 
 When writing `p2`, the operator would do well to state their request against `p1'`, the actually-running `pol` that we echoed back to them.
-This keeps the diff small and aligns paths with what is running.
+This keeps `δ` small and aligns paths with what is running.
 The operator may state `p2` against the unprimed `p1` they originally wrote, but at their own risk.
 The risks are of two flavors:
 
-- The diff sniffer may infer a larger diff than necessary, or may give up.
+- The sniffer may infer a larger `δ` than necessary, or may give up.
 - The more serious issue is that the user may use Imperative Mode (§4) to directly specify what edits to make, and if they use the unprimed `p1` to base their paths, they may inadvertently edit the wrong node or provide a malformed path.
 
 ##### A worked example
@@ -322,14 +322,14 @@ The risks are of two flavors:
 - We echo back `p2' := ⌊C2'⌋ = Strict(lo: zoom, hi: gmail, mid: spotify)` to the user.
 - Now the operator changes to Imperative Mode (§4) and writes the path-bearing edit `(True, Quiesce([2]))`. It is not worth getting distracted by the syntax or the semantics; the key thing is that the operator has requested an edit and has identified the target via a path `[2]`. Paths are interpreted against the _actually running_ representative `p2'`, so we `Quiesce` the subtree `mid: spotify` (`p2'`'s third slot), not `lo: zoom` (`p2`'s third slot). If the operator had based the path on `p2` they would have edited the wrong arm; the system has no way to detect or recover from that.
 
-### 3.3 A Grammar for Tree Diffs
+### 3.3 A Grammar for Tree Differences
 
 We fix a small grammar `δ` of atomic edits (we use "atomic" informally here; §3.4 pins it down formally).
 Each production of the grammar has two readings, both defined per-production in §3.4: an operational rewrite `[[δ]] : control ⇀ control`, and a closed-form pol-level effect `den(δ) : pol ⇀ pol`.
 The grammar is shaped by two demands.
 
 - **Hardware-realizable.** A production is admitted into the grammar iff `[[δ]]` can be committed atomically by the hardware substrate (§6).
-- **Pol-explainable.** Every production has a `den(δ)`; for transaction-only diffs (whose effect lives entirely in `z`), `den(δ)` is the identity on `pol`. This is what lets §4 sniff, check, and echo back the `pol`-level meaning of the running control to the user.
+- **Pol-explainable.** Every production has a `den(δ)`; for transaction-only productions (whose effect lives entirely in `z`), `den(δ)` is the identity on `pol`. This is what lets the sniffer (§4) infer a `δ` whose `pol`-level meaning can be checked and echoed back to the user.
 
 §3.4's per-production soundness theorem ties the two readings together: `⌊[[δ]](C)⌋ =R den(δ)(⌊C⌋)`.
 
@@ -372,9 +372,9 @@ Brief notes on each production:
 - `ChangeRoot(path)` promotes `p1@path` to the new root, discarding the ancestor chain above it. The ancestor chain must be a unary "vine".
 - `Graft(ctx)` produces `ctx[p1]` by plugging the running `p1` into `ctx`'s hole.
 
-When `p1 =R p2` the grammar emits no diff at all: the reconfiguration is the empty sequence (§4), and the live control is left untouched.
+When `p1 =R p2` the grammar emits no `δ` at all: the reconfiguration is the empty sequence (§4), and the live control is left untouched.
 
-### 3.4 Discharging the Per-Production Obligations
+### 3.4 Per-Production Soundness
 
 The two demands that we stated at a high level in §3.3 turn into five concrete obligations that we must discharge for every production of the grammar.
 
@@ -385,7 +385,7 @@ The two demands that we stated at a high level in §3.3 turn into five concrete 
     Any packets or index entries `[[δ]]` drops or adds must leave the per-node pifo and packet counts in balance.
   - _Preservation of state._ At every node structurally shared between `C` and `C'` and outside the production's local edit site, the local `state` is preserved verbatim.
     At the edit site, and at every node of a freshly-spawned subtree, the state is exactly what the production's `init_node_D` / `init_slot_D` (§3.2) invocation prescribes.
-  - _Preservation of observation._ Modeling `[[δ]]` as a function pins down what it means to be "atomic": the substrate commits the rewrite specified by `[[δ]]` _between two consecutive `push`/`pop` operations_, so there is no intermediate state for downstream sections to reason about. We defer to §6 that the substrate can slip this change in. In this section, we must show per production that the commit is invisible to the user's `pop` stream. Concretely: every in-flight packet in `C` sits in some `pifo` that survives verbatim into `C'`, and no live `pifo` entry is rewritten, so a `pop` immediately after the diff returns exactly what a `pop` immediately before would have returned.
+  - _Preservation of observation._ Modeling `[[δ]]` as a function pins down what it means to be "atomic": the substrate commits the rewrite specified by `[[δ]]` _between two consecutive `push`/`pop` operations_, so there is no intermediate state for downstream sections to reason about. We defer to §6 that the substrate can slip this change in. In this section, we must show per production that the commit is invisible to the user's `pop` stream. Concretely: every in-flight packet in `C` sits in some `pifo` that survives verbatim into `C'`, and no live `pifo` entry is rewritten, so a `pop` immediately after `δ` fires returns exactly what a `pop` immediately before would have returned.
 - **Pol-explainable** creates one obligation:
   - _Characterization._ Give `den(δ)` in closed form and prove `⌊C'⌋ =R den(δ)(⌊C⌋)`.
     The equation is up to `=R`, not literal `=`: `den` returns a definite representative of an `=R`-class, and `[[δ]]` is free to land on any other representative of the same class.
@@ -404,14 +404,14 @@ We write `ts[i]` for the `i`-th child and `ts[t/i]` for `ts` with its `i`-th chi
 We mark arity-changing edits with `+` and `-`: `ts[+t/i]` splices `t` in as the new `i`-th child (the old `i`-th and later children shift one place to the right), and `ts[-/i]` drops the `i`-th child (later children shift left).
 Indices follow the `path` convention of §3.3.
 
-The operational diffs of §3.4 manipulate two parallel structures at an internal node: a child list `qs` of PIFO tree children, to which the list-manipulation notation introduced above applies verbatim, and an index-PIFO `p` recording child indices.
+The operational rewrites of §3.4 manipulate two parallel structures at an internal node: a child list `qs` of PIFO tree children, to which the list-manipulation notation introduced above applies verbatim, and an index-PIFO `p` recording child indices.
 For `p` the same `[±/k]` notation _renumbers_ rather than splices, since the PIFO holds index _values_ that have to track a shift in the child list.
 `p[+/k]` is `p` with every entry `>= k` bumped up by one (opening up slot `k`); `p[-/k]` is `p` with every entry `> k` brought down by one.
 Entries below the edit point are left alone.
 
 Several productions edit a single arm relative to its parent.
-When the per-production rule hinges on this relation, we destruct the diff's path as `π ++ [k]`, with `π` the parent's path and `k` the local index by which that parent reaches the target.
-§6 reuses this destructuring when lowering the same diffs to hardware.
+When the per-production rule hinges on this relation, we destruct `δ`'s path as `π ++ [k]`, with `π` the parent's path and `k` the local index by which that parent reaches the target.
+§6 reuses this destructuring when lowering the same productions to hardware.
 
 As a warm-up, we discharge the five obligations in some detail for the production `Add`.
 The remaining productions reuse the same obligations and arguments, so for them we present only what differs in substance: the closed-form `den`, the operationally interesting bits of the per-node rule, and the points where any of the preservation arguments departs from `Add`'s.
@@ -467,12 +467,12 @@ At `parent`, `node_state` is unchanged and `slot_states` is appended with exactl
 
 ##### Preservation of observation
 
-We must show that the commit is invisible to the user's `pop` stream: every in-flight packet in `C` sits in some `pifo` that survives verbatim into `C'`, and no live `pifo` entry is rewritten, so a `pop` immediately after the diff returns exactly what a `pop` immediately before would have returned.
+We must show that the commit is invisible to the user's `pop` stream: every in-flight packet in `C` sits in some `pifo` that survives verbatim into `C'`, and no live `pifo` entry is rewritten, so a `pop` immediately after `δ` fires returns exactly what a `pop` immediately before would have returned.
 
-No in-flight packet straddles the diff.
-At the diff instant, every packet sits in some pre-existing node's `pifo`, and each such packet survives into the same `pifo` at the same slot index in `C'`.
+No in-flight packet straddles `δ`'s firing.
+At the instant `δ` fires, every packet sits in some pre-existing node's `pifo`, and each such packet survives into the same `pifo` at the same slot index in `C'`.
 The new slot `k` holds nothing, and no pifo entry is rewritten.
-So a `pop` immediately after the diff returns exactly what a `pop` immediately before would have.
+So a `pop` immediately after `δ` fires returns exactly what a `pop` immediately before would have.
 Observation is preserved.
 
 ##### Characterization
@@ -727,7 +727,7 @@ The wrap is therefore `pol`-visible only as a `Strict`, with the `designated` bi
 ##### Definition
 
 `[[Designate(target, survivor)]](C)` is defined when `target` resolves to a node in `C` and `survivor`'s leaf labels are disjoint from those of `C` outside the subtree `C@target`.
-Overlap with `C@target`'s own leaves is explicitly permitted: the moment the diff fires becomes the boundary between old traffic (which continues to drain from `C@target`) and new traffic (which the new arm 1 admits), so the leaves stay operationally disjoint.
+Overlap with `C@target`'s own leaves is explicitly permitted: the moment `δ` fires becomes the boundary between old traffic (which continues to drain from `C@target`) and new traffic (which the new arm 1 admits), so the leaves stay operationally disjoint.
 Let `N` denote the freshly introduced `Strict*` node, and let `P0` denote the number of packets currently held under `C@target`.
 
 - _Outside the subtree at `target`, outside `N`, and off the ancestor chain to `target`:_ preserved verbatim.
@@ -738,7 +738,7 @@ Let `N` denote the freshly introduced `Strict*` node, and let `P0` denote the nu
   This is the exact analog of `Add`'s ancestor `z`-extensions (§3.4.1).
 - _At `N`:_ `node_state = init_node_Strict()`; `slot_states = [init_slot_Strict(node_state, hi), init_slot_Strict(node_state, lo)]` for any priority ranks `hi < lo`; arm 0 is the old `C@target` (verbatim, including its entire subtree and contents); arm 1 is `⌈survivor⌉`; `pifo` is seeded with `P0` entries with slot value `0` and rank `hi` (one per packet still held under arm 0; later pushes at slot 0 would produce entries at the same rank).
   `z` routes packets by leaf label: a packet whose label exists in `⌈survivor⌉` goes to slot `1`, otherwise (label exists only in the old subtree) it goes to slot `0`.
-  This rule is total on `N`'s admitted labels and resolves the overlap case toward the survivor: a label shared between the old subtree and `survivor` belongs to the survivor from the diff onward, while the residual packets under arm 0 drain on their existing entries.
+  This rule is total on `N`'s admitted labels and resolves the overlap case toward the survivor: a label shared between the old subtree and `survivor` belongs to the survivor from `δ`'s firing onward, while the residual packets under arm 0 drain on their existing entries.
 - _Inside `⌈survivor⌉`:_ the local control is `⌈survivor⌉`'s, verbatim.
 
 If `target` is empty, the entire control becomes `N`, with the old root sitting as arm 0.
@@ -751,7 +751,7 @@ At `π` (if `target` non-empty), `pifo` is unchanged, and the slot-`k` count `P0
 The ancestor `z`-extensions touch no `pifo` and route no in-flight packet, so they affect only `push`es that arrive after this `[[Designate(target, survivor)]]`.
 Preservation of state is the standard split: arm 0 is verbatim; arm 1 is `⌈survivor⌉` by construction; `N`'s `node_state` and `slot_states` come from the listed `init` calls; everything else is verbatim.
 Preservation of observation: every in-flight packet under arm 0 sits at exactly the same position it did in `C@target`, since arm 0 is `C@target` verbatim.
-If `P0 > 0`, the smallest entry in `N.pifo` is `0`, so any pop that descends to `N` continues into arm 0 and returns exactly the packet a pre-diff pop would have.
+If `P0 > 0`, the smallest entry in `N.pifo` is `0`, so any pop that descends to `N` continues into arm 0 and returns exactly the packet a pop before `δ` fired would have.
 If `P0 = 0`, then by `|- C` no pop ever descends to `N` (the subtree at `target` was already empty), so the question is vacuous.
 Arm 1 first sees traffic only after a future `push`.
 
@@ -829,8 +829,8 @@ Preservation of `|-`: `|- C` is a conjunction of per-node well-formedness obliga
 The discarded ancestors' obligations are simply forgotten.
 Preservation of state: standard verbatim within `C@newroot`; ancestor state is gone.
 Preservation of observation: every in-flight packet sits in some `pifo` within `C@newroot`'s subtree (the ancestor `pifo`s held routing entries, not packets), all preserved verbatim.
-A pop immediately after this `[[ChangeRoot(newroot)]]` returns exactly what a pop immediately before would have: a pre-diff pop descends through the unary chain by popping each ancestor's PIFO in turn, and since each such PIFO has a single slot (slot `0`), the popped entry is forced to be a slot-`0` entry regardless of its rank; the descent therefore lands at `C@newroot`'s root and pops from there.
-A post-diff pop acts on `C@newroot`'s root directly, returning the same packet.
+A pop immediately after this `[[ChangeRoot(newroot)]]` returns exactly what a pop immediately before would have: a pop before `δ` fires descends through the unary chain by popping each ancestor's PIFO in turn, and since each such PIFO has a single slot (slot `0`), the popped entry is forced to be a slot-`0` entry regardless of its rank; the descent therefore lands at `C@newroot`'s root and pops from there.
+A pop after `δ` fires acts on `C@newroot`'s root directly, returning the same packet.
 
 ##### Characterization
 
@@ -871,14 +871,14 @@ Whether that pol-visible change reorders in-flight traffic depends on whether th
 
 ### 3.5 Preserving this proof down to hardware
 
-§3.4 proves soundness at the tree-diff level, where each atomic edit (`Add`, `Quiesce`, `Remove`, ...) carries a well-formed tree to a well-formed tree.
+§3.4 proves soundness at the `δ` level, where each production (`Add`, `Quiesce`, `Remove`, ...) carries a well-formed tree to a well-formed tree.
 To run on hardware, each edit is lowered, by a simple and mechanical compilation, into a sequence of fine-grained instructions in our IR.
-The IR alphabet and the substrate machinery are the subject of §6; here we only need that the IR has fine-grained verbs (we will name `Isa_spawn`, `Isa_adopt`, `Isa_emancipate`, `Isa_assoc`, `Isa_deassoc`, and the like) and that a single such verb, unlike a whole tree-diff edit, _can_ leave the tree malformed: a node freshly created by `Isa_spawn` has not yet been wired to its parent by `Isa_adopt`, for example.
+The IR alphabet and the substrate machinery are the subject of §6; here we only need that the IR has fine-grained verbs (we will name `Isa_spawn`, `Isa_adopt`, `Isa_emancipate`, `Isa_assoc`, `Isa_deassoc`, and the like) and that a single such verb, unlike a whole production of `δ`, _can_ leave the tree malformed: a node freshly created by `Isa_spawn` has not yet been wired to its parent by `Isa_adopt`, for example.
 
 We do not prove soundness at the IR level, but instead informally make the case for why the §3.4 proof survives the lowering.
 There are two reasons.
 
-- The compilation is _faithful_: each tree-diff edit expands to a fixed instruction sequence that, when run to completion, realizes exactly that edit.
+- The compilation is _faithful_: each production of `δ` expands to a fixed instruction sequence that, when run to completion, realizes exactly that production's effect.
   We give the command-to-commands translation and take its faithfulness to be uncontroversial.
 - Our substrate runs each such sequence as a single _transactional commit_: no `push` or `pop` interleaves with a commit's instructions, so the transiently-malformed intermediate trees are never observed.
   That commit is precisely how the substrate _realizes_ the atomicity property of §3: atomicity asked for an instantaneous control replacement between two user operations, and the commit is what collapses a multi-instruction lowering into one such instant.
@@ -894,12 +894,12 @@ Flagged here so the §3.5 claim "the proof survives the lowering" is not read as
 
 ## 4. Realizing Reconfigurations as Sequences
 
-This section composes the atomic diffs of §3 into _guarded sequences_ `(φ ; δ)*`, where a guard `φ` is a predicate on the state of the live control and a diff `δ` is a production of the grammar from §3.3.
+This section composes the productions of `δ` (§3.3) into _guarded sequences_ `(φ ; δ)*`, where a guard `φ` is a predicate on the state of the live control.
 Each `δ` fires as soon as its guard becomes true.
-Sequences realize changes no single diff can express.
+Sequences realize changes no single `δ` can express.
 
-A guarded sequence threads the live control through a chain of intermediate controls, one per pair of consecutive diffs.
-We call each such intermediate control a `link`, writing `link_i` for the control left behind by the `i`-th diff.
+A guarded sequence threads the live control through a chain of intermediate controls, one per pair of consecutive productions.
+We call each such intermediate control a `link`, writing `link_i` for the control left behind by the `i`-th `δ`.
 
 The headline result of the section, proved below, is that each `link` is itself an ordinary §3.1 control, so the "transitionary period" needs no new semantics: this is Obligation 1 of §1.
 Moreover, since every production of §3 is _pol-explainable_ (each `δ` has a `den(δ)` that tracks its pol-level effect), we can echo to the operator, at every step of the sequence, the `pol` that the live control currently realizes.
@@ -914,7 +914,7 @@ The chain of `den`s starting from `⌊C⌋` gives `⌊link_i⌋` for each `i`, s
          | empty(path)            // the subtree at `path` holds no packets
 
 gseq   ::= ε                      // empty sequence
-         | (φ ; δ) ; gseq         // a guarded atomic diff, then more
+         | (φ ; δ) ; gseq         // a guarded atomic `δ`, then more
          | I ; gseq               // an idiom invocation, then more
 
 I      ::= Retire(path)
@@ -924,7 +924,7 @@ I      ::= Retire(path)
 ```
 
 We write `gseq` short for "guarded sequence."
-A guard is always paired with exactly one atomic diff `δ` drawn from §3.
+A guard is always paired with exactly one `δ` drawn from §3.
 An idiom `I` appears in a `gseq` _without_ a guard because an idiom expands into a `gseq` of its own whose internal guards carry the synchronization (§4.2).
 For instance, §4.2's `PruneDownTo` expansion reads
 
@@ -932,9 +932,9 @@ For instance, §4.2's `PruneDownTo` expansion reads
 Retire(π_a) ; ... ; Retire(π_z) ; (true ; ChangeRoot(path))
 ```
 
-mixing bare idiom invocations with one explicitly-guarded atomic diff.
+mixing bare idiom invocations with one explicitly-guarded `δ`.
 After idiom expansion (§4.2), every step is a `(φ ; δ)` pair, and that is the form on which the rest of §4 reasons.
-When we write `(φ ; δ)*` informally we mean this fully-expanded form: a finite sequence of `(guard, atomic diff)` pairs.
+When we write `(φ ; δ)*` informally we mean this fully-expanded form: a finite sequence of `(φ, δ)` pairs.
 
 Having just those two guard forms has sufficed for every sequence we have needed; we take the minimality as a small design win.
 The framework does not depend on it, and a richer predicate language can be slotted in without disturbing the rest of §4.
@@ -955,7 +955,7 @@ Crucially, `φ_{i+1}` is evaluated on `link_{i+1}`, which exists only after `δ_
 
 A guard may be `true`, in which case `δ_i` fires the moment `link_i` is installed, with no waiting; but a `true` later in the sequence is still gated by every preceding pair.
 For instance, the closing `(true ; ChangeRoot(path))` of §4.2's `PruneDownTo` is nominally guarded by `true` but in the global timeline cannot fire until every preceding `Retire` has emptied its target and run its `Remove`: the `true` says "install at the moment the predecessor's link is installed," not "install at sequence start."
-A length-one sequence with `φ_0 = true` is a single atomic diff applied immediately, with `C` abutting `C'` and no intervening link.
+A length-one sequence with `φ_0 = true` is a single `δ` applied immediately, with `C` abutting `C'` and no intervening link.
 The empty sequence is the case `⌊C⌋ =R ⌊C'⌋`: the live control is left untouched.
 
 ##### Safety
@@ -965,8 +965,8 @@ Every sequence the planner emits is safe in the sense that the live scheduler is
 Each `δ_i` preserves `|-` by the per-production obligation discharged in §3.4.
 Each `link_i` itself preserves `|-` under ordinary `push`/`pop`, since §3.1's `push` carries a well-formed PIFO tree to a well-formed one and `pop` does likewise on non-empty inputs.
 So the user-observable trace is a stream of ordinary `push`/`pop` operations served in turn by well-formed controls `C, link_1, ..., link_n, C'`.
-Each intervening `link_i` is therefore an ordinary §3.1 control, and the "semantics of `link`" is nothing more than the §3.1 semantics of the controls we install: each diff's job is to be a sound atomic replacement, and the planner's job is to order them behind sensible guards.
-Safety is entirely local: it follows from the soundness of the individual diffs, with no global argument about the sequence.
+Each intervening `link_i` is therefore an ordinary §3.1 control, and the "semantics of `link`" is nothing more than the §3.1 semantics of the controls we install: each `δ`'s job is to be a sound atomic replacement, and the planner's job is to order them behind sensible guards.
+Safety is entirely local: it follows from the soundness of the individual productions, with no global argument about the sequence.
 This discharges Obligation 1 of §1.
 
 ##### Liveness
@@ -982,8 +982,8 @@ For the case of follow-up requests arriving mid-flight, see §4.4.
 _Idioms_ are an operator-facing vocabulary for frequently-used guarded sequences.
 They are the typical building block of imperative-mode sequences (§4.3).
 
-An idiom is a macro over the diff grammar (and, recursively, over other idioms).
-It expands into a fixed `(φ; δ)*` sequence: a list of atomic diffs with the guards between them spelling out what the system waits for.
+An idiom is a macro over the grammar `δ` (and, recursively, over other idioms).
+It expands into a fixed `(φ; δ)*` sequence: a list of productions with the guards between them spelling out what the system waits for.
 Soundness is compositional: each step of the expansion is sound by §3.4, and the sequence inherits the §4 sequence-level reasoning above.
 An idiom expansion that would hit an undefined production on the current control is rejected: the soundness checks fire on the expanded sequence just as they would on a hand-written one.
 
@@ -1049,17 +1049,17 @@ New ones can be added later without changing the framework, since an idiom is ju
 Two authoring modes produce sequences, and the operator chooses freely between them.
 
 - In _declarative mode_, the operator writes a `pol`, say `p1`, and, to reconfigure, writes a second `pol`, say `p2`.
-  A differ (§5) proposes a guarded sequence that achieves this change, and the operator either accepts it (in which case we apply the sequence to the running control) or declines it.
-  The differ is intentionally simple: it sees only `pol`-level diffs whose translation to a sequence is straightforward, and falls back to the generic `Designate([], p2) ; Undesignate([])` pair (§5) for anything richer.
+  The sniffer (§5) proposes a guarded sequence that achieves this change, and the operator either accepts it (in which case we apply the sequence to the running control) or declines it.
+  The sniffer is intentionally simple: it sees only `pol`-level differences whose translation to a sequence is straightforward, and falls back to the generic `Designate([], p2) ; Undesignate([])` pair (§5) for anything richer.
 - In _imperative mode_, the operator writes both their desired `p2` and a `(φ; δ)*` sequence intended to reach it; the sequence may include idioms from §4.2.
   Before running it we check the sequence at the pol level, as described next.
 
 The two modes are not formally distinct: they produce sequences over the same substrate that discharge the same per-production obligations from §3.4.
-Imperative mode buys expressivity, not a different proof obligation; it admits sequences the differ might never produce, but they are still `(φ; δ)*` sequences.
+Imperative mode buys expressivity, not a different proof obligation; it admits sequences the sniffer might never produce, but they are still `(φ; δ)*` sequences.
 
 ##### The pol-level check on imperative sequences
 
-We fold each diff's `den(δ_i)` (§3.4) along the sequence, producing a chain
+We fold each production's `den(δ_i)` (§3.4) along the sequence, producing a chain
 
 `p1' -[den(δ_1)]-> ip_1 -[den(δ_2)]-> ip_2 -[den(δ_3)]-> ... -[den(δ_n)]-> ip_n`
 
@@ -1087,9 +1087,9 @@ See https://github.com/cucapra/packet-scheduling/discussions/115 for a sketch of
 
 ## 5. Identifying Better Transitions
 
-§3 gave us a toolkit of atomic diffs and §4 sequenced them through `link`s into full reconfigurations.
+§3 gave us a toolkit of productions of `δ` and §4 sequenced them through `link`s into full reconfigurations.
 With those tools in hand, this section asks how the transition planner can wield them well.
-The metric we adopt is _confinement_: a good sequence is one whose diffs and intervening `link`s disturb as little of the running scheduler as possible, leaving the parts of the tree that did not need to change running undisturbed.
+The metric we adopt is _confinement_: a good sequence is one whose productions and intervening `link`s disturb as little of the running scheduler as possible, leaving the parts of the tree that did not need to change running undisturbed.
 
 There is always a maximally unconfined fallback.
 To reach any `p2` from any `p1`, the planner can issue `Designate([], p2)`, making the whole of `p2` the survivor of the whole of `p1`.
@@ -1114,10 +1114,10 @@ The entire list lands between two consecutive `push`/`pop` operations, with no i
 This is precisely the atomicity that §3.4's _Preservation of observation_ obligation demanded.
 A commit's _length_ may depend on live control state (how many flows are admitted, how many siblings need shifting), but its _atomicity_ does not.
 
-Each §3.3 atomic diff `δ` lowers to one `commit`; that is the entire ISA-level contract.
+Each `δ` (§3.3) lowers to one `commit`; that is the entire ISA-level contract.
 The ISA itself is unconditional: each instruction describes what to do, not what to check.
 The substrate trusts that its caller has issued a well-formed commit and acts accordingly.
-Any situation-dependent reasoning (e.g., "the subtree we are about to collapse is empty") lives at §4, in a guard `φ` that gated the surrounding diff's firing, not in the substrate.
+Any situation-dependent reasoning (e.g., "the subtree we are about to collapse is empty") lives at §4, in a guard `φ` that gated the surrounding `δ`'s firing, not in the substrate.
 
 §4 sequences `(φ ; δ)*` are an orchestration concern, not an ISA concern.
 The planner walks the sequence, observes live control state, and dispatches the lowering of `δ_i` to the substrate once `φ_i` becomes true; it then waits for `φ_{i+1}` to become true before dispatching the next commit.
@@ -1140,7 +1140,7 @@ The ISA has thirteen opcodes:
 | `Isa_deassoc(v, f)`          | lPIFO, flow              | `v` stops accepting packets of flow `f`.                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | `Isa_map(v, f, i)`           | lPIFO, flow, index       | In `v`'s brain, route flow `f` to index `i`.                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | `Isa_unmap(v, f, i)`         | lPIFO, flow, index       | Forget `v`'s flow-`f`-to-index-`i` entry.                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| `Isa_set_policy(v, t)`       | lPIFO, policy type       | Set `v`'s policy type to `t`; `t` ranges over {FIFO, RoundRobin, Strict, WFQ}. Issued once per lPIFO at spawn time, paired with `Isa_set_arity` to initialize a fresh node. The §3.3 diff grammar has no production that swaps an existing node's policy type, so `Isa_set_policy` is never reissued against a live `v`; type swaps at the diff level go through wholesale replacement (`Designate` stands up a new subtree with the desired type, and a later `Undesignate` retires the old one). |
+| `Isa_set_policy(v, t)`       | lPIFO, policy type       | Set `v`'s policy type to `t`; `t` ranges over {FIFO, RoundRobin, Strict, WFQ}. Issued once per lPIFO at spawn time, paired with `Isa_set_arity` to initialize a fresh node. The grammar `δ` (§3.3) has no production that swaps an existing node's policy type, so `Isa_set_policy` is never reissued against a live `v`; type swaps at the `δ` level go through wholesale replacement (`Designate` stands up a new subtree with the desired type, and a later `Undesignate` retires the old one). |
 | `Isa_set_arity(v, n)`        | lPIFO, arity             | Set `v`'s arity to `n`. Policy type is unchanged. Shrinks drop the rightmost slots and discard their per-arm metadata; grows add fresh slots at the right with uninitialized metadata, which must be set by a subsequent `Isa_change_weight`. Slots at indices `< min(old, new)` keep their child pointer and per-arm metadata.                                                                                                                                                                    |
 | `Isa_change_weight(v, i, w)` | lPIFO, index, new weight | The child reached via `i` now carries weight `w`.                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | `Isa_designate(v, surv)`     | two lPIFOs               | Form the super-node `{v -> surv}` in `v`'s slot: pops favor `v`; the substrate records `surv` as `v`'s designated successor for an eventual `Isa_undesignate`.                                                                                                                                                                                                                                                                                                                                     |
@@ -1148,7 +1148,7 @@ The ISA has thirteen opcodes:
 | `Isa_undesignate(v)`         | lPIFO                    | Collapse the super-node `{v -> surv}` to `surv`: the parent index that pointed at `{v -> surv}` now points directly at `surv`, and `surv` inherits the slot's per-arm metadata.                                                                                                                                                                                                                                                                                                                    |
 
 Each opcode performs exactly one job, even where the planner uses two of them together.
-The clean separation lets the substrate avoid checking live state to figure out what the planner meant: consistent with the unconditional ISA style above, the planner has already discharged any "is `v` actually empty?" / "is `v` actually the top of a super-node?" question via a §4 guard `φ` that gated the surrounding diff.
+The clean separation lets the substrate avoid checking live state to figure out what the planner meant: consistent with the unconditional ISA style above, the planner has already discharged any "is `v` actually empty?" / "is `v` actually the top of a super-node?" question via a §4 guard `φ` that gated the surrounding `δ`.
 
 For instance, `Isa_undesignate(v)` only rewires the parent's index, leaving `v` itself allocated; the planner pairs it with `Isa_gc(v)` (in the same commit) to reclaim `v`'s slot.
 
@@ -1161,19 +1161,19 @@ One last piece of setup the lowerings in §6.2 will lean on: _PE deployment_.
 We treat the assignment of an lPIFO to a PE as a deterministic function `pe(path)` of the lPIFO's tree position, fixed at compile time.
 The planner consults `pe(path)` when it needs an `Isa_spawn`'s `pe` argument; the function's definition is a property of the target substrate and is not otherwise observable at the ISA.
 
-### 6.2 Lowering atomic diffs
+### 6.2 Lowering Productions of `δ`
 
-Each §3.3 diff lowers to an `instr list`.
-The lowering _schema_ is mechanical: each diff names a fixed sequence of opcodes, and the planner reads live state at issue time to instantiate the schema's positional parameters (flow lists, chain shapes, routing indices) before dispatching the commit.
+Each production of `δ` (§3.3) lowers to an `instr list`.
+The lowering _schema_ is mechanical: each production names a fixed sequence of opcodes, and the planner reads live state at issue time to instantiate the schema's positional parameters (flow lists, chain shapes, routing indices) before dispatching the commit.
 The substrate itself sees only a finished commit and does no live-state checking, per §6.1.
 
-Before working through the diffs, we set up one structural convention.
+Before working through the productions, we set up one structural convention.
 A switch with `P` output ports has `P` separate trees, and at the ISA we put a uniform thin wrapper around each.
 Every port hosts a reserved lPIFO `port_root`, allocated at boot on a reserved PE, whose sole child is the actual tree root.
 `port_root` runs a fixed 1-arm policy.
 Its `Assoc` set mirrors that of the live tree's actual root; its `Map` sends each Assoc'd flow through its single index `port_step`.
-This `port_root` state is load-bearing for the two root-touching diffs, and it is maintained by two complementary mechanisms.
-On every diff except `ChangeRoot` and `Graft`, the `walk(...)` calls that touch `Assoc`/`Map` start at `port_root` and so update its tables in lockstep with the actual root's.
+This `port_root` state is load-bearing for the two root-touching productions, and it is maintained by two complementary mechanisms.
+On every production except `ChangeRoot` and `Graft`, the `walk(...)` calls that touch `Assoc`/`Map` start at `port_root` and so update its tables in lockstep with the actual root's.
 On `ChangeRoot` and `Graft`, the lowering issues no flow-table writes against `port_root` at all: the swap is exactly one `Isa_emancipate`/`Isa_adopt` pair against `port_root`, and the existing `Assoc`/`Map` state survives the swap because `port_step` is the index _name_, unbound to any particular child.
 The wrapper exists so that "swap the root" can be expressed as one `Isa_emancipate`/`Isa_adopt` pair against `port_root`, in the same vocabulary as any child-level edit; there is no opcode for changing the root directly.
 
@@ -1182,10 +1182,10 @@ The alternatives we considered were a global class-to-root table (~20k entries, 
 We said this earlier but it feels like overkill, especially as `P` scales.
 Let's discuss IRL.]
 
-The lowerings follow, one per diff in the order of the §3.3 grammar.
+The lowerings follow, one per production in the order of the §3.3 grammar.
 We fix three reading conventions for the list below.
 First, we identify a tree position with the lPIFO that lives there.
-Second, when the lowering hinges on the relation between a target and its parent, we destruct the diff's path as `π ++ [k]` (reusing §3.4's convention: `π` is the parent's path, `k` is the local index by which that parent reaches the target).
+Second, when the lowering hinges on the relation between a target and its parent, we destruct `δ`'s path as `π ++ [k]` (reusing §3.4's convention: `π` is the parent's path, `k` is the local index by which that parent reaches the target).
 Third, we use shorthand for the chain walks that recur across entries.
 Write `flows(path)` for the set of flows admitted by some leaf under `path`.
 Write `chain(f)` for the unique sequence of lPIFOs from `port_root` down to the leaf admitting `f`, and `internals(f)` for that sequence minus the leaf.
@@ -1263,7 +1263,7 @@ A non-atomic substrate would expose some of them, and whether that breaks observ
 
 The requirement is weaker than a general-purpose transaction manager.
 The planner knows each commit's length and shape statically, and the substrate need only honor an install-without-interleave guarantee for that fixed shape.
-Several diffs need even less.
+Several productions need even less.
 `ChangeWeight` is a single instruction.
 A single-flow `Quiesce` walks one chain and modifies only `Assoc`; each intermediate frame is well-formed because the as-yet-unsilenced interior nodes still route via their existing Assocs.
 
@@ -1271,7 +1271,7 @@ The closest hardware contemporary, vPIFO (Zhang et al., SIGCOMM 2024), virtualiz
 Our two contributions read as complementary: vPIFO addresses the scaling and topology-flexibility question (many logical trees over one physical scheduler) while leaving transition correctness open, and the present work addresses transition correctness while taking the substrate as given.
 The bridge, namely what a vPIFO-class substrate would need to add to host our compilation, comes down to the install-without-interleave guarantee above.
 
-[AM question for Zhiyuan: §3.5 leans on our substrate executing each lowered instruction sequence as an atomic transactional commit,and that commit is exactly what realizes an atomic §3.4 diff.
+[AM question for Zhiyuan: §3.5 leans on our substrate executing each lowered instruction sequence as an atomic transactional commit, and that commit is exactly what realizes an atomic §3.4 `δ`.
 But we also claim that we compose with _any_ PIFO substrate.
 So what do we actually require from a substrate?
 Must it support atomic commits, i.e., an atomic install that hides the transiently-malformed intermediate states?
