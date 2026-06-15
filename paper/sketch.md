@@ -55,9 +55,17 @@
 
 ### 2.1 Hierarchical scheduling on hardware
 
-- Packet scheduling, PIFOs, and hierarchical scheduling with PIFO trees.
-- Mapping a hierarchy onto hardware: each tree depth lands on a PE; siblings and cousins share a PE.
-  This has been known since Sivaraman (SIGCOMM '16).
+A _PIFO_ (push-in, first-out queue) is a priority queue that is additionally defined to break rank-ties in FIFO order.
+A _PIFO tree_ generalizes this to a hierarchy: leaves hold PIFOs of packets, while internal nodes hold PIFOs whose entries are child indices.
+A push presents a packet, together with a precomputed path through the tree, to every node along that path at once; each node enqueues the appropriate entry locally.
+A pop walks down by popping each internal PIFO to obtain a child index, until it reaches a leaf, where the packet itself is dequeued.
+This shape captures hierarchical scheduling: each level expresses one scheduling decision (strict priority, weighted fair queueing, round-robin, etc.), and policies compose by nesting.
+
+A PIFO tree lowers to hardware by mapping each tree depth onto a dedicated processing element (PE), with siblings and cousins sharing the PE at their depth.
+Pinning a depth level to a single PE has well-studied benefits for computation and storage; Sivaraman (SIGCOMM '16), Mohan et al. (OOPSLA '23), Shrivastav (SIGCOMM '19), and vPIFO (Zhang et al., SIGCOMM '24) all build on this layout.
+The PE budget is fixed by the silicon, so the running tree's shape is constrained by what the deployed PEs can host.
+
+§3.1 makes this data model precise; the rest of §3 builds the syntactic surface on top.
 
 ### 2.2 vPIFO, and the problem it leaves open
 
@@ -67,15 +75,14 @@
   Its contribution is the reconfigurable substrate.
 - What vPIFO does not do.
   As published, vPIFO has no notion of a diff between old and new policies, no formal semantics for what a policy change means, and no account of in-flight packets during a change.
-  The SDL IR is for _rank computation_ compiled to P4 or CPU, quite different from our structural/topological one.
+  Their SDL IR is for _rank computation_ compiled to P4 or CPU, quite different from our structural/topological one (our `pol` and `δ`, §3.2 and §3.3).
 - Our two running examples make the gap concrete.
-  The easy append, to `Strict(gmail, spotify, zoom)`, looks like the kind of edit vPIFO's substrate could absorb in place: a targeted append to the structures that encode the tree shape and per-instance storage (the Operation Generation Table and the PIFO Instance Address Table) would plausibly register the new traffic and its operations while leaving the running instances untouched.
-  vPIFO as published does not address this; its only option is a full reinitialization.
+  To briefly break into terms introduced by vPIFO: the Operation Generation Table and the PIFO Instance Address Table are the structures that encode the running tree's shape and per-instance storage.
+  The easy append, to `Strict(hi: gmail, mid: spotify, lo: zoom)`, looks like the kind of edit that vPIFO's substrate could absorb in place: a targeted append to those tables would plausibly register the new traffic and its operations while leaving the running instances untouched.
   Issuing the small diff to such a substrate, so that it installs the edit in place, is exactly what our layer adds.
-  The harder restructuring, to `Strict(gmail, RoundRobin(zoom, spotify))`, lies beyond what the vPIFO substrate can absorb in place: it changes the running tree's shape (inserting a new internal node and re-parenting `zoom` under it), which is not exposed as an in-place edit on the Operation Generation Table or the PIFO Instance Address Table.
+  The harder restructuring, to `Strict(hi: gmail, lo: RoundRobin(zoom, spotify))`, lies beyond what the vPIFO substrate can absorb in place: it changes the running tree's shape (inserting a new internal node and re-parenting `zoom` under it), which is not exposed as an in-place edit on either table.
   The closest vPIFO comes is a full reinitialization onto the new shape, which is precisely the stop-the-world baseline we want to improve on.
-- vPIFO's own §9 ("Runtime Updating of the Scheduling Policy") names our exact problem as future work: "Ensuring correct scheduling of packets during the transitional phase between modifications is part of our future work."
-  The accompanying sentence says the runtime interface itself (P4-runtime-style) is still under development.
+- vPIFO names runtime updating as future work, observing that the scheduling of packets during a modification's transitional phase is unresolved.
 - The relationship, stated plainly.
   We are not competing with vPIFO and do not claim a better PIFO substrate.
   We supply the layer _above_ a PIFO substrate (which could well be vPIFO).
