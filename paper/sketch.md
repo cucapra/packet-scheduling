@@ -918,16 +918,16 @@ Our own substrate provides this.
 The open question for §6 is whether composition with a third-party substrate (e.g., vPIFO) requires the same property and, if so, whether vPIFO offers it.
 Flagged here so the §3.5 claim "the proof survives the lowering" is not read as substrate-independent.]
 
-## 4. Realizing Reconfigurations as Sequences
+## 4. Realizing Reconfigurations as Guarded Sequences
 
 This section composes the productions of `δ` (§3.3) into _guarded sequences_ `(φ ; δ)*`, where a guard `φ` is a predicate on the state of the live control.
 Each `δ` fires as soon as its guard becomes true.
-Sequences realize changes no single `δ` can express.
+Guarded sequences realize changes to the live control that no single `δ` can express.
 
 A guarded sequence threads the live control through a chain of intermediate controls, one per pair of consecutive productions.
-We call each such intermediate control a `link`, writing `link_i` for the control left behind by the `i`-th `δ`.
+We call each such intermediate control a `link`, writing `link_i` for the control on which the `i`-th `δ` (zero-indexed) fires; `link_0 = C` is the starting control, and `link_{i+1} = [[δ_i]](link_i)` is what the `i`-th `δ` leaves behind (§4.1 makes this precise).
 
-The headline result of the section, proved below, is that each `link` is itself an ordinary §3.1 control, so the "transitionary period" needs no new semantics: this is Obligation 1 of §1.
+The headline result of the section, proved below, is that each `link` is itself an ordinary §3.1 control, so the "transitionary period" _needs no new semantics_: this is Obligation 1 of §1, discharged.
 Moreover, since every production of §3 is _pol-explainable_ (each `δ` has a `den(δ)` that tracks its pol-level effect), we can echo to the operator, at every step of the sequence, the `pol` that the live control currently realizes.
 The chain of `den`s starting from `⌊C⌋` gives `⌊link_i⌋` for each `i`, so the operator is never in the dark about what is running.
 
@@ -949,8 +949,9 @@ I      ::= Retire(path)
          | PruneDownTo(path)
 ```
 
-We write `gseq` short for "guarded sequence."
+We write `gseq` for "guarded sequence."
 A guard is always paired with exactly one `δ` drawn from §3.
+The informal notation `(φ ; δ)*` used elsewhere in the paper names exactly the `gseq` form after idiom expansion: a finite sequence of `(φ, δ)` pairs.
 An idiom `I` appears in a `gseq` _without_ a guard because an idiom expands into a `gseq` of its own whose internal guards carry the synchronization (§4.2).
 For instance, §4.2's `PruneDownTo` expansion reads
 
@@ -960,10 +961,10 @@ Retire(π_a) ; ... ; Retire(π_z) ; (true ; ChangeRoot(path))
 
 mixing bare idiom invocations with one explicitly-guarded `δ`.
 After idiom expansion (§4.2), every step is a `(φ ; δ)` pair, and that is the form on which the rest of §4 reasons.
-When we write `(φ ; δ)*` informally we mean this fully-expanded form: a finite sequence of `(φ, δ)` pairs.
 
-Having just those two guard forms has sufficed for every sequence we have needed; we take the minimality as a small design win.
-The framework does not depend on it, and a richer predicate language can be slotted in without disturbing the rest of §4.
+We have a rather small vocabulary of guard forms.
+Those two have sufficed for every sequence we have needed; we take the minimality as a small design win.
+The framework does not depend on this minimality, and a richer predicate language can be slotted in without disturbing the rest of §4.
 
 ##### Sequence semantics
 
@@ -981,27 +982,33 @@ Crucially, `φ_{i+1}` is evaluated on `link_{i+1}`, which exists only after `δ_
 
 A guard may be `true`, in which case `δ_i` fires the moment `link_i` is installed, with no waiting; but a `true` later in the sequence is still gated by every preceding pair.
 For instance, the closing `(true ; ChangeRoot(path))` of §4.2's `PruneDownTo` is nominally guarded by `true` but in the global timeline cannot fire until every preceding `Retire` has emptied its target and run its `Remove`: the `true` says "install at the moment the predecessor's link is installed," not "install at sequence start."
-A length-one sequence with `φ_0 = true` is a single `δ` applied immediately, with `C` abutting `C'` and no intervening link.
 The empty sequence is the case `⌊C⌋ =R ⌊C'⌋`: the live control is left untouched.
 
 ##### Safety
 
-Every sequence the planner emits is safe in the sense that the live scheduler is well-formed at every instant.
+**Lemma 4.1 (Safety of guarded sequences).**
+For any guarded sequence `(φ_0 ; δ_0) ; ... ; (φ_n ; δ_n)` emitted by the planner against a well-formed `link_0 = C`, every control the user observes during execution is well-formed: `|- link_i` holds at each `i`, and `|- C'`.
+
+_Proof sketch._
 `|- link_0` by assumption.
-Each `δ_i` preserves `|-` by the per-production obligation discharged in §3.4.
+Each `δ_i` preserves `|-` by the per-production obligation discharged in §3.4, so `|- link_{i+1}`.
 Each `link_i` itself preserves `|-` under ordinary `push`/`pop`, since §3.1's `push` carries a well-formed PIFO tree to a well-formed one and `pop` does likewise on non-empty inputs.
 So the user-observable trace is a stream of ordinary `push`/`pop` operations served in turn by well-formed controls `C, link_1, ..., link_n, C'`.
 Each intervening `link_i` is therefore an ordinary §3.1 control, and the "semantics of `link`" is nothing more than the §3.1 semantics of the controls we install: each `δ`'s job is to be a sound atomic replacement, and the planner's job is to order them behind sensible guards.
-Safety is entirely local: it follows from the soundness of the individual productions, with no global argument about the sequence.
-This discharges Obligation 1 of §1.
+
+The lemma's reach is what discharges Obligation 1 of §1: safety is entirely local, following from the per-production obligations of §3.4 with no global argument about the sequence.
 
 ##### Liveness
 
-A sequence reaches `C'` only if each `φ_i` eventually becomes true on `link_i`, and safety says nothing about that.
+Liveness is not a soundness obligation in this paper.
+A planner that emits an unsatisfiable guard is misbehaving but not unsafe: the live scheduler remains well-formed.
+
+[AM note: a natural extension would be an operator-facing _withdraw_ that aborts a stuck in-flight sequence and rolls the live control back to a safe checkpoint, but we have no such mechanism today and no concrete plans to build one; the queueing story of §4.4 is what we commit to.]
+A sequence reaches `C'` only if each `φ_i` eventually becomes true on `link_i`, and Lemma 4.1 says nothing about that.
 A `Quiesce`d subtree may never drain if higher-priority siblings starve it; a guard `empty(path)` on a subtree fed by an adversarial higher-priority neighbor may never fire.
-We therefore treat liveness as a _nice-to-have_, the planner's and the operator's joint concern, not a soundness condition.
+We therefore treat liveness as a _nice-to-have_, the planner's and the operator's joint concern.
 Every sequence we emit is safe; whether and how fast it completes is a function of how well the planner chose its guards and of the traffic the live scheduler meets.
-For the case of follow-up requests arriving mid-flight, see §4.4.
+For the queueing behavior when follow-up requests arrive mid-flight, see §4.4.
 
 ### 4.2 Idioms: Named Sequences
 
@@ -1034,12 +1041,14 @@ New ones can be added later without changing the framework, since an idiom is ju
 
   Designates `B` as the survivor of the current `pol@path` (which, after Designate, sits at `path ++ [0]` as the first arm of the inserted `Strict*` node), quiesces it, waits for it to drain, then collapses the `Strict*` onto `B`.
   At the pol level the composite effect is wholesale replacement of `pol@path` by `B`, computed as `den(Undesignate) ∘ den(Designate(_, B))` against the §3.4 productions; the operator-facing idiom adds the `Quiesce` + drain in the middle so that the original subtree empties out before the collapse fires.
+  The footprint of `Replace(path, B)` is the subtree at `path`, the wrap node inserted at `path` by `Designate`, and the `z` chain at the ancestors of `path` (extended by `Designate`, restored by `Undesignate`); §5 frames confinement against exactly this set.
 
 - **`PruneDownTo(path)`** = `Retire(π_a) ; ... ; Retire(π_z) ; (true; ChangeRoot(path))`, where `π_a, ..., π_z` are paths to the off-path subtrees along the route from the root to `path`.
   This idiom is the operator-facing way to say "abandon everything except this subtree."
 
   Each `Retire` removes one off-path subtree; once they have all fired, every ancestor along the path is unary, satisfying `ChangeRoot`'s precondition (§3.4.7).
   (If no off-path subtrees exist, the idiom reduces to `(true; ChangeRoot(path))` alone.)
+  The `Retire`s on disjoint off-path subtrees commute, so any ordering suffices; we use root-first as a stable convention.
 
   For instance, suppose the running tree is `A(B(E(F, G), D), C)`:
 
@@ -1100,6 +1109,7 @@ The "defined when" clauses on each `den(δ_i)` are the per-production preconditi
 Guards play no role in this check; they govern the operational timing of when each `δ_i` fires on the live control, and are pol-invisible (§3.4).
 For instance, a `(empty(path); Remove(path))` step folds at the pol level exactly as if its guard were `true`, since `den` only sees `δ`.
 If the chain fails to reach `p2`, or some `den(δ_i)` is undefined on its intermediate pol, we reject the request.
+The rejection identifies the offending step: the first `δ_i` whose `den(δ_i)` was undefined on `ip_{i-1}`, or, if every step was defined, the final mismatch `ip_n ≢R p2`.
 
 ### 4.4 Handling follow-up requests
 
@@ -1109,7 +1119,7 @@ At that instant the planner pulls `p3` from the queue, treats `p2'` as the new s
 We commit to this rather than defaulting to it.
 A more aggressive strategy is possible: the planner could begin work on `p3` mid-flight, splicing or canceling the in-flight sequence to converge on `p3` directly, sometimes at lower total cost than running `p1 -> p2 -> p3` in series.
 We do not pursue this here, because the splicing analysis introduces its own correctness obligations (atomicity of the splice, what guarantees the operator has during an aborted in-flight sequence, what `link` the operator observes between the splice and `p3`) that are out of scope of this paper.
-See https://github.com/cucapra/packet-scheduling/discussions/115 for a sketch of the stronger possibility.
+A sketch of the stronger possibility lives in our discussion notes.
 
 ## 5. Identifying Better Transitions
 
@@ -1118,14 +1128,30 @@ With those tools in hand, this section asks how the transition planner can wield
 The metric we adopt is _confinement_: a good sequence is one whose productions and intervening `link`s disturb as little of the running scheduler as possible, leaving the parts of the tree that did not need to change running undisturbed.
 
 There is always a maximally unconfined fallback.
-To reach any `p2` from any `p1`, the planner can issue `Designate([], p2)`, making the whole of `p2` the survivor of the whole of `p1`.
-All new traffic flows to `p2` at once, every `pop` is served by `p1` until `p1` drains, and a closing `Remove` discards `p1` and leaves `p2`.
+To reach any `p2` from any `p1`, the planner can issue `Replace([], p2)`, the §4.2 idiom that expands to
+
+```
+(true ; Designate([], p2)) ;
+(true ; Quiesce([0])) ;
+(empty([0]) ; Undesignate([]))
+```
+
+This wraps `p1` and `p2` into a `Strict*(p1, p2)` at the root, quiesces the `p1` arm, waits for it to drain, and then collapses the super-node onto `p2`.
+All new traffic flows to `p2` at once, every `pop` is served by `p1` until `p1` drains, and the closing `Undesignate` is what discards `p1` and leaves `p2`.
 Nothing is dropped and the sequence is safe by §3.4, but no part of the scheduler is left undisturbed.
 This is the worst case the planner ever falls back on.
 The rest of §5 is about doing better: localizing the change so that the sequence and its `link`s touch only a small subtree, while the rest of the scheduler keeps running undisturbed.
 
+##### Footprint
+
+To talk about confinement precisely, we associate each production `δ` with a _footprint_ on the live control it acts on.
+Define `footprint(δ, C)` as the set of nodes of `C` whose `state`, `pifo`, or `z` differs between `C` and `[[δ]](C)`.
+The set is read off the per-production Preservation paragraphs of §3.4: it includes the edit site, the new or removed node where applicable, and every proper ancestor whose `z` is extended or restricted (e.g., the ancestors touched by `Add`, `Quiesce`, `Remove`, `Designate`).
+For a guarded sequence `(φ_0 ; δ_0) ; ... ; (φ_n ; δ_n)`, the sequence-level footprint is the union `⋃_i footprint(δ_i, link_i)`.
+Confinement is then a property of this union: a planner does well when the union is small relative to the symmetric pol-level difference between `p1` and `p2`.
+
 We make no claim that the planner is canonical or minimal.
-We claim only that whatever sequence it emits is safe (§3.4) and no worse than this fallback.
+We claim only that whatever sequence it emits is safe (§3.4) and no worse than the `Replace([], p2)` fallback above, whose sequence-level footprint is the whole tree.
 
 [AM note: Many examples remain to work through here, and possibly some strengthening of `compare.ml` itself.
 TK.]
