@@ -905,9 +905,10 @@ There are two reasons.
 
 - The compilation is _faithful_: each production of `δ` expands to a fixed instruction sequence that, when run to completion, realizes exactly that production's effect.
   We give the command-to-commands translation and take its faithfulness to be uncontroversial.
-- Our substrate runs each such sequence as a single _transactional commit_: no `push` or `pop` interleaves with a commit's instructions, so the transiently-malformed intermediate trees are never observed.
+- Our substrate runs each such sequence as a single _transactional commit_: a bracketed group of IR instructions that installs as one instant from the user's perspective, with no `push` or `pop` interleaved between the bracket's open and close (§6.1 spells out the substrate machinery that makes this so).
+  The transiently-malformed intermediate trees are therefore never observed.
   That commit is precisely how the substrate _realizes_ the atomicity property of §3: atomicity asked for an instantaneous control replacement between two user operations, and the commit is what collapses a multi-instruction lowering into one such instant.
-  Every `push`/`pop` therefore still lands on a well-formed control (`p1`, a `link`, or `p2`), exactly as §3.4 proved; the IR's transient malformedness lives entirely inside commits, invisible to the user.
+  Every `push`/`pop` therefore still lands on a well-formed control (`p1`, some `link`, or `p2`), exactly as §3.4 proved; the IR's transient malformedness lives entirely inside commits, invisible to the user.
 
 The same argument carries from the IR down to hardware: the hardware executes a committed sequence atomically with respect to user operations, so what it exhibits is again what §3.4 proved.
 The compilation itself, and the substrate machinery that makes a commit atomic, are the subject of §6.
