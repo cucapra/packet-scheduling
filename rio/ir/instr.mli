@@ -30,11 +30,21 @@ type instr =
   | Unmap of vpifo * clss * step
       (** [Unmap (v, c, s)]: inverse of [Map]. Forget [v]'s mapping from class
           [c] to step [s]. *)
-  | Change_pol of vpifo * pol_ty * int
-      (** [Change_pol (v, pol, n)]: set [v]'s policy to [pol] with [n] arms. *)
-  | Change_weight of vpifo * step * float
-      (** [Change_weight (v, s, w)]: the child reached via step [s] has weight
-          [w]. *)
+  | Set_policy of vpifo * pol_ty * int
+      (** [Set_policy (v, pol, n)]: at lPIFO birth, fix [v]'s policy type to
+          [pol] and its initial arity to [n]. Issued exactly once per lPIFO at
+          spawn time; the paper fixes the policy type at lPIFO birth and the
+          initial arity is determined at the same moment, so the two facts ride
+          on a single opcode. Later arity changes use [Change_arity]. *)
+  | Change_arity of vpifo * int
+      (** [Change_arity (v, n)]: set the live [v]'s arity to [n]. Shrinking
+          drops rightmost slots; growing appends fresh ones. The policy type is
+          unchanged. *)
+  | Set_arm_meta of vpifo * step * float
+      (** [Set_arm_meta (v, s, w)]: set the per-arm metadata on the child
+          reached via step [s]. Today the payload is a single weight [w]; a
+          later refactor will reinterpret [w] per [v]'s policy type (a weight
+          for RR/WFQ; a priority rank for Strict). *)
   | GC of vpifo
       (** [GC v]: tell the garbage collector that [v] is available for
           collection. *)
@@ -44,6 +54,11 @@ type instr =
           arriving at [v] continues to flow through [v]; once [v] underflows and
           is collected (per a prior [GC]), the super-node collapses to
           [survivor]. Chains across multiple [Designate]s are allowed. *)
+  | Undesignate of vpifo
+      (** [Undesignate v]: collapse the super-node headed by [v] (with [v] ->
+          survivor) by rewiring the parent's index away from [v] and onto its
+          survivor. [v] itself stays allocated; a paired [GC v] in the same
+          commit releases its PE slot. *)
 
 type commit = instr list
 

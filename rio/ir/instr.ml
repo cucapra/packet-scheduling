@@ -20,10 +20,12 @@ type instr =
   | Deassoc of vpifo * clss
   | Map of vpifo * clss * step
   | Unmap of vpifo * clss * step
-  | Change_pol of vpifo * pol_ty * int
-  | Change_weight of vpifo * step * float
+  | Set_policy of vpifo * pol_ty * int
+  | Change_arity of vpifo * int
+  | Set_arm_meta of vpifo * step * float
   | GC of vpifo
   | Designate of vpifo * vpifo
+  | Undesignate of vpifo
 
 type commit = instr list
 
@@ -54,15 +56,18 @@ let string_of_instr = function
   | Unmap (v, c, s) ->
       Printf.sprintf "unmap(%s, %s, %s)" (string_of_vpifo v) c
         (string_of_step s)
-  | Change_pol (v, pt, n) ->
-      Printf.sprintf "change_pol(%s, %s, %d)" (string_of_vpifo v)
+  | Set_policy (v, pt, n) ->
+      Printf.sprintf "set_policy(%s, %s, %d)" (string_of_vpifo v)
         (string_of_pol_ty pt) n
-  | Change_weight (v, s, w) ->
-      Printf.sprintf "change_weight(%s, %s, %F)" (string_of_vpifo v)
+  | Change_arity (v, n) ->
+      Printf.sprintf "change_arity(%s, %d)" (string_of_vpifo v) n
+  | Set_arm_meta (v, s, w) ->
+      Printf.sprintf "set_arm_meta(%s, %s, %F)" (string_of_vpifo v)
         (string_of_step s) w
   | GC v -> Printf.sprintf "gc(%s)" (string_of_vpifo v)
   | Designate (v, survivor) ->
       Printf.sprintf "designate(%s, %s)" (string_of_vpifo v)
         (string_of_vpifo survivor)
+  | Undesignate v -> Printf.sprintf "undesignate(%s)" (string_of_vpifo v)
 
 let string_of_commit p = p |> List.map string_of_instr |> String.concat "\n"

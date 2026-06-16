@@ -137,11 +137,12 @@ and compile_arm ~fresh_v ~fresh_s ~pe_of_depth ~depth ~pol_ty ~weights ?splice
              (fun s (cf : Frag.t) ->
                List.map (fun c -> Map (v, c, s)) cf.classes)
              child_steps child_frags);
-      change_pols = [ Change_pol (v, pol_ty, List.length children) ];
-      change_weights =
+      set_policies = [ Set_policy (v, pol_ty, List.length children) ];
+      change_arities = [];
+      set_arm_metas =
         (match weights with
         | [] -> []
-        | ws -> List.map2 (fun s w -> Change_weight (v, s, w)) child_steps ws);
+        | ws -> List.map2 (fun s w -> Set_arm_meta (v, s, w)) child_steps ws);
       root_v = v;
       classes = all_classes;
     }
@@ -164,8 +165,9 @@ let of_policy (p : Rio_core.Policy.t) : compiled =
       assocs = List.map (fun c -> Assoc (fake_root_v, c)) frag.classes;
       maps =
         List.map (fun c -> Map (fake_root_v, c, fake_root_step)) frag.classes;
-      change_pols = [ Change_pol (fake_root_v, UNION, 1) ];
-      change_weights = [];
+      set_policies = [ Set_policy (fake_root_v, UNION, 1) ];
+      change_arities = [];
+      set_arm_metas = [];
       root_v = fake_root_v;
       classes = frag.classes;
     }
@@ -248,6 +250,7 @@ let replace_at ~prev ~chain ~removed ~arm_depth ~arm ~rewrite_decorated =
         chain_emit (fun v _ c -> Deassoc (v, c)) chain only_removed;
         chain_emit (fun v _ c -> Assoc (v, c)) chain only_added;
         chain_emit (fun v s c -> Map (v, c, s)) chain only_added;
+        [ Undesignate removed_v ];
         gc_subtree removed;
       ]
   in
@@ -262,7 +265,7 @@ let patch_one_arm_replaced ~prev ~arm_path ~arm ~wfq_weight =
     | Some w ->
         let parent_v = Decorated.root_vpifo parent in
         let step_k = Decorated.nth_step parent k in
-        ([ Change_weight (parent_v, step_k, w) ], Decorated.set_weight k w)
+        ([ Set_arm_meta (parent_v, step_k, w) ], Decorated.set_weight k w)
   in
   let c =
     replace_at ~prev ~chain:(Decorated.ancestor_chain prev.decorated arm_path)
@@ -295,7 +298,7 @@ let patch_weight_changed ~prev ~path ~new_weight =
       (Decorated.set_weight k new_weight)
   in
   {
-    commit = [ Change_weight (parent_v, step_k, new_weight) ];
+    commit = [ Set_arm_meta (parent_v, step_k, new_weight) ];
     decorated = new_decorated;
     pes = prev.pes;
   }
@@ -316,16 +319,16 @@ let sp_inserted_weight_shifts ~parent_v ~parent ~k ~new_step =
   let shifted =
     List.filter_map
       (fun (j, (s, _)) ->
-        if j >= k then Some (Change_weight (parent_v, s, float_of_int (j + 2)))
+        if j >= k then Some (Set_arm_meta (parent_v, s, float_of_int (j + 2)))
         else None)
       (List.mapi (fun j e -> (j, e)) (sp_edges parent))
   in
-  Change_weight (parent_v, new_step, float_of_int (k + 1)) :: shifted
+  Set_arm_meta (parent_v, new_step, float_of_int (k + 1)) :: shifted
 
 let sp_removed_weight_shifts ~parent_v ~parent ~k =
   List.filter_map
     (fun (j, (s, _)) ->
-      if j > k then Some (Change_weight (parent_v, s, float_of_int j)) else None)
+      if j > k then Some (Set_arm_meta (parent_v, s, float_of_int j)) else None)
     (List.mapi (fun j e -> (j, e)) (sp_edges parent))
 
 (* Single-arm insertion under [parent]. *)
@@ -343,13 +346,13 @@ let patch_one_arm_added ~prev ~arm_path ~arm ~wfq_weight =
     compile_subtree ~fresh_v ~fresh_s ~pe_of_depth ~depth:arm_depth arm
   in
   let new_step = fresh_s () in
-  let change_weights, decorated_update =
+  let set_arm_metas, decorated_update =
     match (pol_ty, wfq_weight) with
     | SP, None ->
         ( sp_inserted_weight_shifts ~parent_v ~parent ~k ~new_step,
           Decorated.insert_arm k new_step arm_decorated )
     | WFQ, Some w ->
-        ( [ Change_weight (parent_v, new_step, w) ],
+        ( [ Set_arm_meta (parent_v, new_step, w) ],
           Decorated.insert_arm_wfq k new_step arm_decorated w )
     | (UNION | RR), None -> ([], Decorated.insert_arm k new_step arm_decorated)
     | _ ->
@@ -368,8 +371,9 @@ let patch_one_arm_added ~prev ~arm_path ~arm ~wfq_weight =
       adopts = [ Adopt (new_step, parent_v, arm_frag.root_v) ];
       assocs = chain_emit (fun v _ c -> Assoc (v, c)) chain arm_frag.classes;
       maps = chain_emit (fun v s c -> Map (v, c, s)) chain arm_frag.classes;
-      change_pols = [ Change_pol (parent_v, pol_ty, old_arity + 1) ];
-      change_weights;
+      set_policies = [];
+      change_arities = [ Change_arity (parent_v, old_arity + 1) ];
+      set_arm_metas;
       root_v = parent_v;
       classes = arm_frag.classes;
     }
@@ -390,7 +394,7 @@ let patch_one_arm_removed ~prev ~arm_path =
   let removed = Decorated.nth_child parent k in
   let removed_v = Decorated.root_vpifo removed in
   let step_k = Decorated.nth_step parent k in
-  let change_weights =
+  let set_arm_metas =
     match pol_ty with
     | SP -> sp_removed_weight_shifts ~parent_v ~parent ~k
     | _ -> []
@@ -400,8 +404,8 @@ let patch_one_arm_removed ~prev ~arm_path =
   let commit =
     List.concat
       [
-        change_weights;
-        [ Change_pol (parent_v, pol_ty, old_arity - 1) ];
+        set_arm_metas;
+        [ Change_arity (parent_v, old_arity - 1) ];
         chain_emit (fun v s c -> Unmap (v, c, s)) chain removed_classes;
         chain_emit (fun v _ c -> Deassoc (v, c)) chain removed_classes;
         [ Emancipate (step_k, parent_v, removed_v) ];
@@ -444,11 +448,19 @@ let patch_super_pol ~prev ~next ~path =
       ~splice:(path, prev.decorated) next
   in
   let old_real_root_v = Decorated.root_vpifo prev.decorated in
+  let prev_classes = Decorated.subtree_classes prev.decorated in
+  let only_added =
+    List.filter
+      (fun c -> not (List.mem c prev_classes))
+      (Decorated.subtree_classes decorated)
+  in
   let rewire =
     [
       Emancipate (fake_root_step, fake_root_v, old_real_root_v);
       Adopt (fake_root_step, fake_root_v, frag.root_v);
     ]
+    @ chain_emit (fun v _ c -> Assoc (v, c)) fake_chain only_added
+    @ chain_emit (fun v s c -> Map (v, c, s)) fake_chain only_added
   in
   { commit = Frag.to_commit frag @ rewire; decorated; pes = new_pes }
 

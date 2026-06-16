@@ -43,18 +43,20 @@ let from_instr (i : Instr.instr) : Yojson.Basic.t =
           ("class", `String c);
           ("step", `Int s);
         ]
-  | Instr.Change_pol (v, pt, n) ->
+  | Instr.Set_policy (v, pt, n) ->
       `Assoc
         [
-          ("op", `String "change_pol");
+          ("op", `String "set_policy");
           ("v", `Int v);
           ("pol", from_pol_ty pt);
           ("n", `Int n);
         ]
-  | Instr.Change_weight (v, s, w) ->
+  | Instr.Change_arity (v, n) ->
+      `Assoc [ ("op", `String "change_arity"); ("v", `Int v); ("n", `Int n) ]
+  | Instr.Set_arm_meta (v, s, w) ->
       `Assoc
         [
-          ("op", `String "change_weight");
+          ("op", `String "set_arm_meta");
           ("v", `Int v);
           ("step", `Int s);
           ("weight", `Float w);
@@ -65,6 +67,8 @@ let from_instr (i : Instr.instr) : Yojson.Basic.t =
         [
           ("op", `String "designate"); ("v", `Int v); ("survivor", `Int survivor);
         ]
+  | Instr.Undesignate v ->
+      `Assoc [ ("op", `String "undesignate"); ("v", `Int v) ]
 
 let from_commit (p : Instr.commit) : Yojson.Basic.t =
   `List [ `List (List.map from_instr p) ]

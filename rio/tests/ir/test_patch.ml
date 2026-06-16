@@ -36,8 +36,8 @@ let strict_ab_to_abc_expected : commit =
     Assoc (100, "C");
     Assoc (103, "C");
     Map (100, "C", 1002);
-    Change_pol (100, SP, 3);
-    Change_weight (100, 1002, 3.0);
+    Change_arity (100, 3);
+    Set_arm_meta (100, 1002, 3.0);
   ]
 
 (* Mid-insert in SP: prev SP(A,C) compiled with positional weights A:1, C:2.
@@ -51,12 +51,12 @@ let strict_ac_to_abc_expected : commit =
     Assoc (100, "B");
     Assoc (103, "B");
     Map (100, "B", 1002);
-    Change_pol (100, SP, 3);
-    Change_weight (100, 1002, 2.0);
-    Change_weight (100, 1001, 3.0);
+    Change_arity (100, 3);
+    Set_arm_meta (100, 1002, 2.0);
+    Set_arm_meta (100, 1001, 3.0);
   ]
 
-(* RR arm appended at the root. Same shape as SP but no Change_weight. *)
+(* RR arm appended at the root. Same shape as SP but no Set_arm_meta. *)
 let rr_ab_to_abc_expected : commit =
   [
     Spawn (103, 1);
@@ -64,7 +64,7 @@ let rr_ab_to_abc_expected : commit =
     Assoc (100, "C");
     Assoc (103, "C");
     Map (100, "C", 1002);
-    Change_pol (100, RR, 3);
+    Change_arity (100, 3);
   ]
 
 (* Deep arm add. complex_tree's normalized root is WFQ with children sorted
@@ -81,7 +81,7 @@ let complex_tree_add_deep_expected : commit =
     Assoc (112, "NEW");
     Map (100, "NEW", 1010);
     Map (108, "NEW", 1011);
-    Change_pol (108, RR, 4);
+    Change_arity (108, 4);
   ]
 
 let one_arm_added_tests =
@@ -100,7 +100,7 @@ let one_arm_added_tests =
 
 (* wfq_BA compiles with vpifos 100 (root WFQ), 101 (A), 102 (B); steps 1000
    (A), 1001 (B). Adding FIFO C at slot 2 with weight 3 mints v=103 (PE 1)
-   and step 1002, plus a single Change_weight on the new step (no SP-style
+   and step 1002, plus a single Set_arm_meta on the new step (no SP-style
    shifts: WFQ slots are independent). *)
 let wfq_ba_to_abc_expected : commit =
   [
@@ -109,8 +109,8 @@ let wfq_ba_to_abc_expected : commit =
     Assoc (100, "C");
     Assoc (103, "C");
     Map (100, "C", 1002);
-    Change_pol (100, WFQ, 3);
-    Change_weight (100, 1002, 3.0);
+    Change_arity (100, 3);
+    Set_arm_meta (100, 1002, 3.0);
   ]
 
 (* complex_tree_partial: WFQ at root with two children — UNION[G,H] (weight 3)
@@ -122,7 +122,7 @@ let wfq_ba_to_abc_expected : commit =
    Patch adds the RR[D,E,F] subtree with weight 2 at slot 2: arm internals
    land on v=108 (RR, PE 1) plus 109/110/111 (D/E/F, PE 2); arm-internal
    adopts on steps 1007/1008/1009. The new parent→child step is 1010, with
-   Change_weight(100, 1010, 2.0). *)
+   Set_arm_meta(100, 1010, 2.0). *)
 let complex_tree_partial_to_full_expected : commit =
   [
     Spawn (108, 1);
@@ -148,9 +148,9 @@ let complex_tree_partial_to_full_expected : commit =
     Map (108, "D", 1007);
     Map (108, "E", 1008);
     Map (108, "F", 1009);
-    Change_pol (100, WFQ, 3);
-    Change_pol (108, RR, 3);
-    Change_weight (100, 1010, 2.0);
+    Set_policy (108, RR, 3);
+    Change_arity (100, 3);
+    Set_arm_meta (100, 1010, 2.0);
   ]
 
 let one_arm_added_wfq_tests =
@@ -166,8 +166,8 @@ let one_arm_added_wfq_tests =
 
 (* WFQ root with three FIFO arms: vpifo IDs 100 (root), 101/102/103 (A/B/C);
    adopt steps 1000/1001/1002. Bumping B's weight 1 -> 5 should emit a single
-   Change_weight on the root for B's step. *)
-let wfq_abc_to_one_weight_expected : commit = [ Change_weight (100, 1001, 5.0) ]
+   Set_arm_meta on the root for B's step. *)
+let wfq_abc_to_one_weight_expected : commit = [ Set_arm_meta (100, 1001, 5.0) ]
 
 let weight_changed_tests =
   [
@@ -180,7 +180,7 @@ let weight_changed_tests =
 (* SP[A,B,C] -> SP[A,B]: drop C (last, index 2). No SP weight shifts. *)
 let strict_abc_to_ab_expected : commit =
   [
-    Change_pol (100, SP, 2);
+    Change_arity (100, 2);
     Unmap (100, "C", 1002);
     Deassoc (100, "C");
     Emancipate (1002, 100, 103);
@@ -191,8 +191,8 @@ let strict_abc_to_ab_expected : commit =
    weight 3.0, shifts to index 1 with weight 2.0. *)
 let strict_abc_to_ac_expected : commit =
   [
-    Change_weight (100, 1002, 2.0);
-    Change_pol (100, SP, 2);
+    Set_arm_meta (100, 1002, 2.0);
+    Change_arity (100, 2);
     Unmap (100, "B", 1001);
     Deassoc (100, "B");
     Emancipate (1001, 100, 102);
@@ -202,7 +202,7 @@ let strict_abc_to_ac_expected : commit =
 (* RR[A,B,C] -> RR[A,B]: drop C from RR. No weight shifts (RR is unweighted). *)
 let rr_abc_to_ab_expected : commit =
   [
-    Change_pol (100, RR, 2);
+    Change_arity (100, 2);
     Unmap (100, "C", 1002);
     Deassoc (100, "C");
     Emancipate (1002, 100, 103);
@@ -234,11 +234,12 @@ let rr_ab_to_ad_expected : commit =
     Deassoc (100, "B");
     Assoc (100, "D");
     Map (100, "D", 1001);
+    Undesignate 102;
     GC 102;
   ]
 
 (* SP[A,B] -> SP[A,C]: same shape as RR but in an SP parent. Positional
-   weights stay (slot 1 is still 2.0), so no Change_weight is emitted. *)
+   weights stay (slot 1 is still 2.0), so no Set_arm_meta is emitted. *)
 let strict_ab_to_ac_expected : commit =
   [
     Spawn (103, 1);
@@ -248,6 +249,7 @@ let strict_ab_to_ac_expected : commit =
     Deassoc (100, "B");
     Assoc (100, "C");
     Map (100, "C", 1001);
+    Undesignate 102;
     GC 102;
   ]
 
@@ -262,7 +264,7 @@ let one_arm_replaced_tests =
    for A/B/C on steps 1000/1001/1002. Replacing slot 2's arm (C → FIFO Z)
    *and* its weight (3 → 7) reuses step 1002: the new FIFO Z spawns on
    v=104 (PE 1), is [Designate]d onto v=103, ancestor routing on v=100
-   swings C → Z, the slot's weight gets a single [Change_weight], and
+   swings C → Z, the slot's weight gets a single [Set_arm_meta], and
    v=103 is GC'd. *)
 let wfq_abc_to_abz_diff_expected : commit =
   [
@@ -273,8 +275,9 @@ let wfq_abc_to_abz_diff_expected : commit =
     Deassoc (100, "C");
     Assoc (100, "Z");
     Map (100, "Z", 1002);
+    Undesignate 103;
     GC 103;
-    Change_weight (100, 1002, 7.0);
+    Set_arm_meta (100, 1002, 7.0);
   ]
 
 let one_arm_replaced_wfq_tests =
@@ -310,7 +313,7 @@ let rr_ab_to_rr_def_expected : commit =
     Map (103, "D", 1002);
     Map (103, "E", 1003);
     Map (103, "F", 1004);
-    Change_pol (103, RR, 3);
+    Set_policy (103, RR, 3);
     Designate (100, 103);
     Unmap (99, "A", 999);
     Unmap (99, "B", 999);
@@ -322,6 +325,7 @@ let rr_ab_to_rr_def_expected : commit =
     Map (99, "D", 999);
     Map (99, "E", 999);
     Map (99, "F", 999);
+    Undesignate 100;
     GC 100;
     GC 101;
     GC 102;
@@ -348,8 +352,9 @@ let strict_ab_to_rr_ab_expected : commit =
     Assoc (105, "B");
     Map (103, "A", 1002);
     Map (103, "B", 1003);
-    Change_pol (103, RR, 2);
+    Set_policy (103, RR, 2);
     Designate (100, 103);
+    Undesignate 100;
     GC 100;
     GC 101;
     GC 102;
@@ -406,8 +411,11 @@ let sub_pol_tests =
    (prev's root v=100), 1010 (RR). Each ancestor [Assoc]/[Map]s every
    class in its subtree; WFQ weights mirror the (pol, weight) sort
    order: 3, 1, 2. Final [Emancipate]/[Adopt] on the fake root swings its
-   single step from prev's old real root v100 to the new top v104. None of
-   prev's vpifos are respawned. *)
+   single step from prev's old real root v100 to the new top v104, and the
+   fake root gains [Assoc]/[Map] entries on its single step for the five
+   classes that [complex_tree] adds beyond [strict_ABC] (G, H, D, E, F in
+   the normalized preorder); the three carried-over classes (A, B, C) keep
+   their existing fake-root wiring. None of prev's vpifos are respawned. *)
 let strict_abc_to_complex_tree_expected : commit =
   [
     Spawn (104, 2);
@@ -457,14 +465,24 @@ let strict_abc_to_complex_tree_expected : commit =
     Map (108, "D", 1005);
     Map (108, "E", 1006);
     Map (108, "F", 1007);
-    Change_pol (104, WFQ, 3);
-    Change_pol (105, UNION, 2);
-    Change_pol (108, RR, 3);
-    Change_weight (104, 1008, 3.0);
-    Change_weight (104, 1009, 1.0);
-    Change_weight (104, 1010, 2.0);
+    Set_policy (104, WFQ, 3);
+    Set_policy (105, UNION, 2);
+    Set_policy (108, RR, 3);
+    Set_arm_meta (104, 1008, 3.0);
+    Set_arm_meta (104, 1009, 1.0);
+    Set_arm_meta (104, 1010, 2.0);
     Emancipate (999, 99, 100);
     Adopt (999, 99, 104);
+    Assoc (99, "G");
+    Assoc (99, "H");
+    Assoc (99, "D");
+    Assoc (99, "E");
+    Assoc (99, "F");
+    Map (99, "G", 999);
+    Map (99, "H", 999);
+    Map (99, "D", 999);
+    Map (99, "E", 999);
+    Map (99, "F", 999);
   ]
 
 let super_pol_tests =
@@ -524,9 +542,9 @@ let one_arm_added_extends_pes_test =
       Map (100, "C", 1003);
       Map (102, "B", 1001);
       Map (102, "C", 1002);
-      Change_pol (100, SP, 2);
-      Change_pol (102, RR, 2);
-      Change_weight (100, 1003, 2.0);
+      Set_policy (102, RR, 2);
+      Change_arity (100, 2);
+      Set_arm_meta (100, 1003, 2.0);
     ]
   in
   assert_equal ~printer:Ir.string_of_commit expected c.commit
