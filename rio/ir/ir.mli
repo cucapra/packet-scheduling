@@ -54,7 +54,7 @@ val patch : prev:compiled -> next:Rio_core.Pol.t -> compiled option
     - [next] is structurally equal to [prev]'s policy: returns [Some] with an
       empty [commit].
     - [next] adds exactly one arm at any position of a [RR] or [SP] parent (per
-      [ArmAdded]): returns [Some] with the
+      [Delta.Add]): returns [Some] with the
       [Spawn]/[Adopt]/[Assoc]/[Map]/[Change_arity] (and [Set_arm_meta] for [SP],
       carrying the new arm's priority rank) instructions needed to splice the
       new arm in. Existing SP arms keep their ranks; no positional cascade is
@@ -64,12 +64,13 @@ val patch : prev:compiled -> next:Rio_core.Pol.t -> compiled option
       for [WFQ]) of one slot (per [ChangeMeta]): returns [Some] with a single
       [Set_arm_meta] instruction for the affected slot.
     - [next] removes exactly one arm at any position of a [RR] or [SP] parent
-      (per [ArmRemoved]): returns [Some] with the [Change_arity], [Unmap],
+      (per [Delta.Remove]): returns [Some] with the [Change_arity], [Unmap],
       [Deassoc], [Emancipate], and [GC] instructions needed to detach the arm
       and clean up routing state cached on its ancestor chain. Existing SP
       siblings keep their ranks.
-    - [next] swaps in a different subtree at exactly one position (per
-      [ArmReplaced]): returns [Some] with the new arm's
+    - [next] swaps in a different subtree at exactly one position (planner
+      expands this as a [Designate ; Quiesce ; Undesignate] give-up sequence,
+      recognized by [patch]): returns [Some] with the new arm's
       [Spawn]/[Adopt]/[Assoc]/[Map]/[Set_policy]/[Set_arm_meta] instructions, a
       [Designate] that fuses the old and new roots into a super-node riding on
       the existing parent step, [Deassoc]s that drain the old classes out of the
@@ -97,24 +98,26 @@ val patch : prev:compiled -> next:Rio_core.Pol.t -> compiled option
 
 val patch_designate :
   prev:compiled -> path:int list -> arm:Rio_core.Pol.t -> compiled
-(** Lowering for the planner-only [Delta.Designate] production. At [path], the
-    existing subtree becomes the loser of a designated super-node whose survivor
-    is a freshly compiled [arm]. Emits [arm]'s [Spawn]/[Adopt]/[Set_policy]/...
+(** Per-production lowering for [Delta.Designate]. At [path], the existing
+    subtree becomes the loser of a designated super-node whose survivor is a
+    freshly compiled [arm]. Emits [arm]'s [Spawn]/[Adopt]/[Set_policy]/...
     instructions, a [Designate (loser_v, survivor_v)], a
     [Set_policy (loser_v, SP_star, 2)] that signals to the substrate that
     [loser_v] now hosts a super-node, and class-routing edits along [path]'s
-    ancestor chain for any classes new to [arm]. Not reachable via
-    [patch ~prev ~next] today; exposed for direct planner / test use. *)
+    ancestor chain for any classes new to [arm]. Inside the give-up sequence
+    emitted by [Planner.analyze], [patch] dispatches monolithically through
+    [patch_one_arm_replaced] for decorated-tree threading; this entry point is
+    for direct planner / test invocation of an isolated [Designate]. *)
 
 val patch_quiesce : prev:compiled -> path:int list -> compiled
-(** Lowering for the planner-only [Delta.Quiesce] production. Tears down the
-    class-routing entries that direct new traffic into the subtree at [path],
-    along its ancestor chain. In-flight packets continue to dequeue.
-    [den(Quiesce) = id] so the decorated tree is unchanged. *)
+(** Per-production lowering for [Delta.Quiesce]. Tears down the class-routing
+    entries that direct new traffic into the subtree at [path], along its
+    ancestor chain. In-flight packets continue to dequeue. [den(Quiesce) = id]
+    so the decorated tree is unchanged. *)
 
 val patch_undesignate : prev:compiled -> path:int list -> compiled
-(** Lowering for the planner-only [Delta.Undesignate] production. Collapses the
-    designated super-node at [path] by emitting [Undesignate loser_v]. *)
+(** Per-production lowering for [Delta.Undesignate]. Collapses the designated
+    super-node at [path] by emitting [Undesignate loser_v]. *)
 
 (** JSON exporter for IR commits. *)
 module Json : sig

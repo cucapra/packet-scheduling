@@ -473,10 +473,12 @@ let patch_change_root ~prev ~path =
   { commit; decorated = new_root; pes = new_pes }
 
 (* ------------------------------------------------------------------ *)
-(* Patch: planner-only productions (Designate / Quiesce / Undesignate).
-   These are not emitted by [analyze] today; the planner (worklist PR 10)
-   wires them into idiom expansions. The lowerings here exist so the
-   planner has an ISA-emitting backend to target.                     *)
+(* Patch: per-production lowerings for Designate / Quiesce / Undesignate.
+   [Planner.analyze] emits these inside the give-up idiom sequence; the
+   top-level [Ir.patch] dispatch recognizes the sequence shape and routes
+   it through [patch_one_arm_replaced] for decorated-tree threading, but
+   the per-helper entry points below remain exposed for direct planner-
+   level or test invocation of an individual production.            *)
 (* ------------------------------------------------------------------ *)
 
 (* The chain leading to [path]'s subtree, including the slot's own (parent_v,
@@ -562,25 +564,51 @@ let patch_undesignate ~prev ~path =
 (* Patch: top-level dispatch.                                         *)
 (* ------------------------------------------------------------------ *)
 
+(* [Ir.patch] dispatches on the shape of [Planner.analyze]'s guarded sequence.
+   Length-1 sequences with [True] guards are the per-production single-edit
+   cases. The Replace idiom arrives as a length-3 [Designate ; Quiesce ;
+   Undesignate] sequence (or length-4 with a trailing [ChangeMeta] when the
+   slot's per-arm meta also changes); we recognize that shape and lower it
+   monolithically through [patch_one_arm_replaced] / [patch_whole_tree_replace]
+   to keep decorated-tree threading simple. Standalone atomic [Designate],
+   [Quiesce], [Undesignate] productions are reachable only through the
+   per-helper entry points [patch_designate] etc., not through [patch]. *)
 let patch ~prev ~(next : Rio_core.Pol.t) : compiled option =
-  let open Rio_delta.Delta in
-  match analyze (Decorated.to_policy prev.decorated) next with
-  | Same -> Some { commit = []; decorated = prev.decorated; pes = prev.pes }
-  | Replace { path = []; _ } -> Some (patch_whole_tree_replace ~prev ~next)
-  | Replace { path; arm; meta } ->
-      Some (patch_one_arm_replaced ~prev ~arm_path:path ~arm ~meta)
-  | Add { path; arm; meta } ->
+  let module D = Rio_delta.Delta in
+  let module P = Rio_planner.Planner in
+  let same_path a b c = a = b && b = c in
+  match P.analyze (Decorated.to_policy prev.decorated) next with
+  | [] -> Some { commit = []; decorated = prev.decorated; pes = prev.pes }
+  | [ (P.True, D.Add { path; arm; meta }) ] ->
       Some (patch_one_arm_added ~prev ~arm_path:path ~arm ~meta)
-  | Remove { path; arm = _ } ->
+  | [ (P.True, D.Remove { path; arm = _ }) ] ->
       Some (patch_one_arm_removed ~prev ~arm_path:path)
-  | ChangeMeta { path; new_meta } ->
+  | [ (P.True, D.ChangeMeta { path; new_meta }) ] ->
       Some (patch_meta_changed ~prev ~path ~new_meta)
-  | Graft [] | ChangeRoot [] -> None
-  | Graft path -> Some (patch_graft ~prev ~next ~path)
-  | ChangeRoot path -> Some (patch_change_root ~prev ~path)
-  | Designate { path; arm } -> Some (patch_designate ~prev ~path ~arm)
-  | Quiesce path -> Some (patch_quiesce ~prev ~path)
-  | Undesignate path -> Some (patch_undesignate ~prev ~path)
+  | [ (P.True, D.Graft path) ] ->
+      if path = [] then None else Some (patch_graft ~prev ~next ~path)
+  | [ (P.True, D.ChangeRoot path) ] ->
+      if path = [] then None else Some (patch_change_root ~prev ~path)
+  | [
+   (P.True, D.Designate { path = pd; arm });
+   (P.True, D.Quiesce pq);
+   (P.Empty pu1, D.Undesignate pu2);
+  ]
+    when same_path pd pq pu1 && pu1 = pu2 ->
+      let path = pd in
+      if path = [] then Some (patch_whole_tree_replace ~prev ~next)
+      else Some (patch_one_arm_replaced ~prev ~arm_path:path ~arm ~meta:None)
+  | [
+   (P.True, D.Designate { path = pd; arm });
+   (P.True, D.Quiesce pq);
+   (P.Empty pu1, D.Undesignate pu2);
+   (P.Empty pm1, D.ChangeMeta { path = pm2; new_meta });
+  ]
+    when same_path pd pq pu1 && same_path pu1 pu2 pm1 && pm1 = pm2 ->
+      let path = pd in
+      Some
+        (patch_one_arm_replaced ~prev ~arm_path:path ~arm ~meta:(Some new_meta))
+  | _ -> None
 
 module Decorated = Decorated
 module Json = Json
