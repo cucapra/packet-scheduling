@@ -1,5 +1,8 @@
 classes A, C;
 
-policy = strict[A, C];
+// C carries rank 3 so its preserved rank stays consistent with strict_ABC
+// (where C is also at rank 3). Mid-insert of B (rank 2) into this prev is
+// then a clean Add with no rank shifts on the surviving arms.
+policy = strict[(A, 1), (C, 3)];
 
 return policy

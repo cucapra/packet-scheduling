@@ -268,10 +268,10 @@ let patch_one_arm_replaced ~prev ~arm_path ~arm ~meta =
   let weight_instrs, weight_rewrite =
     match meta with
     | None -> ([], Fun.id)
-    | Some w ->
+    | Some m ->
         let parent_v = Decorated.root_vpifo parent in
         let step_k = Decorated.nth_step parent k in
-        ([ Set_arm_meta (parent_v, step_k, w) ], Decorated.set_weight k w)
+        ([ Set_arm_meta (parent_v, step_k, m) ], Decorated.set_meta k m)
   in
   let c =
     replace_at ~prev ~chain:(Decorated.ancestor_chain prev.decorated arm_path)
@@ -295,13 +295,13 @@ let patch_weight_changed ~prev ~path ~new_weight =
   let parent = Decorated.walk prev.decorated parent_path in
   let parent_v =
     match parent with
-    | Decorated.WFQ (v, _) -> v
-    | _ -> failwith "Ir.patch: WeightChanged parent is not a WFQ"
+    | Decorated.SP (v, _) | Decorated.WFQ (v, _) -> v
+    | _ -> failwith "Ir.patch: ChangeWeight parent is not SP or WFQ"
   in
   let step_k = Decorated.nth_step parent k in
   let new_decorated =
     Decorated.rewrite_at prev.decorated parent_path
-      (Decorated.set_weight k new_weight)
+      (Decorated.set_meta k new_weight)
   in
   {
     commit = [ Set_arm_meta (parent_v, step_k, new_weight) ];

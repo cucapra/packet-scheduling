@@ -164,10 +164,12 @@ let drop_arm k = function
   | SP (v, es) -> SP (v, list_drop_nth k es)
   | WFQ (v, es) -> WFQ (v, list_drop_nth k es)
 
-let set_weight k new_w = function
+(* Set the k-th arm's per-arm meta (rank for SP, weight for WFQ). *)
+let set_meta k new_m = function
+  | SP (v, es) -> SP (v, list_replace_nth k (fun (s, c, _) -> (s, c, new_m)) es)
   | WFQ (v, es) ->
-      WFQ (v, list_replace_nth k (fun (s, c, _) -> (s, c, new_w)) es)
-  | _ -> failwith "Decorated.set_weight: WFQ-only"
+      WFQ (v, list_replace_nth k (fun (s, c, _) -> (s, c, new_m)) es)
+  | _ -> failwith "Decorated.set_meta: SP/WFQ only"
 
 (* Replace child at index [k], preserving the parent→child step (and SP rank /
    WFQ weight). Used by [ArmReplaced]: the new arm rides on the existing

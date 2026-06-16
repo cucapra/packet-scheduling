@@ -57,20 +57,6 @@ let strict_ac_to_abc_expected : commit =
     Set_arm_meta (100, 1002, 2.0);
   ]
 
-(* Explicit-rank SP mid-insert: prev SP[(A,5),(C,20)], next
-   SP[(A,5),(B,10),(C,20)]. B is inserted at index 1 with rank 10 (no
-   collision with A or C); existing arms keep their ranks. *)
-let strict_ranked_ac_to_abc_expected : commit =
-  [
-    Spawn (103, 1);
-    Adopt (1002, 100, 103);
-    Assoc (100, "B");
-    Assoc (103, "B");
-    Map (100, "B", 1002);
-    Change_arity (100, 3);
-    Set_arm_meta (100, 1002, 10.0);
-  ]
-
 (* RR arm appended at the root. Same shape as SP but no Set_arm_meta. *)
 let rr_ab_to_abc_expected : commit =
   [
@@ -105,9 +91,6 @@ let one_arm_added_tests =
       strict_ab_to_abc_expected;
     make_delta_test "strict[A,C] -> strict[A,B,C]" "strict_AC" "strict_ABC"
       strict_ac_to_abc_expected;
-    make_delta_test
-      "strict[(A,5),(C,20)] -> strict[(A,5),(B,10),(C,20)] (explicit ranks)"
-      "strict_ranked_AC" "strict_ranked_ABC" strict_ranked_ac_to_abc_expected;
     make_delta_test "rr[A,B] -> rr[A,B,C]" "rr_AB" "rr_ABC"
       rr_ab_to_abc_expected;
     make_delta_test "complex_tree -> complex_tree_add_arm_deep" "complex_tree"
@@ -256,10 +239,9 @@ let rr_ab_to_ad_expected : commit =
     GC 102;
   ]
 
-(* SP[A,B] -> SP[A,C]: same shape as RR but in an SP parent. The replaced
-   arm rides on the existing step, which keeps its rank (the slot's rank
-   is associated with the step, not the arm), so no Set_arm_meta is
-   emitted. *)
+(* SP[A,B] -> SP[A,C]: arm-swap at slot 1, AND the slot's rank changes
+   (B was rank 2 in strict_AB; C is rank 3 in strict_AC). The slot's
+   meta gets a Set_arm_meta after the Designate/Undesignate flow. *)
 let strict_ab_to_ac_expected : commit =
   [
     Spawn (103, 1);
@@ -271,6 +253,7 @@ let strict_ab_to_ac_expected : commit =
     Map (100, "C", 1001);
     Undesignate 102;
     GC 102;
+    Set_arm_meta (100, 1001, 3.0);
   ]
 
 let one_arm_replaced_tests =

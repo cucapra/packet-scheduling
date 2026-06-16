@@ -35,6 +35,7 @@
 %token <string> VAR
 %token <string> CLSS
 %token <int> INT
+%token <float> FLOAT
 %token EQUALS
 %token LBRACKET
 %token RBRACKET
@@ -73,7 +74,7 @@ policy:
     | SJN LBRACKET; c = CLSS; RBRACKET                  { ShortestJobNext c }
     | SRTF LBRACKET; c = CLSS; RBRACKET                 { ShortestRemaining c }
     | RR LBRACKET; pl = arglist; RBRACKET               { RoundRobin pl }
-    | STRICT LBRACKET; pl = strict_arglist; RBRACKET    { Strict pl }
+    | STRICT LBRACKET; pl = weighted_arglist; RBRACKET  { Strict pl }
     | WFQ LBRACKET; pl = weighted_arglist; RBRACKET     { WeightedFair pl }
     | RCSP LBRACKET; pl = arglist; RBRACKET             { RateControlled pl }
 
@@ -95,19 +96,18 @@ policy:
     /* Allow bare class names as shorthand for FIFO(c). */
     | CLSS                                              { Fifo $1 }
 
+/* Accept either an int literal or a float literal at any rank/weight
+   position; both promote to a float in the AST. */
+numeric:
+    | i = INT       { float_of_int i }
+    | f = FLOAT     { f }
+
 arglist:
     | pl = separated_list(COMMA, policy)            { pl }
 weighted_arglist:
     | pl = separated_list(COMMA, weighted_arg)      { pl }
 weighted_arg:
-    | LPAREN; arg = separated_pair(policy, COMMA, INT); RPAREN      { arg }
-
-/* SP accepts both bare arms (positional-sugar ranks 1, 2, ...) and
-   explicit (arm, rank) pairs. Mixing the two forms in one [strict[...]]
-   call is not supported. */
-strict_arglist:
-    | pl = separated_list(COMMA, policy)            { List.mapi (fun i p -> (p, i + 1)) pl }
-    | pl = separated_list(COMMA, weighted_arg)      { pl }
+    | LPAREN; arg = separated_pair(policy, COMMA, numeric); RPAREN  { arg }
 
 /* Declarations, assignments and returns */
 internalcomp :

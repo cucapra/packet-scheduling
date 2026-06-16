@@ -126,9 +126,11 @@ let weightchanged =
 
 let onearmreplaced =
   [
-    (* SP(A,B) vs SP(A,C): exactly one arm differs (index 1). *)
+    (* SP(A,B) vs SP(A,C): exactly one arm differs (index 1). strict_AC
+       gives C rank 3 (not 2), so the slot's rank also changes — Replace
+       carries the new rank. *)
     make_compare_test "strict arm changed" "strict_AB" "strict_AC"
-      (Replace { path = [ 1 ]; arm = Policy.FIFO "C"; meta = None });
+      (Replace { path = [ 1 ]; arm = Policy.FIFO "C"; meta = Some 3.0 });
     (* RR(A,B) vs RR(A,D): exactly one arm differs (index 1). *)
     make_compare_test "rr arm changed" "rr_AB" "rr_AD"
       (Replace { path = [ 1 ]; arm = Policy.FIFO "D"; meta = None });

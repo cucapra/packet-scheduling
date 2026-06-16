@@ -217,92 +217,58 @@ and compare_children ~next:p2 ps1 ps2 =
       end
   | _ -> failwith "Can't get here"
 
-(* SP arm comparison ignores per-arm ranks for insertion/removal detection:
-   we compare arm trees (the first projection) and read the new arm's rank
-   from [next]. Existing arms keep whatever rank [prev] already had. This
-   matches the paper's [init_slot_Strict(_, p) = p] story: a supplied rank
-   is preserved, never rewritten. *)
-and compare_sp_children ~next:p2 prs1 prs2 =
+(* SP and WFQ have identical shape ([(t * float) list]) and identical
+   sniffer behavior: a clean single edit must show up at the same index
+   in both the arm projection and the meta projection. Since [normalize]
+   sorts both disciplines by their per-arm meta (rank for SP, weight for
+   WFQ), [prev] and [next] arrive here in canonical order; a single
+   structural edit in canonical form maps to a single [Add]/[Remove]/
+   [Replace]/[ChangeWeight]. Position-irrelevance falls out for free. *)
+and compare_metaed_children ~next:p2 pms1 pms2 =
   let give_up = Replace { path = []; arm = p2; meta = None } in
-  let ps1 = List.map fst prs1 in
-  let ps2 = List.map fst prs2 in
-  match List.compare_lengths prs1 prs2 with
-  | 0 ->
-      begin match single_change ps1 ps2 with
-      | Some (i, _) ->
-          let child1 = List.nth ps1 i in
-          let child2 = List.nth ps2 i in
-          let inner =
-            match analyze child1 child2 with
-            | Graft _ | ChangeRoot _ ->
-                Replace { path = []; arm = child2; meta = None }
-            | d -> d
-          in
-          prepend_path i inner
-      | None -> if prs1 = prs2 then Same else give_up
-      end
-  | -1 ->
-      begin match single_insertion ps1 ps2 with
-      | Some (i, arm) ->
-          let _, rank = List.nth prs2 i in
-          Add { path = [ i ]; arm; meta = Some rank }
-      | None -> give_up
-      end
-  | 1 ->
-      begin match single_insertion ps2 ps1 with
-      | Some (i, arm) -> Remove { path = [ i ]; arm }
-      | None -> give_up
-      end
-  | _ -> failwith "Can't get here"
-
-(* When the parents are WFQ, comparing their children is a little more
-   complicated: a single clean edit must show up at the same index in
-   both the policy projection and the weight projection. *)
-and compare_wfq_children ~next:p2 pws1 pws2 =
-  let give_up = Replace { path = []; arm = p2; meta = None } in
-  let ps1 = List.map fst pws1 in
-  let ps2 = List.map fst pws2 in
-  let ws1 = List.map snd pws1 in
-  let ws2 = List.map snd pws2 in
+  let ps1 = List.map fst pms1 in
+  let ps2 = List.map fst pms2 in
+  let ms1 = List.map snd pms1 in
+  let ms2 = List.map snd pms2 in
   match List.compare_lengths ps1 ps2 with
-  | 0 when ws1 = ws2 ->
-      (* Pure policy edit in-place; weights unchanged. Defer to the
-         non-WFQ comparator. *)
+  | 0 when ms1 = ms2 ->
+      (* Pure policy edit in-place; metas unchanged. Defer to the
+         meta-free comparator. *)
       compare_children ~next:p2 ps1 ps2
   | 0 when ps1 = ps2 ->
-      (* Pure weight edit in-place. Same slot counts ⇒ [changes] on the
-         weights is well-defined, and the empty result is unreachable
-         because [ws1 <> ws2] here. *)
-      begin match single_change ws1 ws2 with
+      (* Pure meta edit in-place. Same slot counts ⇒ [changes] on the
+         metas is well-defined, and the empty result is unreachable
+         because [ms1 <> ms2] here. *)
+      begin match single_change ms1 ms2 with
       | Some (i, new_weight) -> ChangeWeight { path = [ i ]; new_weight }
       | None -> give_up
       end
   | 0 ->
       (* Same length but both lists differ. The only single edit we could
-         describe is a WFQ arm-replace: one slot must be the lone
-         in-place difference in both [ps] and [ws], and the slot's
-         arm-vs-arm diff must itself be a leaf-level give-up
-         (otherwise we'd be folding a deep arm change with a weight
-         change into one variant, which [Ir.patch] can't express). *)
-      begin match single_change_lockstep ps1 ps2 ws1 ws2 with
-      | Some (i, _, weight) ->
+         describe is a slot-replace: one slot must be the lone in-place
+         difference in both [ps] and [ms], and the slot's arm-vs-arm diff
+         must itself be a leaf-level give-up (otherwise we'd be folding a
+         deep arm change with a meta change into one variant, which
+         [Ir.patch] can't express). *)
+      begin match single_change_lockstep ps1 ps2 ms1 ms2 with
+      | Some (i, _, meta) ->
           begin match analyze (List.nth ps1 i) (List.nth ps2 i) with
           | Replace { path = []; arm; meta = None } ->
-              Replace { path = [ i ]; arm; meta = Some weight }
+              Replace { path = [ i ]; arm; meta = Some meta }
           | _ -> give_up
           end
       | None -> give_up
       end
   | -1 ->
-      (* ps1 shorter: a slot was added to make ps2, with its weight. *)
-      begin match single_insertion_lockstep ps1 ps2 ws1 ws2 with
-      | Some (i, arm, weight) -> Add { path = [ i ]; arm; meta = Some weight }
+      (* ps1 shorter: a slot was added to make ps2, with its meta. *)
+      begin match single_insertion_lockstep ps1 ps2 ms1 ms2 with
+      | Some (i, arm, meta) -> Add { path = [ i ]; arm; meta = Some meta }
       | None -> give_up
       end
   | 1 ->
-      (* ps2 shorter: a slot was removed from ps1. The dropped weight
+      (* ps2 shorter: a slot was removed from ps1. The dropped meta
          isn't needed to describe the removal, so we use [Remove]. *)
-      begin match single_insertion_lockstep ps2 ps1 ws2 ws1 with
+      begin match single_insertion_lockstep ps2 ps1 ms2 ms1 with
       | Some (i, arm, _) -> Remove { path = [ i ]; arm }
       | None -> give_up
       end
@@ -317,9 +283,9 @@ and analyze p1 p2 =
     | None, Some path -> ChangeRoot path
     | _ -> (
         match (p1, p2) with
-        | SP prs1, SP prs2 -> compare_sp_children ~next:p2 prs1 prs2
+        | SP pms1, SP pms2 | WFQ pms1, WFQ pms2 ->
+            compare_metaed_children ~next:p2 pms1 pms2
         | RR ps1, RR ps2 -> compare_children ~next:p2 ps1 ps2
-        | WFQ pws1, WFQ pws2 -> compare_wfq_children ~next:p2 pws1 pws2
         | _ ->
             (* FIFO->FIFO with a different class, or any constructor mismatch
                (FIFO<->SP, SP<->RR, etc.) — wholesale replacement at this

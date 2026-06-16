@@ -76,8 +76,9 @@ val insert_arm_wfq : int -> step -> t -> float -> t -> t
 val drop_arm : int -> t -> t
 (** Remove the child at index [k]. Errors on FIFO. *)
 
-val set_weight : int -> float -> t -> t
-(** Set the weight of the [k]-th WFQ child. Errors on anything but WFQ. *)
+val set_meta : int -> float -> t -> t
+(** Set the [k]-th child's per-arm meta (rank for SP, weight for WFQ). Errors on
+    RR and FIFO. *)
 
 val replace_arm : int -> t -> t -> t
 (** Replace child at index [k], preserving the parent-to-child step (and WFQ

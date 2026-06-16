@@ -29,19 +29,28 @@ let rec sub cl st used (p : Ast.stream) =
       FIFO c
   | Strict prs ->
       let ps, rs = List.split prs in
-      SP (List.combine (sub_ps ps) (List.map float_of_int rs))
+      SP (List.combine (sub_ps ps) rs)
   | RoundRobin ps -> RR (sub_ps ps)
   | WeightedFair pws ->
       let ps, ws = List.split pws in
-      WFQ (List.combine (sub_ps ps) (List.map float_of_int ws))
+      WFQ (List.combine (sub_ps ps) ws)
   | _ -> failwith "ERROR: unsupported policy"
 
 let rec normalize p =
   match p with
   | FIFO _ -> p
-  | SP prs -> SP (List.map (fun (p, r) -> (normalize p, r)) prs)
+  | SP prs ->
+      (* SP arms canonicalize by rank ascending (the priority order is the
+         discipline-defining datum); ties break by arm content. *)
+      SP
+        (List.map (fun (p, r) -> (normalize p, r)) prs
+        |> List.sort (fun (p1, r1) (p2, r2) ->
+            let c = compare r1 r2 in
+            if c <> 0 then c else compare p1 p2))
   | RR ps -> RR (List.map normalize ps |> List.sort compare)
   | WFQ pws ->
+      (* WFQ arms canonicalize by arm content (weights are independent
+         shares; same-arm collision is the rare case); ties break by weight. *)
       WFQ
         (List.map (fun (p, w) -> (normalize p, w)) pws
         |> List.sort (fun (p1, w1) (p2, w2) ->

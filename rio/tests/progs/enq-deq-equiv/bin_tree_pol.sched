@@ -1,12 +1,12 @@
 classes A, B, C, D, E, F, G;
 
-ab = strict[A, B];
+ab = strict[(A, 1), (B, 2)];
 cd = rr[C, D];
 ef = rr[E, F];
 
 left = rr[ab, cd];
-right = strict[ef, G];
+right = strict[(ef, 1), (G, 2)];
 
-policy = strict[left, right];
+policy = strict[(left, 1), (right, 2)];
 
 return policy

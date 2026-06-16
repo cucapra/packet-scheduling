@@ -1,6 +1,6 @@
 classes A, B, C, D, E, F, G, H, NEW;
 
-left = strict[A, B, C];
+left = strict[(A, 1), (B, 2), (C, 3)];
 mid = rr[D, E, F, NEW];
 right = rr[G, H];
 
@@ -22,4 +22,4 @@ return wfq[(left, 1), (mid, 2), (right, 3)];
 //     / | \    / | \    / \
 //    A  B  C  F  E  D  G   H
 //
-// A naive move is to claim that the present file is totally different from complex_tree, because of the new class NEW. But in fact, the structure of the tree is the same, and the only difference is that we have added a new class as a leaf under the mid rr. So we should be able to match up the two trees and identify the point of difference precisely as an "arms added".
+// We should be able to match up the two trees and identify the point of difference precisely as an "arm added" under the mid rr.
