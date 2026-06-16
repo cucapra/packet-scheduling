@@ -8,8 +8,7 @@ let json_dir = "jsons/"
 (* [.sched] file -> JSON value, going via the IR. *)
 let compile_to_json filename =
   let c =
-    prog_dir ^ filename |> Parser.parse_file |> Policy.of_program
-    |> Ir.of_policy
+    prog_dir ^ filename |> Parser.parse_file |> Pol.of_program |> Ir.of_policy
   in
   Ir.Json.from_commit c.commit
 

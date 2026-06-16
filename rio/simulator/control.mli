@@ -7,7 +7,7 @@ module type Control = sig
 end
 
 module type Policy = sig
-  val policy : Rio_core.Policy.t
+  val policy : Rio_core.Pol.t
 end
 
 module Make_PIFOControl (_ : Policy) : Control

@@ -10,7 +10,7 @@ let pcap_dir = "../pcaps/"
 (* CSV output for [GEN_CSV=YES] is dev-only tooling; [graphs/] lives at the
    repo root, outside the dune project. *)
 let graph_dir = "../../../../../graphs/"
-let parse_prog name = prog_dir ^ name |> Parser.parse_file |> Policy.of_program
+let parse_prog name = prog_dir ^ name |> Parser.parse_file |> Pol.of_program
 let parse_pcap name = pcap_dir ^ name |> Packet.pkts_from_file
 
 let progs_and_pcaps =

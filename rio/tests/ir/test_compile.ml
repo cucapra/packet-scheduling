@@ -11,8 +11,7 @@ let prog_dir = "../progs/"
    in [test_patch]. *)
 let compile filename =
   let c =
-    prog_dir ^ filename |> Parser.parse_file |> Policy.of_program
-    |> Ir.of_policy
+    prog_dir ^ filename |> Parser.parse_file |> Pol.of_program |> Ir.of_policy
   in
   c.commit
 

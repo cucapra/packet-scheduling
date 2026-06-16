@@ -10,8 +10,7 @@ let prog_dir = "../progs/"
    only knows about the bare instruction list. *)
 let compile_to_pretty filename =
   let c =
-    prog_dir ^ filename |> Parser.parse_file |> Policy.of_program
-    |> Ir.of_policy
+    prog_dir ^ filename |> Parser.parse_file |> Pol.of_program |> Ir.of_policy
   in
   string_of_commit c.commit
 

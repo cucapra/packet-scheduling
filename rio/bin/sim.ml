@@ -12,7 +12,7 @@ let error () =
 
 let root_dir = "../"
 let graph_dir = root_dir ^ "graphs/"
-let parse_prog path = path |> Parser.parse_file |> Policy.of_program
+let parse_prog path = path |> Parser.parse_file |> Pol.of_program
 let parse_pcap path = path |> Packet.pkts_from_file
 
 let prog_path, pcap_path, enqdeq =

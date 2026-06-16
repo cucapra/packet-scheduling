@@ -1,4 +1,4 @@
-open Rio_core.Policy
+open Rio_core.Pol
 
 type path = int list
 
@@ -32,12 +32,12 @@ type t =
   | Same
   | Add of {
       path : path;
-      arm : Rio_core.Policy.t;
+      arm : Rio_core.Pol.t;
       meta : float option;
     }
   | Remove of {
       path : path;
-      arm : Rio_core.Policy.t;
+      arm : Rio_core.Pol.t;
     }
   | ChangeMeta of {
       path : path;
@@ -45,7 +45,7 @@ type t =
     }
   | Replace of {
       path : path;
-      arm : Rio_core.Policy.t;
+      arm : Rio_core.Pol.t;
       meta : float option;
     }
   | Graft of path
@@ -56,7 +56,7 @@ type t =
           that subtree gives [next]. *)
   | Designate of {
       path : path;
-      arm : Rio_core.Policy.t;
+      arm : Rio_core.Pol.t;
     }
       (** Introduce [arm] alongside the SP slot at [path] under a designated
           super-node favoring the existing arm. [den(Designate) = id]; the
@@ -322,13 +322,11 @@ let path_to_string = function
       Printf.sprintf "(path %s)" s
 
 let string_of_arm path arm =
-  Printf.sprintf "%s at %s"
-    (Rio_core.Policy.to_string arm)
-    (path_to_string path)
+  Printf.sprintf "%s at %s" (Rio_core.Pol.to_string arm) (path_to_string path)
 
 let string_of_arm_w path arm weight =
   Printf.sprintf "%s (weight %g) at %s"
-    (Rio_core.Policy.to_string arm)
+    (Rio_core.Pol.to_string arm)
     weight (path_to_string path)
 
 let to_string = function

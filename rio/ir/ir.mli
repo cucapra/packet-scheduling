@@ -3,13 +3,13 @@
 
 include module type of Instr
 
-(** A decorated source tree: mirrors [Rio_core.Policy.t] but annotates every
-    node with the [vpifo] assigned to it and every parent-to-child edge with the
+(** A decorated source tree: mirrors [Rio_core.Pol.t] but annotates every node
+    with the [vpifo] assigned to it and every parent-to-child edge with the
     [step] handed out at adoption time. SP edges additionally carry a per-arm
     priority rank; WFQ edges carry a per-arm weight. The original
-    [Rio_core.Policy.t] is recoverable by erasing the decorations. Lives in its
-    own submodule so the constructors can mirror [Rio_core.Policy.t]'s names
-    directly ([Decorated.RR], [Decorated.SP], …) *)
+    [Rio_core.Pol.t] is recoverable by erasing the decorations. Lives in its own
+    submodule so the constructors can mirror [Rio_core.Pol.t]'s names directly
+    ([Decorated.RR], [Decorated.SP], …) *)
 module Decorated : sig
   type t =
     | FIFO of vpifo * clss
@@ -23,7 +23,7 @@ type compiled = {
   decorated : Decorated.t;
   pes : pe list;
 }
-(** The result of compiling a [Rio_core.Policy.t]. Carries enough state that a
+(** The result of compiling a [Rio_core.Pol.t]. Carries enough state that a
     subsequent [patch] call can extend the in-flight runtime without recompiling
     from scratch:
     - [commit]: the IR commit. When this record came from a fresh compile,
@@ -31,21 +31,21 @@ type compiled = {
       is the *delta only*.
     - [decorated]: the decorated source tree. Doubles as the source-policy
       record (recoverable by erasing decorations) so [patch] can diff against an
-      incoming policy without storing a separate [Rio_core.Policy.t].
+      incoming policy without storing a separate [Rio_core.Pol.t].
     - [pes]: the PE assignment, indexed by depth. Every node at depth [d] lives
       on PE [List.nth pes d]. A fresh [of_policy] produces a very boring [pes]:
       [[0; 1; …; max_depth]]. But [patch] (notably [Graft]) may introduce
       non-contiguous PEs to honor the "same depth ⇒ same PE" invariant without
       re-spawning previously installed nodes. *)
 
-val of_policy : Rio_core.Policy.t -> compiled
-(** Compile a [Rio_core.Policy.t] to IR. Supports trees built from [FIFO], [RR],
+val of_policy : Rio_core.Pol.t -> compiled
+(** Compile a [Rio_core.Pol.t] to IR. Supports trees built from [FIFO], [RR],
     [SP], and [WFQ]. Each node at depth [d] is placed on PE [d]; so all siblings
     (and cousins) share a PE. Builds the decorated source tree alongside the
     instruction commit; a follow-up [patch] can derive the next-free IDs by
     walking [decorated]. *)
 
-val patch : prev:compiled -> next:Rio_core.Policy.t -> compiled option
+val patch : prev:compiled -> next:Rio_core.Pol.t -> compiled option
 (** Incrementally extend [prev] to handle policy [next], returning the IR delta.
     The returned record's [commit] is the *delta only* — the new instructions to
     add to a runtime that's already executing [prev.commit]. [decorated] is
@@ -96,8 +96,8 @@ val patch : prev:compiled -> next:Rio_core.Policy.t -> compiled option
       The whole-tree case ([path = []]) returns [None]. *)
 
 val patch_designate :
-  prev:compiled -> path:int list -> arm:Rio_core.Policy.t -> compiled
-(** Lowering for the planner-only [Compare.Designate] production. At [path], the
+  prev:compiled -> path:int list -> arm:Rio_core.Pol.t -> compiled
+(** Lowering for the planner-only [Delta.Designate] production. At [path], the
     existing subtree becomes the loser of a designated super-node whose survivor
     is a freshly compiled [arm]. Emits [arm]'s [Spawn]/[Adopt]/[Set_policy]/...
     instructions, a [Designate (loser_v, survivor_v)], a
@@ -107,14 +107,14 @@ val patch_designate :
     [patch ~prev ~next] today; exposed for direct planner / test use. *)
 
 val patch_quiesce : prev:compiled -> path:int list -> compiled
-(** Lowering for the planner-only [Compare.Quiesce] production. Tears down the
+(** Lowering for the planner-only [Delta.Quiesce] production. Tears down the
     class-routing entries that direct new traffic into the subtree at [path],
     along its ancestor chain. In-flight packets continue to dequeue.
     [den(Quiesce) = id] so the decorated tree is unchanged. *)
 
 val patch_undesignate : prev:compiled -> path:int list -> compiled
-(** Lowering for the planner-only [Compare.Undesignate] production. Collapses
-    the designated super-node at [path] by emitting [Undesignate loser_v]. *)
+(** Lowering for the planner-only [Delta.Undesignate] production. Collapses the
+    designated super-node at [path] by emitting [Undesignate loser_v]. *)
 
 (** JSON exporter for IR commits. *)
 module Json : sig

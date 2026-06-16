@@ -1,7 +1,7 @@
-(** The decorated source tree mirrors [Rio_core.Policy.t] but annotates every
-    node with its assigned vPIFO and every parent→child edge with its adopt
-    step. SP and WFQ edges additionally carry per-arm metadata (a priority rank
-    for SP, a weight for WFQ). *)
+(** The decorated source tree mirrors [Rio_core.Pol.t] but annotates every node
+    with its assigned vPIFO and every parent→child edge with its adopt step. SP
+    and WFQ edges additionally carry per-arm metadata (a priority rank for SP, a
+    weight for WFQ). *)
 
 open Instr
 
@@ -182,8 +182,8 @@ let replace_arm k new_child = function
   | WFQ (v, es) ->
       WFQ (v, list_replace_nth k (fun (s, _, w) -> (s, new_child, w)) es)
 
-let rec to_policy (d : t) : Rio_core.Policy.t =
-  let module P = Rio_core.Policy in
+let rec to_policy (d : t) : Rio_core.Pol.t =
+  let module P = Rio_core.Pol in
   match d with
   | FIFO (_, c) -> P.FIFO c
   | SP (_, es) -> P.SP (List.map (fun (_, c, r) -> (to_policy c, r)) es, false)

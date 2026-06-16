@@ -8,7 +8,7 @@ type enqdeq =
   | Deq
 
 let rec of_policy e p =
-  let open Rio_core.Policy in
+  let open Rio_core.Pol in
   match (e, p) with
   | _, SP (prs, _) | _, WFQ prs ->
       Node (List.map (fun (p, _) -> of_policy e p) prs)

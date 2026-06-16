@@ -1,8 +1,8 @@
-(** A decorated source tree: mirrors [Rio_core.Policy.t] but annotates every
-    node with the [vpifo] assigned to it and every parent-to-child edge with the
+(** A decorated source tree: mirrors [Rio_core.Pol.t] but annotates every node
+    with the [vpifo] assigned to it and every parent-to-child edge with the
     [step] handed out at adoption time. SP edges additionally carry a per-arm
     priority rank; WFQ edges carry a per-arm weight. The original
-    [Rio_core.Policy.t] is recoverable by erasing the decorations. *)
+    [Rio_core.Pol.t] is recoverable by erasing the decorations. *)
 
 open Instr
 
@@ -84,6 +84,6 @@ val replace_arm : int -> t -> t -> t
 (** Replace child at index [k], preserving the parent-to-child step (and WFQ
     weight). Errors on FIFO. *)
 
-val to_policy : t -> Rio_core.Policy.t
+val to_policy : t -> Rio_core.Pol.t
 (** Erase decorations to recover the underlying source policy. Inverse of the
     pairing produced by [Ir.of_policy]. *)

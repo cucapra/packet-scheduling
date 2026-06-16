@@ -24,8 +24,8 @@ let make_counter ~start =
     incr n;
     !n
 
-let rec policy_depth (p : Rio_core.Policy.t) : int =
-  let module P = Rio_core.Policy in
+let rec policy_depth (p : Rio_core.Pol.t) : int =
+  let module P = Rio_core.Pol in
   match p with
   | P.FIFO _ -> 0
   | P.SP (prs, _) | P.WFQ prs ->
@@ -68,15 +68,15 @@ let compile_FIFO ~v ~pe c : Frag.t * Decorated.t =
     },
     Decorated.FIFO (v, c) )
 
-(* Compile a [Rio_core.Policy.t] subtree at [depth]. [splice], when supplied,
+(* Compile a [Rio_core.Pol.t] subtree at [depth]. [splice], when supplied,
    names a path inside this subtree at which an already-installed [Decorated.t]
    should be grafted in instead of being compiled afresh. *)
 let rec compile_subtree ~fresh_v ~fresh_s ~pe_of_depth ~depth ?splice
-    (p : Rio_core.Policy.t) : Frag.t * Decorated.t =
+    (p : Rio_core.Pol.t) : Frag.t * Decorated.t =
   match splice with
   | Some ([], prev_d) -> (Frag.stub prev_d, prev_d)
   | _ -> (
-      let module P = Rio_core.Policy in
+      let module P = Rio_core.Pol in
       let arm ~pol_ty ~weights children =
         compile_arm ~fresh_v ~fresh_s ~pe_of_depth ~depth ~pol_ty ~weights
           ?splice children
@@ -152,7 +152,7 @@ and compile_arm ~fresh_v ~fresh_s ~pe_of_depth ~depth ~pol_ty ~weights ?splice
   let edges = List.map2 (fun s d -> (s, d)) child_steps child_decorated in
   (Frag.combine local child_frags, edges)
 
-let of_policy (p : Rio_core.Policy.t) : compiled =
+let of_policy (p : Rio_core.Pol.t) : compiled =
   let fresh_v = make_counter ~start:vpifo_start in
   let fresh_s = make_counter ~start:step_start in
   let frag, decorated =
@@ -503,7 +503,7 @@ let full_chain_to ~prev path =
    The decorated tree is not updated: PR 9 doesn't model super-nodes in
    [Decorated.t] (planner work, PR 10). [pes] is extended if [arm] reaches
    deeper than [prev]. *)
-let patch_designate ~prev ~path ~(arm : Rio_core.Policy.t) =
+let patch_designate ~prev ~path ~(arm : Rio_core.Pol.t) =
   let removed = Decorated.walk prev.decorated path in
   let loser_v = Decorated.root_vpifo removed in
   let fresh_v, fresh_s = counters_after prev in
@@ -562,8 +562,8 @@ let patch_undesignate ~prev ~path =
 (* Patch: top-level dispatch.                                         *)
 (* ------------------------------------------------------------------ *)
 
-let patch ~prev ~(next : Rio_core.Policy.t) : compiled option =
-  let open Rio_compare.Compare in
+let patch ~prev ~(next : Rio_core.Pol.t) : compiled option =
+  let open Rio_delta.Delta in
   match analyze (Decorated.to_policy prev.decorated) next with
   | Same -> Some { commit = []; decorated = prev.decorated; pes = prev.pes }
   | Replace { path = []; _ } -> Some (patch_whole_tree_replace ~prev ~next)

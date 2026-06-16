@@ -6,7 +6,7 @@ open Ir
 let prog_dir = "../progs/work_conserving/"
 
 let policy_of file =
-  prog_dir ^ file ^ ".sched" |> Parser.parse_file |> Policy.of_program
+  prog_dir ^ file ^ ".sched" |> Parser.parse_file |> Pol.of_program
 
 let compile file = Ir.of_policy (policy_of file)
 
@@ -289,9 +289,9 @@ let one_arm_replaced_wfq_tests =
       wfq_abc_to_abz_diff_expected;
   ]
 
-(* Whole-tree replacement (Compare returns [VeryDifferent []]). prev =
+(* Whole-tree replacement (Delta returns [VeryDifferent []]). prev =
    rr[A,B] (vpifos 100/101/102, steps 1000/1001); next = rr[D,E,F] which
-   shares no arms, so Compare gives up at the root. The patch builds the
+   shares no arms, so Delta gives up at the root. The patch builds the
    new rr[D,E,F] off fresh ids (root v=103 on PE 0, leaves 104/105/106
    on PE 1; steps 1002/1003/1004), [Designate]s the old root (100) with
    the new root (103) so the port root's single step drains old before
@@ -334,10 +334,10 @@ let rr_ab_to_rr_def_expected : commit =
     GC 102;
   ]
 
-(* Whole-tree replacement via constructor mismatch at the root (Compare
+(* Whole-tree replacement via constructor mismatch at the root (Delta
    returns [ArmReplaced { path = []; arm = RR[A,B] }]). prev =
    sp[A,B] (vpifos 100/101/102, steps 1000/1001); next = rr[A,B] —
-   same children, different root policy, so Compare can't ride the
+   same children, different root policy, so Delta can't ride the
    existing slots. Same handler as the [VeryDifferent []] case above:
    builds the new tree off fresh ids, [Designate]s, drains. The class
    sets coincide here so the port root's existing routing is preserved
@@ -514,13 +514,10 @@ let graft_tests =
    PE 2 (fresh, above prev's max PE 1). *)
 let one_arm_added_extends_pes_test =
   "sp[A] -> sp[A, rr[B,C]] (extends pes)" >:: fun _ ->
-  let prev = Ir.of_policy (Policy.SP ([ (Policy.FIFO "A", 1.0) ], false)) in
+  let prev = Ir.of_policy (Pol.SP ([ (Pol.FIFO "A", 1.0) ], false)) in
   let next =
-    Policy.SP
-      ( [
-          (Policy.FIFO "A", 1.0);
-          (Policy.RR [ Policy.FIFO "B"; Policy.FIFO "C" ], 2.0);
-        ],
+    Pol.SP
+      ( [ (Pol.FIFO "A", 1.0); (Pol.RR [ Pol.FIFO "B"; Pol.FIFO "C" ], 2.0) ],
         false )
   in
   let c =
@@ -560,7 +557,7 @@ let one_arm_added_extends_pes_test =
 let pes_extension_tests = [ one_arm_added_extends_pes_test ]
 
 (* Deep give-up: complex_tree -> complex_tree_swap_sp_arms differs only
-   inside the SP subtree at root child 1 (multi-arm reorder). Compare
+   inside the SP subtree at root child 1 (multi-arm reorder). Delta
    gives up at that level and emits [ArmReplaced { path = [1]; arm }];
    IR's existing ArmReplaced handler routes through [Designate] on the
    parent's existing step. Smoke-test that patch returns [Some] — the
@@ -577,7 +574,7 @@ let deep_giveup_test =
 let deep_giveup_tests = [ deep_giveup_test ]
 
 (* ------------------------------------------------------------------ *)
-(* Planner-only Compare productions: Designate / Quiesce / Undesignate.
+(* Planner-only Delta productions: Designate / Quiesce / Undesignate.
    [analyze] never emits these; the lowering helpers are called
    directly. Each test pins down the ISA shape so a future planner has a
    stable target.                                                     *)
@@ -591,7 +588,7 @@ let deep_giveup_tests = [ deep_giveup_test ]
 let designate_arm_test =
   "Designate: rr[A,B] gets D introduced at slot 1" >:: fun _ ->
   let prev = compile "rr_AB" in
-  let arm = Policy.FIFO "D" in
+  let arm = Pol.FIFO "D" in
   let c = Ir.patch_designate ~prev ~path:[ 1 ] ~arm in
   let expected : commit =
     [
@@ -613,7 +610,7 @@ let designate_arm_test =
 let designate_root_test =
   "Designate: rr[A,B] whole-tree against FIFO D" >:: fun _ ->
   let prev = compile "rr_AB" in
-  let arm = Policy.FIFO "D" in
+  let arm = Pol.FIFO "D" in
   let c = Ir.patch_designate ~prev ~path:[] ~arm in
   let expected : commit =
     [
@@ -685,7 +682,7 @@ let undesignate_root_test =
 let giveup_idiom_test =
   "give-up idiom: Designate ; Quiesce ; Undesignate at root" >:: fun _ ->
   let prev = compile "rr_AB" in
-  let arm = Policy.FIFO "D" in
+  let arm = Pol.FIFO "D" in
   let d = Ir.patch_designate ~prev ~path:[] ~arm in
   let q = Ir.patch_quiesce ~prev ~path:[] in
   let u = Ir.patch_undesignate ~prev ~path:[] in
