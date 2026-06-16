@@ -64,10 +64,11 @@ val patch : prev:compiled -> next:Rio_core.Pol.t -> compiled option
       for [WFQ]) of one slot (per [ChangeMeta]): returns [Some] with a single
       [Set_arm_meta] instruction for the affected slot.
     - [next] removes exactly one arm at any position of a [RR] or [SP] parent
-      (per [Delta.Remove]): returns [Some] with the [Change_arity], [Unmap],
-      [Deassoc], [Emancipate], and [GC] instructions needed to detach the arm
-      and clean up routing state cached on its ancestor chain. Existing SP
-      siblings keep their ranks.
+      (planner expands this as the [Retire] idiom
+      [Quiesce(p) ; (Empty p) Remove(p, arm)], recognized by [patch]): returns
+      [Some] with the [Change_arity], [Unmap], [Deassoc], [Emancipate], and [GC]
+      instructions needed to detach the arm and clean up routing state cached on
+      its ancestor chain. Existing SP siblings keep their ranks.
     - [next] swaps in a different subtree at exactly one position (planner
       expands this as a [Designate ; Quiesce ; Undesignate] give-up sequence,
       recognized by [patch]): returns [Some] with the new arm's

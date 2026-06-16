@@ -34,6 +34,14 @@ let giveup_seq ?meta path arm =
   | Some m ->
       base @ [ (Planner.Empty path, Delta.ChangeMeta { path; new_meta = m }) ]
 
+(* The planner's [Retire] idiom: drain the subtree at [path], then structurally
+   remove the [arm] once the subtree is empty. *)
+let retire_seq path arm =
+  [
+    (Planner.True, Delta.Quiesce path);
+    (Planner.Empty path, Delta.Remove { path; arm });
+  ]
+
 (* Sniffer-emitted give-up: walks [next] at [path] to recover the wholesale
    replacement arm. *)
 let make_giveup_test name file1 file2 path =
@@ -111,12 +119,12 @@ let one_arm_added_wfq =
 let armsremoved =
   [
     make_planner_test "RR with arm removed" "rr_ABC" "rr_AB"
-      [ (Planner.True, Delta.Remove { path = [ 2 ]; arm = Pol.FIFO "C" }) ];
+      (retire_seq [ 2 ] (Pol.FIFO "C"));
     make_planner_test "WFQ with arm removed" "wfq_ABC" "wfq_BA"
-      [ (Planner.True, Delta.Remove { path = [ 2 ]; arm = Pol.FIFO "C" }) ];
+      (retire_seq [ 2 ] (Pol.FIFO "C"));
     make_planner_test "complex tree remove arm deep" "complex_tree_add_arm_deep"
       "complex_tree"
-      [ (Planner.True, Delta.Remove { path = [ 1; 3 ]; arm = Pol.FIFO "NEW" }) ];
+      (retire_seq [ 1; 3 ] (Pol.FIFO "NEW"));
   ]
 
 let metachanged =

@@ -94,6 +94,12 @@ let give_up_seq ~next ?meta () =
   | Some m ->
       base @ [ (Empty [], Delta.ChangeMeta { path = []; new_meta = m }) ]
 
+(* The paper's [Retire] idiom: quiesce the subtree at the current level, then
+   structurally remove its arm once it has drained. Paths are emitted as [[]]
+   at this level; [prepend_seq] pins them when the sequence bubbles up. *)
+let retire ~arm () =
+  [ (True, Delta.Quiesce []); (Empty [], Delta.Remove { path = []; arm }) ]
+
 (* Recognize the inner-give-up shape (pre-bubble-up). Used by the metaed
    comparator to gate "slot-replace-with-meta" rewrites. *)
 let is_giveup_root = function
@@ -166,7 +172,7 @@ let rec compare_children ~next:p2 ps1 ps2 =
       end
   | 1 ->
       begin match single_insertion ps2 ps1 with
-      | Some (i, arm) -> [ (True, Delta.Remove { path = [ i ]; arm }) ]
+      | Some (i, arm) -> prepend_seq i (retire ~arm ())
       | None -> give_up
       end
   | _ -> failwith "Can't get here"
@@ -211,7 +217,7 @@ and compare_metaed_children ~next:p2 pms1 pms2 =
       end
   | 1 ->
       begin match single_insertion_lockstep ps2 ps1 ms2 ms1 with
-      | Some (i, arm, _) -> [ (True, Delta.Remove { path = [ i ]; arm }) ]
+      | Some (i, arm, _) -> prepend_seq i (retire ~arm ())
       | None -> give_up
       end
   | _ -> failwith "Can't get here"

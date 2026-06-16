@@ -21,5 +21,10 @@ val analyze : Rio_core.Pol.t -> Rio_core.Pol.t -> t
     multi-arm divergences) expand into the paper's give-up idiom
     [Designate ; Quiesce ; Undesignate] sequence at the affected slot. *)
 
+val retire : arm:Rio_core.Pol.t -> unit -> t
+(** The paper's [Retire] idiom: [Quiesce(p) ; (Empty p) Remove(p, arm)]. Emitted
+    with [path = []] at the local level; the caller prepends the target index
+    via [prepend_seq]. *)
+
 val to_string : t -> string
 (** Test-output formatter. *)

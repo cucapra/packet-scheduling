@@ -566,13 +566,15 @@ let patch_undesignate ~prev ~path =
 
 (* [Ir.patch] dispatches on the shape of [Planner.analyze]'s guarded sequence.
    Length-1 sequences with [True] guards are the per-production single-edit
-   cases. The Replace idiom arrives as a length-3 [Designate ; Quiesce ;
-   Undesignate] sequence (or length-4 with a trailing [ChangeMeta] when the
-   slot's per-arm meta also changes); we recognize that shape and lower it
-   monolithically through [patch_one_arm_replaced] / [patch_whole_tree_replace]
-   to keep decorated-tree threading simple. Standalone atomic [Designate],
-   [Quiesce], [Undesignate] productions are reachable only through the
-   per-helper entry points [patch_designate] etc., not through [patch]. *)
+   cases. The Retire idiom arrives as a length-2 [Quiesce ; Remove] sequence
+   and lowers through [patch_one_arm_removed]. The Replace idiom arrives as a
+   length-3 [Designate ; Quiesce ; Undesignate] sequence (or length-4 with a
+   trailing [ChangeMeta] when the slot's per-arm meta also changes); we
+   recognize that shape and lower it monolithically through
+   [patch_one_arm_replaced] / [patch_whole_tree_replace] to keep decorated-tree
+   threading simple. Standalone atomic [Designate], [Quiesce], [Undesignate]
+   productions are reachable only through the per-helper entry points
+   [patch_designate] etc., not through [patch]. *)
 let patch ~prev ~(next : Rio_core.Pol.t) : compiled option =
   let module D = Rio_delta.Delta in
   let module P = Rio_planner.Planner in
@@ -581,8 +583,9 @@ let patch ~prev ~(next : Rio_core.Pol.t) : compiled option =
   | [] -> Some { commit = []; decorated = prev.decorated; pes = prev.pes }
   | [ (P.True, D.Add { path; arm; meta }) ] ->
       Some (patch_one_arm_added ~prev ~arm_path:path ~arm ~meta)
-  | [ (P.True, D.Remove { path; arm = _ }) ] ->
-      Some (patch_one_arm_removed ~prev ~arm_path:path)
+  | [ (P.True, D.Quiesce pq); (P.Empty pr1, D.Remove { path = pr2; arm = _ }) ]
+    when pq = pr1 && pr1 = pr2 ->
+      Some (patch_one_arm_removed ~prev ~arm_path:pq)
   | [ (P.True, D.ChangeMeta { path; new_meta }) ] ->
       Some (patch_meta_changed ~prev ~path ~new_meta)
   | [ (P.True, D.Graft path) ] ->
