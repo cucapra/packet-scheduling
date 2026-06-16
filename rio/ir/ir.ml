@@ -444,11 +444,19 @@ let patch_super_pol ~prev ~next ~path =
       ~splice:(path, prev.decorated) next
   in
   let old_real_root_v = Decorated.root_vpifo prev.decorated in
+  let prev_classes = Decorated.subtree_classes prev.decorated in
+  let only_added =
+    List.filter
+      (fun c -> not (List.mem c prev_classes))
+      (Decorated.subtree_classes decorated)
+  in
   let rewire =
     [
       Emancipate (fake_root_step, fake_root_v, old_real_root_v);
       Adopt (fake_root_step, fake_root_v, frag.root_v);
     ]
+    @ chain_emit (fun v _ c -> Assoc (v, c)) fake_chain only_added
+    @ chain_emit (fun v s c -> Map (v, c, s)) fake_chain only_added
   in
   { commit = Frag.to_commit frag @ rewire; decorated; pes = new_pes }
 

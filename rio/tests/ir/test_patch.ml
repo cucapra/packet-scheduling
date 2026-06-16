@@ -406,8 +406,11 @@ let sub_pol_tests =
    (prev's root v=100), 1010 (RR). Each ancestor [Assoc]/[Map]s every
    class in its subtree; WFQ weights mirror the (pol, weight) sort
    order: 3, 1, 2. Final [Emancipate]/[Adopt] on the fake root swings its
-   single step from prev's old real root v100 to the new top v104. None of
-   prev's vpifos are respawned. *)
+   single step from prev's old real root v100 to the new top v104, and the
+   fake root gains [Assoc]/[Map] entries on its single step for the five
+   classes that [complex_tree] adds beyond [strict_ABC] (G, H, D, E, F in
+   the normalized preorder); the three carried-over classes (A, B, C) keep
+   their existing fake-root wiring. None of prev's vpifos are respawned. *)
 let strict_abc_to_complex_tree_expected : commit =
   [
     Spawn (104, 2);
@@ -465,6 +468,16 @@ let strict_abc_to_complex_tree_expected : commit =
     Change_weight (104, 1010, 2.0);
     Emancipate (999, 99, 100);
     Adopt (999, 99, 104);
+    Assoc (99, "G");
+    Assoc (99, "H");
+    Assoc (99, "D");
+    Assoc (99, "E");
+    Assoc (99, "F");
+    Map (99, "G", 999);
+    Map (99, "H", 999);
+    Map (99, "D", 999);
+    Map (99, "E", 999);
+    Map (99, "F", 999);
   ]
 
 let super_pol_tests =
