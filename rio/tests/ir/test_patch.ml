@@ -68,20 +68,20 @@ let rr_ab_to_abc_expected : commit =
   ]
 
 (* Deep arm add. complex_tree's normalized root is WFQ with children sorted
-   to (UNION, SP, RR) at indices 0, 1, 2. The inner RR (at path [2]) has
-   parent vpifo 108 and arity 3; complex_tree leaves the counters at
+   to (SP, RR[D,E,F], RR[G,H]) at indices 0, 1, 2. The mid RR (at path [1])
+   has parent vpifo 105 and arity 3; complex_tree leaves the counters at
    next_vpifo=112, next_step=1011. New FIFO NEW lives one level below the
    RR, so PE 2. *)
 let complex_tree_add_deep_expected : commit =
   [
     Spawn (112, 2);
-    Adopt (1011, 108, 112);
+    Adopt (1011, 105, 112);
     Assoc (100, "NEW");
-    Assoc (108, "NEW");
+    Assoc (105, "NEW");
     Assoc (112, "NEW");
-    Map (100, "NEW", 1010);
-    Map (108, "NEW", 1011);
-    Change_arity (108, 4);
+    Map (100, "NEW", 1009);
+    Map (105, "NEW", 1011);
+    Change_arity (105, 4);
   ]
 
 let one_arm_added_tests =
@@ -113,16 +113,16 @@ let wfq_ba_to_abc_expected : commit =
     Set_arm_meta (100, 1002, 3.0);
   ]
 
-(* complex_tree_partial: WFQ at root with two children — UNION[G,H] (weight 3)
-   and SP[A,B,C] (weight 1). After normalize: pairs sort by variant tag
-   (UNION < SP), giving children at indices 0, 1.
-     v=100 root WFQ; v=101 UNION; v=102 G; v=103 H; v=104 SP; v=105/106/107
-     A/B/C. Steps: 1000 (root→UNION), 1001/1002 (UNION→G/H), 1003
-     (root→SP), 1004/1005/1006 (SP→A/B/C). pes=[0;1;2].
-   Patch adds the RR[D,E,F] subtree with weight 2 at slot 2: arm internals
-   land on v=108 (RR, PE 1) plus 109/110/111 (D/E/F, PE 2); arm-internal
-   adopts on steps 1007/1008/1009. The new parent→child step is 1010, with
-   Set_arm_meta(100, 1010, 2.0). *)
+(* complex_tree_partial: WFQ at root with two children, SP[A,B,C] (weight 1)
+   and RR[G,H] (weight 3). After normalize: pairs sort by arm; SP < RR by
+   constructor tag, giving children at indices 0, 1.
+     v=100 root WFQ; v=101 SP; v=102/103/104 A/B/C; v=105 RR[G,H];
+     v=106/107 G/H. Steps: 1000/1001/1002 (SP -> A/B/C), 1003/1004
+     (RR-GH -> G/H), 1005 (root -> SP), 1006 (root -> RR-GH). pes=[0;1;2].
+   Patch adds the RR[D,E,F] subtree with weight 2 at slot 1 (between SP and
+   RR-GH after normalize): arm internals land on v=108 (RR, PE 1) plus
+   109/110/111 (D/E/F, PE 2); arm-internal adopts on steps 1007/1008/1009.
+   The new parent-to-child step is 1010, with Set_arm_meta(100, 1010, 2.0). *)
 let complex_tree_partial_to_full_expected : commit =
   [
     Spawn (108, 1);
@@ -291,9 +291,9 @@ let one_arm_replaced_wfq_tests =
    shares no arms, so Compare gives up at the root. The patch builds the
    new rr[D,E,F] off fresh ids (root v=103 on PE 0, leaves 104/105/106
    on PE 1; steps 1002/1003/1004), [Designate]s the old root (100) with
-   the new root (103) so the fake root's single step drains old before
-   servicing new, and rewrites the fake root's classifier from
-   {A,B} → {D,E,F} all riding on [fake_root_step]. GCs cover every prev
+   the new root (103) so the port root's single step drains old before
+   servicing new, and rewrites the port root's classifier from
+   {A,B} → {D,E,F} all riding on [port_root_step]. GCs cover every prev
    vpifo. *)
 let rr_ab_to_rr_def_expected : commit =
   [
@@ -337,7 +337,7 @@ let rr_ab_to_rr_def_expected : commit =
    same children, different root policy, so Compare can't ride the
    existing slots. Same handler as the [VeryDifferent []] case above:
    builds the new tree off fresh ids, [Designate]s, drains. The class
-   sets coincide here so the fake root's existing routing is preserved
+   sets coincide here so the port root's existing routing is preserved
    and no {Unmap,Deassoc,Assoc,Map} land on it. *)
 let strict_ab_to_rr_ab_expected : commit =
   [
@@ -368,17 +368,17 @@ let whole_tree_replace_tests =
       "strict_AB" "rr_AB" strict_ab_to_rr_ab_expected;
   ]
 
-(* SubPol *)
+(* ChangeRoot *)
 
 (* SP[A, B, C] -> FIFO A. The FIFO leaf already lives inside prev as v101,
-   adopted via step_1000 from the root v100. Re-rooting detaches v101 from
-   its prev parent, then swings the fake root's single step from v100 to
-   v101 via [Emancipate]/[Adopt]. The dropped classes B and C are
-   [Unmap]/[Deassoc]'d off the fake root, and the SP root v100 along with
-   v102/v103 are GC'd. *)
+   adopted via step_1000 from the root v100. Re-rooting swings the port
+   root's single step from v100 to v101 via [Emancipate]/[Adopt]; no
+   [Emancipate] is emitted for v101's old parent edge because v100 is
+   among the GC'd nodes, which severs the edge. The dropped classes B and
+   C are [Unmap]/[Deassoc]'d off the port root, and the SP root v100 along
+   with v102/v103 are GC'd. *)
 let strict_abc_to_fifo_a_expected : commit =
   [
-    Emancipate (1000, 100, 101);
     Emancipate (999, 99, 100);
     Adopt (999, 99, 101);
     Unmap (99, "B", 999);
@@ -390,102 +390,103 @@ let strict_abc_to_fifo_a_expected : commit =
     GC 103;
   ]
 
-let sub_pol_tests =
+let change_root_tests =
   [
     make_delta_test "strict[A,B,C] -> fifo[A]" "strict_ABC" "fifo_A"
       strict_abc_to_fifo_a_expected;
   ]
 
-(* SuperPol *)
+(* Graft *)
 
 (* prev = strict[A,B,C] compiles to vpifos 100 (root)/101/102/103 with
    adopt steps 1000/1001/1002 and pes [0; 1]; counters end at next_v=104,
    next_s=1003. complex_tree normalizes to
-   wfq[(union[G,H], 3); (sp[A,B,C], 1); (rr[D,E,F], 2)] (children sort by
-   variant tag UNION < SP < RR), so prev sits at path [1]. The delta
-   builds the new WFQ root (v=104, PE 2 — fresh, above prev's max PE 1),
-   the UNION sibling (v=105 on PE 0, leaves v=106/107 on PE 1, internal
-   adopt steps 1003/1004) and the RR sibling (v=108 on PE 0, leaves
-   v=109/110/111 on PE 1, internal adopt steps 1005/1006/1007), then
-   [Adopt]s the WFQ root's three children via steps 1008 (UNION), 1009
-   (prev's root v=100), 1010 (RR). Each ancestor [Assoc]/[Map]s every
-   class in its subtree; WFQ weights mirror the (pol, weight) sort
-   order: 3, 1, 2. Final [Emancipate]/[Adopt] on the fake root swings its
-   single step from prev's old real root v100 to the new top v104, and the
-   fake root gains [Assoc]/[Map] entries on its single step for the five
-   classes that [complex_tree] adds beyond [strict_ABC] (G, H, D, E, F in
-   the normalized preorder); the three carried-over classes (A, B, C) keep
-   their existing fake-root wiring. None of prev's vpifos are respawned. *)
+   wfq[(sp[A,B,C], 1); (rr[D,E,F], 2); (rr[G,H], 3)] (children sort by
+   constructor tag SP < RR, and rr[D,E,F] < rr[G,H] by element compare),
+   so prev sits at path [0]. The delta builds the new WFQ root (v=104,
+   PE 2; fresh, above prev's max PE 1), the RR[D,E,F] sibling (v=105 on
+   PE 0, leaves v=106/107/108 on PE 1, internal adopt steps 1003/1004/1005)
+   and the RR[G,H] sibling (v=109 on PE 0, leaves v=110/111 on PE 1,
+   internal adopt steps 1006/1007), then [Adopt]s the WFQ root's three
+   children via steps 1008 (prev's root v=100), 1009 (RR-DEF), 1010
+   (RR-GH). Each ancestor [Assoc]/[Map]s every class in its subtree; WFQ
+   weights mirror the (pol, weight) sort order: 1, 2, 3. Final
+   [Emancipate]/[Adopt] on the port root swings its single step from
+   prev's old real root v100 to the new top v104, and the port root gains
+   [Assoc]/[Map] entries on its single step for the five classes that
+   [complex_tree] adds beyond [strict_ABC] (D, E, F, G, H in the
+   normalized preorder); the three carried-over classes (A, B, C) keep
+   their existing port-root wiring. None of prev's vpifos are respawned. *)
 let strict_abc_to_complex_tree_expected : commit =
   [
     Spawn (104, 2);
     Spawn (105, 0);
     Spawn (106, 1);
     Spawn (107, 1);
-    Spawn (108, 0);
-    Spawn (109, 1);
+    Spawn (108, 1);
+    Spawn (109, 0);
     Spawn (110, 1);
     Spawn (111, 1);
-    Adopt (1008, 104, 105);
-    Adopt (1009, 104, 100);
-    Adopt (1010, 104, 108);
+    Adopt (1008, 104, 100);
+    Adopt (1009, 104, 105);
+    Adopt (1010, 104, 109);
     Adopt (1003, 105, 106);
     Adopt (1004, 105, 107);
-    Adopt (1005, 108, 109);
-    Adopt (1006, 108, 110);
-    Adopt (1007, 108, 111);
-    Assoc (104, "G");
-    Assoc (104, "H");
+    Adopt (1005, 105, 108);
+    Adopt (1006, 109, 110);
+    Adopt (1007, 109, 111);
     Assoc (104, "A");
     Assoc (104, "B");
     Assoc (104, "C");
     Assoc (104, "D");
     Assoc (104, "E");
     Assoc (104, "F");
-    Assoc (105, "G");
-    Assoc (105, "H");
-    Assoc (106, "G");
-    Assoc (107, "H");
-    Assoc (108, "D");
-    Assoc (108, "E");
+    Assoc (104, "G");
+    Assoc (104, "H");
+    Assoc (105, "D");
+    Assoc (105, "E");
+    Assoc (105, "F");
+    Assoc (106, "D");
+    Assoc (107, "E");
     Assoc (108, "F");
-    Assoc (109, "D");
-    Assoc (110, "E");
-    Assoc (111, "F");
-    Map (104, "G", 1008);
-    Map (104, "H", 1008);
-    Map (104, "A", 1009);
-    Map (104, "B", 1009);
-    Map (104, "C", 1009);
-    Map (104, "D", 1010);
-    Map (104, "E", 1010);
-    Map (104, "F", 1010);
-    Map (105, "G", 1003);
-    Map (105, "H", 1004);
-    Map (108, "D", 1005);
-    Map (108, "E", 1006);
-    Map (108, "F", 1007);
+    Assoc (109, "G");
+    Assoc (109, "H");
+    Assoc (110, "G");
+    Assoc (111, "H");
+    Map (104, "A", 1008);
+    Map (104, "B", 1008);
+    Map (104, "C", 1008);
+    Map (104, "D", 1009);
+    Map (104, "E", 1009);
+    Map (104, "F", 1009);
+    Map (104, "G", 1010);
+    Map (104, "H", 1010);
+    Map (105, "D", 1003);
+    Map (105, "E", 1004);
+    Map (105, "F", 1005);
+    Map (109, "G", 1006);
+    Map (109, "H", 1007);
     Set_policy (104, WFQ, 3);
-    Set_policy (105, UNION, 2);
-    Set_policy (108, RR, 3);
-    Set_arm_meta (104, 1008, 3.0);
-    Set_arm_meta (104, 1009, 1.0);
-    Set_arm_meta (104, 1010, 2.0);
+    Set_policy (105, RR, 3);
+    Set_policy (109, RR, 2);
+    Set_arm_meta (104, 1008, 1.0);
+    Set_arm_meta (104, 1009, 2.0);
+    Set_arm_meta (104, 1010, 3.0);
     Emancipate (999, 99, 100);
     Adopt (999, 99, 104);
-    Assoc (99, "G");
-    Assoc (99, "H");
     Assoc (99, "D");
     Assoc (99, "E");
     Assoc (99, "F");
-    Map (99, "G", 999);
-    Map (99, "H", 999);
+    Assoc (99, "G");
+    Assoc (99, "H");
     Map (99, "D", 999);
     Map (99, "E", 999);
     Map (99, "F", 999);
+    Map (99, "G", 999);
+    Map (99, "H", 999);
   ]
 
-let super_pol_tests =
+let graft_tests =
   [
     ( "strict[A,B,C] -> complex_tree (pes invariant)" >:: fun _ ->
       let c = patch_files "strict_ABC" "complex_tree" in
@@ -572,7 +573,8 @@ let suite =
   "patch tests"
   >::: one_arm_added_tests @ one_arm_added_wfq_tests @ weight_changed_tests
        @ one_arm_removed_tests @ one_arm_replaced_tests
-       @ one_arm_replaced_wfq_tests @ whole_tree_replace_tests @ sub_pol_tests
-       @ super_pol_tests @ pes_extension_tests @ deep_giveup_tests
+       @ one_arm_replaced_wfq_tests @ whole_tree_replace_tests
+       @ change_root_tests @ graft_tests @ pes_extension_tests
+       @ deep_giveup_tests
 
 let () = run_test_tt_main suite

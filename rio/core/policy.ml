@@ -1,6 +1,5 @@
 type t =
   | FIFO of Ast.clss
-  | UNION of t list
   | SP of t list
   | RR of t list
   | WFQ of t list * float list
@@ -16,20 +15,18 @@ let rec lookup x = function
 
 let rec sub cl st used (p : Ast.stream) =
   let sub_ps = List.map (sub cl st used) in
-  let rec sub_set wrap = function
-    | Ast.Class c ->
-        if List.mem c !used then raise (DuplicateClass c)
-        else if not (List.mem c cl) then raise (UndeclaredClass c)
-        else (
-          used := c :: !used;
-          wrap c)
-    | Ast.Union sets -> UNION (sets |> List.map (sub_set wrap))
+  let claim c =
+    if List.mem c !used then raise (DuplicateClass c)
+    else if not (List.mem c cl) then raise (UndeclaredClass c)
+    else used := c :: !used
   in
   match p with
   | Var x ->
       let p, st = lookup x st in
       sub cl st used p
-  | Fifo s -> sub_set (fun c -> FIFO c) s
+  | Fifo c ->
+      claim c;
+      FIFO c
   | Strict ps -> SP (sub_ps ps)
   | RoundRobin ps -> RR (sub_ps ps)
   | WeightedFair pws ->
@@ -40,7 +37,6 @@ let rec sub cl st used (p : Ast.stream) =
 let rec normalize p =
   match p with
   | FIFO _ -> p
-  | UNION ps -> UNION (List.map normalize ps |> List.sort compare)
   | SP ps -> SP (List.map normalize ps)
   | RR ps -> RR (List.map normalize ps |> List.sort compare)
   | WFQ (ps, ws) ->
@@ -64,7 +60,6 @@ let rec to_string p =
   let join lst to_string = lst |> List.map to_string |> String.concat ", " in
   match p with
   | FIFO c -> fmt "fifo[%s]" c
-  | UNION ps -> fmt "union[%s]" (join ps to_string)
   | SP ps -> fmt "strict[%s]" (join ps to_string)
   | RR ps -> fmt "rr[%s]" (join ps to_string)
   | WFQ (ps, ws) ->
@@ -76,5 +71,4 @@ let rec walk p path =
   match (p, path) with
   | _, [] -> p
   | FIFO _, _ :: _ -> failwith "Policy.walk: path through FIFO leaf"
-  | (UNION ps | SP ps | RR ps | WFQ (ps, _)), i :: rest ->
-      walk (List.nth ps i) rest
+  | (SP ps | RR ps | WFQ (ps, _)), i :: rest -> walk (List.nth ps i) rest

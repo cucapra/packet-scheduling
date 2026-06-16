@@ -64,7 +64,7 @@ let expected_rr_ab_handwritten =
     ]
 
 (* Pretty-print of what [Ir.of_policy] actually emits for rr[A, B]: the
-   real tree above plus the fake root [v99] on PE -1 wrapping it. *)
+   real tree above plus the port root [v99] on PE -1 wrapping it. *)
 let expected_rr_ab_compiled =
   String.concat "\n"
     [
@@ -85,7 +85,7 @@ let expected_rr_ab_compiled =
       "map(v99, B, step_999)";
       "map(v100, A, step_1000)";
       "map(v100, B, step_1001)";
-      "set_policy(v99, UNION, 1)";
+      "set_policy(v99, RR, 1)";
       "set_policy(v100, RR, 2)";
     ]
 

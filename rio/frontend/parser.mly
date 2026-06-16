@@ -42,7 +42,6 @@
 %token RPAREN
 %token RETURN
 %token CLASSES
-%token UNION
 %token COMMA
 %token SEMICOLON
 %token EOF
@@ -67,20 +66,12 @@
 
 %%
 
-set:
-    | CLSS                                              { Class($1) }
-    | UNION LBRACKET; pl = setlist; RBRACKET            { Union pl }
-
 /* Policies */
 policy:
-    | FIFO LBRACKET; pl = setlist; RBRACKET {
-    match pl with
-    | [s] -> Fifo s
-    | _   -> Fifo (Union pl)
-  }
-    | EDF LBRACKET; pl = set; RBRACKET                  { EarliestDeadline pl }
-    | SJN LBRACKET; pl = set; RBRACKET                  { ShortestJobNext pl }
-    | SRTF LBRACKET; pl = set; RBRACKET                 { ShortestRemaining pl }
+    | FIFO LBRACKET; c = CLSS; RBRACKET                 { Fifo c }
+    | EDF LBRACKET; c = CLSS; RBRACKET                  { EarliestDeadline c }
+    | SJN LBRACKET; c = CLSS; RBRACKET                  { ShortestJobNext c }
+    | SRTF LBRACKET; c = CLSS; RBRACKET                 { ShortestRemaining c }
     | RR LBRACKET; pl = arglist; RBRACKET               { RoundRobin pl }
     | STRICT LBRACKET; pl = arglist; RBRACKET           { Strict pl }
     | WFQ LBRACKET; pl = weighted_arglist; RBRACKET     { WeightedFair pl }
@@ -101,13 +92,9 @@ policy:
         WIDTH EQUALS; t = INT; RBRACKET                 { StopAndGo (pl, t) }
 
     | VAR                                               { Var($1) }
-    /* Allow bare class names as shorthand for FIFO(Class(...)) */
-    | CLSS                                              { Fifo (Class($1)) }
-    /* Allow bare union[...] as shorthand for FIFO(Union(...)) */
-    | UNION LBRACKET; pl = setlist; RBRACKET            { Fifo (Union pl) }
+    /* Allow bare class names as shorthand for FIFO(c). */
+    | CLSS                                              { Fifo $1 }
 
-setlist:
-    | pl = separated_list(COMMA, set)               { pl }
 arglist:
     | pl = separated_list(COMMA, policy)            { pl }
 weighted_arglist:

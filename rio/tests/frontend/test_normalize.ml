@@ -20,8 +20,6 @@ let normalize_tests =
     make_test "unused class is dropped" "drop_class" (fifo "A");
     (* fifo[A] is already in normal form. *)
     make_test "fifo[A] is stable" "fifo_A" (fifo "A");
-    (* union[G, H] resolves to a UNION of leaves. *)
-    make_test "union[G, H]" "union_GH" (Policy.UNION [ fifo "G"; fifo "H" ]);
     (* strict[B, A]: SP children keep their written order. *)
     make_test "strict preserves arm order" "strict_BA"
       (Policy.SP [ fifo "B"; fifo "A" ]);
@@ -31,16 +29,17 @@ let normalize_tests =
     (* wfq[(B, 1), (A, 2)]: slots sort by arm, weights ride along. *)
     make_test "wfq sorts slots, weights follow" "wfq_BA"
       (Policy.WFQ ([ fifo "A"; fifo "B" ], [ 2.0; 1.0 ]));
-    (* A nested tree: RR/UNION children sort, SP children don't, and the
-       WFQ slots sort by arm (UNION < SP < RR by constructor order). *)
+    (* A nested tree: RR children sort, SP children don't, and the WFQ
+       slots sort by arm (SP < RR by constructor order; two RRs then sort
+       by their normalized contents). *)
     make_test "complex tree" "complex_tree"
       (Policy.WFQ
          ( [
-             Policy.UNION [ fifo "G"; fifo "H" ];
              Policy.SP [ fifo "A"; fifo "B"; fifo "C" ];
              Policy.RR [ fifo "D"; fifo "E"; fifo "F" ];
+             Policy.RR [ fifo "G"; fifo "H" ];
            ],
-           [ 3.0; 1.0; 2.0 ] ));
+           [ 1.0; 2.0; 3.0 ] ));
   ]
 
 let suite = "normalization tests" >::: normalize_tests

@@ -12,7 +12,6 @@ include module type of Instr
 module Decorated : sig
   type t =
     | FIFO of vpifo * clss
-    | UNION of vpifo * (step * t) list
     | SP of vpifo * (step * t) list
     | RR of vpifo * (step * t) list
     | WFQ of vpifo * (step * t * float) list
@@ -34,16 +33,16 @@ type compiled = {
       incoming policy without storing a separate [Rio_core.Policy.t].
     - [pes]: the PE assignment, indexed by depth. Every node at depth [d] lives
       on PE [List.nth pes d]. A fresh [of_policy] produces a very boring [pes]:
-      [[0; 1; …; max_depth]]. But [patch] (notably [SuperPol]) may introduce
+      [[0; 1; …; max_depth]]. But [patch] (notably [Graft]) may introduce
       non-contiguous PEs to honor the "same depth ⇒ same PE" invariant without
       re-spawning previously installed nodes. *)
 
 val of_policy : Rio_core.Policy.t -> compiled
-(** Compile a [Rio_core.Policy.t] to IR. Supports trees built from [FIFO],
-    [UNION], [RR], [SP], and [WFQ]. Each node at depth [d] is placed on PE [d] —
-    so all siblings (and cousins) share a PE. Builds the decorated source tree
-    alongside the instruction commit; a follow-up [patch] can derive the
-    next-free IDs by walking [decorated]. *)
+(** Compile a [Rio_core.Policy.t] to IR. Supports trees built from [FIFO], [RR],
+    [SP], and [WFQ]. Each node at depth [d] is placed on PE [d]; so all siblings
+    (and cousins) share a PE. Builds the decorated source tree alongside the
+    instruction commit; a follow-up [patch] can derive the next-free IDs by
+    walking [decorated]. *)
 
 val patch : prev:compiled -> next:Rio_core.Policy.t -> compiled option
 (** Incrementally extend [prev] to handle policy [next], returning the IR delta.
@@ -53,8 +52,8 @@ val patch : prev:compiled -> next:Rio_core.Policy.t -> compiled option
     this scope. The supported transitions are:
     - [next] is structurally equal to [prev]'s policy: returns [Some] with an
       empty [commit].
-    - [next] adds exactly one arm at any position of a [UNION], [RR], or [SP]
-      parent (per [ArmAdded]): returns [Some] with the
+    - [next] adds exactly one arm at any position of a [RR] or [SP] parent (per
+      [ArmAdded]): returns [Some] with the
       [Spawn]/[Adopt]/[Assoc]/[Map]/[Change_arity] (and [Set_arm_meta] for [SP],
       both for the new arm and for any existing arms whose positional priority
       shifts) instructions needed to splice the new arm in. The parent's policy
@@ -62,11 +61,11 @@ val patch : prev:compiled -> next:Rio_core.Policy.t -> compiled option
     - [next] differs from [prev] only in the weight of one [WFQ] arm (per
       [WeightChanged]): returns [Some] with a single [Set_arm_meta] instruction
       for the affected slot.
-    - [next] removes exactly one arm at any position of a [UNION], [RR], or [SP]
-      parent (per [ArmRemoved]): returns [Some] with the [Set_arm_meta] (only
-      for [SP] siblings whose positional priority shifts down), [Change_arity],
-      [Unmap], [Deassoc], [Emancipate], and [GC] instructions needed to detach
-      the arm and clean up routing state cached on its ancestor chain.
+    - [next] removes exactly one arm at any position of a [RR] or [SP] parent
+      (per [ArmRemoved]): returns [Some] with the [Set_arm_meta] (only for [SP]
+      siblings whose positional priority shifts down), [Change_arity], [Unmap],
+      [Deassoc], [Emancipate], and [GC] instructions needed to detach the arm
+      and clean up routing state cached on its ancestor chain.
     - [next] swaps in a different subtree at exactly one position (per
       [ArmReplaced]): returns [Some] with the new arm's
       [Spawn]/[Adopt]/[Assoc]/[Map]/[Set_policy]/[Set_arm_meta] instructions, a
@@ -77,18 +76,20 @@ val patch : prev:compiled -> next:Rio_core.Policy.t -> compiled option
       old root that collapses the super-node and releases its PE slot, and a
       [GC] per remaining node of the displaced subtree.
     - [next] is structurally equal to a strict subtree of [prev] at a non-empty
-      path (per [SubPol]): returns [Some] with an [Emancipate] detaching that
-      subtree from its parent, a second [Emancipate]/[Adopt] pair on the fake
-      root that re-points its single step from [prev]'s old real root to the new
-      one, [Unmap]/[Deassoc] entries on the fake root for any classes that no
-      longer apply, and one [GC] per displaced node so the surrounding structure
-      is collected. The whole-tree case ([path = []]) returns [None].
+      path (per [ChangeRoot]): returns [Some] with an [Emancipate]/[Adopt] pair
+      on the port root that re-points its single step from [prev]'s old real
+      root to the new one, [Unmap]/[Deassoc] entries on the port root for any
+      classes that no longer apply, and one [GC] per displaced node so the
+      surrounding structure is collected. No [Emancipate] from the surviving
+      subtree's old parent is emitted: the parent itself is among the [GC]'d
+      nodes, which severs the edge. The whole-tree case ([path = []]) returns
+      [None].
     - [prev]'s policy appears as a strict subtree of [next] at a non-empty path
-      (per [SuperPol]): returns [Some] with the
+      (per [Graft]): returns [Some] with the
       [Spawn]/[Adopt]/[Assoc]/[Map]/[Set_policy]/[Set_arm_meta] instructions for
       the new structure surrounding [prev], a single [Adopt] that grafts
       [prev]'s existing root in at the splice point, and an [Emancipate]/
-      [Adopt] pair that repoints the fake root's single step from [prev]'s old
+      [Adopt] pair that repoints the port root's single step from [prev]'s old
       real root to [next]'s new top. [prev]'s in-flight nodes are not respawned.
       The whole-tree case ([path = []]) returns [None]. *)
 

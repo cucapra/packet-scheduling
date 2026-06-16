@@ -6,7 +6,6 @@ open Instr
 
 type t =
   | FIFO of vpifo * clss
-  | UNION of vpifo * (step * t) list
   | SP of vpifo * (step * t) list
   | RR of vpifo * (step * t) list
   | WFQ of vpifo * (step * t * float) list
@@ -30,12 +29,11 @@ let list_insert_at i x xs =
 
 (* The vPIFO at the root of [d]. *)
 let root_vpifo = function
-  | FIFO (v, _) | UNION (v, _) | SP (v, _) | RR (v, _) | WFQ (v, _) -> v
+  | FIFO (v, _) | SP (v, _) | RR (v, _) | WFQ (v, _) -> v
 
 (* The IR-side [pol_ty] of [d]. *)
 let pol_ty : t -> pol_ty = function
   | FIFO _ -> FIFO
-  | UNION _ -> UNION
   | SP _ -> SP
   | RR _ -> RR
   | WFQ _ -> WFQ
@@ -43,14 +41,14 @@ let pol_ty : t -> pol_ty = function
 (* Number of immediate children. Errors on FIFO. *)
 let arity = function
   | FIFO _ -> failwith "Decorated.arity: FIFO has no children"
-  | UNION (_, es) | SP (_, es) | RR (_, es) -> List.length es
+  | SP (_, es) | RR (_, es) -> List.length es
   | WFQ (_, es) -> List.length es
 
 (* The k-th edge's adopt-step. Errors on FIFO. *)
 let nth_step d k =
   match d with
   | FIFO _ -> failwith "Decorated.nth_step: FIFO"
-  | UNION (_, es) | SP (_, es) | RR (_, es) -> fst (List.nth es k)
+  | SP (_, es) | RR (_, es) -> fst (List.nth es k)
   | WFQ (_, es) ->
       let s, _, _ = List.nth es k in
       s
@@ -59,7 +57,7 @@ let nth_step d k =
 let nth_child d k =
   match d with
   | FIFO _ -> failwith "Decorated.nth_child: FIFO"
-  | UNION (_, es) | SP (_, es) | RR (_, es) -> snd (List.nth es k)
+  | SP (_, es) | RR (_, es) -> snd (List.nth es k)
   | WFQ (_, es) ->
       let _, c, _ = List.nth es k in
       c
@@ -69,7 +67,7 @@ let rec fold (f : 'a -> t -> 'a) (acc : 'a) (d : t) : 'a =
   let acc = f acc d in
   match d with
   | FIFO _ -> acc
-  | UNION (_, es) | SP (_, es) | RR (_, es) ->
+  | SP (_, es) | RR (_, es) ->
       List.fold_left (fun a (_, c) -> fold f a c) acc es
   | WFQ (_, es) -> List.fold_left (fun a (_, c, _) -> fold f a c) acc es
 
@@ -81,7 +79,7 @@ let count_steps d =
   fold
     (fun a -> function
       | FIFO _ -> a
-      | UNION (_, es) | SP (_, es) | RR (_, es) -> a + List.length es
+      | SP (_, es) | RR (_, es) -> a + List.length es
       | WFQ (_, es) -> a + List.length es)
     0 d
 
@@ -106,7 +104,7 @@ let subtree_classes d =
 let rec subtree_class_assocs (d : t) : (vpifo * clss list) list =
   match d with
   | FIFO (v, c) -> [ (v, [ c ]) ]
-  | UNION (_, es) | SP (_, es) | RR (_, es) ->
+  | SP (_, es) | RR (_, es) ->
       (root_vpifo d, subtree_classes d)
       :: List.concat_map (fun (_, c) -> subtree_class_assocs c) es
   | WFQ (_, es) ->
@@ -141,17 +139,15 @@ let rec rewrite_at (d : t) (path : int list) (f : t -> t) : t =
       let bump_w = list_replace_nth i (fun (s, c, w) -> (s, go c, w)) in
       match d with
       | FIFO _ -> failwith "Decorated.rewrite_at: path through FIFO leaf"
-      | UNION (v, es) -> UNION (v, bump es)
       | SP (v, es) -> SP (v, bump es)
       | RR (v, es) -> RR (v, bump es)
       | WFQ (v, es) -> WFQ (v, bump_w es))
 
 let insert_arm k new_step new_child = function
   | FIFO _ -> failwith "Decorated.insert_arm: FIFO"
-  | UNION (v, es) -> UNION (v, list_insert_at k (new_step, new_child) es)
   | SP (v, es) -> SP (v, list_insert_at k (new_step, new_child) es)
   | RR (v, es) -> RR (v, list_insert_at k (new_step, new_child) es)
-  | WFQ _ -> failwith "Decorated.insert_arm: WFQ — use insert_arm_wfq"
+  | WFQ _ -> failwith "Decorated.insert_arm: WFQ; use insert_arm_wfq"
 
 let insert_arm_wfq k new_step new_child new_weight = function
   | WFQ (v, es) -> WFQ (v, list_insert_at k (new_step, new_child, new_weight) es)
@@ -159,7 +155,6 @@ let insert_arm_wfq k new_step new_child new_weight = function
 
 let drop_arm k = function
   | FIFO _ -> failwith "Decorated.drop_arm: FIFO"
-  | UNION (v, es) -> UNION (v, list_drop_nth k es)
   | SP (v, es) -> SP (v, list_drop_nth k es)
   | RR (v, es) -> RR (v, list_drop_nth k es)
   | WFQ (v, es) -> WFQ (v, list_drop_nth k es)
@@ -174,8 +169,6 @@ let set_weight k new_w = function
    [step_k], with the old root [Designate]d as the new root's predecessor. *)
 let replace_arm k new_child = function
   | FIFO _ -> failwith "Decorated.replace_arm: FIFO"
-  | UNION (v, es) ->
-      UNION (v, list_replace_nth k (fun (s, _) -> (s, new_child)) es)
   | SP (v, es) -> SP (v, list_replace_nth k (fun (s, _) -> (s, new_child)) es)
   | RR (v, es) -> RR (v, list_replace_nth k (fun (s, _) -> (s, new_child)) es)
   | WFQ (v, es) ->
@@ -185,7 +178,6 @@ let rec to_policy (d : t) : Rio_core.Policy.t =
   let module P = Rio_core.Policy in
   match d with
   | FIFO (_, c) -> P.FIFO c
-  | UNION (_, es) -> P.UNION (List.map (fun (_, c) -> to_policy c) es)
   | SP (_, es) -> P.SP (List.map (fun (_, c) -> to_policy c) es)
   | RR (_, es) -> P.RR (List.map (fun (_, c) -> to_policy c) es)
   | WFQ (_, es) ->
