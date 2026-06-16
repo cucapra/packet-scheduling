@@ -19,16 +19,16 @@ module Decorated : sig
 end
 
 type compiled = {
-  prog : program;
+  commit : commit;
   decorated : Decorated.t;
   pes : pe list;
 }
 (** The result of compiling a [Rio_core.Policy.t]. Carries enough state that a
     subsequent [patch] call can extend the in-flight runtime without recompiling
     from scratch:
-    - [prog]: the IR program. When this record came from a fresh compile, [prog]
-      is the full program; when it came from [patch], [prog] is the *delta
-      only*.
+    - [commit]: the IR commit. When this record came from a fresh compile,
+      [commit] is the full instruction list; when it came from [patch], [commit]
+      is the *delta only*.
     - [decorated]: the decorated source tree. Doubles as the source-policy
       record (recoverable by erasing decorations) so [patch] can diff against an
       incoming policy without storing a separate [Rio_core.Policy.t].
@@ -42,17 +42,17 @@ val of_policy : Rio_core.Policy.t -> compiled
 (** Compile a [Rio_core.Policy.t] to IR. Supports trees built from [FIFO],
     [UNION], [RR], [SP], and [WFQ]. Each node at depth [d] is placed on PE [d] —
     so all siblings (and cousins) share a PE. Builds the decorated source tree
-    alongside the instruction program; a follow-up [patch] can derive the
+    alongside the instruction commit; a follow-up [patch] can derive the
     next-free IDs by walking [decorated]. *)
 
 val patch : prev:compiled -> next:Rio_core.Policy.t -> compiled option
 (** Incrementally extend [prev] to handle policy [next], returning the IR delta.
-    The returned record's [prog] is the *delta only* — the new instructions to
-    add to a runtime that's already executing [prev.prog]. [decorated] is
+    The returned record's [commit] is the *delta only* — the new instructions to
+    add to a runtime that's already executing [prev.commit]. [decorated] is
     rebuilt to reflect [next]. Returns [None] when the change is too complex for
     this scope. The supported transitions are:
     - [next] is structurally equal to [prev]'s policy: returns [Some] with an
-      empty [prog].
+      empty [commit].
     - [next] adds exactly one arm at any position of a [UNION], [RR], or [SP]
       parent (per [ArmAdded]): returns [Some] with the
       [Spawn]/[Adopt]/[Assoc]/[Map]/[Change_pol] (and [Change_weight] for [SP],
@@ -90,11 +90,11 @@ val patch : prev:compiled -> next:Rio_core.Policy.t -> compiled option
       real root to [next]'s new top. [prev]'s in-flight nodes are not respawned.
       The whole-tree case ([path = []]) returns [None]. *)
 
-(** JSON exporter for IR programs. *)
+(** JSON exporter for IR commits. *)
 module Json : sig
   val from_instr : instr -> Yojson.Basic.t
   (** Serialize a single instruction as a JSON object. *)
 
-  val from_program : program -> Yojson.Basic.t
-  (** Serialize a program as a JSON array of instruction objects. *)
+  val from_commit : commit -> Yojson.Basic.t
+  (** Serialize a commit as a JSON array of instruction objects. *)
 end

@@ -11,7 +11,7 @@ let compile_to_json filename =
     prog_dir ^ filename |> Parser.parse_file |> Policy.of_program
     |> Ir.of_policy
   in
-  Ir.Json.from_program c.prog
+  Ir.Json.from_commit c.commit
 
 let make_golden_test name sched_file json_file =
   name >:: fun _ ->

@@ -1,7 +1,7 @@
-(** JSON exporter for IR programs. *)
+(** JSON exporter for IR commits. *)
 
 val from_instr : Instr.instr -> Yojson.Basic.t
 (** Serialize a single instruction as a JSON object. *)
 
-val from_program : Instr.program -> Yojson.Basic.t
-(** Serialize a program as a JSON array of instruction objects. *)
+val from_commit : Instr.commit -> Yojson.Basic.t
+(** Serialize a commit as a JSON array of instruction objects. *)

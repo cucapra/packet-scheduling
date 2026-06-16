@@ -6,14 +6,14 @@ open OUnit2
 let prog_dir = "../progs/"
 
 (* [.sched] file -> pretty-printed IR string. We project [Ir.of_policy]'s
-   [compiled] result down to its [.prog] field, since [string_of_program]
+   [compiled] result down to its [.commit] field, since [string_of_commit]
    only knows about the bare instruction list. *)
 let compile_to_pretty filename =
   let c =
     prog_dir ^ filename |> Parser.parse_file |> Policy.of_program
     |> Ir.of_policy
   in
-  string_of_program c.prog
+  string_of_commit c.commit
 
 (* ----------------------------------------------------------------------- *)
 (* rr[A, B]                                                                *)
@@ -21,7 +21,7 @@ let compile_to_pretty filename =
 
 (* Handwritten IR for rr[A, B] — mirrors what [Ir.of_policy] produces for
    [progs/work_conserving/rr_AB.sched] *)
-let rr_ab_program : program =
+let rr_ab_commit : commit =
   let root = 100 in
   let a_leaf = 101 in
   let b_leaf = 102 in
@@ -44,8 +44,8 @@ let rr_ab_program : program =
     Change_pol (root, RR, 2);
   ]
 
-(* Pretty-print of [rr_ab_program] above — the handwritten IR without a
-   fake root, used to exercise [string_of_program] in isolation. *)
+(* Pretty-print of [rr_ab_commit] above — the handwritten IR without a
+   fake root, used to exercise [string_of_commit] in isolation. *)
 let expected_rr_ab_handwritten =
   String.concat "\n"
     [
@@ -92,7 +92,7 @@ let expected_rr_ab_compiled =
 let test_rr_ab_handwritten =
   "rr[A, B] handwritten IR pretty-prints correctly" >:: fun _ ->
   assert_equal ~printer:Fun.id expected_rr_ab_handwritten
-    (string_of_program rr_ab_program)
+    (string_of_commit rr_ab_commit)
 
 let test_rr_ab_pipeline =
   "rr[A, B] compiled from .sched matches the same golden" >:: fun _ ->

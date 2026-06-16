@@ -45,8 +45,8 @@ type instr =
           is collected (per a prior [GC]), the super-node collapses to
           [survivor]. Chains across multiple [Designate]s are allowed. *)
 
-type program = instr list
+type commit = instr list
 
 val string_of_pol_ty : pol_ty -> string
 val string_of_instr : instr -> string
-val string_of_program : program -> string
+val string_of_commit : commit -> string

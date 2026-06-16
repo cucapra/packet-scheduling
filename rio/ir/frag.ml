@@ -23,7 +23,7 @@ let empty ~root_v ~classes =
     classes;
   }
 
-let to_program (f : t) : program =
+let to_commit (f : t) : commit =
   List.concat
     [ f.spawns; f.adopts; f.assocs; f.maps; f.change_pols; f.change_weights ]
 
