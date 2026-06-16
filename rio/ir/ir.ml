@@ -290,21 +290,21 @@ let patch_whole_tree_replace ~prev ~next =
 (* Patch: weight change (WFQ-only, structure of tree unchanged.       *)
 (* ------------------------------------------------------------------ *)
 
-let patch_weight_changed ~prev ~path ~new_weight =
+let patch_meta_changed ~prev ~path ~new_meta =
   let parent_path, k = list_foot path in
   let parent = Decorated.walk prev.decorated parent_path in
   let parent_v =
     match parent with
     | Decorated.SP (v, _) | Decorated.WFQ (v, _) -> v
-    | _ -> failwith "Ir.patch: ChangeWeight parent is not SP or WFQ"
+    | _ -> failwith "Ir.patch: ChangeMeta parent is not SP or WFQ"
   in
   let step_k = Decorated.nth_step parent k in
   let new_decorated =
     Decorated.rewrite_at prev.decorated parent_path
-      (Decorated.set_meta k new_weight)
+      (Decorated.set_meta k new_meta)
   in
   {
-    commit = [ Set_arm_meta (parent_v, step_k, new_weight) ];
+    commit = [ Set_arm_meta (parent_v, step_k, new_meta) ];
     decorated = new_decorated;
     pes = prev.pes;
   }
@@ -487,8 +487,8 @@ let patch ~prev ~(next : Rio_core.Policy.t) : compiled option =
       Some (patch_one_arm_added ~prev ~arm_path:path ~arm ~meta)
   | Remove { path; arm = _ } ->
       Some (patch_one_arm_removed ~prev ~arm_path:path)
-  | ChangeWeight { path; new_weight } ->
-      Some (patch_weight_changed ~prev ~path ~new_weight)
+  | ChangeMeta { path; new_meta } ->
+      Some (patch_meta_changed ~prev ~path ~new_meta)
   | Graft [] | ChangeRoot [] -> None
   | Graft path -> Some (patch_graft ~prev ~next ~path)
   | ChangeRoot path -> Some (patch_change_root ~prev ~path)

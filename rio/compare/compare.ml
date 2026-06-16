@@ -25,10 +25,9 @@ type path = int list
 
    The [meta] field on [Add] and [Replace] carries the new arm's per-arm
    metadata, interpreted by the parent's discipline: a priority rank for SP,
-   a weight for WFQ. It is [None] for RR. For [Replace], [meta] today is
-   only ever populated by the WFQ slot-replace path (arm and weight changed
-   in the same edit); SP rank-only changes at a slot are not currently
-   sniffed. *)
+   a weight for WFQ. It is [None] for RR. On [Replace], [meta] is [Some _]
+   when the slot's meta also changes in the same edit (e.g., SP slot's rank
+   shifts when its arm is swapped for one with a different rank in [next]). *)
 type t =
   | Same
   | Add of {
@@ -40,9 +39,9 @@ type t =
       path : path;
       arm : Rio_core.Policy.t;
     }
-  | ChangeWeight of {
+  | ChangeMeta of {
       path : path;
-      new_weight : float;
+      new_meta : float;
     }
   | Replace of {
       path : path;
@@ -107,8 +106,9 @@ let single_change prev next =
   | [ (i, x) ] -> Some (i, x)
   | _ -> None
 
-(* Lockstep versions used by WFQ: a clean single edit must show up at the
-   same index in both the policy list and the weight list. *)
+(* Lockstep versions for the metaed disciplines (SP and WFQ): a clean single
+   edit must show up at the same index in both the arm list and the per-arm
+   meta list. *)
 let single_change_lockstep ps1 ps2 ws1 ws2 =
   match (single_change ps1 ps2, single_change ws1 ws2) with
   | Some (i, arm), Some (j, w) when i = j -> Some (i, arm, w)
@@ -128,8 +128,7 @@ let prepend_path i diff =
   | Same -> Same
   | Add { path; arm; meta } -> Add { path = i :: path; arm; meta }
   | Remove { path; arm } -> Remove { path = i :: path; arm }
-  | ChangeWeight { path; new_weight } ->
-      ChangeWeight { path = i :: path; new_weight }
+  | ChangeMeta { path; new_meta } -> ChangeMeta { path = i :: path; new_meta }
   | Replace { path; arm; meta } -> Replace { path = i :: path; arm; meta }
   | Graft p -> Graft (i :: p)
   | ChangeRoot p -> ChangeRoot (i :: p)
@@ -223,7 +222,7 @@ and compare_children ~next:p2 ps1 ps2 =
    sorts both disciplines by their per-arm meta (rank for SP, weight for
    WFQ), [prev] and [next] arrive here in canonical order; a single
    structural edit in canonical form maps to a single [Add]/[Remove]/
-   [Replace]/[ChangeWeight]. Position-irrelevance falls out for free. *)
+   [Replace]/[ChangeMeta]. Position-irrelevance falls out for free. *)
 and compare_metaed_children ~next:p2 pms1 pms2 =
   let give_up = Replace { path = []; arm = p2; meta = None } in
   let ps1 = List.map fst pms1 in
@@ -240,7 +239,7 @@ and compare_metaed_children ~next:p2 pms1 pms2 =
          metas is well-defined, and the empty result is unreachable
          because [ms1 <> ms2] here. *)
       begin match single_change ms1 ms2 with
-      | Some (i, new_weight) -> ChangeWeight { path = [ i ]; new_weight }
+      | Some (i, new_meta) -> ChangeMeta { path = [ i ]; new_meta }
       | None -> give_up
       end
   | 0 ->
@@ -321,8 +320,8 @@ let to_string = function
   | Add { path; arm; meta = Some m } ->
       Printf.sprintf "Add: %s" (string_of_arm_w path arm m)
   | Remove { path; arm } -> Printf.sprintf "Remove: %s" (string_of_arm path arm)
-  | ChangeWeight { path; new_weight } ->
-      Printf.sprintf "ChangeWeight: %s -> %g" (path_to_string path) new_weight
+  | ChangeMeta { path; new_meta } ->
+      Printf.sprintf "ChangeMeta: %s -> %g" (path_to_string path) new_meta
   | Replace { path; arm; meta = None } ->
       Printf.sprintf "Replace: %s" (string_of_arm path arm)
   | Replace { path; arm; meta = Some m } ->

@@ -60,9 +60,9 @@ val patch : prev:compiled -> next:Rio_core.Policy.t -> compiled option
       new arm in. Existing SP arms keep their ranks; no positional cascade is
       emitted. The parent's policy type is fixed at lPIFO birth, so no
       [Set_policy] is emitted against it.
-    - [next] differs from [prev] only in the weight of one [WFQ] arm (per
-      [WeightChanged]): returns [Some] with a single [Set_arm_meta] instruction
-      for the affected slot.
+    - [next] differs from [prev] only in the per-arm meta (rank for [SP], weight
+      for [WFQ]) of one slot (per [ChangeMeta]): returns [Some] with a single
+      [Set_arm_meta] instruction for the affected slot.
     - [next] removes exactly one arm at any position of a [RR] or [SP] parent
       (per [ArmRemoved]): returns [Some] with the [Change_arity], [Unmap],
       [Deassoc], [Emancipate], and [GC] instructions needed to detach the arm

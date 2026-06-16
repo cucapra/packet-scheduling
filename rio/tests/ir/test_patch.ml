@@ -163,14 +163,14 @@ let one_arm_added_wfq_tests =
       complex_tree_partial_to_full_expected;
   ]
 
-(* WeightChanged *)
+(* ChangeMeta *)
 
 (* WFQ root with three FIFO arms: vpifo IDs 100 (root), 101/102/103 (A/B/C);
    adopt steps 1000/1001/1002. Bumping B's weight 1 -> 5 should emit a single
    Set_arm_meta on the root for B's step. *)
 let wfq_abc_to_one_weight_expected : commit = [ Set_arm_meta (100, 1001, 5.0) ]
 
-let weight_changed_tests =
+let meta_changed_tests =
   [
     make_delta_test "wfq[A,B,C] -> wfq[A,B(5),C]" "wfq_ABC" "wfq_ABC_one_weight"
       wfq_abc_to_one_weight_expected;
@@ -577,7 +577,7 @@ let deep_giveup_tests = [ deep_giveup_test ]
 
 let suite =
   "patch tests"
-  >::: one_arm_added_tests @ one_arm_added_wfq_tests @ weight_changed_tests
+  >::: one_arm_added_tests @ one_arm_added_wfq_tests @ meta_changed_tests
        @ one_arm_removed_tests @ one_arm_replaced_tests
        @ one_arm_replaced_wfq_tests @ whole_tree_replace_tests
        @ change_root_tests @ graft_tests @ pes_extension_tests

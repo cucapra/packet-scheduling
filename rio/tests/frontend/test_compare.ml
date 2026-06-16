@@ -121,7 +121,7 @@ let weightchanged =
        After normalize both sort to (FIFO A, FIFO B, FIFO C); the weight
        at index 1 went 1→5. *)
     make_compare_test "one WFQ weight changed" "wfq_ABC" "wfq_ABC_one_weight"
-      (ChangeWeight { path = [ 1 ]; new_weight = 5.0 });
+      (ChangeMeta { path = [ 1 ]; new_meta = 5.0 });
   ]
 
 let onearmreplaced =
@@ -203,7 +203,7 @@ let change_root =
 let verydiff_combos =
   [
     (* wfq_complex = WFQ([(A,1), (RR[B,C],2)]). Next changes RR[B,C]→RR[B,D]
-       (a deeper [Replace]) and bumps the weight 2→5 (a [ChangeWeight]) at the
+       (a deeper [Replace]) and bumps the weight 2→5 (a [ChangeMeta]) at the
        same slot. *)
     make_giveup_test "WFQ slot with deep diff and weight change" "wfq_complex"
       "wfq_complex_deep_and_weight" [];
@@ -222,7 +222,7 @@ let verydiff_combos =
        [Add] (D, E, F appear). *)
     make_giveup_test "RR big diff" "rr_AB" "rr_DEF" [];
     (* WFQ(B,A) → WFQ(A:2,B:2,C:4): one [Add] (C) plus multiple
-       [ChangeWeight]s on the existing arms. *)
+       [ChangeMeta]s on the existing arms. *)
     make_giveup_test "WFQ with weights changed and arm added" "wfq_BA"
       "wfq_ABC_diff" [];
     (* SP(A,B) → SP(B,A): two [Replace]s — both positions
@@ -235,8 +235,8 @@ let verydiff_combos =
        path [0]. *)
     make_giveup_test "complex tree with an SP reordering deep down"
       "complex_tree" "complex_tree_swap_sp_arms" [ 0 ];
-    (* WFQ(A:2,B:1,C:3) → WFQ(A:2,B:2,C:4): two [ChangeWeight]s — only
-       a single-weight edit lands as [ChangeWeight]; multi-weight is
+    (* WFQ(A:2,B:1,C:3) → WFQ(A:2,B:2,C:4): two [ChangeMeta]s — only
+       a single-weight edit lands as [ChangeMeta]; multi-weight is
        this combo. *)
     make_giveup_test "different WFQ weights" "wfq_ABC" "wfq_ABC_diff" [];
   ]
