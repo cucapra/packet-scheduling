@@ -7,16 +7,12 @@ type error_info = {
   char : char option;
 }
 
-type set =
-  | Class of clss
-  | Union of set list
-
 type stream =
-  (* Set-to-Stream *)
-  | Fifo of set
-  | EarliestDeadline of set
-  | ShortestJobNext of set
-  | ShortestRemaining of set
+  (* Class-to-Stream *)
+  | Fifo of clss
+  | EarliestDeadline of clss
+  | ShortestJobNext of clss
+  | ShortestRemaining of clss
   (* Stream-To-Stream *)
   | RoundRobin of stream list
   | Strict of stream list

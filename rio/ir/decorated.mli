@@ -8,7 +8,6 @@ open Instr
 
 type t =
   | FIFO of vpifo * clss
-  | UNION of vpifo * (step * t) list
   | SP of vpifo * (step * t) list
   | RR of vpifo * (step * t) list
   | WFQ of vpifo * (step * t * float) list

@@ -24,7 +24,7 @@ type path = int list
      [Designate ; Quiesce ; Undesignate] sequence.
 
    The [weight] field on [Add] and [Replace] is [Some w] iff the parent
-   runs WFQ; for SP, RR, and UNION it is [None]. *)
+   runs WFQ; for SP and RR it is [None]. *)
 type t =
   | Same
   | Add of {
@@ -139,7 +139,7 @@ let rec is_sub_policy p1 p2 =
   else
     match p2 with
     | FIFO _ -> None
-    | UNION ps | SP ps | RR ps | WFQ (ps, _) ->
+    | SP ps | RR ps | WFQ (ps, _) ->
         let rec loop i = function
           | [] -> None
           | p :: t -> (
@@ -261,8 +261,7 @@ and analyze p1 p2 =
     | None, Some path -> ChangeRoot path
     | _ -> (
         match (p1, p2) with
-        | UNION ps1, UNION ps2 | SP ps1, SP ps2 | RR ps1, RR ps2 ->
-            compare_children ~next:p2 ps1 ps2
+        | SP ps1, SP ps2 | RR ps1, RR ps2 -> compare_children ~next:p2 ps1 ps2
         | WFQ (ps1, ws1), WFQ (ps2, ws2) ->
             compare_wfq_children ~next:p2 ps1 ws1 ps2 ws2
         | _ ->

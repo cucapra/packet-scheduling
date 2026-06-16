@@ -28,7 +28,7 @@ let rec policy_depth (p : Rio_core.Policy.t) : int =
   let module P = Rio_core.Policy in
   match p with
   | P.FIFO _ -> 0
-  | P.UNION ps | P.SP ps | P.RR ps | P.WFQ (ps, _) ->
+  | P.SP ps | P.RR ps | P.WFQ (ps, _) ->
       1 + List.fold_left max 0 (List.map policy_depth ps)
 
 (* ------------------------------------------------------------------ *)
@@ -82,9 +82,6 @@ let rec compile_subtree ~fresh_v ~fresh_s ~pe_of_depth ~depth ?splice
       in
       match p with
       | P.FIFO c -> compile_FIFO ~v:(fresh_v ()) ~pe:(pe_of_depth depth) c
-      | P.UNION children ->
-          let frag, edges = arm ~pol_ty:UNION ~weights:[] children in
-          (frag, Decorated.UNION (frag.root_v, edges))
       | P.RR children ->
           let frag, edges = arm ~pol_ty:RR ~weights:[] children in
           (frag, Decorated.RR (frag.root_v, edges))
@@ -99,9 +96,9 @@ let rec compile_subtree ~fresh_v ~fresh_s ~pe_of_depth ~depth ?splice
           (frag, Decorated.WFQ (frag.root_v, weighted)))
 
 (* Returns [(frag, edges)] where [edges] pairs each adopt-step with its child's
-   decorated subtree, in source order. [weights] is empty for UNION/RR, one
-   per arm for SP/WFQ. [splice], when [Some (i :: rest, prev_d)], hands the
-   splice down to the [i]-th child with its head consumed. *)
+   decorated subtree, in source order. [weights] is empty for RR, one per arm
+   for SP/WFQ. [splice], when [Some (i :: rest, prev_d)], hands the splice down
+   to the [i]-th child with its head consumed. *)
 and compile_arm ~fresh_v ~fresh_s ~pe_of_depth ~depth ~pol_ty ~weights ?splice
     children : Frag.t * (step * Decorated.t) list =
   (* Self first, so that we get a lower vPIFO ID than the kids. *)
@@ -157,8 +154,9 @@ let of_policy (p : Rio_core.Policy.t) : compiled =
   let frag, decorated =
     compile_subtree ~fresh_v ~fresh_s ~pe_of_depth:(fun d -> d) ~depth:0 p
   in
-  (* Wrap the real root in the port root: a UNION-of-1 carrying every class
-     in the real tree, all routed via [port_root_step]. *)
+  (* Wrap the real root in the port root: a 1-arity carrier (labeled RR for
+     IR purposes; at arity 1 the discipline is degenerate) that holds every
+     class in the real tree and routes them all via [port_root_step]. *)
   let port_frag : Frag.t =
     {
       spawns = [ Spawn (port_root_v, port_root_pe) ];
@@ -166,7 +164,7 @@ let of_policy (p : Rio_core.Policy.t) : compiled =
       assocs = List.map (fun c -> Assoc (port_root_v, c)) frag.classes;
       maps =
         List.map (fun c -> Map (port_root_v, c, port_root_step)) frag.classes;
-      set_policies = [ Set_policy (port_root_v, UNION, 1) ];
+      set_policies = [ Set_policy (port_root_v, RR, 1) ];
       change_arities = [];
       set_arm_metas = [];
       root_v = port_root_v;
@@ -355,7 +353,7 @@ let patch_one_arm_added ~prev ~arm_path ~arm ~wfq_weight =
     | WFQ, Some w ->
         ( [ Set_arm_meta (parent_v, new_step, w) ],
           Decorated.insert_arm_wfq k new_step arm_decorated w )
-    | (UNION | RR), None -> ([], Decorated.insert_arm k new_step arm_decorated)
+    | RR, None -> ([], Decorated.insert_arm k new_step arm_decorated)
     | _ ->
         failwith
           "Ir.patch.patch_one_arm_added: parent pol_ty / wfq_weight mismatch"

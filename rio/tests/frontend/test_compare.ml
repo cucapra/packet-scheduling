@@ -33,12 +33,12 @@ let same =
     make_compare_test "merely jumbled in WFQ" "wfq_ABC" "wfq_ABC_jumbled" Same;
   ]
 
-(* Add fires on a single-arm insertion at any position of a UNION/RR/SP
-   parent (after [Policy.normalize] has sorted UNION/RR children) or at
-   any position of a WFQ parent (where the [weight] field is [Some w]).
-   Multi-arm insertions instead "give up" to a wholesale-replace
-   [Replace] (see [verydiff_combos]). The [path] inside the payload is
-   the new arm's full position from the root of [next]. *)
+(* Add fires on a single-arm insertion at any position of an RR/SP parent
+   (after [Policy.normalize] has sorted RR children) or at any position of
+   a WFQ parent (where the [weight] field is [Some w]). Multi-arm insertions
+   instead "give up" to a wholesale-replace [Replace] (see [verydiff_combos]).
+   The [path] inside the payload is the new arm's full position from the root
+   of [next]. *)
 let one_arm_added =
   [
     (* SP(A,B) vs SP(A,B,C) — append; new arm at root child 2. *)
@@ -61,11 +61,11 @@ let one_arm_added =
       "wfq_complex_add_arm_deep"
       (Add { path = [ 1; 2 ]; arm = Policy.FIFO "D"; weight = None });
     (* Adding an arm deep inside the complex tree. After normalize, the
-       WFQ pairs sort to (UNION, SP, RR), so the rr arm is at index 2;
-       the new NEW inside that RR sits at child index 3 → [2; 3]. *)
+       WFQ pairs sort to (SP, RR[D,E,F], RR[G,H]); the mid rr is at index 1
+       and the new NEW inside that RR sits at child index 3, so [1; 3]. *)
     make_compare_test "complex tree add arm deep" "complex_tree"
       "complex_tree_add_arm_deep"
-      (Add { path = [ 2; 3 ]; arm = Policy.FIFO "NEW"; weight = None });
+      (Add { path = [ 1; 3 ]; arm = Policy.FIFO "NEW"; weight = None });
   ]
 
 (* WFQ-parent additions: detected when the policy list and the weight list
@@ -78,16 +78,17 @@ let one_arm_added_wfq =
        lone insertion (index 2, weight 3). *)
     make_compare_test "WFQ with arm added at end" "wfq_BA" "wfq_ABC"
       (Add { path = [ 2 ]; arm = Policy.FIFO "C"; weight = Some 3.0 });
-    (* complex_tree_partial → complex_tree: at the root WFQ a new
-       (rr[D,E,F], 2) slot appears. Children sort by variant tag
-       (UNION < SP < RR), so prev pairs are [(UNION,3),(SP,1)] and next
-       pairs are [(UNION,3),(SP,1),(RR,2)]: insertion at index 2,
+    (* complex_tree_partial -> complex_tree: at the root WFQ a new
+       (rr[D,E,F], 2) slot appears. WFQ pairs sort by arm: SP < RR by
+       constructor order, and rr[D,E,F] < rr[G,H] by element compare. So
+       prev pairs are [(SP,1),(RR[G,H],3)] and next pairs are
+       [(SP,1),(RR[D,E,F],2),(RR[G,H],3)]: insertion at index 1,
        weight 2. *)
     make_compare_test "complex tree fill in missing arm" "complex_tree_partial"
       "complex_tree"
       (Add
          {
-           path = [ 2 ];
+           path = [ 1 ];
            arm = Policy.RR [ Policy.FIFO "D"; Policy.FIFO "E"; Policy.FIFO "F" ];
            weight = Some 2.0;
          });
@@ -103,11 +104,11 @@ let armsremoved =
        weight (3) from the prev decorated tree if it cares. *)
     make_compare_test "WFQ with arm removed" "wfq_ABC" "wfq_BA"
       (Remove { path = [ 2 ]; arm = Policy.FIFO "C" });
-    (* Inverse of the deep-add test: drop NEW from the inner RR (path [2]).
-       NEW lived at index 3 inside that RR → full path [2; 3]. *)
+    (* Inverse of the deep-add test: drop NEW from the mid RR (path [1]).
+       NEW lived at index 3 inside that RR, so full path [1; 3]. *)
     make_compare_test "complex tree remove arm deep" "complex_tree_add_arm_deep"
       "complex_tree"
-      (Remove { path = [ 2; 3 ]; arm = Policy.FIFO "NEW" });
+      (Remove { path = [ 1; 3 ]; arm = Policy.FIFO "NEW" });
   ]
 
 let weightchanged =
@@ -165,14 +166,13 @@ let nested_giveup_demotion =
 
 let graft =
   [
-    make_compare_test "fifo_G is sub-pol of union[G,H]" "fifo_G" "union_GH"
-      (Graft [ 0 ]);
+    (* After normalize, complex_tree's WFQ pairs are
+       (SP[A,B,C],1), (RR[D,E,F],2), (RR[G,H],3) at indices 0, 1, 2.
+       FIFO A sits inside the SP at SP's child 0, so path [0; 0]. *)
     make_compare_test "fifo_A is sub-pol of complex_tree" "fifo_A"
       "complex_tree"
-      (Graft [ 1; 0 ]);
+      (Graft [ 0; 0 ]);
     make_compare_test "strict_ABC is subpol of complex_tree" "strict_ABC"
-      "complex_tree" (Graft [ 1 ]);
-    make_compare_test "union_GH is subpol of complex_tree" "union_GH"
       "complex_tree" (Graft [ 0 ]);
   ]
 
@@ -181,14 +181,10 @@ let graft =
    is the position in [prev] where [next] used to live. *)
 let change_root =
   [
-    make_compare_test "union[G,H] collapsed to fifo_G" "union_GH" "fifo_G"
-      (ChangeRoot [ 0 ]);
     make_compare_test "complex_tree collapsed to fifo_A" "complex_tree" "fifo_A"
-      (ChangeRoot [ 1; 0 ]);
+      (ChangeRoot [ 0; 0 ]);
     make_compare_test "complex_tree collapsed to strict_ABC" "complex_tree"
-      "strict_ABC" (ChangeRoot [ 1 ]);
-    make_compare_test "complex_tree collapsed to union_GH" "complex_tree"
-      "union_GH" (ChangeRoot [ 0 ]);
+      "strict_ABC" (ChangeRoot [ 0 ]);
   ]
 
 (* A menu of cases where the diff is a *combination* of changes each of
@@ -226,12 +222,13 @@ let verydiff_combos =
     (* SP(A,B) → SP(B,A): two [Replace]s — both positions
        diverge. *)
     make_giveup_test "Strict with arms reordered" "strict_AB" "strict_BA" [];
-    (* Same swap one level deep inside complex_tree's SP[A;B;C]→SP[C;B;A].
+    (* Same swap one level deep inside complex_tree's SP[A;B;C]->SP[C;B;A].
        The inner SP has multi-divergence (indices 0 and 2 both differ);
-       the outer compare_lists tags the SP's parent index, giving a
-       deep give-up at path [1]. *)
+       the outer compare_lists tags the SP's parent index. SP is at WFQ
+       child index 0 in the normalized tree, so the deep give-up sits at
+       path [0]. *)
     make_giveup_test "complex tree with an SP reordering deep down"
-      "complex_tree" "complex_tree_swap_sp_arms" [ 1 ];
+      "complex_tree" "complex_tree_swap_sp_arms" [ 0 ];
     (* WFQ(A:2,B:1,C:3) → WFQ(A:2,B:2,C:4): two [ChangeWeight]s — only
        a single-weight edit lands as [ChangeWeight]; multi-weight is
        this combo. *)

@@ -1,6 +1,6 @@
 classes BX, BY, RP, RT;
 
-b_policy = union[BX, BY];
+b_policy = rr[BX, BY];
 r_policy = rr[RP, RT];
 policy = rr[b_policy, r_police]; // user made a typo, meant to reference `r_policy`
 

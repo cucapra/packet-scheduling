@@ -20,7 +20,7 @@ let make_test name filename (expected : commit) =
   name >:: fun _ ->
   assert_equal ~printer:Ir.string_of_commit expected (compile filename)
 
-(* Single FIFO leaf [A] living on PE0 as v100, wrapped in the fake root
+(* Single FIFO leaf [A] living on PE0 as v100, wrapped in the port root
    [v99] on PE -1. *)
 let fifo_a_expected : commit =
   [
@@ -30,7 +30,7 @@ let fifo_a_expected : commit =
     Assoc (99, "A");
     Assoc (100, "A");
     Map (99, "A", 999);
-    Set_policy (99, UNION, 1);
+    Set_policy (99, RR, 1);
   ]
 
 let strict_abc_expected : commit =
@@ -59,7 +59,7 @@ let strict_abc_expected : commit =
     Map (100, "A", 1000);
     Map (100, "B", 1001);
     Map (100, "C", 1002);
-    Set_policy (99, UNION, 1);
+    Set_policy (99, RR, 1);
     Set_policy (100, SP, 3);
     (* A is highest priority, then B, then C *)
     Set_arm_meta (100, 1000, 1.0);

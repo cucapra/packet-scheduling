@@ -12,7 +12,6 @@ include module type of Instr
 module Decorated : sig
   type t =
     | FIFO of vpifo * clss
-    | UNION of vpifo * (step * t) list
     | SP of vpifo * (step * t) list
     | RR of vpifo * (step * t) list
     | WFQ of vpifo * (step * t * float) list
@@ -39,11 +38,11 @@ type compiled = {
       re-spawning previously installed nodes. *)
 
 val of_policy : Rio_core.Policy.t -> compiled
-(** Compile a [Rio_core.Policy.t] to IR. Supports trees built from [FIFO],
-    [UNION], [RR], [SP], and [WFQ]. Each node at depth [d] is placed on PE [d] —
-    so all siblings (and cousins) share a PE. Builds the decorated source tree
-    alongside the instruction commit; a follow-up [patch] can derive the
-    next-free IDs by walking [decorated]. *)
+(** Compile a [Rio_core.Policy.t] to IR. Supports trees built from [FIFO], [RR],
+    [SP], and [WFQ]. Each node at depth [d] is placed on PE [d]; so all siblings
+    (and cousins) share a PE. Builds the decorated source tree alongside the
+    instruction commit; a follow-up [patch] can derive the next-free IDs by
+    walking [decorated]. *)
 
 val patch : prev:compiled -> next:Rio_core.Policy.t -> compiled option
 (** Incrementally extend [prev] to handle policy [next], returning the IR delta.
@@ -53,8 +52,8 @@ val patch : prev:compiled -> next:Rio_core.Policy.t -> compiled option
     this scope. The supported transitions are:
     - [next] is structurally equal to [prev]'s policy: returns [Some] with an
       empty [commit].
-    - [next] adds exactly one arm at any position of a [UNION], [RR], or [SP]
-      parent (per [ArmAdded]): returns [Some] with the
+    - [next] adds exactly one arm at any position of a [RR] or [SP] parent (per
+      [ArmAdded]): returns [Some] with the
       [Spawn]/[Adopt]/[Assoc]/[Map]/[Change_arity] (and [Set_arm_meta] for [SP],
       both for the new arm and for any existing arms whose positional priority
       shifts) instructions needed to splice the new arm in. The parent's policy
@@ -62,11 +61,11 @@ val patch : prev:compiled -> next:Rio_core.Policy.t -> compiled option
     - [next] differs from [prev] only in the weight of one [WFQ] arm (per
       [WeightChanged]): returns [Some] with a single [Set_arm_meta] instruction
       for the affected slot.
-    - [next] removes exactly one arm at any position of a [UNION], [RR], or [SP]
-      parent (per [ArmRemoved]): returns [Some] with the [Set_arm_meta] (only
-      for [SP] siblings whose positional priority shifts down), [Change_arity],
-      [Unmap], [Deassoc], [Emancipate], and [GC] instructions needed to detach
-      the arm and clean up routing state cached on its ancestor chain.
+    - [next] removes exactly one arm at any position of a [RR] or [SP] parent
+      (per [ArmRemoved]): returns [Some] with the [Set_arm_meta] (only for [SP]
+      siblings whose positional priority shifts down), [Change_arity], [Unmap],
+      [Deassoc], [Emancipate], and [GC] instructions needed to detach the arm
+      and clean up routing state cached on its ancestor chain.
     - [next] swaps in a different subtree at exactly one position (per
       [ArmReplaced]): returns [Some] with the new arm's
       [Spawn]/[Adopt]/[Assoc]/[Map]/[Set_policy]/[Set_arm_meta] instructions, a

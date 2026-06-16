@@ -10,7 +10,6 @@ type pol_ty =
   | RR
   | SP
   | WFQ
-  | UNION
 
 type instr =
   | Spawn of vpifo * pe

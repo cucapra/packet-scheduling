@@ -22,7 +22,6 @@ rule token = parse
 | ")"                   { RPAREN }
 | "return"              { RETURN }
 | "classes"             { CLASSES }
-| "union"               { UNION }
 | "width"               { WIDTH }
 | "buffer"              { BUFFER }
 | "time"                { TIME }

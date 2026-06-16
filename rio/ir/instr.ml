@@ -10,7 +10,6 @@ type pol_ty =
   | RR
   | SP
   | WFQ
-  | UNION
 
 type instr =
   | Spawn of vpifo * pe
@@ -38,7 +37,6 @@ let string_of_pol_ty = function
   | RR -> "RR"
   | SP -> "SP"
   | WFQ -> "WFQ"
-  | UNION -> "UNION"
 
 let string_of_instr = function
   | Spawn (v, p) ->
