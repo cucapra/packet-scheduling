@@ -34,7 +34,7 @@ type compiled = {
       incoming policy without storing a separate [Rio_core.Policy.t].
     - [pes]: the PE assignment, indexed by depth. Every node at depth [d] lives
       on PE [List.nth pes d]. A fresh [of_policy] produces a very boring [pes]:
-      [[0; 1; …; max_depth]]. But [patch] (notably [SuperPol]) may introduce
+      [[0; 1; …; max_depth]]. But [patch] (notably [Graft]) may introduce
       non-contiguous PEs to honor the "same depth ⇒ same PE" invariant without
       re-spawning previously installed nodes. *)
 
@@ -77,18 +77,20 @@ val patch : prev:compiled -> next:Rio_core.Policy.t -> compiled option
       old root that collapses the super-node and releases its PE slot, and a
       [GC] per remaining node of the displaced subtree.
     - [next] is structurally equal to a strict subtree of [prev] at a non-empty
-      path (per [SubPol]): returns [Some] with an [Emancipate] detaching that
-      subtree from its parent, a second [Emancipate]/[Adopt] pair on the fake
-      root that re-points its single step from [prev]'s old real root to the new
-      one, [Unmap]/[Deassoc] entries on the fake root for any classes that no
-      longer apply, and one [GC] per displaced node so the surrounding structure
-      is collected. The whole-tree case ([path = []]) returns [None].
+      path (per [ChangeRoot]): returns [Some] with an [Emancipate]/[Adopt] pair
+      on the port root that re-points its single step from [prev]'s old real
+      root to the new one, [Unmap]/[Deassoc] entries on the port root for any
+      classes that no longer apply, and one [GC] per displaced node so the
+      surrounding structure is collected. No [Emancipate] from the surviving
+      subtree's old parent is emitted: the parent itself is among the [GC]'d
+      nodes, which severs the edge. The whole-tree case ([path = []]) returns
+      [None].
     - [prev]'s policy appears as a strict subtree of [next] at a non-empty path
-      (per [SuperPol]): returns [Some] with the
+      (per [Graft]): returns [Some] with the
       [Spawn]/[Adopt]/[Assoc]/[Map]/[Set_policy]/[Set_arm_meta] instructions for
       the new structure surrounding [prev], a single [Adopt] that grafts
       [prev]'s existing root in at the splice point, and an [Emancipate]/
-      [Adopt] pair that repoints the fake root's single step from [prev]'s old
+      [Adopt] pair that repoints the port root's single step from [prev]'s old
       real root to [next]'s new top. [prev]'s in-flight nodes are not respawned.
       The whole-tree case ([path = []]) returns [None]. *)
 

@@ -291,9 +291,9 @@ let one_arm_replaced_wfq_tests =
    shares no arms, so Compare gives up at the root. The patch builds the
    new rr[D,E,F] off fresh ids (root v=103 on PE 0, leaves 104/105/106
    on PE 1; steps 1002/1003/1004), [Designate]s the old root (100) with
-   the new root (103) so the fake root's single step drains old before
-   servicing new, and rewrites the fake root's classifier from
-   {A,B} → {D,E,F} all riding on [fake_root_step]. GCs cover every prev
+   the new root (103) so the port root's single step drains old before
+   servicing new, and rewrites the port root's classifier from
+   {A,B} → {D,E,F} all riding on [port_root_step]. GCs cover every prev
    vpifo. *)
 let rr_ab_to_rr_def_expected : commit =
   [
@@ -368,17 +368,17 @@ let whole_tree_replace_tests =
       "strict_AB" "rr_AB" strict_ab_to_rr_ab_expected;
   ]
 
-(* SubPol *)
+(* ChangeRoot *)
 
 (* SP[A, B, C] -> FIFO A. The FIFO leaf already lives inside prev as v101,
-   adopted via step_1000 from the root v100. Re-rooting detaches v101 from
-   its prev parent, then swings the fake root's single step from v100 to
-   v101 via [Emancipate]/[Adopt]. The dropped classes B and C are
-   [Unmap]/[Deassoc]'d off the fake root, and the SP root v100 along with
-   v102/v103 are GC'd. *)
+   adopted via step_1000 from the root v100. Re-rooting swings the port
+   root's single step from v100 to v101 via [Emancipate]/[Adopt]; no
+   [Emancipate] is emitted for v101's old parent edge because v100 is
+   among the GC'd nodes, which severs the edge. The dropped classes B and
+   C are [Unmap]/[Deassoc]'d off the port root, and the SP root v100 along
+   with v102/v103 are GC'd. *)
 let strict_abc_to_fifo_a_expected : commit =
   [
-    Emancipate (1000, 100, 101);
     Emancipate (999, 99, 100);
     Adopt (999, 99, 101);
     Unmap (99, "B", 999);
@@ -390,13 +390,13 @@ let strict_abc_to_fifo_a_expected : commit =
     GC 103;
   ]
 
-let sub_pol_tests =
+let change_root_tests =
   [
     make_delta_test "strict[A,B,C] -> fifo[A]" "strict_ABC" "fifo_A"
       strict_abc_to_fifo_a_expected;
   ]
 
-(* SuperPol *)
+(* Graft *)
 
 (* prev = strict[A,B,C] compiles to vpifos 100 (root)/101/102/103 with
    adopt steps 1000/1001/1002 and pes [0; 1]; counters end at next_v=104,
@@ -485,7 +485,7 @@ let strict_abc_to_complex_tree_expected : commit =
     Map (99, "F", 999);
   ]
 
-let super_pol_tests =
+let graft_tests =
   [
     ( "strict[A,B,C] -> complex_tree (pes invariant)" >:: fun _ ->
       let c = patch_files "strict_ABC" "complex_tree" in
@@ -572,7 +572,8 @@ let suite =
   "patch tests"
   >::: one_arm_added_tests @ one_arm_added_wfq_tests @ weight_changed_tests
        @ one_arm_removed_tests @ one_arm_replaced_tests
-       @ one_arm_replaced_wfq_tests @ whole_tree_replace_tests @ sub_pol_tests
-       @ super_pol_tests @ pes_extension_tests @ deep_giveup_tests
+       @ one_arm_replaced_wfq_tests @ whole_tree_replace_tests
+       @ change_root_tests @ graft_tests @ pes_extension_tests
+       @ deep_giveup_tests
 
 let () = run_test_tt_main suite

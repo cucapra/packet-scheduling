@@ -39,20 +39,21 @@ let rec policy_depth (p : Rio_core.Policy.t) : int =
 let vpifo_start = 100
 let step_start = 1000
 
-(* The fake root sits one level above every real root, on PE -1. It exists so
-   the real root always has an editable parent classifier, which means that we 
-   can handle whole-tree replacement, [SuperPol], and [SubPol] as ordinary
-   parent-side edits. Reserved IDs below [vpifo_start]/[step_start] keep
-   real-node numbering intact. The simulator never sees the fake root as a
-   runtime node — [of_policy] just emits the wiring. *)
-let fake_root_v : vpifo = 99
-let fake_root_step : step = 999
-let fake_root_pe : pe = -1
+(* The port root sits one level above every real root, on a reserved PE. It is
+   the per-port classifier (per paper/sketch.md, the carrier that survives
+   [Graft] and [ChangeRoot] swaps): every output port has a dedicated lPIFO
+   whose sole adopted child is the actual tree root. Hosting an editable
+   parent classifier means whole-tree replacement, [Graft], and [ChangeRoot]
+   all reduce to ordinary parent-side edits. Reserved IDs below
+   [vpifo_start]/[step_start] keep real-node numbering intact. *)
+let port_root_v : vpifo = 99
+let port_root_step : step = 999
+let port_root_pe : pe = -1
 
-(* The fake-root chain has length 1: a single hop down to the real root. Reused
+(* The port-root chain has length 1: a single hop down to the real root. Reused
    wherever a slot-replacement helper needs an "ancestor chain" but the slot is
    the whole tree. *)
-let fake_chain = [ (fake_root_v, fake_root_step) ]
+let port_chain = [ (port_root_v, port_root_step) ]
 
 (* ------------------------------------------------------------------ *)
 (* Compile.                                                           *)
@@ -156,24 +157,24 @@ let of_policy (p : Rio_core.Policy.t) : compiled =
   let frag, decorated =
     compile_subtree ~fresh_v ~fresh_s ~pe_of_depth:(fun d -> d) ~depth:0 p
   in
-  (* Wrap the real root in the fake root: a UNION-of-1 carrying every class
-     in the real tree, all routed via [fake_root_step]. *)
-  let fake_frag : Frag.t =
+  (* Wrap the real root in the port root: a UNION-of-1 carrying every class
+     in the real tree, all routed via [port_root_step]. *)
+  let port_frag : Frag.t =
     {
-      spawns = [ Spawn (fake_root_v, fake_root_pe) ];
-      adopts = [ Adopt (fake_root_step, fake_root_v, frag.root_v) ];
-      assocs = List.map (fun c -> Assoc (fake_root_v, c)) frag.classes;
+      spawns = [ Spawn (port_root_v, port_root_pe) ];
+      adopts = [ Adopt (port_root_step, port_root_v, frag.root_v) ];
+      assocs = List.map (fun c -> Assoc (port_root_v, c)) frag.classes;
       maps =
-        List.map (fun c -> Map (fake_root_v, c, fake_root_step)) frag.classes;
-      set_policies = [ Set_policy (fake_root_v, UNION, 1) ];
+        List.map (fun c -> Map (port_root_v, c, port_root_step)) frag.classes;
+      set_policies = [ Set_policy (port_root_v, UNION, 1) ];
       change_arities = [];
       set_arm_metas = [];
-      root_v = fake_root_v;
+      root_v = port_root_v;
       classes = frag.classes;
     }
   in
   let pes = List.init (policy_depth p + 1) (fun d -> d) in
-  { commit = Frag.to_commit (Frag.combine fake_frag [ frag ]); decorated; pes }
+  { commit = Frag.to_commit (Frag.combine port_frag [ frag ]); decorated; pes }
 
 (* ------------------------------------------------------------------ *)
 (* Patch: helpers shared across the patch_* functions.                *)
@@ -214,7 +215,7 @@ let pes_extended_to_depth target_depth pes =
 
 (* Replace the subtree [removed] (sitting under ancestor [chain]) with a
    freshly compiled [arm]. Used both for whole-tree replacement (chain =
-   [fake_chain], removed = prev.decorated) and for per-arm replacement
+   [port_chain], removed = prev.decorated) and for per-arm replacement
    (chain = ancestor_chain prev arm_path, removed = nth_child parent k).
    The parent never adopts the new root directly: [Designate] fuses the old
    and new roots into a super-node that occupies the existing slot, so
@@ -277,7 +278,7 @@ let patch_one_arm_replaced ~prev ~arm_path ~arm ~wfq_weight =
   { c with commit = c.commit @ weight_instrs }
 
 let patch_whole_tree_replace ~prev ~next =
-  replace_at ~prev ~chain:fake_chain ~removed:prev.decorated ~arm_depth:0
+  replace_at ~prev ~chain:port_chain ~removed:prev.decorated ~arm_depth:0
     ~arm:next ~rewrite_decorated:Fun.id
 
 (* ------------------------------------------------------------------ *)
@@ -426,8 +427,8 @@ let patch_one_arm_removed ~prev ~arm_path =
 (* [prev]'s policy sits inside [next] at [path]: compile only the new structure
    surrounding [prev] and graft [prev]'s installed root in at the splice via
    [Adopt] (handled inside [compile_subtree]'s [splice] argument). Then repoint
-   the fake root's single step from prev's old real root to next's new top. *)
-let patch_super_pol ~prev ~next ~path =
+   the port root's single step from prev's old real root to next's new top. *)
+let patch_graft ~prev ~next ~path =
   let len = List.length path in
   let prev_max_depth = List.length prev.pes - 1 in
   let next_max_depth = policy_depth next in
@@ -456,22 +457,22 @@ let patch_super_pol ~prev ~next ~path =
   in
   let rewire =
     [
-      Emancipate (fake_root_step, fake_root_v, old_real_root_v);
-      Adopt (fake_root_step, fake_root_v, frag.root_v);
+      Emancipate (port_root_step, port_root_v, old_real_root_v);
+      Adopt (port_root_step, port_root_v, frag.root_v);
     ]
-    @ chain_emit (fun v _ c -> Assoc (v, c)) fake_chain only_added
-    @ chain_emit (fun v s c -> Map (v, c, s)) fake_chain only_added
+    @ chain_emit (fun v _ c -> Assoc (v, c)) port_chain only_added
+    @ chain_emit (fun v s c -> Map (v, c, s)) port_chain only_added
   in
   { commit = Frag.to_commit frag @ rewire; decorated; pes = new_pes }
 
 (* [next] sits inside [prev] at [path]: re-root the tree to that existing
-   subtree by detaching it from its parent and repointing the fake root.
-   Discarded ancestors are best-effort cleaned via [Emancipate]/[GC]. *)
-let patch_sub_pol ~prev ~path =
+   subtree by repointing the port root's single step from prev's old real
+   root to the new one. No detach from the surviving subtree's old parent is
+   needed: the parent and every other discarded ancestor get [GC]'d, which
+   already severs the parent-side edge. *)
+let patch_change_root ~prev ~path =
   let parent_path, k = list_foot path in
   let parent = Decorated.walk prev.decorated parent_path in
-  let parent_v = Decorated.root_vpifo parent in
-  let step_k = Decorated.nth_step parent k in
   let new_root = Decorated.nth_child parent k in
   let new_root_v = Decorated.root_vpifo new_root in
   let old_real_root_v = Decorated.root_vpifo prev.decorated in
@@ -488,11 +489,10 @@ let patch_sub_pol ~prev ~path =
       (Decorated.subtree_classes prev.decorated)
   in
   let commit =
-    Emancipate (step_k, parent_v, new_root_v)
-    :: Emancipate (fake_root_step, fake_root_v, old_real_root_v)
-    :: Adopt (fake_root_step, fake_root_v, new_root_v)
-    :: (chain_emit (fun v s c -> Unmap (v, c, s)) fake_chain dropped_classes
-       @ chain_emit (fun v _ c -> Deassoc (v, c)) fake_chain dropped_classes
+    Emancipate (port_root_step, port_root_v, old_real_root_v)
+    :: Adopt (port_root_step, port_root_v, new_root_v)
+    :: (chain_emit (fun v s c -> Unmap (v, c, s)) port_chain dropped_classes
+       @ chain_emit (fun v _ c -> Deassoc (v, c)) port_chain dropped_classes
        @ List.map (fun v -> GC v) to_gc)
   in
   let new_pes = List.filteri (fun i _ -> i >= List.length path) prev.pes in
@@ -516,8 +516,8 @@ let patch ~prev ~(next : Rio_core.Policy.t) : compiled option =
   | ChangeWeight { path; new_weight } ->
       Some (patch_weight_changed ~prev ~path ~new_weight)
   | Graft [] | ChangeRoot [] -> None
-  | Graft path -> Some (patch_super_pol ~prev ~next ~path)
-  | ChangeRoot path -> Some (patch_sub_pol ~prev ~path)
+  | Graft path -> Some (patch_graft ~prev ~next ~path)
+  | ChangeRoot path -> Some (patch_change_root ~prev ~path)
 
 module Decorated = Decorated
 module Json = Json

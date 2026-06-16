@@ -29,6 +29,6 @@ val combine : t -> t list -> t
     [children] kindwise. [root_v] and [classes] are inherited from [local]. *)
 
 val stub : Decorated.t -> t
-(** A stub frag stands in for an already-installed subtree during a [SuperPol]
+(** A stub frag stands in for an already-installed subtree during a [Graft]
     splice. Carries [root_v] and [classes] so the parent can [Adopt] and
     propagate routing state, but emits no instructions. *)
