@@ -514,13 +514,14 @@ let graft_tests =
    PE 2 (fresh, above prev's max PE 1). *)
 let one_arm_added_extends_pes_test =
   "sp[A] -> sp[A, rr[B,C]] (extends pes)" >:: fun _ ->
-  let prev = Ir.of_policy (Policy.SP [ (Policy.FIFO "A", 1.0) ]) in
+  let prev = Ir.of_policy (Policy.SP ([ (Policy.FIFO "A", 1.0) ], false)) in
   let next =
     Policy.SP
-      [
-        (Policy.FIFO "A", 1.0);
-        (Policy.RR [ Policy.FIFO "B"; Policy.FIFO "C" ], 2.0);
-      ]
+      ( [
+          (Policy.FIFO "A", 1.0);
+          (Policy.RR [ Policy.FIFO "B"; Policy.FIFO "C" ], 2.0);
+        ],
+        false )
   in
   let c =
     match Ir.patch ~prev ~next with

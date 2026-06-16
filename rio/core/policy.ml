@@ -1,6 +1,6 @@
 type t =
   | FIFO of Ast.clss
-  | SP of (t * float) list
+  | SP of (t * float) list * bool
   | RR of t list
   | WFQ of (t * float) list
 
@@ -29,7 +29,7 @@ let rec sub cl st used (p : Ast.stream) =
       FIFO c
   | Strict prs ->
       let ps, rs = List.split prs in
-      SP (List.combine (sub_ps ps) rs)
+      SP (List.combine (sub_ps ps) rs, false)
   | RoundRobin ps -> RR (sub_ps ps)
   | WeightedFair pws ->
       let ps, ws = List.split pws in
@@ -39,14 +39,15 @@ let rec sub cl st used (p : Ast.stream) =
 let rec normalize p =
   match p with
   | FIFO _ -> p
-  | SP prs ->
+  | SP (prs, designated) ->
       (* SP arms canonicalize by rank ascending (the priority order is the
          discipline-defining datum); ties break by arm content. *)
       SP
-        (List.map (fun (p, r) -> (normalize p, r)) prs
-        |> List.sort (fun (p1, r1) (p2, r2) ->
-            let c = compare r1 r2 in
-            if c <> 0 then c else compare p1 p2))
+        ( List.map (fun (p, r) -> (normalize p, r)) prs
+          |> List.sort (fun (p1, r1) (p2, r2) ->
+                 let c = compare r1 r2 in
+                 if c <> 0 then c else compare p1 p2),
+          designated )
   | RR ps -> RR (List.map normalize ps |> List.sort compare)
   | WFQ pws ->
       (* WFQ arms canonicalize by arm content (weights are independent
@@ -66,7 +67,7 @@ let rec to_string p =
   let join lst to_string = lst |> List.map to_string |> String.concat ", " in
   match p with
   | FIFO c -> fmt "fifo[%s]" c
-  | SP prs ->
+  | SP (prs, _) ->
       let to_string (p, r) = fmt "(%s, %g)" (to_string p) r in
       fmt "strict[%s]" (join prs to_string)
   | RR ps -> fmt "rr[%s]" (join ps to_string)
@@ -78,5 +79,5 @@ let rec walk p path =
   match (p, path) with
   | _, [] -> p
   | FIFO _, _ :: _ -> failwith "Policy.walk: path through FIFO leaf"
-  | (SP prs | WFQ prs), i :: rest -> walk (fst (List.nth prs i)) rest
+  | (SP (prs, _) | WFQ prs), i :: rest -> walk (fst (List.nth prs i)) rest
   | RR ps, i :: rest -> walk (List.nth ps i) rest

@@ -54,6 +54,21 @@ type t =
   | ChangeRoot of path
       (** [next] is a strict subtree of [prev] at [path]: pruning [prev] down to
           that subtree gives [next]. *)
+  | Designate of {
+      path : path;
+      arm : Rio_core.Policy.t;
+    }
+      (** Introduce [arm] alongside the SP slot at [path] under a designated
+          super-node favoring the existing arm. [den(Designate) = id]; the
+          super-node collapses once the loser quiesces. Sniffer-invisible
+          today (planner-only emission, worklist PR 10). *)
+  | Quiesce of path
+      (** Drain the subtree at [path]: no further enqueues, dequeues continue
+          until empty. [den(Quiesce) = id]; sniffer-invisible (planner-only
+          emission, worklist PR 10). *)
+  | Undesignate of path
+      (** Collapse the designated super-node at [path] onto its survivor.
+          Sniffer-invisible (planner-only emission, worklist PR 10). *)
 
 (** [insertions prev next] determines whether [next] can be obtained by
     inserting elements into [prev] without reordering existing elements. If so,
@@ -132,6 +147,9 @@ let prepend_path i diff =
   | Replace { path; arm; meta } -> Replace { path = i :: path; arm; meta }
   | Graft p -> Graft (i :: p)
   | ChangeRoot p -> ChangeRoot (i :: p)
+  | Designate { path; arm } -> Designate { path = i :: path; arm }
+  | Quiesce p -> Quiesce (i :: p)
+  | Undesignate p -> Undesignate (i :: p)
 
 let rec is_sub_policy p1 p2 =
   (* Is p1 a sub-policy of p2?
@@ -142,7 +160,7 @@ let rec is_sub_policy p1 p2 =
   else
     match p2 with
     | FIFO _ -> None
-    | SP prs | WFQ prs ->
+    | SP (prs, _) | WFQ prs ->
         let rec loop i = function
           | [] -> None
           | (p, _) :: t -> (
@@ -282,7 +300,7 @@ and analyze p1 p2 =
     | None, Some path -> ChangeRoot path
     | _ -> (
         match (p1, p2) with
-        | SP pms1, SP pms2 | WFQ pms1, WFQ pms2 ->
+        | SP (pms1, _), SP (pms2, _) | WFQ pms1, WFQ pms2 ->
             compare_metaed_children ~next:p2 pms1 pms2
         | RR ps1, RR ps2 -> compare_children ~next:p2 ps1 ps2
         | _ ->
@@ -328,3 +346,7 @@ let to_string = function
       Printf.sprintf "Replace: %s" (string_of_arm_w path arm m)
   | Graft p -> Printf.sprintf "Graft at %s" (path_to_string p)
   | ChangeRoot p -> Printf.sprintf "ChangeRoot at %s" (path_to_string p)
+  | Designate { path; arm } ->
+      Printf.sprintf "Designate: %s" (string_of_arm path arm)
+  | Quiesce p -> Printf.sprintf "Quiesce at %s" (path_to_string p)
+  | Undesignate p -> Printf.sprintf "Undesignate at %s" (path_to_string p)

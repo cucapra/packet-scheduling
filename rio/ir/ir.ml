@@ -28,7 +28,7 @@ let rec policy_depth (p : Rio_core.Policy.t) : int =
   let module P = Rio_core.Policy in
   match p with
   | P.FIFO _ -> 0
-  | P.SP prs | P.WFQ prs ->
+  | P.SP (prs, _) | P.WFQ prs ->
       1 + List.fold_left max 0 (List.map (fun (p, _) -> policy_depth p) prs)
   | P.RR ps -> 1 + List.fold_left max 0 (List.map policy_depth ps)
 
@@ -86,7 +86,7 @@ let rec compile_subtree ~fresh_v ~fresh_s ~pe_of_depth ~depth ?splice
       | P.RR children ->
           let frag, edges = arm ~pol_ty:RR ~weights:[] children in
           (frag, Decorated.RR (frag.root_v, edges))
-      | P.SP arms ->
+      | P.SP (arms, _) ->
           let children = List.map fst arms in
           let ranks = List.map snd arms in
           let frag, edges = arm ~pol_ty:SP ~weights:ranks children in
@@ -492,6 +492,7 @@ let patch ~prev ~(next : Rio_core.Policy.t) : compiled option =
   | Graft [] | ChangeRoot [] -> None
   | Graft path -> Some (patch_graft ~prev ~next ~path)
   | ChangeRoot path -> Some (patch_change_root ~prev ~path)
+  | Designate _ | Quiesce _ | Undesignate _ -> failwith "TODO"
 
 module Decorated = Decorated
 module Json = Json
