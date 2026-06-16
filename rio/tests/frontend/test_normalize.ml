@@ -22,7 +22,7 @@ let normalize_tests =
     make_test "fifo[A] is stable" "fifo_A" (fifo "A");
     (* strict[(B, 1), (A, 2)]: SP normalizes by ascending rank. *)
     make_test "strict sorts arms by rank" "strict_BA"
-      (Policy.SP [ (fifo "B", 1.0); (fifo "A", 2.0) ]);
+      (Policy.SP ([ (fifo "B", 1.0); (fifo "A", 2.0) ], false));
     (* rr[B, A, C]: RR children are sorted. *)
     make_test "rr sorts its arms" "rr_BAC"
       (Policy.RR [ fifo "A"; fifo "B"; fifo "C" ]);
@@ -34,7 +34,9 @@ let normalize_tests =
     make_test "complex tree" "complex_tree"
       (Policy.WFQ
          [
-           (Policy.SP [ (fifo "A", 1.0); (fifo "B", 2.0); (fifo "C", 3.0) ], 1.0);
+           ( Policy.SP
+               ([ (fifo "A", 1.0); (fifo "B", 2.0); (fifo "C", 3.0) ], false),
+             1.0 );
            (Policy.RR [ fifo "D"; fifo "E"; fifo "F" ], 2.0);
            (Policy.RR [ fifo "G"; fifo "H" ], 3.0);
          ]);

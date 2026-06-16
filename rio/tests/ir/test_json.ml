@@ -29,5 +29,55 @@ let json_tests =
       "complex_tree.json";
   ]
 
-let suite = "json tests" >::: json_tests
+(* The substrate consumes the JSON stream to allocate hardware. When a [v]
+   becomes a designated super-node head, the lowering emits [Set_policy (v,
+   SP*, 2)] right after [Designate]; the JSON must surface "SP*" verbatim
+   so the hardware designer sees the super-node and provisions for it. *)
+let sp_star_marker_test =
+  "Set_policy with SP* surfaces \"SP*\" in JSON" >:: fun _ ->
+  let j = Ir.Json.from_instr (Ir.Set_policy (100, Ir.SP_star, 2)) in
+  let expected =
+    `Assoc
+      [
+        ("op", `String "set_policy");
+        ("v", `Int 100);
+        ("pol", `String "SP*");
+        ("n", `Int 2);
+      ]
+  in
+  assert_equal ~printer:Yojson.Basic.pretty_to_string ~cmp:Yojson.Basic.equal
+    expected j
+
+let designate_round_trip_test =
+  "Designate + Set_policy(SP*) JSON for a designate commit" >:: fun _ ->
+  let commit : Ir.commit =
+    [ Ir.Designate (100, 103); Ir.Set_policy (100, Ir.SP_star, 2) ]
+  in
+  let j = Ir.Json.from_commit commit in
+  let expected =
+    `List
+      [
+        `List
+          [
+            `Assoc
+              [
+                ("op", `String "designate");
+                ("v", `Int 100);
+                ("survivor", `Int 103);
+              ];
+            `Assoc
+              [
+                ("op", `String "set_policy");
+                ("v", `Int 100);
+                ("pol", `String "SP*");
+                ("n", `Int 2);
+              ];
+          ];
+      ]
+  in
+  assert_equal ~printer:Yojson.Basic.pretty_to_string ~cmp:Yojson.Basic.equal
+    expected j
+
+let sp_star_tests = [ sp_star_marker_test; designate_round_trip_test ]
+let suite = "json tests" >::: json_tests @ sp_star_tests
 let () = run_test_tt_main suite

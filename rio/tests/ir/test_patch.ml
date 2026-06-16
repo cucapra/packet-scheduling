@@ -514,13 +514,14 @@ let graft_tests =
    PE 2 (fresh, above prev's max PE 1). *)
 let one_arm_added_extends_pes_test =
   "sp[A] -> sp[A, rr[B,C]] (extends pes)" >:: fun _ ->
-  let prev = Ir.of_policy (Policy.SP [ (Policy.FIFO "A", 1.0) ]) in
+  let prev = Ir.of_policy (Policy.SP ([ (Policy.FIFO "A", 1.0) ], false)) in
   let next =
     Policy.SP
-      [
-        (Policy.FIFO "A", 1.0);
-        (Policy.RR [ Policy.FIFO "B"; Policy.FIFO "C" ], 2.0);
-      ]
+      ( [
+          (Policy.FIFO "A", 1.0);
+          (Policy.RR [ Policy.FIFO "B"; Policy.FIFO "C" ], 2.0);
+        ],
+        false )
   in
   let c =
     match Ir.patch ~prev ~next with
@@ -575,12 +576,154 @@ let deep_giveup_test =
 
 let deep_giveup_tests = [ deep_giveup_test ]
 
+(* ------------------------------------------------------------------ *)
+(* Planner-only Compare productions: Designate / Quiesce / Undesignate.
+   [analyze] never emits these; the lowering helpers are called
+   directly. Each test pins down the ISA shape so a future planner has a
+   stable target.                                                     *)
+(* ------------------------------------------------------------------ *)
+
+(* Designate at a leaf slot of rr[A,B]: introduce a new FIFO D as the
+   survivor against the existing FIFO B (v=102, step 1001). [Set_policy
+   (102, SP*, 2)] is the substrate-facing marker that v=102 now hosts a
+   super-node. Class D, new to the tree, gets routed all the way down
+   the chain from port root to the slot's parent. *)
+let designate_arm_test =
+  "Designate: rr[A,B] gets D introduced at slot 1" >:: fun _ ->
+  let prev = compile "rr_AB" in
+  let arm = Policy.FIFO "D" in
+  let c = Ir.patch_designate ~prev ~path:[ 1 ] ~arm in
+  let expected : commit =
+    [
+      Spawn (103, 1);
+      Assoc (103, "D");
+      Designate (102, 103);
+      Set_policy (102, SP_star, 2);
+      Assoc (99, "D");
+      Assoc (100, "D");
+      Map (99, "D", 999);
+      Map (100, "D", 1001);
+    ]
+  in
+  assert_equal ~printer:Ir.string_of_commit expected c.commit
+
+(* Designate at the root of rr[A,B]: the whole tree gets designated
+   against a new FIFO D. Only the port root sits above; the chain
+   shortens to just [(99, 999)]. *)
+let designate_root_test =
+  "Designate: rr[A,B] whole-tree against FIFO D" >:: fun _ ->
+  let prev = compile "rr_AB" in
+  let arm = Policy.FIFO "D" in
+  let c = Ir.patch_designate ~prev ~path:[] ~arm in
+  let expected : commit =
+    [
+      Spawn (103, 0);
+      Assoc (103, "D");
+      Designate (100, 103);
+      Set_policy (100, SP_star, 2);
+      Assoc (99, "D");
+      Map (99, "D", 999);
+    ]
+  in
+  assert_equal ~printer:Ir.string_of_commit expected c.commit
+
+(* Quiesce slot 1 of rr[A,B]: tear down routing for class B along the
+   chain from the port root down to the slot's parent. den(Quiesce) = id,
+   so no shape change to the tree. *)
+let quiesce_arm_test =
+  "Quiesce: rr[A,B] at slot 1 (drains B)" >:: fun _ ->
+  let prev = compile "rr_AB" in
+  let c = Ir.patch_quiesce ~prev ~path:[ 1 ] in
+  let expected : commit =
+    [
+      Unmap (99, "B", 999);
+      Unmap (100, "B", 1001);
+      Deassoc (99, "B");
+      Deassoc (100, "B");
+    ]
+  in
+  assert_equal ~printer:Ir.string_of_commit expected c.commit
+
+(* Quiesce at root: tears down routing for every class on the port root.
+   The whole tree is being drained. *)
+let quiesce_root_test =
+  "Quiesce: rr[A,B] whole-tree" >:: fun _ ->
+  let prev = compile "rr_AB" in
+  let c = Ir.patch_quiesce ~prev ~path:[] in
+  let expected : commit =
+    [
+      Unmap (99, "A", 999);
+      Unmap (99, "B", 999);
+      Deassoc (99, "A");
+      Deassoc (99, "B");
+    ]
+  in
+  assert_equal ~printer:Ir.string_of_commit expected c.commit
+
+(* Undesignate: emit the bare ISA instruction targeting the loser v at
+   the slot. The substrate handles the rewire. *)
+let undesignate_arm_test =
+  "Undesignate: rr[A,B] at slot 1" >:: fun _ ->
+  let prev = compile "rr_AB" in
+  let c = Ir.patch_undesignate ~prev ~path:[ 1 ] in
+  assert_equal ~printer:Ir.string_of_commit [ Undesignate 102 ] c.commit
+
+let undesignate_root_test =
+  "Undesignate: rr[A,B] at root" >:: fun _ ->
+  let prev = compile "rr_AB" in
+  let c = Ir.patch_undesignate ~prev ~path:[] in
+  assert_equal ~printer:Ir.string_of_commit [ Undesignate 100 ] c.commit
+
+(* End-to-end give-up idiom (sketch.md §4): Replace([], p2) expands to
+   Designate([], p2) ; (true ; Quiesce([0])) ; (empty([0]) ; Undesignate([])).
+   This test stitches the three lowerings in sequence and checks the
+   combined commit shape. The Quiesce path is [0] because, post-Designate,
+   the loser sits at index 0 inside the conceptual super-node. We can't
+   walk that path through our decorated tree (we don't model super-nodes
+   yet), so we quiesce at [] instead: equivalent here since the loser is
+   the entire tree. *)
+let giveup_idiom_test =
+  "give-up idiom: Designate ; Quiesce ; Undesignate at root" >:: fun _ ->
+  let prev = compile "rr_AB" in
+  let arm = Policy.FIFO "D" in
+  let d = Ir.patch_designate ~prev ~path:[] ~arm in
+  let q = Ir.patch_quiesce ~prev ~path:[] in
+  let u = Ir.patch_undesignate ~prev ~path:[] in
+  let combined = d.commit @ q.commit @ u.commit in
+  let expected : commit =
+    [
+      Spawn (103, 0);
+      Assoc (103, "D");
+      Designate (100, 103);
+      Set_policy (100, SP_star, 2);
+      Assoc (99, "D");
+      Map (99, "D", 999);
+      Unmap (99, "A", 999);
+      Unmap (99, "B", 999);
+      Deassoc (99, "A");
+      Deassoc (99, "B");
+      Undesignate 100;
+    ]
+  in
+  assert_equal ~printer:Ir.string_of_commit expected combined
+
+let planner_production_tests =
+  [
+    designate_arm_test;
+    designate_root_test;
+    quiesce_arm_test;
+    quiesce_root_test;
+    undesignate_arm_test;
+    undesignate_root_test;
+    giveup_idiom_test;
+  ]
+
 let suite =
   "patch tests"
   >::: one_arm_added_tests @ one_arm_added_wfq_tests @ meta_changed_tests
        @ one_arm_removed_tests @ one_arm_replaced_tests
        @ one_arm_replaced_wfq_tests @ whole_tree_replace_tests
        @ change_root_tests @ graft_tests @ pes_extension_tests
-       @ deep_giveup_tests
+       @ deep_giveup_tests @ planner_production_tests
 
 let () = run_test_tt_main suite

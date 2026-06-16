@@ -10,6 +10,12 @@ type pol_ty =
   | RR
   | SP
   | WFQ
+  | SP_star
+(* The runtime-only counterpart of [SP] used by [Designate]'s lowering:
+         marks a v as the head of a designated super-node so the substrate
+         allocates super-node hardware. Spawned via [Set_policy (v, SP_star,
+         2)] right after a [Designate]; cleared at [Undesignate] time. Never
+         emitted by [of_policy] or by the source DSL. *)
 
 type instr =
   | Spawn of vpifo * pe
@@ -37,6 +43,7 @@ let string_of_pol_ty = function
   | RR -> "RR"
   | SP -> "SP"
   | WFQ -> "WFQ"
+  | SP_star -> "SP*"
 
 let string_of_instr = function
   | Spawn (v, p) ->

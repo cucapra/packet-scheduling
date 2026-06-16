@@ -186,6 +186,6 @@ let rec to_policy (d : t) : Rio_core.Policy.t =
   let module P = Rio_core.Policy in
   match d with
   | FIFO (_, c) -> P.FIFO c
-  | SP (_, es) -> P.SP (List.map (fun (_, c, r) -> (to_policy c, r)) es)
+  | SP (_, es) -> P.SP (List.map (fun (_, c, r) -> (to_policy c, r)) es, false)
   | RR (_, es) -> P.RR (List.map (fun (_, c) -> to_policy c) es)
   | WFQ (_, es) -> P.WFQ (List.map (fun (_, c, w) -> (to_policy c, w)) es)

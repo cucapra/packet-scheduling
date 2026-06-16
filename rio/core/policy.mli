@@ -1,6 +1,12 @@
+(* SP arms are paired with their priority rank (lower = higher priority).
+   The [bool] is the "designated" flag, distinguishing the paper's [Strict*]
+   from [Strict]. Semantics treats the two as identical; the bit exists so
+   that [Undesignate]'s precondition (subtree below sits under a designated
+   SP) is structural. The DSL parses only undesignated SPs; the flag flips
+   to [true] only via the [Designate] lowering. *)
 type t =
   | FIFO of Ast.clss
-  | SP of (t * float) list
+  | SP of (t * float) list * bool
   | RR of t list
   | WFQ of (t * float) list
 
