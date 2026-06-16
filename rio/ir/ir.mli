@@ -74,8 +74,9 @@ val patch : prev:compiled -> next:Rio_core.Policy.t -> compiled option
       [Designate] that fuses the old and new roots into a super-node riding on
       the existing parent step, [Deassoc]s that drain the old classes out of the
       displaced subtree and its ancestors, [Assoc]/[Map] entries that route the
-      new classes to the same step, and a [GC] per node of the displaced subtree
-      so they are collected once the displaced tree underflows.
+      new classes to the same step, an [Undesignate] paired with a [GC] on the
+      old root that collapses the super-node and releases its PE slot, and a
+      [GC] per remaining node of the displaced subtree.
     - [next] is structurally equal to a strict subtree of [prev] at a non-empty
       path (per [SubPol]): returns [Some] with an [Emancipate] detaching that
       subtree from its parent, a second [Emancipate]/[Adopt] pair on the fake

@@ -52,6 +52,11 @@ type instr =
           arriving at [v] continues to flow through [v]; once [v] underflows and
           is collected (per a prior [GC]), the super-node collapses to
           [survivor]. Chains across multiple [Designate]s are allowed. *)
+  | Undesignate of vpifo
+      (** [Undesignate v]: collapse the super-node headed by [v] (with [v] ->
+          survivor) by rewiring the parent's index away from [v] and onto its
+          survivor. [v] itself stays allocated; a paired [GC v] in the same
+          commit releases its PE slot. *)
 
 type commit = instr list
 

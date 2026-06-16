@@ -234,6 +234,7 @@ let rr_ab_to_ad_expected : commit =
     Deassoc (100, "B");
     Assoc (100, "D");
     Map (100, "D", 1001);
+    Undesignate 102;
     GC 102;
   ]
 
@@ -248,6 +249,7 @@ let strict_ab_to_ac_expected : commit =
     Deassoc (100, "B");
     Assoc (100, "C");
     Map (100, "C", 1001);
+    Undesignate 102;
     GC 102;
   ]
 
@@ -273,6 +275,7 @@ let wfq_abc_to_abz_diff_expected : commit =
     Deassoc (100, "C");
     Assoc (100, "Z");
     Map (100, "Z", 1002);
+    Undesignate 103;
     GC 103;
     Change_weight (100, 1002, 7.0);
   ]
@@ -322,6 +325,7 @@ let rr_ab_to_rr_def_expected : commit =
     Map (99, "D", 999);
     Map (99, "E", 999);
     Map (99, "F", 999);
+    Undesignate 100;
     GC 100;
     GC 101;
     GC 102;
@@ -350,6 +354,7 @@ let strict_ab_to_rr_ab_expected : commit =
     Map (103, "B", 1003);
     Set_policy (103, RR, 2);
     Designate (100, 103);
+    Undesignate 100;
     GC 100;
     GC 101;
     GC 102;

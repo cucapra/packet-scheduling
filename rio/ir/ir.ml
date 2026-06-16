@@ -250,6 +250,7 @@ let replace_at ~prev ~chain ~removed ~arm_depth ~arm ~rewrite_decorated =
         chain_emit (fun v _ c -> Deassoc (v, c)) chain only_removed;
         chain_emit (fun v _ c -> Assoc (v, c)) chain only_added;
         chain_emit (fun v s c -> Map (v, c, s)) chain only_added;
+        [ Undesignate removed_v ];
         gc_subtree removed;
       ]
   in
