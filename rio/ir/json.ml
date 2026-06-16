@@ -53,10 +53,10 @@ let from_instr (i : Instr.instr) : Yojson.Basic.t =
         ]
   | Instr.Change_arity (v, n) ->
       `Assoc [ ("op", `String "change_arity"); ("v", `Int v); ("n", `Int n) ]
-  | Instr.Change_weight (v, s, w) ->
+  | Instr.Set_arm_meta (v, s, w) ->
       `Assoc
         [
-          ("op", `String "change_weight");
+          ("op", `String "set_arm_meta");
           ("v", `Int v);
           ("step", `Int s);
           ("weight", `Float w);

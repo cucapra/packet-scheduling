@@ -7,7 +7,7 @@ type t = {
   maps : instr list;
   set_policies : instr list;
   change_arities : instr list;
-  change_weights : instr list;
+  set_arm_metas : instr list;
   root_v : vpifo;
   classes : clss list;
 }
@@ -20,7 +20,7 @@ let empty ~root_v ~classes =
     maps = [];
     set_policies = [];
     change_arities = [];
-    change_weights = [];
+    set_arm_metas = [];
     root_v;
     classes;
   }
@@ -34,7 +34,7 @@ let to_commit (f : t) : commit =
       f.maps;
       f.set_policies;
       f.change_arities;
-      f.change_weights;
+      f.set_arm_metas;
     ]
 
 let combine (local : t) (children : t list) : t =
@@ -46,7 +46,7 @@ let combine (local : t) (children : t list) : t =
     maps = collect (fun f -> f.maps);
     set_policies = collect (fun f -> f.set_policies);
     change_arities = collect (fun f -> f.change_arities);
-    change_weights = collect (fun f -> f.change_weights);
+    set_arm_metas = collect (fun f -> f.set_arm_metas);
     root_v = local.root_v;
     classes = local.classes;
   }

@@ -62,9 +62,9 @@ let strict_abc_expected : commit =
     Set_policy (99, UNION, 1);
     Set_policy (100, SP, 3);
     (* A is highest priority, then B, then C *)
-    Change_weight (100, 1000, 1.0);
-    Change_weight (100, 1001, 2.0);
-    Change_weight (100, 1002, 3.0);
+    Set_arm_meta (100, 1000, 1.0);
+    Set_arm_meta (100, 1001, 2.0);
+    Set_arm_meta (100, 1002, 3.0);
   ]
 
 let compile_tests =

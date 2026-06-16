@@ -22,7 +22,7 @@ type instr =
   | Unmap of vpifo * clss * step
   | Set_policy of vpifo * pol_ty * int
   | Change_arity of vpifo * int
-  | Change_weight of vpifo * step * float
+  | Set_arm_meta of vpifo * step * float
   | GC of vpifo
   | Designate of vpifo * vpifo
   | Undesignate of vpifo
@@ -61,8 +61,8 @@ let string_of_instr = function
         (string_of_pol_ty pt) n
   | Change_arity (v, n) ->
       Printf.sprintf "change_arity(%s, %d)" (string_of_vpifo v) n
-  | Change_weight (v, s, w) ->
-      Printf.sprintf "change_weight(%s, %s, %F)" (string_of_vpifo v)
+  | Set_arm_meta (v, s, w) ->
+      Printf.sprintf "set_arm_meta(%s, %s, %F)" (string_of_vpifo v)
         (string_of_step s) w
   | GC v -> Printf.sprintf "gc(%s)" (string_of_vpifo v)
   | Designate (v, survivor) ->

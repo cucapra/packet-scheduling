@@ -40,9 +40,11 @@ type instr =
       (** [Change_arity (v, n)]: set the live [v]'s arity to [n]. Shrinking
           drops rightmost slots; growing appends fresh ones. The policy type is
           unchanged. *)
-  | Change_weight of vpifo * step * float
-      (** [Change_weight (v, s, w)]: the child reached via step [s] has weight
-          [w]. *)
+  | Set_arm_meta of vpifo * step * float
+      (** [Set_arm_meta (v, s, w)]: set the per-arm metadata on the child
+          reached via step [s]. Today the payload is a single weight [w]; a
+          later refactor will reinterpret [w] per [v]'s policy type (a weight
+          for RR/WFQ; a priority rank for Strict). *)
   | GC of vpifo
       (** [GC v]: tell the garbage collector that [v] is available for
           collection. *)

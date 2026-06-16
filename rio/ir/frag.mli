@@ -12,7 +12,7 @@ type t = {
   maps : instr list;
   set_policies : instr list;
   change_arities : instr list;
-  change_weights : instr list;
+  set_arm_metas : instr list;
   root_v : vpifo;
   classes : clss list;
 }
@@ -22,7 +22,7 @@ val empty : root_v:vpifo -> classes:clss list -> t
 
 val to_commit : t -> commit
 (** Flatten a frag's seven instruction kinds in canonical order: spawns, adopts,
-    assocs, maps, set_policies, change_arities, change_weights. *)
+    assocs, maps, set_policies, change_arities, set_arm_metas. *)
 
 val combine : t -> t list -> t
 (** [combine local children] interleaves a parent's [local] frag with each of

@@ -55,22 +55,21 @@ val patch : prev:compiled -> next:Rio_core.Policy.t -> compiled option
       empty [commit].
     - [next] adds exactly one arm at any position of a [UNION], [RR], or [SP]
       parent (per [ArmAdded]): returns [Some] with the
-      [Spawn]/[Adopt]/[Assoc]/[Map]/[Change_arity] (and [Change_weight] for
-      [SP], both for the new arm and for any existing arms whose positional
-      priority shifts) instructions needed to splice the new arm in. The
-      parent's policy type is fixed at lPIFO birth, so no [Set_policy] is
-      emitted against it.
+      [Spawn]/[Adopt]/[Assoc]/[Map]/[Change_arity] (and [Set_arm_meta] for [SP],
+      both for the new arm and for any existing arms whose positional priority
+      shifts) instructions needed to splice the new arm in. The parent's policy
+      type is fixed at lPIFO birth, so no [Set_policy] is emitted against it.
     - [next] differs from [prev] only in the weight of one [WFQ] arm (per
-      [WeightChanged]): returns [Some] with a single [Change_weight] instruction
+      [WeightChanged]): returns [Some] with a single [Set_arm_meta] instruction
       for the affected slot.
     - [next] removes exactly one arm at any position of a [UNION], [RR], or [SP]
-      parent (per [ArmRemoved]): returns [Some] with the [Change_weight] (only
+      parent (per [ArmRemoved]): returns [Some] with the [Set_arm_meta] (only
       for [SP] siblings whose positional priority shifts down), [Change_arity],
       [Unmap], [Deassoc], [Emancipate], and [GC] instructions needed to detach
       the arm and clean up routing state cached on its ancestor chain.
     - [next] swaps in a different subtree at exactly one position (per
       [ArmReplaced]): returns [Some] with the new arm's
-      [Spawn]/[Adopt]/[Assoc]/[Map]/[Set_policy]/[Change_weight] instructions, a
+      [Spawn]/[Adopt]/[Assoc]/[Map]/[Set_policy]/[Set_arm_meta] instructions, a
       [Designate] that fuses the old and new roots into a super-node riding on
       the existing parent step, [Deassoc]s that drain the old classes out of the
       displaced subtree and its ancestors, [Assoc]/[Map] entries that route the
@@ -86,8 +85,8 @@ val patch : prev:compiled -> next:Rio_core.Policy.t -> compiled option
       is collected. The whole-tree case ([path = []]) returns [None].
     - [prev]'s policy appears as a strict subtree of [next] at a non-empty path
       (per [SuperPol]): returns [Some] with the
-      [Spawn]/[Adopt]/[Assoc]/[Map]/[Set_policy]/[Change_weight] instructions
-      for the new structure surrounding [prev], a single [Adopt] that grafts
+      [Spawn]/[Adopt]/[Assoc]/[Map]/[Set_policy]/[Set_arm_meta] instructions for
+      the new structure surrounding [prev], a single [Adopt] that grafts
       [prev]'s existing root in at the splice point, and an [Emancipate]/
       [Adopt] pair that repoints the fake root's single step from [prev]'s old
       real root to [next]'s new top. [prev]'s in-flight nodes are not respawned.
