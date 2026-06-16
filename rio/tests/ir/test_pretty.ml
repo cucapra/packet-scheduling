@@ -41,7 +41,7 @@ let rr_ab_commit : commit =
     Assoc (b_leaf, "B");
     Map (root, "A", s_a);
     Map (root, "B", s_b);
-    Change_pol (root, RR, 2);
+    Set_policy (root, RR, 2);
   ]
 
 (* Pretty-print of [rr_ab_commit] above — the handwritten IR without a
@@ -60,7 +60,7 @@ let expected_rr_ab_handwritten =
       "assoc(v102, B)";
       "map(v100, A, step_1000)";
       "map(v100, B, step_1001)";
-      "change_pol(v100, RR, 2)";
+      "set_policy(v100, RR, 2)";
     ]
 
 (* Pretty-print of what [Ir.of_policy] actually emits for rr[A, B]: the
@@ -85,8 +85,8 @@ let expected_rr_ab_compiled =
       "map(v99, B, step_999)";
       "map(v100, A, step_1000)";
       "map(v100, B, step_1001)";
-      "change_pol(v99, UNION, 1)";
-      "change_pol(v100, RR, 2)";
+      "set_policy(v99, UNION, 1)";
+      "set_policy(v100, RR, 2)";
     ]
 
 let test_rr_ab_handwritten =

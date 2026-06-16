@@ -20,7 +20,8 @@ type instr =
   | Deassoc of vpifo * clss
   | Map of vpifo * clss * step
   | Unmap of vpifo * clss * step
-  | Change_pol of vpifo * pol_ty * int
+  | Set_policy of vpifo * pol_ty * int
+  | Change_arity of vpifo * int
   | Change_weight of vpifo * step * float
   | GC of vpifo
   | Designate of vpifo * vpifo
@@ -54,9 +55,11 @@ let string_of_instr = function
   | Unmap (v, c, s) ->
       Printf.sprintf "unmap(%s, %s, %s)" (string_of_vpifo v) c
         (string_of_step s)
-  | Change_pol (v, pt, n) ->
-      Printf.sprintf "change_pol(%s, %s, %d)" (string_of_vpifo v)
+  | Set_policy (v, pt, n) ->
+      Printf.sprintf "set_policy(%s, %s, %d)" (string_of_vpifo v)
         (string_of_pol_ty pt) n
+  | Change_arity (v, n) ->
+      Printf.sprintf "change_arity(%s, %d)" (string_of_vpifo v) n
   | Change_weight (v, s, w) ->
       Printf.sprintf "change_weight(%s, %s, %F)" (string_of_vpifo v)
         (string_of_step s) w

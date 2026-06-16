@@ -36,7 +36,7 @@ let strict_ab_to_abc_expected : commit =
     Assoc (100, "C");
     Assoc (103, "C");
     Map (100, "C", 1002);
-    Change_pol (100, SP, 3);
+    Change_arity (100, 3);
     Change_weight (100, 1002, 3.0);
   ]
 
@@ -51,7 +51,7 @@ let strict_ac_to_abc_expected : commit =
     Assoc (100, "B");
     Assoc (103, "B");
     Map (100, "B", 1002);
-    Change_pol (100, SP, 3);
+    Change_arity (100, 3);
     Change_weight (100, 1002, 2.0);
     Change_weight (100, 1001, 3.0);
   ]
@@ -64,7 +64,7 @@ let rr_ab_to_abc_expected : commit =
     Assoc (100, "C");
     Assoc (103, "C");
     Map (100, "C", 1002);
-    Change_pol (100, RR, 3);
+    Change_arity (100, 3);
   ]
 
 (* Deep arm add. complex_tree's normalized root is WFQ with children sorted
@@ -81,7 +81,7 @@ let complex_tree_add_deep_expected : commit =
     Assoc (112, "NEW");
     Map (100, "NEW", 1010);
     Map (108, "NEW", 1011);
-    Change_pol (108, RR, 4);
+    Change_arity (108, 4);
   ]
 
 let one_arm_added_tests =
@@ -109,7 +109,7 @@ let wfq_ba_to_abc_expected : commit =
     Assoc (100, "C");
     Assoc (103, "C");
     Map (100, "C", 1002);
-    Change_pol (100, WFQ, 3);
+    Change_arity (100, 3);
     Change_weight (100, 1002, 3.0);
   ]
 
@@ -148,8 +148,8 @@ let complex_tree_partial_to_full_expected : commit =
     Map (108, "D", 1007);
     Map (108, "E", 1008);
     Map (108, "F", 1009);
-    Change_pol (100, WFQ, 3);
-    Change_pol (108, RR, 3);
+    Set_policy (108, RR, 3);
+    Change_arity (100, 3);
     Change_weight (100, 1010, 2.0);
   ]
 
@@ -180,7 +180,7 @@ let weight_changed_tests =
 (* SP[A,B,C] -> SP[A,B]: drop C (last, index 2). No SP weight shifts. *)
 let strict_abc_to_ab_expected : commit =
   [
-    Change_pol (100, SP, 2);
+    Change_arity (100, 2);
     Unmap (100, "C", 1002);
     Deassoc (100, "C");
     Emancipate (1002, 100, 103);
@@ -192,7 +192,7 @@ let strict_abc_to_ab_expected : commit =
 let strict_abc_to_ac_expected : commit =
   [
     Change_weight (100, 1002, 2.0);
-    Change_pol (100, SP, 2);
+    Change_arity (100, 2);
     Unmap (100, "B", 1001);
     Deassoc (100, "B");
     Emancipate (1001, 100, 102);
@@ -202,7 +202,7 @@ let strict_abc_to_ac_expected : commit =
 (* RR[A,B,C] -> RR[A,B]: drop C from RR. No weight shifts (RR is unweighted). *)
 let rr_abc_to_ab_expected : commit =
   [
-    Change_pol (100, RR, 2);
+    Change_arity (100, 2);
     Unmap (100, "C", 1002);
     Deassoc (100, "C");
     Emancipate (1002, 100, 103);
@@ -310,7 +310,7 @@ let rr_ab_to_rr_def_expected : commit =
     Map (103, "D", 1002);
     Map (103, "E", 1003);
     Map (103, "F", 1004);
-    Change_pol (103, RR, 3);
+    Set_policy (103, RR, 3);
     Designate (100, 103);
     Unmap (99, "A", 999);
     Unmap (99, "B", 999);
@@ -348,7 +348,7 @@ let strict_ab_to_rr_ab_expected : commit =
     Assoc (105, "B");
     Map (103, "A", 1002);
     Map (103, "B", 1003);
-    Change_pol (103, RR, 2);
+    Set_policy (103, RR, 2);
     Designate (100, 103);
     GC 100;
     GC 101;
@@ -460,9 +460,9 @@ let strict_abc_to_complex_tree_expected : commit =
     Map (108, "D", 1005);
     Map (108, "E", 1006);
     Map (108, "F", 1007);
-    Change_pol (104, WFQ, 3);
-    Change_pol (105, UNION, 2);
-    Change_pol (108, RR, 3);
+    Set_policy (104, WFQ, 3);
+    Set_policy (105, UNION, 2);
+    Set_policy (108, RR, 3);
     Change_weight (104, 1008, 3.0);
     Change_weight (104, 1009, 1.0);
     Change_weight (104, 1010, 2.0);
@@ -537,8 +537,8 @@ let one_arm_added_extends_pes_test =
       Map (100, "C", 1003);
       Map (102, "B", 1001);
       Map (102, "C", 1002);
-      Change_pol (100, SP, 2);
-      Change_pol (102, RR, 2);
+      Set_policy (102, RR, 2);
+      Change_arity (100, 2);
       Change_weight (100, 1003, 2.0);
     ]
   in

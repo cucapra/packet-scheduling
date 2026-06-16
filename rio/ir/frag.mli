@@ -10,7 +10,8 @@ type t = {
   adopts : instr list;
   assocs : instr list;
   maps : instr list;
-  change_pols : instr list;
+  set_policies : instr list;
+  change_arities : instr list;
   change_weights : instr list;
   root_v : vpifo;
   classes : clss list;
@@ -20,8 +21,8 @@ val empty : root_v:vpifo -> classes:clss list -> t
 (** A frag carrying no instructions; just [root_v] and [classes]. *)
 
 val to_commit : t -> commit
-(** Flatten a frag's six instruction kinds in canonical order: spawns, adopts,
-    assocs, maps, change_pols, change_weights. *)
+(** Flatten a frag's seven instruction kinds in canonical order: spawns, adopts,
+    assocs, maps, set_policies, change_arities, change_weights. *)
 
 val combine : t -> t list -> t
 (** [combine local children] interleaves a parent's [local] frag with each of

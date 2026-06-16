@@ -137,7 +137,8 @@ and compile_arm ~fresh_v ~fresh_s ~pe_of_depth ~depth ~pol_ty ~weights ?splice
              (fun s (cf : Frag.t) ->
                List.map (fun c -> Map (v, c, s)) cf.classes)
              child_steps child_frags);
-      change_pols = [ Change_pol (v, pol_ty, List.length children) ];
+      set_policies = [ Set_policy (v, pol_ty, List.length children) ];
+      change_arities = [];
       change_weights =
         (match weights with
         | [] -> []
@@ -164,7 +165,8 @@ let of_policy (p : Rio_core.Policy.t) : compiled =
       assocs = List.map (fun c -> Assoc (fake_root_v, c)) frag.classes;
       maps =
         List.map (fun c -> Map (fake_root_v, c, fake_root_step)) frag.classes;
-      change_pols = [ Change_pol (fake_root_v, UNION, 1) ];
+      set_policies = [ Set_policy (fake_root_v, UNION, 1) ];
+      change_arities = [];
       change_weights = [];
       root_v = fake_root_v;
       classes = frag.classes;
@@ -368,7 +370,8 @@ let patch_one_arm_added ~prev ~arm_path ~arm ~wfq_weight =
       adopts = [ Adopt (new_step, parent_v, arm_frag.root_v) ];
       assocs = chain_emit (fun v _ c -> Assoc (v, c)) chain arm_frag.classes;
       maps = chain_emit (fun v s c -> Map (v, c, s)) chain arm_frag.classes;
-      change_pols = [ Change_pol (parent_v, pol_ty, old_arity + 1) ];
+      set_policies = [];
+      change_arities = [ Change_arity (parent_v, old_arity + 1) ];
       change_weights;
       root_v = parent_v;
       classes = arm_frag.classes;
@@ -401,7 +404,7 @@ let patch_one_arm_removed ~prev ~arm_path =
     List.concat
       [
         change_weights;
-        [ Change_pol (parent_v, pol_ty, old_arity - 1) ];
+        [ Change_arity (parent_v, old_arity - 1) ];
         chain_emit (fun v s c -> Unmap (v, c, s)) chain removed_classes;
         chain_emit (fun v _ c -> Deassoc (v, c)) chain removed_classes;
         [ Emancipate (step_k, parent_v, removed_v) ];

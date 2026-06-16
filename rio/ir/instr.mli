@@ -30,8 +30,16 @@ type instr =
   | Unmap of vpifo * clss * step
       (** [Unmap (v, c, s)]: inverse of [Map]. Forget [v]'s mapping from class
           [c] to step [s]. *)
-  | Change_pol of vpifo * pol_ty * int
-      (** [Change_pol (v, pol, n)]: set [v]'s policy to [pol] with [n] arms. *)
+  | Set_policy of vpifo * pol_ty * int
+      (** [Set_policy (v, pol, n)]: at lPIFO birth, fix [v]'s policy type to
+          [pol] and its initial arity to [n]. Issued exactly once per lPIFO at
+          spawn time; the paper fixes the policy type at lPIFO birth and the
+          initial arity is determined at the same moment, so the two facts ride
+          on a single opcode. Later arity changes use [Change_arity]. *)
+  | Change_arity of vpifo * int
+      (** [Change_arity (v, n)]: set the live [v]'s arity to [n]. Shrinking
+          drops rightmost slots; growing appends fresh ones. The policy type is
+          unchanged. *)
   | Change_weight of vpifo * step * float
       (** [Change_weight (v, s, w)]: the child reached via step [s] has weight
           [w]. *)

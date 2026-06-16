@@ -43,14 +43,16 @@ let from_instr (i : Instr.instr) : Yojson.Basic.t =
           ("class", `String c);
           ("step", `Int s);
         ]
-  | Instr.Change_pol (v, pt, n) ->
+  | Instr.Set_policy (v, pt, n) ->
       `Assoc
         [
-          ("op", `String "change_pol");
+          ("op", `String "set_policy");
           ("v", `Int v);
           ("pol", from_pol_ty pt);
           ("n", `Int n);
         ]
+  | Instr.Change_arity (v, n) ->
+      `Assoc [ ("op", `String "change_arity"); ("v", `Int v); ("n", `Int n) ]
   | Instr.Change_weight (v, s, w) ->
       `Assoc
         [

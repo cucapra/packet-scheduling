@@ -5,7 +5,8 @@ type t = {
   adopts : instr list;
   assocs : instr list;
   maps : instr list;
-  change_pols : instr list;
+  set_policies : instr list;
+  change_arities : instr list;
   change_weights : instr list;
   root_v : vpifo;
   classes : clss list;
@@ -17,7 +18,8 @@ let empty ~root_v ~classes =
     adopts = [];
     assocs = [];
     maps = [];
-    change_pols = [];
+    set_policies = [];
+    change_arities = [];
     change_weights = [];
     root_v;
     classes;
@@ -25,7 +27,15 @@ let empty ~root_v ~classes =
 
 let to_commit (f : t) : commit =
   List.concat
-    [ f.spawns; f.adopts; f.assocs; f.maps; f.change_pols; f.change_weights ]
+    [
+      f.spawns;
+      f.adopts;
+      f.assocs;
+      f.maps;
+      f.set_policies;
+      f.change_arities;
+      f.change_weights;
+    ]
 
 let combine (local : t) (children : t list) : t =
   let collect proj = proj local @ List.concat_map proj children in
@@ -34,7 +44,8 @@ let combine (local : t) (children : t list) : t =
     adopts = collect (fun f -> f.adopts);
     assocs = collect (fun f -> f.assocs);
     maps = collect (fun f -> f.maps);
-    change_pols = collect (fun f -> f.change_pols);
+    set_policies = collect (fun f -> f.set_policies);
+    change_arities = collect (fun f -> f.change_arities);
     change_weights = collect (fun f -> f.change_weights);
     root_v = local.root_v;
     classes = local.classes;

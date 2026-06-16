@@ -30,7 +30,7 @@ let fifo_a_expected : commit =
     Assoc (99, "A");
     Assoc (100, "A");
     Map (99, "A", 999);
-    Change_pol (99, UNION, 1);
+    Set_policy (99, UNION, 1);
   ]
 
 let strict_abc_expected : commit =
@@ -59,8 +59,8 @@ let strict_abc_expected : commit =
     Map (100, "A", 1000);
     Map (100, "B", 1001);
     Map (100, "C", 1002);
-    Change_pol (99, UNION, 1);
-    Change_pol (100, SP, 3);
+    Set_policy (99, UNION, 1);
+    Set_policy (100, SP, 3);
     (* A is highest priority, then B, then C *)
     Change_weight (100, 1000, 1.0);
     Change_weight (100, 1001, 2.0);
