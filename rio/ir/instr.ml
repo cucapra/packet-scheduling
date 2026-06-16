@@ -25,7 +25,7 @@ type instr =
   | GC of vpifo
   | Designate of vpifo * vpifo
 
-type program = instr list
+type commit = instr list
 
 let string_of_pe p = Printf.sprintf "pe%d" p
 let string_of_vpifo v = Printf.sprintf "v%d" v
@@ -65,4 +65,4 @@ let string_of_instr = function
       Printf.sprintf "designate(%s, %s)" (string_of_vpifo v)
         (string_of_vpifo survivor)
 
-let string_of_program p = p |> List.map string_of_instr |> String.concat "\n"
+let string_of_commit p = p |> List.map string_of_instr |> String.concat "\n"

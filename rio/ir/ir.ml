@@ -4,7 +4,7 @@
 include Instr
 
 type compiled = {
-  prog : program;
+  commit : commit;
   decorated : Decorated.t;
   pes : pe list;
 }
@@ -171,7 +171,7 @@ let of_policy (p : Rio_core.Policy.t) : compiled =
     }
   in
   let pes = List.init (policy_depth p + 1) (fun d -> d) in
-  { prog = Frag.to_program (Frag.combine fake_frag [ frag ]); decorated; pes }
+  { commit = Frag.to_commit (Frag.combine fake_frag [ frag ]); decorated; pes }
 
 (* ------------------------------------------------------------------ *)
 (* Patch: helpers shared across the patch_* functions.                *)
@@ -239,10 +239,10 @@ let replace_at ~prev ~chain ~removed ~arm_depth ~arm ~rewrite_decorated =
   let only_added =
     List.filter (fun c -> not (List.mem c removed_classes)) new_classes
   in
-  let prog =
+  let commit =
     List.concat
       [
-        Frag.to_program arm_frag;
+        Frag.to_commit arm_frag;
         [ Designate (removed_v, arm_frag.root_v) ];
         chain_emit (fun v s c -> Unmap (v, c, s)) chain only_removed;
         chain_emit (fun v _ c -> Deassoc (v, c)) chain only_removed;
@@ -251,12 +251,12 @@ let replace_at ~prev ~chain ~removed ~arm_depth ~arm ~rewrite_decorated =
         gc_subtree removed;
       ]
   in
-  { prog; decorated = rewrite_decorated arm_decorated; pes = new_pes }
+  { commit; decorated = rewrite_decorated arm_decorated; pes = new_pes }
 
 let patch_one_arm_replaced ~prev ~arm_path ~arm ~wfq_weight =
   let parent_path, k = list_foot arm_path in
   let parent = Decorated.walk prev.decorated parent_path in
-  let weight_prog, weight_rewrite =
+  let weight_instrs, weight_rewrite =
     match wfq_weight with
     | None -> ([], Fun.id)
     | Some w ->
@@ -271,12 +271,11 @@ let patch_one_arm_replaced ~prev ~arm_path ~arm ~wfq_weight =
         Decorated.rewrite_at prev.decorated parent_path (fun p ->
             p |> Decorated.replace_arm k arm_d |> weight_rewrite))
   in
-  Some { c with prog = c.prog @ weight_prog }
+  { c with commit = c.commit @ weight_instrs }
 
 let patch_whole_tree_replace ~prev ~next =
-  Some
-    (replace_at ~prev ~chain:fake_chain ~removed:prev.decorated ~arm_depth:0
-       ~arm:next ~rewrite_decorated:Fun.id)
+  replace_at ~prev ~chain:fake_chain ~removed:prev.decorated ~arm_depth:0
+    ~arm:next ~rewrite_decorated:Fun.id
 
 (* ------------------------------------------------------------------ *)
 (* Patch: weight change (WFQ-only, structure of tree unchanged.       *)
@@ -295,12 +294,11 @@ let patch_weight_changed ~prev ~path ~new_weight =
     Decorated.rewrite_at prev.decorated parent_path
       (Decorated.set_weight k new_weight)
   in
-  Some
-    {
-      prog = [ Change_weight (parent_v, step_k, new_weight) ];
-      decorated = new_decorated;
-      pes = prev.pes;
-    }
+  {
+    commit = [ Change_weight (parent_v, step_k, new_weight) ];
+    decorated = new_decorated;
+    pes = prev.pes;
+  }
 
 (* ------------------------------------------------------------------ *)
 (* Patch: arm add / remove.                                           *)
@@ -379,12 +377,11 @@ let patch_one_arm_added ~prev ~arm_path ~arm ~wfq_weight =
   let new_decorated =
     Decorated.rewrite_at prev.decorated parent_path decorated_update
   in
-  Some
-    {
-      prog = Frag.to_program (Frag.combine local [ arm_frag ]);
-      decorated = new_decorated;
-      pes = new_pes;
-    }
+  {
+    commit = Frag.to_commit (Frag.combine local [ arm_frag ]);
+    decorated = new_decorated;
+    pes = new_pes;
+  }
 
 let patch_one_arm_removed ~prev ~arm_path =
   let parent_path, k = list_foot arm_path in
@@ -400,7 +397,7 @@ let patch_one_arm_removed ~prev ~arm_path =
   in
   let chain = Decorated.ancestor_chain prev.decorated arm_path in
   let removed_classes = Decorated.subtree_classes removed in
-  let prog =
+  let commit =
     List.concat
       [
         change_weights;
@@ -416,7 +413,7 @@ let patch_one_arm_removed ~prev ~arm_path =
   in
   (* Removal can leave [pes] over-long if the dropped arm was the deepest
      in the tree, but extra trailing entries are harmless. *)
-  Some { prog; decorated = new_decorated; pes = prev.pes }
+  { commit; decorated = new_decorated; pes = prev.pes }
 
 (* ------------------------------------------------------------------ *)
 (* Patch: super- and sub-policy.                                      *)
@@ -453,7 +450,7 @@ let patch_super_pol ~prev ~next ~path =
       Adopt (fake_root_step, fake_root_v, frag.root_v);
     ]
   in
-  Some { prog = Frag.to_program frag @ rewire; decorated; pes = new_pes }
+  { commit = Frag.to_commit frag @ rewire; decorated; pes = new_pes }
 
 (* [next] sits inside [prev] at [path]: re-root the tree to that existing
    subtree by detaching it from its parent and repointing the fake root.
@@ -478,7 +475,7 @@ let patch_sub_pol ~prev ~path =
       (fun c -> not (List.mem c kept_classes))
       (Decorated.subtree_classes prev.decorated)
   in
-  let prog =
+  let commit =
     Emancipate (step_k, parent_v, new_root_v)
     :: Emancipate (fake_root_step, fake_root_v, old_real_root_v)
     :: Adopt (fake_root_step, fake_root_v, new_root_v)
@@ -487,7 +484,7 @@ let patch_sub_pol ~prev ~path =
        @ List.map (fun v -> GC v) to_gc)
   in
   let new_pes = List.filteri (fun i _ -> i >= List.length path) prev.pes in
-  Some { prog; decorated = new_root; pes = new_pes }
+  { commit; decorated = new_root; pes = new_pes }
 
 (* ------------------------------------------------------------------ *)
 (* Patch: top-level dispatch.                                         *)
@@ -496,22 +493,19 @@ let patch_sub_pol ~prev ~path =
 let patch ~prev ~(next : Rio_core.Policy.t) : compiled option =
   let open Rio_compare.Compare in
   match analyze (Decorated.to_policy prev.decorated) next with
-  | Same -> Some { prog = []; decorated = prev.decorated; pes = prev.pes }
-  | ArmReplaced { path = []; _ } -> patch_whole_tree_replace ~prev ~next
-  | ArmReplaced { path; arm } ->
-      patch_one_arm_replaced ~prev ~arm_path:path ~arm ~wfq_weight:None
-  | ArmReplacedWFQ { path; arm; weight } ->
-      patch_one_arm_replaced ~prev ~arm_path:path ~arm ~wfq_weight:(Some weight)
-  | ArmAdded { path; arm } ->
-      patch_one_arm_added ~prev ~arm_path:path ~arm ~wfq_weight:None
-  | ArmAddedWFQ { path; arm; weight } ->
-      patch_one_arm_added ~prev ~arm_path:path ~arm ~wfq_weight:(Some weight)
-  | ArmRemoved { path; arm = _ } -> patch_one_arm_removed ~prev ~arm_path:path
-  | WeightChanged { path; new_weight } ->
-      patch_weight_changed ~prev ~path ~new_weight
-  | SuperPol [] | SubPol [] -> None
-  | SuperPol path -> patch_super_pol ~prev ~next ~path
-  | SubPol path -> patch_sub_pol ~prev ~path
+  | Same -> Some { commit = []; decorated = prev.decorated; pes = prev.pes }
+  | Replace { path = []; _ } -> Some (patch_whole_tree_replace ~prev ~next)
+  | Replace { path; arm; weight } ->
+      Some (patch_one_arm_replaced ~prev ~arm_path:path ~arm ~wfq_weight:weight)
+  | Add { path; arm; weight } ->
+      Some (patch_one_arm_added ~prev ~arm_path:path ~arm ~wfq_weight:weight)
+  | Remove { path; arm = _ } ->
+      Some (patch_one_arm_removed ~prev ~arm_path:path)
+  | ChangeWeight { path; new_weight } ->
+      Some (patch_weight_changed ~prev ~path ~new_weight)
+  | Graft [] | ChangeRoot [] -> None
+  | Graft path -> Some (patch_super_pol ~prev ~next ~path)
+  | ChangeRoot path -> Some (patch_sub_pol ~prev ~path)
 
 module Decorated = Decorated
 module Json = Json

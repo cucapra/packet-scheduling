@@ -21,15 +21,15 @@ let patch_files prev_file next_file =
       assert_failure
         (Printf.sprintf "patch %s -> %s returned None" prev_file next_file)
 
-let make_delta_test name prev_file next_file (expected : program) =
+let make_delta_test name prev_file next_file (expected : commit) =
   name >:: fun _ ->
   let c = patch_files prev_file next_file in
-  assert_equal ~printer:Ir.string_of_program expected c.prog
+  assert_equal ~printer:Ir.string_of_commit expected c.commit
 
 (* ArmAdded *)
 
 (* There's a walkthrough for this case in the topmatter of the PR. *)
-let strict_ab_to_abc_expected : program =
+let strict_ab_to_abc_expected : commit =
   [
     Spawn (103, 1);
     Adopt (1002, 100, 103);
@@ -44,7 +44,7 @@ let strict_ab_to_abc_expected : program =
    After inserting B at index 1, weights shift to A:1, B:2, C:3. The new arm
    itself gets weight k+1=2; the existing C, now at new index 2, gets bumped
    from 2.0 to 3.0. C's adopt step from compile is 1001 (A=1000, C=1001). *)
-let strict_ac_to_abc_expected : program =
+let strict_ac_to_abc_expected : commit =
   [
     Spawn (103, 1);
     Adopt (1002, 100, 103);
@@ -57,7 +57,7 @@ let strict_ac_to_abc_expected : program =
   ]
 
 (* RR arm appended at the root. Same shape as SP but no Change_weight. *)
-let rr_ab_to_abc_expected : program =
+let rr_ab_to_abc_expected : commit =
   [
     Spawn (103, 1);
     Adopt (1002, 100, 103);
@@ -72,7 +72,7 @@ let rr_ab_to_abc_expected : program =
    parent vpifo 108 and arity 3; complex_tree leaves the counters at
    next_vpifo=112, next_step=1011. New FIFO NEW lives one level below the
    RR, so PE 2. *)
-let complex_tree_add_deep_expected : program =
+let complex_tree_add_deep_expected : commit =
   [
     Spawn (112, 2);
     Adopt (1011, 108, 112);
@@ -102,7 +102,7 @@ let one_arm_added_tests =
    (A), 1001 (B). Adding FIFO C at slot 2 with weight 3 mints v=103 (PE 1)
    and step 1002, plus a single Change_weight on the new step (no SP-style
    shifts: WFQ slots are independent). *)
-let wfq_ba_to_abc_expected : program =
+let wfq_ba_to_abc_expected : commit =
   [
     Spawn (103, 1);
     Adopt (1002, 100, 103);
@@ -123,7 +123,7 @@ let wfq_ba_to_abc_expected : program =
    land on v=108 (RR, PE 1) plus 109/110/111 (D/E/F, PE 2); arm-internal
    adopts on steps 1007/1008/1009. The new parent→child step is 1010, with
    Change_weight(100, 1010, 2.0). *)
-let complex_tree_partial_to_full_expected : program =
+let complex_tree_partial_to_full_expected : commit =
   [
     Spawn (108, 1);
     Spawn (109, 2);
@@ -167,8 +167,7 @@ let one_arm_added_wfq_tests =
 (* WFQ root with three FIFO arms: vpifo IDs 100 (root), 101/102/103 (A/B/C);
    adopt steps 1000/1001/1002. Bumping B's weight 1 -> 5 should emit a single
    Change_weight on the root for B's step. *)
-let wfq_abc_to_one_weight_expected : program =
-  [ Change_weight (100, 1001, 5.0) ]
+let wfq_abc_to_one_weight_expected : commit = [ Change_weight (100, 1001, 5.0) ]
 
 let weight_changed_tests =
   [
@@ -179,7 +178,7 @@ let weight_changed_tests =
 (* ArmRemoved *)
 
 (* SP[A,B,C] -> SP[A,B]: drop C (last, index 2). No SP weight shifts. *)
-let strict_abc_to_ab_expected : program =
+let strict_abc_to_ab_expected : commit =
   [
     Change_pol (100, SP, 2);
     Unmap (100, "C", 1002);
@@ -190,7 +189,7 @@ let strict_abc_to_ab_expected : program =
 
 (* SP[A,B,C] -> SP[A,C]: drop B (mid, index 1). C, formerly at index 2 with
    weight 3.0, shifts to index 1 with weight 2.0. *)
-let strict_abc_to_ac_expected : program =
+let strict_abc_to_ac_expected : commit =
   [
     Change_weight (100, 1002, 2.0);
     Change_pol (100, SP, 2);
@@ -201,7 +200,7 @@ let strict_abc_to_ac_expected : program =
   ]
 
 (* RR[A,B,C] -> RR[A,B]: drop C from RR. No weight shifts (RR is unweighted). *)
-let rr_abc_to_ab_expected : program =
+let rr_abc_to_ab_expected : commit =
   [
     Change_pol (100, RR, 2);
     Unmap (100, "C", 1002);
@@ -226,7 +225,7 @@ let one_arm_removed_tests =
    new arm rides on step 1001; B's super-node is set up via Designate(102,
    103). Ancestor routing on root vpifo 100 shifts B → D (Unmap/Deassoc
    then Assoc/Map). GC marks 102. *)
-let rr_ab_to_ad_expected : program =
+let rr_ab_to_ad_expected : commit =
   [
     Spawn (103, 1);
     Assoc (103, "D");
@@ -240,7 +239,7 @@ let rr_ab_to_ad_expected : program =
 
 (* SP[A,B] -> SP[A,C]: same shape as RR but in an SP parent. Positional
    weights stay (slot 1 is still 2.0), so no Change_weight is emitted. *)
-let strict_ab_to_ac_expected : program =
+let strict_ab_to_ac_expected : commit =
   [
     Spawn (103, 1);
     Assoc (103, "C");
@@ -265,7 +264,7 @@ let one_arm_replaced_tests =
    v=104 (PE 1), is [Designate]d onto v=103, ancestor routing on v=100
    swings C → Z, the slot's weight gets a single [Change_weight], and
    v=103 is GC'd. *)
-let wfq_abc_to_abz_diff_expected : program =
+let wfq_abc_to_abz_diff_expected : commit =
   [
     Spawn (104, 1);
     Assoc (104, "Z");
@@ -293,7 +292,7 @@ let one_arm_replaced_wfq_tests =
    servicing new, and rewrites the fake root's classifier from
    {A,B} → {D,E,F} all riding on [fake_root_step]. GCs cover every prev
    vpifo. *)
-let rr_ab_to_rr_def_expected : program =
+let rr_ab_to_rr_def_expected : commit =
   [
     Spawn (103, 0);
     Spawn (104, 1);
@@ -336,7 +335,7 @@ let rr_ab_to_rr_def_expected : program =
    builds the new tree off fresh ids, [Designate]s, drains. The class
    sets coincide here so the fake root's existing routing is preserved
    and no {Unmap,Deassoc,Assoc,Map} land on it. *)
-let strict_ab_to_rr_ab_expected : program =
+let strict_ab_to_rr_ab_expected : commit =
   [
     Spawn (103, 0);
     Spawn (104, 1);
@@ -372,7 +371,7 @@ let whole_tree_replace_tests =
    v101 via [Emancipate]/[Adopt]. The dropped classes B and C are
    [Unmap]/[Deassoc]'d off the fake root, and the SP root v100 along with
    v102/v103 are GC'd. *)
-let strict_abc_to_fifo_a_expected : program =
+let strict_abc_to_fifo_a_expected : commit =
   [
     Emancipate (1000, 100, 101);
     Emancipate (999, 99, 100);
@@ -409,7 +408,7 @@ let sub_pol_tests =
    order: 3, 1, 2. Final [Emancipate]/[Adopt] on the fake root swings its
    single step from prev's old real root v100 to the new top v104. None of
    prev's vpifos are respawned. *)
-let strict_abc_to_complex_tree_expected : program =
+let strict_abc_to_complex_tree_expected : commit =
   [
     Spawn (104, 2);
     Spawn (105, 0);
@@ -507,7 +506,7 @@ let one_arm_added_extends_pes_test =
     ~printer:(fun pes ->
       "[" ^ String.concat "; " (List.map string_of_int pes) ^ "]")
     [ 0; 1; 2 ] c.pes;
-  let expected : program =
+  let expected : commit =
     [
       Spawn (102, 1);
       Spawn (103, 2);
@@ -530,7 +529,7 @@ let one_arm_added_extends_pes_test =
       Change_weight (100, 1003, 2.0);
     ]
   in
-  assert_equal ~printer:Ir.string_of_program expected c.prog
+  assert_equal ~printer:Ir.string_of_commit expected c.commit
 
 let pes_extension_tests = [ one_arm_added_extends_pes_test ]
 

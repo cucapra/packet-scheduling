@@ -1,5 +1,5 @@
 (** Compilation produces [frag]s grouped by instruction kind so that the
-    top-level program can be flattened with all spawns first, then all adopts,
+    top-level commit can be flattened with all spawns first, then all adopts,
     etc. A parent's local frag is interleaved kindwise with each child frag via
     [combine]. *)
 
@@ -19,7 +19,7 @@ type t = {
 val empty : root_v:vpifo -> classes:clss list -> t
 (** A frag carrying no instructions; just [root_v] and [classes]. *)
 
-val to_program : t -> program
+val to_commit : t -> commit
 (** Flatten a frag's six instruction kinds in canonical order: spawns, adopts,
     assocs, maps, change_pols, change_weights. *)
 

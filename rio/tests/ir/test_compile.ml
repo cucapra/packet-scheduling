@@ -5,24 +5,24 @@ open Ir
 
 let prog_dir = "../progs/"
 
-(* [.sched] file -> [Ir.program]. Stops short of pretty-printing — that's
+(* [.sched] file -> [Ir.commit]. Stops short of pretty-printing — that's
    [test_pretty]'s job. We project [Ir.of_policy]'s [compiled] result down to
-   its [.prog] field; the [decorated] tree and counter snapshots are exercised
+   its [.commit] field; the [decorated] tree and counter snapshots are exercised
    in [test_patch]. *)
 let compile filename =
   let c =
     prog_dir ^ filename |> Parser.parse_file |> Policy.of_program
     |> Ir.of_policy
   in
-  c.prog
+  c.commit
 
-let make_test name filename (expected : program) =
+let make_test name filename (expected : commit) =
   name >:: fun _ ->
-  assert_equal ~printer:Ir.string_of_program expected (compile filename)
+  assert_equal ~printer:Ir.string_of_commit expected (compile filename)
 
 (* Single FIFO leaf [A] living on PE0 as v100, wrapped in the fake root
    [v99] on PE -1. *)
-let fifo_a_expected : program =
+let fifo_a_expected : commit =
   [
     Spawn (99, -1);
     Spawn (100, 0);
@@ -33,7 +33,7 @@ let fifo_a_expected : program =
     Change_pol (99, UNION, 1);
   ]
 
-let strict_abc_expected : program =
+let strict_abc_expected : commit =
   [
     Spawn (99, -1);
     Spawn (100, 0);

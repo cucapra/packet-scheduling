@@ -1,4 +1,4 @@
-(** JSON exporter for IR programs. *)
+(** JSON exporter for IR commits. *)
 
 let from_pol_ty (pt : Instr.pol_ty) : Yojson.Basic.t =
   `String (Instr.string_of_pol_ty pt)
@@ -66,5 +66,5 @@ let from_instr (i : Instr.instr) : Yojson.Basic.t =
           ("op", `String "designate"); ("v", `Int v); ("survivor", `Int survivor);
         ]
 
-let from_program (p : Instr.program) : Yojson.Basic.t =
+let from_commit (p : Instr.commit) : Yojson.Basic.t =
   `List [ `List (List.map from_instr p) ]
