@@ -1,5 +1,6 @@
 classes A, B;
 
-policy = strict[B, A];
+// B at higher priority (lower rank) than A.
+policy = strict[(B, 1), (A, 2)];
 
 return policy

@@ -2,7 +2,7 @@ classes A, B, C, D, E, F, G;
 
 left = wfq[(A, 10), (B, 3)];
 middle = rr[C, D];
-right = strict[E, wfq[(F, 1), (G, 3)]];
+right = strict[(E, 1), (wfq[(F, 1), (G, 3)], 2)];
 
 policy = wfq[(left, 2), (middle, 5), (right, 3)];
 

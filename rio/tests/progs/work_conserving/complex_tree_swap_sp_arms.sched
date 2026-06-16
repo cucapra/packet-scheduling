@@ -1,6 +1,8 @@
 classes A, B, C, D, E, F, G, H;
 
-left = strict[C, B, A];
+// SP arms swapped from A,B,C to C,B,A by re-assigning ranks: C is now
+// highest priority, A lowest. Other subtrees identical to complex_tree.
+left = strict[(C, 1), (B, 2), (A, 3)];
 mid = rr[F, E, D];
 right = rr[G, H];
 
@@ -12,4 +14,4 @@ return wfq[(left, 1), (mid, 2), (right, 3)]
 //     strict    rr      rr
 //     / | \    / | \    / \
 //    C  B  A  F  E  D  G   H
-// This is the same tree as complex_tree, but with the arms under SP swapped: they used to be A,B,C but now they're C,B,A. We expect the report to say that there was a major difference that was not at the root.
+// This is the same tree as complex_tree, but with the SP arms swapped in priority: C is now highest, A is lowest.

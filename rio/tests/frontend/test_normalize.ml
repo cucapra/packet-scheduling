@@ -20,26 +20,24 @@ let normalize_tests =
     make_test "unused class is dropped" "drop_class" (fifo "A");
     (* fifo[A] is already in normal form. *)
     make_test "fifo[A] is stable" "fifo_A" (fifo "A");
-    (* strict[B, A]: SP children keep their written order. *)
-    make_test "strict preserves arm order" "strict_BA"
-      (Policy.SP [ fifo "B"; fifo "A" ]);
+    (* strict[(B, 1), (A, 2)]: SP normalizes by ascending rank. *)
+    make_test "strict sorts arms by rank" "strict_BA"
+      (Policy.SP [ (fifo "B", 1.0); (fifo "A", 2.0) ]);
     (* rr[B, A, C]: RR children are sorted. *)
     make_test "rr sorts its arms" "rr_BAC"
       (Policy.RR [ fifo "A"; fifo "B"; fifo "C" ]);
     (* wfq[(B, 1), (A, 2)]: slots sort by arm, weights ride along. *)
     make_test "wfq sorts slots, weights follow" "wfq_BA"
-      (Policy.WFQ ([ fifo "A"; fifo "B" ], [ 2.0; 1.0 ]));
-    (* A nested tree: RR children sort, SP children don't, and the WFQ
-       slots sort by arm (SP < RR by constructor order; two RRs then sort
-       by their normalized contents). *)
+      (Policy.WFQ [ (fifo "A", 2.0); (fifo "B", 1.0) ]);
+    (* A nested tree: RR children sort, SP children sort by rank, and the
+       WFQ slots sort by arm. *)
     make_test "complex tree" "complex_tree"
       (Policy.WFQ
-         ( [
-             Policy.SP [ fifo "A"; fifo "B"; fifo "C" ];
-             Policy.RR [ fifo "D"; fifo "E"; fifo "F" ];
-             Policy.RR [ fifo "G"; fifo "H" ];
-           ],
-           [ 1.0; 2.0; 3.0 ] ));
+         [
+           (Policy.SP [ (fifo "A", 1.0); (fifo "B", 2.0); (fifo "C", 3.0) ], 1.0);
+           (Policy.RR [ fifo "D"; fifo "E"; fifo "F" ], 2.0);
+           (Policy.RR [ fifo "G"; fifo "H" ], 3.0);
+         ]);
   ]
 
 let suite = "normalization tests" >::: normalize_tests

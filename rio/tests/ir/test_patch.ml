@@ -40,10 +40,12 @@ let strict_ab_to_abc_expected : commit =
     Set_arm_meta (100, 1002, 3.0);
   ]
 
-(* Mid-insert in SP: prev SP(A,C) compiled with positional weights A:1, C:2.
-   After inserting B at index 1, weights shift to A:1, B:2, C:3. The new arm
-   itself gets weight k+1=2; the existing C, now at new index 2, gets bumped
-   from 2.0 to 3.0. C's adopt step from compile is 1001 (A=1000, C=1001). *)
+(* Mid-insert in SP: prev SP(A,C) parsed with positional ranks A:1, C:2.
+   After inserting B at index 1, prev's existing ranks are preserved (no
+   positional cascade); only the new arm B gets a Set_arm_meta. B's rank
+   comes from [next]'s positional sugar (1-indexed source position 2),
+   which here collides with C's preserved rank — a known sharp edge of
+   bare positional sugar across mid-mutations. *)
 let strict_ac_to_abc_expected : commit =
   [
     Spawn (103, 1);
@@ -53,7 +55,6 @@ let strict_ac_to_abc_expected : commit =
     Map (100, "B", 1002);
     Change_arity (100, 3);
     Set_arm_meta (100, 1002, 2.0);
-    Set_arm_meta (100, 1001, 3.0);
   ]
 
 (* RR arm appended at the root. Same shape as SP but no Set_arm_meta. *)
@@ -162,14 +163,14 @@ let one_arm_added_wfq_tests =
       complex_tree_partial_to_full_expected;
   ]
 
-(* WeightChanged *)
+(* ChangeMeta *)
 
 (* WFQ root with three FIFO arms: vpifo IDs 100 (root), 101/102/103 (A/B/C);
    adopt steps 1000/1001/1002. Bumping B's weight 1 -> 5 should emit a single
    Set_arm_meta on the root for B's step. *)
 let wfq_abc_to_one_weight_expected : commit = [ Set_arm_meta (100, 1001, 5.0) ]
 
-let weight_changed_tests =
+let meta_changed_tests =
   [
     make_delta_test "wfq[A,B,C] -> wfq[A,B(5),C]" "wfq_ABC" "wfq_ABC_one_weight"
       wfq_abc_to_one_weight_expected;
@@ -187,11 +188,11 @@ let strict_abc_to_ab_expected : commit =
     GC 103;
   ]
 
-(* SP[A,B,C] -> SP[A,C]: drop B (mid, index 1). C, formerly at index 2 with
-   weight 3.0, shifts to index 1 with weight 2.0. *)
+(* SP[A,B,C] -> SP[A,C]: drop B (mid, index 1). Existing SP arms keep their
+   ranks (per paper's [init_slot_Strict(_, p) = p]); no Set_arm_meta is
+   emitted for surviving siblings. *)
 let strict_abc_to_ac_expected : commit =
   [
-    Set_arm_meta (100, 1002, 2.0);
     Change_arity (100, 2);
     Unmap (100, "B", 1001);
     Deassoc (100, "B");
@@ -238,8 +239,9 @@ let rr_ab_to_ad_expected : commit =
     GC 102;
   ]
 
-(* SP[A,B] -> SP[A,C]: same shape as RR but in an SP parent. Positional
-   weights stay (slot 1 is still 2.0), so no Set_arm_meta is emitted. *)
+(* SP[A,B] -> SP[A,C]: arm-swap at slot 1, AND the slot's rank changes
+   (B was rank 2 in strict_AB; C is rank 3 in strict_AC). The slot's
+   meta gets a Set_arm_meta after the Designate/Undesignate flow. *)
 let strict_ab_to_ac_expected : commit =
   [
     Spawn (103, 1);
@@ -251,6 +253,7 @@ let strict_ab_to_ac_expected : commit =
     Map (100, "C", 1001);
     Undesignate 102;
     GC 102;
+    Set_arm_meta (100, 1001, 3.0);
   ]
 
 let one_arm_replaced_tests =
@@ -511,10 +514,13 @@ let graft_tests =
    PE 2 (fresh, above prev's max PE 1). *)
 let one_arm_added_extends_pes_test =
   "sp[A] -> sp[A, rr[B,C]] (extends pes)" >:: fun _ ->
-  let prev = Ir.of_policy (Policy.SP [ Policy.FIFO "A" ]) in
+  let prev = Ir.of_policy (Policy.SP [ (Policy.FIFO "A", 1.0) ]) in
   let next =
     Policy.SP
-      [ Policy.FIFO "A"; Policy.RR [ Policy.FIFO "B"; Policy.FIFO "C" ] ]
+      [
+        (Policy.FIFO "A", 1.0);
+        (Policy.RR [ Policy.FIFO "B"; Policy.FIFO "C" ], 2.0);
+      ]
   in
   let c =
     match Ir.patch ~prev ~next with
@@ -571,7 +577,7 @@ let deep_giveup_tests = [ deep_giveup_test ]
 
 let suite =
   "patch tests"
-  >::: one_arm_added_tests @ one_arm_added_wfq_tests @ weight_changed_tests
+  >::: one_arm_added_tests @ one_arm_added_wfq_tests @ meta_changed_tests
        @ one_arm_removed_tests @ one_arm_replaced_tests
        @ one_arm_replaced_wfq_tests @ whole_tree_replace_tests
        @ change_root_tests @ graft_tests @ pes_extension_tests

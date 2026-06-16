@@ -1,8 +1,8 @@
 type t =
   | FIFO of Ast.clss
-  | SP of t list
+  | SP of (t * float) list
   | RR of t list
-  | WFQ of t list * float list
+  | WFQ of (t * float) list
 
 exception UnboundVariable of Ast.var
 exception UndeclaredClass of Ast.clss

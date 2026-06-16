@@ -1,14 +1,14 @@
 (** A decorated source tree: mirrors [Rio_core.Policy.t] but annotates every
     node with the [vpifo] assigned to it and every parent-to-child edge with the
-    [step] handed out at adoption time. WFQ edges additionally carry the per-arm
-    weight. The original [Rio_core.Policy.t] is recoverable by erasing the
-    decorations. *)
+    [step] handed out at adoption time. SP edges additionally carry a per-arm
+    priority rank; WFQ edges carry a per-arm weight. The original
+    [Rio_core.Policy.t] is recoverable by erasing the decorations. *)
 
 open Instr
 
 type t =
   | FIFO of vpifo * clss
-  | SP of vpifo * (step * t) list
+  | SP of vpifo * (step * t * float) list
   | RR of vpifo * (step * t) list
   | WFQ of vpifo * (step * t * float) list
 
@@ -61,7 +61,12 @@ val rewrite_at : t -> int list -> (t -> t) -> t
 val insert_arm : int -> step -> t -> t -> t
 (** [insert_arm k new_step new_child d] splices [new_child] in at index [k] in
     the children of [d], using [new_step] as the parent-to-child step. Errors on
-    FIFO and WFQ; use [insert_arm_wfq] for WFQ. *)
+    FIFO, SP, and WFQ; use [insert_arm_sp] / [insert_arm_wfq] for those. *)
+
+val insert_arm_sp : int -> step -> t -> float -> t -> t
+(** [insert_arm_sp k new_step new_child new_rank d] splices [new_child] in at
+    index [k] in the children of SP-rooted [d], pairing it with [new_step] and
+    [new_rank]. Errors on anything but SP. *)
 
 val insert_arm_wfq : int -> step -> t -> float -> t -> t
 (** [insert_arm_wfq k new_step new_child new_weight d] splices [new_child] in at
@@ -71,8 +76,9 @@ val insert_arm_wfq : int -> step -> t -> float -> t -> t
 val drop_arm : int -> t -> t
 (** Remove the child at index [k]. Errors on FIFO. *)
 
-val set_weight : int -> float -> t -> t
-(** Set the weight of the [k]-th WFQ child. Errors on anything but WFQ. *)
+val set_meta : int -> float -> t -> t
+(** Set the [k]-th child's per-arm meta (rank for SP, weight for WFQ). Errors on
+    RR and FIFO. *)
 
 val replace_arm : int -> t -> t -> t
 (** Replace child at index [k], preserving the parent-to-child step (and WFQ

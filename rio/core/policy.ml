@@ -1,8 +1,8 @@
 type t =
   | FIFO of Ast.clss
-  | SP of t list
+  | SP of (t * float) list
   | RR of t list
-  | WFQ of t list * float list
+  | WFQ of (t * float) list
 
 exception UnboundVariable of Ast.var
 exception UndeclaredClass of Ast.clss
@@ -27,29 +27,35 @@ let rec sub cl st used (p : Ast.stream) =
   | Fifo c ->
       claim c;
       FIFO c
-  | Strict ps -> SP (sub_ps ps)
+  | Strict prs ->
+      let ps, rs = List.split prs in
+      SP (List.combine (sub_ps ps) rs)
   | RoundRobin ps -> RR (sub_ps ps)
   | WeightedFair pws ->
       let ps, ws = List.split pws in
-      WFQ (sub_ps ps, List.map float_of_int ws)
+      WFQ (List.combine (sub_ps ps) ws)
   | _ -> failwith "ERROR: unsupported policy"
 
 let rec normalize p =
   match p with
   | FIFO _ -> p
-  | SP ps -> SP (List.map normalize ps)
+  | SP prs ->
+      (* SP arms canonicalize by rank ascending (the priority order is the
+         discipline-defining datum); ties break by arm content. *)
+      SP
+        (List.map (fun (p, r) -> (normalize p, r)) prs
+        |> List.sort (fun (p1, r1) (p2, r2) ->
+            let c = compare r1 r2 in
+            if c <> 0 then c else compare p1 p2))
   | RR ps -> RR (List.map normalize ps |> List.sort compare)
-  | WFQ (ps, ws) ->
-      let ps = List.map normalize ps in
-      let pairs =
-        List.sort
-          (fun (p1, w1) (p2, w2) ->
+  | WFQ pws ->
+      (* WFQ arms canonicalize by arm content (weights are independent
+         shares; same-arm collision is the rare case); ties break by weight. *)
+      WFQ
+        (List.map (fun (p, w) -> (normalize p, w)) pws
+        |> List.sort (fun (p1, w1) (p2, w2) ->
             let c = compare p1 p2 in
-            if c <> 0 then c else compare w1 w2)
-          (List.combine ps ws)
-      in
-      let ps, ws = List.split pairs in
-      WFQ (ps, ws)
+            if c <> 0 then c else compare w1 w2))
 
 (* Look up any variables and substitute them in. Then normalize the resulting policy. *)
 let of_program (classes, assigns, ret) =
@@ -60,10 +66,11 @@ let rec to_string p =
   let join lst to_string = lst |> List.map to_string |> String.concat ", " in
   match p with
   | FIFO c -> fmt "fifo[%s]" c
-  | SP ps -> fmt "strict[%s]" (join ps to_string)
+  | SP prs ->
+      let to_string (p, r) = fmt "(%s, %g)" (to_string p) r in
+      fmt "strict[%s]" (join prs to_string)
   | RR ps -> fmt "rr[%s]" (join ps to_string)
-  | WFQ (ps, ws) ->
-      let pws = List.combine ps ws in
+  | WFQ pws ->
       let to_string (p, w) = fmt "(%s, %f)" (to_string p) w in
       fmt "wfq[%s]" (join pws to_string)
 
@@ -71,4 +78,5 @@ let rec walk p path =
   match (p, path) with
   | _, [] -> p
   | FIFO _, _ :: _ -> failwith "Policy.walk: path through FIFO leaf"
-  | (SP ps | RR ps | WFQ (ps, _)), i :: rest -> walk (List.nth ps i) rest
+  | (SP prs | WFQ prs), i :: rest -> walk (fst (List.nth prs i)) rest
+  | RR ps, i :: rest -> walk (List.nth ps i) rest

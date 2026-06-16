@@ -1,5 +1,5 @@
 classes A, B, C;
 
-policy = strict[C, B, A];
+policy = strict[(C, 1), (B, 2), (A, 3)];
 
 return policy
