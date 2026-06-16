@@ -1,8 +1,8 @@
 (** A decorated source tree: mirrors [Rio_core.Policy.t] but annotates every
     node with the [vpifo] assigned to it and every parent-to-child edge with the
-    [step] handed out at adoption time. WFQ edges additionally carry the per-arm
-    weight. The original [Rio_core.Policy.t] is recoverable by erasing the
-    decorations. *)
+    [step] handed out at adoption time. SP edges additionally carry a per-arm
+    priority rank; WFQ edges carry a per-arm weight. The original
+    [Rio_core.Policy.t] is recoverable by erasing the decorations. *)
 
 open Instr
 
