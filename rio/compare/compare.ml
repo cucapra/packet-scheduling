@@ -60,8 +60,8 @@ type t =
     }
       (** Introduce [arm] alongside the SP slot at [path] under a designated
           super-node favoring the existing arm. [den(Designate) = id]; the
-          super-node collapses once the loser quiesces. Sniffer-invisible
-          today (planner-only emission, worklist PR 10). *)
+          super-node collapses once the loser quiesces. Sniffer-invisible today
+          (planner-only emission, worklist PR 10). *)
   | Quiesce of path
       (** Drain the subtree at [path]: no further enqueues, dequeues continue
           until empty. [den(Quiesce) = id]; sniffer-invisible (planner-only

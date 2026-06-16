@@ -95,6 +95,27 @@ val patch : prev:compiled -> next:Rio_core.Policy.t -> compiled option
       real root to [next]'s new top. [prev]'s in-flight nodes are not respawned.
       The whole-tree case ([path = []]) returns [None]. *)
 
+val patch_designate :
+  prev:compiled -> path:int list -> arm:Rio_core.Policy.t -> compiled
+(** Lowering for the planner-only [Compare.Designate] production. At [path], the
+    existing subtree becomes the loser of a designated super-node whose survivor
+    is a freshly compiled [arm]. Emits [arm]'s [Spawn]/[Adopt]/[Set_policy]/...
+    instructions, a [Designate (loser_v, survivor_v)], a
+    [Set_policy (loser_v, SP_star, 2)] that signals to the substrate that
+    [loser_v] now hosts a super-node, and class-routing edits along [path]'s
+    ancestor chain for any classes new to [arm]. Not reachable via
+    [patch ~prev ~next] today; exposed for direct planner / test use. *)
+
+val patch_quiesce : prev:compiled -> path:int list -> compiled
+(** Lowering for the planner-only [Compare.Quiesce] production. Tears down the
+    class-routing entries that direct new traffic into the subtree at [path],
+    along its ancestor chain. In-flight packets continue to dequeue.
+    [den(Quiesce) = id] so the decorated tree is unchanged. *)
+
+val patch_undesignate : prev:compiled -> path:int list -> compiled
+(** Lowering for the planner-only [Compare.Undesignate] production. Collapses
+    the designated super-node at [path] by emitting [Undesignate loser_v]. *)
+
 (** JSON exporter for IR commits. *)
 module Json : sig
   val from_instr : instr -> Yojson.Basic.t

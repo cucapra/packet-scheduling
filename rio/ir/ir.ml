@@ -473,6 +473,92 @@ let patch_change_root ~prev ~path =
   { commit; decorated = new_root; pes = new_pes }
 
 (* ------------------------------------------------------------------ *)
+(* Patch: planner-only productions (Designate / Quiesce / Undesignate).
+   These are not emitted by [analyze] today; the planner (worklist PR 10)
+   wires them into idiom expansions. The lowerings here exist so the
+   planner has an ISA-emitting backend to target.                     *)
+(* ------------------------------------------------------------------ *)
+
+(* The chain leading to [path]'s subtree, including the slot's own (parent_v,
+   step_to_subtree). [Quiesce] and [Undesignate] route their class-level edits
+   along this chain. *)
+let full_chain_to ~prev path =
+  match path with
+  | [] -> port_chain
+  | _ ->
+      let parent_path, k = list_foot path in
+      let parent = Decorated.walk prev.decorated parent_path in
+      let parent_v = Decorated.root_vpifo parent in
+      let step_k = Decorated.nth_step parent k in
+      port_chain
+      @ Decorated.ancestor_chain prev.decorated parent_path
+      @ [ (parent_v, step_k) ]
+
+(* [Designate { path; arm }]: introduce [arm] alongside the subtree at [path]
+   under a designated super-node favoring the existing arm. Compile [arm]
+   fresh; fuse it to the existing slot's v via [Designate (loser_v, survivor_v)];
+   announce [loser_v]'s new role to the substrate via [Set_policy (loser_v,
+   SP_star, 2)]; route any classes new to [arm] along [path]'s chain.
+
+   The decorated tree is not updated: PR 9 doesn't model super-nodes in
+   [Decorated.t] (planner work, PR 10). [pes] is extended if [arm] reaches
+   deeper than [prev]. *)
+let patch_designate ~prev ~path ~(arm : Rio_core.Policy.t) =
+  let removed = Decorated.walk prev.decorated path in
+  let loser_v = Decorated.root_vpifo removed in
+  let fresh_v, fresh_s = counters_after prev in
+  let arm_depth = List.length path in
+  let new_pes = pes_extended_to_depth (arm_depth + policy_depth arm) prev.pes in
+  let pe_of_depth d = List.nth new_pes d in
+  let arm_frag, _arm_decorated =
+    compile_subtree ~fresh_v ~fresh_s ~pe_of_depth ~depth:arm_depth arm
+  in
+  let chain = full_chain_to ~prev path in
+  let removed_classes = Decorated.subtree_classes removed in
+  let only_added =
+    List.filter (fun c -> not (List.mem c removed_classes)) arm_frag.classes
+  in
+  let commit =
+    List.concat
+      [
+        Frag.to_commit arm_frag;
+        [ Designate (loser_v, arm_frag.root_v) ];
+        [ Set_policy (loser_v, SP_star, 2) ];
+        chain_emit (fun v _ c -> Assoc (v, c)) chain only_added;
+        chain_emit (fun v s c -> Map (v, c, s)) chain only_added;
+      ]
+  in
+  { commit; decorated = prev.decorated; pes = new_pes }
+
+(* [Quiesce path]: stop new traffic from arriving at the subtree at [path] by
+   tearing down the class-routing entries along its ancestor chain.
+   [den(Quiesce) = id]: in-flight packets continue to dequeue from the subtree;
+   nothing new lands. Decorated tree is unchanged (pol-invisible). *)
+let patch_quiesce ~prev ~path =
+  let target = Decorated.walk prev.decorated path in
+  let target_classes = Decorated.subtree_classes target in
+  let chain = full_chain_to ~prev path in
+  let commit =
+    chain_emit (fun v s c -> Unmap (v, c, s)) chain target_classes
+    @ chain_emit (fun v _ c -> Deassoc (v, c)) chain target_classes
+  in
+  { commit; decorated = prev.decorated; pes = prev.pes }
+
+(* [Undesignate path]: collapse the designated super-node at [path], letting
+   the survivor take over the slot. We don't model super-nodes in
+   [Decorated.t], so we emit the bare [Undesignate loser_v] and trust the
+   substrate to rewire. A paired [GC loser_v] would normally follow in the
+   same commit; the planner (PR 10) sequences that explicitly. *)
+let patch_undesignate ~prev ~path =
+  let removed = Decorated.walk prev.decorated path in
+  let loser_v = Decorated.root_vpifo removed in
+  {
+    commit = [ Undesignate loser_v ];
+    decorated = prev.decorated;
+    pes = prev.pes;
+  }
+
+(* ------------------------------------------------------------------ *)
 (* Patch: top-level dispatch.                                         *)
 (* ------------------------------------------------------------------ *)
 
@@ -492,7 +578,9 @@ let patch ~prev ~(next : Rio_core.Policy.t) : compiled option =
   | Graft [] | ChangeRoot [] -> None
   | Graft path -> Some (patch_graft ~prev ~next ~path)
   | ChangeRoot path -> Some (patch_change_root ~prev ~path)
-  | Designate _ | Quiesce _ | Undesignate _ -> failwith "TODO"
+  | Designate { path; arm } -> Some (patch_designate ~prev ~path ~arm)
+  | Quiesce path -> Some (patch_quiesce ~prev ~path)
+  | Undesignate path -> Some (patch_undesignate ~prev ~path)
 
 module Decorated = Decorated
 module Json = Json

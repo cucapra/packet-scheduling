@@ -45,8 +45,8 @@ let rec normalize p =
       SP
         ( List.map (fun (p, r) -> (normalize p, r)) prs
           |> List.sort (fun (p1, r1) (p2, r2) ->
-                 let c = compare r1 r2 in
-                 if c <> 0 then c else compare p1 p2),
+              let c = compare r1 r2 in
+              if c <> 0 then c else compare p1 p2),
           designated )
   | RR ps -> RR (List.map normalize ps |> List.sort compare)
   | WFQ pws ->
