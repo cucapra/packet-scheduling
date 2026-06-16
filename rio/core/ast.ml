@@ -15,7 +15,7 @@ type stream =
   | ShortestRemaining of clss
   (* Stream-To-Stream *)
   | RoundRobin of stream list
-  | Strict of stream list
+  | Strict of (stream * int) list
   | WeightedFair of (stream * int) list
   (* Non-Work Conserving *)
   | RateControlled of stream list

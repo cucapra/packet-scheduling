@@ -28,8 +28,9 @@ let route_pkt (policy : Policy.t) pkt =
   let rec route_pkt_aux (p : Policy.t) pt =
     match p with
     | FIFO c when Packet.flow pkt = c -> Some (List.rev pt)
-    | SP ps | RR ps | WFQ (ps, _) ->
-        List.find_mapi (fun i p -> route_pkt_aux p (i :: pt)) ps
+    | SP prs | WFQ prs ->
+        List.find_mapi (fun i (p, _) -> route_pkt_aux p (i :: pt)) prs
+    | RR ps -> List.find_mapi (fun i p -> route_pkt_aux p (i :: pt)) ps
     | FIFO _ -> None
   in
 
@@ -67,11 +68,12 @@ module Make_PIFOControl (P : Policy) : Control = struct
           |> Fun.flip State.rebind_all s
           |> State.rebind (fmt "%s_turn" prefix) 0.0
           |> join ps
-      | WFQ (ps, _) ->
+      | WFQ pws ->
+          let ps = List.map fst pws in
           List.mapi (fun i _ -> (fmt "%s_finish_%d" prefix i, 0.0)) ps
           |> Fun.flip State.rebind_all s
           |> join ps
-      | SP ps -> join ps s
+      | SP prs -> join (List.map fst prs) s
       | FIFO _ -> s
     in
 
@@ -82,8 +84,10 @@ module Make_PIFOControl (P : Policy) : Control = struct
       let prefix = addr_to_string addr in
 
       match (p, directions) with
-      | SP ps, h :: t ->
-          let pt, s' = z_pre_push_aux (List.nth ps h) t (Ptr (h, addr)) s in
+      | SP prs, h :: t ->
+          let pt, s' =
+            z_pre_push_aux (fst (List.nth prs h)) t (Ptr (h, addr)) s
+          in
           (Pifotree.Path (h, float_of_int h, pt), s')
       | RR ps, h :: t ->
           let n = ps |> List.length |> float_of_int in
@@ -92,9 +96,10 @@ module Make_PIFOControl (P : Policy) : Control = struct
           let s' = State.rebind r_var (r_i +. n) s in
           let pt, s'' = z_pre_push_aux (List.nth ps h) t (Ptr (h, addr)) s' in
           (Pifotree.Path (h, r_i, pt), s'')
-      | WFQ (ps, ws), h :: t ->
-          let rank, s' = wfq_rank_state prefix pkt h (List.nth ws h) s in
-          let pt, s'' = z_pre_push_aux (List.nth ps h) t (Ptr (h, addr)) s' in
+      | WFQ pws, h :: t ->
+          let child, w = List.nth pws h in
+          let rank, s' = wfq_rank_state prefix pkt h w s in
+          let pt, s'' = z_pre_push_aux child t (Ptr (h, addr)) s' in
           (Pifotree.Path (h, rank, pt), s'')
       | FIFO _, [] -> (Pifotree.Foot 0.0, s)
       | _ -> failwith "ERROR: unreachable branch"
@@ -108,8 +113,8 @@ module Make_PIFOControl (P : Policy) : Control = struct
 
       match (p, directions) with
       | FIFO _, [] -> s
-      | WFQ (ps, _), h :: t | SP ps, h :: t ->
-          z_post_pop_aux (List.nth ps h) t (Ptr (h, addr)) s
+      | (SP prs | WFQ prs), h :: t ->
+          z_post_pop_aux (fst (List.nth prs h)) t (Ptr (h, addr)) s
       | RR ps, h :: t ->
           let n = List.length ps in
           let turn, turn' =
@@ -170,7 +175,8 @@ module Make_RioControl (P : Policy) : Control = struct
       in
 
       match p with
-      | WFQ (ps, _) ->
+      | WFQ pws ->
+          let ps = List.map fst pws in
           let binds index2key = List.mapi (fun i _ -> (index2key i, 0.0)) ps in
           s
           |> State.rebind_all (binds (fun i -> fmt "%s_start_%d" prefix i))
@@ -178,7 +184,7 @@ module Make_RioControl (P : Policy) : Control = struct
           |> State.rebind_all (binds (fun i -> fmt "%s_finish_%d" prefix i))
           |> join ps
       | RR ps -> State.rebind (fmt "%s_turn" prefix) 0.0 s |> join ps
-      | SP ps -> join ps s
+      | SP prs -> join (List.map fst prs) s
       | FIFO _ -> s
     in
 
@@ -189,17 +195,19 @@ module Make_RioControl (P : Policy) : Control = struct
       let prefix = addr_to_string addr in
 
       match (p, directions) with
-      | SP ps, h :: t | RR ps, h :: t ->
-          z_pre_push_aux (List.nth ps h) t (Ptr (h, addr)) s
-      | WFQ (ps, ws), h :: t ->
-          let rank, s' = wfq_rank_state prefix pkt h (List.nth ws h) s in
+      | SP prs, h :: t ->
+          z_pre_push_aux (fst (List.nth prs h)) t (Ptr (h, addr)) s
+      | RR ps, h :: t -> z_pre_push_aux (List.nth ps h) t (Ptr (h, addr)) s
+      | WFQ pws, h :: t ->
+          let child, w = List.nth pws h in
+          let rank, s' = wfq_rank_state prefix pkt h w s in
           let len_i = State.lookup (fmt "%s_len_%d" prefix h) s' in
           let s'' =
             s'
             |> State.rebind (fmt "%s_el_%d_%f" prefix h len_i) rank
             |> State.rebind (fmt "%s_len_%d" prefix h) (len_i +. 1.0)
           in
-          z_pre_push_aux (List.nth ps h) t (Ptr (h, addr)) s''
+          z_pre_push_aux child t (Ptr (h, addr)) s''
       | FIFO _, [] -> (0.0, s)
       | _ -> failwith "ERROR: unreachable branch"
     in
@@ -233,15 +241,15 @@ module Make_RioControl (P : Policy) : Control = struct
             |> float_of_int
           in
           join compute_rank s ps
-      | WFQ (ps, _) ->
+      | WFQ pws ->
           let compute_rank i =
             let start_i = State.lookup (fmt "%s_start_%d" prefix i) s in
             match State.lookup_opt (fmt "%s_el_%d_%f" prefix i start_i) s with
             | Some r -> r
             | None -> Float.infinity
           in
-          join compute_rank s ps
-      | SP ps -> join float_of_int s ps
+          join compute_rank s (List.map fst pws)
+      | SP prs -> join float_of_int s (List.map fst prs)
       | FIFO _ -> (Foot, s)
     in
 
@@ -253,12 +261,14 @@ module Make_RioControl (P : Policy) : Control = struct
 
       match (p, directions) with
       | FIFO _, [] -> s
-      | SP ps, h :: t -> z_pre_pop_aux (List.nth ps h) t (Ptr (h, addr)) s
-      | WFQ (ps, _), h :: t ->
+      | SP prs, h :: t ->
+          z_pre_pop_aux (fst (List.nth prs h)) t (Ptr (h, addr)) s
+      | WFQ pws, h :: t ->
+          let child, _ = List.nth pws h in
           let start_var = fmt "%s_start_%d" prefix h in
           let start_i = State.lookup start_var s in
           let s' = State.rebind start_var (start_i +. 1.0) s in
-          z_pre_pop_aux (List.nth ps h) t (Ptr (h, addr)) s'
+          z_pre_pop_aux child t (Ptr (h, addr)) s'
       | RR ps, h :: t ->
           let turn_var = fmt "%s_turn" prefix in
           let turn' = (h + 1) mod List.length ps |> float_of_int in

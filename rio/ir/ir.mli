@@ -5,14 +5,15 @@ include module type of Instr
 
 (** A decorated source tree: mirrors [Rio_core.Policy.t] but annotates every
     node with the [vpifo] assigned to it and every parent-to-child edge with the
-    [step] handed out at adoption time. WFQ edges additionally carry the per-arm
-    weight. The original [Rio_core.Policy.t] is recoverable by erasing the
-    decorations. Lives in its own submodule so the constructors can mirror
-    [Rio_core.Policy.t]'s names directly ([Decorated.RR], [Decorated.SP], …) *)
+    [step] handed out at adoption time. SP edges additionally carry a per-arm
+    priority rank; WFQ edges carry a per-arm weight. The original
+    [Rio_core.Policy.t] is recoverable by erasing the decorations. Lives in its
+    own submodule so the constructors can mirror [Rio_core.Policy.t]'s names
+    directly ([Decorated.RR], [Decorated.SP], …) *)
 module Decorated : sig
   type t =
     | FIFO of vpifo * clss
-    | SP of vpifo * (step * t) list
+    | SP of vpifo * (step * t * float) list
     | RR of vpifo * (step * t) list
     | WFQ of vpifo * (step * t * float) list
 end
@@ -55,17 +56,18 @@ val patch : prev:compiled -> next:Rio_core.Policy.t -> compiled option
     - [next] adds exactly one arm at any position of a [RR] or [SP] parent (per
       [ArmAdded]): returns [Some] with the
       [Spawn]/[Adopt]/[Assoc]/[Map]/[Change_arity] (and [Set_arm_meta] for [SP],
-      both for the new arm and for any existing arms whose positional priority
-      shifts) instructions needed to splice the new arm in. The parent's policy
-      type is fixed at lPIFO birth, so no [Set_policy] is emitted against it.
+      carrying the new arm's priority rank) instructions needed to splice the
+      new arm in. Existing SP arms keep their ranks; no positional cascade is
+      emitted. The parent's policy type is fixed at lPIFO birth, so no
+      [Set_policy] is emitted against it.
     - [next] differs from [prev] only in the weight of one [WFQ] arm (per
       [WeightChanged]): returns [Some] with a single [Set_arm_meta] instruction
       for the affected slot.
     - [next] removes exactly one arm at any position of a [RR] or [SP] parent
-      (per [ArmRemoved]): returns [Some] with the [Set_arm_meta] (only for [SP]
-      siblings whose positional priority shifts down), [Change_arity], [Unmap],
+      (per [ArmRemoved]): returns [Some] with the [Change_arity], [Unmap],
       [Deassoc], [Emancipate], and [GC] instructions needed to detach the arm
-      and clean up routing state cached on its ancestor chain.
+      and clean up routing state cached on its ancestor chain. Existing SP
+      siblings keep their ranks.
     - [next] swaps in a different subtree at exactly one position (per
       [ArmReplaced]): returns [Some] with the new arm's
       [Spawn]/[Adopt]/[Assoc]/[Map]/[Set_policy]/[Set_arm_meta] instructions, a

@@ -23,14 +23,18 @@ type path = int list
      (worklist PR 10), [Replace] will be expanded into the underlying
      [Designate ; Quiesce ; Undesignate] sequence.
 
-   The [weight] field on [Add] and [Replace] is [Some w] iff the parent
-   runs WFQ; for SP and RR it is [None]. *)
+   The [meta] field on [Add] and [Replace] carries the new arm's per-arm
+   metadata, interpreted by the parent's discipline: a priority rank for SP,
+   a weight for WFQ. It is [None] for RR. For [Replace], [meta] today is
+   only ever populated by the WFQ slot-replace path (arm and weight changed
+   in the same edit); SP rank-only changes at a slot are not currently
+   sniffed. *)
 type t =
   | Same
   | Add of {
       path : path;
       arm : Rio_core.Policy.t;
-      weight : float option;
+      meta : float option;
     }
   | Remove of {
       path : path;
@@ -43,7 +47,7 @@ type t =
   | Replace of {
       path : path;
       arm : Rio_core.Policy.t;
-      weight : float option;
+      meta : float option;
     }
   | Graft of path
       (** [prev] sits as a strict subtree of [next] at [path]:
@@ -122,11 +126,11 @@ let single_insertion_lockstep ps1 ps2 ws1 ws2 =
 let prepend_path i diff =
   match diff with
   | Same -> Same
-  | Add { path; arm; weight } -> Add { path = i :: path; arm; weight }
+  | Add { path; arm; meta } -> Add { path = i :: path; arm; meta }
   | Remove { path; arm } -> Remove { path = i :: path; arm }
   | ChangeWeight { path; new_weight } ->
       ChangeWeight { path = i :: path; new_weight }
-  | Replace { path; arm; weight } -> Replace { path = i :: path; arm; weight }
+  | Replace { path; arm; meta } -> Replace { path = i :: path; arm; meta }
   | Graft p -> Graft (i :: p)
   | ChangeRoot p -> ChangeRoot (i :: p)
 
@@ -139,7 +143,18 @@ let rec is_sub_policy p1 p2 =
   else
     match p2 with
     | FIFO _ -> None
-    | SP ps | RR ps | WFQ (ps, _) ->
+    | SP prs | WFQ prs ->
+        let rec loop i = function
+          | [] -> None
+          | (p, _) :: t -> (
+              if p = p1 then Some [ i ]
+              else
+                match is_sub_policy p1 p with
+                | None -> loop (i + 1) t
+                | Some path -> Some (i :: path))
+        in
+        loop 0 prs
+    | RR ps ->
         let rec loop i = function
           | [] -> None
           | p :: t -> (
@@ -162,7 +177,7 @@ let rec is_sub_policy p1 p2 =
    divergence, mismatched insertions, etc.), we "give up" by emitting
    [Replace { path = []; arm = p2; weight = None }]. *)
 and compare_children ~next:p2 ps1 ps2 =
-  let give_up = Replace { path = []; arm = p2; weight = None } in
+  let give_up = Replace { path = []; arm = p2; meta = None } in
   match List.compare_lengths ps1 ps2 with
   | 0 ->
       (* Same length. Exactly one slot differing means we recurse on it
@@ -182,7 +197,7 @@ and compare_children ~next:p2 ps1 ps2 =
                    in next" at the outer position, so bubbling it up with
                    [prepend_path] would mis-describe the edit. Demote to a
                    wholesale slot replacement. *)
-                Replace { path = []; arm = child2; weight = None }
+                Replace { path = []; arm = child2; meta = None }
             | d -> d
           in
           prepend_path i inner
@@ -191,7 +206,7 @@ and compare_children ~next:p2 ps1 ps2 =
   | -1 ->
       (* ps1 shorter; an insertion into ps1 could make ps2. *)
       begin match single_insertion ps1 ps2 with
-      | Some (i, arm) -> Add { path = [ i ]; arm; weight = None }
+      | Some (i, arm) -> Add { path = [ i ]; arm; meta = None }
       | None -> give_up
       end
   | 1 ->
@@ -202,12 +217,53 @@ and compare_children ~next:p2 ps1 ps2 =
       end
   | _ -> failwith "Can't get here"
 
+(* SP arm comparison ignores per-arm ranks for insertion/removal detection:
+   we compare arm trees (the first projection) and read the new arm's rank
+   from [next]. Existing arms keep whatever rank [prev] already had. This
+   matches the paper's [init_slot_Strict(_, p) = p] story: a supplied rank
+   is preserved, never rewritten. *)
+and compare_sp_children ~next:p2 prs1 prs2 =
+  let give_up = Replace { path = []; arm = p2; meta = None } in
+  let ps1 = List.map fst prs1 in
+  let ps2 = List.map fst prs2 in
+  match List.compare_lengths prs1 prs2 with
+  | 0 ->
+      begin match single_change ps1 ps2 with
+      | Some (i, _) ->
+          let child1 = List.nth ps1 i in
+          let child2 = List.nth ps2 i in
+          let inner =
+            match analyze child1 child2 with
+            | Graft _ | ChangeRoot _ ->
+                Replace { path = []; arm = child2; meta = None }
+            | d -> d
+          in
+          prepend_path i inner
+      | None -> if prs1 = prs2 then Same else give_up
+      end
+  | -1 ->
+      begin match single_insertion ps1 ps2 with
+      | Some (i, arm) ->
+          let _, rank = List.nth prs2 i in
+          Add { path = [ i ]; arm; meta = Some rank }
+      | None -> give_up
+      end
+  | 1 ->
+      begin match single_insertion ps2 ps1 with
+      | Some (i, arm) -> Remove { path = [ i ]; arm }
+      | None -> give_up
+      end
+  | _ -> failwith "Can't get here"
+
 (* When the parents are WFQ, comparing their children is a little more
    complicated: a single clean edit must show up at the same index in
-   both the policy list and the weight list. *)
-and compare_wfq_children ~next:p2 ps1 (ws1 : float list) ps2 (ws2 : float list)
-    =
-  let give_up = Replace { path = []; arm = p2; weight = None } in
+   both the policy projection and the weight projection. *)
+and compare_wfq_children ~next:p2 pws1 pws2 =
+  let give_up = Replace { path = []; arm = p2; meta = None } in
+  let ps1 = List.map fst pws1 in
+  let ps2 = List.map fst pws2 in
+  let ws1 = List.map snd pws1 in
+  let ws2 = List.map snd pws2 in
   match List.compare_lengths ps1 ps2 with
   | 0 when ws1 = ws2 ->
       (* Pure policy edit in-place; weights unchanged. Defer to the
@@ -231,8 +287,8 @@ and compare_wfq_children ~next:p2 ps1 (ws1 : float list) ps2 (ws2 : float list)
       begin match single_change_lockstep ps1 ps2 ws1 ws2 with
       | Some (i, _, weight) ->
           begin match analyze (List.nth ps1 i) (List.nth ps2 i) with
-          | Replace { path = []; arm; weight = None } ->
-              Replace { path = [ i ]; arm; weight = Some weight }
+          | Replace { path = []; arm; meta = None } ->
+              Replace { path = [ i ]; arm; meta = Some weight }
           | _ -> give_up
           end
       | None -> give_up
@@ -240,7 +296,7 @@ and compare_wfq_children ~next:p2 ps1 (ws1 : float list) ps2 (ws2 : float list)
   | -1 ->
       (* ps1 shorter: a slot was added to make ps2, with its weight. *)
       begin match single_insertion_lockstep ps1 ps2 ws1 ws2 with
-      | Some (i, arm, weight) -> Add { path = [ i ]; arm; weight = Some weight }
+      | Some (i, arm, weight) -> Add { path = [ i ]; arm; meta = Some weight }
       | None -> give_up
       end
   | 1 ->
@@ -261,16 +317,16 @@ and analyze p1 p2 =
     | None, Some path -> ChangeRoot path
     | _ -> (
         match (p1, p2) with
-        | SP ps1, SP ps2 | RR ps1, RR ps2 -> compare_children ~next:p2 ps1 ps2
-        | WFQ (ps1, ws1), WFQ (ps2, ws2) ->
-            compare_wfq_children ~next:p2 ps1 ws1 ps2 ws2
+        | SP prs1, SP prs2 -> compare_sp_children ~next:p2 prs1 prs2
+        | RR ps1, RR ps2 -> compare_children ~next:p2 ps1 ps2
+        | WFQ pws1, WFQ pws2 -> compare_wfq_children ~next:p2 pws1 pws2
         | _ ->
             (* FIFO->FIFO with a different class, or any constructor mismatch
                (FIFO<->SP, SP<->RR, etc.) — wholesale replacement at this
                position. The leaf-level diff is path-empty; [compare_children]'s
                [prepend_path] tags on the child index when this bubbles up,
                but only if it's the sole divergence at that level. *)
-            Replace { path = []; arm = p2; weight = None })
+            Replace { path = []; arm = p2; meta = None })
 
 (* Pretty-printers — only used to format failure messages from the test
    suite; the patcher never goes through these. *)
@@ -294,16 +350,16 @@ let string_of_arm_w path arm weight =
 
 let to_string = function
   | Same -> "Same"
-  | Add { path; arm; weight = None } ->
+  | Add { path; arm; meta = None } ->
       Printf.sprintf "Add: %s" (string_of_arm path arm)
-  | Add { path; arm; weight = Some w } ->
-      Printf.sprintf "Add: %s" (string_of_arm_w path arm w)
+  | Add { path; arm; meta = Some m } ->
+      Printf.sprintf "Add: %s" (string_of_arm_w path arm m)
   | Remove { path; arm } -> Printf.sprintf "Remove: %s" (string_of_arm path arm)
   | ChangeWeight { path; new_weight } ->
       Printf.sprintf "ChangeWeight: %s -> %g" (path_to_string path) new_weight
-  | Replace { path; arm; weight = None } ->
+  | Replace { path; arm; meta = None } ->
       Printf.sprintf "Replace: %s" (string_of_arm path arm)
-  | Replace { path; arm; weight = Some w } ->
-      Printf.sprintf "Replace: %s" (string_of_arm_w path arm w)
+  | Replace { path; arm; meta = Some m } ->
+      Printf.sprintf "Replace: %s" (string_of_arm_w path arm m)
   | Graft p -> Printf.sprintf "Graft at %s" (path_to_string p)
   | ChangeRoot p -> Printf.sprintf "ChangeRoot at %s" (path_to_string p)

@@ -40,10 +40,12 @@ let strict_ab_to_abc_expected : commit =
     Set_arm_meta (100, 1002, 3.0);
   ]
 
-(* Mid-insert in SP: prev SP(A,C) compiled with positional weights A:1, C:2.
-   After inserting B at index 1, weights shift to A:1, B:2, C:3. The new arm
-   itself gets weight k+1=2; the existing C, now at new index 2, gets bumped
-   from 2.0 to 3.0. C's adopt step from compile is 1001 (A=1000, C=1001). *)
+(* Mid-insert in SP: prev SP(A,C) parsed with positional ranks A:1, C:2.
+   After inserting B at index 1, prev's existing ranks are preserved (no
+   positional cascade); only the new arm B gets a Set_arm_meta. B's rank
+   comes from [next]'s positional sugar (1-indexed source position 2),
+   which here collides with C's preserved rank — a known sharp edge of
+   bare positional sugar across mid-mutations. *)
 let strict_ac_to_abc_expected : commit =
   [
     Spawn (103, 1);
@@ -53,7 +55,20 @@ let strict_ac_to_abc_expected : commit =
     Map (100, "B", 1002);
     Change_arity (100, 3);
     Set_arm_meta (100, 1002, 2.0);
-    Set_arm_meta (100, 1001, 3.0);
+  ]
+
+(* Explicit-rank SP mid-insert: prev SP[(A,5),(C,20)], next
+   SP[(A,5),(B,10),(C,20)]. B is inserted at index 1 with rank 10 (no
+   collision with A or C); existing arms keep their ranks. *)
+let strict_ranked_ac_to_abc_expected : commit =
+  [
+    Spawn (103, 1);
+    Adopt (1002, 100, 103);
+    Assoc (100, "B");
+    Assoc (103, "B");
+    Map (100, "B", 1002);
+    Change_arity (100, 3);
+    Set_arm_meta (100, 1002, 10.0);
   ]
 
 (* RR arm appended at the root. Same shape as SP but no Set_arm_meta. *)
@@ -90,6 +105,9 @@ let one_arm_added_tests =
       strict_ab_to_abc_expected;
     make_delta_test "strict[A,C] -> strict[A,B,C]" "strict_AC" "strict_ABC"
       strict_ac_to_abc_expected;
+    make_delta_test
+      "strict[(A,5),(C,20)] -> strict[(A,5),(B,10),(C,20)] (explicit ranks)"
+      "strict_ranked_AC" "strict_ranked_ABC" strict_ranked_ac_to_abc_expected;
     make_delta_test "rr[A,B] -> rr[A,B,C]" "rr_AB" "rr_ABC"
       rr_ab_to_abc_expected;
     make_delta_test "complex_tree -> complex_tree_add_arm_deep" "complex_tree"
@@ -187,11 +205,11 @@ let strict_abc_to_ab_expected : commit =
     GC 103;
   ]
 
-(* SP[A,B,C] -> SP[A,C]: drop B (mid, index 1). C, formerly at index 2 with
-   weight 3.0, shifts to index 1 with weight 2.0. *)
+(* SP[A,B,C] -> SP[A,C]: drop B (mid, index 1). Existing SP arms keep their
+   ranks (per paper's [init_slot_Strict(_, p) = p]); no Set_arm_meta is
+   emitted for surviving siblings. *)
 let strict_abc_to_ac_expected : commit =
   [
-    Set_arm_meta (100, 1002, 2.0);
     Change_arity (100, 2);
     Unmap (100, "B", 1001);
     Deassoc (100, "B");
@@ -238,8 +256,10 @@ let rr_ab_to_ad_expected : commit =
     GC 102;
   ]
 
-(* SP[A,B] -> SP[A,C]: same shape as RR but in an SP parent. Positional
-   weights stay (slot 1 is still 2.0), so no Set_arm_meta is emitted. *)
+(* SP[A,B] -> SP[A,C]: same shape as RR but in an SP parent. The replaced
+   arm rides on the existing step, which keeps its rank (the slot's rank
+   is associated with the step, not the arm), so no Set_arm_meta is
+   emitted. *)
 let strict_ab_to_ac_expected : commit =
   [
     Spawn (103, 1);
@@ -511,10 +531,13 @@ let graft_tests =
    PE 2 (fresh, above prev's max PE 1). *)
 let one_arm_added_extends_pes_test =
   "sp[A] -> sp[A, rr[B,C]] (extends pes)" >:: fun _ ->
-  let prev = Ir.of_policy (Policy.SP [ Policy.FIFO "A" ]) in
+  let prev = Ir.of_policy (Policy.SP [ (Policy.FIFO "A", 1.0) ]) in
   let next =
     Policy.SP
-      [ Policy.FIFO "A"; Policy.RR [ Policy.FIFO "B"; Policy.FIFO "C" ] ]
+      [
+        (Policy.FIFO "A", 1.0);
+        (Policy.RR [ Policy.FIFO "B"; Policy.FIFO "C" ], 2.0);
+      ]
   in
   let c =
     match Ir.patch ~prev ~next with

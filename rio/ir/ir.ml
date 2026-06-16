@@ -28,8 +28,9 @@ let rec policy_depth (p : Rio_core.Policy.t) : int =
   let module P = Rio_core.Policy in
   match p with
   | P.FIFO _ -> 0
-  | P.SP ps | P.RR ps | P.WFQ (ps, _) ->
-      1 + List.fold_left max 0 (List.map policy_depth ps)
+  | P.SP prs | P.WFQ prs ->
+      1 + List.fold_left max 0 (List.map (fun (p, _) -> policy_depth p) prs)
+  | P.RR ps -> 1 + List.fold_left max 0 (List.map policy_depth ps)
 
 (* ------------------------------------------------------------------ *)
 (* ID-space and fake-root constants.                                  *)
@@ -85,12 +86,15 @@ let rec compile_subtree ~fresh_v ~fresh_s ~pe_of_depth ~depth ?splice
       | P.RR children ->
           let frag, edges = arm ~pol_ty:RR ~weights:[] children in
           (frag, Decorated.RR (frag.root_v, edges))
-      | P.SP children ->
-          (* Strict priority: positional weights 1.0, 2.0, … *)
-          let weights = List.mapi (fun i _ -> float_of_int (i + 1)) children in
-          let frag, edges = arm ~pol_ty:SP ~weights children in
-          (frag, Decorated.SP (frag.root_v, edges))
-      | P.WFQ (children, ws) ->
+      | P.SP arms ->
+          let children = List.map fst arms in
+          let ranks = List.map snd arms in
+          let frag, edges = arm ~pol_ty:SP ~weights:ranks children in
+          let ranked = List.map2 (fun (s, d) r -> (s, d, r)) edges ranks in
+          (frag, Decorated.SP (frag.root_v, ranked))
+      | P.WFQ arms ->
+          let children = List.map fst arms in
+          let ws = List.map snd arms in
           let frag, edges = arm ~pol_ty:WFQ ~weights:ws children in
           let weighted = List.map2 (fun (s, d) w -> (s, d, w)) edges ws in
           (frag, Decorated.WFQ (frag.root_v, weighted)))
@@ -255,11 +259,14 @@ let replace_at ~prev ~chain ~removed ~arm_depth ~arm ~rewrite_decorated =
   in
   { commit; decorated = rewrite_decorated arm_decorated; pes = new_pes }
 
-let patch_one_arm_replaced ~prev ~arm_path ~arm ~wfq_weight =
+(* [meta] is the new slot metadata supplied by [next]: a weight for a WFQ slot
+   when the user changed both arm and weight in the same edit. SP rank-changes
+   at a slot are not currently sniffed, so [meta] is None for SP replace. *)
+let patch_one_arm_replaced ~prev ~arm_path ~arm ~meta =
   let parent_path, k = list_foot arm_path in
   let parent = Decorated.walk prev.decorated parent_path in
   let weight_instrs, weight_rewrite =
-    match wfq_weight with
+    match meta with
     | None -> ([], Fun.id)
     | Some w ->
         let parent_v = Decorated.root_vpifo parent in
@@ -306,32 +313,8 @@ let patch_weight_changed ~prev ~path ~new_weight =
 (* Patch: arm add / remove.                                           *)
 (* ------------------------------------------------------------------ *)
 
-let sp_edges = function
-  | Decorated.SP (_, es) -> es
-  | _ -> failwith "Ir.patch: expected an SP parent"
-
-(* SP weights are positional: arm at index [j] carries weight [j+1]. Inserting
-   at [k] shifts every existing arm at [j ≥ k] up by one slot; removing at [k]
-   shifts every arm at [j > k] down by one. Other policy types carry no
-   per-arm weights here (WFQ doesn't reach add/remove). *)
-let sp_inserted_weight_shifts ~parent_v ~parent ~k ~new_step =
-  let shifted =
-    List.filter_map
-      (fun (j, (s, _)) ->
-        if j >= k then Some (Set_arm_meta (parent_v, s, float_of_int (j + 2)))
-        else None)
-      (List.mapi (fun j e -> (j, e)) (sp_edges parent))
-  in
-  Set_arm_meta (parent_v, new_step, float_of_int (k + 1)) :: shifted
-
-let sp_removed_weight_shifts ~parent_v ~parent ~k =
-  List.filter_map
-    (fun (j, (s, _)) ->
-      if j > k then Some (Set_arm_meta (parent_v, s, float_of_int j)) else None)
-    (List.mapi (fun j e -> (j, e)) (sp_edges parent))
-
 (* Single-arm insertion under [parent]. *)
-let patch_one_arm_added ~prev ~arm_path ~arm ~wfq_weight =
+let patch_one_arm_added ~prev ~arm_path ~arm ~meta =
   let parent_path, k = list_foot arm_path in
   let parent = Decorated.walk prev.decorated parent_path in
   let parent_v, old_arity, pol_ty = parent_info parent in
@@ -346,17 +329,16 @@ let patch_one_arm_added ~prev ~arm_path ~arm ~wfq_weight =
   in
   let new_step = fresh_s () in
   let set_arm_metas, decorated_update =
-    match (pol_ty, wfq_weight) with
-    | SP, None ->
-        ( sp_inserted_weight_shifts ~parent_v ~parent ~k ~new_step,
-          Decorated.insert_arm k new_step arm_decorated )
+    match (pol_ty, meta) with
+    | SP, Some r ->
+        ( [ Set_arm_meta (parent_v, new_step, r) ],
+          Decorated.insert_arm_sp k new_step arm_decorated r )
     | WFQ, Some w ->
         ( [ Set_arm_meta (parent_v, new_step, w) ],
           Decorated.insert_arm_wfq k new_step arm_decorated w )
     | RR, None -> ([], Decorated.insert_arm k new_step arm_decorated)
     | _ ->
-        failwith
-          "Ir.patch.patch_one_arm_added: parent pol_ty / wfq_weight mismatch"
+        failwith "Ir.patch.patch_one_arm_added: parent pol_ty / meta mismatch"
   in
   (* Strict ancestors above [parent_v] reuse their existing step toward
      [parent_v]; [parent_v] itself uses the freshly minted [new_step]. *)
@@ -389,21 +371,15 @@ let patch_one_arm_added ~prev ~arm_path ~arm ~wfq_weight =
 let patch_one_arm_removed ~prev ~arm_path =
   let parent_path, k = list_foot arm_path in
   let parent = Decorated.walk prev.decorated parent_path in
-  let parent_v, old_arity, pol_ty = parent_info parent in
+  let parent_v, old_arity, _ = parent_info parent in
   let removed = Decorated.nth_child parent k in
   let removed_v = Decorated.root_vpifo removed in
   let step_k = Decorated.nth_step parent k in
-  let set_arm_metas =
-    match pol_ty with
-    | SP -> sp_removed_weight_shifts ~parent_v ~parent ~k
-    | _ -> []
-  in
   let chain = Decorated.ancestor_chain prev.decorated arm_path in
   let removed_classes = Decorated.subtree_classes removed in
   let commit =
     List.concat
       [
-        set_arm_metas;
         [ Change_arity (parent_v, old_arity - 1) ];
         chain_emit (fun v s c -> Unmap (v, c, s)) chain removed_classes;
         chain_emit (fun v _ c -> Deassoc (v, c)) chain removed_classes;
@@ -505,10 +481,10 @@ let patch ~prev ~(next : Rio_core.Policy.t) : compiled option =
   match analyze (Decorated.to_policy prev.decorated) next with
   | Same -> Some { commit = []; decorated = prev.decorated; pes = prev.pes }
   | Replace { path = []; _ } -> Some (patch_whole_tree_replace ~prev ~next)
-  | Replace { path; arm; weight } ->
-      Some (patch_one_arm_replaced ~prev ~arm_path:path ~arm ~wfq_weight:weight)
-  | Add { path; arm; weight } ->
-      Some (patch_one_arm_added ~prev ~arm_path:path ~arm ~wfq_weight:weight)
+  | Replace { path; arm; meta } ->
+      Some (patch_one_arm_replaced ~prev ~arm_path:path ~arm ~meta)
+  | Add { path; arm; meta } ->
+      Some (patch_one_arm_added ~prev ~arm_path:path ~arm ~meta)
   | Remove { path; arm = _ } ->
       Some (patch_one_arm_removed ~prev ~arm_path:path)
   | ChangeWeight { path; new_weight } ->

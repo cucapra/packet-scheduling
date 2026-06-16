@@ -19,12 +19,12 @@ let make_compare_test name file1 file2 expected_diff =
 
 (* Helper for the "give up" cases below: [Compare] couldn't break the
    diff down at depth [List.length path], so it emits
-   [Replace { path; arm = walk policy2 path; weight = None }] — the
+   [Replace { path; arm = walk policy2 path; meta = None }] — the
    IR-side instruction is "wholesale replace this subtree with next's." *)
 let make_giveup_test name file1 file2 path =
   let policy2 = prog_to_policy file2 in
   let arm = Policy.walk policy2 path in
-  make_compare_test name file1 file2 (Replace { path; arm; weight = None })
+  make_compare_test name file1 file2 (Replace { path; arm; meta = None })
 
 let same =
   [
@@ -41,31 +41,35 @@ let same =
    of [next]. *)
 let one_arm_added =
   [
-    (* SP(A,B) vs SP(A,B,C) — append; new arm at root child 2. *)
+    (* SP(A,B) vs SP(A,B,C) — append. Positional sugar gives the new arm
+       rank 3 (its 1-indexed source position). *)
     make_compare_test "strict arm added at end" "strict_AB" "strict_ABC"
-      (Add { path = [ 2 ]; arm = Policy.FIFO "C"; weight = None });
-    (* SP(A,C) vs SP(A,B,C) — mid-insert; new arm at root child 1. *)
+      (Add { path = [ 2 ]; arm = Policy.FIFO "C"; meta = Some 3.0 });
+    (* SP(A,C) vs SP(A,B,C) — mid-insert. Positional sugar gives B (now
+       written at source index 1) rank 2. Note: this collides with prev's
+       C (which kept its parsed rank 2.0); this is a known sharp edge of
+       positional sugar across mid-mutations. Explicit ranks avoid it. *)
     make_compare_test "strict arm added in the middle" "strict_AC" "strict_ABC"
-      (Add { path = [ 1 ]; arm = Policy.FIFO "B"; weight = None });
+      (Add { path = [ 1 ]; arm = Policy.FIFO "B"; meta = Some 2.0 });
     (* RR(A,B) vs RR(A,B,C) — append. *)
     make_compare_test "RR with arm added at end" "rr_AB" "rr_ABC"
-      (Add { path = [ 2 ]; arm = Policy.FIFO "C"; weight = None });
+      (Add { path = [ 2 ]; arm = Policy.FIFO "C"; meta = None });
     (* RR(A,B) vs RR(B,A,C) — both sort to [A,B,...], so still an append. *)
     make_compare_test "RR with arm added whilst reordering" "rr_AB" "rr_BAC"
-      (Add { path = [ 2 ]; arm = Policy.FIFO "C"; weight = None });
+      (Add { path = [ 2 ]; arm = Policy.FIFO "C"; meta = None });
     (* Adding an arm deep inside a tree with WFQ at root. The root WFQ
        is a transparent passthrough (lengths and weights line up), so
        the diff surfaces at the rr child (path [1]); the new D inside
        that RR sits at child index 2, giving a full path of [1; 2]. *)
     make_compare_test "WFQ with arm added deep" "wfq_complex"
       "wfq_complex_add_arm_deep"
-      (Add { path = [ 1; 2 ]; arm = Policy.FIFO "D"; weight = None });
+      (Add { path = [ 1; 2 ]; arm = Policy.FIFO "D"; meta = None });
     (* Adding an arm deep inside the complex tree. After normalize, the
        WFQ pairs sort to (SP, RR[D,E,F], RR[G,H]); the mid rr is at index 1
        and the new NEW inside that RR sits at child index 3, so [1; 3]. *)
     make_compare_test "complex tree add arm deep" "complex_tree"
       "complex_tree_add_arm_deep"
-      (Add { path = [ 1; 3 ]; arm = Policy.FIFO "NEW"; weight = None });
+      (Add { path = [ 1; 3 ]; arm = Policy.FIFO "NEW"; meta = None });
   ]
 
 (* WFQ-parent additions: detected when the policy list and the weight list
@@ -77,7 +81,7 @@ let one_arm_added_wfq =
        [(A,2),(B,1)] and next to [(A,2),(B,1),(C,3)]. The C slot is the
        lone insertion (index 2, weight 3). *)
     make_compare_test "WFQ with arm added at end" "wfq_BA" "wfq_ABC"
-      (Add { path = [ 2 ]; arm = Policy.FIFO "C"; weight = Some 3.0 });
+      (Add { path = [ 2 ]; arm = Policy.FIFO "C"; meta = Some 3.0 });
     (* complex_tree_partial -> complex_tree: at the root WFQ a new
        (rr[D,E,F], 2) slot appears. WFQ pairs sort by arm: SP < RR by
        constructor order, and rr[D,E,F] < rr[G,H] by element compare. So
@@ -90,7 +94,7 @@ let one_arm_added_wfq =
          {
            path = [ 1 ];
            arm = Policy.RR [ Policy.FIFO "D"; Policy.FIFO "E"; Policy.FIFO "F" ];
-           weight = Some 2.0;
+           meta = Some 2.0;
          });
   ]
 
@@ -124,16 +128,16 @@ let onearmreplaced =
   [
     (* SP(A,B) vs SP(A,C): exactly one arm differs (index 1). *)
     make_compare_test "strict arm changed" "strict_AB" "strict_AC"
-      (Replace { path = [ 1 ]; arm = Policy.FIFO "C"; weight = None });
+      (Replace { path = [ 1 ]; arm = Policy.FIFO "C"; meta = None });
     (* RR(A,B) vs RR(A,D): exactly one arm differs (index 1). *)
     make_compare_test "rr arm changed" "rr_AB" "rr_AD"
-      (Replace { path = [ 1 ]; arm = Policy.FIFO "D"; weight = None });
+      (Replace { path = [ 1 ]; arm = Policy.FIFO "D"; meta = None });
     (* WFQ(A:2,B:1,C:3) vs WFQ(A:2,B:1,Z:3): one slot's arm changed in
        place, weight unchanged. The IR recovers the slot's weight from
        the prev decorated tree. *)
     make_compare_test "WFQ arm changed in place, same weight" "wfq_ABC"
       "wfq_ABZ"
-      (Replace { path = [ 2 ]; arm = Policy.FIFO "Z"; weight = None });
+      (Replace { path = [ 2 ]; arm = Policy.FIFO "Z"; meta = None });
   ]
 
 (* WFQ-slot replace with weight change: a single WFQ slot's arm and weight
@@ -146,7 +150,7 @@ let one_arm_replaced_wfq =
        weight 3→7 in the same edit. *)
     make_compare_test "WFQ slot with arm change and weight change" "wfq_ABC"
       "wfq_ABZ_diff"
-      (Replace { path = [ 2 ]; arm = Policy.FIFO "Z"; weight = Some 7.0 });
+      (Replace { path = [ 2 ]; arm = Policy.FIFO "Z"; meta = Some 7.0 });
   ]
 
 let nested_giveup_demotion =
@@ -157,11 +161,11 @@ let nested_giveup_demotion =
          {
            path = [ 1 ];
            arm = Policy.RR [ Policy.FIFO "B"; Policy.FIFO "C" ];
-           weight = None;
+           meta = None;
          });
     make_compare_test "nested ChangeRoot demotes to Replace" "strict_A_rrBC"
       "strict_AB"
-      (Replace { path = [ 1 ]; arm = Policy.FIFO "B"; weight = None });
+      (Replace { path = [ 1 ]; arm = Policy.FIFO "B"; meta = None });
   ]
 
 let graft =
@@ -189,7 +193,7 @@ let change_root =
 
 (* A menu of cases where the diff is a *combination* of changes each of
    which would be legal in isolation, so [Compare] gives up at the level
-   of the divergence and emits [Replace { path; arm = next_at_path; weight = None }]
+   of the divergence and emits [Replace { path; arm = next_at_path; meta = None }]
    — the IR will replace that subtree wholesale via [Designate]. As
    [Compare] gets smarter (e.g., learns to emit a list of edits), entries
    here will migrate to more precise variants. Each entry's comment names

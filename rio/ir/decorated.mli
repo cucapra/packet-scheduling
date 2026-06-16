@@ -8,7 +8,7 @@ open Instr
 
 type t =
   | FIFO of vpifo * clss
-  | SP of vpifo * (step * t) list
+  | SP of vpifo * (step * t * float) list
   | RR of vpifo * (step * t) list
   | WFQ of vpifo * (step * t * float) list
 
@@ -61,7 +61,12 @@ val rewrite_at : t -> int list -> (t -> t) -> t
 val insert_arm : int -> step -> t -> t -> t
 (** [insert_arm k new_step new_child d] splices [new_child] in at index [k] in
     the children of [d], using [new_step] as the parent-to-child step. Errors on
-    FIFO and WFQ; use [insert_arm_wfq] for WFQ. *)
+    FIFO, SP, and WFQ; use [insert_arm_sp] / [insert_arm_wfq] for those. *)
+
+val insert_arm_sp : int -> step -> t -> float -> t -> t
+(** [insert_arm_sp k new_step new_child new_rank d] splices [new_child] in at
+    index [k] in the children of SP-rooted [d], pairing it with [new_step] and
+    [new_rank]. Errors on anything but SP. *)
 
 val insert_arm_wfq : int -> step -> t -> float -> t -> t
 (** [insert_arm_wfq k new_step new_child new_weight d] splices [new_child] in at

@@ -10,6 +10,7 @@ type enqdeq =
 let rec of_policy e p =
   let open Rio_core.Policy in
   match (e, p) with
-  | _, SP ps | _, RR ps | _, WFQ (ps, _) -> Node (List.map (of_policy e) ps)
+  | _, SP prs | _, WFQ prs -> Node (List.map (fun (p, _) -> of_policy e p) prs)
+  | _, RR ps -> Node (List.map (of_policy e) ps)
   | Enq, FIFO _ -> Star
   | Deq, FIFO c -> DecoratedStar [ c ]
