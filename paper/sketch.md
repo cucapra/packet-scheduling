@@ -174,7 +174,10 @@ Each leaf label denotes a _flow_: a predicate over packets.
 
 Arm order in the surface notation is a presentation choice, not a scheduling-meaningful one: `Strict(hi: A, lo: B)` and `Strict(lo: B, hi: A)` describe the same scheduler.
 We formalize this below as the _reorder-congruence_ `=R` on `pol`.
-We use `=R` as a degree of freedom: the compiler is free to pick any representative of an `=R`-class when laying out or editing a control.
+The compiler has a degree of freedom here, in that it may pick any representative of an `=R`-class when laying out or editing a control.
+For instance, a compiler might run a deterministic `normalize` operation, sorting `Strict` arms by rank ascending, `RR` arms by content, and so on, then commit to that one representative throughout.
+Doing so reduces edit footprints: a reconfiguration that only permutes siblings becomes a no-op (both endpoints normalize to the same pol), and one that permutes siblings while also adding an arm is viewed as "just an arm addition".
+The framework leaves the choice to the implementation; any strategy that respects `=R` is fine, and our implementation (§6) follows the normalize-and-commit-to-it strategy just sketched.
 
 A `pol` is written against a fixed _flow universe_ `F`: a finite set of flow predicates declared by the operator before constructing the `pol`.
 A `pol` is _valid_ over `F` when (a) every discipline is applied at a proper arity, (b) every discipline is provided with the per-arm metadata that the discipline requires, and (c) the leaves form a partition of a subset of `F`: each leaf carries a flow drawn from `F`, and no two leaves carry the same flow.
