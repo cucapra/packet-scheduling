@@ -572,13 +572,23 @@ let patch_undesignate ~prev ~path =
    trailing [ChangeMeta] when the slot's per-arm meta also changes); we
    recognize that shape and lower it monolithically through
    [patch_one_arm_replaced] / [patch_whole_tree_replace] to keep decorated-tree
-   threading simple. Standalone atomic [Designate], [Quiesce], [Undesignate]
-   productions are reachable only through the per-helper entry points
-   [patch_designate] etc., not through [patch]. *)
+   threading simple. The PruneDownTo idiom arrives as a tail of off-path
+   [Retire]s followed by [(True, ChangeRoot [0;...;0])]; we recognize it by
+   the trailing [ChangeRoot] and recover the original target path via
+   [Planner.is_sub_policy], then route through [patch_change_root]. Standalone
+   atomic [Designate], [Quiesce], [Undesignate] productions are reachable only
+   through the per-helper entry points [patch_designate] etc., not through
+   [patch]. *)
 let patch ~prev ~(next : Rio_core.Pol.t) : compiled option =
   let module D = Rio_delta.Delta in
   let module P = Rio_planner.Planner in
   let same_path a b c = a = b && b = c in
+  let looks_like_prune_down_to seq =
+    match List.rev seq with
+    | (P.True, D.ChangeRoot zeros) :: _
+      when zeros <> [] && List.for_all (fun i -> i = 0) zeros -> true
+    | _ -> false
+  in
   match P.analyze (Decorated.to_policy prev.decorated) next with
   | [] -> Some { commit = []; decorated = prev.decorated; pes = prev.pes }
   | [ (P.True, D.Add { path; arm; meta }) ] ->
@@ -590,8 +600,11 @@ let patch ~prev ~(next : Rio_core.Pol.t) : compiled option =
       Some (patch_meta_changed ~prev ~path ~new_meta)
   | [ (P.True, D.Graft path) ] ->
       if path = [] then None else Some (patch_graft ~prev ~next ~path)
-  | [ (P.True, D.ChangeRoot path) ] ->
-      if path = [] then None else Some (patch_change_root ~prev ~path)
+  | seq when looks_like_prune_down_to seq -> (
+      let prev_pol = Decorated.to_policy prev.decorated in
+      match P.is_sub_policy next prev_pol with
+      | Some path when path <> [] -> Some (patch_change_root ~prev ~path)
+      | _ -> None)
   | [
    (P.True, D.Designate { path = pd; arm });
    (P.True, D.Quiesce pq);

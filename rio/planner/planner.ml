@@ -113,6 +113,52 @@ let retire ~arm () =
    (e.g. the imperative-mode surface). *)
 let slow_retire ~arm () = [ (Empty [], Delta.Remove { path = []; arm }) ]
 
+(* The paper's [PruneDownTo] idiom: collapse [prev] down to the strict subtree
+   at [path]. Walks [prev] along [path], retiring off-path siblings at each
+   level, then re-roots with a final [ChangeRoot]. Off-path retires within a
+   level fire highest-index-first so the lower-index siblings keep their
+   emitted paths stable; across levels we go outer-first (the order is
+   interchangeable because outer retires don't shift inner paths and vice
+   versa, but the natural walk produces outer-first). Once every off-path
+   sibling along the route has retired, the survivor is the sole remaining
+   child at index 0 at each level, so the final re-root path is all-zeros of
+   length [len(path)]. *)
+let prune_down_to ~prev ~path () =
+  let arms_of = function
+    | SP (prs, _) | WFQ prs -> List.map fst prs
+    | RR ps -> ps
+    | FIFO _ -> failwith "Planner.prune_down_to: path goes through a FIFO leaf"
+  in
+  let rec walk p path_remaining path_so_far =
+    match path_remaining with
+    | [] -> []
+    | i :: rest ->
+        let arms = arms_of p in
+        let n = List.length arms in
+        let off =
+          List.init n (fun j -> j)
+          |> List.filter (fun j -> j <> i)
+          |> List.sort (fun a b -> compare b a)
+        in
+        let level_retires =
+          List.concat_map
+            (fun j ->
+              let arm = List.nth arms j in
+              List.fold_right prepend_seq (path_so_far @ [ j ]) (retire ~arm ()))
+            off
+        in
+        let kept = List.nth arms i in
+        level_retires @ walk kept rest (path_so_far @ [ i ])
+  in
+  walk prev path [] @ [ (True, Delta.ChangeRoot (List.map (fun _ -> 0) path)) ]
+
+(* Recognize a [PruneDownTo] sequence's tail: any sequence whose last step is
+   [ChangeRoot]. Used by [compare_children]'s demotion match. *)
+let ends_in_change_root seq =
+  match List.rev seq with
+  | (_, Delta.ChangeRoot _) :: _ -> true
+  | _ -> false
+
 (* Recognize the inner [Replace] shape (pre-bubble-up). Used by the metaed
    comparator to gate "slot-replace-with-meta" rewrites. *)
 let is_replace_root = function
@@ -164,13 +210,19 @@ let rec compare_children ~next:p2 ps1 ps2 =
           let child1 = List.nth ps1 i in
           let child2 = List.nth ps2 i in
           let inner =
-            match analyze child1 child2 with
-            | [ (True, Delta.Graft _) ] | [ (True, Delta.ChangeRoot _) ] ->
-                (* A nested Graft/ChangeRoot only says "child1 embeds in
-                   child2" (or vice versa) at the inner position; it does
-                   NOT say "prev embeds in next" at the outer slot. Bubbling
-                   it up via [prepend_seq] would mis-describe the edit, so
-                   we demote to a slot-level give-up at the current level. *)
+            let raw = analyze child1 child2 in
+            match raw with
+            | [ (True, Delta.Graft _) ] ->
+                (* A nested Graft only says "child1 embeds in child2" at the
+                   inner position; it does NOT say "prev embeds in next" at
+                   the outer slot. Bubbling it up via [prepend_seq] would
+                   mis-describe the edit, so we demote to a slot-level
+                   give-up at the current level. *)
+                replace ~next:child2 ()
+            | _ when ends_in_change_root raw ->
+                (* Same reasoning for nested [PruneDownTo]: the inner
+                   sequence says "child2 sits inside child1", which doesn't
+                   bubble up to the outer slot. Demote. *)
                 replace ~next:child2 ()
             | d -> d
           in
@@ -241,7 +293,7 @@ and analyze p1 p2 =
     match (is_sub_policy p1 p2, is_sub_policy p2 p1) with
     | Some _, Some _ -> [] (* unreachable: would mean p1 = p2 *)
     | Some path, None -> [ (True, Delta.Graft path) ]
-    | None, Some path -> [ (True, Delta.ChangeRoot path) ]
+    | None, Some path -> prune_down_to ~prev:p1 ~path ()
     | _ -> (
         match (p1, p2) with
         | SP (pms1, _), SP (pms2, _) | WFQ pms1, WFQ pms2 ->

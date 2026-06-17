@@ -81,14 +81,17 @@ val patch : prev:compiled -> next:Rio_core.Pol.t -> compiled option
       old root that collapses the super-node and releases its PE slot, and a
       [GC] per remaining node of the displaced subtree.
     - [next] is structurally equal to a strict subtree of [prev] at a non-empty
-      path (per [ChangeRoot]): returns [Some] with an [Emancipate]/[Adopt] pair
-      on the port root that re-points its single step from [prev]'s old real
-      root to the new one, [Unmap]/[Deassoc] entries on the port root for any
-      classes that no longer apply, and one [GC] per displaced node so the
-      surrounding structure is collected. No [Emancipate] from the surviving
-      subtree's old parent is emitted: the parent itself is among the [GC]'d
-      nodes, which severs the edge. The whole-tree case ([path = []]) returns
-      [None].
+      path (planner expands this as the [PruneDownTo] idiom
+      [Retire(p_1) ; ... ; Retire(p_m) ; (True) ChangeRoot([0;...;0])],
+      recognized by [patch] via the trailing all-zeros [ChangeRoot]; the
+      original target path is recovered via [Planner.is_sub_policy]): returns
+      [Some] with an [Emancipate]/[Adopt] pair on the port root that re-points
+      its single step from [prev]'s old real root to the new one,
+      [Unmap]/[Deassoc] entries on the port root for any classes that no longer
+      apply, and one [GC] per displaced node so the surrounding structure is
+      collected. No [Emancipate] from the surviving subtree's old parent is
+      emitted: the parent itself is among the [GC]'d nodes, which severs the
+      edge. The whole-tree case ([path = []]) returns [None].
     - [prev]'s policy appears as a strict subtree of [next] at a non-empty path
       (per [Graft]): returns [Some] with the
       [Spawn]/[Adopt]/[Assoc]/[Map]/[Set_policy]/[Set_arm_meta] instructions for

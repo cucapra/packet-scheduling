@@ -177,13 +177,22 @@ let graft =
       [ (Planner.True, Delta.Graft [ 0 ]) ];
   ]
 
+(* The planner's [PruneDownTo] idiom: retire each off-path sibling along the
+   route to the surviving subtree (highest-index-within-level first,
+   outer-level first), then re-root via [(True, ChangeRoot [0;...;0])]. *)
 let change_root =
+  let gh = Pol.RR [ Pol.FIFO "G"; Pol.FIFO "H" ] in
+  let def = Pol.RR [ Pol.FIFO "D"; Pol.FIFO "E"; Pol.FIFO "F" ] in
   [
     make_planner_test "complex_tree collapsed to fifo_A" "complex_tree" "fifo_A"
-      [ (Planner.True, Delta.ChangeRoot [ 0; 0 ]) ];
+      (retire_seq [ 2 ] gh @ retire_seq [ 1 ] def
+      @ retire_seq [ 0; 2 ] (Pol.FIFO "C")
+      @ retire_seq [ 0; 1 ] (Pol.FIFO "B")
+      @ [ (Planner.True, Delta.ChangeRoot [ 0; 0 ]) ]);
     make_planner_test "complex_tree collapsed to strict_ABC" "complex_tree"
       "strict_ABC"
-      [ (Planner.True, Delta.ChangeRoot [ 0 ]) ];
+      (retire_seq [ 2 ] gh @ retire_seq [ 1 ] def
+      @ [ (Planner.True, Delta.ChangeRoot [ 0 ]) ]);
   ]
 
 (* Combination cases where the diff is multiple legal edits at once; the
