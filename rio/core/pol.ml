@@ -72,7 +72,7 @@ let rec to_string p =
       fmt "strict[%s]" (join prs to_string)
   | RR ps -> fmt "rr[%s]" (join ps to_string)
   | WFQ pws ->
-      let to_string (p, w) = fmt "(%s, %f)" (to_string p) w in
+      let to_string (p, w) = fmt "(%s, %g)" (to_string p) w in
       fmt "wfq[%s]" (join pws to_string)
 
 let rec walk p path =
