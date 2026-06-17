@@ -37,12 +37,21 @@ let rec sub cl st used (p : Ast.stream) : Ast.clss list * t =
       (used, WFQ (List.combine qs ws))
   | _ -> failwith "ERROR: unsupported policy"
 
+(* Within an SP, RR, or WFQ node, sibling order carries no semantics: the
+   discipline is defined by ranks, round-robin fairness, or per-arm weights,
+   not by source position. [normalize] uses that arm-order freedom to pick a
+   canonical sibling ordering, and the runtime echoes the normalized form
+   back to the user as the committed shape. Edits that only permute siblings
+   become no-ops after normalization (see "merely jumbled" tests in
+   tests/planner/test_planner.ml); edits that reorder *and* add or remove an
+   arm sniff as just the structural change, keeping the edit's footprint
+   small. *)
 let rec normalize p =
   match p with
   | FIFO _ -> p
   | SP (prs, designated) ->
-      (* SP arms canonicalize by rank ascending (the priority order is the
-         discipline-defining datum); ties break by arm content. *)
+      (* SP: rank ascending (the priority order is the discipline-defining
+         datum); ties break by arm content. *)
       SP
         ( List.map (fun (p, r) -> (normalize p, r)) prs
           |> List.sort (fun (p1, r1) (p2, r2) ->
@@ -51,8 +60,8 @@ let rec normalize p =
           designated )
   | RR ps -> RR (List.map normalize ps |> List.sort compare)
   | WFQ pws ->
-      (* WFQ arms canonicalize by arm content (weights are independent
-         shares; same-arm collision is the rare case); ties break by weight. *)
+      (* WFQ: arm content first (weights are independent shares; same-arm
+         collisions are rare); ties break by weight. *)
       WFQ
         (List.map (fun (p, w) -> (normalize p, w)) pws
         |> List.sort (fun (p1, w1) (p2, w2) ->

@@ -1,0 +1,10 @@
+classes A, B;
+
+// Source-order swapped vs strict_AB.sched (B first, then A), but the rank
+// assignments are unchanged: A still ranks 1 (higher priority), B still ranks
+// 2 (lower priority). Pol.normalize sorts SP arms by rank ascending, so this
+// canonicalizes to the same shape as strict_AB.
+
+policy = strict[(B, 2), (A, 1)];
+
+return policy

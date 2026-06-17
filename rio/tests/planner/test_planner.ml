@@ -58,6 +58,11 @@ let same =
     make_planner_test "same program twice" "strict_ABC" "strict_ABC" [];
     make_planner_test "merely jumbled in RR" "rr_ABC" "rr_BAC" [];
     make_planner_test "merely jumbled in WFQ" "wfq_ABC" "wfq_ABC_jumbled" [];
+    (* strict_AB_swapped has the same (arm, rank) pairs as strict_AB but
+       lists them in swapped source order; [Pol.normalize]'s rank sort
+       canonicalizes the two to the same shape. *)
+    make_planner_test "merely source-swapped in SP" "strict_AB"
+      "strict_AB_swapped" [];
   ]
 
 (* [Add] fires on a single-arm insertion at any position of an RR/SP parent
