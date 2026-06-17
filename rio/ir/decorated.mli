@@ -10,11 +10,14 @@ type t =
   | FIFO of vpifo * clss
   | SP of vpifo * (step * t * float) list * bool
       (** The trailing [bool] is the "designated" flag, mirroring
-          [Rio_core.Pol.SP]. A designated SP is the runtime SP* super-node
-          minted by [Designate]: two children at indices 0/1 (loser/survivor),
-          ranks 1.0/2.0. The DSL only produces undesignated SPs; the flag flips
-          to [true] inside [Ir.patch]'s Replace lowering and back to [false]
-          (implicitly, by collapsing back to the survivor) on [Undesignate]. *)
+          [Rio_core.Pol.SP] and the IR-side [Instr.SP_star] marker. A
+          designated SP is the runtime SP* super-node minted by [Designate]:
+          exactly two children at indices 0/1 (loser/survivor), ranks
+          1.0/2.0. The DSL only produces undesignated SPs; the flag flips to
+          [true] inside [Ir.patch]'s Replace lowering and back to [false]
+          (implicitly, by collapsing back to the survivor) on [Undesignate].
+          The same-PE invariant on (sp_v, loser_root, survivor_root) lives at
+          the IR boundary; see [Instr.SP_star]'s contract. *)
   | RR of vpifo * (step * t) list
   | WFQ of vpifo * (step * t * float) list
 
