@@ -264,7 +264,9 @@ let patch_one_arm_added ~prev ~arm_path ~arm ~meta =
   let parent_v, old_arity, pol_ty = parent_info parent in
   let fresh_v, fresh_s = counters_after prev in
   let arm_depth = List.length arm_path in
-  let new_pes = pes_extended_to_depth (arm_depth + Rio_core.Pol.depth arm) prev.pes in
+  let new_pes =
+    pes_extended_to_depth (arm_depth + Rio_core.Pol.depth arm) prev.pes
+  in
   let pe_of_depth d = List.nth new_pes d in
   (* Compile the arm before allocating [new_step] so its internal IDs land
      lower — mirroring [of_policy]'s pre-order numbering. *)
@@ -480,7 +482,9 @@ let patch_designate ~prev ~path ~(arm : Rio_core.Pol.t) =
   let loser_v = Decorated.root_vpifo loser in
   let loser_classes = Decorated.subtree_classes loser in
   let arm_depth = List.length path in
-  let new_pes = pes_extended_to_depth (arm_depth + Rio_core.Pol.depth arm) prev.pes in
+  let new_pes =
+    pes_extended_to_depth (arm_depth + Rio_core.Pol.depth arm) prev.pes
+  in
   let pe_n = List.nth new_pes arm_depth in
   let pe_of_depth d = List.nth new_pes d in
   let fresh_v, fresh_s = counters_after prev in
