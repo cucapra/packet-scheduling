@@ -368,21 +368,23 @@ let patch_one_arm_added ~prev ~arm_path ~arm ~meta =
     pes = new_pes;
   }
 
-let patch_one_arm_removed ~prev ~arm_path =
+(* Per-delta lowering for [Delta.Remove { path; arm }]. Emits the structural
+   teardown ([Change_arity] shrink, parent-side [Emancipate], [GC] of the
+   removed subtree) without touching class-routing tables: those are
+   [Quiesce]'s responsibility within the [Retire] idiom, and the planner
+   guarantees a [Quiesce(p)] step precedes every [Remove(p, _)] (modulo the
+   guard between them). *)
+let patch_remove ~prev ~arm_path =
   let parent_path, k = list_foot arm_path in
   let parent = Decorated.walk prev.decorated parent_path in
   let parent_v, old_arity, _ = parent_info parent in
   let removed = Decorated.nth_child parent k in
   let removed_v = Decorated.root_vpifo removed in
   let step_k = Decorated.nth_step parent k in
-  let chain = Decorated.ancestor_chain prev.decorated arm_path in
-  let removed_classes = Decorated.subtree_classes removed in
   let commit =
     List.concat
       [
         [ Change_arity (parent_v, old_arity - 1) ];
-        chain_emit (fun v s c -> Unmap (v, c, s)) chain removed_classes;
-        chain_emit (fun v _ c -> Deassoc (v, c)) chain removed_classes;
         [ Emancipate (step_k, parent_v, removed_v) ];
         gc_subtree removed;
       ]
@@ -564,67 +566,80 @@ let patch_undesignate ~prev ~path =
 (* Patch: top-level dispatch.                                         *)
 (* ------------------------------------------------------------------ *)
 
-(* [Ir.patch] dispatches on the shape of [Planner.analyze]'s guarded sequence.
-   Length-1 sequences with [True] guards are the per-production single-edit
-   cases. The Retire idiom arrives as a length-2 [Quiesce ; Remove] sequence
-   and lowers through [patch_one_arm_removed]. The Replace idiom arrives as a
-   length-3 [Designate ; Quiesce ; Undesignate] sequence (or length-4 with a
-   trailing [ChangeMeta] when the slot's per-arm meta also changes); we
-   recognize that shape and lower it monolithically through
-   [patch_one_arm_replaced] / [patch_whole_tree_replace] to keep decorated-tree
-   threading simple. The PruneDownTo idiom arrives as a tail of off-path
-   [Retire]s followed by [(True, ChangeRoot [0;...;0])]; we recognize it by
-   the trailing [ChangeRoot] and recover the original target path via
-   [Planner.is_sub_policy], then route through [patch_change_root]. Standalone
-   atomic [Designate], [Quiesce], [Undesignate] productions are reachable only
-   through the per-helper entry points [patch_designate] etc., not through
-   [patch]. *)
+(* [Ir.patch] folds [Planner.analyze]'s guarded sequence one step at a time.
+   Each atomic delta lowers to its own commit fragment via a per-delta helper;
+   the running [compiled] state threads through so that downstream steps see
+   the post-mutation decorated tree. The Retire idiom expands as [Quiesce ;
+   Remove] and decomposes cleanly under the fold (class-routing edits come
+   from [Quiesce]; structural teardown comes from [Remove]). PruneDownTo
+   decomposes the same way: per-arm Retires followed by a [ChangeRoot] that
+   GC's whatever ancestors remain.
+
+   The Replace idiom ([Designate ; Quiesce ; Undesignate], +/- trailing
+   [ChangeMeta]) is still recognized as a sequence-level atom and routed to
+   [patch_one_arm_replaced] / [patch_whole_tree_replace]; the per-delta
+   lowerings for [Designate]/[Undesignate] don't yet thread super-node state
+   in [Decorated.t] (planned follow-up). Standalone [Designate]/[Undesignate]
+   never appear outside a Replace block, so the fold refuses them. *)
 let patch ~prev ~(next : Rio_core.Pol.t) : compiled option =
   let module D = Rio_delta.Delta in
   let module P = Rio_planner.Planner in
   let same_path a b c = a = b && b = c in
-  let looks_like_prune_down_to seq =
-    match List.rev seq with
-    | (P.True, D.ChangeRoot zeros) :: _
-      when zeros <> [] && List.for_all (fun i -> i = 0) zeros -> true
-    | _ -> false
+  let replace_block_path = function
+    | [
+        (P.True, D.Designate { path = pd; arm });
+        (P.True, D.Quiesce pq);
+        (P.Empty pu1, D.Undesignate pu2);
+      ]
+      when same_path pd pq pu1 && pu1 = pu2 -> Some (pd, arm, None)
+    | [
+        (P.True, D.Designate { path = pd; arm });
+        (P.True, D.Quiesce pq);
+        (P.Empty pu1, D.Undesignate pu2);
+        (P.Empty pm1, D.ChangeMeta { path = pm2; new_meta });
+      ]
+      when same_path pd pq pu1 && same_path pu1 pu2 pm1 && pm1 = pm2 ->
+        Some (pd, arm, Some new_meta)
+    | _ -> None
+  in
+  let apply_step state (_guard, delta) : compiled =
+    match delta with
+    | D.Add { path; arm; meta } ->
+        patch_one_arm_added ~prev:state ~arm_path:path ~arm ~meta
+    | D.Remove { path; arm = _ } -> patch_remove ~prev:state ~arm_path:path
+    | D.ChangeMeta { path; new_meta } ->
+        patch_meta_changed ~prev:state ~path ~new_meta
+    | D.Quiesce path -> patch_quiesce ~prev:state ~path
+    | D.Graft path ->
+        if path = [] then failwith "Ir.patch: whole-tree Graft is unsupported"
+        else patch_graft ~prev:state ~next ~path
+    | D.ChangeRoot path ->
+        if path = [] then
+          failwith "Ir.patch: whole-tree ChangeRoot is unsupported"
+        else patch_change_root ~prev:state ~path
+    | D.Designate _ | D.Undesignate _ ->
+        failwith
+          "Ir.patch: standalone Designate/Undesignate not yet supported \
+           (handled only inside the Replace idiom)"
   in
   match P.analyze (Decorated.to_policy prev.decorated) next with
   | [] -> Some { commit = []; decorated = prev.decorated; pes = prev.pes }
-  | [ (P.True, D.Add { path; arm; meta }) ] ->
-      Some (patch_one_arm_added ~prev ~arm_path:path ~arm ~meta)
-  | [ (P.True, D.Quiesce pq); (P.Empty pr1, D.Remove { path = pr2; arm = _ }) ]
-    when pq = pr1 && pr1 = pr2 ->
-      Some (patch_one_arm_removed ~prev ~arm_path:pq)
-  | [ (P.True, D.ChangeMeta { path; new_meta }) ] ->
-      Some (patch_meta_changed ~prev ~path ~new_meta)
-  | [ (P.True, D.Graft path) ] ->
-      if path = [] then None else Some (patch_graft ~prev ~next ~path)
-  | seq when looks_like_prune_down_to seq -> (
-      let prev_pol = Decorated.to_policy prev.decorated in
-      match P.is_sub_policy next prev_pol with
-      | Some path when path <> [] -> Some (patch_change_root ~prev ~path)
-      | _ -> None)
-  | [
-   (P.True, D.Designate { path = pd; arm });
-   (P.True, D.Quiesce pq);
-   (P.Empty pu1, D.Undesignate pu2);
-  ]
-    when same_path pd pq pu1 && pu1 = pu2 ->
-      let path = pd in
-      if path = [] then Some (patch_whole_tree_replace ~prev ~next)
-      else Some (patch_one_arm_replaced ~prev ~arm_path:path ~arm ~meta:None)
-  | [
-   (P.True, D.Designate { path = pd; arm });
-   (P.True, D.Quiesce pq);
-   (P.Empty pu1, D.Undesignate pu2);
-   (P.Empty pm1, D.ChangeMeta { path = pm2; new_meta });
-  ]
-    when same_path pd pq pu1 && same_path pu1 pu2 pm1 && pm1 = pm2 ->
-      let path = pd in
-      Some
-        (patch_one_arm_replaced ~prev ~arm_path:path ~arm ~meta:(Some new_meta))
-  | _ -> None
+  | seq -> (
+      match replace_block_path seq with
+      | Some (path, arm, meta) ->
+          if path = [] then Some (patch_whole_tree_replace ~prev ~next)
+          else Some (patch_one_arm_replaced ~prev ~arm_path:path ~arm ~meta)
+      | None -> (
+          try
+            let final, all_commits =
+              List.fold_left
+                (fun (state, acc) step ->
+                  let result = apply_step state step in
+                  (result, acc @ result.commit))
+                (prev, []) seq
+            in
+            Some { final with commit = all_commits }
+          with Failure _ -> None))
 
 module Decorated = Decorated
 module Json = Json

@@ -176,14 +176,21 @@ let meta_changed_tests =
       wfq_abc_to_one_weight_expected;
   ]
 
-(* ArmRemoved *)
+(* Remove. The planner expands as the [Retire] idiom
+   [Quiesce ; (Empty) Remove]; [Ir.patch]'s fold lowers them in order.
+   [Quiesce] tears down class routing for the dropped class along the full
+   chain (port root + every internal ancestor); [Remove] then emits the
+   structural teardown ([Change_arity] shrink, parent-side [Emancipate], and
+   [GC] of the removed subtree). *)
 
 (* SP[A,B,C] -> SP[A,B]: drop C (last, index 2). No SP weight shifts. *)
 let strict_abc_to_ab_expected : commit =
   [
-    Change_arity (100, 2);
+    Unmap (99, "C", 999);
     Unmap (100, "C", 1002);
+    Deassoc (99, "C");
     Deassoc (100, "C");
+    Change_arity (100, 2);
     Emancipate (1002, 100, 103);
     GC 103;
   ]
@@ -193,9 +200,11 @@ let strict_abc_to_ab_expected : commit =
    emitted for surviving siblings. *)
 let strict_abc_to_ac_expected : commit =
   [
-    Change_arity (100, 2);
+    Unmap (99, "B", 999);
     Unmap (100, "B", 1001);
+    Deassoc (99, "B");
     Deassoc (100, "B");
+    Change_arity (100, 2);
     Emancipate (1001, 100, 102);
     GC 102;
   ]
@@ -203,9 +212,11 @@ let strict_abc_to_ac_expected : commit =
 (* RR[A,B,C] -> RR[A,B]: drop C from RR. No weight shifts (RR is unweighted). *)
 let rr_abc_to_ab_expected : commit =
   [
-    Change_arity (100, 2);
+    Unmap (99, "C", 999);
     Unmap (100, "C", 1002);
+    Deassoc (99, "C");
     Deassoc (100, "C");
+    Change_arity (100, 2);
     Emancipate (1002, 100, 103);
     GC 103;
   ]
@@ -371,26 +382,37 @@ let whole_tree_replace_tests =
       "strict_AB" "rr_AB" strict_ab_to_rr_ab_expected;
   ]
 
-(* ChangeRoot *)
+(* ChangeRoot. The planner expands re-rooting as the [PruneDownTo] idiom: a
+   sequence of [Retire]s on off-path siblings along the route, followed by a
+   final [ChangeRoot] that GC's whatever ancestors remain. *)
 
-(* SP[A, B, C] -> FIFO A. The FIFO leaf already lives inside prev as v101,
-   adopted via step_1000 from the root v100. Re-rooting swings the port
-   root's single step from v100 to v101 via [Emancipate]/[Adopt]; no
-   [Emancipate] is emitted for v101's old parent edge because v100 is
-   among the GC'd nodes, which severs the edge. The dropped classes B and
-   C are [Unmap]/[Deassoc]'d off the port root, and the SP root v100 along
-   with v102/v103 are GC'd. *)
+(* SP[A,B,C] -> FIFO A (target path [0]). Two off-path Retires fire first
+   (highest-index-within-level first): [Retire([2]) C] then [Retire([1]) B],
+   each emitting [Quiesce]'s class-routing teardown across the chain and
+   [Remove]'s structural teardown. Then [ChangeRoot([0])] swings the port
+   root's single step from v100 to v101 (the FIFO A leaf, sole remaining
+   child) and GC's the now-empty SP root v100. The dropped-class block on
+   the port root is empty by this point because [Quiesce] already drained B
+   and C; the only [GC] left for [ChangeRoot] is v100 itself. *)
 let strict_abc_to_fifo_a_expected : commit =
   [
+    Unmap (99, "C", 999);
+    Unmap (100, "C", 1002);
+    Deassoc (99, "C");
+    Deassoc (100, "C");
+    Change_arity (100, 2);
+    Emancipate (1002, 100, 103);
+    GC 103;
+    Unmap (99, "B", 999);
+    Unmap (100, "B", 1001);
+    Deassoc (99, "B");
+    Deassoc (100, "B");
+    Change_arity (100, 1);
+    Emancipate (1001, 100, 102);
+    GC 102;
     Emancipate (999, 99, 100);
     Adopt (999, 99, 101);
-    Unmap (99, "B", 999);
-    Unmap (99, "C", 999);
-    Deassoc (99, "B");
-    Deassoc (99, "C");
     GC 100;
-    GC 102;
-    GC 103;
   ]
 
 let change_root_tests =
