@@ -13,27 +13,28 @@ let rec lookup x = function
   | (v, p) :: t when v = x -> (p, t)
   | (_, _) :: t -> lookup x t
 
-let rec sub cl st used (p : Ast.stream) =
-  let sub_ps = List.map (sub cl st used) in
-  let claim c =
-    if List.mem c !used then raise (DuplicateClass c)
+let rec sub cl st used (p : Ast.stream) : Ast.clss list * t =
+  let claim used c =
+    if List.mem c used then raise (DuplicateClass c)
     else if not (List.mem c cl) then raise (UndeclaredClass c)
-    else used := c :: !used
+    else c :: used
   in
   match p with
   | Var x ->
       let p, st = lookup x st in
       sub cl st used p
-  | Fifo c ->
-      claim c;
-      FIFO c
+  | Fifo c -> (claim used c, FIFO c)
   | Strict prs ->
       let ps, rs = List.split prs in
-      SP (List.combine (sub_ps ps) rs, false)
-  | RoundRobin ps -> RR (sub_ps ps)
+      let used, qs = List.fold_left_map (sub cl st) used ps in
+      (used, SP (List.combine qs rs, false))
+  | RoundRobin ps ->
+      let used, qs = List.fold_left_map (sub cl st) used ps in
+      (used, RR qs)
   | WeightedFair pws ->
       let ps, ws = List.split pws in
-      WFQ (List.combine (sub_ps ps) ws)
+      let used, qs = List.fold_left_map (sub cl st) used ps in
+      (used, WFQ (List.combine qs ws))
   | _ -> failwith "ERROR: unsupported policy"
 
 let rec normalize p =
@@ -60,7 +61,8 @@ let rec normalize p =
 
 (* Look up any variables and substitute them in. Then normalize the resulting policy. *)
 let of_program (classes, assigns, ret) =
-  sub classes assigns (ref []) ret |> normalize
+  let _, p = sub classes assigns [] ret in
+  normalize p
 
 let rec to_string p =
   let fmt = Printf.sprintf in
