@@ -75,6 +75,12 @@ let rec to_string p =
       let to_string (p, w) = fmt "(%s, %g)" (to_string p) w in
       fmt "wfq[%s]" (join pws to_string)
 
+let rec depth = function
+  | FIFO _ -> 0
+  | SP (prs, _) | WFQ prs ->
+      1 + List.fold_left max 0 (List.map (fun (p, _) -> depth p) prs)
+  | RR ps -> 1 + List.fold_left max 0 (List.map depth ps)
+
 let rec walk p path =
   match (p, path) with
   | _, [] -> p

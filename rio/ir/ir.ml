@@ -47,14 +47,6 @@ let make_counter ~start =
     incr n;
     !n
 
-let rec policy_depth (p : Rio_core.Pol.t) : int =
-  let module P = Rio_core.Pol in
-  match p with
-  | P.FIFO _ -> 0
-  | P.SP (prs, _) | P.WFQ prs ->
-      1 + List.fold_left max 0 (List.map (fun (p, _) -> policy_depth p) prs)
-  | P.RR ps -> 1 + List.fold_left max 0 (List.map policy_depth ps)
-
 (* ------------------------------------------------------------------ *)
 (* ID-space and fake-root constants.                                  *)
 (* ------------------------------------------------------------------ *)
@@ -198,7 +190,7 @@ let of_policy (p : Rio_core.Pol.t) : compiled =
       classes = frag.classes;
     }
   in
-  let pes = List.init (policy_depth p + 1) (fun d -> d) in
+  let pes = List.init (Rio_core.Pol.depth p + 1) (fun d -> d) in
   single
     ~commit:(Frag.to_commit (Frag.combine port_frag [ frag ]))
     ~decorated ~pes
@@ -268,7 +260,7 @@ let patch_one_arm_added ~prev ~arm_path ~arm ~meta =
   let parent_v, old_arity, pol_ty = parent_info parent in
   let fresh_v, fresh_s = counters_after prev in
   let arm_depth = List.length arm_path in
-  let new_pes = pes_extended_to_depth (arm_depth + policy_depth arm) prev.pes in
+  let new_pes = pes_extended_to_depth (arm_depth + Rio_core.Pol.depth arm) prev.pes in
   let pe_of_depth d = List.nth new_pes d in
   (* Compile the arm before allocating [new_step] so its internal IDs land
      lower — mirroring [of_policy]'s pre-order numbering. *)
@@ -356,7 +348,7 @@ let patch_remove ~prev ~arm_path =
 let patch_graft ~prev ~next ~path =
   let len = List.length path in
   let prev_max_depth = List.length prev.pes - 1 in
-  let next_max_depth = policy_depth next in
+  let next_max_depth = Rio_core.Pol.depth next in
   (* New PE assignment: layers above [prev] get fresh PEs, layers occupied
      by [prev] reuse [prev.pes] (so already-installed nodes keep their PEs),
      layers deeper than [prev] get more fresh PEs. *)
@@ -484,7 +476,7 @@ let patch_designate ~prev ~path ~(arm : Rio_core.Pol.t) =
   let loser_v = Decorated.root_vpifo loser in
   let loser_classes = Decorated.subtree_classes loser in
   let arm_depth = List.length path in
-  let new_pes = pes_extended_to_depth (arm_depth + policy_depth arm) prev.pes in
+  let new_pes = pes_extended_to_depth (arm_depth + Rio_core.Pol.depth arm) prev.pes in
   let pe_n = List.nth new_pes arm_depth in
   let pe_of_depth d = List.nth new_pes d in
   let fresh_v, fresh_s = counters_after prev in

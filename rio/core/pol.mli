@@ -22,6 +22,11 @@ val of_program : Ast.program -> t
 
 val to_string : t -> string
 
+val depth : t -> int
+(** Tree depth of [p]: a [FIFO] leaf is depth 0, and each interior node adds
+    one level above its deepest child. Equals the number of PE levels the
+    policy needs below the port root. *)
+
 val walk : t -> int list -> t
 (** [walk p path] descends into [p] following each child index in [path].
     [walk p []] is [p]. Raises if the path goes through a [FIFO] leaf or out of
