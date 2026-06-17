@@ -49,8 +49,10 @@ let strict_ab_to_abc_expected =
       [
         Spawn (103, 1);
         Adopt (1002, 100, 103);
+        Assoc (99, "C");
         Assoc (100, "C");
         Assoc (103, "C");
+        Map (99, "C", 999);
         Map (100, "C", 1002);
         Change_arity (100, 3);
         Set_arm_meta (100, 1002, 3.0);
@@ -69,8 +71,10 @@ let strict_ac_to_abc_expected =
       [
         Spawn (103, 1);
         Adopt (1002, 100, 103);
+        Assoc (99, "B");
         Assoc (100, "B");
         Assoc (103, "B");
+        Map (99, "B", 999);
         Map (100, "B", 1002);
         Change_arity (100, 3);
         Set_arm_meta (100, 1002, 2.0);
@@ -84,8 +88,10 @@ let rr_ab_to_abc_expected =
       [
         Spawn (103, 1);
         Adopt (1002, 100, 103);
+        Assoc (99, "C");
         Assoc (100, "C");
         Assoc (103, "C");
+        Map (99, "C", 999);
         Map (100, "C", 1002);
         Change_arity (100, 3);
       ];
@@ -102,9 +108,11 @@ let complex_tree_add_deep_expected =
       [
         Spawn (112, 2);
         Adopt (1011, 105, 112);
+        Assoc (99, "NEW");
         Assoc (100, "NEW");
         Assoc (105, "NEW");
         Assoc (112, "NEW");
+        Map (99, "NEW", 999);
         Map (100, "NEW", 1009);
         Map (105, "NEW", 1011);
         Change_arity (105, 4);
@@ -135,8 +143,10 @@ let wfq_ba_to_abc_expected =
       [
         Spawn (103, 1);
         Adopt (1002, 100, 103);
+        Assoc (99, "C");
         Assoc (100, "C");
         Assoc (103, "C");
+        Map (99, "C", 999);
         Map (100, "C", 1002);
         Change_arity (100, 3);
         Set_arm_meta (100, 1002, 3.0);
@@ -165,6 +175,9 @@ let complex_tree_partial_to_full_expected =
         Adopt (1007, 108, 109);
         Adopt (1008, 108, 110);
         Adopt (1009, 108, 111);
+        Assoc (99, "D");
+        Assoc (99, "E");
+        Assoc (99, "F");
         Assoc (100, "D");
         Assoc (100, "E");
         Assoc (100, "F");
@@ -174,6 +187,9 @@ let complex_tree_partial_to_full_expected =
         Assoc (109, "D");
         Assoc (110, "E");
         Assoc (111, "F");
+        Map (99, "D", 999);
+        Map (99, "E", 999);
+        Map (99, "F", 999);
         Map (100, "D", 1010);
         Map (100, "E", 1010);
         Map (100, "F", 1010);
@@ -200,12 +216,10 @@ let one_arm_added_wfq_tests =
 (* WFQ root with three FIFO arms: vpifo IDs 100 (root), 101/102/103 (A/B/C);
    adopt steps 1000/1001/1002. Bumping B's weight 1 -> 5 should emit a single
    Set_arm_meta on the root for B's step. *)
-let wfq_abc_to_one_weight_expected = [ t_ [ Set_arm_meta (100, 1001, 5.0) ] ]
-
 let meta_changed_tests =
   [
     make_delta_test "wfq[A,B,C] -> wfq[A,B(5),C]" "wfq_ABC" "wfq_ABC_one_weight"
-      wfq_abc_to_one_weight_expected;
+      [ t_ [ Set_arm_meta (100, 1001, 5.0) ] ];
   ]
 
 (* Remove. The planner expands as the [Retire] idiom
@@ -780,12 +794,16 @@ let one_arm_added_extends_pes_test =
           Adopt (1003, 100, 102);
           Adopt (1001, 102, 103);
           Adopt (1002, 102, 104);
+          Assoc (99, "B");
+          Assoc (99, "C");
           Assoc (100, "B");
           Assoc (100, "C");
           Assoc (102, "B");
           Assoc (102, "C");
           Assoc (103, "B");
           Assoc (104, "C");
+          Map (99, "B", 999);
+          Map (99, "C", 999);
           Map (100, "B", 1003);
           Map (100, "C", 1003);
           Map (102, "B", 1001);

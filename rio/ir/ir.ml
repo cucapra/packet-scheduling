@@ -288,10 +288,13 @@ let patch_one_arm_added ~prev ~arm_path ~arm ~meta =
     | _ ->
         failwith "Ir.patch.patch_one_arm_added: parent pol_ty / meta mismatch"
   in
-  (* Strict ancestors above [parent_v] reuse their existing step toward
-     [parent_v]; [parent_v] itself uses the freshly minted [new_step]. *)
+  (* Port root + strict ancestors above [parent_v] reuse their existing step
+     toward [parent_v]; [parent_v] itself uses the freshly minted [new_step].
+     Including [port_chain] ensures the new class is also routed at the port
+     root, mirroring the real root. *)
   let chain =
-    Decorated.ancestor_chain prev.decorated parent_path
+    port_chain
+    @ Decorated.ancestor_chain prev.decorated parent_path
     @ [ (parent_v, new_step) ]
   in
   let local : Frag.t =
