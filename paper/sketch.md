@@ -176,7 +176,9 @@ Arm order in the surface notation is a presentation choice, not a scheduling-mea
 We formalize this below as the _reorder-congruence_ `=R` on `pol`.
 We use `=R` as a degree of freedom: the compiler is free to pick any representative of an `=R`-class when laying out or editing a control.
 
-A `pol` is _valid_ when (a) every discipline is applied at a proper arity, (b) every discipline is provided with the per-arm metadata that the discipline requires, and (c) the flows at the leaves are pairwise disjoint, in the sense that every incoming packet is either dropped altogether or is routed to exactly one leaf.
+A `pol` is written against a fixed _flow universe_ `F`: a finite set of flow predicates declared by the operator before constructing the `pol`.
+A `pol` is _valid_ over `F` when (a) every discipline is applied at a proper arity, (b) every discipline is provided with the per-arm metadata that the discipline requires, and (c) the leaves form a partition of a subset of `F`: each leaf carries a flow drawn from `F`, and no two leaves carry the same flow.
+Any packet not matching any leaf-used flow is dropped.
 Validity is a condition on the source `pol`, not to be confused with the runtime invariant `|- q`.
 
 ##### Discipline compilation: `init_node_D` and `init_slot_D`
