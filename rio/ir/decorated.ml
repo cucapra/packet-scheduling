@@ -191,17 +191,6 @@ let set_meta k new_m = function
       WFQ (v, list_replace_nth k (fun (s, c, _) -> (s, c, new_m)) es)
   | _ -> failwith "Decorated.set_meta: SP/WFQ only"
 
-(* Replace child at index [k], preserving the parent→child step (and SP rank /
-   WFQ weight). Used by [ArmReplaced]: the new arm rides on the existing
-   [step_k], with the old root [Designate]d as the new root's predecessor. *)
-let replace_arm k new_child = function
-  | FIFO _ -> failwith "Decorated.replace_arm: FIFO"
-  | RR (v, es) -> RR (v, list_replace_nth k (fun (s, _) -> (s, new_child)) es)
-  | SP (v, es, dg) ->
-      SP (v, list_replace_nth k (fun (s, _, r) -> (s, new_child, r)) es, dg)
-  | WFQ (v, es) ->
-      WFQ (v, list_replace_nth k (fun (s, _, w) -> (s, new_child, w)) es)
-
 let rec to_policy (d : t) : Rio_core.Pol.t =
   let module P = Rio_core.Pol in
   match d with

@@ -96,10 +96,6 @@ val set_meta : int -> float -> t -> t
 (** Set the [k]-th child's per-arm meta (rank for SP, weight for WFQ). Errors on
     RR and FIFO. *)
 
-val replace_arm : int -> t -> t -> t
-(** Replace child at index [k], preserving the parent-to-child step (and WFQ
-    weight). Errors on FIFO. *)
-
 val to_policy : t -> Rio_core.Pol.t
 (** Erase decorations to recover the underlying source policy. Inverse of the
     pairing produced by [Ir.of_policy]. *)
