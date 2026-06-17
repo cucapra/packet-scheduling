@@ -1,5 +1,5 @@
 (tests
- (names test_parsing test_normalize test_compare)
+ (names test_parsing test_normalize)
  (deps
   (glob_files_rec %{workspace_root}/tests/progs/*.sched))
- (libraries rio.core rio.frontend rio_compare ounit2))
+ (libraries rio.core rio.frontend ounit2))

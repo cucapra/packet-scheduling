@@ -4,10 +4,33 @@
 include Instr
 
 type compiled = {
-  commit : commit;
+  steps : (Rio_planner.Planner.guard * commit) list;
   decorated : Decorated.t;
   pes : pe list;
 }
+
+(* Helper for the per-delta lowering functions: each produces a single commit
+   that fires immediately, so it wraps as a single-element [steps] list under
+   the [True] guard. [Ir.patch]'s fold later re-wraps with the planner's
+   actual guard. *)
+let single ~commit ~decorated ~pes =
+  { steps = [ (Rio_planner.Planner.True, commit) ]; decorated; pes }
+
+let commit_of_single c =
+  match c.steps with
+  | [ (_, cmt) ] -> cmt
+  | _ -> failwith "Ir: expected a single-step compiled result"
+
+let string_of_steps steps =
+  let module P = Rio_planner.Planner in
+  let guard_to_string = function
+    | P.True -> "True"
+    | P.Empty p -> Printf.sprintf "Empty %s" (Rio_delta.Delta.path_to_string p)
+  in
+  steps
+  |> List.map (fun (g, c) ->
+      Printf.sprintf "@%s:\n%s" (guard_to_string g) (string_of_commit c))
+  |> String.concat "\n"
 
 (* ------------------------------------------------------------------ *)
 (* Generic helpers.                                                   *)
@@ -24,8 +47,8 @@ let make_counter ~start =
     incr n;
     !n
 
-let rec policy_depth (p : Rio_core.Policy.t) : int =
-  let module P = Rio_core.Policy in
+let rec policy_depth (p : Rio_core.Pol.t) : int =
+  let module P = Rio_core.Pol in
   match p with
   | P.FIFO _ -> 0
   | P.SP (prs, _) | P.WFQ prs ->
@@ -68,15 +91,15 @@ let compile_FIFO ~v ~pe c : Frag.t * Decorated.t =
     },
     Decorated.FIFO (v, c) )
 
-(* Compile a [Rio_core.Policy.t] subtree at [depth]. [splice], when supplied,
+(* Compile a [Rio_core.Pol.t] subtree at [depth]. [splice], when supplied,
    names a path inside this subtree at which an already-installed [Decorated.t]
    should be grafted in instead of being compiled afresh. *)
 let rec compile_subtree ~fresh_v ~fresh_s ~pe_of_depth ~depth ?splice
-    (p : Rio_core.Policy.t) : Frag.t * Decorated.t =
+    (p : Rio_core.Pol.t) : Frag.t * Decorated.t =
   match splice with
   | Some ([], prev_d) -> (Frag.stub prev_d, prev_d)
   | _ -> (
-      let module P = Rio_core.Policy in
+      let module P = Rio_core.Pol in
       let arm ~pol_ty ~weights children =
         compile_arm ~fresh_v ~fresh_s ~pe_of_depth ~depth ~pol_ty ~weights
           ?splice children
@@ -86,12 +109,12 @@ let rec compile_subtree ~fresh_v ~fresh_s ~pe_of_depth ~depth ?splice
       | P.RR children ->
           let frag, edges = arm ~pol_ty:RR ~weights:[] children in
           (frag, Decorated.RR (frag.root_v, edges))
-      | P.SP (arms, _) ->
+      | P.SP (arms, designated) ->
           let children = List.map fst arms in
           let ranks = List.map snd arms in
           let frag, edges = arm ~pol_ty:SP ~weights:ranks children in
           let ranked = List.map2 (fun (s, d) r -> (s, d, r)) edges ranks in
-          (frag, Decorated.SP (frag.root_v, ranked))
+          (frag, Decorated.SP (frag.root_v, ranked, designated))
       | P.WFQ arms ->
           let children = List.map fst arms in
           let ws = List.map snd arms in
@@ -152,7 +175,7 @@ and compile_arm ~fresh_v ~fresh_s ~pe_of_depth ~depth ~pol_ty ~weights ?splice
   let edges = List.map2 (fun s d -> (s, d)) child_steps child_decorated in
   (Frag.combine local child_frags, edges)
 
-let of_policy (p : Rio_core.Policy.t) : compiled =
+let of_policy (p : Rio_core.Pol.t) : compiled =
   let fresh_v = make_counter ~start:vpifo_start in
   let fresh_s = make_counter ~start:step_start in
   let frag, decorated =
@@ -176,7 +199,9 @@ let of_policy (p : Rio_core.Policy.t) : compiled =
     }
   in
   let pes = List.init (policy_depth p + 1) (fun d -> d) in
-  { commit = Frag.to_commit (Frag.combine port_frag [ frag ]); decorated; pes }
+  single
+    ~commit:(Frag.to_commit (Frag.combine port_frag [ frag ]))
+    ~decorated ~pes
 
 (* ------------------------------------------------------------------ *)
 (* Patch: helpers shared across the patch_* functions.                *)
@@ -212,81 +237,6 @@ let pes_extended_to_depth target_depth pes =
     pes @ List.init n (fun i -> max_pe + 1 + i)
 
 (* ------------------------------------------------------------------ *)
-(* Patch: arm replacement.                                            *)
-(* ------------------------------------------------------------------ *)
-
-(* Replace the subtree [removed] (sitting under ancestor [chain]) with a
-   freshly compiled [arm]. Used both for whole-tree replacement (chain =
-   [port_chain], removed = prev.decorated) and for per-arm replacement
-   (chain = ancestor_chain prev arm_path, removed = nth_child parent k).
-   The parent never adopts the new root directly: [Designate] fuses the old
-   and new roots into a super-node that occupies the existing slot, so
-   in-flight traffic on the old root drains while new traffic goes to the
-   new root via the same step. *)
-let replace_at ~prev ~chain ~removed ~arm_depth ~arm ~rewrite_decorated =
-  let fresh_v, fresh_s = counters_after prev in
-  let new_pes = pes_extended_to_depth (arm_depth + policy_depth arm) prev.pes in
-  let pe_of_depth d = List.nth new_pes d in
-  let arm_frag, arm_decorated =
-    compile_subtree ~fresh_v ~fresh_s ~pe_of_depth ~depth:arm_depth arm
-  in
-  let removed_v = Decorated.root_vpifo removed in
-  let removed_classes = Decorated.subtree_classes removed in
-  let new_classes = arm_frag.classes in
-  (* Classes shared between the removed subtree and the new arm keep their
-     existing routing on every ancestor: the chain steps are preserved (the
-     bottom-of-chain step survives because [Designate] reuses the parent's
-     existing step, and ancestors above are untouched). So the only edits
-     needed are on the symmetric difference. *)
-  let only_removed =
-    List.filter (fun c -> not (List.mem c new_classes)) removed_classes
-  in
-  let only_added =
-    List.filter (fun c -> not (List.mem c removed_classes)) new_classes
-  in
-  let commit =
-    List.concat
-      [
-        Frag.to_commit arm_frag;
-        [ Designate (removed_v, arm_frag.root_v) ];
-        chain_emit (fun v s c -> Unmap (v, c, s)) chain only_removed;
-        chain_emit (fun v _ c -> Deassoc (v, c)) chain only_removed;
-        chain_emit (fun v _ c -> Assoc (v, c)) chain only_added;
-        chain_emit (fun v s c -> Map (v, c, s)) chain only_added;
-        [ Undesignate removed_v ];
-        gc_subtree removed;
-      ]
-  in
-  { commit; decorated = rewrite_decorated arm_decorated; pes = new_pes }
-
-(* [meta] is the new slot metadata supplied by [next]: a weight for a WFQ slot
-   when the user changed both arm and weight in the same edit. SP rank-changes
-   at a slot are not currently sniffed, so [meta] is None for SP replace. *)
-let patch_one_arm_replaced ~prev ~arm_path ~arm ~meta =
-  let parent_path, k = list_foot arm_path in
-  let parent = Decorated.walk prev.decorated parent_path in
-  let weight_instrs, weight_rewrite =
-    match meta with
-    | None -> ([], Fun.id)
-    | Some m ->
-        let parent_v = Decorated.root_vpifo parent in
-        let step_k = Decorated.nth_step parent k in
-        ([ Set_arm_meta (parent_v, step_k, m) ], Decorated.set_meta k m)
-  in
-  let c =
-    replace_at ~prev ~chain:(Decorated.ancestor_chain prev.decorated arm_path)
-      ~removed:(Decorated.nth_child parent k)
-      ~arm_depth:(List.length arm_path) ~arm ~rewrite_decorated:(fun arm_d ->
-        Decorated.rewrite_at prev.decorated parent_path (fun p ->
-            p |> Decorated.replace_arm k arm_d |> weight_rewrite))
-  in
-  { c with commit = c.commit @ weight_instrs }
-
-let patch_whole_tree_replace ~prev ~next =
-  replace_at ~prev ~chain:port_chain ~removed:prev.decorated ~arm_depth:0
-    ~arm:next ~rewrite_decorated:Fun.id
-
-(* ------------------------------------------------------------------ *)
 (* Patch: weight change (WFQ-only, structure of tree unchanged.       *)
 (* ------------------------------------------------------------------ *)
 
@@ -295,7 +245,7 @@ let patch_meta_changed ~prev ~path ~new_meta =
   let parent = Decorated.walk prev.decorated parent_path in
   let parent_v =
     match parent with
-    | Decorated.SP (v, _) | Decorated.WFQ (v, _) -> v
+    | Decorated.SP (v, _, _) | Decorated.WFQ (v, _) -> v
     | _ -> failwith "Ir.patch: ChangeMeta parent is not SP or WFQ"
   in
   let step_k = Decorated.nth_step parent k in
@@ -303,11 +253,9 @@ let patch_meta_changed ~prev ~path ~new_meta =
     Decorated.rewrite_at prev.decorated parent_path
       (Decorated.set_meta k new_meta)
   in
-  {
-    commit = [ Set_arm_meta (parent_v, step_k, new_meta) ];
-    decorated = new_decorated;
-    pes = prev.pes;
-  }
+  single
+    ~commit:[ Set_arm_meta (parent_v, step_k, new_meta) ]
+    ~decorated:new_decorated ~pes:prev.pes
 
 (* ------------------------------------------------------------------ *)
 (* Patch: arm add / remove.                                           *)
@@ -340,10 +288,13 @@ let patch_one_arm_added ~prev ~arm_path ~arm ~meta =
     | _ ->
         failwith "Ir.patch.patch_one_arm_added: parent pol_ty / meta mismatch"
   in
-  (* Strict ancestors above [parent_v] reuse their existing step toward
-     [parent_v]; [parent_v] itself uses the freshly minted [new_step]. *)
+  (* Port root + strict ancestors above [parent_v] reuse their existing step
+     toward [parent_v]; [parent_v] itself uses the freshly minted [new_step].
+     Including [port_chain] ensures the new class is also routed at the port
+     root, mirroring the real root. *)
   let chain =
-    Decorated.ancestor_chain prev.decorated parent_path
+    port_chain
+    @ Decorated.ancestor_chain prev.decorated parent_path
     @ [ (parent_v, new_step) ]
   in
   let local : Frag.t =
@@ -362,27 +313,27 @@ let patch_one_arm_added ~prev ~arm_path ~arm ~meta =
   let new_decorated =
     Decorated.rewrite_at prev.decorated parent_path decorated_update
   in
-  {
-    commit = Frag.to_commit (Frag.combine local [ arm_frag ]);
-    decorated = new_decorated;
-    pes = new_pes;
-  }
+  single
+    ~commit:(Frag.to_commit (Frag.combine local [ arm_frag ]))
+    ~decorated:new_decorated ~pes:new_pes
 
-let patch_one_arm_removed ~prev ~arm_path =
+(* Per-delta lowering for [Delta.Remove { path; arm }]. Emits the structural
+   teardown ([Change_arity] shrink, parent-side [Emancipate], [GC] of the
+   removed subtree) without touching class-routing tables: those are
+   [Quiesce]'s responsibility within the [Retire] idiom, and the planner
+   guarantees a [Quiesce(p)] step precedes every [Remove(p, _)] (modulo the
+   guard between them). *)
+let patch_remove ~prev ~arm_path =
   let parent_path, k = list_foot arm_path in
   let parent = Decorated.walk prev.decorated parent_path in
   let parent_v, old_arity, _ = parent_info parent in
   let removed = Decorated.nth_child parent k in
   let removed_v = Decorated.root_vpifo removed in
   let step_k = Decorated.nth_step parent k in
-  let chain = Decorated.ancestor_chain prev.decorated arm_path in
-  let removed_classes = Decorated.subtree_classes removed in
   let commit =
     List.concat
       [
         [ Change_arity (parent_v, old_arity - 1) ];
-        chain_emit (fun v s c -> Unmap (v, c, s)) chain removed_classes;
-        chain_emit (fun v _ c -> Deassoc (v, c)) chain removed_classes;
         [ Emancipate (step_k, parent_v, removed_v) ];
         gc_subtree removed;
       ]
@@ -392,7 +343,7 @@ let patch_one_arm_removed ~prev ~arm_path =
   in
   (* Removal can leave [pes] over-long if the dropped arm was the deepest
      in the tree, but extra trailing entries are harmless. *)
-  { commit; decorated = new_decorated; pes = prev.pes }
+  single ~commit ~decorated:new_decorated ~pes:prev.pes
 
 (* ------------------------------------------------------------------ *)
 (* Patch: super- and sub-policy.                                      *)
@@ -437,7 +388,7 @@ let patch_graft ~prev ~next ~path =
     @ chain_emit (fun v _ c -> Assoc (v, c)) port_chain only_added
     @ chain_emit (fun v s c -> Map (v, c, s)) port_chain only_added
   in
-  { commit = Frag.to_commit frag @ rewire; decorated; pes = new_pes }
+  single ~commit:(Frag.to_commit frag @ rewire) ~decorated ~pes:new_pes
 
 (* [next] sits inside [prev] at [path]: re-root the tree to that existing
    subtree by repointing the port root's single step from prev's old real
@@ -470,13 +421,15 @@ let patch_change_root ~prev ~path =
        @ List.map (fun v -> GC v) to_gc)
   in
   let new_pes = List.filteri (fun i _ -> i >= List.length path) prev.pes in
-  { commit; decorated = new_root; pes = new_pes }
+  single ~commit ~decorated:new_root ~pes:new_pes
 
 (* ------------------------------------------------------------------ *)
-(* Patch: planner-only productions (Designate / Quiesce / Undesignate).
-   These are not emitted by [analyze] today; the planner (worklist PR 10)
-   wires them into idiom expansions. The lowerings here exist so the
-   planner has an ISA-emitting backend to target.                     *)
+(* Patch: per-production lowerings for Designate / Quiesce / Undesignate.
+   [Planner.analyze] emits these inside the [Replace] idiom sequence; the
+   top-level [Ir.patch] dispatch recognizes the sequence shape and routes
+   it through [patch_one_arm_replaced] for decorated-tree threading, but
+   the per-helper entry points below remain exposed for direct planner-
+   level or test invocation of an individual production.            *)
 (* ------------------------------------------------------------------ *)
 
 (* The chain leading to [path]'s subtree, including the slot's own (parent_v,
@@ -494,93 +447,222 @@ let full_chain_to ~prev path =
       @ Decorated.ancestor_chain prev.decorated parent_path
       @ [ (parent_v, step_k) ]
 
-(* [Designate { path; arm }]: introduce [arm] alongside the subtree at [path]
-   under a designated super-node favoring the existing arm. Compile [arm]
-   fresh; fuse it to the existing slot's v via [Designate (loser_v, survivor_v)];
-   announce [loser_v]'s new role to the substrate via [Set_policy (loser_v,
-   SP_star, 2)]; route any classes new to [arm] along [path]'s chain.
+(* The ancestor chain that routes traffic INTO the slot at [path]: every (v, s)
+   pair from the port root down to and including the slot's direct parent's
+   (parent_v, step_to_slot). The slot's own vpifo is NOT included. Same shape
+   as [full_chain_to ~prev path], but used by lowerings that want to address
+   "the chain above this slot's vpifo". *)
+let chain_above_slot ~prev path =
+  port_chain @ Decorated.ancestor_chain prev.decorated path
 
-   The decorated tree is not updated: PR 9 doesn't model super-nodes in
-   [Decorated.t] (planner work, PR 10). [pes] is extended if [arm] reaches
-   deeper than [prev]. *)
-let patch_designate ~prev ~path ~(arm : Rio_core.Policy.t) =
-  let removed = Decorated.walk prev.decorated path in
-  let loser_v = Decorated.root_vpifo removed in
-  let fresh_v, fresh_s = counters_after prev in
+(* Resolve the (parent_v, parent_step) that adopts the slot at [path]. For
+   [path = []] this is the port root; otherwise it's [path]'s direct parent. *)
+let parent_edge ~prev path =
+  if path = [] then (port_root_v, port_root_step)
+  else
+    let parent_path, k = list_foot path in
+    let parent = Decorated.walk prev.decorated parent_path in
+    (Decorated.root_vpifo parent, Decorated.nth_step parent k)
+
+(* [Designate { path; arm }]: stand up a fresh SP* super-node at the slot
+   holding the existing subtree (the loser). The new [arm] (the survivor)
+   compiles fresh and is adopted as the SP*'s child at index 1; the loser sits
+   at child index 0. PE placement: SP*, loser, and survivor's root all live on
+   PE [pe_of_depth(arm_depth)], so the SP* layer is "free" depth-wise. The
+   substrate (Zhiyuan) coalesces all three onto one logical slot.
+
+   Class routing at SP*: loser's classes route via [loser_step] (favoring the
+   loser per ranks 1.0 < 2.0); survivor-only classes route via [surv_step].
+   Shared classes go to loser; [Quiesce] later swings them to the survivor as
+   it drains the loser. The chain above SP* gains [Assoc]/[Map] only for
+   classes new to the survivor — existing-class chain entries already point at
+   [parent_step], which we rewire from loser to SP* via [Emancipate]+[Adopt]. *)
+let patch_designate ~prev ~path ~(arm : Rio_core.Pol.t) =
+  let loser = Decorated.walk prev.decorated path in
+  let loser_v = Decorated.root_vpifo loser in
+  let loser_classes = Decorated.subtree_classes loser in
   let arm_depth = List.length path in
   let new_pes = pes_extended_to_depth (arm_depth + policy_depth arm) prev.pes in
+  let pe_n = List.nth new_pes arm_depth in
   let pe_of_depth d = List.nth new_pes d in
-  let arm_frag, _arm_decorated =
+  let fresh_v, fresh_s = counters_after prev in
+  let arm_frag, survivor_d =
     compile_subtree ~fresh_v ~fresh_s ~pe_of_depth ~depth:arm_depth arm
   in
-  let chain = full_chain_to ~prev path in
-  let removed_classes = Decorated.subtree_classes removed in
-  let only_added =
-    List.filter (fun c -> not (List.mem c removed_classes)) arm_frag.classes
+  let survivor_v = arm_frag.root_v in
+  let new_classes = arm_frag.classes in
+  let only_new =
+    List.filter (fun c -> not (List.mem c loser_classes)) new_classes
   in
+  let sp_v = fresh_v () in
+  let loser_step = fresh_s () in
+  let surv_step = fresh_s () in
+  let parent_v, parent_step = parent_edge ~prev path in
+  let chain_above_sp = chain_above_slot ~prev path in
   let commit =
     List.concat
       [
         Frag.to_commit arm_frag;
-        [ Designate (loser_v, arm_frag.root_v) ];
-        [ Set_policy (loser_v, SP_star, 2) ];
-        chain_emit (fun v _ c -> Assoc (v, c)) chain only_added;
-        chain_emit (fun v s c -> Map (v, c, s)) chain only_added;
+        [ Spawn (sp_v, pe_n) ];
+        [
+          Adopt (loser_step, sp_v, loser_v); Adopt (surv_step, sp_v, survivor_v);
+        ];
+        [ Designate (loser_v, survivor_v) ];
+        [
+          Emancipate (parent_step, parent_v, loser_v);
+          Adopt (parent_step, parent_v, sp_v);
+        ];
+        List.map (fun c -> Assoc (sp_v, c)) loser_classes;
+        List.map (fun c -> Assoc (sp_v, c)) only_new;
+        List.map (fun c -> Map (sp_v, c, loser_step)) loser_classes;
+        List.map (fun c -> Map (sp_v, c, surv_step)) only_new;
+        chain_emit (fun v _ c -> Assoc (v, c)) chain_above_sp only_new;
+        chain_emit (fun v s c -> Map (v, c, s)) chain_above_sp only_new;
+        [ Set_policy (sp_v, SP_star, 2) ];
+        [
+          Set_arm_meta (sp_v, loser_step, 1.0);
+          Set_arm_meta (sp_v, surv_step, 2.0);
+        ];
       ]
   in
-  { commit; decorated = prev.decorated; pes = new_pes }
+  let sp_node =
+    Decorated.mk_sp_designated sp_v loser_step loser surv_step survivor_d
+  in
+  let new_decorated =
+    if path = [] then sp_node
+    else Decorated.rewrite_at prev.decorated path (fun _ -> sp_node)
+  in
+  single ~commit ~decorated:new_decorated ~pes:new_pes
 
 (* [Quiesce path]: stop new traffic from arriving at the subtree at [path] by
-   tearing down the class-routing entries along its ancestor chain.
-   [den(Quiesce) = id]: in-flight packets continue to dequeue from the subtree;
-   nothing new lands. Decorated tree is unchanged (pol-invisible). *)
+   tearing down its class-routing entries along the ancestor chain. In-flight
+   packets continue to dequeue. [den(Quiesce) = id], so the decorated tree is
+   unchanged.
+
+   SP*-aware: when [path]'s direct parent is a designated SP, the slot is the
+   loser inside a super-node and shared classes between loser and survivor
+   must be preserved (the survivor still needs them once the SP* collapses).
+   Above SP*, only loser-only classes are torn down. At SP* itself, all
+   loser-side maps are torn down, and shared-class maps are swung from
+   [loser_step] to [surv_step] so post-Quiesce traffic flows to the survivor. *)
 let patch_quiesce ~prev ~path =
   let target = Decorated.walk prev.decorated path in
   let target_classes = Decorated.subtree_classes target in
-  let chain = full_chain_to ~prev path in
-  let commit =
-    chain_emit (fun v s c -> Unmap (v, c, s)) chain target_classes
-    @ chain_emit (fun v _ c -> Deassoc (v, c)) chain target_classes
+  let parent_is_designated_sp =
+    match path with
+    | [] -> false
+    | _ -> (
+        let parent_path, _ = list_foot path in
+        let p = Decorated.walk prev.decorated parent_path in
+        match p with
+        | Decorated.SP _ -> Decorated.sp_designated p
+        | _ -> false)
   in
-  { commit; decorated = prev.decorated; pes = prev.pes }
+  let commit =
+    if not parent_is_designated_sp then
+      let chain = full_chain_to ~prev path in
+      chain_emit (fun v s c -> Unmap (v, c, s)) chain target_classes
+      @ chain_emit (fun v _ c -> Deassoc (v, c)) chain target_classes
+    else
+      let parent_path, k = list_foot path in
+      let sp_parent = Decorated.walk prev.decorated parent_path in
+      let sp_v = Decorated.root_vpifo sp_parent in
+      let loser_step = Decorated.nth_step sp_parent k in
+      let surv_idx = 1 - k in
+      let surv_step = Decorated.nth_step sp_parent surv_idx in
+      let survivor_classes =
+        Decorated.subtree_classes (Decorated.nth_child sp_parent surv_idx)
+      in
+      let only_loser =
+        List.filter (fun c -> not (List.mem c survivor_classes)) target_classes
+      in
+      let shared =
+        List.filter (fun c -> List.mem c survivor_classes) target_classes
+      in
+      let chain_up = chain_above_slot ~prev parent_path in
+      chain_emit (fun v s c -> Unmap (v, c, s)) chain_up only_loser
+      @ chain_emit (fun v _ c -> Deassoc (v, c)) chain_up only_loser
+      @ List.map (fun c -> Unmap (sp_v, c, loser_step)) target_classes
+      @ List.map (fun c -> Deassoc (sp_v, c)) only_loser
+      @ List.map (fun c -> Map (sp_v, c, surv_step)) shared
+  in
+  single ~commit ~decorated:prev.decorated ~pes:prev.pes
 
-(* [Undesignate path]: collapse the designated super-node at [path], letting
-   the survivor take over the slot. We don't model super-nodes in
-   [Decorated.t], so we emit the bare [Undesignate loser_v] and trust the
-   substrate to rewire. A paired [GC loser_v] would normally follow in the
-   same commit; the planner (PR 10) sequences that explicitly. *)
+(* [Undesignate path]: collapse the designated SP* at [path]. The loser
+   subtree has drained (the planner gates this on [Empty (path ++ [0])]); the
+   survivor at child index 1 takes over the slot. Emits [Undesignate loser_v]
+   as the §6-ISA-facing marker, GCs SP* and the loser subtree, and rewires the
+   parent edge from SP*'s vpifo to the survivor's vpifo. *)
 let patch_undesignate ~prev ~path =
-  let removed = Decorated.walk prev.decorated path in
-  let loser_v = Decorated.root_vpifo removed in
-  {
-    commit = [ Undesignate loser_v ];
-    decorated = prev.decorated;
-    pes = prev.pes;
-  }
+  let sp_node = Decorated.walk prev.decorated path in
+  let sp_v = Decorated.root_vpifo sp_node in
+  let loser_d = Decorated.nth_child sp_node 0 in
+  let loser_v = Decorated.root_vpifo loser_d in
+  let survivor_d = Decorated.nth_child sp_node 1 in
+  let survivor_v = Decorated.root_vpifo survivor_d in
+  let parent_v, parent_step = parent_edge ~prev path in
+  let commit =
+    [
+      Emancipate (parent_step, parent_v, sp_v);
+      Adopt (parent_step, parent_v, survivor_v);
+      Undesignate loser_v;
+      GC sp_v;
+    ]
+    @ gc_subtree loser_d
+  in
+  let new_decorated =
+    if path = [] then survivor_d
+    else Decorated.rewrite_at prev.decorated path (fun _ -> survivor_d)
+  in
+  single ~commit ~decorated:new_decorated ~pes:prev.pes
 
 (* ------------------------------------------------------------------ *)
 (* Patch: top-level dispatch.                                         *)
 (* ------------------------------------------------------------------ *)
 
-let patch ~prev ~(next : Rio_core.Policy.t) : compiled option =
-  let open Rio_compare.Compare in
-  match analyze (Decorated.to_policy prev.decorated) next with
-  | Same -> Some { commit = []; decorated = prev.decorated; pes = prev.pes }
-  | Replace { path = []; _ } -> Some (patch_whole_tree_replace ~prev ~next)
-  | Replace { path; arm; meta } ->
-      Some (patch_one_arm_replaced ~prev ~arm_path:path ~arm ~meta)
-  | Add { path; arm; meta } ->
-      Some (patch_one_arm_added ~prev ~arm_path:path ~arm ~meta)
-  | Remove { path; arm = _ } ->
-      Some (patch_one_arm_removed ~prev ~arm_path:path)
-  | ChangeMeta { path; new_meta } ->
-      Some (patch_meta_changed ~prev ~path ~new_meta)
-  | Graft [] | ChangeRoot [] -> None
-  | Graft path -> Some (patch_graft ~prev ~next ~path)
-  | ChangeRoot path -> Some (patch_change_root ~prev ~path)
-  | Designate { path; arm } -> Some (patch_designate ~prev ~path ~arm)
-  | Quiesce path -> Some (patch_quiesce ~prev ~path)
-  | Undesignate path -> Some (patch_undesignate ~prev ~path)
+(* [Ir.patch] folds [Planner.analyze]'s guarded sequence one step at a time.
+   Each atomic delta lowers to its own commit fragment via a per-delta helper;
+   the running [compiled] state threads through so that downstream steps see
+   the post-mutation decorated tree. Every paper-side idiom decomposes
+   mechanically: Retire = [Quiesce ; Remove]; Replace = [Designate ; Quiesce
+   ; Undesignate ; (ChangeMeta)?]; PruneDownTo = per-arm Retires followed by
+   a [ChangeRoot] that GC's the remaining ancestors. *)
+let patch ~prev ~(next : Rio_core.Pol.t) : compiled option =
+  let module D = Rio_delta.Delta in
+  let apply_step state (_guard, delta) : compiled =
+    match delta with
+    | D.Add { path; arm; meta } ->
+        patch_one_arm_added ~prev:state ~arm_path:path ~arm ~meta
+    | D.Remove { path; arm = _ } -> patch_remove ~prev:state ~arm_path:path
+    | D.ChangeMeta { path; new_meta } ->
+        patch_meta_changed ~prev:state ~path ~new_meta
+    | D.Quiesce path -> patch_quiesce ~prev:state ~path
+    | D.Graft path ->
+        if path = [] then failwith "Ir.patch: whole-tree Graft is unsupported"
+        else patch_graft ~prev:state ~next ~path
+    | D.ChangeRoot path ->
+        if path = [] then
+          failwith "Ir.patch: whole-tree ChangeRoot is unsupported"
+        else patch_change_root ~prev:state ~path
+    | D.Designate { path; arm } -> patch_designate ~prev:state ~path ~arm
+    | D.Undesignate path -> patch_undesignate ~prev:state ~path
+  in
+  match
+    Rio_planner.Planner.analyze (Decorated.to_policy prev.decorated) next
+  with
+  | [] -> Some { steps = []; decorated = prev.decorated; pes = prev.pes }
+  | seq -> (
+      try
+        let final, rev_steps =
+          List.fold_left
+            (fun (state, acc) ((guard, _delta) as step) ->
+              let result = apply_step state step in
+              let step_commit = commit_of_single result in
+              (result, (guard, step_commit) :: acc))
+            (prev, []) seq
+        in
+        Some { final with steps = List.rev rev_steps }
+      with Failure _ -> None)
 
 module Decorated = Decorated
 module Json = Json

@@ -13,7 +13,7 @@ type pol_ty =
   | SP_star
       (** Marker pol_ty announcing that a v is the head of a designated
           super-node. Emitted only via [Set_policy (v, SP_star, 2)] in the
-          lowering of [Compare.Designate]; tells the substrate to allocate
+          lowering of [Delta.Designate]; tells the substrate to allocate
           super-node hardware for [v]. Never produced by the source DSL or by
           [of_policy]. *)
 

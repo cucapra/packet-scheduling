@@ -78,6 +78,6 @@ let rec to_string p =
 let rec walk p path =
   match (p, path) with
   | _, [] -> p
-  | FIFO _, _ :: _ -> failwith "Policy.walk: path through FIFO leaf"
+  | FIFO _, _ :: _ -> failwith "Pol.walk: path through FIFO leaf"
   | (SP (prs, _) | WFQ prs), i :: rest -> walk (fst (List.nth prs i)) rest
   | RR ps, i :: rest -> walk (List.nth ps i) rest

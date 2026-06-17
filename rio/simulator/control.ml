@@ -13,7 +13,7 @@ module type Control = sig
 end
 
 module type Policy = sig
-  val policy : Policy.t
+  val policy : Pol.t
 end
 
 type addr =
@@ -24,8 +24,8 @@ let rec addr_to_string = function
   | Eps -> "ε"
   | Ptr (i, t) -> fmt "%d ∙ %s" i (addr_to_string t)
 
-let route_pkt (policy : Policy.t) pkt =
-  let rec route_pkt_aux (p : Policy.t) pt =
+let route_pkt (policy : Pol.t) pkt =
+  let rec route_pkt_aux (p : Pol.t) pt =
     match p with
     | FIFO c when Packet.flow pkt = c -> Some (List.rev pt)
     | SP (prs, _) | WFQ prs ->
@@ -54,7 +54,7 @@ module Make_PIFOControl (P : Policy) : Control = struct
   }
 
   let state =
-    let rec state_aux (p : Policy.t) addr s =
+    let rec state_aux (p : Pol.t) addr s =
       let prefix = addr_to_string addr in
 
       let join ps s =
@@ -80,7 +80,7 @@ module Make_PIFOControl (P : Policy) : Control = struct
     state_aux policy Eps State.empty
 
   let z_pre_push s pkt =
-    let rec z_pre_push_aux (p : Policy.t) directions addr s =
+    let rec z_pre_push_aux (p : Pol.t) directions addr s =
       let prefix = addr_to_string addr in
 
       match (p, directions) with
@@ -108,7 +108,7 @@ module Make_PIFOControl (P : Policy) : Control = struct
     z_pre_push_aux policy (route_pkt policy pkt) Eps s
 
   let z_post_pop s pkt =
-    let rec z_post_pop_aux (p : Policy.t) directions addr s =
+    let rec z_post_pop_aux (p : Pol.t) directions addr s =
       let prefix = addr_to_string addr in
 
       match (p, directions) with
@@ -166,7 +166,7 @@ module Make_RioControl (P : Policy) : Control = struct
   }
 
   let state =
-    let rec state_aux (p : Policy.t) addr s =
+    let rec state_aux (p : Pol.t) addr s =
       let prefix = addr_to_string addr in
 
       let join ps s =
@@ -191,7 +191,7 @@ module Make_RioControl (P : Policy) : Control = struct
     state_aux policy Eps State.empty
 
   let z_pre_push s pkt =
-    let rec z_pre_push_aux (p : Policy.t) directions addr s =
+    let rec z_pre_push_aux (p : Pol.t) directions addr s =
       let prefix = addr_to_string addr in
 
       match (p, directions) with
@@ -215,7 +215,7 @@ module Make_RioControl (P : Policy) : Control = struct
     z_pre_push_aux policy (route_pkt policy pkt) Eps s
 
   let z_pre_pop s =
-    let rec z_pre_pop_aux (p : Policy.t) addr s =
+    let rec z_pre_pop_aux (p : Pol.t) addr s =
       let prefix = addr_to_string addr in
 
       let join compute_rank s ps =
@@ -256,7 +256,7 @@ module Make_RioControl (P : Policy) : Control = struct
     z_pre_pop_aux policy Eps s
 
   let z_post_pop s pkt =
-    let rec z_pre_pop_aux (p : Policy.t) directions addr s =
+    let rec z_pre_pop_aux (p : Pol.t) directions addr s =
       let prefix = addr_to_string addr in
 
       match (p, directions) with

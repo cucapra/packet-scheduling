@@ -11,10 +11,11 @@ let prog_dir = "../progs/"
    in [test_patch]. *)
 let compile filename =
   let c =
-    prog_dir ^ filename |> Parser.parse_file |> Policy.of_program
-    |> Ir.of_policy
+    prog_dir ^ filename |> Parser.parse_file |> Pol.of_program |> Ir.of_policy
   in
-  c.commit
+  match c.steps with
+  | [ (_, commit) ] -> commit
+  | _ -> failwith "test_compile: expected single-step compile"
 
 let make_test name filename (expected : commit) =
   name >:: fun _ ->
