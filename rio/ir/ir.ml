@@ -534,17 +534,48 @@ let patch_designate ~prev ~path ~(arm : Rio_core.Pol.t) =
   in
   single ~commit ~decorated:new_decorated ~pes:new_pes
 
+(* Per-node Deassoc emits within a subtree (paper sketch.md §3.4.3 / §6.2:
+   every leaf in T and every internal node within C@τ must be Deassoc'd in
+   addition to the ancestor chain above C@τ). Quiesce emits no Unmap: silenced
+   flows' Map entries must outlive the silencing so packets already in flight
+   can route through the chain on the way to pop. [Isa_unmap] is paired with
+   [Isa_emancipate] inside [Remove], which fires only after the drain. *)
+let rec quiesce_interior (d : Decorated.t) : instr list =
+  let v = Decorated.root_vpifo d in
+  match d with
+  | Decorated.FIFO (_, c) -> [ Deassoc (v, c) ]
+  | _ ->
+      let children =
+        match d with
+        | Decorated.RR (_, es) -> List.map snd es
+        | Decorated.SP (_, es, _) -> List.map (fun (_, c, _) -> c) es
+        | Decorated.WFQ (_, es) -> List.map (fun (_, c, _) -> c) es
+        | Decorated.FIFO _ -> assert false
+      in
+      let all_classes = List.concat_map Decorated.subtree_classes children in
+      let deassocs = List.map (fun c -> Deassoc (v, c)) all_classes in
+      let recurse = List.concat_map quiesce_interior children in
+      deassocs @ recurse
+
 (* [Quiesce path]: stop new traffic from arriving at the subtree at [path] by
-   tearing down its class-routing entries along the ancestor chain. In-flight
-   packets continue to dequeue. [den(Quiesce) = id], so the decorated tree is
-   unchanged.
+   Deassoc'ing its leaves' classes at every node from the port root down
+   through the target's interior to each leaf (paper §3.4.3 / §6.2). Quiesce
+   strictly emits Deassoc only, never Unmap: live Map entries are load-bearing
+   for in-flight packets that still need to route on the way to pop. The
+   matching Unmap fires later inside [Remove]. [den(Quiesce) = id], so the
+   decorated tree is unchanged.
 
    SP*-aware: when [path]'s direct parent is a designated SP, the slot is the
-   loser inside a super-node and shared classes between loser and survivor
-   must be preserved (the survivor still needs them once the SP* collapses).
-   Above SP*, only loser-only classes are torn down. At SP* itself, all
-   loser-side maps are torn down, and shared-class maps are swung from
-   [loser_step] to [surv_step] so post-Quiesce traffic flows to the survivor. *)
+   loser inside a super-node. Above SP*, only loser-only classes are
+   Deassoc'd; shared classes are preserved so the survivor still receives
+   traffic through them. At SP*, only loser-only classes are Deassoc'd, and
+   shared-class Map entries are swung from [loser_step] to [surv_step] so
+   post-Quiesce traffic flows to the survivor; this Map edit is the one
+   non-Deassoc instruction Quiesce emits today, and it's earmarked to move
+   into [Designate] (paper/code-divergences.md A3).
+   The interior walk runs in both branches: the loser's interior Deassocs
+   every target class top-to-bottom (shared classes included; the survivor
+   reaches its own leaves via a separate chain). *)
 let patch_quiesce ~prev ~path =
   let target = Decorated.walk prev.decorated path in
   let target_classes = Decorated.subtree_classes target in
@@ -558,16 +589,15 @@ let patch_quiesce ~prev ~path =
         | Decorated.SP _ -> Decorated.sp_designated p
         | _ -> false)
   in
+  let interior = quiesce_interior target in
   let commit =
     if not parent_is_designated_sp then
       let chain = full_chain_to ~prev path in
-      chain_emit (fun v s c -> Unmap (v, c, s)) chain target_classes
-      @ chain_emit (fun v _ c -> Deassoc (v, c)) chain target_classes
+      chain_emit (fun v _ c -> Deassoc (v, c)) chain target_classes @ interior
     else
       let parent_path, k = list_foot path in
       let sp_parent = Decorated.walk prev.decorated parent_path in
       let sp_v = Decorated.root_vpifo sp_parent in
-      let loser_step = Decorated.nth_step sp_parent k in
       let surv_idx = 1 - k in
       let surv_step = Decorated.nth_step sp_parent surv_idx in
       let survivor_classes =
@@ -580,11 +610,10 @@ let patch_quiesce ~prev ~path =
         List.filter (fun c -> List.mem c survivor_classes) target_classes
       in
       let chain_up = chain_above_slot ~prev parent_path in
-      chain_emit (fun v s c -> Unmap (v, c, s)) chain_up only_loser
-      @ chain_emit (fun v _ c -> Deassoc (v, c)) chain_up only_loser
-      @ List.map (fun c -> Unmap (sp_v, c, loser_step)) target_classes
+      chain_emit (fun v _ c -> Deassoc (v, c)) chain_up only_loser
       @ List.map (fun c -> Deassoc (sp_v, c)) only_loser
       @ List.map (fun c -> Map (sp_v, c, surv_step)) shared
+      @ interior
   in
   single ~commit ~decorated:prev.decorated ~pes:prev.pes
 

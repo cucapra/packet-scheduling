@@ -235,13 +235,7 @@ let meta_changed_tests =
    before emitting the structural teardown. *)
 let strict_abc_to_ab_expected =
   [
-    t_
-      [
-        Unmap (99, "C", 999);
-        Unmap (100, "C", 1002);
-        Deassoc (99, "C");
-        Deassoc (100, "C");
-      ];
+    t_ [ Deassoc (99, "C"); Deassoc (100, "C"); Deassoc (103, "C") ];
     e_ [ 2 ] [ Change_arity (100, 2); Emancipate (1002, 100, 103); GC 103 ];
   ]
 
@@ -250,26 +244,14 @@ let strict_abc_to_ab_expected =
    emitted for surviving siblings. *)
 let strict_abc_to_ac_expected =
   [
-    t_
-      [
-        Unmap (99, "B", 999);
-        Unmap (100, "B", 1001);
-        Deassoc (99, "B");
-        Deassoc (100, "B");
-      ];
+    t_ [ Deassoc (99, "B"); Deassoc (100, "B"); Deassoc (102, "B") ];
     e_ [ 1 ] [ Change_arity (100, 2); Emancipate (1001, 100, 102); GC 102 ];
   ]
 
 (* RR[A,B,C] -> RR[A,B]: drop C from RR. No weight shifts (RR is unweighted). *)
 let rr_abc_to_ab_expected =
   [
-    t_
-      [
-        Unmap (99, "C", 999);
-        Unmap (100, "C", 1002);
-        Deassoc (99, "C");
-        Deassoc (100, "C");
-      ];
+    t_ [ Deassoc (99, "C"); Deassoc (100, "C"); Deassoc (103, "C") ];
     e_ [ 2 ] [ Change_arity (100, 2); Emancipate (1002, 100, 103); GC 103 ];
   ]
 
@@ -333,12 +315,10 @@ let rr_ab_to_ad_expected =
       ];
     t_
       [
-        Unmap (99, "B", 999);
-        Unmap (100, "B", 1001);
         Deassoc (99, "B");
         Deassoc (100, "B");
-        Unmap (104, "B", 1002);
         Deassoc (104, "B");
+        Deassoc (102, "B");
       ];
     e_ [ 1; 0 ]
       [
@@ -379,12 +359,10 @@ let strict_ab_to_ac_expected =
       ];
     t_
       [
-        Unmap (99, "B", 999);
-        Unmap (100, "B", 1001);
         Deassoc (99, "B");
         Deassoc (100, "B");
-        Unmap (104, "B", 1002);
         Deassoc (104, "B");
+        Deassoc (102, "B");
       ];
     e_ [ 1; 0 ]
       [
@@ -437,12 +415,10 @@ let wfq_abc_to_abz_diff_expected =
       ];
     t_
       [
-        Unmap (99, "C", 999);
-        Unmap (100, "C", 1002);
         Deassoc (99, "C");
         Deassoc (100, "C");
-        Unmap (105, "C", 1003);
         Deassoc (105, "C");
+        Deassoc (103, "C");
       ];
     e_ [ 2; 0 ]
       [
@@ -523,14 +499,14 @@ let rr_ab_to_rr_def_expected =
       ];
     t_
       [
-        Unmap (99, "A", 999);
-        Unmap (99, "B", 999);
         Deassoc (99, "A");
         Deassoc (99, "B");
-        Unmap (107, "A", 1005);
-        Unmap (107, "B", 1005);
         Deassoc (107, "A");
         Deassoc (107, "B");
+        Deassoc (100, "A");
+        Deassoc (100, "B");
+        Deassoc (101, "A");
+        Deassoc (102, "B");
       ];
     e_ [ 0 ]
       [
@@ -583,10 +559,12 @@ let strict_ab_to_rr_ab_expected =
       ];
     t_
       [
-        Unmap (106, "A", 1004);
-        Unmap (106, "B", 1004);
         Map (106, "A", 1005);
         Map (106, "B", 1005);
+        Deassoc (100, "A");
+        Deassoc (100, "B");
+        Deassoc (101, "A");
+        Deassoc (102, "B");
       ];
     e_ [ 0 ]
       [
@@ -623,22 +601,10 @@ let whole_tree_replace_tests =
 let strict_abc_to_fifo_a_expected =
   [
     (* Retire([2]) C: Quiesce then Remove. *)
-    t_
-      [
-        Unmap (99, "C", 999);
-        Unmap (100, "C", 1002);
-        Deassoc (99, "C");
-        Deassoc (100, "C");
-      ];
+    t_ [ Deassoc (99, "C"); Deassoc (100, "C"); Deassoc (103, "C") ];
     e_ [ 2 ] [ Change_arity (100, 2); Emancipate (1002, 100, 103); GC 103 ];
     (* Retire([1]) B: Quiesce then Remove. *)
-    t_
-      [
-        Unmap (99, "B", 999);
-        Unmap (100, "B", 1001);
-        Deassoc (99, "B");
-        Deassoc (100, "B");
-      ];
+    t_ [ Deassoc (99, "B"); Deassoc (100, "B"); Deassoc (102, "B") ];
     e_ [ 1 ] [ Change_arity (100, 1); Emancipate (1001, 100, 102); GC 102 ];
     (* ChangeRoot([0]): swing the port root from v100 to v101 and GC the SP
        root. Dropped-class block is empty (B and C already drained). *)
@@ -916,34 +882,33 @@ let designate_root_test =
   assert_equal ~printer:Ir.string_of_commit expected (single_commit c)
 
 (* Quiesce slot 1 of rr[A,B]: tear down routing for class B along the
-   chain from the port root down to the slot's parent. den(Quiesce) = id,
-   so no shape change to the tree. *)
+   chain from the port root down to the slot's parent, then Deassoc the
+   FIFO B leaf itself. den(Quiesce) = id, so no shape change to the
+   tree. *)
 let quiesce_arm_test =
   "Quiesce: rr[A,B] at slot 1 (drains B)" >:: fun _ ->
   let prev = compile "rr_AB" in
   let c = Ir.patch_quiesce ~prev ~path:[ 1 ] in
   let expected : commit =
-    [
-      Unmap (99, "B", 999);
-      Unmap (100, "B", 1001);
-      Deassoc (99, "B");
-      Deassoc (100, "B");
-    ]
+    [ Deassoc (99, "B"); Deassoc (100, "B"); Deassoc (102, "B") ]
   in
   assert_equal ~printer:Ir.string_of_commit expected (single_commit c)
 
-(* Quiesce at root: tears down routing for every class on the port root.
-   The whole tree is being drained. *)
+(* Quiesce at root: Deassocs every leaf class at every node from the port
+   root down through the rr root to its leaves. The whole tree is being
+   drained. *)
 let quiesce_root_test =
   "Quiesce: rr[A,B] whole-tree" >:: fun _ ->
   let prev = compile "rr_AB" in
   let c = Ir.patch_quiesce ~prev ~path:[] in
   let expected : commit =
     [
-      Unmap (99, "A", 999);
-      Unmap (99, "B", 999);
       Deassoc (99, "A");
       Deassoc (99, "B");
+      Deassoc (100, "A");
+      Deassoc (100, "B");
+      Deassoc (101, "A");
+      Deassoc (102, "B");
     ]
   in
   assert_equal ~printer:Ir.string_of_commit expected (single_commit c)
@@ -1025,14 +990,14 @@ let giveup_idiom_test =
       Set_policy (104, SP_star, 2);
       Set_arm_meta (104, 1002, 1.0);
       Set_arm_meta (104, 1003, 2.0);
-      Unmap (99, "A", 999);
-      Unmap (99, "B", 999);
       Deassoc (99, "A");
       Deassoc (99, "B");
-      Unmap (104, "A", 1002);
-      Unmap (104, "B", 1002);
       Deassoc (104, "A");
       Deassoc (104, "B");
+      Deassoc (100, "A");
+      Deassoc (100, "B");
+      Deassoc (101, "A");
+      Deassoc (102, "B");
       Emancipate (999, 99, 104);
       Adopt (999, 99, 103);
       Undesignate 100;
