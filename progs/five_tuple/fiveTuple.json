@@ -1,0 +1,1431 @@
+{
+  "program" : "fiveTuple.p4",
+  "__meta__" : {
+    "version" : [2, 0],
+    "compiler" : "p4c-vitisnet"
+  },
+  "header_types" : [
+    {
+      "name" : "scalars_0",
+      "id" : 0,
+      "is_struct" : false,
+      "fields" : [
+        ["tmp", 1, false],
+        ["tmp_0", 32, false],
+        ["tmp_3", 1, false],
+        ["tmp_4", 32, false],
+        ["table_key_sport", 16, false],
+        ["table_key_dport", 16, false],
+        ["hit", 1, false],
+        ["_padding", 5, false]
+      ]
+    },
+    {
+      "name" : "standard_metadata_t",
+      "id" : 1,
+      "is_struct" : true,
+      "fields" : [
+        ["drop", 1, false],
+        ["ingress_timestamp", 64, false],
+        ["parsed_bytes", 16, false],
+        ["parser_error", 4, false],
+        ["_padding_0", 3, false]
+      ]
+    },
+    {
+      "name" : "eth_mac_t",
+      "id" : 2,
+      "is_struct" : false,
+      "fields" : [
+        ["dmac", 48, false],
+        ["smac", 48, false],
+        ["type", 16, false]
+      ]
+    },
+    {
+      "name" : "vlan_t",
+      "id" : 3,
+      "is_struct" : false,
+      "fields" : [
+        ["pcp", 3, false],
+        ["cfi", 1, false],
+        ["vid", 12, false],
+        ["tpid", 16, false]
+      ]
+    },
+    {
+      "name" : "ipv4_t",
+      "id" : 4,
+      "is_struct" : false,
+      "fields" : [
+        ["version", 4, false],
+        ["hdr_len", 4, false],
+        ["tos", 8, false],
+        ["length", 16, false],
+        ["id", 16, false],
+        ["flags", 3, false],
+        ["offset", 13, false],
+        ["ttl", 8, false],
+        ["protocol", 8, false],
+        ["hdr_chk", 16, false],
+        ["src", 32, false],
+        ["dst", 32, false]
+      ]
+    },
+    {
+      "name" : "ipv4_opt_t",
+      "id" : 5,
+      "is_struct" : false,
+      "fields" : [
+        ["options", "*"]
+      ],
+      "max_length" : 40
+    },
+    {
+      "name" : "tcp_t",
+      "id" : 6,
+      "is_struct" : false,
+      "fields" : [
+        ["src_port", 16, false],
+        ["dst_port", 16, false],
+        ["seqNum", 32, false],
+        ["ackNum", 32, false],
+        ["dataOffset", 4, false],
+        ["resv", 6, false],
+        ["flags", 6, false],
+        ["window", 16, false],
+        ["checksum", 16, false],
+        ["urgPtr", 16, false]
+      ]
+    },
+    {
+      "name" : "tcp_opt_t",
+      "id" : 7,
+      "is_struct" : false,
+      "fields" : [
+        ["options", "*"]
+      ],
+      "max_length" : 40
+    },
+    {
+      "name" : "udp_t",
+      "id" : 8,
+      "is_struct" : false,
+      "fields" : [
+        ["src_port", 16, false],
+        ["dst_port", 16, false],
+        ["length", 16, false],
+        ["checksum", 16, false]
+      ]
+    }
+  ],
+  "headers" : [
+    {
+      "name" : "scalars",
+      "id" : 0,
+      "header_type" : "scalars_0",
+      "metadata" : false,
+      "pi_omit" : true
+    },
+    {
+      "name" : "standard_metadata_t",
+      "id" : 1,
+      "header_type" : "standard_metadata_t",
+      "metadata" : true,
+      "pi_omit" : true
+    },
+    {
+      "name" : "eth",
+      "id" : 2,
+      "header_type" : "eth_mac_t",
+      "metadata" : false,
+      "pi_omit" : true
+    },
+    {
+      "name" : "new_vlan",
+      "id" : 3,
+      "header_type" : "vlan_t",
+      "metadata" : false,
+      "pi_omit" : true
+    },
+    {
+      "name" : "vlan",
+      "id" : 4,
+      "header_type" : "vlan_t",
+      "metadata" : false,
+      "pi_omit" : true
+    },
+    {
+      "name" : "ipv4",
+      "id" : 5,
+      "header_type" : "ipv4_t",
+      "metadata" : false,
+      "pi_omit" : true
+    },
+    {
+      "name" : "ipv4opt",
+      "id" : 6,
+      "header_type" : "ipv4_opt_t",
+      "metadata" : false,
+      "pi_omit" : true
+    },
+    {
+      "name" : "tcp",
+      "id" : 7,
+      "header_type" : "tcp_t",
+      "metadata" : false,
+      "pi_omit" : true
+    },
+    {
+      "name" : "tcpopt",
+      "id" : 8,
+      "header_type" : "tcp_opt_t",
+      "metadata" : false,
+      "pi_omit" : true
+    },
+    {
+      "name" : "udp",
+      "id" : 9,
+      "header_type" : "udp_t",
+      "metadata" : false,
+      "pi_omit" : true
+    }
+  ],
+  "header_stacks" : [],
+  "header_union_types" : [],
+  "header_unions" : [],
+  "header_union_stacks" : [],
+  "field_lists" : [],
+  "errors" : [
+    ["NoError", 0],
+    ["PacketTooShort", 1],
+    ["NoMatch", 2],
+    ["StackOutOfBounds", 3],
+    ["HeaderTooShort", 4],
+    ["ParserTimeout", 5],
+    ["HeaderDepthLimitExceeded", 6],
+    ["InvalidIPpacket", 7],
+    ["InvalidTCPpacket", 8]
+  ],
+  "enums" : [],
+  "parsers" : [
+    {
+      "name" : "parser",
+      "id" : 0,
+      "init_state" : "start",
+      "parse_states" : [
+        {
+          "name" : "start",
+          "id" : 0,
+          "parser_ops" : [
+            {
+              "parameters" : [
+                {
+                  "type" : "regular",
+                  "value" : "eth"
+                }
+              ],
+              "op" : "extract"
+            }
+          ],
+          "transitions" : [
+            {
+              "type" : "hexstr",
+              "value" : "0x8100",
+              "mask" : null,
+              "next_state" : "parse_vlan"
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x0800",
+              "mask" : null,
+              "next_state" : "parse_ipv4"
+            },
+            {
+              "value" : "default",
+              "mask" : null,
+              "next_state" : null
+            }
+          ],
+          "transition_key" : [
+            {
+              "type" : "field",
+              "value" : ["eth", "type"]
+            }
+          ]
+        },
+        {
+          "name" : "parse_vlan",
+          "id" : 1,
+          "parser_ops" : [
+            {
+              "parameters" : [
+                {
+                  "type" : "regular",
+                  "value" : "vlan"
+                }
+              ],
+              "op" : "extract"
+            }
+          ],
+          "transitions" : [
+            {
+              "type" : "hexstr",
+              "value" : "0x0800",
+              "mask" : null,
+              "next_state" : "parse_ipv4"
+            },
+            {
+              "value" : "default",
+              "mask" : null,
+              "next_state" : null
+            }
+          ],
+          "transition_key" : [
+            {
+              "type" : "field",
+              "value" : ["vlan", "tpid"]
+            }
+          ]
+        },
+        {
+          "name" : "parse_ipv4",
+          "id" : 2,
+          "parser_ops" : [
+            {
+              "parameters" : [
+                {
+                  "type" : "regular",
+                  "value" : "ipv4"
+                }
+              ],
+              "op" : "extract"
+            },
+            {
+              "parameters" : [
+                {
+                  "type" : "field",
+                  "value" : ["scalars", "tmp"]
+                },
+                {
+                  "type" : "expression",
+                  "value" : {
+                    "type" : "expression",
+                    "value" : {
+                      "op" : "b2d",
+                      "left" : null,
+                      "right" : {
+                        "type" : "expression",
+                        "value" : {
+                          "op" : "and",
+                          "left" : {
+                            "type" : "expression",
+                            "value" : {
+                              "op" : "==",
+                              "left" : {
+                                "type" : "field",
+                                "value" : ["ipv4", "version"]
+                              },
+                              "right" : {
+                                "type" : "hexstr",
+                                "value" : "0x04"
+                              }
+                            }
+                          },
+                          "right" : {
+                            "type" : "expression",
+                            "value" : {
+                              "op" : ">=",
+                              "left" : {
+                                "type" : "field",
+                                "value" : ["ipv4", "hdr_len"]
+                              },
+                              "right" : {
+                                "type" : "hexstr",
+                                "value" : "0x05"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              ],
+              "op" : "set"
+            },
+            {
+              "parameters" : [
+                {
+                  "type" : "expression",
+                  "value" : {
+                    "op" : "d2b",
+                    "left" : null,
+                    "right" : {
+                      "type" : "field",
+                      "value" : ["scalars", "tmp"]
+                    }
+                  }
+                },
+                {
+                  "type" : "hexstr",
+                  "value" : "0x7"
+                }
+              ],
+              "op" : "verify"
+            },
+            {
+              "parameters" : [
+                {
+                  "type" : "field",
+                  "value" : ["scalars", "tmp_0"]
+                },
+                {
+                  "type" : "expression",
+                  "value" : {
+                    "type" : "expression",
+                    "value" : {
+                      "op" : "&",
+                      "left" : {
+                        "type" : "expression",
+                        "value" : {
+                          "op" : "<<",
+                          "left" : {
+                            "type" : "expression",
+                            "value" : {
+                              "op" : "&",
+                              "left" : {
+                                "type" : "expression",
+                                "value" : {
+                                  "op" : "+",
+                                  "left" : {
+                                    "type" : "expression",
+                                    "value" : {
+                                      "op" : "&",
+                                      "left" : {
+                                        "type" : "field",
+                                        "value" : ["ipv4", "hdr_len"]
+                                      },
+                                      "right" : {
+                                        "type" : "hexstr",
+                                        "value" : "0xffffffff"
+                                      }
+                                    }
+                                  },
+                                  "right" : {
+                                    "type" : "hexstr",
+                                    "value" : "0xfffffffb"
+                                  }
+                                }
+                              },
+                              "right" : {
+                                "type" : "hexstr",
+                                "value" : "0xffffffff"
+                              }
+                            }
+                          },
+                          "right" : {
+                            "type" : "hexstr",
+                            "value" : "0x5"
+                          }
+                        }
+                      },
+                      "right" : {
+                        "type" : "hexstr",
+                        "value" : "0xffffffff"
+                      }
+                    }
+                  }
+                }
+              ],
+              "op" : "set"
+            },
+            {
+              "parameters" : [
+                {
+                  "type" : "regular",
+                  "value" : "ipv4opt"
+                },
+                {
+                  "type" : "expression",
+                  "value" : {
+                    "type" : "field",
+                    "value" : ["scalars", "tmp_0"]
+                  }
+                }
+              ],
+              "op" : "extract_VL"
+            }
+          ],
+          "transitions" : [
+            {
+              "type" : "hexstr",
+              "value" : "0x06",
+              "mask" : null,
+              "next_state" : "parse_tcp"
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x11",
+              "mask" : null,
+              "next_state" : "parse_udp"
+            },
+            {
+              "value" : "default",
+              "mask" : null,
+              "next_state" : null
+            }
+          ],
+          "transition_key" : [
+            {
+              "type" : "field",
+              "value" : ["ipv4", "protocol"]
+            }
+          ]
+        },
+        {
+          "name" : "parse_tcp",
+          "id" : 3,
+          "parser_ops" : [
+            {
+              "parameters" : [
+                {
+                  "type" : "regular",
+                  "value" : "tcp"
+                }
+              ],
+              "op" : "extract"
+            },
+            {
+              "parameters" : [
+                {
+                  "type" : "field",
+                  "value" : ["scalars", "tmp_3"]
+                },
+                {
+                  "type" : "expression",
+                  "value" : {
+                    "type" : "expression",
+                    "value" : {
+                      "op" : "b2d",
+                      "left" : null,
+                      "right" : {
+                        "type" : "expression",
+                        "value" : {
+                          "op" : ">=",
+                          "left" : {
+                            "type" : "field",
+                            "value" : ["tcp", "dataOffset"]
+                          },
+                          "right" : {
+                            "type" : "hexstr",
+                            "value" : "0x05"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              ],
+              "op" : "set"
+            },
+            {
+              "parameters" : [
+                {
+                  "type" : "expression",
+                  "value" : {
+                    "op" : "d2b",
+                    "left" : null,
+                    "right" : {
+                      "type" : "field",
+                      "value" : ["scalars", "tmp_3"]
+                    }
+                  }
+                },
+                {
+                  "type" : "hexstr",
+                  "value" : "0x8"
+                }
+              ],
+              "op" : "verify"
+            },
+            {
+              "parameters" : [
+                {
+                  "type" : "field",
+                  "value" : ["scalars", "tmp_4"]
+                },
+                {
+                  "type" : "expression",
+                  "value" : {
+                    "type" : "expression",
+                    "value" : {
+                      "op" : "&",
+                      "left" : {
+                        "type" : "expression",
+                        "value" : {
+                          "op" : "<<",
+                          "left" : {
+                            "type" : "expression",
+                            "value" : {
+                              "op" : "&",
+                              "left" : {
+                                "type" : "expression",
+                                "value" : {
+                                  "op" : "+",
+                                  "left" : {
+                                    "type" : "expression",
+                                    "value" : {
+                                      "op" : "&",
+                                      "left" : {
+                                        "type" : "field",
+                                        "value" : ["tcp", "dataOffset"]
+                                      },
+                                      "right" : {
+                                        "type" : "hexstr",
+                                        "value" : "0xffffffff"
+                                      }
+                                    }
+                                  },
+                                  "right" : {
+                                    "type" : "hexstr",
+                                    "value" : "0xfffffffb"
+                                  }
+                                }
+                              },
+                              "right" : {
+                                "type" : "hexstr",
+                                "value" : "0xffffffff"
+                              }
+                            }
+                          },
+                          "right" : {
+                            "type" : "hexstr",
+                            "value" : "0x5"
+                          }
+                        }
+                      },
+                      "right" : {
+                        "type" : "hexstr",
+                        "value" : "0xffffffff"
+                      }
+                    }
+                  }
+                }
+              ],
+              "op" : "set"
+            },
+            {
+              "parameters" : [
+                {
+                  "type" : "regular",
+                  "value" : "tcpopt"
+                },
+                {
+                  "type" : "expression",
+                  "value" : {
+                    "type" : "field",
+                    "value" : ["scalars", "tmp_4"]
+                  }
+                }
+              ],
+              "op" : "extract_VL"
+            }
+          ],
+          "transitions" : [
+            {
+              "value" : "default",
+              "mask" : null,
+              "next_state" : null
+            }
+          ],
+          "transition_key" : []
+        },
+        {
+          "name" : "parse_udp",
+          "id" : 4,
+          "parser_ops" : [
+            {
+              "parameters" : [
+                {
+                  "type" : "regular",
+                  "value" : "udp"
+                }
+              ],
+              "op" : "extract"
+            }
+          ],
+          "transitions" : [
+            {
+              "value" : "default",
+              "mask" : null,
+              "next_state" : null
+            }
+          ],
+          "transition_key" : []
+        }
+      ]
+    }
+  ],
+  "parse_vsets" : [],
+  "deparsers" : [
+    {
+      "name" : "deparser",
+      "id" : 0,
+      "source_info" : {
+        "filename" : "fiveTuple.p4",
+        "line" : 282,
+        "column" : 8,
+        "source_fragment" : "MyDeparser"
+      },
+      "start" : "node_15",
+      "emits" : [
+        {
+          "name" : "node_15",
+          "id" : 0,
+          "sequence_point" : true,
+          "header" : "eth",
+          "next" : "node_16"
+        },
+        {
+          "name" : "node_16",
+          "id" : 1,
+          "sequence_point" : true,
+          "header" : "new_vlan",
+          "next" : "node_17"
+        },
+        {
+          "name" : "node_17",
+          "id" : 2,
+          "sequence_point" : true,
+          "header" : "vlan",
+          "next" : "node_18"
+        },
+        {
+          "name" : "node_18",
+          "id" : 3,
+          "sequence_point" : true,
+          "header" : "ipv4",
+          "next" : "node_19"
+        },
+        {
+          "name" : "node_19",
+          "id" : 4,
+          "sequence_point" : true,
+          "header" : "ipv4opt",
+          "next" : "node_20"
+        },
+        {
+          "name" : "node_20",
+          "id" : 5,
+          "sequence_point" : true,
+          "header" : "tcp",
+          "next" : "node_21"
+        },
+        {
+          "name" : "node_21",
+          "id" : 6,
+          "sequence_point" : true,
+          "header" : "tcpopt",
+          "next" : "node_22"
+        },
+        {
+          "name" : "node_22",
+          "id" : 7,
+          "sequence_point" : true,
+          "header" : "udp",
+          "next" : null
+        }
+      ],
+      "conditionals" : []
+    }
+  ],
+  "meter_arrays" : [],
+  "counter_arrays" : [
+    {
+      "name" : "MyProcessing.PacketCounter",
+      "id" : 0,
+      "source_info" : {
+        "filename" : "fiveTuple.p4",
+        "line" : 228,
+        "column" : 74,
+        "source_fragment" : "PacketCounter"
+      },
+      "size" : 8192,
+      "is_direct" : false,
+      "width" : 64,
+      "stride" : 13,
+      "type" : "packets"
+    },
+    {
+      "name" : "MyProcessing.ByteCounter",
+      "id" : 1,
+      "source_info" : {
+        "filename" : "fiveTuple.p4",
+        "line" : 229,
+        "column" : 72,
+        "source_fragment" : "ByteCounter"
+      },
+      "size" : 8192,
+      "is_direct" : false,
+      "width" : 64,
+      "stride" : 13,
+      "type" : "bytes"
+    }
+  ],
+  "register_arrays" : [],
+  "calculations" : [],
+  "learn_lists" : [],
+  "actions" : [
+    {
+      "name" : "NoAction",
+      "id" : 0,
+      "runtime_data" : [],
+      "primitives" : []
+    },
+    {
+      "name" : "MyProcessing.InsertVLAN",
+      "id" : 1,
+      "runtime_data" : [
+        {
+          "name" : "counter_index",
+          "bitwidth" : 13
+        },
+        {
+          "name" : "pcp",
+          "bitwidth" : 3
+        },
+        {
+          "name" : "cfi",
+          "bitwidth" : 1
+        },
+        {
+          "name" : "vid",
+          "bitwidth" : 12
+        }
+      ],
+      "primitives" : [
+        {
+          "op" : "add_header",
+          "parameters" : [
+            {
+              "type" : "header",
+              "value" : "new_vlan"
+            }
+          ],
+          "source_info" : {
+            "filename" : "fiveTuple.p4",
+            "line" : 232,
+            "column" : 8,
+            "source_fragment" : "hdr.new_vlan.setValid()"
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["new_vlan", "pcp"]
+            },
+            {
+              "type" : "runtime_data",
+              "value" : 1
+            }
+          ],
+          "source_info" : {
+            "filename" : "fiveTuple.p4",
+            "line" : 233,
+            "column" : 8,
+            "source_fragment" : "hdr.new_vlan.pcp = pcp"
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["new_vlan", "cfi"]
+            },
+            {
+              "type" : "runtime_data",
+              "value" : 2
+            }
+          ],
+          "source_info" : {
+            "filename" : "fiveTuple.p4",
+            "line" : 234,
+            "column" : 8,
+            "source_fragment" : "hdr.new_vlan.cfi = cfi"
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["new_vlan", "vid"]
+            },
+            {
+              "type" : "runtime_data",
+              "value" : 3
+            }
+          ],
+          "source_info" : {
+            "filename" : "fiveTuple.p4",
+            "line" : 235,
+            "column" : 8,
+            "source_fragment" : "hdr.new_vlan.vid = vid"
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["new_vlan", "tpid"]
+            },
+            {
+              "type" : "field",
+              "value" : ["eth", "type"]
+            }
+          ],
+          "source_info" : {
+            "filename" : "fiveTuple.p4",
+            "line" : 236,
+            "column" : 8,
+            "source_fragment" : "hdr.new_vlan.tpid = hdr.eth.type"
+          }
+        },
+        {
+          "op" : "count",
+          "parameters" : [
+            {
+              "type" : "counter_array",
+              "value" : "MyProcessing.PacketCounter"
+            },
+            {
+              "type" : "runtime_data",
+              "value" : 0
+            }
+          ],
+          "source_info" : {
+            "filename" : "fiveTuple.p4",
+            "line" : 237,
+            "column" : 8,
+            "source_fragment" : "PacketCounter.count(counter_index)"
+          }
+        },
+        {
+          "op" : "count",
+          "parameters" : [
+            {
+              "type" : "counter_array",
+              "value" : "MyProcessing.ByteCounter"
+            },
+            {
+              "type" : "runtime_data",
+              "value" : 0
+            }
+          ],
+          "source_info" : {
+            "filename" : "fiveTuple.p4",
+            "line" : 238,
+            "column" : 8,
+            "source_fragment" : "ByteCounter.count(counter_index)"
+          }
+        }
+      ]
+    },
+    {
+      "name" : "act",
+      "id" : 2,
+      "runtime_data" : [],
+      "primitives" : [
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["scalars", "table_key_sport"]
+            },
+            {
+              "type" : "field",
+              "value" : ["udp", "src_port"]
+            }
+          ],
+          "source_info" : {
+            "filename" : "fiveTuple.p4",
+            "line" : 260,
+            "column" : 12,
+            "source_fragment" : "table_key_sport = hdr.udp.src_port"
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["scalars", "table_key_dport"]
+            },
+            {
+              "type" : "field",
+              "value" : ["udp", "dst_port"]
+            }
+          ],
+          "source_info" : {
+            "filename" : "fiveTuple.p4",
+            "line" : 261,
+            "column" : 12,
+            "source_fragment" : "table_key_dport = hdr.udp.dst_port"
+          }
+        }
+      ]
+    },
+    {
+      "name" : "act_0",
+      "id" : 3,
+      "runtime_data" : [],
+      "primitives" : [
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["scalars", "table_key_sport"]
+            },
+            {
+              "type" : "field",
+              "value" : ["tcp", "src_port"]
+            }
+          ],
+          "source_info" : {
+            "filename" : "fiveTuple.p4",
+            "line" : 264,
+            "column" : 12,
+            "source_fragment" : "table_key_sport = hdr.tcp.src_port"
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["scalars", "table_key_dport"]
+            },
+            {
+              "type" : "field",
+              "value" : ["tcp", "dst_port"]
+            }
+          ],
+          "source_info" : {
+            "filename" : "fiveTuple.p4",
+            "line" : 265,
+            "column" : 12,
+            "source_fragment" : "table_key_dport = hdr.tcp.dst_port"
+          }
+        }
+      ]
+    },
+    {
+      "name" : "act_1",
+      "id" : 4,
+      "runtime_data" : [],
+      "primitives" : [
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["scalars", "hit"]
+            },
+            {
+              "type" : "expression",
+              "value" : {
+                "type" : "expression",
+                "value" : {
+                  "op" : "b2d",
+                  "left" : null,
+                  "right" : {
+                    "type" : "bool",
+                    "value" : false
+                  }
+                }
+              }
+            }
+          ],
+          "source_info" : {
+            "filename" : "fiveTuple.p4",
+            "line" : 226,
+            "column" : 4,
+            "source_fragment" : "bool hit = false;"
+          }
+        }
+      ]
+    },
+    {
+      "name" : "act_2",
+      "id" : 5,
+      "runtime_data" : [],
+      "primitives" : [
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["eth", "type"]
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x88a8"
+            }
+          ],
+          "source_info" : {
+            "filename" : "fiveTuple.p4",
+            "line" : 68,
+            "column" : 26,
+            "source_fragment" : "0x88A8; ..."
+          }
+        }
+      ]
+    },
+    {
+      "name" : "act_3",
+      "id" : 6,
+      "runtime_data" : [],
+      "primitives" : [
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["eth", "type"]
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x8100"
+            }
+          ],
+          "source_info" : {
+            "filename" : "fiveTuple.p4",
+            "line" : 69,
+            "column" : 26,
+            "source_fragment" : "0x8100; ..."
+          }
+        }
+      ]
+    }
+  ],
+  "pipelines" : [
+    {
+      "name" : "ingress",
+      "id" : 0,
+      "source_info" : {
+        "filename" : "fiveTuple.p4",
+        "line" : 220,
+        "column" : 8,
+        "source_fragment" : "MyProcessing"
+      },
+      "init_table" : "tbl_act",
+      "tables" : [
+        {
+          "name" : "tbl_act",
+          "id" : 0,
+          "sequence_point" : true,
+          "key" : [],
+          "match_type" : "exact",
+          "type" : "simple",
+          "max_size" : 1024,
+          "with_counters" : false,
+          "support_timeout" : false,
+          "direct_meters" : null,
+          "action_ids" : [4],
+          "actions" : ["act_1"],
+          "base_default_next" : "node_3",
+          "next_tables" : {
+            "act_1" : "node_3"
+          },
+          "default_entry" : {
+            "action_id" : 4,
+            "action_const" : true,
+            "action_data" : [],
+            "action_entry_const" : true
+          }
+        },
+        {
+          "name" : "tbl_act_0",
+          "id" : 1,
+          "sequence_point" : false,
+          "key" : [],
+          "match_type" : "exact",
+          "type" : "simple",
+          "max_size" : 1024,
+          "with_counters" : false,
+          "support_timeout" : false,
+          "direct_meters" : null,
+          "action_ids" : [2],
+          "actions" : ["act"],
+          "base_default_next" : "MyProcessing.FiveTuple",
+          "next_tables" : {
+            "act" : "MyProcessing.FiveTuple"
+          },
+          "default_entry" : {
+            "action_id" : 2,
+            "action_const" : true,
+            "action_data" : [],
+            "action_entry_const" : true
+          }
+        },
+        {
+          "name" : "MyProcessing.FiveTuple",
+          "id" : 2,
+          "sequence_point" : false,
+          "source_info" : {
+            "filename" : "fiveTuple.p4",
+            "line" : 241,
+            "column" : 10,
+            "source_fragment" : "FiveTuple"
+          },
+          "key" : [
+            {
+              "match_type" : "exact",
+              "name" : "hdr.ipv4.src",
+              "target" : ["ipv4", "src"],
+              "mask" : null
+            },
+            {
+              "match_type" : "exact",
+              "name" : "hdr.ipv4.dst",
+              "target" : ["ipv4", "dst"],
+              "mask" : null
+            },
+            {
+              "match_type" : "exact",
+              "name" : "hdr.ipv4.protocol",
+              "target" : ["ipv4", "protocol"],
+              "mask" : null
+            },
+            {
+              "match_type" : "exact",
+              "name" : "table_key_sport",
+              "target" : ["scalars", "table_key_sport"],
+              "mask" : null
+            },
+            {
+              "match_type" : "exact",
+              "name" : "table_key_dport",
+              "target" : ["scalars", "table_key_dport"],
+              "mask" : null
+            }
+          ],
+          "match_type" : "exact",
+          "type" : "simple",
+          "max_size" : 8192,
+          "with_counters" : false,
+          "support_timeout" : false,
+          "direct_meters" : null,
+          "action_ids" : [1, 0],
+          "actions" : ["MyProcessing.InsertVLAN", "NoAction"],
+          "base_default_next" : "node_9",
+          "next_tables" : {
+            "MyProcessing.InsertVLAN" : "node_9",
+            "NoAction" : "node_9"
+          },
+          "hit" : {
+            "type" : "field",
+            "value" : ["scalars", "hit"]
+          },
+          "default_entry" : {
+            "action_id" : 0,
+            "action_const" : false,
+            "action_data" : [],
+            "action_entry_const" : false
+          }
+        },
+        {
+          "name" : "tbl_act_1",
+          "id" : 3,
+          "sequence_point" : false,
+          "key" : [],
+          "match_type" : "exact",
+          "type" : "simple",
+          "max_size" : 1024,
+          "with_counters" : false,
+          "support_timeout" : false,
+          "direct_meters" : null,
+          "action_ids" : [3],
+          "actions" : ["act_0"],
+          "base_default_next" : "MyProcessing.FiveTuple",
+          "next_tables" : {
+            "act_0" : "MyProcessing.FiveTuple"
+          },
+          "default_entry" : {
+            "action_id" : 3,
+            "action_const" : true,
+            "action_data" : [],
+            "action_entry_const" : true
+          }
+        },
+        {
+          "name" : "tbl_act_2",
+          "id" : 4,
+          "sequence_point" : false,
+          "key" : [],
+          "match_type" : "exact",
+          "type" : "simple",
+          "max_size" : 1024,
+          "with_counters" : false,
+          "support_timeout" : false,
+          "direct_meters" : null,
+          "action_ids" : [5],
+          "actions" : ["act_2"],
+          "base_default_next" : null,
+          "next_tables" : {
+            "act_2" : null
+          },
+          "default_entry" : {
+            "action_id" : 5,
+            "action_const" : true,
+            "action_data" : [],
+            "action_entry_const" : true
+          }
+        },
+        {
+          "name" : "tbl_act_3",
+          "id" : 5,
+          "sequence_point" : false,
+          "key" : [],
+          "match_type" : "exact",
+          "type" : "simple",
+          "max_size" : 1024,
+          "with_counters" : false,
+          "support_timeout" : false,
+          "direct_meters" : null,
+          "action_ids" : [6],
+          "actions" : ["act_3"],
+          "base_default_next" : null,
+          "next_tables" : {
+            "act_3" : null
+          },
+          "default_entry" : {
+            "action_id" : 6,
+            "action_const" : true,
+            "action_data" : [],
+            "action_entry_const" : true
+          }
+        }
+      ],
+      "action_profiles" : [],
+      "conditionals" : [
+        {
+          "name" : "node_3",
+          "id" : 0,
+          "sequence_point" : true,
+          "source_info" : {
+            "filename" : "fiveTuple.p4",
+            "line" : 259,
+            "column" : 12,
+            "source_fragment" : "hdr.udp.isValid()"
+          },
+          "expression" : {
+            "type" : "expression",
+            "value" : {
+              "op" : "d2b",
+              "left" : null,
+              "right" : {
+                "type" : "field",
+                "value" : ["udp", "$valid$"]
+              }
+            }
+          },
+          "true_next" : "tbl_act_0",
+          "false_next" : "node_6",
+          "if_else" : true,
+          "converge" : "node_9"
+        },
+        {
+          "name" : "node_6",
+          "id" : 1,
+          "sequence_point" : false,
+          "source_info" : {
+            "filename" : "fiveTuple.p4",
+            "line" : 263,
+            "column" : 19,
+            "source_fragment" : "hdr.tcp.isValid()"
+          },
+          "expression" : {
+            "type" : "expression",
+            "value" : {
+              "op" : "d2b",
+              "left" : null,
+              "right" : {
+                "type" : "field",
+                "value" : ["tcp", "$valid$"]
+              }
+            }
+          },
+          "true_next" : "tbl_act_1",
+          "false_next" : "node_9",
+          "if_else" : false,
+          "converge" : "node_9"
+        },
+        {
+          "name" : "node_9",
+          "id" : 2,
+          "sequence_point" : true,
+          "source_info" : {
+            "filename" : "fiveTuple.p4",
+            "line" : 269,
+            "column" : 12,
+            "source_fragment" : "hit"
+          },
+          "expression" : {
+            "type" : "expression",
+            "value" : {
+              "op" : "d2b",
+              "left" : null,
+              "right" : {
+                "type" : "field",
+                "value" : ["scalars", "hit"]
+              }
+            }
+          },
+          "false_next" : null,
+          "true_next" : "node_10",
+          "if_else" : false,
+          "converge" : null
+        },
+        {
+          "name" : "node_10",
+          "id" : 3,
+          "sequence_point" : false,
+          "source_info" : {
+            "filename" : "fiveTuple.p4",
+            "line" : 270,
+            "column" : 16,
+            "source_fragment" : "hdr.vlan.isValid()"
+          },
+          "expression" : {
+            "type" : "expression",
+            "value" : {
+              "op" : "d2b",
+              "left" : null,
+              "right" : {
+                "type" : "field",
+                "value" : ["vlan", "$valid$"]
+              }
+            }
+          },
+          "true_next" : "tbl_act_2",
+          "false_next" : "tbl_act_3",
+          "if_else" : true,
+          "converge" : null
+        }
+      ]
+    }
+  ],
+  "checksums" : [],
+  "internet_checksums" : [],
+  "force_arith" : [],
+  "extern_instances" : [],
+  "field_aliases" : []
+}
