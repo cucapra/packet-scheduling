@@ -16,6 +16,10 @@ type compiled = {
 let single ~commit ~decorated ~pes =
   { steps = [ (Rio_planner.Planner.True, commit) ]; decorated; pes }
 
+(* Extract the single-step commit from a [compiled] built by [single]. The
+   [failwith] arm is a debug-time invariant assertion: every caller (currently
+   just the patch fold at the bottom of this file) holds a [compiled] that
+   was constructed via [single] and therefore has exactly one step. *)
 let commit_of_single c =
   match c.steps with
   | [ (_, cmt) ] -> cmt

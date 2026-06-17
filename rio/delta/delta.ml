@@ -16,14 +16,20 @@ type t =
       arm : Rio_core.Pol.t;
       meta : float option;
     }
+      (** Insert [arm] as a new child at [path]. [meta] is the new arm's
+          per-arm metadata: a rank for SP, a weight for WFQ, [None] for RR. *)
   | Remove of {
       path : path;
       arm : Rio_core.Pol.t;
     }
+      (** Remove the child at [path]; [arm] records the dropped subtree's
+          shape (carried so confinement reasoning can see what left). *)
   | ChangeMeta of {
       path : path;
       new_meta : float;
     }
+      (** Rebind the per-arm metadata of the child at [path] to [new_meta]
+          (rank for SP, weight for WFQ; never reaches RR). *)
   | Graft of path
       (** [prev] sits as a strict subtree of [next] at [path]:
           [next = ctx[prev]] where [ctx]'s hole is at [path]. *)

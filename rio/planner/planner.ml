@@ -157,6 +157,13 @@ let prune_down_to ~prev ~path () =
   in
   walk prev path [] @ [ (True, Delta.ChangeRoot (List.map (fun _ -> 0) path)) ]
 
+(* Sequence-shape introspection for the comparators' demotion paths:
+   [compare_children] and [compare_metaed_children] each call into [analyze]
+   recursively on children, then need to recognize "this inner sequence
+   describes a relationship between children that doesn't bubble up to the
+   outer slot" and demote to a slot-level give-up. The two predicates below
+   are the only such recognizers. *)
+
 (* Recognize a [PruneDownTo] sequence's tail: any sequence whose last step is
    [ChangeRoot]. Used by [compare_children]'s demotion match. *)
 let ends_in_change_root seq =
