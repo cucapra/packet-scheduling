@@ -157,6 +157,13 @@ let prune_down_to ~prev ~path () =
   in
   walk prev path [] @ [ (True, Delta.ChangeRoot (List.map (fun _ -> 0) path)) ]
 
+(* Sequence-shape introspection for the comparators' demotion paths:
+   [compare_children] and [compare_metaed_children] each call into [analyze]
+   recursively on children, then need to recognize "this inner sequence
+   describes a relationship between children that doesn't bubble up to the
+   outer slot" and demote to a slot-level give-up. The two predicates below
+   are the only such recognizers. *)
+
 (* Recognize a [PruneDownTo] sequence's tail: any sequence whose last step is
    [ChangeRoot]. Used by [compare_children]'s demotion match. *)
 let ends_in_change_root seq =
@@ -179,30 +186,20 @@ let is_replace_root = function
 let rec is_sub_policy p1 p2 =
   if p1 = p2 then Some []
   else
+    let scan children ~arm =
+      let rec loop i = function
+        | [] -> None
+        | x :: t -> (
+            match is_sub_policy p1 (arm x) with
+            | Some path -> Some (i :: path)
+            | None -> loop (i + 1) t)
+      in
+      loop 0 children
+    in
     match p2 with
     | FIFO _ -> None
-    | SP (prs, _) | WFQ prs ->
-        let rec loop i = function
-          | [] -> None
-          | (p, _) :: t -> (
-              if p = p1 then Some [ i ]
-              else
-                match is_sub_policy p1 p with
-                | None -> loop (i + 1) t
-                | Some path -> Some (i :: path))
-        in
-        loop 0 prs
-    | RR ps ->
-        let rec loop i = function
-          | [] -> None
-          | p :: t -> (
-              if p = p1 then Some [ i ]
-              else
-                match is_sub_policy p1 p with
-                | None -> loop (i + 1) t
-                | Some path -> Some (i :: path))
-        in
-        loop 0 ps
+    | SP (prs, _) | WFQ prs -> scan prs ~arm:fst
+    | RR ps -> scan ps ~arm:Fun.id
 
 (* Same control flow as the old [Compare.compare_children], but each branch
    emits a [Planner.t] (sequence) rather than a single [Delta.t]. *)

@@ -16,6 +16,10 @@ type compiled = {
 let single ~commit ~decorated ~pes =
   { steps = [ (Rio_planner.Planner.True, commit) ]; decorated; pes }
 
+(* Extract the single-step commit from a [compiled] built by [single]. The
+   [failwith] arm is a debug-time invariant assertion: every caller (currently
+   just the patch fold at the bottom of this file) holds a [compiled] that
+   was constructed via [single] and therefore has exactly one step. *)
 let commit_of_single c =
   match c.steps with
   | [ (_, cmt) ] -> cmt
@@ -46,14 +50,6 @@ let make_counter ~start =
   fun () ->
     incr n;
     !n
-
-let rec policy_depth (p : Rio_core.Pol.t) : int =
-  let module P = Rio_core.Pol in
-  match p with
-  | P.FIFO _ -> 0
-  | P.SP (prs, _) | P.WFQ prs ->
-      1 + List.fold_left max 0 (List.map (fun (p, _) -> policy_depth p) prs)
-  | P.RR ps -> 1 + List.fold_left max 0 (List.map policy_depth ps)
 
 (* ------------------------------------------------------------------ *)
 (* ID-space and fake-root constants.                                  *)
@@ -198,7 +194,7 @@ let of_policy (p : Rio_core.Pol.t) : compiled =
       classes = frag.classes;
     }
   in
-  let pes = List.init (policy_depth p + 1) (fun d -> d) in
+  let pes = List.init (Rio_core.Pol.depth p + 1) (fun d -> d) in
   single
     ~commit:(Frag.to_commit (Frag.combine port_frag [ frag ]))
     ~decorated ~pes
@@ -268,7 +264,9 @@ let patch_one_arm_added ~prev ~arm_path ~arm ~meta =
   let parent_v, old_arity, pol_ty = parent_info parent in
   let fresh_v, fresh_s = counters_after prev in
   let arm_depth = List.length arm_path in
-  let new_pes = pes_extended_to_depth (arm_depth + policy_depth arm) prev.pes in
+  let new_pes =
+    pes_extended_to_depth (arm_depth + Rio_core.Pol.depth arm) prev.pes
+  in
   let pe_of_depth d = List.nth new_pes d in
   (* Compile the arm before allocating [new_step] so its internal IDs land
      lower — mirroring [of_policy]'s pre-order numbering. *)
@@ -356,7 +354,7 @@ let patch_remove ~prev ~arm_path =
 let patch_graft ~prev ~next ~path =
   let len = List.length path in
   let prev_max_depth = List.length prev.pes - 1 in
-  let next_max_depth = policy_depth next in
+  let next_max_depth = Rio_core.Pol.depth next in
   (* New PE assignment: layers above [prev] get fresh PEs, layers occupied
      by [prev] reuse [prev.pes] (so already-installed nodes keep their PEs),
      layers deeper than [prev] get more fresh PEs. *)
@@ -471,18 +469,22 @@ let parent_edge ~prev path =
    PE [pe_of_depth(arm_depth)], so the SP* layer is "free" depth-wise. The
    substrate (Zhiyuan) coalesces all three onto one logical slot.
 
-   Class routing at SP*: loser's classes route via [loser_step] (favoring the
-   loser per ranks 1.0 < 2.0); survivor-only classes route via [surv_step].
-   Shared classes go to loser; [Quiesce] later swings them to the survivor as
-   it drains the loser. The chain above SP* gains [Assoc]/[Map] only for
-   classes new to the survivor — existing-class chain entries already point at
+   Class routing at SP*: loser-only classes route via [loser_step]; the
+   survivor's classes (shared and survivor-only alike) route via [surv_step].
+   Per paper §3.4.5, a label shared between the old subtree and the survivor
+   belongs to the survivor from [Designate]'s firing onward. The favoring of
+   the loser per ranks 1.0 < 2.0 still applies to loser-only classes routed
+   to [loser_step]. The chain above SP* gains [Assoc]/[Map] only for classes
+   new to the survivor — existing-class chain entries already point at
    [parent_step], which we rewire from loser to SP* via [Emancipate]+[Adopt]. *)
 let patch_designate ~prev ~path ~(arm : Rio_core.Pol.t) =
   let loser = Decorated.walk prev.decorated path in
   let loser_v = Decorated.root_vpifo loser in
   let loser_classes = Decorated.subtree_classes loser in
   let arm_depth = List.length path in
-  let new_pes = pes_extended_to_depth (arm_depth + policy_depth arm) prev.pes in
+  let new_pes =
+    pes_extended_to_depth (arm_depth + Rio_core.Pol.depth arm) prev.pes
+  in
   let pe_n = List.nth new_pes arm_depth in
   let pe_of_depth d = List.nth new_pes d in
   let fresh_v, fresh_s = counters_after prev in
@@ -493,6 +495,9 @@ let patch_designate ~prev ~path ~(arm : Rio_core.Pol.t) =
   let new_classes = arm_frag.classes in
   let only_new =
     List.filter (fun c -> not (List.mem c loser_classes)) new_classes
+  in
+  let loser_only =
+    List.filter (fun c -> not (List.mem c new_classes)) loser_classes
   in
   let sp_v = fresh_v () in
   let loser_step = fresh_s () in
@@ -514,8 +519,8 @@ let patch_designate ~prev ~path ~(arm : Rio_core.Pol.t) =
         ];
         List.map (fun c -> Assoc (sp_v, c)) loser_classes;
         List.map (fun c -> Assoc (sp_v, c)) only_new;
-        List.map (fun c -> Map (sp_v, c, loser_step)) loser_classes;
-        List.map (fun c -> Map (sp_v, c, surv_step)) only_new;
+        List.map (fun c -> Map (sp_v, c, loser_step)) loser_only;
+        List.map (fun c -> Map (sp_v, c, surv_step)) new_classes;
         chain_emit (fun v _ c -> Assoc (v, c)) chain_above_sp only_new;
         chain_emit (fun v s c -> Map (v, c, s)) chain_above_sp only_new;
         [ Set_policy (sp_v, SP_star, 2) ];
@@ -534,17 +539,46 @@ let patch_designate ~prev ~path ~(arm : Rio_core.Pol.t) =
   in
   single ~commit ~decorated:new_decorated ~pes:new_pes
 
+(* Per-node Deassoc emits within a subtree (paper sketch.md §3.4.3 / §6.2:
+   every leaf in T and every internal node within C@τ must be Deassoc'd in
+   addition to the ancestor chain above C@τ). Quiesce emits no Unmap: silenced
+   flows' Map entries must outlive the silencing so packets already in flight
+   can route through the chain on the way to pop. [Isa_unmap] is paired with
+   [Isa_emancipate] inside [Remove], which fires only after the drain. *)
+let rec quiesce_interior (d : Decorated.t) : instr list =
+  let v = Decorated.root_vpifo d in
+  match d with
+  | Decorated.FIFO (_, c) -> [ Deassoc (v, c) ]
+  | _ ->
+      let children =
+        match d with
+        | Decorated.RR (_, es) -> List.map snd es
+        | Decorated.SP (_, es, _) -> List.map (fun (_, c, _) -> c) es
+        | Decorated.WFQ (_, es) -> List.map (fun (_, c, _) -> c) es
+        | Decorated.FIFO _ -> assert false
+      in
+      let all_classes = List.concat_map Decorated.subtree_classes children in
+      let deassocs = List.map (fun c -> Deassoc (v, c)) all_classes in
+      let recurse = List.concat_map quiesce_interior children in
+      deassocs @ recurse
+
 (* [Quiesce path]: stop new traffic from arriving at the subtree at [path] by
-   tearing down its class-routing entries along the ancestor chain. In-flight
-   packets continue to dequeue. [den(Quiesce) = id], so the decorated tree is
-   unchanged.
+   Deassoc'ing its leaves' classes at every node from the port root down
+   through the target's interior to each leaf (paper §3.4.3 / §6.2). Quiesce
+   strictly emits Deassoc only, never Unmap: live Map entries are load-bearing
+   for in-flight packets that still need to route on the way to pop. The
+   matching Unmap fires later inside [Remove]. [den(Quiesce) = id], so the
+   decorated tree is unchanged.
 
    SP*-aware: when [path]'s direct parent is a designated SP, the slot is the
-   loser inside a super-node and shared classes between loser and survivor
-   must be preserved (the survivor still needs them once the SP* collapses).
-   Above SP*, only loser-only classes are torn down. At SP* itself, all
-   loser-side maps are torn down, and shared-class maps are swung from
-   [loser_step] to [surv_step] so post-Quiesce traffic flows to the survivor. *)
+   loser inside a super-node. Above SP*, only loser-only classes are
+   Deassoc'd; shared classes are preserved so the survivor still receives
+   traffic through them. At SP*, only loser-only classes are Deassoc'd;
+   shared-class Map entries already point at [surv_step] (installed by
+   [Designate] at firing time per paper §3.4.5), so Quiesce has no Map work
+   to do. The interior walk runs in both branches: the loser's interior
+   Deassocs every target class top-to-bottom (shared classes included; the
+   survivor reaches its own leaves via a separate chain). *)
 let patch_quiesce ~prev ~path =
   let target = Decorated.walk prev.decorated path in
   let target_classes = Decorated.subtree_classes target in
@@ -558,33 +592,26 @@ let patch_quiesce ~prev ~path =
         | Decorated.SP _ -> Decorated.sp_designated p
         | _ -> false)
   in
+  let interior = quiesce_interior target in
   let commit =
     if not parent_is_designated_sp then
       let chain = full_chain_to ~prev path in
-      chain_emit (fun v s c -> Unmap (v, c, s)) chain target_classes
-      @ chain_emit (fun v _ c -> Deassoc (v, c)) chain target_classes
+      chain_emit (fun v _ c -> Deassoc (v, c)) chain target_classes @ interior
     else
       let parent_path, k = list_foot path in
       let sp_parent = Decorated.walk prev.decorated parent_path in
       let sp_v = Decorated.root_vpifo sp_parent in
-      let loser_step = Decorated.nth_step sp_parent k in
       let surv_idx = 1 - k in
-      let surv_step = Decorated.nth_step sp_parent surv_idx in
       let survivor_classes =
         Decorated.subtree_classes (Decorated.nth_child sp_parent surv_idx)
       in
       let only_loser =
         List.filter (fun c -> not (List.mem c survivor_classes)) target_classes
       in
-      let shared =
-        List.filter (fun c -> List.mem c survivor_classes) target_classes
-      in
       let chain_up = chain_above_slot ~prev parent_path in
-      chain_emit (fun v s c -> Unmap (v, c, s)) chain_up only_loser
-      @ chain_emit (fun v _ c -> Deassoc (v, c)) chain_up only_loser
-      @ List.map (fun c -> Unmap (sp_v, c, loser_step)) target_classes
+      chain_emit (fun v _ c -> Deassoc (v, c)) chain_up only_loser
       @ List.map (fun c -> Deassoc (sp_v, c)) only_loser
-      @ List.map (fun c -> Map (sp_v, c, surv_step)) shared
+      @ interior
   in
   single ~commit ~decorated:prev.decorated ~pes:prev.pes
 

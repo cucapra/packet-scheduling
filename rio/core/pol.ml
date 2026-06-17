@@ -13,35 +13,45 @@ let rec lookup x = function
   | (v, p) :: t when v = x -> (p, t)
   | (_, _) :: t -> lookup x t
 
-let rec sub cl st used (p : Ast.stream) =
-  let sub_ps = List.map (sub cl st used) in
-  let claim c =
-    if List.mem c !used then raise (DuplicateClass c)
+let rec sub cl st used (p : Ast.stream) : Ast.clss list * t =
+  let claim used c =
+    if List.mem c used then raise (DuplicateClass c)
     else if not (List.mem c cl) then raise (UndeclaredClass c)
-    else used := c :: !used
+    else c :: used
   in
   match p with
   | Var x ->
       let p, st = lookup x st in
       sub cl st used p
-  | Fifo c ->
-      claim c;
-      FIFO c
+  | Fifo c -> (claim used c, FIFO c)
   | Strict prs ->
       let ps, rs = List.split prs in
-      SP (List.combine (sub_ps ps) rs, false)
-  | RoundRobin ps -> RR (sub_ps ps)
+      let used, qs = List.fold_left_map (sub cl st) used ps in
+      (used, SP (List.combine qs rs, false))
+  | RoundRobin ps ->
+      let used, qs = List.fold_left_map (sub cl st) used ps in
+      (used, RR qs)
   | WeightedFair pws ->
       let ps, ws = List.split pws in
-      WFQ (List.combine (sub_ps ps) ws)
+      let used, qs = List.fold_left_map (sub cl st) used ps in
+      (used, WFQ (List.combine qs ws))
   | _ -> failwith "ERROR: unsupported policy"
 
+(* Within an SP, RR, or WFQ node, sibling order carries no semantics: the
+   discipline is defined by ranks, round-robin fairness, or per-arm weights,
+   not by source position. [normalize] uses that arm-order freedom to pick a
+   canonical sibling ordering, and the runtime echoes the normalized form
+   back to the user as the committed shape. Edits that only permute siblings
+   become no-ops after normalization (see "merely jumbled" tests in
+   tests/planner/test_planner.ml); edits that reorder *and* add or remove an
+   arm sniff as just the structural change, keeping the edit's footprint
+   small. *)
 let rec normalize p =
   match p with
   | FIFO _ -> p
   | SP (prs, designated) ->
-      (* SP arms canonicalize by rank ascending (the priority order is the
-         discipline-defining datum); ties break by arm content. *)
+      (* SP: rank ascending (the priority order is the discipline-defining
+         datum); ties break by arm content. *)
       SP
         ( List.map (fun (p, r) -> (normalize p, r)) prs
           |> List.sort (fun (p1, r1) (p2, r2) ->
@@ -50,8 +60,8 @@ let rec normalize p =
           designated )
   | RR ps -> RR (List.map normalize ps |> List.sort compare)
   | WFQ pws ->
-      (* WFQ arms canonicalize by arm content (weights are independent
-         shares; same-arm collision is the rare case); ties break by weight. *)
+      (* WFQ: arm content first (weights are independent shares; same-arm
+         collisions are rare); ties break by weight. *)
       WFQ
         (List.map (fun (p, w) -> (normalize p, w)) pws
         |> List.sort (fun (p1, w1) (p2, w2) ->
@@ -60,7 +70,8 @@ let rec normalize p =
 
 (* Look up any variables and substitute them in. Then normalize the resulting policy. *)
 let of_program (classes, assigns, ret) =
-  sub classes assigns (ref []) ret |> normalize
+  let _, p = sub classes assigns [] ret in
+  normalize p
 
 let rec to_string p =
   let fmt = Printf.sprintf in
@@ -72,8 +83,14 @@ let rec to_string p =
       fmt "strict[%s]" (join prs to_string)
   | RR ps -> fmt "rr[%s]" (join ps to_string)
   | WFQ pws ->
-      let to_string (p, w) = fmt "(%s, %f)" (to_string p) w in
+      let to_string (p, w) = fmt "(%s, %g)" (to_string p) w in
       fmt "wfq[%s]" (join pws to_string)
+
+let rec depth = function
+  | FIFO _ -> 0
+  | SP (prs, _) | WFQ prs ->
+      1 + List.fold_left max 0 (List.map (fun (p, _) -> depth p) prs)
+  | RR ps -> 1 + List.fold_left max 0 (List.map depth ps)
 
 let rec walk p path =
   match (p, path) with

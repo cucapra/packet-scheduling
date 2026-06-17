@@ -11,11 +11,24 @@ type pol_ty =
   | SP
   | WFQ
   | SP_star
-(* The runtime-only counterpart of [SP] used by [Designate]'s lowering:
-         marks a v as the head of a designated super-node so the substrate
-         allocates super-node hardware. Spawned via [Set_policy (v, SP_star,
-         2)] right after a [Designate]; cleared at [Undesignate] time. Never
-         emitted by [of_policy] or by the source DSL. *)
+(* SP_star: the IR-level marker that [v] hosts a designated super-node (an
+   SP* in the paper's terminology). Carries the contract:
+
+   - Shape. A designated super-node has exactly two children, adopted at
+     indices 0 (loser) and 1 (survivor) with [Set_arm_meta] ranks 1.0 and 2.0
+     respectively, so the loser is favored while it drains.
+   - Lifecycle. Emitted exactly once per super-node by [patch_designate] via
+     [Set_policy (sp_v, SP_star, 2)]; cleared implicitly at [Undesignate]
+     when [GC sp_v] retires the v. Never emitted by [of_policy] or by the
+     source DSL.
+   - Same-PE invariant (paper/code-divergences.md A4). [sp_v], the
+     loser-subtree root, and the survivor-subtree root are guaranteed to
+     live on the same PE. [patch_designate] places all three at
+     [pe_of_depth(arm_depth)] so the substrate may coalesce them into a
+     single physical slot; that coalescing is the substrate's prerogative,
+     not an ISA-level lowering choice.
+   - Mirror. [Decorated.SP]'s trailing [bool] flag is the decorated-tree
+     analogue at the source-shape level. *)
 
 type instr =
   | Spawn of vpifo * pe
