@@ -523,10 +523,11 @@ let rr_ab_to_rr_def_expected =
 (* Whole-tree replacement via constructor mismatch at the root: prev =
    sp[A,B] (vpifos 100/101/102), next = rr[A,B]: same children,
    different root policy. The class sets coincide ({A,B}={A,B}) so the
-   port root's existing routing is preserved (no chain-above edits)
-   and Quiesce's SP*-aware branch fires entirely at sp_v=106: unmap A
-   and B off loser_step and remap them onto surv_step so the survivor
-   takes over the moment the loser drains. *)
+   port root's existing routing is preserved (no chain-above edits).
+   Designate routes both shared classes through surv_step at sp_v=106
+   (paper §3.4.5: shared classes belong to the survivor from Designate's
+   firing onward), and Quiesce's SP*-aware branch has no loser-only work
+   to do at sp_v: only the loser interior drains. *)
 let strict_ab_to_rr_ab_expected =
   [
     t_
@@ -551,16 +552,14 @@ let strict_ab_to_rr_ab_expected =
         Adopt (999, 99, 106);
         Assoc (106, "A");
         Assoc (106, "B");
-        Map (106, "A", 1004);
-        Map (106, "B", 1004);
+        Map (106, "A", 1005);
+        Map (106, "B", 1005);
         Set_policy (106, SP_star, 2);
         Set_arm_meta (106, 1004, 1.0);
         Set_arm_meta (106, 1005, 2.0);
       ];
     t_
       [
-        Map (106, "A", 1005);
-        Map (106, "B", 1005);
         Deassoc (100, "A");
         Deassoc (100, "B");
         Deassoc (101, "A");
