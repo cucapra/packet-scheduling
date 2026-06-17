@@ -4,10 +4,33 @@
 include Instr
 
 type compiled = {
-  commit : commit;
+  steps : (Rio_planner.Planner.guard * commit) list;
   decorated : Decorated.t;
   pes : pe list;
 }
+
+(* Helper for the per-delta lowering functions: each produces a single commit
+   that fires immediately, so it wraps as a single-element [steps] list under
+   the [True] guard. [Ir.patch]'s fold later re-wraps with the planner's
+   actual guard. *)
+let single ~commit ~decorated ~pes =
+  { steps = [ (Rio_planner.Planner.True, commit) ]; decorated; pes }
+
+let commit_of_single c =
+  match c.steps with
+  | [ (_, cmt) ] -> cmt
+  | _ -> failwith "Ir: expected a single-step compiled result"
+
+let string_of_steps steps =
+  let module P = Rio_planner.Planner in
+  let guard_to_string = function
+    | P.True -> "True"
+    | P.Empty p -> Printf.sprintf "Empty %s" (Rio_delta.Delta.path_to_string p)
+  in
+  steps
+  |> List.map (fun (g, c) ->
+         Printf.sprintf "@%s:\n%s" (guard_to_string g) (string_of_commit c))
+  |> String.concat "\n"
 
 (* ------------------------------------------------------------------ *)
 (* Generic helpers.                                                   *)
@@ -176,7 +199,9 @@ let of_policy (p : Rio_core.Pol.t) : compiled =
     }
   in
   let pes = List.init (policy_depth p + 1) (fun d -> d) in
-  { commit = Frag.to_commit (Frag.combine port_frag [ frag ]); decorated; pes }
+  single
+    ~commit:(Frag.to_commit (Frag.combine port_frag [ frag ]))
+    ~decorated ~pes
 
 (* ------------------------------------------------------------------ *)
 (* Patch: helpers shared across the patch_* functions.                *)
@@ -257,7 +282,7 @@ let replace_at ~prev ~chain ~removed ~arm_depth ~arm ~rewrite_decorated =
         gc_subtree removed;
       ]
   in
-  { commit; decorated = rewrite_decorated arm_decorated; pes = new_pes }
+  single ~commit ~decorated:(rewrite_decorated arm_decorated) ~pes:new_pes
 
 (* [meta] is the new slot metadata supplied by [next]: a weight for a WFQ slot
    when the user changed both arm and weight in the same edit. SP rank-changes
@@ -280,7 +305,9 @@ let patch_one_arm_replaced ~prev ~arm_path ~arm ~meta =
         Decorated.rewrite_at prev.decorated parent_path (fun p ->
             p |> Decorated.replace_arm k arm_d |> weight_rewrite))
   in
-  { c with commit = c.commit @ weight_instrs }
+  single
+    ~commit:(commit_of_single c @ weight_instrs)
+    ~decorated:c.decorated ~pes:c.pes
 
 let patch_whole_tree_replace ~prev ~next =
   replace_at ~prev ~chain:port_chain ~removed:prev.decorated ~arm_depth:0
@@ -303,11 +330,9 @@ let patch_meta_changed ~prev ~path ~new_meta =
     Decorated.rewrite_at prev.decorated parent_path
       (Decorated.set_meta k new_meta)
   in
-  {
-    commit = [ Set_arm_meta (parent_v, step_k, new_meta) ];
-    decorated = new_decorated;
-    pes = prev.pes;
-  }
+  single
+    ~commit:[ Set_arm_meta (parent_v, step_k, new_meta) ]
+    ~decorated:new_decorated ~pes:prev.pes
 
 (* ------------------------------------------------------------------ *)
 (* Patch: arm add / remove.                                           *)
@@ -362,11 +387,9 @@ let patch_one_arm_added ~prev ~arm_path ~arm ~meta =
   let new_decorated =
     Decorated.rewrite_at prev.decorated parent_path decorated_update
   in
-  {
-    commit = Frag.to_commit (Frag.combine local [ arm_frag ]);
-    decorated = new_decorated;
-    pes = new_pes;
-  }
+  single
+    ~commit:(Frag.to_commit (Frag.combine local [ arm_frag ]))
+    ~decorated:new_decorated ~pes:new_pes
 
 (* Per-delta lowering for [Delta.Remove { path; arm }]. Emits the structural
    teardown ([Change_arity] shrink, parent-side [Emancipate], [GC] of the
@@ -394,7 +417,7 @@ let patch_remove ~prev ~arm_path =
   in
   (* Removal can leave [pes] over-long if the dropped arm was the deepest
      in the tree, but extra trailing entries are harmless. *)
-  { commit; decorated = new_decorated; pes = prev.pes }
+  single ~commit ~decorated:new_decorated ~pes:prev.pes
 
 (* ------------------------------------------------------------------ *)
 (* Patch: super- and sub-policy.                                      *)
@@ -439,7 +462,7 @@ let patch_graft ~prev ~next ~path =
     @ chain_emit (fun v _ c -> Assoc (v, c)) port_chain only_added
     @ chain_emit (fun v s c -> Map (v, c, s)) port_chain only_added
   in
-  { commit = Frag.to_commit frag @ rewire; decorated; pes = new_pes }
+  single ~commit:(Frag.to_commit frag @ rewire) ~decorated ~pes:new_pes
 
 (* [next] sits inside [prev] at [path]: re-root the tree to that existing
    subtree by repointing the port root's single step from prev's old real
@@ -472,7 +495,7 @@ let patch_change_root ~prev ~path =
        @ List.map (fun v -> GC v) to_gc)
   in
   let new_pes = List.filteri (fun i _ -> i >= List.length path) prev.pes in
-  { commit; decorated = new_root; pes = new_pes }
+  single ~commit ~decorated:new_root ~pes:new_pes
 
 (* ------------------------------------------------------------------ *)
 (* Patch: per-production lowerings for Designate / Quiesce / Undesignate.
@@ -532,7 +555,7 @@ let patch_designate ~prev ~path ~(arm : Rio_core.Pol.t) =
         chain_emit (fun v s c -> Map (v, c, s)) chain only_added;
       ]
   in
-  { commit; decorated = prev.decorated; pes = new_pes }
+  single ~commit ~decorated:prev.decorated ~pes:new_pes
 
 (* [Quiesce path]: stop new traffic from arriving at the subtree at [path] by
    tearing down the class-routing entries along its ancestor chain.
@@ -546,7 +569,7 @@ let patch_quiesce ~prev ~path =
     chain_emit (fun v s c -> Unmap (v, c, s)) chain target_classes
     @ chain_emit (fun v _ c -> Deassoc (v, c)) chain target_classes
   in
-  { commit; decorated = prev.decorated; pes = prev.pes }
+  single ~commit ~decorated:prev.decorated ~pes:prev.pes
 
 (* [Undesignate path]: collapse the designated super-node at [path], letting
    the survivor take over the slot. We don't model super-nodes in
@@ -556,11 +579,8 @@ let patch_quiesce ~prev ~path =
 let patch_undesignate ~prev ~path =
   let removed = Decorated.walk prev.decorated path in
   let loser_v = Decorated.root_vpifo removed in
-  {
-    commit = [ Undesignate loser_v ];
-    decorated = prev.decorated;
-    pes = prev.pes;
-  }
+  single ~commit:[ Undesignate loser_v ] ~decorated:prev.decorated
+    ~pes:prev.pes
 
 (* ------------------------------------------------------------------ *)
 (* Patch: top-level dispatch.                                         *)
@@ -623,7 +643,7 @@ let patch ~prev ~(next : Rio_core.Pol.t) : compiled option =
            (handled only inside the Replace idiom)"
   in
   match P.analyze (Decorated.to_policy prev.decorated) next with
-  | [] -> Some { commit = []; decorated = prev.decorated; pes = prev.pes }
+  | [] -> Some { steps = []; decorated = prev.decorated; pes = prev.pes }
   | seq -> (
       match replace_block_path seq with
       | Some (path, arm, meta) ->
@@ -631,14 +651,15 @@ let patch ~prev ~(next : Rio_core.Pol.t) : compiled option =
           else Some (patch_one_arm_replaced ~prev ~arm_path:path ~arm ~meta)
       | None -> (
           try
-            let final, all_commits =
+            let final, rev_steps =
               List.fold_left
-                (fun (state, acc) step ->
+                (fun (state, acc) ((guard, _delta) as step) ->
                   let result = apply_step state step in
-                  (result, acc @ result.commit))
+                  let step_commit = commit_of_single result in
+                  (result, (guard, step_commit) :: acc))
                 (prev, []) seq
             in
-            Some { final with commit = all_commits }
+            Some { final with steps = List.rev rev_steps }
           with Failure _ -> None))
 
 module Decorated = Decorated

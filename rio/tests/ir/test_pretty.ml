@@ -5,14 +5,17 @@ open OUnit2
 
 let prog_dir = "../progs/"
 
-(* [.sched] file -> pretty-printed IR string. We project [Ir.of_policy]'s
-   [compiled] result down to its [.commit] field, since [string_of_commit]
-   only knows about the bare instruction list. *)
+(* [.sched] file -> pretty-printed IR string. [Ir.of_policy] now returns a
+   one-element [steps] list under the [True] guard; project it down to that
+   single commit, since [string_of_commit] only knows about the bare
+   instruction list. *)
 let compile_to_pretty filename =
   let c =
     prog_dir ^ filename |> Parser.parse_file |> Pol.of_program |> Ir.of_policy
   in
-  string_of_commit c.commit
+  match c.steps with
+  | [ (_, commit) ] -> string_of_commit commit
+  | _ -> failwith "test_pretty: expected single-step compile"
 
 (* ----------------------------------------------------------------------- *)
 (* rr[A, B]                                                                *)

@@ -2,6 +2,7 @@ open Rio_core
 open Frontend
 open OUnit2
 open Ir
+module Planner = Rio_planner.Planner
 
 let prog_dir = "../progs/work_conserving/"
 
@@ -21,23 +22,39 @@ let patch_files prev_file next_file =
       assert_failure
         (Printf.sprintf "patch %s -> %s returned None" prev_file next_file)
 
-let make_delta_test name prev_file next_file (expected : commit) =
+let make_delta_test name prev_file next_file
+    (expected : (Planner.guard * commit) list) =
   name >:: fun _ ->
   let c = patch_files prev_file next_file in
-  assert_equal ~printer:Ir.string_of_commit expected c.commit
+  assert_equal ~printer:Ir.string_of_steps expected c.steps
+
+(* Brief constructors for guarded-step literals, just to keep fixtures readable. *)
+let t_ c = (Planner.True, c)
+let e_ p c = (Planner.Empty p, c)
+
+(* Extract the commit from a single-step result. Used by the per-production
+   helper tests ([patch_designate], [patch_quiesce], [patch_undesignate])
+   that exercise a single lowering directly. *)
+let single_commit c =
+  match c.steps with
+  | [ (_, commit) ] -> commit
+  | _ -> assert_failure "single_commit: expected exactly one step"
 
 (* ArmAdded *)
 
 (* There's a walkthrough for this case in the topmatter of the PR. *)
-let strict_ab_to_abc_expected : commit =
+let strict_ab_to_abc_expected =
   [
-    Spawn (103, 1);
-    Adopt (1002, 100, 103);
-    Assoc (100, "C");
-    Assoc (103, "C");
-    Map (100, "C", 1002);
-    Change_arity (100, 3);
-    Set_arm_meta (100, 1002, 3.0);
+    t_
+      [
+        Spawn (103, 1);
+        Adopt (1002, 100, 103);
+        Assoc (100, "C");
+        Assoc (103, "C");
+        Map (100, "C", 1002);
+        Change_arity (100, 3);
+        Set_arm_meta (100, 1002, 3.0);
+      ];
   ]
 
 (* Mid-insert in SP: prev SP(A,C) parsed with positional ranks A:1, C:2.
@@ -46,26 +63,32 @@ let strict_ab_to_abc_expected : commit =
    comes from [next]'s positional sugar (1-indexed source position 2),
    which here collides with C's preserved rank — a known sharp edge of
    bare positional sugar across mid-mutations. *)
-let strict_ac_to_abc_expected : commit =
+let strict_ac_to_abc_expected =
   [
-    Spawn (103, 1);
-    Adopt (1002, 100, 103);
-    Assoc (100, "B");
-    Assoc (103, "B");
-    Map (100, "B", 1002);
-    Change_arity (100, 3);
-    Set_arm_meta (100, 1002, 2.0);
+    t_
+      [
+        Spawn (103, 1);
+        Adopt (1002, 100, 103);
+        Assoc (100, "B");
+        Assoc (103, "B");
+        Map (100, "B", 1002);
+        Change_arity (100, 3);
+        Set_arm_meta (100, 1002, 2.0);
+      ];
   ]
 
 (* RR arm appended at the root. Same shape as SP but no Set_arm_meta. *)
-let rr_ab_to_abc_expected : commit =
+let rr_ab_to_abc_expected =
   [
-    Spawn (103, 1);
-    Adopt (1002, 100, 103);
-    Assoc (100, "C");
-    Assoc (103, "C");
-    Map (100, "C", 1002);
-    Change_arity (100, 3);
+    t_
+      [
+        Spawn (103, 1);
+        Adopt (1002, 100, 103);
+        Assoc (100, "C");
+        Assoc (103, "C");
+        Map (100, "C", 1002);
+        Change_arity (100, 3);
+      ];
   ]
 
 (* Deep arm add. complex_tree's normalized root is WFQ with children sorted
@@ -73,16 +96,19 @@ let rr_ab_to_abc_expected : commit =
    has parent vpifo 105 and arity 3; complex_tree leaves the counters at
    next_vpifo=112, next_step=1011. New FIFO NEW lives one level below the
    RR, so PE 2. *)
-let complex_tree_add_deep_expected : commit =
+let complex_tree_add_deep_expected =
   [
-    Spawn (112, 2);
-    Adopt (1011, 105, 112);
-    Assoc (100, "NEW");
-    Assoc (105, "NEW");
-    Assoc (112, "NEW");
-    Map (100, "NEW", 1009);
-    Map (105, "NEW", 1011);
-    Change_arity (105, 4);
+    t_
+      [
+        Spawn (112, 2);
+        Adopt (1011, 105, 112);
+        Assoc (100, "NEW");
+        Assoc (105, "NEW");
+        Assoc (112, "NEW");
+        Map (100, "NEW", 1009);
+        Map (105, "NEW", 1011);
+        Change_arity (105, 4);
+      ];
   ]
 
 let one_arm_added_tests =
@@ -103,15 +129,18 @@ let one_arm_added_tests =
    (A), 1001 (B). Adding FIFO C at slot 2 with weight 3 mints v=103 (PE 1)
    and step 1002, plus a single Set_arm_meta on the new step (no SP-style
    shifts: WFQ slots are independent). *)
-let wfq_ba_to_abc_expected : commit =
+let wfq_ba_to_abc_expected =
   [
-    Spawn (103, 1);
-    Adopt (1002, 100, 103);
-    Assoc (100, "C");
-    Assoc (103, "C");
-    Map (100, "C", 1002);
-    Change_arity (100, 3);
-    Set_arm_meta (100, 1002, 3.0);
+    t_
+      [
+        Spawn (103, 1);
+        Adopt (1002, 100, 103);
+        Assoc (100, "C");
+        Assoc (103, "C");
+        Map (100, "C", 1002);
+        Change_arity (100, 3);
+        Set_arm_meta (100, 1002, 3.0);
+      ];
   ]
 
 (* complex_tree_partial: WFQ at root with two children, SP[A,B,C] (weight 1)
@@ -124,34 +153,37 @@ let wfq_ba_to_abc_expected : commit =
    RR-GH after normalize): arm internals land on v=108 (RR, PE 1) plus
    109/110/111 (D/E/F, PE 2); arm-internal adopts on steps 1007/1008/1009.
    The new parent-to-child step is 1010, with Set_arm_meta(100, 1010, 2.0). *)
-let complex_tree_partial_to_full_expected : commit =
+let complex_tree_partial_to_full_expected =
   [
-    Spawn (108, 1);
-    Spawn (109, 2);
-    Spawn (110, 2);
-    Spawn (111, 2);
-    Adopt (1010, 100, 108);
-    Adopt (1007, 108, 109);
-    Adopt (1008, 108, 110);
-    Adopt (1009, 108, 111);
-    Assoc (100, "D");
-    Assoc (100, "E");
-    Assoc (100, "F");
-    Assoc (108, "D");
-    Assoc (108, "E");
-    Assoc (108, "F");
-    Assoc (109, "D");
-    Assoc (110, "E");
-    Assoc (111, "F");
-    Map (100, "D", 1010);
-    Map (100, "E", 1010);
-    Map (100, "F", 1010);
-    Map (108, "D", 1007);
-    Map (108, "E", 1008);
-    Map (108, "F", 1009);
-    Set_policy (108, RR, 3);
-    Change_arity (100, 3);
-    Set_arm_meta (100, 1010, 2.0);
+    t_
+      [
+        Spawn (108, 1);
+        Spawn (109, 2);
+        Spawn (110, 2);
+        Spawn (111, 2);
+        Adopt (1010, 100, 108);
+        Adopt (1007, 108, 109);
+        Adopt (1008, 108, 110);
+        Adopt (1009, 108, 111);
+        Assoc (100, "D");
+        Assoc (100, "E");
+        Assoc (100, "F");
+        Assoc (108, "D");
+        Assoc (108, "E");
+        Assoc (108, "F");
+        Assoc (109, "D");
+        Assoc (110, "E");
+        Assoc (111, "F");
+        Map (100, "D", 1010);
+        Map (100, "E", 1010);
+        Map (100, "F", 1010);
+        Map (108, "D", 1007);
+        Map (108, "E", 1008);
+        Map (108, "F", 1009);
+        Set_policy (108, RR, 3);
+        Change_arity (100, 3);
+        Set_arm_meta (100, 1010, 2.0);
+      ];
   ]
 
 let one_arm_added_wfq_tests =
@@ -168,7 +200,7 @@ let one_arm_added_wfq_tests =
 (* WFQ root with three FIFO arms: vpifo IDs 100 (root), 101/102/103 (A/B/C);
    adopt steps 1000/1001/1002. Bumping B's weight 1 -> 5 should emit a single
    Set_arm_meta on the root for B's step. *)
-let wfq_abc_to_one_weight_expected : commit = [ Set_arm_meta (100, 1001, 5.0) ]
+let wfq_abc_to_one_weight_expected = [ t_ [ Set_arm_meta (100, 1001, 5.0) ] ]
 
 let meta_changed_tests =
   [
@@ -183,42 +215,48 @@ let meta_changed_tests =
    structural teardown ([Change_arity] shrink, parent-side [Emancipate], and
    [GC] of the removed subtree). *)
 
-(* SP[A,B,C] -> SP[A,B]: drop C (last, index 2). No SP weight shifts. *)
-let strict_abc_to_ab_expected : commit =
+(* SP[A,B,C] -> SP[A,B]: drop C (last, index 2). No SP weight shifts.
+   Two guarded steps: [Quiesce] under [True] tears down class C's routing on
+   the chain; [Remove] under [Empty [2]] waits for the subtree to drain
+   before emitting the structural teardown. *)
+let strict_abc_to_ab_expected =
   [
-    Unmap (99, "C", 999);
-    Unmap (100, "C", 1002);
-    Deassoc (99, "C");
-    Deassoc (100, "C");
-    Change_arity (100, 2);
-    Emancipate (1002, 100, 103);
-    GC 103;
+    t_
+      [
+        Unmap (99, "C", 999);
+        Unmap (100, "C", 1002);
+        Deassoc (99, "C");
+        Deassoc (100, "C");
+      ];
+    e_ [ 2 ] [ Change_arity (100, 2); Emancipate (1002, 100, 103); GC 103 ];
   ]
 
 (* SP[A,B,C] -> SP[A,C]: drop B (mid, index 1). Existing SP arms keep their
    ranks (per paper's [init_slot_Strict(_, p) = p]); no Set_arm_meta is
    emitted for surviving siblings. *)
-let strict_abc_to_ac_expected : commit =
+let strict_abc_to_ac_expected =
   [
-    Unmap (99, "B", 999);
-    Unmap (100, "B", 1001);
-    Deassoc (99, "B");
-    Deassoc (100, "B");
-    Change_arity (100, 2);
-    Emancipate (1001, 100, 102);
-    GC 102;
+    t_
+      [
+        Unmap (99, "B", 999);
+        Unmap (100, "B", 1001);
+        Deassoc (99, "B");
+        Deassoc (100, "B");
+      ];
+    e_ [ 1 ] [ Change_arity (100, 2); Emancipate (1001, 100, 102); GC 102 ];
   ]
 
 (* RR[A,B,C] -> RR[A,B]: drop C from RR. No weight shifts (RR is unweighted). *)
-let rr_abc_to_ab_expected : commit =
+let rr_abc_to_ab_expected =
   [
-    Unmap (99, "C", 999);
-    Unmap (100, "C", 1002);
-    Deassoc (99, "C");
-    Deassoc (100, "C");
-    Change_arity (100, 2);
-    Emancipate (1002, 100, 103);
-    GC 103;
+    t_
+      [
+        Unmap (99, "C", 999);
+        Unmap (100, "C", 1002);
+        Deassoc (99, "C");
+        Deassoc (100, "C");
+      ];
+    e_ [ 2 ] [ Change_arity (100, 2); Emancipate (1002, 100, 103); GC 103 ];
   ]
 
 let one_arm_removed_tests =
@@ -237,34 +275,43 @@ let one_arm_removed_tests =
    new arm rides on step 1001; B's super-node is set up via Designate(102,
    103). Ancestor routing on root vpifo 100 shifts B → D (Unmap/Deassoc
    then Assoc/Map). GC marks 102. *)
-let rr_ab_to_ad_expected : commit =
+(* Replace is currently still bundled as a single [True]-guarded step (the
+   Designate/Quiesce/Undesignate ordering lives inside the monolithic
+   lowering); commit B will split it into per-delta guarded steps. *)
+let rr_ab_to_ad_expected =
   [
-    Spawn (103, 1);
-    Assoc (103, "D");
-    Designate (102, 103);
-    Unmap (100, "B", 1001);
-    Deassoc (100, "B");
-    Assoc (100, "D");
-    Map (100, "D", 1001);
-    Undesignate 102;
-    GC 102;
+    t_
+      [
+        Spawn (103, 1);
+        Assoc (103, "D");
+        Designate (102, 103);
+        Unmap (100, "B", 1001);
+        Deassoc (100, "B");
+        Assoc (100, "D");
+        Map (100, "D", 1001);
+        Undesignate 102;
+        GC 102;
+      ];
   ]
 
 (* SP[A,B] -> SP[A,C]: arm-swap at slot 1, AND the slot's rank changes
    (B was rank 2 in strict_AB; C is rank 3 in strict_AC). The slot's
    meta gets a Set_arm_meta after the Designate/Undesignate flow. *)
-let strict_ab_to_ac_expected : commit =
+let strict_ab_to_ac_expected =
   [
-    Spawn (103, 1);
-    Assoc (103, "C");
-    Designate (102, 103);
-    Unmap (100, "B", 1001);
-    Deassoc (100, "B");
-    Assoc (100, "C");
-    Map (100, "C", 1001);
-    Undesignate 102;
-    GC 102;
-    Set_arm_meta (100, 1001, 3.0);
+    t_
+      [
+        Spawn (103, 1);
+        Assoc (103, "C");
+        Designate (102, 103);
+        Unmap (100, "B", 1001);
+        Deassoc (100, "B");
+        Assoc (100, "C");
+        Map (100, "C", 1001);
+        Undesignate 102;
+        GC 102;
+        Set_arm_meta (100, 1001, 3.0);
+      ];
   ]
 
 let one_arm_replaced_tests =
@@ -280,18 +327,21 @@ let one_arm_replaced_tests =
    v=104 (PE 1), is [Designate]d onto v=103, ancestor routing on v=100
    swings C → Z, the slot's weight gets a single [Set_arm_meta], and
    v=103 is GC'd. *)
-let wfq_abc_to_abz_diff_expected : commit =
+let wfq_abc_to_abz_diff_expected =
   [
-    Spawn (104, 1);
-    Assoc (104, "Z");
-    Designate (103, 104);
-    Unmap (100, "C", 1002);
-    Deassoc (100, "C");
-    Assoc (100, "Z");
-    Map (100, "Z", 1002);
-    Undesignate 103;
-    GC 103;
-    Set_arm_meta (100, 1002, 7.0);
+    t_
+      [
+        Spawn (104, 1);
+        Assoc (104, "Z");
+        Designate (103, 104);
+        Unmap (100, "C", 1002);
+        Deassoc (100, "C");
+        Assoc (100, "Z");
+        Map (100, "Z", 1002);
+        Undesignate 103;
+        GC 103;
+        Set_arm_meta (100, 1002, 7.0);
+      ];
   ]
 
 let one_arm_replaced_wfq_tests =
@@ -309,40 +359,43 @@ let one_arm_replaced_wfq_tests =
    servicing new, and rewrites the port root's classifier from
    {A,B} → {D,E,F} all riding on [port_root_step]. GCs cover every prev
    vpifo. *)
-let rr_ab_to_rr_def_expected : commit =
+let rr_ab_to_rr_def_expected =
   [
-    Spawn (103, 0);
-    Spawn (104, 1);
-    Spawn (105, 1);
-    Spawn (106, 1);
-    Adopt (1002, 103, 104);
-    Adopt (1003, 103, 105);
-    Adopt (1004, 103, 106);
-    Assoc (103, "D");
-    Assoc (103, "E");
-    Assoc (103, "F");
-    Assoc (104, "D");
-    Assoc (105, "E");
-    Assoc (106, "F");
-    Map (103, "D", 1002);
-    Map (103, "E", 1003);
-    Map (103, "F", 1004);
-    Set_policy (103, RR, 3);
-    Designate (100, 103);
-    Unmap (99, "A", 999);
-    Unmap (99, "B", 999);
-    Deassoc (99, "A");
-    Deassoc (99, "B");
-    Assoc (99, "D");
-    Assoc (99, "E");
-    Assoc (99, "F");
-    Map (99, "D", 999);
-    Map (99, "E", 999);
-    Map (99, "F", 999);
-    Undesignate 100;
-    GC 100;
-    GC 101;
-    GC 102;
+    t_
+      [
+        Spawn (103, 0);
+        Spawn (104, 1);
+        Spawn (105, 1);
+        Spawn (106, 1);
+        Adopt (1002, 103, 104);
+        Adopt (1003, 103, 105);
+        Adopt (1004, 103, 106);
+        Assoc (103, "D");
+        Assoc (103, "E");
+        Assoc (103, "F");
+        Assoc (104, "D");
+        Assoc (105, "E");
+        Assoc (106, "F");
+        Map (103, "D", 1002);
+        Map (103, "E", 1003);
+        Map (103, "F", 1004);
+        Set_policy (103, RR, 3);
+        Designate (100, 103);
+        Unmap (99, "A", 999);
+        Unmap (99, "B", 999);
+        Deassoc (99, "A");
+        Deassoc (99, "B");
+        Assoc (99, "D");
+        Assoc (99, "E");
+        Assoc (99, "F");
+        Map (99, "D", 999);
+        Map (99, "E", 999);
+        Map (99, "F", 999);
+        Undesignate 100;
+        GC 100;
+        GC 101;
+        GC 102;
+      ];
   ]
 
 (* Whole-tree replacement via constructor mismatch at the root (Delta
@@ -353,25 +406,28 @@ let rr_ab_to_rr_def_expected : commit =
    builds the new tree off fresh ids, [Designate]s, drains. The class
    sets coincide here so the port root's existing routing is preserved
    and no {Unmap,Deassoc,Assoc,Map} land on it. *)
-let strict_ab_to_rr_ab_expected : commit =
+let strict_ab_to_rr_ab_expected =
   [
-    Spawn (103, 0);
-    Spawn (104, 1);
-    Spawn (105, 1);
-    Adopt (1002, 103, 104);
-    Adopt (1003, 103, 105);
-    Assoc (103, "A");
-    Assoc (103, "B");
-    Assoc (104, "A");
-    Assoc (105, "B");
-    Map (103, "A", 1002);
-    Map (103, "B", 1003);
-    Set_policy (103, RR, 2);
-    Designate (100, 103);
-    Undesignate 100;
-    GC 100;
-    GC 101;
-    GC 102;
+    t_
+      [
+        Spawn (103, 0);
+        Spawn (104, 1);
+        Spawn (105, 1);
+        Adopt (1002, 103, 104);
+        Adopt (1003, 103, 105);
+        Assoc (103, "A");
+        Assoc (103, "B");
+        Assoc (104, "A");
+        Assoc (105, "B");
+        Map (103, "A", 1002);
+        Map (103, "B", 1003);
+        Set_policy (103, RR, 2);
+        Designate (100, 103);
+        Undesignate 100;
+        GC 100;
+        GC 101;
+        GC 102;
+      ];
   ]
 
 let whole_tree_replace_tests =
@@ -394,25 +450,29 @@ let whole_tree_replace_tests =
    child) and GC's the now-empty SP root v100. The dropped-class block on
    the port root is empty by this point because [Quiesce] already drained B
    and C; the only [GC] left for [ChangeRoot] is v100 itself. *)
-let strict_abc_to_fifo_a_expected : commit =
+let strict_abc_to_fifo_a_expected =
   [
-    Unmap (99, "C", 999);
-    Unmap (100, "C", 1002);
-    Deassoc (99, "C");
-    Deassoc (100, "C");
-    Change_arity (100, 2);
-    Emancipate (1002, 100, 103);
-    GC 103;
-    Unmap (99, "B", 999);
-    Unmap (100, "B", 1001);
-    Deassoc (99, "B");
-    Deassoc (100, "B");
-    Change_arity (100, 1);
-    Emancipate (1001, 100, 102);
-    GC 102;
-    Emancipate (999, 99, 100);
-    Adopt (999, 99, 101);
-    GC 100;
+    (* Retire([2]) C: Quiesce then Remove. *)
+    t_
+      [
+        Unmap (99, "C", 999);
+        Unmap (100, "C", 1002);
+        Deassoc (99, "C");
+        Deassoc (100, "C");
+      ];
+    e_ [ 2 ] [ Change_arity (100, 2); Emancipate (1002, 100, 103); GC 103 ];
+    (* Retire([1]) B: Quiesce then Remove. *)
+    t_
+      [
+        Unmap (99, "B", 999);
+        Unmap (100, "B", 1001);
+        Deassoc (99, "B");
+        Deassoc (100, "B");
+      ];
+    e_ [ 1 ] [ Change_arity (100, 1); Emancipate (1001, 100, 102); GC 102 ];
+    (* ChangeRoot([0]): swing the port root from v100 to v101 and GC the SP
+       root. Dropped-class block is empty (B and C already drained). *)
+    t_ [ Emancipate (999, 99, 100); Adopt (999, 99, 101); GC 100 ];
   ]
 
 let change_root_tests =
@@ -442,73 +502,76 @@ let change_root_tests =
    [complex_tree] adds beyond [strict_ABC] (D, E, F, G, H in the
    normalized preorder); the three carried-over classes (A, B, C) keep
    their existing port-root wiring. None of prev's vpifos are respawned. *)
-let strict_abc_to_complex_tree_expected : commit =
+let strict_abc_to_complex_tree_expected =
   [
-    Spawn (104, 2);
-    Spawn (105, 0);
-    Spawn (106, 1);
-    Spawn (107, 1);
-    Spawn (108, 1);
-    Spawn (109, 0);
-    Spawn (110, 1);
-    Spawn (111, 1);
-    Adopt (1008, 104, 100);
-    Adopt (1009, 104, 105);
-    Adopt (1010, 104, 109);
-    Adopt (1003, 105, 106);
-    Adopt (1004, 105, 107);
-    Adopt (1005, 105, 108);
-    Adopt (1006, 109, 110);
-    Adopt (1007, 109, 111);
-    Assoc (104, "A");
-    Assoc (104, "B");
-    Assoc (104, "C");
-    Assoc (104, "D");
-    Assoc (104, "E");
-    Assoc (104, "F");
-    Assoc (104, "G");
-    Assoc (104, "H");
-    Assoc (105, "D");
-    Assoc (105, "E");
-    Assoc (105, "F");
-    Assoc (106, "D");
-    Assoc (107, "E");
-    Assoc (108, "F");
-    Assoc (109, "G");
-    Assoc (109, "H");
-    Assoc (110, "G");
-    Assoc (111, "H");
-    Map (104, "A", 1008);
-    Map (104, "B", 1008);
-    Map (104, "C", 1008);
-    Map (104, "D", 1009);
-    Map (104, "E", 1009);
-    Map (104, "F", 1009);
-    Map (104, "G", 1010);
-    Map (104, "H", 1010);
-    Map (105, "D", 1003);
-    Map (105, "E", 1004);
-    Map (105, "F", 1005);
-    Map (109, "G", 1006);
-    Map (109, "H", 1007);
-    Set_policy (104, WFQ, 3);
-    Set_policy (105, RR, 3);
-    Set_policy (109, RR, 2);
-    Set_arm_meta (104, 1008, 1.0);
-    Set_arm_meta (104, 1009, 2.0);
-    Set_arm_meta (104, 1010, 3.0);
-    Emancipate (999, 99, 100);
-    Adopt (999, 99, 104);
-    Assoc (99, "D");
-    Assoc (99, "E");
-    Assoc (99, "F");
-    Assoc (99, "G");
-    Assoc (99, "H");
-    Map (99, "D", 999);
-    Map (99, "E", 999);
-    Map (99, "F", 999);
-    Map (99, "G", 999);
-    Map (99, "H", 999);
+    t_
+      [
+        Spawn (104, 2);
+        Spawn (105, 0);
+        Spawn (106, 1);
+        Spawn (107, 1);
+        Spawn (108, 1);
+        Spawn (109, 0);
+        Spawn (110, 1);
+        Spawn (111, 1);
+        Adopt (1008, 104, 100);
+        Adopt (1009, 104, 105);
+        Adopt (1010, 104, 109);
+        Adopt (1003, 105, 106);
+        Adopt (1004, 105, 107);
+        Adopt (1005, 105, 108);
+        Adopt (1006, 109, 110);
+        Adopt (1007, 109, 111);
+        Assoc (104, "A");
+        Assoc (104, "B");
+        Assoc (104, "C");
+        Assoc (104, "D");
+        Assoc (104, "E");
+        Assoc (104, "F");
+        Assoc (104, "G");
+        Assoc (104, "H");
+        Assoc (105, "D");
+        Assoc (105, "E");
+        Assoc (105, "F");
+        Assoc (106, "D");
+        Assoc (107, "E");
+        Assoc (108, "F");
+        Assoc (109, "G");
+        Assoc (109, "H");
+        Assoc (110, "G");
+        Assoc (111, "H");
+        Map (104, "A", 1008);
+        Map (104, "B", 1008);
+        Map (104, "C", 1008);
+        Map (104, "D", 1009);
+        Map (104, "E", 1009);
+        Map (104, "F", 1009);
+        Map (104, "G", 1010);
+        Map (104, "H", 1010);
+        Map (105, "D", 1003);
+        Map (105, "E", 1004);
+        Map (105, "F", 1005);
+        Map (109, "G", 1006);
+        Map (109, "H", 1007);
+        Set_policy (104, WFQ, 3);
+        Set_policy (105, RR, 3);
+        Set_policy (109, RR, 2);
+        Set_arm_meta (104, 1008, 1.0);
+        Set_arm_meta (104, 1009, 2.0);
+        Set_arm_meta (104, 1010, 3.0);
+        Emancipate (999, 99, 100);
+        Adopt (999, 99, 104);
+        Assoc (99, "D");
+        Assoc (99, "E");
+        Assoc (99, "F");
+        Assoc (99, "G");
+        Assoc (99, "H");
+        Map (99, "D", 999);
+        Map (99, "E", 999);
+        Map (99, "F", 999);
+        Map (99, "G", 999);
+        Map (99, "H", 999);
+      ];
   ]
 
 let graft_tests =
@@ -551,30 +614,33 @@ let one_arm_added_extends_pes_test =
     ~printer:(fun pes ->
       "[" ^ String.concat "; " (List.map string_of_int pes) ^ "]")
     [ 0; 1; 2 ] c.pes;
-  let expected : commit =
+  let expected =
     [
-      Spawn (102, 1);
-      Spawn (103, 2);
-      Spawn (104, 2);
-      Adopt (1003, 100, 102);
-      Adopt (1001, 102, 103);
-      Adopt (1002, 102, 104);
-      Assoc (100, "B");
-      Assoc (100, "C");
-      Assoc (102, "B");
-      Assoc (102, "C");
-      Assoc (103, "B");
-      Assoc (104, "C");
-      Map (100, "B", 1003);
-      Map (100, "C", 1003);
-      Map (102, "B", 1001);
-      Map (102, "C", 1002);
-      Set_policy (102, RR, 2);
-      Change_arity (100, 2);
-      Set_arm_meta (100, 1003, 2.0);
+      t_
+        [
+          Spawn (102, 1);
+          Spawn (103, 2);
+          Spawn (104, 2);
+          Adopt (1003, 100, 102);
+          Adopt (1001, 102, 103);
+          Adopt (1002, 102, 104);
+          Assoc (100, "B");
+          Assoc (100, "C");
+          Assoc (102, "B");
+          Assoc (102, "C");
+          Assoc (103, "B");
+          Assoc (104, "C");
+          Map (100, "B", 1003);
+          Map (100, "C", 1003);
+          Map (102, "B", 1001);
+          Map (102, "C", 1002);
+          Set_policy (102, RR, 2);
+          Change_arity (100, 2);
+          Set_arm_meta (100, 1003, 2.0);
+        ];
     ]
   in
-  assert_equal ~printer:Ir.string_of_commit expected c.commit
+  assert_equal ~printer:Ir.string_of_steps expected c.steps
 
 let pes_extension_tests = [ one_arm_added_extends_pes_test ]
 
@@ -624,7 +690,7 @@ let designate_arm_test =
       Map (100, "D", 1001);
     ]
   in
-  assert_equal ~printer:Ir.string_of_commit expected c.commit
+  assert_equal ~printer:Ir.string_of_commit expected (single_commit c)
 
 (* Designate at the root of rr[A,B]: the whole tree gets designated
    against a new FIFO D. Only the port root sits above; the chain
@@ -644,7 +710,7 @@ let designate_root_test =
       Map (99, "D", 999);
     ]
   in
-  assert_equal ~printer:Ir.string_of_commit expected c.commit
+  assert_equal ~printer:Ir.string_of_commit expected (single_commit c)
 
 (* Quiesce slot 1 of rr[A,B]: tear down routing for class B along the
    chain from the port root down to the slot's parent. den(Quiesce) = id,
@@ -661,7 +727,7 @@ let quiesce_arm_test =
       Deassoc (100, "B");
     ]
   in
-  assert_equal ~printer:Ir.string_of_commit expected c.commit
+  assert_equal ~printer:Ir.string_of_commit expected (single_commit c)
 
 (* Quiesce at root: tears down routing for every class on the port root.
    The whole tree is being drained. *)
@@ -677,7 +743,7 @@ let quiesce_root_test =
       Deassoc (99, "B");
     ]
   in
-  assert_equal ~printer:Ir.string_of_commit expected c.commit
+  assert_equal ~printer:Ir.string_of_commit expected (single_commit c)
 
 (* Undesignate: emit the bare ISA instruction targeting the loser v at
    the slot. The substrate handles the rewire. *)
@@ -685,13 +751,15 @@ let undesignate_arm_test =
   "Undesignate: rr[A,B] at slot 1" >:: fun _ ->
   let prev = compile "rr_AB" in
   let c = Ir.patch_undesignate ~prev ~path:[ 1 ] in
-  assert_equal ~printer:Ir.string_of_commit [ Undesignate 102 ] c.commit
+  assert_equal ~printer:Ir.string_of_commit [ Undesignate 102 ]
+    (single_commit c)
 
 let undesignate_root_test =
   "Undesignate: rr[A,B] at root" >:: fun _ ->
   let prev = compile "rr_AB" in
   let c = Ir.patch_undesignate ~prev ~path:[] in
-  assert_equal ~printer:Ir.string_of_commit [ Undesignate 100 ] c.commit
+  assert_equal ~printer:Ir.string_of_commit [ Undesignate 100 ]
+    (single_commit c)
 
 (* End-to-end give-up idiom (sketch.md §4): Replace([], p2) expands to
    Designate([], p2) ; (true ; Quiesce([0])) ; (empty([0]) ; Undesignate([])).
@@ -708,7 +776,7 @@ let giveup_idiom_test =
   let d = Ir.patch_designate ~prev ~path:[] ~arm in
   let q = Ir.patch_quiesce ~prev ~path:[] in
   let u = Ir.patch_undesignate ~prev ~path:[] in
-  let combined = d.commit @ q.commit @ u.commit in
+  let combined = single_commit d @ single_commit q @ single_commit u in
   let expected : commit =
     [
       Spawn (103, 0);

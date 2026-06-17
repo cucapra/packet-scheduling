@@ -19,16 +19,23 @@ module Decorated : sig
 end
 
 type compiled = {
-  commit : commit;
+  steps : (Rio_planner.Planner.guard * commit) list;
   decorated : Decorated.t;
   pes : pe list;
 }
 (** The result of compiling a [Rio_core.Pol.t]. Carries enough state that a
     subsequent [patch] call can extend the in-flight runtime without recompiling
     from scratch:
-    - [commit]: the IR commit. When this record came from a fresh compile,
-      [commit] is the full instruction list; when it came from [patch], [commit]
-      is the *delta only*.
+    - [steps]: the IR output as a list of guarded commits. Each step is a
+      [(guard, commit)] pair: the substrate fires the [commit]'s opcodes once
+      the [guard] becomes true (a [True] guard fires immediately; an [Empty p]
+      guard waits until the subtree at [p] has drained its in-flight packets).
+      A fresh compile from [of_policy] is a single-element list under [True].
+      An incremental [patch] returns one step per planner-emitted production,
+      so [Retire] is two steps (Quiesce under [True], Remove under [Empty]),
+      [PruneDownTo] is several steps capped by a final [ChangeRoot] under
+      [True], and so on. The Replace idiom is currently still bundled into a
+      single [True]-guarded step (commit B will split it).
     - [decorated]: the decorated source tree. Doubles as the source-policy
       record (recoverable by erasing decorations) so [patch] can diff against an
       incoming policy without storing a separate [Rio_core.Pol.t].
@@ -37,6 +44,10 @@ type compiled = {
       [[0; 1; …; max_depth]]. But [patch] (notably [Graft]) may introduce
       non-contiguous PEs to honor the "same depth ⇒ same PE" invariant without
       re-spawning previously installed nodes. *)
+
+val string_of_steps : (Rio_planner.Planner.guard * commit) list -> string
+(** Pretty-print a guarded commit list. Each step prints as
+    [@<guard>: <pretty-printed commit>] on its own line. *)
 
 val of_policy : Rio_core.Pol.t -> compiled
 (** Compile a [Rio_core.Pol.t] to IR. Supports trees built from [FIFO], [RR],
