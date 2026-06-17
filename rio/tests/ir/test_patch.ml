@@ -269,49 +269,118 @@ let one_arm_removed_tests =
       rr_abc_to_ab_expected;
   ]
 
-(* ArmReplaced *)
+(* ArmReplaced. The planner expands as the [Replace] idiom
+   [Designate(p) ; Quiesce(p ++ [0]) ; (Empty (p ++ [0])) Undesignate(p)]:
+   - [Designate] mints a fresh [SP_star] super-node ([sp_v]) on the loser's
+     PE; the loser becomes child 0 of [sp_v], the freshly compiled survivor
+     becomes child 1. The parent edge rewires from loser to [sp_v]; [sp_v]
+     routes loser-side classes via [loser_step] (favored) and survivor-only
+     classes via [surv_step].
+   - [Quiesce] tears down loser-only routing along the chain above [sp_v]
+     and at [sp_v] itself; in-flight packets continue to dequeue.
+   - [Undesignate] (gated on the loser being empty) rewires the parent edge
+     from [sp_v] to the survivor, emits [Undesignate loser_v] as the §6 ISA
+     marker, and GCs [sp_v] + the loser subtree.
+   When the same edit also rebinds the slot's per-arm meta, a trailing
+   [ChangeMeta]-only step under [True] fires immediately after. *)
 
-(* RR[A,B] -> RR[A,D]: replace B (vpifo 102, step 1001) with FIFO D. The
-   new arm rides on step 1001; B's super-node is set up via Designate(102,
-   103). Ancestor routing on root vpifo 100 shifts B → D (Unmap/Deassoc
-   then Assoc/Map). GC marks 102. *)
-(* Replace is currently still bundled as a single [True]-guarded step (the
-   Designate/Quiesce/Undesignate ordering lives inside the monolithic
-   lowering); commit B will split it into per-delta guarded steps. *)
+(* RR[A,B] -> RR[A,D]: replace B (vpifo 102, step 1001) with FIFO D. New IDs
+   mint as: v=103 for the survivor (FIFO D), v=104 for sp_v, step_1002 for
+   loser_step (sp_v -> loser), step_1003 for surv_step (sp_v -> survivor). All
+   three nodes (v102, v103, v104) live on PE 1. The parent edge step_1001
+   rewires to point at v104; chain above gets [Assoc]/[Map] entries for the
+   new class D. Loser-only class B drains: chain above unmaps B (v99 / v100)
+   and v104 unmaps + deassocs B internally. Once empty, [Undesignate] rewires
+   step_1001 back to v103 directly, emits [Undesignate v102] as the §6
+   marker, and GCs v104 (sp_v) and v102 (loser). *)
 let rr_ab_to_ad_expected =
   [
     t_
       [
         Spawn (103, 1);
         Assoc (103, "D");
+        Spawn (104, 1);
+        Adopt (1002, 104, 102);
+        Adopt (1003, 104, 103);
         Designate (102, 103);
-        Unmap (100, "B", 1001);
-        Deassoc (100, "B");
+        Emancipate (1001, 100, 102);
+        Adopt (1001, 100, 104);
+        Assoc (104, "B");
+        Assoc (104, "D");
+        Map (104, "B", 1002);
+        Map (104, "D", 1003);
+        Assoc (99, "D");
         Assoc (100, "D");
+        Map (99, "D", 999);
         Map (100, "D", 1001);
+        Set_policy (104, SP_star, 2);
+        Set_arm_meta (104, 1002, 1.0);
+        Set_arm_meta (104, 1003, 2.0);
+      ];
+    t_
+      [
+        Unmap (99, "B", 999);
+        Unmap (100, "B", 1001);
+        Deassoc (99, "B");
+        Deassoc (100, "B");
+        Unmap (104, "B", 1002);
+        Deassoc (104, "B");
+      ];
+    e_ [ 1; 0 ]
+      [
+        Emancipate (1001, 100, 104);
+        Adopt (1001, 100, 103);
         Undesignate 102;
+        GC 104;
         GC 102;
       ];
   ]
 
 (* SP[A,B] -> SP[A,C]: arm-swap at slot 1, AND the slot's rank changes
-   (B was rank 2 in strict_AB; C is rank 3 in strict_AC). The slot's
-   meta gets a Set_arm_meta after the Designate/Undesignate flow. *)
+   (B was rank 2 in strict_AB; C is rank 3 in strict_AC). A trailing
+   [ChangeMeta] step under [True] fires immediately after [Undesignate]. *)
 let strict_ab_to_ac_expected =
   [
     t_
       [
         Spawn (103, 1);
         Assoc (103, "C");
+        Spawn (104, 1);
+        Adopt (1002, 104, 102);
+        Adopt (1003, 104, 103);
         Designate (102, 103);
-        Unmap (100, "B", 1001);
-        Deassoc (100, "B");
+        Emancipate (1001, 100, 102);
+        Adopt (1001, 100, 104);
+        Assoc (104, "B");
+        Assoc (104, "C");
+        Map (104, "B", 1002);
+        Map (104, "C", 1003);
+        Assoc (99, "C");
         Assoc (100, "C");
+        Map (99, "C", 999);
         Map (100, "C", 1001);
-        Undesignate 102;
-        GC 102;
-        Set_arm_meta (100, 1001, 3.0);
+        Set_policy (104, SP_star, 2);
+        Set_arm_meta (104, 1002, 1.0);
+        Set_arm_meta (104, 1003, 2.0);
       ];
+    t_
+      [
+        Unmap (99, "B", 999);
+        Unmap (100, "B", 1001);
+        Deassoc (99, "B");
+        Deassoc (100, "B");
+        Unmap (104, "B", 1002);
+        Deassoc (104, "B");
+      ];
+    e_ [ 1; 0 ]
+      [
+        Emancipate (1001, 100, 104);
+        Adopt (1001, 100, 103);
+        Undesignate 102;
+        GC 104;
+        GC 102;
+      ];
+    t_ [ Set_arm_meta (100, 1001, 3.0) ];
   ]
 
 let one_arm_replaced_tests =
@@ -321,27 +390,55 @@ let one_arm_replaced_tests =
       strict_ab_to_ac_expected;
   ]
 
-(* ArmReplacedWFQ. wfq_ABC has root WFQ v=100 with leaves v=101/102/103
-   for A/B/C on steps 1000/1001/1002. Replacing slot 2's arm (C → FIFO Z)
-   *and* its weight (3 → 7) reuses step 1002: the new FIFO Z spawns on
-   v=104 (PE 1), is [Designate]d onto v=103, ancestor routing on v=100
-   swings C → Z, the slot's weight gets a single [Set_arm_meta], and
-   v=103 is GC'd. *)
+(* ArmReplacedWFQ. wfq_ABC has root WFQ v=100 with leaves v=101/102/103 for
+   A/B/C on steps 1000/1001/1002. Replacing slot 2's arm (C -> FIFO Z) *and*
+   its weight (3 -> 7) at path [2]: the survivor FIFO Z spawns on v=104, sp_v
+   is v=105, loser_step is step_1003, surv_step is step_1004. All three of
+   v103/v104/v105 live on PE 1. After [Quiesce] drains C, [Undesignate]
+   rewires the parent edge step_1002 from v105 to v104 (survivor). The slot's
+   new weight is set in a trailing [True]-guarded [ChangeMeta] step. *)
 let wfq_abc_to_abz_diff_expected =
   [
     t_
       [
         Spawn (104, 1);
         Assoc (104, "Z");
+        Spawn (105, 1);
+        Adopt (1003, 105, 103);
+        Adopt (1004, 105, 104);
         Designate (103, 104);
-        Unmap (100, "C", 1002);
-        Deassoc (100, "C");
+        Emancipate (1002, 100, 103);
+        Adopt (1002, 100, 105);
+        Assoc (105, "C");
+        Assoc (105, "Z");
+        Map (105, "C", 1003);
+        Map (105, "Z", 1004);
+        Assoc (99, "Z");
         Assoc (100, "Z");
+        Map (99, "Z", 999);
         Map (100, "Z", 1002);
-        Undesignate 103;
-        GC 103;
-        Set_arm_meta (100, 1002, 7.0);
+        Set_policy (105, SP_star, 2);
+        Set_arm_meta (105, 1003, 1.0);
+        Set_arm_meta (105, 1004, 2.0);
       ];
+    t_
+      [
+        Unmap (99, "C", 999);
+        Unmap (100, "C", 1002);
+        Deassoc (99, "C");
+        Deassoc (100, "C");
+        Unmap (105, "C", 1003);
+        Deassoc (105, "C");
+      ];
+    e_ [ 2; 0 ]
+      [
+        Emancipate (1002, 100, 105);
+        Adopt (1002, 100, 104);
+        Undesignate 103;
+        GC 105;
+        GC 103;
+      ];
+    t_ [ Set_arm_meta (100, 1002, 7.0) ];
   ]
 
 let one_arm_replaced_wfq_tests =
@@ -350,15 +447,19 @@ let one_arm_replaced_wfq_tests =
       wfq_abc_to_abz_diff_expected;
   ]
 
-(* Whole-tree replacement (Delta returns [VeryDifferent []]). prev =
-   rr[A,B] (vpifos 100/101/102, steps 1000/1001); next = rr[D,E,F] which
-   shares no arms, so Delta gives up at the root. The patch builds the
-   new rr[D,E,F] off fresh ids (root v=103 on PE 0, leaves 104/105/106
-   on PE 1; steps 1002/1003/1004), [Designate]s the old root (100) with
-   the new root (103) so the port root's single step drains old before
-   servicing new, and rewrites the port root's classifier from
-   {A,B} → {D,E,F} all riding on [port_root_step]. GCs cover every prev
-   vpifo. *)
+(* Whole-tree replacement (planner expands as the Replace idiom at
+   path []). prev = rr[A,B] (vpifos 100/101/102, steps 1000/1001);
+   next = rr[D,E,F] which shares no arms. The patch emits three steps:
+   - Designate: builds rr[D,E,F] off fresh ids (root v=103 on PE 0,
+     leaves 104/105/106 on PE 1; steps 1002/1003/1004), spawns
+     sp_v=107 on PE 0, adopts loser (v=100) and survivor (v=103)
+     under it, rewires the port root edge from v=100 to sp_v, and
+     installs routing at sp_v plus chain-above for the survivor's
+     new classes.
+   - Quiesce ([0]): tears down loser-only routing above and at sp_v.
+     No shared classes, so no remap at sp_v.
+   - Empty[0] Undesignate: swings the port root from sp_v to the
+     survivor and GCs sp_v + the loser subtree. *)
 let rr_ab_to_rr_def_expected =
   [
     t_
@@ -380,32 +481,62 @@ let rr_ab_to_rr_def_expected =
         Map (103, "E", 1003);
         Map (103, "F", 1004);
         Set_policy (103, RR, 3);
+        Spawn (107, 0);
+        Adopt (1005, 107, 100);
+        Adopt (1006, 107, 103);
         Designate (100, 103);
-        Unmap (99, "A", 999);
-        Unmap (99, "B", 999);
-        Deassoc (99, "A");
-        Deassoc (99, "B");
+        Emancipate (999, 99, 100);
+        Adopt (999, 99, 107);
+        Assoc (107, "A");
+        Assoc (107, "B");
+        Assoc (107, "D");
+        Assoc (107, "E");
+        Assoc (107, "F");
+        Map (107, "A", 1005);
+        Map (107, "B", 1005);
+        Map (107, "D", 1006);
+        Map (107, "E", 1006);
+        Map (107, "F", 1006);
         Assoc (99, "D");
         Assoc (99, "E");
         Assoc (99, "F");
         Map (99, "D", 999);
         Map (99, "E", 999);
         Map (99, "F", 999);
+        Set_policy (107, SP_star, 2);
+        Set_arm_meta (107, 1005, 1.0);
+        Set_arm_meta (107, 1006, 2.0);
+      ];
+    t_
+      [
+        Unmap (99, "A", 999);
+        Unmap (99, "B", 999);
+        Deassoc (99, "A");
+        Deassoc (99, "B");
+        Unmap (107, "A", 1005);
+        Unmap (107, "B", 1005);
+        Deassoc (107, "A");
+        Deassoc (107, "B");
+      ];
+    e_ [ 0 ]
+      [
+        Emancipate (999, 99, 107);
+        Adopt (999, 99, 103);
         Undesignate 100;
+        GC 107;
         GC 100;
         GC 101;
         GC 102;
       ];
   ]
 
-(* Whole-tree replacement via constructor mismatch at the root (Delta
-   returns [ArmReplaced { path = []; arm = RR[A,B] }]). prev =
-   sp[A,B] (vpifos 100/101/102, steps 1000/1001); next = rr[A,B] —
-   same children, different root policy, so Delta can't ride the
-   existing slots. Same handler as the [VeryDifferent []] case above:
-   builds the new tree off fresh ids, [Designate]s, drains. The class
-   sets coincide here so the port root's existing routing is preserved
-   and no {Unmap,Deassoc,Assoc,Map} land on it. *)
+(* Whole-tree replacement via constructor mismatch at the root: prev =
+   sp[A,B] (vpifos 100/101/102), next = rr[A,B]: same children,
+   different root policy. The class sets coincide ({A,B}={A,B}) so the
+   port root's existing routing is preserved (no chain-above edits)
+   and Quiesce's SP*-aware branch fires entirely at sp_v=106: unmap A
+   and B off loser_step and remap them onto surv_step so the survivor
+   takes over the moment the loser drains. *)
 let strict_ab_to_rr_ab_expected =
   [
     t_
@@ -422,8 +553,33 @@ let strict_ab_to_rr_ab_expected =
         Map (103, "A", 1002);
         Map (103, "B", 1003);
         Set_policy (103, RR, 2);
+        Spawn (106, 0);
+        Adopt (1004, 106, 100);
+        Adopt (1005, 106, 103);
         Designate (100, 103);
+        Emancipate (999, 99, 100);
+        Adopt (999, 99, 106);
+        Assoc (106, "A");
+        Assoc (106, "B");
+        Map (106, "A", 1004);
+        Map (106, "B", 1004);
+        Set_policy (106, SP_star, 2);
+        Set_arm_meta (106, 1004, 1.0);
+        Set_arm_meta (106, 1005, 2.0);
+      ];
+    t_
+      [
+        Unmap (106, "A", 1004);
+        Unmap (106, "B", 1004);
+        Map (106, "A", 1005);
+        Map (106, "B", 1005);
+      ];
+    e_ [ 0 ]
+      [
+        Emancipate (999, 99, 106);
+        Adopt (999, 99, 103);
         Undesignate 100;
+        GC 106;
         GC 100;
         GC 101;
         GC 102;
@@ -669,10 +825,13 @@ let deep_giveup_tests = [ deep_giveup_test ]
 (* ------------------------------------------------------------------ *)
 
 (* Designate at a leaf slot of rr[A,B]: introduce a new FIFO D as the
-   survivor against the existing FIFO B (v=102, step 1001). [Set_policy
-   (102, SP*, 2)] is the substrate-facing marker that v=102 now hosts a
-   super-node. Class D, new to the tree, gets routed all the way down
-   the chain from port root to the slot's parent. *)
+   survivor against the existing FIFO B (loser v=102, parent edge
+   step_1001 from v=100). A fresh sp_v=104 is minted (same PE as the
+   loser), and adopts the loser at step_1002 and survivor at step_1003.
+   The parent edge is rewired from loser to sp_v. Routing entries at
+   sp_v send loser classes via step_1002 and survivor-only classes via
+   step_1003. Class D, new to the tree, also gets routed down the chain
+   from port root to the slot's parent. *)
 let designate_arm_test =
   "Designate: rr[A,B] gets D introduced at slot 1" >:: fun _ ->
   let prev = compile "rr_AB" in
@@ -682,19 +841,32 @@ let designate_arm_test =
     [
       Spawn (103, 1);
       Assoc (103, "D");
+      Spawn (104, 1);
+      Adopt (1002, 104, 102);
+      Adopt (1003, 104, 103);
       Designate (102, 103);
-      Set_policy (102, SP_star, 2);
+      Emancipate (1001, 100, 102);
+      Adopt (1001, 100, 104);
+      Assoc (104, "B");
+      Assoc (104, "D");
+      Map (104, "B", 1002);
+      Map (104, "D", 1003);
       Assoc (99, "D");
       Assoc (100, "D");
       Map (99, "D", 999);
       Map (100, "D", 1001);
+      Set_policy (104, SP_star, 2);
+      Set_arm_meta (104, 1002, 1.0);
+      Set_arm_meta (104, 1003, 2.0);
     ]
   in
   assert_equal ~printer:Ir.string_of_commit expected (single_commit c)
 
 (* Designate at the root of rr[A,B]: the whole tree gets designated
    against a new FIFO D. Only the port root sits above; the chain
-   shortens to just [(99, 999)]. *)
+   shortens to just [(99, 999)]. sp_v=104 spawns on PE 0 (same as the
+   old root v=100), adopts loser at step_1002 and survivor at step_1003,
+   and the port root edge step_999 is repointed from v=100 to v=104. *)
 let designate_root_test =
   "Designate: rr[A,B] whole-tree against FIFO D" >:: fun _ ->
   let prev = compile "rr_AB" in
@@ -704,10 +876,23 @@ let designate_root_test =
     [
       Spawn (103, 0);
       Assoc (103, "D");
+      Spawn (104, 0);
+      Adopt (1002, 104, 100);
+      Adopt (1003, 104, 103);
       Designate (100, 103);
-      Set_policy (100, SP_star, 2);
+      Emancipate (999, 99, 100);
+      Adopt (999, 99, 104);
+      Assoc (104, "A");
+      Assoc (104, "B");
+      Assoc (104, "D");
+      Map (104, "A", 1002);
+      Map (104, "B", 1002);
+      Map (104, "D", 1003);
       Assoc (99, "D");
       Map (99, "D", 999);
+      Set_policy (104, SP_star, 2);
+      Set_arm_meta (104, 1002, 1.0);
+      Set_arm_meta (104, 1003, 2.0);
     ]
   in
   assert_equal ~printer:Ir.string_of_commit expected (single_commit c)
@@ -745,51 +930,98 @@ let quiesce_root_test =
   in
   assert_equal ~printer:Ir.string_of_commit expected (single_commit c)
 
-(* Undesignate: emit the bare ISA instruction targeting the loser v at
-   the slot. The substrate handles the rewire. *)
+(* Undesignate at slot 1 of a previously-designated rr[A,B]: the slot
+   holds sp_v=104 with loser v=102 (FIFO B) at child 0 and survivor
+   v=103 (FIFO D) at child 1. Collapsing swings the parent edge from
+   sp_v to survivor, emits [Undesignate 102] as the ISA marker, and GCs
+   sp_v plus the loser subtree. *)
 let undesignate_arm_test =
   "Undesignate: rr[A,B] at slot 1" >:: fun _ ->
   let prev = compile "rr_AB" in
-  let c = Ir.patch_undesignate ~prev ~path:[ 1 ] in
-  assert_equal ~printer:Ir.string_of_commit [ Undesignate 102 ]
-    (single_commit c)
+  let designated = Ir.patch_designate ~prev ~path:[ 1 ] ~arm:(Pol.FIFO "D") in
+  let c = Ir.patch_undesignate ~prev:designated ~path:[ 1 ] in
+  let expected : commit =
+    [
+      Emancipate (1001, 100, 104);
+      Adopt (1001, 100, 103);
+      Undesignate 102;
+      GC 104;
+      GC 102;
+    ]
+  in
+  assert_equal ~printer:Ir.string_of_commit expected (single_commit c)
 
+(* Undesignate at the root of a previously-designated rr[A,B]: parent
+   is the port root v=99 (step 999). loser_v=100 is the old RR root,
+   with FIFO A (v=101) and FIFO B (v=102) underneath. GC walks the
+   whole loser subtree. *)
 let undesignate_root_test =
   "Undesignate: rr[A,B] at root" >:: fun _ ->
   let prev = compile "rr_AB" in
-  let c = Ir.patch_undesignate ~prev ~path:[] in
-  assert_equal ~printer:Ir.string_of_commit [ Undesignate 100 ]
-    (single_commit c)
+  let designated = Ir.patch_designate ~prev ~path:[] ~arm:(Pol.FIFO "D") in
+  let c = Ir.patch_undesignate ~prev:designated ~path:[] in
+  let expected : commit =
+    [
+      Emancipate (999, 99, 104);
+      Adopt (999, 99, 103);
+      Undesignate 100;
+      GC 104;
+      GC 100;
+      GC 101;
+      GC 102;
+    ]
+  in
+  assert_equal ~printer:Ir.string_of_commit expected (single_commit c)
 
-(* End-to-end give-up idiom (sketch.md §4): Replace([], p2) expands to
-   Designate([], p2) ; (true ; Quiesce([0])) ; (empty([0]) ; Undesignate([])).
-   This test stitches the three lowerings in sequence and checks the
-   combined commit shape. The Quiesce path is [0] because, post-Designate,
-   the loser sits at index 0 inside the conceptual super-node. We can't
-   walk that path through our decorated tree (we don't model super-nodes
-   yet), so we quiesce at [] instead: equivalent here since the loser is
-   the entire tree. *)
+(* End-to-end give-up idiom: Replace([], FIFO D) expands as
+   Designate([]) ; Quiesce([0]) ; Undesignate([]). The Quiesce path is
+   [0] because, post-Designate, the loser sits at child 0 inside the
+   freshly minted sp_v=104. Each lowering threads the post-mutation
+   [compiled] forward so Quiesce sees the SP* tree. *)
 let giveup_idiom_test =
   "give-up idiom: Designate ; Quiesce ; Undesignate at root" >:: fun _ ->
   let prev = compile "rr_AB" in
   let arm = Pol.FIFO "D" in
   let d = Ir.patch_designate ~prev ~path:[] ~arm in
-  let q = Ir.patch_quiesce ~prev ~path:[] in
-  let u = Ir.patch_undesignate ~prev ~path:[] in
+  let q = Ir.patch_quiesce ~prev:d ~path:[ 0 ] in
+  let u = Ir.patch_undesignate ~prev:q ~path:[] in
   let combined = single_commit d @ single_commit q @ single_commit u in
   let expected : commit =
     [
       Spawn (103, 0);
       Assoc (103, "D");
+      Spawn (104, 0);
+      Adopt (1002, 104, 100);
+      Adopt (1003, 104, 103);
       Designate (100, 103);
-      Set_policy (100, SP_star, 2);
+      Emancipate (999, 99, 100);
+      Adopt (999, 99, 104);
+      Assoc (104, "A");
+      Assoc (104, "B");
+      Assoc (104, "D");
+      Map (104, "A", 1002);
+      Map (104, "B", 1002);
+      Map (104, "D", 1003);
       Assoc (99, "D");
       Map (99, "D", 999);
+      Set_policy (104, SP_star, 2);
+      Set_arm_meta (104, 1002, 1.0);
+      Set_arm_meta (104, 1003, 2.0);
       Unmap (99, "A", 999);
       Unmap (99, "B", 999);
       Deassoc (99, "A");
       Deassoc (99, "B");
+      Unmap (104, "A", 1002);
+      Unmap (104, "B", 1002);
+      Deassoc (104, "A");
+      Deassoc (104, "B");
+      Emancipate (999, 99, 104);
+      Adopt (999, 99, 103);
       Undesignate 100;
+      GC 104;
+      GC 100;
+      GC 101;
+      GC 102;
     ]
   in
   assert_equal ~printer:Ir.string_of_commit expected combined

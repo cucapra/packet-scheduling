@@ -17,22 +17,26 @@ let make_planner_test name file1 file2 expected_seq =
   name >:: fun _ ->
   assert_equal expected_seq actual_seq ~printer:Planner.to_string
 
-(* The planner's [Replace] idiom (sketch.md sec4.2):
-   [Designate ; Quiesce ; (Empty p) Undesignate]. When the replace also
-   rebinds the slot's per-arm meta, a trailing [ChangeMeta] step fires
-   once the loser is empty. *)
+(* The planner's [Replace] idiom: at slot [path],
+   [Designate(path) ; Quiesce(path ++ [0]) ; (Empty (path ++ [0])) Undesignate(path)].
+   After [Designate] fires, the slot is a designated SP* with the loser at
+   child index 0; [Quiesce] tears down the loser's class routing; [Undesignate]
+   waits for the loser to drain before collapsing the SP* down to the
+   survivor. When the replace also rebinds the slot's per-arm meta, a trailing
+   [ChangeMeta] step under [True] fires immediately after [Undesignate]
+   (sequential dependency carries the drain). *)
 let replace_seq ?meta path arm =
+  let loser_path = path @ [ 0 ] in
   let base =
     [
       (Planner.True, Delta.Designate { path; arm });
-      (Planner.True, Delta.Quiesce path);
-      (Planner.Empty path, Delta.Undesignate path);
+      (Planner.True, Delta.Quiesce loser_path);
+      (Planner.Empty loser_path, Delta.Undesignate path);
     ]
   in
   match meta with
   | None -> base
-  | Some m ->
-      base @ [ (Planner.Empty path, Delta.ChangeMeta { path; new_meta = m }) ]
+  | Some m -> base @ [ (Planner.True, Delta.ChangeMeta { path; new_meta = m }) ]
 
 (* The planner's [Retire] idiom: drain the subtree at [path], then structurally
    remove the [arm] once the subtree is empty. *)

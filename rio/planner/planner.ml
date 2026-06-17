@@ -74,10 +74,16 @@ let prepend_step i (g, d) = (prepend_guard i g, Delta.prepend_path i d)
 let prepend_seq i seq = List.map (prepend_step i) seq
 
 (* The paper's [Replace] idiom: swap in [next] at the current level. Expands
-   into [Designate(path, next) ; Quiesce(path) ; (Empty path) Undesignate(path)].
-   When the swap also rebinds the slot's per-arm meta (an SP rank or WFQ weight
-   changing in lockstep with the arm), a final [ChangeMeta] step fires once the
-   loser has drained.
+   into [Designate(p, next) ; Quiesce(p ++ [0]) ; (Empty (p ++ [0])) Undesignate(p)],
+   where [p] is the slot's path. After [Designate] fires, the slot becomes a
+   designated SP* with the loser at child index 0 and the survivor at child
+   index 1; [Quiesce] tears down the loser's class routing, and [Undesignate]
+   waits for the loser to drain before collapsing the SP* down to the
+   survivor. When the swap also rebinds the slot's per-arm meta (an SP rank or
+   WFQ weight changing in lockstep with the arm), a final [ChangeMeta] step
+   fires immediately after [Undesignate] (sequential dependency suffices: the
+   loser has drained by the time [Undesignate]'s guard fires, and [ChangeMeta]
+   sits in the next step slot).
 
    Also serves as the sniffer's give-up sequence: when [analyze] can't find a
    smaller atomic edit, it emits [Replace] at the divergent slot.
@@ -88,14 +94,13 @@ let replace ~next ?meta () =
   let base =
     [
       (True, Delta.Designate { path = []; arm = next });
-      (True, Delta.Quiesce []);
-      (Empty [], Delta.Undesignate []);
+      (True, Delta.Quiesce [ 0 ]);
+      (Empty [ 0 ], Delta.Undesignate []);
     ]
   in
   match meta with
   | None -> base
-  | Some m ->
-      base @ [ (Empty [], Delta.ChangeMeta { path = []; new_meta = m }) ]
+  | Some m -> base @ [ (True, Delta.ChangeMeta { path = []; new_meta = m }) ]
 
 (* The paper's [Retire] idiom: quiesce the subtree at the current level, then
    structurally remove its arm once it has drained. Paths are emitted as [[]]
@@ -164,8 +169,8 @@ let ends_in_change_root seq =
 let is_replace_root = function
   | [
       (True, Delta.Designate { path = []; _ });
-      (True, Delta.Quiesce []);
-      (Empty [], Delta.Undesignate []);
+      (True, Delta.Quiesce [ 0 ]);
+      (Empty [ 0 ], Delta.Undesignate []);
     ] -> true
   | _ -> false
 

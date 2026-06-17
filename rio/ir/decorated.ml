@@ -7,7 +7,7 @@ open Instr
 
 type t =
   | FIFO of vpifo * clss
-  | SP of vpifo * (step * t * float) list
+  | SP of vpifo * (step * t * float) list * bool
   | RR of vpifo * (step * t) list
   | WFQ of vpifo * (step * t * float) list
 
@@ -30,7 +30,7 @@ let list_insert_at i x xs =
 
 (* The vPIFO at the root of [d]. *)
 let root_vpifo = function
-  | FIFO (v, _) | SP (v, _) | RR (v, _) | WFQ (v, _) -> v
+  | FIFO (v, _) | SP (v, _, _) | RR (v, _) | WFQ (v, _) -> v
 
 (* The IR-side [pol_ty] of [d]. *)
 let pol_ty : t -> pol_ty = function
@@ -43,14 +43,18 @@ let pol_ty : t -> pol_ty = function
 let arity = function
   | FIFO _ -> failwith "Decorated.arity: FIFO has no children"
   | RR (_, es) -> List.length es
-  | SP (_, es) | WFQ (_, es) -> List.length es
+  | SP (_, es, _) -> List.length es
+  | WFQ (_, es) -> List.length es
 
 (* The k-th edge's adopt-step. Errors on FIFO. *)
 let nth_step d k =
   match d with
   | FIFO _ -> failwith "Decorated.nth_step: FIFO"
   | RR (_, es) -> fst (List.nth es k)
-  | SP (_, es) | WFQ (_, es) ->
+  | SP (_, es, _) ->
+      let s, _, _ = List.nth es k in
+      s
+  | WFQ (_, es) ->
       let s, _, _ = List.nth es k in
       s
 
@@ -59,7 +63,10 @@ let nth_child d k =
   match d with
   | FIFO _ -> failwith "Decorated.nth_child: FIFO"
   | RR (_, es) -> snd (List.nth es k)
-  | SP (_, es) | WFQ (_, es) ->
+  | SP (_, es, _) ->
+      let _, c, _ = List.nth es k in
+      c
+  | WFQ (_, es) ->
       let _, c, _ = List.nth es k in
       c
 
@@ -69,8 +76,8 @@ let rec fold (f : 'a -> t -> 'a) (acc : 'a) (d : t) : 'a =
   match d with
   | FIFO _ -> acc
   | RR (_, es) -> List.fold_left (fun a (_, c) -> fold f a c) acc es
-  | SP (_, es) | WFQ (_, es) ->
-      List.fold_left (fun a (_, c, _) -> fold f a c) acc es
+  | SP (_, es, _) -> List.fold_left (fun a (_, c, _) -> fold f a c) acc es
+  | WFQ (_, es) -> List.fold_left (fun a (_, c, _) -> fold f a c) acc es
 
 (* One vPIFO per node; one step per parent→child edge. Used by [patch]
    to seed its fresh-ID counters past whatever [prev] already used. *)
@@ -81,7 +88,8 @@ let count_steps d =
     (fun a -> function
       | FIFO _ -> a
       | RR (_, es) -> a + List.length es
-      | SP (_, es) | WFQ (_, es) -> a + List.length es)
+      | SP (_, es, _) -> a + List.length es
+      | WFQ (_, es) -> a + List.length es)
     0 d
 
 (* All vPIFO IDs in [d], pre-order. *)
@@ -108,7 +116,10 @@ let rec subtree_class_assocs (d : t) : (vpifo * clss list) list =
   | RR (_, es) ->
       (root_vpifo d, subtree_classes d)
       :: List.concat_map (fun (_, c) -> subtree_class_assocs c) es
-  | SP (_, es) | WFQ (_, es) ->
+  | SP (_, es, _) ->
+      (root_vpifo d, subtree_classes d)
+      :: List.concat_map (fun (_, c, _) -> subtree_class_assocs c) es
+  | WFQ (_, es) ->
       (root_vpifo d, subtree_classes d)
       :: List.concat_map (fun (_, c, _) -> subtree_class_assocs c) es
 
@@ -140,7 +151,7 @@ let rec rewrite_at (d : t) (path : int list) (f : t -> t) : t =
       let bump_m = list_replace_nth i (fun (s, c, m) -> (s, go c, m)) in
       match d with
       | FIFO _ -> failwith "Decorated.rewrite_at: path through FIFO leaf"
-      | SP (v, es) -> SP (v, bump_m es)
+      | SP (v, es, dg) -> SP (v, bump_m es, dg)
       | RR (v, es) -> RR (v, bump es)
       | WFQ (v, es) -> WFQ (v, bump_m es))
 
@@ -151,8 +162,16 @@ let insert_arm k new_step new_child = function
   | WFQ _ -> failwith "Decorated.insert_arm: WFQ; use insert_arm_wfq"
 
 let insert_arm_sp k new_step new_child new_rank = function
-  | SP (v, es) -> SP (v, list_insert_at k (new_step, new_child, new_rank) es)
+  | SP (v, es, dg) ->
+      SP (v, list_insert_at k (new_step, new_child, new_rank) es, dg)
   | _ -> failwith "Decorated.insert_arm_sp: SP-only"
+
+let sp_designated = function
+  | SP (_, _, dg) -> dg
+  | _ -> failwith "Decorated.sp_designated: non-SP"
+
+let mk_sp_designated v loser_step loser_d surv_step surv_d =
+  SP (v, [ (loser_step, loser_d, 1.0); (surv_step, surv_d, 2.0) ], true)
 
 let insert_arm_wfq k new_step new_child new_weight = function
   | WFQ (v, es) -> WFQ (v, list_insert_at k (new_step, new_child, new_weight) es)
@@ -161,12 +180,13 @@ let insert_arm_wfq k new_step new_child new_weight = function
 let drop_arm k = function
   | FIFO _ -> failwith "Decorated.drop_arm: FIFO"
   | RR (v, es) -> RR (v, list_drop_nth k es)
-  | SP (v, es) -> SP (v, list_drop_nth k es)
+  | SP (v, es, dg) -> SP (v, list_drop_nth k es, dg)
   | WFQ (v, es) -> WFQ (v, list_drop_nth k es)
 
 (* Set the k-th arm's per-arm meta (rank for SP, weight for WFQ). *)
 let set_meta k new_m = function
-  | SP (v, es) -> SP (v, list_replace_nth k (fun (s, c, _) -> (s, c, new_m)) es)
+  | SP (v, es, dg) ->
+      SP (v, list_replace_nth k (fun (s, c, _) -> (s, c, new_m)) es, dg)
   | WFQ (v, es) ->
       WFQ (v, list_replace_nth k (fun (s, c, _) -> (s, c, new_m)) es)
   | _ -> failwith "Decorated.set_meta: SP/WFQ only"
@@ -177,8 +197,8 @@ let set_meta k new_m = function
 let replace_arm k new_child = function
   | FIFO _ -> failwith "Decorated.replace_arm: FIFO"
   | RR (v, es) -> RR (v, list_replace_nth k (fun (s, _) -> (s, new_child)) es)
-  | SP (v, es) ->
-      SP (v, list_replace_nth k (fun (s, _, r) -> (s, new_child, r)) es)
+  | SP (v, es, dg) ->
+      SP (v, list_replace_nth k (fun (s, _, r) -> (s, new_child, r)) es, dg)
   | WFQ (v, es) ->
       WFQ (v, list_replace_nth k (fun (s, _, w) -> (s, new_child, w)) es)
 
@@ -186,6 +206,6 @@ let rec to_policy (d : t) : Rio_core.Pol.t =
   let module P = Rio_core.Pol in
   match d with
   | FIFO (_, c) -> P.FIFO c
-  | SP (_, es) -> P.SP (List.map (fun (_, c, r) -> (to_policy c, r)) es, false)
+  | SP (_, es, dg) -> P.SP (List.map (fun (_, c, r) -> (to_policy c, r)) es, dg)
   | RR (_, es) -> P.RR (List.map (fun (_, c) -> to_policy c) es)
   | WFQ (_, es) -> P.WFQ (List.map (fun (_, c, w) -> (to_policy c, w)) es)

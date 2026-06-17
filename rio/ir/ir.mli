@@ -13,7 +13,7 @@ include module type of Instr
 module Decorated : sig
   type t =
     | FIFO of vpifo * clss
-    | SP of vpifo * (step * t * float) list
+    | SP of vpifo * (step * t * float) list * bool
     | RR of vpifo * (step * t) list
     | WFQ of vpifo * (step * t * float) list
 end
@@ -29,13 +29,14 @@ type compiled = {
     - [steps]: the IR output as a list of guarded commits. Each step is a
       [(guard, commit)] pair: the substrate fires the [commit]'s opcodes once
       the [guard] becomes true (a [True] guard fires immediately; an [Empty p]
-      guard waits until the subtree at [p] has drained its in-flight packets).
-      A fresh compile from [of_policy] is a single-element list under [True].
-      An incremental [patch] returns one step per planner-emitted production,
-      so [Retire] is two steps (Quiesce under [True], Remove under [Empty]),
-      [PruneDownTo] is several steps capped by a final [ChangeRoot] under
-      [True], and so on. The Replace idiom is currently still bundled into a
-      single [True]-guarded step (commit B will split it).
+      guard waits until the subtree at [p] has drained its in-flight packets). A
+      fresh compile from [of_policy] is a single-element list under [True]. An
+      incremental [patch] returns one step per planner-emitted production, so
+      [Retire] is two steps (Quiesce under [True], Remove under [Empty]),
+      [Replace] is three or four steps (Designate under [True], Quiesce under
+      [True], Undesignate under [Empty], and an optional trailing ChangeMeta
+      under [True]), [PruneDownTo] is several steps capped by a final
+      [ChangeRoot] under [True], and so on.
     - [decorated]: the decorated source tree. Doubles as the source-policy
       record (recoverable by erasing decorations) so [patch] can diff against an
       incoming policy without storing a separate [Rio_core.Pol.t].
@@ -82,15 +83,15 @@ val patch : prev:compiled -> next:Rio_core.Pol.t -> compiled option
       its ancestor chain. Existing SP siblings keep their ranks.
     - [next] swaps in a different subtree at exactly one position (planner
       expands this as the [Replace] idiom
-      [Designate ; Quiesce ; (Empty p) Undesignate], recognized by [patch]):
-      returns [Some] with the new arm's
-      [Spawn]/[Adopt]/[Assoc]/[Map]/[Set_policy]/[Set_arm_meta] instructions, a
-      [Designate] that fuses the old and new roots into a super-node riding on
-      the existing parent step, [Deassoc]s that drain the old classes out of the
-      displaced subtree and its ancestors, [Assoc]/[Map] entries that route the
-      new classes to the same step, an [Undesignate] paired with a [GC] on the
-      old root that collapses the super-node and releases its PE slot, and a
-      [GC] per remaining node of the displaced subtree.
+      [Designate(p) ; Quiesce(p ++ [0]) ; (Empty (p ++ [0])) Undesignate(p) (;
+       (True) ChangeMeta(p))?]): returns [Some] with a multi-step
+      [compiled.steps]. The [Designate] step spawns a fresh SP* super-node
+      (sharing PE n with the loser and the survivor's root), compiles the new
+      arm fresh, and rewires the parent edge to point at SP*. The [Quiesce] step
+      tears down loser-only routing and swings shared classes from loser to
+      survivor at SP*. The [Undesignate] step (gated on the loser being empty)
+      collapses SP* by rewiring the parent edge back to the survivor and GCs SP*
+      \+ the loser subtree.
     - [next] is structurally equal to a strict subtree of [prev] at a non-empty
       path (planner expands this as the [PruneDownTo] idiom
       [Retire(p_1) ; ... ; Retire(p_m) ; (True) ChangeRoot([0;...;0])],
@@ -114,26 +115,31 @@ val patch : prev:compiled -> next:Rio_core.Pol.t -> compiled option
 
 val patch_designate :
   prev:compiled -> path:int list -> arm:Rio_core.Pol.t -> compiled
-(** Per-production lowering for [Delta.Designate]. At [path], the existing
-    subtree becomes the loser of a designated super-node whose survivor is a
-    freshly compiled [arm]. Emits [arm]'s [Spawn]/[Adopt]/[Set_policy]/...
-    instructions, a [Designate (loser_v, survivor_v)], a
-    [Set_policy (loser_v, SP_star, 2)] that signals to the substrate that
-    [loser_v] now hosts a super-node, and class-routing edits along [path]'s
-    ancestor chain for any classes new to [arm]. Inside the [Replace] idiom
-    sequence emitted by [Planner.analyze], [patch] dispatches monolithically
-    through [patch_one_arm_replaced] for decorated-tree threading; this entry
-    point is for direct planner / test invocation of an isolated [Designate]. *)
+(** Per-production lowering for [Delta.Designate]. Stands up a fresh SP*
+    super-node at [path]: the existing subtree becomes child 0 (the loser,
+    favored), and a freshly compiled [arm] becomes child 1 (the survivor). SP*,
+    loser, and survivor's root all live on the loser's original PE. Emits
+    [arm]'s compile instructions, [Spawn] for SP*, two [Adopt]s under SP*,
+    [Designate (loser_v, survivor_v)] (the §6 ISA marker), an
+    [Emancipate]/[Adopt] pair that rewires the parent edge from loser to SP*,
+    routing entries at SP* (loser classes via [loser_step], survivor-only via
+    [surv_step]), chain-above [Assoc]/[Map] for survivor-only classes, and
+    [Set_policy (sp_v, SP_star, 2)] + per-arm meta. *)
 
 val patch_quiesce : prev:compiled -> path:int list -> compiled
 (** Per-production lowering for [Delta.Quiesce]. Tears down the class-routing
     entries that direct new traffic into the subtree at [path], along its
     ancestor chain. In-flight packets continue to dequeue. [den(Quiesce) = id]
-    so the decorated tree is unchanged. *)
+    so the decorated tree is unchanged. SP*-aware: when [path]'s parent is a
+    designated SP, shared classes between loser and survivor are preserved above
+    SP* and rerouted at SP* from [loser_step] to [surv_step] so the survivor can
+    take over once the loser drains. *)
 
 val patch_undesignate : prev:compiled -> path:int list -> compiled
 (** Per-production lowering for [Delta.Undesignate]. Collapses the designated
-    super-node at [path] by emitting [Undesignate loser_v]. *)
+    SP* super-node at [path]: rewires the parent edge from SP* to the survivor
+    (child 1), emits [Undesignate loser_v] as the §6 ISA marker, and GCs SP*
+    + the loser subtree. *)
 
 (** JSON exporter for IR commits. *)
 module Json : sig

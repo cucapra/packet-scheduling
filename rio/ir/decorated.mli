@@ -8,7 +8,13 @@ open Instr
 
 type t =
   | FIFO of vpifo * clss
-  | SP of vpifo * (step * t * float) list
+  | SP of vpifo * (step * t * float) list * bool
+      (** The trailing [bool] is the "designated" flag, mirroring
+          [Rio_core.Pol.SP]. A designated SP is the runtime SP* super-node
+          minted by [Designate]: two children at indices 0/1 (loser/survivor),
+          ranks 1.0/2.0. The DSL only produces undesignated SPs; the flag flips
+          to [true] inside [Ir.patch]'s Replace lowering and back to [false]
+          (implicitly, by collapsing back to the survivor) on [Undesignate]. *)
   | RR of vpifo * (step * t) list
   | WFQ of vpifo * (step * t * float) list
 
@@ -66,7 +72,17 @@ val insert_arm : int -> step -> t -> t -> t
 val insert_arm_sp : int -> step -> t -> float -> t -> t
 (** [insert_arm_sp k new_step new_child new_rank d] splices [new_child] in at
     index [k] in the children of SP-rooted [d], pairing it with [new_step] and
-    [new_rank]. Errors on anything but SP. *)
+    [new_rank]. Preserves the parent SP's designated flag. Errors on anything
+    but SP. *)
+
+val sp_designated : t -> bool
+(** [true] iff [d] is a designated SP (the runtime SP* super-node). Errors on
+    non-SP. *)
+
+val mk_sp_designated : vpifo -> step -> t -> step -> t -> t
+(** [mk_sp_designated v loser_step loser_d surv_step surv_d] is the designated
+    SP minted by [Designate]: vpifo [v], two children at indices 0/1
+    (loser/survivor) with ranks 1.0/2.0. *)
 
 val insert_arm_wfq : int -> step -> t -> float -> t -> t
 (** [insert_arm_wfq k new_step new_child new_weight d] splices [new_child] in at
