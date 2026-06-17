@@ -18,8 +18,16 @@ val analyze : Rio_core.Pol.t -> Rio_core.Pol.t -> t
 (** [analyze p1 p2] sniffs a guarded sequence carrying [p1] to [p2]. Returns
     [[]] when the two policies are equal. Per-step deltas are atomic
     [Rio_delta.Delta] productions; structural give-ups (constructor mismatches,
-    multi-arm divergences) expand into the paper's give-up idiom
-    [Designate ; Quiesce ; Undesignate] sequence at the affected slot. *)
+    multi-arm divergences) expand into the [Replace] idiom at the affected slot.
+*)
+
+val replace : next:Rio_core.Pol.t -> ?meta:float -> unit -> t
+(** The paper's [Replace] idiom:
+    [Designate(p, next) ; Quiesce(p) ; (Empty p) Undesignate(p)]. With [?meta]
+    supplied, a trailing [(Empty p) ChangeMeta(p, meta)] step rebinds the slot's
+    per-arm meta (SP rank or WFQ weight) once the loser has drained. Emitted
+    with [path = []] at the local level; the caller prepends the target index
+    via [prepend_seq]. Also the sniffer's give-up sequence. *)
 
 val retire : arm:Rio_core.Pol.t -> unit -> t
 (** The paper's [Retire] idiom: [Quiesce(p) ; (Empty p) Remove(p, arm)]. Emitted

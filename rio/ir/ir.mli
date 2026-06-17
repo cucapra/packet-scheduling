@@ -70,8 +70,9 @@ val patch : prev:compiled -> next:Rio_core.Pol.t -> compiled option
       instructions needed to detach the arm and clean up routing state cached on
       its ancestor chain. Existing SP siblings keep their ranks.
     - [next] swaps in a different subtree at exactly one position (planner
-      expands this as a [Designate ; Quiesce ; Undesignate] give-up sequence,
-      recognized by [patch]): returns [Some] with the new arm's
+      expands this as the [Replace] idiom
+      [Designate ; Quiesce ; (Empty p) Undesignate], recognized by [patch]):
+      returns [Some] with the new arm's
       [Spawn]/[Adopt]/[Assoc]/[Map]/[Set_policy]/[Set_arm_meta] instructions, a
       [Designate] that fuses the old and new roots into a super-node riding on
       the existing parent step, [Deassoc]s that drain the old classes out of the
@@ -105,10 +106,10 @@ val patch_designate :
     instructions, a [Designate (loser_v, survivor_v)], a
     [Set_policy (loser_v, SP_star, 2)] that signals to the substrate that
     [loser_v] now hosts a super-node, and class-routing edits along [path]'s
-    ancestor chain for any classes new to [arm]. Inside the give-up sequence
-    emitted by [Planner.analyze], [patch] dispatches monolithically through
-    [patch_one_arm_replaced] for decorated-tree threading; this entry point is
-    for direct planner / test invocation of an isolated [Designate]. *)
+    ancestor chain for any classes new to [arm]. Inside the [Replace] idiom
+    sequence emitted by [Planner.analyze], [patch] dispatches monolithically
+    through [patch_one_arm_replaced] for decorated-tree threading; this entry
+    point is for direct planner / test invocation of an isolated [Designate]. *)
 
 val patch_quiesce : prev:compiled -> path:int list -> compiled
 (** Per-production lowering for [Delta.Quiesce]. Tears down the class-routing

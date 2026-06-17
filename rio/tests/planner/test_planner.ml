@@ -17,11 +17,11 @@ let make_planner_test name file1 file2 expected_seq =
   name >:: fun _ ->
   assert_equal expected_seq actual_seq ~printer:Planner.to_string
 
-(* The planner expands the paper's give-up idiom (sketch.md sec4.2) into
-   [Designate ; Quiesce ; (Empty p) Undesignate]. When the give-up also
+(* The planner's [Replace] idiom (sketch.md sec4.2):
+   [Designate ; Quiesce ; (Empty p) Undesignate]. When the replace also
    rebinds the slot's per-arm meta, a trailing [ChangeMeta] step fires
    once the loser is empty. *)
-let giveup_seq ?meta path arm =
+let replace_seq ?meta path arm =
   let base =
     [
       (Planner.True, Delta.Designate { path; arm });
@@ -47,7 +47,7 @@ let retire_seq path arm =
 let make_giveup_test name file1 file2 path =
   let policy2 = prog_to_policy file2 in
   let arm = Pol.walk policy2 path in
-  make_planner_test name file1 file2 (giveup_seq path arm)
+  make_planner_test name file1 file2 (replace_seq path arm)
 
 let same =
   [
@@ -139,14 +139,14 @@ let one_arm_replaced =
   [
     (* SP(A,B) vs SP(A,C): slot 1 differs in arm AND in rank (2.0 -> 3.0). *)
     make_planner_test "strict arm changed" "strict_AB" "strict_AC"
-      (giveup_seq ~meta:3.0 [ 1 ] (Pol.FIFO "C"));
+      (replace_seq ~meta:3.0 [ 1 ] (Pol.FIFO "C"));
     (* RR(A,B) vs RR(A,D): slot 1 differs in arm only. *)
     make_planner_test "rr arm changed" "rr_AB" "rr_AD"
-      (giveup_seq [ 1 ] (Pol.FIFO "D"));
+      (replace_seq [ 1 ] (Pol.FIFO "D"));
     (* WFQ slot's arm changed in place, weight unchanged. *)
     make_planner_test "WFQ arm changed in place, same weight" "wfq_ABC"
       "wfq_ABZ"
-      (giveup_seq [ 2 ] (Pol.FIFO "Z"));
+      (replace_seq [ 2 ] (Pol.FIFO "Z"));
   ]
 
 let one_arm_replaced_wfq =
@@ -154,17 +154,17 @@ let one_arm_replaced_wfq =
     (* WFQ slot's arm AND weight both flip in one edit. *)
     make_planner_test "WFQ slot with arm change and weight change" "wfq_ABC"
       "wfq_ABZ_diff"
-      (giveup_seq ~meta:7.0 [ 2 ] (Pol.FIFO "Z"));
+      (replace_seq ~meta:7.0 [ 2 ] (Pol.FIFO "Z"));
   ]
 
 let nested_giveup_demotion =
   [
     make_planner_test "nested Graft demotes to give-up" "strict_AB"
       "strict_A_rrBC"
-      (giveup_seq [ 1 ] (Pol.RR [ Pol.FIFO "B"; Pol.FIFO "C" ]));
+      (replace_seq [ 1 ] (Pol.RR [ Pol.FIFO "B"; Pol.FIFO "C" ]));
     make_planner_test "nested ChangeRoot demotes to give-up" "strict_A_rrBC"
       "strict_AB"
-      (giveup_seq [ 1 ] (Pol.FIFO "B"));
+      (replace_seq [ 1 ] (Pol.FIFO "B"));
   ]
 
 let graft =

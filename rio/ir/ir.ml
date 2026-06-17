@@ -474,7 +474,7 @@ let patch_change_root ~prev ~path =
 
 (* ------------------------------------------------------------------ *)
 (* Patch: per-production lowerings for Designate / Quiesce / Undesignate.
-   [Planner.analyze] emits these inside the give-up idiom sequence; the
+   [Planner.analyze] emits these inside the [Replace] idiom sequence; the
    top-level [Ir.patch] dispatch recognizes the sequence shape and routes
    it through [patch_one_arm_replaced] for decorated-tree threading, but
    the per-helper entry points below remain exposed for direct planner-

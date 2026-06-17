@@ -73,15 +73,18 @@ let prepend_guard i = function
 let prepend_step i (g, d) = (prepend_guard i g, Delta.prepend_path i d)
 let prepend_seq i seq = List.map (prepend_step i) seq
 
-(* The paper's give-up idiom [Replace(path, B)] expands into
-   [Designate(path, B) ; Quiesce(path) ; (when path is empty) Undesignate(path)].
-   When the give-up also rebinds the slot's per-arm meta (an SP rank or WFQ
-   weight changing in lockstep with the arm swap), a final [ChangeMeta] step
-   fires once the loser has drained.
+(* The paper's [Replace] idiom: swap in [next] at the current level. Expands
+   into [Designate(path, next) ; Quiesce(path) ; (Empty path) Undesignate(path)].
+   When the swap also rebinds the slot's per-arm meta (an SP rank or WFQ weight
+   changing in lockstep with the arm), a final [ChangeMeta] step fires once the
+   loser has drained.
+
+   Also serves as the sniffer's give-up sequence: when [analyze] can't find a
+   smaller atomic edit, it emits [Replace] at the divergent slot.
 
    All paths are emitted as [[]] at this level; bubble-up via [prepend_seq]
    pins them to the right slot. *)
-let give_up_seq ~next ?meta () =
+let replace ~next ?meta () =
   let base =
     [
       (True, Delta.Designate { path = []; arm = next });
@@ -110,9 +113,9 @@ let retire ~arm () =
    (e.g. the imperative-mode surface). *)
 let slow_retire ~arm () = [ (Empty [], Delta.Remove { path = []; arm }) ]
 
-(* Recognize the inner-give-up shape (pre-bubble-up). Used by the metaed
+(* Recognize the inner [Replace] shape (pre-bubble-up). Used by the metaed
    comparator to gate "slot-replace-with-meta" rewrites. *)
-let is_giveup_root = function
+let is_replace_root = function
   | [
       (True, Delta.Designate { path = []; _ });
       (True, Delta.Quiesce []);
@@ -153,7 +156,7 @@ let rec is_sub_policy p1 p2 =
 (* Same control flow as the old [Compare.compare_children], but each branch
    emits a [Planner.t] (sequence) rather than a single [Delta.t]. *)
 let rec compare_children ~next:p2 ps1 ps2 =
-  let give_up = give_up_seq ~next:p2 () in
+  let give_up = replace ~next:p2 () in
   match List.compare_lengths ps1 ps2 with
   | 0 ->
       begin match single_change ps1 ps2 with
@@ -168,7 +171,7 @@ let rec compare_children ~next:p2 ps1 ps2 =
                    NOT say "prev embeds in next" at the outer slot. Bubbling
                    it up via [prepend_seq] would mis-describe the edit, so
                    we demote to a slot-level give-up at the current level. *)
-                give_up_seq ~next:child2 ()
+                replace ~next:child2 ()
             | d -> d
           in
           prepend_seq i inner
@@ -190,7 +193,7 @@ let rec compare_children ~next:p2 ps1 ps2 =
 (* SP and WFQ share shape [(t * float) list] and sniffer behavior: a clean
    single edit shows up at the same index in both projections. *)
 and compare_metaed_children ~next:p2 pms1 pms2 =
-  let give_up = give_up_seq ~next:p2 () in
+  let give_up = replace ~next:p2 () in
   let ps1 = List.map fst pms1 in
   let ps2 = List.map fst pms2 in
   let ms1 = List.map snd pms1 in
@@ -207,7 +210,7 @@ and compare_metaed_children ~next:p2 pms1 pms2 =
       begin match single_change_lockstep ps1 ps2 ms1 ms2 with
       | Some (i, _, meta) ->
           let inner = analyze (List.nth ps1 i) (List.nth ps2 i) in
-          if is_giveup_root inner then
+          if is_replace_root inner then
             (* Slot [i] replaces its arm AND its meta in one edit. Re-emit
                the give-up sequence with the meta tacked on, then bubble. *)
             let arm =
@@ -215,7 +218,7 @@ and compare_metaed_children ~next:p2 pms1 pms2 =
               | (True, Delta.Designate { arm; _ }) :: _ -> arm
               | _ -> assert false
             in
-            prepend_seq i (give_up_seq ~next:arm ~meta ())
+            prepend_seq i (replace ~next:arm ~meta ())
           else give_up
       | None -> give_up
       end
@@ -249,7 +252,7 @@ and analyze p1 p2 =
                (FIFO<->SP, SP<->RR, etc.): whole-slot give-up at this level.
                The leaf-level paths are empty; [prepend_seq] pins them when
                this bubbles up. *)
-            give_up_seq ~next:p2 ())
+            replace ~next:p2 ())
 
 (* -------- pretty-printing (test output only) ---------------- *)
 
