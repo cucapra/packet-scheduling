@@ -26,5 +26,11 @@ val retire : arm:Rio_core.Pol.t -> unit -> t
     with [path = []] at the local level; the caller prepends the target index
     via [prepend_seq]. *)
 
+val slow_retire : arm:Rio_core.Pol.t -> unit -> t
+(** The paper's [SlowRetire] idiom: [(Empty p) Remove(p, arm)]. Like [retire]
+    but skips the explicit [Quiesce]: waits for the subtree to drain naturally,
+    then removes its arm. [analyze] never emits this on its own; it's exposed
+    for callers that already know the subtree is being drained upstream. *)
+
 val to_string : t -> string
 (** Test-output formatter. *)

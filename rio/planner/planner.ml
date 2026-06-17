@@ -100,6 +100,16 @@ let give_up_seq ~next ?meta () =
 let retire ~arm () =
   [ (True, Delta.Quiesce []); (Empty [], Delta.Remove { path = []; arm }) ]
 
+(* The paper's [SlowRetire] idiom: wait for the subtree at the current level
+   to drain naturally (no [Quiesce] gate cutting off enqueues), then
+   structurally remove its arm. Useful when upstream classifiers have already
+   stopped routing traffic into the subtree and we want to avoid the extra
+   [Quiesce] hop. [analyze] never emits this on its own: from a policy pair
+   there's no signal distinguishing "drain aggressively" from "drain lazily",
+   so it stays a planner-public helper for callers that know which they want
+   (e.g. the imperative-mode surface). *)
+let slow_retire ~arm () = [ (Empty [], Delta.Remove { path = []; arm }) ]
+
 (* Recognize the inner-give-up shape (pre-bubble-up). Used by the metaed
    comparator to gate "slot-replace-with-meta" rewrites. *)
 let is_giveup_root = function
