@@ -179,30 +179,20 @@ let is_replace_root = function
 let rec is_sub_policy p1 p2 =
   if p1 = p2 then Some []
   else
+    let scan children ~arm =
+      let rec loop i = function
+        | [] -> None
+        | x :: t -> (
+            match is_sub_policy p1 (arm x) with
+            | Some path -> Some (i :: path)
+            | None -> loop (i + 1) t)
+      in
+      loop 0 children
+    in
     match p2 with
     | FIFO _ -> None
-    | SP (prs, _) | WFQ prs ->
-        let rec loop i = function
-          | [] -> None
-          | (p, _) :: t -> (
-              if p = p1 then Some [ i ]
-              else
-                match is_sub_policy p1 p with
-                | None -> loop (i + 1) t
-                | Some path -> Some (i :: path))
-        in
-        loop 0 prs
-    | RR ps ->
-        let rec loop i = function
-          | [] -> None
-          | p :: t -> (
-              if p = p1 then Some [ i ]
-              else
-                match is_sub_policy p1 p with
-                | None -> loop (i + 1) t
-                | Some path -> Some (i :: path))
-        in
-        loop 0 ps
+    | SP (prs, _) | WFQ prs -> scan prs ~arm:fst
+    | RR ps -> scan ps ~arm:Fun.id
 
 (* Same control flow as the old [Compare.compare_children], but each branch
    emits a [Planner.t] (sequence) rather than a single [Delta.t]. *)
