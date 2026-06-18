@@ -10,7 +10,6 @@ A list of AM-notes scattered through the draft.
 - §3.4.8 (line ~897): spell out the five obligations for `Graft` under the whole-tree restriction.
 - §3.5 (line ~918): confirm with Zhiyuan what we need from the substrate atomicity story.
 - §4.1 (line ~1008): no withdraw/abort mechanism today; flagged in case we revisit.
-- §5: future work is enumerated in §5.4 (no cost model, no multi-edit recognition); per-case examples and the demotion wrinkle now in §5.2 / §5.3 may need tightening on a second pass against `rio/planner/planner.ml`.
 - §6.2 (line ~1238): port-routing across the `P` trees.
 - §6.3 (line ~1330): confirm substrate-requirements prose with Zhiyuan.
 
@@ -1245,12 +1244,13 @@ We claim only that whatever sequence it emits is safe (§3.4) and no worse than 
 ### 5.2 The case analysis
 
 The planner steps through the following cases in order, emitting at the first match.
-Cases 1-3 are global tests on the full `(p1, p2)`; cases 4-7 fire when the trees agree at the current recursion level and the local difference has a recognized shape; case 8 catches everything else.
-Case 4 is the descent mechanism: when the difference sits one level below the current view, case 4 recurses, and whatever case fires at the deeper level has its emission re-targeted via index prepending on the way back up.
+Each call examines the current pair `(p1, p2)`: cases 1-3 test the two trees as wholes; cases 4-7 fire when the roots agree and the local difference has a recognized shape; case 8 catches everything else.
+Case 4 is the descent mechanism: when the difference sits one level down, it re-enters this case analysis on the differing child, and whatever case fires at the deeper level has its emission re-targeted via index prepending on the way back up.
 
-1. **`p1 =R p2`.**
+1. **`p1 = p2`.**
    Emit `[]`.
-   The live control is already serving the requested policy (up to `=R`), so the planner has nothing to install.
+   The test is literal equality: the compiler normalizes user input (§3.2), so any two `=R`-equivalent policies become identical `pol` terms before reaching the planner.
+   The live control is already serving the requested policy, so the planner has nothing to install.
 
 2. **`p1` embeds in `p2` at some path.**
    Emit `Graft(ctx)`, where `ctx` is the surrounding policy context.
@@ -1261,17 +1261,19 @@ Case 4 is the descent mechanism: when the difference sits one level below the cu
    Emit `PruneDownTo(path)` (§4.2).
    Symmetric to the previous case.
 
-4. **Same constructor at the current level, child lists of equal length, one child differs.**
+4. **Same constructor at the current level, child lists of equal length, exactly one child differs.**
    Recurse on the differing child and prepend its index to every step's path.
    §5.3 covers one wrinkle (demotion when the inner result cannot bubble).
 
-5. **Same constructor at the current level, child lists of equal length, one arm's per-arm metadata differs.**
+5. **Same `SP` or `WFQ` at the current level, child lists of equal length, the divergence touches per-arm metadata.**
    Two sub-cases.
-   When the arms themselves are pointwise equal and only the metadata differs, emit `ChangeMeta(path, meta)` for the affected slot.
-   When the arm and its metadata both change in lockstep at the same slot _and_ the recursive call on that arm returns a `Replace`, emit a single bubbled `Replace` with the new metadata tacked on as a trailing `ChangeMeta`. This exploits the fact that the loser has drained by the time the new arm is in place, so `ChangeMeta` against the survivor's slot is safe to sequence at the tail.
+   When the arms themselves are pointwise equal and a single slot's metadata differs, emit `ChangeMeta(path, meta)` for that slot.
+   When a single slot's arm _and_ its metadata both change in lockstep, _and_ the recursive call on that arm returns the three-step `Replace` shape, emit a single bubbled `Replace` with the new metadata tacked on as a trailing `ChangeMeta`.
+   This exploits the fact that the loser has drained by the time the new arm is in place, so `ChangeMeta` against the survivor's slot is safe to sequence at the tail.
 
 6. **Same constructor at the current level, `p2` has one extra child (and dropping it from `p2` recovers `p1`).**
    Emit `Add`.
+   §3.4.1's leaf-disjointness precondition is satisfied for free: the new arm's leaves are precisely the leaves of `p2` not in `p1`, which by §3.2's leaf-partition validity are disjoint from `p1`'s.
 
 7. **Same constructor at the current level, `p1` has one extra child (and dropping it from `p1` recovers `p2`).**
    Emit the `Retire` idiom (§4.2).
@@ -1280,7 +1282,7 @@ Case 4 is the descent mechanism: when the difference sits one level below the cu
 
 8. **Anything else.**
    Emit `Replace` at the current level.
-   "Anything else" covers same-level shapes the planner does not recognize: constructor mismatch (e.g., `SP` vs. `RR`), more than one differing arm at this level, and `FIFO` leaves carrying different flow labels.
+   "Anything else" covers same-level shapes the planner does not recognize: constructor mismatch (e.g., `SP` vs. `RR`), child lists of equal length with more than one position disagreeing, child lists differing in length by more than one (more than one `Add` or more than one `Retire` at the same level), and `FIFO` leaves carrying different flow labels.
 
    The recursion does significant work here.
    Cases 1-7 are tried at every level the recursion visits, and case 4 descends through any same-constructor agreeing prefix.
