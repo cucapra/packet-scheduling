@@ -4,7 +4,7 @@
 include module type of Instr
 
 (** A decorated source tree: mirrors [Rio_core.Pol.t] but annotates every node
-    with the [vpifo] assigned to it and every parent-to-child edge with the
+    with the [pifo] assigned to it and every parent-to-child edge with the
     [step] handed out at adoption time. SP edges additionally carry a per-arm
     priority rank; WFQ edges carry a per-arm weight. The original
     [Rio_core.Pol.t] is recoverable by erasing the decorations. Lives in its own
@@ -12,10 +12,10 @@ include module type of Instr
     ([Decorated.RR], [Decorated.SP], …) *)
 module Decorated : sig
   type t =
-    | FIFO of vpifo * clss
-    | SP of vpifo * (step * t * float) list * bool
-    | RR of vpifo * (step * t) list
-    | WFQ of vpifo * (step * t * float) list
+    | FIFO of pifo * clss
+    | SP of pifo * (step * t * float) list * bool
+    | RR of pifo * (step * t) list
+    | WFQ of pifo * (step * t * float) list
 end
 
 type compiled = {
@@ -70,7 +70,7 @@ val patch : prev:compiled -> next:Rio_core.Pol.t -> compiled option
       [Spawn]/[Adopt]/[Assoc]/[Map]/[Change_arity] (and [Set_arm_meta] for [SP],
       carrying the new arm's priority rank) instructions needed to splice the
       new arm in. Existing SP arms keep their ranks; no positional cascade is
-      emitted. The parent's policy type is fixed at lPIFO birth, so no
+      emitted. The parent's policy type is fixed at PIFO birth, so no
       [Set_policy] is emitted against it.
     - [next] differs from [prev] only in the per-arm meta (rank for [SP], weight
       for [WFQ]) of one slot (per [ChangeMeta]): returns [Some] with a single

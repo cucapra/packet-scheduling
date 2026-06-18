@@ -56,17 +56,17 @@ let make_counter ~start =
 (* ------------------------------------------------------------------ *)
 
 (* Starting IDs for the two ID spaces. *)
-let vpifo_start = 100
+let pifo_start = 100
 let step_start = 1000
 
 (* The port root sits one level above every real root, on a reserved PE. It is
    the per-port classifier (per paper/sketch.md, the carrier that survives
-   [Graft] and [ChangeRoot] swaps): every output port has a dedicated lPIFO
+   [Graft] and [ChangeRoot] swaps): every output port has a dedicated PIFO
    whose sole adopted child is the actual tree root. Hosting an editable
    parent classifier means whole-tree replacement, [Graft], and [ChangeRoot]
    all reduce to ordinary parent-side edits. Reserved IDs below
-   [vpifo_start]/[step_start] keep real-node numbering intact. *)
-let port_root_v : vpifo = 99
+   [pifo_start]/[step_start] keep real-node numbering intact. *)
+let port_root_v : pifo = 99
 let port_root_step : step = 999
 let port_root_pe : pe = -1
 
@@ -124,7 +124,7 @@ let rec compile_subtree ~fresh_v ~fresh_s ~pe_of_depth ~depth ?splice
    to the [i]-th child with its head consumed. *)
 and compile_arm ~fresh_v ~fresh_s ~pe_of_depth ~depth ~pol_ty ~weights ?splice
     children : Frag.t * (step * Decorated.t) list =
-  (* Self first, so that we get a lower vPIFO ID than the kids. *)
+  (* Self first, so that we get a lower PIFO ID than the kids. *)
   let v = fresh_v () in
   let child_results =
     List.mapi
@@ -172,7 +172,7 @@ and compile_arm ~fresh_v ~fresh_s ~pe_of_depth ~depth ~pol_ty ~weights ?splice
   (Frag.combine local child_frags, edges)
 
 let of_policy (p : Rio_core.Pol.t) : compiled =
-  let fresh_v = make_counter ~start:vpifo_start in
+  let fresh_v = make_counter ~start:pifo_start in
   let fresh_s = make_counter ~start:step_start in
   let frag, decorated =
     compile_subtree ~fresh_v ~fresh_s ~pe_of_depth:(fun d -> d) ~depth:0 p
@@ -205,7 +205,7 @@ let of_policy (p : Rio_core.Pol.t) : compiled =
 
 let parent_info = function
   | Decorated.FIFO _ -> failwith "Ir.patch: parent is a FIFO leaf"
-  | d -> (Decorated.root_vpifo d, Decorated.arity d, Decorated.pol_ty d)
+  | d -> (Decorated.root_pifo d, Decorated.arity d, Decorated.pol_ty d)
 
 (* Routing-state edits along an ancestor chain. Each ancestor caches an
    [Assoc]/[Map] entry per class in its descendant subtree (see
@@ -216,10 +216,10 @@ let chain_emit f chain classes =
   List.concat_map (fun (v, s) -> List.map (fun c -> f v s c) classes) chain
 
 let gc_subtree subtree =
-  List.map (fun v -> GC v) (Decorated.subtree_vpifos subtree)
+  List.map (fun v -> GC v) (Decorated.subtree_pifos subtree)
 
 let counters_after prev =
-  ( make_counter ~start:(vpifo_start + Decorated.count_vpifos prev.decorated),
+  ( make_counter ~start:(pifo_start + Decorated.count_pifos prev.decorated),
     make_counter ~start:(step_start + Decorated.count_steps prev.decorated) )
 
 (* Grow [pes] so it covers [target_depth], allocating fresh PEs (above
@@ -329,7 +329,7 @@ let patch_remove ~prev ~arm_path =
   let parent = Decorated.walk prev.decorated parent_path in
   let parent_v, old_arity, _ = parent_info parent in
   let removed = Decorated.nth_child parent k in
-  let removed_v = Decorated.root_vpifo removed in
+  let removed_v = Decorated.root_pifo removed in
   let step_k = Decorated.nth_step parent k in
   let doomed_classes = Decorated.subtree_classes removed in
   let chain_above =
@@ -379,7 +379,7 @@ let patch_graft ~prev ~next ~path =
     compile_subtree ~fresh_v ~fresh_s ~pe_of_depth ~depth:0
       ~splice:(path, prev.decorated) next
   in
-  let old_real_root_v = Decorated.root_vpifo prev.decorated in
+  let old_real_root_v = Decorated.root_pifo prev.decorated in
   let prev_classes = Decorated.subtree_classes prev.decorated in
   let only_added =
     List.filter
@@ -405,13 +405,13 @@ let patch_change_root ~prev ~path =
   let parent_path, k = list_foot path in
   let parent = Decorated.walk prev.decorated parent_path in
   let new_root = Decorated.nth_child parent k in
-  let new_root_v = Decorated.root_vpifo new_root in
-  let old_real_root_v = Decorated.root_vpifo prev.decorated in
-  let kept_set = Decorated.subtree_vpifos new_root in
+  let new_root_v = Decorated.root_pifo new_root in
+  let old_real_root_v = Decorated.root_pifo prev.decorated in
+  let kept_set = Decorated.subtree_pifos new_root in
   let to_gc =
     List.filter
       (fun v -> not (List.mem v kept_set))
-      (Decorated.subtree_vpifos prev.decorated)
+      (Decorated.subtree_pifos prev.decorated)
   in
   let kept_classes = Decorated.subtree_classes new_root in
   let dropped_classes =
@@ -447,7 +447,7 @@ let full_chain_to ~prev path =
   | _ ->
       let parent_path, k = list_foot path in
       let parent = Decorated.walk prev.decorated parent_path in
-      let parent_v = Decorated.root_vpifo parent in
+      let parent_v = Decorated.root_pifo parent in
       let step_k = Decorated.nth_step parent k in
       port_chain
       @ Decorated.ancestor_chain prev.decorated parent_path
@@ -455,9 +455,9 @@ let full_chain_to ~prev path =
 
 (* The ancestor chain that routes traffic INTO the slot at [path]: every (v, s)
    pair from the port root down to and including the slot's direct parent's
-   (parent_v, step_to_slot). The slot's own vpifo is NOT included. Same shape
+   (parent_v, step_to_slot). The slot's own pifo is NOT included. Same shape
    as [full_chain_to ~prev path], but used by lowerings that want to address
-   "the chain above this slot's vpifo". *)
+   "the chain above this slot's pifo". *)
 let chain_above_slot ~prev path =
   port_chain @ Decorated.ancestor_chain prev.decorated path
 
@@ -468,7 +468,7 @@ let parent_edge ~prev path =
   else
     let parent_path, k = list_foot path in
     let parent = Decorated.walk prev.decorated parent_path in
-    (Decorated.root_vpifo parent, Decorated.nth_step parent k)
+    (Decorated.root_pifo parent, Decorated.nth_step parent k)
 
 (* [Designate { path; survivor }]: stand up a fresh SP* super-node at the slot
    holding the existing subtree (the loser). The new [arm] (the survivor)
@@ -487,7 +487,7 @@ let parent_edge ~prev path =
    [parent_step], which we rewire from loser to SP* via [Emancipate]+[Adopt]. *)
 let patch_designate ~prev ~path ~(arm : Rio_core.Pol.t) =
   let loser = Decorated.walk prev.decorated path in
-  let loser_v = Decorated.root_vpifo loser in
+  let loser_v = Decorated.root_pifo loser in
   let loser_classes = Decorated.subtree_classes loser in
   let arm_depth = List.length path in
   let new_pes =
@@ -554,7 +554,7 @@ let patch_designate ~prev ~path ~(arm : Rio_core.Pol.t) =
    can route through the chain on the way to pop. [Isa_unmap] is paired with
    [Isa_emancipate] inside [Remove], which fires only after the drain. *)
 let rec quiesce_interior (d : Decorated.t) : instr list =
-  let v = Decorated.root_vpifo d in
+  let v = Decorated.root_pifo d in
   match d with
   | Decorated.FIFO (_, c) -> [ Deassoc (v, c) ]
   | _ ->
@@ -608,7 +608,7 @@ let patch_quiesce ~prev ~path =
     else
       let parent_path, k = list_foot path in
       let sp_parent = Decorated.walk prev.decorated parent_path in
-      let sp_v = Decorated.root_vpifo sp_parent in
+      let sp_v = Decorated.root_pifo sp_parent in
       let surv_idx = 1 - k in
       let survivor_classes =
         Decorated.subtree_classes (Decorated.nth_child sp_parent surv_idx)
@@ -634,9 +634,9 @@ let patch_quiesce ~prev ~path =
    an extra [Emancipate]/[Adopt] pair from us. *)
 let patch_undesignate ~prev ~path =
   let sp_node = Decorated.walk prev.decorated path in
-  let sp_v = Decorated.root_vpifo sp_node in
+  let sp_v = Decorated.root_pifo sp_node in
   let loser_d = Decorated.nth_child sp_node 0 in
-  let loser_v = Decorated.root_vpifo loser_d in
+  let loser_v = Decorated.root_pifo loser_d in
   let survivor_d = Decorated.nth_child sp_node 1 in
   let commit = [ Undesignate loser_v; GC sp_v ] @ gc_subtree loser_d in
   let new_decorated =

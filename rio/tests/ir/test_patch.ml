@@ -99,8 +99,8 @@ let rr_ab_to_abc_expected =
 
 (* Deep arm add. complex_tree's normalized root is WFQ with children sorted
    to (SP, RR[D,E,F], RR[G,H]) at indices 0, 1, 2. The mid RR (at path [1])
-   has parent vpifo 105 and arity 3; complex_tree leaves the counters at
-   next_vpifo=112, next_step=1011. New FIFO NEW lives one level below the
+   has parent pifo 105 and arity 3; complex_tree leaves the counters at
+   next_pifo=112, next_step=1011. New FIFO NEW lives one level below the
    RR, so PE 2. *)
 let complex_tree_add_deep_expected =
   [
@@ -133,7 +133,7 @@ let one_arm_added_tests =
 
 (* Add (WFQ parent) *)
 
-(* wfq_BA compiles with vpifos 100 (root WFQ), 101 (A), 102 (B); steps 1000
+(* wfq_BA compiles with pifos 100 (root WFQ), 101 (A), 102 (B); steps 1000
    (A), 1001 (B). Adding FIFO C at slot 2 with weight 3 mints v=103 (PE 1)
    and step 1002, plus a single Set_arm_meta on the new step (no SP-style
    shifts: WFQ slots are independent). *)
@@ -213,7 +213,7 @@ let one_arm_added_wfq_tests =
 
 (* ChangeMeta *)
 
-(* WFQ root with three FIFO arms: vpifo IDs 100 (root), 101/102/103 (A/B/C);
+(* WFQ root with three FIFO arms: pifo IDs 100 (root), 101/102/103 (A/B/C);
    adopt steps 1000/1001/1002. Bumping B's weight 1 -> 5 should emit a single
    Set_arm_meta on the root for B's step. *)
 let meta_changed_tests =
@@ -302,7 +302,7 @@ let one_arm_removed_tests =
    When the same edit also rebinds the slot's per-arm meta, a trailing
    [ChangeMeta]-only step under [True] fires immediately after. *)
 
-(* RR[A,B] -> RR[A,D]: replace B (vpifo 102, step 1001) with FIFO D. New IDs
+(* RR[A,B] -> RR[A,D]: replace B (pifo 102, step 1001) with FIFO D. New IDs
    mint as: v=103 for the survivor (FIFO D), v=104 for sp_v, step_1002 for
    loser_step (sp_v -> loser), step_1003 for surv_step (sp_v -> survivor). All
    three nodes (v102, v103, v104) live on PE 1. The parent edge step_1001
@@ -441,7 +441,7 @@ let one_arm_replaced_wfq_tests =
   ]
 
 (* Whole-tree replacement (planner expands as the Replace idiom at
-   path []). prev = rr[A,B] (vpifos 100/101/102, steps 1000/1001);
+   path []). prev = rr[A,B] (pifos 100/101/102, steps 1000/1001);
    next = rr[D,E,F] which shares no arms. The patch emits three steps:
    - Designate: builds rr[D,E,F] off fresh ids (root v=103 on PE 0,
      leaves 104/105/106 on PE 1; steps 1002/1003/1004), spawns
@@ -516,7 +516,7 @@ let rr_ab_to_rr_def_expected =
   ]
 
 (* Whole-tree replacement via constructor mismatch at the root: prev =
-   sp[A,B] (vpifos 100/101/102), next = rr[A,B]: same children,
+   sp[A,B] (pifos 100/101/102), next = rr[A,B]: same children,
    different root policy. The class sets coincide ({A,B}={A,B}) so the
    port root's existing routing is preserved (no chain-above edits).
    Designate routes both shared classes through surv_step at sp_v=106
@@ -618,7 +618,7 @@ let change_root_tests =
 
 (* Graft *)
 
-(* prev = strict[A,B,C] compiles to vpifos 100 (root)/101/102/103 with
+(* prev = strict[A,B,C] compiles to pifos 100 (root)/101/102/103 with
    adopt steps 1000/1001/1002 and pes [0; 1]; counters end at next_v=104,
    next_s=1003. complex_tree normalizes to
    wfq[(sp[A,B,C], 1); (rr[D,E,F], 2); (rr[G,H], 3)] (children sort by
@@ -636,7 +636,7 @@ let change_root_tests =
    [Assoc]/[Map] entries on its single step for the five classes that
    [complex_tree] adds beyond [strict_ABC] (D, E, F, G, H in the
    normalized preorder); the three carried-over classes (A, B, C) keep
-   their existing port-root wiring. None of prev's vpifos are respawned. *)
+   their existing port-root wiring. None of prev's pifos are respawned. *)
 let strict_abc_to_complex_tree_expected =
   [
     t_
