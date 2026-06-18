@@ -77,12 +77,12 @@ val patch : prev:compiled -> next:Rio_core.Pol.t -> compiled option
       [Set_arm_meta] instruction for the affected slot.
     - [next] removes exactly one arm at any position of a [RR] or [SP] parent
       (planner expands this as the [Retire] idiom
-      [Quiesce(p) ; (Empty p) Remove(p, arm)], recognized by [patch]): returns
-      [Some] with two guarded steps. The [Quiesce(p)] step under [True]
-      [Deassoc]s the doomed classes along the chain from the port root down
-      through the subtree's interior. The [Remove(p, _)] step under [Empty p]
-      then [Change_arity]s the parent, [Emancipate]s the doomed root, walks the
-      chain above with [Unmap] entries for the doomed classes (paper §6.2: the
+      [Quiesce(p) ; (Empty p) Remove(p)], recognized by [patch]): returns [Some]
+      with two guarded steps. The [Quiesce(p)] step under [True] [Deassoc]s the
+      doomed classes along the chain from the port root down through the
+      subtree's interior. The [Remove(p)] step under [Empty p] then
+      [Change_arity]s the parent, [Emancipate]s the doomed root, walks the chain
+      above with [Unmap] entries for the doomed classes (paper §6.2: the
       chain-side [Map]s outlive [Quiesce] so in-flight packets can drain, then
       retire here), and [GC]s every node in the removed subtree. Existing SP
       siblings keep their ranks.
@@ -95,8 +95,9 @@ val patch : prev:compiled -> next:Rio_core.Pol.t -> compiled option
       arm fresh, and rewires the parent edge to point at SP*. The [Quiesce] step
       tears down loser-only routing and swings shared classes from loser to
       survivor at SP*. The [Undesignate] step (gated on the loser being empty)
-      collapses SP* by rewiring the parent edge back to the survivor and GCs SP*
-      \+ the loser subtree.
+      emits [Undesignate loser_v] as the §6 ISA marker and GCs SP* + the loser
+      subtree; the parent rewire from SP* back to the survivor is implicit in
+      [Isa_undesignate] (paper §6.1).
     - [next] is structurally equal to a strict subtree of [prev] at a non-empty
       path (planner expands this as the [PruneDownTo] idiom
       [Retire(p_1) ; ... ; Retire(p_m) ; (True) ChangeRoot([0;...;0])],
@@ -144,9 +145,10 @@ val patch_quiesce : prev:compiled -> path:int list -> compiled
 
 val patch_undesignate : prev:compiled -> path:int list -> compiled
 (** Per-production lowering for [Delta.Undesignate]. Collapses the designated
-    SP* super-node at [path]: rewires the parent edge from SP* to the survivor
-    (child 1), emits [Undesignate loser_v] as the §6 ISA marker, and GCs SP*
-    + the loser subtree. *)
+    SP* super-node at [path]: emits [Undesignate loser_v] as the §6 ISA marker
+    and GCs SP* + the loser subtree. The parent rewire from SP* to the survivor
+    (child 1) is implicit in [Isa_undesignate] per paper §6.1, so no explicit
+    [Emancipate]/[Adopt] pair is emitted. *)
 
 (** JSON exporter for IR commits. *)
 module Json : sig

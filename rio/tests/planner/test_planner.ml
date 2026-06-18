@@ -29,7 +29,7 @@ let replace_seq ?meta path arm =
   let loser_path = path @ [ 0 ] in
   let base =
     [
-      (Planner.True, Delta.Designate { path; arm });
+      (Planner.True, Delta.Designate { path; survivor = arm });
       (Planner.True, Delta.Quiesce loser_path);
       (Planner.Empty loser_path, Delta.Undesignate path);
     ]
@@ -39,11 +39,10 @@ let replace_seq ?meta path arm =
   | Some m -> base @ [ (Planner.True, Delta.ChangeMeta { path; new_meta = m }) ]
 
 (* The planner's [Retire] idiom: drain the subtree at [path], then structurally
-   remove the [arm] once the subtree is empty. *)
-let retire_seq path arm =
+   remove the slot once the subtree is empty. *)
+let retire_seq path =
   [
-    (Planner.True, Delta.Quiesce path);
-    (Planner.Empty path, Delta.Remove { path; arm });
+    (Planner.True, Delta.Quiesce path); (Planner.Empty path, Delta.Remove path);
   ]
 
 (* Sniffer-emitted give-up: walks [next] at [path] to recover the wholesale
@@ -127,13 +126,12 @@ let one_arm_added_wfq =
 
 let armsremoved =
   [
-    make_planner_test "RR with arm removed" "rr_ABC" "rr_AB"
-      (retire_seq [ 2 ] (Pol.FIFO "C"));
+    make_planner_test "RR with arm removed" "rr_ABC" "rr_AB" (retire_seq [ 2 ]);
     make_planner_test "WFQ with arm removed" "wfq_ABC" "wfq_BA"
-      (retire_seq [ 2 ] (Pol.FIFO "C"));
+      (retire_seq [ 2 ]);
     make_planner_test "complex tree remove arm deep" "complex_tree_add_arm_deep"
       "complex_tree"
-      (retire_seq [ 1; 3 ] (Pol.FIFO "NEW"));
+      (retire_seq [ 1; 3 ]);
   ]
 
 let metachanged =
@@ -190,17 +188,15 @@ let graft =
    route to the surviving subtree (highest-index-within-level first,
    outer-level first), then re-root via [(True, ChangeRoot [0;...;0])]. *)
 let change_root =
-  let gh = Pol.RR [ Pol.FIFO "G"; Pol.FIFO "H" ] in
-  let def = Pol.RR [ Pol.FIFO "D"; Pol.FIFO "E"; Pol.FIFO "F" ] in
   [
     make_planner_test "complex_tree collapsed to fifo_A" "complex_tree" "fifo_A"
-      (retire_seq [ 2 ] gh @ retire_seq [ 1 ] def
-      @ retire_seq [ 0; 2 ] (Pol.FIFO "C")
-      @ retire_seq [ 0; 1 ] (Pol.FIFO "B")
+      (retire_seq [ 2 ] @ retire_seq [ 1 ]
+      @ retire_seq [ 0; 2 ]
+      @ retire_seq [ 0; 1 ]
       @ [ (Planner.True, Delta.ChangeRoot [ 0; 0 ]) ]);
     make_planner_test "complex_tree collapsed to strict_ABC" "complex_tree"
       "strict_ABC"
-      (retire_seq [ 2 ] gh @ retire_seq [ 1 ] def
+      (retire_seq [ 2 ] @ retire_seq [ 1 ]
       @ [ (Planner.True, Delta.ChangeRoot [ 0 ]) ]);
   ]
 

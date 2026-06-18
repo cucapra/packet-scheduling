@@ -59,7 +59,7 @@ let from_instr (i : Instr.instr) : Yojson.Basic.t =
           ("op", `String "set_arm_meta");
           ("v", `Int v);
           ("step", `Int s);
-          ("weight", `Float w);
+          ("meta", `Float w);
         ]
   | Instr.GC v -> `Assoc [ ("op", `String "gc"); ("v", `Int v) ]
   | Instr.Designate (v, survivor) ->

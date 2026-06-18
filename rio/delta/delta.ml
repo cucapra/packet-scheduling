@@ -18,12 +18,7 @@ type t =
     }
       (** Insert [arm] as a new child at [path]. [meta] is the new arm's per-arm
           metadata: a rank for SP, a weight for WFQ, [None] for RR. *)
-  | Remove of {
-      path : path;
-      arm : Rio_core.Pol.t;
-    }
-      (** Remove the child at [path]; [arm] records the dropped subtree's shape
-          (carried so confinement reasoning can see what left). *)
+  | Remove of path  (** Remove the child at [path]. *)
   | ChangeMeta of {
       path : path;
       new_meta : float;
@@ -38,11 +33,12 @@ type t =
           that subtree gives [next]. *)
   | Designate of {
       path : path;
-      arm : Rio_core.Pol.t;
+      survivor : Rio_core.Pol.t;
     }
-      (** Introduce [arm] alongside the slot at [path] under a designated
-          super-node favoring the existing arm. [den(Designate) = id]; the
-          super-node collapses once the loser quiesces. *)
+      (** Introduce [survivor] alongside the slot at [path] under a designated
+          super-node favoring the existing arm (the loser).
+          [den(Designate) = id]; the super-node collapses once the loser
+          quiesces. *)
   | Quiesce of path
       (** Drain the subtree at [path]: no further enqueues, dequeues continue
           until empty. [den(Quiesce) = id]. *)
@@ -54,11 +50,11 @@ type t =
    the child's own index to make it grandparent-relative. *)
 let prepend_path i = function
   | Add { path; arm; meta } -> Add { path = i :: path; arm; meta }
-  | Remove { path; arm } -> Remove { path = i :: path; arm }
+  | Remove p -> Remove (i :: p)
   | ChangeMeta { path; new_meta } -> ChangeMeta { path = i :: path; new_meta }
   | Graft p -> Graft (i :: p)
   | ChangeRoot p -> ChangeRoot (i :: p)
-  | Designate { path; arm } -> Designate { path = i :: path; arm }
+  | Designate { path; survivor } -> Designate { path = i :: path; survivor }
   | Quiesce p -> Quiesce (i :: p)
   | Undesignate p -> Undesignate (i :: p)
 
@@ -84,12 +80,12 @@ let to_string = function
       Printf.sprintf "Add: %s" (string_of_arm path arm)
   | Add { path; arm; meta = Some m } ->
       Printf.sprintf "Add: %s" (string_of_arm_w path arm m)
-  | Remove { path; arm } -> Printf.sprintf "Remove: %s" (string_of_arm path arm)
+  | Remove p -> Printf.sprintf "Remove at %s" (path_to_string p)
   | ChangeMeta { path; new_meta } ->
       Printf.sprintf "ChangeMeta: %s -> %g" (path_to_string path) new_meta
   | Graft p -> Printf.sprintf "Graft at %s" (path_to_string p)
   | ChangeRoot p -> Printf.sprintf "ChangeRoot at %s" (path_to_string p)
-  | Designate { path; arm } ->
-      Printf.sprintf "Designate: %s" (string_of_arm path arm)
+  | Designate { path; survivor } ->
+      Printf.sprintf "Designate: %s" (string_of_arm path survivor)
   | Quiesce p -> Printf.sprintf "Quiesce at %s" (path_to_string p)
   | Undesignate p -> Printf.sprintf "Undesignate at %s" (path_to_string p)

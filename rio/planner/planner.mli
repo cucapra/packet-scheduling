@@ -35,16 +35,16 @@ val replace : next:Rio_core.Pol.t -> ?meta:float -> unit -> t
     prepends the target index via [prepend_seq]. Also the sniffer's give-up
     sequence. *)
 
-val retire : arm:Rio_core.Pol.t -> unit -> t
-(** The paper's [Retire] idiom: [Quiesce(p) ; (Empty p) Remove(p, arm)]. Emitted
-    with [path = []] at the local level; the caller prepends the target index
-    via [prepend_seq]. *)
+val retire : unit -> t
+(** The paper's [Retire] idiom: [Quiesce(p) ; (Empty p) Remove(p)]. Emitted with
+    [path = []] at the local level; the caller prepends the target index via
+    [prepend_seq]. *)
 
-val slow_retire : arm:Rio_core.Pol.t -> unit -> t
-(** The paper's [SlowRetire] idiom: [(Empty p) Remove(p, arm)]. Like [retire]
-    but skips the explicit [Quiesce]: waits for the subtree to drain naturally,
-    then removes its arm. [analyze] never emits this on its own; it's exposed
-    for callers that already know the subtree is being drained upstream. *)
+val slow_retire : unit -> t
+(** The paper's [SlowRetire] idiom: [(Empty p) Remove(p)]. Like [retire] but
+    skips the explicit [Quiesce]: waits for the subtree to drain naturally, then
+    removes its arm. [analyze] never emits this on its own; it's exposed for
+    callers that already know the subtree is being drained upstream. *)
 
 val prune_down_to : prev:Rio_core.Pol.t -> path:Delta.path -> unit -> t
 (** The paper's [PruneDownTo] idiom: collapse [prev] down to the strict subtree

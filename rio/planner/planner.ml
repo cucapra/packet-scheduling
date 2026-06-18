@@ -93,7 +93,7 @@ let prepend_seq i seq = List.map (prepend_step i) seq
 let replace ~next ?meta () =
   let base =
     [
-      (True, Delta.Designate { path = []; arm = next });
+      (True, Delta.Designate { path = []; survivor = next });
       (True, Delta.Quiesce [ 0 ]);
       (Empty [ 0 ], Delta.Undesignate []);
     ]
@@ -105,8 +105,7 @@ let replace ~next ?meta () =
 (* The paper's [Retire] idiom: quiesce the subtree at the current level, then
    structurally remove its arm once it has drained. Paths are emitted as [[]]
    at this level; [prepend_seq] pins them when the sequence bubbles up. *)
-let retire ~arm () =
-  [ (True, Delta.Quiesce []); (Empty [], Delta.Remove { path = []; arm }) ]
+let retire () = [ (True, Delta.Quiesce []); (Empty [], Delta.Remove []) ]
 
 (* The paper's [SlowRetire] idiom: wait for the subtree at the current level
    to drain naturally (no [Quiesce] gate cutting off enqueues), then
@@ -116,7 +115,7 @@ let retire ~arm () =
    there's no signal distinguishing "drain aggressively" from "drain lazily",
    so it stays a planner-public helper for callers that know which they want
    (e.g. the imperative-mode surface). *)
-let slow_retire ~arm () = [ (Empty [], Delta.Remove { path = []; arm }) ]
+let slow_retire () = [ (Empty [], Delta.Remove []) ]
 
 (* The paper's [PruneDownTo] idiom: collapse [prev] down to the strict subtree
    at [path]. Walks [prev] along [path], retiring off-path siblings at each
@@ -148,8 +147,7 @@ let prune_down_to ~prev ~path () =
         let level_retires =
           List.concat_map
             (fun j ->
-              let arm = List.nth arms j in
-              List.fold_right prepend_seq (path_so_far @ [ j ]) (retire ~arm ()))
+              List.fold_right prepend_seq (path_so_far @ [ j ]) (retire ()))
             off
         in
         let kept = List.nth arms i in
@@ -239,7 +237,7 @@ let rec compare_children ~next:p2 ps1 ps2 =
       end
   | 1 ->
       begin match single_insertion ps2 ps1 with
-      | Some (i, arm) -> prepend_seq i (retire ~arm ())
+      | Some (i, _arm) -> prepend_seq i (retire ())
       | None -> give_up
       end
   | _ -> failwith "Can't get here"
@@ -267,12 +265,12 @@ and compare_metaed_children ~next:p2 pms1 pms2 =
           if is_replace_root inner then
             (* Slot [i] replaces its arm AND its meta in one edit. Re-emit
                the give-up sequence with the meta tacked on, then bubble. *)
-            let arm =
+            let survivor =
               match inner with
-              | (True, Delta.Designate { arm; _ }) :: _ -> arm
+              | (True, Delta.Designate { survivor; _ }) :: _ -> survivor
               | _ -> assert false
             in
-            prepend_seq i (replace ~next:arm ~meta ())
+            prepend_seq i (replace ~next:survivor ~meta ())
           else give_up
       | None -> give_up
       end
@@ -284,7 +282,7 @@ and compare_metaed_children ~next:p2 pms1 pms2 =
       end
   | 1 ->
       begin match single_insertion_lockstep ps2 ps1 ms2 ms1 with
-      | Some (i, arm, _) -> prepend_seq i (retire ~arm ())
+      | Some (i, _arm, _) -> prepend_seq i (retire ())
       | None -> give_up
       end
   | _ -> failwith "Can't get here"

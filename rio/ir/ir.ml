@@ -315,7 +315,7 @@ let patch_one_arm_added ~prev ~arm_path ~arm ~meta =
     ~commit:(Frag.to_commit (Frag.combine local [ arm_frag ]))
     ~decorated:new_decorated ~pes:new_pes
 
-(* Per-delta lowering for [Delta.Remove { path; arm }] (paper §6.2). Emits the
+(* Per-delta lowering for [Delta.Remove path] (paper §6.2). Emits the
    structural teardown ([Change_arity] shrink, parent-side [Emancipate], [GC]
    of the removed subtree) plus the chain-side [Unmap] walk that retires the
    [Map] entries cached on every ancestor for each class in the doomed
@@ -470,7 +470,7 @@ let parent_edge ~prev path =
     let parent = Decorated.walk prev.decorated parent_path in
     (Decorated.root_vpifo parent, Decorated.nth_step parent k)
 
-(* [Designate { path; arm }]: stand up a fresh SP* super-node at the slot
+(* [Designate { path; survivor }]: stand up a fresh SP* super-node at the slot
    holding the existing subtree (the loser). The new [arm] (the survivor)
    compiles fresh and is adopted as the SP*'s child at index 1; the loser sits
    at child index 0. PE placement: SP*, loser, and survivor's root all live on
@@ -623,28 +623,22 @@ let patch_quiesce ~prev ~path =
   in
   single ~commit ~decorated:prev.decorated ~pes:prev.pes
 
-(* [Undesignate path]: collapse the designated SP* at [path]. The loser
-   subtree has drained (the planner gates this on [Empty (path ++ [0])]); the
-   survivor at child index 1 takes over the slot. Emits [Undesignate loser_v]
-   as the §6-ISA-facing marker, GCs SP* and the loser subtree, and rewires the
-   parent edge from SP*'s vpifo to the survivor's vpifo. *)
+(* [Undesignate path]: collapse the designated SP* at [path]. The loser subtree
+   has drained (the planner gates this on [Empty (path ++ [0])]); the survivor
+   at child index 1 takes over the slot. Emits [Undesignate loser_v] as the
+   §6-ISA-facing marker and GCs SP* + the loser subtree. The parent rewire is
+   implicit: paper §6.1 specifies that [Isa_undesignate(v)] collapses the
+   super-node so the parent index that pointed at [{v -> surv}] now points
+   directly at [surv], and the same-PE invariant on (sp_v, loser-root,
+   survivor-root) means the substrate can perform that rewire locally without
+   an extra [Emancipate]/[Adopt] pair from us. *)
 let patch_undesignate ~prev ~path =
   let sp_node = Decorated.walk prev.decorated path in
   let sp_v = Decorated.root_vpifo sp_node in
   let loser_d = Decorated.nth_child sp_node 0 in
   let loser_v = Decorated.root_vpifo loser_d in
   let survivor_d = Decorated.nth_child sp_node 1 in
-  let survivor_v = Decorated.root_vpifo survivor_d in
-  let parent_v, parent_step = parent_edge ~prev path in
-  let commit =
-    [
-      Emancipate (parent_step, parent_v, sp_v);
-      Adopt (parent_step, parent_v, survivor_v);
-      Undesignate loser_v;
-      GC sp_v;
-    ]
-    @ gc_subtree loser_d
-  in
+  let commit = [ Undesignate loser_v; GC sp_v ] @ gc_subtree loser_d in
   let new_decorated =
     if path = [] then survivor_d
     else Decorated.rewrite_at prev.decorated path (fun _ -> survivor_d)
@@ -668,7 +662,7 @@ let patch ~prev ~(next : Rio_core.Pol.t) : compiled option =
     match delta with
     | D.Add { path; arm; meta } ->
         patch_one_arm_added ~prev:state ~arm_path:path ~arm ~meta
-    | D.Remove { path; arm = _ } -> patch_remove ~prev:state ~arm_path:path
+    | D.Remove path -> patch_remove ~prev:state ~arm_path:path
     | D.ChangeMeta { path; new_meta } ->
         patch_meta_changed ~prev:state ~path ~new_meta
     | D.Quiesce path -> patch_quiesce ~prev:state ~path
@@ -679,7 +673,8 @@ let patch ~prev ~(next : Rio_core.Pol.t) : compiled option =
         if path = [] then
           failwith "Ir.patch: whole-tree ChangeRoot is unsupported"
         else patch_change_root ~prev:state ~path
-    | D.Designate { path; arm } -> patch_designate ~prev:state ~path ~arm
+    | D.Designate { path; survivor } ->
+        patch_designate ~prev:state ~path ~arm:survivor
     | D.Undesignate path -> patch_undesignate ~prev:state ~path
   in
   match
