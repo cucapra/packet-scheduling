@@ -361,7 +361,7 @@ We explain these in §3.4.
 
 ```
 δ ::= Add          (path, pol, meta?)
-    | ChangeWeight (path, weight)
+    | ChangeMeta   (path, meta)
     | Quiesce      (path)
     | Remove       (path)
     | Designate    (path, pol)
@@ -372,7 +372,6 @@ We explain these in §3.4.
 path   ::= []  |  i :: path             // i is a child index
 ctx    ::= □                            // the unique hole
          | D(pol, ..., ctx, ..., pol)   // exactly one child is itself a context
-weight ::= a positive real
 ```
 
 `pol` is the nonterminal of §3.2.
@@ -388,7 +387,7 @@ The richer reconfigurations an operator may want (retiring a subtree that has pa
 Brief notes on each production:
 
 - `Add(path, pol, meta?)` appends `pol` as a new child of `p1@path`. `meta?` carries per-arm bookkeeping for the new arm, if `p1@path` requires it.
-- `ChangeWeight(path, weight)` overwrites the WFQ weight assigned to `p1@path`.
+- `ChangeMeta(path, meta)` overwrites the per-arm metadata assigned to `p1@path`, interpreted per the parent's discipline: a priority rank under Strict, a weight under WFQ.
 - `Quiesce(path)` prevents `p1@path` from receiving any new traffic.
 - `Remove(path)` removes `p1@path`, which must be empty.
 - `Designate(path, pol)` wraps `p1@path` into `Strict*(p1@path, pol)` in place, making `pol` the _designated survivor_ of `p1@path`. The need for the distinguished discipline `Strict*` is explained in §3.4.5.
@@ -419,7 +418,7 @@ Write `C` for the pre-edit control and `C'` for the post-edit control.
 The last four obligations assume `[[δ]](C)` is defined; outside the region the production's Definition carves out, `δ` is _incompatible_ with `C` and `[[δ]](C)` is undefined.
 We do not repeat this boilerplate at every production.
 
-For transaction-only productions (those whose effect lives entirely in some `z`, like `Quiesce` and `ChangeWeight`), `den(δ)` is the identity on `pol` and Characterization reduces to `⌊C'⌋ =R ⌊C⌋` by inspection: no node's `node_state`, `slot_states`, `pifo`, or child list moves, and `z` is not visible at `pol`-level.
+For transaction-only productions (those whose effect lives entirely in some `z`, like `Quiesce` and `ChangeMeta`), `den(δ)` is the identity on `pol` and Characterization reduces to `⌊C'⌋ =R ⌊C⌋` by inspection: no node's `node_state`, `slot_states`, `pifo`, or child list moves, and `z` is not visible at `pol`-level.
 We still state `den` explicitly at each production for uniformity.
 
 Several productions (`Add`, `Quiesce`, `Remove`, `Designate`) modify `z` at proper ancestors of the edit site, even though those nodes' `state` is preserved verbatim.
@@ -525,40 +524,42 @@ For `Add`, `⌊C'⌋` and `den(Add(π, newpol, meta?))(⌊C⌋)` are in fact _eq
 We still phrase the characterization mod `=R` to keep a uniform shape across productions:
 `⌊C'⌋ =R den(Add(π, newpol, meta?))(⌊C⌋)`.
 
-#### 3.4.2. `ChangeWeight(τ, weight)`
+#### 3.4.2. `ChangeMeta(τ, meta)`
 
-Throughout, `τ : path` is the path to the target arm whose weight changes; it is non-empty (see precondition below) and we destruct it as `π ++ [k]`, with `π` the path to the parent and `k` the slot at that parent.
+Throughout, `τ : path` is the path to the target arm whose per-arm metadata changes; it is non-empty (see precondition below) and we destruct it as `π ++ [k]`, with `π` the path to the parent and `k` the slot at that parent.
+The payload `meta` is interpreted per the parent's discipline: a priority rank when the parent runs Strict, a weight when it runs WFQ.
 
 Say the presently running control is `C`.
-Intuitively, `ChangeWeight` overwrites `C@π.slot_states[k].weight` with the new weight provided.
+Intuitively, `ChangeMeta` overwrites `C@π.slot_states[k]`'s per-arm metadata with the new value provided.
 
 ##### Definition
 
-`[[ChangeWeight(τ, weight)]](C)` is defined when `τ` is non-empty and the parent at `π` runs WFQ.
+`[[ChangeMeta(τ, meta)]](C)` is defined when `τ` is non-empty and the parent at `π` runs Strict or WFQ.
 
-- _At `C@π`:_ `node_state` is unchanged; `slot_states[k].weight` is overwritten with the new weight. Every other field of `slot_states[k]` is preserved verbatim, including the virtual-finish tag that records how far slot `k` has run in the current round. Other `slot_states`, `pifo`, and `z` are unchanged.
+- _At `C@π`:_ `node_state` is unchanged; the per-arm metadata field of `slot_states[k]` (the priority rank under Strict, the weight under WFQ) is overwritten with the new value. Every other field of `slot_states[k]` is preserved verbatim. Under WFQ this includes the virtual-finish tag that records how far slot `k` has run in the current round. Other `slot_states`, `pifo`, and `z` are unchanged.
 - _Everywhere else:_ preserved verbatim.
 
 ##### Preservation
 
 Preservation of `|-`: no `pifo` entry is rewritten, no subtree is touched, no packet is relocated, so well-formedness is inherited everywhere.
-Preservation of state: the targeted weight field is the intended edit; every other field at `C@π` and everywhere else is verbatim.
-Preservation of observation: ranks for in-flight `pifo` entries were determined when they were pushed. They remain fixed; the new weight affects only the rank computation for future pushes.
-So a `pop` immediately after this `[[ChangeWeight(τ, weight)]]` returns exactly what a `pop` immediately before would have.
+Preservation of state: the targeted metadata field is the intended edit; every other field at `C@π` and everywhere else is verbatim.
+Preservation of observation: ranks for in-flight `pifo` entries were determined when they were pushed. They remain fixed; the new metadata affects only the rank computation for future pushes.
+So a `pop` immediately after this `[[ChangeMeta(τ, meta)]]` returns exactly what a `pop` immediately before would have.
 
-##### Note: Why the virtual-finish tag is preserved
+##### Note: Why the virtual-finish tag is preserved (WFQ)
 
-The virtual-finish tag at slot `k` is deliberately _preserved_ and not _reset_: resetting would either reward or penalize the targeted arm by yanking it out of the current round, whereas `init_slot_WFQ` (§3.2) was designed precisely to let a fresh arm "join the current round" without disturbing siblings, and the same principle applies to a weight change on an already-running arm.
+When the parent runs WFQ, the virtual-finish tag at slot `k` is deliberately _preserved_ and not _reset_: resetting would either reward or penalize the targeted arm by yanking it out of the current round, whereas `init_slot_WFQ` (§3.2) was designed precisely to let a fresh arm "join the current round" without disturbing siblings, and the same principle applies to a weight change on an already-running arm.
+Under Strict the slot carries no comparable round-bookkeeping field, so the question does not arise.
 
 ##### Characterization
 
 ```
-den(ChangeWeight(τ, w)) p = p
+den(ChangeMeta(τ, m)) p = p
 ```
 
-is defined whenever `τ` resolves in `p` and the parent at `π` runs WFQ.
+is defined whenever `τ` resolves in `p` and the parent at `π` runs Strict or WFQ.
 Every node's `node_state`, `slot_states.discipline`, `pifo`, and child list are preserved verbatim (the rewritten field is in `slot_state`, which the compilation rule strips), so `⌊C'⌋ = ⌊C⌋`.
-Hence `⌊C'⌋ =R den(ChangeWeight(τ, weight))(⌊C⌋)`.
+Hence `⌊C'⌋ =R den(ChangeMeta(τ, meta))(⌊C⌋)`.
 
 #### 3.4.3. `Quiesce(τ)`
 
@@ -1267,8 +1268,8 @@ Write `walk(op, C, f)` for issuing `op(v, f, ...)` at each `v ∈ C` in chain or
 When an entry's opcodes name an unmentioned parameter at `π` (e.g., `Isa_set_policy`'s discipline `t` or `Isa_change_arity`'s arity `n`), it is the live value at `π` at the time the command is issued.
 `Isa_spawn`'s `pe` argument is similarly elided: it is `pe(path)` for the new PIFO's position, drawn from §6.1's deployment convention.
 
-- `ChangeWeight(π ++ [k], w)`:
-  `Isa_set_arm_meta(π, k, w)`.
+- `ChangeMeta(π ++ [k], m)`:
+  `Isa_set_arm_meta(π, k, m)`.
 - `Quiesce(path)`:
   for each `f ∈ flows(path)`, `walk(Isa_deassoc, chain(f), f)`.
 - `Add(path, pol, meta?)`:
@@ -1343,7 +1344,7 @@ A non-atomic substrate would expose some of them, and whether that breaks observ
 The requirement is weaker than a general-purpose transaction manager.
 The planner knows each commit's length and shape statically, and the substrate need only honor an install-without-interleave guarantee for that fixed shape.
 Several productions need even less.
-`ChangeWeight` is a single instruction.
+`ChangeMeta` is a single instruction.
 A single-flow `Quiesce` walks one chain and modifies only `Assoc`; each intermediate frame is well-formed because the as-yet-unsilenced interior nodes still route via their existing Assocs.
 
 A vPIFO-class substrate (see §2.2) would host our compilation by providing the install-without-interleave guarantee above.
