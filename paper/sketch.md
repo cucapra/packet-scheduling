@@ -360,11 +360,11 @@ Two productions are irregular in this respect: `ChangeRoot` gives the path to th
 We explain these in §3.4.
 
 ```
-δ ::= Add          (path, pol, meta?)
+δ ::= Add          (path, arm, meta?)
     | ChangeMeta   (path, meta)
     | Quiesce      (path)
     | Remove       (path)
-    | Designate    (path, pol)
+    | Designate    (path, survivor)
     | Undesignate  (path)
     | ChangeRoot   (path)
     | Graft        (ctx)
@@ -374,7 +374,7 @@ ctx    ::= □                            // the unique hole
          | D(pol, ..., ctx, ..., pol)   // exactly one child is itself a context
 ```
 
-`pol` is the nonterminal of §3.2.
+`pol` is the nonterminal of §3.2; `arm` and `survivor` are field names for `pol`-typed payloads, chosen to read at the call site (the new arm under an `Add`, the designated survivor under a `Designate`).
 A _policy context_, written `ctx`, is built like a `pol`, except that exactly one of its slots is the distinguished _hole_ `□` rather than a subtree.
 The hole is a reserved slot, not an absence of a slot: the parent of the hole has an arity that includes the hole, e.g., `RoundRobin(A, B, □)` is a 3-ary `RoundRobin` whose third slot is the hole, distinct from the 2-ary `RoundRobin(A, B)`.
 We write `ctx[s]` for the ordinary, hole-free tree obtained by plugging the hole of `ctx` with the subtree `s`.
@@ -386,11 +386,11 @@ The richer reconfigurations an operator may want (retiring a subtree that has pa
 
 Brief notes on each production:
 
-- `Add(path, pol, meta?)` appends `pol` as a new child of `p1@path`. `meta?` carries per-arm bookkeeping for the new arm, if `p1@path` requires it.
+- `Add(path, arm, meta?)` appends `arm` as a new child of `p1@path`. `meta?` carries per-arm bookkeeping for the new arm, if `p1@path` requires it.
 - `ChangeMeta(path, meta)` overwrites the per-arm metadata assigned to `p1@path`, interpreted per the parent's discipline: a priority rank under Strict, a weight under WFQ.
 - `Quiesce(path)` prevents `p1@path` from receiving any new traffic.
 - `Remove(path)` removes `p1@path`, which must be empty.
-- `Designate(path, pol)` wraps `p1@path` into `Strict*(p1@path, pol)` in place, making `pol` the _designated survivor_ of `p1@path`. The need for the distinguished discipline `Strict*` is explained in §3.4.5.
+- `Designate(path, survivor)` wraps `p1@path` into `Strict*(p1@path, survivor)` in place, making `survivor` the _designated survivor_ of `p1@path`. The need for the distinguished discipline `Strict*` is explained in §3.4.5.
 - `Undesignate(path)` collapses the `Strict*(A, B)` that lives at `p1@path` into `B`, with `B` inheriting the slot and per-arm `meta?`. `A` must be empty.
 - `ChangeRoot(path)` promotes `p1@path` to the new root, discarding the ancestor chain above it. The ancestor chain must be a unary "vine". The `path` argument is interpreted in the pre-edit tree; in the post-edit tree the same node sits at `[]`.
 - `Graft(ctx)` produces `ctx[p1]` by plugging the running `p1` into `ctx`'s hole.
@@ -437,28 +437,28 @@ When the per-production rule hinges on this relation, we destruct `δ`'s path as
 As a warm-up, we discharge the five obligations in some detail for the production `Add`.
 The remaining productions reuse the same obligations and arguments, so for them we present only what differs in substance: the closed-form `den`, the operationally interesting bits of the per-node rule, and the points where any of the preservation arguments departs from `Add`'s.
 
-#### 3.4.1. `Add(π, newpol, meta?)`
+#### 3.4.1. `Add(π, arm, meta?)`
 
-We rename §3.3's positional arguments for clarity: `π : path` is the path to the parent node under which the new arm goes, and `newpol : pol` is the policy of the new arm; `meta?` is the discipline-dependent per-arm metadata of §3.3.
+We rename §3.3's positional arguments for clarity: `π : path` is the path to the parent node under which the new arm goes, and `arm : pol` is the policy of the new arm; `meta?` is the discipline-dependent per-arm metadata of §3.3.
 
 ##### Definition
 
-We must define `[[Add(π, newpol, meta?)]] : control ⇀ control` together with the preconditions on the already running control under which `Add` is defined.
+We must define `[[Add(π, arm, meta?)]] : control ⇀ control` together with the preconditions on the already running control under which `Add` is defined.
 
 Say the presently running control is `C`.
-Intuitively, `Add` inserts a freshly compiled subtree `⌈newpol⌉` as the new last child of the subtree at `C@π`.
-It also extends the scheduling transaction `z` at each proper ancestor of `⌈newpol⌉`, so that traffic can reach `⌈newpol⌉`.
+Intuitively, `Add` inserts a freshly compiled subtree `⌈arm⌉` as the new last child of the subtree at `C@π`.
+It also extends the scheduling transaction `z` at each proper ancestor of `⌈arm⌉`, so that traffic can reach `⌈arm⌉`.
 
-`[[Add(π, newpol, meta?)]](C)` is defined when:
+`[[Add(π, arm, meta?)]](C)` is defined when:
 
 - the path `π` resolves in `C` to an internal node,
 - `meta?` matches the slot-initialization schema of the discipline at that node (present iff `init_slot_D` for that discipline requires it), and
-- `newpol`'s leaf labels are disjoint from those of `C`.
+- `arm`'s leaf labels are disjoint from those of `C`.
 
 The disjointness precondition rules out _splitting_ an already-running flow into two (e.g., splitting `gmail` into `gmail_business` and `gmail_personal`): such a split has to relocate already-admitted packets, which `Add` cannot do.
 Such flow-splitting is realized as a `Designate` + drain + `Undesignate` sequence (§4), not by `Add`.
 
-The transition `C' = [[Add(π, newpol, meta?)]](C)` is stated per node.
+The transition `C' = [[Add(π, arm, meta?)]](C)` is stated per node.
 Let `k = |C@π.slot_states|` be the new arm's slot index.
 
 - _At each proper ancestor of `π`:_
@@ -470,12 +470,12 @@ Let `k = |C@π.slot_states|` be the new arm's slot index.
   - `C'@π.slot_states = C@π.slot_states ++ [ init_slot_D(C@π.node_state, meta?) ]`. In English: we call `init_slot_D` to find the per-arm bookkeeping that is needed for a new arm under `D`, and we append that bookkeeping in at the end. Our arm-order freedom (§3.2) lets us simply append the new child.
   - `pifo` is unchanged: no pre-existing entry needs renumbering, and the new arm holds no packets yet.
   - `C'@π.z` extends `C@π.z` to admit packets that classify into the new subtree, mapping them to child index `k` at `C@π`.
-- _At every node inside `⌈newpol⌉`:_ the local control is `⌈newpol⌉`'s, verbatim.
-- _At every other node (outside `⌈newpol⌉` and not `C@π` or one of its proper ancestors):_ the local control is preserved verbatim.
+- _At every node inside `⌈arm⌉`:_ the local control is `⌈arm⌉`'s, verbatim.
+- _At every other node (outside `⌈arm⌉` and not `C@π` or one of its proper ancestors):_ the local control is preserved verbatim.
 
 ##### Preservation of |-
 
-We must show that `|- C` implies `|- C'`: any pifo entries or packets that `[[Add(π, newpol, meta?)]]` introduces must leave the per-node pifo and packet counts in balance.
+We must show that `|- C` implies `|- C'`: any pifo entries or packets that `[[Add(π, arm, meta?)]]` introduces must leave the per-node pifo and packet counts in balance.
 
 At `C@π`, `C'@π.pifo = C@π.pifo` contains no entry equal to `k` (no pre-existing entry can name a slot that did not exist in `C`), and the new arm at slot `k` holds no packets, so its well-formedness count reads `0 = 0`.
 Every other slot at `C@π` keeps its index, its packets, and its entries in `C'@π.pifo` verbatim, so its matched count is inherited.
@@ -487,7 +487,7 @@ Nothing needs repair.
 We must show that at every node structurally shared between `C` and `C'` and outside the edit site, the local `state` is preserved verbatim; and that at the edit site, and at every node of the freshly spawned subtree, the `state` is exactly what `init_node_D` / `init_slot_D` (§3.2) prescribes.
 
 Outside the edit site the local control (and thus its `state`) is preserved verbatim, including at each proper ancestor of `π`, where only `z` changes.
-Inside `⌈newpol⌉`, every node's `node_state` and `slot_states` are what `init_node_D` / `init_slot_D` (§3.2) prescribe, by construction of `⌈newpol⌉`.
+Inside `⌈arm⌉`, every node's `node_state` and `slot_states` are what `init_node_D` / `init_slot_D` (§3.2) prescribe, by construction of `⌈arm⌉`.
 At `C@π`, `node_state` is unchanged and `slot_states` is appended with exactly `init_slot_D(C@π.node_state, meta?)`, as required at the edit site.
 
 ##### Preservation of observation
@@ -502,27 +502,27 @@ Observation is preserved.
 
 ##### Characterization
 
-We must state `den(Add(π, newpol, meta?))` in closed form and prove `⌊C'⌋ =R den(Add(π, newpol, meta?))(⌊C⌋)`.
+We must state `den(Add(π, arm, meta?))` in closed form and prove `⌊C'⌋ =R den(Add(π, arm, meta?))(⌊C⌋)`.
 
 We define `den` by recursion on `π`:
 
 ```
-den(Add([],        newpol, meta?)) (D ts) = D ( ts ++ [newpol] )
-den(Add(i :: rest, newpol, meta?)) (D ts) = D ( ts[ den(Add(rest, newpol, meta?)) (ts[i]) / i ] )
+den(Add([],        arm, meta?)) (D ts) = D ( ts ++ [arm] )
+den(Add(i :: rest, arm, meta?)) (D ts) = D ( ts[ den(Add(rest, arm, meta?)) (ts[i]) / i ] )
 ```
 
-The base case applies once `π = []`: the recursion has reached the node where the new arm goes, and `newpol` is appended as the last child.
+The base case applies once `π = []`: the recursion has reached the node where the new arm goes, and `arm` is appended as the last child.
 The recursive case walks one step deeper into child `i` and writes the result back in place.
 The `meta?` argument is threaded through the recursion but does not appear in the closed form: it is per-arm bookkeeping consumed by `init_slot_D` at the operational level, so it is pol-invisible.
 
 _Proof of characterization._
-We argue that the structural skeleton of `C'` matches `den(Add(π, newpol, meta?))(⌊C⌋)`.
+We argue that the structural skeleton of `C'` matches `den(Add(π, arm, meta?))(⌊C⌋)`.
 The operational rule above leaves every pre-existing arm structurally intact (the `z` extensions along the ancestor chain are pol-invisible) and adds a new arm at `C@π`.
-That new arm is exactly `⌈newpol⌉`.
-Descending down the path `π` in `⌊C⌋` traces the recursion step for step: at each proper ancestor, step into the child named by `π`; at the node `π` reaches, append `newpol` to the child list.
-For `Add`, `⌊C'⌋` and `den(Add(π, newpol, meta?))(⌊C⌋)` are in fact _equal_ as pol-trees, not just `=R`-equivalent: at each proper ancestor of `π` the child lists agree pointwise, and at `C@π` both child lists are `ts ++ [newpol]`.
+That new arm is exactly `⌈arm⌉`.
+Descending down the path `π` in `⌊C⌋` traces the recursion step for step: at each proper ancestor, step into the child named by `π`; at the node `π` reaches, append `arm` to the child list.
+For `Add`, `⌊C'⌋` and `den(Add(π, arm, meta?))(⌊C⌋)` are in fact _equal_ as pol-trees, not just `=R`-equivalent: at each proper ancestor of `π` the child lists agree pointwise, and at `C@π` both child lists are `ts ++ [arm]`.
 We still phrase the characterization mod `=R` to keep a uniform shape across productions:
-`⌊C'⌋ =R den(Add(π, newpol, meta?))(⌊C⌋)`.
+`⌊C'⌋ =R den(Add(π, arm, meta?))(⌊C⌋)`.
 
 #### 3.4.2. `ChangeMeta(τ, meta)`
 
@@ -1272,21 +1272,21 @@ When an entry's opcodes name an unmentioned parameter at `π` (e.g., `Isa_set_po
   `Isa_set_arm_meta(π, k, m)`.
 - `Quiesce(path)`:
   for each `f ∈ flows(path)`, `walk(Isa_deassoc, chain(f), f)`.
-- `Add(path, pol, meta?)`:
+- `Add(path, arm, meta?)`:
   - Let `n` be `path`'s current arm count; the new subtree will occupy `path`'s rightmost slot, index `n`, so existing children's indices are undisturbed.
-  - Lay out the subtree `pol` in hardware. That is, for each new PIFO in the subtree compiled from `pol`, `Isa_spawn`+`Isa_adopt`+`Isa_set_policy` is issued.
+  - Lay out the subtree `arm` in hardware. That is, for each new PIFO in the subtree compiled from `arm`, `Isa_spawn`+`Isa_adopt`+`Isa_set_policy` is issued.
     Per-arm `Isa_set_arm_meta`s are issued where the discipline requires them.
   - `Isa_change_arity(path, n+1)` grows `path` to arity `n+1`; where the discipline requires it, `Isa_set_arm_meta(path, n, m)` initializes the new slot's metadata from `meta?`.
-  - `Isa_adopt(n, path, root_of_pol)` attaches the new subtree at index `n`.
-  - Start serving traffic to the new subtree. That is, for each `f ∈ flows(pol)`: `walk(Isa_assoc, chain(f), f)`; `walk(Isa_map, internals(f), f)`.
+  - `Isa_adopt(n, path, root_of_arm)` attaches the new subtree at index `n`.
+  - Start serving traffic to the new subtree. That is, for each `f ∈ flows(arm)`: `walk(Isa_assoc, chain(f), f)`; `walk(Isa_map, internals(f), f)`.
 - `Remove(π ++ [k])`:
   - `Isa_emancipate(k, π, π ++ [k])` detaches the doomed child. `π`'s remaining children keep their indices: each was minted at adoption time and the substrate carries it unchanged, so no sibling-shift cascade is needed.
   - `Isa_change_arity(π, n-1)` updates `π`'s arity counter to match.
   - For each `f ∈ flows(π ++ [k])`, `walk(Isa_unmap, internals(f), f)` clears the doomed flows' routing through the chain above `π ++ [k]` (including `π` itself, whose `f -> k` entry vanishes).
   - One `Isa_gc` per PIFO in the now-detached subtree.
-- `Designate(path, pol)`:
+- `Designate(path, survivor)`:
   Let `loser` be the PIFO currently at `path` and `parent` be `path`'s parent. Let `k` be `path`'s last index (for `path = []`, the parent is `port_root` and `k` is `port_step`).
-  - Stand up `pol`'s subtree as in `Add`'s "lay out the subtree" step (`Isa_spawn` + `Isa_adopt` + `Isa_set_policy` per node, plus `Isa_set_arm_meta`s where the discipline requires them), with one departure: skip the `Isa_adopt` that would attach the subtree's root `surv` to a parent — the Strict-2 spawn below installs it instead.
+  - Stand up `survivor`'s subtree as in `Add`'s "lay out the subtree" step (`Isa_spawn` + `Isa_adopt` + `Isa_set_policy` per node, plus `Isa_set_arm_meta`s where the discipline requires them), with one departure: skip the `Isa_adopt` that would attach the subtree's root `surv` to a parent — the Strict-2 spawn below installs it instead.
   - Spawn and configure the Strict-2 super-node `sp_v`: `Isa_spawn(sp_v, pe(path))`; `Isa_set_policy(sp_v, Strict*, 2)`; `Isa_adopt(0, sp_v, loser)`; `Isa_adopt(1, sp_v, surv)`; `Isa_set_arm_meta(sp_v, 0, 1.0)`; `Isa_set_arm_meta(sp_v, 1, 2.0)`. `sp_v` lands on the same PE as the roots of `loser` and `surv` (see same-PE invariant below).
   - Rewire `path`'s parent edge from `loser` to `sp_v`: `Isa_emancipate(k, parent, loser)`; `Isa_adopt(k, parent, sp_v)`. The same `k` is reused, so `parent`'s per-arm metadata for that slot is preserved across the rewire.
   - `Isa_designate(loser, surv)` marks `loser` as the favored child of the now-installed Strict-2 super-node and records `surv` as its eventual successor.
