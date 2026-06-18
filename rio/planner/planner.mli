@@ -24,11 +24,16 @@ val analyze : Rio_core.Pol.t -> Rio_core.Pol.t -> t
 
 val replace : next:Rio_core.Pol.t -> ?meta:float -> unit -> t
 (** The paper's [Replace] idiom:
-    [Designate(p, next) ; Quiesce(p) ; (Empty p) Undesignate(p)]. With [?meta]
-    supplied, a trailing [(Empty p) ChangeMeta(p, meta)] step rebinds the slot's
-    per-arm meta (SP rank or WFQ weight) once the loser has drained. Emitted
-    with [path = []] at the local level; the caller prepends the target index
-    via [prepend_seq]. Also the sniffer's give-up sequence. *)
+    [Designate(p, next) ; Quiesce(p ++ [0]) ; (Empty (p ++ [0])) Undesignate(p)].
+    After [Designate], the loser sits at child index 0 of the freshly minted
+    SP*, so [Quiesce] and the [Empty] guard both target [p ++ [0]]; only
+    [Undesignate]'s own path stays at [p]. With [?meta] supplied, a trailing
+    [(True) ChangeMeta(p, meta)] step rebinds the slot's per-arm meta (SP rank
+    or WFQ weight); sequencing after [Undesignate] suffices, since by the time
+    [ChangeMeta] runs the loser has drained and the parent edge already points
+    at the survivor. Emitted with [path = []] at the local level; the caller
+    prepends the target index via [prepend_seq]. Also the sniffer's give-up
+    sequence. *)
 
 val retire : arm:Rio_core.Pol.t -> unit -> t
 (** The paper's [Retire] idiom: [Quiesce(p) ; (Empty p) Remove(p, arm)]. Emitted

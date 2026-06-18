@@ -315,12 +315,15 @@ let patch_one_arm_added ~prev ~arm_path ~arm ~meta =
     ~commit:(Frag.to_commit (Frag.combine local [ arm_frag ]))
     ~decorated:new_decorated ~pes:new_pes
 
-(* Per-delta lowering for [Delta.Remove { path; arm }]. Emits the structural
-   teardown ([Change_arity] shrink, parent-side [Emancipate], [GC] of the
-   removed subtree) without touching class-routing tables: those are
-   [Quiesce]'s responsibility within the [Retire] idiom, and the planner
-   guarantees a [Quiesce(p)] step precedes every [Remove(p, _)] (modulo the
-   guard between them). *)
+(* Per-delta lowering for [Delta.Remove { path; arm }] (paper §6.2). Emits the
+   structural teardown ([Change_arity] shrink, parent-side [Emancipate], [GC]
+   of the removed subtree) plus the chain-side [Unmap] walk that retires the
+   [Map] entries cached on every ancestor for each class in the doomed
+   subtree. [Quiesce] has already torn down the matching [Assoc]s (and the
+   subtree's interior [Map]s are GC'd along with the subtree); the chain-side
+   [Map] entries above are load-bearing for in-flight packets up through the
+   drain and must outlive [Quiesce], so they retire here once the subtree is
+   empty. *)
 let patch_remove ~prev ~arm_path =
   let parent_path, k = list_foot arm_path in
   let parent = Decorated.walk prev.decorated parent_path in
@@ -328,11 +331,16 @@ let patch_remove ~prev ~arm_path =
   let removed = Decorated.nth_child parent k in
   let removed_v = Decorated.root_vpifo removed in
   let step_k = Decorated.nth_step parent k in
+  let doomed_classes = Decorated.subtree_classes removed in
+  let chain_above =
+    port_chain @ Decorated.ancestor_chain prev.decorated arm_path
+  in
   let commit =
     List.concat
       [
         [ Change_arity (parent_v, old_arity - 1) ];
         [ Emancipate (step_k, parent_v, removed_v) ];
+        chain_emit (fun v s c -> Unmap (v, c, s)) chain_above doomed_classes;
         gc_subtree removed;
       ]
   in

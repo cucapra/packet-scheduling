@@ -78,9 +78,14 @@ val patch : prev:compiled -> next:Rio_core.Pol.t -> compiled option
     - [next] removes exactly one arm at any position of a [RR] or [SP] parent
       (planner expands this as the [Retire] idiom
       [Quiesce(p) ; (Empty p) Remove(p, arm)], recognized by [patch]): returns
-      [Some] with the [Change_arity], [Unmap], [Deassoc], [Emancipate], and [GC]
-      instructions needed to detach the arm and clean up routing state cached on
-      its ancestor chain. Existing SP siblings keep their ranks.
+      [Some] with two guarded steps. The [Quiesce(p)] step under [True]
+      [Deassoc]s the doomed classes along the chain from the port root down
+      through the subtree's interior. The [Remove(p, _)] step under [Empty p]
+      then [Change_arity]s the parent, [Emancipate]s the doomed root, walks the
+      chain above with [Unmap] entries for the doomed classes (paper §6.2: the
+      chain-side [Map]s outlive [Quiesce] so in-flight packets can drain, then
+      retire here), and [GC]s every node in the removed subtree. Existing SP
+      siblings keep their ranks.
     - [next] swaps in a different subtree at exactly one position (planner
       expands this as the [Replace] idiom
       [Designate(p) ; Quiesce(p ++ [0]) ; (Empty (p ++ [0])) Undesignate(p) (;
@@ -132,8 +137,10 @@ val patch_quiesce : prev:compiled -> path:int list -> compiled
     ancestor chain. In-flight packets continue to dequeue. [den(Quiesce) = id]
     so the decorated tree is unchanged. SP*-aware: when [path]'s parent is a
     designated SP, shared classes between loser and survivor are preserved above
-    SP* and rerouted at SP* from [loser_step] to [surv_step] so the survivor can
-    take over once the loser drains. *)
+    SP* (the survivor still reaches its leaves through them) and only the
+    loser-only classes are [Deassoc]'d at SP*. The shared-class swing from
+    [loser_step] to [surv_step] at SP* happens at [Designate] time per paper
+    §3.4.5, not here. *)
 
 val patch_undesignate : prev:compiled -> path:int list -> compiled
 (** Per-production lowering for [Delta.Undesignate]. Collapses the designated

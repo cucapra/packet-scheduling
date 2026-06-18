@@ -40,7 +40,7 @@ let single_commit c =
   | [ (_, commit) ] -> commit
   | _ -> assert_failure "single_commit: expected exactly one step"
 
-(* ArmAdded *)
+(* Add *)
 
 (* There's a walkthrough for this case in the topmatter of the PR. *)
 let strict_ab_to_abc_expected =
@@ -131,7 +131,7 @@ let one_arm_added_tests =
       "complex_tree_add_arm_deep" complex_tree_add_deep_expected;
   ]
 
-(* ArmAddedWFQ *)
+(* Add (WFQ parent) *)
 
 (* wfq_BA compiles with vpifos 100 (root WFQ), 101 (A), 102 (B); steps 1000
    (A), 1001 (B). Adding FIFO C at slot 2 with weight 3 mints v=103 (PE 1)
@@ -236,7 +236,14 @@ let meta_changed_tests =
 let strict_abc_to_ab_expected =
   [
     t_ [ Deassoc (99, "C"); Deassoc (100, "C"); Deassoc (103, "C") ];
-    e_ [ 2 ] [ Change_arity (100, 2); Emancipate (1002, 100, 103); GC 103 ];
+    e_ [ 2 ]
+      [
+        Change_arity (100, 2);
+        Emancipate (1002, 100, 103);
+        Unmap (99, "C", 999);
+        Unmap (100, "C", 1002);
+        GC 103;
+      ];
   ]
 
 (* SP[A,B,C] -> SP[A,C]: drop B (mid, index 1). Existing SP arms keep their
@@ -245,14 +252,28 @@ let strict_abc_to_ab_expected =
 let strict_abc_to_ac_expected =
   [
     t_ [ Deassoc (99, "B"); Deassoc (100, "B"); Deassoc (102, "B") ];
-    e_ [ 1 ] [ Change_arity (100, 2); Emancipate (1001, 100, 102); GC 102 ];
+    e_ [ 1 ]
+      [
+        Change_arity (100, 2);
+        Emancipate (1001, 100, 102);
+        Unmap (99, "B", 999);
+        Unmap (100, "B", 1001);
+        GC 102;
+      ];
   ]
 
 (* RR[A,B,C] -> RR[A,B]: drop C from RR. No weight shifts (RR is unweighted). *)
 let rr_abc_to_ab_expected =
   [
     t_ [ Deassoc (99, "C"); Deassoc (100, "C"); Deassoc (103, "C") ];
-    e_ [ 2 ] [ Change_arity (100, 2); Emancipate (1002, 100, 103); GC 103 ];
+    e_ [ 2 ]
+      [
+        Change_arity (100, 2);
+        Emancipate (1002, 100, 103);
+        Unmap (99, "C", 999);
+        Unmap (100, "C", 1002);
+        GC 103;
+      ];
   ]
 
 let one_arm_removed_tests =
@@ -265,7 +286,7 @@ let one_arm_removed_tests =
       rr_abc_to_ab_expected;
   ]
 
-(* ArmReplaced. The planner expands as the [Replace] idiom
+(* Replace. The planner expands as the [Replace] idiom
    [Designate(p) ; Quiesce(p ++ [0]) ; (Empty (p ++ [0])) Undesignate(p)]:
    - [Designate] mints a fresh [SP_star] super-node ([sp_v]) on the loser's
      PE; the loser becomes child 0 of [sp_v], the freshly compiled survivor
@@ -382,7 +403,7 @@ let one_arm_replaced_tests =
       strict_ab_to_ac_expected;
   ]
 
-(* ArmReplacedWFQ. wfq_ABC has root WFQ v=100 with leaves v=101/102/103 for
+(* Replace (WFQ parent). wfq_ABC has root WFQ v=100 with leaves v=101/102/103 for
    A/B/C on steps 1000/1001/1002. Replacing slot 2's arm (C -> FIFO Z) *and*
    its weight (3 -> 7) at path [2]: the survivor FIFO Z spawns on v=104, sp_v
    is v=105, loser_step is step_1003, surv_step is step_1004. All three of
@@ -601,10 +622,24 @@ let strict_abc_to_fifo_a_expected =
   [
     (* Retire([2]) C: Quiesce then Remove. *)
     t_ [ Deassoc (99, "C"); Deassoc (100, "C"); Deassoc (103, "C") ];
-    e_ [ 2 ] [ Change_arity (100, 2); Emancipate (1002, 100, 103); GC 103 ];
+    e_ [ 2 ]
+      [
+        Change_arity (100, 2);
+        Emancipate (1002, 100, 103);
+        Unmap (99, "C", 999);
+        Unmap (100, "C", 1002);
+        GC 103;
+      ];
     (* Retire([1]) B: Quiesce then Remove. *)
     t_ [ Deassoc (99, "B"); Deassoc (100, "B"); Deassoc (102, "B") ];
-    e_ [ 1 ] [ Change_arity (100, 1); Emancipate (1001, 100, 102); GC 102 ];
+    e_ [ 1 ]
+      [
+        Change_arity (100, 1);
+        Emancipate (1001, 100, 102);
+        Unmap (99, "B", 999);
+        Unmap (100, "B", 1001);
+        GC 102;
+      ];
     (* ChangeRoot([0]): swing the port root from v100 to v101 and GC the SP
        root. Dropped-class block is empty (B and C already drained). *)
     t_ [ Emancipate (999, 99, 100); Adopt (999, 99, 101); GC 100 ];
@@ -721,7 +756,7 @@ let graft_tests =
       strict_abc_to_complex_tree_expected;
   ]
 
-(* pes-extension regressions: when a ArmAdded or ArmReplaced inserts
+(* pes-extension regressions: when an [Add] or [Replace] inserts
    an arm whose internal depth pushes the tree deeper than [prev.pes]
    covered, [pes_extended_to_depth] should grow [pes] with fresh PEs above
    the existing max — keeping the "same depth ⇒ same PE" invariant for
@@ -785,10 +820,10 @@ let pes_extension_tests = [ one_arm_added_extends_pes_test ]
 
 (* Deep give-up: complex_tree -> complex_tree_swap_sp_arms differs only
    inside the SP subtree at root child 1 (multi-arm reorder). Delta
-   gives up at that level and emits [ArmReplaced { path = [1]; arm }];
-   IR's existing ArmReplaced handler routes through [Designate] on the
+   gives up at that level and emits the [Replace] idiom at [path = [1]];
+   IR's existing [Replace] handler routes through [Designate] on the
    parent's existing step. Smoke-test that patch returns [Some] — the
-   exact instruction sequence is exercised by the precise ArmReplaced
+   exact instruction sequence is exercised by the precise [Replace]
    tests at non-empty paths above. *)
 let deep_giveup_test =
   "complex_tree -> swap_sp_arms (deep give-up)" >:: fun _ ->
