@@ -1178,12 +1178,12 @@ The planner may fail to see a superior sequence, but it cannot emit an unsafe on
 The one hard correctness obligation is the pol-level fold check of §4.3: the chain `den(δ_n) ∘ ... ∘ den(δ_1) (p1)` must reach a representative of `p2`'s `=R`-class.
 The planner discharges this by construction (each case below emits a `δ` or idiom whose `den` realizes the locally-observed pol-level difference); the §4.3 check would also catch any misstep.
 
-§5.1 records the always-available fallback that any planner can lean on.
+§5.1 sets up _confinement_ as the quality lens, presents the always-available worst-case fallback, and shows how the planner pushes `Replace` deeper to do better.
 §5.2 catalogs the cases the planner recognizes and emits a tight sequence for.
 §5.3 explains one non-obvious wrinkle: a recursive case whose inner result cannot bubble cleanly to the outer slot, forcing a demotion.
-§5.4 introduces _confinement_ as the quality lens that judges §5.2's tight emissions against §5.1's worst-case ceiling.
+§5.4 lists three deliberate non-features and candidate future work.
 
-### 5.1 The always-available fallback
+### 5.1 The Always-Available Fallback, and Confinement to do Better
 
 To reach any `p2` from any `p1`, the planner can issue `Replace([], p2)`, the §4.2 idiom that expands to
 
@@ -1195,6 +1195,52 @@ To reach any `p2` from any `p1`, the planner can issue `Replace([], p2)`, the §
 
 This wraps `p1` and `p2` into a `Strict*(p1, p2)` at the root, quiesces the `p1` arm, accepts pushes into `p2` and serves pops from `p1`, and, when `p1` has drained to empty, replaces `Strict*(p1, p2)` with just `p2` that then serves pushes and pops.
 Nothing is dropped and the sequence is safe by §3.4, but _no part of the scheduler is left undisturbed_.
+
+##### Footprint
+
+To measure how much of the tree a sequence touches, associate each production `δ` with a _footprint_ on the live control it acts on.
+Define `footprint(δ, C)` as the set of nodes of `C` whose `state`, `pifo`, or `z` differs between `C` and `[[δ]](C)`.
+The set is read off the per-production Preservation paragraphs of §3.4: it includes the edit site, the new or removed node where applicable, and every proper ancestor whose `z` is extended or restricted (e.g., the ancestors touched by `Add`, `Quiesce`, `Remove`, `Designate`).
+For a guarded sequence `(φ_0 ; δ_0) ; ... ; (φ_n ; δ_n)`, the sequence-level footprint is the union `⋃_i footprint(δ_i, link_i)`.
+The root-level `Replace([], p2)` above has the maximum possible footprint: the whole tree.
+
+##### The planner's strategy
+
+The metric by which we judge the planner is _confinement_: a good emission disturbs as little of the running scheduler as possible, leaving parts of the tree that did not need to change running undisturbed.
+A sequence is well-confined when its footprint is small relative to the symmetric pol-level difference between `p1` and `p2`.
+
+The planner's goal is to recognize whether the difference between `p1` and `p2` is captured by a tight production from §3.3 (an `Add`, `Remove`, or `ChangeMeta`) and to emit that production wherever in the tree it sits, leaving everything else untouched.
+The planner descends through the tree as long as `p1` and `p2` agree at the current level, looking for a recognized shape one level down.
+When it finds one, it emits the matching production at that depth.
+Only when the descent ends without a match does the planner fall back to `Replace`; but by then the recursion has localized the difference to the deepest slot at which the policies disagree, so the resulting `Replace` wraps only that slot.
+
+A concrete example.
+Suppose `p1 = SP(gmail, RR(zoom, netflix))` and the operator requests `p2 = SP(gmail, RR(zoom, netflix, spotify))`.
+The planner has two ways to realize this:
+
+```
+(a) Worst-case fallback: Replace([], p2)        (b) Tight option: Add at the RR
+
+       [Strict*]                                        SP
+       /        \                                      /  \
+      SP        SP                                    g    RR
+      / \       /|\                                        /|\
+     g   RR    g  RR                                      z n  s
+         /\      /|\                                           ^
+        z  n   z  n  s                                     (new arm)
+```
+
+Option (a) wraps the entire running tree under a fresh `Strict*` and grows a freshly-compiled `p2` alongside; every node sits inside the wrap, and the original `p1` (with all its in-flight packets) drains as the loser.
+Footprint: the whole tree.
+
+Option (b) extends the `RR`'s arity by one and attaches a freshly compiled `spotify` leaf as the third arm; the `SP` and `RR` ancestors have only their `z` extended (no packet movement, no state reset), and the `gmail` leaf is left completely undisturbed.
+Footprint: the `RR` and its single ancestor.
+
+Much of the tree is left alone under option (b).
+The case analysis of §5.2 is built precisely to find option (b) when it exists, and falls back to a `Replace` (at the deepest position the descent reached) only when no such tight production captures the difference.
+
+We make no claim that the planner's choice is canonical or minimal.
+We claim only that whatever sequence it emits is safe (§3.4) and no worse than the root-level fallback.
 
 ### 5.2 The case analysis
 
@@ -1260,24 +1306,7 @@ A future planner could do better here.
 A multi-`Add`-aware planner would recognize the running example as a single `Add` at the new `C` node (after standing it up via an outer rewrite), and avoid the demotion.
 We leave that to future work; see §5.4.
 
-### 5.4 Confinement
-
-The case analysis of §5.2 ranges from "do nothing" (case 1) to "give up" (case 8); the remaining cases are local tight emissions for shapes the planner recognizes.
-The metric by which we judge the planner is _confinement_: a good emission disturbs as little of the running scheduler as possible, leaving parts of the tree that did not need to change running undisturbed.
-
-##### Footprint
-
-To talk about confinement precisely, we associate each production `δ` with a _footprint_ on the live control it acts on.
-Define `footprint(δ, C)` as the set of nodes of `C` whose `state`, `pifo`, or `z` differs between `C` and `[[δ]](C)`.
-The set is read off the per-production Preservation paragraphs of §3.4: it includes the edit site, the new or removed node where applicable, and every proper ancestor whose `z` is extended or restricted (e.g., the ancestors touched by `Add`, `Quiesce`, `Remove`, `Designate`).
-For a guarded sequence `(φ_0 ; δ_0) ; ... ; (φ_n ; δ_n)`, the sequence-level footprint is the union `⋃_i footprint(δ_i, link_i)`.
-Confinement is then a property of this union: a planner does well when the union is small relative to the symmetric pol-level difference between `p1` and `p2`.
-
-We make no claim that the planner's choice is canonical or minimal.
-We claim only that whatever sequence it emits is safe (§3.4) and no worse than the `Replace([], p2)` fallback (§5.1), whose sequence-level footprint is the whole tree.
-Cases 1-3 of §5.2 achieve very small footprints (an empty sequence, a single `Graft`, or a `PruneDownTo` whose footprint is the discarded chain plus the new root attach); cases 4-7 keep the footprint to a single recursive arm plus its ancestor chain; case 8 falls back to the slot-level `Replace`, whose footprint is the slot's subtree plus its ancestor chain.
-
-##### What the planner does not do today
+### 5.4 What the planner does not do today
 
 Three deliberate non-features, each a candidate for future work.
 
