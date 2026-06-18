@@ -10,7 +10,7 @@ A list of AM-notes scattered through the draft.
 - §3.4.8 (line ~897): spell out the five obligations for `Graft` under the whole-tree restriction.
 - §3.5 (line ~918): confirm with Zhiyuan what we need from the substrate atomicity story.
 - §4.1 (line ~1008): no withdraw/abort mechanism today; flagged in case we revisit.
-- §5: future work is enumerated in §5.5 (no cost model, no multi-edit recognition); per-case examples and the demotion wrinkle now in §5.3 / §5.4 may need tightening on a second pass against `rio/planner/planner.ml`.
+- §5: future work is enumerated in §5.4 (no cost model, no multi-edit recognition); per-case examples and the demotion wrinkle now in §5.2 / §5.3 may need tightening on a second pass against `rio/planner/planner.ml`.
 - §6.2 (line ~1238): port-routing across the `P` trees.
 - §6.3 (line ~1330): confirm substrate-requirements prose with Zhiyuan.
 
@@ -1170,24 +1170,20 @@ A sketch of the stronger possibility lives in our discussion notes.
 
 §4.3 referenced a _planner_: the declarative-mode tool that, given a pair `(p1, p2)`, proposes a guarded sequence whose composed effect carries `p1` to `p2`.
 This section spells it out.
-§5.1 fixes the problem statement.
-§5.2 records an always-available fallback that any planner can lean on.
-§5.3 catalogs the small set of shapes the planner recognizes and emits a tight sequence for.
-§5.4 explains one non-obvious wrinkle: a recursive case whose inner result cannot bubble cleanly to the outer slot, forcing a demotion.
-§5.5 introduces _confinement_ as the quality lens that judges §5.3's tight emissions against §5.2's worst-case ceiling.
-
-### 5.1 What the planner is for
-
-A declarative-mode operator hands the runtime a pair `(p1, p2)`: the presently-running policy `p1` and their new desire `p2`.
-The planner's job is to propose a `(φ ; δ)*` sequence whose pol-level fold takes `p1` to `p2` up to `=R`.
+The operator hands the runtime `p1` (the presently-running policy) and `p2` (their new desire); the planner's job is to propose a `(φ ; δ)*` sequence whose pol-level fold takes `p1` to `p2` up to `=R`.
 The operator accepts or rejects the proposal; they do not author it directly.
 
-Every sequence the planner emits is sound by §3.4 (each production's per-production guarantees) and §4.1 (Safety of guarded sequences), regardless of how the planner assembled it.
+Every sequence the planner emits is sound by §3.4 (per-production guarantees) and §4.1 (Safety of guarded sequences), regardless of how the planner assembled it.
 The planner may fail to see a superior sequence, but it cannot emit an unsafe one.
 The one hard correctness obligation is the pol-level fold check of §4.3: the chain `den(δ_n) ∘ ... ∘ den(δ_1) (p1)` must reach a representative of `p2`'s `=R`-class.
 The planner discharges this by construction (each case below emits a `δ` or idiom whose `den` realizes the locally-observed pol-level difference); the §4.3 check would also catch any misstep.
 
-### 5.2 The always-available fallback
+§5.1 records the always-available fallback that any planner can lean on.
+§5.2 catalogs the cases the planner recognizes and emits a tight sequence for.
+§5.3 explains one non-obvious wrinkle: a recursive case whose inner result cannot bubble cleanly to the outer slot, forcing a demotion.
+§5.4 introduces _confinement_ as the quality lens that judges §5.2's tight emissions against §5.1's worst-case ceiling.
+
+### 5.1 The always-available fallback
 
 To reach any `p2` from any `p1`, the planner can issue `Replace([], p2)`, the §4.2 idiom that expands to
 
@@ -1197,17 +1193,14 @@ To reach any `p2` from any `p1`, the planner can issue `Replace([], p2)`, the §
 (empty([0]) ; Undesignate([]))
 ```
 
-This wraps `p1` and `p2` into a `Strict*(p1, p2)` at the root, quiesces the `p1` arm, accepts pushes into `p2` and pop in `p1`, and, when `p1` has drained to empty, replaces `Strict*(p1, p2)` with just `p2`.
+This wraps `p1` and `p2` into a `Strict*(p1, p2)` at the root, quiesces the `p1` arm, accepts pushes into `p2` and serves pops from `p1`, and, when `p1` has drained to empty, replaces `Strict*(p1, p2)` with just `p2` that then serves pushes and pops.
 Nothing is dropped and the sequence is safe by §3.4, but _no part of the scheduler is left undisturbed_.
 
-The planner falls back to `Replace` at the divergent _slot_, not necessarily at the root.
-When the divergence is localized below the root, the slot-level `Replace` is itself a prepended-path version of the same idiom: it quiesces only the slot's subtree and leaves siblings undisturbed.
-The root-level `Replace([], p2)` above is the worst case the planner ever emits, reached when every level of the recursion below has also given up.
+### 5.2 The case analysis
 
-### 5.3 The planner's case bestiary
-
-The planner's body is a case analysis on `(p1, p2)`.
-We walk the cases in the order they fire.
+The planner steps through the following cases in order, emitting at the first match.
+Cases 1-3 are global tests on the full `(p1, p2)`; cases 4-7 fire when the trees agree at the current recursion level and the local difference has a recognized shape; case 8 catches everything else.
+Case 4 is the descent mechanism: when the difference sits one level below the current view, case 4 recurses, and whatever case fires at the deeper level has its emission re-targeted via index prepending on the way back up.
 
 1. **`p1 =R p2`.**
    Emit `[]`.
@@ -1216,39 +1209,40 @@ We walk the cases in the order they fire.
 2. **`p1` embeds in `p2` at some path.**
    Emit `Graft(ctx)`, where `ctx` is the surrounding policy context.
    The planner detects this with a structural sub-policy test that walks `p2` looking for a subtree equal to `p1`; on a hit, the matched path identifies the hole that `Graft`'s context fills.
-   When the embedding is non-unique (e.g., `p1` matches at two positions of `p2`), the planner picks the first match in a left-to-right pre-order walk; this is a planner-side freedom parallel to the compiler's arm-order freedom of §3.2.
+   The match is unique by §3.2's leaf-partition validity: each flow in `p1` may occur at most once in `p2`, so `p2` can host `p1` as a subtree in at most one position.
 
 3. **`p2` embeds in `p1` at some path.**
    Emit `PruneDownTo(path)` (§4.2).
    Symmetric to the previous case.
 
-4. **Same root constructor, child lists of equal length, one child differs.**
+4. **Same constructor at the current level, child lists of equal length, one child differs.**
    Recurse on the differing child and prepend its index to every step's path.
-   Soundness follows from the per-production rules of §3.4: each production's path-argument is interpreted against the running control, and prepending an index is exactly the bookkeeping needed to retarget a sequence emitted against a subtree to the same edit at the corresponding deeper location in the full tree.
-   §5.4 discusses one wrinkle in this case (demotion when the inner recursion's result cannot bubble).
+   §5.3 covers one wrinkle (demotion when the inner result cannot bubble).
 
-5. **Same root constructor, child lists of equal length, one arm's per-arm metadata differs.**
+5. **Same constructor at the current level, child lists of equal length, one arm's per-arm metadata differs.**
    Two sub-cases.
    When the arms themselves are pointwise equal and only the metadata differs, emit `ChangeMeta(path, meta)` for the affected slot.
-   When the arm and its metadata both change in lockstep at the same slot _and_ the recursive call on that arm returns a `Replace`, emit a single bubbled `Replace` with the new metadata tacked on as a trailing `ChangeMeta`; this exploits the fact that the loser has drained by the time the new arm is in place, so `ChangeMeta` against the survivor's slot is safe to sequence at the tail.
+   When the arm and its metadata both change in lockstep at the same slot _and_ the recursive call on that arm returns a `Replace`, emit a single bubbled `Replace` with the new metadata tacked on as a trailing `ChangeMeta`. This exploits the fact that the loser has drained by the time the new arm is in place, so `ChangeMeta` against the survivor's slot is safe to sequence at the tail.
 
-6. **Same root constructor, `p2` has one more child than `p1` (and removing one child from `p2` recovers `p1`).**
-   Emit `Add(path, arm, meta?)` at the parent.
+6. **Same constructor at the current level, `p2` has one extra child (and dropping it from `p2` recovers `p1`).**
+   Emit `Add`.
 
-7. **Same root constructor, `p1` has one more child than `p2` (and removing one child from `p1` recovers `p2`).**
-   Emit the `Retire(path)` idiom (§4.2) at the parent.
+7. **Same constructor at the current level, `p1` has one extra child (and dropping it from `p1` recovers `p2`).**
+   Emit the `Retire` idiom (§4.2).
    The drain-then-remove shape is what `Retire` already encodes; the planner never emits `SlowRetire` from a `(p1, p2)` pair, because the pair carries no signal distinguishing "drain aggressively" from "drain lazily."
    `SlowRetire` remains available to imperative-mode authors who already know the subtree is draining naturally upstream.
 
 8. **Anything else.**
-   Emit a slot-level `Replace` at the divergent position.
-   "Anything else" covers root-constructor mismatch (e.g., `SP` vs. `RR`), more than one differing arm at the same level, and `FIFO` leaves carrying different flow labels.
-   This is the §5.2 fallback applied at the smallest enclosing slot the planner could narrow the difference to.
+   Emit `Replace` at the current level.
+   "Anything else" covers same-level shapes the planner does not recognize: constructor mismatch (e.g., `SP` vs. `RR`), more than one differing arm at this level, and `FIFO` leaves carrying different flow labels.
 
-The cases are tried in the order listed.
-Cases 1-3 are global tests on `(p1, p2)`; cases 4-7 fire when the root constructors agree and the difference between the two child lists has the shape the planner recognizes; case 8 catches everything else.
+   The recursion does significant work here.
+   Cases 1-7 are tried at every level the recursion visits, and case 4 descends through any same-constructor agreeing prefix.
+   By the time case 8 fires at level `k`, every shallower level has matched a tight case; the resulting `Replace` therefore lands at the deepest slot the planner could isolate the difference to, leaving every ancestor's other subtrees running undisturbed.
+   The slot-level `Replace` is the §5.1 idiom with a non-empty path: it wraps only the slot's subtree, quiesces only that subtree, and rewires only the parent edge into it.
+   The worst case is a root-level `Replace([], p2)` (§5.1), reached only when case 8 fires at the root with no recursive descent.
 
-### 5.4 Demotion: when an inner result cannot bubble
+### 5.3 Demotion: when an inner result cannot bubble
 
 Case 4 above recurses into a differing child and prepends an index to every step.
 This is correct when the inner sequence describes an edit on the slot's _occupants_ in a way that survives retargeting.
@@ -1264,11 +1258,11 @@ Demotion is a deliberate downgrade in confinement (we land at case 8 for that sl
 
 A future planner could do better here.
 A multi-`Add`-aware planner would recognize the running example as a single `Add` at the new `C` node (after standing it up via an outer rewrite), and avoid the demotion.
-We leave that to future work; see §5.5.
+We leave that to future work; see §5.4.
 
-### 5.5 Confinement, restated
+### 5.4 Confinement
 
-The case bestiary of §5.3 ranges from "do nothing" (case 1) to "give up" (case 8); the rest of the cases are local tight emissions for shapes the planner recognizes.
+The case analysis of §5.2 ranges from "do nothing" (case 1) to "give up" (case 8); the remaining cases are local tight emissions for shapes the planner recognizes.
 The metric by which we judge the planner is _confinement_: a good emission disturbs as little of the running scheduler as possible, leaving parts of the tree that did not need to change running undisturbed.
 
 ##### Footprint
@@ -1280,15 +1274,15 @@ For a guarded sequence `(φ_0 ; δ_0) ; ... ; (φ_n ; δ_n)`, the sequence-level
 Confinement is then a property of this union: a planner does well when the union is small relative to the symmetric pol-level difference between `p1` and `p2`.
 
 We make no claim that the planner's choice is canonical or minimal.
-We claim only that whatever sequence it emits is safe (§3.4) and no worse than the `Replace([], p2)` fallback (§5.2), whose sequence-level footprint is the whole tree.
-Cases 1-3 of §5.3 achieve very small footprints (an empty sequence, a single `Graft`, or a `PruneDownTo` whose footprint is the discarded chain plus the new root attach); cases 4-7 keep the footprint to a single recursive arm plus its ancestor chain; case 8 falls back to the slot-level `Replace`, whose footprint is the slot's subtree plus its ancestor chain.
+We claim only that whatever sequence it emits is safe (§3.4) and no worse than the `Replace([], p2)` fallback (§5.1), whose sequence-level footprint is the whole tree.
+Cases 1-3 of §5.2 achieve very small footprints (an empty sequence, a single `Graft`, or a `PruneDownTo` whose footprint is the discarded chain plus the new root attach); cases 4-7 keep the footprint to a single recursive arm plus its ancestor chain; case 8 falls back to the slot-level `Replace`, whose footprint is the slot's subtree plus its ancestor chain.
 
 ##### What the planner does not do today
 
 Three deliberate non-features, each a candidate for future work.
 
 - _No cost model._
-  The case bestiary is shape-based, not cost-weighted.
+  The case analysis is shape-based, not cost-weighted.
   A cost-aware planner could prefer different decompositions (e.g., several small `Add`s vs. a single root-level `Replace`) based on per-flow drop and delay tolerances or per-PE budgets; we leave this to future work.
 - _No multi-edit recognition._
   Case 8 fires whenever more than one arm differs at a level, even if the difference would decompose cleanly into two recognized cases in sequence (e.g., an `Add` followed by a `Retire`).
