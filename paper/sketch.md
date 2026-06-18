@@ -1294,7 +1294,7 @@ When an entry's opcodes name an unmentioned parameter at `π` (e.g., `Isa_set_po
     At `sp_v`, for each `f ∈ flows(loser) \ flows(surv)` issue `Isa_assoc(sp_v, f)` and `Isa_map(sp_v, f, 0)`; for each `f ∈ flows(surv)` (whether shared with `loser` or not) issue `Isa_assoc(sp_v, f)` and `Isa_map(sp_v, f, 1)` so that the survivor takes shared classes from this commit onward (paper §3.4.5).
     Above `sp_v`, for each `f ∈ flows(surv) \ flows(path)`: `walk(Isa_assoc, chain(f), f)`; `walk(Isa_map, internals(f), f)`.
     Flows in `flows(surv) ∩ flows(path)` need no above-`sp_v` wiring: the chain is already in place from `path`'s prior wiring.
-  - Silence flows absent from the new policy. For each `f ∈ flows(path) \ flows(surv)`: `walk(Isa_deassoc, chain(f), f)`; `walk(Isa_unmap, internals(f), f)`.
+    Flows in `flows(loser) \ flows(surv)` (loser-only labels) keep their existing above-`sp_v` Assoc/Map state and are routed to slot 0 by `sp_v.z`, matching §3.4.5's denotational rule that loser-only labels drain on arm 0. Operator-level silencing of these flows, when the operator ultimately wants it, comes from the `Quiesce` step of the surrounding `Replace` idiom (§4), not from `Designate`.
 
   _Same-PE invariant._ The planner places `sp_v`, `loser`'s root, and `surv`'s root on the same PE (a deterministic property of the lowering: all three sit at depth `|path|`, and `pe(path)` returns one PE). The substrate may exploit this to coalesce the three into a single physical slot, sparing itself from moving all of `loser` down one PE level; the coalescing is the substrate's prerogative and is not implied by the ISA.
 
