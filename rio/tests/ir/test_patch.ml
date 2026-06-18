@@ -40,7 +40,7 @@ let single_commit c =
   | [ (_, commit) ] -> commit
   | _ -> assert_failure "single_commit: expected exactly one step"
 
-(* ArmAdded *)
+(* Add *)
 
 (* There's a walkthrough for this case in the topmatter of the PR. *)
 let strict_ab_to_abc_expected =
@@ -99,8 +99,8 @@ let rr_ab_to_abc_expected =
 
 (* Deep arm add. complex_tree's normalized root is WFQ with children sorted
    to (SP, RR[D,E,F], RR[G,H]) at indices 0, 1, 2. The mid RR (at path [1])
-   has parent vpifo 105 and arity 3; complex_tree leaves the counters at
-   next_vpifo=112, next_step=1011. New FIFO NEW lives one level below the
+   has parent pifo 105 and arity 3; complex_tree leaves the counters at
+   next_pifo=112, next_step=1011. New FIFO NEW lives one level below the
    RR, so PE 2. *)
 let complex_tree_add_deep_expected =
   [
@@ -131,9 +131,9 @@ let one_arm_added_tests =
       "complex_tree_add_arm_deep" complex_tree_add_deep_expected;
   ]
 
-(* ArmAddedWFQ *)
+(* Add (WFQ parent) *)
 
-(* wfq_BA compiles with vpifos 100 (root WFQ), 101 (A), 102 (B); steps 1000
+(* wfq_BA compiles with pifos 100 (root WFQ), 101 (A), 102 (B); steps 1000
    (A), 1001 (B). Adding FIFO C at slot 2 with weight 3 mints v=103 (PE 1)
    and step 1002, plus a single Set_arm_meta on the new step (no SP-style
    shifts: WFQ slots are independent). *)
@@ -213,7 +213,7 @@ let one_arm_added_wfq_tests =
 
 (* ChangeMeta *)
 
-(* WFQ root with three FIFO arms: vpifo IDs 100 (root), 101/102/103 (A/B/C);
+(* WFQ root with three FIFO arms: pifo IDs 100 (root), 101/102/103 (A/B/C);
    adopt steps 1000/1001/1002. Bumping B's weight 1 -> 5 should emit a single
    Set_arm_meta on the root for B's step. *)
 let meta_changed_tests =
@@ -236,7 +236,14 @@ let meta_changed_tests =
 let strict_abc_to_ab_expected =
   [
     t_ [ Deassoc (99, "C"); Deassoc (100, "C"); Deassoc (103, "C") ];
-    e_ [ 2 ] [ Change_arity (100, 2); Emancipate (1002, 100, 103); GC 103 ];
+    e_ [ 2 ]
+      [
+        Change_arity (100, 2);
+        Emancipate (1002, 100, 103);
+        Unmap (99, "C", 999);
+        Unmap (100, "C", 1002);
+        GC 103;
+      ];
   ]
 
 (* SP[A,B,C] -> SP[A,C]: drop B (mid, index 1). Existing SP arms keep their
@@ -245,14 +252,28 @@ let strict_abc_to_ab_expected =
 let strict_abc_to_ac_expected =
   [
     t_ [ Deassoc (99, "B"); Deassoc (100, "B"); Deassoc (102, "B") ];
-    e_ [ 1 ] [ Change_arity (100, 2); Emancipate (1001, 100, 102); GC 102 ];
+    e_ [ 1 ]
+      [
+        Change_arity (100, 2);
+        Emancipate (1001, 100, 102);
+        Unmap (99, "B", 999);
+        Unmap (100, "B", 1001);
+        GC 102;
+      ];
   ]
 
 (* RR[A,B,C] -> RR[A,B]: drop C from RR. No weight shifts (RR is unweighted). *)
 let rr_abc_to_ab_expected =
   [
     t_ [ Deassoc (99, "C"); Deassoc (100, "C"); Deassoc (103, "C") ];
-    e_ [ 2 ] [ Change_arity (100, 2); Emancipate (1002, 100, 103); GC 103 ];
+    e_ [ 2 ]
+      [
+        Change_arity (100, 2);
+        Emancipate (1002, 100, 103);
+        Unmap (99, "C", 999);
+        Unmap (100, "C", 1002);
+        GC 103;
+      ];
   ]
 
 let one_arm_removed_tests =
@@ -265,7 +286,7 @@ let one_arm_removed_tests =
       rr_abc_to_ab_expected;
   ]
 
-(* ArmReplaced. The planner expands as the [Replace] idiom
+(* Replace. The planner expands as the [Replace] idiom
    [Designate(p) ; Quiesce(p ++ [0]) ; (Empty (p ++ [0])) Undesignate(p)]:
    - [Designate] mints a fresh [SP_star] super-node ([sp_v]) on the loser's
      PE; the loser becomes child 0 of [sp_v], the freshly compiled survivor
@@ -274,21 +295,23 @@ let one_arm_removed_tests =
      classes via [surv_step].
    - [Quiesce] tears down loser-only routing along the chain above [sp_v]
      and at [sp_v] itself; in-flight packets continue to dequeue.
-   - [Undesignate] (gated on the loser being empty) rewires the parent edge
-     from [sp_v] to the survivor, emits [Undesignate loser_v] as the §6 ISA
-     marker, and GCs [sp_v] + the loser subtree.
+   - [Undesignate] (gated on the loser being empty) emits [Undesignate loser_v]
+     as the §6 ISA marker and GCs [sp_v] + the loser subtree. The parent
+     rewire from [sp_v] back to the survivor is implicit in the ISA marker
+     (paper §6.1), so no explicit [Emancipate]/[Adopt] is emitted.
    When the same edit also rebinds the slot's per-arm meta, a trailing
    [ChangeMeta]-only step under [True] fires immediately after. *)
 
-(* RR[A,B] -> RR[A,D]: replace B (vpifo 102, step 1001) with FIFO D. New IDs
+(* RR[A,B] -> RR[A,D]: replace B (pifo 102, step 1001) with FIFO D. New IDs
    mint as: v=103 for the survivor (FIFO D), v=104 for sp_v, step_1002 for
    loser_step (sp_v -> loser), step_1003 for surv_step (sp_v -> survivor). All
    three nodes (v102, v103, v104) live on PE 1. The parent edge step_1001
    rewires to point at v104; chain above gets [Assoc]/[Map] entries for the
    new class D. Loser-only class B drains: chain above unmaps B (v99 / v100)
-   and v104 unmaps + deassocs B internally. Once empty, [Undesignate] rewires
-   step_1001 back to v103 directly, emits [Undesignate v102] as the §6
-   marker, and GCs v104 (sp_v) and v102 (loser). *)
+   and v104 unmaps + deassocs B internally. Once empty, [Undesignate] emits
+   [Undesignate v102] as the §6 marker and GCs v104 (sp_v) and v102 (loser);
+   the parent rewire of step_1001 from v104 to v103 is implicit in the marker
+   (paper §6.1). *)
 let rr_ab_to_ad_expected =
   [
     t_
@@ -320,14 +343,7 @@ let rr_ab_to_ad_expected =
         Deassoc (104, "B");
         Deassoc (102, "B");
       ];
-    e_ [ 1; 0 ]
-      [
-        Emancipate (1001, 100, 104);
-        Adopt (1001, 100, 103);
-        Undesignate 102;
-        GC 104;
-        GC 102;
-      ];
+    e_ [ 1; 0 ] [ Undesignate 102; GC 104; GC 102 ];
   ]
 
 (* SP[A,B] -> SP[A,C]: arm-swap at slot 1, AND the slot's rank changes
@@ -364,14 +380,7 @@ let strict_ab_to_ac_expected =
         Deassoc (104, "B");
         Deassoc (102, "B");
       ];
-    e_ [ 1; 0 ]
-      [
-        Emancipate (1001, 100, 104);
-        Adopt (1001, 100, 103);
-        Undesignate 102;
-        GC 104;
-        GC 102;
-      ];
+    e_ [ 1; 0 ] [ Undesignate 102; GC 104; GC 102 ];
     t_ [ Set_arm_meta (100, 1001, 3.0) ];
   ]
 
@@ -382,13 +391,14 @@ let one_arm_replaced_tests =
       strict_ab_to_ac_expected;
   ]
 
-(* ArmReplacedWFQ. wfq_ABC has root WFQ v=100 with leaves v=101/102/103 for
+(* Replace (WFQ parent). wfq_ABC has root WFQ v=100 with leaves v=101/102/103 for
    A/B/C on steps 1000/1001/1002. Replacing slot 2's arm (C -> FIFO Z) *and*
    its weight (3 -> 7) at path [2]: the survivor FIFO Z spawns on v=104, sp_v
    is v=105, loser_step is step_1003, surv_step is step_1004. All three of
-   v103/v104/v105 live on PE 1. After [Quiesce] drains C, [Undesignate]
-   rewires the parent edge step_1002 from v105 to v104 (survivor). The slot's
-   new weight is set in a trailing [True]-guarded [ChangeMeta] step. *)
+   v103/v104/v105 live on PE 1. After [Quiesce] drains C, [Undesignate] emits
+   its §6 marker and GCs v105 + the loser subtree; step_1002's rewire from
+   v105 to v104 is implicit in the marker. The slot's new weight is set in a
+   trailing [True]-guarded [ChangeMeta] step. *)
 let wfq_abc_to_abz_diff_expected =
   [
     t_
@@ -420,14 +430,7 @@ let wfq_abc_to_abz_diff_expected =
         Deassoc (105, "C");
         Deassoc (103, "C");
       ];
-    e_ [ 2; 0 ]
-      [
-        Emancipate (1002, 100, 105);
-        Adopt (1002, 100, 104);
-        Undesignate 103;
-        GC 105;
-        GC 103;
-      ];
+    e_ [ 2; 0 ] [ Undesignate 103; GC 105; GC 103 ];
     t_ [ Set_arm_meta (100, 1002, 7.0) ];
   ]
 
@@ -438,7 +441,7 @@ let one_arm_replaced_wfq_tests =
   ]
 
 (* Whole-tree replacement (planner expands as the Replace idiom at
-   path []). prev = rr[A,B] (vpifos 100/101/102, steps 1000/1001);
+   path []). prev = rr[A,B] (pifos 100/101/102, steps 1000/1001);
    next = rr[D,E,F] which shares no arms. The patch emits three steps:
    - Designate: builds rr[D,E,F] off fresh ids (root v=103 on PE 0,
      leaves 104/105/106 on PE 1; steps 1002/1003/1004), spawns
@@ -448,8 +451,9 @@ let one_arm_replaced_wfq_tests =
      new classes.
    - Quiesce ([0]): tears down loser-only routing above and at sp_v.
      No shared classes, so no remap at sp_v.
-   - Empty[0] Undesignate: swings the port root from sp_v to the
-     survivor and GCs sp_v + the loser subtree. *)
+   - Empty[0] Undesignate: emits the §6 marker and GCs sp_v + the loser
+     subtree; the port root's swing from sp_v to the survivor is implicit
+     in the marker. *)
 let rr_ab_to_rr_def_expected =
   [
     t_
@@ -508,20 +512,11 @@ let rr_ab_to_rr_def_expected =
         Deassoc (101, "A");
         Deassoc (102, "B");
       ];
-    e_ [ 0 ]
-      [
-        Emancipate (999, 99, 107);
-        Adopt (999, 99, 103);
-        Undesignate 100;
-        GC 107;
-        GC 100;
-        GC 101;
-        GC 102;
-      ];
+    e_ [ 0 ] [ Undesignate 100; GC 107; GC 100; GC 101; GC 102 ];
   ]
 
 (* Whole-tree replacement via constructor mismatch at the root: prev =
-   sp[A,B] (vpifos 100/101/102), next = rr[A,B]: same children,
+   sp[A,B] (pifos 100/101/102), next = rr[A,B]: same children,
    different root policy. The class sets coincide ({A,B}={A,B}) so the
    port root's existing routing is preserved (no chain-above edits).
    Designate routes both shared classes through surv_step at sp_v=106
@@ -565,16 +560,7 @@ let strict_ab_to_rr_ab_expected =
         Deassoc (101, "A");
         Deassoc (102, "B");
       ];
-    e_ [ 0 ]
-      [
-        Emancipate (999, 99, 106);
-        Adopt (999, 99, 103);
-        Undesignate 100;
-        GC 106;
-        GC 100;
-        GC 101;
-        GC 102;
-      ];
+    e_ [ 0 ] [ Undesignate 100; GC 106; GC 100; GC 101; GC 102 ];
   ]
 
 let whole_tree_replace_tests =
@@ -601,10 +587,24 @@ let strict_abc_to_fifo_a_expected =
   [
     (* Retire([2]) C: Quiesce then Remove. *)
     t_ [ Deassoc (99, "C"); Deassoc (100, "C"); Deassoc (103, "C") ];
-    e_ [ 2 ] [ Change_arity (100, 2); Emancipate (1002, 100, 103); GC 103 ];
+    e_ [ 2 ]
+      [
+        Change_arity (100, 2);
+        Emancipate (1002, 100, 103);
+        Unmap (99, "C", 999);
+        Unmap (100, "C", 1002);
+        GC 103;
+      ];
     (* Retire([1]) B: Quiesce then Remove. *)
     t_ [ Deassoc (99, "B"); Deassoc (100, "B"); Deassoc (102, "B") ];
-    e_ [ 1 ] [ Change_arity (100, 1); Emancipate (1001, 100, 102); GC 102 ];
+    e_ [ 1 ]
+      [
+        Change_arity (100, 1);
+        Emancipate (1001, 100, 102);
+        Unmap (99, "B", 999);
+        Unmap (100, "B", 1001);
+        GC 102;
+      ];
     (* ChangeRoot([0]): swing the port root from v100 to v101 and GC the SP
        root. Dropped-class block is empty (B and C already drained). *)
     t_ [ Emancipate (999, 99, 100); Adopt (999, 99, 101); GC 100 ];
@@ -618,7 +618,7 @@ let change_root_tests =
 
 (* Graft *)
 
-(* prev = strict[A,B,C] compiles to vpifos 100 (root)/101/102/103 with
+(* prev = strict[A,B,C] compiles to pifos 100 (root)/101/102/103 with
    adopt steps 1000/1001/1002 and pes [0; 1]; counters end at next_v=104,
    next_s=1003. complex_tree normalizes to
    wfq[(sp[A,B,C], 1); (rr[D,E,F], 2); (rr[G,H], 3)] (children sort by
@@ -636,7 +636,7 @@ let change_root_tests =
    [Assoc]/[Map] entries on its single step for the five classes that
    [complex_tree] adds beyond [strict_ABC] (D, E, F, G, H in the
    normalized preorder); the three carried-over classes (A, B, C) keep
-   their existing port-root wiring. None of prev's vpifos are respawned. *)
+   their existing port-root wiring. None of prev's pifos are respawned. *)
 let strict_abc_to_complex_tree_expected =
   [
     t_
@@ -721,7 +721,7 @@ let graft_tests =
       strict_abc_to_complex_tree_expected;
   ]
 
-(* pes-extension regressions: when a ArmAdded or ArmReplaced inserts
+(* pes-extension regressions: when an [Add] or [Replace] inserts
    an arm whose internal depth pushes the tree deeper than [prev.pes]
    covered, [pes_extended_to_depth] should grow [pes] with fresh PEs above
    the existing max — keeping the "same depth ⇒ same PE" invariant for
@@ -785,10 +785,10 @@ let pes_extension_tests = [ one_arm_added_extends_pes_test ]
 
 (* Deep give-up: complex_tree -> complex_tree_swap_sp_arms differs only
    inside the SP subtree at root child 1 (multi-arm reorder). Delta
-   gives up at that level and emits [ArmReplaced { path = [1]; arm }];
-   IR's existing ArmReplaced handler routes through [Designate] on the
+   gives up at that level and emits the [Replace] idiom at [path = [1]];
+   IR's existing [Replace] handler routes through [Designate] on the
    parent's existing step. Smoke-test that patch returns [Some] — the
-   exact instruction sequence is exercised by the precise ArmReplaced
+   exact instruction sequence is exercised by the precise [Replace]
    tests at non-empty paths above. *)
 let deep_giveup_test =
   "complex_tree -> swap_sp_arms (deep give-up)" >:: fun _ ->
@@ -912,47 +912,30 @@ let quiesce_root_test =
   in
   assert_equal ~printer:Ir.string_of_commit expected (single_commit c)
 
-(* Undesignate at slot 1 of a previously-designated rr[A,B]: the slot
-   holds sp_v=104 with loser v=102 (FIFO B) at child 0 and survivor
-   v=103 (FIFO D) at child 1. Collapsing swings the parent edge from
-   sp_v to survivor, emits [Undesignate 102] as the ISA marker, and GCs
-   sp_v plus the loser subtree. *)
+(* Undesignate at slot 1 of a previously-designated rr[A,B]: the slot holds
+   sp_v=104 with loser v=102 (FIFO B) at child 0 and survivor v=103 (FIFO D) at
+   child 1. Collapsing emits [Undesignate 102] as the ISA marker and GCs sp_v
+   plus the loser subtree; the parent rewire from sp_v to v=103 is implicit in
+   [Isa_undesignate] (paper §6.1). *)
 let undesignate_arm_test =
   "Undesignate: rr[A,B] at slot 1" >:: fun _ ->
   let prev = compile "rr_AB" in
   let designated = Ir.patch_designate ~prev ~path:[ 1 ] ~arm:(Pol.FIFO "D") in
   let c = Ir.patch_undesignate ~prev:designated ~path:[ 1 ] in
-  let expected : commit =
-    [
-      Emancipate (1001, 100, 104);
-      Adopt (1001, 100, 103);
-      Undesignate 102;
-      GC 104;
-      GC 102;
-    ]
-  in
+  let expected : commit = [ Undesignate 102; GC 104; GC 102 ] in
   assert_equal ~printer:Ir.string_of_commit expected (single_commit c)
 
-(* Undesignate at the root of a previously-designated rr[A,B]: parent
-   is the port root v=99 (step 999). loser_v=100 is the old RR root,
-   with FIFO A (v=101) and FIFO B (v=102) underneath. GC walks the
-   whole loser subtree. *)
+(* Undesignate at the root of a previously-designated rr[A,B]: parent is the
+   port root v=99 (step 999). loser_v=100 is the old RR root, with FIFO A
+   (v=101) and FIFO B (v=102) underneath. GC walks the whole loser subtree;
+   the port root's rewire from sp_v to the survivor v=103 is implicit in
+   [Isa_undesignate]. *)
 let undesignate_root_test =
   "Undesignate: rr[A,B] at root" >:: fun _ ->
   let prev = compile "rr_AB" in
   let designated = Ir.patch_designate ~prev ~path:[] ~arm:(Pol.FIFO "D") in
   let c = Ir.patch_undesignate ~prev:designated ~path:[] in
-  let expected : commit =
-    [
-      Emancipate (999, 99, 104);
-      Adopt (999, 99, 103);
-      Undesignate 100;
-      GC 104;
-      GC 100;
-      GC 101;
-      GC 102;
-    ]
-  in
+  let expected : commit = [ Undesignate 100; GC 104; GC 100; GC 101; GC 102 ] in
   assert_equal ~printer:Ir.string_of_commit expected (single_commit c)
 
 (* End-to-end give-up idiom: Replace([], FIFO D) expands as
@@ -997,8 +980,6 @@ let giveup_idiom_test =
       Deassoc (100, "B");
       Deassoc (101, "A");
       Deassoc (102, "B");
-      Emancipate (999, 99, 104);
-      Adopt (999, 99, 103);
       Undesignate 100;
       GC 104;
       GC 100;

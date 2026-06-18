@@ -13,11 +13,11 @@ type t = {
   set_policies : instr list;
   change_arities : instr list;
   set_arm_metas : instr list;
-  root_v : vpifo;
+  root_v : pifo;
   classes : clss list;
 }
 
-val empty : root_v:vpifo -> classes:clss list -> t
+val empty : root_v:pifo -> classes:clss list -> t
 (** A frag carrying no instructions; just [root_v] and [classes]. *)
 
 val to_commit : t -> commit

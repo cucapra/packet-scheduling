@@ -1,5 +1,5 @@
 (** A decorated source tree: mirrors [Rio_core.Pol.t] but annotates every node
-    with the [vpifo] assigned to it and every parent-to-child edge with the
+    with the [pifo] assigned to it and every parent-to-child edge with the
     [step] handed out at adoption time. SP edges additionally carry a per-arm
     priority rank; WFQ edges carry a per-arm weight. The original
     [Rio_core.Pol.t] is recoverable by erasing the decorations. *)
@@ -7,8 +7,8 @@
 open Instr
 
 type t =
-  | FIFO of vpifo * clss
-  | SP of vpifo * (step * t * float) list * bool
+  | FIFO of pifo * clss
+  | SP of pifo * (step * t * float) list * bool
       (** The trailing [bool] is the "designated" flag, mirroring
           [Rio_core.Pol.SP] and the IR-side [Instr.SP_star] marker. A designated
           SP is the runtime SP* super-node minted by [Designate]: exactly two
@@ -18,11 +18,11 @@ type t =
           collapsing back to the survivor) on [Undesignate]. The same-PE
           invariant on (sp_v, loser_root, survivor_root) lives at the IR
           boundary; see [Instr.SP_star]'s contract. *)
-  | RR of vpifo * (step * t) list
-  | WFQ of vpifo * (step * t * float) list
+  | RR of pifo * (step * t) list
+  | WFQ of pifo * (step * t * float) list
 
-val root_vpifo : t -> vpifo
-(** The vPIFO at the root of [d]. *)
+val root_pifo : t -> pifo
+(** The PIFO at the root of [d]. *)
 
 val pol_ty : t -> pol_ty
 (** The IR-side [pol_ty] of [d]. *)
@@ -36,21 +36,21 @@ val nth_step : t -> int -> step
 val nth_child : t -> int -> t
 (** The k-th child subtree. Errors on FIFO. *)
 
-val count_vpifos : t -> int
-(** One vPIFO per node. *)
+val count_pifos : t -> int
+(** One PIFO per node. *)
 
 val count_steps : t -> int
 (** One step per parent-to-child edge. *)
 
-val subtree_vpifos : t -> vpifo list
-(** All vPIFO IDs in [d], pre-order. *)
+val subtree_pifos : t -> pifo list
+(** All PIFO IDs in [d], pre-order. *)
 
 val subtree_classes : t -> clss list
 (** All leaf classes in [d], pre-order. Each ancestor of [d] holds an [Assoc]
     for every class in this list. *)
 
-val subtree_class_assocs : t -> (vpifo * clss list) list
-(** Pair every node's vPIFO with the classes it was [Assoc]'d with during
+val subtree_class_assocs : t -> (pifo * clss list) list
+(** Pair every node's PIFO with the classes it was [Assoc]'d with during
     compilation: a leaf carries its single class, an internal node carries the
     union of its descendants' classes. *)
 
@@ -58,8 +58,8 @@ val walk : t -> int list -> t
 (** Subtree at [path]; [[]] is the tree itself. Errors on a path that goes
     through a FIFO leaf. *)
 
-val ancestor_chain : t -> int list -> (vpifo * step) list
-(** For each ancestor of the node at [path], return its vPIFO and the step it
+val ancestor_chain : t -> int list -> (pifo * step) list
+(** For each ancestor of the node at [path], return its PIFO and the step it
     uses to reach the next node on the path. Length equals [List.length path].
 *)
 
@@ -82,9 +82,9 @@ val sp_designated : t -> bool
 (** [true] iff [d] is a designated SP (the runtime SP* super-node). Errors on
     non-SP. *)
 
-val mk_sp_designated : vpifo -> step -> t -> step -> t -> t
+val mk_sp_designated : pifo -> step -> t -> step -> t -> t
 (** [mk_sp_designated v loser_step loser_d surv_step surv_d] is the designated
-    SP minted by [Designate]: vpifo [v], two children at indices 0/1
+    SP minted by [Designate]: pifo [v], two children at indices 0/1
     (loser/survivor) with ranks 1.0/2.0. *)
 
 val insert_arm_wfq : int -> step -> t -> float -> t -> t

@@ -1,15 +1,15 @@
 (** The decorated source tree mirrors [Rio_core.Pol.t] but annotates every node
-    with its assigned vPIFO and every parent→child edge with its adopt step. SP
+    with its assigned PIFO and every parent→child edge with its adopt step. SP
     and WFQ edges additionally carry per-arm metadata (a priority rank for SP, a
     weight for WFQ). *)
 
 open Instr
 
 type t =
-  | FIFO of vpifo * clss
-  | SP of vpifo * (step * t * float) list * bool
-  | RR of vpifo * (step * t) list
-  | WFQ of vpifo * (step * t * float) list
+  | FIFO of pifo * clss
+  | SP of pifo * (step * t * float) list * bool
+  | RR of pifo * (step * t) list
+  | WFQ of pifo * (step * t * float) list
 
 (* Replace element at index [i] in [xs] by applying [f]; other elements
    untouched. Out-of-range [i] silently leaves the list unchanged. *)
@@ -28,8 +28,8 @@ let list_insert_at i x xs =
   in
   ins i xs
 
-(* The vPIFO at the root of [d]. *)
-let root_vpifo = function
+(* The PIFO at the root of [d]. *)
+let root_pifo = function
   | FIFO (v, _) | SP (v, _, _) | RR (v, _) | WFQ (v, _) -> v
 
 (* The IR-side [pol_ty] of [d]. *)
@@ -79,9 +79,9 @@ let rec fold (f : 'a -> t -> 'a) (acc : 'a) (d : t) : 'a =
   | SP (_, es, _) -> List.fold_left (fun a (_, c, _) -> fold f a c) acc es
   | WFQ (_, es) -> List.fold_left (fun a (_, c, _) -> fold f a c) acc es
 
-(* One vPIFO per node; one step per parent→child edge. Used by [patch]
+(* One PIFO per node; one step per parent→child edge. Used by [patch]
    to seed its fresh-ID counters past whatever [prev] already used. *)
-let count_vpifos d = fold (fun a _ -> a + 1) 0 d
+let count_pifos d = fold (fun a _ -> a + 1) 0 d
 
 let count_steps d =
   fold
@@ -92,8 +92,8 @@ let count_steps d =
       | WFQ (_, es) -> a + List.length es)
     0 d
 
-(* All vPIFO IDs in [d], pre-order. *)
-let subtree_vpifos d = List.rev (fold (fun a node -> root_vpifo node :: a) [] d)
+(* All PIFO IDs in [d], pre-order. *)
+let subtree_pifos d = List.rev (fold (fun a node -> root_pifo node :: a) [] d)
 
 (* All leaf classes in [d], pre-order. Mirrors how [compile_arm]
    propagates [classes] up the tree, so each ancestor of [d] holds an
@@ -106,21 +106,21 @@ let subtree_classes d =
          | _ -> a)
        [] d)
 
-(* For each node in [d], pair its vPIFO with the classes it was [Assoc]'d
+(* For each node in [d], pair its PIFO with the classes it was [Assoc]'d
    to during compilation: a leaf carries its single class, and an
    internal node carries the union of its descendants' classes (matching
    [all_classes] in [compile_arm]). *)
-let rec subtree_class_assocs (d : t) : (vpifo * clss list) list =
+let rec subtree_class_assocs (d : t) : (pifo * clss list) list =
   match d with
   | FIFO (v, c) -> [ (v, [ c ]) ]
   | RR (_, es) ->
-      (root_vpifo d, subtree_classes d)
+      (root_pifo d, subtree_classes d)
       :: List.concat_map (fun (_, c) -> subtree_class_assocs c) es
   | SP (_, es, _) ->
-      (root_vpifo d, subtree_classes d)
+      (root_pifo d, subtree_classes d)
       :: List.concat_map (fun (_, c, _) -> subtree_class_assocs c) es
   | WFQ (_, es) ->
-      (root_vpifo d, subtree_classes d)
+      (root_pifo d, subtree_classes d)
       :: List.concat_map (fun (_, c, _) -> subtree_class_assocs c) es
 
 (* Subtree at [path]; [[]] is [d] itself. Errors on a path that goes
@@ -130,14 +130,14 @@ let rec walk d path =
   | [] -> d
   | i :: rest -> walk (nth_child d i) rest
 
-(* For each ancestor of the node at [path], return its vPIFO and the
+(* For each ancestor of the node at [path], return its PIFO and the
    step it uses to reach the next node on the path. Length equals
    [List.length path]. *)
-let rec ancestor_chain d path : (vpifo * step) list =
+let rec ancestor_chain d path : (pifo * step) list =
   match path with
   | [] -> []
   | i :: rest ->
-      (root_vpifo d, nth_step d i) :: ancestor_chain (nth_child d i) rest
+      (root_pifo d, nth_step d i) :: ancestor_chain (nth_child d i) rest
 
 (* Apply [f] to the subtree at [path], leaving the surrounding structure
    (including SP ranks and WFQ weights along the path) untouched. Generalizes

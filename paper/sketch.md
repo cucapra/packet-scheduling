@@ -12,7 +12,6 @@ A list of AM-notes scattered through the draft.
 - §4.1 (line ~1008): no withdraw/abort mechanism today; flagged in case we revisit.
 - §5 (line ~1158): more examples to work through, possible strengthening of `compare.ml`.
 - §6.2 (line ~1238): port-routing across the `P` trees.
-- §6.2 (lines ~1266, ~1267): `Remove` sibling-shift cascade cost.
 - §6.3 (line ~1330): confirm substrate-requirements prose with Zhiyuan.
 
 ## 1. Introduction
@@ -361,11 +360,11 @@ Two productions are irregular in this respect: `ChangeRoot` gives the path to th
 We explain these in §3.4.
 
 ```
-δ ::= Add          (path, pol, meta?)
-    | ChangeWeight (path, weight)
+δ ::= Add          (path, arm, meta?)
+    | ChangeMeta   (path, meta)
     | Quiesce      (path)
     | Remove       (path)
-    | Designate    (path, pol)
+    | Designate    (path, survivor)
     | Undesignate  (path)
     | ChangeRoot   (path)
     | Graft        (ctx)
@@ -373,10 +372,9 @@ We explain these in §3.4.
 path   ::= []  |  i :: path             // i is a child index
 ctx    ::= □                            // the unique hole
          | D(pol, ..., ctx, ..., pol)   // exactly one child is itself a context
-weight ::= a positive real
 ```
 
-`pol` is the nonterminal of §3.2.
+`pol` is the nonterminal of §3.2; `arm` and `survivor` are field names for `pol`-typed payloads, chosen to read at the call site (the new arm under an `Add`, the designated survivor under a `Designate`).
 A _policy context_, written `ctx`, is built like a `pol`, except that exactly one of its slots is the distinguished _hole_ `□` rather than a subtree.
 The hole is a reserved slot, not an absence of a slot: the parent of the hole has an arity that includes the hole, e.g., `RoundRobin(A, B, □)` is a 3-ary `RoundRobin` whose third slot is the hole, distinct from the 2-ary `RoundRobin(A, B)`.
 We write `ctx[s]` for the ordinary, hole-free tree obtained by plugging the hole of `ctx` with the subtree `s`.
@@ -388,11 +386,11 @@ The richer reconfigurations an operator may want (retiring a subtree that has pa
 
 Brief notes on each production:
 
-- `Add(path, pol, meta?)` appends `pol` as a new child of `p1@path`. `meta?` carries per-arm bookkeeping for the new arm, if `p1@path` requires it.
-- `ChangeWeight(path, weight)` overwrites the WFQ weight assigned to `p1@path`.
+- `Add(path, arm, meta?)` appends `arm` as a new child of `p1@path`. `meta?` carries per-arm bookkeeping for the new arm, if `p1@path` requires it.
+- `ChangeMeta(path, meta)` overwrites the per-arm metadata assigned to `p1@path`, interpreted per the parent's discipline: a priority rank under Strict, a weight under WFQ.
 - `Quiesce(path)` prevents `p1@path` from receiving any new traffic.
 - `Remove(path)` removes `p1@path`, which must be empty.
-- `Designate(path, pol)` wraps `p1@path` into `Strict*(p1@path, pol)` in place, making `pol` the _designated survivor_ of `p1@path`. The need for the distinguished discipline `Strict*` is explained in §3.4.5.
+- `Designate(path, survivor)` wraps `p1@path` into `Strict*(p1@path, survivor)` in place, making `survivor` the _designated survivor_ of `p1@path`. The need for the distinguished discipline `Strict*` is explained in §3.4.5.
 - `Undesignate(path)` collapses the `Strict*(A, B)` that lives at `p1@path` into `B`, with `B` inheriting the slot and per-arm `meta?`. `A` must be empty.
 - `ChangeRoot(path)` promotes `p1@path` to the new root, discarding the ancestor chain above it. The ancestor chain must be a unary "vine". The `path` argument is interpreted in the pre-edit tree; in the post-edit tree the same node sits at `[]`.
 - `Graft(ctx)` produces `ctx[p1]` by plugging the running `p1` into `ctx`'s hole.
@@ -420,22 +418,17 @@ Write `C` for the pre-edit control and `C'` for the post-edit control.
 The last four obligations assume `[[δ]](C)` is defined; outside the region the production's Definition carves out, `δ` is _incompatible_ with `C` and `[[δ]](C)` is undefined.
 We do not repeat this boilerplate at every production.
 
-For transaction-only productions (those whose effect lives entirely in some `z`, like `Quiesce` and `ChangeWeight`), `den(δ)` is the identity on `pol` and Characterization reduces to `⌊C'⌋ =R ⌊C⌋` by inspection: no node's `node_state`, `slot_states`, `pifo`, or child list moves, and `z` is not visible at `pol`-level.
+For transaction-only productions (those whose effect lives entirely in some `z`, like `Quiesce` and `ChangeMeta`), `den(δ)` is the identity on `pol` and Characterization reduces to `⌊C'⌋ =R ⌊C⌋` by inspection: no node's `node_state`, `slot_states`, `pifo`, or child list moves, and `z` is not visible at `pol`-level.
 We still state `den` explicitly at each production for uniformity.
 
 Several productions (`Add`, `Quiesce`, `Remove`, `Designate`) modify `z` at proper ancestors of the edit site, even though those nodes' `state` is preserved verbatim.
 There is no separate obligation for these `z` edits: their `pol`-invisible content is absorbed by Characterization (which is up to `=R`, and `z` does not appear in `pol`), and their effect on the in-flight stream is absorbed by Observation (every live `pifo` entry survives a `z` edit verbatim).
 
-The denotational rules below frequently read, overwrite, and splice child lists.
+The denotational rules below read, overwrite, and shrink child lists.
 Let us fix some notation.
 We write `ts[i]` for the `i`-th child and `ts[t/i]` for `ts` with its `i`-th child overwritten by `t`; this leaves the arity unchanged.
-We mark arity-changing edits with `+` and `-`: `ts[+t/i]` splices `t` in as the new `i`-th child (the old `i`-th and later children shift one place to the right), and `ts[-/i]` drops the `i`-th child (later children shift left).
+`ts[-/k]` drops the `k`-th child; later children shift left.
 Indices follow the `path` convention of §3.3.
-
-The operational rewrites of §3.4 manipulate two parallel structures at an internal node: a child list `qs` of PIFO tree children, to which the list-manipulation notation introduced above applies verbatim, and an index-PIFO `p` recording child indices.
-For `p` the same `[±/k]` notation _renumbers_ rather than splices, since the PIFO holds index _values_ that have to track a shift in the child list.
-`p[+/k]` is `p` with every entry `>= k` bumped up by one (opening up slot `k`); `p[-/k]` is `p` with every entry `> k` brought down by one.
-Entries below the edit point are left alone.
 
 Several productions edit a single arm relative to its parent.
 When the per-production rule hinges on this relation, we destruct `δ`'s path as `π ++ [k]`, with `π` the parent's path and `k` the local index by which that parent reaches the target.
@@ -444,28 +437,28 @@ When the per-production rule hinges on this relation, we destruct `δ`'s path as
 As a warm-up, we discharge the five obligations in some detail for the production `Add`.
 The remaining productions reuse the same obligations and arguments, so for them we present only what differs in substance: the closed-form `den`, the operationally interesting bits of the per-node rule, and the points where any of the preservation arguments departs from `Add`'s.
 
-#### 3.4.1. `Add(π, newpol, meta?)`
+#### 3.4.1. `Add(π, arm, meta?)`
 
-We rename §3.3's positional arguments for clarity: `π : path` is the path to the parent node under which the new arm goes, and `newpol : pol` is the policy of the new arm; `meta?` is the discipline-dependent per-arm metadata of §3.3.
+We rename §3.3's positional arguments for clarity: `π : path` is the path to the parent node under which the new arm goes, and `arm : pol` is the policy of the new arm; `meta?` is the discipline-dependent per-arm metadata of §3.3.
 
 ##### Definition
 
-We must define `[[Add(π, newpol, meta?)]] : control ⇀ control` together with the preconditions on the already running control under which `Add` is defined.
+We must define `[[Add(π, arm, meta?)]] : control ⇀ control` together with the preconditions on the already running control under which `Add` is defined.
 
 Say the presently running control is `C`.
-Intuitively, `Add` inserts a freshly compiled subtree `⌈newpol⌉` as the new last child of the subtree at `C@π`.
-It also extends the scheduling transaction `z` at each proper ancestor of `⌈newpol⌉`, so that traffic can reach `⌈newpol⌉`.
+Intuitively, `Add` inserts a freshly compiled subtree `⌈arm⌉` as the new last child of the subtree at `C@π`.
+It also extends the scheduling transaction `z` at each proper ancestor of `⌈arm⌉`, so that traffic can reach `⌈arm⌉`.
 
-`[[Add(π, newpol, meta?)]](C)` is defined when:
+`[[Add(π, arm, meta?)]](C)` is defined when:
 
 - the path `π` resolves in `C` to an internal node,
 - `meta?` matches the slot-initialization schema of the discipline at that node (present iff `init_slot_D` for that discipline requires it), and
-- `newpol`'s leaf labels are disjoint from those of `C`.
+- `arm`'s leaf labels are disjoint from those of `C`.
 
 The disjointness precondition rules out _splitting_ an already-running flow into two (e.g., splitting `gmail` into `gmail_business` and `gmail_personal`): such a split has to relocate already-admitted packets, which `Add` cannot do.
 Such flow-splitting is realized as a `Designate` + drain + `Undesignate` sequence (§4), not by `Add`.
 
-The transition `C' = [[Add(π, newpol, meta?)]](C)` is stated per node.
+The transition `C' = [[Add(π, arm, meta?)]](C)` is stated per node.
 Let `k = |C@π.slot_states|` be the new arm's slot index.
 
 - _At each proper ancestor of `π`:_
@@ -477,12 +470,12 @@ Let `k = |C@π.slot_states|` be the new arm's slot index.
   - `C'@π.slot_states = C@π.slot_states ++ [ init_slot_D(C@π.node_state, meta?) ]`. In English: we call `init_slot_D` to find the per-arm bookkeeping that is needed for a new arm under `D`, and we append that bookkeeping in at the end. Our arm-order freedom (§3.2) lets us simply append the new child.
   - `pifo` is unchanged: no pre-existing entry needs renumbering, and the new arm holds no packets yet.
   - `C'@π.z` extends `C@π.z` to admit packets that classify into the new subtree, mapping them to child index `k` at `C@π`.
-- _At every node inside `⌈newpol⌉`:_ the local control is `⌈newpol⌉`'s, verbatim.
-- _At every other node (outside `⌈newpol⌉` and not `C@π` or one of its proper ancestors):_ the local control is preserved verbatim.
+- _At every node inside `⌈arm⌉`:_ the local control is `⌈arm⌉`'s, verbatim.
+- _At every other node (outside `⌈arm⌉` and not `C@π` or one of its proper ancestors):_ the local control is preserved verbatim.
 
 ##### Preservation of |-
 
-We must show that `|- C` implies `|- C'`: any pifo entries or packets that `[[Add(π, newpol, meta?)]]` introduces must leave the per-node pifo and packet counts in balance.
+We must show that `|- C` implies `|- C'`: any pifo entries or packets that `[[Add(π, arm, meta?)]]` introduces must leave the per-node pifo and packet counts in balance.
 
 At `C@π`, `C'@π.pifo = C@π.pifo` contains no entry equal to `k` (no pre-existing entry can name a slot that did not exist in `C`), and the new arm at slot `k` holds no packets, so its well-formedness count reads `0 = 0`.
 Every other slot at `C@π` keeps its index, its packets, and its entries in `C'@π.pifo` verbatim, so its matched count is inherited.
@@ -494,7 +487,7 @@ Nothing needs repair.
 We must show that at every node structurally shared between `C` and `C'` and outside the edit site, the local `state` is preserved verbatim; and that at the edit site, and at every node of the freshly spawned subtree, the `state` is exactly what `init_node_D` / `init_slot_D` (§3.2) prescribes.
 
 Outside the edit site the local control (and thus its `state`) is preserved verbatim, including at each proper ancestor of `π`, where only `z` changes.
-Inside `⌈newpol⌉`, every node's `node_state` and `slot_states` are what `init_node_D` / `init_slot_D` (§3.2) prescribe, by construction of `⌈newpol⌉`.
+Inside `⌈arm⌉`, every node's `node_state` and `slot_states` are what `init_node_D` / `init_slot_D` (§3.2) prescribe, by construction of `⌈arm⌉`.
 At `C@π`, `node_state` is unchanged and `slot_states` is appended with exactly `init_slot_D(C@π.node_state, meta?)`, as required at the edit site.
 
 ##### Preservation of observation
@@ -509,62 +502,64 @@ Observation is preserved.
 
 ##### Characterization
 
-We must state `den(Add(π, newpol, meta?))` in closed form and prove `⌊C'⌋ =R den(Add(π, newpol, meta?))(⌊C⌋)`.
+We must state `den(Add(π, arm, meta?))` in closed form and prove `⌊C'⌋ =R den(Add(π, arm, meta?))(⌊C⌋)`.
 
 We define `den` by recursion on `π`:
 
 ```
-den(Add([],        newpol, meta?)) (D ts) = D ( ts ++ [newpol] )
-den(Add(i :: rest, newpol, meta?)) (D ts) = D ( ts[ den(Add(rest, newpol, meta?)) (ts[i]) / i ] )
+den(Add([],        arm, meta?)) (D ts) = D ( ts ++ [arm] )
+den(Add(i :: rest, arm, meta?)) (D ts) = D ( ts[ den(Add(rest, arm, meta?)) (ts[i]) / i ] )
 ```
 
-The base case applies once `π = []`: the recursion has reached the node where the new arm goes, and `newpol` is appended as the last child.
+The base case applies once `π = []`: the recursion has reached the node where the new arm goes, and `arm` is appended as the last child.
 The recursive case walks one step deeper into child `i` and writes the result back in place.
 The `meta?` argument is threaded through the recursion but does not appear in the closed form: it is per-arm bookkeeping consumed by `init_slot_D` at the operational level, so it is pol-invisible.
 
 _Proof of characterization._
-We argue that the structural skeleton of `C'` matches `den(Add(π, newpol, meta?))(⌊C⌋)`.
+We argue that the structural skeleton of `C'` matches `den(Add(π, arm, meta?))(⌊C⌋)`.
 The operational rule above leaves every pre-existing arm structurally intact (the `z` extensions along the ancestor chain are pol-invisible) and adds a new arm at `C@π`.
-That new arm is exactly `⌈newpol⌉`.
-Descending down the path `π` in `⌊C⌋` traces the recursion step for step: at each proper ancestor, step into the child named by `π`; at the node `π` reaches, append `newpol` to the child list.
-For `Add`, `⌊C'⌋` and `den(Add(π, newpol, meta?))(⌊C⌋)` are in fact _equal_ as pol-trees, not just `=R`-equivalent: at each proper ancestor of `π` the child lists agree pointwise, and at `C@π` both child lists are `ts ++ [newpol]`.
+That new arm is exactly `⌈arm⌉`.
+Descending down the path `π` in `⌊C⌋` traces the recursion step for step: at each proper ancestor, step into the child named by `π`; at the node `π` reaches, append `arm` to the child list.
+For `Add`, `⌊C'⌋` and `den(Add(π, arm, meta?))(⌊C⌋)` are in fact _equal_ as pol-trees, not just `=R`-equivalent: at each proper ancestor of `π` the child lists agree pointwise, and at `C@π` both child lists are `ts ++ [arm]`.
 We still phrase the characterization mod `=R` to keep a uniform shape across productions:
-`⌊C'⌋ =R den(Add(π, newpol, meta?))(⌊C⌋)`.
+`⌊C'⌋ =R den(Add(π, arm, meta?))(⌊C⌋)`.
 
-#### 3.4.2. `ChangeWeight(τ, weight)`
+#### 3.4.2. `ChangeMeta(τ, meta)`
 
-Throughout, `τ : path` is the path to the target arm whose weight changes; it is non-empty (see precondition below) and we destruct it as `π ++ [k]`, with `π` the path to the parent and `k` the slot at that parent.
+Throughout, `τ : path` is the path to the target arm whose per-arm metadata changes; it is non-empty (see precondition below) and we destruct it as `π ++ [k]`, with `π` the path to the parent and `k` the slot at that parent.
+The payload `meta` is interpreted per the parent's discipline: a priority rank when the parent runs Strict, a weight when it runs WFQ.
 
 Say the presently running control is `C`.
-Intuitively, `ChangeWeight` overwrites `C@π.slot_states[k].weight` with the new weight provided.
+Intuitively, `ChangeMeta` overwrites `C@π.slot_states[k]`'s per-arm metadata with the new value provided.
 
 ##### Definition
 
-`[[ChangeWeight(τ, weight)]](C)` is defined when `τ` is non-empty and the parent at `π` runs WFQ.
+`[[ChangeMeta(τ, meta)]](C)` is defined when `τ` is non-empty and the parent at `π` runs Strict or WFQ.
 
-- _At `C@π`:_ `node_state` is unchanged; `slot_states[k].weight` is overwritten with the new weight. Every other field of `slot_states[k]` is preserved verbatim, including the virtual-finish tag that records how far slot `k` has run in the current round. Other `slot_states`, `pifo`, and `z` are unchanged.
+- _At `C@π`:_ `node_state` is unchanged; the per-arm metadata field of `slot_states[k]` (the priority rank under Strict, the weight under WFQ) is overwritten with the new value. Every other field of `slot_states[k]` is preserved verbatim. Under WFQ this includes the virtual-finish tag that records how far slot `k` has run in the current round. Other `slot_states`, `pifo`, and `z` are unchanged.
 - _Everywhere else:_ preserved verbatim.
 
 ##### Preservation
 
 Preservation of `|-`: no `pifo` entry is rewritten, no subtree is touched, no packet is relocated, so well-formedness is inherited everywhere.
-Preservation of state: the targeted weight field is the intended edit; every other field at `C@π` and everywhere else is verbatim.
-Preservation of observation: ranks for in-flight `pifo` entries were determined when they were pushed. They remain fixed; the new weight affects only the rank computation for future pushes.
-So a `pop` immediately after this `[[ChangeWeight(τ, weight)]]` returns exactly what a `pop` immediately before would have.
+Preservation of state: the targeted metadata field is the intended edit; every other field at `C@π` and everywhere else is verbatim.
+Preservation of observation: ranks for in-flight `pifo` entries were determined when they were pushed. They remain fixed; the new metadata affects only the rank computation for future pushes.
+So a `pop` immediately after this `[[ChangeMeta(τ, meta)]]` returns exactly what a `pop` immediately before would have.
 
-##### Note: Why the virtual-finish tag is preserved
+##### Note: Why the virtual-finish tag is preserved (WFQ)
 
-The virtual-finish tag at slot `k` is deliberately _preserved_ and not _reset_: resetting would either reward or penalize the targeted arm by yanking it out of the current round, whereas `init_slot_WFQ` (§3.2) was designed precisely to let a fresh arm "join the current round" without disturbing siblings, and the same principle applies to a weight change on an already-running arm.
+When the parent runs WFQ, the virtual-finish tag at slot `k` is deliberately _preserved_ and not _reset_: resetting would either reward or penalize the targeted arm by yanking it out of the current round, whereas `init_slot_WFQ` (§3.2) was designed precisely to let a fresh arm "join the current round" without disturbing siblings, and the same principle applies to a weight change on an already-running arm.
+Under Strict the slot carries no comparable round-bookkeeping field, so the question does not arise.
 
 ##### Characterization
 
 ```
-den(ChangeWeight(τ, w)) p = p
+den(ChangeMeta(τ, m)) p = p
 ```
 
-is defined whenever `τ` resolves in `p` and the parent at `π` runs WFQ.
+is defined whenever `τ` resolves in `p` and the parent at `π` runs Strict or WFQ.
 Every node's `node_state`, `slot_states.discipline`, `pifo`, and child list are preserved verbatim (the rewritten field is in `slot_state`, which the compilation rule strips), so `⌊C'⌋ = ⌊C⌋`.
-Hence `⌊C'⌋ =R den(ChangeWeight(τ, weight))(⌊C⌋)`.
+Hence `⌊C'⌋ =R den(ChangeMeta(τ, meta))(⌊C⌋)`.
 
 #### 3.4.3. `Quiesce(τ)`
 
@@ -633,7 +628,7 @@ The topology loses the arm at slot `k` of `C@π`; arms at slots `0, ..., k-1` ke
 - _At `C@π`:_
   - `node_state` is unchanged.
   - `slot_states = C@π.slot_states[-/k]`: the entry at slot `k` is dropped. Entries at slots `> k` shift down by one to track the renumbered arms.
-  - `pifo = C@π.pifo[-/k]`: the precondition (subtree at `τ` is empty) plus `|- C` forces `C@π.pifo` to contain _no entry equal to `k`_, so this renumbering deletes no values; it only decrements entries `> k` by one.
+  - `pifo`: the precondition (subtree at `τ` is empty) plus `|- C` forces `C@π.pifo` to contain _no entry equal to `k`_, so no entry is deleted; whatever bookkeeping is needed to keep the surviving entries pointed at their (now-resident-at-arity-`n-1`) children must be done. If one were literally indexing children by their positions, that would mean decrementing entries `> k` by one. Implementations have ways around even this; for instance, the substrate model of §6.1 keys children by stable per-edge handles, so survivors' pifo entries are unchanged.
   - `z` is restricted on inputs and renumbered on outputs.
     Packets that `C@π.z` would have routed to slot `k` are no longer in `C'@π.z`'s domain. For surviving inputs, an output of `(i, r)` with `i > k` becomes `(i - 1, r)`.
     Slots `< k` are untouched on either axis.
@@ -643,7 +638,7 @@ In the typical planner usage, a preceding `Quiesce` has already restricted every
 
 ##### Preservation
 
-Preservation of `|-`: at `C@π`, the precondition gives `C@π.pifo` no entry equal to `k`, so the renumbering `[-/k]` deletes no values; surviving slots `i' < k` of `C'@π` inherit their matched counts from slot `i'` of `C@π`, and surviving slots `i' >= k` inherit theirs from slot `i' + 1` (same subtree, renumbered entries).
+Preservation of `|-`: at `C@π`, the precondition gives `C@π.pifo` no entry equal to `k`, so no pifo entry is deleted; surviving slots `i' < k` of `C'@π` inherit their matched counts from slot `i'` of `C@π`, and surviving slots `i' >= k` inherit theirs from slot `i' + 1` (same subtree).
 Every proper ancestor and every surviving sibling is verbatim, so its well-formedness count is inherited.
 Preservation of state: every proper ancestor and surviving sibling preserves its `state` verbatim.
 No `init`-rule fires, and `slot_states` drops slot `k`'s entry while every other entry is preserved verbatim, with its position shifted to match the new arm order.
@@ -772,7 +767,6 @@ Let `N` denote the freshly introduced `Strict*` node, and let `P0` denote the nu
   Pre-existing mappings are untouched.
   This is the exact analog of `Add`'s ancestor `z`-extensions (§3.4.1).
 - _At `N`:_ `node_state = init_node_Strict()`; `slot_states = [init_slot_Strict(node_state, hi), init_slot_Strict(node_state, lo)]` for any priority ranks `hi < lo`; arm 0 is the old `C@τ` (verbatim, including its entire subtree and contents); arm 1 is `⌈survivor⌉`; `pifo` is seeded with `P0` entries with slot value `0` and rank `hi` (one per packet still held under arm 0; later pushes at slot 0 would produce entries at the same rank).
-  [AM note: we are still pretending to use a true Strict arm whose slots we must fill. We need to decide when we drop that facade. Perhaps it's right move to keep it up here and drop it in Section 6? Or do we drop it now?]
   `z` routes packets by leaf label: a packet whose label exists in `⌈survivor⌉` goes to slot `1`, otherwise (label exists only in the old subtree) it goes to slot `0`.
   This rule is total on `N`'s admitted labels and resolves the overlap case toward the survivor: a label shared between the old subtree and `survivor` belongs to the survivor from `δ`'s firing onward, while the residual packets under arm 0 drain on their existing entries.
 - _Inside `⌈survivor⌉`:_ the local control is `⌈survivor⌉`'s, verbatim.
@@ -1198,30 +1192,32 @@ The planner walks the sequence, observes live control state, and dispatches the 
 
 Four pieces of substrate vocabulary appear in the listing below:
 
-- **lPIFO** ("logical PIFO"): one PIFO-tree node, addressed by an opaque id `v`.
-- **PE** (processing element): hosts one or more lPIFOs and owns their per-node state and logic.
+- **PIFO**: one node of the PIFO-tree, addressed by an opaque id `v`.
+  The substrate exposes one PIFO per tree node; how those PIFOs are mapped onto hardware is a substrate concern (see "PE deployment" later in this section).
+- **PE** (processing element): hosts one or more PIFOs and owns their per-node state and logic.
+  A single PE can host multiple PIFOs at once; in particular, sibling PIFOs commonly cohabit a PE.
 - **flow**: a traffic class.
-- **index**: opaque per-lPIFO handle naming one of that lPIFO's children; what an lPIFO uses internally to refer to a child arm.
+- **index**: opaque per-PIFO handle naming one of that PIFO's children; what a PIFO uses internally to refer to a child arm.
 
 The ISA has thirteen opcodes:
 
-| Opcode                      | Parameters                        | Effect                                                                                                                                                                                                                                                                                                                                                    |
-| --------------------------- | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Isa_spawn(v, pe)`          | fresh lPIFO id, PE id             | Allocate an empty lPIFO `v` on PE `pe`.                                                                                                                                                                                                                                                                                                                   |
-| `Isa_adopt(i, p, c)`        | index, parent, child              | Parent `p` gains `c` as a child, reachable via index `i`.                                                                                                                                                                                                                                                                                                 |
-| `Isa_emancipate(i, p, c)`   | index, parent, child              | Inverse of `Isa_adopt`: detach `c` from `p`; `i` was the index used to reach `c`.                                                                                                                                                                                                                                                                         |
-| `Isa_assoc(v, f)`           | lPIFO, flow                       | `v` begins to accept packets of flow `f`.                                                                                                                                                                                                                                                                                                                 |
-| `Isa_deassoc(v, f)`         | lPIFO, flow                       | `v` stops accepting packets of flow `f`.                                                                                                                                                                                                                                                                                                                  |
-| `Isa_map(v, f, i)`          | lPIFO, flow, index                | In `v`'s brain, route flow `f` to index `i`.                                                                                                                                                                                                                                                                                                              |
-| `Isa_unmap(v, f, i)`        | lPIFO, flow, index                | Forget `v`'s flow-`f`-to-index-`i` entry.                                                                                                                                                                                                                                                                                                                 |
-| `Isa_set_policy(v, t, n)`   | lPIFO, policy type, initial arity | Set `v`'s policy type to `t` and its initial arity to `n`; `t` ranges over {FIFO, RoundRobin, Strict, WFQ}. Issued exactly once per lPIFO, at spawn time.                                                                                                                                                                                                 |
-| `Isa_change_arity(v, n)`    | lPIFO, arity                      | Set the live `v`'s arity to `n`. Policy type is unchanged. Shrinking drops the rightmost slots and discard their per-arm metadata; growing adds fresh slots at the right with uninitialized metadata, which (if needed) must be set by a subsequent `Isa_set_arm_meta`. Slots at indices `< min(old, new)` keep their child pointer and per-arm metadata. |
-| `Isa_set_arm_meta(v, i, m)` | lPIFO, index, metadata            | Set per-arm metadata for the child reached via `i` to `m`. The payload `m` is interpreted per `v`'s policy type: a weight for RoundRobin/WFQ, a priority rank for Strict; FIFO carries none.                                                                                                                                                              |
-| `Isa_designate(v, surv)`    | two lPIFOs                        | Form the super-node `{v -> surv}` in `v`'s slot: pops favor `v`; the substrate records `surv` as `v`'s designated successor for an eventual `Isa_undesignate`.                                                                                                                                                                                            |
-| `Isa_gc(v)`                 | lPIFO                             | Release `v`'s PE slot.                                                                                                                                                                                                                                                                                                                                    |
-| `Isa_undesignate(v)`        | lPIFO                             | Collapse the super-node `{v -> surv}` to `surv`: the parent index that pointed at `{v -> surv}` now points directly at `surv`, and `surv` inherits the slot's per-arm metadata.                                                                                                                                                                           |
+| Opcode                      | Parameters                        | Effect                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| --------------------------- | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Isa_spawn(v, pe)`          | fresh PIFO id, PE id             | Allocate an empty PIFO `v` on PE `pe`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| `Isa_adopt(i, p, c)`        | index, parent, child              | Parent `p` gains `c` as a child, reachable via index `i`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `Isa_emancipate(i, p, c)`   | index, parent, child              | Inverse of `Isa_adopt`: detach `c` from `p`; `i` was the index used to reach `c`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| `Isa_assoc(v, f)`           | PIFO, flow                       | `v` begins to accept packets of flow `f`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `Isa_deassoc(v, f)`         | PIFO, flow                       | `v` stops accepting packets of flow `f`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `Isa_map(v, f, i)`          | PIFO, flow, index                | In `v`'s brain, route flow `f` to index `i`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `Isa_unmap(v, f, i)`        | PIFO, flow, index                | Forget `v`'s flow-`f`-to-index-`i` entry.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `Isa_set_policy(v, t, n)`   | PIFO, policy type, initial arity | Set `v`'s policy type to `t` and its initial arity to `n`; `t` ranges over {FIFO, RoundRobin, Strict, WFQ}. Issued exactly once per PIFO, at spawn time.                                                                                                                                                                                                                                                                                                                                                                                           |
+| `Isa_change_arity(v, n)`    | PIFO, arity                      | Set the live `v`'s arity counter to `n`. Policy type is unchanged. `Isa_change_arity` is what tells the discipline-level logic at `v` (e.g., RR's cursor wraparound, the WFQ slot-state table's size) the active arm count; the structural attaching and detaching themselves happen through explicit `Isa_adopt`/`Isa_emancipate` calls, each keyed by the stable per-edge index the parent minted at adoption time. The substrate is free to relocate live adoptions internally as the count changes; the indices the planner holds remain valid. |
+| `Isa_set_arm_meta(v, i, m)` | PIFO, index, metadata            | Set per-arm metadata for the child reached via `i` to `m`. The payload `m` is interpreted per `v`'s policy type: a weight for RoundRobin/WFQ, a priority rank for Strict; FIFO carries none.                                                                                                                                                                                                                                                                                                                                                        |
+| `Isa_designate(v, surv)`    | two PIFOs                        | Inside an already-spawned Strict-2 super-node that has adopted both `v` and `surv` (see §6.2's `Designate` lowering), name `v` as the favored child and record `surv` as `v`'s designated successor for an eventual `Isa_undesignate`. No in-place wrapping is implied at the ISA level; the substrate may coalesce the Strict-2 super-node, `v`, and `surv` into a single physical slot when §6.2's same-PE invariant holds, but is not required to.                                                                                               |
+| `Isa_gc(v)`                 | PIFO                             | Release `v`'s PE slot.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `Isa_undesignate(v)`        | PIFO                             | Collapse the super-node `{v -> surv}` to `surv`: the parent index that pointed at `{v -> surv}` now points directly at `surv`, and `surv` inherits the slot's per-arm metadata.                                                                                                                                                                                                                                                                                                                                                                     |
 
-`Isa_set_policy` is issued exactly once per lPIFO, at spawn time, and carries both the policy type and the initial arity (these are co-determined at birth).
+`Isa_set_policy` is issued exactly once per PIFO, at spawn time, and carries both the policy type and the initial arity (these are co-determined at birth).
 The grammar `δ` (§3.3) has no production that swaps an existing node's policy type, so `Isa_set_policy` is never reissued against a live `v`; type swaps at the `δ` level go through wholesale replacement: `Designate` stands up a new subtree with the desired type, and a later `Undesignate` retires the old one.
 After birth, only `Isa_change_arity` adjusts a live `v`'s arity; this is the runtime arm-count edit issued by `Add`'s grow and `Remove`'s shrink.
 
@@ -1236,8 +1232,8 @@ Between those two instructions, the old root has two parents.
 The atomic install means no `push` or `pop` ever sees this state, but the planner is free to issue commits whose intermediate frames would not satisfy the §3.1 well-formedness invariants.
 
 One last piece of setup the lowerings in §6.2 will lean on: _PE deployment_.
-We treat the assignment of an lPIFO to a PE as a deterministic function `pe(path)` of the lPIFO's tree position, fixed at compile time.
-A typical shape is depth-by-PE: lPIFOs at the same tree depth share a PE [Sivaraman et al., SIGCOMM '16].
+We treat the assignment of a PIFO to a PE as a deterministic function `pe(path)` of the PIFO's tree position, fixed at compile time.
+A typical shape is depth-by-PE: PIFOs at the same tree depth share a PE [Sivaraman et al., SIGCOMM '16], so sibling PIFOs cohabit one PE by default.
 The planner consults `pe(path)` when it needs an `Isa_spawn`'s `pe` argument; the function's definition is a property of the target substrate and is not otherwise observable at the ISA.
 
 ### 6.2 Lowering Productions of `δ`
@@ -1248,7 +1244,7 @@ The substrate itself sees only a finished commit and does no live-state checking
 
 Before working through the productions, we set up one structural convention.
 A switch with `P` output ports has `P` separate trees, and at the ISA we put a uniform thin wrapper around each.
-Every port hosts a reserved lPIFO `port_root`, allocated at boot on a reserved PE, whose sole child is the actual tree root.
+Every port hosts a reserved PIFO `port_root`, allocated at boot on a reserved PE, whose sole child is the actual tree root.
 `port_root` runs a fixed 1-arm policy.
 Its `Assoc` set mirrors that of the live tree's actual root; its `Map` sends each Assoc'd flow through its single index `port_step`.
 This `port_root` state is load-bearing for the two root-touching productions, and it is maintained by two complementary mechanisms.
@@ -1256,56 +1252,60 @@ On every production except `ChangeRoot` and `Graft`, the `walk(...)` calls that 
 On `ChangeRoot` and `Graft`, the lowering issues no flow-table writes against `port_root` at all: the swap is exactly one `Isa_emancipate`/`Isa_adopt` pair against `port_root`, and the existing `Assoc`/`Map` state survives the swap because `port_step` is the index _name_, unbound to any particular child.
 The wrapper exists so that "swap the root" can be expressed as one `Isa_emancipate`/`Isa_adopt` pair against `port_root`, in the same vocabulary as any child-level edit; there is no opcode for changing the root directly.
 
-[AM note on push routing across the `P` trees: we said earlier (GH discussion #93, Comments 27-28) that on a switch with `P` ports the planner offers each push to all `P` trees and `Isa_assoc` is the sole gating mechanism, so exactly one lPIFO in the forest accepts.
+[AM note on push routing across the `P` trees: we said earlier (GH discussion #93, Comments 27-28) that on a switch with `P` ports the planner offers each push to all `P` trees and `Isa_assoc` is the sole gating mechanism, so exactly one PIFO in the forest accepts.
 The alternatives we considered were a global class-to-root table (~20k entries, churned by `ChangeRoot`) and a class-to-port plus port-to-root split (felt roundabout).
 We said this earlier but it feels like overkill, especially as `P` scales.
 Let's discuss IRL.]
 
 The lowerings follow, one per production in the order of the §3.3 grammar.
 We fix three reading conventions for the list below.
-First, we identify a tree position with the lPIFO that lives there.
+First, we identify a tree position with the PIFO that lives there.
 Second, when the lowering hinges on the relation between a target and its parent, we destruct `δ`'s path as `π ++ [k]` (reusing §3.4's convention: `π` is the parent's path, `k` is the local index by which that parent reaches the target).
 Third, we use shorthand for the chain walks that recur across entries.
 Write `flows(path)` for the set of flows admitted by some leaf under `path`.
-Write `chain(f)` for the unique sequence of lPIFOs from `port_root` down to the leaf admitting `f`, and `internals(f)` for that sequence minus the leaf.
+Write `chain(f)` for the unique sequence of PIFOs from `port_root` down to the leaf admitting `f`, and `internals(f)` for that sequence minus the leaf.
 Write `walk(op, C, f)` for issuing `op(v, f, ...)` at each `v ∈ C` in chain order; positional remainders such as `Isa_map`'s routing index `i_{v,f}` are read off the live tree.
 When an entry's opcodes name an unmentioned parameter at `π` (e.g., `Isa_set_policy`'s discipline `t` or `Isa_change_arity`'s arity `n`), it is the live value at `π` at the time the command is issued.
-`Isa_spawn`'s `pe` argument is similarly elided: it is `pe(path)` for the new lPIFO's position, drawn from §6.1's deployment convention.
+`Isa_spawn`'s `pe` argument is similarly elided: it is `pe(path)` for the new PIFO's position, drawn from §6.1's deployment convention.
 
-- `ChangeWeight(π ++ [k], w)`:
-  `Isa_set_arm_meta(π, k, w)`.
+- `ChangeMeta(π ++ [k], m)`:
+  `Isa_set_arm_meta(π, k, m)`.
 - `Quiesce(path)`:
   for each `f ∈ flows(path)`, `walk(Isa_deassoc, chain(f), f)`.
-- `Add(path, pol, meta?)`:
+- `Add(path, arm, meta?)`:
   - Let `n` be `path`'s current arm count; the new subtree will occupy `path`'s rightmost slot, index `n`, so existing children's indices are undisturbed.
-  - Lay out the subtree `pol` in hardware. That is, for each new lPIFO in the subtree compiled from `pol`, `Isa_spawn`+`Isa_adopt`+`Isa_set_policy` is issued.
+  - Lay out the subtree `arm` in hardware. That is, for each new PIFO in the subtree compiled from `arm`, `Isa_spawn`+`Isa_adopt`+`Isa_set_policy` is issued.
     Per-arm `Isa_set_arm_meta`s are issued where the discipline requires them.
   - `Isa_change_arity(path, n+1)` grows `path` to arity `n+1`; where the discipline requires it, `Isa_set_arm_meta(path, n, m)` initializes the new slot's metadata from `meta?`.
-  - `Isa_adopt(n, path, root_of_pol)` attaches the new subtree at index `n`.
-  - Start serving traffic to the new subtree. That is, for each `f ∈ flows(pol)`: `walk(Isa_assoc, chain(f), f)`; `walk(Isa_map, internals(f), f)`.
+  - `Isa_adopt(n, path, root_of_arm)` attaches the new subtree at index `n`.
+  - Start serving traffic to the new subtree. That is, for each `f ∈ flows(arm)`: `walk(Isa_assoc, chain(f), f)`; `walk(Isa_map, internals(f), f)`.
 - `Remove(π ++ [k])`:
-  - `Isa_emancipate(k, π, π ++ [k])` detaches the doomed child.
-  - Shift higher-indexed siblings down to fill the gap. For each `j ∈ {k+1, ..., n-1}` in increasing order, let `child_j` be the live child at slot `j`: `Isa_emancipate(j, π, child_j); Isa_adopt(j-1, π, child_j)`; where the discipline keeps per-arm metadata, `Isa_set_arm_meta(π, j-1, m_j)` carries slot `j`'s live metadata along. [AM note: this is a little crazy! Zhiyuan, possible to make do without this massive emancipate-adopt cascade?]
-  - Rewrite `π`'s flow-to-index Map for the same shift: for each `j ∈ {k+1, ..., n-1}` and each `f ∈ flows(π ++ [j])`, `Isa_unmap(π, f, j); Isa_map(π, f, j-1)`. [AM note: this is a little crazy! Zhiyuan, possible to make do without this massive emancipate-adopt cascade?]
-  - `Isa_change_arity(π, n-1)`.
+  - `Isa_emancipate(k, π, π ++ [k])` detaches the doomed child. `π`'s remaining children keep their indices: each was minted at adoption time and the substrate carries it unchanged, so no sibling-shift cascade is needed.
+  - `Isa_change_arity(π, n-1)` updates `π`'s arity counter to match.
   - For each `f ∈ flows(π ++ [k])`, `walk(Isa_unmap, internals(f), f)` clears the doomed flows' routing through the chain above `π ++ [k]` (including `π` itself, whose `f -> k` entry vanishes).
-  - One `Isa_gc` per lPIFO in the now-detached subtree.
-- `Designate(path, pol)`:
-  - Stand up `pol`'s subtree as in `Add`'s "lay out the subtree" step, with one departure: skip the `Isa_adopt` that would have attached the subtree's root `surv_root` to a parent. The per-arm `Isa_set_arm_meta`s that the discipline requires for `surv_root`'s children are still issued; only `surv_root` itself is left unattached, since the super-node trick (next step) is what installs it.
-  - `Isa_designate(path, surv_root)` attaches the subtree's root via the super-node trick.
-  - Serve traffic to the designated survivor.
-    For each `f ∈ flows(surv_root) \ flows(path)`: `walk(Isa_assoc, chain(f), f)`; `walk(Isa_map, internals(f), f)`.
-    Flows in `flows(surv_root) ∩ flows(path)` need no further wiring: the above-super-node chain is already in place from `path`'s prior wiring, and the inside-`surv_root` chain was wired during the "stand up" step.
-  - A partial Quiesce-style silencing restricted to flows absent from the new policy.
-    That is, for each `f ∈ flows(path) \ flows(surv_root)`: `walk(Isa_deassoc, chain(f), f)`; `walk(Isa_unmap, internals(f), f)`.
+  - One `Isa_gc` per PIFO in the now-detached subtree.
+- `Designate(path, survivor)`:
+  Let `loser` be the PIFO currently at `path` and `parent` be `path`'s parent. Let `k` be `path`'s last index (for `path = []`, the parent is `port_root` and `k` is `port_step`).
+  - Stand up `survivor`'s subtree as in `Add`'s "lay out the subtree" step (`Isa_spawn` + `Isa_adopt` + `Isa_set_policy` per node, plus `Isa_set_arm_meta`s where the discipline requires them), with one departure: skip the `Isa_adopt` that would attach the subtree's root `surv` to a parent — the Strict-2 spawn below installs it instead.
+  - Spawn and configure the Strict-2 super-node `sp_v`: `Isa_spawn(sp_v, pe(path))`; `Isa_set_policy(sp_v, Strict*, 2)`; `Isa_adopt(0, sp_v, loser)`; `Isa_adopt(1, sp_v, surv)`; `Isa_set_arm_meta(sp_v, 0, 1.0)`; `Isa_set_arm_meta(sp_v, 1, 2.0)`. `sp_v` lands on the same PE as the roots of `loser` and `surv` (see same-PE invariant below).
+  - Rewire `path`'s parent edge from `loser` to `sp_v`: `Isa_emancipate(k, parent, loser)`; `Isa_adopt(k, parent, sp_v)`. The same `k` is reused, so `parent`'s per-arm metadata for that slot is preserved across the rewire.
+  - `Isa_designate(loser, surv)` marks `loser` as the favored child of the now-installed Strict-2 super-node and records `surv` as its eventual successor.
+  - Wire flow routing at `sp_v` and above.
+    At `sp_v`, for each `f ∈ flows(loser) \ flows(surv)` issue `Isa_assoc(sp_v, f)` and `Isa_map(sp_v, f, 0)`; for each `f ∈ flows(surv)` (whether shared with `loser` or not) issue `Isa_assoc(sp_v, f)` and `Isa_map(sp_v, f, 1)` so that the survivor takes shared classes from this commit onward (paper §3.4.5).
+    Above `sp_v`, for each `f ∈ flows(surv) \ flows(path)`: `walk(Isa_assoc, chain(f), f)`; `walk(Isa_map, internals(f), f)`.
+    Flows in `flows(surv) ∩ flows(path)` need no above-`sp_v` wiring: the chain is already in place from `path`'s prior wiring.
+    Flows in `flows(loser) \ flows(surv)` (loser-only labels) keep their existing above-`sp_v` Assoc/Map state and are routed to slot 0 by `sp_v.z`, matching §3.4.5's denotational rule that loser-only labels drain on arm 0. Operator-level silencing of these flows, when the operator ultimately wants it, comes from the `Quiesce` step of the surrounding `Replace` idiom (§4), not from `Designate`.
+
+  _Same-PE invariant._ The planner places `sp_v`, `loser`'s root, and `surv`'s root on the same PE (a deterministic property of the lowering: all three sit at depth `|path|`, and `pe(path)` returns one PE). The substrate may exploit this to coalesce the three into a single physical slot, sparing itself from moving all of `loser` down one PE level; the coalescing is the substrate's prerogative and is not implied by the ISA.
+
 - `Undesignate(path)`:
-  let `v` be the retiring arm of the super-node formed at `path` by the prior `Designate`.
-  `Isa_undesignate(path)`; one `Isa_gc` per lPIFO in the now-detached subtree rooted at `v`.
+  let `sp_v` be the Strict-2 super-node head formed at `path` by the prior `Designate`, and `loser_v` be its retiring arm.
+  `Isa_undesignate(loser_v)`; `Isa_gc(sp_v)` to release the super-node head (which `Isa_undesignate` rewires past but does not deallocate); one `Isa_gc` per PIFO in the now-detached subtree rooted at `loser_v`.
 - `ChangeRoot(path)`:
   let the live tree be `port_root -> a_0 -> a_1 -> ... -> a_m -> path` (the §3.3 restriction makes `a_0 .. a_m` a unary vine).
   `Isa_emancipate(port_step, port_root, a_0)`; `Isa_adopt(port_step, port_root, path)`; `Isa_gc(a_0); Isa_gc(a_1); ...; Isa_gc(a_m)`.
 - `Graft(ctx)`:
-  - Let `prev_root` be the live tree's current root (which is `port_root`'s child at commit time), `new_ctx_root` be the root of `ctx`'s compiled subtree, and `π` be the lPIFO parent of `ctx`'s hole.
+  - Let `prev_root` be the live tree's current root (which is `port_root`'s child at commit time), `new_ctx_root` be the root of `ctx`'s compiled subtree, and `π` be the PIFO parent of `ctx`'s hole.
   - Lay out `ctx`'s subtree in hardware as in `Add`'s "lay out the subtree" step, with one modification at the hole: instead of spawning a fresh subtree, use `Isa_adopt` to make `π` have the child `prev_root`.
   - Detach `prev_root` and attach `new_ctx_root` in its place: `Isa_emancipate(port_step, port_root, prev_root)`; `Isa_adopt(port_step, port_root, new_ctx_root)`.
   - Wire flow tables. Partition the post-commit `flows(new_ctx_root)` into `F_ctx` (flows whose leaves lie strictly inside `ctx`) and `F_thru = flows(prev_root)` (flows that descend through the hole).
@@ -1318,10 +1318,10 @@ Three items in the list deserve a sentence of unpacking.
 The chain walk is what §3.4.3 calls _restricting `z` uniformly_.
 Quiesce stops short of `Isa_unmap`: silenced flows' Map entries must outlive the silencing so packets already pushed can route through the chain on the way to pop. `Remove` pairs `Isa_emancipate` with `Isa_unmap` precisely because it fires after the drain, when there is no longer any in-flight traffic to preserve.
 
-At the tree level, §3 treats `Designate(path, surv)` as wrapping `path` in a fresh `Strict*` arm with `surv` as the second arm; a faithful substrate could spawn a Strict-2 lPIFO and adopt it where `path` used to sit.
-`Isa_designate` instead realizes the wrap in place as a _super-node_ `{path -> surv_root}` that occupies `path`'s existing slot in the parent's view, sparing the tree an added PE level and an extra pop hop.
-This is also why `Isa_designate(path, surv_root)` performs no edit on `path`'s parent: the slot is reused, so the parent's index, weight, and per-arm metadata are untouched.
-The pre-existing per-arm metadata at `path` continues to apply after the give-up; the substrate consults `surv_root` only on a later `Isa_undesignate`.
+The lowering for `Designate` matches §3's tree-level reading verbatim: a fresh Strict-2 PIFO `sp_v` is spawned, `path`'s previous occupant becomes its favored child (rank 1.0), and the survivor becomes its second child (rank 2.0).
+The lowering rewires `path`'s parent edge from `loser` to `sp_v`, reusing the same parent-side index `k`; the parent's per-arm metadata for the slot is therefore preserved across `Designate` and across the eventual `Undesignate` that retires the give-up.
+`Isa_designate(loser, surv)` is the ISA-level marker that names the favored child and records the eventual successor; a later `Isa_undesignate` swings the parent's index over to `surv` and releases `sp_v` along with the loser subtree.
+A substrate that recognizes the same-PE invariant on `(sp_v, loser, surv)` is free to coalesce the three into a single physical slot (the "super-node" optimization), sparing an extra PE level and a pop hop; the ISA does not pin this down, leaving room for substrates that prefer the literal Strict-2 form.
 
 `ChangeRoot` writes no flow tables: `path`'s `Assoc` and `Map` already describe the post-commit live tree, since collapsing the unary vine above `path` leaves the flows-to-leaves mapping unchanged.
 
@@ -1331,12 +1331,12 @@ The pre-existing per-arm metadata at `path` continues to apply after the give-up
 Two properties make this work, and they are also what any third-party substrate would need in order to host our compilation.
 
 First, the substrate must provide the thirteen opcodes of §6.1, or compositions equivalent to them.
-This is a vocabulary requirement, not a semantic one: a substrate that lacks a native super-node (§6.2) can still host `Designate` by installing a Strict-2 lPIFO at the parent's slot, at the cost of one PE level per active give-up.
+This is a vocabulary requirement, not a semantic one: the ISA-level lowering of `Designate` (§6.2) is the literal Strict-2 PIFO form, which any substrate can host. A substrate that recognizes the same-PE invariant on `(sp_v, loser, surv)` may coalesce the three into a single physical slot to save a PE level per active give-up, but the optimization is the substrate's prerogative, not an ISA requirement.
 
 Second, the substrate must guarantee that no `push` or `pop` interleaves between a commit's first and last instruction.
 This is what hides §3.5's transiently-malformed intermediate frames.
 `Graft`'s commit produces a moment in which the old root has two parents.
-`Remove`'s sibling-shift cascade produces moments in which the parent's arity is not yet aligned with its index map.
+`Remove`'s commit produces moments in which the parent's arity counter has not yet been decremented to match the number of live adoptions, or its flow-to-index map still routes flows to the just-detached child.
 `ChangeRoot`'s vine collapse produces moments in which the freed vine nodes are detached but not yet released.
 None of these frames survive an atomic commit's install.
 A non-atomic substrate would expose some of them, and whether that breaks observable soundness depends on the substrate's pop-arbitration policy against an in-progress commit, a detail we do not pin down here.
@@ -1344,7 +1344,7 @@ A non-atomic substrate would expose some of them, and whether that breaks observ
 The requirement is weaker than a general-purpose transaction manager.
 The planner knows each commit's length and shape statically, and the substrate need only honor an install-without-interleave guarantee for that fixed shape.
 Several productions need even less.
-`ChangeWeight` is a single instruction.
+`ChangeMeta` is a single instruction.
 A single-flow `Quiesce` walks one chain and modifies only `Assoc`; each intermediate frame is well-formed because the as-yet-unsilenced interior nodes still route via their existing Assocs.
 
 A vPIFO-class substrate (see §2.2) would host our compilation by providing the install-without-interleave guarantee above.

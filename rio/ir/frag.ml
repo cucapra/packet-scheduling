@@ -8,7 +8,7 @@ type t = {
   set_policies : instr list;
   change_arities : instr list;
   set_arm_metas : instr list;
-  root_v : vpifo;
+  root_v : pifo;
   classes : clss list;
 }
 
@@ -53,5 +53,5 @@ let combine (local : t) (children : t list) : t =
 
 let stub (prev_d : Decorated.t) : t =
   empty
-    ~root_v:(Decorated.root_vpifo prev_d)
+    ~root_v:(Decorated.root_pifo prev_d)
     ~classes:(Decorated.subtree_classes prev_d)
