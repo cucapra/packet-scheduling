@@ -425,16 +425,11 @@ We still state `den` explicitly at each production for uniformity.
 Several productions (`Add`, `Quiesce`, `Remove`, `Designate`) modify `z` at proper ancestors of the edit site, even though those nodes' `state` is preserved verbatim.
 There is no separate obligation for these `z` edits: their `pol`-invisible content is absorbed by Characterization (which is up to `=R`, and `z` does not appear in `pol`), and their effect on the in-flight stream is absorbed by Observation (every live `pifo` entry survives a `z` edit verbatim).
 
-The denotational rules below frequently read, overwrite, and splice child lists.
+The denotational rules below read, overwrite, and shrink child lists.
 Let us fix some notation.
 We write `ts[i]` for the `i`-th child and `ts[t/i]` for `ts` with its `i`-th child overwritten by `t`; this leaves the arity unchanged.
-We mark arity-changing edits with `+` and `-`: `ts[+t/i]` splices `t` in as the new `i`-th child (the old `i`-th and later children shift one place to the right), and `ts[-/i]` drops the `i`-th child (later children shift left).
+`ts[-/k]` drops the `k`-th child; later children shift left.
 Indices follow the `path` convention of §3.3.
-
-The operational rewrites of §3.4 manipulate two parallel structures at an internal node: a child list `qs` of PIFO tree children, to which the list-manipulation notation introduced above applies verbatim, and an index-PIFO `p` recording child indices.
-For `p` the same `[±/k]` notation _renumbers_ rather than splices, since the PIFO holds index _values_ that have to track a shift in the child list.
-`p[+/k]` is `p` with every entry `>= k` bumped up by one (opening up slot `k`); `p[-/k]` is `p` with every entry `> k` brought down by one.
-Entries below the edit point are left alone.
 
 Several productions edit a single arm relative to its parent.
 When the per-production rule hinges on this relation, we destruct `δ`'s path as `π ++ [k]`, with `π` the parent's path and `k` the local index by which that parent reaches the target.
@@ -632,7 +627,7 @@ The topology loses the arm at slot `k` of `C@π`; arms at slots `0, ..., k-1` ke
 - _At `C@π`:_
   - `node_state` is unchanged.
   - `slot_states = C@π.slot_states[-/k]`: the entry at slot `k` is dropped. Entries at slots `> k` shift down by one to track the renumbered arms.
-  - `pifo = C@π.pifo[-/k]`: the precondition (subtree at `τ` is empty) plus `|- C` forces `C@π.pifo` to contain _no entry equal to `k`_, so this renumbering deletes no values; it only decrements entries `> k` by one.
+  - `pifo`: the precondition (subtree at `τ` is empty) plus `|- C` forces `C@π.pifo` to contain _no entry equal to `k`_, so no entry is deleted; whatever bookkeeping is needed to keep the surviving entries pointed at their (now-resident-at-arity-`n-1`) children must be done. If one were literally indexing children by their positions, that would mean decrementing entries `> k` by one. Implementations have ways around even this; for instance, the substrate model of §6.1 keys children by stable per-edge handles, so survivors' pifo entries are unchanged.
   - `z` is restricted on inputs and renumbered on outputs.
     Packets that `C@π.z` would have routed to slot `k` are no longer in `C'@π.z`'s domain. For surviving inputs, an output of `(i, r)` with `i > k` becomes `(i - 1, r)`.
     Slots `< k` are untouched on either axis.
@@ -642,7 +637,7 @@ In the typical planner usage, a preceding `Quiesce` has already restricted every
 
 ##### Preservation
 
-Preservation of `|-`: at `C@π`, the precondition gives `C@π.pifo` no entry equal to `k`, so the renumbering `[-/k]` deletes no values; surviving slots `i' < k` of `C'@π` inherit their matched counts from slot `i'` of `C@π`, and surviving slots `i' >= k` inherit theirs from slot `i' + 1` (same subtree, renumbered entries).
+Preservation of `|-`: at `C@π`, the precondition gives `C@π.pifo` no entry equal to `k`, so no pifo entry is deleted; surviving slots `i' < k` of `C'@π` inherit their matched counts from slot `i'` of `C@π`, and surviving slots `i' >= k` inherit theirs from slot `i' + 1` (same subtree).
 Every proper ancestor and every surviving sibling is verbatim, so its well-formedness count is inherited.
 Preservation of state: every proper ancestor and surviving sibling preserves its `state` verbatim.
 No `init`-rule fires, and `slot_states` drops slot `k`'s entry while every other entry is preserved verbatim, with its position shifted to match the new arm order.
