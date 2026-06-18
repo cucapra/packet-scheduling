@@ -10,7 +10,6 @@ A list of AM-notes scattered through the draft.
 - §3.4.8 (line ~897): spell out the five obligations for `Graft` under the whole-tree restriction.
 - §3.5 (line ~918): confirm with Zhiyuan what we need from the substrate atomicity story.
 - §4.1 (line ~1008): no withdraw/abort mechanism today; flagged in case we revisit.
-- §5 (line ~1158): more examples to work through, possible strengthening of `compare.ml`.
 - §6.2 (line ~1238): port-routing across the `P` trees.
 - §6.3 (line ~1330): confirm substrate-requirements prose with Zhiyuan.
 
@@ -304,7 +303,7 @@ Our final goal will be to correctly relate `C2'` and `C2`.
 - We echo `p1' := ⌊C1⌋` back to the user. This is not shown in the diagram but will become important shortly. `p1'` faithfully represents the arm ordering that the compiler may have done.
 - Push and pop operations carry `C1` to `C1'`.
   `C1 ~ C1'` by the definition of `~`, and `⌊C1'⌋ = ⌊C1⌋` by rule 2, so the live `C1'` still realizes both `p1` and `p1'`.
-- The operator writes `p2`; the _sniffer_, a tool that infers a `δ` between two `pol`s (§4), produces a `δ` such that `den(δ)(p1') =R p2`.
+- The operator writes `p2`; the _transition planner_ (§4-§5), the tool that infers atomic edits between two `pol`s, produces a `δ` such that `den(δ)(p1') =R p2`.
   It is key that we work in the frame of the actually-running representative `p1'` rather than the operator's original `p1`, since `den` is stated using semantically meaningful paths.
 - Applying `[[δ]]` to `C1'` brings us to control `C2'`, and by rule 3 `⌊C2'⌋ =R den(δ)(p1')`. Further, we can chain this with the fact `den(δ)(p1') =R p2` (established just above) to get `⌊C2'⌋ =R p2`.
 - We again echo `p2 := ⌊C2'⌋` to the user.
@@ -324,12 +323,16 @@ We do not actually construct the right-hand side `C2`; the commutation is assert
 The commutation holds verbatim for `pol`-visible productions.
 For `pol`-invisible ones like `Quiesce`, the commutation is vacuous on the SOTA side: a freshly compiled `C2 = ⌈p2⌉` carries no `z`-domain restriction, so there is nothing on that side to match against.
 
+The diagram above is the unit cell of a fuller picture.
+A typical reconfiguration is not a single `δ` but a guarded sequence `(φ_0 ; δ_0) ; ... ; (φ_n ; δ_n)`; §4.1 stacks copies of this unit cell horizontally, with each intermediate control `link_i` between `C` and `C'` carrying its own pol-level meaning `⌊link_i⌋`.
+For §3.2's purposes we read the unit cell on its own; everything that follows about a single `δ`, including the operator-advice below, lifts cell-by-cell to the sequence picture in §4.1.
+
 When writing `p2`, the operator would do well to state their request against `p1'`, the actually-running `pol` that we echoed back to them.
 This keeps `δ` small and aligns paths with what is running.
 The operator may state `p2` against the unprimed `p1` they originally wrote, but at their own risk.
 The risks are of two flavors:
 
-- The sniffer may infer a larger `δ` than necessary, or may give up.
+- The planner may infer a larger `δ` than necessary, or may give up.
 - The more serious issue is that the user may use Imperative Mode (§4) to directly specify what edits to make, and if they use the unprimed `p1` to base their paths, they may inadvertently edit the wrong node or provide a malformed path.
 
 ##### A worked example
@@ -350,7 +353,7 @@ Each production of the grammar has two readings, both defined per-production in 
 The grammar is shaped by two demands.
 
 - **Hardware-realizable.** A production is admitted into the grammar iff `[[δ]]` can be committed atomically by the hardware substrate (§6).
-- **Pol-explainable.** Every production has a `den(δ)`[footnote: for transaction-only productions (whose effect lives entirely in `z`), `den(δ)` is the identity on `pol`]. This is what lets the sniffer (§4) infer a `δ` whose `pol`-level meaning can be checked and echoed back to the user.
+- **Pol-explainable.** Every production has a `den(δ)`[footnote: for transaction-only productions (whose effect lives entirely in `z`), `den(δ)` is the identity on `pol`]. This is what lets the planner (§4) infer a `δ` whose `pol`-level meaning can be checked and echoed back to the user.
 
 §3.4's per-production soundness theorem ties the two readings together: `⌊[[δ]](C)⌋ =R den(δ)(⌊C⌋)`.
 
@@ -1000,6 +1003,34 @@ A guard may be `true`, in which case `δ_i` fires the moment `link_i` is install
 For instance, the closing `(true ; ChangeRoot(path))` of §4.2's `PruneDownTo` is nominally guarded by `true` but in the global timeline cannot fire until every preceding `Retire` has emptied its target and run its `Remove`: the `true` says "install at the moment the predecessor's link is installed," not "install at sequence start."
 The empty sequence is the case `⌊C⌋ =R ⌊C'⌋`: the live control is left untouched.
 
+##### The iterated picture
+
+§3.2 drew the unit cell of Rule 3 against a single production: one operational rewrite `[[δ]]`, one pol-level effect `den(δ)`, one `⌊·⌋` bridge between them.
+A guarded sequence stacks copies of that unit cell horizontally:
+
+```
+   ip_0  ---den(δ_0)--->  ip_1  ---den(δ_1)--->  ...  ---den(δ_n)--->  ip_{n+1}
+    |                      |                                              |
+   ⌊·⌋                    ⌊·⌋                                            ⌊·⌋
+    |                      |                                              |
+    v                      v                                              v
+  link_0 ---[[δ_0]]---> link_1 ---[[δ_1]]---> ... ---[[δ_n]]---> link_{n+1}
+            (φ_0)                  (φ_1)                  (φ_n)
+```
+
+with `link_0 = C`, `link_{n+1} = C'`, and `ip_i := ⌊link_i⌋`.
+The bottom edge is the operational chain that the substrate runs: each horizontal arrow `link_i -[[δ_i]]-> link_{i+1}` fires once its guard `φ_i` becomes true on `link_i`.
+The top edge is the pol-level chain that the operator sees: each `ip_i` is a valid `pol` with a readable scheduling semantics, and each `den(δ_i)` carries one `ip_i` to the next.
+The vertical `⌊·⌋` bridges are the per-step Rule-3 cells, one per `δ_i`, each one already discharged in §3.4.
+
+One mild abuse of notation: the diagram draws each `den(δ_i)` as landing on the next `ip_i` on the nose, but Rule 3 (§3.2) only gives `ip_{i+1} =R den(δ_i)(ip_i)`, paralleling §3.2's `C2' ~R C2` on the bottom of that diagram.
+The vertical edges are unambiguous by our definition `ip_i := ⌊link_i⌋`; the `=R` slack lives on the top edge, and an implied inverse from `ip_i` back up via `⌈·⌉` would recover a control only `~R`-equivalent to `link_i`, not `link_i` itself.
+We keep the `=R` and `~R` labels implicit for legibility, with each square read as a Rule-3 cell from §3.2 with its slack absorbed.
+
+The picture pays two dividends.
+First, every operator-observable intermediate `link_i` corresponds to an `ip_i` that the runtime can echo back, just as §3.2 echoed `p1'` from `⌊C1⌋`: there is no transient between-the-pols regime that lacks a `pol`-level meaning.
+Second, §4.3 will use the top edge directly: the pol-level check on an imperative-mode sequence is the assertion that `ip_{n+1} =R p2`, with each `den(δ_i)` defined on its `ip_i`.
+
 ##### Safety
 
 **Lemma 4.1 (Safety of guarded sequences).**
@@ -1100,23 +1131,20 @@ New ones can be added later without changing the framework, since an idiom is ju
 Two authoring modes produce sequences, and the operator chooses freely between them.
 
 - In _declarative mode_, the operator writes a `pol`, say `p1`, and, to reconfigure, writes a second `pol`, say `p2`.
-  The sniffer (§5) proposes a guarded sequence that achieves this change, and the operator either accepts it (in which case we apply the sequence to the running control) or declines it.
-  The sniffer is intentionally simple: it sees only `pol`-level differences whose translation to a sequence is straightforward, and falls back to the generic `Designate([], p2) ; Undesignate([])` pair (§5) for anything richer.
+  The planner (§5) proposes a guarded sequence that achieves this change, and the operator either accepts it (in which case we apply the sequence to the running control) or declines it.
+  The planner is intentionally simple: it sees only `pol`-level differences whose translation to a sequence is straightforward, and falls back to a whole-tree `Replace` idiom for anything richer.
 - In _imperative mode_, the operator writes both their desired `p2` and a `(φ; δ)*` sequence intended to reach it; the sequence may include idioms from §4.2.
   Before running it we check the sequence at the pol level, as described next.
 
 The two modes are not formally distinct: they produce sequences over the same substrate that discharge the same per-production obligations from §3.4.
-Imperative mode buys expressivity, not a different proof obligation; it admits sequences the sniffer might never produce, but they are still `(φ; δ)*` sequences.
+Imperative mode buys expressivity, not a different proof obligation; it admits sequences the planner might never produce, but they are still `(φ; δ)*` sequences.
 
 ##### The pol-level check on imperative sequences
 
-We fold each production's `den(δ_i)` (§3.4) along the sequence, producing a chain
-
-`p1' -[den(δ_1)]-> ip_1 -[den(δ_2)]-> ip_2 -[den(δ_3)]-> ... -[den(δ_n)]-> ip_n`
-
-of _intermediate pols_ starting from the running representative `p1' = ⌊C⌋` (the pol we echoed to the operator), and accept the request iff every `den(δ_i)` is defined on the intermediate pol it sees (with `ip_0 := p1'`) and `ip_n =R p2`.
+The pol-level check is exactly the top edge of §4.1's iterated diagram: we fold each production's `den(δ_i)` (§3.4) along the sequence, obtaining the intermediate pols `ip_0 = p1', ip_1, ..., ip_{n+1}` with `ip_{i+1} := den(δ_i)(ip_i)`, where `p1' = ⌊C⌋` is the pol we echoed to the operator.
+We accept the request iff every `den(δ_i)` is defined on `ip_i` and `ip_{n+1} =R p2`.
 That is, the user-provided sequence actually takes `p1'` to `p2`.
-This check is exactly Rule 3 of `⌊·⌋` (§3.2) chained across the sequence: each step's `den(δ_i)` was proved to match its operational counterpart `[[δ_i]]` per-production in §3.4, so a fold that lands at `ip_n =R p2` certifies that the live operational chain ends in a control whose `⌊·⌋` is `p2`.
+This is Rule 3 of `⌊·⌋` (§3.2) iterated across the sequence: each step's `den(δ_i)` was proved to match its operational counterpart `[[δ_i]]` per-production in §3.4, so a fold that lands at `ip_{n+1} =R p2` certifies, by the diagram's cell-by-cell commutation, that the operational chain along the bottom edge ends in a control whose `⌊·⌋` is `p2`.
 
 Each `ip_i` is itself a valid pol with an explainable scheduling semantics, not a transient artifact of the proof.
 For instance, after the first step of `Replace(path, B)`'s expansion the intermediate pol holds `Strict(pol@path, B)` at `path`: a temporary strict-priority node favoring the outgoing `pol@path` over the incoming `B`, with a perfectly readable scheduling interpretation in its own right.
@@ -1125,7 +1153,7 @@ The "defined when" clauses on each `den(δ_i)` are the per-production preconditi
 Guards play no role in this check; they govern the operational timing of when each `δ_i` fires on the live control, and are pol-invisible (§3.4).
 For instance, a `(empty(path); Remove(path))` step folds at the pol level exactly as if its guard were `true`, since `den` only sees `δ`.
 If the chain fails to reach `p2`, or some `den(δ_i)` is undefined on its intermediate pol, we reject the request.
-The rejection identifies the offending step: the first `δ_i` whose `den(δ_i)` was undefined on `ip_{i-1}`, or, if every step was defined, the final mismatch `ip_n ≢R p2`.
+The rejection identifies the offending step: the first `δ_i` whose `den(δ_i)` was undefined on `ip_i`, or, if every step was defined, the final mismatch `ip_{n+1} ≢R p2`.
 
 ### 4.4 Handling follow-up requests
 
@@ -1137,13 +1165,25 @@ A more aggressive strategy is possible: the planner could begin work on `p3` mid
 We do not pursue this here, because the splicing analysis introduces its own correctness obligations (atomicity of the splice, what guarantees the operator has during an aborted in-flight sequence, what `link` the operator observes between the splice and `p3`) that are out of scope of this paper.
 A sketch of the stronger possibility lives in our discussion notes.
 
-## 5. Identifying Better Transitions
+## 5. The Transition Planner
 
-§3 gave us a toolkit of productions of `δ` and §4 sequenced them through `link`s into full reconfigurations.
-With those tools in hand, this section asks how the transition planner can wield them well.
-The metric we adopt is _confinement_: a good sequence is one whose productions and intervening `link`s disturb as little of the running scheduler as possible, leaving the parts of the tree that did not need to change running undisturbed.
+§4.3 referenced a _planner_: the declarative-mode tool that, given a pair `(p1, p2)`, proposes a guarded sequence whose composed effect carries `p1` to `p2`.
+This section spells it out.
+The operator hands the runtime `p1` (the presently-running policy) and `p2` (their new desire); the planner's job is to propose a `(φ ; δ)*` sequence whose pol-level fold takes `p1` to `p2` up to `=R`.
+The operator accepts or rejects the proposal; they do not author it directly.
 
-There is always a maximally unconfined fallback.
+Every sequence the planner emits is sound by §3.4 (per-production guarantees) and §4.1 (Safety of guarded sequences), regardless of how the planner assembled it.
+The planner may fail to see a superior sequence, but it cannot emit an unsafe one.
+The one hard correctness obligation is the pol-level fold check of §4.3: the chain `den(δ_n) ∘ ... ∘ den(δ_1) (p1)` must reach a representative of `p2`'s `=R`-class.
+The planner discharges this by construction (each case below emits a `δ` or idiom whose `den` realizes the locally-observed pol-level difference); the §4.3 check would also catch any misstep.
+
+§5.1 sets up _confinement_ as the quality lens, presents the always-available worst-case `Replace` fallback, and frames the planner's strategy as descending the tree to find a tight production (Add, Remove, ChangeMeta) that captures the difference locally.
+§5.2 catalogs the cases the planner recognizes and emits a tight sequence for.
+§5.3 explains one non-obvious wrinkle: a recursive case whose inner result cannot bubble cleanly to the outer slot, forcing a demotion.
+§5.4 lists three deliberate non-features and candidate future work.
+
+### 5.1 The Always-Available Fallback, and Confinement to do Better
+
 To reach any `p2` from any `p1`, the planner can issue `Replace([], p2)`, the §4.2 idiom that expands to
 
 ```
@@ -1152,25 +1192,135 @@ To reach any `p2` from any `p1`, the planner can issue `Replace([], p2)`, the §
 (empty([0]) ; Undesignate([]))
 ```
 
-This wraps `p1` and `p2` into a `Strict*(p1, p2)` at the root, quiesces the `p1` arm, waits for it to drain, and then collapses the super-node onto `p2`.
-All new traffic flows to `p2` at once, every `pop` is served by `p1` until `p1` drains, and the closing `Undesignate` is what discards `p1` and leaves `p2`.
-Nothing is dropped and the sequence is safe by §3.4, but no part of the scheduler is left undisturbed.
-This is the worst case the planner ever falls back on.
-The rest of §5 is about doing better: localizing the change so that the sequence and its `link`s touch only a small subtree, while the rest of the scheduler keeps running undisturbed.
+This wraps `p1` and `p2` into a `Strict*(p1, p2)` at the root, quiesces the `p1` arm, accepts pushes into `p2` and serves pops from `p1`, and, when `p1` has drained to empty, replaces `Strict*(p1, p2)` with just `p2` that then serves pushes and pops.
+Nothing is dropped and the sequence is safe by §3.4, but _no part of the scheduler is left undisturbed_.
 
 ##### Footprint
 
-To talk about confinement precisely, we associate each production `δ` with a _footprint_ on the live control it acts on.
+To measure how much of the tree a sequence touches, associate each production `δ` with a _footprint_ on the live control it acts on.
 Define `footprint(δ, C)` as the set of nodes of `C` whose `state`, `pifo`, or `z` differs between `C` and `[[δ]](C)`.
 The set is read off the per-production Preservation paragraphs of §3.4: it includes the edit site, the new or removed node where applicable, and every proper ancestor whose `z` is extended or restricted (e.g., the ancestors touched by `Add`, `Quiesce`, `Remove`, `Designate`).
 For a guarded sequence `(φ_0 ; δ_0) ; ... ; (φ_n ; δ_n)`, the sequence-level footprint is the union `⋃_i footprint(δ_i, link_i)`.
-Confinement is then a property of this union: a planner does well when the union is small relative to the symmetric pol-level difference between `p1` and `p2`.
+The root-level `Replace([], p2)` above has the maximum possible footprint: the whole tree.
 
-We make no claim that the planner is canonical or minimal.
-We claim only that whatever sequence it emits is safe (§3.4) and no worse than the `Replace([], p2)` fallback above, whose sequence-level footprint is the whole tree.
+##### The planner's strategy
 
-[AM note: Many examples remain to work through here, and possibly some strengthening of `compare.ml` itself.
-TK.]
+The metric by which we judge the planner is _confinement_: a good emission disturbs as little of the running scheduler as possible, leaving parts of the tree that did not need to change running undisturbed.
+A sequence is well-confined when its footprint is small relative to the symmetric pol-level difference between `p1` and `p2`.
+
+The planner's goal is to recognize whether the difference between `p1` and `p2` is captured by a tight production from §3.3 (an `Add`, `Remove`, or `ChangeMeta`) and to emit that production wherever in the tree it sits, leaving everything else untouched.
+The planner descends through the tree as long as `p1` and `p2` agree at the current level, looking for a recognized shape one level down.
+When it finds one, it emits the matching production at that depth.
+Only when the descent ends without a match does the planner fall back to `Replace`; but by then the recursion has localized the difference to the deepest slot at which the policies disagree, so the resulting `Replace` wraps only that slot.
+
+A concrete example.
+Suppose `p1 = SP(gmail, RR(zoom, netflix))` and the operator requests `p2 = SP(gmail, RR(zoom, netflix, spotify))`.
+The planner has two ways to realize this:
+
+```
+(a) Worst-case fallback: Replace([], p2)        (b) Tight option: Add at the RR
+
+       [Strict*]                                        SP
+       /        \                                      /  \
+      SP        SP                                    g    RR
+      / \       /|\                                        /|\
+     g   RR    g  RR                                      z n  s
+         /\      /|\                                           ^
+        z  n   z  n  s                                     (new arm)
+```
+
+Option (a) wraps the entire running tree under a fresh `Strict*` and grows a freshly-compiled `p2` alongside; every node sits inside the wrap, and the original `p1` (with all its in-flight packets) drains as the loser.
+Footprint: the whole tree.
+
+Option (b) extends the `RR`'s arity by one and attaches a freshly compiled `spotify` leaf as the third arm; the `SP` and `RR` ancestors have only their `z` extended (no packet movement, no state reset), and the `gmail` leaf is left completely undisturbed.
+Footprint: the `RR` and its single ancestor.
+
+Much of the tree is left alone under option (b).
+The case analysis of §5.2 is built precisely to find option (b) when it exists, and falls back to a `Replace` (at the deepest position the descent reached) only when no such tight production captures the difference.
+
+We make no claim that the planner's choice is canonical or minimal.
+We claim only that whatever sequence it emits is safe (§3.4) and no worse than the root-level fallback.
+
+### 5.2 The case analysis
+
+The planner steps through the following cases in order, emitting at the first match.
+Each call examines the current pair `(p1, p2)`: cases 1-3 test the two trees as wholes; cases 4-7 fire when the roots agree and the local difference has a recognized shape; case 8 catches everything else.
+Case 4 is the descent mechanism: when the difference sits one level down, it re-enters this case analysis on the differing child, and whatever case fires at the deeper level has its emission re-targeted via index prepending on the way back up.
+
+1. **`p1 = p2`.**
+   Emit `[]`.
+   The test is literal equality: the compiler normalizes user input (§3.2), so any two `=R`-equivalent policies become identical `pol` terms before reaching the planner.
+   The live control is already serving the requested policy, so the planner has nothing to install.
+
+2. **`p1` embeds in `p2` at some path.**
+   Emit `Graft(ctx)`, where `ctx` is the surrounding policy context.
+   The planner detects this with a structural sub-policy test that walks `p2` looking for a subtree equal to `p1`; on a hit, the matched path identifies the hole that `Graft`'s context fills.
+   The match is unique by §3.2's leaf-partition validity: each flow in `p1` may occur at most once in `p2`, so `p2` can host `p1` as a subtree in at most one position.
+
+3. **`p2` embeds in `p1` at some path.**
+   Emit `PruneDownTo(path)` (§4.2).
+   Symmetric to the previous case.
+
+4. **Same constructor at the current level, child lists of equal length, exactly one child differs.**
+   Recurse on the differing child and prepend its index to every step's path.
+   §5.3 covers one wrinkle (demotion when the inner result cannot bubble).
+
+5. **Same `SP` or `WFQ` at the current level, child lists of equal length, the divergence touches per-arm metadata.**
+   Two sub-cases.
+   When the arms themselves are pointwise equal and a single slot's metadata differs, emit `ChangeMeta(path, meta)` for that slot.
+   When a single slot's arm _and_ its metadata both change in lockstep, _and_ the recursive call on that arm returns the three-step `Replace` shape, emit a single bubbled `Replace` with the new metadata tacked on as a trailing `ChangeMeta`.
+   This exploits the fact that the loser has drained by the time the new arm is in place, so `ChangeMeta` against the survivor's slot is safe to sequence at the tail.
+
+6. **Same constructor at the current level, `p2` has one extra child (and dropping it from `p2` recovers `p1`).**
+   Emit `Add`.
+   §3.4.1's leaf-disjointness precondition is satisfied for free: the new arm's leaves are precisely the leaves of `p2` not in `p1`, which by §3.2's leaf-partition validity are disjoint from `p1`'s.
+
+7. **Same constructor at the current level, `p1` has one extra child (and dropping it from `p1` recovers `p2`).**
+   Emit the `Retire` idiom (§4.2).
+   The drain-then-remove shape is what `Retire` already encodes; the planner never emits `SlowRetire` from a `(p1, p2)` pair, because the pair carries no signal distinguishing "drain aggressively" from "drain lazily."
+   `SlowRetire` remains available to imperative-mode authors who already know the subtree is draining naturally upstream.
+
+8. **Anything else.**
+   Emit `Replace` at the current level.
+   "Anything else" covers same-level shapes the planner does not recognize: constructor mismatch (e.g., `SP` vs. `RR`), child lists of equal length with more than one position disagreeing, child lists differing in length by more than one (more than one `Add` or more than one `Retire` at the same level), and `FIFO` leaves carrying different flow labels.
+
+   The recursion does significant work here.
+   Cases 1-7 are tried at every level the recursion visits, and case 4 descends through any same-constructor agreeing prefix.
+   By the time case 8 fires at level `k`, every shallower level has matched a tight case; the resulting `Replace` therefore lands at the deepest slot the planner could isolate the difference to, leaving every ancestor's other subtrees running undisturbed.
+   The slot-level `Replace` is the §5.1 idiom with a non-empty path: it wraps only the slot's subtree, quiesces only that subtree, and rewires only the parent edge into it.
+   The worst case is a root-level `Replace([], p2)` (§5.1), reached only when case 8 fires at the root with no recursive descent.
+
+### 5.3 Demotion: when an inner result cannot bubble
+
+Case 4 above recurses into a differing child and prepends an index to every step.
+This is correct when the inner sequence describes an edit on the slot's _occupants_ in a way that survives retargeting.
+It fails for two inner shapes.
+
+Suppose the running policy is `RoundRobin(A, B)` and the operator requests `RoundRobin(A, C(B))` (some 1-ary discipline `C` wrapping `B`).
+Case 4 fires at the root: lengths agree (both are 2-ary), one child differs (index 1).
+Recursing on `B` vs. `C(B)` falls into case 2: `B` embeds in `C(B)`, so the inner recursion returns `[(true, Graft(C(□)))]`.
+Bubbling this inner step by prepending index 1 would yield `[(true, Graft(C(□)))]` _at the outer slot_, which is not the edit the operator requested: `Graft`'s denotation acts on the whole running tree (per §3.4.8), not on the bubbled-up slot, so the prepended path would mis-describe the edit.
+
+The planner detects this shape (the inner result is a single `Graft` step, or it ends in `ChangeRoot` as `PruneDownTo`'s tail does) and _demotes_ to a slot-level `Replace` at the outer position.
+Demotion is a deliberate downgrade in confinement (we land at case 8 for that slot rather than the tight inner `δ` we hoped for), but it is the price of recognizing that `Graft` and `PruneDownTo` describe whole-tree edits whose pol-level meaning is not preserved under path-prepending.
+
+A future planner could do better here.
+A multi-`Add`-aware planner would recognize the running example as a single `Add` at the new `C` node (after standing it up via an outer rewrite), and avoid the demotion.
+We leave that to future work; see §5.4.
+
+### 5.4 What the planner does not do today
+
+Three deliberate non-features, each a candidate for future work.
+
+- _No cost model._
+  The case analysis is shape-based, not cost-weighted.
+  A cost-aware planner could prefer different decompositions (e.g., several small `Add`s vs. a single root-level `Replace`) based on per-flow drop and delay tolerances or per-PE budgets; we leave this to future work.
+- _No multi-edit recognition._
+  Case 8 fires whenever more than one arm differs at a level, even if the difference would decompose cleanly into two recognized cases in sequence (e.g., an `Add` followed by a `Retire`).
+  A planner that emitted such compositions would be a strict improvement, and the §4.3 pol-level check would catch any unsound such composition, so the cost of trying is bounded by the check's overhead.
+- _No imperative-mode service._
+  The planner serves declarative mode only.
+  Imperative-mode authoring (§4.3) goes through the pol-level check directly, with the operator naming each `δ` themselves; the planner is not consulted.
 
 ## 6. Compiling to Hardware
 
@@ -1201,16 +1351,16 @@ Four pieces of substrate vocabulary appear in the listing below:
 
 The ISA has thirteen opcodes:
 
-| Opcode                      | Parameters                        | Effect                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| --------------------------- | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Isa_spawn(v, pe)`          | fresh PIFO id, PE id             | Allocate an empty PIFO `v` on PE `pe`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| `Isa_adopt(i, p, c)`        | index, parent, child              | Parent `p` gains `c` as a child, reachable via index `i`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| `Isa_emancipate(i, p, c)`   | index, parent, child              | Inverse of `Isa_adopt`: detach `c` from `p`; `i` was the index used to reach `c`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| Opcode                      | Parameters                       | Effect                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| --------------------------- | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Isa_spawn(v, pe)`          | fresh PIFO id, PE id             | Allocate an empty PIFO `v` on PE `pe`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `Isa_adopt(i, p, c)`        | index, parent, child             | Parent `p` gains `c` as a child, reachable via index `i`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `Isa_emancipate(i, p, c)`   | index, parent, child             | Inverse of `Isa_adopt`: detach `c` from `p`; `i` was the index used to reach `c`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | `Isa_assoc(v, f)`           | PIFO, flow                       | `v` begins to accept packets of flow `f`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | `Isa_deassoc(v, f)`         | PIFO, flow                       | `v` stops accepting packets of flow `f`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | `Isa_map(v, f, i)`          | PIFO, flow, index                | In `v`'s brain, route flow `f` to index `i`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | `Isa_unmap(v, f, i)`        | PIFO, flow, index                | Forget `v`'s flow-`f`-to-index-`i` entry.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| `Isa_set_policy(v, t, n)`   | PIFO, policy type, initial arity | Set `v`'s policy type to `t` and its initial arity to `n`; `t` ranges over {FIFO, RoundRobin, Strict, WFQ}. Issued exactly once per PIFO, at spawn time.                                                                                                                                                                                                                                                                                                                                                                                           |
+| `Isa_set_policy(v, t, n)`   | PIFO, policy type, initial arity | Set `v`'s policy type to `t` and its initial arity to `n`; `t` ranges over {FIFO, RoundRobin, Strict, WFQ}. Issued exactly once per PIFO, at spawn time.                                                                                                                                                                                                                                                                                                                                                                                            |
 | `Isa_change_arity(v, n)`    | PIFO, arity                      | Set the live `v`'s arity counter to `n`. Policy type is unchanged. `Isa_change_arity` is what tells the discipline-level logic at `v` (e.g., RR's cursor wraparound, the WFQ slot-state table's size) the active arm count; the structural attaching and detaching themselves happen through explicit `Isa_adopt`/`Isa_emancipate` calls, each keyed by the stable per-edge index the parent minted at adoption time. The substrate is free to relocate live adoptions internally as the count changes; the indices the planner holds remain valid. |
 | `Isa_set_arm_meta(v, i, m)` | PIFO, index, metadata            | Set per-arm metadata for the child reached via `i` to `m`. The payload `m` is interpreted per `v`'s policy type: a weight for RoundRobin/WFQ, a priority rank for Strict; FIFO carries none.                                                                                                                                                                                                                                                                                                                                                        |
 | `Isa_designate(v, surv)`    | two PIFOs                        | Inside an already-spawned Strict-2 super-node that has adopted both `v` and `surv` (see §6.2's `Designate` lowering), name `v` as the favored child and record `surv` as `v`'s designated successor for an eventual `Isa_undesignate`. No in-place wrapping is implied at the ISA level; the substrate may coalesce the Strict-2 super-node, `v`, and `surv` into a single physical slot when §6.2's same-PE invariant holds, but is not required to.                                                                                               |
