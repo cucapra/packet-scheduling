@@ -1178,7 +1178,7 @@ The planner may fail to see a superior sequence, but it cannot emit an unsafe on
 The one hard correctness obligation is the pol-level fold check of §4.3: the chain `den(δ_n) ∘ ... ∘ den(δ_1) (p1)` must reach a representative of `p2`'s `=R`-class.
 The planner discharges this by construction (each case below emits a `δ` or idiom whose `den` realizes the locally-observed pol-level difference); the §4.3 check would also catch any misstep.
 
-§5.1 sets up _confinement_ as the quality lens, presents the always-available worst-case fallback, and shows how the planner pushes `Replace` deeper to do better.
+§5.1 sets up _confinement_ as the quality lens, presents the always-available worst-case `Replace` fallback, and frames the planner's strategy as descending the tree to find a tight production (Add, Remove, ChangeMeta) that captures the difference locally.
 §5.2 catalogs the cases the planner recognizes and emits a tight sequence for.
 §5.3 explains one non-obvious wrinkle: a recursive case whose inner result cannot bubble cleanly to the outer slot, forcing a demotion.
 §5.4 lists three deliberate non-features and candidate future work.
