@@ -766,7 +766,6 @@ Let `N` denote the freshly introduced `Strict*` node, and let `P0` denote the nu
   Pre-existing mappings are untouched.
   This is the exact analog of `Add`'s ancestor `z`-extensions (§3.4.1).
 - _At `N`:_ `node_state = init_node_Strict()`; `slot_states = [init_slot_Strict(node_state, hi), init_slot_Strict(node_state, lo)]` for any priority ranks `hi < lo`; arm 0 is the old `C@τ` (verbatim, including its entire subtree and contents); arm 1 is `⌈survivor⌉`; `pifo` is seeded with `P0` entries with slot value `0` and rank `hi` (one per packet still held under arm 0; later pushes at slot 0 would produce entries at the same rank).
-  [AM note: we are still pretending to use a true Strict arm whose slots we must fill. We need to decide when we drop that facade. Perhaps it's right move to keep it up here and drop it in Section 6? Or do we drop it now?]
   `z` routes packets by leaf label: a packet whose label exists in `⌈survivor⌉` goes to slot `1`, otherwise (label exists only in the old subtree) it goes to slot `0`.
   This rule is total on `N`'s admitted labels and resolves the overlap case toward the survivor: a label shared between the old subtree and `survivor` belongs to the survivor from `δ`'s firing onward, while the residual packets under arm 0 drain on their existing entries.
 - _Inside `⌈survivor⌉`:_ the local control is `⌈survivor⌉`'s, verbatim.
