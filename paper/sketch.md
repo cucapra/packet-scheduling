@@ -1299,8 +1299,8 @@ When an entry's opcodes name an unmentioned parameter at `π` (e.g., `Isa_set_po
   _Same-PE invariant._ The planner places `sp_v`, `loser`'s root, and `surv`'s root on the same PE (a deterministic property of the lowering: all three sit at depth `|path|`, and `pe(path)` returns one PE). The substrate may exploit this to coalesce the three into a single physical slot, sparing itself from moving all of `loser` down one PE level; the coalescing is the substrate's prerogative and is not implied by the ISA.
 
 - `Undesignate(path)`:
-  let `v` be the retiring arm of the super-node formed at `path` by the prior `Designate`.
-  `Isa_undesignate(path)`; one `Isa_gc` per PIFO in the now-detached subtree rooted at `v`.
+  let `loser_v` be the retiring arm of the super-node formed at `path` by the prior `Designate`.
+  `Isa_undesignate(loser_v)`; one `Isa_gc` per PIFO in the now-detached subtree rooted at `loser_v`.
 - `ChangeRoot(path)`:
   let the live tree be `port_root -> a_0 -> a_1 -> ... -> a_m -> path` (the §3.3 restriction makes `a_0 .. a_m` a unary vine).
   `Isa_emancipate(port_step, port_root, a_0)`; `Isa_adopt(port_step, port_root, path)`; `Isa_gc(a_0); Isa_gc(a_1); ...; Isa_gc(a_m)`.
