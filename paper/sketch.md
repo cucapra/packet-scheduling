@@ -935,15 +935,14 @@ Flagged here so the §3.5 claim "the proof survives the lowering" is not read as
 ## 4. Realizing Reconfigurations as Guarded Sequences
 
 This section composes the productions of `δ` (§3.3) into _guarded sequences_ `(φ ; δ)*`, where a guard `φ` is a predicate on the state of the live control.
-Each `δ` fires as soon as its guard becomes true.
 Guarded sequences realize changes to the live control that no single `δ` can express.
 
 A guarded sequence threads the live control through a chain of intermediate controls, one per pair of consecutive productions.
 We call each such intermediate control a `link`, writing `link_i` for the control on which the `i`-th `δ` (zero-indexed) fires; `link_0 = C` is the starting control, and `link_{i+1} = [[δ_i]](link_i)` is what the `i`-th `δ` leaves behind (§4.1 makes this precise).
 
-The headline result of the section, proved below, is that each `link` is itself an ordinary §3.1 control, so the "transitionary period" _needs no new semantics_: this is Obligation 1 of §1, discharged.
-Moreover, since every production of §3 is _pol-explainable_ (each `δ` has a `den(δ)` that tracks its pol-level effect), we can echo to the operator, at every step of the sequence, the `pol` that the live control currently realizes.
-The chain of `den`s starting from `⌊C⌋` gives `⌊link_i⌋` for each `i`, so the operator is never in the dark about what is running.
+The headline result of the section, proved below, is that each `link` is itself an ordinary §3.1-style control, so the "transitionary period" _needs no new semantics_: this is Obligation 1 of §1, discharged.
+Moreover, since every production of §3 is _pol-explainable_ (each `δ` has a `den(δ)` that tracks its pol-level effect), we can echo to the operator, at every step of the sequence, the `pol` that the live control actually realizes.
+The chain of `den`s starting from `⌊C⌋` gives `⌊link_i⌋` for each `i`, so the operator is never in the dark about what policy is running.
 
 ### 4.1 Guarded Sequences
 
@@ -984,7 +983,7 @@ The framework does not depend on this minimality, and a richer predicate languag
 
 The grammar above gives a `gseq` its shape; this subsection gives it operational meaning.
 §3 wrote `C` for the pre-edit control and `C'` for the post-edit one; here we generalize from a single-step replacement to a chain of steps.
-A _transition planner_ realizes a reconfiguration from `C` to `C'` as a guarded sequence
+A _transition planner_ (§5) realizes a reconfiguration from `C` to `C'` as a guarded sequence
 
 ```
 (φ_0 ; δ_0) ; (φ_1 ; δ_1) ; ... ; (φ_n ; δ_n).
@@ -995,7 +994,7 @@ Pairs fire in order: `link_i` runs and serves ordinary pushes and pops until `φ
 Crucially, `φ_{i+1}` is evaluated on `link_{i+1}`, which exists only after `δ_i` has fired, so the sequence is genuinely sequential and not a set of independent guards racing on the same control.
 
 A guard may be `true`, in which case `δ_i` fires the moment `link_i` is installed, with no waiting; but a `true` later in the sequence is still gated by every preceding pair.
-For instance, the closing `(true ; ChangeRoot(path))` of §4.2's `PruneDownTo` is nominally guarded by `true` but in the global timeline cannot fire until every preceding `Retire` has emptied its target and run its `Remove`: the `true` says "install at the moment the predecessor's link is installed," not "install at sequence start."
+For instance, the closing `(true ; ChangeRoot(path))` of §4.2's `PruneDownTo` is nominally guarded by `true` but in the global timeline cannot fire until every preceding `Retire` has run to completion.
 The empty sequence is the case `⌊C⌋ =R ⌊C'⌋`: the live control is left untouched.
 
 ##### The iterated picture
@@ -1018,9 +1017,8 @@ The bottom edge is the operational chain that the substrate runs: each horizonta
 The top edge is the pol-level chain that the operator sees: each `ip_i` is a valid `pol` with a readable scheduling semantics, and each `den(δ_i)` carries one `ip_i` to the next.
 The vertical `⌊·⌋` bridges are the per-step Rule-3 cells, one per `δ_i`, each one already discharged in §3.4.
 
-One mild abuse of notation: the diagram draws each `den(δ_i)` as landing on the next `ip_i` on the nose, but Rule 3 (§3.2) only gives `ip_{i+1} =R den(δ_i)(ip_i)`, paralleling §3.2's `C2' ~R C2` on the bottom of that diagram.
-The vertical edges are unambiguous by our definition `ip_i := ⌊link_i⌋`; the `=R` slack lives on the top edge, and an implied inverse from `ip_i` back up via `⌈·⌉` would recover a control only `~R`-equivalent to `link_i`, not `link_i` itself.
-We keep the `=R` and `~R` labels implicit for legibility, with each square read as a Rule-3 cell from §3.2 with its slack absorbed.
+The diagram contains a mild abuse of notation: we should be writing `=R` and `~R` in some cases instead of pretending that two routes actually coincide on the nose.
+However, we prefer this style for now to lighten the notation.
 
 The picture pays two dividends.
 First, every operator-observable intermediate `link_i` corresponds to an `ip_i` that the runtime can echo back, just as §3.2 echoed `p1'` from `⌊C1⌋`: there is no transient between-the-pols regime that lacks a `pol`-level meaning.
@@ -1059,14 +1057,14 @@ They are the typical building block of imperative-mode sequences (§4.3).
 
 An idiom is a macro over the grammar `δ` (and, recursively, over other idioms).
 It expands into a fixed `(φ; δ)*` sequence: a list of productions with the guards between them spelling out what the system waits for.
-Soundness is compositional: each step of the expansion is sound by §3.4, and the sequence inherits the §4 sequence-level reasoning above.
+Soundness is compositional: each step of the expansion is sound by §3.4, and the sequence inherits the sequence-level reasoning above.
 An idiom expansion that would hit an undefined production on the current control is rejected: the soundness checks fire on the expanded sequence just as they would on a hand-written one.
 
 We name four starter idioms.
-New ones can be added later without changing the framework, since an idiom is just a named `(φ; δ)*` shorthand.
+New ones can be added later without changing the framework, since an idiom is just a named `(φ; δ)*`.
 
 - **`Retire(path)`** = `(true; Quiesce(path)) ; (empty(path); Remove(path))`.
-  Quiesces the subtree at `path`, waits for it to drain, then `Remove`s it.
+  Quiesces the subtree at `path`, waits for it to drain to empty, then `Remove`s it.
   The operator-facing way to say "tear this subtree down gracefully."
 
 - **`SlowRetire(path)`** = `(empty(path); Remove(path))`.
@@ -1082,7 +1080,7 @@ New ones can be added later without changing the framework, since an idiom is ju
   ```
 
   Designates `B` as the survivor of the current `pol@path` (which, after Designate, sits at `path ++ [0]` as the first arm of the inserted `Strict*` node), quiesces it, waits for it to drain, then collapses the `Strict*` onto `B`.
-  At the pol level the composite effect is wholesale replacement of `pol@path` by `B`, computed as `den(Undesignate) ∘ den(Designate(_, B))` against the §3.4 productions; the operator-facing idiom adds the `Quiesce` + drain in the middle so that the original subtree empties out before the collapse fires.
+  At the pol level the composite effect is wholesale replacement of `pol@path` by `B`; the operator-facing idiom adds the `Quiesce` in the middle so that the original subtree empties out before the collapse fires.
   The footprint of `Replace(path, B)` is the subtree at `path`, the wrap node inserted at `path` by `Designate`, and the `z` chain at the ancestors of `path` (extended by `Designate`, restored by `Undesignate`); §5 frames confinement against exactly this set.
 
 - **`PruneDownTo(path)`** = `Retire(π_a) ; ... ; Retire(π_z) ; (true; ChangeRoot(path))`, where `π_a, ..., π_z` are paths to the off-path subtrees along the route from the root to `path`.
@@ -1119,7 +1117,7 @@ New ones can be added later without changing the framework, since an idiom is ju
   So `PruneDownTo([0, 1])` expands to: `Retire([0, 0]) ; Retire([1]) ; (true; ChangeRoot([0, 0]))`.
 
   Note that the path `[0, 0]` appears twice in this expansion with different referents: in `Retire([0, 0])` it points to `E(F, G)` (the operand at the moment that `Retire` fires), and in the final `ChangeRoot([0, 0])` it points to `D`, which moved from `[0, 1]` to `[0, 0]` once `E(F, G)` was retired.
-  The path-resolution system computes these targets for the operator; the operator only writes `PruneDownTo([0, 1])`, naming `D` by its location at the moment of request.
+  A path-resolution system computes these targets automatically at idiom expansion; the operator only writes `PruneDownTo([0, 1])`, naming `D` by its location at the moment of request.
 
 ### 4.3 Authoring modes
 
@@ -1132,7 +1130,7 @@ Two authoring modes produce sequences, and the operator chooses freely between t
   Before running it we check the sequence at the pol level, as described next.
 
 The two modes are not formally distinct: they produce sequences over the same substrate that discharge the same per-production obligations from §3.4.
-Imperative mode buys expressivity, not a different proof obligation; it admits sequences the planner might never produce, but they are still `(φ; δ)*` sequences.
+Imperative mode buys expressivity, not a different proof obligation; it admits sequences the planner might never produce, but they are still just `(φ; δ)*` sequences.
 
 ##### The pol-level check on imperative sequences
 
@@ -1142,7 +1140,7 @@ That is, the user-provided sequence actually takes `p1'` to `p2`.
 This is Rule 3 of `⌊·⌋` (§3.2) iterated across the sequence: each step's `den(δ_i)` was proved to match its operational counterpart `[[δ_i]]` per-production in §3.4, so a fold that lands at `ip_{n+1} =R p2` certifies, by the diagram's cell-by-cell commutation, that the operational chain along the bottom edge ends in a control whose `⌊·⌋` is `p2`.
 
 Each `ip_i` is itself a valid pol with an explainable scheduling semantics, not a transient artifact of the proof.
-For instance, after the first step of `Replace(path, B)`'s expansion the intermediate pol holds `Strict(pol@path, B)` at `path`: a temporary strict-priority node favoring the outgoing `pol@path` over the incoming `B`, with a perfectly readable scheduling interpretation in its own right.
+For instance, after the first step of `Replace(path, B)`'s expansion the intermediate pol holds `Strict(pol@path, B)` at `path`: a temporary strict-priority node favoring the outgoing `pol@path` over the incoming `B`, with a readable scheduling interpretation in its own right.
 
 The "defined when" clauses on each `den(δ_i)` are the per-production preconditions listed in §3.4.1-3.4.8.
 Guards play no role in this check; they govern the operational timing of when each `δ_i` fires on the live control, and are pol-invisible (§3.4).
@@ -1152,10 +1150,9 @@ The rejection identifies the offending step: the first `δ_i` whose `den(δ_i)` 
 
 ### 4.4 Handling follow-up requests
 
-This paper's transition planner engages with one reconfiguration at a time, and commits to a simple answer when the operator submits a follow-up request `p3` while a `p1 -> p2` sequence is still mid-flight (i.e., while some guard `φ_i` has not yet become true): we queue `p3`, and the planner does not begin work on it until the in-flight sequence completes, which is to say until the live control `C_z` satisfies `⌊C_z⌋ =R p2` (equivalently, until the echoed `p2'` is the running pol).
+This paper's transition planner engages with one reconfiguration at a time, and commits to a simple answer when the operator submits a follow-up request `p3` while a `p1 -> p2` sequence is still mid-flight (i.e., while some guard `φ_i` has not yet become true): we queue `p3`, and the planner does not begin work on it until the in-flight sequence completes, which is to say until the live control `C_z` satisfies `⌊C_z⌋ =R p2`.
 At that instant the planner pulls `p3` from the queue, treats `p2'` as the new starting point, and produces a fresh `(φ; δ)*` sequence to reach `p3` exactly as in §4's main loop.
 
-We commit to this rather than defaulting to it.
 A more aggressive strategy is possible: the planner could begin work on `p3` mid-flight, splicing or canceling the in-flight sequence to converge on `p3` directly, sometimes at lower total cost than running `p1 -> p2 -> p3` in series.
 We do not pursue this here, because the splicing analysis introduces its own correctness obligations (atomicity of the splice, what guarantees the operator has during an aborted in-flight sequence, what `link` the operator observes between the splice and `p3`) that are out of scope of this paper.
 A sketch of the stronger possibility lives in our discussion notes.
