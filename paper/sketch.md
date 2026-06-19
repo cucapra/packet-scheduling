@@ -1159,7 +1159,7 @@ A sketch of the stronger possibility lives in our discussion notes.
 
 ## 5. The Transition Planner
 
-§4.3 referenced a _planner_: the declarative-mode tool that, given a pair `(p1, p2)`, proposes a guarded sequence whose composed effect carries `p1` to `p2`.
+§4.3 referenced a _transition planner_: the declarative-mode tool that, given a pair `(p1, p2)`, proposes a guarded sequence whose composed effect carries `p1` to `p2`.
 This section spells it out.
 The operator hands the runtime `p1` (the presently-running policy) and `p2` (their new desire); the planner's job is to propose a `(φ ; δ)*` sequence whose pol-level fold takes `p1` to `p2` up to `=R`.
 The operator accepts or rejects the proposal; they do not author it directly.
@@ -1169,7 +1169,7 @@ The planner may fail to see a superior sequence, but it cannot emit an unsafe on
 The one hard correctness obligation is the pol-level fold check of §4.3: the chain `den(δ_n) ∘ ... ∘ den(δ_1) (p1)` must reach a representative of `p2`'s `=R`-class.
 The planner discharges this by construction (each case below emits a `δ` or idiom whose `den` realizes the locally-observed pol-level difference); the §4.3 check would also catch any misstep.
 
-§5.1 sets up _confinement_ as the quality lens, presents the always-available worst-case `Replace` fallback, and frames the planner's strategy as descending the tree to find a tight production (Add, Remove, ChangeMeta) that captures the difference locally.
+§5.1 sets up _confinement_ as a metric for excellence, presents the always-available worst-case `Replace` fallback, and frames the planner's strategy as descending the tree to find a tight production (Add, Remove, ChangeMeta) that captures the difference locally.
 §5.2 catalogs the cases the planner recognizes and emits a tight sequence for.
 §5.3 explains one non-obvious wrinkle: a recursive case whose inner result cannot bubble cleanly to the outer slot, forcing a demotion.
 §5.4 lists three deliberate non-features and candidate future work.
@@ -1184,7 +1184,7 @@ To reach any `p2` from any `p1`, the planner can issue `Replace([], p2)`, the §
 (empty([0]) ; Undesignate([]))
 ```
 
-This wraps `p1` and `p2` into a `Strict*(p1, p2)` at the root, quiesces the `p1` arm, accepts pushes into `p2` and serves pops from `p1`, and, when `p1` has drained to empty, replaces `Strict*(p1, p2)` with just `p2` that then serves pushes and pops.
+This wraps `p1` and `p2` into a `Strict*(hi: p1, lo: p2)` at the root, quiesces the `p1` arm, accepts pushes into `p2` and serves pops from `p1`, and, when `p1` has drained to empty, replaces `Strict*(hi: p1, lo: p2)` with just `p2`, which then serves pushes and pops.
 Nothing is dropped and the sequence is safe by §3.4, but _no part of the scheduler is left undisturbed_.
 
 ##### Footprint
@@ -1250,18 +1250,18 @@ Case 4 is the descent mechanism: when the difference sits one level down, it re-
    The match is unique by §3.2's leaf-partition validity: each flow in `p1` may occur at most once in `p2`, so `p2` can host `p1` as a subtree in at most one position.
 
 3. **`p2` embeds in `p1` at some path.**
-   Emit `PruneDownTo(path)` (§4.2).
+   Emit `PruneDownTo(path)`, where `path` is the location in `p1` where `p2` sits.
    Symmetric to the previous case.
 
 4. **Same constructor at the current level, child lists of equal length, exactly one child differs.**
-   Recurse on the differing child and prepend its index to every step's path.
+   Recurse on the differing child `k` and later correct the path that it returns by prepending `k`'s index to the path.
    §5.3 covers one wrinkle (demotion when the inner result cannot bubble).
 
 5. **Same `SP` or `WFQ` at the current level, child lists of equal length, the divergence touches per-arm metadata.**
    Two sub-cases.
    When the arms themselves are pointwise equal and a single slot's metadata differs, emit `ChangeMeta(path, meta)` for that slot.
    When a single slot's arm _and_ its metadata both change in lockstep, _and_ the recursive call on that arm returns the three-step `Replace` shape, emit a single bubbled `Replace` with the new metadata tacked on as a trailing `ChangeMeta`.
-   This exploits the fact that the loser has drained by the time the new arm is in place, so `ChangeMeta` against the survivor's slot is safe to sequence at the tail.
+   This exploits the fact that the loser has drained by the time the new arm is in place, so `ChangeMeta` against the survivor's slot is safe add to the end.
 
 6. **Same constructor at the current level, `p2` has one extra child (and dropping it from `p2` recovers `p1`).**
    Emit `Add`.
@@ -1270,15 +1270,15 @@ Case 4 is the descent mechanism: when the difference sits one level down, it re-
 7. **Same constructor at the current level, `p1` has one extra child (and dropping it from `p1` recovers `p2`).**
    Emit the `Retire` idiom (§4.2).
    The drain-then-remove shape is what `Retire` already encodes; the planner never emits `SlowRetire` from a `(p1, p2)` pair, because the pair carries no signal distinguishing "drain aggressively" from "drain lazily."
-   `SlowRetire` remains available to imperative-mode authors who already know the subtree is draining naturally upstream.
+   `SlowRetire` remains available to imperative-mode authors.
 
 8. **Anything else.**
    Emit `Replace` at the current level.
-   "Anything else" covers same-level shapes the planner does not recognize: constructor mismatch (e.g., `SP` vs. `RR`), child lists of equal length with more than one position disagreeing, child lists differing in length by more than one (more than one `Add` or more than one `Retire` at the same level), and `FIFO` leaves carrying different flow labels.
+   "Anything else" covers same-level shapes the planner does not recognize: constructor mismatch (e.g., `SP` vs. `RR`), child lists of equal length with more than one position disagreeing, child lists differing in length by more than one (more than one `Add` or more than one `Retire` at the same level), and edits at various different nodes.
 
    The recursion does significant work here.
    Cases 1-7 are tried at every level the recursion visits, and case 4 descends through any same-constructor agreeing prefix.
-   By the time case 8 fires at level `k`, every shallower level has matched a tight case; the resulting `Replace` therefore lands at the deepest slot the planner could isolate the difference to, leaving every ancestor's other subtrees running undisturbed.
+   By the time case 8 fires at level `k`, every shallower level has matched a tight case; the resulting `Replace` therefore lands at the _deepest slot the planner could isolate the difference to_, leaving every ancestor's other subtrees running undisturbed.
    The slot-level `Replace` is the §5.1 idiom with a non-empty path: it wraps only the slot's subtree, quiesces only that subtree, and rewires only the parent edge into it.
    The worst case is a root-level `Replace([], p2)` (§5.1), reached only when case 8 fires at the root with no recursive descent.
 
@@ -1294,7 +1294,7 @@ Recursing on `B` vs. `C(B)` falls into case 2: `B` embeds in `C(B)`, so the inne
 Bubbling this inner step by prepending index 1 would yield `[(true, Graft(C(□)))]` _at the outer slot_, which is not the edit the operator requested: `Graft`'s denotation acts on the whole running tree (per §3.4.8), not on the bubbled-up slot, so the prepended path would mis-describe the edit.
 
 The planner detects this shape (the inner result is a single `Graft` step, or it ends in `ChangeRoot` as `PruneDownTo`'s tail does) and _demotes_ to a slot-level `Replace` at the outer position.
-Demotion is a deliberate downgrade in confinement (we land at case 8 for that slot rather than the tight inner `δ` we hoped for), but it is the price of recognizing that `Graft` and `PruneDownTo` describe whole-tree edits whose pol-level meaning is not preserved under path-prepending.
+Demotion is a deliberate downgrade in confinement (we land at case 8 for that slot rather than the tight inner `δ` we hoped for), but it is the price of recognizing that `Graft` and `PruneDownTo` describe _whole-tree edits only_.
 
 A future planner could do better here.
 A multi-`Add`-aware planner would recognize the running example as a single `Add` at the new `C` node (after standing it up via an outer rewrite), and avoid the demotion.
