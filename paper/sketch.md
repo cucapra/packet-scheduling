@@ -1,18 +1,5 @@
 # Live Reconfiguration of Hierarchical Packet Schedulers
 
-## Open Items
-
-A list of AM-notes scattered through the draft.
-
-- §1 (line ~28): a nice example of an atomic-but-not-immediate transition.
-- §1 (line ~50): the cost model is a legit open question.
-- §3.4.5 (line ~755): decide when in the paper to drop the Strict-facade pretense for `Strict*`.
-- §3.4.8 (line ~897): spell out the five obligations for `Graft` under the whole-tree restriction.
-- §3.5 (line ~918): confirm with Zhiyuan what we need from the substrate atomicity story.
-- §4.1 (line ~1008): no withdraw/abort mechanism today in case an in-flight gseq fails to meet its guards and get resolved; flagged in case we revisit.
-- §6.2 (line ~1238): port-routing across the `P` trees.
-- §6.3 (line ~1330): confirm substrate-requirements prose with Zhiyuan.
-
 ## 1. Introduction
 
 - Programmable packet scheduling.
@@ -1327,10 +1314,7 @@ A commit's _length_ may depend on live control state (how many flows are admitte
 Each `δ` (§3.3) lowers to one `commit`; that is the entire ISA-level contract.
 The ISA itself is unconditional: each instruction describes what to do, not what to check.
 The substrate trusts that its caller has issued a well-formed commit and acts accordingly.
-Any situation-dependent reasoning (e.g., "the subtree we are about to collapse is empty") lives at §4, in a guard `φ` that gated the surrounding `δ`'s firing, not in the substrate.
-
-§4 sequences `(φ ; δ)*` are an orchestration concern, not an ISA concern.
-The planner walks the sequence, observes live control state, and dispatches the lowering of `δ_i` to the substrate once `φ_i` becomes true; it then waits for `φ_{i+1}` to become true before dispatching the next commit.
+Any situation-dependent reasoning (e.g., "the subtree we are about to collapse is empty") lives at §4, in a guard `φ` that gated the firing of the corresponding `δ`, not in the substrate.
 
 Four pieces of substrate vocabulary appear in the listing below:
 
@@ -1347,11 +1331,11 @@ The ISA has thirteen opcodes:
 | --------------------------- | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `Isa_spawn(v, pe)`          | fresh PIFO id, PE id             | Allocate an empty PIFO `v` on PE `pe`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | `Isa_adopt(i, p, c)`        | index, parent, child             | Parent `p` gains `c` as a child, reachable via index `i`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| `Isa_emancipate(i, p, c)`   | index, parent, child             | Inverse of `Isa_adopt`: detach `c` from `p`; `i` was the index used to reach `c`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| `Isa_emancipate(i, p, c)`   | index, parent, child             | Inverse of `Isa_adopt`: detach `c` from `p`; `i` was the index used to reach `c`. [AM note: feels possible to drop either `i` or `c`?]                                                                                                                                                                                                                                                                                                                                                                                                              |
 | `Isa_assoc(v, f)`           | PIFO, flow                       | `v` begins to accept packets of flow `f`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | `Isa_deassoc(v, f)`         | PIFO, flow                       | `v` stops accepting packets of flow `f`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | `Isa_map(v, f, i)`          | PIFO, flow, index                | In `v`'s brain, route flow `f` to index `i`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| `Isa_unmap(v, f, i)`        | PIFO, flow, index                | Forget `v`'s flow-`f`-to-index-`i` entry.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `Isa_unmap(v, f, i)`        | PIFO, flow, index                | Forget `v`'s flow-`f`-to-index-`i` entry. [AM note: feels like we should drop `i`?]                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | `Isa_set_policy(v, t, n)`   | PIFO, policy type, initial arity | Set `v`'s policy type to `t` and its initial arity to `n`; `t` ranges over {FIFO, RoundRobin, Strict, WFQ}. Issued exactly once per PIFO, at spawn time.                                                                                                                                                                                                                                                                                                                                                                                            |
 | `Isa_change_arity(v, n)`    | PIFO, arity                      | Set the live `v`'s arity counter to `n`. Policy type is unchanged. `Isa_change_arity` is what tells the discipline-level logic at `v` (e.g., RR's cursor wraparound, the WFQ slot-state table's size) the active arm count; the structural attaching and detaching themselves happen through explicit `Isa_adopt`/`Isa_emancipate` calls, each keyed by the stable per-edge index the parent minted at adoption time. The substrate is free to relocate live adoptions internally as the count changes; the indices the planner holds remain valid. |
 | `Isa_set_arm_meta(v, i, m)` | PIFO, index, metadata            | Set per-arm metadata for the child reached via `i` to `m`. The payload `m` is interpreted per `v`'s policy type: a weight for RoundRobin/WFQ, a priority rank for Strict; FIFO carries none.                                                                                                                                                                                                                                                                                                                                                        |
@@ -1359,16 +1343,7 @@ The ISA has thirteen opcodes:
 | `Isa_gc(v)`                 | PIFO                             | Release `v`'s PE slot.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | `Isa_undesignate(v)`        | PIFO                             | Collapse the super-node `{v -> surv}` to `surv`: the parent index that pointed at `{v -> surv}` now points directly at `surv`, and `surv` inherits the slot's per-arm metadata.                                                                                                                                                                                                                                                                                                                                                                     |
 
-`Isa_set_policy` is issued exactly once per PIFO, at spawn time, and carries both the policy type and the initial arity (these are co-determined at birth).
-The grammar `δ` (§3.3) has no production that swaps an existing node's policy type, so `Isa_set_policy` is never reissued against a live `v`; type swaps at the `δ` level go through wholesale replacement: `Designate` stands up a new subtree with the desired type, and a later `Undesignate` retires the old one.
-After birth, only `Isa_change_arity` adjusts a live `v`'s arity; this is the runtime arm-count edit issued by `Add`'s grow and `Remove`'s shrink.
-
-Each opcode performs exactly one job, even where the planner uses two of them together.
-The clean separation lets the substrate avoid checking live state to figure out what the planner meant: consistent with the unconditional ISA style above, the planner has already discharged any "is `v` actually empty?" / "is `v` actually the top of a super-node?" question via a §4 guard `φ` that gated the surrounding `δ`.
-
-For instance, `Isa_undesignate(v)` only rewires the parent's index, leaving `v` itself allocated; the planner pairs it with `Isa_gc(v)` (in the same commit) to reclaim `v`'s slot.
-
-Single-purpose opcodes also mean that the tree can drift transiently malformed _within_ a commit, in ways that the commit's atomicity hides from any observer.
+Our single-purpose opcodes also mean that the tree can drift transiently malformed _within_ a commit, in ways that the commit's atomicity hides from any observer.
 For an instance from §6.2: `Graft`'s commit first adopts the live tree's current root as a child of the new context's hole, then emancipates that same node from `port_root`.
 Between those two instructions, the old root has two parents.
 The atomic install means no `push` or `pop` ever sees this state, but the planner is free to issue commits whose intermediate frames would not satisfy the §3.1 well-formedness invariants.
@@ -1380,9 +1355,8 @@ The planner consults `pe(path)` when it needs an `Isa_spawn`'s `pe` argument; th
 
 ### 6.2 Lowering Productions of `δ`
 
-Each production of `δ` (§3.3) lowers to an `instr list`.
-The lowering _schema_ is mechanical: each production names a fixed sequence of opcodes, and the planner reads live state at issue time to instantiate the schema's positional parameters (flow lists, chain shapes, routing indices) before dispatching the commit.
-The substrate itself sees only a finished commit and does no live-state checking, per §6.1.
+Each production of `δ` (§3.3) lowers to a list of op codes.
+The lowering _schema_ is mechanical: each production names a fixed sequence of opcodes, and the planner reads live state at issue time to instantiate the schema's positional parameters (flow lists, chain shapes, routing indices) before dispatching the commit to the substrate.
 
 Before working through the productions, we set up one structural convention.
 A switch with `P` output ports has `P` separate trees, and at the ISA we put a uniform thin wrapper around each.
@@ -1392,12 +1366,7 @@ Its `Assoc` set mirrors that of the live tree's actual root; its `Map` sends eac
 This `port_root` state is load-bearing for the two root-touching productions, and it is maintained by two complementary mechanisms.
 On every production except `ChangeRoot` and `Graft`, the `walk(...)` calls that touch `Assoc`/`Map` start at `port_root` and so update its tables in lockstep with the actual root's.
 On `ChangeRoot` and `Graft`, the lowering issues no flow-table writes against `port_root` at all: the swap is exactly one `Isa_emancipate`/`Isa_adopt` pair against `port_root`, and the existing `Assoc`/`Map` state survives the swap because `port_step` is the index _name_, unbound to any particular child.
-The wrapper exists so that "swap the root" can be expressed as one `Isa_emancipate`/`Isa_adopt` pair against `port_root`, in the same vocabulary as any child-level edit; there is no opcode for changing the root directly.
-
-[AM note on push routing across the `P` trees: we said earlier (GH discussion #93, Comments 27-28) that on a switch with `P` ports the planner offers each push to all `P` trees and `Isa_assoc` is the sole gating mechanism, so exactly one PIFO in the forest accepts.
-The alternatives we considered were a global class-to-root table (~20k entries, churned by `ChangeRoot`) and a class-to-port plus port-to-root split (felt roundabout).
-We said this earlier but it feels like overkill, especially as `P` scales.
-Let's discuss IRL.]
+The wrapper exists so that "swap the root" can be expressed as one `Isa_emancipate`/`Isa_adopt` pair against `port_root`, in the same vocabulary as any child-level edit; there is no opcode for changing the root of the tree directly.
 
 The lowerings follow, one per production in the order of the §3.3 grammar.
 We fix three reading conventions for the list below.
@@ -1406,7 +1375,7 @@ Second, when the lowering hinges on the relation between a target and its parent
 Third, we use shorthand for the chain walks that recur across entries.
 Write `flows(path)` for the set of flows admitted by some leaf under `path`.
 Write `chain(f)` for the unique sequence of PIFOs from `port_root` down to the leaf admitting `f`, and `internals(f)` for that sequence minus the leaf.
-Write `walk(op, C, f)` for issuing `op(v, f, ...)` at each `v ∈ C` in chain order; positional remainders such as `Isa_map`'s routing index `i_{v,f}` are read off the live tree.
+Write `walk(op, C, f)` for issuing `op(v, f, ...)` at each `v ∈ C`; positional remainders such as `Isa_map`'s routing index `i_{v,f}` are read off the live tree.
 When an entry's opcodes name an unmentioned parameter at `π` (e.g., `Isa_set_policy`'s discipline `t` or `Isa_change_arity`'s arity `n`), it is the live value at `π` at the time the command is issued.
 `Isa_spawn`'s `pe` argument is similarly elided: it is `pe(path)` for the new PIFO's position, drawn from §6.1's deployment convention.
 
@@ -1433,12 +1402,12 @@ When an entry's opcodes name an unmentioned parameter at `π` (e.g., `Isa_set_po
   - Rewire `path`'s parent edge from `loser` to `sp_v`: `Isa_emancipate(k, parent, loser)`; `Isa_adopt(k, parent, sp_v)`. The same `k` is reused, so `parent`'s per-arm metadata for that slot is preserved across the rewire.
   - `Isa_designate(loser, surv)` marks `loser` as the favored child of the now-installed Strict-2 super-node and records `surv` as its eventual successor.
   - Wire flow routing at `sp_v` and above.
-    At `sp_v`, for each `f ∈ flows(loser) \ flows(surv)` issue `Isa_assoc(sp_v, f)` and `Isa_map(sp_v, f, 0)`; for each `f ∈ flows(surv)` (whether shared with `loser` or not) issue `Isa_assoc(sp_v, f)` and `Isa_map(sp_v, f, 1)` so that the survivor takes shared classes from this commit onward (paper §3.4.5).
+    At `sp_v`, for each `f ∈ flows(loser) \ flows(surv)` issue `Isa_assoc(sp_v, f)` and `Isa_map(sp_v, f, 0)`; for each `f ∈ flows(surv)` (whether shared with `loser` or not) issue `Isa_assoc(sp_v, f)` and `Isa_map(sp_v, f, 1)` so that the survivor takes shared classes from this commit onward.
     Above `sp_v`, for each `f ∈ flows(surv) \ flows(path)`: `walk(Isa_assoc, chain(f), f)`; `walk(Isa_map, internals(f), f)`.
     Flows in `flows(surv) ∩ flows(path)` need no above-`sp_v` wiring: the chain is already in place from `path`'s prior wiring.
     Flows in `flows(loser) \ flows(surv)` (loser-only labels) keep their existing above-`sp_v` Assoc/Map state and are routed to slot 0 by `sp_v.z`, matching §3.4.5's denotational rule that loser-only labels drain on arm 0. Operator-level silencing of these flows, when the operator ultimately wants it, comes from the `Quiesce` step of the surrounding `Replace` idiom (§4), not from `Designate`.
 
-  _Same-PE invariant._ The planner places `sp_v`, `loser`'s root, and `surv`'s root on the same PE (a deterministic property of the lowering: all three sit at depth `|path|`, and `pe(path)` returns one PE). The substrate may exploit this to coalesce the three into a single physical slot, sparing itself from moving all of `loser` down one PE level; the coalescing is the substrate's prerogative and is not implied by the ISA.
+  _Same-PE invariant._ The planner places `sp_v`, `loser`'s root, and `surv`'s root on the same PE (a deterministic property of the lowering: all three sit at depth `|path|`, and `pe(path)` returns one PE). The substrate may exploit this to coalesce the three into a single physical slot, sparing itself from moving all of `loser` down one PE level.
 
 - `Undesignate(path)`:
   let `sp_v` be the Strict-2 super-node head formed at `path` by the prior `Designate`, and `loser_v` be its retiring arm.
@@ -1454,16 +1423,17 @@ When an entry's opcodes name an unmentioned parameter at `π` (e.g., `Isa_set_po
     - For each `f ∈ F_ctx`: `walk(Isa_assoc, chain(f), f)`; `walk(Isa_map, internals(f), f)`. Fresh end-to-end wiring, as in `Add`.
     - For each `f ∈ F_thru`: only the new spine (from `new_ctx_root` down to `π`) needs writing. Issue `Isa_assoc(v, f)` and `Isa_map(v, f, i_{v,f})` at each `v` from `new_ctx_root` down through `π`. The in-`prev_root` segments of `chain(f)` and `internals(f)` are unchanged from `prev_root`'s original setup; `port_root` already Assocs `f`, and its `Isa_map(port_root, f, port_step)` survives the swap because `port_step` is the index name, unbound to any particular child.
 
-Three items in the list deserve a sentence of unpacking.
+Three items in the list deserve unpacking.
 
-`Quiesce`'s wide reach (root-to-`path` chain, plus the subtree under `path`) is forced by §3.2's parallel push: every node on a packet's path mints its own routing index independently, so dropping `f` only at a strict subset would leave the rest happy to mint stray indices that would leave the tree malformed.
+`Quiesce`'s wide reach (root-to-`path` chain, plus the subtree under `path`) is forced by §3.2's parallel push: every node on a packet's path mints its own routing index independently, so dropping `f` only at some nodes would leave the rest happy to mint stray indices that would leave the tree malformed.
 The chain walk is what §3.4.3 calls _restricting `z` uniformly_.
-Quiesce stops short of `Isa_unmap`: silenced flows' Map entries must outlive the silencing so packets already pushed can route through the chain on the way to pop. `Remove` pairs `Isa_emancipate` with `Isa_unmap` precisely because it fires after the drain, when there is no longer any in-flight traffic to preserve.
+Quiesce does not issue `Isa_unmap`: silenced flows' Map entries _must outlive the silencing_ so that buffered packets can be popped.
+`Remove` pairs `Isa_emancipate` with `Isa_unmap` precisely because it fires after the drain, when there is no longer any in-flight traffic to preserve.
 
 The lowering for `Designate` matches §3's tree-level reading verbatim: a fresh Strict-2 PIFO `sp_v` is spawned, `path`'s previous occupant becomes its favored child (rank 1.0), and the survivor becomes its second child (rank 2.0).
 The lowering rewires `path`'s parent edge from `loser` to `sp_v`, reusing the same parent-side index `k`; the parent's per-arm metadata for the slot is therefore preserved across `Designate` and across the eventual `Undesignate` that retires the give-up.
 `Isa_designate(loser, surv)` is the ISA-level marker that names the favored child and records the eventual successor; a later `Isa_undesignate` swings the parent's index over to `surv` and releases `sp_v` along with the loser subtree.
-A substrate that recognizes the same-PE invariant on `(sp_v, loser, surv)` is free to coalesce the three into a single physical slot (the "super-node" optimization), sparing an extra PE level and a pop hop; the ISA does not pin this down, leaving room for substrates that prefer the literal Strict-2 form.
+A substrate that recognizes the same-PE invariant on `(sp_v, loser, surv)` is free to coalesce the three into a single physical slot (the "super-node" optimization); the ISA does not pin this down, leaving room for substrates that prefer the literal Strict-2 form.
 
 `ChangeRoot` writes no flow tables: `path`'s `Assoc` and `Map` already describe the post-commit live tree, since collapsing the unary vine above `path` leaves the flows-to-leaves mapping unchanged.
 
@@ -1473,12 +1443,12 @@ A substrate that recognizes the same-PE invariant on `(sp_v, loser, surv)` is fr
 Two properties make this work, and they are also what any third-party substrate would need in order to host our compilation.
 
 First, the substrate must provide the thirteen opcodes of §6.1, or compositions equivalent to them.
-This is a vocabulary requirement, not a semantic one: the ISA-level lowering of `Designate` (§6.2) is the literal Strict-2 PIFO form, which any substrate can host. A substrate that recognizes the same-PE invariant on `(sp_v, loser, surv)` may coalesce the three into a single physical slot to save a PE level per active give-up, but the optimization is the substrate's prerogative, not an ISA requirement.
+This is a vocabulary requirement, not a semantic one: the ISA-level lowering of `Designate` (§6.2) is the literal Strict-2 PIFO form, which any substrate can host. A substrate that recognizes the same-PE invariant on `(sp_v, loser, surv)` may coalesce the three into a single physical slot, but the optimization is the substrate's prerogative, not an ISA requirement.
 
 Second, the substrate must guarantee that no `push` or `pop` interleaves between a commit's first and last instruction.
 This is what hides §3.5's transiently-malformed intermediate frames.
 `Graft`'s commit produces a moment in which the old root has two parents.
-`Remove`'s commit produces moments in which the parent's arity counter has not yet been decremented to match the number of live adoptions, or its flow-to-index map still routes flows to the just-detached child.
+`Remove`'s commit produces moments in which a node's flow-to-index map still routes flows to a just-detached child.
 `ChangeRoot`'s vine collapse produces moments in which the freed vine nodes are detached but not yet released.
 None of these frames survive an atomic commit's install.
 A non-atomic substrate would expose some of them, and whether that breaks observable soundness depends on the substrate's pop-arbitration policy against an in-progress commit, a detail we do not pin down here.
@@ -1489,7 +1459,7 @@ Several productions need even less.
 `ChangeMeta` is a single instruction.
 A single-flow `Quiesce` walks one chain and modifies only `Assoc`; each intermediate frame is well-formed because the as-yet-unsilenced interior nodes still route via their existing Assocs.
 
-A vPIFO-class substrate (see §2.2) would host our compilation by providing the install-without-interleave guarantee above.
+A vPIFO-like substrate (see §2.2) would host our compilation by providing the install-without-interleave guarantee above.
 
 [AM note for Zhiyuan: the §6.3 prose above is my best current statement of what we need from a substrate. Please confirm or push back after studying §6, then delete this note.]
 
