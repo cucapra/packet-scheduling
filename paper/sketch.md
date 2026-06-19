@@ -9,7 +9,7 @@ A list of AM-notes scattered through the draft.
 - §3.4.5 (line ~755): decide when in the paper to drop the Strict-facade pretense for `Strict*`.
 - §3.4.8 (line ~897): spell out the five obligations for `Graft` under the whole-tree restriction.
 - §3.5 (line ~918): confirm with Zhiyuan what we need from the substrate atomicity story.
-- §4.1 (line ~1008): no withdraw/abort mechanism today; flagged in case we revisit.
+- §4.1 (line ~1008): no withdraw/abort mechanism today in case an in-flight gseq fails to meet its guards and get resolved; flagged in case we revisit.
 - §6.2 (line ~1238): port-routing across the `P` trees.
 - §6.3 (line ~1330): confirm substrate-requirements prose with Zhiyuan.
 
@@ -31,18 +31,21 @@ A list of AM-notes scattered through the draft.
   Let's revisit the examples from earlier.
 - Transitioning to `Strict(hi: gmail, mid: spotify, lo: zoom)` is actually quite easy.
   We can achieve the strongest property we could ask for:
-  - time1: `Strict(hi: gmail, lo: zoom)` is running.
-  - time2: the request to move to `Strict(hi: gmail, mid: spotify, lo: zoom)` is received.
-    `Strict(hi: gmail, lo: zoom)` is still running at this time.
-  - time3: we move to `Strict(hi: gmail, mid: spotify, lo: zoom)`.
-    Whatever user-observable interaction (push/pop) happened immediately before time3 happened entirely in the `Strict(hi: gmail, lo: zoom)` regime, and whatever push/pop happened immediately after time3 happened entirely in the `Strict(hi: gmail, mid: spotify, lo: zoom)` regime.
-    We refer to the transition at time3 as _atomic_.
-  - time2 and time3 collide for an `Add`-shaped transition because the entire change lowers to one commit; the wider time2-to-time3 gap appears for transitions that require draining.
-    [AM note: Can we think of a nice example that is atomic but not immediate?]
+  - Before time t1: `Strict(hi: gmail, lo: zoom)` is running.
+  - At time t1: the request to move to `Strict(hi: gmail, mid: spotify, lo: zoom)` is received. We move to `Strict(hi: gmail, mid: spotify, lo: zoom)`.
+    The transition at t1 is _atomic_, meaning that whatever user-observable interaction (push/pop) happened immediately before t1 happened entirely in the `Strict(hi: gmail, lo: zoom)` regime, and whatever push/pop happened immediately after t1 happened entirely in the `Strict(hi: gmail, mid: spotify, lo: zoom)` regime.
+  - This transtion from `Strict(hi: gmail, lo: zoom)` to `Strict(hi: gmail, mid: spotify, lo: zoom)` happens to be both atomic and _immediate_, in that we do not need a period of preparation before we atomically jump into the new policy.
+    The concepts are distinct.
+    [AM note: Can we think of a nice small example that is atomic but not immediate?]
 - What about transitioning to `Strict(hi: gmail, lo: RoundRobin(zoom, spotify))`?
   It is not as easy.
-  We need to atomically step into a _transitionary period_ during which the scheduler still accepts and emits packets, and once certain well-defined conditions are met, we atomically step into the user-requested policy.
-- Although the user never specified the semantics of this transitionary period, the period is itself a _de facto_ packet scheduling regime: the transition is unavoidable, it persists for nonzero time, and during it the scheduler must continue to field pushes and pops.
+  - Before time t1: `Strict(hi: gmail, lo: zoom)` is running.
+  - At time t1: the request to move to `Strict(hi: gmail, lo: RoundRobin(zoom, spotify))` is received.
+    We cannot move to the requested policy immediately since there are still `zoom` packets buffered in the scheduler.
+    We atomically step instead into a _transitionary period_ that is _not_ the user's desired policy [footnote: it is `Strict(hi: gmail, lo: Strict*(hi: zoom_pre_t1, lo: RoundRobin(zoom_post_t1, spotify)))`, but understanding why it is precisely that policy is not necessary at present.]
+  - After t1 but before t2: The scheduler still accepts and emits packets.
+  - At time t2, which is defined to be the instant that a well-defined guard becomes true, we atomically step into the user-requested policy.
+- Although the user never specified the semantics of this transitionary period (t1 to t2), the period is itself a _de facto_ packet scheduling regime: the transition is unavoidable, it persists for nonzero time, and during it the scheduler must continue to field pushes and pops.
   Something is making scheduling decisions during that window, whether we acknowledge it or not!
   It is worth recognizing as a scheduling policy in its own right; we call it `link`.
   Some transitions are better than others from a network operator's point of view, and the state of the art has, perhaps inadvertently, settled on a trivial stop-the-world `link`.
