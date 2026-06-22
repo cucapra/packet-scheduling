@@ -1,0 +1,9 @@
+classes A, B, C, D;
+
+// Normalizes to wfq[(A,2), (B,1), (C,3), (D,4)] under [Pol.normalize]
+// (WFQ sorts by arm content first). Compared against wfq_BA = wfq[(A,2),(B,1)]
+// after norm, the extras C and D appear at indices 2 and 3 with metas 3 and 4
+// in lockstep, exercising the multi-arm lockstep insertion path.
+policy = wfq[(B, 1), (A, 2), (C, 3), (D, 4)];
+
+return policy

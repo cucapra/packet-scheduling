@@ -44,11 +44,6 @@ let changes prev next =
   in
   loop 0 prev next []
 
-let single_insertion prev next =
-  match insertions prev next with
-  | Some [ (i, x) ] -> Some (i, x)
-  | _ -> None
-
 let single_change prev next =
   match changes prev next with
   | [ (i, x) ] -> Some (i, x)
@@ -59,9 +54,16 @@ let single_change_lockstep ps1 ps2 ws1 ws2 =
   | Some (i, arm), Some (j, w) when i = j -> Some (i, arm, w)
   | _ -> None
 
-let single_insertion_lockstep ps1 ps2 ws1 ws2 =
-  match (single_insertion ps1 ps2, single_insertion ws1 ws2) with
-  | Some (i, arm), Some (j, w) when i = j -> Some (i, arm, w)
+(* Lockstep insertion across both projections: succeeds when both the
+   arms-projection and the metas-projection witness [ps1]/[ws1] as a
+   subsequence of [ps2]/[ws2] at the same index sequence. Returns the
+   per-extra triples in the ascending order [insertions] hands back. *)
+let multi_insertion_lockstep ps1 ps2 ws1 ws2 =
+  match (insertions ps1 ps2, insertions ws1 ws2) with
+  | Some xs, Some ys
+    when List.length xs = List.length ys
+         && List.for_all2 (fun (i, _) (j, _) -> i = j) xs ys ->
+      Some (List.map2 (fun (i, arm) (_, w) -> (i, arm, w)) xs ys)
   | _ -> None
 
 (* -------- sequence helpers ---------------------------------- *)
@@ -199,8 +201,6 @@ let rec is_sub_policy p1 p2 =
     | SP (prs, _) | WFQ prs -> scan prs ~arm:fst
     | RR ps -> scan ps ~arm:Fun.id
 
-(* Same control flow as the old [Compare.compare_children], but each branch
-   emits a [Planner.t] (sequence) rather than a single [Delta.t]. *)
 let rec compare_children ~next:p2 ps1 ps2 =
   let give_up = replace ~next:p2 () in
   match List.compare_lengths ps1 ps2 with
@@ -291,14 +291,28 @@ and compare_metaed_children ~next:p2 pms1 pms2 =
       | None -> give_up
       end
   | -1 ->
-      begin match single_insertion_lockstep ps1 ps2 ms1 ms2 with
-      | Some (i, arm, meta) ->
-          [ (True, Delta.Add { path = [ i ]; arm; meta = Some meta }) ]
+      (* Multi-arm add with metas: lockstep insertions across both
+         projections, one [Add] per extra with the matching meta attached. *)
+      begin match multi_insertion_lockstep ps1 ps2 ms1 ms2 with
+      | Some adds ->
+          List.map
+            (fun (i, arm, meta) ->
+              (True, Delta.Add { path = [ i ]; arm; meta = Some meta }))
+            adds
       | None -> give_up
       end
   | 1 ->
-      begin match single_insertion_lockstep ps2 ps1 ms2 ms1 with
-      | Some (i, _arm, _) -> prepend_seq i (retire ())
+      (* Multi-arm retire with metas: symmetric to [-1], retiring highest
+         index first so lower paths stay stable. Metas are discarded since
+         [retire ()] removes the slot wholesale. *)
+      begin match multi_insertion_lockstep ps2 ps1 ms2 ms1 with
+      | Some retires ->
+          let descending =
+            List.sort (fun (a, _, _) (b, _, _) -> compare b a) retires
+          in
+          List.concat_map
+            (fun (i, _, _) -> prepend_seq i (retire ()))
+            descending
       | None -> give_up
       end
   | _ -> failwith "Can't get here"

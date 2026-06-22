@@ -183,6 +183,26 @@ let multi_arms_removed =
       (retire_seq [ 3 ] @ retire_seq [ 1 ]);
   ]
 
+(* Multi-arm additions inside a metaed parent (WFQ/SP): the arms and metas
+   projections must agree on the insertion indices (lockstep), so [Add]s
+   carry the matching meta. *)
+let multi_arms_added_metaed =
+  [
+    make_planner_test "WFQ with two arms added at end" "wfq_BA" "wfq_BACD"
+      [
+        ( Planner.True,
+          Delta.Add { path = [ 2 ]; arm = Pol.FIFO "C"; meta = Some 3.0 } );
+        ( Planner.True,
+          Delta.Add { path = [ 3 ]; arm = Pol.FIFO "D"; meta = Some 4.0 } );
+      ];
+  ]
+
+let multi_arms_removed_metaed =
+  [
+    make_planner_test "WFQ with two arms removed at end" "wfq_BACD" "wfq_BA"
+      (retire_seq [ 3 ] @ retire_seq [ 2 ]);
+  ]
+
 let metachanged =
   [
     make_planner_test "one WFQ weight changed" "wfq_ABC" "wfq_ABC_one_weight"
@@ -272,7 +292,8 @@ let verydiff_combos =
 let suite =
   "planner tests"
   >::: same @ one_arm_added @ one_arm_added_wfq @ armsremoved @ multi_arms_added
-       @ multi_arms_removed @ metachanged @ one_arm_replaced
+       @ multi_arms_removed @ multi_arms_added_metaed
+       @ multi_arms_removed_metaed @ metachanged @ one_arm_replaced
        @ one_arm_replaced_wfq @ verydiff_combos @ graft @ change_root
        @ nested_giveup_demotion
 
