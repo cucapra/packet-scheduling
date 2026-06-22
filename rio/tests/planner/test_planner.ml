@@ -364,6 +364,51 @@ let aligned_multi =
         ( Planner.True,
           Delta.Add { path = [ 1; 2 ]; arm = Pol.FIFO "D"; meta = Some 3.0 } );
       ];
+    (* SP-side analogue (outer is SP, inner is RR). sp_A_rrBCD normalizes to
+       SP[(A, 1); (RR[B,C,D], 2)]; sp_A_rrBC_E to SP[(A, 1); (RR[B,C], 2);
+       (E, 3)]. Label-set alignment pairs the RRs (via {B,C} overlap) and
+       treats E as a pure Add at ps2 index 2 carrying its rank meta. The
+       matched-pair edit recurses into the inner RR and retires D. *)
+    make_planner_test "SP adds a sibling while an inner RR retires" "sp_A_rrBCD"
+      "sp_A_rrBC_E"
+      [
+        ( Planner.True,
+          Delta.Add { path = [ 2 ]; arm = Pol.FIFO "E"; meta = Some 3.0 } );
+        (Planner.True, Delta.Quiesce [ 1; 2 ]);
+        (Planner.Empty [ 1; 2 ], Delta.Remove [ 1; 2 ]);
+      ];
+    make_planner_test "SP retires a sibling while an inner RR adds"
+      "sp_A_rrBC_E" "sp_A_rrBCD"
+      [
+        (Planner.True, Delta.Quiesce [ 2 ]);
+        (Planner.Empty [ 2 ], Delta.Remove [ 2 ]);
+        ( Planner.True,
+          Delta.Add { path = [ 1; 2 ]; arm = Pol.FIFO "D"; meta = None } );
+      ];
+    (* WFQ-side analogue. WFQ normalize sorts children by arm content first
+       (FIFO < RR by polymorphic compare; among FIFOs, A < E
+       alphabetically), so wfq_A_rrBCD normalizes to WFQ[(A, 1); (RR[B,C,D],
+       2)] but wfq_A_rrBC_E normalizes to WFQ[(A, 1); (E, 3); (RR[B,C], 2)].
+       Label-set alignment pairs A with A and the RRs with each other,
+       inserting E between them as a non-contiguous Add at ps2 index 1; the
+       RR match lands at ps2 index 2 in the post-Add frame and recurses to
+       retire D inside. *)
+    make_planner_test "WFQ adds a sibling while an inner RR retires"
+      "wfq_A_rrBCD" "wfq_A_rrBC_E"
+      [
+        ( Planner.True,
+          Delta.Add { path = [ 1 ]; arm = Pol.FIFO "E"; meta = Some 3.0 } );
+        (Planner.True, Delta.Quiesce [ 2; 2 ]);
+        (Planner.Empty [ 2; 2 ], Delta.Remove [ 2; 2 ]);
+      ];
+    make_planner_test "WFQ retires a sibling while an inner RR adds"
+      "wfq_A_rrBC_E" "wfq_A_rrBCD"
+      [
+        (Planner.True, Delta.Quiesce [ 1 ]);
+        (Planner.Empty [ 1 ], Delta.Remove [ 1 ]);
+        ( Planner.True,
+          Delta.Add { path = [ 1; 2 ]; arm = Pol.FIFO "D"; meta = None } );
+      ];
   ]
 
 let nested_giveup_demotion =
