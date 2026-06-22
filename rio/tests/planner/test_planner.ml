@@ -260,6 +260,14 @@ let multi_arms_replaced =
       (replace_seq [ 0 ] (Pol.FIFO "D")
       @ replace_seq [ 1 ] (Pol.FIFO "E")
       @ replace_seq [ 2 ] (Pol.FIFO "F"));
+    (* rr_rrBC_D normalizes to RR[FIFO D, RR[B, C]]; rr_AB is RR[A, B].
+       Slot 0 is a clean cross-class Replace. Slot 1's inner analyze is a
+       [PruneDownTo] (FIFO B sits inside RR[B, C]); the resulting sequence
+       ends in [ChangeRoot] and so demotes to a slot-level [Replace],
+       confirming that the per-slot walk applies the demotion rule
+       independently at each diverging slot. *)
+    make_planner_test "RR multi-slot with one slot demoting" "rr_rrBC_D" "rr_AB"
+      (replace_seq [ 0 ] (Pol.FIFO "A") @ replace_seq [ 1 ] (Pol.FIFO "B"));
   ]
 
 (* Same-length metaed parent (WFQ/SP) where one or more slots have an arm
