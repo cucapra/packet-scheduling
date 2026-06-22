@@ -248,6 +248,20 @@ let one_arm_replaced_wfq =
       (replace_seq ~meta:7.0 [ 2 ] (Pol.FIFO "Z"));
   ]
 
+(* Same-length RR parent where more than one slot diverges. Each diverging
+   slot emits its own slot-level edit; the emissions target distinct indices
+   and concatenate in ascending order with no interference. Same demotion
+   rules as the metaed variant below: a non-bubbleable inner shape
+   ([Graft]/[PruneDownTo]) demotes to a slot-level [Replace]; any other
+   inner sequence bubbles via [prepend_seq]. *)
+let multi_arms_replaced =
+  [
+    make_planner_test "RR with every slot differing" "rr_ABC" "rr_DEF"
+      (replace_seq [ 0 ] (Pol.FIFO "D")
+      @ replace_seq [ 1 ] (Pol.FIFO "E")
+      @ replace_seq [ 2 ] (Pol.FIFO "F"));
+  ]
+
 (* Same-length metaed parent (WFQ/SP) where one or more slots have an arm
    change (with or without a meta change at the same slot). Each diverging
    slot emits its own slot-level edit independently; the per-slot emissions
@@ -359,7 +373,7 @@ let suite =
   >::: same @ one_arm_added @ one_arm_added_wfq @ armsremoved @ multi_arms_added
        @ multi_arms_removed @ multi_arms_added_metaed
        @ multi_arms_removed_metaed @ metachanged @ one_arm_replaced
-       @ one_arm_replaced_wfq @ multi_arms_replaced_metaed
+       @ one_arm_replaced_wfq @ multi_arms_replaced @ multi_arms_replaced_metaed
        @ add_with_shared_meta_change @ verydiff_combos @ graft @ change_root
        @ nested_giveup_demotion
 

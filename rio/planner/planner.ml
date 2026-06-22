@@ -33,22 +33,6 @@ let insertions prev next =
   in
   loop 0 prev next []
 
-let changes prev next =
-  let rec loop i prev next acc =
-    match (prev, next) with
-    | [], [] -> List.rev acc
-    | [], _ | _, [] -> failwith "changes: input lists of different lengths"
-    | x1 :: t1, x2 :: t2 ->
-        if x1 <> x2 then loop (i + 1) t1 t2 ((i, x2) :: acc)
-        else loop (i + 1) t1 t2 acc
-  in
-  loop 0 prev next []
-
-let single_change prev next =
-  match changes prev next with
-  | [ (i, x) ] -> Some (i, x)
-  | _ -> None
-
 (* -------- sequence helpers ---------------------------------- *)
 
 let prepend_guard i = function
@@ -186,32 +170,29 @@ let rec is_sub_policy p1 p2 =
 
 let rec compare_children ~next:p2 ps1 ps2 =
   let give_up = replace ~next:p2 () in
+  (* Emit a slot-level edit at index [i] carrying [arm1] to [arm2]. A
+     non-bubbleable inner shape (nested [Graft] or [PruneDownTo]) demotes
+     to a slot-level [Replace] at this level; any other inner sequence
+     bubbles via [prepend_seq]. *)
+  let slot_arm_edit i arm1 arm2 =
+    let inner = analyze arm1 arm2 in
+    let non_bubbleable =
+      match inner with
+      | [ (True, Delta.Graft _) ] -> true
+      | _ -> ends_in_change_root inner
+    in
+    if non_bubbleable then prepend_seq i (replace ~next:arm2 ())
+    else prepend_seq i inner
+  in
   match List.compare_lengths ps1 ps2 with
   | 0 ->
-      begin match single_change ps1 ps2 with
-      | Some (i, _) ->
-          let child1 = List.nth ps1 i in
-          let child2 = List.nth ps2 i in
-          let inner =
-            let raw = analyze child1 child2 in
-            match raw with
-            | [ (True, Delta.Graft _) ] ->
-                (* A nested Graft only says "child1 embeds in child2" at the
-                   inner position; it does NOT say "prev embeds in next" at
-                   the outer slot. Bubbling it up via [prepend_seq] would
-                   mis-describe the edit, so we demote to a slot-level
-                   give-up at the current level. *)
-                replace ~next:child2 ()
-            | _ when ends_in_change_root raw ->
-                (* Same reasoning for nested [PruneDownTo]: the inner
-                   sequence says "child2 sits inside child1", which doesn't
-                   bubble up to the outer slot. Demote. *)
-                replace ~next:child2 ()
-            | d -> d
-          in
-          prepend_seq i inner
-      | None -> if ps1 = ps2 then [] else give_up
-      end
+      (* Per-slot walk: each index whose arm differs contributes its own
+         independent edit. Distinct-index emissions concatenate freely. *)
+      List.concat
+        (List.mapi
+           (fun i (arm1, arm2) ->
+             if arm1 = arm2 then [] else slot_arm_edit i arm1 arm2)
+           (List.combine ps1 ps2))
   | -1 ->
       (* Multi-arm add: every surplus entry in [ps2] is a pure addition (the
          arms of [ps1] appear in-order as a subsequence). One [Add] per extra

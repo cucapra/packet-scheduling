@@ -1240,9 +1240,11 @@ Cases 4 and 5 are the descent mechanism: when the difference sits one level down
    Emit `PruneDownTo(path)`, where `path` is the location in `p1` where `p2` sits.
    Symmetric to the previous case.
 
-4. **`RR` at the current level, child lists of equal length, exactly one child differs.**
-   Recurse on the differing child `k` and later correct the path that it returns by prepending `k`'s index to the path.
-   §5.3 covers one wrinkle (demotion when the inner result cannot bubble).
+4. **`RR` at the current level, child lists of equal length.**
+   The planner walks each slot independently and emits one slot-level edit per diverging position; slot-level edits target distinct indices and so concatenate freely in ascending order.
+   At a slot whose arm agrees, nothing is emitted.
+   At a slot whose arm differs, recurse on the inner pair and dispatch on the inner shape: a non-bubbleable inner (single `Graft`, or a sequence ending in `ChangeRoot`) demotes to a slot-level `Replace` at the outer position; any other inner sequence bubbles via index-prepending.
+   §5.3 covers the demotion wrinkle.
 
 5. **`SP` or `WFQ` at the current level, child lists of equal length.**
    The planner walks each slot independently and emits one slot-level edit per diverging position; slot-level edits target distinct indices and so concatenate freely in ascending order.
@@ -1264,7 +1266,7 @@ Cases 4 and 5 are the descent mechanism: when the difference sits one level down
 
 8. **Anything else.**
    Emit `Replace` at the current level.
-   "Anything else" covers same-level shapes the planner does not recognize: constructor mismatch (e.g., `SP` vs. `RR`), `RR` child lists of equal length with more than one position disagreeing on its arm, and child lists of unequal length where neither's children are a subset of the other's (so additions and removals would have to mix at the same parent).
+   "Anything else" covers same-level shapes the planner does not recognize: constructor mismatch (e.g., `SP` vs. `RR`), and child lists of unequal length where neither's children are a subset of the other's (so additions and removals would have to mix at the same parent).
 
    The recursion does significant work here.
    Cases 1-7 are tried at every level the recursion visits, and cases 4 and 5 descend into agreeing slots of their parents.
@@ -1297,9 +1299,6 @@ Three deliberate non-features, each a candidate for future work.
 - _No cost model._
   The case analysis is shape-based, not cost-weighted.
   A cost-aware planner could prefer different decompositions (e.g., several small `Add`s vs. a single root-level `Replace`) based on per-flow drop and delay tolerances or per-PE budgets; we leave this to future work.
-- _No multi-slot recognition at `RR` parents._
-  Case 5 walks an `SP` or `WFQ` parent slot by slot, emitting an independent edit per diverging position, but case 4 at an `RR` parent still gives up to case 8 whenever more than one slot disagrees on its arm.
-  Generalizing case 4 in the same shape as case 5 would be a strict improvement; we have not yet done so.
 - _No alignment-aware recognition when the arm projection fails to embed._
   Cases 6 and 7 require one child list to be a subset of the other.
   When the two child lists overlap but neither is a subset (for instance, `RR(A, SP(B, C, D))` becoming `RR(A, SP(B, C), E)`, where slot 1 is structurally edited and slot 2 is a fresh arm), case 8 fires.
