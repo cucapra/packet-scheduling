@@ -23,18 +23,21 @@ type instr =
   | Adopt of step * pifo * pifo
       (** [Adopt (s, parent, child)]: tell [parent] that [child] is its child;
           [s] is the step [parent] uses to refer to [child]. *)
-  | Emancipate of step * pifo * pifo
-      (** [Emancipate (s, parent, child)]: inverse of [Adopt]. Detach [child]
-          from [parent]; [s] is the step that was used to reach [child]. *)
+  | Emancipate of step * pifo
+      (** [Emancipate (s, parent)]: inverse of [Adopt]. Detach the child that
+          [parent] reaches via step [s]. The substrate addresses children by
+          per-edge index, so [(parent, s)] alone identifies the edge to sever.
+      *)
   | Assoc of pifo * clss
       (** [Assoc (v, c)]: [v] begins to accept packets of class [c]. *)
   | Deassoc of pifo * clss
       (** [Deassoc (v, c)]: [v] stops accepting packets of class [c]. *)
   | Map of pifo * clss * step
       (** [Map (v, c, s)]: in [v]'s brain, map class [c] to step [s]. *)
-  | Unmap of pifo * clss * step
-      (** [Unmap (v, c, s)]: inverse of [Map]. Forget [v]'s mapping from class
-          [c] to step [s]. *)
+  | Unmap of pifo * clss
+      (** [Unmap (v, c)]: inverse of [Map]. Forget [v]'s mapping for class [c].
+          The step the mapping pointed at is recoverable from [v]'s brain, so it
+          is not carried on the opcode. *)
   | Set_policy of pifo * pol_ty * int
       (** [Set_policy (v, pol, n)]: at PIFO birth, fix [v]'s policy type to
           [pol] and its initial arity to [n]. Issued exactly once per PIFO at

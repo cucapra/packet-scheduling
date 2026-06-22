@@ -239,9 +239,9 @@ let strict_abc_to_ab_expected =
     e_ [ 2 ]
       [
         Change_arity (100, 2);
-        Emancipate (1002, 100, 103);
-        Unmap (99, "C", 999);
-        Unmap (100, "C", 1002);
+        Emancipate (1002, 100);
+        Unmap (99, "C");
+        Unmap (100, "C");
         GC 103;
       ];
   ]
@@ -255,9 +255,9 @@ let strict_abc_to_ac_expected =
     e_ [ 1 ]
       [
         Change_arity (100, 2);
-        Emancipate (1001, 100, 102);
-        Unmap (99, "B", 999);
-        Unmap (100, "B", 1001);
+        Emancipate (1001, 100);
+        Unmap (99, "B");
+        Unmap (100, "B");
         GC 102;
       ];
   ]
@@ -269,9 +269,9 @@ let rr_abc_to_ab_expected =
     e_ [ 2 ]
       [
         Change_arity (100, 2);
-        Emancipate (1002, 100, 103);
-        Unmap (99, "C", 999);
-        Unmap (100, "C", 1002);
+        Emancipate (1002, 100);
+        Unmap (99, "C");
+        Unmap (100, "C");
         GC 103;
       ];
   ]
@@ -322,7 +322,7 @@ let rr_ab_to_ad_expected =
         Adopt (1002, 104, 102);
         Adopt (1003, 104, 103);
         Designate (102, 103);
-        Emancipate (1001, 100, 102);
+        Emancipate (1001, 100);
         Adopt (1001, 100, 104);
         Assoc (104, "B");
         Assoc (104, "D");
@@ -359,7 +359,7 @@ let strict_ab_to_ac_expected =
         Adopt (1002, 104, 102);
         Adopt (1003, 104, 103);
         Designate (102, 103);
-        Emancipate (1001, 100, 102);
+        Emancipate (1001, 100);
         Adopt (1001, 100, 104);
         Assoc (104, "B");
         Assoc (104, "C");
@@ -409,7 +409,7 @@ let wfq_abc_to_abz_diff_expected =
         Adopt (1003, 105, 103);
         Adopt (1004, 105, 104);
         Designate (103, 104);
-        Emancipate (1002, 100, 103);
+        Emancipate (1002, 100);
         Adopt (1002, 100, 105);
         Assoc (105, "C");
         Assoc (105, "Z");
@@ -479,7 +479,7 @@ let rr_ab_to_rr_def_expected =
         Adopt (1005, 107, 100);
         Adopt (1006, 107, 103);
         Designate (100, 103);
-        Emancipate (999, 99, 100);
+        Emancipate (999, 99);
         Adopt (999, 99, 107);
         Assoc (107, "A");
         Assoc (107, "B");
@@ -543,7 +543,7 @@ let strict_ab_to_rr_ab_expected =
         Adopt (1004, 106, 100);
         Adopt (1005, 106, 103);
         Designate (100, 103);
-        Emancipate (999, 99, 100);
+        Emancipate (999, 99);
         Adopt (999, 99, 106);
         Assoc (106, "A");
         Assoc (106, "B");
@@ -590,9 +590,9 @@ let strict_abc_to_fifo_a_expected =
     e_ [ 2 ]
       [
         Change_arity (100, 2);
-        Emancipate (1002, 100, 103);
-        Unmap (99, "C", 999);
-        Unmap (100, "C", 1002);
+        Emancipate (1002, 100);
+        Unmap (99, "C");
+        Unmap (100, "C");
         GC 103;
       ];
     (* Retire([1]) B: Quiesce then Remove. *)
@@ -600,14 +600,14 @@ let strict_abc_to_fifo_a_expected =
     e_ [ 1 ]
       [
         Change_arity (100, 1);
-        Emancipate (1001, 100, 102);
-        Unmap (99, "B", 999);
-        Unmap (100, "B", 1001);
+        Emancipate (1001, 100);
+        Unmap (99, "B");
+        Unmap (100, "B");
         GC 102;
       ];
     (* ChangeRoot([0]): swing the port root from v100 to v101 and GC the SP
        root. Dropped-class block is empty (B and C already drained). *)
-    t_ [ Emancipate (999, 99, 100); Adopt (999, 99, 101); GC 100 ];
+    t_ [ Emancipate (999, 99); Adopt (999, 99, 101); GC 100 ];
   ]
 
 let change_root_tests =
@@ -694,7 +694,7 @@ let strict_abc_to_complex_tree_expected =
         Set_arm_meta (104, 1008, 1.0);
         Set_arm_meta (104, 1009, 2.0);
         Set_arm_meta (104, 1010, 3.0);
-        Emancipate (999, 99, 100);
+        Emancipate (999, 99);
         Adopt (999, 99, 104);
         Assoc (99, "D");
         Assoc (99, "E");
@@ -828,7 +828,7 @@ let designate_arm_test =
       Adopt (1002, 104, 102);
       Adopt (1003, 104, 103);
       Designate (102, 103);
-      Emancipate (1001, 100, 102);
+      Emancipate (1001, 100);
       Adopt (1001, 100, 104);
       Assoc (104, "B");
       Assoc (104, "D");
@@ -863,7 +863,7 @@ let designate_root_test =
       Adopt (1002, 104, 100);
       Adopt (1003, 104, 103);
       Designate (100, 103);
-      Emancipate (999, 99, 100);
+      Emancipate (999, 99);
       Adopt (999, 99, 104);
       Assoc (104, "A");
       Assoc (104, "B");
@@ -959,7 +959,7 @@ let giveup_idiom_test =
       Adopt (1002, 104, 100);
       Adopt (1003, 104, 103);
       Designate (100, 103);
-      Emancipate (999, 99, 100);
+      Emancipate (999, 99);
       Adopt (999, 99, 104);
       Assoc (104, "A");
       Assoc (104, "B");

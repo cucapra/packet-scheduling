@@ -329,7 +329,6 @@ let patch_remove ~prev ~arm_path =
   let parent = Decorated.walk prev.decorated parent_path in
   let parent_v, old_arity, _ = parent_info parent in
   let removed = Decorated.nth_child parent k in
-  let removed_v = Decorated.root_pifo removed in
   let step_k = Decorated.nth_step parent k in
   let doomed_classes = Decorated.subtree_classes removed in
   let chain_above =
@@ -339,8 +338,8 @@ let patch_remove ~prev ~arm_path =
     List.concat
       [
         [ Change_arity (parent_v, old_arity - 1) ];
-        [ Emancipate (step_k, parent_v, removed_v) ];
-        chain_emit (fun v s c -> Unmap (v, c, s)) chain_above doomed_classes;
+        [ Emancipate (step_k, parent_v) ];
+        chain_emit (fun v _ c -> Unmap (v, c)) chain_above doomed_classes;
         gc_subtree removed;
       ]
   in
@@ -379,7 +378,6 @@ let patch_graft ~prev ~next ~path =
     compile_subtree ~fresh_v ~fresh_s ~pe_of_depth ~depth:0
       ~splice:(path, prev.decorated) next
   in
-  let old_real_root_v = Decorated.root_pifo prev.decorated in
   let prev_classes = Decorated.subtree_classes prev.decorated in
   let only_added =
     List.filter
@@ -388,7 +386,7 @@ let patch_graft ~prev ~next ~path =
   in
   let rewire =
     [
-      Emancipate (port_root_step, port_root_v, old_real_root_v);
+      Emancipate (port_root_step, port_root_v);
       Adopt (port_root_step, port_root_v, frag.root_v);
     ]
     @ chain_emit (fun v _ c -> Assoc (v, c)) port_chain only_added
@@ -406,7 +404,6 @@ let patch_change_root ~prev ~path =
   let parent = Decorated.walk prev.decorated parent_path in
   let new_root = Decorated.nth_child parent k in
   let new_root_v = Decorated.root_pifo new_root in
-  let old_real_root_v = Decorated.root_pifo prev.decorated in
   let kept_set = Decorated.subtree_pifos new_root in
   let to_gc =
     List.filter
@@ -420,9 +417,9 @@ let patch_change_root ~prev ~path =
       (Decorated.subtree_classes prev.decorated)
   in
   let commit =
-    Emancipate (port_root_step, port_root_v, old_real_root_v)
+    Emancipate (port_root_step, port_root_v)
     :: Adopt (port_root_step, port_root_v, new_root_v)
-    :: (chain_emit (fun v s c -> Unmap (v, c, s)) port_chain dropped_classes
+    :: (chain_emit (fun v _ c -> Unmap (v, c)) port_chain dropped_classes
        @ chain_emit (fun v _ c -> Deassoc (v, c)) port_chain dropped_classes
        @ List.map (fun v -> GC v) to_gc)
   in
@@ -522,8 +519,7 @@ let patch_designate ~prev ~path ~(arm : Rio_core.Pol.t) =
         ];
         [ Designate (loser_v, survivor_v) ];
         [
-          Emancipate (parent_step, parent_v, loser_v);
-          Adopt (parent_step, parent_v, sp_v);
+          Emancipate (parent_step, parent_v); Adopt (parent_step, parent_v, sp_v);
         ];
         List.map (fun c -> Assoc (sp_v, c)) loser_classes;
         List.map (fun c -> Assoc (sp_v, c)) only_new;
