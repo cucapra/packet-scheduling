@@ -1246,22 +1246,25 @@ Case 4 is the descent mechanism: when the difference sits one level down, it re-
 
 5. **Same `SP` or `WFQ` at the current level, child lists of equal length, the divergence touches per-arm metadata.**
    Two sub-cases.
-   When the arms themselves are pointwise equal and a single slot's metadata differs, emit `ChangeMeta(path, meta)` for that slot.
+   When the arms themselves are pointwise equal, emit one `ChangeMeta(path, meta)` per slot whose metadata differs; the order is immaterial because `ChangeMeta` does not shift siblings.
    When a single slot's arm _and_ its metadata both change in lockstep, _and_ the recursive call on that arm returns the three-step `Replace` shape, emit a single bubbled `Replace` with the new metadata tacked on as a trailing `ChangeMeta`.
-   This exploits the fact that the loser has drained by the time the new arm is in place, so `ChangeMeta` against the survivor's slot is safe add to the end.
+   This exploits the fact that the loser has drained by the time the new arm is in place, so `ChangeMeta` against the survivor's slot is safe to add at the end.
 
-6. **Same constructor at the current level, `p2` has one extra child (and dropping it from `p2` recovers `p1`).**
-   Emit `Add`.
-   §3.4.1's leaf-disjointness precondition is satisfied for free: the new arm's leaves are precisely the leaves of `p2` not in `p1`, which by §3.2's leaf-partition validity are disjoint from `p1`'s.
+6. **Same constructor at the current level, every child of `p1` is also a child of `p2` but `p2` has more children.**
+   Emit one `Add` per surplus arm, in ascending index order.
+   §3.4.1's leaf-disjointness precondition is satisfied for free at each `Add`: every surplus arm's leaves are leaves of `p2` not in `p1`, which by §3.2's leaf-partition validity are disjoint from `p1`'s and from each other.
+   At an `SP` or `WFQ` parent the recognizer additionally requires that the metadata of each shared arm agrees between `p1` and `p2`, so each `Add` carries the surplus arm's metadata and no shared slot's metadata is silently overwritten.
 
-7. **Same constructor at the current level, `p1` has one extra child (and dropping it from `p1` recovers `p2`).**
-   Emit the `Retire` idiom (§4.2).
-   The drain-then-remove shape is what `Retire` already encodes; the planner never emits `SlowRetire` from a `(p1, p2)` pair, because the pair carries no signal distinguishing "drain aggressively" from "drain lazily."
+7. **Same constructor at the current level, every child of `p2` is also a child of `p1` but `p1` has more children.**
+   Emit one `Retire` idiom (§4.2) per surplus arm, in _descending_ index order.
+   Descending order keeps the lower-index slot paths stable while higher-index siblings drain and disappear.
+   The planner never emits `SlowRetire` from a `(p1, p2)` pair, because the pair carries no signal distinguishing "drain aggressively" from "drain lazily."
    `SlowRetire` remains available to imperative-mode authors.
+   At an `SP` or `WFQ` parent the recognizer requires that the metadata of each shared arm agrees just as case 6 does; the surplus arms' metadata is discarded, since `Retire` removes the slot wholesale.
 
 8. **Anything else.**
    Emit `Replace` at the current level.
-   "Anything else" covers same-level shapes the planner does not recognize: constructor mismatch (e.g., `SP` vs. `RR`), child lists of equal length with more than one position disagreeing, child lists differing in length by more than one (more than one `Add` or more than one `Retire` at the same level), and edits at various different nodes.
+   "Anything else" covers same-level shapes the planner does not recognize: constructor mismatch (e.g., `SP` vs. `RR`), child lists of equal length with more than one position disagreeing on its arm, child lists of unequal length where neither's children are a subset of the other's (so additions and removals would have to mix), and `SP`/`WFQ` cases where the arm lists embed cleanly but a shared arm's metadata has changed.
 
    The recursion does significant work here.
    Cases 1-7 are tried at every level the recursion visits, and case 4 descends through any same-constructor agreeing prefix.
@@ -1294,8 +1297,8 @@ Three deliberate non-features, each a candidate for future work.
 - _No cost model._
   The case analysis is shape-based, not cost-weighted.
   A cost-aware planner could prefer different decompositions (e.g., several small `Add`s vs. a single root-level `Replace`) based on per-flow drop and delay tolerances or per-PE budgets; we leave this to future work.
-- _No multi-edit recognition._
-  Case 8 fires whenever more than one arm differs at a level, even if the difference would decompose cleanly into two recognized cases in sequence (e.g., an `Add` followed by a `Retire`).
+- _No mixed-edit recognition._
+  Cases 5, 6, and 7 each handle several edits of the same kind at the same parent (multiple `ChangeMeta`s, multiple `Add`s, or multiple `Retire`s), but case 8 still fires when the kinds mix: an `Add` and a `Retire` at the same parent (which would re-read as a `Replace`), several slot-level `Replace`s at distinct positions within an equal-length child list, or different kinds of edits at different children of the same parent.
   A planner that emitted such compositions would be a strict improvement, and the §4.3 pol-level check would catch any unsound such composition, so the cost of trying is bounded by the check's overhead.
 - _No imperative-mode service._
   The planner serves declarative mode only.
