@@ -15,13 +15,10 @@ let from_instr (i : Instr.instr) : Yojson.Basic.t =
           ("parent", `Int parent);
           ("child", `Int child);
         ]
-  | Instr.Emancipate (s, parent, child) ->
+  | Instr.Emancipate (s, parent) ->
       `Assoc
         [
-          ("op", `String "emancipate");
-          ("step", `Int s);
-          ("parent", `Int parent);
-          ("child", `Int child);
+          ("op", `String "emancipate"); ("step", `Int s); ("parent", `Int parent);
         ]
   | Instr.Assoc (v, c) ->
       `Assoc [ ("op", `String "assoc"); ("v", `Int v); ("class", `String c) ]
@@ -35,14 +32,8 @@ let from_instr (i : Instr.instr) : Yojson.Basic.t =
           ("class", `String c);
           ("step", `Int s);
         ]
-  | Instr.Unmap (v, c, s) ->
-      `Assoc
-        [
-          ("op", `String "unmap");
-          ("v", `Int v);
-          ("class", `String c);
-          ("step", `Int s);
-        ]
+  | Instr.Unmap (v, c) ->
+      `Assoc [ ("op", `String "unmap"); ("v", `Int v); ("class", `String c) ]
   | Instr.Set_policy (v, pt, n) ->
       `Assoc
         [

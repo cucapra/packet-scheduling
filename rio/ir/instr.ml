@@ -33,11 +33,11 @@ type pol_ty =
 type instr =
   | Spawn of pifo * pe
   | Adopt of step * pifo * pifo
-  | Emancipate of step * pifo * pifo
+  | Emancipate of step * pifo
   | Assoc of pifo * clss
   | Deassoc of pifo * clss
   | Map of pifo * clss * step
-  | Unmap of pifo * clss * step
+  | Unmap of pifo * clss
   | Set_policy of pifo * pol_ty * int
   | Change_arity of pifo * int
   | Set_arm_meta of pifo * step * float
@@ -64,15 +64,14 @@ let string_of_instr = function
   | Adopt (s, parent, child) ->
       Printf.sprintf "%s = adopt(%s, %s)" (string_of_step s)
         (string_of_pifo parent) (string_of_pifo child)
-  | Emancipate (s, parent, child) ->
-      Printf.sprintf "emancipate(%s, %s, %s)" (string_of_step s)
-        (string_of_pifo parent) (string_of_pifo child)
+  | Emancipate (s, parent) ->
+      Printf.sprintf "emancipate(%s, %s)" (string_of_step s)
+        (string_of_pifo parent)
   | Assoc (v, c) -> Printf.sprintf "assoc(%s, %s)" (string_of_pifo v) c
   | Deassoc (v, c) -> Printf.sprintf "deassoc(%s, %s)" (string_of_pifo v) c
   | Map (v, c, s) ->
       Printf.sprintf "map(%s, %s, %s)" (string_of_pifo v) c (string_of_step s)
-  | Unmap (v, c, s) ->
-      Printf.sprintf "unmap(%s, %s, %s)" (string_of_pifo v) c (string_of_step s)
+  | Unmap (v, c) -> Printf.sprintf "unmap(%s, %s)" (string_of_pifo v) c
   | Set_policy (v, pt, n) ->
       Printf.sprintf "set_policy(%s, %s, %d)" (string_of_pifo v)
         (string_of_pol_ty pt) n
