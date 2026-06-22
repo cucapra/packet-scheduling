@@ -335,8 +335,8 @@ let add_with_shared_meta_change =
    alignment: arms whose class-label sets overlap are paired (and recursed
    on); arms whose labels appear nowhere on the other side are treated as
    pure [Add]s (or [Retire]s, symmetrically). Under the "repeated labels =
-   same flow" assumption (paper many-arms.md), the alignment in these
-   examples is unambiguous. *)
+   same flow" assumption (paper sketch.md sec3.2 leaf-partition validity),
+   the alignment in these examples is unambiguous. *)
 let aligned_multi =
   [
     (* rr_A_strictBCD normalizes to RR[FIFO A, SP[B,C,D]]; rr_A_strictBC_E

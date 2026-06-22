@@ -38,7 +38,7 @@ let insertions prev next =
    well-formed policy keeps these distinct across arms; the planner's
    [compare_children] fallback below treats label overlap between two arms
    as evidence that they denote the same flow that morphed structurally
-   (paper many-arms.md). *)
+   (paper sketch.md sec5.2 case 8, sec3.2 leaf-partition validity). *)
 let rec arm_labels = function
   | FIFO c -> [ c ]
   | SP (prs, _) | WFQ prs -> List.concat_map (fun (p, _) -> arm_labels p) prs
@@ -256,7 +256,7 @@ let rec compare_children ~next:p2 ps1 ps2 =
          the divergence is "extra pure-add arms plus one or more shared arms
          that morphed structurally", fall back to label-set alignment: pair
          arms by overlapping class labels, recurse on each pair, and treat
-         unmatched [ps2] arms as pure adds (paper many-arms.md). The matched-
+         unmatched [ps2] arms as pure adds (paper sketch.md sec5.2 case 8). The matched-
          pair edits fire after the [Add]s have grown the structure, so their
          slot indices are in [ps2]'s frame. *)
       begin match insertions ps1 ps2 with
@@ -396,8 +396,8 @@ and compare_metaed_children ~next:p2 pms1 pms2 =
          When the strict subsequence fails ([insertions] returns [None]) but
          the divergence is "extra pure-add arms plus one or more shared arms
          that morphed structurally", fall back to label-set alignment (the
-         metaed analogue of [compare_children]'s fallback, paper many-arms.md
-         and sketch.md §5.4): pair arms by overlapping class labels, recurse
+         metaed analogue of [compare_children]'s fallback, paper sketch.md
+         sec5.2 case 8): pair arms by overlapping class labels, recurse
          on each pair via [slot_arm_edit] carrying any meta change, and treat
          unmatched [ps2] arms as pure [Add]s with their meta. The [i1] index
          on the [ps1] side is the position in [matches] because the greedy
