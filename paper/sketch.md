@@ -1264,17 +1264,18 @@ Cases 4 and 5 are the descent mechanism: when the difference sits one level down
    `SlowRetire` remains available to imperative-mode authors.
    At an `SP` or `WFQ` parent each shared arm whose metadata differs additionally contributes a `ChangeMeta` step (in `p2`'s post-`Retire` frame) after all `Retire`s have fired; the surplus arms' metadata is discarded, since `Retire` removes the slot wholesale.
 
-8. **`RR` at the current level, lengths differ, and pairing arms by label-set overlap admits an alignment.**
-   When cases 6 and 7 fail at an `RR` parent because some shared arm has itself morphed structurally, the planner relaxes its embedding check.
+8. **Same constructor at the current level, lengths differ, and pairing arms by label-set overlap admits an alignment.**
+   When cases 6 and 7 fail because some shared arm has itself morphed structurally, the planner relaxes its embedding check.
    Arms whose class-label sets overlap pair up by a greedy left-to-right walk; arms whose labels appear nowhere on the opposing side are treated as pure `Add`s when `p2` is longer or pure `Retire`s when `p1` is longer.
    `Add`s fire first in ascending index order; `Retire`s fire first in descending index order; matched-pair edits then recurse on the inner pair and bubble to the slot's position in `p2`'s post-mutation frame, subject to the §5.3 demotion rule.
+   At an `SP` or `WFQ` parent each surplus `Add` carries its meta, and a matched pair whose metas also differ folds a `ChangeMeta` into the recursive edit (either as a trailing step on a clean bubble or as the meta argument to a demoted `Replace`).
    The pairing relies on §3.2's leaf-partition validity: a class label identifies a unique flow across the whole policy, so a repeated label between an arm in `p1` and an arm in `p2` is evidence that the same host arm has morphed, and an arm whose labels appear nowhere on the opposing side is necessarily a fresh sibling (or, in the `p1`-longer direction, a vanishing one).
    The greedy walk is not complete: when more than one alignment satisfies the label-overlap constraint, the first one found is taken without a notion of cost (§5.4).
    When the greedy walk leaves arms unpaired on the shorter side, the case fails and the planner falls through to case 9.
 
 9. **Anything else.**
    Emit `Replace` at the current level.
-   "Anything else" covers same-level shapes the planner does not recognize: constructor mismatch (e.g., `SP` vs. `RR`), and child lists of unequal length where neither's children are a subset of the other's and case 8 either does not apply (an `SP` or `WFQ` parent) or fails to find an alignment.
+   "Anything else" covers same-level shapes the planner does not recognize: constructor mismatch (e.g., `SP` vs. `RR`), and child lists of unequal length where neither's children are a subset of the other's and case 8's label-set walk fails to find an alignment.
 
    The recursion does significant work here.
    Cases 1-8 are tried at every level the recursion visits, and cases 4, 5, and 8 descend into agreeing or label-overlapping slots of their parents.
@@ -1302,16 +1303,12 @@ We leave that to future work; see §5.4.
 
 ### 5.4 What the planner does not do today
 
-Three deliberate non-features, each a candidate for future work.
+Two deliberate non-features, each a candidate for future work.
 
 - _No cost model._
   The case analysis is shape-based, not cost-weighted.
   A cost-aware planner could prefer different decompositions (e.g., several small `Add`s vs. a single root-level `Replace`) based on per-flow drop and delay tolerances or per-PE budgets; case 8's label-set pairing is one place this would bite, since the greedy walk takes the first admissible alignment without ranking competitors.
   We leave both questions to future work.
-- _No alignment-aware recognition at `SP` or `WFQ` parents._
-  Case 8 above handles the alignment-aware recognition at `RR` parents, whose children are unordered (each index has no scheduling meaning of its own).
-  At `SP` and `WFQ` parents cases 6 and 7 still require the arm projection to embed strictly: a length change combined with an inner morph at a shared arm (for instance, an `SP` whose lower-priority subtree was edited at the same time as a sibling appeared at a fresh priority) falls through to case 9.
-  The mechanism transports to metaed parents in principle (label-set pairing on the arm projection, then a recursive analyze plus a `ChangeMeta` at each surviving slot whose metadata also moved), but the implementation is not in the planner today.
 - _No imperative-mode service._
   The planner serves declarative mode only.
   Imperative-mode authoring (§4.3) goes through the pol-level check directly, with the operator naming each `δ` themselves; the planner is not consulted.
