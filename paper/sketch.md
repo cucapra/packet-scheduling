@@ -1224,7 +1224,7 @@ We claim only that whatever sequence it emits is safe (§3.4) and no worse than 
 
 The planner steps through the following cases in order, emitting at the first match.
 Each call examines the current pair `(p1, p2)`: cases 1-3 test the two trees as wholes; cases 4-7 fire when the roots agree and the local difference has a recognized shape; case 8 catches everything else.
-Case 4 is the descent mechanism: when the difference sits one level down, it re-enters this case analysis on the differing child, and whatever case fires at the deeper level has its emission re-targeted via index prepending on the way back up.
+Cases 4 and 5 are the descent mechanism: when the difference sits one level down, they re-enter this case analysis on the differing slot, and whatever case fires at the deeper level has its emission re-targeted via index prepending on the way back up.
 
 1. **`p1 = p2`.**
    Emit `[]`.
@@ -1240,41 +1240,41 @@ Case 4 is the descent mechanism: when the difference sits one level down, it re-
    Emit `PruneDownTo(path)`, where `path` is the location in `p1` where `p2` sits.
    Symmetric to the previous case.
 
-4. **Same constructor at the current level, child lists of equal length, exactly one child differs.**
+4. **`RR` at the current level, child lists of equal length, exactly one child differs.**
    Recurse on the differing child `k` and later correct the path that it returns by prepending `k`'s index to the path.
    §5.3 covers one wrinkle (demotion when the inner result cannot bubble).
 
-5. **Same `SP` or `WFQ` at the current level, child lists of equal length, the divergence touches per-arm metadata.**
-   Two sub-cases.
-   When the arms themselves are pointwise equal, emit one `ChangeMeta(path, meta)` per slot whose metadata differs; the order is immaterial because `ChangeMeta` does not shift siblings.
-   When a single slot's arm _and_ its metadata both change in lockstep, _and_ the recursive call on that arm returns the three-step `Replace` shape, emit a single bubbled `Replace` with the new metadata tacked on as a trailing `ChangeMeta`.
-   This exploits the fact that the loser has drained by the time the new arm is in place, so `ChangeMeta` against the survivor's slot is safe to add at the end.
+5. **`SP` or `WFQ` at the current level, child lists of equal length.**
+   The planner walks each slot independently and emits one slot-level edit per diverging position; slot-level edits target distinct indices and so concatenate freely in ascending order.
+   At a slot whose arm and metadata both agree, nothing is emitted.
+   At a slot whose metadata differs but whose arm does not, emit `ChangeMeta(path, meta)` for that slot.
+   At a slot whose arm differs (with or without a metadata change at the same slot), recurse on the inner pair and dispatch on the inner shape: a `Replace`-root inner takes any metadata change as a trailing `ChangeMeta` of its bubbled emission; a non-bubbleable inner (single `Graft`, or a sequence ending in `ChangeRoot`) demotes to a slot-level `Replace` at the outer position, carrying the metadata when present; any clean smaller inner edit bubbles via index-prepending and, when the metadata also changed, picks up a separate `ChangeMeta` step at the slot.
 
 6. **Same constructor at the current level, every child of `p1` is also a child of `p2` but `p2` has more children.**
    Emit one `Add` per surplus arm, in ascending index order.
    §3.4.1's leaf-disjointness precondition is satisfied for free at each `Add`: every surplus arm's leaves are leaves of `p2` not in `p1`, which by §3.2's leaf-partition validity are disjoint from `p1`'s and from each other.
-   At an `SP` or `WFQ` parent the recognizer additionally requires that the metadata of each shared arm agrees between `p1` and `p2`, so each `Add` carries the surplus arm's metadata and no shared slot's metadata is silently overwritten.
+   At an `SP` or `WFQ` parent each `Add` carries the surplus arm's metadata, and any shared arm whose metadata differs between `p1` and `p2` additionally contributes a `ChangeMeta` step (in `p2`'s post-`Add` frame) after all `Add`s have fired.
 
 7. **Same constructor at the current level, every child of `p2` is also a child of `p1` but `p1` has more children.**
    Emit one `Retire` idiom (§4.2) per surplus arm, in _descending_ index order.
    Descending order keeps the lower-index slot paths stable while higher-index siblings drain and disappear.
    The planner never emits `SlowRetire` from a `(p1, p2)` pair, because the pair carries no signal distinguishing "drain aggressively" from "drain lazily."
    `SlowRetire` remains available to imperative-mode authors.
-   At an `SP` or `WFQ` parent the recognizer requires that the metadata of each shared arm agrees just as case 6 does; the surplus arms' metadata is discarded, since `Retire` removes the slot wholesale.
+   At an `SP` or `WFQ` parent each shared arm whose metadata differs additionally contributes a `ChangeMeta` step (in `p2`'s post-`Retire` frame) after all `Retire`s have fired; the surplus arms' metadata is discarded, since `Retire` removes the slot wholesale.
 
 8. **Anything else.**
    Emit `Replace` at the current level.
-   "Anything else" covers same-level shapes the planner does not recognize: constructor mismatch (e.g., `SP` vs. `RR`), child lists of equal length with more than one position disagreeing on its arm, child lists of unequal length where neither's children are a subset of the other's (so additions and removals would have to mix), and `SP`/`WFQ` cases where the arm lists embed cleanly but a shared arm's metadata has changed.
+   "Anything else" covers same-level shapes the planner does not recognize: constructor mismatch (e.g., `SP` vs. `RR`), `RR` child lists of equal length with more than one position disagreeing on its arm, and child lists of unequal length where neither's children are a subset of the other's (so additions and removals would have to mix at the same parent).
 
    The recursion does significant work here.
-   Cases 1-7 are tried at every level the recursion visits, and case 4 descends through any same-constructor agreeing prefix.
+   Cases 1-7 are tried at every level the recursion visits, and cases 4 and 5 descend into agreeing slots of their parents.
    By the time case 8 fires at level `k`, every shallower level has matched a tight case; the resulting `Replace` therefore lands at the _deepest slot the planner could isolate the difference to_, leaving every ancestor's other subtrees running undisturbed.
    The slot-level `Replace` is the §5.1 idiom with a non-empty path: it wraps only the slot's subtree, quiesces only that subtree, and rewires only the parent edge into it.
    The worst case is a root-level `Replace([], p2)` (§5.1), reached only when case 8 fires at the root with no recursive descent.
 
 ### 5.3 Demotion: when an inner result cannot bubble
 
-Case 4 above recurses into a differing child and prepends an index to every step.
+Cases 4 and 5 above each recurse into a slot's contents and prepend the slot's index to every step of the inner result.
 This is correct when the inner sequence describes an edit on the slot's _occupants_ in a way that survives retargeting.
 It fails for two inner shapes.
 
@@ -1283,7 +1283,7 @@ Case 4 fires at the root: lengths agree (both are 2-ary), one child differs (ind
 Recursing on `B` vs. `C(B)` falls into case 2: `B` embeds in `C(B)`, so the inner recursion returns `[(true, Graft(C(□)))]`.
 Bubbling this inner step by prepending index 1 would yield `[(true, Graft(C(□)))]` _at the outer slot_, which is not the edit the operator requested: `Graft`'s denotation acts on the whole running tree (per §3.4.8), not on the bubbled-up slot, so the prepended path would mis-describe the edit.
 
-The planner detects this shape (the inner result is a single `Graft` step, or it ends in `ChangeRoot` as `PruneDownTo`'s tail does) and _demotes_ to a slot-level `Replace` at the outer position.
+The planner detects this shape (the inner result is a single `Graft` step, or it ends in `ChangeRoot` as `PruneDownTo`'s tail does) and _demotes_ to a slot-level `Replace` at the outer position; when the demoting recognizer is case 5 and the slot's metadata is also changing, the demoted `Replace` carries the new metadata as its trailing `ChangeMeta` step.
 Demotion is a deliberate downgrade in confinement (we land at case 8 for that slot rather than the tight inner `δ` we hoped for), but it is the price of recognizing that `Graft` and `PruneDownTo` describe _whole-tree edits only_.
 
 A future planner could do better here.
@@ -1297,8 +1297,13 @@ Three deliberate non-features, each a candidate for future work.
 - _No cost model._
   The case analysis is shape-based, not cost-weighted.
   A cost-aware planner could prefer different decompositions (e.g., several small `Add`s vs. a single root-level `Replace`) based on per-flow drop and delay tolerances or per-PE budgets; we leave this to future work.
-- _No mixed-edit recognition._
-  Cases 5, 6, and 7 each handle several edits of the same kind at the same parent (multiple `ChangeMeta`s, multiple `Add`s, or multiple `Retire`s), but case 8 still fires when the kinds mix: an `Add` and a `Retire` at the same parent (which would re-read as a `Replace`), several slot-level `Replace`s at distinct positions within an equal-length child list, or different kinds of edits at different children of the same parent.
+- _No multi-slot recognition at `RR` parents._
+  Case 5 walks an `SP` or `WFQ` parent slot by slot, emitting an independent edit per diverging position, but case 4 at an `RR` parent still gives up to case 8 whenever more than one slot disagrees on its arm.
+  Generalizing case 4 in the same shape as case 5 would be a strict improvement; we have not yet done so.
+- _No alignment-aware recognition when the arm projection fails to embed._
+  Cases 6 and 7 require one child list to be a subset of the other.
+  When the two child lists overlap but neither is a subset (for instance, `RR(A, SP(B, C, D))` becoming `RR(A, SP(B, C), E)`, where slot 1 is structurally edited and slot 2 is a fresh arm), case 8 fires.
+  Distinguishing this from a wholesale outer `Replace` would need a flow-identity signal the planner does not currently track.
   A planner that emitted such compositions would be a strict improvement, and the §4.3 pol-level check would catch any unsound such composition, so the cost of trying is bounded by the check's overhead.
 - _No imperative-mode service._
   The planner serves declarative mode only.
