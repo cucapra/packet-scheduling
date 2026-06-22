@@ -269,11 +269,14 @@ and compare_metaed_children ~next:p2 pms1 pms2 =
   match List.compare_lengths ps1 ps2 with
   | 0 when ms1 = ms2 -> compare_children ~next:p2 ps1 ps2
   | 0 when ps1 = ps2 ->
-      begin match single_change ms1 ms2 with
-      | Some (i, new_meta) ->
-          [ (True, Delta.ChangeMeta { path = [ i ]; new_meta }) ]
-      | None -> give_up
-      end
+      (* Multi-meta-change: arms agree, one or more metas differ. Each
+         changed slot becomes its own [ChangeMeta]; order doesn't matter
+         since [ChangeMeta] doesn't shift siblings. *)
+      let metas_changed = changes ms1 ms2 in
+      List.map
+        (fun (i, new_meta) ->
+          (True, Delta.ChangeMeta { path = [ i ]; new_meta }))
+        metas_changed
   | 0 ->
       begin match single_change_lockstep ps1 ps2 ms1 ms2 with
       | Some (i, _, meta) ->

@@ -1,0 +1,8 @@
+classes A, B, C;
+
+// Compared to wfq_ABC = wfq[(A,2),(B,1),(C,3)], both A's weight (2->8) and
+// B's weight (1->5) have changed. Exercises the multi-meta-change path:
+// arms agree, two metas differ, two [ChangeMeta] steps emitted.
+policy = wfq[(A, 8), (B, 5), (C, 3)];
+
+return policy
