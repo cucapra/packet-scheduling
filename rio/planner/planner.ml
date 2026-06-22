@@ -48,7 +48,7 @@ let labels_overlap a b =
   let lb = arm_labels b in
   List.exists (fun x -> List.mem x lb) (arm_labels a)
 
-(* Greedy label-set alignment for [compare_children]'s length-differing
+(* Greedy label-set alignment for the comparators' length-differing
    branches: when [insertions] fails because a matched arm has morphed
    (lengths differ AND a shared arm changed structurally), line up [short]
    inside [long] by overlapping label sets instead of by structural
@@ -58,9 +58,11 @@ let labels_overlap a b =
    arms after [long] is exhausted, no alignment was found; the caller falls
    through to give-up. Returns [(matches, surplus)] where each match is
    [(long_idx, short_arm, long_arm)] in [long]'s frame and each surplus is
-   [(long_idx, long_arm)]. Greedy left-to-right; suffices for the cases
-   currently in the test suite, and the cost-model question of which
-   alignment to prefer when several are admissible is parked in
+   [(long_idx, long_arm)]. Both [compare_children] (RR) and
+   [compare_metaed_children] (SP/WFQ) use this fallback; the metaed callers
+   read the meta off [ms1]/[ms2] by position. Greedy left-to-right; suffices
+   for the cases currently in the test suite, and the cost-model question
+   of which alignment to prefer when several are admissible is parked in
    [paper/sketch.md] §5.4. *)
 let align_by_labels short long_ =
   let rec loop short long_ i =
@@ -389,9 +391,18 @@ and compare_metaed_children ~next:p2 pms1 pms2 =
          becomes an [Add] carrying that arm's meta; each [ps2] index whose
          arm came from [ps1] contributes a [ChangeMeta] when the metas
          differ. All [Add]s fire first, in ascending [ps2]-index order, so
-         each trailing [ChangeMeta]'s path lands in [ps2]'s frame. *)
+         each trailing [ChangeMeta]'s path lands in [ps2]'s frame.
+
+         When the strict subsequence fails ([insertions] returns [None]) but
+         the divergence is "extra pure-add arms plus one or more shared arms
+         that morphed structurally", fall back to label-set alignment (the
+         metaed analogue of [compare_children]'s fallback, paper many-arms.md
+         and sketch.md §5.4): pair arms by overlapping class labels, recurse
+         on each pair via [slot_arm_edit] carrying any meta change, and treat
+         unmatched [ps2] arms as pure [Add]s with their meta. The [i1] index
+         on the [ps1] side is the position in [matches] because the greedy
+         walk consumes [ps1] left-to-right. *)
       begin match insertions ps1 ps2 with
-      | None -> give_up
       | Some adds ->
           let add_indices = List.map fst adds in
           let add_steps =
@@ -418,13 +429,40 @@ and compare_metaed_children ~next:p2 pms1 pms2 =
               (List.init (List.length ps2) (fun j -> j))
           in
           add_steps @ change_meta_steps
+      | None -> (
+          match align_by_labels ps1 ps2 with
+          | None -> give_up
+          | Some (matches, adds) ->
+              let add_steps =
+                List.map
+                  (fun (j, arm) ->
+                    ( True,
+                      Delta.Add
+                        { path = [ j ]; arm; meta = Some (List.nth ms2 j) } ))
+                  adds
+              in
+              let match_steps =
+                List.concat
+                  (List.mapi
+                     (fun i1 (j, arm1, arm2) ->
+                       let m1 = List.nth ms1 i1 in
+                       let m2 = List.nth ms2 j in
+                       let meta = if m1 = m2 then None else Some m2 in
+                       slot_arm_edit j arm1 arm2 ?meta ())
+                     matches)
+              in
+              add_steps @ match_steps)
       end
   | 1 ->
       (* Symmetric to [-1]: surplus [ps1] arms retire (descending so
          lower-index paths stay stable); shared arms whose metas differ
-         take a [ChangeMeta] in [ps2]'s post-Retire frame. *)
+         take a [ChangeMeta] in [ps2]'s post-Retire frame.
+
+         Label-set fallback mirrors the [-1] case: pair arms by overlapping
+         labels and recurse via [slot_arm_edit]. Retires fire first
+         (descending [ps1]-frame indices), then matched-pair edits at the
+         [ps2]-frame index [ps1_idx - count_of_retires_below]. *)
       begin match insertions ps2 ps1 with
-      | None -> give_up
       | Some retires ->
           let retire_indices = List.map fst retires in
           let descending =
@@ -449,6 +487,35 @@ and compare_metaed_children ~next:p2 pms1 pms2 =
               (List.mapi (fun j i1 -> (j, i1)) ps1_matched)
           in
           retire_steps @ change_meta_steps
+      | None -> (
+          match align_by_labels ps2 ps1 with
+          | None -> give_up
+          | Some (matches, retires) ->
+              let retire_indices = List.map fst retires in
+              let descending =
+                List.sort (fun (a, _) (b, _) -> compare b a) retires
+              in
+              let retire_steps =
+                List.concat_map
+                  (fun (i, _) -> prepend_seq i (retire ()))
+                  descending
+              in
+              let match_steps =
+                List.concat
+                  (List.mapi
+                     (fun i2 (ps1_idx, ps2_arm, ps1_arm) ->
+                       let m1 = List.nth ms1 ps1_idx in
+                       let m2 = List.nth ms2 i2 in
+                       let meta = if m1 = m2 then None else Some m2 in
+                       let ps2_idx =
+                         ps1_idx
+                         - List.length
+                             (List.filter (fun k -> k < ps1_idx) retire_indices)
+                       in
+                       slot_arm_edit ps2_idx ps1_arm ps2_arm ?meta ())
+                     matches)
+              in
+              retire_steps @ match_steps)
       end
   | _ -> failwith "Can't get here"
 

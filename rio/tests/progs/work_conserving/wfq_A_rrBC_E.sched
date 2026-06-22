@@ -1,0 +1,12 @@
+classes A, B, C, E;
+
+// Used by the WFQ-side alignment-aware test pair: against [wfq_A_rrBCD]
+// this adds [E] at the outer WFQ level and the inner RR retires its [D]
+// arm. After [Pol.normalize] this is WFQ[(FIFO A, 1.0); (FIFO E, 3.0);
+// (RR[FIFO B; FIFO C], 2.0)] (WFQ sorts by arm content first: among the
+// FIFOs A < E alphabetically, and FIFO < RR). The reordering puts FIFO E
+// between A and the RR, so the label-set alignment emits a non-contiguous
+// Add at index 1 and a matched-pair edit on the RR at index 2.
+policy = wfq[(A, 1), (rr[B, C], 2), (E, 3)];
+
+return policy
