@@ -423,6 +423,48 @@ let aligned_multi =
       ];
   ]
 
+(* Bidirectional label-set alignment at a single parent: some [ps1] arms
+   retire (their labels appear nowhere in [ps2]) and some [ps2] arms add
+   (their labels appear nowhere in [ps1]), while one or more shared arms
+   anchor the alignment. Symmetric across the |-1| and |+1| length branches
+   and across RR vs. metaed (SP/WFQ) parents. The [matches = []] guard in
+   [align_by_labels_bidir] keeps the wholesale-divergence case
+   ([rr_AB -> rr_DEF]) on the give-up path so the intermediate parent never
+   empties out. (worklist item 16) *)
+let mixed_add_retire =
+  [
+    make_planner_test "RR retires one arm and adds two" "rr_AB" "rr_ACD"
+      (retire_seq [ 1 ]
+      @ [
+          ( Planner.True,
+            Delta.Add { path = [ 1 ]; arm = Pol.FIFO "C"; meta = None } );
+          ( Planner.True,
+            Delta.Add { path = [ 2 ]; arm = Pol.FIFO "D"; meta = None } );
+        ]);
+    make_planner_test "RR retires two arms and adds one" "rr_ACD" "rr_AB"
+      (retire_seq [ 2 ] @ retire_seq [ 1 ]
+      @ [
+          ( Planner.True,
+            Delta.Add { path = [ 1 ]; arm = Pol.FIFO "B"; meta = None } );
+        ]);
+    make_planner_test "SP retires one arm and adds two with ranks" "strict_AB"
+      "strict_ACD"
+      (retire_seq [ 1 ]
+      @ [
+          ( Planner.True,
+            Delta.Add { path = [ 1 ]; arm = Pol.FIFO "C"; meta = Some 2.0 } );
+          ( Planner.True,
+            Delta.Add { path = [ 2 ]; arm = Pol.FIFO "D"; meta = Some 3.0 } );
+        ]);
+    make_planner_test "SP retires two arms and adds one with rank" "strict_ACD"
+      "strict_AB"
+      (retire_seq [ 2 ] @ retire_seq [ 1 ]
+      @ [
+          ( Planner.True,
+            Delta.Add { path = [ 1 ]; arm = Pol.FIFO "B"; meta = Some 2.0 } );
+        ]);
+  ]
+
 let nested_giveup_demotion =
   [
     make_planner_test "nested Graft demotes to give-up" "strict_AB"
@@ -476,7 +518,7 @@ let suite =
        @ multi_arms_removed @ multi_arms_added_metaed
        @ multi_arms_removed_metaed @ metachanged @ one_arm_replaced
        @ one_arm_replaced_wfq @ multi_arms_replaced @ multi_arms_replaced_metaed
-       @ add_with_shared_meta_change @ aligned_multi @ verydiff_combos @ graft
-       @ change_root @ nested_giveup_demotion
+       @ add_with_shared_meta_change @ aligned_multi @ mixed_add_retire
+       @ verydiff_combos @ graft @ change_root @ nested_giveup_demotion
 
 let () = run_test_tt_main suite

@@ -48,42 +48,83 @@ let labels_overlap a b =
   let lb = arm_labels b in
   List.exists (fun x -> List.mem x lb) (arm_labels a)
 
-(* Greedy label-set alignment for the comparators' length-differing
-   branches: when [insertions] fails because a matched arm has morphed
-   (lengths differ AND a shared arm changed structurally), line up [short]
-   inside [long] by overlapping label sets instead of by structural
-   equality. Walks both lists once: pairs the heads if their label sets
-   overlap, otherwise consumes the long head as a pure surplus (an [Add] in
-   the [-1] branch, a [Retire] in the [1] branch). If [short] still has
-   arms after [long] is exhausted, no alignment was found; the caller falls
-   through to give-up. Returns [(matches, surplus)] where each match is
-   [(long_idx, short_arm, long_arm)] in [long]'s frame and each surplus is
-   [(long_idx, long_arm)]. Both [compare_children] (RR) and
-   [compare_metaed_children] (SP/WFQ) use this fallback; the metaed callers
-   read the meta off [ms1]/[ms2] by position. Greedy left-to-right; suffices
-   for the cases currently in the test suite, and the cost-model question
-   of which alignment to prefer when several are admissible is parked in
-   [paper/sketch.md] §5.4. *)
-let align_by_labels short long_ =
-  let rec loop short long_ i =
-    match (short, long_) with
-    | [], [] -> Some ([], [])
-    | [], r :: rt ->
-        Option.map
-          (fun (matches, surplus) -> (matches, (i, r) :: surplus))
-          (loop [] rt (i + 1))
-    | _ :: _, [] -> None
-    | l :: lt, r :: rt ->
-        if labels_overlap l r then
-          Option.map
-            (fun (matches, surplus) -> ((i, l, r) :: matches, surplus))
-            (loop lt rt (i + 1))
-        else
-          Option.map
-            (fun (matches, surplus) -> (matches, (i, r) :: surplus))
-            (loop short rt (i + 1))
+(* Bidirectional label-set alignment, used by the comparators' fallback
+   branches when [insertions]'s strict subsequence check has failed. Pairs
+   arms in [ps1] and [ps2] by class-label overlap (paper sketch.md sec3.2
+   leaf-partition validity guarantees at most one partner per arm).
+   Unmatched arms on either side flow through: [ps1_only] becomes retires,
+   [ps2_only] becomes adds. The same call therefore handles pure-add,
+   pure-retire, and the mixed case where a single parent simultaneously
+   retires some arms and adds others (e.g. [RR(A, B) -> RR(A, C, D)]:
+   matches A-A, retires B, adds C and D). Returns matches as
+   [(i1, j2, arm1, arm2)] in their original frames; the caller emits
+   retires (descending [ps1] index) before adds (ascending [ps2] index) so
+   that path frames stay coherent (paper sketch.md sec5.2 case 8).
+
+   Returns [None] (caller falls back to slot-level [Replace]) if any arm
+   overlaps more than one on the other side, or if the matching reorders
+   slots non-monotonically. [Pol.normalize] sorts siblings into a canonical
+   order, so post-normalize inputs always meet the monotonicity check.
+   (worklist items 16, 18) *)
+let align_by_labels_bidir ps1 ps2 =
+  let partner_in_ps2 a1 =
+    let hits =
+      List.mapi (fun j a2 -> (j, a2)) ps2
+      |> List.filter (fun (_, a2) -> labels_overlap a1 a2)
+    in
+    match hits with
+    | [] -> `None
+    | [ x ] -> `One x
+    | _ -> `Many
   in
-  loop short long_ 0
+  let rec walk_ps1 i = function
+    | [] -> Some []
+    | a1 :: t -> (
+        match partner_in_ps2 a1 with
+        | `Many -> None
+        | `None -> Option.map (fun r -> `Only (i, a1) :: r) (walk_ps1 (i + 1) t)
+        | `One (j, a2) ->
+            Option.map
+              (fun r -> `Match (i, j, a1, a2) :: r)
+              (walk_ps1 (i + 1) t))
+  in
+  match walk_ps1 0 ps1 with
+  | None -> None
+  | Some entries ->
+      let matches =
+        List.filter_map
+          (function
+            | `Match m -> Some m
+            | _ -> None)
+          entries
+      in
+      let ps1_only =
+        List.filter_map
+          (function
+            | `Only o -> Some o
+            | _ -> None)
+          entries
+      in
+      let matched_j = List.map (fun (_, j, _, _) -> j) matches in
+      let strictly_increasing =
+        matched_j = List.sort compare matched_j
+        && List.length matched_j
+           = List.length (List.sort_uniq compare matched_j)
+      in
+      if not strictly_increasing then None
+      else if matches = [] then
+        (* No shared arms: emitting retires for all of [ps1] and then adds
+           for all of [ps2] would transit through an empty (invalid)
+           parent. Bail to give-up; the caller's slot-level [Replace]
+           idiom builds [ps2]'s subtree alongside [ps1]'s and swaps
+           atomically. *)
+        None
+      else
+        let ps2_only =
+          List.mapi (fun j a -> (j, a)) ps2
+          |> List.filter (fun (j, _) -> not (List.mem j matched_j))
+        in
+        Some (matches, ps1_only, ps2_only)
 
 (* -------- sequence helpers ---------------------------------- *)
 
@@ -200,6 +241,60 @@ let is_replace_root = function
     ] -> true
   | _ -> false
 
+(* Shared emit for an [align_by_labels_bidir] result. Retires fire first
+   (descending [ps1]-frame index so lower-indexed slots don't shift while
+   higher retires are still pending), then adds (ascending [ps2]-frame
+   index; each add lands in the post-retire intermediate frame, which by
+   ascending construction equals the final ps2 frame as the adds rebuild
+   the structure), then per-match arm edits at their [ps2]-frame indices.
+   [slot_arm_edit] is the caller's per-slot edit closure (it recurses into
+   [analyze]); the unmetaed variant skips equal-arm matches outright, the
+   metaed variant emits a trailing [ChangeMeta] when the meta changed. *)
+let emit_bidir_unmetaed ~slot_arm_edit matches ps1_only ps2_only =
+  let descending = List.sort (fun (a, _) (b, _) -> compare b a) ps1_only in
+  let retire_steps =
+    List.concat_map (fun (i, _) -> prepend_seq i (retire ())) descending
+  in
+  let add_steps =
+    List.map
+      (fun (j, arm) -> (True, Delta.Add { path = [ j ]; arm; meta = None }))
+      ps2_only
+  in
+  let match_steps =
+    List.concat_map
+      (fun (_, j, arm1, arm2) ->
+        if arm1 = arm2 then [] else slot_arm_edit j arm1 arm2)
+      matches
+  in
+  retire_steps @ add_steps @ match_steps
+
+let emit_bidir_metaed ~slot_arm_edit ~ms1 ~ms2 matches ps1_only ps2_only =
+  let descending = List.sort (fun (a, _) (b, _) -> compare b a) ps1_only in
+  let retire_steps =
+    List.concat_map (fun (i, _) -> prepend_seq i (retire ())) descending
+  in
+  let add_steps =
+    List.map
+      (fun (j, arm) ->
+        (True, Delta.Add { path = [ j ]; arm; meta = Some (List.nth ms2 j) }))
+      ps2_only
+  in
+  let match_steps =
+    List.concat_map
+      (fun (i1, j2, arm1, arm2) ->
+        let m1 = List.nth ms1 i1 in
+        let m2 = List.nth ms2 j2 in
+        let meta = if m1 = m2 then None else Some m2 in
+        if arm1 = arm2 then
+          match meta with
+          | None -> []
+          | Some new_meta ->
+              [ (True, Delta.ChangeMeta { path = [ j2 ]; new_meta }) ]
+        else slot_arm_edit j2 arm1 arm2 ?meta ())
+      matches
+  in
+  retire_steps @ add_steps @ match_steps
+
 (* -------- sub-policy / sniffer ------------------------------ *)
 
 let rec is_sub_policy p1 p2 =
@@ -253,12 +348,10 @@ let rec compare_children ~next:p2 ps1 ps2 =
          indices in that frame).
 
          When the strict subsequence fails ([insertions] returns [None]) but
-         the divergence is "extra pure-add arms plus one or more shared arms
-         that morphed structurally", fall back to label-set alignment: pair
-         arms by overlapping class labels, recurse on each pair, and treat
-         unmatched [ps2] arms as pure adds (paper sketch.md sec5.2 case 8). The matched-
-         pair edits fire after the [Add]s have grown the structure, so their
-         slot indices are in [ps2]'s frame. *)
+         the divergence is "shared arms morphed structurally and/or some
+         [ps1] arm has no [ps2] partner", fall back to bidirectional
+         label-set alignment. The bidir emit may produce retires too (paper
+         sketch.md sec5.2 case 8; worklist item 16). *)
       begin match insertions ps1 ps2 with
       | Some adds ->
           List.map
@@ -266,22 +359,10 @@ let rec compare_children ~next:p2 ps1 ps2 =
               (True, Delta.Add { path = [ i ]; arm; meta = None }))
             adds
       | None -> (
-          match align_by_labels ps1 ps2 with
+          match align_by_labels_bidir ps1 ps2 with
           | None -> give_up
-          | Some (matches, adds) ->
-              let add_steps =
-                List.map
-                  (fun (i, arm) ->
-                    (True, Delta.Add { path = [ i ]; arm; meta = None }))
-                  adds
-              in
-              let match_steps =
-                List.concat_map
-                  (fun (i, arm1, arm2) ->
-                    if arm1 = arm2 then [] else slot_arm_edit i arm1 arm2)
-                  matches
-              in
-              add_steps @ match_steps)
+          | Some (matches, ps1_only, ps2_only) ->
+              emit_bidir_unmetaed ~slot_arm_edit matches ps1_only ps2_only)
       end
   | 1 ->
       (* Multi-arm retire: symmetric to the [-1] branch. Descending index
@@ -289,10 +370,10 @@ let rec compare_children ~next:p2 ps1 ps2 =
          still waiting to fire (mirrors [prune_down_to]'s within-level
          discipline).
 
-         Label-set fallback mirrors the [-1] case: when the strict
-         subsequence fails, pair arms by overlapping labels and recurse on
-         each pair. Retires fire first (descending [ps1]-frame indices),
-         then matched-pair edits in [ps2]'s post-retire frame. *)
+         Bidirectional fallback mirrors the [-1] case: when the strict
+         subsequence fails, [align_by_labels_bidir] can also discover
+         [ps2_only] arms (adds intermixed with the retires; worklist
+         item 16). *)
       begin match insertions ps2 ps1 with
       | Some retires ->
           let descending =
@@ -300,32 +381,10 @@ let rec compare_children ~next:p2 ps1 ps2 =
           in
           List.concat_map (fun (i, _) -> prepend_seq i (retire ())) descending
       | None -> (
-          match align_by_labels ps2 ps1 with
+          match align_by_labels_bidir ps1 ps2 with
           | None -> give_up
-          | Some (matches, retires) ->
-              let retire_indices = List.map fst retires in
-              let descending =
-                List.sort (fun (a, _) (b, _) -> compare b a) retires
-              in
-              let retire_steps =
-                List.concat_map
-                  (fun (i, _) -> prepend_seq i (retire ()))
-                  descending
-              in
-              let match_steps =
-                List.concat_map
-                  (fun (ps1_idx, ps2_arm, ps1_arm) ->
-                    if ps1_arm = ps2_arm then []
-                    else
-                      let ps2_idx =
-                        ps1_idx
-                        - List.length
-                            (List.filter (fun k -> k < ps1_idx) retire_indices)
-                      in
-                      slot_arm_edit ps2_idx ps1_arm ps2_arm)
-                  matches
-              in
-              retire_steps @ match_steps)
+          | Some (matches, ps1_only, ps2_only) ->
+              emit_bidir_unmetaed ~slot_arm_edit matches ps1_only ps2_only)
       end
   | _ -> failwith "Can't get here"
 
@@ -415,15 +474,10 @@ and compare_metaed_children ~next:p2 pms1 pms2 =
          differ. All [Add]s fire first, in ascending [ps2]-index order, so
          each trailing [ChangeMeta]'s path lands in [ps2]'s frame.
 
-         When the strict subsequence fails ([insertions] returns [None]) but
-         the divergence is "extra pure-add arms plus one or more shared arms
-         that morphed structurally", fall back to label-set alignment (the
-         metaed analogue of [compare_children]'s fallback, paper sketch.md
-         sec5.2 case 8): pair arms by overlapping class labels, recurse
-         on each pair via [slot_arm_edit] carrying any meta change, and treat
-         unmatched [ps2] arms as pure [Add]s with their meta. The [i1] index
-         on the [ps1] side is the position in [matches] because the greedy
-         walk consumes [ps1] left-to-right. *)
+         When the strict subsequence fails ([insertions] returns [None]),
+         fall back to bidirectional label-set alignment. As in
+         [compare_children], the bidir emit may also produce retires for
+         [ps1_only] arms (worklist item 16). *)
       begin match insertions ps1 ps2 with
       | Some adds ->
           let add_indices = List.map fst adds in
@@ -452,38 +506,21 @@ and compare_metaed_children ~next:p2 pms1 pms2 =
           in
           add_steps @ change_meta_steps
       | None -> (
-          match align_by_labels ps1 ps2 with
+          match align_by_labels_bidir ps1 ps2 with
           | None -> give_up
-          | Some (matches, adds) ->
-              let add_steps =
-                List.map
-                  (fun (j, arm) ->
-                    ( True,
-                      Delta.Add
-                        { path = [ j ]; arm; meta = Some (List.nth ms2 j) } ))
-                  adds
-              in
-              let match_steps =
-                List.concat
-                  (List.mapi
-                     (fun i1 (j, arm1, arm2) ->
-                       let m1 = List.nth ms1 i1 in
-                       let m2 = List.nth ms2 j in
-                       let meta = if m1 = m2 then None else Some m2 in
-                       slot_arm_edit j arm1 arm2 ?meta ())
-                     matches)
-              in
-              add_steps @ match_steps)
+          | Some (matches, ps1_only, ps2_only) ->
+              emit_bidir_metaed ~slot_arm_edit ~ms1 ~ms2 matches ps1_only
+                ps2_only)
       end
   | 1 ->
       (* Symmetric to [-1]: surplus [ps1] arms retire (descending so
          lower-index paths stay stable); shared arms whose metas differ
          take a [ChangeMeta] in [ps2]'s post-Retire frame.
 
-         Label-set fallback mirrors the [-1] case: pair arms by overlapping
-         labels and recurse via [slot_arm_edit]. Retires fire first
-         (descending [ps1]-frame indices), then matched-pair edits at the
-         [ps2]-frame index [ps1_idx - count_of_retires_below]. *)
+         Bidirectional fallback mirrors the [-1] case: when the strict
+         subsequence fails, [align_by_labels_bidir] can also discover
+         [ps2_only] arms (adds intermixed with the retires; worklist
+         item 16). *)
       begin match insertions ps2 ps1 with
       | Some retires ->
           let retire_indices = List.map fst retires in
@@ -510,34 +547,11 @@ and compare_metaed_children ~next:p2 pms1 pms2 =
           in
           retire_steps @ change_meta_steps
       | None -> (
-          match align_by_labels ps2 ps1 with
+          match align_by_labels_bidir ps1 ps2 with
           | None -> give_up
-          | Some (matches, retires) ->
-              let retire_indices = List.map fst retires in
-              let descending =
-                List.sort (fun (a, _) (b, _) -> compare b a) retires
-              in
-              let retire_steps =
-                List.concat_map
-                  (fun (i, _) -> prepend_seq i (retire ()))
-                  descending
-              in
-              let match_steps =
-                List.concat
-                  (List.mapi
-                     (fun i2 (ps1_idx, ps2_arm, ps1_arm) ->
-                       let m1 = List.nth ms1 ps1_idx in
-                       let m2 = List.nth ms2 i2 in
-                       let meta = if m1 = m2 then None else Some m2 in
-                       let ps2_idx =
-                         ps1_idx
-                         - List.length
-                             (List.filter (fun k -> k < ps1_idx) retire_indices)
-                       in
-                       slot_arm_edit ps2_idx ps1_arm ps2_arm ?meta ())
-                     matches)
-              in
-              retire_steps @ match_steps)
+          | Some (matches, ps1_only, ps2_only) ->
+              emit_bidir_metaed ~slot_arm_edit ~ms1 ~ms2 matches ps1_only
+                ps2_only)
       end
   | _ -> failwith "Can't get here"
 
