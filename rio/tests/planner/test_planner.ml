@@ -134,6 +134,55 @@ let armsremoved =
       (retire_seq [ 1; 3 ]);
   ]
 
+(* Multi-arm pure additions (no metas): every surplus arm in [next] becomes
+   its own [Add] step, ascending. The arms of [prev] must appear in-order as
+   a subsequence of [next]; surplus arms may cluster or skip apart. *)
+let multi_arms_added =
+  [
+    make_planner_test "RR with two arms added at end" "rr_AB" "rr_ABCD"
+      [
+        ( Planner.True,
+          Delta.Add { path = [ 2 ]; arm = Pol.FIFO "C"; meta = None } );
+        ( Planner.True,
+          Delta.Add { path = [ 3 ]; arm = Pol.FIFO "D"; meta = None } );
+      ];
+    make_planner_test "RR with two arms added non-consecutively" "rr_AC"
+      "rr_ABCD"
+      [
+        ( Planner.True,
+          Delta.Add { path = [ 1 ]; arm = Pol.FIFO "B"; meta = None } );
+        ( Planner.True,
+          Delta.Add { path = [ 3 ]; arm = Pol.FIFO "D"; meta = None } );
+      ];
+    (* rr_DBA_SP_CE normalizes to RR[A; B; D; SP[(C,1);(E,2)]]; against
+       rr_AB = RR[A; B] this is two surplus arms at indices 2 and 3. *)
+    make_planner_test "RR with two arms added whilst reordering" "rr_AB"
+      "rr_DBA_SP_CE"
+      [
+        ( Planner.True,
+          Delta.Add { path = [ 2 ]; arm = Pol.FIFO "D"; meta = None } );
+        ( Planner.True,
+          Delta.Add
+            {
+              path = [ 3 ];
+              arm = Pol.SP ([ (Pol.FIFO "C", 1.0); (Pol.FIFO "E", 2.0) ], false);
+              meta = None;
+            } );
+      ];
+  ]
+
+(* Symmetric to [multi_arms_added]: each surplus arm in [prev] becomes its
+   own retire, fired in descending index order so higher-index drains don't
+   shift the lower paths still waiting to fire. *)
+let multi_arms_removed =
+  [
+    make_planner_test "RR with two arms removed at end" "rr_ABCD" "rr_AB"
+      (retire_seq [ 3 ] @ retire_seq [ 2 ]);
+    make_planner_test "RR with two arms removed non-consecutively" "rr_ABCD"
+      "rr_AC"
+      (retire_seq [ 3 ] @ retire_seq [ 1 ]);
+  ]
+
 let metachanged =
   [
     make_planner_test "one WFQ weight changed" "wfq_ABC" "wfq_ABC_one_weight"
@@ -208,8 +257,6 @@ let verydiff_combos =
   [
     make_giveup_test "WFQ slot with deep diff and weight change" "wfq_complex"
       "wfq_complex_deep_and_weight" [];
-    make_giveup_test "RR with two arms added whilst reordering" "rr_AB"
-      "rr_DBA_SP_CE" [];
     make_giveup_test "strict arm added whilst reordering arms" "strict_BA"
       "strict_ABC" [];
     make_giveup_test "different WFQ classes" "wfq_ABC" "wfq_DEF" [];
@@ -224,8 +271,9 @@ let verydiff_combos =
 
 let suite =
   "planner tests"
-  >::: same @ one_arm_added @ one_arm_added_wfq @ armsremoved @ metachanged
-       @ one_arm_replaced @ one_arm_replaced_wfq @ verydiff_combos @ graft
-       @ change_root @ nested_giveup_demotion
+  >::: same @ one_arm_added @ one_arm_added_wfq @ armsremoved @ multi_arms_added
+       @ multi_arms_removed @ metachanged @ one_arm_replaced
+       @ one_arm_replaced_wfq @ verydiff_combos @ graft @ change_root
+       @ nested_giveup_demotion
 
 let () = run_test_tt_main suite

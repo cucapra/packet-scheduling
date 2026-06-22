@@ -230,14 +230,30 @@ let rec compare_children ~next:p2 ps1 ps2 =
       | None -> if ps1 = ps2 then [] else give_up
       end
   | -1 ->
-      begin match single_insertion ps1 ps2 with
-      | Some (i, arm) ->
-          [ (True, Delta.Add { path = [ i ]; arm; meta = None }) ]
+      (* Multi-arm add: every surplus entry in [ps2] is a pure addition (the
+         arms of [ps1] appear in-order as a subsequence). One [Add] per extra
+         in ascending index order; each subsequent path is into the structure
+         as the earlier [Add]s grew it (and [insertions] already returns
+         indices in that frame). *)
+      begin match insertions ps1 ps2 with
+      | Some adds ->
+          List.map
+            (fun (i, arm) ->
+              (True, Delta.Add { path = [ i ]; arm; meta = None }))
+            adds
       | None -> give_up
       end
   | 1 ->
-      begin match single_insertion ps2 ps1 with
-      | Some (i, _arm) -> prepend_seq i (retire ())
+      (* Multi-arm retire: symmetric to the [-1] branch. Descending index
+         order so retiring a higher slot doesn't shift the lower-index paths
+         still waiting to fire (mirrors [prune_down_to]'s within-level
+         discipline). *)
+      begin match insertions ps2 ps1 with
+      | Some retires ->
+          let descending =
+            List.sort (fun (a, _) (b, _) -> compare b a) retires
+          in
+          List.concat_map (fun (i, _) -> prepend_seq i (retire ())) descending
       | None -> give_up
       end
   | _ -> failwith "Can't get here"
