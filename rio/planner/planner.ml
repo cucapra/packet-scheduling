@@ -371,21 +371,43 @@ and compare_metaed_children ~next:p2 pms1 pms2 =
   in
   match List.compare_lengths ps1 ps2 with
   | 0 ->
-      (* Per-slot walk: each index whose arm or meta differs contributes its
-         own independent edit. *)
-      let triples =
-        List.combine (List.combine ps1 ms1) (List.combine ps2 ms2)
-      in
-      List.concat
-        (List.mapi
-           (fun i ((arm1, m1), (arm2, m2)) ->
-             match (arm1 <> arm2, m1 <> m2) with
-             | false, false -> []
-             | false, true ->
-                 [ (True, Delta.ChangeMeta { path = [ i ]; new_meta = m2 }) ]
-             | true, false -> slot_arm_edit i arm1 arm2 ()
-             | true, true -> slot_arm_edit i arm1 arm2 ~meta:m2 ())
-           triples)
+      (* Pre-pass: if [ps1] and [ps2] hold the same arm contents in
+         different positions, the difference is purely a meta shuffle that
+         [Pol.normalize]'s rank sort exposed (e.g.
+         [SP((A,1),(B,2)) -> SP((B,1),(A,2))]). Emit one [ChangeMeta] per
+         slot whose meta needs to move, rather than per-slot [Replace]s
+         between unrelated arms. The new meta for [ps1]'s slot [i] is
+         [ps2]'s meta at whichever slot hosts the same arm; leaf-partition
+         validity (sec3.2) guarantees a unique match. After the sequence
+         fires, [Pol.normalize] re-sorts the rebalanced policy into [ps2]'s
+         shape. (worklist item 17) *)
+      let arms_only = List.sort compare in
+      if ps1 <> ps2 && arms_only ps1 = arms_only ps2 then
+        let indexed_ps2 = List.mapi (fun j a -> (j, a)) ps2 in
+        List.concat
+          (List.mapi
+             (fun i arm1 ->
+               let j, _ = List.find (fun (_, a) -> a = arm1) indexed_ps2 in
+               let new_meta = List.nth ms2 j in
+               if List.nth ms1 i = new_meta then []
+               else [ (True, Delta.ChangeMeta { path = [ i ]; new_meta }) ])
+             ps1)
+      else
+        (* Per-slot walk: each index whose arm or meta differs contributes
+           its own independent edit. *)
+        let triples =
+          List.combine (List.combine ps1 ms1) (List.combine ps2 ms2)
+        in
+        List.concat
+          (List.mapi
+             (fun i ((arm1, m1), (arm2, m2)) ->
+               match (arm1 <> arm2, m1 <> m2) with
+               | false, false -> []
+               | false, true ->
+                   [ (True, Delta.ChangeMeta { path = [ i ]; new_meta = m2 }) ]
+               | true, false -> slot_arm_edit i arm1 arm2 ()
+               | true, true -> slot_arm_edit i arm1 arm2 ~meta:m2 ())
+             triples)
   | -1 ->
       (* [ps1] must embed in [ps2] as a subsequence. Each surplus [ps2] arm
          becomes an [Add] carrying that arm's meta; each [ps2] index whose

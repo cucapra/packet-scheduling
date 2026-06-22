@@ -292,16 +292,28 @@ let multi_arms_replaced_metaed =
       @ replace_seq ~meta:2.0 [ 1 ] (Pol.FIFO "E")
       @ replace_seq [ 2 ] (Pol.FIFO "F"));
     (* SP rank swap: strict_AB = (A,1),(B,2); strict_BA = (B,1),(A,2).
-       After [Pol.normalize]'s rank sort the two arms appear in swapped
-       slots with the original ranks unchanged. *)
+       After [Pol.normalize]'s rank sort the two arms sit in the same slots
+       carrying the original ranks; the difference is that A's new rank is
+       2 and B's new rank is 1. [compare_metaed_children]'s permutation
+       pre-pass detects that the arm contents are a permutation of each
+       other and emits one [ChangeMeta] per slot. (worklist item 17) *)
     make_planner_test "Strict with arms reordered" "strict_AB" "strict_BA"
-      (replace_seq [ 0 ] (Pol.FIFO "B") @ replace_seq [ 1 ] (Pol.FIFO "A"));
-    (* complex_tree's outer slot 0 differs (strict[A,B,C] vs strict[C,B,A])
-       and the inner recursion itself returns a multi-slot Replace; the
-       outer edit bubbles that inner sequence via [prepend_seq 0]. *)
+      [
+        (Planner.True, Delta.ChangeMeta { path = [ 0 ]; new_meta = 2.0 });
+        (Planner.True, Delta.ChangeMeta { path = [ 1 ]; new_meta = 1.0 });
+      ];
+    (* complex_tree's outer slot 0 has an inner SP that's an arm permutation
+       (strict[A,B,C] vs strict[C,B,A], same ranks [1;2;3]). Permutation
+       pre-pass at the inner level emits ChangeMetas: slot 0 (arm A) takes
+       A's new rank 3; slot 1 (arm B) is a fixed point and skips; slot 2
+       (arm C) takes C's new rank 1. The inner sequence bubbles via
+       [prepend_seq 0]. *)
     make_planner_test "complex tree with an SP reordering deep down"
       "complex_tree" "complex_tree_swap_sp_arms"
-      (replace_seq [ 0; 0 ] (Pol.FIFO "C") @ replace_seq [ 0; 2 ] (Pol.FIFO "A"));
+      [
+        (Planner.True, Delta.ChangeMeta { path = [ 0; 0 ]; new_meta = 3.0 });
+        (Planner.True, Delta.ChangeMeta { path = [ 0; 2 ]; new_meta = 1.0 });
+      ];
     (* wfq_complex's slot 1 has both a deeper arm change (inner RR replaces
        a leaf) and a weight change. The inner sequence is itself a bubbled
        Replace, so the slot's edit becomes (bubbled inner) ++ ChangeMeta. *)
