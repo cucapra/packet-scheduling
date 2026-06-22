@@ -329,6 +329,43 @@ let add_with_shared_meta_change =
       ];
   ]
 
+(* Length-changing RR parent where one of the shared arms is itself morphed
+   structurally rather than equal. When [insertions] fails because the
+   matched arms aren't strictly equal, the planner falls back to label-set
+   alignment: arms whose class-label sets overlap are paired (and recursed
+   on); arms whose labels appear nowhere on the other side are treated as
+   pure [Add]s (or [Retire]s, symmetrically). Under the "repeated labels =
+   same flow" assumption (paper many-arms.md), the alignment in these
+   examples is unambiguous. *)
+let aligned_multi =
+  [
+    (* rr_A_strictBCD normalizes to RR[FIFO A, SP[B,C,D]]; rr_A_strictBC_E
+       to RR[FIFO A, FIFO E, SP[B,C]]. [insertions] fails because SP[B,C,D]
+       and SP[B,C] aren't equal. Label-set alignment pairs the SPs (via
+       {B,C} overlap) and treats E as a pure Add at ps2 index 1. After the
+       Add fires, the SP slot lives at ps2 index 2; the recursive analyze
+       there is a [Retire] of D inside the SP. *)
+    make_planner_test "RR adds a sibling while an inner SP retires"
+      "rr_A_strictBCD" "rr_A_strictBC_E"
+      [
+        ( Planner.True,
+          Delta.Add { path = [ 1 ]; arm = Pol.FIFO "E"; meta = None } );
+        (Planner.True, Delta.Quiesce [ 2; 2 ]);
+        (Planner.Empty [ 2; 2 ], Delta.Remove [ 2; 2 ]);
+      ];
+    (* Reverse direction: ps1 longer. [E] is a pure retire at ps1 index 1;
+       the SP slot at ps1 index 2 lands at ps2 index 1 after the retire, and
+       the inner analyze is an [Add] of D inside the SP with weight 3. *)
+    make_planner_test "RR retires a sibling while an inner SP adds"
+      "rr_A_strictBC_E" "rr_A_strictBCD"
+      [
+        (Planner.True, Delta.Quiesce [ 1 ]);
+        (Planner.Empty [ 1 ], Delta.Remove [ 1 ]);
+        ( Planner.True,
+          Delta.Add { path = [ 1; 2 ]; arm = Pol.FIFO "D"; meta = Some 3.0 } );
+      ];
+  ]
+
 let nested_giveup_demotion =
   [
     make_planner_test "nested Graft demotes to give-up" "strict_AB"
@@ -382,7 +419,7 @@ let suite =
        @ multi_arms_removed @ multi_arms_added_metaed
        @ multi_arms_removed_metaed @ metachanged @ one_arm_replaced
        @ one_arm_replaced_wfq @ multi_arms_replaced @ multi_arms_replaced_metaed
-       @ add_with_shared_meta_change @ verydiff_combos @ graft @ change_root
-       @ nested_giveup_demotion
+       @ add_with_shared_meta_change @ aligned_multi @ verydiff_combos @ graft
+       @ change_root @ nested_giveup_demotion
 
 let () = run_test_tt_main suite

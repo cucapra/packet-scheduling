@@ -33,6 +33,56 @@ let insertions prev next =
   in
   loop 0 prev next []
 
+(* The set of class labels reachable from a policy: each [FIFO] leaf
+   contributes its class; SP/WFQ/RR fold up their children's labels. A
+   well-formed policy keeps these distinct across arms; the planner's
+   [compare_children] fallback below treats label overlap between two arms
+   as evidence that they denote the same flow that morphed structurally
+   (paper many-arms.md). *)
+let rec arm_labels = function
+  | FIFO c -> [ c ]
+  | SP (prs, _) | WFQ prs -> List.concat_map (fun (p, _) -> arm_labels p) prs
+  | RR ps -> List.concat_map arm_labels ps
+
+let labels_overlap a b =
+  let lb = arm_labels b in
+  List.exists (fun x -> List.mem x lb) (arm_labels a)
+
+(* Greedy label-set alignment for [compare_children]'s length-differing
+   branches: when [insertions] fails because a matched arm has morphed
+   (lengths differ AND a shared arm changed structurally), line up [short]
+   inside [long] by overlapping label sets instead of by structural
+   equality. Walks both lists once: pairs the heads if their label sets
+   overlap, otherwise consumes the long head as a pure surplus (an [Add] in
+   the [-1] branch, a [Retire] in the [1] branch). If [short] still has
+   arms after [long] is exhausted, no alignment was found; the caller falls
+   through to give-up. Returns [(matches, surplus)] where each match is
+   [(long_idx, short_arm, long_arm)] in [long]'s frame and each surplus is
+   [(long_idx, long_arm)]. Greedy left-to-right; suffices for the cases
+   currently in the test suite, and the cost-model question of which
+   alignment to prefer when several are admissible is parked in
+   [paper/sketch.md] §5.4. *)
+let align_by_labels short long_ =
+  let rec loop short long_ i =
+    match (short, long_) with
+    | [], [] -> Some ([], [])
+    | [], r :: rt ->
+        Option.map
+          (fun (matches, surplus) -> (matches, (i, r) :: surplus))
+          (loop [] rt (i + 1))
+    | _ :: _, [] -> None
+    | l :: lt, r :: rt ->
+        if labels_overlap l r then
+          Option.map
+            (fun (matches, surplus) -> ((i, l, r) :: matches, surplus))
+            (loop lt rt (i + 1))
+        else
+          Option.map
+            (fun (matches, surplus) -> (matches, (i, r) :: surplus))
+            (loop short rt (i + 1))
+  in
+  loop short long_ 0
+
 (* -------- sequence helpers ---------------------------------- *)
 
 let prepend_guard i = function
@@ -198,27 +248,82 @@ let rec compare_children ~next:p2 ps1 ps2 =
          arms of [ps1] appear in-order as a subsequence). One [Add] per extra
          in ascending index order; each subsequent path is into the structure
          as the earlier [Add]s grew it (and [insertions] already returns
-         indices in that frame). *)
+         indices in that frame).
+
+         When the strict subsequence fails ([insertions] returns [None]) but
+         the divergence is "extra pure-add arms plus one or more shared arms
+         that morphed structurally", fall back to label-set alignment: pair
+         arms by overlapping class labels, recurse on each pair, and treat
+         unmatched [ps2] arms as pure adds (paper many-arms.md). The matched-
+         pair edits fire after the [Add]s have grown the structure, so their
+         slot indices are in [ps2]'s frame. *)
       begin match insertions ps1 ps2 with
       | Some adds ->
           List.map
             (fun (i, arm) ->
               (True, Delta.Add { path = [ i ]; arm; meta = None }))
             adds
-      | None -> give_up
+      | None -> (
+          match align_by_labels ps1 ps2 with
+          | None -> give_up
+          | Some (matches, adds) ->
+              let add_steps =
+                List.map
+                  (fun (i, arm) ->
+                    (True, Delta.Add { path = [ i ]; arm; meta = None }))
+                  adds
+              in
+              let match_steps =
+                List.concat_map
+                  (fun (i, arm1, arm2) ->
+                    if arm1 = arm2 then [] else slot_arm_edit i arm1 arm2)
+                  matches
+              in
+              add_steps @ match_steps)
       end
   | 1 ->
       (* Multi-arm retire: symmetric to the [-1] branch. Descending index
          order so retiring a higher slot doesn't shift the lower-index paths
          still waiting to fire (mirrors [prune_down_to]'s within-level
-         discipline). *)
+         discipline).
+
+         Label-set fallback mirrors the [-1] case: when the strict
+         subsequence fails, pair arms by overlapping labels and recurse on
+         each pair. Retires fire first (descending [ps1]-frame indices),
+         then matched-pair edits in [ps2]'s post-retire frame. *)
       begin match insertions ps2 ps1 with
       | Some retires ->
           let descending =
             List.sort (fun (a, _) (b, _) -> compare b a) retires
           in
           List.concat_map (fun (i, _) -> prepend_seq i (retire ())) descending
-      | None -> give_up
+      | None -> (
+          match align_by_labels ps2 ps1 with
+          | None -> give_up
+          | Some (matches, retires) ->
+              let retire_indices = List.map fst retires in
+              let descending =
+                List.sort (fun (a, _) (b, _) -> compare b a) retires
+              in
+              let retire_steps =
+                List.concat_map
+                  (fun (i, _) -> prepend_seq i (retire ()))
+                  descending
+              in
+              let match_steps =
+                List.concat_map
+                  (fun (ps1_idx, ps2_arm, ps1_arm) ->
+                    if ps1_arm = ps2_arm then []
+                    else
+                      let ps2_idx =
+                        ps1_idx
+                        - List.length
+                            (List.filter (fun k -> k < ps1_idx) retire_indices)
+                      in
+                      slot_arm_edit ps2_idx ps1_arm ps2_arm)
+                  matches
+              in
+              retire_steps @ match_steps)
       end
   | _ -> failwith "Can't get here"
 
