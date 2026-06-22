@@ -183,9 +183,11 @@ let multi_arms_removed =
       (retire_seq [ 3 ] @ retire_seq [ 1 ]);
   ]
 
-(* Multi-arm additions inside a metaed parent (WFQ/SP): the arms and metas
-   projections must agree on the insertion indices (lockstep), so [Add]s
-   carry the matching meta. *)
+(* Multi-arm additions inside a metaed parent (WFQ/SP). The arm projection
+   must witness [ps1]'s arms as a subsequence of [ps2]'s; each surplus arm
+   becomes an [Add] carrying its meta. When every shared arm's meta also
+   agrees the sequence is just the [Add]s; for the mixed case where a
+   shared arm's meta differs, see [add_with_shared_meta_change]. *)
 let multi_arms_added_metaed =
   [
     make_planner_test "WFQ with two arms added at end" "wfq_BA" "wfq_BACD"
@@ -246,6 +248,65 @@ let one_arm_replaced_wfq =
       (replace_seq ~meta:7.0 [ 2 ] (Pol.FIFO "Z"));
   ]
 
+(* Same-length metaed parent (WFQ/SP) where one or more slots have an arm
+   change (with or without a meta change at the same slot). Each diverging
+   slot emits its own slot-level edit independently; the per-slot emissions
+   target distinct indices and concatenate in ascending order with no
+   interference. Sub-cases by inner-recursion shape: a [Replace]-root inner
+   takes any meta change as a trailing [ChangeMeta]; a non-bubbleable inner
+   ([Graft]/[PruneDownTo]) demotes to a slot-level [Replace] (with meta if
+   applicable); any clean smaller inner edit bubbles via [prepend_seq] with
+   a separate [ChangeMeta] for the meta change. *)
+let multi_arms_replaced_metaed =
+  [
+    make_planner_test "WFQ two slots with arm and weight changes" "wfq_ABC"
+      "wfq_ADE"
+      (replace_seq ~meta:5.0 [ 1 ] (Pol.FIFO "D")
+      @ replace_seq ~meta:7.0 [ 2 ] (Pol.FIFO "E"));
+    (* wfq_ABC = (A,2),(B,1),(C,3); wfq_DEF = (D,1),(E,2),(F,3). Slot 2's
+       meta agrees, the other two slots flip both arm and meta. *)
+    make_planner_test "different WFQ classes" "wfq_ABC" "wfq_DEF"
+      (replace_seq ~meta:1.0 [ 0 ] (Pol.FIFO "D")
+      @ replace_seq ~meta:2.0 [ 1 ] (Pol.FIFO "E")
+      @ replace_seq [ 2 ] (Pol.FIFO "F"));
+    (* SP rank swap: strict_AB = (A,1),(B,2); strict_BA = (B,1),(A,2).
+       After [Pol.normalize]'s rank sort the two arms appear in swapped
+       slots with the original ranks unchanged. *)
+    make_planner_test "Strict with arms reordered" "strict_AB" "strict_BA"
+      (replace_seq [ 0 ] (Pol.FIFO "B") @ replace_seq [ 1 ] (Pol.FIFO "A"));
+    (* complex_tree's outer slot 0 differs (strict[A,B,C] vs strict[C,B,A])
+       and the inner recursion itself returns a multi-slot Replace; the
+       outer edit bubbles that inner sequence via [prepend_seq 0]. *)
+    make_planner_test "complex tree with an SP reordering deep down"
+      "complex_tree" "complex_tree_swap_sp_arms"
+      (replace_seq [ 0; 0 ] (Pol.FIFO "C") @ replace_seq [ 0; 2 ] (Pol.FIFO "A"));
+    (* wfq_complex's slot 1 has both a deeper arm change (inner RR replaces
+       a leaf) and a weight change. The inner sequence is itself a bubbled
+       Replace, so the slot's edit becomes (bubbled inner) ++ ChangeMeta. *)
+    make_planner_test "WFQ slot with deep diff and weight change" "wfq_complex"
+      "wfq_complex_deep_and_weight"
+      (replace_seq [ 1; 1 ] (Pol.FIFO "D")
+      @ [ (Planner.True, Delta.ChangeMeta { path = [ 1 ]; new_meta = 5.0 }) ]);
+  ]
+
+(* Length-changing metaed parent where the arm projection embeds cleanly but
+   a shared arm's meta differs. Emits [Add]s ascending (carrying the surplus
+   arms' metas) followed by one [ChangeMeta] per shared arm whose meta
+   differs (in [ps2]'s post-Add frame). *)
+let add_with_shared_meta_change =
+  [
+    (* wfq_BA = (A,2),(B,1); wfq_ABC_diff = (A,2),(B,2),(C,4). Arm C is new
+       (Add at index 2 with weight 4); the shared arm B's weight changes
+       from 1 to 2 (ChangeMeta at index 1 in ps2's frame). *)
+    make_planner_test "WFQ with weights changed and arm added" "wfq_BA"
+      "wfq_ABC_diff"
+      [
+        ( Planner.True,
+          Delta.Add { path = [ 2 ]; arm = Pol.FIFO "C"; meta = Some 4.0 } );
+        (Planner.True, Delta.ChangeMeta { path = [ 1 ]; new_meta = 2.0 });
+      ];
+  ]
+
 let nested_giveup_demotion =
   [
     make_planner_test "nested Graft demotes to give-up" "strict_AB"
@@ -288,17 +349,9 @@ let change_root =
    entries here will migrate to more precise productions. *)
 let verydiff_combos =
   [
-    make_giveup_test "WFQ slot with deep diff and weight change" "wfq_complex"
-      "wfq_complex_deep_and_weight" [];
     make_giveup_test "strict arm added whilst reordering arms" "strict_BA"
       "strict_ABC" [];
-    make_giveup_test "different WFQ classes" "wfq_ABC" "wfq_DEF" [];
     make_giveup_test "RR big diff" "rr_AB" "rr_DEF" [];
-    make_giveup_test "WFQ with weights changed and arm added" "wfq_BA"
-      "wfq_ABC_diff" [];
-    make_giveup_test "Strict with arms reordered" "strict_AB" "strict_BA" [];
-    make_giveup_test "complex tree with an SP reordering deep down"
-      "complex_tree" "complex_tree_swap_sp_arms" [ 0 ];
   ]
 
 let suite =
@@ -306,7 +359,8 @@ let suite =
   >::: same @ one_arm_added @ one_arm_added_wfq @ armsremoved @ multi_arms_added
        @ multi_arms_removed @ multi_arms_added_metaed
        @ multi_arms_removed_metaed @ metachanged @ one_arm_replaced
-       @ one_arm_replaced_wfq @ verydiff_combos @ graft @ change_root
+       @ one_arm_replaced_wfq @ multi_arms_replaced_metaed
+       @ add_with_shared_meta_change @ verydiff_combos @ graft @ change_root
        @ nested_giveup_demotion
 
 let () = run_test_tt_main suite

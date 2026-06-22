@@ -49,23 +49,6 @@ let single_change prev next =
   | [ (i, x) ] -> Some (i, x)
   | _ -> None
 
-let single_change_lockstep ps1 ps2 ws1 ws2 =
-  match (single_change ps1 ps2, single_change ws1 ws2) with
-  | Some (i, arm), Some (j, w) when i = j -> Some (i, arm, w)
-  | _ -> None
-
-(* Lockstep insertion across both projections: succeeds when both the
-   arms-projection and the metas-projection witness [ps1]/[ws1] as a
-   subsequence of [ps2]/[ws2] at the same index sequence. Returns the
-   per-extra triples in the ascending order [insertions] hands back. *)
-let multi_insertion_lockstep ps1 ps2 ws1 ws2 =
-  match (insertions ps1 ps2, insertions ws1 ws2) with
-  | Some xs, Some ys
-    when List.length xs = List.length ys
-         && List.for_all2 (fun (i, _) (j, _) -> i = j) xs ys ->
-      Some (List.map2 (fun (i, arm) (_, w) -> (i, arm, w)) xs ys)
-  | _ -> None
-
 (* -------- sequence helpers ---------------------------------- *)
 
 let prepend_guard i = function
@@ -258,65 +241,128 @@ let rec compare_children ~next:p2 ps1 ps2 =
       end
   | _ -> failwith "Can't get here"
 
-(* SP and WFQ share shape [(t * float) list] and sniffer behavior: a clean
-   single edit shows up at the same index in both projections. *)
+(* SP and WFQ share shape [(t * float) list]. The recognizer walks each
+   parent's children independently of any lockstep gate: same-length parents
+   get a per-slot walk; length-differing parents align via the arm
+   projection's subsequence-embedding and compare metas at shared arms
+   afterwards. Slot-level edits at distinct indices don't interfere, so they
+   concatenate freely. *)
 and compare_metaed_children ~next:p2 pms1 pms2 =
   let give_up = replace ~next:p2 () in
   let ps1 = List.map fst pms1 in
   let ps2 = List.map fst pms2 in
   let ms1 = List.map snd pms1 in
   let ms2 = List.map snd pms2 in
+  (* Emit a slot-level edit at index [i], carrying [arm1] to [arm2] and
+     optionally rebinding the slot's meta. Three sub-cases by inner shape:
+     a non-bubbleable inner (nested [Graft] or [PruneDownTo]) demotes to a
+     slot-level [Replace] (with meta); a [Replace]-root inner takes the
+     meta in its trailing [ChangeMeta]; any other clean inner edit bubbles
+     via [prepend_seq] with a separate [ChangeMeta] for the meta change. *)
+  let slot_arm_edit i arm1 arm2 ?meta () =
+    let inner = analyze arm1 arm2 in
+    let non_bubbleable =
+      match inner with
+      | [ (True, Delta.Graft _) ] -> true
+      | _ -> ends_in_change_root inner
+    in
+    if non_bubbleable then prepend_seq i (replace ~next:arm2 ?meta ())
+    else
+      match (meta, is_replace_root inner) with
+      | Some m, true ->
+          let survivor =
+            match inner with
+            | (True, Delta.Designate { survivor; _ }) :: _ -> survivor
+            | _ -> assert false
+          in
+          prepend_seq i (replace ~next:survivor ~meta:m ())
+      | Some m, false ->
+          prepend_seq i inner
+          @ [ (True, Delta.ChangeMeta { path = [ i ]; new_meta = m }) ]
+      | None, _ -> prepend_seq i inner
+  in
   match List.compare_lengths ps1 ps2 with
-  | 0 when ms1 = ms2 -> compare_children ~next:p2 ps1 ps2
-  | 0 when ps1 = ps2 ->
-      (* Multi-meta-change: arms agree, one or more metas differ. Each
-         changed slot becomes its own [ChangeMeta]; order doesn't matter
-         since [ChangeMeta] doesn't shift siblings. *)
-      let metas_changed = changes ms1 ms2 in
-      List.map
-        (fun (i, new_meta) ->
-          (True, Delta.ChangeMeta { path = [ i ]; new_meta }))
-        metas_changed
   | 0 ->
-      begin match single_change_lockstep ps1 ps2 ms1 ms2 with
-      | Some (i, _, meta) ->
-          let inner = analyze (List.nth ps1 i) (List.nth ps2 i) in
-          if is_replace_root inner then
-            (* Slot [i] replaces its arm AND its meta in one edit. Re-emit
-               the give-up sequence with the meta tacked on, then bubble. *)
-            let survivor =
-              match inner with
-              | (True, Delta.Designate { survivor; _ }) :: _ -> survivor
-              | _ -> assert false
-            in
-            prepend_seq i (replace ~next:survivor ~meta ())
-          else give_up
-      | None -> give_up
-      end
+      (* Per-slot walk: each index whose arm or meta differs contributes its
+         own independent edit. *)
+      let triples =
+        List.combine (List.combine ps1 ms1) (List.combine ps2 ms2)
+      in
+      List.concat
+        (List.mapi
+           (fun i ((arm1, m1), (arm2, m2)) ->
+             match (arm1 <> arm2, m1 <> m2) with
+             | false, false -> []
+             | false, true ->
+                 [ (True, Delta.ChangeMeta { path = [ i ]; new_meta = m2 }) ]
+             | true, false -> slot_arm_edit i arm1 arm2 ()
+             | true, true -> slot_arm_edit i arm1 arm2 ~meta:m2 ())
+           triples)
   | -1 ->
-      (* Multi-arm add with metas: lockstep insertions across both
-         projections, one [Add] per extra with the matching meta attached. *)
-      begin match multi_insertion_lockstep ps1 ps2 ms1 ms2 with
-      | Some adds ->
-          List.map
-            (fun (i, arm, meta) ->
-              (True, Delta.Add { path = [ i ]; arm; meta = Some meta }))
-            adds
+      (* [ps1] must embed in [ps2] as a subsequence. Each surplus [ps2] arm
+         becomes an [Add] carrying that arm's meta; each [ps2] index whose
+         arm came from [ps1] contributes a [ChangeMeta] when the metas
+         differ. All [Add]s fire first, in ascending [ps2]-index order, so
+         each trailing [ChangeMeta]'s path lands in [ps2]'s frame. *)
+      begin match insertions ps1 ps2 with
       | None -> give_up
+      | Some adds ->
+          let add_indices = List.map fst adds in
+          let add_steps =
+            List.map
+              (fun (i, arm) ->
+                ( True,
+                  Delta.Add { path = [ i ]; arm; meta = Some (List.nth ms2 i) }
+                ))
+              adds
+          in
+          let change_meta_steps =
+            List.filter_map
+              (fun j ->
+                if List.mem j add_indices then None
+                else
+                  let i1 =
+                    j - List.length (List.filter (fun k -> k < j) add_indices)
+                  in
+                  let m1 = List.nth ms1 i1 in
+                  let m2 = List.nth ms2 j in
+                  if m1 = m2 then None
+                  else
+                    Some (True, Delta.ChangeMeta { path = [ j ]; new_meta = m2 }))
+              (List.init (List.length ps2) (fun j -> j))
+          in
+          add_steps @ change_meta_steps
       end
   | 1 ->
-      (* Multi-arm retire with metas: symmetric to [-1], retiring highest
-         index first so lower paths stay stable. Metas are discarded since
-         [retire ()] removes the slot wholesale. *)
-      begin match multi_insertion_lockstep ps2 ps1 ms2 ms1 with
-      | Some retires ->
-          let descending =
-            List.sort (fun (a, _, _) (b, _, _) -> compare b a) retires
-          in
-          List.concat_map
-            (fun (i, _, _) -> prepend_seq i (retire ()))
-            descending
+      (* Symmetric to [-1]: surplus [ps1] arms retire (descending so
+         lower-index paths stay stable); shared arms whose metas differ
+         take a [ChangeMeta] in [ps2]'s post-Retire frame. *)
+      begin match insertions ps2 ps1 with
       | None -> give_up
+      | Some retires ->
+          let retire_indices = List.map fst retires in
+          let descending =
+            List.sort (fun (a, _) (b, _) -> compare b a) retires
+          in
+          let retire_steps =
+            List.concat_map (fun (i, _) -> prepend_seq i (retire ())) descending
+          in
+          let ps1_matched =
+            List.filter
+              (fun i -> not (List.mem i retire_indices))
+              (List.init (List.length ps1) (fun i -> i))
+          in
+          let change_meta_steps =
+            List.filter_map
+              (fun (j, i1) ->
+                let m1 = List.nth ms1 i1 in
+                let m2 = List.nth ms2 j in
+                if m1 = m2 then None
+                else
+                  Some (True, Delta.ChangeMeta { path = [ j ]; new_meta = m2 }))
+              (List.mapi (fun j i1 -> (j, i1)) ps1_matched)
+          in
+          retire_steps @ change_meta_steps
       end
   | _ -> failwith "Can't get here"
 
