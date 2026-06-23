@@ -1,0 +1,9 @@
+classes A, B, C, E;
+
+// Used by the alignment-aware test pair: against [rr_A_strictBCD] this
+// adds [E] as a fresh RR sibling and the inner SP retires its [D] arm.
+// After [Pol.normalize] this is RR[FIFO A, FIFO E, SP[(B,1),(C,2)]] (FIFO
+// < SP, and FIFO A < FIFO E alphabetically).
+policy = rr[A, strict[(B, 1), (C, 2)], E];
+
+return policy

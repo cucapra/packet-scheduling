@@ -1,0 +1,13 @@
+classes A, C, W, Y, Z;
+
+// Same-length cross-slot bidir test fixture (worklist item 20). Against
+// [wfq_ABC] (which normalizes to WFQ[(A, 2); (B, 1); (C, 3)]) this exercises
+// the bidir fallback in [compare_metaed_children]'s same-length branch:
+// after [Pol.normalize] sorts by arm content, this becomes
+// WFQ[(Z, 4); (RR[A, Y], 7); (RR[C, W], 8)] (FIFO < RR; among the RRs,
+// [A,Y] < [C,W]). The two sides align as A->RR[A,Y] (i1=0, j2=1) and
+// C->RR[C,W] (i1=2, j2=2), with B retiring and Z added; the first match's
+// [i1 <> j2] triggers the bidir emit rather than three slot-level Replaces.
+policy = wfq[(Z, 4), (rr[A, Y], 7), (rr[C, W], 8)];
+
+return policy
