@@ -245,10 +245,11 @@ let one_arm_replaced_wfq =
 
 (* Same-length RR parent where more than one slot diverges. Each diverging
    slot emits its own slot-level edit; the emissions target distinct indices
-   and concatenate in ascending order with no interference. Same demotion
-   rules as the metaed variant below: a non-bubbleable inner shape
-   ([Graft]/[PruneDownTo]) demotes to a slot-level [Replace]; any other
-   inner sequence bubbles via [prepend_seq]. *)
+   and concatenate in ascending order with no interference. The inner
+   recursion always bubbles via [prepend_seq]: [Graft] and [PruneDownTo]
+   are top-level-only emissions, so an inner pair whose constructors
+   disagree (e.g. [FIFO B] vs [RR [B; C]]) falls through to a slot-level
+   [Replace] directly. *)
 let multi_arms_replaced =
   [
     make_planner_test "RR with every slot differing" "rr_ABC" "rr_DEF"
@@ -256,12 +257,11 @@ let multi_arms_replaced =
       @ replace_seq [ 1 ] (Pol.FIFO "E")
       @ replace_seq [ 2 ] (Pol.FIFO "F"));
     (* rr_rrBC_D normalizes to RR[FIFO D, RR[B, C]]; rr_AB is RR[A, B].
-       Slot 0 is a clean cross-class Replace. Slot 1's inner analyze is a
-       [PruneDownTo] (FIFO B sits inside RR[B, C]); the resulting sequence
-       ends in [ChangeRoot] and so demotes to a slot-level [Replace],
-       confirming that the per-slot walk applies the demotion rule
-       independently at each diverging slot. *)
-    make_planner_test "RR multi-slot with one slot demoting" "rr_rrBC_D" "rr_AB"
+       Slot 0 is a clean cross-class Replace. Slot 1's inner analyze runs
+       on [RR[B, C]] vs [FIFO B]: the constructors disagree, so it emits a
+       slot-level [Replace] directly (no [PruneDownTo] at depth). *)
+    make_planner_test "RR multi-slot with constructor-mismatch inner"
+      "rr_rrBC_D" "rr_AB"
       (replace_seq [ 0 ] (Pol.FIFO "A") @ replace_seq [ 1 ] (Pol.FIFO "B"));
   ]
 
@@ -270,8 +270,8 @@ let multi_arms_replaced =
    slot emits its own slot-level edit independently; the per-slot emissions
    target distinct indices and concatenate in ascending order with no
    interference. Sub-cases by inner-recursion shape: a [Replace]-root inner
-   takes any meta change as a trailing [ChangeMeta]; a non-bubbleable inner
-   ([Graft]/[PruneDownTo]) demotes to a slot-level [Replace] (with meta if
+   takes any meta change as a trailing [ChangeMeta]; a constructor-mismatch
+   inner emits a slot-level [Replace] directly (with meta if
    applicable); any clean smaller inner edit bubbles via [prepend_seq] with
    a separate [ChangeMeta] for the meta change. *)
 let multi_arms_replaced_metaed =
@@ -483,13 +483,17 @@ let same_length_bidir =
       @ replace_seq ~meta:8.0 [ 2 ] (Pol.RR [ Pol.FIFO "C"; Pol.FIFO "W" ]));
   ]
 
-let nested_giveup_demotion =
+(* Pairs that would have looked like sub-policy embeddings at depth (FIFO B
+   inside RR[B,C], or vice versa) but whose containing slots are non-equal:
+   the inner analyze sees only a constructor mismatch (FIFO vs RR) and
+   emits a slot-level [Replace] directly. [Graft] and [PruneDownTo] are
+   reserved for whole-tree (top-level) embeddings; recursive calls skip
+   the sub-policy test. *)
+let nested_constructor_mismatch =
   [
-    make_planner_test "nested Graft demotes to give-up" "strict_AB"
-      "strict_A_rrBC"
+    make_planner_test "inner FIFO -> RR around it" "strict_AB" "strict_A_rrBC"
       (replace_seq [ 1 ] (Pol.RR [ Pol.FIFO "B"; Pol.FIFO "C" ]));
-    make_planner_test "nested ChangeRoot demotes to give-up" "strict_A_rrBC"
-      "strict_AB"
+    make_planner_test "inner RR -> FIFO inside it" "strict_A_rrBC" "strict_AB"
       (replace_seq [ 1 ] (Pol.FIFO "B"));
   ]
 
@@ -538,6 +542,6 @@ let suite =
        @ one_arm_replaced_wfq @ multi_arms_replaced @ multi_arms_replaced_metaed
        @ add_with_shared_meta_change @ aligned_multi @ mixed_add_retire
        @ same_length_bidir @ verydiff_combos @ graft @ change_root
-       @ nested_giveup_demotion
+       @ nested_constructor_mismatch
 
 let () = run_test_tt_main suite

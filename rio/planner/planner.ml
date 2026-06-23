@@ -217,20 +217,6 @@ let prune_down_to ~prev ~path () =
   in
   walk prev path [] @ [ (True, Delta.ChangeRoot (List.map (fun _ -> 0) path)) ]
 
-(* Sequence-shape introspection for the comparators' demotion paths:
-   [compare_children] and [compare_metaed_children] each call into [analyze]
-   recursively on children, then need to recognize "this inner sequence
-   describes a relationship between children that doesn't bubble up to the
-   outer slot" and demote to a slot-level give-up. The two predicates below
-   are the only such recognizers. *)
-
-(* Recognize a [PruneDownTo] sequence's tail: any sequence whose last step is
-   [ChangeRoot]. Used by [compare_children]'s demotion match. *)
-let ends_in_change_root seq =
-  match List.rev seq with
-  | (_, Delta.ChangeRoot _) :: _ -> true
-  | _ -> false
-
 (* Recognize the inner [Replace] shape (pre-bubble-up). Used by the metaed
    comparator to gate "slot-replace-with-meta" rewrites. *)
 let is_replace_root = function
@@ -317,20 +303,11 @@ let rec is_sub_policy p1 p2 =
 
 let rec compare_children ~next:p2 ps1 ps2 =
   let give_up = replace ~next:p2 () in
-  (* Emit a slot-level edit at index [i] carrying [arm1] to [arm2]. A
-     non-bubbleable inner shape (nested [Graft] or [PruneDownTo]) demotes
-     to a slot-level [Replace] at this level; any other inner sequence
-     bubbles via [prepend_seq]. *)
-  let slot_arm_edit i arm1 arm2 =
-    let inner = analyze arm1 arm2 in
-    let non_bubbleable =
-      match inner with
-      | [ (True, Delta.Graft _) ] -> true
-      | _ -> ends_in_change_root inner
-    in
-    if non_bubbleable then prepend_seq i (replace ~next:arm2 ())
-    else prepend_seq i inner
-  in
+  (* Emit a slot-level edit at index [i] carrying [arm1] to [arm2]. The
+     inner sequence always bubbles via [prepend_seq]: [analyze_inner]
+     never returns a [Graft] or [PruneDownTo] (those are top-level only;
+     see [analyze]), so no demotion check is needed here. *)
+  let slot_arm_edit i arm1 arm2 = prepend_seq i (analyze_inner arm1 arm2) in
   match List.compare_lengths ps1 ps2 with
   | 0 ->
       (* Same-length fallback to bidirectional label-set alignment: when
@@ -415,32 +392,26 @@ and compare_metaed_children ~next:p2 pms1 pms2 =
   let ms1 = List.map snd pms1 in
   let ms2 = List.map snd pms2 in
   (* Emit a slot-level edit at index [i], carrying [arm1] to [arm2] and
-     optionally rebinding the slot's meta. Three sub-cases by inner shape:
-     a non-bubbleable inner (nested [Graft] or [PruneDownTo]) demotes to a
-     slot-level [Replace] (with meta); a [Replace]-root inner takes the
-     meta in its trailing [ChangeMeta]; any other clean inner edit bubbles
-     via [prepend_seq] with a separate [ChangeMeta] for the meta change. *)
+     optionally rebinding the slot's meta. Two sub-cases by inner shape: a
+     [Replace]-root inner takes the meta in its trailing [ChangeMeta]; any
+     other clean inner edit bubbles via [prepend_seq] with a separate
+     [ChangeMeta] for the meta change. [analyze_inner] never returns a
+     [Graft] or [PruneDownTo] (those are top-level only; see [analyze]),
+     so no demotion check is needed. *)
   let slot_arm_edit i arm1 arm2 ?meta () =
-    let inner = analyze arm1 arm2 in
-    let non_bubbleable =
-      match inner with
-      | [ (True, Delta.Graft _) ] -> true
-      | _ -> ends_in_change_root inner
-    in
-    if non_bubbleable then prepend_seq i (replace ~next:arm2 ?meta ())
-    else
-      match (meta, is_replace_root inner) with
-      | Some m, true ->
-          let survivor =
-            match inner with
-            | (True, Delta.Designate { survivor; _ }) :: _ -> survivor
-            | _ -> assert false
-          in
-          prepend_seq i (replace ~next:survivor ~meta:m ())
-      | Some m, false ->
-          prepend_seq i inner
-          @ [ (True, Delta.ChangeMeta { path = [ i ]; new_meta = m }) ]
-      | None, _ -> prepend_seq i inner
+    let inner = analyze_inner arm1 arm2 in
+    match (meta, is_replace_root inner) with
+    | Some m, true ->
+        let survivor =
+          match inner with
+          | (True, Delta.Designate { survivor; _ }) :: _ -> survivor
+          | _ -> assert false
+        in
+        prepend_seq i (replace ~next:survivor ~meta:m ())
+    | Some m, false ->
+        prepend_seq i inner
+        @ [ (True, Delta.ChangeMeta { path = [ i ]; new_meta = m }) ]
+    | None, _ -> prepend_seq i inner
   in
   match List.compare_lengths ps1 ps2 with
   | 0 ->
@@ -586,24 +557,35 @@ and compare_metaed_children ~next:p2 pms1 pms2 =
       end
   | _ -> failwith "Can't get here"
 
-and analyze p1 p2 =
+(* Inner recursion entry: same as [analyze] but skips the [is_sub_policy]
+   checks. [Graft] and [PruneDownTo] are whole-tree edits whose paths name
+   positions in the *root* control; they cannot be retargeted into a parent
+   slot by [prepend_seq] (paper sketch.md sec5.2). So inner recursions
+   never emit them: a sub-policy embedding at a deeper level falls through
+   to the constructor cases and emits a slot-level [Replace], which is the
+   same observable behavior as the previous "demote to give-up" rule. *)
+and analyze_inner p1 p2 =
+  if p1 = p2 then []
+  else
+    match (p1, p2) with
+    | SP (pms1, _), SP (pms2, _) | WFQ pms1, WFQ pms2 ->
+        compare_metaed_children ~next:p2 pms1 pms2
+    | RR ps1, RR ps2 -> compare_children ~next:p2 ps1 ps2
+    | _ ->
+        (* FIFO->FIFO with different class, or any constructor mismatch
+           (FIFO<->SP, SP<->RR, etc.): whole-slot give-up at this level.
+           The leaf-level paths are empty; [prepend_seq] pins them when
+           this bubbles up. *)
+        replace ~next:p2 ()
+
+let analyze p1 p2 =
   if p1 = p2 then []
   else
     match (is_sub_policy p1 p2, is_sub_policy p2 p1) with
     | Some _, Some _ -> [] (* unreachable: would mean p1 = p2 *)
     | Some path, None -> [ (True, Delta.Graft path) ]
     | None, Some path -> prune_down_to ~prev:p1 ~path ()
-    | _ -> (
-        match (p1, p2) with
-        | SP (pms1, _), SP (pms2, _) | WFQ pms1, WFQ pms2 ->
-            compare_metaed_children ~next:p2 pms1 pms2
-        | RR ps1, RR ps2 -> compare_children ~next:p2 ps1 ps2
-        | _ ->
-            (* FIFO->FIFO with different class, or any constructor mismatch
-               (FIFO<->SP, SP<->RR, etc.): whole-slot give-up at this level.
-               The leaf-level paths are empty; [prepend_seq] pins them when
-               this bubbles up. *)
-            replace ~next:p2 ())
+    | None, None -> analyze_inner p1 p2
 
 (* -------- pretty-printing (test output only) ---------------- *)
 
