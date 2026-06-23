@@ -343,8 +343,8 @@ The grammar is shaped by two demands.
 
 Each edit names _where_ in the tree the change lands and _what_ the change is.
 Throughout this section, `p1` is the presently running policy; we write `p1@path` for the subtree of `p1` reached by following `path` down from its root.
-Two productions are irregular in this respect: `ChangeRoot` gives the path to the surviving subtree, and `Graft` has no path at all because its rewrite acts on the whole tree.
-We explain these in §3.4.
+One production is irregular in this respect: `ChangeRoot` gives the path to the surviving subtree rather than to the edit site.
+We explain this in §3.4.
 
 ```
 δ ::= Add          (path, arm, meta?)
@@ -354,18 +354,11 @@ We explain these in §3.4.
     | Designate    (path, survivor)
     | Undesignate  (path)
     | ChangeRoot   (path)
-    | Graft        (ctx)
 
 path   ::= []  |  i :: path             // i is a child index
-ctx    ::= □                            // the unique hole
-         | D(pol, ..., ctx, ..., pol)   // exactly one child is itself a context
 ```
 
 `pol` is the nonterminal of §3.2; `arm` and `survivor` are field names for `pol`-typed payloads, chosen to read at the call site (the new arm under an `Add`, the designated survivor under a `Designate`).
-A _policy context_, written `ctx`, is built like a `pol`, except that exactly one of its slots is the distinguished _hole_ `□` rather than a subtree.
-The hole is a reserved slot, not an absence of a slot: the parent of the hole has an arity that includes the hole, e.g., `RoundRobin(A, B, □)` is a 3-ary `RoundRobin` whose third slot is the hole, distinct from the 2-ary `RoundRobin(A, B)`.
-We write `ctx[s]` for the ordinary, hole-free tree obtained by plugging the hole of `ctx` with the subtree `s`.
-A `ctx` is _valid_ when `ctx[s]` is a valid `pol` for any valid `s` whose leaf labels are disjoint from those of `ctx`.
 
 Edits that would have to destroy structure still holding packets are expressly not in the grammar.
 For example, structural deletion, `Remove`, is emitted by our transition planner (§4) only after ensuring that the subtree being removed is empty.
@@ -380,7 +373,6 @@ Brief notes on each production:
 - `Designate(path, survivor)` wraps `p1@path` into `Strict*(p1@path, survivor)` in place, making `survivor` the _designated survivor_ of `p1@path`. The need for the distinguished discipline `Strict*` is explained in §3.4.5.
 - `Undesignate(path)` collapses the `Strict*(A, B)` that lives at `p1@path` into `B`, with `B` inheriting the slot and per-arm `meta?`. `A` must be empty.
 - `ChangeRoot(path)` promotes `p1@path` to the new root, discarding the ancestor chain above it. The ancestor chain must be a unary "vine". The `path` argument is interpreted in the pre-edit tree; in the post-edit tree the same node sits at `[]`.
-- `Graft(ctx)` produces `ctx[p1]` by plugging the running `p1` into `ctx`'s hole.
 
 When `p1 =R p2`, the planner emits the empty sequence (§4), and the live control is left untouched.
 
@@ -887,14 +879,6 @@ The `pol` changes from the unary chain wrapping `p1@ν` (e.g., `Strict(p1@ν)` o
 This is `pol`-visible: the root discipline observably changes, which is the substantive content of the production.
 Whether that pol-visible change reorders in-flight traffic depends on whether the discarded chain was doing per-packet reordering (see previous Note).
 
-#### 3.4.8. `Graft(ctx)`
-
-We restrict `Graft` to _whole-tree_ splicing: the hole `□` in `ctx` is plugged with the running root `p1`, and nothing else.
-Richer maneuvers an operator might want, such as plugging the hole with a particular sub-control or relocating a flow from one subtree to another, are not productions of `δ`.
-Such maneuvers are realized by the operator in Imperative Mode (§4.3) as an explicit sequence of the other productions; the planner has no recipe for them.
-
-[AM TODO: spell out the five obligations under the whole-tree restriction.]
-
 ### 3.5 Preserving this proof down to hardware
 
 §3.4 proves soundness at the `δ` level, where each production (`Add`, `Quiesce`, `Remove`, ...) carries a well-formed tree to a well-formed tree.
@@ -1129,7 +1113,7 @@ This is Rule 3 of `⌊·⌋` (§3.2) iterated across the sequence: each step's `
 Each `ip_i` is itself a valid pol with an explainable scheduling semantics, not a transient artifact of the proof.
 For instance, after the first step of `Replace(path, B)`'s expansion the intermediate pol holds `Strict(pol@path, B)` at `path`: a temporary strict-priority node favoring the outgoing `pol@path` over the incoming `B`, with a readable scheduling interpretation in its own right.
 
-The "defined when" clauses on each `den(δ_i)` are the per-production preconditions listed in §3.4.1-3.4.8.
+The "defined when" clauses on each `den(δ_i)` are the per-production preconditions listed in §3.4.1-3.4.7.
 Guards play no role in this check; they govern the operational timing of when each `δ_i` fires on the live control, and are pol-invisible (§3.4).
 For instance, a `(empty(path); Remove(path))` step folds at the pol level exactly as if its guard were `true`, since `den` only sees `δ`.
 If the chain fails to reach `p2`, or some `den(δ_i)` is undefined on its intermediate pol, we reject the request.
@@ -1223,86 +1207,82 @@ We claim only that whatever sequence it emits is safe (§3.4) and no worse than 
 ### 5.2 The case analysis
 
 The planner steps through the following cases in order, emitting at the first match.
-Each call examines the current pair `(p1, p2)`: cases 1-3 test the two trees as wholes; cases 4-8 fire when the roots agree and the local difference has a recognized shape; case 9 catches everything else.
-Cases 4 and 5 are the descent mechanism: when the difference sits one level down, they re-enter this case analysis on the differing slot, and whatever case fires at the deeper level has its emission re-targeted via index prepending on the way back up.
+Each call examines the current pair `(p1, p2)`: cases 1-2 test the two trees as wholes; cases 3-7 fire when the roots agree and the local difference has a recognized shape; case 8 catches everything else.
+Cases 3 and 4 are the descent mechanism: when the difference sits one level down, they re-enter this case analysis on the differing slot, and whatever case fires at the deeper level has its emission re-targeted via index prepending on the way back up.
 
 1. **`p1 = p2`.**
    Emit `[]`.
    The test is literal equality: the compiler normalizes user input (§3.2), so any two `=R`-equivalent policies become identical `pol` terms before reaching the planner.
    The live control is already serving the requested policy, so the planner has nothing to install.
 
-2. **`p1` embeds in `p2` at some path.**
-   Emit `Graft(ctx)`, where `ctx` is the surrounding policy context.
-   The planner detects this with a structural sub-policy test that walks `p2` looking for a subtree equal to `p1`; on a hit, the matched path identifies the hole that `Graft`'s context fills.
-   The match is unique by §3.2's leaf-partition validity: each flow in `p1` may occur at most once in `p2`, so `p2` can host `p1` as a subtree in at most one position.
-
-3. **`p2` embeds in `p1` at some path.**
+2. **`p2` embeds in `p1` at some path.**
    Emit `PruneDownTo(path)`, where `path` is the location in `p1` where `p2` sits.
-   Symmetric to the previous case.
+   The planner detects this with a structural sub-policy test that walks `p1` looking for a subtree equal to `p2`; on a hit, the matched path is the location to prune down to.
+   The match is unique by §3.2's leaf-partition validity: each flow in `p2` may occur at most once in `p1`, so `p1` can host `p2` as a subtree in at most one position.
 
-4. **`RR` at the current level, child lists of equal length.**
-   When the children's class-label sets reveal a cleaner cross-slot pairing than slot position does (a slot's arm in `p1` shares labels with a different slot's arm in `p2`), the planner takes case 8's label-overlap alignment instead.
+3. **`RR` at the current level, child lists of equal length.**
+   When the children's class-label sets reveal a cleaner cross-slot pairing than slot position does (a slot's arm in `p1` shares labels with a different slot's arm in `p2`), the planner takes case 7's label-overlap alignment instead.
    Otherwise it walks each slot independently and emits one slot-level edit per diverging position; slot-level edits target distinct indices and so concatenate freely in ascending order.
    At a slot whose arm agrees, nothing is emitted.
-   At a slot whose arm differs, recurse on the inner pair and dispatch on the inner shape: a non-bubbleable inner (single `Graft`, or a sequence ending in `ChangeRoot`) demotes to a slot-level `Replace` at the outer position; any other inner sequence bubbles via index-prepending.
+   At a slot whose arm differs, recurse on the inner pair and dispatch on the inner shape: a non-bubbleable inner (a sequence ending in `ChangeRoot`, as `PruneDownTo`'s tail does) demotes to a slot-level `Replace` at the outer position; any other inner sequence bubbles via index-prepending.
    §5.3 covers the demotion wrinkle.
 
-5. **`SP` or `WFQ` at the current level, child lists of equal length.**
+4. **`SP` or `WFQ` at the current level, child lists of equal length.**
    When `p1` and `p2` carry the same multiset of arms (the operator has simply re-weighted or re-ranked existing arms, which §3.2's normalization re-sorts into possibly-different slots), the planner emits one `ChangeMeta` per slot whose meta has moved and is done at this level.
-   Otherwise, when the children's class-label sets reveal a cleaner cross-slot pairing than slot position does, the planner takes case 8's label-overlap alignment.
+   Otherwise, when the children's class-label sets reveal a cleaner cross-slot pairing than slot position does, the planner takes case 7's label-overlap alignment.
    Otherwise it walks each slot independently and emits one slot-level edit per diverging position; slot-level edits target distinct indices and so concatenate freely in ascending order.
    At a slot whose arm and metadata both agree, nothing is emitted.
    At a slot whose metadata differs but whose arm does not, emit `ChangeMeta(path, meta)` for that slot.
-   At a slot whose arm differs (with or without a metadata change at the same slot), recurse on the inner pair and dispatch on the inner shape: a `Replace`-root inner takes any metadata change as a trailing `ChangeMeta` of its bubbled emission; a non-bubbleable inner (single `Graft`, or a sequence ending in `ChangeRoot`) demotes to a slot-level `Replace` at the outer position, carrying the metadata when present; any clean smaller inner edit bubbles via index-prepending and, when the metadata also changed, picks up a separate `ChangeMeta` step at the slot.
+   At a slot whose arm differs (with or without a metadata change at the same slot), recurse on the inner pair and dispatch on the inner shape: a `Replace`-root inner takes any metadata change as a trailing `ChangeMeta` of its bubbled emission; a non-bubbleable inner (a sequence ending in `ChangeRoot`, as `PruneDownTo`'s tail does) demotes to a slot-level `Replace` at the outer position, carrying the metadata when present; any clean smaller inner edit bubbles via index-prepending and, when the metadata also changed, picks up a separate `ChangeMeta` step at the slot.
 
-6. **Same constructor at the current level, every child of `p1` is also a child of `p2` but `p2` has more children.**
+5. **Same constructor at the current level, every child of `p1` is also a child of `p2` but `p2` has more children.**
    Emit one `Add` per surplus arm, in ascending index order.
    §3.4.1's leaf-disjointness precondition is satisfied for free at each `Add`: every surplus arm's leaves are leaves of `p2` not in `p1`, which by §3.2's leaf-partition validity are disjoint from `p1`'s and from each other.
    At an `SP` or `WFQ` parent each `Add` carries the surplus arm's metadata, and any shared arm whose metadata differs between `p1` and `p2` additionally contributes a `ChangeMeta` step (in `p2`'s post-`Add` frame) after all `Add`s have fired.
 
-7. **Same constructor at the current level, every child of `p2` is also a child of `p1` but `p1` has more children.**
+6. **Same constructor at the current level, every child of `p2` is also a child of `p1` but `p1` has more children.**
    Emit one `Retire` idiom (§4.2) per surplus arm, in _descending_ index order.
    Descending order keeps the lower-index slot paths stable while higher-index siblings drain and disappear.
    The planner never emits `SlowRetire` from a `(p1, p2)` pair, because the pair carries no signal distinguishing "drain aggressively" from "drain lazily."
    `SlowRetire` remains available to imperative-mode authors.
    At an `SP` or `WFQ` parent each shared arm whose metadata differs additionally contributes a `ChangeMeta` step (in `p2`'s post-`Retire` frame) after all `Retire`s have fired; the surplus arms' metadata is discarded, since `Retire` removes the slot wholesale.
 
-8. **Same constructor at the current level, with arms aligned by class-label overlap.**
-   Cases 4 and 5 pivot here when class-labels reveal a cross-slot correspondence, and cases 6 and 7 fall through here when the lengths differ but neither side's arms are a subset of the other's.
+7. **Same constructor at the current level, with arms aligned by class-label overlap.**
+   Cases 3 and 4 pivot here when class-labels reveal a cross-slot correspondence, and cases 5 and 6 fall through here when the lengths differ but neither side's arms are a subset of the other's.
    Arms in `p1` and `p2` whose class-label sets overlap pair up by a greedy left-to-right walk.
    Arms in `p1` with no overlapping partner in `p2` retire; arms in `p2` with no overlapping partner in `p1` are added; the two can coexist at the same parent.
    `Retire`s fire first in descending `p1`-index order, `Add`s next in ascending `p2`-index order; matched-pair edits then recurse on the inner pair and bubble to the slot's position in `p2`'s post-mutation frame, subject to the §5.3 demotion rule.
    At an `SP` or `WFQ` parent each `Add` carries its meta, and a matched pair whose metas also differ folds a `ChangeMeta` into the recursive edit (either as a trailing step on a clean bubble or as the meta argument to a demoted `Replace`).
    The pairing relies on §3.2's leaf-partition validity: a class label identifies a unique flow across the whole policy, so a repeated label between an arm in `p1` and an arm in `p2` is evidence that the same host arm has morphed, and an arm whose labels appear nowhere on the opposing side is necessarily a fresh sibling or a vanishing one.
    The greedy walk is not complete: when more than one alignment satisfies the label-overlap constraint, the first one found is taken without a notion of cost (§5.4).
-   When no shared label admits even a single match, the case fails and the planner falls through to case 9; this keeps wholesale divergence (no anchoring overlap) from emptying the parent mid-sequence.
+   When no shared label admits even a single match, the case fails and the planner falls through to case 8; this keeps wholesale divergence (no anchoring overlap) from emptying the parent mid-sequence.
 
-9. **Anything else.**
+8. **Anything else.**
    Emit `Replace` at the current level.
-   "Anything else" covers same-level shapes the planner does not recognize: constructor mismatch (e.g., `SP` vs. `RR`), and child lists of unequal length where neither's children are a subset of the other's and case 8's label-set walk fails to find an alignment.
+   "Anything else" covers same-level shapes the planner does not recognize: constructor mismatch (e.g., `SP` vs. `RR`), and child lists of unequal length where neither's children are a subset of the other's and case 7's label-set walk fails to find an alignment.
 
    The recursion does significant work here.
-   Cases 1-8 are tried at every level the recursion visits, and cases 4, 5, and 8 descend into agreeing or label-overlapping slots of their parents.
-   By the time case 9 fires at level `k`, every shallower level has matched a tight case; the resulting `Replace` therefore lands at the _deepest slot the planner could isolate the difference to_, leaving every ancestor's other subtrees running undisturbed.
+   Cases 1-7 are tried at every level the recursion visits, and cases 3, 4, and 7 descend into agreeing or label-overlapping slots of their parents.
+   By the time case 8 fires at level `k`, every shallower level has matched a tight case; the resulting `Replace` therefore lands at the _deepest slot the planner could isolate the difference to_, leaving every ancestor's other subtrees running undisturbed.
    The slot-level `Replace` is the §5.1 idiom with a non-empty path: it wraps only the slot's subtree, quiesces only that subtree, and rewires only the parent edge into it.
-   The worst case is a root-level `Replace([], p2)` (§5.1), reached only when case 9 fires at the root with no recursive descent.
+   The worst case is a root-level `Replace([], p2)` (§5.1), reached only when case 8 fires at the root with no recursive descent.
 
 ### 5.3 Demotion: when an inner result cannot bubble
 
-Cases 4 and 5 above each recurse into a slot's contents and prepend the slot's index to every step of the inner result.
+Cases 3 and 4 above each recurse into a slot's contents and prepend the slot's index to every step of the inner result.
 This is correct when the inner sequence describes an edit on the slot's _occupants_ in a way that survives retargeting.
-It fails for two inner shapes.
+It fails when the inner result ends in `ChangeRoot`, as `PruneDownTo`'s tail does.
 
-Suppose the running policy is `RoundRobin(A, B)` and the operator requests `RoundRobin(A, C(B))` (some 1-ary discipline `C` wrapping `B`).
-Case 4 fires at the root: lengths agree (both are 2-ary), one child differs (index 1).
-Recursing on `B` vs. `C(B)` falls into case 2: `B` embeds in `C(B)`, so the inner recursion returns `[(true, Graft(C(□)))]`.
-Bubbling this inner step by prepending index 1 would yield `[(true, Graft(C(□)))]` _at the outer slot_, which is not the edit the operator requested: `Graft`'s denotation acts on the whole running tree (per §3.4.8), not on the bubbled-up slot, so the prepended path would mis-describe the edit.
+Suppose the running policy is `RoundRobin(A, RR(zoom, netflix))` and the operator requests `RoundRobin(A, zoom)`.
+Case 3 fires at the root: lengths agree (both are 2-ary), one child differs (index 1).
+Recursing on `RR(zoom, netflix)` vs. `zoom` falls into case 2: `zoom` embeds in `RR(zoom, netflix)`, so the inner recursion returns a `PruneDownTo` sequence whose tail is `ChangeRoot`.
+Bubbling this inner sequence by prepending index 1 would mis-describe the edit: `ChangeRoot`'s denotation promotes a node to the _whole tree's_ root (per §3.4.7), not to the bubbled-up slot, so the prepended path would name the wrong target.
 
-The planner detects this shape (the inner result is a single `Graft` step, or it ends in `ChangeRoot` as `PruneDownTo`'s tail does) and _demotes_ to a slot-level `Replace` at the outer position; when the demoting recognizer is case 5 and the slot's metadata is also changing, the demoted `Replace` carries the new metadata as its trailing `ChangeMeta` step.
-Demotion is a deliberate downgrade in confinement (we land at case 9 for that slot rather than the tight inner `δ` we hoped for), but it is the price of recognizing that `Graft` and `PruneDownTo` describe _whole-tree edits only_.
+The planner detects this shape (the inner result ends in `ChangeRoot`) and _demotes_ to a slot-level `Replace` at the outer position; when the demoting recognizer is case 4 and the slot's metadata is also changing, the demoted `Replace` carries the new metadata as its trailing `ChangeMeta` step.
+Demotion is a deliberate downgrade in confinement (we land at case 8 for that slot rather than the tight inner sequence we hoped for), but it is the price of recognizing that `PruneDownTo` describes a _whole-tree edit only_.
 
 A future planner could do better here.
-A multi-`Add`-aware planner would recognize the running example as a single `Add` at the new `C` node (after standing it up via an outer rewrite), and avoid the demotion.
+A planner that recognized the inner shape as a slot-local prune-and-replace could express the edit more tightly than the demoted slot-level `Replace`.
 We leave that to future work; see §5.4.
 
 ### 5.4 What the planner does not do today
@@ -1311,7 +1291,7 @@ Two deliberate non-features, each a candidate for future work.
 
 - _No cost model._
   The case analysis is shape-based, not cost-weighted.
-  A cost-aware planner could prefer different decompositions (e.g., several small `Add`s vs. a single root-level `Replace`) based on per-flow drop and delay tolerances or per-PE budgets; case 8's label-set pairing is one place this would bite, since the greedy walk takes the first admissible alignment without ranking competitors.
+  A cost-aware planner could prefer different decompositions (e.g., several small `Add`s vs. a single root-level `Replace`) based on per-flow drop and delay tolerances or per-PE budgets; case 7's label-set pairing is one place this would bite, since the greedy walk takes the first admissible alignment without ranking competitors.
   We leave both questions to future work.
 - _No imperative-mode service._
   The planner serves declarative mode only.
@@ -1360,8 +1340,8 @@ The ISA has thirteen opcodes:
 | `Isa_undesignate(v)`        | PIFO                             | Collapse the super-node `{v -> surv}` to `surv`: the parent index that pointed at `{v -> surv}` now points directly at `surv`, and `surv` inherits the slot's per-arm metadata.                                                                                                                                                                                                                                                                                                                                                                     |
 
 Our single-purpose opcodes also mean that the tree can drift transiently malformed _within_ a commit, in ways that the commit's atomicity hides from any observer.
-For an instance from §6.2: `Graft`'s commit first adopts the live tree's current root as a child of the new context's hole, then emancipates that same node from `port_root`.
-Between those two instructions, the old root has two parents.
+For an instance from §6.2: `Designate`'s commit first adopts `loser` as a child of the freshly-spawned `sp_v`, then emancipates `loser` from its original parent and adopts `sp_v` in its place.
+Between the first adopt and the emancipate, `loser` has two parents.
 The atomic install means no `push` or `pop` ever sees this state, but the planner is free to issue commits whose intermediate frames would not satisfy the §3.1 well-formedness invariants.
 
 One last piece of setup the lowerings in §6.2 will lean on: _PE deployment_.
@@ -1379,9 +1359,9 @@ A switch with `P` output ports has `P` separate trees, and at the ISA we put a u
 Every port hosts a reserved PIFO `port_root`, allocated at boot on a reserved PE, whose sole child is the actual tree root.
 `port_root` runs a fixed 1-arm policy.
 Its `Assoc` set mirrors that of the live tree's actual root; its `Map` sends each Assoc'd flow through its single index `port_step`.
-This `port_root` state is load-bearing for the two root-touching productions, and it is maintained by two complementary mechanisms.
-On every production except `ChangeRoot` and `Graft`, the `walk(...)` calls that touch `Assoc`/`Map` start at `port_root` and so update its tables in lockstep with the actual root's.
-On `ChangeRoot` and `Graft`, the lowering issues no flow-table writes against `port_root` at all: the swap is exactly one `Isa_emancipate`/`Isa_adopt` pair against `port_root`, and the existing `Assoc`/`Map` state survives the swap because `port_step` is the index _name_, unbound to any particular child.
+This `port_root` state is load-bearing for `ChangeRoot`, and it is maintained by two complementary mechanisms.
+On every production except `ChangeRoot`, the `walk(...)` calls that touch `Assoc`/`Map` start at `port_root` and so update its tables in lockstep with the actual root's.
+On `ChangeRoot`, the lowering issues no flow-table writes against `port_root` at all: the swap is exactly one `Isa_emancipate`/`Isa_adopt` pair against `port_root`, and the existing `Assoc`/`Map` state survives the swap because `port_step` is the index _name_, unbound to any particular child.
 The wrapper exists so that "swap the root" can be expressed as one `Isa_emancipate`/`Isa_adopt` pair against `port_root`, in the same vocabulary as any child-level edit; there is no opcode for changing the root of the tree directly.
 
 The lowerings follow, one per production in the order of the §3.3 grammar.
@@ -1431,13 +1411,6 @@ When an entry's opcodes name an unmentioned parameter at `π` (e.g., `Isa_set_po
 - `ChangeRoot(path)`:
   let the live tree be `port_root -> a_0 -> a_1 -> ... -> a_m -> path` (the §3.3 restriction makes `a_0 .. a_m` a unary vine).
   `Isa_emancipate(port_step, port_root)`; `Isa_adopt(port_step, port_root, path)`; `Isa_gc(a_0); Isa_gc(a_1); ...; Isa_gc(a_m)`.
-- `Graft(ctx)`:
-  - Let `prev_root` be the live tree's current root (which is `port_root`'s child at commit time), `new_ctx_root` be the root of `ctx`'s compiled subtree, and `π` be the PIFO parent of `ctx`'s hole.
-  - Lay out `ctx`'s subtree in hardware as in `Add`'s "lay out the subtree" step, with one modification at the hole: instead of spawning a fresh subtree, use `Isa_adopt` to make `π` have the child `prev_root`.
-  - Detach `prev_root` and attach `new_ctx_root` in its place: `Isa_emancipate(port_step, port_root)`; `Isa_adopt(port_step, port_root, new_ctx_root)`.
-  - Wire flow tables. Partition the post-commit `flows(new_ctx_root)` into `F_ctx` (flows whose leaves lie strictly inside `ctx`) and `F_thru = flows(prev_root)` (flows that descend through the hole).
-    - For each `f ∈ F_ctx`: `walk(Isa_assoc, chain(f), f)`; `walk(Isa_map, internals(f), f)`. Fresh end-to-end wiring, as in `Add`.
-    - For each `f ∈ F_thru`: only the new spine (from `new_ctx_root` down to `π`) needs writing. Issue `Isa_assoc(v, f)` and `Isa_map(v, f, i_{v,f})` at each `v` from `new_ctx_root` down through `π`. The in-`prev_root` segments of `chain(f)` and `internals(f)` are unchanged from `prev_root`'s original setup; `port_root` already Assocs `f`, and its `Isa_map(port_root, f, port_step)` survives the swap because `port_step` is the index name, unbound to any particular child.
 
 Three items in the list deserve unpacking.
 
@@ -1463,7 +1436,7 @@ This is a vocabulary requirement, not a semantic one: the ISA-level lowering of 
 
 Second, the substrate must guarantee that no `push` or `pop` interleaves between a commit's first and last instruction.
 This is what hides §3.5's transiently-malformed intermediate frames.
-`Graft`'s commit produces a moment in which the old root has two parents.
+`Designate`'s commit produces a moment in which `loser` has two parents (its original parent, and the freshly-spawned `sp_v` that has just adopted it).
 `Remove`'s commit produces moments in which a node's flow-to-index map still routes flows to a just-detached child.
 `ChangeRoot`'s vine collapse produces moments in which the freed vine nodes are detached but not yet released.
 None of these frames survive an atomic commit's install.
