@@ -616,47 +616,63 @@ let change_root_tests =
       strict_abc_to_fifo_a_expected;
   ]
 
-(* Graft *)
+(* prev embedded in next (root-level Replace via Designate) *)
 
 (* prev = strict[A,B,C] compiles to pifos 100 (root)/101/102/103 with
    adopt steps 1000/1001/1002 and pes [0; 1]; counters end at next_v=104,
    next_s=1003. complex_tree normalizes to
    wfq[(sp[A,B,C], 1); (rr[D,E,F], 2); (rr[G,H], 3)] (children sort by
    constructor tag SP < RR, and rr[D,E,F] < rr[G,H] by element compare),
-   so prev sits at path [0]. The delta builds the new WFQ root (v=104,
-   PE 2; fresh, above prev's max PE 1), the RR[D,E,F] sibling (v=105 on
-   PE 0, leaves v=106/107/108 on PE 1, internal adopt steps 1003/1004/1005)
-   and the RR[G,H] sibling (v=109 on PE 0, leaves v=110/111 on PE 1,
-   internal adopt steps 1006/1007), then [Adopt]s the WFQ root's three
-   children via steps 1008 (prev's root v=100), 1009 (RR-DEF), 1010
-   (RR-GH). Each ancestor [Assoc]/[Map]s every class in its subtree; WFQ
-   weights mirror the (pol, weight) sort order: 1, 2, 3. Final
-   [Emancipate]/[Adopt] on the port root swings its single step from
-   prev's old real root v100 to the new top v104, and the port root gains
-   [Assoc]/[Map] entries on its single step for the five classes that
-   [complex_tree] adds beyond [strict_ABC] (D, E, F, G, H in the
-   normalized preorder); the three carried-over classes (A, B, C) keep
-   their existing port-root wiring. None of prev's pifos are respawned. *)
+   so prev sits at path [0] inside next. Before Graft was removed this
+   was the canonical Graft case; now the planner falls back to the
+   root-level [Replace] idiom via [Designate].
+
+   The delta compiles the new tree freshly: WFQ root v=104 on PE 0, then
+   the three children (sp[A,B,C], rr[D,E,F], rr[G,H]) and their leaves
+   on PEs 1 and 2 in normalized preorder. Once the new tree is wired,
+   the [Designate] wrapper v=116 (SP_star) is spawned on PE 0, adopts
+   loser v100 and survivor v104 under it, [Designate]s v100 -> v104, and
+   the port root emancipates from v100 and re-adopts onto v116. The
+   wrapper carries every class (A..H) mapped to step 1015 (the survivor
+   side), since all loser classes A,B,C are shared with the survivor.
+   The port root gains [Assoc]/[Map] entries for the five classes that
+   [complex_tree] adds beyond [strict_ABC] (D, E, F, G, H).
+
+   The second [True] frame tears down the loser's internal routing:
+   [Deassoc] for A, B, C at v100 and at the corresponding leaves
+   v101/v102/v103. No port-root or wrapper deassocs fire because the
+   loser class set is a subset of the survivor's.
+
+   The final [Empty [0]] frame fires once the wrapper's loser child has
+   drained: [Undesignate v100] swings the port root from the wrapper to
+   the survivor, then GCs the wrapper and the loser subtree. *)
 let strict_abc_to_complex_tree_expected =
   [
     t_
       [
-        Spawn (104, 2);
-        Spawn (105, 0);
-        Spawn (106, 1);
-        Spawn (107, 1);
-        Spawn (108, 1);
-        Spawn (109, 0);
-        Spawn (110, 1);
-        Spawn (111, 1);
-        Adopt (1008, 104, 100);
-        Adopt (1009, 104, 105);
-        Adopt (1010, 104, 109);
+        Spawn (104, 0);
+        Spawn (105, 1);
+        Spawn (106, 2);
+        Spawn (107, 2);
+        Spawn (108, 2);
+        Spawn (109, 1);
+        Spawn (110, 2);
+        Spawn (111, 2);
+        Spawn (112, 2);
+        Spawn (113, 1);
+        Spawn (114, 2);
+        Spawn (115, 2);
+        Adopt (1011, 104, 105);
+        Adopt (1012, 104, 109);
+        Adopt (1013, 104, 113);
         Adopt (1003, 105, 106);
         Adopt (1004, 105, 107);
         Adopt (1005, 105, 108);
         Adopt (1006, 109, 110);
         Adopt (1007, 109, 111);
+        Adopt (1008, 109, 112);
+        Adopt (1009, 113, 114);
+        Adopt (1010, 113, 115);
         Assoc (104, "A");
         Assoc (104, "B");
         Assoc (104, "C");
@@ -665,37 +681,70 @@ let strict_abc_to_complex_tree_expected =
         Assoc (104, "F");
         Assoc (104, "G");
         Assoc (104, "H");
-        Assoc (105, "D");
-        Assoc (105, "E");
-        Assoc (105, "F");
-        Assoc (106, "D");
-        Assoc (107, "E");
-        Assoc (108, "F");
-        Assoc (109, "G");
-        Assoc (109, "H");
-        Assoc (110, "G");
-        Assoc (111, "H");
-        Map (104, "A", 1008);
-        Map (104, "B", 1008);
-        Map (104, "C", 1008);
-        Map (104, "D", 1009);
-        Map (104, "E", 1009);
-        Map (104, "F", 1009);
-        Map (104, "G", 1010);
-        Map (104, "H", 1010);
-        Map (105, "D", 1003);
-        Map (105, "E", 1004);
-        Map (105, "F", 1005);
-        Map (109, "G", 1006);
-        Map (109, "H", 1007);
+        Assoc (105, "A");
+        Assoc (105, "B");
+        Assoc (105, "C");
+        Assoc (106, "A");
+        Assoc (107, "B");
+        Assoc (108, "C");
+        Assoc (109, "D");
+        Assoc (109, "E");
+        Assoc (109, "F");
+        Assoc (110, "D");
+        Assoc (111, "E");
+        Assoc (112, "F");
+        Assoc (113, "G");
+        Assoc (113, "H");
+        Assoc (114, "G");
+        Assoc (115, "H");
+        Map (104, "A", 1011);
+        Map (104, "B", 1011);
+        Map (104, "C", 1011);
+        Map (104, "D", 1012);
+        Map (104, "E", 1012);
+        Map (104, "F", 1012);
+        Map (104, "G", 1013);
+        Map (104, "H", 1013);
+        Map (105, "A", 1003);
+        Map (105, "B", 1004);
+        Map (105, "C", 1005);
+        Map (109, "D", 1006);
+        Map (109, "E", 1007);
+        Map (109, "F", 1008);
+        Map (113, "G", 1009);
+        Map (113, "H", 1010);
         Set_policy (104, WFQ, 3);
-        Set_policy (105, RR, 3);
-        Set_policy (109, RR, 2);
-        Set_arm_meta (104, 1008, 1.0);
-        Set_arm_meta (104, 1009, 2.0);
-        Set_arm_meta (104, 1010, 3.0);
+        Set_policy (105, SP, 3);
+        Set_policy (109, RR, 3);
+        Set_policy (113, RR, 2);
+        Set_arm_meta (104, 1011, 1.0);
+        Set_arm_meta (104, 1012, 2.0);
+        Set_arm_meta (104, 1013, 3.0);
+        Set_arm_meta (105, 1003, 1.0);
+        Set_arm_meta (105, 1004, 2.0);
+        Set_arm_meta (105, 1005, 3.0);
+        Spawn (116, 0);
+        Adopt (1014, 116, 100);
+        Adopt (1015, 116, 104);
+        Designate (100, 104);
         Emancipate (999, 99);
-        Adopt (999, 99, 104);
+        Adopt (999, 99, 116);
+        Assoc (116, "A");
+        Assoc (116, "B");
+        Assoc (116, "C");
+        Assoc (116, "D");
+        Assoc (116, "E");
+        Assoc (116, "F");
+        Assoc (116, "G");
+        Assoc (116, "H");
+        Map (116, "A", 1015);
+        Map (116, "B", 1015);
+        Map (116, "C", 1015);
+        Map (116, "D", 1015);
+        Map (116, "E", 1015);
+        Map (116, "F", 1015);
+        Map (116, "G", 1015);
+        Map (116, "H", 1015);
         Assoc (99, "D");
         Assoc (99, "E");
         Assoc (99, "F");
@@ -706,17 +755,30 @@ let strict_abc_to_complex_tree_expected =
         Map (99, "F", 999);
         Map (99, "G", 999);
         Map (99, "H", 999);
+        Set_policy (116, SP_star, 2);
+        Set_arm_meta (116, 1014, 1.0);
+        Set_arm_meta (116, 1015, 2.0);
       ];
+    t_
+      [
+        Deassoc (100, "A");
+        Deassoc (100, "B");
+        Deassoc (100, "C");
+        Deassoc (101, "A");
+        Deassoc (102, "B");
+        Deassoc (103, "C");
+      ];
+    e_ [ 0 ] [ Undesignate 100; GC 116; GC 100; GC 101; GC 102; GC 103 ];
   ]
 
-let graft_tests =
+let prev_embedded_in_next_tests =
   [
     ( "strict[A,B,C] -> complex_tree (pes invariant)" >:: fun _ ->
       let c = patch_files "strict_ABC" "complex_tree" in
       assert_equal
         ~printer:(fun pes ->
           "[" ^ String.concat "; " (List.map string_of_int pes) ^ "]")
-        [ 2; 0; 1 ] c.pes );
+        [ 0; 1; 2 ] c.pes );
     make_delta_test "strict[A,B,C] -> complex_tree" "strict_ABC" "complex_tree"
       strict_abc_to_complex_tree_expected;
   ]
@@ -1005,7 +1067,7 @@ let suite =
   >::: one_arm_added_tests @ one_arm_added_wfq_tests @ meta_changed_tests
        @ one_arm_removed_tests @ one_arm_replaced_tests
        @ one_arm_replaced_wfq_tests @ whole_tree_replace_tests
-       @ change_root_tests @ graft_tests @ pes_extension_tests
+       @ change_root_tests @ prev_embedded_in_next_tests @ pes_extension_tests
        @ deep_giveup_tests @ planner_production_tests
 
 let () = run_test_tt_main suite
