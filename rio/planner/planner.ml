@@ -19,8 +19,14 @@ type guard =
 type step = guard * Delta.t
 type t = step list
 
-(* -------- list helpers (moved from compare/delta) ----------- *)
+(* -------- list helpers --------------------------------------- *)
 
+(* If [next] embeds [prev] as a strict subsequence, return the indices in
+   [next]'s frame at which the extra arms sit (in ascending order). Used
+   by the length-differing branches of the comparators to recognize a
+   multi-arm Add (with [prev]=ps1, [next]=ps2) or a multi-arm Retire (with
+   the arguments swapped). [None] signals "not a subsequence" and the
+   caller falls back to label-set alignment. *)
 let insertions prev next =
   let rec loop i prev next acc =
     match (prev, next) with
@@ -64,8 +70,7 @@ let labels_overlap a b =
    Returns [None] (caller falls back to slot-level [Replace]) if any arm
    overlaps more than one on the other side, or if the matching reorders
    slots non-monotonically. [Pol.normalize] sorts siblings into a canonical
-   order, so post-normalize inputs always meet the monotonicity check.
-   (worklist items 16, 18) *)
+   order, so post-normalize inputs always meet the monotonicity check. *)
 let align_by_labels_bidir ps1 ps2 =
   let partner_in_ps2 a1 =
     let hits =
@@ -147,8 +152,8 @@ let prepend_seq i seq = List.map (prepend_step i) seq
    loser has drained by the time [Undesignate]'s guard fires, and [ChangeMeta]
    sits in the next step slot).
 
-   Also serves as the sniffer's give-up sequence: when [analyze] can't find a
-   smaller atomic edit, it emits [Replace] at the divergent slot.
+   Also serves as [analyze]'s give-up sequence: when no smaller atomic edit
+   applies, [Replace] fires at the divergent slot.
 
    All paths are emitted as [[]] at this level; bubble-up via [prepend_seq]
    pins them to the right slot. *)
@@ -218,7 +223,8 @@ let prune_down_to ~prev ~path () =
   walk prev path [] @ [ (True, Delta.ChangeRoot (List.map (fun _ -> 0) path)) ]
 
 (* Recognize the inner [Replace] shape (pre-bubble-up). Used by the metaed
-   comparator to gate "slot-replace-with-meta" rewrites. *)
+   comparator to fold a slot's meta change into the trailing [ChangeMeta]
+   of a [Replace] when both fire at the same slot. *)
 let is_replace_root = function
   | [
       (True, Delta.Designate { path = []; _ });
@@ -227,61 +233,78 @@ let is_replace_root = function
     ] -> true
   | _ -> false
 
-(* Shared emit for an [align_by_labels_bidir] result. Retires fire first
-   (descending [ps1]-frame index so lower-indexed slots don't shift while
-   higher retires are still pending), then adds (ascending [ps2]-frame
-   index; each add lands in the post-retire intermediate frame, which by
-   ascending construction equals the final ps2 frame as the adds rebuild
-   the structure), then per-match arm edits at their [ps2]-frame indices.
+(* Emit retires for the [(idx, _)] slots in descending index order, so a
+   higher-index retire doesn't shift the lower-index paths still pending.
+   Shared by the multi-arm retire branches and the [emit_bidir_*]
+   helpers. *)
+let retires_descending entries =
+  let descending = List.sort (fun (a, _) (b, _) -> compare b a) entries in
+  List.concat_map (fun (i, _) -> prepend_seq i (retire ())) descending
+
+(* Shared emit shape for an [align_by_labels_bidir] result. Retires fire
+   first (in descending [ps1]-frame index), then adds (ascending
+   [ps2]-frame index; each add lands in the post-retire intermediate
+   frame, which by ascending construction equals the final ps2 frame),
+   then per-match arm edits at their [ps2]-frame indices.
+
    [slot_arm_edit] is the caller's per-slot edit closure (it recurses into
-   [analyze]); the unmetaed variant skips equal-arm matches outright, the
-   metaed variant emits a trailing [ChangeMeta] when the meta changed. *)
+   [analyze_inner]); the unmetaed variant skips equal-arm matches
+   outright, the metaed variant additionally emits a trailing [ChangeMeta]
+   when the meta also changed. *)
 let emit_bidir_unmetaed ~slot_arm_edit matches ps1_only ps2_only =
-  let descending = List.sort (fun (a, _) (b, _) -> compare b a) ps1_only in
-  let retire_steps =
-    List.concat_map (fun (i, _) -> prepend_seq i (retire ())) descending
-  in
-  let add_steps =
+  let adds =
     List.map
       (fun (j, arm) -> (True, Delta.Add { path = [ j ]; arm; meta = None }))
       ps2_only
   in
-  let match_steps =
+  let matched =
     List.concat_map
       (fun (_, j, arm1, arm2) ->
         if arm1 = arm2 then [] else slot_arm_edit j arm1 arm2)
       matches
   in
-  retire_steps @ add_steps @ match_steps
+  retires_descending ps1_only @ adds @ matched
 
 let emit_bidir_metaed ~slot_arm_edit ~ms1 ~ms2 matches ps1_only ps2_only =
-  let descending = List.sort (fun (a, _) (b, _) -> compare b a) ps1_only in
-  let retire_steps =
-    List.concat_map (fun (i, _) -> prepend_seq i (retire ())) descending
-  in
-  let add_steps =
+  let adds =
     List.map
       (fun (j, arm) ->
         (True, Delta.Add { path = [ j ]; arm; meta = Some (List.nth ms2 j) }))
       ps2_only
   in
-  let match_steps =
-    List.concat_map
-      (fun (i1, j2, arm1, arm2) ->
-        let m1 = List.nth ms1 i1 in
-        let m2 = List.nth ms2 j2 in
-        let meta = if m1 = m2 then None else Some m2 in
-        if arm1 = arm2 then
-          match meta with
-          | None -> []
-          | Some new_meta ->
-              [ (True, Delta.ChangeMeta { path = [ j2 ]; new_meta }) ]
-        else slot_arm_edit j2 arm1 arm2 ?meta ())
-      matches
+  let edit_match (i1, j2, arm1, arm2) =
+    let m1 = List.nth ms1 i1 in
+    let m2 = List.nth ms2 j2 in
+    let meta = if m1 = m2 then None else Some m2 in
+    match (arm1 = arm2, meta) with
+    | true, None -> []
+    | true, Some new_meta ->
+        [ (True, Delta.ChangeMeta { path = [ j2 ]; new_meta }) ]
+    | false, _ -> slot_arm_edit j2 arm1 arm2 ?meta ()
   in
-  retire_steps @ add_steps @ match_steps
+  let matched = List.concat_map edit_match matches in
+  retires_descending ps1_only @ adds @ matched
 
-(* -------- sub-policy / sniffer ------------------------------ *)
+(* Fallback combinator for [compare_*]: try bidirectional label-set
+   alignment, emit it if found, otherwise give up. [emit] curries the
+   relevant [emit_bidir_*]'s shared arguments. *)
+let bidir_or ~emit ~give_up ps1 ps2 =
+  match align_by_labels_bidir ps1 ps2 with
+  | None -> give_up
+  | Some (matches, ps1_only, ps2_only) -> emit matches ps1_only ps2_only
+
+(* Same-length entry point: trigger bidir only when its alignment reveals
+   a genuine cross-slot match ([i1 <> j2] for some pair); when every match
+   aligns at the same slot, the per-slot walk is at least as good and
+   runs instead. *)
+let try_bidir_cross_slot ~emit ~per_slot ps1 ps2 =
+  match align_by_labels_bidir ps1 ps2 with
+  | Some (matches, ps1_only, ps2_only)
+    when List.exists (fun (i1, j2, _, _) -> i1 <> j2) matches ->
+      emit matches ps1_only ps2_only
+  | _ -> per_slot ()
+
+(* -------- sub-policy test ----------------------------------- *)
 
 let rec is_sub_policy p1 p2 =
   if p1 = p2 then Some []
@@ -303,21 +326,15 @@ let rec is_sub_policy p1 p2 =
 
 let rec compare_children ~next:p2 ps1 ps2 =
   let give_up = replace ~next:p2 () in
-  (* Emit a slot-level edit at index [i] carrying [arm1] to [arm2]. The
-     inner sequence always bubbles via [prepend_seq]: [analyze_inner]
-     never returns a [PruneDownTo] (that is top-level only; see
-     [analyze]), so no demotion check is needed here. *)
+  (* [analyze_inner] never returns a [PruneDownTo] (top-level only; see
+     [analyze]), so the inner sequence always bubbles cleanly via
+     [prepend_seq]. *)
   let slot_arm_edit i arm1 arm2 = prepend_seq i (analyze_inner arm1 arm2) in
+  let emit = emit_bidir_unmetaed ~slot_arm_edit in
   match List.compare_lengths ps1 ps2 with
   | 0 ->
-      (* Same-length fallback to bidirectional label-set alignment: when
-         [Pol.normalize] has reordered ps1 vs ps2 such that label-equivalent
-         arms now sit at different slot indices (e.g. an arm morphed past a
-         sibling in the sort), the per-slot walk would pair unrelated arms and
-         demote to [Replace]. Fire bidir whenever its alignment exhibits a
-         genuine cross-slot match ([i1 <> j2] for some match); when every
-         match aligns at the same slot, the per-slot walk is at least as
-         good and we let it run. (worklist item 20) *)
+      (* Per-slot walk pairs arms at the same index; bidir picks up
+         cross-slot morphs that [Pol.normalize]'s sort exposed. *)
       let per_slot () =
         List.concat
           (List.mapi
@@ -325,65 +342,32 @@ let rec compare_children ~next:p2 ps1 ps2 =
                if arm1 = arm2 then [] else slot_arm_edit i arm1 arm2)
              (List.combine ps1 ps2))
       in
-      begin match align_by_labels_bidir ps1 ps2 with
-      | Some (matches, ps1_only, ps2_only)
-        when List.exists (fun (i1, j2, _, _) -> i1 <> j2) matches ->
-          emit_bidir_unmetaed ~slot_arm_edit matches ps1_only ps2_only
-      | _ -> per_slot ()
-      end
+      try_bidir_cross_slot ~emit ~per_slot ps1 ps2
   | -1 ->
       (* Multi-arm add: every surplus entry in [ps2] is a pure addition (the
-         arms of [ps1] appear in-order as a subsequence). One [Add] per extra
-         in ascending index order; each subsequent path is into the structure
-         as the earlier [Add]s grew it (and [insertions] already returns
-         indices in that frame).
-
-         When the strict subsequence fails ([insertions] returns [None]) but
-         the divergence is "shared arms morphed structurally and/or some
-         [ps1] arm has no [ps2] partner", fall back to bidirectional
-         label-set alignment. The bidir emit may produce retires too (paper
-         sketch.md sec5.2 case 8; worklist item 16). *)
+         arms of [ps1] appear in-order as a subsequence of [ps2]). One [Add]
+         per extra in ascending index order; bidir fallback when the strict
+         subsequence fails. *)
       begin match insertions ps1 ps2 with
       | Some adds ->
           List.map
             (fun (i, arm) ->
               (True, Delta.Add { path = [ i ]; arm; meta = None }))
             adds
-      | None -> (
-          match align_by_labels_bidir ps1 ps2 with
-          | None -> give_up
-          | Some (matches, ps1_only, ps2_only) ->
-              emit_bidir_unmetaed ~slot_arm_edit matches ps1_only ps2_only)
+      | None -> bidir_or ~emit ~give_up ps1 ps2
       end
   | 1 ->
-      (* Multi-arm retire: symmetric to the [-1] branch. Descending index
-         order so retiring a higher slot doesn't shift the lower-index paths
-         still waiting to fire (mirrors [prune_down_to]'s within-level
-         discipline).
-
-         Bidirectional fallback mirrors the [-1] case: when the strict
-         subsequence fails, [align_by_labels_bidir] can also discover
-         [ps2_only] arms (adds intermixed with the retires; worklist
-         item 16). *)
+      (* Multi-arm retire: symmetric to [-1]. *)
       begin match insertions ps2 ps1 with
-      | Some retires ->
-          let descending =
-            List.sort (fun (a, _) (b, _) -> compare b a) retires
-          in
-          List.concat_map (fun (i, _) -> prepend_seq i (retire ())) descending
-      | None -> (
-          match align_by_labels_bidir ps1 ps2 with
-          | None -> give_up
-          | Some (matches, ps1_only, ps2_only) ->
-              emit_bidir_unmetaed ~slot_arm_edit matches ps1_only ps2_only)
+      | Some retires -> retires_descending retires
+      | None -> bidir_or ~emit ~give_up ps1 ps2
       end
   | _ -> failwith "Can't get here"
 
-(* SP and WFQ share shape [(t * float) list]. The recognizer walks each
-   parent's children independently of any lockstep gate: same-length parents
-   get a per-slot walk; length-differing parents align via the arm
-   projection's subsequence-embedding and compare metas at shared arms
-   afterwards. Slot-level edits at distinct indices don't interfere, so they
+(* SP and WFQ share shape [(t * float) list]. Same-length parents get a
+   per-slot walk; length-differing parents align via the arm projection's
+   subsequence-embedding and compare metas at shared arms afterwards.
+   Slot-level edits at distinct indices don't interfere, so they
    concatenate freely. *)
 and compare_metaed_children ~next:p2 pms1 pms2 =
   let give_up = replace ~next:p2 () in
@@ -392,12 +376,10 @@ and compare_metaed_children ~next:p2 pms1 pms2 =
   let ms1 = List.map snd pms1 in
   let ms2 = List.map snd pms2 in
   (* Emit a slot-level edit at index [i], carrying [arm1] to [arm2] and
-     optionally rebinding the slot's meta. Two sub-cases by inner shape: a
-     [Replace]-root inner takes the meta in its trailing [ChangeMeta]; any
-     other clean inner edit bubbles via [prepend_seq] with a separate
-     [ChangeMeta] for the meta change. [analyze_inner] never returns a
-     [PruneDownTo] (that is top-level only; see [analyze]), so no
-     demotion check is needed. *)
+     optionally rebinding the slot's meta. A [Replace]-root inner absorbs
+     any meta change into its own trailing [ChangeMeta]; otherwise the
+     inner sequence bubbles via [prepend_seq] with a separate [ChangeMeta]
+     for the meta change. *)
   let slot_arm_edit i arm1 arm2 ?meta () =
     let inner = analyze_inner arm1 arm2 in
     match (meta, is_replace_root inner) with
@@ -413,18 +395,25 @@ and compare_metaed_children ~next:p2 pms1 pms2 =
         @ [ (True, Delta.ChangeMeta { path = [ i ]; new_meta = m }) ]
     | None, _ -> prepend_seq i inner
   in
+  let emit = emit_bidir_metaed ~slot_arm_edit ~ms1 ~ms2 in
+  (* Per-slot row at a same-length parent: arm difference -> slot_arm_edit
+     (with meta when the meta also differs); meta-only difference ->
+     [ChangeMeta]; both agree -> nothing. *)
+  let per_slot_row i (arm1, m1) (arm2, m2) =
+    match (arm1 <> arm2, m1 <> m2) with
+    | false, false -> []
+    | false, true ->
+        [ (True, Delta.ChangeMeta { path = [ i ]; new_meta = m2 }) ]
+    | true, false -> slot_arm_edit i arm1 arm2 ()
+    | true, true -> slot_arm_edit i arm1 arm2 ~meta:m2 ()
+  in
   match List.compare_lengths ps1 ps2 with
   | 0 ->
-      (* Pre-pass: if [ps1] and [ps2] hold the same arm contents in
-         different positions, the difference is purely a meta shuffle that
-         [Pol.normalize]'s rank sort exposed (e.g.
-         [SP((A,1),(B,2)) -> SP((B,1),(A,2))]). Emit one [ChangeMeta] per
-         slot whose meta needs to move, rather than per-slot [Replace]s
-         between unrelated arms. The new meta for [ps1]'s slot [i] is
-         [ps2]'s meta at whichever slot hosts the same arm; leaf-partition
-         validity (sec3.2) guarantees a unique match. After the sequence
-         fires, [Pol.normalize] re-sorts the rebalanced policy into [ps2]'s
-         shape. (worklist item 17) *)
+      (* Permutation pre-pass: when [ps1] and [ps2] hold the same arm
+         multiset in different positions, the difference is purely a meta
+         shuffle exposed by [Pol.normalize]'s sort. Emit one [ChangeMeta]
+         per slot whose meta moved; leaf-partition validity makes the
+         per-slot lookup unique. *)
       let arms_only = List.sort compare in
       if ps1 <> ps2 && arms_only ps1 = arms_only ps2 then
         let indexed_ps2 = List.mapi (fun j a -> (j, a)) ps2 in
@@ -437,49 +426,18 @@ and compare_metaed_children ~next:p2 pms1 pms2 =
                else [ (True, Delta.ChangeMeta { path = [ i ]; new_meta }) ])
              ps1)
       else
-        (* Per-slot walk: each index whose arm or meta differs contributes
-           its own independent edit. Same-length bidirectional fallback runs
-           first: when [Pol.normalize]'s sort has placed label-equivalent
-           arms at different slot indices in ps1 vs ps2 (e.g. an SP rank
-           change crossing a co-changing arm morph), the per-slot walk would
-           pair unrelated arms and emit slot-level [Replace]s. Fire bidir
-           whenever its alignment exhibits a genuine cross-slot match
-           ([i1 <> j2] for some match); otherwise the per-slot walk is at
-           least as good and runs. (worklist item 20) *)
         let per_slot () =
-          let triples =
-            List.combine (List.combine ps1 ms1) (List.combine ps2 ms2)
-          in
           List.concat
             (List.mapi
                (fun i ((arm1, m1), (arm2, m2)) ->
-                 match (arm1 <> arm2, m1 <> m2) with
-                 | false, false -> []
-                 | false, true ->
-                     [
-                       (True, Delta.ChangeMeta { path = [ i ]; new_meta = m2 });
-                     ]
-                 | true, false -> slot_arm_edit i arm1 arm2 ()
-                 | true, true -> slot_arm_edit i arm1 arm2 ~meta:m2 ())
-               triples)
+                 per_slot_row i (arm1, m1) (arm2, m2))
+               (List.combine (List.combine ps1 ms1) (List.combine ps2 ms2)))
         in
-        begin match align_by_labels_bidir ps1 ps2 with
-        | Some (matches, ps1_only, ps2_only)
-          when List.exists (fun (i1, j2, _, _) -> i1 <> j2) matches ->
-            emit_bidir_metaed ~slot_arm_edit ~ms1 ~ms2 matches ps1_only ps2_only
-        | _ -> per_slot ()
-        end
+        try_bidir_cross_slot ~emit ~per_slot ps1 ps2
   | -1 ->
-      (* [ps1] must embed in [ps2] as a subsequence. Each surplus [ps2] arm
-         becomes an [Add] carrying that arm's meta; each [ps2] index whose
-         arm came from [ps1] contributes a [ChangeMeta] when the metas
-         differ. All [Add]s fire first, in ascending [ps2]-index order, so
-         each trailing [ChangeMeta]'s path lands in [ps2]'s frame.
-
-         When the strict subsequence fails ([insertions] returns [None]),
-         fall back to bidirectional label-set alignment. As in
-         [compare_children], the bidir emit may also produce retires for
-         [ps1_only] arms (worklist item 16). *)
+      (* [ps1] embeds in [ps2] as a subsequence: surplus arms become [Add]s
+         carrying their metas (ascending [ps2] index), and shared arms whose
+         meta differs contribute a trailing [ChangeMeta] in [ps2]'s frame. *)
       begin match insertions ps1 ps2 with
       | Some adds ->
           let add_indices = List.map fst adds in
@@ -507,31 +465,15 @@ and compare_metaed_children ~next:p2 pms1 pms2 =
               (List.init (List.length ps2) (fun j -> j))
           in
           add_steps @ change_meta_steps
-      | None -> (
-          match align_by_labels_bidir ps1 ps2 with
-          | None -> give_up
-          | Some (matches, ps1_only, ps2_only) ->
-              emit_bidir_metaed ~slot_arm_edit ~ms1 ~ms2 matches ps1_only
-                ps2_only)
+      | None -> bidir_or ~emit ~give_up ps1 ps2
       end
   | 1 ->
       (* Symmetric to [-1]: surplus [ps1] arms retire (descending so
          lower-index paths stay stable); shared arms whose metas differ
-         take a [ChangeMeta] in [ps2]'s post-Retire frame.
-
-         Bidirectional fallback mirrors the [-1] case: when the strict
-         subsequence fails, [align_by_labels_bidir] can also discover
-         [ps2_only] arms (adds intermixed with the retires; worklist
-         item 16). *)
+         take a [ChangeMeta] in [ps2]'s post-Retire frame. *)
       begin match insertions ps2 ps1 with
       | Some retires ->
           let retire_indices = List.map fst retires in
-          let descending =
-            List.sort (fun (a, _) (b, _) -> compare b a) retires
-          in
-          let retire_steps =
-            List.concat_map (fun (i, _) -> prepend_seq i (retire ())) descending
-          in
           let ps1_matched =
             List.filter
               (fun i -> not (List.mem i retire_indices))
@@ -547,13 +489,8 @@ and compare_metaed_children ~next:p2 pms1 pms2 =
                   Some (True, Delta.ChangeMeta { path = [ j ]; new_meta = m2 }))
               (List.mapi (fun j i1 -> (j, i1)) ps1_matched)
           in
-          retire_steps @ change_meta_steps
-      | None -> (
-          match align_by_labels_bidir ps1 ps2 with
-          | None -> give_up
-          | Some (matches, ps1_only, ps2_only) ->
-              emit_bidir_metaed ~slot_arm_edit ~ms1 ~ms2 matches ps1_only
-                ps2_only)
+          retires_descending retires @ change_meta_steps
+      | None -> bidir_or ~emit ~give_up ps1 ps2
       end
   | _ -> failwith "Can't get here"
 

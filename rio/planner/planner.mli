@@ -15,7 +15,7 @@ type step = guard * Delta.t
 type t = step list
 
 val analyze : Rio_core.Pol.t -> Rio_core.Pol.t -> t
-(** [analyze p1 p2] sniffs a guarded sequence carrying [p1] to [p2]. Returns
+(** [analyze p1 p2] proposes a guarded sequence carrying [p1] to [p2]. Returns
     [[]] when the two policies are equal. Per-step deltas are atomic
     [Rio_delta.Delta] productions; sub-policy collapses ([p2] sits inside [p1])
     expand into the [PruneDownTo] idiom; structural give-ups (constructor
@@ -32,8 +32,8 @@ val replace : next:Rio_core.Pol.t -> ?meta:float -> unit -> t
     or WFQ weight); sequencing after [Undesignate] suffices, since by the time
     [ChangeMeta] runs the loser has drained and the parent edge already points
     at the survivor. Emitted with [path = []] at the local level; the caller
-    prepends the target index via [prepend_seq]. Also the sniffer's give-up
-    sequence. *)
+    prepends the target index via [prepend_seq]. Also serves as [analyze]'s
+    give-up sequence when no smaller atomic edit applies. *)
 
 val retire : unit -> t
 (** The paper's [Retire] idiom: [Quiesce(p) ; (Empty p) Remove(p)]. Emitted with
