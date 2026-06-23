@@ -418,7 +418,8 @@ and compare_metaed_children ~next:p2 pms1 pms2 =
      [ChangeMeta] for the meta change. *)
   let slot_arm_edit i arm1 arm2 ?meta () =
     let inner = analyze arm1 arm2 in
-    if ends_in_change_root inner then prepend_seq i (replace ~next:arm2 ?meta ())
+    if ends_in_change_root inner then
+      prepend_seq i (replace ~next:arm2 ?meta ())
     else
       match (meta, is_replace_root inner) with
       | Some m, true ->
