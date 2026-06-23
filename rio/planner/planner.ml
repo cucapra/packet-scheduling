@@ -318,17 +318,12 @@ let rec is_sub_policy p1 p2 =
 let rec compare_children ~next:p2 ps1 ps2 =
   let give_up = replace ~next:p2 () in
   (* Emit a slot-level edit at index [i] carrying [arm1] to [arm2]. A
-     non-bubbleable inner shape (nested [Graft] or [PruneDownTo]) demotes
-     to a slot-level [Replace] at this level; any other inner sequence
-     bubbles via [prepend_seq]. *)
+     non-bubbleable inner shape (nested [PruneDownTo], which ends in
+     [ChangeRoot]) demotes to a slot-level [Replace] at this level; any
+     other inner sequence bubbles via [prepend_seq]. *)
   let slot_arm_edit i arm1 arm2 =
     let inner = analyze arm1 arm2 in
-    let non_bubbleable =
-      match inner with
-      | [ (True, Delta.Graft _) ] -> true
-      | _ -> ends_in_change_root inner
-    in
-    if non_bubbleable then prepend_seq i (replace ~next:arm2 ())
+    if ends_in_change_root inner then prepend_seq i (replace ~next:arm2 ())
     else prepend_seq i inner
   in
   match List.compare_lengths ps1 ps2 with
@@ -416,18 +411,14 @@ and compare_metaed_children ~next:p2 pms1 pms2 =
   let ms2 = List.map snd pms2 in
   (* Emit a slot-level edit at index [i], carrying [arm1] to [arm2] and
      optionally rebinding the slot's meta. Three sub-cases by inner shape:
-     a non-bubbleable inner (nested [Graft] or [PruneDownTo]) demotes to a
-     slot-level [Replace] (with meta); a [Replace]-root inner takes the
-     meta in its trailing [ChangeMeta]; any other clean inner edit bubbles
-     via [prepend_seq] with a separate [ChangeMeta] for the meta change. *)
+     a non-bubbleable inner (nested [PruneDownTo], which ends in
+     [ChangeRoot]) demotes to a slot-level [Replace] (with meta); a
+     [Replace]-root inner takes the meta in its trailing [ChangeMeta]; any
+     other clean inner edit bubbles via [prepend_seq] with a separate
+     [ChangeMeta] for the meta change. *)
   let slot_arm_edit i arm1 arm2 ?meta () =
     let inner = analyze arm1 arm2 in
-    let non_bubbleable =
-      match inner with
-      | [ (True, Delta.Graft _) ] -> true
-      | _ -> ends_in_change_root inner
-    in
-    if non_bubbleable then prepend_seq i (replace ~next:arm2 ?meta ())
+    if ends_in_change_root inner then prepend_seq i (replace ~next:arm2 ?meta ())
     else
       match (meta, is_replace_root inner) with
       | Some m, true ->
@@ -589,11 +580,9 @@ and compare_metaed_children ~next:p2 pms1 pms2 =
 and analyze p1 p2 =
   if p1 = p2 then []
   else
-    match (is_sub_policy p1 p2, is_sub_policy p2 p1) with
-    | Some _, Some _ -> [] (* unreachable: would mean p1 = p2 *)
-    | Some path, None -> [ (True, Delta.Graft path) ]
-    | None, Some path -> prune_down_to ~prev:p1 ~path ()
-    | _ -> (
+    match is_sub_policy p2 p1 with
+    | Some path -> prune_down_to ~prev:p1 ~path ()
+    | None -> (
         match (p1, p2) with
         | SP (pms1, _), SP (pms2, _) | WFQ pms1, WFQ pms2 ->
             compare_metaed_children ~next:p2 pms1 pms2

@@ -493,16 +493,6 @@ let nested_giveup_demotion =
       (replace_seq [ 1 ] (Pol.FIFO "B"));
   ]
 
-let graft =
-  [
-    make_planner_test "fifo_A is sub-pol of complex_tree" "fifo_A"
-      "complex_tree"
-      [ (Planner.True, Delta.Graft [ 0; 0 ]) ];
-    make_planner_test "strict_ABC is subpol of complex_tree" "strict_ABC"
-      "complex_tree"
-      [ (Planner.True, Delta.Graft [ 0 ]) ];
-  ]
-
 (* The planner's [PruneDownTo] idiom: retire each off-path sibling along the
    route to the surviving subtree (highest-index-within-level first,
    outer-level first), then re-root via [(True, ChangeRoot [0;...;0])]. *)
@@ -537,7 +527,7 @@ let suite =
        @ multi_arms_removed_metaed @ metachanged @ one_arm_replaced
        @ one_arm_replaced_wfq @ multi_arms_replaced @ multi_arms_replaced_metaed
        @ add_with_shared_meta_change @ aligned_multi @ mixed_add_retire
-       @ same_length_bidir @ verydiff_combos @ graft @ change_root
+       @ same_length_bidir @ verydiff_combos @ change_root
        @ nested_giveup_demotion
 
 let () = run_test_tt_main suite

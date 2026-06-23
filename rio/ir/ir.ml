@@ -354,46 +354,6 @@ let patch_remove ~prev ~arm_path =
 (* Patch: super- and sub-policy.                                      *)
 (* ------------------------------------------------------------------ *)
 
-(* [prev]'s policy sits inside [next] at [path]: compile only the new structure
-   surrounding [prev] and graft [prev]'s installed root in at the splice via
-   [Adopt] (handled inside [compile_subtree]'s [splice] argument). Then repoint
-   the port root's single step from prev's old real root to next's new top. *)
-let patch_graft ~prev ~next ~path =
-  let len = List.length path in
-  let prev_max_depth = List.length prev.pes - 1 in
-  let next_max_depth = Rio_core.Pol.depth next in
-  (* New PE assignment: layers above [prev] get fresh PEs, layers occupied
-     by [prev] reuse [prev.pes] (so already-installed nodes keep their PEs),
-     layers deeper than [prev] get more fresh PEs. *)
-  let pe_counter = make_counter ~start:(List.fold_left max (-1) prev.pes + 1) in
-  let new_pes =
-    List.init (next_max_depth + 1) (fun d ->
-        if d < len then pe_counter ()
-        else if d - len <= prev_max_depth then List.nth prev.pes (d - len)
-        else pe_counter ())
-  in
-  let pe_of_depth d = List.nth new_pes d in
-  let fresh_v, fresh_s = counters_after prev in
-  let frag, decorated =
-    compile_subtree ~fresh_v ~fresh_s ~pe_of_depth ~depth:0
-      ~splice:(path, prev.decorated) next
-  in
-  let prev_classes = Decorated.subtree_classes prev.decorated in
-  let only_added =
-    List.filter
-      (fun c -> not (List.mem c prev_classes))
-      (Decorated.subtree_classes decorated)
-  in
-  let rewire =
-    [
-      Emancipate (port_root_step, port_root_v);
-      Adopt (port_root_step, port_root_v, frag.root_v);
-    ]
-    @ chain_emit (fun v _ c -> Assoc (v, c)) port_chain only_added
-    @ chain_emit (fun v s c -> Map (v, c, s)) port_chain only_added
-  in
-  single ~commit:(Frag.to_commit frag @ rewire) ~decorated ~pes:new_pes
-
 (* [next] sits inside [prev] at [path]: re-root the tree to that existing
    subtree by repointing the port root's single step from prev's old real
    root to the new one. No detach from the surviving subtree's old parent is
@@ -662,9 +622,6 @@ let patch ~prev ~(next : Rio_core.Pol.t) : compiled option =
     | D.ChangeMeta { path; new_meta } ->
         patch_meta_changed ~prev:state ~path ~new_meta
     | D.Quiesce path -> patch_quiesce ~prev:state ~path
-    | D.Graft path ->
-        if path = [] then failwith "Ir.patch: whole-tree Graft is unsupported"
-        else patch_graft ~prev:state ~next ~path
     | D.ChangeRoot path ->
         if path = [] then
           failwith "Ir.patch: whole-tree ChangeRoot is unsupported"
