@@ -1090,6 +1090,13 @@ New ones can be added later without changing the framework, since an idiom is ju
   Note that the path `[0, 0]` appears twice in this expansion with different referents: in `Retire([0, 0])` it points to `E(F, G)` (the operand at the moment that `Retire` fires), and in the final `ChangeRoot([0, 0])` it points to `D`, which moved from `[0, 1]` to `[0, 0]` once `E(F, G)` was retired.
   A path-resolution system computes these targets automatically at idiom expansion; the operator only writes `PruneDownTo([0, 1])`, naming `D` by its location at the moment of request.
 
+  _On the natural-feeling opposite._
+  `PruneDownTo` says "keep this subtree and abandon everything around it"; the natural-feeling opposite would say "keep the running tree and splice some fresh ancestor structure around it" (the running root becoming a subtree of a freshly-introduced context).
+  We do not support this as a production or as an idiom.
+  The obstruction is not topological but stateful: a freshly-spawned ancestor needs a `node_state`, per-arm `slot_state`s, a populated index `pifo`, and a `z` whose history matches the live traffic descending into the subtree it now wraps, and there is no honest way to synthesize the state these ancestors would have carried _had they been there all along_.
+  Disciplines that look at packet features or history (WFQ's virtual time, RR's cursor, LSTF's per-deadline ranks) make this concrete: an ancestor introduced cold would mis-schedule the in-flight traffic relative to what an ancestor present from the start would have done.
+  The operator can still reach such a target through a `Replace` at a sufficient ancestor (§5.1's always-available fallback), which freshly compiles the new wrapping and drains the old running subtree through it; what the grammar lacks is a confined way to install the wrap without that drain.
+
 ### 4.3 Authoring modes
 
 Two authoring modes produce sequences, and the operator chooses freely between them.
