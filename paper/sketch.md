@@ -1149,8 +1149,7 @@ The planner discharges this by construction (each case below emits a `δ` or idi
 
 §5.1 sets up _confinement_ as a metric for excellence, presents the always-available worst-case `Replace` fallback, and frames the planner's strategy as descending the tree to find a tight production (Add, Remove, ChangeMeta) that captures the difference locally.
 §5.2 catalogs the cases the planner recognizes and emits a tight sequence for.
-§5.3 explains one non-obvious wrinkle: a recursive case whose inner result cannot bubble cleanly to the outer slot, forcing a demotion.
-§5.4 lists three deliberate non-features and candidate future work.
+§5.3 lists deliberate non-features and candidate future work.
 
 ### 5.1 The Always-Available Fallback, and Confinement to do Better
 
@@ -1214,8 +1213,10 @@ We claim only that whatever sequence it emits is safe (§3.4) and no worse than 
 ### 5.2 The case analysis
 
 The planner steps through the following cases in order, emitting at the first match.
-Each call examines the current pair `(p1, p2)`: cases 1-2 test the two trees as wholes; cases 3-7 fire when the roots agree and the local difference has a recognized shape; case 8 catches everything else.
-Cases 3 and 4 are the descent mechanism: when the difference sits one level down, they re-enter this case analysis on the differing slot, and whatever case fires at the deeper level has its emission re-targeted via index prepending on the way back up.
+The operator's top-level call examines `(p1, p2)` as whole trees: cases 1-2 fire when one tree equals the other or embeds in it; cases 3-7 fire when the roots agree and the local difference has a recognized shape; case 8 catches everything else.
+Cases 3, 4, and 7 are the descent mechanism: when the difference sits one level down, they re-enter the case analysis on the differing slot, and whatever case fires at the deeper level has its emission re-targeted via index prepending on the way back up.
+Case 2 is skipped at every deeper entry: `PruneDownTo` describes a whole-tree edit whose path names a position in the running policy as a whole (§3.4.7), and so cannot be retargeted into a parent slot by index prepending.
+A sub-policy embedding noticed at depth therefore falls through to the constructor cases below and emits a slot-level `Replace` directly, identical to what case 8 would do.
 
 1. **`p1 = p2`.**
    Emit `[]`.
@@ -1231,8 +1232,7 @@ Cases 3 and 4 are the descent mechanism: when the difference sits one level down
    When the children's class-label sets reveal a cleaner cross-slot pairing than slot position does (a slot's arm in `p1` shares labels with a different slot's arm in `p2`), the planner takes case 7's label-overlap alignment instead.
    Otherwise it walks each slot independently and emits one slot-level edit per diverging position; slot-level edits target distinct indices and so concatenate freely in ascending order.
    At a slot whose arm agrees, nothing is emitted.
-   At a slot whose arm differs, recurse on the inner pair and dispatch on the inner shape: a non-bubbleable inner (a sequence ending in `ChangeRoot`, as `PruneDownTo`'s tail does) demotes to a slot-level `Replace` at the outer position; any other inner sequence bubbles via index-prepending.
-   §5.3 covers the demotion wrinkle.
+   At a slot whose arm differs, recurse on the inner pair (skipping case 2) and bubble the inner emission via index-prepending.
 
 4. **`SP` or `WFQ` at the current level, child lists of equal length.**
    When `p1` and `p2` carry the same multiset of arms (the operator has simply re-weighted or re-ranked existing arms, which §3.2's normalization re-sorts into possibly-different slots), the planner emits one `ChangeMeta` per slot whose meta has moved and is done at this level.
@@ -1240,7 +1240,7 @@ Cases 3 and 4 are the descent mechanism: when the difference sits one level down
    Otherwise it walks each slot independently and emits one slot-level edit per diverging position; slot-level edits target distinct indices and so concatenate freely in ascending order.
    At a slot whose arm and metadata both agree, nothing is emitted.
    At a slot whose metadata differs but whose arm does not, emit `ChangeMeta(path, meta)` for that slot.
-   At a slot whose arm differs (with or without a metadata change at the same slot), recurse on the inner pair and dispatch on the inner shape: a `Replace`-root inner takes any metadata change as a trailing `ChangeMeta` of its bubbled emission; a non-bubbleable inner (a sequence ending in `ChangeRoot`, as `PruneDownTo`'s tail does) demotes to a slot-level `Replace` at the outer position, carrying the metadata when present; any clean smaller inner edit bubbles via index-prepending and, when the metadata also changed, picks up a separate `ChangeMeta` step at the slot.
+   At a slot whose arm differs (with or without a metadata change at the same slot), recurse on the inner pair (skipping case 2) and dispatch on the inner shape: a `Replace`-root inner folds any metadata change into its trailing `ChangeMeta`; any other inner edit bubbles via index-prepending and, when the metadata also changed, picks up a separate `ChangeMeta` step at the slot.
 
 5. **Same constructor at the current level, every child of `p1` is also a child of `p2` but `p2` has more children.**
    Emit one `Add` per surplus arm, in ascending index order.
@@ -1258,10 +1258,10 @@ Cases 3 and 4 are the descent mechanism: when the difference sits one level down
    Cases 3 and 4 pivot here when class-labels reveal a cross-slot correspondence, and cases 5 and 6 fall through here when the lengths differ but neither side's arms are a subset of the other's.
    Arms in `p1` and `p2` whose class-label sets overlap pair up by a greedy left-to-right walk.
    Arms in `p1` with no overlapping partner in `p2` retire; arms in `p2` with no overlapping partner in `p1` are added; the two can coexist at the same parent.
-   `Retire`s fire first in descending `p1`-index order, `Add`s next in ascending `p2`-index order; matched-pair edits then recurse on the inner pair and bubble to the slot's position in `p2`'s post-mutation frame, subject to the §5.3 demotion rule.
-   At an `SP` or `WFQ` parent each `Add` carries its meta, and a matched pair whose metas also differ folds a `ChangeMeta` into the recursive edit (either as a trailing step on a clean bubble or as the meta argument to a demoted `Replace`).
+   `Retire`s fire first in descending `p1`-index order, `Add`s next in ascending `p2`-index order; matched-pair edits then recurse on the inner pair (skipping case 2) and bubble to the slot's position in `p2`'s post-mutation frame.
+   At an `SP` or `WFQ` parent each `Add` carries its meta, and a matched pair whose metas also differ folds a `ChangeMeta` into the recursive edit (as a trailing step on the bubbled inner emission).
    The pairing relies on §3.2's leaf-partition validity: a class label identifies a unique flow across the whole policy, so a repeated label between an arm in `p1` and an arm in `p2` is evidence that the same host arm has morphed, and an arm whose labels appear nowhere on the opposing side is necessarily a fresh sibling or a vanishing one.
-   The greedy walk is not complete: when more than one alignment satisfies the label-overlap constraint, the first one found is taken without a notion of cost (§5.4).
+   The greedy walk is not complete: when more than one alignment satisfies the label-overlap constraint, the first one found is taken without a notion of cost (§5.3).
    When no shared label admits even a single match, the case fails and the planner falls through to case 8; this keeps wholesale divergence (no anchoring overlap) from emptying the parent mid-sequence.
 
 8. **Anything else.**
@@ -1269,30 +1269,12 @@ Cases 3 and 4 are the descent mechanism: when the difference sits one level down
    "Anything else" covers same-level shapes the planner does not recognize: constructor mismatch (e.g., `SP` vs. `RR`), and child lists of unequal length where neither's children are a subset of the other's and case 7's label-set walk fails to find an alignment.
 
    The recursion does significant work here.
-   Cases 1-7 are tried at every level the recursion visits, and cases 3, 4, and 7 descend into agreeing or label-overlapping slots of their parents.
+   Case 1 and cases 3-8 are tried at every level the recursion visits, and cases 3, 4, and 7 descend into agreeing or label-overlapping slots of their parents.
    By the time case 8 fires at level `k`, every shallower level has matched a tight case; the resulting `Replace` therefore lands at the _deepest slot the planner could isolate the difference to_, leaving every ancestor's other subtrees running undisturbed.
    The slot-level `Replace` is the §5.1 idiom with a non-empty path: it wraps only the slot's subtree, quiesces only that subtree, and rewires only the parent edge into it.
    The worst case is a root-level `Replace([], p2)` (§5.1), reached only when case 8 fires at the root with no recursive descent.
 
-### 5.3 Demotion: when an inner result cannot bubble
-
-Cases 3 and 4 above each recurse into a slot's contents and prepend the slot's index to every step of the inner result.
-This is correct when the inner sequence describes an edit on the slot's _occupants_ in a way that survives retargeting.
-It fails when the inner result ends in `ChangeRoot`, as `PruneDownTo`'s tail does.
-
-Suppose the running policy is `RoundRobin(A, RR(zoom, netflix))` and the operator requests `RoundRobin(A, zoom)`.
-Case 3 fires at the root: lengths agree (both are 2-ary), one child differs (index 1).
-Recursing on `RR(zoom, netflix)` vs. `zoom` falls into case 2: `zoom` embeds in `RR(zoom, netflix)`, so the inner recursion returns a `PruneDownTo` sequence whose tail is `ChangeRoot`.
-Bubbling this inner sequence by prepending index 1 would mis-describe the edit: `ChangeRoot`'s denotation promotes a node to the _whole tree's_ root (per §3.4.7), not to the bubbled-up slot, so the prepended path would name the wrong target.
-
-The planner detects this shape (the inner result ends in `ChangeRoot`) and _demotes_ to a slot-level `Replace` at the outer position; when the demoting recognizer is case 4 and the slot's metadata is also changing, the demoted `Replace` carries the new metadata as its trailing `ChangeMeta` step.
-Demotion is a deliberate downgrade in confinement (we land at case 8 for that slot rather than the tight inner sequence we hoped for), but it is the price of recognizing that `PruneDownTo` describes a _whole-tree edit only_.
-
-A future planner could do better here.
-A planner that recognized the inner shape as a slot-local prune-and-replace could express the edit more tightly than the demoted slot-level `Replace`.
-We leave that to future work; see §5.4.
-
-### 5.4 What the planner does not do today
+### 5.3 What the planner does not do today
 
 Two deliberate non-features, each a candidate for future work.
 
