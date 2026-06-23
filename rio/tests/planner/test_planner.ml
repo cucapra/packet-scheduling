@@ -465,6 +465,33 @@ let mixed_add_retire =
         ]);
   ]
 
+(* Same-length parents whose label-set alignment crosses slot indices
+   ([i1 <> j2] for some match): the per-slot walk would pair unrelated arms
+   and demote each divergent slot to [Replace], but bidirectional alignment
+   recovers the real correspondence via class-label overlap. Triggered only
+   when the bidir match set is non-trivially cross-slot; otherwise the
+   per-slot walk is preserved. (worklist item 20) *)
+let same_length_bidir =
+  [
+    (* wfq_ABC normalizes to WFQ[(A, 2); (B, 1); (C, 3)]; wfq_Z_rrAY_rrCW
+       to WFQ[(Z, 4); (RR[A, Y], 7); (RR[C, W], 8)]. Both length 3, neither
+       arm-multiset nor per-slot equal, so the permutation pre-pass doesn't
+       fire and the per-slot walk would emit three Replaces. Bidir aligns
+       A -> RR[A, Y] at ps2 slot 1 and C -> RR[C, W] at ps2 slot 2 by label
+       overlap; B has no partner in ps2 (retire) and Z has no partner in
+       ps1 (Add). The first match's i1=0, j2=1 trips the cross-slot
+       trigger. *)
+    make_planner_test "WFQ same-length cross-slot morph" "wfq_ABC"
+      "wfq_Z_rrAY_rrCW"
+      (retire_seq [ 1 ]
+      @ [
+          ( Planner.True,
+            Delta.Add { path = [ 0 ]; arm = Pol.FIFO "Z"; meta = Some 4.0 } );
+        ]
+      @ replace_seq ~meta:7.0 [ 1 ] (Pol.RR [ Pol.FIFO "A"; Pol.FIFO "Y" ])
+      @ replace_seq ~meta:8.0 [ 2 ] (Pol.RR [ Pol.FIFO "C"; Pol.FIFO "W" ]));
+  ]
+
 let nested_giveup_demotion =
   [
     make_planner_test "nested Graft demotes to give-up" "strict_AB"
@@ -519,6 +546,7 @@ let suite =
        @ multi_arms_removed_metaed @ metachanged @ one_arm_replaced
        @ one_arm_replaced_wfq @ multi_arms_replaced @ multi_arms_replaced_metaed
        @ add_with_shared_meta_change @ aligned_multi @ mixed_add_retire
-       @ verydiff_combos @ graft @ change_root @ nested_giveup_demotion
+       @ same_length_bidir @ verydiff_combos @ graft @ change_root
+       @ nested_giveup_demotion
 
 let () = run_test_tt_main suite

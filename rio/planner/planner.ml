@@ -333,13 +333,27 @@ let rec compare_children ~next:p2 ps1 ps2 =
   in
   match List.compare_lengths ps1 ps2 with
   | 0 ->
-      (* Per-slot walk: each index whose arm differs contributes its own
-         independent edit. Distinct-index emissions concatenate freely. *)
-      List.concat
-        (List.mapi
-           (fun i (arm1, arm2) ->
-             if arm1 = arm2 then [] else slot_arm_edit i arm1 arm2)
-           (List.combine ps1 ps2))
+      (* Same-length fallback to bidirectional label-set alignment: when
+         [Pol.normalize] has reordered ps1 vs ps2 such that label-equivalent
+         arms now sit at different slot indices (e.g. an arm morphed past a
+         sibling in the sort), the per-slot walk would pair unrelated arms and
+         demote to [Replace]. Fire bidir whenever its alignment exhibits a
+         genuine cross-slot match ([i1 <> j2] for some match); when every
+         match aligns at the same slot, the per-slot walk is at least as
+         good and we let it run. (worklist item 20) *)
+      let per_slot () =
+        List.concat
+          (List.mapi
+             (fun i (arm1, arm2) ->
+               if arm1 = arm2 then [] else slot_arm_edit i arm1 arm2)
+             (List.combine ps1 ps2))
+      in
+      begin match align_by_labels_bidir ps1 ps2 with
+      | Some (matches, ps1_only, ps2_only)
+        when List.exists (fun (i1, j2, _, _) -> i1 <> j2) matches ->
+          emit_bidir_unmetaed ~slot_arm_edit matches ps1_only ps2_only
+      | _ -> per_slot ()
+      end
   | -1 ->
       (* Multi-arm add: every surplus entry in [ps2] is a pure addition (the
          arms of [ps1] appear in-order as a subsequence). One [Add] per extra
@@ -453,20 +467,37 @@ and compare_metaed_children ~next:p2 pms1 pms2 =
              ps1)
       else
         (* Per-slot walk: each index whose arm or meta differs contributes
-           its own independent edit. *)
-        let triples =
-          List.combine (List.combine ps1 ms1) (List.combine ps2 ms2)
+           its own independent edit. Same-length bidirectional fallback runs
+           first: when [Pol.normalize]'s sort has placed label-equivalent
+           arms at different slot indices in ps1 vs ps2 (e.g. an SP rank
+           change crossing a co-changing arm morph), the per-slot walk would
+           pair unrelated arms and emit slot-level [Replace]s. Fire bidir
+           whenever its alignment exhibits a genuine cross-slot match
+           ([i1 <> j2] for some match); otherwise the per-slot walk is at
+           least as good and runs. (worklist item 20) *)
+        let per_slot () =
+          let triples =
+            List.combine (List.combine ps1 ms1) (List.combine ps2 ms2)
+          in
+          List.concat
+            (List.mapi
+               (fun i ((arm1, m1), (arm2, m2)) ->
+                 match (arm1 <> arm2, m1 <> m2) with
+                 | false, false -> []
+                 | false, true ->
+                     [
+                       (True, Delta.ChangeMeta { path = [ i ]; new_meta = m2 });
+                     ]
+                 | true, false -> slot_arm_edit i arm1 arm2 ()
+                 | true, true -> slot_arm_edit i arm1 arm2 ~meta:m2 ())
+               triples)
         in
-        List.concat
-          (List.mapi
-             (fun i ((arm1, m1), (arm2, m2)) ->
-               match (arm1 <> arm2, m1 <> m2) with
-               | false, false -> []
-               | false, true ->
-                   [ (True, Delta.ChangeMeta { path = [ i ]; new_meta = m2 }) ]
-               | true, false -> slot_arm_edit i arm1 arm2 ()
-               | true, true -> slot_arm_edit i arm1 arm2 ~meta:m2 ())
-             triples)
+        begin match align_by_labels_bidir ps1 ps2 with
+        | Some (matches, ps1_only, ps2_only)
+          when List.exists (fun (i1, j2, _, _) -> i1 <> j2) matches ->
+            emit_bidir_metaed ~slot_arm_edit ~ms1 ~ms2 matches ps1_only ps2_only
+        | _ -> per_slot ()
+        end
   | -1 ->
       (* [ps1] must embed in [ps2] as a subsequence. Each surplus [ps2] arm
          becomes an [Add] carrying that arm's meta; each [ps2] index whose
