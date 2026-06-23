@@ -292,16 +292,28 @@ let multi_arms_replaced_metaed =
       @ replace_seq ~meta:2.0 [ 1 ] (Pol.FIFO "E")
       @ replace_seq [ 2 ] (Pol.FIFO "F"));
     (* SP rank swap: strict_AB = (A,1),(B,2); strict_BA = (B,1),(A,2).
-       After [Pol.normalize]'s rank sort the two arms appear in swapped
-       slots with the original ranks unchanged. *)
+       After [Pol.normalize]'s rank sort the two arms sit in the same slots
+       carrying the original ranks; the difference is that A's new rank is
+       2 and B's new rank is 1. [compare_metaed_children]'s permutation
+       pre-pass detects that the arm contents are a permutation of each
+       other and emits one [ChangeMeta] per slot. (worklist item 17) *)
     make_planner_test "Strict with arms reordered" "strict_AB" "strict_BA"
-      (replace_seq [ 0 ] (Pol.FIFO "B") @ replace_seq [ 1 ] (Pol.FIFO "A"));
-    (* complex_tree's outer slot 0 differs (strict[A,B,C] vs strict[C,B,A])
-       and the inner recursion itself returns a multi-slot Replace; the
-       outer edit bubbles that inner sequence via [prepend_seq 0]. *)
+      [
+        (Planner.True, Delta.ChangeMeta { path = [ 0 ]; new_meta = 2.0 });
+        (Planner.True, Delta.ChangeMeta { path = [ 1 ]; new_meta = 1.0 });
+      ];
+    (* complex_tree's outer slot 0 has an inner SP that's an arm permutation
+       (strict[A,B,C] vs strict[C,B,A], same ranks [1;2;3]). Permutation
+       pre-pass at the inner level emits ChangeMetas: slot 0 (arm A) takes
+       A's new rank 3; slot 1 (arm B) is a fixed point and skips; slot 2
+       (arm C) takes C's new rank 1. The inner sequence bubbles via
+       [prepend_seq 0]. *)
     make_planner_test "complex tree with an SP reordering deep down"
       "complex_tree" "complex_tree_swap_sp_arms"
-      (replace_seq [ 0; 0 ] (Pol.FIFO "C") @ replace_seq [ 0; 2 ] (Pol.FIFO "A"));
+      [
+        (Planner.True, Delta.ChangeMeta { path = [ 0; 0 ]; new_meta = 3.0 });
+        (Planner.True, Delta.ChangeMeta { path = [ 0; 2 ]; new_meta = 1.0 });
+      ];
     (* wfq_complex's slot 1 has both a deeper arm change (inner RR replaces
        a leaf) and a weight change. The inner sequence is itself a bubbled
        Replace, so the slot's edit becomes (bubbled inner) ++ ChangeMeta. *)
@@ -411,6 +423,75 @@ let aligned_multi =
       ];
   ]
 
+(* Bidirectional label-set alignment at a single parent: some [ps1] arms
+   retire (their labels appear nowhere in [ps2]) and some [ps2] arms add
+   (their labels appear nowhere in [ps1]), while one or more shared arms
+   anchor the alignment. Symmetric across the |-1| and |+1| length branches
+   and across RR vs. metaed (SP/WFQ) parents. The [matches = []] guard in
+   [align_by_labels_bidir] keeps the wholesale-divergence case
+   ([rr_AB -> rr_DEF]) on the give-up path so the intermediate parent never
+   empties out. (worklist item 16) *)
+let mixed_add_retire =
+  [
+    make_planner_test "RR retires one arm and adds two" "rr_AB" "rr_ACD"
+      (retire_seq [ 1 ]
+      @ [
+          ( Planner.True,
+            Delta.Add { path = [ 1 ]; arm = Pol.FIFO "C"; meta = None } );
+          ( Planner.True,
+            Delta.Add { path = [ 2 ]; arm = Pol.FIFO "D"; meta = None } );
+        ]);
+    make_planner_test "RR retires two arms and adds one" "rr_ACD" "rr_AB"
+      (retire_seq [ 2 ] @ retire_seq [ 1 ]
+      @ [
+          ( Planner.True,
+            Delta.Add { path = [ 1 ]; arm = Pol.FIFO "B"; meta = None } );
+        ]);
+    make_planner_test "SP retires one arm and adds two with ranks" "strict_AB"
+      "strict_ACD"
+      (retire_seq [ 1 ]
+      @ [
+          ( Planner.True,
+            Delta.Add { path = [ 1 ]; arm = Pol.FIFO "C"; meta = Some 2.0 } );
+          ( Planner.True,
+            Delta.Add { path = [ 2 ]; arm = Pol.FIFO "D"; meta = Some 3.0 } );
+        ]);
+    make_planner_test "SP retires two arms and adds one with rank" "strict_ACD"
+      "strict_AB"
+      (retire_seq [ 2 ] @ retire_seq [ 1 ]
+      @ [
+          ( Planner.True,
+            Delta.Add { path = [ 1 ]; arm = Pol.FIFO "B"; meta = Some 2.0 } );
+        ]);
+  ]
+
+(* Same-length parents whose label-set alignment crosses slot indices
+   ([i1 <> j2] for some match): the per-slot walk would pair unrelated arms
+   and demote each divergent slot to [Replace], but bidirectional alignment
+   recovers the real correspondence via class-label overlap. Triggered only
+   when the bidir match set is non-trivially cross-slot; otherwise the
+   per-slot walk is preserved. (worklist item 20) *)
+let same_length_bidir =
+  [
+    (* wfq_ABC normalizes to WFQ[(A, 2); (B, 1); (C, 3)]; wfq_Z_rrAY_rrCW
+       to WFQ[(Z, 4); (RR[A, Y], 7); (RR[C, W], 8)]. Both length 3, neither
+       arm-multiset nor per-slot equal, so the permutation pre-pass doesn't
+       fire and the per-slot walk would emit three Replaces. Bidir aligns
+       A -> RR[A, Y] at ps2 slot 1 and C -> RR[C, W] at ps2 slot 2 by label
+       overlap; B has no partner in ps2 (retire) and Z has no partner in
+       ps1 (Add). The first match's i1=0, j2=1 trips the cross-slot
+       trigger. *)
+    make_planner_test "WFQ same-length cross-slot morph" "wfq_ABC"
+      "wfq_Z_rrAY_rrCW"
+      (retire_seq [ 1 ]
+      @ [
+          ( Planner.True,
+            Delta.Add { path = [ 0 ]; arm = Pol.FIFO "Z"; meta = Some 4.0 } );
+        ]
+      @ replace_seq ~meta:7.0 [ 1 ] (Pol.RR [ Pol.FIFO "A"; Pol.FIFO "Y" ])
+      @ replace_seq ~meta:8.0 [ 2 ] (Pol.RR [ Pol.FIFO "C"; Pol.FIFO "W" ]));
+  ]
+
 let nested_giveup_demotion =
   [
     make_planner_test "nested Graft demotes to give-up" "strict_AB"
@@ -464,7 +545,8 @@ let suite =
        @ multi_arms_removed @ multi_arms_added_metaed
        @ multi_arms_removed_metaed @ metachanged @ one_arm_replaced
        @ one_arm_replaced_wfq @ multi_arms_replaced @ multi_arms_replaced_metaed
-       @ add_with_shared_meta_change @ aligned_multi @ verydiff_combos @ graft
-       @ change_root @ nested_giveup_demotion
+       @ add_with_shared_meta_change @ aligned_multi @ mixed_add_retire
+       @ same_length_bidir @ verydiff_combos @ graft @ change_root
+       @ nested_giveup_demotion
 
 let () = run_test_tt_main suite
