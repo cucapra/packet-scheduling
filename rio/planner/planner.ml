@@ -305,8 +305,8 @@ let rec compare_children ~next:p2 ps1 ps2 =
   let give_up = replace ~next:p2 () in
   (* Emit a slot-level edit at index [i] carrying [arm1] to [arm2]. The
      inner sequence always bubbles via [prepend_seq]: [analyze_inner]
-     never returns a [Graft] or [PruneDownTo] (those are top-level only;
-     see [analyze]), so no demotion check is needed here. *)
+     never returns a [PruneDownTo] (that is top-level only; see
+     [analyze]), so no demotion check is needed here. *)
   let slot_arm_edit i arm1 arm2 = prepend_seq i (analyze_inner arm1 arm2) in
   match List.compare_lengths ps1 ps2 with
   | 0 ->
@@ -396,8 +396,8 @@ and compare_metaed_children ~next:p2 pms1 pms2 =
      [Replace]-root inner takes the meta in its trailing [ChangeMeta]; any
      other clean inner edit bubbles via [prepend_seq] with a separate
      [ChangeMeta] for the meta change. [analyze_inner] never returns a
-     [Graft] or [PruneDownTo] (those are top-level only; see [analyze]),
-     so no demotion check is needed. *)
+     [PruneDownTo] (that is top-level only; see [analyze]), so no
+     demotion check is needed. *)
   let slot_arm_edit i arm1 arm2 ?meta () =
     let inner = analyze_inner arm1 arm2 in
     match (meta, is_replace_root inner) with
@@ -558,12 +558,13 @@ and compare_metaed_children ~next:p2 pms1 pms2 =
   | _ -> failwith "Can't get here"
 
 (* Inner recursion entry: same as [analyze] but skips the [is_sub_policy]
-   checks. [Graft] and [PruneDownTo] are whole-tree edits whose paths name
-   positions in the *root* control; they cannot be retargeted into a parent
-   slot by [prepend_seq] (paper sketch.md sec5.2). So inner recursions
-   never emit them: a sub-policy embedding at a deeper level falls through
-   to the constructor cases and emits a slot-level [Replace], which is the
-   same observable behavior as the previous "demote to give-up" rule. *)
+   check. [PruneDownTo]'s tail is [ChangeRoot], a whole-tree edit whose
+   path names a position in the *root* control; it cannot be retargeted
+   into a parent slot by [prepend_seq] (paper sketch.md sec5.2). So inner
+   recursions never emit [PruneDownTo]: a sub-policy embedding at a
+   deeper level falls through to the constructor cases and emits a
+   slot-level [Replace], which is the same observable behavior as the
+   previous "demote to give-up" rule. *)
 and analyze_inner p1 p2 =
   if p1 = p2 then []
   else
@@ -581,11 +582,9 @@ and analyze_inner p1 p2 =
 let analyze p1 p2 =
   if p1 = p2 then []
   else
-    match (is_sub_policy p1 p2, is_sub_policy p2 p1) with
-    | Some _, Some _ -> [] (* unreachable: would mean p1 = p2 *)
-    | Some path, None -> [ (True, Delta.Graft path) ]
-    | None, Some path -> prune_down_to ~prev:p1 ~path ()
-    | None, None -> analyze_inner p1 p2
+    match is_sub_policy p2 p1 with
+    | Some path -> prune_down_to ~prev:p1 ~path ()
+    | None -> analyze_inner p1 p2
 
 (* -------- pretty-printing (test output only) ---------------- *)
 

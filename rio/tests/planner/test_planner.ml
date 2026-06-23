@@ -246,10 +246,10 @@ let one_arm_replaced_wfq =
 (* Same-length RR parent where more than one slot diverges. Each diverging
    slot emits its own slot-level edit; the emissions target distinct indices
    and concatenate in ascending order with no interference. The inner
-   recursion always bubbles via [prepend_seq]: [Graft] and [PruneDownTo]
-   are top-level-only emissions, so an inner pair whose constructors
-   disagree (e.g. [FIFO B] vs [RR [B; C]]) falls through to a slot-level
-   [Replace] directly. *)
+   recursion always bubbles via [prepend_seq]: [PruneDownTo] is a
+   top-level-only emission, so an inner pair whose constructors disagree
+   (e.g. [RR [B; C]] vs [FIFO B]) falls through to a slot-level [Replace]
+   directly. *)
 let multi_arms_replaced =
   [
     make_planner_test "RR with every slot differing" "rr_ABC" "rr_DEF"
@@ -486,25 +486,15 @@ let same_length_bidir =
 (* Pairs that would have looked like sub-policy embeddings at depth (FIFO B
    inside RR[B,C], or vice versa) but whose containing slots are non-equal:
    the inner analyze sees only a constructor mismatch (FIFO vs RR) and
-   emits a slot-level [Replace] directly. [Graft] and [PruneDownTo] are
-   reserved for whole-tree (top-level) embeddings; recursive calls skip
-   the sub-policy test. *)
+   emits a slot-level [Replace] directly. [PruneDownTo] is reserved for
+   whole-tree (top-level) embeddings; recursive calls skip the
+   sub-policy test. *)
 let nested_constructor_mismatch =
   [
     make_planner_test "inner FIFO -> RR around it" "strict_AB" "strict_A_rrBC"
       (replace_seq [ 1 ] (Pol.RR [ Pol.FIFO "B"; Pol.FIFO "C" ]));
     make_planner_test "inner RR -> FIFO inside it" "strict_A_rrBC" "strict_AB"
       (replace_seq [ 1 ] (Pol.FIFO "B"));
-  ]
-
-let graft =
-  [
-    make_planner_test "fifo_A is sub-pol of complex_tree" "fifo_A"
-      "complex_tree"
-      [ (Planner.True, Delta.Graft [ 0; 0 ]) ];
-    make_planner_test "strict_ABC is subpol of complex_tree" "strict_ABC"
-      "complex_tree"
-      [ (Planner.True, Delta.Graft [ 0 ]) ];
   ]
 
 (* The planner's [PruneDownTo] idiom: retire each off-path sibling along the
@@ -541,7 +531,7 @@ let suite =
        @ multi_arms_removed_metaed @ metachanged @ one_arm_replaced
        @ one_arm_replaced_wfq @ multi_arms_replaced @ multi_arms_replaced_metaed
        @ add_with_shared_meta_change @ aligned_multi @ mixed_add_retire
-       @ same_length_bidir @ verydiff_combos @ graft @ change_root
+       @ same_length_bidir @ verydiff_combos @ change_root
        @ nested_constructor_mismatch
 
 let () = run_test_tt_main suite

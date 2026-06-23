@@ -25,9 +25,6 @@ type t =
     }
       (** Rebind the per-arm metadata of the child at [path] to [new_meta] (rank
           for SP, weight for WFQ; never reaches RR). *)
-  | Graft of path
-      (** [prev] sits as a strict subtree of [next] at [path]:
-          [next = ctx[prev]] where [ctx]'s hole is at [path]. *)
   | ChangeRoot of path
       (** [next] is a strict subtree of [prev] at [path]: pruning [prev] down to
           that subtree gives [next]. *)
@@ -52,7 +49,6 @@ let prepend_path i = function
   | Add { path; arm; meta } -> Add { path = i :: path; arm; meta }
   | Remove p -> Remove (i :: p)
   | ChangeMeta { path; new_meta } -> ChangeMeta { path = i :: path; new_meta }
-  | Graft p -> Graft (i :: p)
   | ChangeRoot p -> ChangeRoot (i :: p)
   | Designate { path; survivor } -> Designate { path = i :: path; survivor }
   | Quiesce p -> Quiesce (i :: p)
@@ -83,7 +79,6 @@ let to_string = function
   | Remove p -> Printf.sprintf "Remove at %s" (path_to_string p)
   | ChangeMeta { path; new_meta } ->
       Printf.sprintf "ChangeMeta: %s -> %g" (path_to_string path) new_meta
-  | Graft p -> Printf.sprintf "Graft at %s" (path_to_string p)
   | ChangeRoot p -> Printf.sprintf "ChangeRoot at %s" (path_to_string p)
   | Designate { path; survivor } ->
       Printf.sprintf "Designate: %s" (string_of_arm path survivor)
