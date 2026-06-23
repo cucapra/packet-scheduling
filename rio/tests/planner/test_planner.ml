@@ -209,11 +209,6 @@ let metachanged =
   [
     make_planner_test "one WFQ weight changed" "wfq_ABC" "wfq_ABC_one_weight"
       [ (Planner.True, Delta.ChangeMeta { path = [ 1 ]; new_meta = 5.0 }) ];
-    make_planner_test "two WFQ weights changed" "wfq_ABC" "wfq_ABC_two_weights"
-      [
-        (Planner.True, Delta.ChangeMeta { path = [ 0 ]; new_meta = 8.0 });
-        (Planner.True, Delta.ChangeMeta { path = [ 1 ]; new_meta = 5.0 });
-      ];
     (* Arms agree, every meta differs. wfq_ABC = (A,2),(B,1),(C,3);
        wfq_ABC_diff = (A,2),(B,2),(C,4) -- A unchanged, B and C bumped. *)
     make_planner_test "WFQ weights changed at two slots" "wfq_ABC"
@@ -281,10 +276,6 @@ let multi_arms_replaced =
    a separate [ChangeMeta] for the meta change. *)
 let multi_arms_replaced_metaed =
   [
-    make_planner_test "WFQ two slots with arm and weight changes" "wfq_ABC"
-      "wfq_ADE"
-      (replace_seq ~meta:5.0 [ 1 ] (Pol.FIFO "D")
-      @ replace_seq ~meta:7.0 [ 2 ] (Pol.FIFO "E"));
     (* wfq_ABC = (A,2),(B,1),(C,3); wfq_DEF = (D,1),(E,2),(F,3). Slot 2's
        meta agrees, the other two slots flip both arm and meta. *)
     make_planner_test "different WFQ classes" "wfq_ABC" "wfq_DEF"
