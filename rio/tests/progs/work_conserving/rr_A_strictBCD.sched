@@ -1,0 +1,9 @@
+classes A, B, C, D;
+
+// Used by the alignment-aware test pair: against [rr_A_strictBC_E] this
+// is the longer-arm side ([SP[B,C,D]] morphs to [SP[B,C]] and a fresh
+// sibling [E] appears at the RR level). After [Pol.normalize] this is
+// RR[FIFO A, SP[(B,1),(C,2),(D,3)]] (FIFO < SP by polymorphic compare).
+policy = rr[A, strict[(B, 1), (C, 2), (D, 3)]];
+
+return policy

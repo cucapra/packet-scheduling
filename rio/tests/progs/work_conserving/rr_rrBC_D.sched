@@ -1,0 +1,10 @@
+classes B, C, D;
+
+// Used by the multi-slot RR demotion test: against rr_AB this is two
+// diverging RR slots, where slot 1's inner analyze is a [PruneDownTo]
+// (FIFO B sits inside RR[B, C]) and demotes to a slot-level [Replace].
+// Slot 0 is a clean cross-class Replace. After [Pol.normalize] this is
+// RR[FIFO D, RR[FIFO B, FIFO C]] (FIFO < RR by polymorphic compare).
+policy = rr[rr[B, C], D];
+
+return policy
