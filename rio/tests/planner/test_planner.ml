@@ -287,7 +287,7 @@ let multi_arms_replaced_metaed =
        carrying the original ranks; the difference is that A's new rank is
        2 and B's new rank is 1. [compare_metaed_children]'s permutation
        pre-pass detects that the arm contents are a permutation of each
-       other and emits one [ChangeMeta] per slot. (worklist item 17) *)
+       other and emits one [ChangeMeta] per slot. *)
     make_planner_test "Strict with arms reordered" "strict_AB" "strict_BA"
       [
         (Planner.True, Delta.ChangeMeta { path = [ 0 ]; new_meta = 2.0 });
@@ -421,39 +421,53 @@ let aligned_multi =
    and across RR vs. metaed (SP/WFQ) parents. The [matches = []] guard in
    [align_by_labels_bidir] keeps the wholesale-divergence case
    ([rr_AB -> rr_DEF]) on the give-up path so the intermediate parent never
-   empties out. (worklist item 16) *)
+   empties out. Adds fire first at intermediate-frame indices so traffic
+   for the new arms starts flowing immediately; retires drain after, in
+   descending intermediate-frame order. *)
 let mixed_add_retire =
   [
+    (* Intermediate frame is [A, B, C, D]: adds C at index 2 and D at
+       index 3, then B retires at index 1. *)
     make_planner_test "RR retires one arm and adds two" "rr_AB" "rr_ACD"
-      (retire_seq [ 1 ]
-      @ [
-          ( Planner.True,
-            Delta.Add { path = [ 1 ]; arm = Pol.FIFO "C"; meta = None } );
-          ( Planner.True,
-            Delta.Add { path = [ 2 ]; arm = Pol.FIFO "D"; meta = None } );
-        ]);
+      [
+        ( Planner.True,
+          Delta.Add { path = [ 2 ]; arm = Pol.FIFO "C"; meta = None } );
+        ( Planner.True,
+          Delta.Add { path = [ 3 ]; arm = Pol.FIFO "D"; meta = None } );
+        (Planner.True, Delta.Quiesce [ 1 ]);
+        (Planner.Empty [ 1 ], Delta.Remove [ 1 ]);
+      ];
+    (* Intermediate frame is [A, C, D, B]: adds B at index 3, then D and
+       C retire at indices 2 and 1 (descending). *)
     make_planner_test "RR retires two arms and adds one" "rr_ACD" "rr_AB"
-      (retire_seq [ 2 ] @ retire_seq [ 1 ]
-      @ [
-          ( Planner.True,
-            Delta.Add { path = [ 1 ]; arm = Pol.FIFO "B"; meta = None } );
-        ]);
+      [
+        ( Planner.True,
+          Delta.Add { path = [ 3 ]; arm = Pol.FIFO "B"; meta = None } );
+        (Planner.True, Delta.Quiesce [ 2 ]);
+        (Planner.Empty [ 2 ], Delta.Remove [ 2 ]);
+        (Planner.True, Delta.Quiesce [ 1 ]);
+        (Planner.Empty [ 1 ], Delta.Remove [ 1 ]);
+      ];
     make_planner_test "SP retires one arm and adds two with ranks" "strict_AB"
       "strict_ACD"
-      (retire_seq [ 1 ]
-      @ [
-          ( Planner.True,
-            Delta.Add { path = [ 1 ]; arm = Pol.FIFO "C"; meta = Some 2.0 } );
-          ( Planner.True,
-            Delta.Add { path = [ 2 ]; arm = Pol.FIFO "D"; meta = Some 3.0 } );
-        ]);
+      [
+        ( Planner.True,
+          Delta.Add { path = [ 2 ]; arm = Pol.FIFO "C"; meta = Some 2.0 } );
+        ( Planner.True,
+          Delta.Add { path = [ 3 ]; arm = Pol.FIFO "D"; meta = Some 3.0 } );
+        (Planner.True, Delta.Quiesce [ 1 ]);
+        (Planner.Empty [ 1 ], Delta.Remove [ 1 ]);
+      ];
     make_planner_test "SP retires two arms and adds one with rank" "strict_ACD"
       "strict_AB"
-      (retire_seq [ 2 ] @ retire_seq [ 1 ]
-      @ [
-          ( Planner.True,
-            Delta.Add { path = [ 1 ]; arm = Pol.FIFO "B"; meta = Some 2.0 } );
-        ]);
+      [
+        ( Planner.True,
+          Delta.Add { path = [ 3 ]; arm = Pol.FIFO "B"; meta = Some 2.0 } );
+        (Planner.True, Delta.Quiesce [ 2 ]);
+        (Planner.Empty [ 2 ], Delta.Remove [ 2 ]);
+        (Planner.True, Delta.Quiesce [ 1 ]);
+        (Planner.Empty [ 1 ], Delta.Remove [ 1 ]);
+      ];
   ]
 
 (* Same-length parents whose label-set alignment crosses slot indices
@@ -461,7 +475,7 @@ let mixed_add_retire =
    and demote each divergent slot to [Replace], but bidirectional alignment
    recovers the real correspondence via class-label overlap. Triggered only
    when the bidir match set is non-trivially cross-slot; otherwise the
-   per-slot walk is preserved. (worklist item 20) *)
+   per-slot walk is preserved. *)
 let same_length_bidir =
   [
     (* wfq_ABC normalizes to WFQ[(A, 2); (B, 1); (C, 3)]; wfq_Z_rrAY_rrCW
@@ -472,13 +486,16 @@ let same_length_bidir =
        overlap; B has no partner in ps2 (retire) and Z has no partner in
        ps1 (Add). The first match's i1=0, j2=1 trips the cross-slot
        trigger. *)
+    (* Intermediate frame is [Z, A, B, C]: Z is added at index 0 first,
+       then B retires at index 2; A and C then settle at ps2 indices 1
+       and 2 where their matched-pair Replace+ChangeMeta steps land. *)
     make_planner_test "WFQ same-length cross-slot morph" "wfq_ABC"
       "wfq_Z_rrAY_rrCW"
-      (retire_seq [ 1 ]
-      @ [
-          ( Planner.True,
-            Delta.Add { path = [ 0 ]; arm = Pol.FIFO "Z"; meta = Some 4.0 } );
-        ]
+      ([
+         ( Planner.True,
+           Delta.Add { path = [ 0 ]; arm = Pol.FIFO "Z"; meta = Some 4.0 } );
+       ]
+      @ retire_seq [ 2 ]
       @ replace_seq ~meta:7.0 [ 1 ] (Pol.RR [ Pol.FIFO "A"; Pol.FIFO "Y" ])
       @ replace_seq ~meta:8.0 [ 2 ] (Pol.RR [ Pol.FIFO "C"; Pol.FIFO "W" ]));
   ]

@@ -138,6 +138,34 @@ let retires_descending entries =
   let descending = List.sort (fun (a, _) (b, _) -> compare b a) entries in
   List.concat_map (fun (i, _) -> prepend_seq i (retire ())) descending
 
+(* Walk an [align_by_labels_bidir] result to assign each unmatched arm a
+   slot in the intermediate frame -- the frame that exists after every
+   add has fired but before any retire has drained. Within each gap
+   between consecutive matches the intermediate frame holds the gap's
+   [ps1_only] arms first (preserving their [ps1] order), then its
+   [ps2_only] arms (preserving their [ps2] order); each match occupies
+   one slot of its own. Returns [(idx, arm)] for [ps1_only] and
+   [(idx, j_ps2, arm)] for [ps2_only] -- the [j_ps2] tag rides along so
+   the caller can still look up the ps2-frame meta for each add. *)
+let intermediate_indices matches ps1_only ps2_only =
+  let rec walk pos p1o p2o = function
+    | [] ->
+        let p1o' = List.mapi (fun k (_, a) -> (pos + k, a)) p1o in
+        let pos = pos + List.length p1o in
+        let p2o' = List.mapi (fun k (j, a) -> (pos + k, j, a)) p2o in
+        (p1o', p2o')
+    | (i_m, j_m, _, _) :: ms ->
+        let in_p1, out_p1 = List.partition (fun (i, _) -> i < i_m) p1o in
+        let in_p2, out_p2 = List.partition (fun (j, _) -> j < j_m) p2o in
+        let p1o_in = List.mapi (fun k (_, a) -> (pos + k, a)) in_p1 in
+        let pos = pos + List.length in_p1 in
+        let p2o_in = List.mapi (fun k (j, a) -> (pos + k, j, a)) in_p2 in
+        let pos = pos + List.length in_p2 + 1 in
+        let p1o_rest, p2o_rest = walk pos out_p1 out_p2 ms in
+        (p1o_in @ p1o_rest, p2o_in @ p2o_rest)
+  in
+  walk 0 ps1_only ps2_only matches
+
 (* The paper's [PruneDownTo] idiom: collapse [prev] down to the strict subtree
    at [path]. Walks [prev] along [path], retiring off-path siblings at each
    level, then re-roots with a final [ChangeRoot]. Off-path retires within a
@@ -246,22 +274,27 @@ let rec compare_children ~next:p2 ?ms ps1 ps2 =
         [ (True, Delta.ChangeMeta { path = [ j ]; new_meta }) ]
     | false, _ -> slot_arm_edit j arm1 arm2 ?meta:m ()
   in
-  (* Shared emit shape for an [align_by_labels_bidir] result. Retires fire
-     first (descending [ps1]-frame index), then adds (ascending [ps2]
-     index; each add lands in the post-retire intermediate frame, which
-     by ascending construction equals the final ps2 frame), then
-     per-match edits at their [ps2]-frame indices. *)
+  (* Shared emit shape for an [align_by_labels_bidir] result. Adds fire
+     first at intermediate-frame indices (ascending): the intermediate
+     frame holds [ps1]'s pending-retire arms alongside the new arms, so
+     each add lands at its slot in that frame. Retires next at their
+     intermediate indices, descending so a higher-index drain doesn't
+     shift the lower-index retires still pending. Per-match edits last,
+     at the post-retire [ps2]-frame slot. Adds-first means traffic for
+     the new arms starts flowing immediately rather than waiting on the
+     retires' drain (paper sketch.md sec5.2 case 7). *)
   let emit matches ps1_only ps2_only =
+    let p1o_int, p2o_int = intermediate_indices matches ps1_only ps2_only in
     let adds =
       List.map
-        (fun (j, arm) ->
-          (True, Delta.Add { path = [ j ]; arm; meta = meta_for_j j }))
-        ps2_only
+        (fun (k, j, arm) ->
+          (True, Delta.Add { path = [ k ]; arm; meta = meta_for_j j }))
+        p2o_int
     in
     let matched =
       List.concat_map (fun (i, j, a1, a2) -> edit_pair i j a1 a2) matches
     in
-    retires_descending ps1_only @ adds @ matched
+    adds @ retires_descending p1o_int @ matched
   in
   let change_meta_at j new_meta =
     (True, Delta.ChangeMeta { path = [ j ]; new_meta })
