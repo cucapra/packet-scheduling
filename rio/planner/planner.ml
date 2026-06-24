@@ -56,80 +56,33 @@ let labels_overlap a b =
 
 (* Bidirectional label-set alignment, used by the comparators' fallback
    branches when [insertions]'s strict subsequence check has failed. Pairs
-   arms in [ps1] and [ps2] by class-label overlap (paper sketch.md sec3.2
-   leaf-partition validity guarantees at most one partner per arm).
-   Unmatched arms on either side flow through: [ps1_only] becomes retires,
-   [ps2_only] becomes adds. The same call therefore handles pure-add,
-   pure-retire, and the mixed case where a single parent simultaneously
-   retires some arms and adds others (e.g. [RR(A, B) -> RR(A, C, D)]:
-   matches A-A, retires B, adds C and D). Returns matches as
-   [(i1, j2, arm1, arm2)] in their original frames; the caller emits
-   retires (descending [ps1] index) before adds (ascending [ps2] index) so
-   that path frames stay coherent (paper sketch.md sec5.2 case 8).
-
-   Returns [None] (caller falls back to slot-level [Replace]) if any arm
-   overlaps more than one on the other side, or if the matching reorders
-   slots non-monotonically. [Pol.normalize] sorts siblings into a canonical
-   order, so post-normalize inputs always meet the monotonicity check. *)
+   each [ps1] arm with its unique label-overlapping [ps2] arm; unmatched
+   arms on either side flow through as [ps1_only] (retires) and [ps2_only]
+   (adds). The same call therefore handles pure-add, pure-retire, and
+   mixed cases (e.g. [RR(A, B) -> RR(A, C, D)]: matches A-A, retires B,
+   adds C and D). Returns [None] when an arm overlaps multiple partners,
+   when matched [ps2] indices fail to strictly increase, or when no arms
+   match at all (caller falls back to a slot-level [Replace]). The
+   strict-increasing check is automatic post-[Pol.normalize]. *)
 let align_by_labels_bidir ps1 ps2 =
-  let partner_in_ps2 a1 =
-    let hits =
-      List.mapi (fun j a2 -> (j, a2)) ps2
-      |> List.filter (fun (_, a2) -> labels_overlap a1 a2)
-    in
-    match hits with
-    | [] -> `None
-    | [ x ] -> `One x
-    | _ -> `Many
-  in
-  let rec walk_ps1 i = function
-    | [] -> Some []
+  let ps2_indexed = List.mapi (fun j a -> (j, a)) ps2 in
+  let rec walk i matches_acc ps1_only_acc last_j = function
+    | [] -> Some (List.rev matches_acc, List.rev ps1_only_acc)
     | a1 :: t -> (
-        match partner_in_ps2 a1 with
-        | `Many -> None
-        | `None -> Option.map (fun r -> `Only (i, a1) :: r) (walk_ps1 (i + 1) t)
-        | `One (j, a2) ->
-            Option.map
-              (fun r -> `Match (i, j, a1, a2) :: r)
-              (walk_ps1 (i + 1) t))
+        match List.filter (fun (_, a2) -> labels_overlap a1 a2) ps2_indexed with
+        | [] -> walk (i + 1) matches_acc ((i, a1) :: ps1_only_acc) last_j t
+        | [ (j, a2) ] when j > last_j ->
+            walk (i + 1) ((i, j, a1, a2) :: matches_acc) ps1_only_acc j t
+        | _ -> None)
   in
-  match walk_ps1 0 ps1 with
-  | None -> None
-  | Some entries ->
-      let matches =
-        List.filter_map
-          (function
-            | `Match m -> Some m
-            | _ -> None)
-          entries
-      in
-      let ps1_only =
-        List.filter_map
-          (function
-            | `Only o -> Some o
-            | _ -> None)
-          entries
-      in
+  match walk 0 [] [] (-1) ps1 with
+  | Some ((_ :: _ as matches), ps1_only) ->
       let matched_j = List.map (fun (_, j, _, _) -> j) matches in
-      let strictly_increasing =
-        matched_j = List.sort compare matched_j
-        && List.length matched_j
-           = List.length (List.sort_uniq compare matched_j)
+      let ps2_only =
+        List.filter (fun (j, _) -> not (List.mem j matched_j)) ps2_indexed
       in
-      if not strictly_increasing then None
-      else if matches = [] then
-        (* No shared arms: emitting retires for all of [ps1] and then adds
-           for all of [ps2] would transit through an empty (invalid)
-           parent. Bail to give-up; the caller's slot-level [Replace]
-           idiom builds [ps2]'s subtree alongside [ps1]'s and swaps
-           atomically. *)
-        None
-      else
-        let ps2_only =
-          List.mapi (fun j a -> (j, a)) ps2
-          |> List.filter (fun (j, _) -> not (List.mem j matched_j))
-        in
-        Some (matches, ps1_only, ps2_only)
+      Some (matches, ps1_only, ps2_only)
+  | _ -> None
 
 (* -------- sequence helpers ---------------------------------- *)
 
