@@ -99,28 +99,21 @@ let prepend_seq i seq = List.map (prepend_step i) seq
    designated SP* with the loser at child index 0 and the survivor at child
    index 1; [Quiesce] tears down the loser's class routing, and [Undesignate]
    waits for the loser to drain before collapsing the SP* down to the
-   survivor. When the swap also rebinds the slot's per-arm meta (an SP rank or
-   WFQ weight changing in lockstep with the arm), a final [ChangeMeta] step
-   fires immediately after [Undesignate] (sequential dependency suffices: the
-   loser has drained by the time [Undesignate]'s guard fires, and [ChangeMeta]
-   sits in the next step slot).
+   survivor. When the swap also rebinds the slot's per-arm meta, the caller
+   appends a [(True) ChangeMeta] step after the bubble-up; sequential
+   dependency carries the drain so no extra guard is needed.
 
    Also serves as [analyze]'s give-up sequence: when no smaller atomic edit
    applies, [Replace] fires at the divergent slot.
 
    All paths are emitted as [[]] at this level; bubble-up via [prepend_seq]
    pins them to the right slot. *)
-let replace ~next ?meta () =
-  let base =
-    [
-      (True, Delta.Designate { path = []; survivor = next });
-      (True, Delta.Quiesce [ 0 ]);
-      (Empty [ 0 ], Delta.Undesignate []);
-    ]
-  in
-  match meta with
-  | None -> base
-  | Some m -> base @ [ (True, Delta.ChangeMeta { path = []; new_meta = m }) ]
+let replace ~next () =
+  [
+    (True, Delta.Designate { path = []; survivor = next });
+    (True, Delta.Quiesce [ 0 ]);
+    (Empty [ 0 ], Delta.Undesignate []);
+  ]
 
 (* The paper's [Retire] idiom: quiesce the subtree at the current level, then
    structurally remove its arm once it has drained. Paths are emitted as [[]]
@@ -165,21 +158,9 @@ let prune_down_to ~prev ~path () =
   in
   walk prev path [] @ [ (True, Delta.ChangeRoot (List.map (fun _ -> 0) path)) ]
 
-(* Recognize the inner [Replace] shape (pre-bubble-up). Used by the metaed
-   comparator to fold a slot's meta change into the trailing [ChangeMeta]
-   of a [Replace] when both fire at the same slot. *)
-let is_replace_root = function
-  | [
-      (True, Delta.Designate { path = []; _ });
-      (True, Delta.Quiesce [ 0 ]);
-      (Empty [ 0 ], Delta.Undesignate []);
-    ] -> true
-  | _ -> false
-
 (* Emit retires for the [(idx, _)] slots in descending index order, so a
    higher-index retire doesn't shift the lower-index paths still pending.
-   Shared by the multi-arm retire branches and the [emit_bidir_*]
-   helpers. *)
+   Shared by the multi-arm retire branch and the bidir emit. *)
 let retires_descending entries =
   let descending = List.sort (fun (a, _) (b, _) -> compare b a) entries in
   List.concat_map (fun (i, _) -> prepend_seq i (retire ())) descending
@@ -238,26 +219,17 @@ let rec compare_children ~next:p2 ?ms ps1 ps2 =
         if m1 = m2 then None else Some m2)
   in
   (* Slot-level edit at index [i], carrying [arm1] to [arm2] and optionally
-     rebinding the slot's meta. A [Replace]-root inner absorbs any meta
-     change into its own trailing [ChangeMeta]; otherwise the inner
-     sequence bubbles via [prepend_seq] with a separate [ChangeMeta] for
-     the meta change. [analyze_inner] never returns a [PruneDownTo] (top
-     level only; see [analyze]), so the inner sequence always bubbles
-     cleanly. *)
+     rebinding the slot's meta. The inner sequence bubbles via
+     [prepend_seq]; a [Some m] meta tacks on a separate [ChangeMeta] step
+     at the same slot, sequenced after the inner. [analyze_inner] never
+     returns a [PruneDownTo] (top level only; see [analyze]), so the
+     inner always bubbles cleanly. *)
   let slot_arm_edit i arm1 arm2 ?meta () =
-    let inner = analyze_inner arm1 arm2 in
-    match (meta, is_replace_root inner) with
-    | Some m, true ->
-        let survivor =
-          match inner with
-          | (True, Delta.Designate { survivor; _ }) :: _ -> survivor
-          | _ -> assert false
-        in
-        prepend_seq i (replace ~next:survivor ~meta:m ())
-    | Some m, false ->
-        prepend_seq i inner
-        @ [ (True, Delta.ChangeMeta { path = [ i ]; new_meta = m }) ]
-    | None, _ -> prepend_seq i inner
+    let base = prepend_seq i (analyze_inner arm1 arm2) in
+    match meta with
+    | None -> base
+    | Some m ->
+        base @ [ (True, Delta.ChangeMeta { path = [ i ]; new_meta = m }) ]
   in
   (* Edit at one matched pair: arm difference -> [slot_arm_edit] (with
      meta when the meta also differs); meta-only difference ->
