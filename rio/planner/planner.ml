@@ -5,7 +5,7 @@
     predicate on live runtime state (paper sketch.md sec4), and the delta is one
     atomic production from the [Delta] grammar.
 
-    Today's guard alphabet is intentionally tiny:
+    The guard alphabet is intentionally tiny:
     - [True]: fire immediately, no precondition.
     - [Empty path]: fire once the subtree at [path] in [p1] has drained. *)
 
@@ -21,11 +21,11 @@ type t = step list
 
 (* -------- list helpers --------------------------------------- *)
 
-(* If [next] embeds [prev] as a strict subsequence, return the indices in
+(* If [next] embeds [prev] as a strict sub-sequence, return the indices in
    [next]'s frame at which the extra arms sit (in ascending order). Used
    by the length-differing branches of the comparators to recognize a
    multi-arm Add (with [prev]=ps1, [next]=ps2) or a multi-arm Retire (with
-   the arguments swapped). [None] signals "not a subsequence" and the
+   the arguments swapped). [None] signals "not a sub-sequence" and the
    caller falls back to label-set alignment. *)
 let insertions prev next =
   let rec loop i prev next acc =
@@ -173,16 +173,6 @@ let replace ~next ?meta () =
    structurally remove its arm once it has drained. Paths are emitted as [[]]
    at this level; [prepend_seq] pins them when the sequence bubbles up. *)
 let retire () = [ (True, Delta.Quiesce []); (Empty [], Delta.Remove []) ]
-
-(* The paper's [SlowRetire] idiom: wait for the subtree at the current level
-   to drain naturally (no [Quiesce] gate cutting off enqueues), then
-   structurally remove its arm. Useful when upstream classifiers have already
-   stopped routing traffic into the subtree and we want to avoid the extra
-   [Quiesce] hop. [analyze] never emits this on its own: from a policy pair
-   there's no signal distinguishing "drain aggressively" from "drain lazily",
-   so it stays a planner-public helper for callers that know which they want
-   (e.g. the imperative-mode surface). *)
-let slow_retire () = [ (Empty [], Delta.Remove []) ]
 
 (* The paper's [PruneDownTo] idiom: collapse [prev] down to the strict subtree
    at [path]. Walks [prev] along [path], retiring off-path siblings at each
