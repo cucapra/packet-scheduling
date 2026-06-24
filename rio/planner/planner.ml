@@ -21,6 +21,14 @@ type t = step list
 
 (* -------- list helpers --------------------------------------- *)
 
+(* Project a node's child policies, dropping per-arm metas. [None] for
+   [FIFO] (leaves have no arms); [Some arms] for the three branching
+   constructors. Used by the planner's structural scans below. *)
+let pol_arms = function
+  | FIFO _ -> None
+  | SP (prs, _) | WFQ prs -> Some (List.map fst prs)
+  | RR ps -> Some ps
+
 (* If [next] embeds [prev] as a strict sub-sequence, return the indices in
    [next]'s frame at which the extra arms sit (in ascending order). Used
    by the length-differing branches of the comparators to recognize a
@@ -109,16 +117,26 @@ let prepend_seq i seq = List.map (prepend_step i) seq
    All paths are emitted as [[]] at this level; bubble-up via [prepend_seq]
    pins them to the right slot. *)
 let replace ~next () =
+  (* After [Designate] fires, the slot becomes a designated SP* with the
+     loser at child index 0; [Quiesce] and [Undesignate] target it. *)
+  let loser = [ 0 ] in
   [
     (True, Delta.Designate { path = []; survivor = next });
-    (True, Delta.Quiesce [ 0 ]);
-    (Empty [ 0 ], Delta.Undesignate []);
+    (True, Delta.Quiesce loser);
+    (Empty loser, Delta.Undesignate []);
   ]
 
 (* The paper's [Retire] idiom: quiesce the subtree at the current level, then
    structurally remove its arm once it has drained. Paths are emitted as [[]]
    at this level; [prepend_seq] pins them when the sequence bubbles up. *)
 let retire () = [ (True, Delta.Quiesce []); (Empty [], Delta.Remove []) ]
+
+(* Emit retires for the [(idx, _)] slots in descending index order, so a
+   higher-index retire doesn't shift the lower-index paths still pending.
+   Shared by the multi-arm retire branch and the bidir emit. *)
+let retires_descending entries =
+  let descending = List.sort (fun (a, _) (b, _) -> compare b a) entries in
+  List.concat_map (fun (i, _) -> prepend_seq i (retire ())) descending
 
 (* The paper's [PruneDownTo] idiom: collapse [prev] down to the strict subtree
    at [path]. Walks [prev] along [path], retiring off-path siblings at each
@@ -131,39 +149,28 @@ let retire () = [ (True, Delta.Quiesce []); (Empty [], Delta.Remove []) ]
    child at index 0 at each level, so the final re-root path is all-zeros of
    length [len(path)]. *)
 let prune_down_to ~prev ~path () =
-  let arms_of = function
-    | SP (prs, _) | WFQ prs -> List.map fst prs
-    | RR ps -> ps
-    | FIFO _ -> failwith "Planner.prune_down_to: path goes through a FIFO leaf"
+  let arms_of p =
+    match pol_arms p with
+    | Some arms -> arms
+    | None -> failwith "Planner.prune_down_to: path goes through a FIFO leaf"
   in
   let rec walk p path_remaining path_so_far =
     match path_remaining with
     | [] -> []
     | i :: rest ->
         let arms = arms_of p in
-        let n = List.length arms in
-        let off =
-          List.init n (fun j -> j)
-          |> List.filter (fun j -> j <> i)
-          |> List.sort (fun a b -> compare b a)
+        let off_entries =
+          List.mapi (fun j a -> (j, a)) arms
+          |> List.filter (fun (j, _) -> j <> i)
         in
         let level_retires =
-          List.concat_map
-            (fun j ->
-              List.fold_right prepend_seq (path_so_far @ [ j ]) (retire ()))
-            off
+          List.fold_right prepend_seq path_so_far
+            (retires_descending off_entries)
         in
         let kept = List.nth arms i in
         level_retires @ walk kept rest (path_so_far @ [ i ])
   in
   walk prev path [] @ [ (True, Delta.ChangeRoot (List.map (fun _ -> 0) path)) ]
-
-(* Emit retires for the [(idx, _)] slots in descending index order, so a
-   higher-index retire doesn't shift the lower-index paths still pending.
-   Shared by the multi-arm retire branch and the bidir emit. *)
-let retires_descending entries =
-  let descending = List.sort (fun (a, _) (b, _) -> compare b a) entries in
-  List.concat_map (fun (i, _) -> prepend_seq i (retire ())) descending
 
 (* Fallback combinator for [compare_children]: try bidirectional label-set
    alignment, emit it if found, otherwise give up. *)
@@ -188,20 +195,17 @@ let try_bidir_cross_slot ~emit ~per_slot ps1 ps2 =
 let rec is_sub_policy p1 p2 =
   if p1 = p2 then Some []
   else
-    let scan children ~arm =
-      let rec loop i = function
-        | [] -> None
-        | x :: t -> (
-            match is_sub_policy p1 (arm x) with
-            | Some path -> Some (i :: path)
-            | None -> loop (i + 1) t)
-      in
-      loop 0 children
-    in
-    match p2 with
-    | FIFO _ -> None
-    | SP (prs, _) | WFQ prs -> scan prs ~arm:fst
-    | RR ps -> scan ps ~arm:Fun.id
+    match pol_arms p2 with
+    | None -> None
+    | Some arms ->
+        let rec loop i = function
+          | [] -> None
+          | x :: t -> (
+              match is_sub_policy p1 x with
+              | Some path -> Some (i :: path)
+              | None -> loop (i + 1) t)
+        in
+        loop 0 arms
 
 (* Unified comparator for RR (no metas) and SP/WFQ (per-arm metas).
    Optional [ms] carries [(ms1, ms2)]; RR threads [None]. With [ms = None]
