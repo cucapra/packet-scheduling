@@ -1251,55 +1251,56 @@ There is one wrinkle: this slot-by-slot walk can miss a cross-slot correspondenc
 The label-overlap walk (below) catches it; when that walk finds at least one such cross-slot pairing, we use it instead of the slot-by-slot walk.
 
 **`p2` longer.**
-When `p1`'s arms appear in order as a subsequence of `p2`'s, the surplus arms in `p2` are pure additions, and we emit one `Add` per surplus arm in ascending index order.
+When `p1`'s arms appear in order as a sub-sequence of `p2`'s, the surplus arms in `p2` are pure additions, and we emit one `Add` per surplus arm in ascending index order.
 §3.4.1's leaf-disjointness precondition holds automatically: every surplus arm's leaves are leaves of `p2` not in `p1`, which by §3.2's leaf-partition validity are disjoint from `p1`'s arms and from each other.
 At an `SP` or `WFQ` parent, each `Add` carries the surplus arm's meta.
 If a stable arm has changed metadata, we emit `ChangeMeta`s after completing the `Add`s.
 
-When `p1`'s arms are _not_ a subsequence of `p2`'s, we try the label-overlap walk.
+When `p1`'s arms are _not_ a sub-sequence of `p2`'s, we try the label-overlap walk.
 If that fails too, we emit a slot-level `Replace`.
 
 **`p1` longer.**
 Symmetric.
-When `p2`'s arms appear in order as a subsequence of `p1`'s, the surplus arms in `p1` are retired, and we emit one `Retire` idiom (§4.2) per surplus arm in _descending_ index order.
+When `p2`'s arms appear in order as a sub-sequence of `p1`'s, the surplus arms in `p1` are retired, and we emit one `Retire` idiom (§4.2) per surplus arm in _descending_ index order.
 Descending order keeps the lower-index paths stable while higher-index siblings drain and disappear.
-When `p2`'s arms are not a subsequence of `p1`'s, we try the label-overlap walk, and emit a slot-level `Replace` if it cannot align the arms either.
+When `p2`'s arms are not a sub-sequence of `p1`'s, we try the label-overlap walk, and emit a slot-level `Replace` if it cannot align the arms either.
 
 **The label-overlap walk.**
 The simpler patterns above pair arms by slot position; the label-overlap walk pairs them by what they actually carry.
-The motivating case for comparing labels is below.
-Take `p1 = RR(A, B)` and `p2 = RR(B, A')`, where `A`, `B`, and `A'` are:
+Consider the following example.
 
 ```
-A = WFQ(gmail, drive)
-B = FIFO(zoom)
-A' = WFQ(gmail, drive, calendar)
+p1 = RR(drive, gmail)
+p2 = RR(drive, slack, RR(gmail, controller_for_gmail))
 ```
 
 So the two trees are:
 
 ```
-       p1 = RR(A, B)                  p2 = RR(B, A')
+   p1 = RR(d, g)            p2 = RR(d, s, RR(g, c))
 
-             RR                              RR
-            /  \                            /  \
-           WFQ  FIFO                       FIFO  WFQ
-           /\    |                          |    /|\
-          g  d   z                          z   g d c
-                                                    ^
-                                                (new leaf)
+         RR                          RR
+        /  \                       / |  \
+       d    g                     d  s   RR
+                                         /\
+                                        g  c
+                                            ^
+                                        (new sub-channel)
 ```
 
-A slot-by-slot walk would compare the slot-0 pair `(WFQ, FIFO)` and the slot-1 pair `(FIFO, WFQ)`, see a constructor mismatch at each, and emit two slot-level `Replace`s.
+`d` is unchanged; `g` now round-robins with a control sub-channel; `s` is new.
+A slot-by-slot walk does not apply (the lengths differ), and the simpler sub-sequence check in the "`p2` longer" case fails because `gmail` in `p1` is not equal to any arm in `p2`.
+Without the walk we are about to describe, the planner would give up and emit a wholesale `Replace` of the entire root `RR`.
+
 But the trees are not really that different.
-`A` and `A'` share the class labels `{gmail, drive}`; `B` is the same on both sides.
-The correct reading is that `A` has moved to slot 1 and grown a `calendar` leaf, and `B` has moved to slot 0.
+`gmail` in `p1` and `RR(gmail, gmail_control)` in `p2` share the class label `gmail`; `drive` is the same on both sides; `slack` is the only arm in `p2` whose labels appear nowhere in `p1`.
+The correct reading is that `drive` stays, `gmail` has grown a sub-channel, and `slack` is fresh.
 
 The label-overlap walk produces that reading.
 It pairs arms in `p1` with arms in `p2` whose class-label sets overlap (by a greedy left-to-right walk); arms in `p1` with no overlapping partner retire, arms in `p2` with no overlapping partner are added, and matched pairs are recursed on.
 The justification is that a class label identifies a unique flow across the whole policy (§3.2's leaf-partition validity), so a repeated label between an arm in `p1` and an arm in `p2` is evidence that the same host arm has morphed structurally, and an arm whose labels appear on no opposing arm is necessarily fresh or vanishing.
-For our example, the walk pairs `A` with `A'` and `B` with `B`; the `(A, A')` recursion emits one `Add` for the `calendar` leaf, the `(B, B)` recursion is empty.
-The final emission is a single inner `Add`, at slot 1 of `p2` where `A'` lives, in place of two `Replace`s that would have wrapped both subtrees wholesale.
+For our example, the walk pairs `drive` with `drive` (no edit) and `gmail` with `RR(gmail, gmail_control)` (recurse), and treats `slack` as a pure add.
+The final emission is two atomic steps: an `Add` of `slack`, and an inner `Replace` at the slot of `p2` where `gmail` grew its sub-channel, in place of wrapping the root `RR` wholesale.
 
 A few notes.
 The walk is greedy: when more than one alignment satisfies the label-overlap constraint, the first we find is taken, with no notion of cost (§5.3).
