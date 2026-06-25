@@ -64,6 +64,7 @@
 %token STOPGO
 
 %start <program> prog
+%start <stream> policy_only
 
 %%
 
@@ -121,3 +122,6 @@ progseq: list (internalcomp)                                   { $1 }
 
 /* Program */
 prog: progseq EOF                                              { validate_program $1 }
+
+/* Bare policy expression (used by the REPL; classes are inferred). */
+policy_only: p = policy; EOF                                   { p }

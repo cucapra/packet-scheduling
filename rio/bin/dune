@@ -1,4 +1,9 @@
-(executables
- (names sim)
+(executable
+ (name sim)
  (libraries rio.core rio.frontend rio.simulator)
  (modules sim))
+
+(executable
+ (name repl)
+ (libraries rio.core rio.frontend rio.planner)
+ (modules repl))
