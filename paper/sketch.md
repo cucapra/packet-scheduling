@@ -1266,18 +1266,8 @@ Descending order keeps the lower-index paths stable while higher-index siblings 
 When `p2`'s arms are not a subsequence of `p1`'s, we try the label-overlap walk, and emit a slot-level `Replace` if it cannot align the arms either.
 
 **The label-overlap walk.**
-All three arity branches above turn to this walk when their simpler pattern does not apply.
-Arms in `p1` and `p2` whose class-label sets overlap are paired up by a greedy left-to-right walk; arms in `p1` with no overlapping partner in `p2` retire, and arms in `p2` with no overlapping partner in `p1` are added.
-The pairing relies on §3.2's leaf-partition validity: a class label identifies a unique flow across the whole policy, so a repeated label between an arm in `p1` and an arm in `p2` is evidence that the same host arm has morphed structurally, and an arm whose labels appear nowhere on the opposing side is necessarily a fresh sibling or a vanishing one.
-The walk is greedy: if more than one alignment satisfies the label-overlap constraint, the first one we find is taken, with no notion of cost (§5.3).
-If no shared label admits a single match, the walk fails and the caller falls back to its slot-level `Replace`.
-
-When the walk succeeds, the emission has three parts: the adds first in ascending intermediate-frame index, then the retires in descending intermediate-frame index, then the per-match edits at their post-mutation slots.
-By _intermediate frame_ we mean the frame that exists after every `Add` has fired but before any `Retire` has drained.
-Within each gap between consecutive matched arms, this frame holds the gap's retiring arms first (preserving their `p1` order), then the gap's new arms (preserving their `p2` order); each matched arm occupies one slot of its own.
-We issue the adds before the retires deliberately: an `Add` is instantaneous, while a `Retire` waits for its subtree to drain, so issuing the adds first lets traffic for the new arms begin flowing immediately instead of waiting out the drains.
-When one side of the alignment is empty, the intermediate frame collapses to `p1` (no adds) or to `p2` (no retires), and the indices coincide with those the equal-arity, `p2`-longer, and `p1`-longer branches above would produce.
-
+The simpler patterns above pair arms by slot position; the label-overlap walk pairs them by what they actually carry.
+The motivating case for comparing labels is below.
 Take `p1 = RR(A, B)` and `p2 = RR(B, A')`, where `A`, `B`, and `A'` are:
 
 ```
@@ -1300,10 +1290,22 @@ So the two trees are:
                                                 (new leaf)
 ```
 
-The slot-by-slot walk would recurse on the slot-0 pair `(WFQ, FIFO)` and the slot-1 pair `(FIFO, WFQ)`, find a constructor mismatch at each, and emit two slot-level `Replace`s.
-The label-overlap walk instead sees that `A`'s labels `{gmail, drive}` overlap `A'`'s `{gmail, drive, calendar}` and that `B`'s `{zoom}` overlap `B`'s `{zoom}`, pairs the arms across slots, and recurses on the matched pairs.
-The `(A, A')` recursion emits a single `Add` for the new `calendar` leaf; the `(B, B)` recursion emits nothing.
-The final emission is one inner `Add` at slot 1 of `p2` (where `A'` lives), in place of two `Replace`s that would have wrapped two large subtrees.
+A slot-by-slot walk would compare the slot-0 pair `(WFQ, FIFO)` and the slot-1 pair `(FIFO, WFQ)`, see a constructor mismatch at each, and emit two slot-level `Replace`s.
+But the trees are not really that different.
+`A` and `A'` share the class labels `{gmail, drive}`; `B` is the same on both sides.
+The correct reading is that `A` has moved to slot 1 and grown a `calendar` leaf, and `B` has moved to slot 0.
+
+The label-overlap walk produces that reading.
+It pairs arms in `p1` with arms in `p2` whose class-label sets overlap (by a greedy left-to-right walk); arms in `p1` with no overlapping partner retire, arms in `p2` with no overlapping partner are added, and matched pairs are recursed on.
+The justification is that a class label identifies a unique flow across the whole policy (§3.2's leaf-partition validity), so a repeated label between an arm in `p1` and an arm in `p2` is evidence that the same host arm has morphed structurally, and an arm whose labels appear on no opposing arm is necessarily fresh or vanishing.
+For our example, the walk pairs `A` with `A'` and `B` with `B`; the `(A, A')` recursion emits one `Add` for the `calendar` leaf, the `(B, B)` recursion is empty.
+The final emission is a single inner `Add`, at slot 1 of `p2` where `A'` lives, in place of two `Replace`s that would have wrapped both subtrees wholesale.
+
+A few notes.
+The walk is greedy: when more than one alignment satisfies the label-overlap constraint, the first we find is taken, with no notion of cost (§5.3).
+If no shared label admits even one match, the walk fails and the caller falls back to a slot-level `Replace`.
+When the walk produces a mix of adds, retires, and matched-pair recursions, we issue the adds first, then the retires (in descending index order, so lower-index paths stay stable while higher ones drain), then the per-match recursive edits.
+Firing the adds before the retires is deliberate: an `Add` is instantaneous while a `Retire` waits for its subtree to drain, so the new arms start carrying traffic immediately instead of waiting out the drains.
 
 ##### Where the descent localizes the difference
 
