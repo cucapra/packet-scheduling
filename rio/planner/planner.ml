@@ -223,17 +223,10 @@ let try_bidir_cross_slot ~emit ~per_slot ps1 ps2 =
 let rec is_sub_policy p1 p2 =
   if p1 = p2 then Some []
   else
-    match pol_arms p2 with
-    | None -> None
-    | Some arms ->
-        let rec loop i = function
-          | [] -> None
-          | x :: t -> (
-              match is_sub_policy p1 x with
-              | Some path -> Some (i :: path)
-              | None -> loop (i + 1) t)
-        in
-        loop 0 arms
+    Option.bind (pol_arms p2) (fun arms ->
+        List.find_mapi
+          (fun i x -> Option.map (fun p -> i :: p) (is_sub_policy p1 x))
+          arms)
 
 (* Unified comparator for RR (no metas) and SP/WFQ (per-arm metas).
    Optional [ms] carries [(ms1, ms2)]; RR threads [None]. With [ms = None]
@@ -343,16 +336,15 @@ let rec compare_children ~next:p2 ?ms ps1 ps2 =
                 (True, Delta.Add { path = [ i ]; arm; meta = meta_for_j i }))
               adds
           in
+          let ps2_shared =
+            List.filter
+              (fun j -> not (List.mem j add_indices))
+              (List.init (List.length ps2) (fun j -> j))
+          in
           let change_meta_steps =
             List.filter_map
-              (fun j ->
-                if List.mem j add_indices then None
-                else
-                  let i1 =
-                    j - List.length (List.filter (fun k -> k < j) add_indices)
-                  in
-                  Option.map (change_meta_at j) (meta_diff i1 j))
-              (List.init (List.length ps2) (fun j -> j))
+              (fun (i1, j) -> Option.map (change_meta_at j) (meta_diff i1 j))
+              (List.mapi (fun i1 j -> (i1, j)) ps2_shared)
           in
           add_steps @ change_meta_steps
       | None -> bidir_or ~emit ~give_up ps1 ps2
