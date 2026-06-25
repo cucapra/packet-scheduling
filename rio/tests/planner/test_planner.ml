@@ -345,16 +345,17 @@ let aligned_multi =
     (* rr_A_strictBCD normalizes to RR[FIFO A, SP[B,C,D]]; rr_A_strictBC_E
        to RR[FIFO A, FIFO E, SP[B,C]]. [insertions] fails because SP[B,C,D]
        and SP[B,C] aren't equal. Label-set alignment pairs the SPs (via
-       {B,C} overlap) and treats E as a pure Add at ps2 index 1. After the
-       Add fires, the SP slot lives at ps2 index 2; the recursive analyze
-       there is a [Retire] of D inside the SP. *)
+       {B,C} overlap) and treats E as a pure Add, appended at the parent's
+       tail (slot 2 = len(ps1)). The SP slot stays at ps1 index 1 (no shift
+       since adds appended); the recursive analyze there is a [Retire] of
+       D inside the SP. *)
     make_planner_test "RR adds a sibling while an inner SP retires"
       "rr_A_strictBCD" "rr_A_strictBC_E"
       [
         ( Planner.True,
-          Delta.Add { path = [ 1 ]; arm = Pol.FIFO "E"; meta = None } );
-        (Planner.True, Delta.Quiesce [ 2; 2 ]);
-        (Planner.Empty [ 2; 2 ], Delta.Remove [ 2; 2 ]);
+          Delta.Add { path = [ 2 ]; arm = Pol.FIFO "E"; meta = None } );
+        (Planner.True, Delta.Quiesce [ 1; 2 ]);
+        (Planner.Empty [ 1; 2 ], Delta.Remove [ 1; 2 ]);
       ];
     (* Reverse direction: ps1 longer. [E] is a pure retire at ps1 index 1;
        the SP slot at ps1 index 2 lands at ps2 index 1 after the retire, and
@@ -392,17 +393,17 @@ let aligned_multi =
        (FIFO < RR by polymorphic compare; among FIFOs, A < E
        alphabetically), so wfq_A_rrBCD normalizes to WFQ[(A, 1); (RR[B,C,D],
        2)] but wfq_A_rrBC_E normalizes to WFQ[(A, 1); (E, 3); (RR[B,C], 2)].
-       Label-set alignment pairs A with A and the RRs with each other,
-       inserting E between them as a non-contiguous Add at ps2 index 1; the
-       RR match lands at ps2 index 2 in the post-Add frame and recurses to
-       retire D inside. *)
+       Label-set alignment pairs A with A and the RRs with each other; E
+       is appended at the parent's tail (slot 2 = len(ps1)) carrying weight
+       3, and the RR match stays at ps1 index 1 where the recursive analyze
+       retires D inside. *)
     make_planner_test "WFQ adds a sibling while an inner RR retires"
       "wfq_A_rrBCD" "wfq_A_rrBC_E"
       [
         ( Planner.True,
-          Delta.Add { path = [ 1 ]; arm = Pol.FIFO "E"; meta = Some 3.0 } );
-        (Planner.True, Delta.Quiesce [ 2; 2 ]);
-        (Planner.Empty [ 2; 2 ], Delta.Remove [ 2; 2 ]);
+          Delta.Add { path = [ 2 ]; arm = Pol.FIFO "E"; meta = Some 3.0 } );
+        (Planner.True, Delta.Quiesce [ 1; 2 ]);
+        (Planner.Empty [ 1; 2 ], Delta.Remove [ 1; 2 ]);
       ];
     make_planner_test "WFQ retires a sibling while an inner RR adds"
       "wfq_A_rrBC_E" "wfq_A_rrBCD"
@@ -420,14 +421,14 @@ let aligned_multi =
    anchor the alignment. Symmetric across the |-1| and |+1| length branches
    and across RR vs. metaed (SP/WFQ) parents. The [matches = []] guard in
    [align_by_labels_bidir] keeps the wholesale-divergence case
-   ([rr_AB -> rr_DEF]) on the give-up path so the intermediate parent never
-   empties out. Adds fire first at intermediate-frame indices so traffic
-   for the new arms starts flowing immediately; retires drain after, in
-   descending intermediate-frame order. *)
+   ([rr_AB -> rr_DEF]) on the give-up path so the parent never empties out.
+   Sibling order carries no semantics for SP/RR/WFQ (paper sec3.2), so adds
+   are appended at the parent's tail (slot = len(ps1), +1 per Add) and fire
+   immediately; retires drain after, descending in ps1 index. *)
 let mixed_add_retire =
   [
-    (* Intermediate frame is [A, B, C, D]: adds C at index 2 and D at
-       index 3, then B retires at index 1. *)
+    (* Appends C at slot 2 and D at slot 3, then B retires at its ps1
+       index 1. *)
     make_planner_test "RR retires one arm and adds two" "rr_AB" "rr_ACD"
       [
         ( Planner.True,
@@ -437,8 +438,8 @@ let mixed_add_retire =
         (Planner.True, Delta.Quiesce [ 1 ]);
         (Planner.Empty [ 1 ], Delta.Remove [ 1 ]);
       ];
-    (* Intermediate frame is [A, C, D, B]: adds B at index 3, then D and
-       C retire at indices 2 and 1 (descending). *)
+    (* Appends B at slot 3 (= len(ps1)); D and C retire at ps1 indices
+       2 and 1 (descending). *)
     make_planner_test "RR retires two arms and adds one" "rr_ACD" "rr_AB"
       [
         ( Planner.True,
@@ -482,22 +483,23 @@ let same_length_bidir =
        to WFQ[(Z, 4); (RR[A, Y], 7); (RR[C, W], 8)]. Both length 3, neither
        arm-multiset nor per-slot equal, so the permutation pre-pass doesn't
        fire and the per-slot walk would emit three Replaces. Bidir aligns
-       A -> RR[A, Y] at ps2 slot 1 and C -> RR[C, W] at ps2 slot 2 by label
-       overlap; B has no partner in ps2 (retire) and Z has no partner in
-       ps1 (Add). The first match's i1=0, j2=1 trips the cross-slot
-       trigger. *)
-    (* Intermediate frame is [Z, A, B, C]: Z is added at index 0 first,
-       then B retires at index 2; A and C then settle at ps2 indices 1
-       and 2 where their matched-pair Replace+ChangeMeta steps land. *)
+       A -> RR[A, Y] and C -> RR[C, W] by label overlap; B has no partner
+       in ps2 (retire) and Z has no partner in ps1 (Add). The first match's
+       i1=0, j2=1 trips the cross-slot trigger. *)
+    (* Z is appended at slot 3 (= len(ps1)); B retires at its ps1 index 1;
+       the matched pair A -> RR[A, Y] lands at slot 0 (matches-list
+       position 0, also the post-retire slot of A) with the
+       Replace+ChangeMeta carrying the new weight 7, and likewise C -> RR[C,
+       W] at slot 1 with weight 8. *)
     make_planner_test "WFQ same-length cross-slot morph" "wfq_ABC"
       "wfq_Z_rrAY_rrCW"
       ([
          ( Planner.True,
-           Delta.Add { path = [ 0 ]; arm = Pol.FIFO "Z"; meta = Some 4.0 } );
+           Delta.Add { path = [ 3 ]; arm = Pol.FIFO "Z"; meta = Some 4.0 } );
        ]
-      @ retire_seq [ 2 ]
-      @ replace_seq ~meta:7.0 [ 1 ] (Pol.RR [ Pol.FIFO "A"; Pol.FIFO "Y" ])
-      @ replace_seq ~meta:8.0 [ 2 ] (Pol.RR [ Pol.FIFO "C"; Pol.FIFO "W" ]));
+      @ retire_seq [ 1 ]
+      @ replace_seq ~meta:7.0 [ 0 ] (Pol.RR [ Pol.FIFO "A"; Pol.FIFO "Y" ])
+      @ replace_seq ~meta:8.0 [ 1 ] (Pol.RR [ Pol.FIFO "C"; Pol.FIFO "W" ]));
   ]
 
 (* Pairs that would have looked like sub-policy embeddings at depth (FIFO B
