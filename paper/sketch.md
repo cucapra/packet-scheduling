@@ -1137,15 +1137,14 @@ A sketch of the stronger possibility lives in our discussion notes.
 
 ## 5. The Transition Planner
 
-§4.3 referenced a _transition planner_: the declarative-mode tool that, given a pair `(p1, p2)`, proposes a guarded sequence whose composed effect carries `p1` to `p2`.
-This section spells it out.
+§4.3 referenced a _transition planner_; this section spells it out.
 The operator hands the runtime `p1` (the presently-running policy) and `p2` (their new desire); the planner's job is to propose a `(φ ; δ)*` sequence whose pol-level fold takes `p1` to `p2` up to `=R`.
 The operator accepts or rejects the proposal; they do not author it directly.
 
-Every sequence the planner emits is sound by §3.4 (per-production guarantees) and §4.1 (Safety of guarded sequences), regardless of how the planner assembled it.
-The planner may fail to see a superior sequence, but it cannot emit an unsafe one.
-The one hard correctness obligation is the pol-level fold check of §4.3: the chain `den(δ_n) ∘ ... ∘ den(δ_1) (p1)` must reach a representative of `p2`'s `=R`-class.
-The planner discharges this by construction (each case below emits a `δ` or idiom whose `den` realizes the locally-observed pol-level difference); the §4.3 check would also catch any misstep.
+Every sequence the planner emits is safe by §3.4 (per-production guarantees) and §4.1 (Safety of guarded sequences), regardless of how the planner assembled it.
+The planner aims to land at `p2` by construction: each case below emits a `δ` or idiom whose `den` realizes the locally-observed pol-level difference.
+A misstep in the case analysis could in principle yield a sequence whose fold `den(δ_n) ∘ ... ∘ den(δ_1) (p1)` misses `p2`'s `=R`-class; the §4.3 pol-level check is the backstop and rejects any such sequence before commit.
+Optimality is a separate matter, and not guaranteed: the planner may fail to see a superior sequence that the user has in mind.
 
 §5.1 sets up _confinement_ as a metric for excellence, presents the always-available worst-case `Replace` fallback, and frames the planner's strategy as descending the tree to find a tight production (Add, Remove, ChangeMeta) that captures the difference locally.
 §5.2 catalogs the cases the planner recognizes and emits a tight sequence for.
@@ -1161,7 +1160,8 @@ To reach any `p2` from any `p1`, the planner can issue `Replace([], p2)`, the §
 (empty([0]) ; Undesignate([]))
 ```
 
-This wraps `p1` and `p2` into a `Strict*(hi: p1, lo: p2)` at the root, quiesces the `p1` arm, accepts pushes into `p2` and serves pops from `p1`, and, when `p1` has drained to empty, replaces `Strict*(hi: p1, lo: p2)` with just `p2`, which then serves pushes and pops.
+After `Designate([], p2)` fires, the original `p1` sits at child index 0 of the freshly-introduced `Strict*` wrap and the survivor `p2` sits at index 1 (§3.4.5); the `[0]` in the next two steps targets the `p1` arm.
+This wraps `p1` and `p2` into a `Strict*(hi: p1, lo: p2)` at the root, quiesces the `p1` arm, accepts pushes into `p2` and serves pops from `p1`, and, when `p1` has drained to empty, replaces `Strict*(hi: p1, lo: p2)` with just `p2`, which then serves both pushes and pops.
 Nothing is dropped and the sequence is safe by §3.4, but _no part of the scheduler is left undisturbed_.
 
 ##### Footprint
@@ -1182,7 +1182,7 @@ The planner descends through the tree as long as `p1` and `p2` agree at the curr
 When it finds one, it emits the matching production at that depth.
 Only when the descent ends without a match does the planner fall back to `Replace`; but by then the recursion has localized the difference to the deepest slot at which the policies disagree, so the resulting `Replace` wraps only that slot.
 
-A concrete example.
+A concrete example will help.
 Suppose `p1 = SP(gmail, RR(zoom, netflix))` and the operator requests `p2 = SP(gmail, RR(zoom, netflix, spotify))`.
 The planner has two ways to realize this:
 
@@ -1210,82 +1210,119 @@ The case analysis of §5.2 is built precisely to find option (b) when it exists,
 We make no claim that the planner's choice is canonical or minimal.
 We claim only that whatever sequence it emits is safe (§3.4) and no worse than the root-level fallback.
 
-### 5.2 The case analysis
+### 5.2 What the planner emits
 
-The planner steps through the following cases in order, emitting at the first match.
-The operator's top-level call examines `(p1, p2)` as whole trees: cases 1-2 fire when one tree equals the other or embeds in it; cases 3-7 fire when the roots agree and the local difference has a recognized shape; case 8 catches everything else.
-Cases 3, 4, and 7 are the descent mechanism: when the difference sits one level down, they re-enter the case analysis on the differing slot, and whatever case fires at the deeper level has its emission re-targeted via index prepending on the way back up.
-Case 2 is skipped at every deeper entry: `PruneDownTo` describes a whole-tree edit whose path names a position in the running policy as a whole (§3.4.7), and so cannot be retargeted into a parent slot by index prepending.
-A sub-policy embedding noticed at depth therefore falls through to the constructor cases below and emits a slot-level `Replace` directly, identical to what case 8 would do.
+The planner has two parts.
+The top-level pass examines `(p1, p2)` as whole trees and one of three things happens: it finds them equal up to `=R` and emits `[]`, or it recognizes that `p2` already lives somewhere inside `p1` and therefore emits a `PruneDownTo`, or it passes the pair to a second procedure that compares two policies at one level (which we will call the _per-level comparator_).
+The per-level comparator either recognizes a tight production at the current level, or recurses into matching slots, or gives up and emits a slot-level `Replace`.
+Whatever the per-level comparator emits is lifted back to the right depth by prepending the slot indices that the recursion descended through.
 
-1. **`p1 = p2`.**
-   Emit `[]`.
-   The test is literal equality: the compiler normalizes user input (§3.2), so any two `=R`-equivalent policies become identical `pol` terms before reaching the planner.
-   The live control is already serving the requested policy, so the planner has nothing to install.
+##### The top-level pass
 
-2. **`p2` embeds in `p1` at some path.**
-   Emit `PruneDownTo(path)`, where `path` is the location in `p1` where `p2` sits.
-   The planner detects this with a structural sub-policy test that walks `p1` looking for a subtree equal to `p2`; on a hit, the matched path is the location to prune down to.
-   The match is unique by §3.2's leaf-partition validity: each flow in `p2` may occur at most once in `p1`, so `p1` can host `p2` as a subtree in at most one position.
+The pass tries three cases in order and stops at the first match.
 
-3. **`RR` at the current level, child lists of equal length.**
-   When the children's class-label sets reveal a cleaner cross-slot pairing than slot position does (a slot's arm in `p1` shares labels with a different slot's arm in `p2`), the planner takes case 7's label-overlap alignment instead.
-   Otherwise it walks each slot independently and emits one slot-level edit per diverging position; slot-level edits target distinct indices and so concatenate freely in ascending order.
-   At a slot whose arm agrees, nothing is emitted.
-   At a slot whose arm differs, recurse on the inner pair (skipping case 2) and bubble the inner emission via index-prepending.
+1. **`p1 = p2`.** Emit `[]`.
+   The test is literal equality on the normalized `pol` terms.
+   The compiler (§3.2) runs every operator-supplied policy through `Pol.normalize` before reaching the planner, so two `=R`-equivalent policies arrive here as identical terms.
+   The live control is already serving the requested policy and there is nothing to install.
 
-4. **`SP` or `WFQ` at the current level, child lists of equal length.**
-   When `p1` and `p2` carry the same multiset of arms (the operator has simply re-weighted or re-ranked existing arms, which §3.2's normalization re-sorts into possibly-different slots), the planner emits one `ChangeMeta` per slot whose meta has moved and is done at this level.
-   Otherwise, when the children's class-label sets reveal a cleaner cross-slot pairing than slot position does, the planner takes case 7's label-overlap alignment.
-   Otherwise it walks each slot independently and emits one slot-level edit per diverging position; slot-level edits target distinct indices and so concatenate freely in ascending order.
-   At a slot whose arm and metadata both agree, nothing is emitted.
-   At a slot whose metadata differs but whose arm does not, emit `ChangeMeta(path, meta)` for that slot.
-   At a slot whose arm differs (with or without a metadata change at the same slot), recurse on the inner pair (skipping case 2) and dispatch on the inner shape: a `Replace`-root inner folds any metadata change into its trailing `ChangeMeta`; any other inner edit bubbles via index-prepending and, when the metadata also changed, picks up a separate `ChangeMeta` step at the slot.
+2. **`p2` embeds in `p1` at some `path`.** Emit `PruneDownTo(path)`.
+   A structural sub-policy test walks `p1` looking for a subtree equal to `p2`; if it finds one, `path` names where it sits.
+   The match is unique: by §3.2's leaf-partition validity each flow in `p2` may appear at most once in `p1`, so `p1` can host `p2` as a subtree in at most one position.
+   This test runs only at the top level.
 
-5. **Same constructor at the current level, every child of `p1` is also a child of `p2` but `p2` has more children.**
-   Emit one `Add` per surplus arm, in ascending index order.
-   §3.4.1's leaf-disjointness precondition is satisfied for free at each `Add`: every surplus arm's leaves are leaves of `p2` not in `p1`, which by §3.2's leaf-partition validity are disjoint from `p1`'s and from each other.
-   At an `SP` or `WFQ` parent each `Add` carries the surplus arm's metadata, and any shared arm whose metadata differs between `p1` and `p2` additionally contributes a `ChangeMeta` step (in `p2`'s post-`Add` frame) after all `Add`s have fired.
+3. **Otherwise.** Hand `(p1, p2)` to the per-level comparator.
 
-6. **Same constructor at the current level, every child of `p2` is also a child of `p1` but `p1` has more children.**
-   Emit one `Retire` idiom (§4.2) per surplus arm, in _descending_ index order.
-   Descending order keeps the lower-index slot paths stable while higher-index siblings drain and disappear.
-   The planner never emits `SlowRetire` from a `(p1, p2)` pair, because the pair carries no signal distinguishing "drain aggressively" from "drain lazily."
-   `SlowRetire` remains available to imperative-mode authors.
-   At an `SP` or `WFQ` parent each shared arm whose metadata differs additionally contributes a `ChangeMeta` step (in `p2`'s post-`Retire` frame) after all `Retire`s have fired; the surplus arms' metadata is discarded, since `Retire` removes the slot wholesale.
+##### The per-level comparator
 
-7. **Same constructor at the current level, with arms aligned by class-label overlap.**
-   Cases 3 and 4 pivot here when class-labels reveal a cross-slot correspondence, and cases 5 and 6 fall through here when the lengths differ but neither side's arms are a subset of the other's.
-   Arms in `p1` and `p2` whose class-label sets overlap pair up by a greedy left-to-right walk.
-   Arms in `p1` with no overlapping partner in `p2` retire; arms in `p2` with no overlapping partner in `p1` are added; the two can coexist at the same parent.
-   `Add`s fire first in ascending intermediate-frame index, `Retire`s next in descending intermediate-frame index; matched-pair edits then recurse on the inner pair (skipping case 2) and bubble to the slot's position in `p2`'s post-mutation frame.
-   The intermediate frame is the frame that exists after every `Add` has fired but before any `Retire` has drained.
-   Within each gap between consecutive matched arms it holds the gap's retiring arms first (preserving their `p1` order), then the gap's new arms (preserving their `p2` order); each matched arm occupies one slot of its own.
-   Adds-first is a deliberate choice: an `Add` is instantaneous while a `Retire` is drain-gated, and firing the adds first means traffic for the new arms starts flowing immediately rather than waiting out the retires.
-   The alternative (retires first, adds at `p2`-frame indices) has simpler arithmetic but parks the new arms' traffic until every drain has completed; in the degenerate case where one side of the alignment is empty the intermediate frame collapses to `p1` (no adds) or to `p2` (no retires), so the indices land where cases 5 and 6 already place them.
-   At an `SP` or `WFQ` parent each `Add` carries its meta, and a matched pair whose metas also differ folds a `ChangeMeta` into the recursive edit (as a trailing step on the bubbled inner emission).
-   The pairing relies on §3.2's leaf-partition validity: a class label identifies a unique flow across the whole policy, so a repeated label between an arm in `p1` and an arm in `p2` is evidence that the same host arm has morphed, and an arm whose labels appear nowhere on the opposing side is necessarily a fresh sibling or a vanishing one.
-   The greedy walk is not complete: when more than one alignment satisfies the label-overlap constraint, the first one found is taken without a notion of cost (§5.3).
-   When no shared label admits even a single match, the case fails and the planner falls through to case 8; this keeps wholesale divergence (no anchoring overlap) from emptying the parent mid-sequence.
+The per-level comparator looks at the roots of `p1` and `p2`.
+If the two roots use different constructors (for example `SP` and `RR`, or two `FIFO`s with different classes), it emits a slot-level `Replace` directly: the always-available §5.1 idiom restricted to the current slot.
+If the constructors agree, it then looks at the two child lists and compares their lengths.
 
-8. **Anything else.**
-   Emit `Replace` at the current level.
-   "Anything else" covers same-level shapes the planner does not recognize: constructor mismatch (e.g., `SP` vs. `RR`), and child lists of unequal length where neither's children are a subset of the other's and case 7's label-set walk fails to find an alignment.
+**Equal arity.**
+For the constructors that carry per-arm metas (`SP` and `WFQ`), we first check for a meta-only reshuffle: if `p1` and `p2` hold the same multiset of arms in different positions, we emit one `ChangeMeta` per slot whose meta moved and we are done.
 
-   The recursion does significant work here.
-   Case 1 and cases 3-8 are tried at every level the recursion visits, and cases 3, 4, and 7 descend into agreeing or label-overlapping slots of their parents.
-   By the time case 8 fires at level `k`, every shallower level has matched a tight case; the resulting `Replace` therefore lands at the _deepest slot the planner could isolate the difference to_, leaving every ancestor's other subtrees running undisturbed.
-   The slot-level `Replace` is the §5.1 idiom with a non-empty path: it wraps only the slot's subtree, quiesces only that subtree, and rewires only the parent edge into it.
-   The worst case is a root-level `Replace([], p2)` (§5.1), reached only when case 8 fires at the root with no recursive descent.
+Otherwise, we walk the child lists slot-by-slot.
+A slot whose arm and meta both agree contributes nothing.
+A slot whose meta differs but whose arm agrees contributes a `ChangeMeta(path, new_meta)`.
+A slot whose arm differs is handled by recursing to try and narrow down the difference deeper in the tree; if the meta also differs, we append a follow-on `(true; ChangeMeta(path, new_meta))` after the inner emission.
+
+There is one wrinkle: this slot-by-slot walk can miss a cross-slot correspondence in which an arm has moved to a different slot in `p2` _and_ also changed structurally.
+The label-overlap walk (below) catches it; when that walk finds at least one such cross-slot pairing, we use it instead of the slot-by-slot walk.
+
+**`p2` longer.**
+When `p1`'s arms appear in order as a subsequence of `p2`'s, the surplus arms in `p2` are pure additions, and we emit one `Add` per surplus arm in ascending index order.
+§3.4.1's leaf-disjointness precondition holds automatically: every surplus arm's leaves are leaves of `p2` not in `p1`, which by §3.2's leaf-partition validity are disjoint from `p1`'s arms and from each other.
+At an `SP` or `WFQ` parent, each `Add` carries the surplus arm's meta.
+If a stable arm has changed metadata, we emit `ChangeMeta`s after completing the `Add`s.
+
+When `p1`'s arms are _not_ a subsequence of `p2`'s, we try the label-overlap walk.
+If that fails too, we emit a slot-level `Replace`.
+
+**`p1` longer.**
+Symmetric.
+When `p2`'s arms appear in order as a subsequence of `p1`'s, the surplus arms in `p1` are retired, and we emit one `Retire` idiom (§4.2) per surplus arm in _descending_ index order.
+Descending order keeps the lower-index paths stable while higher-index siblings drain and disappear.
+When `p2`'s arms are not a subsequence of `p1`'s, we try the label-overlap walk, and emit a slot-level `Replace` if it cannot align the arms either.
+
+**The label-overlap walk.**
+All three arity branches above turn to this walk when their simpler pattern does not apply.
+Arms in `p1` and `p2` whose class-label sets overlap are paired up by a greedy left-to-right walk; arms in `p1` with no overlapping partner in `p2` retire, and arms in `p2` with no overlapping partner in `p1` are added.
+The pairing relies on §3.2's leaf-partition validity: a class label identifies a unique flow across the whole policy, so a repeated label between an arm in `p1` and an arm in `p2` is evidence that the same host arm has morphed structurally, and an arm whose labels appear nowhere on the opposing side is necessarily a fresh sibling or a vanishing one.
+The walk is greedy: if more than one alignment satisfies the label-overlap constraint, the first one we find is taken, with no notion of cost (§5.3).
+If no shared label admits a single match, the walk fails and the caller falls back to its slot-level `Replace`.
+
+When the walk succeeds, the emission has three parts: the adds first in ascending intermediate-frame index, then the retires in descending intermediate-frame index, then the per-match edits at their post-mutation slots.
+By _intermediate frame_ we mean the frame that exists after every `Add` has fired but before any `Retire` has drained.
+Within each gap between consecutive matched arms, this frame holds the gap's retiring arms first (preserving their `p1` order), then the gap's new arms (preserving their `p2` order); each matched arm occupies one slot of its own.
+We issue the adds before the retires deliberately: an `Add` is instantaneous, while a `Retire` waits for its subtree to drain, so issuing the adds first lets traffic for the new arms begin flowing immediately instead of waiting out the drains.
+When one side of the alignment is empty, the intermediate frame collapses to `p1` (no adds) or to `p2` (no retires), and the indices coincide with those the equal-arity, `p2`-longer, and `p1`-longer branches above would produce.
+
+Take `p1 = RR(A, B)` and `p2 = RR(B, A')`, where `A`, `B`, and `A'` are:
+
+```
+A = WFQ(gmail, drive)
+B = FIFO(zoom)
+A' = WFQ(gmail, drive, calendar)
+```
+
+So the two trees are:
+
+```
+       p1 = RR(A, B)                  p2 = RR(B, A')
+
+             RR                              RR
+            /  \                            /  \
+           WFQ  FIFO                       FIFO  WFQ
+           /\    |                          |    /|\
+          g  d   z                          z   g d c
+                                                    ^
+                                                (new leaf)
+```
+
+The slot-by-slot walk would recurse on the slot-0 pair `(WFQ, FIFO)` and the slot-1 pair `(FIFO, WFQ)`, find a constructor mismatch at each, and emit two slot-level `Replace`s.
+The label-overlap walk instead sees that `A`'s labels `{gmail, drive}` overlap `A'`'s `{gmail, drive, calendar}` and that `B`'s `{zoom}` overlap `B`'s `{zoom}`, pairs the arms across slots, and recurses on the matched pairs.
+The `(A, A')` recursion emits a single `Add` for the new `calendar` leaf; the `(B, B)` recursion emits nothing.
+The final emission is one inner `Add` at slot 1 of `p2` (where `A'` lives), in place of two `Replace`s that would have wrapped two large subtrees.
+
+##### Where the descent localizes the difference
+
+Every recursion descends through a slot where the two trees agree or where the label-overlap walk has paired them.
+So by the time the per-level comparator gives up and emits a `Replace` at depth `k`, every shallower level has already matched a tight case, and the `Replace` lands at the deepest slot to which the planner could isolate the difference, leaving every ancestor's other subtrees running undisturbed.
+The slot-level `Replace` is the §5.1 idiom with a non-empty path: it wraps only the slot's subtree, quiesces only that subtree, and rewires only the parent edge into it.
+The worst case is the root-level `Replace([], p2)` of §5.1, reached only when the per-level comparator gives up at the root with no recursive descent.
+
+We do not claim that the planner's emission is canonical or minimal.
+We claim only that it is safe (§3.4) and no worse than the root-level fallback.
 
 ### 5.3 What the planner does not do today
 
-Two deliberate non-features, each a candidate for future work.
+Two non-features for now; we hope to improve these in the next few meetings.
 
 - _No cost model._
   The case analysis is shape-based, not cost-weighted.
-  A cost-aware planner could prefer different decompositions (e.g., several small `Add`s vs. a single root-level `Replace`) based on per-flow drop and delay tolerances or per-PE budgets; case 7's label-set pairing is one place this would bite, since the greedy walk takes the first admissible alignment without ranking competitors.
-  We leave both questions to future work.
+  A cost-aware planner could prefer different decompositions (e.g., several small `Add`s vs. a single root-level `Replace`) based on per-flow drop and delay tolerances or per-PE budgets.
+  Presently we take the first admissible alignment without ranking competitors.
 - _No imperative-mode service._
   The planner serves declarative mode only.
   Imperative-mode authoring (§4.3) goes through the pol-level check directly, with the operator naming each `δ` themselves; the planner is not consulted.
