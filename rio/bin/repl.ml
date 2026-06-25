@@ -85,10 +85,13 @@ let handle_input prev input =
   | Some p -> print_transition p next);
   Some next
 
+(* A line beginning with `#` (after leading whitespace) is a user comment and
+   is ignored, just like a blank line. *)
 let classify_line line : [ `Quit | `Empty | `Load of string | `Typed of string ]
     =
   let line = String.trim line in
   if line = "" then `Empty
+  else if String.length line >= 1 && line.[0] = '#' then `Empty
   else if line = ":quit" || line = ":q" then `Quit
   else if String.length line >= 5 && String.sub line 0 5 = ":load" then
     `Load (String.trim (String.sub line 5 (String.length line - 5)))
@@ -136,6 +139,7 @@ let banner () =
   print_endline "rio declarative-mode REPL.";
   print_endline
     "  type a policy expression (e.g. `rr[A, B]`) or `:load file.sched`.";
+  print_endline "  lines starting with `#` are ignored as comments.";
   print_endline "  `:quit` to exit."
 
 let prompt () =
