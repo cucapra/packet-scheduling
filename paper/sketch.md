@@ -1274,21 +1274,22 @@ p1 = RR(drive, gmail)
 p2 = RR(drive, slack, RR(gmail, controller_for_gmail))
 ```
 
-So the two trees are:
+So the two trees are `p1` and `p2` below.
+The third panel previews what the planner installs on the substrate: not `p2` literally, but a sibling-reordered representative of its `=R`-class; we return to it below.
 
 ```
-   p1 = RR(d, g)            p2 = RR(d, s, RR(g, c))
+   p1 = RR(d, g)            p2 = RR(d, s, RR(g, c))           installed (=R p2)
 
-         RR                          RR
-        /  \                       / |  \
-       d    g                     d  s   RR
-                                         /\
-                                        g  c
-                                            ^
-                                        (new sub-channel)
+         RR                          RR                                 RR
+        /  \                       / |  \                             /  |  \
+       d    g                     d  s   RR                          d  SP*  s
+                                         /\                             /\
+                                        g  c                           g  RR
+                                            ^                             /\
+                                        (new sub-channel)                g  c
 ```
 
-`d` is unchanged; `g` now round-robins with a control sub-channel; `s` is new.
+Comparing `p1` and `p2`: `d` is unchanged; `g` now round-robins with a control sub-channel; `s` is new.
 A slot-by-slot walk does not apply (the lengths differ), and the simpler sub-sequence check in the "`p2` longer" case fails because `gmail` in `p1` is not equal to any arm in `p2`.
 Without the walk we are about to describe, the planner would give up and emit a wholesale `Replace` of the entire root `RR`.
 
@@ -1300,13 +1301,15 @@ The label-overlap walk produces that reading.
 It pairs arms in `p1` with arms in `p2` whose class-label sets overlap (by a greedy left-to-right walk); arms in `p1` with no overlapping partner retire, arms in `p2` with no overlapping partner are added, and matched pairs are recursed on.
 The justification is that a class label identifies a unique flow across the whole policy (§3.2's leaf-partition validity), so a repeated label between an arm in `p1` and an arm in `p2` is evidence that the same host arm has morphed structurally, and an arm whose labels appear on no opposing arm is necessarily fresh or vanishing.
 For our example, the walk pairs `drive` with `drive` (no edit) and `gmail` with `RR(gmail, gmail_control)` (recurse), and treats `slack` as a pure add.
-The final emission is two atomic steps: an `Add` of `slack`, and an inner `Replace` at the slot of `p2` where `gmail` grew its sub-channel, in place of wrapping the root `RR` wholesale.
+
+Our final emission is two atomic steps: an `Add` of `slack` appended at the root `RR`'s tail, and an inner `Replace` at `gmail`'s existing slot.
+The third panel of the figure above shows the resulting substrate state: `slack` sits beside the morphed `gmail` subtree in an order that does not match `p2` literally, but §3.2's normalization invariant says sibling order at `SP`/`RR`/`WFQ` carries no semantics, so the re-ordering is invisible to any observer.
 
 A few notes.
 The walk is greedy: when more than one alignment satisfies the label-overlap constraint, the first we find is taken, with no notion of cost (§5.3).
 If no shared label admits even one match, the walk fails and the caller falls back to a slot-level `Replace`.
-When the walk produces a mix of adds, retires, and matched-pair recursions, we issue the adds first, then the retires (in descending index order, so lower-index paths stay stable while higher ones drain), then the per-match recursive edits.
-Firing the adds before the retires is deliberate: an `Add` is instantaneous while a `Retire` waits for its subtree to drain, so the new arms start carrying traffic immediately instead of waiting out the drains.
+When the walk produces a mix of adds, retires, and matched-pair recursions, we appeal to the reorder freedom of §3.2 to keep the indexing trivial: adds are appended at the parent's tail; retires fire at their ps1 indices, in descending order so the highest-index drain doesn't shift the lower indices still pending; matched-pair recursions land at each match's position in the matches list, which is also its slot once the retires drain.
+Issuing the adds first is deliberate: an `Add` is instantaneous while a `Retire` waits for its subtree to drain, so the new arms start carrying traffic immediately instead of waiting out the drains.
 
 ##### Where the descent localizes the difference
 
