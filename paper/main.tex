@@ -3,6 +3,12 @@
 \usepackage{stmaryrd}
 \usepackage{mathtools}
 
+\makeatletter
+\renewcommand{\verbatim@font}{\normalfont\footnotesize\ttfamily}
+\makeatother
+
+\setlength{\emergencystretch}{3em}
+
 \settopmatter{printacmref=false, printccs=false, printfolios=true}
 \setcopyright{none}
 \renewcommand\footnotetextcopyrightpermission[1]{}
@@ -204,8 +210,8 @@ The strategy, though, is the same: give the operator a syntactic surface, then c
 \paragraph{Policy syntax: \texttt{pol}}
 
 \begin{verbatim}
-pol    ::= flow                   // leaf, labeled by a flow of traffic
-         | D(pol_1, ..., pol_n)   // internal node, discipline D
+pol    ::= flow                 // leaf, labeled by a flow
+         | D(pol_1, ..., pol_n) // internal node, discipline D
 \end{verbatim}
 
 This grammar allows policy trees of arbitrary arity.
@@ -405,14 +411,24 @@ The risks are of two flavors:
 \item The operator requests \texttt{p1 = Strict(hi: gmail, lo: zoom)}.
 \item The compiler uses its degree of freedom to yield control \texttt{C1} such that \(\lfloor \mathtt{C1} \rfloor = \mathtt{Strict(lo: zoom, hi: gmail)}\).
 Note that the children have been reordered for some compiler-internal reason.
-\item We echo back \(\mathtt{p1'} := \lfloor \mathtt{C1} \rfloor = \mathtt{Strict(lo: zoom, hi: gmail)}\).
+\item We echo back
+\[
+\mathtt{p1'} := \lfloor \mathtt{C1} \rfloor = \mathtt{Strict(lo: zoom, hi: gmail)}.
+\]
 We know that \(\mathtt{p1} \eqR \mathtt{p1'}\), so the scheduler the operator gets is the one they asked for; only the slot numbering differs.
 \item As the control serves pushes and pops, it transforms into \texttt{C1'}.
 \item Later, the operator requests \texttt{p2 = Strict(lo: zoom, mid: spotify, hi: gmail)}.
 \item The runtime can again use its freedom.
 Instead of literally splicing \texttt{spotify} in between running arms \texttt{zoom} and \texttt{gmail}, it chooses to append \texttt{spotify} to the end.
-This converts the running control \texttt{C1'} into control \texttt{C2'} such that \(\lfloor \mathtt{C2'} \rfloor = \mathtt{Strict(lo: zoom, hi: gmail, mid: spotify)}\).
-\item We echo back \(\mathtt{p2'} := \lfloor \mathtt{C2'} \rfloor = \mathtt{Strict(lo: zoom, hi: gmail, mid: spotify)}\) to the user.
+This converts the running control \texttt{C1'} into control \texttt{C2'} such that
+\[
+\lfloor \mathtt{C2'} \rfloor = \mathtt{Strict(lo: zoom, hi: gmail, mid: spotify)}.
+\]
+\item We echo back
+\[
+\mathtt{p2'} := \lfloor \mathtt{C2'} \rfloor = \mathtt{Strict(lo: zoom, hi: gmail, mid: spotify)}
+\]
+to the user.
 \item Now the operator changes to Imperative Mode (\S4) and writes the path-bearing edit \texttt{(True, Quiesce([2]))}.
 It is not worth getting distracted by the syntax or the semantics; the key thing is that the operator has requested an edit and has identified the target via path ``\texttt{[2]}''.
 Paths are interpreted against the \emph{actually running} representative \texttt{p2'}, so we \texttt{Quiesce} the subtree \texttt{mid: spotify} (\texttt{p2'}'s third slot), not \texttt{lo: zoom} (\texttt{p2}'s third slot).
@@ -559,7 +575,10 @@ The new entries do not collide with existing ones: the disjointness precondition
 \item \emph{At \texttt{C@}\(\pi\):}
 \begin{itemize}
 \item \texttt{node\_state} is unchanged.
-\item \(\mathtt{C'@}\pi.\mathtt{slot\_states} = \mathtt{C@}\pi.\mathtt{slot\_states} \mathbin{+\!\!+} [\mathtt{init\_slot\_D}(\mathtt{C@}\pi.\mathtt{node\_state}, \mathtt{meta?})]\).
+\item \(\mathtt{C'@}\pi.\mathtt{slot\_states}\) equals
+\[
+\mathtt{C@}\pi.\mathtt{slot\_states} \mathbin{+\!\!+} [\mathtt{init\_slot\_D}(\mathtt{C@}\pi.\mathtt{node\_state}, \mathtt{meta?})].
+\]
 In English: we call \texttt{init\_slot\_D} to find the per-arm bookkeeping that is needed for a new arm under \texttt{D}, and we append that bookkeeping in at the end.
 Our arm-order freedom (\S3.2) lets us simply append the new child.
 \item \texttt{pifo} is unchanged: no pre-existing entry needs renumbering, and the new arm holds no packets yet.
@@ -603,8 +622,10 @@ We must state \(\den(\Add(\pi, \mathtt{arm}, \mathtt{meta?}))\) in closed form a
 We define \(\den\) by recursion on \(\pi\):
 
 \begin{verbatim}
-den(Add([],        arm, meta?)) (D ts) = D ( ts ++ [arm] )
-den(Add(i :: rest, arm, meta?)) (D ts) = D ( ts[ den(Add(rest, arm, meta?)) (ts[i]) / i ] )
+den(Add([], arm, meta?)) (D ts)
+    = D ( ts ++ [arm] )
+den(Add(i :: rest, arm, meta?)) (D ts)
+    = D ( ts[ den(Add(rest, arm, meta?)) (ts[i]) / i ] )
 \end{verbatim}
 
 The base case applies once \(\pi = []\): the recursion has reached the node where the new arm goes, and \texttt{arm} is appended as the last child.
@@ -659,7 +680,8 @@ den(ChangeMeta(t, m)) p = p
 \end{verbatim}
 
 is defined whenever \(\tau\) resolves in \texttt{p} and the parent at \(\pi\) runs Strict or WFQ.
-Every node's \texttt{node\_state}, \texttt{slot\_states.discipline}, \texttt{pifo}, and child list are preserved verbatim (the rewritten field is in \texttt{slot\_state}, which the compilation rule strips), so \(\lfloor \mathtt{C'} \rfloor = \lfloor \mathtt{C} \rfloor\).
+Every node's \texttt{node\_state}, child list, \texttt{pifo}, and \texttt{slot\_states.discipline} are preserved verbatim: the rewritten field is in \texttt{slot\_state}, which the compilation rule strips.
+So \(\lfloor \mathtt{C'} \rfloor = \lfloor \mathtt{C} \rfloor\).
 Hence \(\lfloor \mathtt{C'} \rfloor \eqR \den(\ChangeMeta(\tau, \mathtt{meta}))(\lfloor \mathtt{C} \rfloor)\).
 
 \subsubsection{\texorpdfstring{\(\Quiesce(\tau)\)}{Quiesce}}
@@ -761,8 +783,11 @@ The restriction at \(\mathtt{C'@}\pi.\mathtt{z}\) comes into play only for \text
 \paragraph{Characterization}
 
 \begin{verbatim}
-den(Remove([k]))         (D ts) = D ( ts[-/k] )
-den(Remove(i :: rest))   (D ts) = D ( ts[ den(Remove(rest)) (ts[i]) / i ] )      when rest is non-empty
+den(Remove([k])) (D ts)
+    = D ( ts[-/k] )
+den(Remove(i :: rest)) (D ts)
+    = D ( ts[ den(Remove(rest)) (ts[i]) / i ] )
+    when rest is non-empty
 \end{verbatim}
 
 The base case fires once \(\tau\) has been walked down to the parent of the removed arm: the \texttt{k}-th child is dropped from the arm list.
@@ -880,7 +905,14 @@ If \(\tau = \pi \mathbin{+\!\!+} [k]\) is non-empty: at \texttt{C@}\(\pi\) the \
 The local \texttt{z} is extended to admit packets that classify into the new arm-1 subtree under \(N\), mapping them to whichever child slot at this ancestor lies on the path down to \(N\).
 Pre-existing mappings are untouched.
 This is the exact analog of \texttt{Add}'s ancestor \texttt{z}-extensions (\S3.4.1).
-\item \emph{At \(N\):} \(\mathtt{node\_state} = \mathtt{init\_node\_Strict}()\); \(\mathtt{slot\_states} = [\mathtt{init\_slot\_Strict}(\mathtt{node\_state}, \mathtt{hi}), \mathtt{init\_slot\_Strict}(\mathtt{node\_state}, \mathtt{lo})]\) for any priority ranks \(\mathtt{hi} < \mathtt{lo}\); arm 0 is the old \texttt{C@}\(\tau\) (verbatim, including its entire subtree and contents); arm 1 is \(\lceil \mathtt{survivor} \rceil\); \texttt{pifo} is seeded with \(P_0\) entries with slot value \texttt{0} and rank \texttt{hi} (one per packet still held under arm 0).
+\item \emph{At \(N\):} for any priority ranks \(\mathtt{hi} < \mathtt{lo}\), set
+\(\mathtt{node\_state} = \mathtt{init\_node\_Strict}()\) and
+\begin{align*}
+\mathtt{slot\_states} = [
+& \mathtt{init\_slot\_Strict}(\mathtt{node\_state}, \mathtt{hi}),\\
+& \mathtt{init\_slot\_Strict}(\mathtt{node\_state}, \mathtt{lo})].
+\end{align*}
+Arm 0 is the old \texttt{C@}\(\tau\) (verbatim, including its entire subtree and contents); arm 1 is \(\lceil \mathtt{survivor} \rceil\); \texttt{pifo} is seeded with \(P_0\) entries with slot value \texttt{0} and rank \texttt{hi} (one per packet still held under arm 0).
 \texttt{z} routes packets by leaf label: a packet whose label exists in \(\lceil \mathtt{survivor} \rceil\) goes to slot \texttt{1}, otherwise (label exists only in the old subtree) it goes to slot \texttt{0}.
 This rule is total on \(N\)'s admitted labels and resolves the overlap case toward the survivor: a label shared between the old subtree and \texttt{survivor} belongs to the survivor from \(\delta\)'s firing onward, while the residual packets under arm 0 drain on their existing entries.
 \item \emph{Inside \(\lceil \mathtt{survivor} \rceil\):} the local control is \(\lceil \mathtt{survivor} \rceil\)'s, verbatim.
@@ -909,8 +941,10 @@ Arm 1 first sees traffic only after a future \texttt{push}.
 \paragraph{Characterization}
 
 \begin{verbatim}
-den(Designate([],     survivor)) p      = Strict(p, survivor)
-den(Designate(i :: r, survivor)) (D ts) = D ( ts[ den(Designate(r, survivor)) (ts[i]) / i ] )
+den(Designate([], survivor)) p
+    = Strict(p, survivor)
+den(Designate(i :: r, survivor)) (D ts)
+    = D ( ts[ den(Designate(r, survivor)) (ts[i]) / i ] )
 \end{verbatim}
 
 \(\den\) returns \(\Strict\), not \(\Strictstar\): the designated bit is \texttt{pol}-invisible.
@@ -950,8 +984,10 @@ Preservation of observation: arm 0 holds no packet by precondition, so \(\Strict
 \paragraph{Characterization}
 
 \begin{verbatim}
-den(Undesignate([]))     (Strict(A, B)) = B
-den(Undesignate(i :: r)) (D ts)         = D ( ts[ den(Undesignate(r)) (ts[i]) / i ] )
+den(Undesignate([])) (Strict(A, B))
+    = B
+den(Undesignate(i :: r)) (D ts)
+    = D ( ts[ den(Undesignate(r)) (ts[i]) / i ] )
 \end{verbatim}
 
 The base case is defined when the input matches \(\Strict(\_, \_)\); the operational rule additionally requires that arm 0 of \texttt{C@}\(\tau\) be empty at the moment \(\delta\) fires.
@@ -1064,12 +1100,12 @@ The chain of \(\den\)s starting from \(\lfloor \mathtt{C} \rfloor\) gives \(\lfl
 \paragraph{Grammar}
 
 \begin{verbatim}
-phi    ::= true                   // trivially satisfied
-         | empty(path)            // the subtree at `path` holds no packets
+phi    ::= true              // trivially satisfied
+         | empty(path)       // subtree at `path` is empty
 
-gseq   ::= eps                    // empty sequence
-         | (phi ; d) ; gseq       // a guarded atomic `d`, then more
-         | I ; gseq               // an idiom invocation, then more
+gseq   ::= eps               // empty sequence
+         | (phi ; d) ; gseq  // guarded `d`, then more
+         | I ; gseq          // idiom, then more
 
 I      ::= Retire(path)
          | SlowRetire(path)
@@ -1118,13 +1154,13 @@ The empty sequence is the case \(\lfloor \mathtt{C} \rfloor \eqR \lfloor \mathtt
 A guarded sequence stacks copies of that unit cell horizontally:
 
 \begin{verbatim}
-   ip_0  ---den(d_0)--->  ip_1  ---den(d_1)--->  ...  ---den(d_n)--->  ip_{n+1}
-    |                      |                                              |
-   |.|                    |.|                                            |.|
-    |                      |                                              |
-    v                      v                                              v
-  link_0 ---[[d_0]]---> link_1 ---[[d_1]]---> ... ---[[d_n]]---> link_{n+1}
-            (phi_0)               (phi_1)                  (phi_n)
+ ip_0 --den(d_0)--> ip_1 --den(d_1)--> ... --den(d_n)--> ip_{n+1}
+  |                  |                                      |
+ |.|                |.|                                    |.|
+  |                  |                                      |
+  v                  v                                      v
+ link_0 --[[d_0]]--> link_1 --[[d_1]]--> ... --[[d_n]]--> link_{n+1}
+          (phi_0)             (phi_1)               (phi_n)
 \end{verbatim}
 
 with \(\mathtt{link}_0 = \mathtt{C}\), \(\mathtt{link}_{n+1} = \mathtt{C'}\), and \(\mathtt{ip}_i := \lfloor \mathtt{link}_i \rfloor\).
@@ -1179,7 +1215,10 @@ We name four starter idioms.
 New ones can be added later without changing the framework, since an idiom is just a named \((\varphi; \delta)^{*}\).
 
 \begin{itemize}
-\item \textbf{\texttt{Retire(path)}} = \((\mathtt{true}; \Quiesce(\mathtt{path})) ; (\mathtt{empty}(\mathtt{path}); \Remove(\mathtt{path}))\).
+\item \textbf{\texttt{Retire(path)}} expands to
+\[
+(\mathtt{true}; \Quiesce(\mathtt{path})) ; (\mathtt{empty}(\mathtt{path}); \Remove(\mathtt{path})).
+\]
 Quiesces the subtree at \texttt{path}, waits for it to drain to empty, then \texttt{Remove}s it.
 The operator-facing way to say ``tear this subtree down gracefully.''
 
@@ -1199,7 +1238,11 @@ Designates \texttt{B} as the survivor of the current \texttt{pol@path} (which, a
 At the pol level the composite effect is wholesale replacement of \texttt{pol@path} by \texttt{B}; the operator-facing idiom adds the \texttt{Quiesce} in the middle so that the original subtree empties out before the collapse fires.
 The footprint of \texttt{Replace(path, B)} is the subtree at \texttt{path}, the wrap node inserted at \texttt{path} by \texttt{Designate}, and the \texttt{z} chain at the ancestors of \texttt{path} (extended by \texttt{Designate}, restored by \texttt{Undesignate}); \S5 frames confinement against exactly this set.
 
-\item \textbf{\texttt{PruneDownTo(path)}} = \(\Retire(\pi_a) ; \ldots ; \Retire(\pi_z) ; (\mathtt{true}; \ChangeRoot(\mathtt{path}))\), where \(\pi_a, \ldots, \pi_z\) are paths to the off-path subtrees along the route from the root to \texttt{path}.
+\item \textbf{\texttt{PruneDownTo(path)}} expands to
+\[
+\Retire(\pi_a) ; \ldots ; \Retire(\pi_z) ; (\mathtt{true}; \ChangeRoot(\mathtt{path})),
+\]
+where \(\pi_a, \ldots, \pi_z\) are paths to the off-path subtrees along the route from the root to \texttt{path}.
 This idiom is the operator-facing way to say ``abandon everything except this subtree.''
 
 Each \texttt{Retire} removes one off-path subtree; once they have all fired, every ancestor along the path is unary, satisfying \texttt{ChangeRoot}'s precondition (\S3.4.7).
@@ -1333,19 +1376,26 @@ When it finds one, it emits the matching production at that depth.
 Only when the descent ends without a match does the planner fall back to \texttt{Replace}; but by then the recursion has localized the difference to the deepest slot at which the policies disagree, so the resulting \texttt{Replace} wraps only that slot.
 
 A concrete example will help.
-Suppose \(\mathtt{p1} = \mathtt{SP}(\mathtt{gmail}, \mathtt{RR}(\mathtt{zoom}, \mathtt{netflix}))\) and the operator requests \(\mathtt{p2} = \mathtt{SP}(\mathtt{gmail}, \mathtt{RR}(\mathtt{zoom}, \mathtt{netflix}, \mathtt{spotify}))\).
+Suppose
+\[
+\mathtt{p1} = \mathtt{SP}(\mathtt{gmail}, \mathtt{RR}(\mathtt{zoom}, \mathtt{netflix}))
+\]
+and the operator requests
+\[
+\mathtt{p2} = \mathtt{SP}(\mathtt{gmail}, \mathtt{RR}(\mathtt{zoom}, \mathtt{netflix}, \mathtt{spotify})).
+\]
 The planner has two ways to realize this:
 
 \begin{verbatim}
-(a) Worst-case fallback: Replace([], p2)        (b) Tight option: Add at the RR
+(a) Replace([], p2)             (b) Add at the RR
 
-       [Strict*]                                        SP
-       /        \                                      /  \
-      SP        SP                                    g    RR
-      / \       /|\                                        /|\
-     g   RR    g  RR                                      z n  s
-         /\      /|\                                           ^
-        z  n   z  n  s                                     (new arm)
+       [Strict*]                          SP
+       /        \                        /  \
+      SP        SP                      g    RR
+      / \       /|\                          /|\
+     g   RR    g  RR                        z n  s
+         /\      /|\                             ^
+        z  n   z  n  s                       (new arm)
 \end{verbatim}
 
 Option (a) wraps the entire running tree under a fresh \(\Strictstar\) and grows a freshly-compiled \texttt{p2} alongside; every node sits inside the wrap, and the original \texttt{p1} (with all its in-flight packets) drains as the loser.
@@ -1377,7 +1427,7 @@ The test is literal equality on the normalized \texttt{pol} terms.
 The compiler (\S3.2) runs every operator-supplied policy through \texttt{Pol.normalize} before reaching the planner, so two \(\eqR\)-equivalent policies arrive here as identical terms.
 The live control is already serving the requested policy and there is nothing to install.
 
-\item \textbf{\texttt{p2} embeds in \texttt{p1} at some \texttt{path}.} Emit \(\PruneDownTo(\mathtt{path})\).
+\item \textbf{\texttt{p2} embeds in \texttt{p1} at \texttt{path}.} Emit \(\PruneDownTo(\mathtt{path})\).
 A structural sub-policy test walks \texttt{p1} looking for a subtree equal to \texttt{p2}; if it finds one, \texttt{path} names where it sits.
 The match is unique: by \S3.2's leaf-partition validity each flow in \texttt{p2} may appear at most once in \texttt{p1}, so \texttt{p1} can host \texttt{p2} as a subtree in at most one position.
 This test runs only at the top level.
@@ -1430,15 +1480,15 @@ So the two trees are \texttt{p1} and \texttt{p2} below.
 The third panel previews what the planner installs on the substrate: not \texttt{p2} literally, but a sibling-reordered representative of its \(\eqR\)-class; we return to it below.
 
 \begin{verbatim}
-   p1 = RR(d, g)            p2 = RR(d, s, RR(g, c))           installed (=R p2)
+ p1 = RR(d, g)    p2 = RR(d, s, RR(g, c))    installed (=R p2)
 
-         RR                          RR                                 RR
-        /  \                       / |  \                             /  |  \
-       d    g                     d  s   RR                          d  SP*  s
-                                         /\                             /\
-                                        g  c                           g  RR
-                                            ^                             /\
-                                        (new sub-channel)                g  c
+       RR                  RR                       RR
+      /  \               / |  \                   /  |  \
+     d    g             d  s   RR                d  SP*  s
+                               /\                   /\
+                              g  c                 g  RR
+                                  ^                   /\
+                       (new sub-channel)             g  c
 \end{verbatim}
 
 Comparing \texttt{p1} and \texttt{p2}: \texttt{d} is unchanged; \texttt{g} now round-robins with a control sub-channel; \texttt{s} is new.
@@ -1578,7 +1628,10 @@ When an entry's opcodes name an unmentioned parameter at \(\pi\) (e.g., \texttt{
 \item \(\ChangeMeta(\pi \mathbin{+\!\!+} [k], m)\):
 \texttt{Isa\_set\_arm\_meta(}\(\pi\)\texttt{, k, m)}.
 \item \(\Quiesce(\mathtt{path})\):
-for each \(f \in \mathtt{flows}(\mathtt{path})\), \(\mathtt{walk}(\mathtt{Isa\_deassoc}, \mathtt{chain}(f), f)\).
+for each \(f \in \mathtt{flows}(\mathtt{path})\),
+\[
+\mathtt{walk}(\mathtt{Isa\_deassoc}, \mathtt{chain}(f), f).
+\]
 \item \(\Add(\mathtt{path}, \mathtt{arm}, \mathtt{meta?})\):
 \begin{itemize}
 \item Let \texttt{n} be \texttt{path}'s current arm count; the new subtree will occupy \texttt{path}'s rightmost slot, index \texttt{n}, so existing children's indices are undisturbed.
@@ -1588,14 +1641,22 @@ Per-arm \texttt{Isa\_set\_arm\_meta}s are issued where the discipline requires t
 \item \texttt{Isa\_change\_arity(path, n+1)} grows \texttt{path} to arity \(n+1\); where the discipline requires it, \texttt{Isa\_set\_arm\_meta(path, n, m)} initializes the new slot's metadata from \texttt{meta?}.
 \item \texttt{Isa\_adopt(n, path, root\_of\_arm)} attaches the new subtree at index \texttt{n}.
 \item Start serving traffic to the new subtree.
-That is, for each \(f \in \mathtt{flows}(\mathtt{arm})\): \(\mathtt{walk}(\mathtt{Isa\_assoc}, \mathtt{chain}(f), f)\); \(\mathtt{walk}(\mathtt{Isa\_map}, \mathtt{internals}(f), f)\).
+That is, for each \(f \in \mathtt{flows}(\mathtt{arm})\):
+\begin{align*}
+& \mathtt{walk}(\mathtt{Isa\_assoc}, \mathtt{chain}(f), f);\\
+& \mathtt{walk}(\mathtt{Isa\_map}, \mathtt{internals}(f), f).
+\end{align*}
 \end{itemize}
 \item \(\Remove(\pi \mathbin{+\!\!+} [k])\):
 \begin{itemize}
 \item \texttt{Isa\_emancipate(k, }\(\pi\)\texttt{)} detaches the doomed child.
 \(\pi\)'s remaining children keep their indices: each was minted at adoption time and the substrate carries it unchanged, so no sibling-shift cascade is needed.
 \item \texttt{Isa\_change\_arity(}\(\pi\)\texttt{, n-1)} updates \(\pi\)'s arity counter to match.
-\item For each \(f \in \mathtt{flows}(\pi \mathbin{+\!\!+} [k])\), \(\mathtt{walk}(\mathtt{Isa\_unmap}, \mathtt{internals}(f), f)\) clears the doomed flows' routing through the chain above \(\pi \mathbin{+\!\!+} [k]\) (including \(\pi\) itself, whose \texttt{f} entry vanishes).
+\item For each \(f \in \mathtt{flows}(\pi \mathbin{+\!\!+} [k])\),
+\[
+\mathtt{walk}(\mathtt{Isa\_unmap}, \mathtt{internals}(f), f)
+\]
+clears the doomed flows' routing through the chain above \(\pi \mathbin{+\!\!+} [k]\) (including \(\pi\) itself, whose \texttt{f} entry vanishes).
 \item One \texttt{Isa\_gc} per PIFO in the now-detached subtree.
 \end{itemize}
 \item \(\Designate(\mathtt{path}, \mathtt{survivor})\):
@@ -1603,7 +1664,15 @@ Let \texttt{loser} be the PIFO currently at \texttt{path} and \texttt{parent} be
 Let \texttt{k} be \texttt{path}'s last index (for \texttt{path = []}, the parent is \texttt{port\_root} and \texttt{k} is \texttt{port\_step}).
 \begin{itemize}
 \item Stand up \texttt{survivor}'s subtree as in \texttt{Add}'s ``lay out the subtree'' step (\texttt{Isa\_spawn} + \texttt{Isa\_adopt} + \texttt{Isa\_set\_policy} per node, plus \texttt{Isa\_set\_arm\_meta}s where the discipline requires them), with one departure: skip the \texttt{Isa\_adopt} that would attach the subtree's root \texttt{surv} to a parent: the Strict-2 spawn below installs it instead.
-\item Spawn and configure the Strict-2 super-node \texttt{sp\_v}: \texttt{Isa\_spawn(sp\_v, pe(path))}; \texttt{Isa\_set\_policy(sp\_v, Strict*, 2)}; \texttt{Isa\_adopt(0, sp\_v, loser)}; \texttt{Isa\_adopt(1, sp\_v, surv)}; \texttt{Isa\_set\_arm\_meta(sp\_v, 0, 1.0)}; \texttt{Isa\_set\_arm\_meta(sp\_v, 1, 2.0)}.
+\item Spawn and configure the Strict-2 super-node \texttt{sp\_v}:
+\begin{verbatim}
+Isa_spawn(sp_v, pe(path));
+Isa_set_policy(sp_v, Strict*, 2);
+Isa_adopt(0, sp_v, loser);
+Isa_adopt(1, sp_v, surv);
+Isa_set_arm_meta(sp_v, 0, 1.0);
+Isa_set_arm_meta(sp_v, 1, 2.0).
+\end{verbatim}
 \texttt{sp\_v} lands on the same PE as the roots of \texttt{loser} and \texttt{surv} (see same-PE invariant below).
 \item Rewire \texttt{path}'s parent edge from \texttt{loser} to \texttt{sp\_v}: \texttt{Isa\_emancipate(k, parent)}; \texttt{Isa\_adopt(k, parent, sp\_v)}.
 The same \texttt{k} is reused, so \texttt{parent}'s per-arm metadata for that slot is preserved across the rewire.
