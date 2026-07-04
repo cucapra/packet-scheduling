@@ -1333,8 +1333,37 @@ Two non-features for now; we hope to improve these in the next few meetings.
   The planner serves declarative mode only.
   Imperative-mode authoring (§4.3) goes through the pol-level check directly, with the operator naming each `δ` themselves; the planner is not consulted.
 
-## 6. Compiling to Hardware
+## 6. Rio Hardware Implementation
 
+A PIFO tree is a clean scheduling abstraction, but in real line-rate switching hardware, enabling dynamic connection tree of PIFO tree requires.
+Existing designs \cite{} makes a logical to physical unit mapping to materialize programmable scheduling: instead of hard-wiring a fixed set of PIFOs into hardware, the switch exposes programmable processing elements (PEs) hosting multiple virtual PIFOs (vPIFOs): it includes hardware (usually match-action pipelines) that maps packets to it’s vPIFOs and calculates its rank and next-hop destination, followed by one physical PIFO hosting all of vPIFOs on the PE.
+
+Packet scheduling on this substrate consists of pipelined, non-atomic enqueue and dequeue operations. On enqueue, the switch must compute two pieces of information before issuing PE pushes: which vPIFO id the packet should enter, and what rank should be inserted at each of those vPIFOs. The first is determined by packet classification, flow-to-child mappings; the second is computed by the vPIFO’s scheduling policy from packet fields, flow state, and per-arm metadata. For example, a WFQ-style vPIFO uses the child weight to compute a virtual finish time, while a Strict vPIFO interprets the metadata as a priority rank. On dequeue, the switch starts from the output port’s root vPIFO, pops the best-ranked entry, and follows the stored next-hop information until it reaches a packet to transmit or another vPIFO to pop.
+
+This is sufficient for a static policy, but it does not by itself support dynamic policy updates in concurrent with packet enqueue and dequeue. In such a case, a single packet operation can observe a mixture of old and new scheduler state. For example, an enqueue may choose its vPIFO path using the old flow-to-child mapping but compute its rank using newly updated per-arm metadata, or a dequeue may pop from one version of the tree and then follow next-hop state from another. As a result, existing PIFO-based implementations support only stop-the-world policy update.
+
+
+### 6.1 Transactional Update and Hardware Component Suppoort
+
+Rio enables online policy update by packing multiple hardware state update into a single “commit” and make them visible atomically in hardware: every enqueue or dequeue request should observe either multiple updates inside one commit is applied, or nothing is changed at all. Each `δ` (§3.3) lowers to one `commit` under this abstraction.
+
+in Rio hardware, we achieve this by packaging multiple policy update to single “transactions” and make minimal hardware changes in vPIFO, rank and next-hop mapping to enable transactional commit of multiple updates.
+
+First, rio build transactional mapping tables for vPIFO and next-hop mapping. Each PE stores its flow-to-child mapping and next-hop state in a specialized table that accepts a stream of update instructions, and a commit signal.
+Updates before the signal are staged but remain invisible to packet processing.
+Only when the commit marker is applied does the table immidiate switch to the new version.
+We implement this using double buffering: update instructions modify a shadow copy of the table, and the commit marker atomically swaps the active and shadow copies.
+After the swap, the inactive copy is synchronized in the background to serve as the shadow for the next commit.
+
+Second, Rio supports incremental updates to the rank-computing match-action tables.
+Rio does not require arbitrary in-place replacement of a live scheduling policy.
+Instead, policy-table updates correspond to adding metadata for newly admitted flows (whose packets are not allowed before the udpate is finished) or removing metadata for flows that have already been drained.
+Because these updates do not change the interpretation of existing live packets,
+Rio applies them incrementally rather than through a full transactional table swap.
+This keeps the hardware cost low while still preserving the atomicity needed for observable scheduling behavior.
+
+
+[Zhiyuan: I would put this in appendix and use abstract terms (like hardware update) in the discussion here]
 ### 6.1 The commit model and the ISA
 
 The substrate exposes its services to the planner as an atomic-commit interface.
@@ -1487,40 +1516,12 @@ A single-flow `Quiesce` walks one chain and modifies only `Assoc`; each intermed
 A vPIFO-like substrate (see §2.2) would host our compilation by providing the install-without-interleave guarantee above.
 
 [AM note for Zhiyuan: the §6.3 prose above is my best current statement of what we need from a substrate. Please confirm or push back after studying §6, then delete this note.]
-
-### 6.4 Hardware Implementation
-
-Each transition δ (§3.3) must become visible atomically in hardware: every enqueue or dequeue request should observe either the pre-δ configuration or the post-δ configuration, but never an intermediate state. This requirement is nontrivial because a single δ may lower to multiple ISA instructions (§6.2), and each instruction may update state across several physical PEs. For example, adding a flow can require changes to admission tables, flow-to-child mappings, policy metadata, and next-hop state. If these updates become visible independently, packets may be processed by a mixture of old and new configuration state, violating the preservation-of-observation requirement from §3.4.
-
-This issue arises naturally in prior PIFO-style hardware. In the original PIFO design, a match-action pipeline maps an input packet to a PIFO entry and generates the policy parameters used by the local scheduler, while a next-hop lookup determines the next PE on the dequeue path. If the tables on one PE are updated before those on another PE, an incoming packet may be classified using the new configuration at one point in the tree but the old configuration elsewhere. Existing PIFO systems therefore rely on stop-the-world reconfiguration to avoid exposing such inconsistent states.
-Rio's hardware implemention focus on implementing online update: how can the hardware execute δ-level atomic updates online, without stopping packet processing?
-
-#### Hardware components.
-
-To isolate the update and packet processing, Rio adds two hardware mechanisms to a conventional PIFO substrate.
-
-First, Rio makes flow-mapping and routing-table updates atomically visible. Each PE stores its flow-to-child mapping and next-hop state in a specialized table that accepts a stream of update instructions, and a commit signal.
-Updates before the signal are staged but remain invisible to packet processing.
-Only when the commit marker is applied does the table immidiate switch to the new version.
-We implement this using double buffering: update instructions modify a shadow copy of the table, and the commit marker atomically swaps the active and shadow copies.
-After the swap, the inactive copy is synchronized in the background to serve as the shadow for the next commit.
-
-Second, Rio supports incremental updates to the policy match-action tables.
-Rio does not require arbitrary in-place replacement of a live scheduling policy.
-Instead, policy-table updates correspond to adding metadata for newly admitted flows (whose packets are not allowed before the udpate is finished) or removing metadata for flows that have already been drained.
-Because these updates do not change the interpretation of existing live packets,
-Rio applies them incrementally rather than through a full transactional table swap.
-This keeps the hardware cost low while still preserving the atomicity needed for observable scheduling behavior.
-
+[Zhiyuan: we should just argue the portabilty over physical PIFO implementation, not outlining other transactional hardware implementation; so I think following statement (maybe after 6.4) should be enough]
 These mechanisms are independent of the underlying PIFO implementation. Our prototype uses a shift-register-based PIFO similar to the original design, but Rio only assumes the standard push-in-first-out interface. Other PIFO implementations can be substituted.
 
-#### Executing δ as a transaction.
+### 6.4 Executing δ as a transaction.
 
-Rio implements a transactional update controller that turns each lowered δ into an atomic hardware transaction.
-In software, the planner emits a sequence of table-update and policy-update instructions, each addressed to a specific PE and table entry.
-The sequence terminates with a single commit instruction and is submitted to the controller through a FIFO command queue.
-
-In hardware, the controller executes commands in order.
+Rio implements a transactional update controller that controls the execution of each lowered δ into an atomic hardware transaction. In hardware, the controller executes commands in order.
 Ordinary update commands are routed to the target PEs and staged locally.
 When the controller reaches the commit instruction, it generates the hardware commit signals that make the staged updates visible.
 These signals are delay-aligned across PEs according to the PIFO tree topology, so that no enqueue or dequeue operation can traverse a partially updated tree.
