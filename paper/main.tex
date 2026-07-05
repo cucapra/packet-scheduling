@@ -56,11 +56,11 @@
 Emphasize that policies are often hierarchical, and that clients demand line rate.
 
 \item The reconfiguration problem.
-Running example: a small-office gateway runs \texttt{Strict(hi: gmail, lo: zoom)}, i.e., strictly prioritizing \texttt{gmail} traffic over \texttt{zoom} traffic.
+Running example: a small-office gateway runs \texttt{Strict(hi: zoom, lo: gmail)}, i.e., strictly prioritizing real-time \texttt{zoom} traffic over \texttt{gmail} traffic.
 The operator wants to add a new \texttt{spotify} flow, and is considering the following two candidates:
 \begin{enumerate}
-\item \texttt{Strict(hi: gmail, mid: spotify, lo: zoom)}: extend the strict-priority list with \texttt{spotify} slotting between \texttt{gmail} and \texttt{zoom} in priority.
-\item \texttt{Strict(hi: gmail, lo: RoundRobin(zoom, spotify))}: keep \texttt{gmail} on top, but have \texttt{zoom} and \texttt{spotify} share the lower tier via round-robin.
+\item \texttt{Strict(hi: zoom, mid: spotify, lo: gmail)}: extend the strict-priority list with \texttt{spotify} slotting between \texttt{zoom} and \texttt{gmail} in priority.
+\item \texttt{Strict(hi: zoom, lo: RoundRobin(gmail, spotify))}: keep \texttt{zoom} on top, but have \texttt{gmail} and \texttt{spotify} share the lower tier via round-robin.
 \end{enumerate}
 
 In either of these cases, the state of the art~\cite{vPIFO} would stop the world, drop or recirculate buffered packets, recompile, and reinstall.
@@ -69,25 +69,25 @@ The costs are dropped or recirculated (and therefore delayed) packets, downtime,
 \item The alternative is to reprogram a scheduler without stopping the world.
 Let's revisit the examples from earlier.
 
-\item Transitioning to \texttt{Strict(hi: gmail, mid: spotify, lo: zoom)} is actually quite easy.
+\item Transitioning to \texttt{Strict(hi: zoom, mid: spotify, lo: gmail)} is actually quite easy.
 We can achieve the strongest property we could ask for:
 \begin{itemize}
-\item Before time \(t_1\): \texttt{Strict(hi: gmail, lo: zoom)} is running.
-\item At time \(t_1\): the request to move to \texttt{Strict(hi: gmail, mid: spotify, lo: zoom)} is received.
-We move to \texttt{Strict(hi: gmail, mid: spotify, lo: zoom)}.
-The transition at \(t_1\) is \emph{atomic}, meaning that whatever user-observable interaction (push/pop) happened immediately before \(t_1\) happened entirely in the \texttt{Strict(hi: gmail, lo: zoom)} regime, and whatever push/pop happened immediately after \(t_1\) happened entirely in the \texttt{Strict(hi: gmail, mid: spotify, lo: zoom)} regime.
-\item This transtion from \texttt{Strict(hi: gmail, lo: zoom)} to \texttt{Strict(hi: gmail, mid: spotify, lo: zoom)} happens to be both atomic and \emph{immediate}, in that we do not need a period of preparation before we atomically jump into the new policy.
+\item Before time \(t_1\): \texttt{Strict(hi: zoom, lo: gmail)} is running.
+\item At time \(t_1\): the request to move to \texttt{Strict(hi: zoom, mid: spotify, lo: gmail)} is received.
+We move to \texttt{Strict(hi: zoom, mid: spotify, lo: gmail)}.
+The transition at \(t_1\) is \emph{atomic}, meaning that whatever user-observable interaction (push/pop) happened immediately before \(t_1\) happened entirely in the \texttt{Strict(hi: zoom, lo: gmail)} regime, and whatever push/pop happened immediately after \(t_1\) happened entirely in the \texttt{Strict(hi: zoom, mid: spotify, lo: gmail)} regime.
+\item This transtion from \texttt{Strict(hi: zoom, lo: gmail)} to \texttt{Strict(hi: zoom, mid: spotify, lo: gmail)} happens to be both atomic and \emph{immediate}, in that we do not need a period of preparation before we atomically jump into the new policy.
 The concepts are distinct.
 [AM note: Can we think of a nice small example that is atomic but not immediate?]
 \end{itemize}
 
-\item What about transitioning to \texttt{Strict(hi: gmail, lo: RoundRobin(zoom, spotify))}?
+\item What about transitioning to \texttt{Strict(hi: zoom, lo: RoundRobin(gmail, spotify))}?
 It is not as easy.
 \begin{itemize}
-\item Before time \(t_1\): \texttt{Strict(hi: gmail, lo: zoom)} is running.
-\item At time \(t_1\): the request to move to \texttt{Strict(hi: gmail, lo: RoundRobin(zoom, spotify))} is received.
-We cannot move to the requested policy immediately since there are still \texttt{zoom} packets buffered in the scheduler.
-We atomically step instead into a \emph{transitionary period} that is \emph{not} the user's desired policy\footnote{it is \texttt{Strict(hi: gmail, lo: Strict*(hi: zoom\_pre\_t1, lo: RoundRobin(zoom\_post\_t1, spotify)))}, but understanding why it is precisely that policy is not necessary at present.}.
+\item Before time \(t_1\): \texttt{Strict(hi: zoom, lo: gmail)} is running.
+\item At time \(t_1\): the request to move to \texttt{Strict(hi: zoom, lo: RoundRobin(gmail, spotify))} is received.
+We cannot move to the requested policy immediately since there are still \texttt{gmail} packets buffered in the scheduler.
+We atomically step instead into a \emph{transitionary period} that is \emph{not} the user's desired policy\footnote{it is \texttt{Strict(hi: zoom, lo: Strict*(hi: gmail\_pre\_t1, lo: RoundRobin(gmail\_post\_t1, spotify)))}, but understanding why it is precisely that policy is not necessary at present.}.
 \item After \(t_1\) but before \(t_2\): The scheduler still accepts and emits packets.
 \item At time \(t_2\), which is defined to be the instant that a well-defined guard becomes true, we atomically step into the user-requested policy.
 \end{itemize}
@@ -145,8 +145,8 @@ As published, vPIFO has no notion of a difference between old and new policies, 
 Their SDL IR is for \emph{rank computation} compiled to P4 or CPU, quite different from our structural/topological grammars (our \texttt{pol} and \(\delta\), \S3.2 and \S3.3).
 \item Our two running examples make the gap concrete.
 To briefly break into terms introduced by vPIFO: the Operation Generation Table and the PIFO Instance Address Table are the structures that encode the running tree's shape and per-instance storage.
-The easy change, to \texttt{Strict(hi: gmail, mid: spotify, lo: zoom)}, looks like the kind of edit that vPIFO's substrate could absorb in place: a targeted append to those tables would plausibly register the new traffic and its operations while leaving the running instances untouched.
-The harder restructuring, to \texttt{Strict(hi: gmail, lo: RoundRobin(zoom, spotify))}, lies beyond what the vPIFO substrate can absorb in place: it changes the running tree's shape (inserting a new internal node \texttt{RoundRobin} and re-parenting \texttt{zoom} under it), which is not exposed as an in-place edit on either table.
+The easy change, to \texttt{Strict(hi: zoom, mid: spotify, lo: gmail)}, looks like the kind of edit that vPIFO's substrate could absorb in place: a targeted append to those tables would plausibly register the new traffic and its operations while leaving the running instances untouched.
+The harder restructuring, to \texttt{Strict(hi: zoom, lo: RoundRobin(gmail, spotify))}, lies beyond what the vPIFO substrate can absorb in place: it changes the running tree's shape (inserting a new internal node \texttt{RoundRobin} and re-parenting \texttt{gmail} under it), which is not exposed as an in-place edit on either table.
 The closest vPIFO comes is a full reinitialization onto the new shape, which is precisely the stop-the-world baseline we want to improve on.
 \item vPIFO names runtime updating as future work, observing that the scheduling of packets during a modification's transitional phase is unresolved.
 \item The relationship, stated plainly.
@@ -275,7 +275,7 @@ sPol   ::= flow
 \end{verbatim}
 
 Compilation from \texttt{sPol} to \texttt{pol} carries the per-arm metadata into the arm's \texttt{slot\_state} (see \texttt{init\_slot\_D} below), where \texttt{push}/\texttt{pop} can read it but not modify it; the abstract grammar is what \(\delta\) (\S3.3) and the theorems of this section reason over.
-We read the arity off by counting children, so \texttt{Strict(gmail, zoom)} is the 2-ary instance of the discipline \texttt{Strict}.
+We read the arity off by counting children, so \texttt{Strict(zoom, gmail)} is the 2-ary instance of the discipline \texttt{Strict}.
 Each leaf label denotes a \emph{flow}: a predicate over packets.
 
 Arm order in the surface notation is a presentation choice, not a scheduling-meaningful one: \texttt{Strict(hi: A, lo: B)} and \texttt{Strict(lo: B, hi: A)} describe the same scheduler.
@@ -1093,30 +1093,30 @@ The risks are of two flavors:
 \paragraph{A worked example}
 
 \begin{itemize}
-\item The operator requests \texttt{p1 = Strict(hi: gmail, lo: zoom)}.
-\item The compiler uses its degree of freedom to yield control \texttt{C1} such that \(\lfloor \mathtt{C1} \rfloor = \mathtt{Strict(lo: zoom, hi: gmail)}\).
+\item The operator requests \texttt{p1 = Strict(hi: zoom, lo: gmail)}.
+\item The compiler uses its degree of freedom to yield control \texttt{C1} such that \(\lfloor \mathtt{C1} \rfloor = \mathtt{Strict(lo: gmail, hi: zoom)}\).
 Note that the children have been reordered for some compiler-internal reason.
 \item We echo back
 \[
-\mathtt{p1'} := \lfloor \mathtt{C1} \rfloor = \mathtt{Strict(lo: zoom, hi: gmail)}.
+\mathtt{p1'} := \lfloor \mathtt{C1} \rfloor = \mathtt{Strict(lo: gmail, hi: zoom)}.
 \]
 We know that \(\mathtt{p1} \eqR \mathtt{p1'}\), so the scheduler the operator gets is the one they asked for; only the slot numbering differs.
 \item As the control serves pushes and pops, it transforms into \texttt{C1'}.
-\item Later, the operator requests \texttt{p2 = Strict(lo: zoom, mid: spotify, hi: gmail)}.
+\item Later, the operator requests \texttt{p2 = Strict(lo: gmail, mid: spotify, hi: zoom)}.
 \item The runtime can again use its freedom.
-Instead of literally splicing \texttt{spotify} in between running arms \texttt{zoom} and \texttt{gmail}, it chooses to append \texttt{spotify} to the end.
+Instead of literally splicing \texttt{spotify} in between running arms \texttt{gmail} and \texttt{zoom}, it chooses to append \texttt{spotify} to the end.
 This converts the running control \texttt{C1'} into control \texttt{C2'} such that
 \[
-\lfloor \mathtt{C2'} \rfloor = \mathtt{Strict(lo: zoom, hi: gmail, mid: spotify)}.
+\lfloor \mathtt{C2'} \rfloor = \mathtt{Strict(lo: gmail, hi: zoom, mid: spotify)}.
 \]
 \item We echo back
 \[
-\mathtt{p2'} := \lfloor \mathtt{C2'} \rfloor = \mathtt{Strict(lo: zoom, hi: gmail, mid: spotify)}
+\mathtt{p2'} := \lfloor \mathtt{C2'} \rfloor = \mathtt{Strict(lo: gmail, hi: zoom, mid: spotify)}
 \]
 to the user.
 \item Now the operator changes to Imperative Mode (\S4) and writes the path-bearing edit \texttt{(True, Quiesce([2]))}.
 It is not worth getting distracted by the syntax or the semantics; the key thing is that the operator has requested an edit and has identified the target via path ``\texttt{[2]}''.
-Paths are interpreted against the \emph{actually running} representative \texttt{p2'}, so we \Quiesce{} the subtree \texttt{mid: spotify} (\texttt{p2'}'s third slot), not \texttt{lo: zoom} (\texttt{p2}'s third slot).
+Paths are interpreted against the \emph{actually running} representative \texttt{p2'}, so we \Quiesce{} the subtree \texttt{mid: spotify} (\texttt{p2'}'s third slot), not \texttt{lo: gmail} (\texttt{p2}'s third slot).
 If the operator had based the path on \texttt{p2} they would have edited the wrong arm; the system has no way to detect or recover from that.
 \end{itemize}
 
@@ -1359,11 +1359,11 @@ Only when the descent ends without a match does the planner fall back to \Replac
 A concrete example will help.
 Suppose
 \[
-\mathtt{p1} = \mathtt{SP}(\mathtt{gmail}, \mathtt{RR}(\mathtt{zoom}, \mathtt{netflix}))
+\mathtt{p1} = \mathtt{SP}(\mathtt{zoom}, \mathtt{RR}(\mathtt{gmail}, \mathtt{netflix}))
 \]
 and the operator requests
 \[
-\mathtt{p2} = \mathtt{SP}(\mathtt{gmail}, \mathtt{RR}(\mathtt{zoom}, \mathtt{netflix}, \mathtt{spotify})).
+\mathtt{p2} = \mathtt{SP}(\mathtt{zoom}, \mathtt{RR}(\mathtt{gmail}, \mathtt{netflix}, \mathtt{spotify})).
 \]
 The planner has two ways to realize this:
 
@@ -1377,16 +1377,16 @@ The planner has two ways to realize this:
 ]
 \node {$\Strictstar$}
   child {node {$\mathtt{SP}$}
-    child {node {$\mathtt{g}$}}
+    child {node {$\mathtt{z}$}}
     child {node {$\mathtt{RR}$}
-      child {node {$\mathtt{z}$}}
+      child {node {$\mathtt{g}$}}
       child {node {$\mathtt{n}$}}
     }
   }
   child {node {$\mathtt{SP}$}
-    child {node {$\mathtt{g}$}}
+    child {node {$\mathtt{z}$}}
     child {node {$\mathtt{RR}$}
-      child {node {$\mathtt{z}$}}
+      child {node {$\mathtt{g}$}}
       child {node {$\mathtt{n}$}}
       child {node {$\mathtt{s}$}}
     }
@@ -1404,9 +1404,9 @@ The planner has two ways to realize this:
   every node/.style={font=\scriptsize}
 ]
 \node {$\mathtt{SP}$}
-  child {node {$\mathtt{g}$}}
+  child {node {$\mathtt{z}$}}
   child {node {$\mathtt{RR}$}
-    child {node {$\mathtt{z}$}}
+    child {node {$\mathtt{g}$}}
     child {node {$\mathtt{n}$}}
     child[edge from parent/.style={draw,thick}] {node[draw,dashed,inner sep=1pt] {$\mathtt{s}$}}
   };
@@ -1418,7 +1418,7 @@ The planner has two ways to realize this:
 Option (a) wraps the entire running tree under a fresh \(\Strictstar\) and grows a freshly-compiled \texttt{p2} alongside; every node sits inside the wrap, and the original \texttt{p1} (with all its in-flight packets) drains as the loser.
 Footprint: the whole tree.
 
-Option (b) extends the \texttt{RR}'s arity by one and attaches a freshly compiled \texttt{spotify} leaf as the third arm; the \texttt{SP} and \texttt{RR} ancestors have only their \texttt{z} extended (no packet movement, no state reset), and the \texttt{gmail} leaf is left completely undisturbed.
+Option (b) extends the \texttt{RR}'s arity by one and attaches a freshly compiled \texttt{spotify} leaf as the third arm; the \texttt{SP} and \texttt{RR} ancestors have only their \texttt{z} extended (no packet movement, no state reset), and the \texttt{zoom} leaf is left completely undisturbed.
 Footprint: the \texttt{RR} and its single ancestor.
 
 Much of the tree is left alone under option (b).
