@@ -278,11 +278,7 @@ We read the arity off by counting children, so \texttt{Strict(gmail, zoom)} is t
 Each leaf label denotes a \emph{flow}: a predicate over packets.
 
 Arm order in the surface notation is a presentation choice, not a scheduling-meaningful one: \texttt{Strict(hi: A, lo: B)} and \texttt{Strict(lo: B, hi: A)} describe the same scheduler.
-We formalize this below as the \emph{reorder-congruence} \(\eqR\) on \texttt{pol}.
-The compiler has a degree of freedom here, in that it may pick any representative of an \(\eqR\)-class when laying out or editing a control.
-For instance, a compiler might run a deterministic \texttt{normalize} operation, sorting \texttt{Strict} arms by rank, \texttt{RR} arms by content, and so on, then commit to that one representative throughout.
-Doing so reduces edit footprints: a reconfiguration that only permutes siblings becomes a no-op (both endpoints normalize to the same pol), and one that permutes siblings while also adding an arm is viewed as ``just an arm addition''.
-The framework leaves the choice to the implementation; any strategy that respects \(\eqR\) is fine, and our implementation (\S6) follows the normalize-and-commit-to-it strategy just sketched.
+We formalize this as the \emph{reorder-congruence} \(\eqR\) on \texttt{pol}; the compiler is free to pick any representative of an \(\eqR\)-class when laying out or editing a control (our implementation normalizes and commits to one, \S6).
 
 A \texttt{pol} is written against a fixed \emph{flow universe} \(F\): a finite set of flow predicates declared by the operator before constructing the \texttt{pol}.
 A \texttt{pol} is \emph{valid} over \(F\) when (a) every discipline is applied at the proper arity, (b) every discipline is provided with the per-arm metadata that the discipline requires, and (c) the leaves form a partition of a subset of \(F\): each leaf carries a flow drawn from \(F\), and no two leaves carry the same flow.
