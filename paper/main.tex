@@ -268,9 +268,18 @@ A \texttt{pol} is either a leaf labeled by a flow or an internal node running di
 \texttt{D} ranges over the disciplines (\texttt{Strict}, \texttt{RoundRobin}, \texttt{WFQ}, etc.).
 A discipline may need per-arm metadata that shapes how the arm is scheduled.
 \texttt{WFQ} takes a positive real weight per arm; \texttt{Strict} takes a priority rank per arm; \texttt{RoundRobin} takes nothing.
-The grammar carries no structural mark of any of this.
-The operator writes the metadata in the surface syntax (e.g., \texttt{WFQ(w\_1: pol\_1, ..., w\_n: pol\_n)}, or positional sugar like \texttt{Strict(A, B)} which desugars to \texttt{Strict(hi: A, lo: B)}).
-Once compiled, the metadata lives in the arm's \texttt{slot\_state} (see \texttt{init\_slot\_D} below), where \texttt{push}/\texttt{pop} can read it but not modify it.
+The abstract grammar carries no structural mark of any of this; the operator writes it in the surface syntax:
+
+\begin{verbatim}
+rank   in  Nat                     (Strict priority ranks)
+w      in  R>0                     (WFQ weights)
+sPol   ::= flow
+         | Strict(rank_1: sPol_1, ..., rank_n: sPol_n)
+         | RR(sPol_1, ..., sPol_n)
+         | WFQ(w_1: sPol_1, ..., w_n: sPol_n)
+\end{verbatim}
+
+Compilation from \texttt{sPol} to \texttt{pol} carries the per-arm metadata into the arm's \texttt{slot\_state} (see \texttt{init\_slot\_D} below), where \texttt{push}/\texttt{pop} can read it but not modify it; the abstract grammar is what \(\delta\) (\S3.3) and the theorems of this section reason over.
 We read the arity off by counting children, so \texttt{Strict(gmail, zoom)} is the 2-ary instance of the discipline \texttt{Strict}.
 Each leaf label denotes a \emph{flow}: a predicate over packets.
 
