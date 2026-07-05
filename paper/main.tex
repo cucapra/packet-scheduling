@@ -155,14 +155,19 @@ The two layers compose.
 
 \section{A Grammar of Atomic Policy Differences}
 
-\S3.1 recaps the PIFO tree model.
-\S3.2 defines a small policy DSL and a compiler from the DSL into a hardware-runnable \emph{control}, giving us the syntactic handle on the fully compiled hardware-level scheduler that is actually running.
+\S3.1 lays out the runtime model: a PIFO tree wrapped in per-node scheduling logic that we call a \emph{control}.
+\S3.2 defines a small policy DSL and a compiler from the DSL into a control, giving us the syntactic handle on the fully compiled hardware-level scheduler that is actually running.
 \S3.3 fixes a grammar \(\delta\) of structural edits over that DSL, where every production of \(\delta\) is, by construction, atomically realizable in hardware.
 \S3.4 proves each production is \emph{sound}: for every production of \(\delta\), we say what running it does to the scheduler that is actually running in hardware, show that this matches the policy-level edit we were expecting, and check that the rest of the tree is left alone, with unrelated nodes keeping their state and the live packets staying accounted for.
 \S3.5 argues that this per-production soundness survives the lowering to hardware.
 The productions of \(\delta\) need to be arranged in \emph{guarded sequences} in order to realize a full reconfiguration; this is deferred to \S4.
 
-\subsection{PIFO trees}
+\subsection{The runtime model: PIFO trees and controls}
+
+The runtime object we are ultimately editing is not a bare PIFO tree but a PIFO tree wrapped with per-node scheduling logic; we call the wrapped object a \emph{control}.
+This subsection lays out both layers, first the tree (\S3.1.1) then the wrapping (\S3.1.2), so that when \S3.2 introduces a source-level policy language, its compilation target is already on the page.
+
+\subsubsection{PIFO trees}
 
 A \emph{PIFO tree} is a hierarchy of PIFO queues: leaves hold packets, while internal nodes hold child indices that route each \texttt{pop} down to a chosen leaf.
 
@@ -194,11 +199,54 @@ If we want to state it in the small-brain model, I can, but that is not exactly 
 
 We adopt this much from Mohan et al.~\cite{Mohan23}; the rest of the formalism in this paper is ours, and we preserve backward compatibility with theirs.
 
+\subsubsection{Controls}
+
+A PIFO tree \emph{control} \texttt{C} wraps a PIFO tree with per-node scheduling logic.
+It is a tree of triples \texttt{(state, pifo, z)}, one per node of the topology.
+
+\begin{itemize}
+\item \texttt{state} is a pair \texttt{(node\_state, slot\_state list)}: the discipline's per-node bookkeeping and a list of per-arm entries, one per child.
+When the node runs a discipline without per-arm bookkeeping (e.g., \texttt{RR}), the \texttt{slot\_state} list is empty.
+\item \texttt{pifo} is a PIFO: at an internal node, an index-PIFO whose entries are indices into the child list; at a leaf, a packet-PIFO.
+\item \texttt{z} is the node's \emph{scheduling transaction}.
+It examines the local \texttt{state} and the incoming packet and produces a path segment and an updated \texttt{state}.
+We write \(\rightharpoonup\) for partial functions; \texttt{z} is partial because not every packet is admitted at every node.
+The shape of the path segment differs between internal nodes and leaves:
+\begin{itemize}
+\item at an internal node, \(\mathtt{z} : \mathtt{state} \times \mathtt{Pkt} \rightharpoonup (\mathtt{idx} \times \mathtt{rank}) \times \mathtt{state}\): pick a child index \texttt{i} and the rank \texttt{r} with which to enqueue \texttt{i} at this node's index-PIFO;
+\item at a leaf, \(\mathtt{z} : \mathtt{state} \times \mathtt{Pkt} \rightharpoonup \mathtt{rank} \times \mathtt{state}\): pick the rank \texttt{r} for the packet's own PIFO entry.
+\end{itemize}
+When \texttt{z} is undefined for a packet, nothing is enqueued at this node and \texttt{state} is unchanged.
+It is important for well-formedness that, when \texttt{z} is defined (resp.\ undefined) for a packet, it is defined (resp.\ undefined) along the entire path from leaf to root.
+This global property is not a concern of node-local \texttt{z}s.
+\end{itemize}
+
+We address node-local components of a control by a \texttt{path}, a (possibly empty) sequence of child indices read from the root.
+The local triple at the node reached by following \texttt{path} from control \texttt{C}'s root is written \texttt{C@path}, with fields \texttt{C@path.state}, \texttt{C@path.pifo}, \texttt{C@path.z}.
+We also write \texttt{C@path.node\_state} and \texttt{C@path.slot\_states} for the two components of \texttt{C@path.state}.
+
+\paragraph{Well-formedness of controls}
+
+A control \texttt{C} is \emph{well-formed} (written \(\vdash \mathtt{C}\)) when, at every internal node of \texttt{C}, the \texttt{pifo} has, for each legal child index \texttt{i}, exactly as many occurrences of \texttt{i} as there are packets stored in the leaf pifos of the subtree under the \texttt{i}-th child.
+This is the same well-formedness property as for the underlying PIFO tree, and maintaining it has the same effect (preventing \texttt{pop}s from getting stuck).
+We just state it directly on \texttt{C} so that no global PIFO tree needs to be assembled to check it.
+
+\paragraph{Backward compatibility}
+
+A control of the kind we have just defined is sometimes packaged instead as a single \emph{monolithic triple} \texttt{(s, q, z)}: a state map \texttt{s} indexed by path, a single global PIFO tree \texttt{q}, and a single global scheduling transaction \(\mathtt{z} : \mathtt{St} \times \mathtt{Pkt} \to \mathtt{Path(t)} \times \mathtt{St}\).
+Our distributed controls flatten into such a triple by gluing the per-node pieces: the tree of our \texttt{pifo}s assembles into \texttt{q}, the \texttt{state}s indexed by path assemble into \texttt{s}, and a top-down composition of the per-node \texttt{z}s yields the global \texttt{z}, with partiality preserved (a drop anywhere along the descent leaves the global function undefined for that packet).
+The rest of the paper has no need for this gluing, since \(\vdash \mathtt{C}\) is stated directly above and the per-production rules of \S3.4 act node-locally; we record it so that any apparatus stated against the monolithic shape can still be applied on top of ours.
+
+\paragraph{Equivalence under live operation: \(\sim\)}
+
+\texttt{push} and \texttt{pop} change the live \texttt{pifo}s and \texttt{state}s of a control but leave its structural skeleton untouched.
+We write \(\mathtt{C} \sim \mathtt{C'}\) for the equivalence relation on well-formed controls that identifies any two controls related by a finite sequence of \texttt{push} / \texttt{pop} operations.
+
 \subsection{A Policy DSL}
 
-The formalism we have inherited from \S3.1 is a runtime model: a PIFO tree is the object that runs in the scheduler, with no source-level surface for an operator to express a desired policy.
+The formalism of \S3.1 is a runtime model: it describes the object that runs in the scheduler but exposes no source-level surface for an operator to express a desired policy.
 To talk about reconfigurations, we need to expose a programming interface for the network operator.
-We design a small policy DSL \texttt{pol} using which the operator can specify their desired policy, and a compiler from \texttt{pol} terms to runnable PIFO tree \emph{controls} (the per-node triples defined below).
+We design a small policy DSL \texttt{pol} using which the operator can specify their desired policy, and a compiler from \texttt{pol} terms to controls.
 The transition planner of \S4 needs both a way to compile a starting control \texttt{C} from an operator's request and a way to compare two user requests to identify how they differ.
 \texttt{pol} is the common syntactic surface both rely on.
 
@@ -270,55 +318,19 @@ At compile time the parent's \texttt{vt} is freshly initialized (to zero), so al
 
 \paragraph{Policy Compilation: \texttt{pol} to control}
 
-A PIFO tree \emph{control} \texttt{C} is a tree of triples \texttt{(state, pifo, z)}, one per node of the topology.
-The tree shape exactly matches that of \texttt{pol}, as each node of \texttt{C} lines up with a node of the source \texttt{pol}.
-
-We write \(\lceil p \rceil\) for the control compiled from \texttt{p}; the compile rule fills in the local triple at each node of \texttt{p}'s topology as follows:
+We write \(\lceil p \rceil\) for the control compiled from \texttt{p}.
+The tree shape of \(\lceil p \rceil\) exactly matches that of \texttt{p}, and at each node the local triple \texttt{(state, pifo, z)} of \S3.1.2 is filled in as follows:
 
 \begin{itemize}
-\item \texttt{state} is a pair \texttt{(node\_state, slot\_state list)}.
-The \texttt{node\_state} is seeded by \texttt{init\_node\_D()}.
-The \texttt{slot\_state} list carries per-arm bookkeeping, each entry seeded by \texttt{init\_slot\_D}.
-When the node runs a discipline without per-arm bookkeeping (e.g., \texttt{RR}), it has an empty \texttt{slot\_state} list.
-\item \texttt{pifo} is an empty PIFO: an index-PIFO at an internal node, a packet-PIFO at a leaf.
-\item \texttt{z} is \texttt{D}'s \emph{scheduling transaction} at the node.
-It examines the local \texttt{state} and the incoming packet and produces a path segment and an updated \texttt{state}.
-We write \(\rightharpoonup\) for partial functions; \texttt{z} is partial because not every packet is admitted at every node.
-The shape of the path segment differs between internal nodes and leaves:
-\begin{itemize}
-\item at an internal node, \(\mathtt{z} : \mathtt{state} \times \mathtt{Pkt} \rightharpoonup (\mathtt{idx} \times \mathtt{rank}) \times \mathtt{state}\): pick a child index \texttt{i} and the rank \texttt{r} with which to enqueue \texttt{i} at this node's index-PIFO;
-\item at a leaf, \(\mathtt{z} : \mathtt{state} \times \mathtt{Pkt} \rightharpoonup \mathtt{rank} \times \mathtt{state}\): pick the rank \texttt{r} for the packet's own PIFO entry.
+\item \texttt{state}: the \texttt{node\_state} is seeded by \texttt{init\_node\_D()}, and each entry of the \texttt{slot\_state} list is seeded by the corresponding arm's \texttt{init\_slot\_D} call.
+\item \texttt{pifo}: empty.
+\item \texttt{z}: \texttt{D}'s scheduling transaction at this node.
 \end{itemize}
 
-When \texttt{z} is undefined for a packet, nothing is enqueued at this node and \texttt{state} is unchanged.
-It is important for well-formedness that, when \texttt{z} is defined (resp.\ undefined) for a packet, it is defined (resp.\ undefined) along the entire path from leaf to root.
-This global property is not a concern of node-local \texttt{z}s.
-\end{itemize}
+\paragraph{Equivalence on \texttt{pol} and its lift to controls: \(\eqR\), \(\simR\)}
 
-We address node-local components of a control by a \texttt{path}, a (possibly empty) sequence of child indices read from the root.
-The local triple at the node reached by following \texttt{path} from control \texttt{C}'s root is written \texttt{C@path}, with fields \texttt{C@path.state}, \texttt{C@path.pifo}, \texttt{C@path.z}.
-We also write \texttt{C@path.node\_state} and \texttt{C@path.slot\_states} for the two components of \texttt{C@path.state}.
-
-\paragraph{Well-formedness: \(\vdash \mathtt{C}\)}
-
-In \S3.1 we defined well-formedness on a PIFO tree, written \(\vdash \mathtt{q}\).
-Now we redefine it, lifting it to act on controls.
-A control \texttt{C} is \emph{well-formed} (written \(\vdash \mathtt{C}\)) when, at every internal node of \texttt{C}, the \texttt{pifo} has, for each legal child index \texttt{i}, exactly as many occurrences of \texttt{i} as there are packets stored in the leaf pifos of the subtree under the \texttt{i}-th child.
-This is the same well-formedness property as before, and maintaining it has the same effect (preventing \texttt{pop}s from getting stuck).
-We just state it directly on \texttt{C} so that no global PIFO tree needs to be assembled to check it.
-
-\paragraph{Backward compatibility}
-
-A control of the kind we have just defined is sometimes packaged instead as a single \emph{monolithic triple} \texttt{(s, q, z)}: a state map \texttt{s} indexed by path, a single global PIFO tree \texttt{q}, and a single global scheduling transaction \(\mathtt{z} : \mathtt{St} \times \mathtt{Pkt} \to \mathtt{Path(t)} \times \mathtt{St}\).
-Our distributed controls flatten into such a triple by gluing the per-node pieces: the tree of our \texttt{pifo}s assembles into \texttt{q}, the \texttt{state}s indexed by path assemble into \texttt{s}, and a top-down composition of the per-node \texttt{z}s yields the global \texttt{z}, with partiality preserved (a drop anywhere along the descent leaves the global function undefined for that packet).
-The rest of the paper has no need for this gluing, since \(\vdash \mathtt{C}\) is stated directly above and the per-production rules of \S3.4 act node-locally; we record it so that any apparatus stated against the monolithic shape can still be applied on top of ours.
-
-\paragraph{Equivalences: \(\sim\), \(\eqR\), \(\simR\)}
-
-We need three equivalence relations: one on controls under live operation (\(\sim\)), one on \texttt{pol}s under sibling permutation (\(\eqR\)), and one on controls under live operation \emph{and} sibling permutation (\(\simR\)).
-
-\texttt{push} and \texttt{pop} change the live \texttt{pifo}s and \texttt{state}s of a control but leave its structural skeleton untouched.
-We write \(\mathtt{C} \sim \mathtt{C'}\) for the equivalence relation on well-formed controls that identifies any two controls related by a finite sequence of \texttt{push} / \texttt{pop} operations.
+The \(\sim\) equivalence on controls (\S3.1.2) captures live-operation freedom.
+We now need two more equivalences: one on \texttt{pol}s under sibling permutation (\(\eqR\)), and one on controls that closes \(\sim\) under sibling permutation (\(\simR\)).
 
 We write \(p \eqR p'\) for the smallest congruence on \texttt{pol} such that, at any internal \texttt{D}-node, permuting the child arms gives a congruent pol: \(D(p_a, \ldots, p_z) \eqR D(p_{\sigma(a)}, \ldots, p_{\sigma(z)})\) for any permutation \(\sigma\).
 The per-arm metadata that discipline \texttt{D} requires (a \texttt{WFQ} weight, a \texttt{Strict} priority rank) travels with its arm under the permutation; the metadata is what carries the scheduling-meaningful content, so a permutation does not change the scheduler.
