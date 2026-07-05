@@ -204,6 +204,7 @@ We adopt this much from Mohan et al.~\cite{Mohan23}; the rest of the formalism i
 
 A PIFO tree \emph{control} \texttt{C} wraps a PIFO tree with per-node scheduling logic.
 It is a tree of triples \texttt{(state, pifo, z)}, one per node of the topology.
+This distributed shape differs from FA~\cite{Mohan23}, which packages the same information as a single global triple; the two are straightforwardly interconvertible by gluing the per-node pieces, so any apparatus stated against the monolithic shape carries over.
 
 \begin{itemize}
 \item \texttt{state} is a pair \texttt{(node\_state, slot\_state list)}: the discipline's per-node bookkeeping and a list of per-arm entries, one per child.
@@ -230,12 +231,6 @@ We also write \texttt{C@path.node\_state} and \texttt{C@path.slot\_states} for t
 
 A control \texttt{C} is \emph{well-formed} (written \(\vdash \mathtt{C}\)) when, at every internal node of \texttt{C}, the \texttt{pifo} has, for each legal child index \texttt{i}, exactly as many occurrences of \texttt{i} as there are packets stored in the leaf pifos of the subtree under the \texttt{i}-th child.
 This is the tree-level condition of \S3.1.1 lifted to controls; stating it directly on \texttt{C} lets \texttt{push} and \texttt{pop} preserve it node-locally, without assembling a global PIFO tree to check.
-
-\paragraph{Backward compatibility}
-
-A control of the kind we have just defined is sometimes packaged instead as a single \emph{monolithic triple} \texttt{(s, q, z)}: a state map \texttt{s} indexed by path, a single global PIFO tree \texttt{q}, and a single global scheduling transaction \(\mathtt{z} : \mathtt{St} \times \mathtt{Pkt} \to \mathtt{Path(t)} \times \mathtt{St}\).
-Our distributed controls flatten into such a triple by gluing the per-node pieces: the tree of our \texttt{pifo}s assembles into \texttt{q}, the \texttt{state}s indexed by path assemble into \texttt{s}, and a top-down composition of the per-node \texttt{z}s yields the global \texttt{z}, with partiality preserved (a drop anywhere along the descent leaves the global function undefined for that packet).
-The rest of the paper has no need for this gluing, since \(\vdash \mathtt{C}\) is stated directly above and the per-production rules of \S3.4 act node-locally; we record it so that any apparatus stated against the monolithic shape can still be applied on top of ours.
 
 \paragraph{Equivalence under live operation: \(\sim\)}
 
