@@ -770,7 +770,7 @@ This includes every proper ancestor of \(\pi\) (whose \texttt{z} is unchanged) a
 Entries at slots \(> k\) shift down by one to track the renumbered arms.
 \item \texttt{pifo}: the precondition (subtree at \(\tau\) is empty) plus \(\vdash \mathtt{C}\) forces \(\mathtt{C@}\pi.\mathtt{pifo}\) to contain \emph{no entry equal to \texttt{k}}, so no entry is deleted; whatever bookkeeping is needed to keep the surviving entries pointed at their (now-resident-at-arity-\(n-1\)) children must be done.
 If one were literally indexing children by their positions, that would mean decrementing entries \(> k\) by one.
-Implementations have ways around even this; for instance, the substrate model of \S6.1 keys children by stable per-edge handles, so survivors' pifo entries are unchanged.
+Implementations have ways around even this; for instance, the substrate model of \S6.1' keys children by stable per-edge handles, so survivors' pifo entries are unchanged.
 \item \texttt{z} is restricted on inputs and renumbered on outputs.
 Packets that \(\mathtt{C@}\pi.\mathtt{z}\) would have routed to slot \texttt{k} are no longer in \(\mathtt{C'@}\pi.\mathtt{z}\)'s domain.
 For surviving inputs, an output of \texttt{(i, r)} with \(i > k\) becomes \texttt{(i - 1, r)}.
@@ -1092,7 +1092,7 @@ There are two reasons.
 \begin{itemize}
 \item The compilation is \emph{faithful}: each production of \(\delta\) expands to a fixed instruction sequence that, when run to completion, realizes exactly that production's effect.
 We give the command-to-commands translation and take its faithfulness to be uncontroversial.
-\item Our substrate runs each such sequence as a single \emph{transactional commit}: a bracketed group of IR instructions that installs as one instant from the user's perspective, with no \texttt{push} or \texttt{pop} interleaved between the bracket's open and close (\S6.1 spells out the substrate machinery that makes this so).
+\item Our substrate runs each such sequence as a single \emph{transactional commit}: a bracketed group of IR instructions that installs as one instant from the user's perspective, with no \texttt{push} or \texttt{pop} interleaved between the bracket's open and close (\S6.1' spells out the substrate machinery that makes this so).
 The transiently-malformed intermediate trees are therefore never observed.
 That commit is precisely how the substrate \emph{realizes} the atomicity property of \S3: atomicity asked for an instantaneous control replacement between two user operations, and the commit is what collapses a multi-instruction lowering into one such instant.
 Every \texttt{push}/\texttt{pop} therefore still lands on a well-formed control (\texttt{p1}, some \texttt{link}, or \texttt{p2}), exactly as \S3.4 proved; the IR's transient malformedness lives entirely inside commits, invisible to the user.
@@ -1659,9 +1659,52 @@ The planner serves declarative mode only.
 Imperative-mode authoring (\S4.3) goes through the pol-level check directly, with the operator naming each \(\delta\) themselves; the planner is not consulted.
 \end{itemize}
 
-\section{Compiling to Hardware}
+\section{Rio Hardware Implementation}
 
-\subsection{The commit model and the ISA}
+A PIFO tree is a clean scheduling abstraction, but instantiating one dynamically on line-rate switching hardware needs more than a fixed set of hardwired PIFOs.
+Existing designs~\cite{TODO} make a logical-to-physical unit mapping to materialize programmable scheduling: instead of hard-wiring a fixed set of PIFOs into hardware, the switch exposes programmable processing elements (PEs) hosting multiple virtual PIFOs.
+It includes hardware (usually match-action pipelines) that maps packets to its virtual PIFOs and calculates the rank and next-hop destination, followed by one physical PIFO hosting all of the virtual PIFOs on the PE.
+
+Packet scheduling on this substrate consists of pipelined, non-atomic enqueue and dequeue operations.
+On enqueue, the switch must compute two pieces of information before issuing PE pushes: which virtual PIFO id the packet should enter, and what rank should be inserted at each of those virtual PIFOs.
+The first is determined by packet classification, flow-to-child mappings; the second is computed by the virtual PIFO's scheduling policy from packet fields, flow state, and per-arm metadata.
+For example, a WFQ-style virtual PIFO uses the child weight to compute a virtual finish time, while a Strict virtual PIFO interprets the metadata as a priority rank.
+On dequeue, the switch starts from the output port's root virtual PIFO, pops the best-ranked entry, and follows the stored next-hop information until it reaches a packet to transmit or another virtual PIFO to pop.
+
+This is sufficient for a static policy, but it does not by itself support dynamic policy updates in concurrent with packet enqueue and dequeue.
+In such a case, a single packet operation can observe a mixture of old and new scheduler state.
+For example, an enqueue may choose its virtual PIFO path using the old flow-to-child mapping but compute its rank using newly updated per-arm metadata, or a dequeue may pop from one version of the tree and then follow next-hop state from another.
+As a result, existing PIFO-based substrates support only stop-the-world policy update.
+
+\subsection{Transactional Update and Hardware Component Support}
+
+\emph{Vocabulary bridge to \S6.1' (temporary, until the two subsections are reconciled).}
+The ``flow-to-child mapping'', ``next-hop mapping'', and ``match-action tables'' of this subsection are the tables that \S6.1''s \texttt{Isa\_map} / \texttt{Isa\_assoc} / \texttt{Isa\_adopt} opcodes write to; the ``virtual PIFOs'' of this subsection are the PIFOs of \S6.1', one per PIFO-tree node.
+
+Rio enables online policy update by packaging multiple hardware state updates into a single ``commit'' and making them visible atomically in hardware: every enqueue or dequeue request observes either the whole commit applied, or none of it.
+Each \(\delta\) (\S3.3) lowers to one \texttt{commit} under this abstraction.
+
+In Rio hardware, we achieve this by packaging multiple policy updates into a single ``transaction'' and making minimal hardware changes in virtual PIFO, rank, and next-hop mapping to enable transactional commit of multiple updates.
+
+First, Rio builds transactional mapping tables for virtual PIFO and next-hop mapping.
+Each PE stores its flow-to-child mapping and next-hop state in a specialized table that accepts a stream of update instructions, and a commit signal.
+Updates before the signal are staged but remain invisible to packet processing.
+Only when the commit marker is applied does the table immediately switch to the new version.
+We implement this using double buffering: update instructions modify a shadow copy of the table, and the commit marker atomically swaps the active and shadow copies.
+After the swap, the inactive copy is synchronized in the background to serve as the shadow for the next commit.
+
+Second, Rio supports incremental updates to the rank-computing match-action tables.
+Rio does not require arbitrary in-place replacement of a live scheduling policy.
+Instead, policy-table updates correspond to adding metadata for newly admitted flows (whose packets are not allowed before the update is finished) or removing metadata for flows that have already been drained.
+Because these updates do not change the interpretation of existing live packets, Rio applies them incrementally rather than through a full transactional table swap.
+This keeps the hardware cost low while still preserving the atomicity needed for observable scheduling behavior.
+
+\subsection*{6.1' The commit model and the ISA}
+\addcontentsline{toc}{subsection}{6.1' The commit model and the ISA}
+
+\emph{Vocabulary bridge from \S6.1 (temporary, until the two subsections are reconciled).}
+\S6.1 speaks in ``flow-to-child mapping'', ``next-hop mapping'', ``match-action tables'', and ``virtual PIFOs''.
+This subsection speaks in \texttt{Isa\_map} / \texttt{Isa\_assoc} (which write the flow-to-child mapping), \texttt{Isa\_adopt} / \texttt{Isa\_emancipate} (which install and detach parent/child edges, i.e., the next-hop mapping), the per-PIFO tables that these opcodes write to (\S6.1's match-action tables), and PIFOs (which correspond to \S6.1's virtual PIFOs, one per PIFO-tree node).
 
 The substrate exposes its services to the planner as an atomic-commit interface.
 The ISA has exactly one unit: a \texttt{commit}, which is a list of instructions that the substrate installs \emph{atomically}.
@@ -1698,11 +1741,11 @@ Opcode & Parameters & Effect \\
 \texttt{Isa\_emancipate(i, p)} & index, parent & Inverse of \texttt{Isa\_adopt}: detach \texttt{p}'s child at index \texttt{i}. \\
 \texttt{Isa\_assoc(v, f)} & PIFO, flow & \texttt{v} begins to accept packets of flow \texttt{f}. \\
 \texttt{Isa\_deassoc(v, f)} & PIFO, flow & \texttt{v} stops accepting packets of flow \texttt{f}. \\
-\texttt{Isa\_map(v, f, i)} & PIFO, flow, index & In \texttt{v}'s brain, route flow \texttt{f} to index \texttt{i}. \\
+\texttt{Isa\_map(v, f, i)} & PIFO, flow, index & In \texttt{v}'s routing table, route flow \texttt{f} to index \texttt{i}. \\
 \texttt{Isa\_unmap(v, f)} & PIFO, flow & Forget \texttt{v}'s mapping for flow \texttt{f}. \\
-\texttt{Isa\_set\_policy(v, t, n)} & PIFO, policy type, initial arity & Set \texttt{v}'s policy type to \texttt{t} and its initial arity to \texttt{n}; \texttt{t} ranges over \{FIFO, RoundRobin, Strict, WFQ\}. Issued exactly once per PIFO, at spawn time. \\
+\texttt{Isa\_set\_policy(v, t, n)} & PIFO, policy type, initial arity & Set \texttt{v}'s policy type to \texttt{t} and its initial arity to \texttt{n}; \texttt{t} ranges over \{FIFO, RoundRobin, Strict, Strict*, WFQ\}. Issued exactly once per PIFO, at spawn time. \\
 \texttt{Isa\_change\_arity(v, n)} & PIFO, arity & Set the live \texttt{v}'s arity counter to \texttt{n}. Policy type is unchanged. \texttt{Isa\_change\_arity} is what tells the discipline-level logic at \texttt{v} (e.g., RR's cursor wraparound, the WFQ slot-state table's size) the active arm count; the structural attaching and detaching themselves happen through explicit \texttt{Isa\_adopt}/\texttt{Isa\_emancipate} calls, each keyed by the stable per-edge index the parent minted at adoption time. The substrate is free to relocate live adoptions internally as the count changes; the indices the planner holds remain valid. \\
-\texttt{Isa\_set\_arm\_meta(v, i, m)} & PIFO, index, metadata & Set per-arm metadata for the child reached via \texttt{i} to \texttt{m}. The payload \texttt{m} is interpreted per \texttt{v}'s policy type: a weight for RoundRobin/WFQ, a priority rank for Strict; FIFO carries none. \\
+\texttt{Isa\_set\_arm\_meta(v, i, m)} & PIFO, index, metadata & Set per-arm metadata for the child reached via \texttt{i} to \texttt{m}. The payload \texttt{m} is interpreted per \texttt{v}'s policy type: a weight for RoundRobin/WFQ, a priority rank for Strict; FIFO carries none. Only the discipline-specified meta field is overwritten; any other per-arm state (e.g., WFQ's virtual-finish tag on the arm) is preserved, so a metadata change on a live arm does not yank it out of the current round. \\
 \texttt{Isa\_designate(v, surv)} & two PIFOs & Inside an already-spawned Strict-2 super-node that has adopted both \texttt{v} and \texttt{surv} (see \S6.2's \texttt{Designate} lowering), name \texttt{v} as the favored child and record \texttt{surv} as \texttt{v}'s designated successor for an eventual \texttt{Isa\_undesignate}. No in-place wrapping is implied at the ISA level; the substrate may coalesce the Strict-2 super-node, \texttt{v}, and \texttt{surv} into a single physical slot when \S6.2's same-PE invariant holds, but is not required to. \\
 \texttt{Isa\_gc(v)} & PIFO & Release \texttt{v}'s PE slot. \\
 \texttt{Isa\_undesignate(v)} & PIFO & Collapse the super-node \(\{v \to \mathtt{surv}\}\) to \texttt{surv}: the parent index that pointed at \(\{v \to \mathtt{surv}\}\) now points directly at \texttt{surv}, and \texttt{surv} inherits the slot's per-arm metadata. \\
@@ -1744,7 +1787,7 @@ Write \texttt{flows(path)} for the set of flows admitted by some leaf under \tex
 Write \texttt{chain(f)} for the unique sequence of PIFOs from \texttt{port\_root} down to the leaf admitting \texttt{f}, and \texttt{internals(f)} for that sequence minus the leaf.
 Write \texttt{walk(op, C, f)} for issuing \texttt{op(v, f, ...)} at each \(v \in C\); positional remainders such as \texttt{Isa\_map}'s routing index \(i_{v,f}\) are read off the live tree.
 When an entry's opcodes name an unmentioned parameter at \(\pi\) (e.g., \texttt{Isa\_set\_policy}'s discipline \texttt{t} or \texttt{Isa\_change\_arity}'s arity \texttt{n}), it is the live value at \(\pi\) at the time the command is issued.
-\texttt{Isa\_spawn}'s \texttt{pe} argument is similarly elided: it is \texttt{pe(path)} for the new PIFO's position, drawn from \S6.1's deployment convention.
+\texttt{Isa\_spawn}'s \texttt{pe} argument is similarly elided: it is \texttt{pe(path)} for the new PIFO's position, drawn from \S6.1''s deployment convention.
 
 \begin{itemize}
 \item \(\ChangeMeta(\pi \mathbin{+\!\!+} [k], m)\):
@@ -1803,7 +1846,7 @@ The same \texttt{k} is reused, so \texttt{parent}'s per-arm metadata for that sl
 At \texttt{sp\_v}, for each \(f \in \mathtt{flows}(\mathtt{loser}) \setminus \mathtt{flows}(\mathtt{surv})\) issue \texttt{Isa\_assoc(sp\_v, f)} and \texttt{Isa\_map(sp\_v, f, 0)}; for each \(f \in \mathtt{flows}(\mathtt{surv})\) (whether shared with \texttt{loser} or not) issue \texttt{Isa\_assoc(sp\_v, f)} and \texttt{Isa\_map(sp\_v, f, 1)} so that the survivor takes shared classes from this commit onward.
 Above \texttt{sp\_v}, for each \(f \in \mathtt{flows}(\mathtt{surv}) \setminus \mathtt{flows}(\mathtt{path})\): \(\mathtt{walk}(\mathtt{Isa\_assoc}, \mathtt{chain}(f), f)\); \(\mathtt{walk}(\mathtt{Isa\_map}, \mathtt{internals}(f), f)\).
 Flows in \(\mathtt{flows}(\mathtt{surv}) \cap \mathtt{flows}(\mathtt{path})\) need no above-\texttt{sp\_v} wiring: the chain is already in place from \texttt{path}'s prior wiring.
-Flows in \(\mathtt{flows}(\mathtt{loser}) \setminus \mathtt{flows}(\mathtt{surv})\) (loser-only labels) keep their existing above-\texttt{sp\_v} Assoc/Map state and are routed to slot 0 by \texttt{sp\_v.z}, matching \S3.4.5's denotational rule that loser-only labels drain on arm 0.
+Flows in \(\mathtt{flows}(\mathtt{loser}) \setminus \mathtt{flows}(\mathtt{surv})\) (loser-only labels) keep their existing above-\texttt{sp\_v} Assoc/Map state and are routed to slot 0 by \texttt{sp\_v.z}, matching \S3.4.5's operational rule that loser-only labels drain on arm 0.
 Operator-level silencing of these flows, when the operator ultimately wants it, comes from the \texttt{Quiesce} step of the surrounding \texttt{Replace} idiom (\S4), not from \texttt{Designate}.
 \end{itemize}
 
@@ -1835,72 +1878,13 @@ A substrate that recognizes the same-PE invariant on \texttt{(sp\_v, loser, surv
 
 \subsection{Substrate portability}
 
-\S3.5's argument that each \(\delta\)'s soundness proof survives the lowering leans on the substrate running each commit as an atomic transactional install.
-Two properties make this work, and they are also what any third-party substrate would need in order to host our compilation.
-
-First, the substrate must provide the thirteen opcodes of \S6.1, or compositions equivalent to them.
-This is a vocabulary requirement, not a semantic one: the ISA-level lowering of \texttt{Designate} (\S6.2) is the literal Strict-2 PIFO form, which any substrate can host.
-A substrate that recognizes the same-PE invariant on \texttt{(sp\_v, loser, surv)} may coalesce the three into a single physical slot, but the optimization is the substrate's prerogative, not an ISA requirement.
-
-Second, the substrate must guarantee that no \texttt{push} or \texttt{pop} interleaves between a commit's first and last instruction.
-This is what hides \S3.5's transiently-malformed intermediate frames.
-\texttt{Designate}'s commit produces a moment in which \texttt{loser} has two parents (its original parent, and the freshly-spawned \texttt{sp\_v} that has just adopted it).
-\texttt{Remove}'s commit produces moments in which a node's flow-to-index map still routes flows to a just-detached child.
-\texttt{ChangeRoot}'s vine collapse produces moments in which the freed vine nodes are detached but not yet released.
-None of these frames survive an atomic commit's install.
-A non-atomic substrate would expose some of them, and whether that breaks observable soundness depends on the substrate's pop-arbitration policy against an in-progress commit, a detail we do not pin down here.
-
-The requirement is weaker than a general-purpose transaction manager.
-The planner knows each commit's length and shape statically, and the substrate need only honor an install-without-interleave guarantee for that fixed shape.
-Several productions need even less.
-\texttt{ChangeMeta} is a single instruction.
-A single-flow \texttt{Quiesce} walks one chain and modifies only \texttt{Assoc}; each intermediate frame is well-formed because the as-yet-unsilenced interior nodes still route via their existing Assocs.
-
-A vPIFO-like substrate (see \S2.2) would host our compilation by providing the install-without-interleave guarantee above.
-
-[AM note for Zhiyuan: the \S6.3 prose above is my best current statement of what we need from a substrate.
-Please confirm or push back after studying \S6, then delete this note.]
-
-\subsection{Hardware Implementation}
-
-Each transition \(\delta\) (\S3.3) must become visible atomically in hardware: every enqueue or dequeue request should observe either the pre-\(\delta\) configuration or the post-\(\delta\) configuration, but never an intermediate state.
-This requirement is nontrivial because a single \(\delta\) may lower to multiple ISA instructions (\S6.2), and each instruction may update state across several physical PEs.
-For example, adding a flow can require changes to admission tables, flow-to-child mappings, policy metadata, and next-hop state.
-If these updates become visible independently, packets may be processed by a mixture of old and new configuration state, violating the preservation-of-observation requirement from \S3.4.
-
-This issue arises naturally in prior PIFO-style hardware.
-In the original PIFO design, a match-action pipeline maps an input packet to a PIFO entry and generates the policy parameters used by the local scheduler, while a next-hop lookup determines the next PE on the dequeue path.
-If the tables on one PE are updated before those on another PE, an incoming packet may be classified using the new configuration at one point in the tree but the old configuration elsewhere.
-Existing PIFO systems therefore rely on stop-the-world reconfiguration to avoid exposing such inconsistent states.
-Rio's hardware implemention focus on implementing online update: how can the hardware execute \(\delta\)-level atomic updates online, without stopping packet processing?
-
-\paragraph{Hardware components.}
-
-To isolate the update and packet processing, Rio adds two hardware mechanisms to a conventional PIFO substrate.
-
-First, Rio makes flow-mapping and routing-table updates atomically visible.
-Each PE stores its flow-to-child mapping and next-hop state in a specialized table that accepts a stream of update instructions, and a commit signal.
-Updates before the signal are staged but remain invisible to packet processing.
-Only when the commit marker is applied does the table immidiate switch to the new version.
-We implement this using double buffering: update instructions modify a shadow copy of the table, and the commit marker atomically swaps the active and shadow copies.
-After the swap, the inactive copy is synchronized in the background to serve as the shadow for the next commit.
-
-Second, Rio supports incremental updates to the policy match-action tables.
-Rio does not require arbitrary in-place replacement of a live scheduling policy.
-Instead, policy-table updates correspond to adding metadata for newly admitted flows (whose packets are not allowed before the udpate is finished) or removing metadata for flows that have already been drained.
-Because these updates do not change the interpretation of existing live packets, Rio applies them incrementally rather than through a full transactional table swap.
-This keeps the hardware cost low while still preserving the atomicity needed for observable scheduling behavior.
-
 These mechanisms are independent of the underlying PIFO implementation.
 Our prototype uses a shift-register-based PIFO similar to the original design, but Rio only assumes the standard push-in-first-out interface.
 Other PIFO implementations can be substituted.
 
-\paragraph{Executing \(\delta\) as a transaction.}
+\subsection{Executing \(\delta\) as a transaction}
 
-Rio implements a transactional update controller that turns each lowered \(\delta\) into an atomic hardware transaction.
-In software, the planner emits a sequence of table-update and policy-update instructions, each addressed to a specific PE and table entry.
-The sequence terminates with a single commit instruction and is submitted to the controller through a FIFO command queue.
-
+Rio implements a transactional update controller that executes each lowered \(\delta\) as an atomic hardware transaction.
 In hardware, the controller executes commands in order.
 Ordinary update commands are routed to the target PEs and staged locally.
 When the controller reaches the commit instruction, it generates the hardware commit signals that make the staged updates visible.

@@ -605,7 +605,7 @@ The topology loses the arm at slot `k` of `C@π`; arms at slots `0, ..., k-1` ke
 - _At `C@π`:_
   - `node_state` is unchanged.
   - `slot_states = C@π.slot_states[-/k]`: the entry at slot `k` is dropped. Entries at slots `> k` shift down by one to track the renumbered arms.
-  - `pifo`: the precondition (subtree at `τ` is empty) plus `|- C` forces `C@π.pifo` to contain _no entry equal to `k`_, so no entry is deleted; whatever bookkeeping is needed to keep the surviving entries pointed at their (now-resident-at-arity-`n-1`) children must be done. If one were literally indexing children by their positions, that would mean decrementing entries `> k` by one. Implementations have ways around even this; for instance, the substrate model of §6.1 keys children by stable per-edge handles, so survivors' pifo entries are unchanged.
+  - `pifo`: the precondition (subtree at `τ` is empty) plus `|- C` forces `C@π.pifo` to contain _no entry equal to `k`_, so no entry is deleted; whatever bookkeeping is needed to keep the surviving entries pointed at their (now-resident-at-arity-`n-1`) children must be done. If one were literally indexing children by their positions, that would mean decrementing entries `> k` by one. Implementations have ways around even this; for instance, the substrate model of §6.1' keys children by stable per-edge handles, so survivors' pifo entries are unchanged.
   - `z` is restricted on inputs and renumbered on outputs.
     Packets that `C@π.z` would have routed to slot `k` are no longer in `C'@π.z`'s domain. For surviving inputs, an output of `(i, r)` with `i > k` becomes `(i - 1, r)`.
     Slots `< k` are untouched on either axis.
@@ -890,7 +890,7 @@ There are two reasons.
 
 - The compilation is _faithful_: each production of `δ` expands to a fixed instruction sequence that, when run to completion, realizes exactly that production's effect.
   We give the command-to-commands translation and take its faithfulness to be uncontroversial.
-- Our substrate runs each such sequence as a single _transactional commit_: a bracketed group of IR instructions that installs as one instant from the user's perspective, with no `push` or `pop` interleaved between the bracket's open and close (§6.1 spells out the substrate machinery that makes this so).
+- Our substrate runs each such sequence as a single _transactional commit_: a bracketed group of IR instructions that installs as one instant from the user's perspective, with no `push` or `pop` interleaved between the bracket's open and close (§6.1' spells out the substrate machinery that makes this so).
   The transiently-malformed intermediate trees are therefore never observed.
   That commit is precisely how the substrate _realizes_ the atomicity property of §3: atomicity asked for an instantaneous control replacement between two user operations, and the commit is what collapses a multi-instruction lowering into one such instant.
   Every `push`/`pop` therefore still lands on a well-formed control (`p1`, some `link`, or `p2`), exactly as §3.4 proved; the IR's transient malformedness lives entirely inside commits, invisible to the user.
@@ -1333,9 +1333,45 @@ Two non-features for now; we hope to improve these in the next few meetings.
   The planner serves declarative mode only.
   Imperative-mode authoring (§4.3) goes through the pol-level check directly, with the operator naming each `δ` themselves; the planner is not consulted.
 
-## 6. Compiling to Hardware
+## 6. Rio Hardware Implementation
 
-### 6.1 The commit model and the ISA
+A PIFO tree is a clean scheduling abstraction, but instantiating one dynamically on line-rate switching hardware needs more than a fixed set of hardwired PIFOs.
+Existing designs \cite{TODO} make a logical-to-physical unit mapping to materialize programmable scheduling: instead of hard-wiring a fixed set of PIFOs into hardware, the switch exposes programmable processing elements (PEs) hosting multiple virtual PIFOs.
+It includes hardware (usually match-action pipelines) that maps packets to its virtual PIFOs and calculates the rank and next-hop destination, followed by one physical PIFO hosting all of the virtual PIFOs on the PE.
+
+Packet scheduling on this substrate consists of pipelined, non-atomic enqueue and dequeue operations. On enqueue, the switch must compute two pieces of information before issuing PE pushes: which virtual PIFO id the packet should enter, and what rank should be inserted at each of those virtual PIFOs. The first is determined by packet classification, flow-to-child mappings; the second is computed by the virtual PIFO's scheduling policy from packet fields, flow state, and per-arm metadata. For example, a WFQ-style virtual PIFO uses the child weight to compute a virtual finish time, while a Strict virtual PIFO interprets the metadata as a priority rank. On dequeue, the switch starts from the output port's root virtual PIFO, pops the best-ranked entry, and follows the stored next-hop information until it reaches a packet to transmit or another virtual PIFO to pop.
+
+This is sufficient for a static policy, but it does not by itself support dynamic policy updates in concurrent with packet enqueue and dequeue. In such a case, a single packet operation can observe a mixture of old and new scheduler state. For example, an enqueue may choose its virtual PIFO path using the old flow-to-child mapping but compute its rank using newly updated per-arm metadata, or a dequeue may pop from one version of the tree and then follow next-hop state from another. As a result, existing PIFO-based substrates support only stop-the-world policy update.
+
+
+### 6.1 Transactional Update and Hardware Component Support
+
+_Vocabulary bridge to §6.1' (temporary, until the two subsections are reconciled)._
+The "flow-to-child mapping", "next-hop mapping", and "match-action tables" of this subsection are the tables that §6.1''s `Isa_map` / `Isa_assoc` / `Isa_adopt` opcodes write to; the "virtual PIFOs" of this subsection are the PIFOs of §6.1', one per PIFO-tree node.
+
+Rio enables online policy update by packing multiple hardware state updates into a single "commit" and making them visible atomically in hardware: every enqueue or dequeue request observes either the whole commit applied, or none of it. Each `δ` (§3.3) lowers to one `commit` under this abstraction.
+
+In Rio hardware, we achieve this by packaging multiple policy updates into a single "transaction" and making minimal hardware changes in virtual PIFO, rank, and next-hop mapping to enable transactional commit of multiple updates.
+
+First, Rio builds transactional mapping tables for virtual PIFO and next-hop mapping. Each PE stores its flow-to-child mapping and next-hop state in a specialized table that accepts a stream of update instructions, and a commit signal.
+Updates before the signal are staged but remain invisible to packet processing.
+Only when the commit marker is applied does the table immediately switch to the new version.
+We implement this using double buffering: update instructions modify a shadow copy of the table, and the commit marker atomically swaps the active and shadow copies.
+After the swap, the inactive copy is synchronized in the background to serve as the shadow for the next commit.
+
+Second, Rio supports incremental updates to the rank-computing match-action tables.
+Rio does not require arbitrary in-place replacement of a live scheduling policy.
+Instead, policy-table updates correspond to adding metadata for newly admitted flows (whose packets are not allowed before the update is finished) or removing metadata for flows that have already been drained.
+Because these updates do not change the interpretation of existing live packets,
+Rio applies them incrementally rather than through a full transactional table swap.
+This keeps the hardware cost low while still preserving the atomicity needed for observable scheduling behavior.
+
+
+### 6.1' The commit model and the ISA
+
+_Vocabulary bridge from §6.1 (temporary, until the two subsections are reconciled)._
+§6.1 speaks in "flow-to-child mapping", "next-hop mapping", "match-action tables", and "virtual PIFOs".
+This subsection speaks in `Isa_map` / `Isa_assoc` (which write the flow-to-child mapping), `Isa_adopt` / `Isa_emancipate` (which install and detach parent/child edges, i.e., the next-hop mapping), the per-PIFO tables that these opcodes write to (§6.1's match-action tables), and PIFOs (which correspond to §6.1's virtual PIFOs, one per PIFO-tree node).
 
 The substrate exposes its services to the planner as an atomic-commit interface.
 The ISA has exactly one unit: a `commit`, which is a list of instructions that the substrate installs _atomically_.
@@ -1366,11 +1402,11 @@ The ISA has thirteen opcodes:
 | `Isa_emancipate(i, p)`      | index, parent                    | Inverse of `Isa_adopt`: detach `p`'s child at index `i`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | `Isa_assoc(v, f)`           | PIFO, flow                       | `v` begins to accept packets of flow `f`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | `Isa_deassoc(v, f)`         | PIFO, flow                       | `v` stops accepting packets of flow `f`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| `Isa_map(v, f, i)`          | PIFO, flow, index                | In `v`'s brain, route flow `f` to index `i`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `Isa_map(v, f, i)`          | PIFO, flow, index                | In `v`'s routing table, route flow `f` to index `i`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | `Isa_unmap(v, f)`           | PIFO, flow                       | Forget `v`'s mapping for flow `f`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| `Isa_set_policy(v, t, n)`   | PIFO, policy type, initial arity | Set `v`'s policy type to `t` and its initial arity to `n`; `t` ranges over {FIFO, RoundRobin, Strict, WFQ}. Issued exactly once per PIFO, at spawn time.                                                                                                                                                                                                                                                                                                                                                                                            |
+| `Isa_set_policy(v, t, n)`   | PIFO, policy type, initial arity | Set `v`'s policy type to `t` and its initial arity to `n`; `t` ranges over {FIFO, RoundRobin, Strict, Strict*, WFQ}. Issued exactly once per PIFO, at spawn time.                                                                                                                                                                                                                                                                                                                                                                                   |
 | `Isa_change_arity(v, n)`    | PIFO, arity                      | Set the live `v`'s arity counter to `n`. Policy type is unchanged. `Isa_change_arity` is what tells the discipline-level logic at `v` (e.g., RR's cursor wraparound, the WFQ slot-state table's size) the active arm count; the structural attaching and detaching themselves happen through explicit `Isa_adopt`/`Isa_emancipate` calls, each keyed by the stable per-edge index the parent minted at adoption time. The substrate is free to relocate live adoptions internally as the count changes; the indices the planner holds remain valid. |
-| `Isa_set_arm_meta(v, i, m)` | PIFO, index, metadata            | Set per-arm metadata for the child reached via `i` to `m`. The payload `m` is interpreted per `v`'s policy type: a weight for RoundRobin/WFQ, a priority rank for Strict; FIFO carries none.                                                                                                                                                                                                                                                                                                                                                        |
+| `Isa_set_arm_meta(v, i, m)` | PIFO, index, metadata            | Set per-arm metadata for the child reached via `i` to `m`. The payload `m` is interpreted per `v`'s policy type: a weight for RoundRobin/WFQ, a priority rank for Strict; FIFO carries none. Only the discipline-specified meta field is overwritten; any other per-arm state (e.g., WFQ's virtual-finish tag on the arm) is preserved, so a metadata change on a live arm does not yank it out of the current round.                                                                                                                                |
 | `Isa_designate(v, surv)`    | two PIFOs                        | Inside an already-spawned Strict-2 super-node that has adopted both `v` and `surv` (see §6.2's `Designate` lowering), name `v` as the favored child and record `surv` as `v`'s designated successor for an eventual `Isa_undesignate`. No in-place wrapping is implied at the ISA level; the substrate may coalesce the Strict-2 super-node, `v`, and `surv` into a single physical slot when §6.2's same-PE invariant holds, but is not required to.                                                                                               |
 | `Isa_gc(v)`                 | PIFO                             | Release `v`'s PE slot.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | `Isa_undesignate(v)`        | PIFO                             | Collapse the super-node `{v -> surv}` to `surv`: the parent index that pointed at `{v -> surv}` now points directly at `surv`, and `surv` inherits the slot's per-arm metadata.                                                                                                                                                                                                                                                                                                                                                                     |
@@ -1409,7 +1445,7 @@ Write `flows(path)` for the set of flows admitted by some leaf under `path`.
 Write `chain(f)` for the unique sequence of PIFOs from `port_root` down to the leaf admitting `f`, and `internals(f)` for that sequence minus the leaf.
 Write `walk(op, C, f)` for issuing `op(v, f, ...)` at each `v ∈ C`; positional remainders such as `Isa_map`'s routing index `i_{v,f}` are read off the live tree.
 When an entry's opcodes name an unmentioned parameter at `π` (e.g., `Isa_set_policy`'s discipline `t` or `Isa_change_arity`'s arity `n`), it is the live value at `π` at the time the command is issued.
-`Isa_spawn`'s `pe` argument is similarly elided: it is `pe(path)` for the new PIFO's position, drawn from §6.1's deployment convention.
+`Isa_spawn`'s `pe` argument is similarly elided: it is `pe(path)` for the new PIFO's position, drawn from §6.1''s deployment convention.
 
 - `ChangeMeta(π ++ [k], m)`:
   `Isa_set_arm_meta(π, k, m)`.
@@ -1437,7 +1473,7 @@ When an entry's opcodes name an unmentioned parameter at `π` (e.g., `Isa_set_po
     At `sp_v`, for each `f ∈ flows(loser) \ flows(surv)` issue `Isa_assoc(sp_v, f)` and `Isa_map(sp_v, f, 0)`; for each `f ∈ flows(surv)` (whether shared with `loser` or not) issue `Isa_assoc(sp_v, f)` and `Isa_map(sp_v, f, 1)` so that the survivor takes shared classes from this commit onward.
     Above `sp_v`, for each `f ∈ flows(surv) \ flows(path)`: `walk(Isa_assoc, chain(f), f)`; `walk(Isa_map, internals(f), f)`.
     Flows in `flows(surv) ∩ flows(path)` need no above-`sp_v` wiring: the chain is already in place from `path`'s prior wiring.
-    Flows in `flows(loser) \ flows(surv)` (loser-only labels) keep their existing above-`sp_v` Assoc/Map state and are routed to slot 0 by `sp_v.z`, matching §3.4.5's denotational rule that loser-only labels drain on arm 0. Operator-level silencing of these flows, when the operator ultimately wants it, comes from the `Quiesce` step of the surrounding `Replace` idiom (§4), not from `Designate`.
+    Flows in `flows(loser) \ flows(surv)` (loser-only labels) keep their existing above-`sp_v` Assoc/Map state and are routed to slot 0 by `sp_v.z`, matching §3.4.5's operational rule that loser-only labels drain on arm 0. Operator-level silencing of these flows, when the operator ultimately wants it, comes from the `Quiesce` step of the surrounding `Replace` idiom (§4), not from `Designate`.
 
   _Same-PE invariant._ The planner places `sp_v`, `loser`'s root, and `surv`'s root on the same PE (a deterministic property of the lowering: all three sit at depth `|path|`, and `pe(path)` returns one PE). The substrate may exploit this to coalesce the three into a single physical slot, sparing itself from moving all of `loser` down one PE level.
 
@@ -1464,63 +1500,13 @@ A substrate that recognizes the same-PE invariant on `(sp_v, loser, surv)` is fr
 
 ### 6.3 Substrate portability
 
-§3.5's argument that each `δ`'s soundness proof survives the lowering leans on the substrate running each commit as an atomic transactional install.
-Two properties make this work, and they are also what any third-party substrate would need in order to host our compilation.
+These mechanisms are independent of the underlying PIFO implementation.
+Our prototype uses a shift-register-based PIFO similar to the original design, but Rio only assumes the standard push-in-first-out interface.
+Other PIFO implementations can be substituted.
 
-First, the substrate must provide the thirteen opcodes of §6.1, or compositions equivalent to them.
-This is a vocabulary requirement, not a semantic one: the ISA-level lowering of `Designate` (§6.2) is the literal Strict-2 PIFO form, which any substrate can host. A substrate that recognizes the same-PE invariant on `(sp_v, loser, surv)` may coalesce the three into a single physical slot, but the optimization is the substrate's prerogative, not an ISA requirement.
+### 6.4 Executing δ as a transaction
 
-Second, the substrate must guarantee that no `push` or `pop` interleaves between a commit's first and last instruction.
-This is what hides §3.5's transiently-malformed intermediate frames.
-`Designate`'s commit produces a moment in which `loser` has two parents (its original parent, and the freshly-spawned `sp_v` that has just adopted it).
-`Remove`'s commit produces moments in which a node's flow-to-index map still routes flows to a just-detached child.
-`ChangeRoot`'s vine collapse produces moments in which the freed vine nodes are detached but not yet released.
-None of these frames survive an atomic commit's install.
-A non-atomic substrate would expose some of them, and whether that breaks observable soundness depends on the substrate's pop-arbitration policy against an in-progress commit, a detail we do not pin down here.
-
-The requirement is weaker than a general-purpose transaction manager.
-The planner knows each commit's length and shape statically, and the substrate need only honor an install-without-interleave guarantee for that fixed shape.
-Several productions need even less.
-`ChangeMeta` is a single instruction.
-A single-flow `Quiesce` walks one chain and modifies only `Assoc`; each intermediate frame is well-formed because the as-yet-unsilenced interior nodes still route via their existing Assocs.
-
-A vPIFO-like substrate (see §2.2) would host our compilation by providing the install-without-interleave guarantee above.
-
-[AM note for Zhiyuan: the §6.3 prose above is my best current statement of what we need from a substrate. Please confirm or push back after studying §6, then delete this note.]
-
-### 6.4 Hardware Implementation
-
-Each transition δ (§3.3) must become visible atomically in hardware: every enqueue or dequeue request should observe either the pre-δ configuration or the post-δ configuration, but never an intermediate state. This requirement is nontrivial because a single δ may lower to multiple ISA instructions (§6.2), and each instruction may update state across several physical PEs. For example, adding a flow can require changes to admission tables, flow-to-child mappings, policy metadata, and next-hop state. If these updates become visible independently, packets may be processed by a mixture of old and new configuration state, violating the preservation-of-observation requirement from §3.4.
-
-This issue arises naturally in prior PIFO-style hardware. In the original PIFO design, a match-action pipeline maps an input packet to a PIFO entry and generates the policy parameters used by the local scheduler, while a next-hop lookup determines the next PE on the dequeue path. If the tables on one PE are updated before those on another PE, an incoming packet may be classified using the new configuration at one point in the tree but the old configuration elsewhere. Existing PIFO systems therefore rely on stop-the-world reconfiguration to avoid exposing such inconsistent states.
-Rio's hardware implemention focus on implementing online update: how can the hardware execute δ-level atomic updates online, without stopping packet processing?
-
-#### Hardware components.
-
-To isolate the update and packet processing, Rio adds two hardware mechanisms to a conventional PIFO substrate.
-
-First, Rio makes flow-mapping and routing-table updates atomically visible. Each PE stores its flow-to-child mapping and next-hop state in a specialized table that accepts a stream of update instructions, and a commit signal.
-Updates before the signal are staged but remain invisible to packet processing.
-Only when the commit marker is applied does the table immidiate switch to the new version.
-We implement this using double buffering: update instructions modify a shadow copy of the table, and the commit marker atomically swaps the active and shadow copies.
-After the swap, the inactive copy is synchronized in the background to serve as the shadow for the next commit.
-
-Second, Rio supports incremental updates to the policy match-action tables.
-Rio does not require arbitrary in-place replacement of a live scheduling policy.
-Instead, policy-table updates correspond to adding metadata for newly admitted flows (whose packets are not allowed before the udpate is finished) or removing metadata for flows that have already been drained.
-Because these updates do not change the interpretation of existing live packets,
-Rio applies them incrementally rather than through a full transactional table swap.
-This keeps the hardware cost low while still preserving the atomicity needed for observable scheduling behavior.
-
-These mechanisms are independent of the underlying PIFO implementation. Our prototype uses a shift-register-based PIFO similar to the original design, but Rio only assumes the standard push-in-first-out interface. Other PIFO implementations can be substituted.
-
-#### Executing δ as a transaction.
-
-Rio implements a transactional update controller that turns each lowered δ into an atomic hardware transaction.
-In software, the planner emits a sequence of table-update and policy-update instructions, each addressed to a specific PE and table entry.
-The sequence terminates with a single commit instruction and is submitted to the controller through a FIFO command queue.
-
-In hardware, the controller executes commands in order.
+Rio implements a transactional update controller that executes each lowered δ as an atomic hardware transaction. In hardware, the controller executes commands in order.
 Ordinary update commands are routed to the target PEs and staged locally.
 When the controller reaches the commit instruction, it generates the hardware commit signals that make the staged updates visible.
 These signals are delay-aligned across PEs according to the PIFO tree topology, so that no enqueue or dequeue operation can traverse a partially updated tree.
@@ -1528,7 +1514,7 @@ Intuitively, the controller treats the commit boundary as a wavefront: the new c
 
 The controller also implements guarded transitions. As described in §4, some transitions are guarded by predicates such as the emptiness of a subtree. Rio lowers such guards to blocking commands in the controller queue. A blocking command remains at the head of the queue until its predicate becomes true; only then can the subsequent update instructions execute. FIFO execution therefore ensures that instructions depending on the guard are not issued prematurely.
 
-Our current implementation uses a single controller queue, which provides a simple global serialization point for updates. This design is sufficient for correctness and avoids subtle ordering bugs between overlapping commits. It can, however, introduce head-of-line blocking when a guarded transition waits for a long-running drain. Supporting multiple independent queues for disjoint subtrees is a natural optimization and does not change Rio’s ISA or correctness argument; we leave this extension to future work.
+Our current implementation uses a single controller queue, which provides a simple global serialization point for updates. This design is sufficient for correctness and avoids subtle ordering bugs between overlapping commits. It can, however, introduce head-of-line blocking when a guarded transition waits for a long-running drain. Supporting multiple independent queues for disjoint subtrees is a natural optimization and does not change Rio's ISA or correctness argument; we leave this extension to future work.
 
 ## 7. Evaluation
 
