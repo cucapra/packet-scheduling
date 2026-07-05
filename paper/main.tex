@@ -52,72 +52,49 @@
 
 \section{Introduction}\label{sec:intro}
 
-\begin{itemize}
-\item Programmable packet scheduling.
+Programmable packet scheduling.
 Emphasize that policies are often hierarchical, and that clients demand line rate.
 
-\item The reconfiguration problem.
-Running example: a small-office gateway runs \texttt{Strict(hi: zoom, lo: gmail)}, i.e., strictly prioritizing real-time \texttt{zoom} traffic over \texttt{gmail} traffic.
-The operator wants to add a new \texttt{spotify} flow, and is considering the following two candidates:
-\begin{enumerate}
-\item \texttt{Strict(hi: zoom, mid: spotify, lo: gmail)}: extend the strict-priority list with \texttt{spotify} slotting between \texttt{zoom} and \texttt{gmail} in priority.
-\item \texttt{Strict(hi: zoom, lo: RoundRobin(gmail, spotify))}: keep \texttt{zoom} on top, but have \texttt{gmail} and \texttt{spotify} share the lower tier via round-robin.
-\end{enumerate}
-
-In either of these cases, the state of the art~\cite{vPIFO} would stop the world, drop or recirculate buffered packets, recompile, and reinstall.
+\paragraph{The reconfiguration problem.}
+Consider a small-office gateway running \texttt{Strict(hi: zoom, lo: gmail)}, strictly prioritizing real-time \texttt{zoom} traffic over \texttt{gmail} traffic.
+The operator wants to add a new \texttt{spotify} flow, and is considering two candidates:
+(1) \texttt{Strict(hi: zoom, mid: spotify, lo: gmail)}, extending the strict-priority list with \texttt{spotify} slotting between \texttt{zoom} and \texttt{gmail} in priority; or
+(2) \texttt{Strict(hi: zoom, lo: RoundRobin(gmail, spotify))}, keeping \texttt{zoom} on top but having \texttt{gmail} and \texttt{spotify} share the lower tier via round-robin.
+In either case, the state of the art~\cite{vPIFO} would stop the world, drop or recirculate buffered packets, recompile, and reinstall.
 The costs are dropped or recirculated (and therefore delayed) packets, downtime, and the rebuilding of nodes that did not need to be rebuilt.
 
-\item The alternative is to reprogram a scheduler without stopping the world.
-Let's revisit the examples from earlier.
+The alternative is to reprogram a scheduler without stopping the world.
+Revisiting the examples above:
 
-\item Transitioning to \texttt{Strict(hi: zoom, mid: spotify, lo: gmail)} is actually quite easy.
-We can achieve the strongest property we could ask for:
-\begin{itemize}
-\item Before time \(t_1\): \texttt{Strict(hi: zoom, lo: gmail)} is running.
-\item At time \(t_1\): the request to move to \texttt{Strict(hi: zoom, mid: spotify, lo: gmail)} is received.
-We move to \texttt{Strict(hi: zoom, mid: spotify, lo: gmail)}.
+Transitioning to \texttt{Strict(hi: zoom, mid: spotify, lo: gmail)} is actually quite easy, and we can achieve the strongest property we could ask for.
+Before time \(t_1\), \texttt{Strict(hi: zoom, lo: gmail)} is running; at time \(t_1\) the request to move to \texttt{Strict(hi: zoom, mid: spotify, lo: gmail)} is received, and we move to it.
 The transition at \(t_1\) is \emph{atomic}, meaning that whatever user-observable interaction (push/pop) happened immediately before \(t_1\) happened entirely in the \texttt{Strict(hi: zoom, lo: gmail)} regime, and whatever push/pop happened immediately after \(t_1\) happened entirely in the \texttt{Strict(hi: zoom, mid: spotify, lo: gmail)} regime.
-\item This transtion from \texttt{Strict(hi: zoom, lo: gmail)} to \texttt{Strict(hi: zoom, mid: spotify, lo: gmail)} happens to be both atomic and \emph{immediate}, in that we do not need a period of preparation before we atomically jump into the new policy.
-The concepts are distinct.
+This transition happens to be both atomic and \emph{immediate}, in that we do not need a period of preparation before we atomically jump into the new policy; the concepts are distinct.
 [AM note: Can we think of a nice small example that is atomic but not immediate?]
-\end{itemize}
 
-\item What about transitioning to \texttt{Strict(hi: zoom, lo: RoundRobin(gmail, spotify))}?
-It is not as easy.
-\begin{itemize}
-\item Before time \(t_1\): \texttt{Strict(hi: zoom, lo: gmail)} is running.
-\item At time \(t_1\): the request to move to \texttt{Strict(hi: zoom, lo: RoundRobin(gmail, spotify))} is received.
-We cannot move to the requested policy immediately since there are still \texttt{gmail} packets buffered in the scheduler.
+Transitioning to \texttt{Strict(hi: zoom, lo: RoundRobin(gmail, spotify))} is not as easy.
+As before, \texttt{Strict(hi: zoom, lo: gmail)} runs before \(t_1\) and the operator's request arrives at \(t_1\), but we cannot move to the requested policy immediately since there are still \texttt{gmail} packets buffered in the scheduler.
 We atomically step instead into a \emph{transitionary period} that is \emph{not} the user's desired policy\footnote{it is \texttt{Strict(hi: zoom, lo: Strict*(hi: gmail\_pre\_t1, lo: RoundRobin(gmail\_post\_t1, spotify)))}, but understanding why it is precisely that policy is not necessary at present.}.
-\item After \(t_1\) but before \(t_2\): The scheduler still accepts and emits packets.
-\item At time \(t_2\), which is defined to be the instant that a well-defined guard becomes true, we atomically step into the user-requested policy.
-\end{itemize}
+After \(t_1\) but before \(t_2\), the scheduler still accepts and emits packets under this regime.
+At time \(t_2\), which is defined to be the instant that a well-defined guard becomes true, we atomically step into the user-requested policy.
 
-\item Although the user never specified the semantics of this transitionary period (\(t_1\) to \(t_2\)), the period is itself a \emph{de facto} packet scheduling regime: the transition is unavoidable, it persists for nonzero time, and during it the scheduler must continue to field pushes and pops.
-Something is making scheduling decisions during that window, whether we acknowledge it or not!
+Although the user never specified the semantics of this transitionary period (\(t_1\) to \(t_2\)), the period is itself a \emph{de facto} packet scheduling regime: the transition is unavoidable, it persists for nonzero time, and during it the scheduler must continue to field pushes and pops.
+Something is making scheduling decisions during that window, whether we acknowledge it or not.
 It is worth recognizing as a scheduling policy in its own right; we call it \texttt{link}.
 Some transitions are better than others from a network operator's point of view, and the state of the art has, perhaps inadvertently, settled on a trivial stop-the-world \texttt{link}.
 Our contributions are to be clear about what \texttt{link} is and to improve on it.
 
-\item Concretely:
-\begin{itemize}
-\item Obligation 1.
-Give a semantics to \texttt{link}.
-The transitionary period is shaped by hardware-level manipulations on the way to realizing \texttt{p2}, and not by a clean human-readable semantics.
-One might naturally worry that it will be hard to pin down the semantics of this transitional regime.
+Concretely, we take on two obligations.
+\emph{Obligation 1: give a semantics to} \texttt{link}.
+The transitionary period is shaped by hardware-level manipulations on the way to realizing \texttt{p2}, and not by a clean human-readable semantics; one might naturally worry that it will be hard to pin down the semantics of this transitional regime.
 We develop a grammar of atomic edits (\cref{sec:grammar}) and a sequencing layer (\cref{sec:sequences}) that carries us from \texttt{p1} through one or more \texttt{link}s to \texttt{p2}.
 The grammar is carefully designed, such that \emph{any \texttt{link} produced by that grammar is itself an ordinary scheduling control in the sense of \cref{sec:policy-dsl}}: so it \emph{does} have a human-readable semantics, just as user-written policies \texttt{p1} and \texttt{p2} do.
-\item Obligation 2.
-Improve upon the state of the art.
+\emph{Obligation 2: improve upon the state of the art.}
 We will give the semantics of the stop-the-world \texttt{link} and use it as a baseline.
-Several practical goals guide us as we look for better ways to transition from a given \texttt{p1} to a given \texttt{p2}.
-Can we minimize the length of the transition period?
-Can we avoid dropped/delayed packets?
-[AM: more to come here; the cost model is a legit open question!].
+Several practical goals guide us as we look for better ways to transition from a given \texttt{p1} to a given \texttt{p2}: can we minimize the length of the transition period, and can we avoid dropped/delayed packets?
+[AM: more to come here; the cost model is a legit open question!]
 We will show that it is always possible to make a transition from any \texttt{p1} to any \texttt{p2}, but it is occasionally possible to make a very efficient transition.
 We contribute a tool that achieves this and shows [improvements].
-\end{itemize}
-\end{itemize}
 
 \section{Background \& Motivation}\label{sec:background}
 
@@ -136,26 +113,21 @@ The PE budget is fixed by the silicon, so the running tree's shape is constraine
 
 \subsection{vPIFO, and the problem it leaves open}\label{sec:vpifo}
 
-\begin{itemize}
-\item vPIFO (Zhang et al., SIGCOMM 2024) is the closest related work, and it explicitly leaves our problem open.
-\item What vPIFO does.
-It virtualizes a single physical PIFO into many logical ``PIFO instances,'' with a Scheduling Description Language (SDL) and compiler, so their PIFO Visor can \emph{flexibly establish} hierarchical PIFO trees of arbitrary shape on fixed hardware.
-Its contribution is the reconfigurable substrate.
-\item What vPIFO does not do.
-As published, vPIFO has no notion of a difference between old and new policies, no formal semantics for what a policy change means, and no account of in-flight packets during a change.
+vPIFO (Zhang et al., SIGCOMM 2024) is the closest related work, and it explicitly leaves our problem open.
+It virtualizes a single physical PIFO into many logical ``PIFO instances,'' with a Scheduling Description Language (SDL) and compiler, so their PIFO Visor can \emph{flexibly establish} hierarchical PIFO trees of arbitrary shape on fixed hardware; its contribution is the reconfigurable substrate.
+As published, however, vPIFO has no notion of a difference between old and new policies, no formal semantics for what a policy change means, and no account of in-flight packets during a change.
 Their SDL IR is for \emph{rank computation} compiled to P4 or CPU, quite different from our structural/topological grammars (our \texttt{pol} and \(\delta\), \cref{sec:policy-dsl} and \cref{sec:delta-grammar}).
-\item Our two running examples make the gap concrete.
+
+Our two running examples make the gap concrete.
 To briefly break into terms introduced by vPIFO: the Operation Generation Table and the PIFO Instance Address Table are the structures that encode the running tree's shape and per-instance storage.
 The easy change, to \texttt{Strict(hi: zoom, mid: spotify, lo: gmail)}, looks like the kind of edit that vPIFO's substrate could absorb in place: a targeted append to those tables would plausibly register the new traffic and its operations while leaving the running instances untouched.
 The harder restructuring, to \texttt{Strict(hi: zoom, lo: RoundRobin(gmail, spotify))}, lies beyond what the vPIFO substrate can absorb in place: it changes the running tree's shape (inserting a new internal node \texttt{RoundRobin} and re-parenting \texttt{gmail} under it), which is not exposed as an in-place edit on either table.
 The closest vPIFO comes is a full reinitialization onto the new shape, which is precisely the stop-the-world baseline we want to improve on.
-\item vPIFO names runtime updating as future work, observing that the scheduling of packets during a modification's transitional phase is unresolved.
-\item The relationship, stated plainly.
-We are not competing with vPIFO and do not claim a better PIFO substrate.
-We supply the layer \emph{above} a PIFO substrate (which could well be vPIFO).
-That is, the formal transition between two policies, the small patch that realizes it, and the transitionary semantics.
+vPIFO names runtime updating as future work, observing that the scheduling of packets during a modification's transitional phase is unresolved.
+
+Stated plainly: we are not competing with vPIFO and do not claim a better PIFO substrate.
+We supply the layer \emph{above} a PIFO substrate (which could well be vPIFO): the formal transition between two policies, the small patch that realizes it, and the transitionary semantics.
 The two layers compose.
-\end{itemize}
 
 \section{A Grammar of Atomic Policy Differences}\label{sec:grammar}
 
@@ -215,11 +187,7 @@ When the node runs a discipline without per-arm bookkeeping (e.g., \texttt{RR}),
 \item \texttt{z} is the node's \emph{scheduling transaction}.
 It examines the local \texttt{state} and the incoming packet and produces a path segment and an updated \texttt{state}.
 We write \(\rightharpoonup\) for partial functions; \texttt{z} is partial because not every packet is admitted at every node.
-The shape of the path segment differs between internal nodes and leaves:
-\begin{itemize}
-\item at an internal node, \(\mathtt{z} : \mathtt{state} \times \mathtt{Pkt} \rightharpoonup (\mathtt{idx} \times \mathtt{rank}) \times \mathtt{state}\): pick a child index \texttt{i} and the rank \texttt{r} with which to enqueue \texttt{i} at this node's index-PIFO;
-\item at a leaf, \(\mathtt{z} : \mathtt{state} \times \mathtt{Pkt} \rightharpoonup \mathtt{rank} \times \mathtt{state}\): pick the rank \texttt{r} for the packet's own PIFO entry.
-\end{itemize}
+The shape of the path segment differs between internal nodes and leaves: at an internal node, \(\mathtt{z} : \mathtt{state} \times \mathtt{Pkt} \rightharpoonup (\mathtt{idx} \times \mathtt{rank}) \times \mathtt{state}\), picking a child index \texttt{i} and the rank \texttt{r} with which to enqueue \texttt{i} at this node's index-PIFO; at a leaf, \(\mathtt{z} : \mathtt{state} \times \mathtt{Pkt} \rightharpoonup \mathtt{rank} \times \mathtt{state}\), picking the rank \texttt{r} for the packet's own PIFO entry.
 When \texttt{z} is undefined for a packet, nothing is enqueued at this node and \texttt{state} is unchanged.
 It is important for well-formedness that, when \texttt{z} is defined (resp.\ undefined) for a packet, it is defined (resp.\ undefined) along the entire path from leaf to root.
 This global property is not a concern of node-local \texttt{z}s.
@@ -322,13 +290,7 @@ At compile time the parent's \texttt{vt} is freshly initialized (to zero), so al
 \paragraph{Policy Compilation: \texttt{pol} to control}
 
 We write \(\lceil p \rceil\) for the control compiled from \texttt{p}.
-The tree shape of \(\lceil p \rceil\) exactly matches that of \texttt{p}, and at each node the local triple \texttt{(state, pifo, z)} of \cref{sec:controls} is filled in as follows:
-
-\begin{itemize}
-\item \texttt{state}: the \texttt{node\_state} is seeded by \texttt{init\_node\_D()}, and each entry of the \texttt{slot\_state} list is seeded by the corresponding arm's \texttt{init\_slot\_D} call.
-\item \texttt{pifo}: empty.
-\item \texttt{z}: \texttt{D}'s scheduling transaction at this node.
-\end{itemize}
+The tree shape of \(\lceil p \rceil\) exactly matches that of \texttt{p}, and at each node the local triple \texttt{(state, pifo, z)} of \cref{sec:controls} is filled in as follows: \texttt{state}'s \texttt{node\_state} is seeded by \texttt{init\_node\_D()} and each entry of the \texttt{slot\_state} list is seeded by the corresponding arm's \texttt{init\_slot\_D} call; \texttt{pifo} starts empty; \texttt{z} is \texttt{D}'s scheduling transaction at this node.
 
 \paragraph{Equivalence on \texttt{pol} and its lift to controls: \(\eqR\), \(\simR\)}
 
@@ -368,12 +330,8 @@ The formal interplay of the three rules, and the ``commuting square'' picture th
 We fix a small grammar \(\delta\) of atomic edits (we use ``atomic'' informally here; \cref{sec:per-production} pins it down formally).
 Each production of the grammar has two readings, both defined per-production in \cref{sec:per-production}: an operational rewrite \(\sem{\delta} : \mathtt{control} \rightharpoonup \mathtt{control}\), and a closed-form pol-level effect \(\den(\delta) : \mathtt{pol} \rightharpoonup \mathtt{pol}\).
 The grammar is shaped by two demands.
-
-\begin{itemize}
-\item \textbf{Hardware-realizable.} A production is admitted into the grammar iff \(\sem{\delta}\) can be committed atomically by the hardware substrate (\cref{sec:hardware}).
-\item \textbf{Pol-explainable.} Every production has a \(\den(\delta)\)\footnote{for transaction-only productions (whose effect lives entirely in \texttt{z}), \(\den(\delta)\) is the identity on \texttt{pol}}.
-This is what lets the planner (\cref{sec:sequences}) infer a \(\delta\) whose \texttt{pol}-level meaning can be checked and echoed back to the user.
-\end{itemize}
+It must be \emph{hardware-realizable}: a production is admitted into the grammar iff \(\sem{\delta}\) can be committed atomically by the hardware substrate (\cref{sec:hardware}).
+It must also be \emph{pol-explainable}: every production has a \(\den(\delta)\)\footnote{for transaction-only productions (whose effect lives entirely in \texttt{z}), \(\den(\delta)\) is the identity on \texttt{pol}}, which is what lets the planner (\cref{sec:sequences}) infer a \(\delta\) whose \texttt{pol}-level meaning can be checked and echoed back to the user.
 
 \cref{sec:per-production}'s per-production soundness theorem ties the two readings together: \(\lfloor \sem{\delta}(C) \rfloor \eqR \den(\delta)(\lfloor C \rfloor)\).
 
@@ -423,11 +381,9 @@ When \(\mathtt{p1} \eqR \mathtt{p2}\), the planner emits the empty sequence (\cr
 \subsection{Per-Production Soundness}\label{sec:per-production}
 
 The two demands that we stated at a high level in \cref{sec:delta-grammar} turn into five concrete obligations that we must discharge for every production of the grammar.
+The first four flow from \emph{hardware-realizability}: for the substrate to install \(\sem{\delta}\) atomically, the per-production rule must specify what \(\sem{\delta}\) does, produce a target that is a valid control with fully specified state, and leave the user's \texttt{pop} stream undisturbed.
+The last flows from \emph{pol-explainability}.
 
-\begin{itemize}
-\item \textbf{Hardware-realizable} creates four obligations.
-For the substrate to install \(\sem{\delta}\) atomically, the per-production rule must specify what \(\sem{\delta}\) does, produce a target that is a valid control with fully specified state, and leave the user's \texttt{pop} stream undisturbed.
-Each of these is a concrete obligation:
 \begin{itemize}
 \item \emph{Definition.} Specify \(\sem{\delta} : \mathtt{control} \rightharpoonup \mathtt{control}\) together with the preconditions under which it is defined; outside that region \(\delta\) is \emph{incompatible} with \texttt{C} and \(\sem{\delta}(\mathtt{C})\) is undefined.
 \item \emph{Preservation of \(\vdash\).} \(\vdash \mathtt{C}\) implies \(\vdash \mathtt{C'}\).
@@ -438,13 +394,9 @@ At the edit site, and at every node of a freshly-spawned subtree, the state is e
 We defer to \cref{sec:hardware} that the substrate can slip this change in.
 In this section, we must show per production that the commit is \emph{invisible to the user's \texttt{pop} stream}.
 Concretely: every in-flight packet in \texttt{C} sits in some \texttt{pifo} that survives verbatim into \texttt{C'}, and no live \texttt{pifo} entry is rewritten, so a \texttt{pop} immediately after \(\delta\) fires returns exactly what a \texttt{pop} immediately before would have returned.
-\end{itemize}
-\item \textbf{Pol-explainable} creates one obligation:
-\begin{itemize}
 \item \emph{Characterization.} Give \(\den(\delta)\) in closed form and prove \(\lfloor \mathtt{C'} \rfloor \eqR \den(\delta)(\lfloor \mathtt{C} \rfloor)\).
 The equation is up to \(\eqR\), not literal \texttt{=}: \(\den\) returns a definite representative of an \(\eqR\)-class, and \(\sem{\delta}\) is free to land on any other representative of the same class.
 Transaction-only effects (e.g., \Quiesce's shrinking of \texttt{z}'s domain) sit outside \(\den\); they are fixed by the operational rule, not by this equation.
-\end{itemize}
 \end{itemize}
 
 Write \texttt{C} for the pre-edit control and \texttt{C'} for the post-edit control.
@@ -481,38 +433,24 @@ Say the presently running control is \texttt{C}.
 Intuitively, \Add{} inserts a freshly compiled subtree \(\lceil \mathtt{arm} \rceil\) as the new last child of the subtree \texttt{C@}\(\pi\).
 It also extends the scheduling transaction \texttt{z} at each proper ancestor of \(\lceil \mathtt{arm} \rceil\), so that traffic can reach \(\lceil \mathtt{arm} \rceil\).
 
-\(\sem{\Add(\pi, \mathtt{arm}, \mathtt{meta?})}(\mathtt{C})\) is defined when:
-
-\begin{itemize}
-\item the path \(\pi\) resolves in \texttt{C} to an internal node,
-\item \texttt{meta?} matches the slot-initialization schema of the discipline at that node (present iff \texttt{init\_slot\_D} for that discipline requires it), and
-\item \texttt{arm}'s leaf labels are disjoint from those of \texttt{C}.
-\end{itemize}
-
+\(\sem{\Add(\pi, \mathtt{arm}, \mathtt{meta?})}(\mathtt{C})\) is defined when the path \(\pi\) resolves in \texttt{C} to an internal node, \texttt{meta?} matches the slot-initialization schema of the discipline at that node (present iff \texttt{init\_slot\_D} for that discipline requires it), and \texttt{arm}'s leaf labels are disjoint from those of \texttt{C}.
 The disjointness precondition rules out \emph{splitting} an already-running flow into two (e.g., splitting \texttt{gmail} into \texttt{gmail\_business} and \texttt{gmail\_personal}): such a split has to relocate already-admitted packets, which \Add{} cannot do.
 
 The transition \(\mathtt{C'} = \sem{\Add(\pi, \mathtt{arm}, \mathtt{meta?})}(\mathtt{C})\) is stated per node.
 Let \(k = |\mathtt{C@}\pi.\mathtt{slot\_states}|\) be the new arm's slot index.
 
 \begin{itemize}
-\item \emph{At each proper ancestor of \(\pi\):}
-\begin{itemize}
-\item \texttt{node\_state}, \texttt{slot\_states}, and \texttt{pifo} are preserved verbatim.
-\item The local \texttt{z} is extended to admit packets that classify into the new subtree, mapping them to whichever child slot lies on the path down to \(\pi\).
+\item \emph{At each proper ancestor of \(\pi\):} \texttt{node\_state}, \texttt{slot\_states}, and \texttt{pifo} are preserved verbatim.
+The local \texttt{z} is extended to admit packets that classify into the new subtree, mapping them to whichever child slot lies on the path down to \(\pi\).
 The new entries do not collide with existing ones: the disjointness precondition forces the new leaf labels to lie outside every ancestor \texttt{z}'s domain in \texttt{C}, so the extension only adds to \texttt{z}'s domain.
-\end{itemize}
-\item \emph{At \texttt{C@}\(\pi\):}
-\begin{itemize}
-\item \texttt{node\_state} is unchanged.
-\item \(\mathtt{C'@}\pi.\mathtt{slot\_states}\) equals
+\item \emph{At \texttt{C@}\(\pi\):} \texttt{node\_state} is unchanged, and \(\mathtt{C'@}\pi.\mathtt{slot\_states}\) equals
 \[
 \mathtt{C@}\pi.\mathtt{slot\_states} \mathbin{+\!\!+} [\mathtt{init\_slot\_D}(\mathtt{C@}\pi.\mathtt{node\_state}, \mathtt{meta?})].
 \]
 In English: we call \texttt{init\_slot\_D} to find the per-arm bookkeeping that is needed for a new arm under \texttt{D}, and we append that bookkeeping in at the end.
 Our arm-order freedom (\cref{sec:policy-dsl}) lets us simply append the new child.
-\item \texttt{pifo} is unchanged: no pre-existing entry needs renumbering, and the new arm holds no packets yet.
-\item \(\mathtt{C'@}\pi.\mathtt{z}\) extends \(\mathtt{C@}\pi.\mathtt{z}\) to admit packets that classify into the new subtree, mapping them to child index \texttt{k} at \texttt{C@}\(\pi\).
-\end{itemize}
+\texttt{pifo} is unchanged: no pre-existing entry needs renumbering, and the new arm holds no packets yet.
+\(\mathtt{C'@}\pi.\mathtt{z}\) extends \(\mathtt{C@}\pi.\mathtt{z}\) to admit packets that classify into the new subtree, mapping them to child index \texttt{k} at \texttt{C@}\(\pi\).
 \item \emph{At every node inside \(\lceil \mathtt{arm} \rceil\):} the local control is \(\lceil \mathtt{arm} \rceil\)'s, verbatim.
 \item \emph{At every other node (outside \(\lceil \mathtt{arm} \rceil\) and not \texttt{C@}\(\pi\) or one of its proper ancestors):} the local control is preserved verbatim.
 \end{itemize}
@@ -581,14 +519,10 @@ Intuitively, \ChangeMeta{} overwrites \(\mathtt{C@}\pi.\mathtt{slot\_states}[k]\
 \paragraph{Definition}
 
 \(\sem{\ChangeMeta(\tau, \mathtt{meta})}(\mathtt{C})\) is defined when \(\tau\) is non-empty and the parent at \(\pi\) runs Strict or WFQ.
-
-\begin{itemize}
-\item \emph{At \texttt{C@}\(\pi\):} \texttt{node\_state} is unchanged; the per-arm metadata field of \texttt{slot\_states[k]} (the priority rank under Strict, the weight under WFQ) is overwritten with the new value.
-Every other field of \texttt{slot\_states[k]} is preserved verbatim.
+At \texttt{C@}\(\pi\), \texttt{node\_state} is unchanged; the per-arm metadata field of \texttt{slot\_states[k]} (the priority rank under Strict, the weight under WFQ) is overwritten with the new value, and every other field of \texttt{slot\_states[k]} is preserved verbatim.
 Under WFQ this includes the virtual-finish tag that records how far slot \texttt{k} has run in the current round.
 Other \texttt{slot\_states}, \texttt{pifo}, and \texttt{z} are unchanged.
-\item \emph{Everywhere else:} preserved verbatim.
-\end{itemize}
+Everywhere else, the control is preserved verbatim.
 
 \paragraph{Preservation}
 
@@ -630,14 +564,10 @@ There is no precondition on the subtree's contents: \Quiesce{} is the production
 
 Let \(T\) denote the set of leaves of \texttt{C@}\(\tau\) (the leaves we are silencing), and let \(A\) denote the union of their ancestor chains: every internal node within \texttt{C@}\(\tau\)'s subtree, the node \texttt{C@}\(\tau\) itself, and every ancestor of \texttt{C@}\(\tau\) up to and including the root.
 
-\begin{itemize}
-\item \emph{Outside \(T \cup A\):} the local control is preserved verbatim.
-\item \emph{At each leaf \(L\) in \(T\):} \texttt{node\_state}, \texttt{slot\_states}, and \texttt{pifo} are preserved verbatim (including any packets \(L\) currently holds).
-\(\mathtt{C'@}L.\mathtt{z}\) restricts \(\mathtt{C@}L.\mathtt{z}\): every packet that \(L\) used to admit is removed from \(\mathtt{C'@}L.\mathtt{z}\)'s domain.
-\item \emph{At each internal node \(n\) in \(A\):} \texttt{node\_state}, \texttt{slot\_states}, and \texttt{pifo} are preserved verbatim (including any pre-existing entries pointing toward the quiesced subtree, which continue to be honored on \texttt{pop}).
-\(\mathtt{C'@}n.\mathtt{z}\) restricts \(\mathtt{C@}n.\mathtt{z}\): packets whose classifier predicate matches any leaf label in \(T\) are no longer in \(\mathtt{C'@}n.\mathtt{z}\)'s domain.
-For surviving inputs the output is \(\mathtt{C@}n.\mathtt{z}\)'s output verbatim.
-\end{itemize}
+Outside \(T \cup A\) the local control is preserved verbatim.
+Inside \(T \cup A\), \texttt{node\_state}, \texttt{slot\_states}, and \texttt{pifo} are preserved verbatim at every node (including any packets a leaf currently holds and any pre-existing entries at an internal node pointing toward the quiesced subtree, which continue to be honored on \texttt{pop}); only \texttt{z} is restricted.
+At each leaf \(L\) in \(T\), \(\mathtt{C'@}L.\mathtt{z}\) drops every packet that \(L\) used to admit from its domain.
+At each internal node \(n\) in \(A\), \(\mathtt{C'@}n.\mathtt{z}\) drops any packet whose classifier predicate matches a leaf label in \(T\); for surviving inputs the output is \(\mathtt{C@}n.\mathtt{z}\)'s verbatim.
 
 \paragraph{Preservation}
 
@@ -680,23 +610,12 @@ It is defined only when the subtree at \(\tau\) is empty; we explain this restri
 
 The topology loses the arm at slot \texttt{k} of \texttt{C@}\(\pi\); arms at slots \(0, \ldots, k-1\) keep their indices; arms at slots \(k+1, \ldots\) shift down by one.
 
-\begin{itemize}
-\item \emph{Outside \texttt{C@}\(\pi\) and the removed subtree:} the local control is preserved verbatim.
-This includes every proper ancestor of \(\pi\) (whose \texttt{z} is unchanged) and every sibling arm at \texttt{C@}\(\pi\) other than slot \texttt{k}, together with the subtrees under them.
-\item \emph{At \texttt{C@}\(\pi\):}
-\begin{itemize}
-\item \texttt{node\_state} is unchanged.
-\item \(\mathtt{slot\_states} = \mathtt{C@}\pi.\mathtt{slot\_states}[-/k]\): the entry at slot \texttt{k} is dropped.
-Entries at slots \(> k\) shift down by one to track the renumbered arms.
-\item \texttt{pifo}: the precondition (subtree at \(\tau\) is empty) plus \(\vdash \mathtt{C}\) forces \(\mathtt{C@}\pi.\mathtt{pifo}\) to contain \emph{no entry equal to \texttt{k}}, so no entry is deleted; whatever bookkeeping is needed to keep the surviving entries pointed at their (now-resident-at-arity-\(n-1\)) children must be done.
-If one were literally indexing children by their positions, that would mean decrementing entries \(> k\) by one.
-Implementations have ways around even this; for instance, the substrate model of \S6.1' keys children by stable per-edge handles, so survivors' pifo entries are unchanged.
-\item \texttt{z} is restricted on inputs and renumbered on outputs.
-Packets that \(\mathtt{C@}\pi.\mathtt{z}\) would have routed to slot \texttt{k} are no longer in \(\mathtt{C'@}\pi.\mathtt{z}\)'s domain.
-For surviving inputs, an output of \texttt{(i, r)} with \(i > k\) becomes \texttt{(i - 1, r)}.
+Outside \texttt{C@}\(\pi\) and the removed subtree, the local control is preserved verbatim: this includes every proper ancestor of \(\pi\) (whose \texttt{z} is unchanged) and every sibling arm at \texttt{C@}\(\pi\) other than slot \texttt{k}, together with the subtrees under them.
+At \texttt{C@}\(\pi\), \texttt{node\_state} is unchanged and \(\mathtt{slot\_states} = \mathtt{C@}\pi.\mathtt{slot\_states}[-/k]\): the entry at slot \texttt{k} is dropped, and entries at slots \(> k\) shift down by one to track the renumbered arms.
+The precondition (subtree at \(\tau\) is empty) plus \(\vdash \mathtt{C}\) forces \(\mathtt{C@}\pi.\mathtt{pifo}\) to contain \emph{no entry equal to \texttt{k}}, so no \texttt{pifo} entry is deleted; whatever bookkeeping is needed to keep the surviving entries pointed at their (now-resident-at-arity-\(n-1\)) children must be done.
+If one were literally indexing children by their positions, that would mean decrementing entries \(> k\) by one; implementations have ways around even this, since the substrate model of \S6.1', for instance, keys children by stable per-edge handles, so survivors' pifo entries are unchanged.
+Finally, \texttt{z} is restricted on inputs and renumbered on outputs: packets that \(\mathtt{C@}\pi.\mathtt{z}\) would have routed to slot \texttt{k} are no longer in \(\mathtt{C'@}\pi.\mathtt{z}\)'s domain, and for surviving inputs an output of \texttt{(i, r)} with \(i > k\) becomes \texttt{(i - 1, r)}.
 Slots \(< k\) are untouched on either axis.
-\end{itemize}
-\end{itemize}
 
 A standalone \Remove{} thus restricts classification at \texttt{C@}\(\pi\) so that packets bound for the removed subtree are dropped at \texttt{C@}\(\pi\) rather than being routed to a non-existent slot.
 In the typical planner usage, a preceding \Quiesce{} has already restricted every \texttt{z} on every push path to the soon-to-be-removed leaves (\cref{sec:quiesce}), so no new packet bound for the removed subtree is even being admitted; the input restriction at \texttt{C@}\(\pi\) is then redundant but harmless, while the output renumbering at \texttt{C@}\(\pi\) is still needed.
@@ -907,12 +826,9 @@ It is the structural inverse of \Designate.
 \(\sem{\Undesignate(\tau)}(\mathtt{C})\) is defined when \(\tau\) resolves to \texttt{C@}\(\tau\), \texttt{C@}\(\tau\) carries the \texttt{designated} bit (so it is a \(\Strictstar\) introduced by an earlier \Designate), and arm 0 of \texttt{C@}\(\tau\) is empty.
 Let \(N = \mathtt{C@}\tau\).
 
-\begin{itemize}
-\item \emph{Inside \(B\) (arm 1 of \(N\)):} preserved verbatim, every node.
-\item \emph{At \texttt{C@}\(\pi\)} (if \(\tau = \pi \mathbin{+\!\!+} [k]\) is non-empty): \texttt{node\_state}, \texttt{pifo}, and \texttt{z} unchanged; \texttt{slot\_states[k]} preserved verbatim (the wrapper inherited it at \Designate{} time, and the unwrap returns it unchanged); slot \texttt{k} now points to \(B\) rather than to \(N\).
-\(N\) itself and its arm-0 stub are discarded.
-\item If \(\tau\) is empty, the new root is \(B\), inheriting \(B\)'s own \texttt{node\_state}, \texttt{slot\_states}, \texttt{pifo}, \texttt{z}, and child list verbatim; \(N\) and its arm-0 stub are discarded.
-\end{itemize}
+Inside \(B\) (arm 1 of \(N\)), every node is preserved verbatim.
+If \(\tau = \pi \mathbin{+\!\!+} [k]\) is non-empty, then at \texttt{C@}\(\pi\) the \texttt{node\_state}, \texttt{pifo}, and \texttt{z} are unchanged; \texttt{slot\_states[k]} is preserved verbatim (the wrapper inherited it at \Designate{} time, and the unwrap returns it unchanged); slot \texttt{k} now points to \(B\) rather than to \(N\); and \(N\) itself and its arm-0 stub are discarded.
+If \(\tau\) is empty, the new root is \(B\), inheriting \(B\)'s own \texttt{node\_state}, \texttt{slot\_states}, \texttt{pifo}, \texttt{z}, and child list verbatim, and \(N\) and its arm-0 stub are discarded.
 
 \paragraph{Preservation}
 
@@ -952,11 +868,8 @@ The mechanics are short; the notes below are substantive.
 \(\sem{\ChangeRoot(\nu)}(\mathtt{C})\) is defined when \(\nu\) is non-empty, resolves to a node in \texttt{C}, and every internal node strictly above \texttt{C@}\(\nu\) is \emph{unary}, with its sole arm continuing toward \texttt{C@}\(\nu\).
 Under these preconditions the discarded ancestor chain carries scheduling metadata but no off-path traffic.
 
-\begin{itemize}
-\item \emph{At \texttt{C@}\(\nu\) and inside its subtree:} preserved verbatim.
-The result \(\mathtt{C'}\) is exactly \texttt{C@}\(\nu\) standing alone as a tree.
-\item \emph{At every proper ancestor of \(\nu\):} discarded entirely, together with the local \texttt{node\_state}, \texttt{slot\_states}, \texttt{pifo}, and \texttt{z}.
-\end{itemize}
+At \texttt{C@}\(\nu\) and inside its subtree, everything is preserved verbatim: the result \(\mathtt{C'}\) is exactly \texttt{C@}\(\nu\) standing alone as a tree.
+At every proper ancestor of \(\nu\), the local \texttt{node\_state}, \texttt{slot\_states}, \texttt{pifo}, and \texttt{z} are discarded entirely.
 
 \paragraph{Preservation}
 
@@ -1031,35 +944,23 @@ Picture a commuting square:
 Read it with an eye to the user's experience.
 Our final goal will be to correctly relate \texttt{C2'} and \texttt{C2}.
 
-\begin{itemize}
-\item The operator writes \texttt{p1}.
-Then \(\mathtt{C1} := \lceil \mathtt{p1} \rceil\), with \(\lfloor \mathtt{C1} \rfloor \eqR \mathtt{p1}\) by rule 1 of \(\lfloor \cdot \rfloor\) (\cref{sec:policy-dsl}).
-\item We echo \(\mathtt{p1'} := \lfloor \mathtt{C1} \rfloor\) back to the user.
-This is not shown in the diagram but will become important shortly.
+The operator writes \texttt{p1}, so \(\mathtt{C1} := \lceil \mathtt{p1} \rceil\), with \(\lfloor \mathtt{C1} \rfloor \eqR \mathtt{p1}\) by rule 1 of \(\lfloor \cdot \rfloor\) (\cref{sec:policy-dsl}).
+We echo \(\mathtt{p1'} := \lfloor \mathtt{C1} \rfloor\) back to the user; this is not shown in the diagram but will become important shortly.
 \texttt{p1'} faithfully represents the arm ordering that the compiler chose.
-\item Push and pop operations carry \texttt{C1} to \texttt{C1'}.
-\(\mathtt{C1} \sim \mathtt{C1'}\) by the definition of \(\sim\), and \(\lfloor \mathtt{C1'} \rfloor = \lfloor \mathtt{C1} \rfloor\) by rule 2 of \(\lfloor \cdot \rfloor\), so the live \texttt{C1'} still realizes both \texttt{p1} and \texttt{p1'}.
-\item The operator writes \texttt{p2}.
-The \emph{transition planner} (\crefrange{sec:sequences}{sec:planner}), the tool that infers atomic edits between two \texttt{pol}s, produces a \(\delta\) such that \(\den(\delta)(\mathtt{p1'}) \eqR \mathtt{p2}\).
+Push and pop operations then carry \texttt{C1} to \texttt{C1'}: \(\mathtt{C1} \sim \mathtt{C1'}\) by the definition of \(\sim\), and \(\lfloor \mathtt{C1'} \rfloor = \lfloor \mathtt{C1} \rfloor\) by rule 2 of \(\lfloor \cdot \rfloor\), so the live \texttt{C1'} still realizes both \texttt{p1} and \texttt{p1'}.
+
+The operator writes \texttt{p2}, and the \emph{transition planner} (\crefrange{sec:sequences}{sec:planner}), the tool that infers atomic edits between two \texttt{pol}s, produces a \(\delta\) such that \(\den(\delta)(\mathtt{p1'}) \eqR \mathtt{p2}\).
 It is key that we work in the frame of the actually-running representative \texttt{p1'} rather than the operator's original \texttt{p1}, since \(\den\) is stated using semantically meaningful paths.
-\item Applying \(\sem{\delta}\) to \texttt{C1'} brings us to control \texttt{C2'}, and by rule 3 of \(\lfloor \cdot \rfloor\) we have \(\lfloor \mathtt{C2'} \rfloor \eqR \den(\delta)(\mathtt{p1'})\).
-Further, we can chain this with \(\den(\delta)(\mathtt{p1'}) \eqR \mathtt{p2}\) (established just above) to get \(\lfloor \mathtt{C2'} \rfloor \eqR \mathtt{p2}\).
-\item We again echo \(\mathtt{p2'} := \lfloor \mathtt{C2'} \rfloor\) to the user.
-\end{itemize}
+Applying \(\sem{\delta}\) to \texttt{C1'} brings us to control \texttt{C2'}, and by rule 3 of \(\lfloor \cdot \rfloor\) we have \(\lfloor \mathtt{C2'} \rfloor \eqR \den(\delta)(\mathtt{p1'})\); chaining this with the previously-established \(\den(\delta)(\mathtt{p1'}) \eqR \mathtt{p2}\) gives \(\lfloor \mathtt{C2'} \rfloor \eqR \mathtt{p2}\).
+We again echo \(\mathtt{p2'} := \lfloor \mathtt{C2'} \rfloor\) to the user.
 
 The transformation is complete at this point, but we need to ground ourselves.
 \(\mathtt{C2} := \lceil \mathtt{p2} \rceil\) is the control we \emph{would have built} had we taken the SOTA stop-the-world path: the state-of-the-art response to a \(\mathtt{p1} \to \mathtt{p2}\) request is to freshly compile \(\lceil \mathtt{p2} \rceil\) (\cref{sec:intro}).
 We do not actually construct \texttt{C2}, but it is the correct reference point and it is crucial that we now relate \texttt{C2'} (which we have just produced after a fashion) to \texttt{C2}.
 By rule 1, \(\lfloor \mathtt{C2} \rfloor \eqR \mathtt{p2}\), hence \(\lfloor \mathtt{C2'} \rfloor \eqR \lfloor \mathtt{C2} \rfloor\).
 But we would like to relate the controls directly, not just their \texttt{pol}-level projections.
-The relation we write is \(\mathtt{C2'} \simR \mathtt{C2}\), which absorbs two gaps at once:
-
-\begin{itemize}
-\item \texttt{C2'} carries the live \texttt{pifo}/\texttt{state} accumulated since \texttt{C1}, while \texttt{C2} is freshly compiled and bare.
-The \(\sim\) component covers this.
-\item \(\sem{\delta}\) and \(\lceil \cdot \rceil\) are free to pick different sibling orders at internal nodes, so \texttt{C2'} and \texttt{C2} may also differ in child arrangements.
-The R-closure covers this.
-\end{itemize}
+The relation we write is \(\mathtt{C2'} \simR \mathtt{C2}\), which absorbs two gaps at once.
+\texttt{C2'} carries the live \texttt{pifo}/\texttt{state} accumulated since \texttt{C1}, while \texttt{C2} is freshly compiled and bare (the \(\sim\) component covers this); and \(\sem{\delta}\) and \(\lceil \cdot \rceil\) are free to pick different sibling orders at internal nodes, so \texttt{C2'} and \texttt{C2} may also differ in child arrangements (the R-closure covers this).
 
 The diagram is intuition; the formal statement is:
 
@@ -1084,42 +985,32 @@ For this subsection's purposes we read the unit cell on its own; everything that
 When writing \texttt{p2}, the operator would do well to state their request against \texttt{p1'}, the actually-running \texttt{pol} that we echoed back to them.
 This keeps \(\delta\) small and aligns paths with what is running.
 The operator may state \texttt{p2} against the \texttt{p1} they originally wrote, but at their own risk.
-The risks are of two flavors:
-
-\begin{itemize}
-\item The planner may infer a larger \(\delta\) than necessary, or may give up.
-\item The more serious issue is that the user may use Imperative Mode (\cref{sec:sequences}) to directly specify what edits to make, and if they use \texttt{p1} to base their paths, they may inadvertently edit the wrong node or provide a malformed path.
-\end{itemize}
+On the milder end, the planner may infer a larger \(\delta\) than necessary, or may give up.
+More seriously, if the user is in Imperative Mode (\cref{sec:sequences}) and bases their paths on \texttt{p1}, they may inadvertently edit the wrong node or provide a malformed path.
 
 \paragraph{A worked example}
 
-\begin{itemize}
-\item The operator requests \texttt{p1 = Strict(hi: zoom, lo: gmail)}.
-\item The compiler uses its degree of freedom to yield control \texttt{C1} such that \(\lfloor \mathtt{C1} \rfloor = \mathtt{Strict(lo: gmail, hi: zoom)}\).
-Note that the children have been reordered for some compiler-internal reason.
-\item We echo back
+The operator requests \texttt{p1 = Strict(hi: zoom, lo: gmail)}.
+The compiler uses its degree of freedom to yield control \texttt{C1} such that \(\lfloor \mathtt{C1} \rfloor = \mathtt{Strict(lo: gmail, hi: zoom)}\); the children have been reordered for some compiler-internal reason.
+We echo back
 \[
 \mathtt{p1'} := \lfloor \mathtt{C1} \rfloor = \mathtt{Strict(lo: gmail, hi: zoom)}.
 \]
 We know that \(\mathtt{p1} \eqR \mathtt{p1'}\), so the scheduler the operator gets is the one they asked for; only the slot numbering differs.
-\item As the control serves pushes and pops, it transforms into \texttt{C1'}.
-\item Later, the operator requests \texttt{p2 = Strict(lo: gmail, mid: spotify, hi: zoom)}.
-\item The runtime can again use its freedom.
-Instead of literally splicing \texttt{spotify} in between running arms \texttt{gmail} and \texttt{zoom}, it chooses to append \texttt{spotify} to the end.
+As the control serves pushes and pops, it transforms into \texttt{C1'}.
+
+Later, the operator requests \texttt{p2 = Strict(lo: gmail, mid: spotify, hi: zoom)}.
+The runtime can again use its freedom: instead of literally splicing \texttt{spotify} in between running arms \texttt{gmail} and \texttt{zoom}, it chooses to append \texttt{spotify} to the end.
 This converts the running control \texttt{C1'} into control \texttt{C2'} such that
 \[
-\lfloor \mathtt{C2'} \rfloor = \mathtt{Strict(lo: gmail, hi: zoom, mid: spotify)}.
+\lfloor \mathtt{C2'} \rfloor = \mathtt{Strict(lo: gmail, hi: zoom, mid: spotify)},
 \]
-\item We echo back
-\[
-\mathtt{p2'} := \lfloor \mathtt{C2'} \rfloor = \mathtt{Strict(lo: gmail, hi: zoom, mid: spotify)}
-\]
-to the user.
-\item Now the operator changes to Imperative Mode (\cref{sec:sequences}) and writes the path-bearing edit \texttt{(True, Quiesce([2]))}.
-It is not worth getting distracted by the syntax or the semantics; the key thing is that the operator has requested an edit and has identified the target via path ``\texttt{[2]}''.
+and we echo \(\mathtt{p2'} := \lfloor \mathtt{C2'} \rfloor\) back to the user.
+
+Now the operator changes to Imperative Mode (\cref{sec:sequences}) and writes the path-bearing edit \texttt{(True, Quiesce([2]))}.
+The syntax and semantics do not matter here; what matters is that the operator has requested an edit and identified the target via path ``\texttt{[2]}''.
 Paths are interpreted against the \emph{actually running} representative \texttt{p2'}, so we \Quiesce{} the subtree \texttt{mid: spotify} (\texttt{p2'}'s third slot), not \texttt{lo: gmail} (\texttt{p2}'s third slot).
 If the operator had based the path on \texttt{p2} they would have edited the wrong arm; the system has no way to detect or recover from that.
-\end{itemize}
 
 \subsection{Preserving this proof down to hardware}\label{sec:hw-preservation}
 
@@ -1129,15 +1020,12 @@ The IR alphabet and the substrate machinery are the subject of \cref{sec:hardwar
 
 We do not prove soundness at the IR level, but instead informally make the case for why the \cref{sec:per-production} proof survives the lowering.
 There are two reasons.
-
-\begin{itemize}
-\item The compilation is \emph{faithful}: each production of \(\delta\) expands to a fixed instruction sequence that, when run to completion, realizes exactly that production's effect.
+First, the compilation is \emph{faithful}: each production of \(\delta\) expands to a fixed instruction sequence that, when run to completion, realizes exactly that production's effect.
 We give the command-to-commands translation and take its faithfulness to be uncontroversial.
-\item Our substrate runs each such sequence as a single \emph{transactional commit}: a bracketed group of IR instructions that installs as one instant from the user's perspective, with no \texttt{push} or \texttt{pop} interleaved between the bracket's open and close (\S6.1' spells out the substrate machinery that makes this so).
+Second, our substrate runs each such sequence as a single \emph{transactional commit}: a bracketed group of IR instructions that installs as one instant from the user's perspective, with no \texttt{push} or \texttt{pop} interleaved between the bracket's open and close (\S6.1' spells out the substrate machinery that makes this so).
 The transiently-malformed intermediate trees are therefore never observed.
 That commit is precisely how the substrate \emph{realizes} the atomicity property of \cref{sec:grammar}: atomicity asked for an instantaneous control replacement between two user operations, and the commit is what collapses a multi-instruction lowering into one such instant.
 Every \texttt{push}/\texttt{pop} therefore still lands on a well-formed control (\texttt{p1}, some \texttt{link}, or \texttt{p2}), exactly as \cref{sec:per-production} proved; the IR's transient malformedness lives entirely inside commits, invisible to the user.
-\end{itemize}
 
 The same argument carries from the IR down to hardware: the hardware executes a committed sequence atomically with respect to user operations, so what it exhibits is again what \cref{sec:per-production} proved.
 The compilation itself, and the substrate machinery that makes a commit atomic, are the subject of \cref{sec:hardware}.
@@ -1266,16 +1154,7 @@ For instance, suppose the running tree is \texttt{A(B(E(F, G), D), C)}:
 \end{tikzpicture}
 \end{center}
 
-The index paths to its nodes are:
-\begin{itemize}
-\item \texttt{A} at \texttt{[]}
-\item \texttt{B} at \texttt{[0]}
-\item \texttt{C} at \texttt{[1]}
-\item \texttt{E(F, G)} at \texttt{[0, 0]}
-\item \texttt{F} at \texttt{[0, 0, 0]}
-\item \texttt{G} at \texttt{[0, 0, 1]}
-\item \texttt{D} at \texttt{[0, 1]}
-\end{itemize}
+The index paths to its nodes are \texttt{A} at \texttt{[]}, \texttt{B} at \texttt{[0]}, \texttt{C} at \texttt{[1]}, \texttt{E(F, G)} at \texttt{[0, 0]}, \texttt{F} at \texttt{[0, 0, 0]}, \texttt{G} at \texttt{[0, 0, 1]}, and \texttt{D} at \texttt{[0, 1]}.
 
 The operator wants to retain only \texttt{D}, so they issue \PruneDownTo(\texttt{[0, 1]}).
 
@@ -1584,16 +1463,11 @@ We claim only that it is safe (\cref{sec:per-production}) and no worse than the 
 \subsection{What the planner does not do today}\label{sec:planner-nonfeatures}
 
 Two non-features for now; we hope to improve these in the next few meetings.
-
-\begin{itemize}
-\item \emph{No cost model.}
-The case analysis is shape-based, not cost-weighted.
+\emph{No cost model:} the case analysis is shape-based, not cost-weighted.
 A cost-aware planner could prefer different decompositions (e.g., several small \Add{}s vs.\ a single root-level \Replace) based on per-flow drop and delay tolerances or per-PE budgets.
 Presently we take the first admissible alignment without ranking competitors.
-\item \emph{No imperative-mode service.}
-The planner serves declarative mode only.
+\emph{No imperative-mode service:} the planner serves declarative mode only.
 Imperative-mode authoring (\cref{sec:sequences}'s intro) goes through the pol-level check of \cref{sec:idioms} directly, with the operator naming each \(\delta\) themselves; the planner is not consulted.
-\end{itemize}
 
 \section{Rio Hardware Implementation}\label{sec:hardware}
 
