@@ -6,6 +6,9 @@
 \usetikzlibrary{positioning,arrows.meta,calc,trees,matrix}
 \usepackage{cancel}
 \usepackage{forest}
+\usepackage{xcolor}
+\usepackage{fancyvrb}
+\fvset{frame=single,framesep=3pt,fontsize=\small,xleftmargin=0pt,rulecolor=\color{black!25}}
 
 \setlength{\emergencystretch}{3em}
 
@@ -307,12 +310,12 @@ The choice plays out as follows for each \texttt{D}.
 
 \begin{itemize}
 \item \textbf{\texttt{RoundRobin}.} \texttt{init\_slot\_RoundRobin} returns the empty tuple; RR has no per-arm bookkeeping.
-The round-robin cursor lives in \texttt{node\_state} instead, and at \Add we splice the new arm into the child list at the cursor's current position, so its first turn lands in the round already in progress.
+The round-robin cursor lives in \texttt{node\_state} instead, and at \Add{} we splice the new arm into the child list at the cursor's current position, so its first turn lands in the round already in progress.
 The cursor itself is left pointing at the same physical arm it was pointing at before the splice.
 \item \textbf{\texttt{Strict}.} \texttt{init\_slot\_Strict(\_, p) = p}: the arm's \texttt{slot\_state} is just its priority rank, drawn from a dense total order such as the rationals so that a fresh priority can always be slotted strictly between two existing ones.
 \item \textbf{\texttt{WFQ}.} The \texttt{node\_state} at a parent is the virtual time \texttt{vt}, and \texttt{init\_slot\_WFQ(vt, w) = (w, vt)}: a new arm carries its weight \texttt{w} and inherits the parent's current \texttt{vt} as its last-finish tag.
 Any standard WFQ tagging that derives the next packet's tag from the slot's last-finish tag and the parent's \texttt{vt} (e.g., the GPS-style \texttt{max(virtual\_clock, vt) + 1/w}) then slots the first packet on this arm into the round that the established arms are currently in.
-At compile time the parent's \texttt{vt} is freshly initialized (to zero), so all original arms get \texttt{(w, 0)} and the round is ``the zeroth''; at \Add the parent's \texttt{vt} is whatever the clock has advanced to.
+At compile time the parent's \texttt{vt} is freshly initialized (to zero), so all original arms get \texttt{(w, 0)} and the round is ``the zeroth''; at \Add{} the parent's \texttt{vt} is whatever the clock has advanced to.
 \end{itemize}
 
 \paragraph{Policy Compilation: \texttt{pol} to control}
@@ -375,7 +378,7 @@ This is what lets the planner (\S4) infer a \(\delta\) whose \texttt{pol}-level 
 
 Each edit names \emph{where} in the tree the change lands and \emph{what} the change is.
 Throughout this section, \texttt{p1} is the presently running policy; we write \texttt{p1@path} for the subtree of \texttt{p1} reached by following \texttt{path} down from its root.
-One production is irregular in this respect: \ChangeRoot gives the path to the surviving subtree rather than to the edit site.
+One production is irregular in this respect: \ChangeRoot{} gives the path to the surviving subtree rather than to the edit site.
 We explain this in \S3.4.
 
 \begin{verbatim}
@@ -447,7 +450,7 @@ Write \texttt{C} for the pre-edit control and \texttt{C'} for the post-edit cont
 The last four obligations assume \(\sem{\delta}(\mathtt{C})\) is defined; outside the region the production's Definition carves out, \(\delta\) is \emph{incompatible} with \texttt{C} and \(\sem{\delta}(\mathtt{C})\) is undefined.
 We do not repeat this boilerplate at every production.
 
-For transaction-only productions (those whose effect lives entirely in some \texttt{z}, like \Quiesce and \ChangeMeta), \(\den(\delta)\) is the identity on \texttt{pol} and Characterization reduces to \(\lfloor \mathtt{C'} \rfloor \eqR \lfloor \mathtt{C} \rfloor\) by inspection: no node's \texttt{node\_state}, \texttt{slot\_states}, \texttt{pifo}, or child list moves, and \texttt{z} is not visible at \texttt{pol}-level.
+For transaction-only productions (those whose effect lives entirely in some \texttt{z}, like \Quiesce{} and \ChangeMeta), \(\den(\delta)\) is the identity on \texttt{pol} and Characterization reduces to \(\lfloor \mathtt{C'} \rfloor \eqR \lfloor \mathtt{C} \rfloor\) by inspection: no node's \texttt{node\_state}, \texttt{slot\_states}, \texttt{pifo}, or child list moves, and \texttt{z} is not visible at \texttt{pol}-level.
 We still state \(\den\) explicitly at each production for uniformity.
 
 Several productions (\Add, \Quiesce, \Remove, \Designate) modify \texttt{z} at proper ancestors of the edit site, even though those nodes' \texttt{state} is preserved verbatim.
@@ -471,10 +474,10 @@ We rename \S3.3's positional arguments for clarity: \(\pi : \mathtt{path}\) is t
 
 \paragraph{Definition}
 
-We must define \(\sem{\Add(\pi, \mathtt{arm}, \mathtt{meta?})} : \mathtt{control} \rightharpoonup \mathtt{control}\) together with the preconditions on the already running control under which \Add is defined.
+We must define \(\sem{\Add(\pi, \mathtt{arm}, \mathtt{meta?})} : \mathtt{control} \rightharpoonup \mathtt{control}\) together with the preconditions on the already running control under which \Add{} is defined.
 
 Say the presently running control is \texttt{C}.
-Intuitively, \Add inserts a freshly compiled subtree \(\lceil \mathtt{arm} \rceil\) as the new last child of the subtree \texttt{C@}\(\pi\).
+Intuitively, \Add{} inserts a freshly compiled subtree \(\lceil \mathtt{arm} \rceil\) as the new last child of the subtree \texttt{C@}\(\pi\).
 It also extends the scheduling transaction \texttt{z} at each proper ancestor of \(\lceil \mathtt{arm} \rceil\), so that traffic can reach \(\lceil \mathtt{arm} \rceil\).
 
 \(\sem{\Add(\pi, \mathtt{arm}, \mathtt{meta?})}(\mathtt{C})\) is defined when:
@@ -485,7 +488,7 @@ It also extends the scheduling transaction \texttt{z} at each proper ancestor of
 \item \texttt{arm}'s leaf labels are disjoint from those of \texttt{C}.
 \end{itemize}
 
-The disjointness precondition rules out \emph{splitting} an already-running flow into two (e.g., splitting \texttt{gmail} into \texttt{gmail\_business} and \texttt{gmail\_personal}): such a split has to relocate already-admitted packets, which \Add cannot do.
+The disjointness precondition rules out \emph{splitting} an already-running flow into two (e.g., splitting \texttt{gmail} into \texttt{gmail\_business} and \texttt{gmail\_personal}): such a split has to relocate already-admitted packets, which \Add{} cannot do.
 
 The transition \(\mathtt{C'} = \sem{\Add(\pi, \mathtt{arm}, \mathtt{meta?})}(\mathtt{C})\) is stated per node.
 Let \(k = |\mathtt{C@}\pi.\mathtt{slot\_states}|\) be the new arm's slot index.
@@ -572,7 +575,7 @@ We still phrase the characterization mod \(\eqR\) to keep a uniform shape across
 The payload \texttt{meta} is interpreted per the parent's discipline: a priority rank when the parent runs Strict, a weight when it runs WFQ.
 
 Say the presently running control is \texttt{C}.
-Intuitively, \ChangeMeta overwrites \(\mathtt{C@}\pi.\mathtt{slot\_states}[k]\)'s per-arm metadata with the new value provided.
+Intuitively, \ChangeMeta{} overwrites \(\mathtt{C@}\pi.\mathtt{slot\_states}[k]\)'s per-arm metadata with the new value provided.
 
 \paragraph{Definition}
 
@@ -615,14 +618,14 @@ Hence \(\lfloor \mathtt{C'} \rfloor \eqR \den(\ChangeMeta(\tau, \mathtt{meta}))(
 \(\tau : \mathtt{path}\) is the path to the target subtree to silence.
 
 Say the presently running control is \texttt{C}.
-Intuitively, \Quiesce restricts \texttt{z}s at various parts of the control to ensure that any packet bound for a leaf under \texttt{C@}\(\tau\) is refused admission.
+Intuitively, \Quiesce{} restricts \texttt{z}s at various parts of the control to ensure that any packet bound for a leaf under \texttt{C@}\(\tau\) is refused admission.
 
 \paragraph{Definition}
 
 The topology, the discipline at every node, and every arm's slot index are unchanged.
 \(\sem{\Quiesce(\tau)}(\mathtt{C})\) is defined whenever \(\tau\) resolves to a node in \texttt{C}.
-The empty path is permitted: a root-\Quiesce silences every leaf in the tree.
-There is no precondition on the subtree's contents: \Quiesce is the production that stops further admissions, regardless of what is currently held below \texttt{C@}\(\tau\).
+The empty path is permitted: a root-\Quiesce{} silences every leaf in the tree.
+There is no precondition on the subtree's contents: \Quiesce{} is the production that stops further admissions, regardless of what is currently held below \texttt{C@}\(\tau\).
 
 Let \(T\) denote the set of leaves of \texttt{C@}\(\tau\) (the leaves we are silencing), and let \(A\) denote the union of their ancestor chains: every internal node within \texttt{C@}\(\tau\)'s subtree, the node \texttt{C@}\(\tau\) itself, and every ancestor of \texttt{C@}\(\tau\) up to and including the root.
 
@@ -644,7 +647,7 @@ Preservation of observation follows from \S3.4.1's argument: every in-flight pac
 
 \paragraph{Characterization}
 
-\Quiesce is \texttt{pol}-invisible: its entire effect lies in \texttt{z}'s domain, which \texttt{pol} does not record.
+\Quiesce{} is \texttt{pol}-invisible: its entire effect lies in \texttt{z}'s domain, which \texttt{pol} does not record.
 
 \begin{verbatim}
 den(Quiesce(t)) p = p
@@ -659,7 +662,7 @@ So \(\lfloor \mathtt{C'} \rfloor \eqR \lfloor \mathtt{C} \rfloor = \den(\Quiesce
 
 Under \S3.2's parallel \texttt{push}, every node on the path from a packet's destination leaf to the system root mints an index via its local \texttt{z} independently of the others.
 If we restricted \texttt{z} only at a strict subset of those nodes (only the root of the tree, or only inside \texttt{C@}\(\tau\)), the rest would happily mint indices and enqueue them, leaving the tree in a malformed state.
-\Quiesce therefore restricts uniformly, at the leaf (so it refuses to enqueue) and at every ancestor of every quiesced leaf (so no one mints a stray index).
+\Quiesce{} therefore restricts uniformly, at the leaf (so it refuses to enqueue) and at every ancestor of every quiesced leaf (so no one mints a stray index).
 The cost is touching \(|T|\) leaves and the union of their ancestor chains; the gain is a rejection that preserves \(\vdash \mathtt{C'}\).
 
 \subsubsection{\texorpdfstring{\(\Remove(\tau)\)}{Remove}}
@@ -667,7 +670,7 @@ The cost is touching \(|T|\) leaves and the union of their ancestor chains; the 
 As before, \(\tau : \mathtt{path}\) is the non-empty path to the target arm being removed; we destruct it as \(\pi \mathbin{+\!\!+} [k]\) with \(\pi\) the path to the parent and \texttt{k} the slot at that parent.
 
 Say the presently running control is \texttt{C}.
-Intuitively, \Remove unhooks the subtree at slot \texttt{k} of \texttt{C@}\(\pi\) and renumbers higher siblings down by one.
+Intuitively, \Remove{} unhooks the subtree at slot \texttt{k} of \texttt{C@}\(\pi\) and renumbers higher siblings down by one.
 It is defined only when the subtree at \(\tau\) is empty; we explain this restriction below.
 
 \paragraph{Definition}
@@ -694,8 +697,8 @@ Slots \(< k\) are untouched on either axis.
 \end{itemize}
 \end{itemize}
 
-A standalone \Remove thus restricts classification at \texttt{C@}\(\pi\) so that packets bound for the removed subtree are dropped at \texttt{C@}\(\pi\) rather than being routed to a non-existent slot.
-In the typical planner usage, a preceding \Quiesce has already restricted every \texttt{z} on every push path to the soon-to-be-removed leaves (\S3.4.3), so no new packet bound for the removed subtree is even being admitted; the input restriction at \texttt{C@}\(\pi\) is then redundant but harmless, while the output renumbering at \texttt{C@}\(\pi\) is still needed.
+A standalone \Remove{} thus restricts classification at \texttt{C@}\(\pi\) so that packets bound for the removed subtree are dropped at \texttt{C@}\(\pi\) rather than being routed to a non-existent slot.
+In the typical planner usage, a preceding \Quiesce{} has already restricted every \texttt{z} on every push path to the soon-to-be-removed leaves (\S3.4.3), so no new packet bound for the removed subtree is even being admitted; the input restriction at \texttt{C@}\(\pi\) is then redundant but harmless, while the output renumbering at \texttt{C@}\(\pi\) is still needed.
 
 \paragraph{Preservation}
 
@@ -814,7 +817,7 @@ This is a stop-the-world rebuild.
 
 Our grammar sidesteps the question entirely.
 By draining \texttt{B} to empty before removing it (\S4), every pop that served a packet from \texttt{B} has already removed the matching index-entries from \texttt{B}'s ancestors in the ordinary course of \texttt{pop}: a packet leaving \texttt{B} consumes a \texttt{2} at \texttt{Q} and a \texttt{1} at \texttt{P}, bringing each ancestor's count into accord with its post-drain contents.
-At the instant \Remove fires, \texttt{Q}'s \texttt{2}-count is zero (\texttt{B} is empty) and \texttt{P}'s \texttt{1}-count is exactly the number of packets still under \texttt{Q} (here \texttt{2}, all attributable to \texttt{A}).
+At the instant \Remove{} fires, \texttt{Q}'s \texttt{2}-count is zero (\texttt{B} is empty) and \texttt{P}'s \texttt{1}-count is exactly the number of packets still under \texttt{Q} (here \texttt{2}, all attributable to \texttt{A}).
 There is nothing left to reconcile and no hidden policy choice to make: the structural deletion is unambiguous.
 
 \subsubsection{\texorpdfstring{\(\Designate(\tau, \mathtt{survivor})\)}{Designate}}
@@ -822,12 +825,12 @@ There is nothing left to reconcile and no hidden policy choice to make: the stru
 \(\tau : \mathtt{path}\) is the path to the target subtree being wrapped, and \(\mathtt{survivor} : \mathtt{pol}\) is the designated-survivor policy that becomes the wrap's low-priority arm.
 
 Say the presently running control is \texttt{C}.
-Intuitively, \Designate replaces \texttt{C@}\(\tau\) in place with \(\Strictstar(\mathtt{C@}\tau, \lceil \mathtt{survivor} \rceil)\).
+Intuitively, \Designate{} replaces \texttt{C@}\(\tau\) in place with \(\Strictstar(\mathtt{C@}\tau, \lceil \mathtt{survivor} \rceil)\).
 
-\(\Strictstar\) is the same discipline as \(\Strict\), distinguished only by a one-bit \texttt{designated} flag that each node carries: \Designate sets the bit, \Undesignate (\S3.4.6) clears it.
+\(\Strictstar\) is the same discipline as \(\Strict\), distinguished only by a one-bit \texttt{designated} flag that each node carries: \Designate{} sets the bit, \Undesignate (\S3.4.6) clears it.
 Semantically the two are identical; every push, pop, and well-formedness check treats \(\Strictstar(A, B)\) exactly as \(\Strict(A, B)\), so the obligations below are stated against the ordinary \(\Strict\) semantics of \S3.2.
 The star exists only so that \Undesignate's precondition (``\(\tau\) lands on a \(\Strictstar\)'') and a hardware-level argument in \S6 (that \(\Strictstar\) adds no PE depth) can be stated structurally.
-The \S3.2 DSL in which the operator writes policies can parse only \(\Strict\), never \(\Strictstar\), so a \(\Strictstar\) is unreachable in any user-written \texttt{pol} and arises only in the middle of a planner sequence, between a \Designate and its eventual \Undesignate.
+The \S3.2 DSL in which the operator writes policies can parse only \(\Strict\), never \(\Strictstar\), so a \(\Strictstar\) is unreachable in any user-written \texttt{pol} and arises only in the middle of a planner sequence, between a \Designate{} and its eventual \Undesignate.
 The wrap is therefore \texttt{pol}-visible only as a \(\Strict\).
 
 \paragraph{Definition}
@@ -862,7 +865,7 @@ If \(\tau\) is empty, the entire control becomes \(N\), with the old root sittin
 
 Overlap of leaf labels between \texttt{C@}\(\tau\) and \texttt{survivor} is explicitly permitted.
 The moment \(\delta\) fires becomes the boundary between old traffic (which continues to drain from arm 0, \texttt{C@}\(\tau\)) and new traffic (which arm 1 admits): from this instant on, an arriving packet whose label appears in \(\lceil \mathtt{survivor} \rceil\) is routed by \(N.\mathtt{z}\) to slot 1, while the residual packets already under arm 0 drain on their existing \texttt{pifo} entries.
-The two arms thus stay operationally disjoint even when their label sets overlap, which is the very property that lets \Designate express in-place subtree replacement (\S4).
+The two arms thus stay operationally disjoint even when their label sets overlap, which is the very property that lets \Designate{} express in-place subtree replacement (\S4).
 
 \paragraph{Preservation}
 
@@ -895,7 +898,7 @@ So \(\lfloor \mathtt{C'} \rfloor \eqR \den(\Designate(\tau, \mathtt{survivor}))(
 \(\tau : \mathtt{path}\) is the path to the target \(\Strictstar\) node being unwrapped.
 
 Say the presently running control is \texttt{C}.
-Intuitively, \Undesignate unwraps the \(\Strictstar(A, B)\) at \texttt{C@}\(\tau\) whose \(A\)-arm is empty, leaving \(B\) in its slot.
+Intuitively, \Undesignate{} unwraps the \(\Strictstar(A, B)\) at \texttt{C@}\(\tau\) whose \(A\)-arm is empty, leaving \(B\) in its slot.
 It is the structural inverse of \Designate.
 
 \paragraph{Definition}
@@ -905,7 +908,7 @@ Let \(N = \mathtt{C@}\tau\).
 
 \begin{itemize}
 \item \emph{Inside \(B\) (arm 1 of \(N\)):} preserved verbatim, every node.
-\item \emph{At \texttt{C@}\(\pi\)} (if \(\tau = \pi \mathbin{+\!\!+} [k]\) is non-empty): \texttt{node\_state}, \texttt{pifo}, and \texttt{z} unchanged; \texttt{slot\_states[k]} preserved verbatim (the wrapper inherited it at \Designate time, and the unwrap returns it unchanged); slot \texttt{k} now points to \(B\) rather than to \(N\).
+\item \emph{At \texttt{C@}\(\pi\)} (if \(\tau = \pi \mathbin{+\!\!+} [k]\) is non-empty): \texttt{node\_state}, \texttt{pifo}, and \texttt{z} unchanged; \texttt{slot\_states[k]} preserved verbatim (the wrapper inherited it at \Designate{} time, and the unwrap returns it unchanged); slot \texttt{k} now points to \(B\) rather than to \(N\).
 \(N\) itself and its arm-0 stub are discarded.
 \item If \(\tau\) is empty, the new root is \(B\), inheriting \(B\)'s own \texttt{node\_state}, \texttt{slot\_states}, \texttt{pifo}, \texttt{z}, and child list verbatim; \(N\) and its arm-0 stub are discarded.
 \end{itemize}
@@ -939,7 +942,7 @@ So \(\lfloor \mathtt{C'} \rfloor \eqR \den(\Undesignate(\tau))(\lfloor \mathtt{C
 \(\nu : \mathtt{path}\) is the path to the subtree being promoted to the new root.
 
 Say the presently running control is \texttt{C}.
-Intuitively, \ChangeRoot promotes \texttt{C@}\(\nu\) to the new root, discarding every ancestor above it.
+Intuitively, \ChangeRoot{} promotes \texttt{C@}\(\nu\) to the new root, discarding every ancestor above it.
 It is the only production that erases structural ancestors, and the only one whose \texttt{pol}-level effect is to shrink the tree from above rather than edit it locally.
 The mechanics are short; the notes below are substantive.
 
@@ -978,8 +981,8 @@ So \(\lfloor \mathtt{C'} \rfloor \eqR \mathtt{p@}\nu = \den(\ChangeRoot(\nu))(\l
 \emph{Why the unary precondition.}
 The precondition rules out, by construction, any silently-dropped packet-bearing siblings.
 A non-unary ancestor would have arms branching off the path to \texttt{C@}\(\nu\); those subtrees would vanish with their ancestor, taking their packets with them.
-Allowing this would make \ChangeRoot a structural deletion of arbitrarily many off-path subtrees masquerading as a root change, with no semantic story for those packets.
-The richer reconfiguration of pruning to a subtree whose ancestor chain branches off into packet-bearing relatives is realized as the \PruneDownTo idiom (\S4.1), which first drains and \Remove{}s those siblings in sequence, reducing the chain above \texttt{C@}\(\nu\) to the unary shape that \ChangeRoot then accepts.
+Allowing this would make \ChangeRoot{} a structural deletion of arbitrarily many off-path subtrees masquerading as a root change, with no semantic story for those packets.
+The richer reconfiguration of pruning to a subtree whose ancestor chain branches off into packet-bearing relatives is realized as the \PruneDownTo{} idiom (\S4.1), which first drains and \Remove{}s those siblings in sequence, reducing the chain above \texttt{C@}\(\nu\) to the unary shape that \ChangeRoot{} then accepts.
 
 \emph{What the chain carries, and what is discarded.}
 An internal node's \texttt{node\_state}, rank function, and \texttt{pifo} ordering exist to pick among siblings.
@@ -987,9 +990,9 @@ At a unary node the sibling-picking role degenerates: with one arm, every pop is
 
 What can remain active at a unary node is rank computation that depends on per-packet attributes rather than on sibling identity.
 If a chain's disciplines do no such per-packet reordering, each unary node along the chain is operationally a passthrough, and the immediate-pop observation-preservation above extends to every subsequent pop and push.
-If they do (LSTF~\cite{Mittal16} is a canonical example, with rank determined by each packet's deadline), the chain is actively shaping traffic, and \ChangeRoot removes that shaping.
+If they do (LSTF~\cite{Mittal16} is a canonical example, with rank determined by each packet's deadline), the chain is actively shaping traffic, and \ChangeRoot{} removes that shaping.
 That is precisely the production's intended role: the atomic step by which the operator says ``promote \(\mathtt{p1@}\nu\) to the root and discard the ancestor shaping above it.''
-The \PruneDownTo idiom packages this with the upstream draining and \Remove{}s that make the chain unary in the first place, so the operator's request (``prune to this subtree'') is realized as a sequence whose final step discards exactly the ancestor influence that the operator has chosen to abandon.
+The \PruneDownTo{} idiom packages this with the upstream draining and \Remove{}s that make the chain unary in the first place, so the operator's request (``prune to this subtree'') is realized as a sequence whose final step discards exactly the ancestor influence that the operator has chosen to abandon.
 
 \emph{Pol-level effect.}
 The \texttt{pol} changes from the unary chain wrapping \(\mathtt{p1@}\nu\) (e.g., \(\Strict(\mathtt{p1@}\nu)\) or \(\mathtt{LSTF}(\mathtt{p1@}\nu)\)) to just \(\mathtt{p1@}\nu\).
@@ -1113,7 +1116,7 @@ This converts the running control \texttt{C1'} into control \texttt{C2'} such th
 to the user.
 \item Now the operator changes to Imperative Mode (\S4) and writes the path-bearing edit \texttt{(True, Quiesce([2]))}.
 It is not worth getting distracted by the syntax or the semantics; the key thing is that the operator has requested an edit and has identified the target via path ``\texttt{[2]}''.
-Paths are interpreted against the \emph{actually running} representative \texttt{p2'}, so we \Quiesce the subtree \texttt{mid: spotify} (\texttt{p2'}'s third slot), not \texttt{lo: zoom} (\texttt{p2}'s third slot).
+Paths are interpreted against the \emph{actually running} representative \texttt{p2'}, so we \Quiesce{} the subtree \texttt{mid: spotify} (\texttt{p2'}'s third slot), not \texttt{lo: zoom} (\texttt{p2}'s third slot).
 If the operator had based the path on \texttt{p2} they would have edited the wrong arm; the system has no way to detect or recover from that.
 \end{itemize}
 
@@ -1158,7 +1161,7 @@ The chain of \(\den\)s starting from \(\lfloor \mathtt{C} \rfloor\) gives \(\lfl
 \paragraph{How operators author sequences}
 Two authoring modes produce sequences, and the operator chooses freely between them.
 In \emph{declarative mode}, the operator writes a \texttt{pol}, say \texttt{p1}, and, to reconfigure, writes a second \texttt{pol}, say \texttt{p2}: the planner (\S5) proposes a guarded sequence that achieves this change, and the operator either accepts it (in which case we apply the sequence to the running control) or declines it.
-The planner is intentionally simple: it sees only \texttt{pol}-level differences whose translation to a sequence is straightforward, and falls back to a whole-tree \Replace idiom for anything richer.
+The planner is intentionally simple: it sees only \texttt{pol}-level differences whose translation to a sequence is straightforward, and falls back to a whole-tree \Replace{} idiom for anything richer.
 In \emph{imperative mode}, the operator writes both their desired \texttt{p2} and a \((\varphi; \delta)^{*}\) sequence intended to reach it; the sequence may include idioms.
 Before running it we check the sequence at the pol level (\S4.1).
 The two modes are not formally distinct: they produce sequences over the same substrate and discharge the same per-production obligations from \S3.4.
@@ -1226,7 +1229,7 @@ The operator may use this if the subtree at \texttt{path} needs to receive a lit
 \end{verbatim}
 
 Designates \texttt{B} as the survivor of the current \texttt{pol@path} (which, after Designate, sits at \texttt{path ++ [0]} as the first arm of the inserted \(\Strictstar\) node), quiesces it, waits for it to drain, then collapses the \(\Strictstar\) onto \texttt{B}.
-At the pol level the composite effect is wholesale replacement of \texttt{pol@path} by \texttt{B}; the operator-facing idiom adds the \Quiesce in the middle so that the original subtree empties out before the collapse fires.
+At the pol level the composite effect is wholesale replacement of \texttt{pol@path} by \texttt{B}; the operator-facing idiom adds the \Quiesce{} in the middle so that the original subtree empties out before the collapse fires.
 The footprint of \Replace(\texttt{path, B}) is the subtree at \texttt{path}, the wrap node inserted at \texttt{path} by \Designate, and the \texttt{z} chain at the ancestors of \texttt{path} (extended by \Designate, restored by \Undesignate); \S5 frames confinement against exactly this set.
 
 \item \textbf{\PruneDownTo(\texttt{path})} expands to
@@ -1236,7 +1239,7 @@ The footprint of \Replace(\texttt{path, B}) is the subtree at \texttt{path}, the
 where \(\pi_a, \ldots, \pi_z\) are paths to the off-path subtrees along the route from the root to \texttt{path}.
 This idiom is the operator-facing way to say ``abandon everything except this subtree.''
 
-Each \Retire removes one off-path subtree; once they have all fired, every ancestor along the path is unary, satisfying \ChangeRoot's precondition (\S3.4.7).
+Each \Retire{} removes one off-path subtree; once they have all fired, every ancestor along the path is unary, satisfying \ChangeRoot's precondition (\S3.4.7).
 (If no off-path subtrees exist, the idiom reduces to \((\mathtt{true}; \ChangeRoot(\mathtt{path}))\) alone.)
 The \Retire{}s on disjoint off-path subtrees commute, so any ordering suffices; we use root-first as a stable convention.
 
@@ -1278,15 +1281,15 @@ The operator wants to retain only \texttt{D}, so they issue \PruneDownTo(\texttt
 The off-path subtrees are \texttt{E(F, G)} (at \texttt{[0, 0]}) and \texttt{C} (at \texttt{[1]}).
 So \PruneDownTo(\texttt{[0, 1]}) expands to: \Retire(\texttt{[0, 0]) ; Retire([1]) ; (true; ChangeRoot([0, 0])}).
 
-Note that the path \texttt{[0, 0]} appears twice in this expansion with different referents: in \Retire(\texttt{[0, 0]}) it points to \texttt{E(F, G)} (the operand at the moment that \Retire fires), and in the final \ChangeRoot(\texttt{[0, 0]}) it points to \texttt{D}, which moved from \texttt{[0, 1]} to \texttt{[0, 0]} once \texttt{E(F, G)} was retired.
+Note that the path \texttt{[0, 0]} appears twice in this expansion with different referents: in \Retire(\texttt{[0, 0]}) it points to \texttt{E(F, G)} (the operand at the moment that \Retire{} fires), and in the final \ChangeRoot(\texttt{[0, 0]}) it points to \texttt{D}, which moved from \texttt{[0, 1]} to \texttt{[0, 0]} once \texttt{E(F, G)} was retired.
 A path-resolution system computes these targets automatically at idiom expansion; the operator only writes \PruneDownTo(\texttt{[0, 1]}), naming \texttt{D} by its location at the moment of request.
 
 \emph{On the natural-feeling opposite.}
-\PruneDownTo says ``keep this subtree and abandon everything around it''; the natural-feeling opposite would say ``keep the running tree and splice some fresh ancestor structure around it'' (the running root becoming a subtree of a freshly-introduced context).
+\PruneDownTo{} says ``keep this subtree and abandon everything around it''; the natural-feeling opposite would say ``keep the running tree and splice some fresh ancestor structure around it'' (the running root becoming a subtree of a freshly-introduced context).
 We do not support this as a production or as an idiom.
 The obstruction is not topological but stateful: a freshly-spawned ancestor needs a \texttt{node\_state}, per-arm \texttt{slot\_state}s, a populated index \texttt{pifo}, and a \texttt{z} whose history matches the live traffic descending into the subtree it now wraps, and there is no honest way to synthesize the state these ancestors would have carried \emph{had they been there all along}.
 Disciplines that look at packet features or history (WFQ's virtual time, RR's cursor, LSTF's per-deadline ranks) make this concrete: an ancestor introduced cold would mis-schedule the in-flight traffic relative to what an ancestor present from the start would have done.
-The operator can still reach such a target through a \Replace at a sufficient ancestor (\S5.1's always-available fallback), which freshly compiles the new wrapping and drains the old running subtree through it; what the grammar lacks is a confined way to install the wrap without that drain.
+The operator can still reach such a target through a \Replace{} at a sufficient ancestor (\S5.1's always-available fallback), which freshly compiles the new wrapping and drains the old running subtree through it; what the grammar lacks is a confined way to install the wrap without that drain.
 \end{itemize}
 
 \paragraph{Checking an imperative-mode sequence at the pol level}
@@ -1317,7 +1320,7 @@ The planner aims to land at \texttt{p2} by construction: each case below emits a
 A misstep in the case analysis could in principle yield a sequence whose fold \(\den(\delta_n) \circ \ldots \circ \den(\delta_1) (\mathtt{p1})\) misses \texttt{p2}'s \(\eqR\)-class; the pol-level check of \S4.1 is the backstop and rejects any such sequence before commit.
 Optimality is a separate matter, and not guaranteed: the planner may fail to see a superior sequence that the user has in mind.
 
-\S5.1 sets up \emph{confinement} as a metric for excellence, presents the always-available worst-case \Replace fallback, and frames the planner's strategy as descending the tree to find a tight production (Add, Remove, ChangeMeta) that captures the difference locally.
+\S5.1 sets up \emph{confinement} as a metric for excellence, presents the always-available worst-case \Replace{} fallback, and frames the planner's strategy as descending the tree to find a tight production (Add, Remove, ChangeMeta) that captures the difference locally.
 \S5.2 catalogs the cases the planner recognizes and emits a tight sequence for.
 \S5.3 lists deliberate non-features and candidate future work.
 
@@ -1351,7 +1354,7 @@ A sequence is well-confined when its footprint is small relative to the symmetri
 The planner's goal is to recognize whether the difference between \texttt{p1} and \texttt{p2} is captured by a tight production from \S3.3 (an \Add, \Remove, or \ChangeMeta) and to emit that production wherever in the tree it sits, leaving everything else untouched.
 The planner descends through the tree as long as \texttt{p1} and \texttt{p2} agree at the current level, looking for a recognized shape one level down.
 When it finds one, it emits the matching production at that depth.
-Only when the descent ends without a match does the planner fall back to \Replace; but by then the recursion has localized the difference to the deepest slot at which the policies disagree, so the resulting \Replace wraps only that slot.
+Only when the descent ends without a match does the planner fall back to \Replace; but by then the recursion has localized the difference to the deepest slot at which the policies disagree, so the resulting \Replace{} wraps only that slot.
 
 A concrete example will help.
 Suppose
@@ -1409,7 +1412,7 @@ The planner has two ways to realize this:
   };
 \end{tikzpicture}
 \\[0.5em]
-\textbf{(b)} \Add at the \texttt{RR} (new arm in dashed box)
+\textbf{(b)} \Add{} at the \texttt{RR} (new arm in dashed box)
 \end{center}
 
 Option (a) wraps the entire running tree under a fresh \(\Strictstar\) and grows a freshly-compiled \texttt{p2} alongside; every node sits inside the wrap, and the original \texttt{p1} (with all its in-flight packets) drains as the loser.
@@ -1452,11 +1455,11 @@ This test runs only at the top level.
 \paragraph{The per-level comparator}
 
 The per-level comparator looks at the roots of \texttt{p1} and \texttt{p2}.
-If the two roots use different constructors (for example \texttt{SP} and \texttt{RR}, or two \texttt{FIFO}s with different classes), it emits a slot-level \Replace directly: the always-available \S5.1 idiom restricted to the current slot.
+If the two roots use different constructors (for example \texttt{SP} and \texttt{RR}, or two \texttt{FIFO}s with different classes), it emits a slot-level \Replace{} directly: the always-available \S5.1 idiom restricted to the current slot.
 If the constructors agree, it then looks at the two child lists and compares their lengths.
 
 \textbf{Equal arity.}
-For the constructors that carry per-arm metas (\texttt{SP} and \texttt{WFQ}), we first check for a meta-only reshuffle: if \texttt{p1} and \texttt{p2} hold the same multiset of arms in different positions, we emit one \ChangeMeta per slot whose meta moved and we are done.
+For the constructors that carry per-arm metas (\texttt{SP} and \texttt{WFQ}), we first check for a meta-only reshuffle: if \texttt{p1} and \texttt{p2} hold the same multiset of arms in different positions, we emit one \ChangeMeta{} per slot whose meta moved and we are done.
 
 Otherwise, we walk the child lists slot-by-slot.
 A slot whose arm and meta both agree contributes nothing.
@@ -1467,9 +1470,9 @@ There is one wrinkle: this slot-by-slot walk can miss a cross-slot correspondenc
 The label-overlap walk (below) catches it; when that walk finds at least one such cross-slot pairing, we use it instead of the slot-by-slot walk.
 
 \textbf{\texttt{p2} longer.}
-When \texttt{p1}'s arms appear in order as a sub-sequence of \texttt{p2}'s, the surplus arms in \texttt{p2} are pure additions, and we emit one \Add per surplus arm in ascending index order.
+When \texttt{p1}'s arms appear in order as a sub-sequence of \texttt{p2}'s, the surplus arms in \texttt{p2} are pure additions, and we emit one \Add{} per surplus arm in ascending index order.
 \S3.4.1's leaf-disjointness precondition holds automatically: every surplus arm's leaves are leaves of \texttt{p2} not in \texttt{p1}, which by \S3.2's leaf-partition validity are disjoint from \texttt{p1}'s arms and from each other.
-At an \texttt{SP} or \texttt{WFQ} parent, each \Add carries the surplus arm's meta.
+At an \texttt{SP} or \texttt{WFQ} parent, each \Add{} carries the surplus arm's meta.
 If a stable arm has changed metadata, we emit \ChangeMeta{}s after completing the \Add{}s.
 
 When \texttt{p1}'s arms are \emph{not} a sub-sequence of \texttt{p2}'s, we try the label-overlap walk.
@@ -1477,9 +1480,9 @@ If that fails too, we emit a slot-level \Replace.
 
 \textbf{\texttt{p1} longer.}
 Symmetric.
-When \texttt{p2}'s arms appear in order as a sub-sequence of \texttt{p1}'s, the surplus arms in \texttt{p1} are retired, and we emit one \Retire idiom (\\S4.1) per surplus arm in \emph{descending} index order.
+When \texttt{p2}'s arms appear in order as a sub-sequence of \texttt{p1}'s, the surplus arms in \texttt{p1} are retired, and we emit one \Retire{} idiom (\\S4.1) per surplus arm in \emph{descending} index order.
 Descending order keeps the lower-index paths stable while higher-index siblings drain and disappear.
-When \texttt{p2}'s arms are not a sub-sequence of \texttt{p1}'s, we try the label-overlap walk, and emit a slot-level \Replace if it cannot align the arms either.
+When \texttt{p2}'s arms are not a sub-sequence of \texttt{p1}'s, we try the label-overlap walk, and emit a slot-level \Replace{} if it cannot align the arms either.
 
 \textbf{The label-overlap walk.}
 The simpler patterns above pair arms by slot position; the label-overlap walk pairs them by what they actually carry.
@@ -1547,7 +1550,7 @@ The third panel previews what the planner installs on the substrate: not \texttt
 
 Comparing \texttt{p1} and \texttt{p2}: \texttt{d} is unchanged; \texttt{g} now round-robins with a control sub-channel; \texttt{s} is new.
 A slot-by-slot walk does not apply (the lengths differ), and the simpler sub-sequence check in the ``\texttt{p2} longer'' case fails because \texttt{gmail} in \texttt{p1} is not equal to any arm in \texttt{p2}.
-Without the walk we are about to describe, the planner would give up and emit a wholesale \Replace of the entire root \texttt{RR}.
+Without the walk we are about to describe, the planner would give up and emit a wholesale \Replace{} of the entire root \texttt{RR}.
 
 But the trees are not really that different.
 \texttt{gmail} in \texttt{p1} and \texttt{RR(gmail, gmail\_control)} in \texttt{p2} share the class label \texttt{gmail}; \texttt{drive} is the same on both sides; \texttt{slack} is the only arm in \texttt{p2} whose labels appear nowhere in \texttt{p1}.
@@ -1558,20 +1561,20 @@ It pairs arms in \texttt{p1} with arms in \texttt{p2} whose class-label sets ove
 The justification is that a class label identifies a unique flow across the whole policy (\S3.2's leaf-partition validity), so a repeated label between an arm in \texttt{p1} and an arm in \texttt{p2} is evidence that the same host arm has morphed structurally, and an arm whose labels appear on no opposing arm is necessarily fresh or vanishing.
 For our example, the walk pairs \texttt{drive} with \texttt{drive} (no edit) and \texttt{gmail} with \texttt{RR(gmail, gmail\_control)} (recurse), and treats \texttt{slack} as a pure add.
 
-Our final emission is two atomic steps: an \Add of \texttt{slack} appended at the root \texttt{RR}'s tail, and an inner \Replace at \texttt{gmail}'s existing slot.
+Our final emission is two atomic steps: an \Add{} of \texttt{slack} appended at the root \texttt{RR}'s tail, and an inner \Replace{} at \texttt{gmail}'s existing slot.
 The third panel of the figure above shows the resulting substrate state: \texttt{slack} sits beside the morphed \texttt{gmail} subtree in an order that does not match \texttt{p2} literally, but \S3.2's normalization invariant says sibling order at \texttt{SP}/\texttt{RR}/\texttt{WFQ} carries no semantics, so the re-ordering is invisible to any observer.
 
 A few notes.
 The walk is greedy: when more than one alignment satisfies the label-overlap constraint, the first we find is taken, with no notion of cost (\S5.3).
 If no shared label admits even one match, the walk fails and the caller falls back to a slot-level \Replace.
 When the walk produces a mix of adds, retires, and matched-pair recursions, we appeal to the reorder freedom of \S3.2 to keep the indexing trivial: adds are appended at the parent's tail; retires fire at their ps1 indices, in descending order so the highest-index drain doesn't shift the lower indices still pending; matched-pair recursions land at each match's position in the matches list, which is also its slot once the retires drain.
-Issuing the adds first is deliberate: an \Add is instantaneous while a \Retire waits for its subtree to drain, so the new arms start carrying traffic immediately instead of waiting out the drains.
+Issuing the adds first is deliberate: an \Add{} is instantaneous while a \Retire{} waits for its subtree to drain, so the new arms start carrying traffic immediately instead of waiting out the drains.
 
 \paragraph{Where the descent localizes the difference}
 
 Every recursion descends through a slot where the two trees agree or where the label-overlap walk has paired them.
-So by the time the per-level comparator gives up and emits a \Replace at depth \texttt{k}, every shallower level has already matched a tight case, and the \Replace lands at the deepest slot to which the planner could isolate the difference, leaving every ancestor's other subtrees running undisturbed.
-The slot-level \Replace is the \S5.1 idiom with a non-empty path: it wraps only the slot's subtree, quiesces only that subtree, and rewires only the parent edge into it.
+So by the time the per-level comparator gives up and emits a \Replace{} at depth \texttt{k}, every shallower level has already matched a tight case, and the \Replace{} lands at the deepest slot to which the planner could isolate the difference, leaving every ancestor's other subtrees running undisturbed.
+The slot-level \Replace{} is the \S5.1 idiom with a non-empty path: it wraps only the slot's subtree, quiesces only that subtree, and rewires only the parent edge into it.
 The worst case is the root-level \(\Replace([], \mathtt{p2})\) of \S5.1, reached only when the per-level comparator gives up at the root with no recursive descent.
 
 We do not claim that the planner's emission is canonical or minimal.
@@ -1678,7 +1681,7 @@ Opcode & Parameters & Effect \\
 \texttt{set\_policy(v, t, n)} & PIFO, policy type, initial arity & Set \texttt{v}'s policy type to \texttt{t} and its initial arity to \texttt{n}; \texttt{t} ranges over \{FIFO, RoundRobin, Strict, Strict*, WFQ\}. Issued exactly once per PIFO, at spawn time. \\
 \texttt{change\_arity(v, n)} & PIFO, arity & Set the live \texttt{v}'s arity counter to \texttt{n}. Policy type is unchanged. \texttt{change\_arity} is what tells the discipline-level logic at \texttt{v} (e.g., RR's cursor wraparound, the WFQ slot-state table's size) the active arm count; the structural attaching and detaching themselves happen through explicit \texttt{adopt}/\texttt{emancipate} calls, each keyed by the stable per-edge index the parent minted at adoption time. The substrate is free to relocate live adoptions internally as the count changes; the indices the planner holds remain valid. \\
 \texttt{set\_arm\_meta(v, i, m)} & PIFO, index, metadata & Set per-arm metadata for the child reached via \texttt{i} to \texttt{m}. The payload \texttt{m} is interpreted per \texttt{v}'s policy type: a weight for RoundRobin/WFQ, a priority rank for Strict; FIFO carries none. Only the discipline-specified meta field is overwritten; any other per-arm state (e.g., WFQ's virtual-finish tag on the arm) is preserved, so a metadata change on a live arm does not yank it out of the current round. \\
-\texttt{designate(v, surv)} & two PIFOs & Inside an already-spawned Strict-2 super-node that has adopted both \texttt{v} and \texttt{surv} (see \S6.2's \Designate lowering), name \texttt{v} as the favored child and record \texttt{surv} as \texttt{v}'s designated successor for an eventual \texttt{undesignate}. No in-place wrapping is implied at the ISA level; the substrate may coalesce the Strict-2 super-node, \texttt{v}, and \texttt{surv} into a single physical slot when \S6.2's same-PE invariant holds, but is not required to. \\
+\texttt{designate(v, surv)} & two PIFOs & Inside an already-spawned Strict-2 super-node that has adopted both \texttt{v} and \texttt{surv} (see \S6.2's \Designate{} lowering), name \texttt{v} as the favored child and record \texttt{surv} as \texttt{v}'s designated successor for an eventual \texttt{undesignate}. No in-place wrapping is implied at the ISA level; the substrate may coalesce the Strict-2 super-node, \texttt{v}, and \texttt{surv} into a single physical slot when \S6.2's same-PE invariant holds, but is not required to. \\
 \texttt{gc(v)} & PIFO & Release \texttt{v}'s PE slot. \\
 \texttt{undesignate(v)} & PIFO & Collapse the super-node \(\{v \to \mathtt{surv}\}\) to \texttt{surv}: the parent index that pointed at \(\{v \to \mathtt{surv}\}\) now points directly at \texttt{surv}, and \texttt{surv} inherits the slot's per-arm metadata. \\
 \hline
@@ -1695,7 +1698,7 @@ We treat the assignment of a PIFO to a PE as a deterministic function \texttt{pe
 A typical shape is depth-by-PE: PIFOs at the same tree depth share a PE~\cite{Sivaraman16}, so sibling PIFOs cohabit one PE by default.
 The planner consults \texttt{pe(path)} when it needs a \texttt{spawn}'s \texttt{pe} argument; the function's definition is a property of the target substrate and is not otherwise observable at the ISA.
 
-\subsection{Compiling Policy Diffs}
+\subsection{Compiling Policy Differences}
 
 Each production of \(\delta\) (\S3.3) lowers to a list of op codes.
 The lowering \emph{schema} is mechanical: each production names a fixed sequence of opcodes, and the planner reads live state at issue time to instantiate the schema's positional parameters (flow lists, chain shapes, routing indices) before dispatching the commit to the substrate.
@@ -1711,102 +1714,125 @@ On \ChangeRoot, the lowering issues no flow-table writes against \texttt{port\_r
 The wrapper exists so that ``swap the root'' can be expressed as one \texttt{emancipate}/\texttt{adopt} pair against \texttt{port\_root}, in the same vocabulary as any child-level edit; there is no opcode for changing the root of the tree directly.
 
 The lowerings follow, one per production in the order of the \S3.3 grammar.
-We fix three reading conventions for the list below.
-First, we identify a tree position with the PIFO that lives there.
-Second, when the lowering hinges on the relation between a target and its parent, we destruct \(\delta\)'s path as \(\pi \mathbin{+\!\!+} [k]\) (reusing \S3.4's convention: \(\pi\) is the parent's path, \texttt{k} is the local index by which that parent reaches the target).
-Third, we use shorthand for the chain walks that recur across entries.
-Write \texttt{flows(path)} for the set of flows admitted by some leaf under \texttt{path}.
-Write \texttt{chain(f)} for the unique sequence of PIFOs from \texttt{port\_root} down to the leaf admitting \texttt{f}, and \texttt{internals(f)} for that sequence minus the leaf.
-Write \texttt{walk(op, C, f)} for issuing \texttt{op(v, f, ...)} at each \(v \in C\); positional remainders such as \texttt{map}'s routing index \(i_{v,f}\) are read off the live tree.
-When an entry's opcodes name an unmentioned parameter at \(\pi\) (e.g., \texttt{set\_policy}'s discipline \texttt{t} or \texttt{change\_arity}'s arity \texttt{n}), it is the live value at \(\pi\) at the time the command is issued.
-\texttt{spawn}'s \texttt{pe} argument is similarly elided: it is \texttt{pe(path)} for the new PIFO's position, drawn from \S6.1''s deployment convention.
+We fix a handful of reading conventions.
+We identify a tree position with the PIFO that lives there.
+Live queries against a node \texttt{v} (its \texttt{arity(v)}, \texttt{discipline(v)}, etc.) are read off the tree at issue time.
+When an opcode names an unmentioned parameter at \texttt{v} (e.g., \texttt{set\_policy}'s discipline, \texttt{change\_arity}'s arity), it is the live value at \texttt{v}.
+\texttt{spawn}'s \texttt{pe} argument is similarly elided: it is \texttt{pe(pos(v))}, drawn from \S6.1''s deployment convention.
 
+Alongside the opcodes, the listings use a small codegen vocabulary:
 \begin{itemize}
-\item \(\ChangeMeta(\pi \mathbin{+\!\!+} [k], m)\):
-\texttt{set\_arm\_meta(}\(\pi\)\texttt{, k, m)}.
-\item \(\Quiesce(\mathtt{path})\):
-for each \(f \in \mathtt{flows}(\mathtt{path})\),
-\[
-\mathtt{walk}(\mathtt{deassoc}, \mathtt{chain}(f), f).
-\]
-\item \(\Add(\mathtt{path}, \mathtt{arm}, \mathtt{meta?})\):
-\begin{itemize}
-\item Let \texttt{n} be \texttt{path}'s current arm count; the new subtree will occupy \texttt{path}'s rightmost slot, index \texttt{n}, so existing children's indices are undisturbed.
-\item Lay out the subtree \texttt{arm} in hardware.
-That is, for each new PIFO in the subtree compiled from \texttt{arm}, \texttt{spawn}+\texttt{adopt}+\texttt{set\_policy} is issued.
-Per-arm \texttt{set\_arm\_meta}s are issued where the discipline requires them.
-\item \texttt{change\_arity(path, n+1)} grows \texttt{path} to arity \(n+1\); where the discipline requires it, \texttt{set\_arm\_meta(path, n, m)} initializes the new slot's metadata from \texttt{meta?}.
-\item \texttt{adopt(n, path, root\_of\_arm)} attaches the new subtree at index \texttt{n}.
-\item Start serving traffic to the new subtree.
-That is, for each \(f \in \mathtt{flows}(\mathtt{arm})\):
-\begin{align*}
-& \mathtt{walk}(\mathtt{assoc}, \mathtt{chain}(f), f);\\
-& \mathtt{walk}(\mathtt{map}, \mathtt{internals}(f), f).
-\end{align*}
+\item \texttt{foreach x in S: BODY} emits \texttt{BODY} once per \texttt{x} drawn from \texttt{S}.
+\item \texttt{walk(op, C, f)} emits \texttt{op(v, f, \ldots)} at each \(v \in C\); positional remainders such as \texttt{map}'s routing index \(i_{v,f}\) are read off the live tree.
+\item \texttt{flows(path)} is the set of flows admitted by some leaf under \texttt{path}.
+\item \texttt{chain(f)} is the sequence of PIFOs from \texttt{port\_root} to the leaf admitting \texttt{f}, and \texttt{internals(f)} is that sequence minus the leaf.
+\item \texttt{nodes(T)} and \texttt{edges(T)} are the PIFOs and parent-child edges of a compiled subtree \texttt{T}; \texttt{root(T)} is \texttt{T}'s root PIFO.
+\item \texttt{layout(T)} expands to \texttt{spawn}+\texttt{set\_policy} at every \(v \in \mathtt{nodes(T)}\), \texttt{adopt} at every internal edge in \(\mathtt{edges(T)}\), and \texttt{set\_arm\_meta} at each per-arm slot where \texttt{v}'s discipline requires it.
+The parent-side \texttt{adopt} that attaches \(\mathtt{root(T)}\) is left to the caller.
 \end{itemize}
-\item \(\Remove(\pi \mathbin{+\!\!+} [k])\):
-\begin{itemize}
-\item \texttt{emancipate(k, }\(\pi\)\texttt{)} detaches the doomed child.
-\(\pi\)'s remaining children keep their indices: each was minted at adoption time and the substrate carries it unchanged, so no sibling-shift cascade is needed.
-\item \texttt{change\_arity(}\(\pi\)\texttt{, n-1)} updates \(\pi\)'s arity counter to match.
-\item For each \(f \in \mathtt{flows}(\pi \mathbin{+\!\!+} [k])\),
-\[
-\mathtt{walk}(\mathtt{unmap}, \mathtt{internals}(f), f)
-\]
-clears the doomed flows' routing through the chain above \(\pi \mathbin{+\!\!+} [k]\) (including \(\pi\) itself, whose \texttt{f} entry vanishes).
-\item One \texttt{gc} per PIFO in the now-detached subtree.
-\end{itemize}
-\item \(\Designate(\mathtt{path}, \mathtt{survivor})\):
-Let \texttt{loser} be the PIFO currently at \texttt{path} and \texttt{parent} be \texttt{path}'s parent.
-Let \texttt{k} be \texttt{path}'s last index (for \texttt{path = []}, the parent is \texttt{port\_root} and \texttt{k} is \texttt{port\_step}).
-\begin{itemize}
-\item Stand up \texttt{survivor}'s subtree as in \Add's ``lay out the subtree'' step (\texttt{spawn} + \texttt{adopt} + \texttt{set\_policy} per node, plus \texttt{set\_arm\_meta}s where the discipline requires them), with one departure: skip the \texttt{adopt} that would attach the subtree's root \texttt{surv} to a parent: the Strict-2 spawn below installs it instead.
-\item Spawn and configure the Strict-2 super-node \texttt{sp\_v}:
-\begin{verbatim}
-spawn(sp_v, pe(path));
-set_policy(sp_v, Strict*, 2);
-adopt(0, sp_v, loser);
-adopt(1, sp_v, surv);
-set_arm_meta(sp_v, 0, 1.0);
-set_arm_meta(sp_v, 1, 2.0).
-\end{verbatim}
-\texttt{sp\_v} lands on the same PE as the roots of \texttt{loser} and \texttt{surv} (see same-PE invariant below).
-\item Rewire \texttt{path}'s parent edge from \texttt{loser} to \texttt{sp\_v}: \texttt{emancipate(k, parent)}; \texttt{adopt(k, parent, sp\_v)}.
-The same \texttt{k} is reused, so \texttt{parent}'s per-arm metadata for that slot is preserved across the rewire.
-\item \texttt{designate(loser, surv)} marks \texttt{loser} as the favored child of the now-installed Strict-2 super-node and records \texttt{surv} as its eventual successor.
-\item Wire flow routing at \texttt{sp\_v} and above.
-At \texttt{sp\_v}, for each \(f \in \mathtt{flows}(\mathtt{loser}) \setminus \mathtt{flows}(\mathtt{surv})\) issue \texttt{assoc(sp\_v, f)} and \texttt{map(sp\_v, f, 0)}; for each \(f \in \mathtt{flows}(\mathtt{surv})\) (whether shared with \texttt{loser} or not) issue \texttt{assoc(sp\_v, f)} and \texttt{map(sp\_v, f, 1)} so that the survivor takes shared classes from this commit onward.
-Above \texttt{sp\_v}, for each \(f \in \mathtt{flows}(\mathtt{surv}) \setminus \mathtt{flows}(\mathtt{path})\): \(\mathtt{walk}(\mathtt{assoc}, \mathtt{chain}(f), f)\); \(\mathtt{walk}(\mathtt{map}, \mathtt{internals}(f), f)\).
-Flows in \(\mathtt{flows}(\mathtt{surv}) \cap \mathtt{flows}(\mathtt{path})\) need no above-\texttt{sp\_v} wiring: the chain is already in place from \texttt{path}'s prior wiring.
-Flows in \(\mathtt{flows}(\mathtt{loser}) \setminus \mathtt{flows}(\mathtt{surv})\) (loser-only labels) keep their existing above-\texttt{sp\_v} Assoc/Map state and are routed to slot 0 by \texttt{sp\_v.z}, matching \S3.4.5's operational rule that loser-only labels drain on arm 0.
-Operator-level silencing of these flows, when the operator ultimately wants it, comes from the \Quiesce step of the surrounding \Replace idiom (\S4), not from \Designate.
-\end{itemize}
+
+Where a production destructures \(\delta\)'s path as \(\pi \mathbin{+\!\!+} [k]\), we write \texttt{p} for the parent's path and \texttt{k} for the child's local index.
+For \texttt{path = []}, the parent is \texttt{port\_root} and \texttt{k} is \texttt{port\_step}.
+
+\paragraph*{\(\ChangeMeta(\pi \mathbin{+\!\!+} [k], m)\)}
+\begin{Verbatim}
+set_arm_meta(p, k, m)
+\end{Verbatim}
+
+\paragraph*{\(\Quiesce(\mathtt{path})\)}
+\begin{Verbatim}
+foreach f in flows(path):
+    walk(deassoc, chain(f), f)
+\end{Verbatim}
+
+\paragraph*{\(\Add(\mathtt{path}, \mathtt{arm}, \mathtt{meta?})\)}
+\begin{Verbatim}
+n := arity(path)
+layout(arm)
+change_arity(path, n+1)
+if meta?: set_arm_meta(path, n, meta?)
+adopt(n, path, root(arm))
+foreach f in flows(arm):
+    walk(assoc, chain(f), f)
+    walk(map,   internals(f), f)
+\end{Verbatim}
+The new subtree occupies \texttt{path}'s rightmost slot (index \texttt{n}), so existing children's indices are undisturbed.
+
+\paragraph*{\(\Remove(\pi \mathbin{+\!\!+} [k])\)}
+\begin{Verbatim}
+change_arity(p, arity(p) - 1)
+emancipate(k, p)
+foreach f in flows(p ++ [k]):
+    walk(unmap, internals(f), f)
+foreach v in nodes(p ++ [k]):
+    gc(v)
+\end{Verbatim}
+\texttt{p}'s remaining children keep their indices: each was minted at adoption time, so no sibling-shift cascade is needed.
+
+\paragraph*{\(\Designate(\mathtt{path}, \mathtt{survivor})\)}
+\begin{Verbatim}
+loser  := PIFO at path;   parent := PIFO at path's parent
+k      := path's last index
+surv   := root(survivor)
+layout(survivor)
+spawn(sp_v, pe(path))
+set_policy(sp_v, Strict*, 2)
+adopt(0, sp_v, loser); adopt(1, sp_v, surv)
+set_arm_meta(sp_v, 0, 1.0)
+set_arm_meta(sp_v, 1, 2.0)
+emancipate(k, parent); adopt(k, parent, sp_v)
+designate(loser, surv)
+foreach f in flows(loser) \ flows(surv):
+    assoc(sp_v, f); map(sp_v, f, 0)
+foreach f in flows(surv):
+    assoc(sp_v, f); map(sp_v, f, 1)
+foreach f in flows(surv) \ flows(path):
+    walk(assoc, chain(f), f)
+    walk(map,   internals(f), f)
+\end{Verbatim}
+Reusing the same \texttt{k} for the rewire preserves \texttt{parent}'s per-arm metadata for that slot.
+Flows in \(\mathtt{flows(surv)} \cap \mathtt{flows(path)}\) need no above-\texttt{sp\_v} wiring: the chain is already in place from \texttt{path}'s prior wiring.
+Flows in \(\mathtt{flows(loser)} \setminus \mathtt{flows(surv)}\) keep their existing above-\texttt{sp\_v} Assoc/Map state and are routed to slot 0 by \texttt{sp\_v.z}, matching \S3.4.5's operational rule that loser-only labels drain on arm 0.
+Operator-level silencing of those flows, when the operator ultimately wants it, comes from the \Quiesce{} step of the surrounding \Replace{} idiom (\S4), not from \Designate.
 
 \emph{Same-PE invariant.}
 The planner places \texttt{sp\_v}, \texttt{loser}'s root, and \texttt{surv}'s root on the same PE (a deterministic property of the lowering: all three sit at depth \(|\mathtt{path}|\), and \texttt{pe(path)} returns one PE).
 The substrate may exploit this to coalesce the three into a single physical slot, sparing itself from moving all of \texttt{loser} down one PE level.
 
-\item \(\Undesignate(\mathtt{path})\):
-let \texttt{sp\_v} be the Strict-2 super-node head formed at \texttt{path} by the prior \Designate, and \texttt{loser\_v} be its retiring arm.
-\texttt{undesignate(loser\_v)}; \texttt{gc(sp\_v)} to release the super-node head (which \texttt{undesignate} rewires past but does not deallocate); one \texttt{gc} per PIFO in the now-detached subtree rooted at \texttt{loser\_v}.
-\item \(\ChangeRoot(\mathtt{path})\):
-let the live tree be \(\mathtt{port\_root} \to a_0 \to a_1 \to \ldots \to a_m \to \mathtt{path}\) (the \S3.3 restriction makes \(a_0 \ldots a_m\) a unary vine).
-\texttt{emancipate(port\_step, port\_root)}; \texttt{adopt(port\_step, port\_root, path)}; \(\mathtt{gc}(a_0); \mathtt{gc}(a_1); \ldots; \mathtt{gc}(a_m)\).
-\end{itemize}
+\paragraph*{\(\Undesignate(\mathtt{path})\)}
+\begin{Verbatim}
+sp_v    := super-node head at path
+loser_v := its retiring arm
+undesignate(loser_v)
+gc(sp_v)
+foreach v in nodes(loser_v):
+    gc(v)
+\end{Verbatim}
+\texttt{undesignate} rewires the parent's slot past \texttt{sp\_v} but does not deallocate it, so an explicit \texttt{gc(sp\_v)} follows.
+
+\paragraph*{\(\ChangeRoot(\mathtt{path})\)}
+Let the live tree be \(\mathtt{port\_root} \to a_0 \to a_1 \to \ldots \to a_m \to \mathtt{path}\) (the \S3.3 restriction makes \(a_0 \ldots a_m\) a unary vine).
+\begin{Verbatim}
+emancipate(port_step, port_root)
+adopt(port_step, port_root, path)
+foreach a in {a_0, ..., a_m}:
+    gc(a)
+\end{Verbatim}
 
 Three items in the list deserve unpacking.
 
-\Quiesce's wide reach (root-to-\texttt{path} chain, plus the subtree under \texttt{path}) is forced by \S3.2's parallel push: every node on a packet's path mints its own routing index independently, so dropping \texttt{f} only at some nodes would leave the rest happy to mint stray indices that would leave the tree malformed.
+\Quiesce{}'s wide reach (root-to-\texttt{path} chain, plus the subtree under \texttt{path}) is forced by \S3.2's parallel push: every node on a packet's path mints its own routing index independently, so dropping \texttt{f} only at some nodes would leave the rest happy to mint stray indices that would leave the tree malformed.
 The chain walk is what \S3.4.3 calls \emph{restricting \texttt{z} uniformly}.
-Quiesce does not issue \texttt{unmap}: silenced flows' Map entries \emph{must outlive the silencing} so that buffered packets can be popped.
-\Remove pairs \texttt{emancipate} with \texttt{unmap} precisely because it fires after the drain, when there is no longer any in-flight traffic to preserve.
+\Quiesce{} does not issue \texttt{unmap}: silenced flows' Map entries \emph{must outlive the silencing} so that buffered packets can be popped.
+\Remove{} pairs \texttt{emancipate} with \texttt{unmap} precisely because it fires after the drain, when there is no longer any in-flight traffic to preserve.
+One subtlety in the loser arm of an SP\(^*\) super-node (i.e., a \Quiesce{} that fires mid-\Replace{}): the lowering restricts the deassoc walk to loser-only classes, since \Designate{} routed the shared classes to the survivor's slot at commit time (\S3.4.5), and deassoc'ing them here would silence live traffic on the survivor.
 
-The lowering for \Designate matches \S3's tree-level reading verbatim: a fresh Strict-2 PIFO \texttt{sp\_v} is spawned, \texttt{path}'s previous occupant becomes its favored child (rank 1.0), and the survivor becomes its second child (rank 2.0).
-The lowering rewires \texttt{path}'s parent edge from \texttt{loser} to \texttt{sp\_v}, reusing the same parent-side index \texttt{k}; the parent's per-arm metadata for the slot is therefore preserved across \Designate and across the eventual \Undesignate that retires the give-up.
+The lowering for \Designate{} matches \S3's tree-level reading verbatim: a fresh Strict-2 PIFO \texttt{sp\_v} is spawned, \texttt{path}'s previous occupant becomes its favored child (rank 1.0), and the survivor becomes its second child (rank 2.0).
+The lowering rewires \texttt{path}'s parent edge from \texttt{loser} to \texttt{sp\_v}, reusing the same parent-side index \texttt{k}; the parent's per-arm metadata for the slot is therefore preserved across \Designate{} and across the eventual \Undesignate{} that retires the give-up.
 \texttt{designate(loser, surv)} is the ISA-level marker that names the favored child and records the eventual successor; a later \texttt{undesignate} swings the parent's index over to \texttt{surv} and releases \texttt{sp\_v} along with the loser subtree.
 A substrate that recognizes the same-PE invariant on \texttt{(sp\_v, loser, surv)} is free to coalesce the three into a single physical slot (the ``super-node'' optimization); the ISA does not pin this down, leaving room for substrates that prefer the literal Strict-2 form.
 
-\ChangeRoot writes no flow tables: \texttt{path}'s \texttt{Assoc} and \texttt{Map} already describe the post-commit live tree, since collapsing the unary vine above \texttt{path} leaves the flows-to-leaves mapping unchanged.
+\ChangeRoot{} writes no flow tables: \texttt{path}'s \texttt{Assoc} and \texttt{Map} already describe the post-commit live tree, since collapsing the unary vine above \texttt{path} leaves the flows-to-leaves mapping unchanged.
 
 \subsection{Substrate portability}
 
