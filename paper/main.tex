@@ -229,8 +229,7 @@ We also write \texttt{C@path.node\_state} and \texttt{C@path.slot\_states} for t
 \paragraph{Well-formedness of controls}
 
 A control \texttt{C} is \emph{well-formed} (written \(\vdash \mathtt{C}\)) when, at every internal node of \texttt{C}, the \texttt{pifo} has, for each legal child index \texttt{i}, exactly as many occurrences of \texttt{i} as there are packets stored in the leaf pifos of the subtree under the \texttt{i}-th child.
-This is the same well-formedness property as for the underlying PIFO tree, and maintaining it has the same effect (preventing \texttt{pop}s from getting stuck).
-We just state it directly on \texttt{C} so that no global PIFO tree needs to be assembled to check it.
+This is the tree-level condition of \S3.1.1 lifted to controls; stating it directly on \texttt{C} lets \texttt{push} and \texttt{pop} preserve it node-locally, without assembling a global PIFO tree to check.
 
 \paragraph{Backward compatibility}
 
