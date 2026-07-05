@@ -1153,11 +1153,11 @@ Guarded sequences realize changes to the live control that no single \(\delta\) 
 A guarded sequence threads the live control through a chain of intermediate controls, one per pair of consecutive productions.
 We call each such intermediate control a \texttt{link}, writing \(\mathtt{link}_i\) for the control on which the \texttt{i}-th \(\delta\) (zero-indexed) fires; \(\mathtt{link}_0 = \mathtt{C}\) is the starting control, and \(\mathtt{link}_{i+1} = \sem{\delta_i}(\mathtt{link}_i)\) is what the \texttt{i}-th \(\delta\) leaves behind (\S4.1 makes this precise).
 
-The headline result of the section, proved below, is that each \texttt{link} is itself an ordinary \S3.1-style control, so the ``transitionary period'' \emph{needs no new semantics}: this is Obligation 1 of \S1, discharged.
+The main observation of the section, developed in \S4.1, is that each \texttt{link} is itself an ordinary \S3.1-style control, so the ``transitionary period'' \emph{needs no new semantics}: this is Obligation 1 of \S1, discharged locally by the per-production obligations of \S3.4.
 Moreover, since every production of \S3 is \emph{pol-explainable} (each \(\delta\) has a \(\den(\delta)\) that tracks its pol-level effect), we can echo to the operator, at every step of the sequence, the \texttt{pol} that the live control actually realizes.
 The chain of \(\den\)s starting from \(\lfloor \mathtt{C} \rfloor\) gives \(\lfloor \mathtt{link}_i \rfloor\) for each \texttt{i}, so the operator is never in the dark about what policy is running.
 
-\subsection{Guarded Sequences}
+\subsection{Guarded Sequences and Their Idioms}
 
 \paragraph{Grammar}
 
@@ -1167,119 +1167,21 @@ phi    ::= true
 
 gseq   ::= eps
          | (phi ; d) ; gseq
-         | I ; gseq
-
-I      ::= Retire(path)
-         | SlowRetire(path)
-         | Replace(path, pol)
-         | PruneDownTo(path)
 \end{verbatim}
 
 We write \texttt{gseq} for ``guarded sequence.''
 A guard \(\varphi\) is either trivially satisfied (\texttt{true}) or asserts that the subtree at \texttt{path} is empty; it is always paired with exactly one \(\delta\) drawn from \S3.
-The informal notation \((\varphi ; \delta)^{*}\) used elsewhere in the paper names exactly the \texttt{gseq} form after idiom expansion: a finite sequence of \((\varphi, \delta)\) pairs.
-An idiom \texttt{I} appears in a \texttt{gseq} \emph{without} a guard because an idiom expands into a \texttt{gseq} of its own whose internal guards carry the synchronization (\S4.2).
-For instance, \S4.2's \texttt{PruneDownTo} expansion reads
+The two guard forms have sufficed for every sequence we have needed; the framework does not depend on this minimality, and a richer predicate language can be slotted in without disturbing anything else.
 
-\begin{verbatim}
-Retire(pi_a) ; ... ; Retire(pi_z) ;
-    (true ; ChangeRoot(path))
-\end{verbatim}
+\paragraph{Intuition}
 
-mixing bare idiom invocations with one explicitly-guarded \(\delta\).
-After idiom expansion (\S4.2), every step is a \((\varphi ; \delta)\) pair, and that is the form on which the rest of \S4 reasons.
+The hardware substrate (\S6) does two things beyond ordinary \texttt{push}/\texttt{pop}: it waits for a guard \(\varphi\) to become true on the live control, and it fires a single \(\delta\) as an atomic replacement.
+A guarded sequence chains these: wait for \(\varphi_0\), fire \(\delta_0\), then wait for \(\varphi_1\) (now evaluated on the post-\(\delta_0\) control), fire \(\delta_1\), and so on.
+Each intermediate control between two consecutive \(\delta\) firings is an ordinary \S3.1 control, so the ``transitionary period'' has no new semantics; safety is entirely local, following from the per-production obligations of \S3.4.\footnote{Liveness is a separate concern that this paper does not chase. A planner that emits an unsatisfiable guard, or an operator (\S4.3) whose imperative sequence adversarial traffic will never satisfy, will stall; the live control remains safe but never reaches the target. Follow-up requests during a sequence are handled in \S4.4.}
 
-We have a rather small vocabulary of guard forms.
-Those two have sufficed for every sequence we have needed; we take the minimality as a small design win.
-The framework does not depend on this minimality, and a richer predicate language can be slotted in without disturbing the rest of \S4.
+\paragraph{Idioms}
 
-\paragraph{Sequence semantics}
-
-The grammar above gives a \texttt{gseq} its shape; this subsection gives it operational meaning.
-\S3 wrote \texttt{C} for the pre-edit control and \texttt{C'} for the post-edit one; here we generalize from a single-step replacement to a chain of steps.
-A \emph{transition planner} (\S5) realizes a reconfiguration from \texttt{C} to \texttt{C'} as a guarded sequence
-
-\begin{verbatim}
-(phi_0 ; d_0) ; (phi_1 ; d_1) ; ... ; (phi_n ; d_n).
-\end{verbatim}
-
-Write \(\mathtt{link}_0 = \mathtt{C}\) and \(\mathtt{link}_{i+1} = \sem{\delta_i}(\mathtt{link}_i)\) for \(0 \leq i \leq n\), with \(\mathtt{link}_{n+1} = \mathtt{C'}\).
-Pairs fire in order: \(\mathtt{link}_i\) runs and serves ordinary pushes and pops until \(\varphi_i\) becomes true on its state, at which instant \(\delta_i\) fires and produces \(\mathtt{link}_{i+1}\); only then is the next pair \((\varphi_{i+1}; \delta_{i+1})\) in play.
-Crucially, \(\varphi_{i+1}\) is evaluated on \(\mathtt{link}_{i+1}\), which exists only after \(\delta_i\) has fired, so the sequence is genuinely sequential and not a set of independent guards racing on the same control.
-
-A guard may be \texttt{true}, in which case \(\delta_i\) fires the moment \(\mathtt{link}_i\) is installed, with no waiting; but a \texttt{true} later in the sequence is still gated by every preceding pair.
-For instance, the closing \((\mathtt{true} ; \ChangeRoot(\mathtt{path}))\) of \S4.2's \texttt{PruneDownTo} is nominally guarded by \texttt{true} but in the global timeline cannot fire until every preceding \texttt{Retire} has run to completion.
-The empty sequence is the case \(\lfloor \mathtt{C} \rfloor \eqR \lfloor \mathtt{C'} \rfloor\): the live control is left untouched.
-
-\paragraph{The iterated picture}
-
-\S3.2 drew the unit cell of Rule 3 against a single production: one operational rewrite \(\sem{\delta}\), one pol-level effect \(\den(\delta)\), one \(\lfloor \cdot \rfloor\) bridge between them.
-A guarded sequence stacks copies of that unit cell horizontally:
-
-\begin{center}
-\begin{tikzpicture}[
-  every node/.style={font=\small},
-  ->, >={Stealth[length=4pt]}
-]
-\matrix (m) [matrix of nodes, column sep=1.0cm, row sep=1.0cm,
-             nodes={anchor=center}] {
-  $\mathtt{ip}_0$ & $\mathtt{ip}_1$ & $\cdots$ & $\mathtt{ip}_{n+1}$ \\
-  $\mathtt{link}_0$ & $\mathtt{link}_1$ & $\cdots$ & $\mathtt{link}_{n+1}$ \\
-};
-\draw (m-1-1) -- node[above]{$\den(\delta_0)$} (m-1-2);
-\draw (m-1-2) -- node[above]{$\den(\delta_1)$} (m-1-3);
-\draw (m-1-3) -- node[above]{$\den(\delta_n)$} (m-1-4);
-\draw (m-2-1) -- node[above]{$\sem{\delta_0}$} node[below]{$(\varphi_0)$} (m-2-2);
-\draw (m-2-2) -- node[above]{$\sem{\delta_1}$} node[below]{$(\varphi_1)$} (m-2-3);
-\draw (m-2-3) -- node[above]{$\sem{\delta_n}$} node[below]{$(\varphi_n)$} (m-2-4);
-\draw (m-1-1) -- node[left]{$\lfloor\cdot\rfloor$} (m-2-1);
-\draw (m-1-2) -- node[left]{$\lfloor\cdot\rfloor$} (m-2-2);
-\draw (m-1-4) -- node[right]{$\lfloor\cdot\rfloor$} (m-2-4);
-\end{tikzpicture}
-\end{center}
-
-with \(\mathtt{link}_0 = \mathtt{C}\), \(\mathtt{link}_{n+1} = \mathtt{C'}\), and \(\mathtt{ip}_i := \lfloor \mathtt{link}_i \rfloor\).
-The bottom edge is the operational chain that the substrate runs: each horizontal arrow \(\mathtt{link}_i \to_{\sem{\delta_i}} \mathtt{link}_{i+1}\) fires once its guard \(\varphi_i\) becomes true on \(\mathtt{link}_i\).
-The top edge is the pol-level chain that the operator sees: each \(\mathtt{ip}_i\) is a valid \texttt{pol} with a readable scheduling semantics, and each \(\den(\delta_i)\) carries one \(\mathtt{ip}_i\) to the next.
-The vertical \(\lfloor \cdot \rfloor\) bridges are the per-step Rule-3 cells, one per \(\delta_i\), each one already discharged in \S3.4.
-
-The diagram contains a mild abuse of notation: we should be writing \(\eqR\) and \(\simR\) in some cases instead of pretending that two routes actually coincide on the nose.
-However, we prefer this style for now to lighten the notation.
-
-The picture pays two dividends.
-First, every operator-observable intermediate \(\mathtt{link}_i\) corresponds to an \(\mathtt{ip}_i\) that the runtime can echo back, just as \S3.2 echoed \texttt{p1'} from \(\lfloor \mathtt{C1} \rfloor\): there is no transient between-the-pols regime that lacks a \texttt{pol}-level meaning.
-Second, \S4.3 will use the top edge directly: the pol-level check on an imperative-mode sequence is the assertion that \(\mathtt{ip}_{n+1} \eqR \mathtt{p2}\), with each \(\den(\delta_i)\) defined on its \(\mathtt{ip}_i\).
-
-\paragraph{Safety}
-
-\textbf{Lemma 4.1 (Safety of guarded sequences).}
-For any guarded sequence \((\varphi_0 ; \delta_0) ; \ldots ; (\varphi_n ; \delta_n)\) emitted by the planner against a well-formed \(\mathtt{link}_0 = \mathtt{C}\), every control the user observes during execution is well-formed: \(\vdash \mathtt{link}_i\) holds at each \texttt{i}, and \(\vdash \mathtt{C'}\).
-
-\emph{Proof sketch.}
-\(\vdash \mathtt{link}_0\) by assumption.
-Each \(\delta_i\) preserves \(\vdash\) by the per-production obligation discharged in \S3.4, so \(\vdash \mathtt{link}_{i+1}\).
-Each \(\mathtt{link}_i\) itself preserves \(\vdash\) under ordinary \texttt{push}/\texttt{pop}, since \S3.1's \texttt{push} carries a well-formed PIFO tree to a well-formed one and \texttt{pop} does likewise on non-empty inputs.
-So the user-observable trace is a stream of ordinary \texttt{push}/\texttt{pop} operations served in turn by well-formed controls \(\mathtt{C}, \mathtt{link}_1, \ldots, \mathtt{link}_n, \mathtt{C'}\).
-Each intervening \(\mathtt{link}_i\) is therefore an ordinary \S3.1 control, and the ``semantics of \texttt{link}'' is nothing more than the \S3.1 semantics of the controls we install: each \(\delta\)'s job is to be a sound atomic replacement, and the planner's job is to order them behind sensible guards.
-
-The lemma's reach is what discharges Obligation 1 of \S1: safety is entirely local, following from the per-production obligations of \S3.4 with no global argument about the sequence.
-
-\paragraph{Liveness}
-
-Liveness is not a soundness obligation in this paper.
-A planner that emits an unsatisfiable guard is misbehaving but not unsafe: the live scheduler remains well-formed.
-
-[AM note: a natural extension would be an operator-facing \emph{withdraw} that aborts a stuck in-flight sequence and rolls the live control back to a safe checkpoint, but we have no such mechanism today and no concrete plans to build one; the queueing story of \S4.4 is what we commit to.]
-A sequence reaches \texttt{C'} only if each \(\varphi_i\) eventually becomes true on \(\mathtt{link}_i\), and Lemma 4.1 says nothing about that.
-A \texttt{Quiesce}d subtree may never drain if higher-priority siblings starve it; a guard \texttt{empty(path)} on a subtree fed by an adversarial higher-priority neighbor may never fire.
-We therefore treat liveness as a \emph{nice-to-have}, the planner's and the operator's joint concern.
-Every sequence we emit is safe; whether and how fast it completes is a function of how well the planner chose its guards and of the traffic the live scheduler meets.
-For the queueing behavior when follow-up requests arrive mid-flight, see \S4.4.
-
-\subsection{Idioms: Named Sequences}
-
-\emph{Idioms} are an operator-facing vocabulary for frequently-used guarded sequences.
-They are the typical building block of imperative-mode sequences (\S4.3).
+\emph{Idioms} are an operator-facing vocabulary for frequently-used guarded sequences, and are the typical building block of imperative-mode sequences (\S4.3).
 
 An idiom is a macro over the grammar \(\delta\) (and, recursively, over other idioms).
 It expands into a fixed \((\varphi; \delta)^{*}\) sequence: a list of productions with the guards between them spelling out what the system waits for.
@@ -1390,10 +1292,10 @@ Imperative mode buys expressivity, not a different proof obligation; it admits s
 
 \paragraph{The pol-level check on imperative sequences}
 
-The pol-level check is exactly the top edge of \S4.1's iterated diagram: we fold each production's \(\den(\delta_i)\) (\S3.4) along the sequence, obtaining the intermediate pols \(\mathtt{ip}_0 = \mathtt{p1'}, \mathtt{ip}_1, \ldots, \mathtt{ip}_{n+1}\) with \(\mathtt{ip}_{i+1} := \den(\delta_i)(\mathtt{ip}_i)\), where \(\mathtt{p1'} = \lfloor \mathtt{C} \rfloor\) is the pol we echoed to the operator.
+The pol-level check folds each production's \(\den(\delta_i)\) (\S3.4) along the sequence, producing the intermediate pols \(\mathtt{ip}_0 = \mathtt{p1'}, \mathtt{ip}_1, \ldots, \mathtt{ip}_{n+1}\) with \(\mathtt{ip}_{i+1} := \den(\delta_i)(\mathtt{ip}_i)\), where \(\mathtt{p1'} = \lfloor \mathtt{C} \rfloor\) is the pol we echoed to the operator.
 We accept the request iff every \(\den(\delta_i)\) is defined on \(\mathtt{ip}_i\) and \(\mathtt{ip}_{n+1} \eqR \mathtt{p2}\).
 That is, the user-provided sequence actually takes \texttt{p1'} to \texttt{p2}.
-This is Rule 3 of \(\lfloor \cdot \rfloor\) (\S3.2) iterated across the sequence: each step's \(\den(\delta_i)\) was proved to match its operational counterpart \(\sem{\delta_i}\) per-production in \S3.4, so a fold that lands at \(\mathtt{ip}_{n+1} \eqR \mathtt{p2}\) certifies, by the diagram's cell-by-cell commutation, that the operational chain along the bottom edge ends in a control whose \(\lfloor \cdot \rfloor\) is \texttt{p2}.
+This is the Interplay theorem (\S3.5) iterated across the sequence: each step's \(\den(\delta_i)\) matches its operational counterpart \(\sem{\delta_i}\) per-production in \S3.4, so a fold that lands at \(\mathtt{ip}_{n+1} \eqR \mathtt{p2}\) certifies, cell-by-cell, that the operational chain ends in a control whose \(\lfloor \cdot \rfloor\) is \texttt{p2}.
 
 Each \(\mathtt{ip}_i\) is itself a valid pol with an explainable scheduling semantics, not a transient artifact of the proof.
 For instance, after the first step of \texttt{Replace(path, B)}'s expansion the intermediate pol holds \(\Strict(\mathtt{pol@path}, B)\) at \texttt{path}: a temporary strict-priority node favoring the outgoing \texttt{pol@path} over the incoming \texttt{B}, with a readable scheduling interpretation in its own right.
@@ -1419,7 +1321,7 @@ A sketch of the stronger possibility lives in our discussion notes.
 The operator hands the runtime \texttt{p1} (the presently-running policy) and \texttt{p2} (their new desire); the planner's job is to propose a \((\varphi ; \delta)^{*}\) sequence whose pol-level fold takes \texttt{p1} to \texttt{p2} up to \(\eqR\).
 The operator accepts or rejects the proposal; they do not author it directly.
 
-Every sequence the planner emits is safe by \S3.4 (per-production guarantees) and \S4.1 (Safety of guarded sequences), regardless of how the planner assembled it.
+Every sequence the planner emits is safe by the per-production guarantees of \S3.4, aggregated across the sequence as sketched in \S4.1, regardless of how the planner assembled it.
 The planner aims to land at \texttt{p2} by construction: each case below emits a \(\delta\) or idiom whose \(\den\) realizes the locally-observed pol-level difference.
 A misstep in the case analysis could in principle yield a sequence whose fold \(\den(\delta_n) \circ \ldots \circ \den(\delta_1) (\mathtt{p1})\) misses \texttt{p2}'s \(\eqR\)-class; the \S4.3 pol-level check is the backstop and rejects any such sequence before commit.
 Optimality is a separate matter, and not guaranteed: the planner may fail to see a superior sequence that the user has in mind.
