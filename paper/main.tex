@@ -172,14 +172,12 @@ This subsection lays out both layers, first the tree (\S3.1.1) then the wrapping
 
 A \emph{PIFO tree} is a hierarchy of PIFO queues: leaves hold packets, while internal nodes hold child indices that route each \texttt{pop} down to a chosen leaf.
 
-\paragraph{Topology vs.\ contents}
+\paragraph{Shape vs.\ contents}
 
-A \emph{topology} \texttt{t} is a finite tree carrying no data: either a single node \texttt{*} or \texttt{Node(ts)} which is the parent of a list \texttt{ts} of child topologies.
-A \emph{PIFO tree} of topology \texttt{t}, written \texttt{q : PIFOTree(t)}, layers data onto \texttt{t}.
-The data is of two forms.
+A PIFO tree separates its structural shape (the underlying finite tree of nodes) from the data carried at each node.
 A leaf \texttt{Leaf(p)} holds a packet-carrying PIFO \texttt{p}.
-An internal node \texttt{Internal(qs, p)} itself carries two kinds of data: a list \texttt{qs} of well-formed PIFO tree children whose topologies match the corresponding sub-topologies of \texttt{t}, and a PIFO \texttt{p} whose entries are indices into \texttt{qs}.
-This separation between the topology and the carried contents is key to making the grammar \(\delta\) of \S3.3 well-defined: a structural edit is a change to the topology \texttt{t}, distinct from the running contents.
+An internal node \texttt{Internal(qs, p)} carries a list \texttt{qs} of well-formed PIFO tree children and a PIFO \texttt{p} whose entries are indices into \texttt{qs}.
+This separation is key to making the grammar \(\delta\) of \S3.3 well-defined: a structural edit is a change to the shape, distinct from the running contents.
 
 \paragraph{The two observable operations}
 
