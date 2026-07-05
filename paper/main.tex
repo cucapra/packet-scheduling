@@ -159,7 +159,8 @@ The two layers compose.
 \S3.2 defines a small policy DSL and a compiler from the DSL into a control, giving us the syntactic handle on the fully compiled hardware-level scheduler that is actually running.
 \S3.3 fixes a grammar \(\delta\) of structural edits over that DSL, where every production of \(\delta\) is, by construction, atomically realizable in hardware.
 \S3.4 proves each production is \emph{sound}: for every production of \(\delta\), we say what running it does to the scheduler that is actually running in hardware, show that this matches the policy-level edit we were expecting, and check that the rest of the tree is left alone, with unrelated nodes keeping their state and the live packets staying accounted for.
-\S3.5 argues that this per-production soundness survives the lowering to hardware.
+\S3.5 states the interplay of \(\den(\delta)\), \(\sem{\delta}\), and \(\lfloor \cdot \rfloor\) as a formal theorem that packages the per-production work of \S3.4 into a single commuting-square statement.
+\S3.6 argues that this per-production soundness survives the lowering to hardware.
 The productions of \(\delta\) need to be arranged in \emph{guarded sequences} in order to realize a full reconfiguration; this is deferred to \S4.
 
 \subsection{The runtime model: PIFO trees and controls}
@@ -358,102 +359,7 @@ The \(\eqR\) slack is needed here because the operational rewrite has arm-order 
 
 The three rules together let us propagate \(\lfloor \cdot \rfloor\) from any \(\lceil p \rceil\) along any sequence of pushes, pops, and productions of \(\delta\).
 This is how we will discharge Obligation 1 of \S1: telling the operator what \texttt{pol} is running even when no user has explicitly requested the \texttt{pol}.
-
-The interplay of the three rules is captured by the following diagram.
-
-\begin{center}
-\begin{tikzpicture}[
-  node distance=1.2cm and 3.2cm,
-  every node/.style={font=\small},
-  ->, >={Stealth[length=4pt]}
-]
-\node (p1) {\texttt{p1}};
-\node (p2) [right=of p1] {\texttt{p2}};
-\node (c1) [below=of p1] {\texttt{C1} $\sim$ \texttt{C1'}};
-\node (c2) [below=of p2] {\texttt{C2'} $\simR$ \texttt{C2}};
-\draw (p1) -- node[above]{$\den(\delta)$} (p2);
-\draw (c1) -- node[above]{$\sem{\delta}$} (c2);
-\draw (p1) -- node[left]{$\lfloor\cdot\rfloor$} (c1);
-\draw (p2) -- node[right]{$\lfloor\cdot\rfloor$} (c2);
-\end{tikzpicture}
-\end{center}
-
-Let us study this diagram with an eye to the user's experience.
-Our final goal will be to correctly relate \texttt{C2'} and \texttt{C2}.
-
-\begin{itemize}
-\item The operator writes \texttt{p1}.
-Then \(\mathtt{C1} := \lceil \mathtt{p1} \rceil\), with \(\lfloor \mathtt{C1} \rfloor \eqR \mathtt{p1}\) by rule 1.
-\item We echo \(\mathtt{p1'} := \lfloor \mathtt{C1} \rfloor\) back to the user.
-This is not shown in the diagram but will become important shortly.
-\texttt{p1'} faithfully represents the arm ordering that the compiler chose.
-\item Push and pop operations carry \texttt{C1} to \texttt{C1'}.
-\(\mathtt{C1} \sim \mathtt{C1'}\) by the definition of \(\sim\), and \(\lfloor \mathtt{C1'} \rfloor = \lfloor \mathtt{C1} \rfloor\) by rule 2, so the live \texttt{C1'} still realizes both \texttt{p1} and \texttt{p1'}.
-\item The operator writes \texttt{p2}.
-The \emph{transition planner} (\S4-\S5), the tool that infers atomic edits between two \texttt{pol}s, produces a \(\delta\) such that \(\den(\delta)(\mathtt{p1'}) \eqR \mathtt{p2}\).
-It is key that we work in the frame of the actually-running representative \texttt{p1'} rather than the operator's original \texttt{p1}, since \(\den\) is stated using semantically meaningful paths.
-\item Applying \(\sem{\delta}\) to \texttt{C1'} brings us to control \texttt{C2'}, and by rule 3 \(\lfloor \mathtt{C2'} \rfloor \eqR \den(\delta)(\mathtt{p1'})\).
-Further, we can chain this with the fact \(\den(\delta)(\mathtt{p1'}) \eqR \mathtt{p2}\) (established just above) to get \(\lfloor \mathtt{C2'} \rfloor \eqR \mathtt{p2}\).
-\item We again echo \(\mathtt{p2'} := \lfloor \mathtt{C2'} \rfloor\) to the user.
-\end{itemize}
-
-The transformation is complete at this point, but we need to ground ourselves.
-\(\mathtt{C2} := \lceil \mathtt{p2} \rceil\) is the control we \emph{would have built} had we taken the SOTA stop-the-world path: the state-of-the-art response to a \(\mathtt{p1} \to \mathtt{p2}\) request is to freshly compile \(\lceil \mathtt{p2} \rceil\) (\S1).
-We do not actually construct \texttt{C2}, but it is the correct reference point and it is crucial that we now relate \texttt{C2'} (which we have just produced after a fashion) to \texttt{C2}.
-By rule 1, \(\lfloor \mathtt{C2} \rfloor \eqR \mathtt{p2}\), hence \(\lfloor \mathtt{C2'} \rfloor \eqR \lfloor \mathtt{C2} \rfloor\).
-But we would like to relate the controls directly, not just their \texttt{pol}-level projections.
-The relation we write is \(\mathtt{C2'} \simR \mathtt{C2}\), which absorbs two gaps at once:
-
-\begin{itemize}
-\item \texttt{C2'} carries the live \texttt{pifo}/\texttt{state} accumulated since \texttt{C1}, while \texttt{C2} is freshly compiled and bare.
-The \(\sim\) component covers this.
-\item \(\sem{\delta}\) and \(\lceil \cdot \rceil\) are free to pick different sibling orders at internal nodes, so \texttt{C2'} and \texttt{C2} may also differ in child arrangements.
-The R-closure covers this.
-\end{itemize}
-
-The diagram above is the unit cell of a fuller picture.
-A typical reconfiguration is not a single \(\delta\) but a guarded sequence \((\varphi_0 ; \delta_0) ; \ldots ; (\varphi_n ; \delta_n)\); \S4.1 stacks copies of this unit cell horizontally, with each intermediate control \(\mathtt{link}_i\) between \texttt{C} and \texttt{C'} carrying its own pol-level meaning \(\lfloor \mathtt{link}_i \rfloor\).
-For \S3.2's purposes we read the unit cell on its own; everything that follows about a single \(\delta\), including the operator-advice below, lifts cell-by-cell to the sequence picture in \S4.1.
-
-When writing \texttt{p2}, the operator would do well to state their request against \texttt{p1'}, the actually-running \texttt{pol} that we echoed back to them.
-This keeps \(\delta\) small and aligns paths with what is running.
-The operator may state \texttt{p2} against the \texttt{p1} they originally wrote, but at their own risk.
-The risks are of two flavors:
-
-\begin{itemize}
-\item The planner may infer a larger \(\delta\) than necessary, or may give up.
-\item The more serious issue is that the user may use Imperative Mode (\S4) to directly specify what edits to make, and if they use \texttt{p1} to base their paths, they may inadvertently edit the wrong node or provide a malformed path.
-\end{itemize}
-
-\paragraph{A worked example}
-
-\begin{itemize}
-\item The operator requests \texttt{p1 = Strict(hi: gmail, lo: zoom)}.
-\item The compiler uses its degree of freedom to yield control \texttt{C1} such that \(\lfloor \mathtt{C1} \rfloor = \mathtt{Strict(lo: zoom, hi: gmail)}\).
-Note that the children have been reordered for some compiler-internal reason.
-\item We echo back
-\[
-\mathtt{p1'} := \lfloor \mathtt{C1} \rfloor = \mathtt{Strict(lo: zoom, hi: gmail)}.
-\]
-We know that \(\mathtt{p1} \eqR \mathtt{p1'}\), so the scheduler the operator gets is the one they asked for; only the slot numbering differs.
-\item As the control serves pushes and pops, it transforms into \texttt{C1'}.
-\item Later, the operator requests \texttt{p2 = Strict(lo: zoom, mid: spotify, hi: gmail)}.
-\item The runtime can again use its freedom.
-Instead of literally splicing \texttt{spotify} in between running arms \texttt{zoom} and \texttt{gmail}, it chooses to append \texttt{spotify} to the end.
-This converts the running control \texttt{C1'} into control \texttt{C2'} such that
-\[
-\lfloor \mathtt{C2'} \rfloor = \mathtt{Strict(lo: zoom, hi: gmail, mid: spotify)}.
-\]
-\item We echo back
-\[
-\mathtt{p2'} := \lfloor \mathtt{C2'} \rfloor = \mathtt{Strict(lo: zoom, hi: gmail, mid: spotify)}
-\]
-to the user.
-\item Now the operator changes to Imperative Mode (\S4) and writes the path-bearing edit \texttt{(True, Quiesce([2]))}.
-It is not worth getting distracted by the syntax or the semantics; the key thing is that the operator has requested an edit and has identified the target via path ``\texttt{[2]}''.
-Paths are interpreted against the \emph{actually running} representative \texttt{p2'}, so we \texttt{Quiesce} the subtree \texttt{mid: spotify} (\texttt{p2'}'s third slot), not \texttt{lo: zoom} (\texttt{p2}'s third slot).
-If the operator had based the path on \texttt{p2} they would have edited the wrong arm; the system has no way to detect or recover from that.
-\end{itemize}
+The formal interplay of the three rules, and the ``commuting square'' picture that goes with it, is stated as a theorem in \S3.5, once \(\delta\) and its two readings have been fixed.
 
 \subsection{A Grammar for Tree Differences}
 
@@ -1092,6 +998,127 @@ The \texttt{pol} changes from the unary chain wrapping \(\mathtt{p1@}\nu\) (e.g.
 This is \texttt{pol}-visible: the root discipline observably changes, which is the substantive content of the production.
 Whether that pol-visible change reorders in-flight traffic depends on whether the discarded chain was doing per-packet reordering (see previous Note).
 
+\subsection{The Interplay of \(\den(\delta)\) and \(\sem{\delta}\)}
+
+[AM note: I could literally make this a new Section 4 if you'd rather promote it (that is what Adrian literally asked for), but I've provisionally kept it as a subsection to save on renumbering roughly forty downstream \S4/\S5/\S6 references.]
+
+\S3.1--\S3.4 introduced all the moving parts: the runtime object \texttt{C}, the source \texttt{pol}, the compilation \(\lceil \cdot \rceil\), the reading-off \(\lfloor \cdot \rfloor\), the atomic-diff grammar \(\delta\), and its two readings \(\den(\delta)\) and \(\sem{\delta}\).
+This subsection states formally how they fit together.
+The interplay is what lets the runtime, at every step, echo to the operator the \texttt{pol} that the live control realizes.
+
+The situation we care about is a single \(\delta\) firing on a running control.
+Picture a commuting square:
+
+\begin{center}
+\begin{tikzpicture}[
+  node distance=1.2cm and 3.2cm,
+  every node/.style={font=\small},
+  ->, >={Stealth[length=4pt]}
+]
+\node (p1) {\texttt{p1}};
+\node (p2) [right=of p1] {\texttt{p2}};
+\node (c1) [below=of p1] {\texttt{C1} $\sim$ \texttt{C1'}};
+\node (c2) [below=of p2] {\texttt{C2'} $\simR$ \texttt{C2}};
+\draw (p1) -- node[above]{$\den(\delta)$} (p2);
+\draw (c1) -- node[above]{$\sem{\delta}$} (c2);
+\draw (p1) -- node[left]{$\lfloor\cdot\rfloor$} (c1);
+\draw (p2) -- node[right]{$\lfloor\cdot\rfloor$} (c2);
+\end{tikzpicture}
+\end{center}
+
+Read it with an eye to the user's experience.
+Our final goal will be to correctly relate \texttt{C2'} and \texttt{C2}.
+
+\begin{itemize}
+\item The operator writes \texttt{p1}.
+Then \(\mathtt{C1} := \lceil \mathtt{p1} \rceil\), with \(\lfloor \mathtt{C1} \rfloor \eqR \mathtt{p1}\) by rule 1 of \(\lfloor \cdot \rfloor\) (\S3.2).
+\item We echo \(\mathtt{p1'} := \lfloor \mathtt{C1} \rfloor\) back to the user.
+This is not shown in the diagram but will become important shortly.
+\texttt{p1'} faithfully represents the arm ordering that the compiler chose.
+\item Push and pop operations carry \texttt{C1} to \texttt{C1'}.
+\(\mathtt{C1} \sim \mathtt{C1'}\) by the definition of \(\sim\), and \(\lfloor \mathtt{C1'} \rfloor = \lfloor \mathtt{C1} \rfloor\) by rule 2 of \(\lfloor \cdot \rfloor\), so the live \texttt{C1'} still realizes both \texttt{p1} and \texttt{p1'}.
+\item The operator writes \texttt{p2}.
+The \emph{transition planner} (\S4-\S5), the tool that infers atomic edits between two \texttt{pol}s, produces a \(\delta\) such that \(\den(\delta)(\mathtt{p1'}) \eqR \mathtt{p2}\).
+It is key that we work in the frame of the actually-running representative \texttt{p1'} rather than the operator's original \texttt{p1}, since \(\den\) is stated using semantically meaningful paths.
+\item Applying \(\sem{\delta}\) to \texttt{C1'} brings us to control \texttt{C2'}, and by rule 3 of \(\lfloor \cdot \rfloor\) we have \(\lfloor \mathtt{C2'} \rfloor \eqR \den(\delta)(\mathtt{p1'})\).
+Further, we can chain this with \(\den(\delta)(\mathtt{p1'}) \eqR \mathtt{p2}\) (established just above) to get \(\lfloor \mathtt{C2'} \rfloor \eqR \mathtt{p2}\).
+\item We again echo \(\mathtt{p2'} := \lfloor \mathtt{C2'} \rfloor\) to the user.
+\end{itemize}
+
+The transformation is complete at this point, but we need to ground ourselves.
+\(\mathtt{C2} := \lceil \mathtt{p2} \rceil\) is the control we \emph{would have built} had we taken the SOTA stop-the-world path: the state-of-the-art response to a \(\mathtt{p1} \to \mathtt{p2}\) request is to freshly compile \(\lceil \mathtt{p2} \rceil\) (\S1).
+We do not actually construct \texttt{C2}, but it is the correct reference point and it is crucial that we now relate \texttt{C2'} (which we have just produced after a fashion) to \texttt{C2}.
+By rule 1, \(\lfloor \mathtt{C2} \rfloor \eqR \mathtt{p2}\), hence \(\lfloor \mathtt{C2'} \rfloor \eqR \lfloor \mathtt{C2} \rfloor\).
+But we would like to relate the controls directly, not just their \texttt{pol}-level projections.
+The relation we write is \(\mathtt{C2'} \simR \mathtt{C2}\), which absorbs two gaps at once:
+
+\begin{itemize}
+\item \texttt{C2'} carries the live \texttt{pifo}/\texttt{state} accumulated since \texttt{C1}, while \texttt{C2} is freshly compiled and bare.
+The \(\sim\) component covers this.
+\item \(\sem{\delta}\) and \(\lceil \cdot \rceil\) are free to pick different sibling orders at internal nodes, so \texttt{C2'} and \texttt{C2} may also differ in child arrangements.
+The R-closure covers this.
+\end{itemize}
+
+The diagram is intuition; the formal statement is:
+
+\begin{theorem}[Interplay of \(\den(\delta)\) and \(\sem{\delta}\)]\label{thm:interplay}
+Let \texttt{C} be a well-formed control, and let \(\delta\) be a production of the grammar (\S3.3) that is compatible with \texttt{C} (that is, \(\sem{\delta}(\mathtt{C})\) is defined).
+Then:
+\begin{enumerate}
+\item \(\vdash \sem{\delta}(\mathtt{C})\).
+\item \(\lfloor \sem{\delta}(\mathtt{C}) \rfloor \eqR \den(\delta)(\lfloor \mathtt{C} \rfloor)\).
+\end{enumerate}
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+Each clause is an aggregation of per-production obligations already discharged in \S3.4.
+Clause 1 is exactly \emph{Preservation of \(\vdash\)}; clause 2 is exactly \emph{Characterization}.
+\end{proof}
+
+The diagram above is the unit cell of a fuller picture.
+A typical reconfiguration is not a single \(\delta\) but a guarded sequence \((\varphi_0 ; \delta_0) ; \ldots ; (\varphi_n ; \delta_n)\); \S4.1 stacks copies of this unit cell horizontally, with each intermediate control \(\mathtt{link}_i\) between \texttt{C} and \texttt{C'} carrying its own pol-level meaning \(\lfloor \mathtt{link}_i \rfloor\).
+For this subsection's purposes we read the unit cell on its own; everything that follows about a single \(\delta\), including the operator-advice below, lifts cell-by-cell to the sequence picture in \S4.1.
+
+When writing \texttt{p2}, the operator would do well to state their request against \texttt{p1'}, the actually-running \texttt{pol} that we echoed back to them.
+This keeps \(\delta\) small and aligns paths with what is running.
+The operator may state \texttt{p2} against the \texttt{p1} they originally wrote, but at their own risk.
+The risks are of two flavors:
+
+\begin{itemize}
+\item The planner may infer a larger \(\delta\) than necessary, or may give up.
+\item The more serious issue is that the user may use Imperative Mode (\S4) to directly specify what edits to make, and if they use \texttt{p1} to base their paths, they may inadvertently edit the wrong node or provide a malformed path.
+\end{itemize}
+
+\paragraph{A worked example}
+
+\begin{itemize}
+\item The operator requests \texttt{p1 = Strict(hi: gmail, lo: zoom)}.
+\item The compiler uses its degree of freedom to yield control \texttt{C1} such that \(\lfloor \mathtt{C1} \rfloor = \mathtt{Strict(lo: zoom, hi: gmail)}\).
+Note that the children have been reordered for some compiler-internal reason.
+\item We echo back
+\[
+\mathtt{p1'} := \lfloor \mathtt{C1} \rfloor = \mathtt{Strict(lo: zoom, hi: gmail)}.
+\]
+We know that \(\mathtt{p1} \eqR \mathtt{p1'}\), so the scheduler the operator gets is the one they asked for; only the slot numbering differs.
+\item As the control serves pushes and pops, it transforms into \texttt{C1'}.
+\item Later, the operator requests \texttt{p2 = Strict(lo: zoom, mid: spotify, hi: gmail)}.
+\item The runtime can again use its freedom.
+Instead of literally splicing \texttt{spotify} in between running arms \texttt{zoom} and \texttt{gmail}, it chooses to append \texttt{spotify} to the end.
+This converts the running control \texttt{C1'} into control \texttt{C2'} such that
+\[
+\lfloor \mathtt{C2'} \rfloor = \mathtt{Strict(lo: zoom, hi: gmail, mid: spotify)}.
+\]
+\item We echo back
+\[
+\mathtt{p2'} := \lfloor \mathtt{C2'} \rfloor = \mathtt{Strict(lo: zoom, hi: gmail, mid: spotify)}
+\]
+to the user.
+\item Now the operator changes to Imperative Mode (\S4) and writes the path-bearing edit \texttt{(True, Quiesce([2]))}.
+It is not worth getting distracted by the syntax or the semantics; the key thing is that the operator has requested an edit and has identified the target via path ``\texttt{[2]}''.
+Paths are interpreted against the \emph{actually running} representative \texttt{p2'}, so we \texttt{Quiesce} the subtree \texttt{mid: spotify} (\texttt{p2'}'s third slot), not \texttt{lo: zoom} (\texttt{p2}'s third slot).
+If the operator had based the path on \texttt{p2} they would have edited the wrong arm; the system has no way to detect or recover from that.
+\end{itemize}
+
 \subsection{Preserving this proof down to hardware}
 
 \S3.4 proves soundness at the \(\delta\) level, where each production (\texttt{Add}, \texttt{Quiesce}, \texttt{Remove}, \ldots) carries a well-formed tree to a well-formed tree.
@@ -1113,10 +1140,10 @@ Every \texttt{push}/\texttt{pop} therefore still lands on a well-formed control 
 The same argument carries from the IR down to hardware: the hardware executes a committed sequence atomically with respect to user operations, so what it exhibits is again what \S3.4 proved.
 The compilation itself, and the substrate machinery that makes a commit atomic, are the subject of \S6.
 
-[AM note for Zhiyuan: the \S3.5 argument leans on the substrate supporting \emph{atomic transactional commits}: a multi-instruction lowering must install as a single instant from the user's perspective, so that the transiently-malformed intermediate trees inside a commit are never observed.
+[AM note for Zhiyuan: the \S3.6 argument leans on the substrate supporting \emph{atomic transactional commits}: a multi-instruction lowering must install as a single instant from the user's perspective, so that the transiently-malformed intermediate trees inside a commit are never observed.
 Our own substrate provides this.
 The open question for \S6 is whether composition with a third-party substrate (e.g., vPIFO) requires the same property and, if so, whether vPIFO offers it.
-Flagged here so the \S3.5 claim ``the proof survives the lowering'' is not read as substrate-independent.]
+Flagged here so the \S3.6 claim ``the proof survives the lowering'' is not read as substrate-independent.]
 
 \section{Realizing Reconfigurations as Guarded Sequences}
 
