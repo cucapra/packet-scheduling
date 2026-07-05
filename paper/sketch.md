@@ -605,7 +605,7 @@ The topology loses the arm at slot `k` of `C@π`; arms at slots `0, ..., k-1` ke
 - _At `C@π`:_
   - `node_state` is unchanged.
   - `slot_states = C@π.slot_states[-/k]`: the entry at slot `k` is dropped. Entries at slots `> k` shift down by one to track the renumbered arms.
-  - `pifo`: the precondition (subtree at `τ` is empty) plus `|- C` forces `C@π.pifo` to contain _no entry equal to `k`_, so no entry is deleted; whatever bookkeeping is needed to keep the surviving entries pointed at their (now-resident-at-arity-`n-1`) children must be done. If one were literally indexing children by their positions, that would mean decrementing entries `> k` by one. Implementations have ways around even this; for instance, the substrate model of §6.1 keys children by stable per-edge handles, so survivors' pifo entries are unchanged.
+  - `pifo`: the precondition (subtree at `τ` is empty) plus `|- C` forces `C@π.pifo` to contain _no entry equal to `k`_, so no entry is deleted; whatever bookkeeping is needed to keep the surviving entries pointed at their (now-resident-at-arity-`n-1`) children must be done. If one were literally indexing children by their positions, that would mean decrementing entries `> k` by one. Implementations have ways around even this; for instance, the substrate model of §6.1' keys children by stable per-edge handles, so survivors' pifo entries are unchanged.
   - `z` is restricted on inputs and renumbered on outputs.
     Packets that `C@π.z` would have routed to slot `k` are no longer in `C'@π.z`'s domain. For surviving inputs, an output of `(i, r)` with `i > k` becomes `(i - 1, r)`.
     Slots `< k` are untouched on either axis.
@@ -890,7 +890,7 @@ There are two reasons.
 
 - The compilation is _faithful_: each production of `δ` expands to a fixed instruction sequence that, when run to completion, realizes exactly that production's effect.
   We give the command-to-commands translation and take its faithfulness to be uncontroversial.
-- Our substrate runs each such sequence as a single _transactional commit_: a bracketed group of IR instructions that installs as one instant from the user's perspective, with no `push` or `pop` interleaved between the bracket's open and close (§6.1 spells out the substrate machinery that makes this so).
+- Our substrate runs each such sequence as a single _transactional commit_: a bracketed group of IR instructions that installs as one instant from the user's perspective, with no `push` or `pop` interleaved between the bracket's open and close (§6.1' spells out the substrate machinery that makes this so).
   The transiently-malformed intermediate trees are therefore never observed.
   That commit is precisely how the substrate _realizes_ the atomicity property of §3: atomicity asked for an instantaneous control replacement between two user operations, and the commit is what collapses a multi-instruction lowering into one such instant.
   Every `push`/`pop` therefore still lands on a well-formed control (`p1`, some `link`, or `p2`), exactly as §3.4 proved; the IR's transient malformedness lives entirely inside commits, invisible to the user.
@@ -1363,8 +1363,7 @@ Rio applies them incrementally rather than through a full transactional table sw
 This keeps the hardware cost low while still preserving the atomicity needed for observable scheduling behavior.
 
 
-[Zhiyuan: I would put this in appendix and use abstract terms (like hardware update) in the discussion here]
-### 6.1 The commit model and the ISA
+### 6.1' The commit model and the ISA
 
 The substrate exposes its services to the planner as an atomic-commit interface.
 The ISA has exactly one unit: a `commit`, which is a list of instructions that the substrate installs _atomically_.
@@ -1438,7 +1437,7 @@ Write `flows(path)` for the set of flows admitted by some leaf under `path`.
 Write `chain(f)` for the unique sequence of PIFOs from `port_root` down to the leaf admitting `f`, and `internals(f)` for that sequence minus the leaf.
 Write `walk(op, C, f)` for issuing `op(v, f, ...)` at each `v ∈ C`; positional remainders such as `Isa_map`'s routing index `i_{v,f}` are read off the live tree.
 When an entry's opcodes name an unmentioned parameter at `π` (e.g., `Isa_set_policy`'s discipline `t` or `Isa_change_arity`'s arity `n`), it is the live value at `π` at the time the command is issued.
-`Isa_spawn`'s `pe` argument is similarly elided: it is `pe(path)` for the new PIFO's position, drawn from §6.1's deployment convention.
+`Isa_spawn`'s `pe` argument is similarly elided: it is `pe(path)` for the new PIFO's position, drawn from §6.1''s deployment convention.
 
 - `ChangeMeta(π ++ [k], m)`:
   `Isa_set_arm_meta(π, k, m)`.
@@ -1493,31 +1492,9 @@ A substrate that recognizes the same-PE invariant on `(sp_v, loser, surv)` is fr
 
 ### 6.3 Substrate portability
 
-§3.5's argument that each `δ`'s soundness proof survives the lowering leans on the substrate running each commit as an atomic transactional install.
-Two properties make this work, and they are also what any third-party substrate would need in order to host our compilation.
-
-First, the substrate must provide the thirteen opcodes of §6.1, or compositions equivalent to them.
-This is a vocabulary requirement, not a semantic one: the ISA-level lowering of `Designate` (§6.2) is the literal Strict-2 PIFO form, which any substrate can host. A substrate that recognizes the same-PE invariant on `(sp_v, loser, surv)` may coalesce the three into a single physical slot, but the optimization is the substrate's prerogative, not an ISA requirement.
-
-Second, the substrate must guarantee that no `push` or `pop` interleaves between a commit's first and last instruction.
-This is what hides §3.5's transiently-malformed intermediate frames.
-`Designate`'s commit produces a moment in which `loser` has two parents (its original parent, and the freshly-spawned `sp_v` that has just adopted it).
-`Remove`'s commit produces moments in which a node's flow-to-index map still routes flows to a just-detached child.
-`ChangeRoot`'s vine collapse produces moments in which the freed vine nodes are detached but not yet released.
-None of these frames survive an atomic commit's install.
-A non-atomic substrate would expose some of them, and whether that breaks observable soundness depends on the substrate's pop-arbitration policy against an in-progress commit, a detail we do not pin down here.
-
-The requirement is weaker than a general-purpose transaction manager.
-The planner knows each commit's length and shape statically, and the substrate need only honor an install-without-interleave guarantee for that fixed shape.
-Several productions need even less.
-`ChangeMeta` is a single instruction.
-A single-flow `Quiesce` walks one chain and modifies only `Assoc`; each intermediate frame is well-formed because the as-yet-unsilenced interior nodes still route via their existing Assocs.
-
-A vPIFO-like substrate (see §2.2) would host our compilation by providing the install-without-interleave guarantee above.
-
-[AM note for Zhiyuan: the §6.3 prose above is my best current statement of what we need from a substrate. Please confirm or push back after studying §6, then delete this note.]
-[Zhiyuan: we should just argue the portabilty over physical PIFO implementation, not outlining other transactional hardware implementation; so I think following statement (maybe after 6.4) should be enough]
-These mechanisms are independent of the underlying PIFO implementation. Our prototype uses a shift-register-based PIFO similar to the original design, but Rio only assumes the standard push-in-first-out interface. Other PIFO implementations can be substituted.
+These mechanisms are independent of the underlying PIFO implementation.
+Our prototype uses a shift-register-based PIFO similar to the original design, but Rio only assumes the standard push-in-first-out interface.
+Other PIFO implementations can be substituted.
 
 ### 6.4 Executing δ as a transaction.
 
