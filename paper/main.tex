@@ -1695,7 +1695,7 @@ We treat the assignment of a PIFO to a PE as a deterministic function \texttt{pe
 A typical shape is depth-by-PE: PIFOs at the same tree depth share a PE~\cite{Sivaraman16}, so sibling PIFOs cohabit one PE by default.
 The planner consults \texttt{pe(path)} when it needs a \texttt{spawn}'s \texttt{pe} argument; the function's definition is a property of the target substrate and is not otherwise observable at the ISA.
 
-\subsection{Lowering Productions of \(\delta\)}
+\subsection{Compiling Policy Diffs}
 
 Each production of \(\delta\) (\S3.3) lowers to a list of op codes.
 The lowering \emph{schema} is mechanical: each production names a fixed sequence of opcodes, and the planner reads live state at issue time to instantiate the schema's positional parameters (flow lists, chain shapes, routing indices) before dispatching the commit to the substrate.
