@@ -1157,6 +1157,22 @@ The main observation of the section, developed in \S4.1, is that each \texttt{li
 Moreover, since every production of \S3 is \emph{pol-explainable} (each \(\delta\) has a \(\den(\delta)\) that tracks its pol-level effect), we can echo to the operator, at every step of the sequence, the \texttt{pol} that the live control actually realizes.
 The chain of \(\den\)s starting from \(\lfloor \mathtt{C} \rfloor\) gives \(\lfloor \mathtt{link}_i \rfloor\) for each \texttt{i}, so the operator is never in the dark about what policy is running.
 
+\paragraph{How operators author sequences}
+Two authoring modes produce sequences, and the operator chooses freely between them.
+In \emph{declarative mode}, the operator writes a \texttt{pol}, say \texttt{p1}, and, to reconfigure, writes a second \texttt{pol}, say \texttt{p2}: the planner (\S5) proposes a guarded sequence that achieves this change, and the operator either accepts it (in which case we apply the sequence to the running control) or declines it.
+The planner is intentionally simple: it sees only \texttt{pol}-level differences whose translation to a sequence is straightforward, and falls back to a whole-tree \texttt{Replace} idiom for anything richer.
+In \emph{imperative mode}, the operator writes both their desired \texttt{p2} and a \((\varphi; \delta)^{*}\) sequence intended to reach it; the sequence may include idioms.
+Before running it we check the sequence at the pol level (\S4.1).
+The two modes are not formally distinct: they produce sequences over the same substrate and discharge the same per-production obligations from \S3.4.
+Imperative mode buys expressivity, not a different proof obligation.
+
+\paragraph{Follow-up requests}
+The transition planner engages with one reconfiguration at a time.
+When the operator submits a follow-up \texttt{p3} while a \(\mathtt{p1} \to \mathtt{p2}\) sequence is still mid-flight (some guard \(\varphi_i\) has not yet become true), we queue \texttt{p3}, and the planner does not begin work on it until the in-flight sequence completes and the live control \(C_z\) satisfies \(\lfloor C_z \rfloor \eqR \mathtt{p2}\).
+At that instant the planner pulls \texttt{p3} from the queue, treats \texttt{p2'} as the new starting point, and produces a fresh sequence to reach \texttt{p3}.
+A more aggressive strategy is possible: splicing or canceling the in-flight sequence to converge on \texttt{p3} directly, sometimes at lower total cost than running \(\mathtt{p1} \to \mathtt{p2} \to \mathtt{p3}\) in series.
+We do not pursue this here; the splicing analysis introduces its own correctness obligations (atomicity of the splice, what \texttt{link} the operator observes between the splice and \texttt{p3}) that are out of scope of this paper.
+
 \subsection{Guarded Sequences and Their Idioms}
 
 \paragraph{Grammar}
@@ -1177,11 +1193,11 @@ The two guard forms have sufficed for every sequence we have needed; the framewo
 
 The hardware substrate (\S6) does two things beyond ordinary \texttt{push}/\texttt{pop}: it waits for a guard \(\varphi\) to become true on the live control, and it fires a single \(\delta\) as an atomic replacement.
 A guarded sequence chains these: wait for \(\varphi_0\), fire \(\delta_0\), then wait for \(\varphi_1\) (now evaluated on the post-\(\delta_0\) control), fire \(\delta_1\), and so on.
-Each intermediate control between two consecutive \(\delta\) firings is an ordinary \S3.1 control, so the ``transitionary period'' has no new semantics; safety is entirely local, following from the per-production obligations of \S3.4.\footnote{Liveness is a separate concern that this paper does not chase. A planner that emits an unsatisfiable guard, or an operator (\S4.3) whose imperative sequence adversarial traffic will never satisfy, will stall; the live control remains safe but never reaches the target. Follow-up requests during a sequence are handled in \S4.4.}
+Each intermediate control between two consecutive \(\delta\) firings is an ordinary \S3.1 control, so the ``transitionary period'' has no new semantics; safety is entirely local, following from the per-production obligations of \S3.4.\footnote{Liveness is a separate concern that this paper does not chase. A planner that emits an unsatisfiable guard, or an imperative-mode operator whose sequence adversarial traffic will never satisfy, will stall; the live control remains safe but never reaches the target. Follow-up requests during a sequence are queued (see \S4's intro).}
 
 \paragraph{Idioms}
 
-\emph{Idioms} are an operator-facing vocabulary for frequently-used guarded sequences, and are the typical building block of imperative-mode sequences (\S4.3).
+\emph{Idioms} are an operator-facing vocabulary for frequently-used guarded sequences, and are the typical building block of imperative-mode sequences (\S4's intro).
 
 An idiom is a macro over the grammar \(\delta\) (and, recursively, over other idioms).
 It expands into a fixed \((\varphi; \delta)^{*}\) sequence: a list of productions with the guards between them spelling out what the system waits for.
@@ -1275,24 +1291,10 @@ Disciplines that look at packet features or history (WFQ's virtual time, RR's cu
 The operator can still reach such a target through a \texttt{Replace} at a sufficient ancestor (\S5.1's always-available fallback), which freshly compiles the new wrapping and drains the old running subtree through it; what the grammar lacks is a confined way to install the wrap without that drain.
 \end{itemize}
 
-\subsection{Authoring modes}
+\paragraph{Checking an imperative-mode sequence at the pol level}
 
-Two authoring modes produce sequences, and the operator chooses freely between them.
-
-\begin{itemize}
-\item In \emph{declarative mode}, the operator writes a \texttt{pol}, say \texttt{p1}, and, to reconfigure, writes a second \texttt{pol}, say \texttt{p2}.
-The planner (\S5) proposes a guarded sequence that achieves this change, and the operator either accepts it (in which case we apply the sequence to the running control) or declines it.
-The planner is intentionally simple: it sees only \texttt{pol}-level differences whose translation to a sequence is straightforward, and falls back to a whole-tree \texttt{Replace} idiom for anything richer.
-\item In \emph{imperative mode}, the operator writes both their desired \texttt{p2} and a \((\varphi; \delta)^{*}\) sequence intended to reach it; the sequence may include idioms from \S4.2.
-Before running it we check the sequence at the pol level, as described next.
-\end{itemize}
-
-The two modes are not formally distinct: they produce sequences over the same substrate that discharge the same per-production obligations from \S3.4.
-Imperative mode buys expressivity, not a different proof obligation; it admits sequences the planner might never produce, but they are still just \((\varphi; \delta)^{*}\) sequences.
-
-\paragraph{The pol-level check on imperative sequences}
-
-The pol-level check folds each production's \(\den(\delta_i)\) (\S3.4) along the sequence, producing the intermediate pols \(\mathtt{ip}_0 = \mathtt{p1'}, \mathtt{ip}_1, \ldots, \mathtt{ip}_{n+1}\) with \(\mathtt{ip}_{i+1} := \den(\delta_i)(\mathtt{ip}_i)\), where \(\mathtt{p1'} = \lfloor \mathtt{C} \rfloor\) is the pol we echoed to the operator.
+Because imperative-mode sequences (\S4's intro) are user-authored, we validate them before commit.
+The check folds each production's \(\den(\delta_i)\) (\S3.4) along the sequence, producing the intermediate pols \(\mathtt{ip}_0 = \mathtt{p1'}, \mathtt{ip}_1, \ldots, \mathtt{ip}_{n+1}\) with \(\mathtt{ip}_{i+1} := \den(\delta_i)(\mathtt{ip}_i)\), where \(\mathtt{p1'} = \lfloor \mathtt{C} \rfloor\) is the pol we echoed to the operator.
 We accept the request iff every \(\den(\delta_i)\) is defined on \(\mathtt{ip}_i\) and \(\mathtt{ip}_{n+1} \eqR \mathtt{p2}\).
 That is, the user-provided sequence actually takes \texttt{p1'} to \texttt{p2}.
 This is the Interplay theorem (\S3.5) iterated across the sequence: each step's \(\den(\delta_i)\) matches its operational counterpart \(\sem{\delta_i}\) per-production in \S3.4, so a fold that lands at \(\mathtt{ip}_{n+1} \eqR \mathtt{p2}\) certifies, cell-by-cell, that the operational chain ends in a control whose \(\lfloor \cdot \rfloor\) is \texttt{p2}.
@@ -1306,24 +1308,15 @@ For instance, a \((\mathtt{empty}(\mathtt{path}); \Remove(\mathtt{path}))\) step
 If the chain fails to reach \texttt{p2}, or some \(\den(\delta_i)\) is undefined on its intermediate pol, we reject the request.
 The rejection identifies the offending step: the first \(\delta_i\) whose \(\den(\delta_i)\) was undefined on \(\mathtt{ip}_i\), or, if every step was defined, the final mismatch \(\mathtt{ip}_{n+1} \not\eqR \mathtt{p2}\).
 
-\subsection{Handling follow-up requests}
-
-This paper's transition planner engages with one reconfiguration at a time, and commits to a simple answer when the operator submits a follow-up request \texttt{p3} while a \(\mathtt{p1} \to \mathtt{p2}\) sequence is still mid-flight (i.e., while some guard \(\varphi_i\) has not yet become true): we queue \texttt{p3}, and the planner does not begin work on it until the in-flight sequence completes, which is to say until the live control \(C_z\) satisfies \(\lfloor C_z \rfloor \eqR \mathtt{p2}\).
-At that instant the planner pulls \texttt{p3} from the queue, treats \texttt{p2'} as the new starting point, and produces a fresh \((\varphi; \delta)^{*}\) sequence to reach \texttt{p3} exactly as in \S4's main loop.
-
-A more aggressive strategy is possible: the planner could begin work on \texttt{p3} mid-flight, splicing or canceling the in-flight sequence to converge on \texttt{p3} directly, sometimes at lower total cost than running \(\mathtt{p1} \to \mathtt{p2} \to \mathtt{p3}\) in series.
-We do not pursue this here, because the splicing analysis introduces its own correctness obligations (atomicity of the splice, what guarantees the operator has during an aborted in-flight sequence, what \texttt{link} the operator observes between the splice and \texttt{p3}) that are out of scope of this paper.
-A sketch of the stronger possibility lives in our discussion notes.
-
 \section{The Transition Planner}
 
-\S4.3 referenced a \emph{transition planner}; this section spells it out.
+\S4 referenced a \emph{transition planner}; this section spells it out.
 The operator hands the runtime \texttt{p1} (the presently-running policy) and \texttt{p2} (their new desire); the planner's job is to propose a \((\varphi ; \delta)^{*}\) sequence whose pol-level fold takes \texttt{p1} to \texttt{p2} up to \(\eqR\).
 The operator accepts or rejects the proposal; they do not author it directly.
 
 Every sequence the planner emits is safe by the per-production guarantees of \S3.4, aggregated across the sequence as sketched in \S4.1, regardless of how the planner assembled it.
 The planner aims to land at \texttt{p2} by construction: each case below emits a \(\delta\) or idiom whose \(\den\) realizes the locally-observed pol-level difference.
-A misstep in the case analysis could in principle yield a sequence whose fold \(\den(\delta_n) \circ \ldots \circ \den(\delta_1) (\mathtt{p1})\) misses \texttt{p2}'s \(\eqR\)-class; the \S4.3 pol-level check is the backstop and rejects any such sequence before commit.
+A misstep in the case analysis could in principle yield a sequence whose fold \(\den(\delta_n) \circ \ldots \circ \den(\delta_1) (\mathtt{p1})\) misses \texttt{p2}'s \(\eqR\)-class; the pol-level check of \S4.1 is the backstop and rejects any such sequence before commit.
 Optimality is a separate matter, and not guaranteed: the planner may fail to see a superior sequence that the user has in mind.
 
 \S5.1 sets up \emph{confinement} as a metric for excellence, presents the always-available worst-case \texttt{Replace} fallback, and frames the planner's strategy as descending the tree to find a tight production (Add, Remove, ChangeMeta) that captures the difference locally.
@@ -1332,7 +1325,7 @@ Optimality is a separate matter, and not guaranteed: the planner may fail to see
 
 \subsection{The Always-Available Fallback, and Confinement to do Better}
 
-To reach any \texttt{p2} from any \texttt{p1}, the planner can issue \(\Replace([], \mathtt{p2})\), the \S4.2 idiom that expands to
+To reach any \texttt{p2} from any \texttt{p1}, the planner can issue \(\Replace([], \mathtt{p2})\), the \\S4.1 idiom that expands to
 
 \begin{verbatim}
 (true ; Designate([], p2)) ;
@@ -1486,7 +1479,7 @@ If that fails too, we emit a slot-level \texttt{Replace}.
 
 \textbf{\texttt{p1} longer.}
 Symmetric.
-When \texttt{p2}'s arms appear in order as a sub-sequence of \texttt{p1}'s, the surplus arms in \texttt{p1} are retired, and we emit one \texttt{Retire} idiom (\S4.2) per surplus arm in \emph{descending} index order.
+When \texttt{p2}'s arms appear in order as a sub-sequence of \texttt{p1}'s, the surplus arms in \texttt{p1} are retired, and we emit one \texttt{Retire} idiom (\\S4.1) per surplus arm in \emph{descending} index order.
 Descending order keeps the lower-index paths stable while higher-index siblings drain and disappear.
 When \texttt{p2}'s arms are not a sub-sequence of \texttt{p1}'s, we try the label-overlap walk, and emit a slot-level \texttt{Replace} if it cannot align the arms either.
 
@@ -1597,7 +1590,7 @@ A cost-aware planner could prefer different decompositions (e.g., several small 
 Presently we take the first admissible alignment without ranking competitors.
 \item \emph{No imperative-mode service.}
 The planner serves declarative mode only.
-Imperative-mode authoring (\S4.3) goes through the pol-level check directly, with the operator naming each \(\delta\) themselves; the planner is not consulted.
+Imperative-mode authoring (\S4's intro) goes through the pol-level check of \S4.1 directly, with the operator naming each \(\delta\) themselves; the planner is not consulted.
 \end{itemize}
 
 \section{Rio Hardware Implementation}
