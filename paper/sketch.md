@@ -1335,29 +1335,30 @@ Two non-features for now; we hope to improve these in the next few meetings.
 
 ## 6. Rio Hardware Implementation
 
-A PIFO tree is a clean scheduling abstraction, but in real line-rate switching hardware, enabling dynamic connection tree of PIFO tree requires.
-Existing designs \cite{} makes a logical to physical unit mapping to materialize programmable scheduling: instead of hard-wiring a fixed set of PIFOs into hardware, the switch exposes programmable processing elements (PEs) hosting multiple virtual PIFOs: it includes hardware (usually match-action pipelines) that maps packets to it’s virtual PIFOs and calculates its rank and next-hop destination, followed by one physical PIFO hosting all of the virtual PIFOs on the PE.
+A PIFO tree is a clean scheduling abstraction, but instantiating one dynamically on line-rate switching hardware needs more than a fixed set of hardwired PIFOs.
+Existing designs \cite{TODO} make a logical-to-physical unit mapping to materialize programmable scheduling: instead of hard-wiring a fixed set of PIFOs into hardware, the switch exposes programmable processing elements (PEs) hosting multiple virtual PIFOs.
+It includes hardware (usually match-action pipelines) that maps packets to its virtual PIFOs and calculates the rank and next-hop destination, followed by one physical PIFO hosting all of the virtual PIFOs on the PE.
 
-Packet scheduling on this substrate consists of pipelined, non-atomic enqueue and dequeue operations. On enqueue, the switch must compute two pieces of information before issuing PE pushes: which virtual PIFO id the packet should enter, and what rank should be inserted at each of those virtual PIFOs. The first is determined by packet classification, flow-to-child mappings; the second is computed by the virtual PIFO’s scheduling policy from packet fields, flow state, and per-arm metadata. For example, a WFQ-style virtual PIFO uses the child weight to compute a virtual finish time, while a Strict virtual PIFO interprets the metadata as a priority rank. On dequeue, the switch starts from the output port’s root virtual PIFO, pops the best-ranked entry, and follows the stored next-hop information until it reaches a packet to transmit or another virtual PIFO to pop.
+Packet scheduling on this substrate consists of pipelined, non-atomic enqueue and dequeue operations. On enqueue, the switch must compute two pieces of information before issuing PE pushes: which virtual PIFO id the packet should enter, and what rank should be inserted at each of those virtual PIFOs. The first is determined by packet classification, flow-to-child mappings; the second is computed by the virtual PIFO's scheduling policy from packet fields, flow state, and per-arm metadata. For example, a WFQ-style virtual PIFO uses the child weight to compute a virtual finish time, while a Strict virtual PIFO interprets the metadata as a priority rank. On dequeue, the switch starts from the output port's root virtual PIFO, pops the best-ranked entry, and follows the stored next-hop information until it reaches a packet to transmit or another virtual PIFO to pop.
 
 This is sufficient for a static policy, but it does not by itself support dynamic policy updates in concurrent with packet enqueue and dequeue. In such a case, a single packet operation can observe a mixture of old and new scheduler state. For example, an enqueue may choose its virtual PIFO path using the old flow-to-child mapping but compute its rank using newly updated per-arm metadata, or a dequeue may pop from one version of the tree and then follow next-hop state from another. As a result, existing PIFO-based implementations support only stop-the-world policy update.
 
 
-### 6.1 Transactional Update and Hardware Component Suppoort
+### 6.1 Transactional Update and Hardware Component Support
 
-Rio enables online policy update by packing multiple hardware state update into a single “commit” and make them visible atomically in hardware: every enqueue or dequeue request should observe either multiple updates inside one commit is applied, or nothing is changed at all. Each `δ` (§3.3) lowers to one `commit` under this abstraction.
+Rio enables online policy update by packing multiple hardware state updates into a single "commit" and making them visible atomically in hardware: every enqueue or dequeue request observes either the whole commit applied, or none of it. Each `δ` (§3.3) lowers to one `commit` under this abstraction.
 
-in Rio hardware, we achieve this by packaging multiple policy update to single “transactions” and make minimal hardware changes in virtual PIFO, rank and next-hop mapping to enable transactional commit of multiple updates.
+In Rio hardware, we achieve this by packaging multiple policy updates into a single "transaction" and making minimal hardware changes in virtual PIFO, rank, and next-hop mapping to enable transactional commit of multiple updates.
 
-First, rio build transactional mapping tables for virtual PIFO and next-hop mapping. Each PE stores its flow-to-child mapping and next-hop state in a specialized table that accepts a stream of update instructions, and a commit signal.
+First, Rio builds transactional mapping tables for virtual PIFO and next-hop mapping. Each PE stores its flow-to-child mapping and next-hop state in a specialized table that accepts a stream of update instructions, and a commit signal.
 Updates before the signal are staged but remain invisible to packet processing.
-Only when the commit marker is applied does the table immidiate switch to the new version.
+Only when the commit marker is applied does the table immediately switch to the new version.
 We implement this using double buffering: update instructions modify a shadow copy of the table, and the commit marker atomically swaps the active and shadow copies.
 After the swap, the inactive copy is synchronized in the background to serve as the shadow for the next commit.
 
 Second, Rio supports incremental updates to the rank-computing match-action tables.
 Rio does not require arbitrary in-place replacement of a live scheduling policy.
-Instead, policy-table updates correspond to adding metadata for newly admitted flows (whose packets are not allowed before the udpate is finished) or removing metadata for flows that have already been drained.
+Instead, policy-table updates correspond to adding metadata for newly admitted flows (whose packets are not allowed before the update is finished) or removing metadata for flows that have already been drained.
 Because these updates do not change the interpretation of existing live packets,
 Rio applies them incrementally rather than through a full transactional table swap.
 This keeps the hardware cost low while still preserving the atomicity needed for observable scheduling behavior.
@@ -1496,7 +1497,7 @@ These mechanisms are independent of the underlying PIFO implementation.
 Our prototype uses a shift-register-based PIFO similar to the original design, but Rio only assumes the standard push-in-first-out interface.
 Other PIFO implementations can be substituted.
 
-### 6.4 Executing δ as a transaction.
+### 6.4 Executing δ as a transaction
 
 Rio implements a transactional update controller that controls the execution of each lowered δ into an atomic hardware transaction. In hardware, the controller executes commands in order.
 Ordinary update commands are routed to the target PEs and staged locally.
@@ -1506,7 +1507,7 @@ Intuitively, the controller treats the commit boundary as a wavefront: the new c
 
 The controller also implements guarded transitions. As described in §4, some transitions are guarded by predicates such as the emptiness of a subtree. Rio lowers such guards to blocking commands in the controller queue. A blocking command remains at the head of the queue until its predicate becomes true; only then can the subsequent update instructions execute. FIFO execution therefore ensures that instructions depending on the guard are not issued prematurely.
 
-Our current implementation uses a single controller queue, which provides a simple global serialization point for updates. This design is sufficient for correctness and avoids subtle ordering bugs between overlapping commits. It can, however, introduce head-of-line blocking when a guarded transition waits for a long-running drain. Supporting multiple independent queues for disjoint subtrees is a natural optimization and does not change Rio’s ISA or correctness argument; we leave this extension to future work.
+Our current implementation uses a single controller queue, which provides a simple global serialization point for updates. This design is sufficient for correctness and avoids subtle ordering bugs between overlapping commits. It can, however, introduce head-of-line blocking when a guarded transition waits for a long-running drain. Supporting multiple independent queues for disjoint subtrees is a natural optimization and does not change Rio's ISA or correctness argument; we leave this extension to future work.
 
 ## 7. Evaluation
 
