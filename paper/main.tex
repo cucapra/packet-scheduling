@@ -9,6 +9,7 @@
 \usepackage{xcolor}
 \usepackage{fancyvrb}
 \fvset{frame=single,framesep=3pt,fontsize=\small,xleftmargin=0pt,rulecolor=\color{black!25}}
+\usepackage{subcaption}
 \usepackage[capitalize,noabbrev]{cleveref}
 \crefformat{section}{\S#2#1#3}
 \Crefformat{section}{\S#2#1#3}
@@ -660,31 +661,64 @@ So \(\lfloor \mathtt{C'} \rfloor \eqR \den(\Remove(\tau))(\lfloor \mathtt{C} \rf
 
 \paragraph{Note: Why an empty subtree}
 
+\begin{figure*}[t]
+  \centering
+  \begin{subfigure}[b]{0.32\linewidth}
+    \centering
+    \begin{tikzpicture}[
+      level distance=1.1cm,
+      level 1/.style={sibling distance=3.0cm},
+      level 2/.style={sibling distance=1.4cm},
+      every node/.style={align=center, font=\scriptsize}
+    ]
+    \node {$P$\\\texttt{[1,2,1,2,1,2,1,2]}}
+      child {node {$Q$\\\texttt{[1,1,2,2]}}
+        child {node {$A$\\\texttt{[a2,a1]}}}
+        child {node {$B$\\\texttt{[b2,b1]}}}
+      }
+      child {node {$C$\\\texttt{[c4,c3,c2,c1]}}};
+    \end{tikzpicture}
+    \caption{Original tree $P(Q(A, B), C)$, well-formed.}
+    \label{fig:remove-orig}
+  \end{subfigure}\hfill
+  \begin{subfigure}[b]{0.32\linewidth}
+    \centering
+    \begin{tikzpicture}[
+      level distance=1.1cm,
+      level 1/.style={sibling distance=3.0cm},
+      every node/.style={align=center, font=\scriptsize}
+    ]
+    \node {$P$\\\texttt{[1,2,1,2,\cancel{1},2,\cancel{1},2]}}
+      child {node {$Q$\\\texttt{[1,1]}}
+        child {node {$A$\\\texttt{[a2,a1]}}}
+      }
+      child {node {$C$\\\texttt{[c4,c3,c2,c1]}}};
+    \end{tikzpicture}
+    \caption{Keep leftmost \texttt{1}s: emits \texttt{c1, c2, c3, a1, c4, a2}.}
+    \label{fig:remove-leftmost}
+  \end{subfigure}\hfill
+  \begin{subfigure}[b]{0.32\linewidth}
+    \centering
+    \begin{tikzpicture}[
+      level distance=1.1cm,
+      level 1/.style={sibling distance=3.0cm},
+      every node/.style={align=center, font=\scriptsize}
+    ]
+    \node {$P$\\\texttt{[\cancel{1},2,\cancel{1},2,1,2,1,2]}}
+      child {node {$Q$\\\texttt{[1,1]}}
+        child {node {$A$\\\texttt{[a2,a1]}}}
+      }
+      child {node {$C$\\\texttt{[c4,c3,c2,c1]}}};
+    \end{tikzpicture}
+    \caption{Keep rightmost \texttt{1}s: emits \texttt{c1, a1, c2, a2, c3, c4}.}
+    \label{fig:remove-rightmost}
+  \end{subfigure}
+  \caption{Removing the occupied leaf \texttt{B} from \texttt{P(Q(A, B), C)}. Each internal node carries its index-PIFO and each leaf carries its packet queue; the next entry to pop sits on the far right, so a leaf \texttt{[a2,a1]} releases \texttt{a1} before \texttt{a2}, and an internal-node PIFO \texttt{[1,2,1,2]} yields slot indices \texttt{2, 1, 2, 1} in pop order. A struck entry like \cancel{\texttt{1}} is one we have dropped from the PIFO. At \texttt{Q} the edit is forced; at \texttt{P} two arbitrary choices of which \texttt{1}s to drop yield two different service orders.}
+  \label{fig:remove-ambiguity}
+\end{figure*}
+
 Deleting an \emph{occupied} child has no canonical local realization.
-Consider \texttt{P(Q(A, B), C)}.
-
-\emph{Diagram legend.}
-Each internal node is labeled with its index-PIFO and each leaf with the packets it holds.
-Each PIFO is drawn with its most favorably ranked entry (the next one to be popped) on the far right; so a leaf labeled \texttt{[a2,a1]} releases \texttt{a1} before \texttt{a2}, and an internal-node PIFO \texttt{[1,2,1,2]} will yield slot indices \texttt{2, 1, 2, 1} in pop order.
-A struck entry like \texttt{~1~} is one we have dropped from the PIFO.
-
-\begin{center}
-\begin{tikzpicture}[
-  level distance=1.4cm,
-  level 1/.style={sibling distance=4.6cm},
-  level 2/.style={sibling distance=2.2cm},
-  every node/.style={align=center, font=\small},
-  pifo/.style={font=\scriptsize\ttfamily}
-]
-\node {$P$\\\texttt{[1,2,1,2,1,2,1,2]}}
-  child {node {$Q$\\\texttt{[1,1,2,2]}}
-    child {node {$A$\\\texttt{[a2,a1]}}}
-    child {node {$B$\\\texttt{[b2,b1]}}}
-  }
-  child {node {$C$\\\texttt{[c4,c3,c2,c1]}}};
-\end{tikzpicture}
-\end{center}
-
+Consider \texttt{P(Q(A, B), C)}, shown in \cref{fig:remove-orig}.
 Here \texttt{Q} refers to \texttt{A} using the index \texttt{1}, and to \texttt{B} using \texttt{2}.
 \texttt{P} refers to \texttt{Q} using \texttt{1} and to \texttt{C} using \texttt{2}.
 The tree is well-formed.
@@ -703,43 +737,8 @@ We could make deletion unambiguous by tagging each entry at \texttt{push} with t
 
 Given this, \emph{we can only pick two instances of \texttt{1} arbitrarily}.
 Our choice is, in effect, a scheduling decision, as it affects how \texttt{P} intermixes \texttt{C} and \texttt{Q} traffic.
-For example:
-
-a.\ \emph{Keep the two leftmost \texttt{1}s} (strike the two on the right):
-
-\begin{center}
-\begin{tikzpicture}[
-  level distance=1.4cm,
-  level 1/.style={sibling distance=4.6cm},
-  every node/.style={align=center, font=\small}
-]
-\node {$P$\\\texttt{[1,2,1,2,\cancel{1},2,\cancel{1},2]}}
-  child {node {$Q$\\\texttt{[1,1]}}
-    child {node {$A$\\\texttt{[a2,a1]}}}
-  }
-  child {node {$C$\\\texttt{[c4,c3,c2,c1]}}};
-\end{tikzpicture}
-\end{center}
-
-Six pops drain \texttt{P} and yield \texttt{c1, c2, c3, a1, c4, a2}: \texttt{A} is pushed to the back, both its packets emerging only after \texttt{C}'s run is mostly spent.
-
-b.\ \emph{Keep the two rightmost \texttt{1}s instead} (strike the two on the left):
-
-\begin{center}
-\begin{tikzpicture}[
-  level distance=1.4cm,
-  level 1/.style={sibling distance=4.6cm},
-  every node/.style={align=center, font=\small}
-]
-\node {$P$\\\texttt{[\cancel{1},2,\cancel{1},2,1,2,1,2]}}
-  child {node {$Q$\\\texttt{[1,1]}}
-    child {node {$A$\\\texttt{[a2,a1]}}}
-  }
-  child {node {$C$\\\texttt{[c4,c3,c2,c1]}}};
-\end{tikzpicture}
-\end{center}
-
-The same six pops now yield \texttt{c1, a1, c2, a2, c3, c4}: this is exactly the round-robin schedule \texttt{P} was configured for, alternating \texttt{C} and \texttt{A} until \texttt{A} is exhausted and \texttt{C} drains alone.
+Keeping the two leftmost \texttt{1}s (\cref{fig:remove-leftmost}), six pops drain \texttt{P} and yield \texttt{c1, c2, c3, a1, c4, a2}: \texttt{A} is pushed to the back, both its packets emerging only after \texttt{C}'s run is mostly spent.
+Keeping the two rightmost \texttt{1}s instead (\cref{fig:remove-rightmost}), the same six pops yield \texttt{c1, a1, c2, a2, c3, c4}: this is exactly the round-robin schedule \texttt{P} was configured for, alternating \texttt{C} and \texttt{A} until \texttt{A} is exhausted and \texttt{C} drains alone.
 
 Same tree, same surviving packets, two different service orders.
 The \emph{choice of which} \texttt{1}s to drop \emph{silently reschedules \texttt{A} against \texttt{C}}, and nothing in \texttt{p1} or the deletion request records which the operator wanted.
@@ -1257,55 +1256,61 @@ and the operator requests
 \[
 \mathtt{p2} = \mathtt{SP}(\mathtt{zoom}, \mathtt{RR}(\mathtt{gmail}, \mathtt{netflix}, \mathtt{spotify})).
 \]
-The planner has two ways to realize this:
+The planner has two ways to realize this, shown in \cref{fig:planner-add-vs-replace}.
 
-\begin{center}
-\begin{tikzpicture}[
-  level distance=0.9cm,
-  level 1/.style={sibling distance=1.8cm},
-  level 2/.style={sibling distance=0.9cm},
-  level 3/.style={sibling distance=0.6cm},
-  every node/.style={font=\scriptsize}
-]
-\node {$\Strictstar$}
-  child {node {$\mathtt{SP}$}
-    child {node {$\mathtt{z}$}}
-    child {node {$\mathtt{RR}$}
-      child {node {$\mathtt{g}$}}
-      child {node {$\mathtt{n}$}}
-    }
-  }
-  child {node {$\mathtt{SP}$}
-    child {node {$\mathtt{z}$}}
-    child {node {$\mathtt{RR}$}
-      child {node {$\mathtt{g}$}}
-      child {node {$\mathtt{n}$}}
-      child {node {$\mathtt{s}$}}
-    }
-  };
-\end{tikzpicture}
-\\[0.5em]
-\textbf{(a)} \(\Replace([], \mathtt{p2})\)
-\end{center}
-
-\begin{center}
-\begin{tikzpicture}[
-  level distance=0.9cm,
-  level 1/.style={sibling distance=1.6cm},
-  level 2/.style={sibling distance=0.7cm},
-  every node/.style={font=\scriptsize}
-]
-\node {$\mathtt{SP}$}
-  child {node {$\mathtt{z}$}}
-  child {node {$\mathtt{RR}$}
-    child {node {$\mathtt{g}$}}
-    child {node {$\mathtt{n}$}}
-    child[edge from parent/.style={draw,thick}] {node[draw,dashed,inner sep=1pt] {$\mathtt{s}$}}
-  };
-\end{tikzpicture}
-\\[0.5em]
-\textbf{(b)} \Add{} at the \texttt{RR} (new arm in dashed box)
-\end{center}
+\begin{figure}[t]
+  \centering
+  \begin{subfigure}[b]{0.55\linewidth}
+    \centering
+    \begin{tikzpicture}[
+      level distance=0.9cm,
+      level 1/.style={sibling distance=1.8cm},
+      level 2/.style={sibling distance=0.9cm},
+      level 3/.style={sibling distance=0.6cm},
+      every node/.style={font=\scriptsize}
+    ]
+    \node {$\Strictstar$}
+      child {node {$\mathtt{SP}$}
+        child {node {$\mathtt{z}$}}
+        child {node {$\mathtt{RR}$}
+          child {node {$\mathtt{g}$}}
+          child {node {$\mathtt{n}$}}
+        }
+      }
+      child {node {$\mathtt{SP}$}
+        child {node {$\mathtt{z}$}}
+        child {node {$\mathtt{RR}$}
+          child {node {$\mathtt{g}$}}
+          child {node {$\mathtt{n}$}}
+          child {node {$\mathtt{s}$}}
+        }
+      };
+    \end{tikzpicture}
+    \caption{\(\Replace([], \mathtt{p2})\)}
+    \label{fig:planner-replace}
+  \end{subfigure}%
+  \begin{subfigure}[b]{0.4\linewidth}
+    \centering
+    \begin{tikzpicture}[
+      level distance=0.9cm,
+      level 1/.style={sibling distance=1.4cm},
+      level 2/.style={sibling distance=0.6cm},
+      every node/.style={font=\scriptsize}
+    ]
+    \node {$\mathtt{SP}$}
+      child {node {$\mathtt{z}$}}
+      child {node {$\mathtt{RR}$}
+        child {node {$\mathtt{g}$}}
+        child {node {$\mathtt{n}$}}
+        child[edge from parent/.style={draw,thick}] {node[draw,dashed,inner sep=1pt] {$\mathtt{s}$}}
+      };
+    \end{tikzpicture}
+    \caption{\Add{} at the \texttt{RR} (new arm in dashed box)}
+    \label{fig:planner-add}
+  \end{subfigure}
+  \caption{Two ways to realize \(\mathtt{p1} \to \mathtt{p2}\) when \texttt{p2} adds a \texttt{spotify} arm to the \texttt{RR}.}
+  \label{fig:planner-add-vs-replace}
+\end{figure}
 
 Option (a) wraps the entire running tree under a fresh \(\Strictstar\) and grows a freshly-compiled \texttt{p2} alongside; every node sits inside the wrap, and the original \texttt{p1} (with all its in-flight packets) drains as the loser.
 Footprint: the whole tree.
@@ -1385,60 +1390,70 @@ p1 = RR(drive, gmail)
 p2 = RR(drive, slack, RR(gmail, controller_for_gmail))
 \end{verbatim}
 
-So the two trees are \texttt{p1} and \texttt{p2} below.
-The third panel previews what the planner installs on the substrate: not \texttt{p2} literally, but a sibling-reordered representative of its \(\eqR\)-class; we return to it below.
+The two trees \texttt{p1} and \texttt{p2}, plus the tree the planner installs, are shown in \cref{fig:label-overlap-example}.
+The installed tree previews what lands on the substrate: not \texttt{p2} literally, but a sibling-reordered representative of its \(\eqR\)-class; we return to it below.
 
-\begin{center}
-\begin{tabular}{c@{\quad}c@{\quad}c}
-\begin{tikzpicture}[
-  level distance=0.8cm,
-  level 1/.style={sibling distance=0.9cm},
-  every node/.style={font=\scriptsize}
-]
-\node {$\mathtt{RR}$}
-  child {node {$\mathtt{d}$}}
-  child {node {$\mathtt{g}$}};
-\end{tikzpicture}
-&
-\begin{tikzpicture}[
-  level distance=0.8cm,
-  level 1/.style={sibling distance=1.1cm},
-  level 2/.style={sibling distance=0.7cm},
-  every node/.style={font=\scriptsize}
-]
-\node {$\mathtt{RR}$}
-  child {node {$\mathtt{d}$}}
-  child {node {$\mathtt{s}$}}
-  child {node {$\mathtt{RR}$}
-    child {node {$\mathtt{g}$}}
-    child {node {$\mathtt{c}$}}
-  };
-\end{tikzpicture}
-&
-\begin{tikzpicture}[
-  level distance=0.8cm,
-  level 1/.style={sibling distance=1.1cm},
-  level 2/.style={sibling distance=0.7cm},
-  level 3/.style={sibling distance=0.5cm},
-  every node/.style={font=\scriptsize}
-]
-\node {$\mathtt{RR}$}
-  child {node {$\mathtt{d}$}}
-  child {node {$\Strictstar$}
-    child {node {$\mathtt{g}$}}
-    child {node {$\mathtt{RR}$}
-      child {node {$\mathtt{g}$}}
-      child {node {$\mathtt{c}$}}
-    }
-  }
-  child {node {$\mathtt{s}$}};
-\end{tikzpicture}
-\\[0.4em]
-\small \(\mathtt{p1} = \mathtt{RR(d,g)}\) &
-\small \(\mathtt{p2} = \mathtt{RR(d,s,RR(g,c))}\) &
-\small installed (\(\eqR \mathtt{p2}\))
-\end{tabular}
-\end{center}
+\begin{figure}[t]
+  \centering
+  \begin{subfigure}[b]{0.22\linewidth}
+    \centering
+    \begin{tikzpicture}[
+      level distance=0.8cm,
+      level 1/.style={sibling distance=0.9cm},
+      every node/.style={font=\scriptsize}
+    ]
+    \node {$\mathtt{RR}$}
+      child {node {$\mathtt{d}$}}
+      child {node {$\mathtt{g}$}};
+    \end{tikzpicture}
+    \caption{\(\mathtt{p1} = \mathtt{RR(d,g)}\)}
+    \label{fig:label-overlap-p1}
+  \end{subfigure}%
+  \begin{subfigure}[b]{0.36\linewidth}
+    \centering
+    \begin{tikzpicture}[
+      level distance=0.8cm,
+      level 1/.style={sibling distance=1.1cm},
+      level 2/.style={sibling distance=0.7cm},
+      every node/.style={font=\scriptsize}
+    ]
+    \node {$\mathtt{RR}$}
+      child {node {$\mathtt{d}$}}
+      child {node {$\mathtt{s}$}}
+      child {node {$\mathtt{RR}$}
+        child {node {$\mathtt{g}$}}
+        child {node {$\mathtt{c}$}}
+      };
+    \end{tikzpicture}
+    \caption{\(\mathtt{p2} = \mathtt{RR(d,s,RR(g,c))}\)}
+    \label{fig:label-overlap-p2}
+  \end{subfigure}%
+  \begin{subfigure}[b]{0.4\linewidth}
+    \centering
+    \begin{tikzpicture}[
+      level distance=0.8cm,
+      level 1/.style={sibling distance=1.1cm},
+      level 2/.style={sibling distance=0.7cm},
+      level 3/.style={sibling distance=0.5cm},
+      every node/.style={font=\scriptsize}
+    ]
+    \node {$\mathtt{RR}$}
+      child {node {$\mathtt{d}$}}
+      child {node {$\Strictstar$}
+        child {node {$\mathtt{g}$}}
+        child {node {$\mathtt{RR}$}
+          child {node {$\mathtt{g}$}}
+          child {node {$\mathtt{c}$}}
+        }
+      }
+      child {node {$\mathtt{s}$}};
+    \end{tikzpicture}
+    \caption{installed (\(\eqR \mathtt{p2}\))}
+    \label{fig:label-overlap-installed}
+  \end{subfigure}
+  \caption{The label-overlap walk on \(\mathtt{p1} \to \mathtt{p2}\): \texttt{gmail} appears once in \texttt{p1} and inside a nested \texttt{RR} in \texttt{p2}, and the planner installs a sibling-reordered \(\eqR\)-equivalent of \texttt{p2} to keep the walk local.}
+  \label{fig:label-overlap-example}
+\end{figure}
 
 Comparing \texttt{p1} and \texttt{p2}: \texttt{d} is unchanged; \texttt{g} now round-robins with a control sub-channel; \texttt{s} is new.
 A slot-by-slot walk does not apply (the lengths differ), and the simpler sub-sequence check in the ``\texttt{p2} longer'' case fails because \texttt{gmail} in \texttt{p1} is not equal to any arm in \texttt{p2}.
