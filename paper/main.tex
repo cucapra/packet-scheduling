@@ -943,10 +943,12 @@ Picture a commuting square:
 ]
 \node (p1) {\texttt{p1}};
 \node (p2) [right=of p1] {\texttt{p2}};
-\node (c1) [below=of p1] {\texttt{C1} $\sim$ \texttt{C1'}};
-\node (c2) [below=of p2] {\texttt{C2'} $\simR$ \texttt{C2}};
+\node[inner xsep=1pt] (c1) [below=of p1] {\texttt{C1}};
+\node[inner xsep=1pt, right=1pt of c1] (c1p) {$\sim$ \texttt{C1'}};
+\node[inner xsep=1pt] (c2) [below=of p2] {\texttt{C2}};
+\node[inner xsep=1pt, left=1pt of c2] (c2p) {\texttt{C2'} $\simR$};
 \draw (p1) -- node[above]{$\den(\delta)$} (p2);
-\draw (c1) -- node[above]{$\sem{\delta}$} (c2);
+\draw (c1p) -- node[above]{$\sem{\delta}$} (c2p);
 \draw (p1) -- node[left]{$\lfloor\cdot\rfloor$} (c1);
 \draw (p2) -- node[right]{$\lfloor\cdot\rfloor$} (c2);
 \end{tikzpicture}
