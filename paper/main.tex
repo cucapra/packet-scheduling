@@ -1569,27 +1569,29 @@ A single PE can host multiple PIFOs at once; in particular, sibling PIFOs common
 \item \textbf{index}: opaque per-PIFO handle naming one of that PIFO's children; what a PIFO uses internally to refer to a child arm.
 \end{itemize}
 
-The ISA has thirteen opcodes:
+The ISA has thirteen opcodes, laid out in \cref{tab:isa-opcodes}.
 
 \begin{table*}[t]
 \small
-\begin{tabular}{p{0.22\linewidth} p{0.18\linewidth} p{0.50\linewidth}}
+\caption{The thirteen substrate ISA opcodes: their parameters and their effects on the PIFO tree.}
+\label{tab:isa-opcodes}
+\begin{tabular}{p{0.18\linewidth} p{0.76\linewidth}}
 \hline
-Opcode & Parameters & Effect \\
+Opcode & Effect \\
 \hline
-\texttt{spawn(v, pe)} & fresh PIFO id, PE id & Allocate an empty PIFO \texttt{v} on PE \texttt{pe}. \\
-\texttt{adopt(i, p, c)} & index, parent, child & Parent \texttt{p} gains \texttt{c} as a child, reachable via index \texttt{i}. \\
-\texttt{emancipate(i, p)} & index, parent & Inverse of \texttt{adopt}: detach \texttt{p}'s child at index \texttt{i}. \\
-\texttt{assoc(v, f)} & PIFO, flow & \texttt{v} begins to accept packets of flow \texttt{f}. \\
-\texttt{deassoc(v, f)} & PIFO, flow & \texttt{v} stops accepting packets of flow \texttt{f}. \\
-\texttt{map(v, f, i)} & PIFO, flow, index & In \texttt{v}'s routing table, route flow \texttt{f} to index \texttt{i}. \\
-\texttt{unmap(v, f)} & PIFO, flow & Forget \texttt{v}'s mapping for flow \texttt{f}. \\
-\texttt{set\_policy(v, t, n)} & PIFO, policy type, initial arity & Set \texttt{v}'s policy type to \texttt{t} and its initial arity to \texttt{n}; \texttt{t} ranges over \{FIFO, RoundRobin, Strict, Strict*, WFQ\}. Issued exactly once per PIFO, at spawn time. \\
-\texttt{change\_arity(v, n)} & PIFO, arity & Set the live \texttt{v}'s arity counter to \texttt{n}. Policy type is unchanged. \texttt{change\_arity} is what tells the discipline-level logic at \texttt{v} (e.g., RR's cursor wraparound, the WFQ slot-state table's size) the active arm count; the structural attaching and detaching themselves happen through explicit \texttt{adopt}/\texttt{emancipate} calls, each keyed by the stable per-edge index the parent minted at adoption time. The substrate is free to relocate live adoptions internally as the count changes; the indices the planner holds remain valid. \\
-\texttt{set\_arm\_meta(v, i, m)} & PIFO, index, metadata & Set per-arm metadata for the child reached via \texttt{i} to \texttt{m}. The payload \texttt{m} is interpreted per \texttt{v}'s policy type: a weight for RoundRobin/WFQ, a priority rank for Strict; FIFO carries none. Only the discipline-specified meta field is overwritten; any other per-arm state (e.g., WFQ's virtual-finish tag on the arm) is preserved, so a metadata change on a live arm does not yank it out of the current round. \\
-\texttt{designate(v, surv)} & two PIFOs & Inside an already-spawned Strict-2 super-node that has adopted both \texttt{v} and \texttt{surv} (see \cref{sec:hw-compile}'s \Designate{} lowering), name \texttt{v} as the favored child and record \texttt{surv} as \texttt{v}'s designated successor for an eventual \texttt{undesignate}. No in-place wrapping is implied at the ISA level; the substrate may coalesce the Strict-2 super-node, \texttt{v}, and \texttt{surv} into a single physical slot when \cref{sec:hw-compile}'s same-PE invariant holds, but is not required to. \\
-\texttt{gc(v)} & PIFO & Release \texttt{v}'s PE slot. \\
-\texttt{undesignate(v)} & PIFO & Collapse the super-node \(\{v \to \mathtt{surv}\}\) to \texttt{surv}: the parent index that pointed at \(\{v \to \mathtt{surv}\}\) now points directly at \texttt{surv}, and \texttt{surv} inherits the slot's per-arm metadata. \\
+\texttt{spawn(v, pe)} & Allocate an empty PIFO with id \texttt{v} on PE \texttt{pe}. The id \texttt{v} must be fresh. \\
+\texttt{adopt(i, p, c)} & Parent PIFO \texttt{p} gains child PIFO \texttt{c}, reachable via index \texttt{i}. \\
+\texttt{emancipate(i, p)} & Inverse of \texttt{adopt}: detach parent \texttt{p}'s child at index \texttt{i}. \\
+\texttt{assoc(v, f)} & PIFO \texttt{v} begins to accept packets of flow \texttt{f}. \\
+\texttt{deassoc(v, f)} & PIFO \texttt{v} stops accepting packets of flow \texttt{f}. \\
+\texttt{map(v, f, i)} & In PIFO \texttt{v}'s routing table, route flow \texttt{f} to index \texttt{i}. \\
+\texttt{unmap(v, f)} & Forget PIFO \texttt{v}'s mapping for flow \texttt{f}. \\
+\texttt{set\_policy(v, t, n)} & Set PIFO \texttt{v}'s policy type to \texttt{t} and its initial arity to \texttt{n}; \texttt{t} ranges over \{FIFO, RoundRobin, Strict, Strict*, WFQ\}. Issued exactly once per PIFO, at spawn time. \\
+\texttt{change\_arity(v, n)} & Set the live PIFO \texttt{v}'s arity counter to \texttt{n}. Policy type is unchanged. \texttt{change\_arity} is what tells the discipline-level logic at \texttt{v} (e.g., RR's cursor wraparound, the WFQ slot-state table's size) the active arm count; the structural attaching and detaching themselves happen through explicit \texttt{adopt}/\texttt{emancipate} calls, each keyed by the stable per-edge index the parent minted at adoption time. The substrate is free to relocate live adoptions internally as the count changes; the indices the planner holds remain valid. \\
+\texttt{set\_arm\_meta(v, i, m)} & Set per-arm metadata on PIFO \texttt{v}'s child reached via index \texttt{i} to \texttt{m}. The payload \texttt{m} is interpreted per \texttt{v}'s policy type: a weight for RoundRobin/WFQ, a priority rank for Strict; FIFO carries none. Only the discipline-specified meta field is overwritten; any other per-arm state (e.g., WFQ's virtual-finish tag on the arm) is preserved, so a metadata change on a live arm does not yank it out of the current round. \\
+\texttt{designate(v, surv)} & Inside an already-spawned Strict-2 super-node that has adopted both PIFOs \texttt{v} and \texttt{surv} (see \cref{sec:hw-compile}'s \Designate{} lowering), name \texttt{v} as the favored child and record \texttt{surv} as \texttt{v}'s designated successor for an eventual \texttt{undesignate}. No in-place wrapping is implied at the ISA level; the substrate may coalesce the Strict-2 super-node, \texttt{v}, and \texttt{surv} into a single physical slot when \cref{sec:hw-compile}'s same-PE invariant holds, but is not required to. \\
+\texttt{gc(v)} & Release PIFO \texttt{v}'s PE slot. \\
+\texttt{undesignate(v)} & Collapse the super-node \(\{v \to \mathtt{surv}\}\) to \texttt{surv}: the parent index that pointed at \(\{v \to \mathtt{surv}\}\) now points directly at \texttt{surv}, and \texttt{surv} inherits the slot's per-arm metadata. \\
 \hline
 \end{tabular}
 \end{table*}
