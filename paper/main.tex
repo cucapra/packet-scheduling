@@ -1147,29 +1147,47 @@ Each \Retire{} removes one off-path subtree; once they have all fired, every anc
 (If no off-path subtrees exist, the idiom reduces to \((\mathtt{true}; \ChangeRoot(\mathtt{path}))\) alone.)
 The \Retire{}s on disjoint off-path subtrees commute, so any ordering suffices; we use root-first as a stable convention.
 
-For instance, suppose the running tree is \texttt{A(B(E(F, G), D), C)}:
+For instance, suppose the running tree is \texttt{A(B(E(F, G), D), C)}, with edges labeled by the parent-side index:
 
 \begin{center}
+\begin{minipage}{0.55\linewidth}
+\centering
 \begin{tikzpicture}[
-  level distance=0.9cm,
-  level 1/.style={sibling distance=2.4cm},
-  level 2/.style={sibling distance=1.4cm},
-  level 3/.style={sibling distance=0.9cm},
-  every node/.style={font=\small}
+  level distance=0.65cm,
+  level 1/.style={sibling distance=1.9cm},
+  level 2/.style={sibling distance=1.1cm},
+  level 3/.style={sibling distance=0.7cm},
+  every node/.style={font=\small},
+  edge from parent/.style={draw},
+  every child/.style={font=\scriptsize}
 ]
 \node {$A$}
   child {node {$B$}
     child {node {$E$}
-      child {node {$F$}}
-      child {node {$G$}}
+      child {node {$F$} edge from parent node[left, xshift=-1pt] {\scriptsize 0}}
+      child {node {$G$} edge from parent node[right, xshift=1pt] {\scriptsize 1}}
+      edge from parent node[left, xshift=-1pt] {\scriptsize 0}
     }
-    child {node {$D$}}
+    child {node {$D$} edge from parent node[right, xshift=1pt] {\scriptsize 1}}
+    edge from parent node[left, xshift=-1pt] {\scriptsize 0}
   }
-  child {node {$C$}};
+  child {node {$C$} edge from parent node[right, xshift=1pt] {\scriptsize 1}};
 \end{tikzpicture}
+\end{minipage}%
+\begin{minipage}{0.35\linewidth}
+\centering
+\small
+\begin{tabular}{@{}l@{\quad}l@{}}
+\texttt{A} & \texttt{[]} \\
+\texttt{B} & \texttt{[0]} \\
+\texttt{C} & \texttt{[1]} \\
+\texttt{E} & \texttt{[0, 0]} \\
+\texttt{D} & \texttt{[0, 1]} \\
+\texttt{F} & \texttt{[0, 0, 0]} \\
+\texttt{G} & \texttt{[0, 0, 1]} \\
+\end{tabular}
+\end{minipage}
 \end{center}
-
-The index paths to its nodes are \texttt{A} at \texttt{[]}, \texttt{B} at \texttt{[0]}, \texttt{C} at \texttt{[1]}, \texttt{E(F, G)} at \texttt{[0, 0]}, \texttt{F} at \texttt{[0, 0, 0]}, \texttt{G} at \texttt{[0, 0, 1]}, and \texttt{D} at \texttt{[0, 1]}.
 
 The operator wants to retain only \texttt{D}, so they issue \PruneDownTo(\texttt{[0, 1]}).
 
