@@ -10,6 +10,8 @@
 \usepackage{fancyvrb}
 \fvset{frame=single,framesep=3pt,fontsize=\small,xleftmargin=0pt,rulecolor=\color{black!25}}
 \usepackage{subcaption}
+\newcount\draft \draft=1
+\usepackage{xxx}
 \usepackage[capitalize,noabbrev]{cleveref}
 \crefformat{section}{\S#2#1#3}
 \Crefformat{section}{\S#2#1#3}
@@ -83,7 +85,7 @@ Transitioning to \texttt{Strict(hi: zoom, mid: spotify, lo: gmail)} is actually 
 Before time \(t_1\), \texttt{Strict(hi: zoom, lo: gmail)} is running; at time \(t_1\) the request to move to \texttt{Strict(hi: zoom, mid: spotify, lo: gmail)} is received, and we move to it.
 The transition at \(t_1\) is \emph{atomic}, meaning that whatever user-observable interaction (push/pop) happened immediately before \(t_1\) happened entirely in the \texttt{Strict(hi: zoom, lo: gmail)} regime, and whatever push/pop happened immediately after \(t_1\) happened entirely in the \texttt{Strict(hi: zoom, mid: spotify, lo: gmail)} regime.
 This transition happens to be both atomic and \emph{immediate}, in that we do not need a period of preparation before we atomically jump into the new policy; the concepts are distinct.
-[AM note: Can we think of a nice small example that is atomic but not immediate?]
+\xxx[AM]{Can we think of a nice small example that is atomic but not immediate?}
 
 Transitioning to \texttt{Strict(hi: zoom, lo: RoundRobin(gmail, spotify))} is not as easy.
 As before, \texttt{Strict(hi: zoom, lo: gmail)} runs before \(t_1\) and the operator's request arrives at \(t_1\), but we cannot move to the requested policy immediately since there are still \texttt{gmail} packets buffered in the scheduler.
@@ -105,7 +107,7 @@ The grammar is carefully designed, such that \emph{any \texttt{link} produced by
 \emph{Obligation 2: improve upon the state of the art.}
 We will give the semantics of the stop-the-world \texttt{link} and use it as a baseline.
 Several practical goals guide us as we look for better ways to transition from a given \texttt{p1} to a given \texttt{p2}: can we minimize the length of the transition period, and can we avoid dropped/delayed packets?
-[AM: more to come here; the cost model is a legit open question!]
+\xxx[AM]{more to come here; the cost model is a legit open question!}
 We will show that it is always possible to make a transition from any \texttt{p1} to any \texttt{p2}, but it is occasionally possible to make a very efficient transition.
 We contribute a tool that achieves this and shows [improvements].
 
@@ -182,8 +184,8 @@ A PIFO tree \texttt{q} is well-formed (written \(\vdash \mathtt{q}\)) when, at e
 This is the invariant that keeps \texttt{pop} from ever getting stuck.
 \texttt{push} always preserves \(\vdash \mathtt{q}\), and \texttt{pop} preserves it when \texttt{q} is non-empty (which is precisely the condition under which \texttt{pop} is defined).
 
-[AM note: this is still stated in the big brain model.
-If we want to state it in the small-brain model, I can, but that is not exactly faithful to Mohan et al (see line just below).]
+\xxx[AM]{this is still stated in the big brain model.
+If we want to state it in the small-brain model, I can, but that is not exactly faithful to Mohan et al (see line just below).}
 
 We adopt this much from Mohan et al.~\cite{Mohan23}; the rest of the formalism in this paper is ours, and we preserve backward compatibility with theirs.
 
@@ -926,7 +928,7 @@ Whether that pol-visible change reorders in-flight traffic depends on whether th
 
 \subsection{The Interplay of \(\den(\delta)\) and \(\sem{\delta}\)}\label{sec:interplay}
 
-[AM note: I could literally make this a new Section 4 if you'd rather promote it (that is what Adrian literally asked for), but I've provisionally kept it as a subsection to save on renumbering roughly forty downstream \cref{sec:sequences}/\cref{sec:planner}/\cref{sec:hardware} references.]
+\xxx[AM]{I could literally make this a new Section 4 if you'd rather promote it (that is what Adrian literally asked for), but I've provisionally kept it as a subsection to save on renumbering roughly forty downstream \cref{sec:sequences}/\cref{sec:planner}/\cref{sec:hardware} references.}
 
 \crefrange{sec:runtime-model}{sec:per-production} introduced all the moving parts: the runtime object \texttt{C}, the source \texttt{pol}, the compilation \(\lceil \cdot \rceil\), the reading-off \(\lfloor \cdot \rfloor\), the atomic-diff grammar \(\delta\), and its two readings \(\den(\delta)\) and \(\sem{\delta}\).
 This subsection states formally how they fit together.
@@ -1043,10 +1045,10 @@ Every \texttt{push}/\texttt{pop} therefore still lands on a well-formed control 
 The same argument carries from the IR down to hardware: the hardware executes a committed sequence atomically with respect to user operations, so what it exhibits is again what \cref{sec:per-production} proved.
 The compilation itself, and the substrate machinery that makes a commit atomic, are the subject of \cref{sec:hardware}.
 
-[AM note for Zhiyuan: the \cref{sec:hw-preservation} argument leans on the substrate supporting \emph{atomic transactional commits}: a multi-instruction lowering must install as a single instant from the user's perspective, so that the transiently-malformed intermediate trees inside a commit are never observed.
+\xxx[AM for Zhiyuan]{the \cref{sec:hw-preservation} argument leans on the substrate supporting \emph{atomic transactional commits}: a multi-instruction lowering must install as a single instant from the user's perspective, so that the transiently-malformed intermediate trees inside a commit are never observed.
 Our own substrate provides this.
 The open question for \cref{sec:hardware} is whether composition with a third-party substrate (e.g., vPIFO) requires the same property and, if so, whether vPIFO offers it.
-Flagged here so the \cref{sec:hw-preservation} claim ``the proof survives the lowering'' is not read as substrate-independent.]
+Flagged here so the \cref{sec:hw-preservation} claim ``the proof survives the lowering'' is not read as substrate-independent.}
 
 \section{Realizing Reconfigurations as Guarded Sequences}\label{sec:sequences}
 
