@@ -4,87 +4,77 @@ import spinal.core._
 import spinal.lib._
 import spinal.core
 
-case class MessageCrossBar(config : EngineConfig) extends Component {
-    val numPorts = config.numEngines + 1
-    val io = new Bundle {
-        val inputs = Vec(slave Stream(PifoMessage(config)), numPorts)
-        val outputs = Vec(master Stream(PifoMessage(config)), numPorts)
-    }
+case class MessageCrossBar(config: EngineConfig) extends Component {
+  val numPorts = config.numEngines + 1
+  val io = new Bundle {
+    val inputs = Vec(slave Stream (PifoMessage(config)), numPorts)
+    val outputs = Vec(master Stream (PifoMessage(config)), numPorts)
+  }
 
-    val xbarFifoDepth = 8
+  val xbarFifoDepth = 8
 
-    // TODO(zhiyuang): optimize the buffer to regs
-    val fanouts = io.inputs.map { in =>
-        val inFifo = in.queueLowLatency(xbarFifoDepth, latency = 1)
-        StreamDemux(inFifo, inFifo.payload.engineId, numPorts)
-    }
+  // TODO(zhiyuang): optimize the buffer to regs
+  val fanouts = io.inputs.map { in =>
+    val inFifo = in.queueLowLatency(xbarFifoDepth, latency = 1)
+    StreamDemux(inFifo, inFifo.payload.engineId, numPorts)
+  }
 
-    for(i <- 0 until numPorts) {
-        val arbiter = StreamArbiterFactory.lowerFirst.on(fanouts.map(_(i)))
-        arbiter >-> io.outputs(i)
-    }
+  for (i <- 0 until numPorts) {
+    val arbiter = StreamArbiterFactory.lowerFirst.on(fanouts.map(_(i)))
+    arbiter >-> io.outputs(i)
+  }
 }
 
 object ControlCommand extends SpinalEnum {
-    val UpdateMapperPre, UpdateMapperPost, UpdateMapperNonExist, CommitMapper,
-        // brain operators
-        UpdateBrainEngine, UpdateBrainState, UpdateBrainFlowState = newElement()
+  val UpdateMapperPre, UpdateMapperPost, UpdateMapperNonExist, CommitMapper,
+  // brain operators
+  UpdateBrainEngine, UpdateBrainState, UpdateBrainFlowState = newElement()
 }
 
 case class ControlMessage(config: EngineConfig) extends Bundle {
-    val command = ControlCommand()
-    val engineId = UInt(config.engineIdWidth bits)
-    val vPifoId = UInt(config.vpifoIdWidth bits)
-    val flowId = UInt(config.flowIdWidth bits)
-    val data = UInt(config.flowStateWidth bits)
+  val command = ControlCommand()
+  val engineId = UInt(config.engineIdWidth bits)
+  val vPifoId = UInt(config.vpifoIdWidth bits)
+  val flowId = UInt(config.flowIdWidth bits)
+  val data = UInt(config.flowStateWidth bits)
 }
 
 case class PifoMesh(config: EngineConfig) extends Component {
-    val io = new Bundle {
-        val dataRequest = slave(Stream(PifoMessage(config)))
-        val pop = master(Stream(PifoMessage(config)))
+  val io = new Bundle {
+    val dataRequest = slave(Stream(PifoMessage(config)))
+    val pop = master(Stream(PifoMessage(config)))
 
-        val insert = Vec(slave(Stream(PifoMessage(config))), config.numEngines)
-        val controlRequest = slave(Stream(ControlMessage(config)))
-    }
+    val insert = Vec(slave(Stream(PifoMessage(config))), config.numEngines)
+    val controlRequest = slave(Stream(ControlMessage(config)))
+  }
 
-    // all datapath
-    val xbar = MessageCrossBar(config)
-    val pifoEngines = Seq.fill(config.numEngines)(PifoEngine(config))
+  // all datapath
+  val xbar = MessageCrossBar(config)
+  val pifoEngines = Seq.fill(config.numEngines)(PifoEngine(config))
 
-    (pifoEngines zip xbar.io.outputs.tail).foreach { case (engine, out) =>
-        engine.io.dequeueRequest << out
-    }
-    (pifoEngines zip xbar.io.inputs.tail).foreach { case (engine, in) =>
-        engine.io.dequeueResponse >> in
-    }
+  (pifoEngines zip xbar.io.outputs.tail).foreach { case (engine, out) =>
+    engine.io.dequeueRequest << out
+  }
+  (pifoEngines zip xbar.io.inputs.tail).foreach { case (engine, in) =>
+    engine.io.dequeueResponse >> in
+  }
 
-    io.dataRequest >> xbar.io.inputs(0)
-    xbar.io.outputs(0) >> io.pop
+  io.dataRequest >> xbar.io.inputs(0)
+  xbar.io.outputs(0) >> io.pop
 
-    // insert path
-    (io.insert zip pifoEngines).foreach { case (in, engine) =>
-        engine.io.enqueRequest << in
-    }
+  // insert path
+  (io.insert zip pifoEngines).foreach { case (in, engine) =>
+    engine.io.enqueRequest << in
+  }
 
-    // all controlpath. currently only write the memories
-    // transaction controller logic
-    // TODO(zhiyuang): better control signal logic?
-    val commitReady = StreamFifo(Bits(0 bits), config.commitQueueLength)
-    val controlQueue = io.controlRequest.queue(config.commitQueueLength)
+  // all controlpath. currently only write the memories
+  // Commands are buffered, but configuration is currently non-transactional. CommitMapper
+  // therefore acts as an ordered no-op until atomic mapper banks are implemented.
+  val controlQueue = io.controlRequest.queue(config.commitQueueLength)
 
-    // make one queue control another
-    val pendingCommit = controlQueue.payload.command === ControlCommand.CommitMapper
-    val controlTransaction = controlQueue.haltWhen(
-        pendingCommit && !commitReady.io.pop.valid
-    )
-    commitReady.io.pop.throwWhen(
-        pendingCommit && controlQueue.fire
-    )
-
-    val translatedEngineId = (io.controlRequest.payload.engineId - 1).resized
-    val controlCommand = StreamDemux(controlTransaction, translatedEngineId, config.numEngines)
-    (controlCommand zip pifoEngines).foreach { case (cmdStream, engine) =>
-        engine.io.control << cmdStream
-    }
+  val translatedEngineId = (controlQueue.payload.engineId - 1).resized
+  val controlCommand = StreamDemux(controlQueue, translatedEngineId, config.numEngines)
+  (controlCommand zip pifoEngines).foreach { case (cmdStream, engine) =>
+    engine.io.control << cmdStream
+  }
 }

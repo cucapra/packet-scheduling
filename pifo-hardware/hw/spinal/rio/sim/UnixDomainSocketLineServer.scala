@@ -49,8 +49,8 @@ object UnixDomainSocketLineServer {
   }
 
   def startKeyValue(
-    socketPath: String,
-    label: String = "UnixDomainSocket"
+      socketPath: String,
+      label: String = "UnixDomainSocket"
   )(onLine: KeyValueLine => Unit): SimThread = {
     start(socketPath, label) { line =>
       try {
@@ -88,9 +88,9 @@ object UnixDomainSocketLineServer {
   }
 
   private def startNetcatFallback(
-    socket: Path,
-    label: String,
-    cause: Throwable
+      socket: Path,
+      label: String,
+      cause: Throwable
   )(onLine: String => Unit): SimThread = {
     ensureFreshSocketPath(socket)
 
@@ -157,9 +157,14 @@ object UnixDomainSocketLineServer {
       server.configureBlocking(false)
       server
     } catch {
-      case e: ClassNotFoundException =>
+      case e: ReflectiveOperationException =>
         throw new UnsupportedOperationException(
-          "Unix domain sockets require a JDK with java.net.UnixDomainSocketAddress",
+          "Unix domain sockets require JDK Unix-domain socket APIs",
+          e
+        )
+      case e: IllegalArgumentException =>
+        throw new UnsupportedOperationException(
+          "Unix domain sockets require JDK Unix-domain socket APIs",
           e
         )
     }

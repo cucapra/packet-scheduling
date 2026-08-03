@@ -4,6 +4,9 @@
 sbt "runMain rio.sim.PifoMeshSim"
 ```
 
+For request queues, trace-driven or live workloads, traffic generation, and formal-trace conversion, see the
+[request-level simulator guide](REQUEST_SIMULATOR.md).
+
 This contains a PifoMesh Implementation. Current implementation assumes the insert input to be a `PacketToken = engineId ## flowId`. The `PacketToken` will be processed in PifoEngine in the following process:
 
 ### Enqueue Path
