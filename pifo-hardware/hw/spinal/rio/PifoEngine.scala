@@ -69,6 +69,85 @@ case class Mapper(inputWidth: Int, outputWidth: Int) extends Component {
   }
 }
 
+/**
+  * A mapper whose control-plane writes become packet-visible atomically.
+  *
+  * Packet reads use the active bank while updates write the backup bank. A commit
+  * swaps the banks in one cycle, then the new active bank is copied back before
+  * another update or commit is accepted.
+  */
+case class TransactionalMapper(inputWidth: Int, outputWidth: Int) extends Component {
+  require(inputWidth > 0, "inputWidth must be positive")
+  require(outputWidth > 0, "outputWidth must be positive")
+
+  val numInputs = 1 << inputWidth
+  def updater = MapperUpdater(inputWidth, outputWidth)
+
+  val io = new Bundle {
+    val readReq = slave Flow (UInt(inputWidth bits))
+    val readRes = master Flow (UInt(outputWidth bits))
+
+    val writeReq = slave Stream (updater)
+    val commit = in Bool ()
+    val commitReady = out Bool ()
+  }
+
+  val banks = Seq.fill(2)(Mem(UInt(outputWidth bits), numInputs) init (Seq.fill(numInputs)(0)))
+  val activeBank = RegInit(False)
+  val copying = RegInit(False)
+  val copyAddress = Reg(UInt(inputWidth bits)) init (0)
+  val copyWriteValid = RegNext(copying) init (False)
+  val copyWriteAddress = RegNext(copyAddress) init (0)
+  val synchronizing = copying || copyWriteValid
+
+  // Read both banks so a request issued on the commit cycle still returns data
+  // from the bank that was active for that request.
+  val bankRead = Seq(
+    banks(0).readSync(io.readReq.payload, io.readReq.valid && !activeBank),
+    banks(1).readSync(io.readReq.payload, io.readReq.valid && activeBank)
+  )
+  val requestedBank = Reg(Bool()) init (False)
+  when(io.readReq.valid) {
+    requestedBank := activeBank
+  }
+  io.readRes.valid := RegNext(io.readReq.valid) init (False)
+  io.readRes.payload := Mux(requestedBank, bankRead(1), bankRead(0))
+
+  io.writeReq.ready := !synchronizing
+  io.commitReady := !synchronizing
+
+  // A second synchronous read port walks the active bank during synchronization.
+  // Its one-cycle-delayed result uses the backup bank's normal write port, while
+  // packet reads continue through the first port.
+  val copyRead = Seq(
+    banks(0).readSync(copyAddress, copying && !activeBank),
+    banks(1).readSync(copyAddress, copying && activeBank)
+  )
+  val copyData = Mux(
+    activeBank,
+    copyRead(1),
+    copyRead(0)
+  )
+  val writeAddress = Mux(copyWriteValid, copyWriteAddress, io.writeReq.payload.inputId)
+  val writeData = Mux(copyWriteValid, copyData, io.writeReq.payload.outputId)
+  val writeEnable = copyWriteValid || io.writeReq.fire
+
+  banks(0).write(writeAddress, writeData, writeEnable && activeBank)
+  banks(1).write(writeAddress, writeData, writeEnable && !activeBank)
+
+  when(io.commit && io.commitReady) {
+    activeBank := !activeBank
+    copying := True
+    copyAddress := 0
+  } elsewhen (copying) {
+    when(copyAddress === U(numInputs - 1, inputWidth bits)) {
+      copying := False
+    } otherwise {
+      copyAddress := copyAddress + 1
+    }
+  }
+}
+
 case class BrainInput(config: EngineConfig) extends Bundle {
   val vpifoId = UInt(config.vpifoIdWidth bits)
   val flowId = UInt(config.flowIdWidth bits)
@@ -283,6 +362,7 @@ case class PifoEngine(config: EngineConfig) extends Component {
 
     // control signals
     val control = slave Stream (ControlMessage(config))
+    val commitReady = out Bool ()
   }
 
   // PIFO
@@ -293,7 +373,7 @@ case class PifoEngine(config: EngineConfig) extends Component {
   val enque = new Area {
     val (mapperRead, flowIdStream) = StreamFork2(io.enqueRequest)
 
-    val enqueMapper = Mapper(config.vpifoIdWidth, config.vpifoIdWidth)
+    val enqueMapper = TransactionalMapper(config.vpifoIdWidth, config.vpifoIdWidth)
     enqueMapper.io.readReq << mapperRead.map(_.vPifoId).toFlow
 
     val brainInput = Stream(BrainInput(config))
@@ -317,8 +397,8 @@ case class PifoEngine(config: EngineConfig) extends Component {
 
   val deque = new Area {
     // dequeue also need a mapper, reinterpret vpifoId if needed
-    val dequeMapper = Mapper(config.flowIdWidth, config.flowIdWidth)
-    val nonExistMapper = Mapper(config.vpifoIdWidth, config.flowIdWidth)
+    val dequeMapper = TransactionalMapper(config.flowIdWidth, config.flowIdWidth)
+    val nonExistMapper = TransactionalMapper(config.vpifoIdWidth, config.flowIdWidth)
 
     pifos.io.popRequest.translateFrom(io.dequeueRequest.toFlow) { case (to, from) =>
       to.port := from.vPifoId
@@ -349,7 +429,7 @@ case class PifoEngine(config: EngineConfig) extends Component {
   }
 
   val controller = new ControllerFactory(config)
-  controller.dispatch(
+  controller.dispatchStream(
     ControlCommand.UpdateMapperPre,
     enque.enqueMapper.io.writeReq
   ) { (to, from) =>
@@ -357,7 +437,7 @@ case class PifoEngine(config: EngineConfig) extends Component {
     to.outputId := from.data.resized
   }
 
-  controller.dispatch(
+  controller.dispatchStream(
     ControlCommand.UpdateMapperPost,
     deque.dequeMapper.io.writeReq
   ) { (to, from) =>
@@ -365,7 +445,7 @@ case class PifoEngine(config: EngineConfig) extends Component {
     to.outputId := from.data.resized
   }
 
-  controller.dispatch(
+  controller.dispatchStream(
     ControlCommand.UpdateMapperNonExist,
     deque.nonExistMapper.io.writeReq
   ) { (to, from) =>
@@ -373,7 +453,21 @@ case class PifoEngine(config: EngineConfig) extends Component {
     to.outputId := from.data.resized
   }
 
-  val (control, brainControl) = StreamFork2(io.control)
+  val mapperCommitReady =
+    enque.enqueMapper.io.commitReady &&
+      deque.dequeMapper.io.commitReady &&
+      deque.nonExistMapper.io.commitReady
+  io.commitReady := mapperCommitReady
+
+  val (control, brainControl, commitControl) = StreamFork3(io.control)
   controller.build(control)
   enque.brain.io.control << brainControl
+
+  val commit = commitControl.takeWhen(commitControl.payload.command === ControlCommand.CommitMapper)
+  commit.ready := mapperCommitReady
+  val commitPulse = commit.fire
+
+  enque.enqueMapper.io.commit := commitPulse
+  deque.dequeMapper.io.commit := commitPulse
+  deque.nonExistMapper.io.commit := commitPulse
 }

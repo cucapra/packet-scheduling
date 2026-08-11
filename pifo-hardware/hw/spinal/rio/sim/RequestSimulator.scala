@@ -386,5 +386,6 @@ object RequestSimulationConfiguration {
       controller.mkFlowId(0, config.numVPIFOs - 1),
       vPifoId = rootVPifoId
     )
+    controller.sendControl(ControlCommand.CommitMapper, engineId = 1, data = 0)
   }
 }

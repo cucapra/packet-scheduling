@@ -54,6 +54,10 @@ sbt 'runMain rio.sim.RequestSimulatorCli \
   --trace /tmp/requests.csv --no-wave'
 ```
 
+Mapper updates in a control file are staged until `CommitMapper`. The configuration tool emits that command at the
+end of every transaction; brain updates remain immediate. The simulator waits for mapper bank synchronization before
+processing the next transaction.
+
 The full CLI retains `/tmp/rio-control.sock` by default, so control instructions can also be loaded online. Run
 `sbt 'runMain rio.sim.RequestSimulatorCli --help'` for hardware shape, queue depth, timeout, socket, and output options.
 

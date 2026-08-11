@@ -32,8 +32,7 @@ object PifoMeshSim extends App {
     )
 
 
-    // use controller.transaction if you want transactional configuration
-    val configThread = controller.config { cf =>
+    val configThread = controller.transaction { cf =>
       cf.tree(tree1)
        .addFlow(rFlow(0), Seq(rPifo(0), rPifo(1)))
        .addFlow(rFlow(1), Seq(rPifo(0), rPifo(2)))

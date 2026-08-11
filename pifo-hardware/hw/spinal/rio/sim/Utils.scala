@@ -63,6 +63,14 @@ case class PifoMeshSimController(
     dut.io.controlRequest.payload.data #= data
     dut.clockDomain.waitSamplingWhere(dut.io.controlRequest.ready.toBoolean)
     dut.io.controlRequest.valid #= false
+
+    // A commit can be buffered behind earlier updates. Wait for the hardware to
+    // apply it and finish restoring the backup banks before returning, so callers
+    // can safely begin another transaction.
+    if (cmd == ControlCommand.CommitMapper) {
+      dut.clockDomain.waitSamplingWhere(!dut.io.commitReady.toBoolean)
+      dut.clockDomain.waitSamplingWhere(dut.io.commitReady.toBoolean)
+    }
   }
 
   def enqueueToEngine(engineId: Int, vPifoId: Int): Unit = {
@@ -156,7 +164,7 @@ case class PifoMeshSimController(
    *     UpdateMapperPre       writes enque mapper: inputId=vPifoId, outputId=data
    *     UpdateMapperPost      writes deque mapper: inputId=flowId, outputId=data
    *     UpdateMapperNonExist  writes non-exist mapper: inputId=vPifoId, outputId=data
-   *     CommitMapper          emits a commit command; payload fields are still required
+   *     CommitMapper          atomically publishes all pending mapper updates; payload fields are still required
    *     UpdateBrainEngine     writes brain engine type: inputId=vPifoId, outputId=data
    *     UpdateBrainState      writes brain state: inputId=vPifoId, outputId=data
    *     UpdateBrainFlowState  writes flow state: inputId=vPifoId @@ flowId, outputId=data
@@ -224,10 +232,8 @@ case class PifoMeshSimController(
         this
       }
 
-      // brain operations
-      // TODO(zhiyuang): limitations on transactional updates
+      // Brain operations are immediate and intentionally outside mapper transactions.
       def brainFIFO(vPifoId: Int): TreeConfiger = {
-        // assert(!transactional, "setBrainFIFO is not supported in transactional mode")
         val engineId = tree.pifoMap(vPifoId)
         setBrainFIFO(engineId, vPifoId)
         this
@@ -252,17 +258,18 @@ case class PifoMeshSimController(
     def tree(tree: TreeController): TreeConfiger = TreeConfiger(tree)
   }
 
-  // Transactional configuration process.
-  // TODO(zhiyuang): make this async and transactional
+  // Transactional configuration process. The returned thread completes only
+  // after the committed banks have been synchronized for the next transaction.
   def transaction(F: Configer => Unit): SimThread = {
-    assert(false, "Transactional configuration is not yet implemented")
     val configer = Configer(transactional = true)
-    fork { F(configer) }
+    fork {
+      F(configer)
+      sendControl(ControlCommand.CommitMapper, engineId = 1, data = 0)
+    }
   }
 
   def config(F: Configer => Unit): SimThread = {
-    val configer = Configer(transactional = false)
-    fork { F(configer) }
+    transaction(F)
   }
 
   ///////////////////////////////////

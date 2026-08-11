@@ -112,6 +112,7 @@ object PifoEngineSim extends App {
     // Configure deque mapper: 0 for sending back to output
     sendControl(ControlCommand.UpdateMapperPost, testEngineId, testVPifoId, flowId = testVPifoId)
     sendControl(ControlCommand.UpdateMapperPost, testEngineId, testVPifoId + 1, flowId = testVPifoId + 1)
+    sendControl(ControlCommand.CommitMapper, testEngineId, 0)
 
     // Configure brain: vPifo 12 -> WFQ, vPifo 13 -> FIFO
     // BrainType encoding: NOP=0, WFQ=1, SP=2, FIFO=3

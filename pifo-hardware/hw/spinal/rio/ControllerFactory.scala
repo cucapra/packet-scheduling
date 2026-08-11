@@ -39,6 +39,22 @@ class ControllerFactory(config: EngineConfig) {
   }
 
   /**
+    * Stream-backed variant used by control targets that need to apply
+    * backpressure, such as a transactional mapper while it synchronizes banks.
+    */
+  def dispatchStream[To <: Data](command: SpinalEnumElement[ControlCommand.type], target: Stream[To])(
+      assign: (To, ControlMessage) => Unit
+  ) = {
+    handlers += { (head: Stream[ControlMessage]) =>
+      target << head
+        .takeWhen(head.payload.command === command)
+        .translateInto(Stream(target.payload)) { (to: To, from: ControlMessage) =>
+          assign(to, from)
+        }
+    }
+  }
+
+  /**
     * Wire all registered handlers to the provided controlStream. Call once after
     * registering handlers.
     */

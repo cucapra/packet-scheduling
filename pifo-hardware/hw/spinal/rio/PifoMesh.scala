@@ -46,6 +46,7 @@ case class PifoMesh(config: EngineConfig) extends Component {
 
     val insert = Vec(slave(Stream(PifoMessage(config))), config.numEngines)
     val controlRequest = slave(Stream(ControlMessage(config)))
+    val commitReady = out Bool ()
   }
 
   // all datapath
@@ -67,14 +68,36 @@ case class PifoMesh(config: EngineConfig) extends Component {
     engine.io.enqueRequest << in
   }
 
-  // all controlpath. currently only write the memories
-  // Commands are buffered, but configuration is currently non-transactional. CommitMapper
-  // therefore acts as an ordered no-op until atomic mapper banks are implemented.
+  // All control-plane commands are ordered through one hardware queue. Mapper
+  // updates target backup banks; a commit is broadcast synchronously so every
+  // engine changes its packet-visible mappings on the same cycle.
   val controlQueue = io.controlRequest.queue(config.commitQueueLength)
+  val mapperCommitReady = pifoEngines.map(_.io.commitReady).reduce(_ && _)
+  io.commitReady := mapperCommitReady
 
-  val translatedEngineId = (controlQueue.payload.engineId - 1).resized
-  val controlCommand = StreamDemux(controlQueue, translatedEngineId, config.numEngines)
-  (controlCommand zip pifoEngines).foreach { case (cmdStream, engine) =>
-    engine.io.control << cmdStream
+  val (routedHead, commitHead) = StreamFork2(controlQueue)
+
+  val withoutCommit = routedHead.throwWhen(
+    routedHead.payload.command === ControlCommand.CommitMapper
+  )
+  val isMapperUpdate =
+    withoutCommit.payload.command === ControlCommand.UpdateMapperPre ||
+      withoutCommit.payload.command === ControlCommand.UpdateMapperPost ||
+      withoutCommit.payload.command === ControlCommand.UpdateMapperNonExist
+  val routedControl = withoutCommit.haltWhen(isMapperUpdate && !mapperCommitReady)
+
+  val commitControl = commitHead
+    .takeWhen(commitHead.payload.command === ControlCommand.CommitMapper)
+    .haltWhen(!mapperCommitReady)
+
+  val translatedEngineId = (routedControl.payload.engineId - 1).resized
+  val controlCommand = StreamDemux(routedControl, translatedEngineId, config.numEngines)
+  // mapperCommitReady guarantees every destination can accept this item on its
+  // first valid cycle. The default fork avoids a ready/valid combinational loop
+  // through the per-engine arbiters while retaining same-cycle delivery.
+  val commits = StreamFork(commitControl, config.numEngines)
+
+  (controlCommand zip commits zip pifoEngines).foreach { case ((cmdStream, commitStream), engine) =>
+    engine.io.control << StreamArbiterFactory.lowerFirst.onArgs(cmdStream, commitStream)
   }
 }
