@@ -399,6 +399,7 @@ When \(\mathtt{p1} \eqR \mathtt{p2}\), the planner emits the empty sequence (\cr
 The two demands that we stated at a high level in \cref{sec:delta-grammar} turn into five concrete obligations that we must discharge for every production of the grammar.
 The first four flow from \emph{hardware-realizability}: for the substrate to install \(\sem{\delta}\) atomically, the per-production rule must specify what \(\sem{\delta}\) does, produce a target that is a valid control with fully specified state, and leave the user's \texttt{pop} stream undisturbed.
 The last flows from \emph{pol-explainability}.
+Throughout, we write \texttt{C} for the pre-edit control and \texttt{C'} for the post-edit control.
 
 \begin{itemize}
 \item \emph{Definition.} Specify \(\sem{\delta} : \mathtt{control} \rightharpoonup \mathtt{control}\) together with the preconditions under which it is defined; outside that region \(\delta\) is \emph{incompatible} with \texttt{C} and \(\sem{\delta}(\mathtt{C})\) is undefined.
@@ -415,7 +416,6 @@ The equation is up to \(\eqR\), not literal \texttt{=}: \(\den\) returns a defin
 Transaction-only effects (e.g., \Quiesce's shrinking of \texttt{z}'s domain) sit outside \(\den\); they are fixed by the operational rule, not by this equation.
 \end{itemize}
 
-Write \texttt{C} for the pre-edit control and \texttt{C'} for the post-edit control.
 The last four obligations assume \(\sem{\delta}(\mathtt{C})\) is defined; outside the region the production's Definition carves out, \(\delta\) is \emph{incompatible} with \texttt{C} and \(\sem{\delta}(\mathtt{C})\) is undefined.
 We do not repeat this boilerplate at every production.
 
@@ -438,8 +438,6 @@ The child-list operations \(\mathtt{cs}[\mathtt{C'}/i]\) and \(\mathtt{cs} \math
 
 We read a node's \texttt{z} as defined for exactly those packets whose target leaf lies in that node's subtree, routing each to the child on the path down to that leaf; this is consistent with the whole-path admission property of \cref{sec:controls}.
 Classification is therefore a projection of the tree's leaf labels, not stored per-node state: splicing a new, disjoint leaf into the subtree under a node extends which packets its \texttt{z} admits, while that node's \texttt{node\_state}, \texttt{slot\_states}, and scheduling rule are untouched.
-The physical realization, a single ingress lookup from packet to leaf whose result is offered in parallel to the nodes on the path, is deferred to \cref{sec:hardware}.
-
 Several productions edit a single arm relative to its parent.
 When the per-production rule hinges on this relation, we destruct \(\delta\)'s path as \(\pi \mathbin{+\!\!+} [k]\), with \(\pi\) the parent's path and \texttt{k} the local index by which that parent reaches the target.
 
@@ -456,13 +454,13 @@ We must define \(\sem{\Add(\pi, \mathtt{arm}, \mathtt{meta?})} : \mathtt{control
 
 Say the presently running control is \texttt{C}.
 Intuitively, \Add{} inserts a freshly compiled subtree \(\lceil \mathtt{arm} \rceil\) as the new last child of the subtree \texttt{C@}\(\pi\).
-Traffic reaches it because \(\lceil \mathtt{arm} \rceil\)'s leaves now lie in the subtree of every node on the path down to \(\pi\), and each such node's \texttt{z} admits exactly the packets whose target leaf lies in its subtree.
+By the derived reading of \texttt{z} above, once \(\lceil \mathtt{arm} \rceil\) sits under \texttt{C@}\(\pi\) its leaves lie in the subtree of every node on the path down to \(\pi\), so each such node routes packets bound for the new flow one step further down toward it.
 
 \(\sem{\Add(\pi, \mathtt{arm}, \mathtt{meta?})}(\mathtt{C})\) is defined when the path \(\pi\) resolves in \texttt{C} to an internal node, \texttt{meta?} matches the slot-initialization schema of the discipline at that node (present iff \texttt{init\_slot\_D} for that discipline requires it), and \texttt{arm}'s leaf labels are disjoint from those of \texttt{C}.
 The disjointness precondition rules out \emph{splitting} an already-running flow into two (e.g., splitting \texttt{gmail} into \texttt{gmail\_business} and \texttt{gmail\_personal}): such a split has to relocate already-admitted packets, which \Add{} cannot do.
 It also keeps classification single-valued: the new leaf labels lie in no node's subtree beforehand, so admitting them extends each on-path \texttt{z} without disturbing any existing packet's route.
 
-We define \(\sem{\Add}\) by recursion on \(\pi\), in the same shape as \(\den(\Add)\) below.
+We define \(\sem{\Add}\) by recursion on \(\pi\).
 Let \(k\) be the new arm's index at \texttt{C@}\(\pi\): the number of children there before the splice, so the appended child occupies index \(k\) in that node's index-\texttt{pifo}.
 
 \begin{verbatim}
