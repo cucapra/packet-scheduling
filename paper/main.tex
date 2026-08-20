@@ -357,7 +357,7 @@ One production is irregular in this respect: \ChangeRoot{} gives the path to the
 We explain this in \cref{sec:per-production}.
 
 \begin{verbatim}
-d ::= Add          (path, arm, meta?)
+d ::= Add          (path, D, arm, meta?)
     | ChangeMeta   (path, meta)
     | Quiesce      (path)
     | Remove       (path)
@@ -378,8 +378,9 @@ The richer reconfigurations an operator may want (retiring a subtree that has pa
 Brief notes on each production:
 
 \begin{itemize}
-\item \Add(\texttt{path, arm, meta?}) makes \texttt{arm} a new child of \texttt{p1@path}.
-\texttt{meta?} carries per-arm bookkeeping for the new arm, if \texttt{p1@path} requires it.
+\item \Add(\texttt{path, D, arm, meta?}) makes \texttt{arm} a new child of \texttt{p1@path}, which runs discipline \texttt{D}.
+\texttt{meta?} carries per-arm bookkeeping for the new arm, if \texttt{D} requires it.
+We carry \texttt{D} because a control does not store the discipline of its nodes (\cref{sec:controls}); the sniffer reads it off the source policy so that the operational rule of \cref{sec:add} can run \texttt{D}'s \texttt{init\_slot} recipe without inspecting the running control.
 \item \ChangeMeta(\texttt{path, meta}) overwrites the per-arm metadata assigned to \texttt{p1@path}, interpreted per the parent's discipline: a priority rank under Strict, a weight under WFQ.
 \item \Quiesce(\texttt{path}) prevents \texttt{p1@path} from receiving any new traffic.
 \item \Remove(\texttt{path}) removes \texttt{p1@path}, which must be empty.
@@ -422,7 +423,7 @@ We do not repeat this boilerplate at every production.
 For transaction-only productions (those whose effect lives entirely in some \texttt{z}, like \Quiesce{} and \ChangeMeta), \(\den(\delta)\) is the identity on \texttt{pol} and Characterization reduces to \(\lfloor \mathtt{C'} \rfloor \eqR \lfloor \mathtt{C} \rfloor\) by inspection: no node's \texttt{node\_state}, \texttt{slot\_states}, \texttt{pifo}, or child list moves, and \texttt{z} is not visible at \texttt{pol}-level.
 We still state \(\den\) explicitly at each production for uniformity.
 
-Several productions (\Quiesce, \Remove, \Designate) modify \texttt{z} at proper ancestors of the edit site, even though those nodes' \texttt{state} is preserved verbatim.
+Several productions (\Add, \Quiesce, \Remove, \Designate) modify \texttt{z} at proper ancestors of the edit site, even though those nodes' \texttt{state} is preserved verbatim.
 There is no separate obligation for these \texttt{z} edits: their \texttt{pol}-invisible content is absorbed by Characterization (which is up to \(\eqR\), and \texttt{z} does not appear in \texttt{pol}), and their effect on the in-flight stream is absorbed by Observation (every live \texttt{pifo} entry survives a \texttt{z} edit verbatim).
 
 The denotational rules below read, overwrite, and shrink child lists.
@@ -432,61 +433,82 @@ We write \texttt{ts[i]} for the \texttt{i}-th child and \texttt{ts[t/i]} for \te
 Indices follow the \texttt{path} convention of \cref{sec:delta-grammar}.
 
 The operational rules walk controls the same way, so we fix a matching notation for control nodes.
-We write an internal control node as \(\mathtt{D}\langle\mathtt{state}, \mathtt{pifo}\rangle(\mathtt{cs})\): a node whose child-control list is \texttt{cs}, whose local pair is \texttt{(state, pifo)}, and whose scheduling transaction \texttt{z} is the transaction of discipline \texttt{D}.
-Writing \texttt{D} names an ambient witness, not a stored field: \texttt{D} is recovered as the discipline of the node's \texttt{z} (equivalently, the head discipline of \(\lfloor \mathtt{C} \rfloor\) at that node), so the per-node record stays \texttt{(state, pifo, z)} exactly as in \cref{sec:controls}.
+We write an internal control node as \(\langle\mathtt{state}, \mathtt{pifo}, \mathtt{z}\rangle(\mathtt{cs})\): the node's triple \texttt{(state, pifo, z)} of \cref{sec:controls} together with its child-control list \texttt{cs}.
+The discipline is not among these fields: a control node stores only \texttt{(state, pifo, z)}, with the source-level discipline already compiled into \texttt{z} (\cref{sec:policy-dsl}).
+When an operational rule must run a discipline-specific recipe, such as \texttt{init\_slot} for a freshly spliced arm, it takes that discipline from the production itself, which the sniffer carries from the source policy (\cref{sec:delta-grammar}); the running control is never inspected to recover it.
 The child-list operations \(\mathtt{cs}[\mathtt{C'}/i]\) and \(\mathtt{cs} \mathbin{+\!\!+} [\mathtt{C'}]\) act on control child lists just as \(\mathtt{ts}[t/i]\) and \(\mathtt{ts}\mathbin{+\!\!+}[t]\) act on \texttt{pol}.
 
-We read a node's \texttt{z} as defined for exactly those packets whose target leaf lies in that node's subtree, routing each to the child on the path down to that leaf; this is consistent with the whole-path admission property of \cref{sec:controls}.
-Classification is therefore a projection of the tree's leaf labels, not stored per-node state: splicing a new, disjoint leaf into the subtree under a node extends which packets its \texttt{z} admits, while that node's \texttt{node\_state}, \texttt{slot\_states}, and scheduling rule are untouched.
+A node's \texttt{z} is defined for exactly those packets whose target leaf lies in that node's subtree, and routes each to the child on the path down to that leaf; this is the whole-path admission property of \cref{sec:controls} seen from \texttt{z}'s side, and it holds as an invariant that every production must maintain.
+This classification is carried inside \texttt{z}, not read off the tree's shape for free: for a node to admit a newly spliced leaf, its \texttt{z} must be edited to accept that leaf's flow and route it onward.
+Admission is thus decided per node, and a packet survives only if \emph{every} node on its root-to-leaf path admits it.
+A splice therefore edits \texttt{z} at every node on the new leaf's path, while leaving each node's \texttt{node\_state}, \texttt{slot\_states}, and rank computation untouched; \cref{sec:hardware} stores this per node and realizes each such edit as an \texttt{assoc}/\texttt{map} pair.
 Several productions edit a single arm relative to its parent.
 When the per-production rule hinges on this relation, we destruct \(\delta\)'s path as \(\pi \mathbin{+\!\!+} [k]\), with \(\pi\) the parent's path and \texttt{k} the local index by which that parent reaches the target.
 
 As a warm-up, we discharge the five obligations in some detail for the production \Add.
 The remaining productions reuse the same obligations and arguments, so for them we present only what differs in substance: the closed-form \(\den\), the operationally interesting bits of the per-node rule, and the points where any of the preservation arguments departs from \Add's.
 
-\subsubsection{\texorpdfstring{\(\Add(\pi, \mathtt{arm}, \mathtt{meta?})\)}{Add}}\label{sec:add}
+\subsubsection{\texorpdfstring{\(\Add(\pi, \mathtt{D}, \mathtt{arm}, \mathtt{meta?})\)}{Add}}\label{sec:add}
 
 We rename \cref{sec:delta-grammar}'s positional arguments for clarity: \(\pi : \mathtt{path}\) is the path to the node that will receive the new arm as its last child, and \(\mathtt{arm} : \mathtt{pol}\) is the policy of the new arm; \texttt{meta?} is the discipline-dependent per-arm metadata of \cref{sec:delta-grammar}.
 
 \paragraph{Definition}
 
-We must define \(\sem{\Add(\pi, \mathtt{arm}, \mathtt{meta?})} : \mathtt{control} \rightharpoonup \mathtt{control}\) together with the preconditions on the already running control under which \Add{} is defined.
+We must define \(\sem{\Add(\pi, \mathtt{D}, \mathtt{arm}, \mathtt{meta?})} : \mathtt{control} \rightharpoonup \mathtt{control}\) together with the preconditions on the already-running control under which \Add{} is defined.
 
 Say the presently running control is \texttt{C}.
 Intuitively, \Add{} inserts a freshly compiled subtree \(\lceil \mathtt{arm} \rceil\) as the new last child of the subtree \texttt{C@}\(\pi\).
-By the derived reading of \texttt{z} above, once \(\lceil \mathtt{arm} \rceil\) sits under \texttt{C@}\(\pi\) its leaves lie in the subtree of every node on the path down to \(\pi\), so each such node routes packets bound for the new flow one step further down toward it.
+Reaching the new arm means admitting its flows along the whole path: every node from the root down to \texttt{C@}\(\pi\) must begin to accept the new flows and route them toward the arm. In the old tree those flows were accepted nowhere and dropped; \Add{} extends the admission at each node on the path, and touches nothing else.
 
-\(\sem{\Add(\pi, \mathtt{arm}, \mathtt{meta?})}(\mathtt{C})\) is defined when the path \(\pi\) resolves in \texttt{C} to an internal node, \texttt{meta?} matches the slot-initialization schema of the discipline at that node (present iff \texttt{init\_slot\_D} for that discipline requires it), and \texttt{arm}'s leaf labels are disjoint from those of \texttt{C}.
-The disjointness precondition rules out \emph{splitting} an already-running flow into two (e.g., splitting \texttt{gmail} into \texttt{gmail\_business} and \texttt{gmail\_personal}): such a split has to relocate already-admitted packets, which \Add{} cannot do.
+\(\sem{\Add(\pi, \mathtt{D}, \mathtt{arm}, \mathtt{meta?})}(\mathtt{C})\) is defined when the path \(\pi\) resolves in \texttt{C} to an internal node running discipline \texttt{D}, \texttt{meta?} matches the slot-initialization schema of \texttt{D} (present iff \texttt{init\_slot\_D} requires it), and \texttt{arm}'s leaf labels are disjoint from those of \texttt{C}.
+A running control does not record the discipline of its nodes, so \(\sem{\Add}\) cannot itself check that the node at \(\pi\) runs \texttt{D}; the sniffer guarantees this by reading \texttt{D} off the source policy.
+The disjointness precondition rules out \emph{splitting} an already-running flow into two (e.g., splitting \texttt{gmail} into \texttt{gmail\_business} and \texttt{gmail\_personal}): such a split has to relocate already-admitted packets, which \Add{} cannot do by itself.
 It also keeps classification single-valued: the new leaf labels lie in no node's subtree beforehand, so admitting them extends each on-path \texttt{z} without disturbing any existing packet's route.
 
-We define \(\sem{\Add}\) by recursion on \(\pi\).
-Let \(k\) be the new arm's index at \texttt{C@}\(\pi\): the number of children there before the splice, so the appended child occupies index \(k\) in that node's index-\texttt{pifo}.
+We define \(\sem{\Add}\) by recursion on \(\pi\), given in \cref{fig:add-rules} (top).
+Let \(k\) be the number of children \texttt{C@}\(\pi\) has before the splice; this same \(k\) is the index of the new child, since indices \(0, \dots, k-1\) are already in use.
+Write \(\mathtt{flows}(\mathtt{arm})\) for the set of flow labels at \(\lceil \mathtt{arm} \rceil\)'s leaves.
+For a transaction \texttt{z} and a flow set \texttt{F} disjoint from \texttt{z}'s domain, write \(\mathtt{admit}(\mathtt{z}, \mathtt{F}, i)\) for the transaction that agrees with \texttt{z} everywhere it is defined and, on a packet whose flow lies in \texttt{F}, routes to child \texttt{i} at the rank this node's discipline assigns child \texttt{i}; disjointness makes the extension conflict-free.
 
-\begin{verbatim}
-sem(Add([], arm, meta?)) (D<state, pifo>(cs)) =
-    D<state', pifo>( cs ++ [ceil(arm)] )
-      where state' = (node_state,
-                      slot_states ++ [init_slot_D(node_state, meta?)])
-sem(Add(i :: rest, arm, meta?)) (D<state, pifo>(cs)) =
-    D<state, pifo>( cs[ sem(Add(rest, arm, meta?))
-                          (cs[i]) / i ] )
-\end{verbatim}
+\begin{figure*}[t]
+\centering
+\(
+\begin{array}{@{}l@{}}
+\sem{\Add([\,], \mathtt{D}, \mathtt{arm}, \mathtt{meta?})}\; \langle \mathtt{state}, \mathtt{pifo}, \mathtt{z} \rangle(\mathtt{cs}) \\[2pt]
+\quad =\; \langle \mathtt{state'}, \mathtt{pifo}, \mathtt{z'} \rangle\big(\, \mathtt{cs} \mathbin{+\!\!+} [\, \lceil \mathtt{arm} \rceil \,] \,\big) \\[3pt]
+\qquad \textbf{where}\;\; \mathtt{state'} = (\mathtt{node\_state},\; \mathtt{slot\_states} \mathbin{+\!\!+} [\, \mathtt{init\_slot\_D}(\mathtt{node\_state}, \mathtt{meta?}) \,]) \\[2pt]
+\qquad \phantom{\textbf{where}}\;\; \mathtt{z'} = \mathtt{admit}(\mathtt{z},\, \mathtt{flows}(\mathtt{arm}),\, \mathtt{k}) \\[8pt]
+\sem{\Add(\mathtt{i} \mathbin{::} \mathtt{rest}, \mathtt{D}, \mathtt{arm}, \mathtt{meta?})}\; \langle \mathtt{state}, \mathtt{pifo}, \mathtt{z} \rangle(\mathtt{cs}) \\[2pt]
+\quad =\; \langle \mathtt{state}, \mathtt{pifo}, \mathtt{z'} \rangle\big(\, \mathtt{cs}\big[\, \sem{\Add(\mathtt{rest}, \mathtt{D}, \mathtt{arm}, \mathtt{meta?})}(\mathtt{cs}[\mathtt{i}]) \,/\, \mathtt{i} \,\big] \,\big) \\[3pt]
+\qquad \textbf{where}\;\; \mathtt{z'} = \mathtt{admit}(\mathtt{z},\, \mathtt{flows}(\mathtt{arm}),\, \mathtt{i})
+\end{array}
+\)
 
-Here \texttt{ceil(arm)} is the compiled control \(\lceil \mathtt{arm} \rceil\), and \texttt{state = (node\_state, slot\_states)}.
-The base case (\(\pi = []\)) has reached the parent of the new arm: it appends \(\lceil \mathtt{arm} \rceil\) as the last child (slot \texttt{k}) and appends that slot's bookkeeping, \(\mathtt{init\_slot\_D}(\mathtt{node\_state}, \mathtt{meta?})\), leaving \texttt{node\_state} and \texttt{pifo} untouched; the append is legitimate because our arm-order freedom (\cref{sec:policy-dsl}) lets us place the new child last.
-The recursive case walks one step into child \texttt{i} and writes the result back, carrying that ancestor's \texttt{(state, pifo, z)} verbatim.
+\vspace{10pt}
 
-No rule edits \texttt{z}.
-Each ancestor's scheduling rule and stored state are carried verbatim, and the new arm sits buried under an existing child, so nothing about how an ancestor ranks or routes that child has changed.
-What changes is which packets the ancestors are handed: once \(\lceil \mathtt{arm} \rceil\)'s leaves are in the subtree, the derived classification admits the new flow along the whole path down to \(\pi\).
-This admission is forced by the new leaf, not written as a \texttt{z}-edit; \cref{sec:hardware} realizes it as a single atomic ingress write.
+\(
+\begin{array}{@{}l@{}}
+\den(\Add([\,], \mathtt{D}, \mathtt{arm}, \_))\; (\mathtt{D}\ \mathtt{ts}) \;=\; \mathtt{D}\big(\, \mathtt{ts} \mathbin{+\!\!+} [\, \mathtt{arm} \,] \,\big) \\[6pt]
+\den(\Add(\mathtt{i} \mathbin{::} \mathtt{rest}, \mathtt{D}, \mathtt{arm}, \mathtt{meta?}))\; (\mathtt{E}\ \mathtt{ts}) \;=\; \mathtt{E}\big(\, \mathtt{ts}\big[\, \den(\Add(\mathtt{rest}, \mathtt{D}, \mathtt{arm}, \mathtt{meta?}))(\mathtt{ts}[\mathtt{i}]) \,/\, \mathtt{i} \,\big] \,\big)
+\end{array}
+\)
+\caption{The operational reading \(\sem{\Add}\) (top) and the denotational reading \(\den(\Add)\) (bottom), as recursions on \(\pi\) of the same shape. \(\langle \mathtt{state}, \mathtt{pifo}, \mathtt{z} \rangle(\mathtt{cs})\) destructures a control node; \(\mathtt{D}\ \mathtt{ts}\) and \(\mathtt{E}\ \mathtt{ts}\) pattern-match a \texttt{pol} node into its discipline and child list.}
+\label{fig:add-rules}
+\end{figure*}
+
+Here \texttt{state = (node\_state, slot\_states)}.
+The base case (\(\pi = []\)) has reached the parent of the new arm: it appends \(\lceil \mathtt{arm} \rceil\) as the last child (slot \texttt{k}), appends that slot's bookkeeping \(\mathtt{init\_slot\_D}(\mathtt{node\_state}, \mathtt{meta?})\) (with \texttt{D} the discipline the production carries), and extends its transaction to \(\mathtt{admit}(\mathtt{z}, \mathtt{flows}(\mathtt{arm}), k)\), sending the new flows to the new child; \texttt{node\_state} and \texttt{pifo} are untouched, and the append is legitimate because our arm-order freedom (\cref{sec:policy-dsl}) lets us place the new child last.
+The recursive case steps into the on-path child \texttt{i}, writes the result back, and extends this ancestor's transaction to \(\mathtt{admit}(\mathtt{z}, \mathtt{flows}(\mathtt{arm}), i)\), sending the new flows one step further down toward \(\pi\); its \texttt{node\_state}, \texttt{slot\_states}, and \texttt{pifo} are carried verbatim.
+
+So every node on the path from the root to \texttt{C@}\(\pi\) has its transaction extended to admit and route the new flows, and nothing else about those nodes changes: not their \texttt{node\_state}, not their \texttt{slot\_states}, and not the rank their discipline computes for any existing child.
+The new flows were admitted nowhere before (disjointness), so each extension is conflict-free and no in-flight packet's route moves.
+\cref{sec:hardware} realizes these extensions as one \texttt{assoc}/\texttt{map} pair per node on the path, all bundled into a single atomic commit.
 
 \paragraph{Preservation of \(\vdash\)}
 
-We must show that \(\vdash \mathtt{C}\) implies \(\vdash \mathtt{C'}\): any pifo entries or packets that \(\sem{\Add(\pi, \mathtt{arm}, \mathtt{meta?})}\) introduces must leave the per-node pifo and packet counts in balance.
+We must show that \(\vdash \mathtt{C}\) implies \(\vdash \mathtt{C'}\): any pifo entries or packets that \(\sem{\Add(\pi, \mathtt{D}, \mathtt{arm}, \mathtt{meta?})}\) introduces must leave the per-node pifo and packet counts in balance.
 
-Only \texttt{C@}\(\pi\) and the freshly spawned \(\lceil \mathtt{arm} \rceil\) differ from \texttt{C}, so those are the only nodes to check.
+The on-path ancestors' transactions are extended, but \(\vdash\) counts \texttt{pifo} entries against packets and a \texttt{z}-edit adds neither, so the only nodes that can affect it are \texttt{C@}\(\pi\) and the freshly spawned \(\lceil \mathtt{arm} \rceil\).
 At \texttt{C@}\(\pi\), \(\mathtt{C'@}\pi.\mathtt{pifo} = \mathtt{C@}\pi.\mathtt{pifo}\) contains no entry equal to the new slot \texttt{k} (no pre-existing entry can name a slot that did not exist in \texttt{C}), and the new arm at slot \texttt{k} holds no packets, so slot \texttt{k}'s count reads \(0 = 0\).
 Every other slot at \texttt{C@}\(\pi\) keeps its index, its packets, and its entries verbatim, so its count is inherited.
 Inside \(\lceil \mathtt{arm} \rceil\), \(\vdash\) holds because \(\lceil \cdot \rceil\) compiles a well-formed control whose pifos start empty.
@@ -497,7 +519,7 @@ Nothing needs repair.
 
 We must show that at every node structurally shared between \texttt{C} and \texttt{C'} and outside the edit site, the local \texttt{state} is preserved verbatim; and that at the edit site, and at every node of the freshly spawned subtree, the \texttt{state} is exactly what \texttt{init\_node\_D} / \texttt{init\_slot\_D} (\cref{sec:policy-dsl}) prescribes.
 
-The recursion carries every shared node's \texttt{(state, pifo, z)} verbatim, including at each proper ancestor of \(\pi\), where only the child list beneath the node is rebuilt.
+The recursion carries every shared node's \texttt{state} and \texttt{pifo} verbatim (its \texttt{z} is extended, as in the Definition, but \texttt{z} is not part of \texttt{state}), including at each proper ancestor of \(\pi\), where only the child list and the transaction are touched.
 At \texttt{C@}\(\pi\), \texttt{node\_state} is unchanged and \texttt{slot\_states} is appended with exactly \(\mathtt{init\_slot\_D}(\mathtt{C@}\pi.\mathtt{node\_state}, \mathtt{meta?})\), as required at the edit site.
 Inside \(\lceil \mathtt{arm} \rceil\), every node's \texttt{node\_state} and \texttt{slot\_states} are what \emph{that node's own discipline's} \texttt{init\_node} / \texttt{init\_slot} (\cref{sec:policy-dsl}) prescribe, by construction of \(\lceil \mathtt{arm} \rceil\).
 
@@ -505,37 +527,30 @@ Inside \(\lceil \mathtt{arm} \rceil\), every node's \texttt{node\_state} and \te
 
 We must show that the commit is invisible to the user's \texttt{pop} stream: every in-flight packet in \texttt{C} sits in some \texttt{pifo} that survives verbatim into \texttt{C'}, and no live \texttt{pifo} entry is rewritten, so a \texttt{pop} immediately after \(\delta\) fires returns exactly what a \texttt{pop} immediately before would have returned.
 
-Every in-flight packet targets a leaf that already existed in \texttt{C}.
-Its leaf, and every on-path child's \texttt{slot\_state}, are carried verbatim, so the classification of that packet and the ranks assigned along its path are unchanged, and it sits in the same \texttt{pifo} at the same slot index in \texttt{C'}.
+Every in-flight packet targets a leaf that already existed in \texttt{C}, so its flow is disjoint from \(\mathtt{flows}(\mathtt{arm})\).
+Each \texttt{z}-extension only \emph{adds} routes for those new flows and leaves \texttt{z} unchanged on every other packet, so the classification of an in-flight packet and the ranks assigned along its path are exactly as before, and it sits in the same \texttt{pifo} at the same slot index in \texttt{C'}.
 The new slot \texttt{k} holds nothing, and no pifo entry is rewritten.
 So a \texttt{pop} immediately after \(\delta\) fires returns exactly what a \texttt{pop} immediately before would have.
 Observation is preserved.
 
 \paragraph{Characterization}
 
-We must state \(\den(\Add(\pi, \mathtt{arm}, \mathtt{meta?}))\) in closed form and prove \(\lfloor \mathtt{C'} \rfloor \eqR \den(\Add(\pi, \mathtt{arm}, \mathtt{meta?}))(\lfloor \mathtt{C} \rfloor)\).
+We must state \(\den(\Add(\pi, \mathtt{D}, \mathtt{arm}, \mathtt{meta?}))\) in closed form and prove \(\lfloor \mathtt{C'} \rfloor \eqR \den(\Add(\pi, \mathtt{D}, \mathtt{arm}, \mathtt{meta?}))(\lfloor \mathtt{C} \rfloor)\).
 
-We define \(\den\) by recursion on \(\pi\):
-
-\begin{verbatim}
-den(Add([], arm, meta?)) (D ts) =
-    D ( ts ++ [arm] )
-den(Add(i :: rest, arm, meta?)) (D ts) =
-    D ( ts[ den(Add(rest, arm, meta?))
-                (ts[i]) / i ] )
-\end{verbatim}
-
-The pattern \(\mathtt{D\ ts}\) on the left matches the input \texttt{pol} at that node as discipline \texttt{D} applied to child list \texttt{ts}: it is \texttt{pol} pattern-matching, not function application.
-The base case applies once \(\pi = []\): the recursion has reached the node where the new arm goes, and \texttt{arm} is appended as the last child.
-The recursive case walks one step deeper into child \texttt{i} and writes the result back in place.
-The \texttt{meta?} argument is threaded through the recursion but is not consumed here: it is per-arm bookkeeping consumed by \texttt{init\_slot\_D} at the operational level.
+We define \(\den\) by recursion on \(\pi\), given in \cref{fig:add-rules} (bottom).
+On the left, \(\mathtt{D\ ts}\) and \(\mathtt{E\ ts}\) are patterns: they split the \texttt{pol} node at that point into its discipline and its child list \texttt{ts}, read the same way as the \(\mathtt{D}(\mathtt{arms})\) of \cref{sec:policy-dsl}.
+The base case reuses the payload name \texttt{D}, so it fires only when the reached node runs the \texttt{D} the production carries.
+At an intermediate ancestor the discipline is unconstrained, so the pattern names it \texttt{E} and simply carries it along.
+Once \(\pi = []\) the recursion has reached the node where the new arm goes, and \texttt{arm} is appended as the last child; otherwise it walks one step deeper into child \texttt{i} and writes the result back in place.
+The base case writes \texttt{meta?} as \texttt{\_}: \(\den\) never consumes it, since \(\lfloor \cdot \rfloor\) does not surface per-arm metadata at \texttt{pol}-level (a pure \ChangeMeta{} leaves \(\lfloor \mathtt{C} \rfloor\) unchanged, \cref{sec:changemeta}).
+The recursive case threads \texttt{meta?} only to rebuild the production for the child; \(\sem{\Add}\) is the sole consumer, at \texttt{init\_slot\_D}.
 
 \emph{Proof of characterization.}
 The operational \(\sem{\Add}\) and the denotational \(\den(\Add)\) are recursions on \(\pi\) of the same shape, so we induct on \(\pi\) and read them off in lockstep.
 In the base case (\(\pi = []\)), \(\den(\Add)\) appends \texttt{arm} to the child list of \(\lfloor \mathtt{C} \rfloor\)'s node while \(\sem{\Add}\) appends \(\lceil \mathtt{arm} \rceil\) to the child list of \texttt{C}'s node; since \(\lfloor \lceil \mathtt{arm} \rceil \rfloor \eqR \mathtt{arm}\), the two agree on the new child, and every pre-existing child is untouched.
-In the recursive case, both step into child \texttt{i} and write the result back, so the claim follows from the induction hypothesis applied at \(\mathtt{C@}i\); the ancestor node contributes nothing to reconcile, since \(\sem{\Add}\) carries its \texttt{(state, pifo, z)} verbatim and \(\lfloor \cdot \rfloor\) reads the same node either way.
-For \Add{} the reconciliation is tight: \(\lfloor \mathtt{C'} \rfloor\) and \(\den(\Add(\pi, \mathtt{arm}, \mathtt{meta?}))(\lfloor \mathtt{C} \rfloor)\) agree on the entire spine down to \(\pi\) and on the position of the new child, differing at most inside the freshly compiled \(\lceil \mathtt{arm} \rceil\), where \(\lfloor \lceil \mathtt{arm} \rceil \rfloor \eqR \mathtt{arm}\) leaves the compiler its usual arm-order freedom.
-This is exactly the \(\eqR\)-slack the uniform statement anticipates: \(\lfloor \mathtt{C'} \rfloor \eqR \den(\Add(\pi, \mathtt{arm}, \mathtt{meta?}))(\lfloor \mathtt{C} \rfloor)\).
+In the recursive case, both step into child \texttt{i} and write the result back, so the claim follows from the induction hypothesis applied at \(\mathtt{C@}i\); the ancestor node contributes nothing to reconcile, since \(\sem{\Add}\) carries its \texttt{state} and \texttt{pifo} verbatim and its \texttt{z}-extension is invisible to \(\lfloor \cdot \rfloor\) (\texttt{z} does not appear in \texttt{pol}), so \(\lfloor \cdot \rfloor\) reads the same node either way.
+For \Add{} the reconciliation is tight: \(\lfloor \mathtt{C'} \rfloor\) and \(\den(\Add(\pi, \mathtt{D}, \mathtt{arm}, \mathtt{meta?}))(\lfloor \mathtt{C} \rfloor)\) agree on the entire spine down to \(\pi\) and on the position of the new child, differing at most inside the freshly compiled \(\lceil \mathtt{arm} \rceil\), where \(\lfloor \lceil \mathtt{arm} \rceil \rfloor \eqR \mathtt{arm}\) leaves the compiler its usual arm-order freedom.
+This is exactly the \(\eqR\)-slack the uniform statement anticipates: \(\lfloor \mathtt{C'} \rfloor \eqR \den(\Add(\pi, \mathtt{D}, \mathtt{arm}, \mathtt{meta?}))(\lfloor \mathtt{C} \rfloor)\).
 
 \subsubsection{\texorpdfstring{\(\ChangeMeta(\tau, \mathtt{meta})\)}{ChangeMeta}}\label{sec:changemeta}
 
@@ -1685,7 +1700,7 @@ foreach f in flows(path):
     walk(deassoc, chain(f), f)
 \end{Verbatim}
 
-\paragraph*{\(\Add(\mathtt{path}, \mathtt{arm}, \mathtt{meta?})\)}
+\paragraph*{\(\Add(\mathtt{path}, \mathtt{D}, \mathtt{arm}, \mathtt{meta?})\)}
 \begin{Verbatim}
 n := arity(path)
 layout(arm)
