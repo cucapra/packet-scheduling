@@ -397,9 +397,15 @@ When \(\mathtt{p1} \eqR \mathtt{p2}\), the planner emits the empty sequence (\cr
 
 \subsection{Per-Production Soundness}\label{sec:per-production}
 
-The two demands that we stated at a high level in \cref{sec:delta-grammar} turn into five concrete obligations that we must discharge for every production of the grammar.
-The first four flow from \emph{hardware-realizability}: for the substrate to install \(\sem{\delta}\) atomically, the per-production rule must specify what \(\sem{\delta}\) does, produce a target that is a valid control with fully specified state, and leave the user's \texttt{pop} stream undisturbed.
-The last flows from \emph{pol-explainability}.
+For each production, we must discharge five obligations.
+The first three stem from \emph{hardware-realizability} (the substrate can install \(\sem{\delta}\) atomically, so the production rule must say what \(\sem{\delta}\) does and produce a valid control with fully specified state).
+The fourth stems from \emph{pol-explainability} (the edit means what the operator's \texttt{pol} change asked).
+Together these four certify that the production is a \emph{correct} edit.
+Correctness, though, is not what sets this work apart: the stop-the-world reset of \cref{sec:intro} is realizable and explainable too, and it is the baseline we wish to beat.
+What we beat it at is \emph{disruption}, its dropping and delaying of the packets already in the tree.
+The fifth obligation, non-disruption, is that improvement (\cref{sec:intro}'s Obligation~2) stated per-production.
+Installing \(\delta\) may disturb previously buffered traffic \emph{only} in service of the newly installed policy.
+The \emph{very act of changing policies} never introduces arbitrary artifacts such as drops, reorders, or rewrites among what is already buffered.
 Throughout, we write \texttt{C} for the pre-edit control and \texttt{C'} for the post-edit control.
 
 \begin{itemize}
@@ -408,23 +414,39 @@ Throughout, we write \texttt{C} for the pre-edit control and \texttt{C'} for the
 Any packets or index entries that \(\sem{\delta}\) drops or adds must leave the per-node pifo and packet counts in balance.
 \item \emph{Preservation of state.} At every node structurally shared between \texttt{C} and \texttt{C'} and outside the production's local edit site, the local \texttt{state} is preserved verbatim.
 At the edit site, and at every node of a freshly-spawned subtree, the state is exactly what the production's \texttt{init\_node\_D} / \texttt{init\_slot\_D} (\cref{sec:policy-dsl}) invocation prescribes.
-\item \emph{Preservation of observation.} Modeling \(\sem{\delta}\) as a function pins down what it means to be ``atomic'': the substrate commits the rewrite specified by \(\sem{\delta}\) \emph{between two consecutive \texttt{push}/\texttt{pop} operations}, so there is no intermediate state for downstream sections to reason about.
-We defer to \cref{sec:hardware} that the substrate can slip this change in.
-In this section, we must show per production that the commit is \emph{invisible to the user's \texttt{pop} stream}.
-Concretely: every in-flight packet in \texttt{C} sits in some \texttt{pifo} that survives verbatim into \texttt{C'}, and no live \texttt{pifo} entry is rewritten, so a \texttt{pop} immediately after \(\delta\) fires returns exactly what a \texttt{pop} immediately before would have returned.
 \item \emph{Characterization.} Give \(\den(\delta)\) in closed form and prove \(\lfloor \mathtt{C'} \rfloor \eqR \den(\delta)(\lfloor \mathtt{C} \rfloor)\).
 The equation is up to \(\eqR\), not literal \texttt{=}: \(\den\) returns a definite representative of an \(\eqR\)-class, and \(\sem{\delta}\) is free to land on any other representative of the same class.
 Transaction-only effects (e.g., \Quiesce's shrinking of \texttt{z}'s domain) sit outside \(\den\); they are fixed by the operational rule, not by this equation.
+\item \emph{Non-disruption of in-flight traffic.} Applying \(\delta\) rewrites, reorders, or drops no packet already admitted to \texttt{C}: each already-enqueued entry keeps the rank it was given at \texttt{push} time, so nothing buffered is lost, corrupted, or reordered relative to the rest of the backlog.
+Buffered packets may of course be affected by the new policy in force (after \(\WFQ(1{:}A,\, 9{:}B) \to \WFQ(99{:}A,\, 9{:}B)\), a newly arriving \(A\)-packet can overtake previously buffered \(B\)s), but that is an example of the reconfigured policy correctly governing new arrivals, not a disturbance of the backlog.
+Non-disruption is distinct from atomicity, which states that the commit lands between two \texttt{push}/\texttt{pop} operations with no messy intermediate state exposed (\cref{sec:hardware}): a \texttt{push} is atomic too, yet it adds an entry to the backlog, whereas a \(\delta\) leaves the backlog untouched.
+\cref{lem:nondisruption} below reduces this obligation, for every production, to a check on the production's footprint.
 \end{itemize}
 
 The last four obligations assume \(\sem{\delta}(\mathtt{C})\) is defined; outside the region the production's Definition carves out, \(\delta\) is \emph{incompatible} with \texttt{C} and \(\sem{\delta}(\mathtt{C})\) is undefined.
 We do not repeat this boilerplate at every production.
 
+Non-disruption need not be reproved from scratch at each production; it follows from a single fact about \texttt{pop}.
+
+\begin{lemma}[Non-disruption reduces to \texttt{pifo}-content preservation]\label{lem:nondisruption}
+A \texttt{pop} reads only \texttt{pifo} contents: it pops the root index-\texttt{pifo} to a child, recurses, and emits a leaf packet, never consulting any \texttt{state} or \texttt{z} (\cref{sec:runtime-model}).
+Hence if \(\sem{\delta}\) leaves the contents of every non-empty \texttt{pifo} of \texttt{C} unchanged (by rewriting, reordering, and removing no live entry and by introducing only empty \texttt{pifo}s), then no previously buffered packet in \texttt{C} is dropped, reordered, or re-ranked in \texttt{C'}. That is, the buffered backlog is preserved entry-for-entry, and \(\delta\) is non-disruptive.
+\end{lemma}
+
+We therefore discharge non-disruption per production by naming the production's \emph{footprint}, the nodes and fields it touches (the same footprint \cref{sec:confinement} uses), and checking that it contains no live \texttt{pifo} entry.
+Only productions that rewire a live path, \Designate{} and the idioms of \cref{sec:sequences}, need an argument beyond naming the footprint.
+
+The lemma can read counterintuitively, so it is worth one example.
+One might expect that inverting the two priorities of \(\Strict(\mathtt{hi}: A, \mathtt{lo}: B)\) with \ChangeMeta{} changes the next \texttt{pop}.
+It does not: ranks are frozen at \texttt{push} time, so the parent's index-\texttt{pifo} already holds an \(A\)-entry at rank \texttt{hi} and a \(B\)-entry at rank \texttt{lo}, and \ChangeMeta{} rewrites neither.
+The next \texttt{pop} still yields the \(A\)-packet; only packets pushed after the change are ranked under the new priorities.
+This frozen-rank property is what makes non-disruption hold across every production.
+
 For transaction-only productions (those whose effect lives entirely in some \texttt{z}, like \Quiesce{} and \ChangeMeta), \(\den(\delta)\) is the identity on \texttt{pol} and Characterization reduces to \(\lfloor \mathtt{C'} \rfloor \eqR \lfloor \mathtt{C} \rfloor\) by inspection: no node's \texttt{node\_state}, \texttt{slot\_states}, \texttt{pifo}, or child list moves, and \texttt{z} is not visible at \texttt{pol}-level.
 We still state \(\den\) explicitly at each production for uniformity.
 
 Several productions (\Add, \Quiesce, \Remove, \Designate) modify \texttt{z} at proper ancestors of the edit site, even though those nodes' \texttt{state} is preserved verbatim.
-There is no separate obligation for these \texttt{z} edits: their \texttt{pol}-invisible content is absorbed by Characterization (which is up to \(\eqR\), and \texttt{z} does not appear in \texttt{pol}), and their effect on the in-flight stream is absorbed by Observation (every live \texttt{pifo} entry survives a \texttt{z} edit verbatim).
+There is no separate obligation for these \texttt{z} edits: their \texttt{pol}-invisible content is absorbed by Characterization (which is up to \(\eqR\), and \texttt{z} does not appear in \texttt{pol}), and their effect on the in-flight stream is absorbed by non-disruption (\cref{lem:nondisruption}: every live \texttt{pifo} entry survives a \texttt{z} edit verbatim).
 
 The denotational rules below read, overwrite, and shrink child lists.
 Let us fix some notation.
@@ -523,16 +545,6 @@ The recursion carries every shared node's \texttt{state} and \texttt{pifo} verba
 At \texttt{C@}\(\pi\), \texttt{node\_state} is unchanged and \texttt{slot\_states} is appended with exactly \(\mathtt{init\_slot\_D}(\mathtt{C@}\pi.\mathtt{node\_state}, \mathtt{meta?})\), as required at the edit site.
 Inside \(\lceil \mathtt{arm} \rceil\), every node's \texttt{node\_state} and \texttt{slot\_states} are what \emph{that node's own discipline's} \texttt{init\_node} / \texttt{init\_slot} (\cref{sec:policy-dsl}) prescribe, by construction of \(\lceil \mathtt{arm} \rceil\).
 
-\paragraph{Preservation of observation}
-
-We must show that the commit is invisible to the user's \texttt{pop} stream: every in-flight packet in \texttt{C} sits in some \texttt{pifo} that survives verbatim into \texttt{C'}, and no live \texttt{pifo} entry is rewritten, so a \texttt{pop} immediately after \(\delta\) fires returns exactly what a \texttt{pop} immediately before would have returned.
-
-Every in-flight packet targets a leaf that already existed in \texttt{C}, so its flow is disjoint from \(\mathtt{flows}(\mathtt{arm})\).
-Each \texttt{z}-extension only \emph{adds} routes for those new flows and leaves \texttt{z} unchanged on every other packet, so the classification of an in-flight packet and the ranks assigned along its path are exactly as before, and it sits in the same \texttt{pifo} at the same slot index in \texttt{C'}.
-The new slot \texttt{k} holds nothing, and no pifo entry is rewritten.
-So a \texttt{pop} immediately after \(\delta\) fires returns exactly what a \texttt{pop} immediately before would have.
-Observation is preserved.
-
 \paragraph{Characterization}
 
 We must state \(\den(\Add(\pi, \mathtt{D}, \mathtt{arm}, \mathtt{meta?}))\) in closed form and prove \(\lfloor \mathtt{C'} \rfloor \eqR \den(\Add(\pi, \mathtt{D}, \mathtt{arm}, \mathtt{meta?}))(\lfloor \mathtt{C} \rfloor)\).
@@ -551,6 +563,12 @@ In the base case (\(\pi = []\)), \(\den(\Add)\) appends \texttt{arm} to the chil
 In the recursive case, both step into child \texttt{i} and write the result back, so the claim follows from the induction hypothesis applied at \(\mathtt{C@}i\); the ancestor node contributes nothing to reconcile, since \(\sem{\Add}\) carries its \texttt{state} and \texttt{pifo} verbatim and its \texttt{z}-extension is invisible to \(\lfloor \cdot \rfloor\) (\texttt{z} does not appear in \texttt{pol}), so \(\lfloor \cdot \rfloor\) reads the same node either way.
 For \Add{} the reconciliation is tight: \(\lfloor \mathtt{C'} \rfloor\) and \(\den(\Add(\pi, \mathtt{D}, \mathtt{arm}, \mathtt{meta?}))(\lfloor \mathtt{C} \rfloor)\) agree on the entire spine down to \(\pi\) and on the position of the new child, differing at most inside the freshly compiled \(\lceil \mathtt{arm} \rceil\), where \(\lfloor \lceil \mathtt{arm} \rceil \rfloor \eqR \mathtt{arm}\) leaves the compiler its usual arm-order freedom.
 This is exactly the \(\eqR\)-slack the uniform statement anticipates: \(\lfloor \mathtt{C'} \rfloor \eqR \den(\Add(\pi, \mathtt{D}, \mathtt{arm}, \mathtt{meta?}))(\lfloor \mathtt{C} \rfloor)\).
+
+\paragraph{Non-disruption}
+
+\(\sem{\Add}\)'s footprint is the new empty slot \texttt{k} at \texttt{C@}\(\pi\), the freshly spawned empty subtree \(\lceil \mathtt{arm} \rceil\), and the on-path \texttt{z}-extensions.
+None of these is a live \texttt{pifo} entry: the new arm holds no packets, and a \texttt{z}-edit changes no \texttt{pifo}.
+So \Add{} is non-disruptive by \cref{lem:nondisruption}.
 
 \subsubsection{\texorpdfstring{\(\ChangeMeta(\tau, \mathtt{meta})\)}{ChangeMeta}}\label{sec:changemeta}
 
@@ -572,7 +590,7 @@ Everywhere else, the control is preserved verbatim.
 
 Preservation of \(\vdash\): no \texttt{pifo} entry is rewritten, no subtree is touched, no packet is relocated, so well-formedness is inherited everywhere.
 Preservation of state: the targeted metadata field is the intended edit; every other field at \texttt{C@}\(\pi\) and everywhere else is verbatim.
-Preservation of observation: ranks for in-flight \texttt{pifo} entries were determined when they were pushed.
+Non-disruption: ranks for in-flight \texttt{pifo} entries were determined when they were pushed.
 They remain fixed; the new metadata affects only the rank computation for future pushes.
 So a \texttt{pop} immediately after this \(\sem{\ChangeMeta(\tau, \mathtt{meta})}\) returns exactly what a \texttt{pop} immediately before would have.
 
@@ -618,7 +636,7 @@ At each internal node \(n\) in \(A\), \(\mathtt{C'@}n.\mathtt{z}\) drops any pac
 Preservation of \(\vdash\) and state: every node's \texttt{node\_state}, \texttt{slot\_states}, \texttt{pifo}, and child subtree are preserved verbatim, so well-formedness counts are inherited everywhere and \texttt{state} is preserved at every node.
 The \texttt{z} restrictions across \(T \cup A\) touch no \texttt{pifo} entry and no stored packet.
 They only refuse future \texttt{push}es.
-Preservation of observation follows from \cref{sec:add}'s argument: every in-flight packet sits in some pre-existing \texttt{pifo} that survives verbatim, so a \texttt{pop} immediately after this \(\sem{\Quiesce(\tau)}\) returns exactly what a \texttt{pop} immediately before would have.
+Non-disruption follows from \cref{sec:add}'s argument: every in-flight packet sits in some pre-existing \texttt{pifo} that survives verbatim, so a \texttt{pop} immediately after this \(\sem{\Quiesce(\tau)}\) returns exactly what a \texttt{pop} immediately before would have.
 
 \paragraph{Characterization}
 
@@ -670,7 +688,7 @@ Preservation of \(\vdash\): at \texttt{C@}\(\pi\), the precondition gives \(\mat
 Every proper ancestor and every surviving sibling is verbatim, so its well-formedness count is inherited.
 Preservation of state: every proper ancestor and surviving sibling preserves its \texttt{state} verbatim.
 No \texttt{init}-rule fires, and \texttt{slot\_states} drops slot \texttt{k}'s entry while every other entry is preserved verbatim, with its position shifted to match the new arm order.
-Preservation of observation follows from \cref{sec:add}'s argument applied to the surviving structure: every in-flight packet sits in a preserved \texttt{pifo} at the same slot (if \(< k\)) or one slot lower (if \(> k\)), and every surviving \texttt{pifo} entry points to the same child subtree after renumbering, so a \texttt{pop} immediately after this \(\sem{\Remove(\tau)}\) returns exactly what a \texttt{pop} immediately before would have.
+Non-disruption follows from \cref{sec:add}'s argument applied to the surviving structure: every in-flight packet sits in a preserved \texttt{pifo} at the same slot (if \(< k\)) or one slot lower (if \(> k\)), and every surviving \texttt{pifo} entry points to the same child subtree after renumbering, so a \texttt{pop} immediately after this \(\sem{\Remove(\tau)}\) returns exactly what a \texttt{pop} immediately before would have.
 The restriction at \(\mathtt{C'@}\pi.\mathtt{z}\) comes into play only for \texttt{push}es that arrive after this \(\sem{\Remove(\tau)}\) fires.
 
 \paragraph{Characterization}
@@ -836,7 +854,7 @@ Every node inside arm 0 is preserved verbatim, so its well-formedness count is i
 At \texttt{C@}\(\pi\) (if \(\tau\) non-empty), \texttt{pifo} is unchanged, and the slot-\texttt{k} count \(P_0 + 0\) matches the count that \texttt{C@}\(\tau\) had under \texttt{C@}\(\pi\).
 The ancestor \texttt{z}-extensions touch no \texttt{pifo} and route no in-flight packet, so they affect only \texttt{push}es that arrive after this \(\sem{\Designate(\tau, \mathtt{survivor})}\).
 Preservation of state is the standard split: arm 0 is verbatim; arm 1 is \(\lceil \mathtt{survivor} \rceil\) by construction; \(N\)'s \texttt{node\_state} and \texttt{slot\_states} come from the listed \texttt{init} calls; everything else is verbatim.
-Preservation of observation: every in-flight packet under arm 0 sits at exactly the same position it did in \texttt{C@}\(\tau\), since arm 0 is \texttt{C@}\(\tau\) verbatim.
+Non-disruption: every in-flight packet under arm 0 sits at exactly the same position it did in \texttt{C@}\(\tau\), since arm 0 is \texttt{C@}\(\tau\) verbatim.
 If \(P_0 > 0\), the smallest entry in \(N.\mathtt{pifo}\) is \texttt{0}, so any pop that descends to \(N\) continues into arm 0 and returns exactly the packet a pop before \(\delta\) fired would have.
 If \(P_0 = 0\), then by \(\vdash \mathtt{C}\) no pop ever descends to \(N\) (the subtree at \(\tau\) was already empty), so the question is vacuous.
 Arm 1 first sees traffic only after a future \texttt{push}.
@@ -880,7 +898,7 @@ The discarded \(N.\mathtt{pifo}\) was carrying its own count of arm-1 entries on
 After the unwrap, those \texttt{k}-entries route directly to \(B\), whose pifo count is still \(|B|\), so the well-formedness obligation at \texttt{C@}\(\pi\) reads \(|B| = |B|\) and inside \(B\) reads as before.
 The previously-redundant routing step (``\(\Strictstar\) says go to arm 1,'' which arm 0 being empty had already forced) is the only step elided.
 Preservation of state: standard verbatim everywhere outside \(N\); \(N\)'s local state vanishes.
-Preservation of observation: arm 0 holds no packet by precondition, so \(\Strictstar\)'s ``favor arm 0'' behavior was already routing every pop to arm 1, and the unwrap preserves this routing exactly.
+Non-disruption: arm 0 holds no packet by precondition, so \(\Strictstar\)'s ``favor arm 0'' behavior was already routing every pop to arm 1, and the unwrap preserves this routing exactly.
 
 \paragraph{Characterization}
 
@@ -918,7 +936,7 @@ At every proper ancestor of \(\nu\), the local \texttt{node\_state}, \texttt{slo
 Preservation of \(\vdash\): \(\vdash \mathtt{C}\) is a conjunction of per-node well-formedness obligations, and the subset of those obligations attached to \texttt{C@}\(\nu\)'s nodes constitutes \(\vdash \mathtt{C@}\nu\), which is exactly \(\vdash \mathtt{C'}\).
 The discarded ancestors' obligations are simply forgotten.
 Preservation of state: standard verbatim within \texttt{C@}\(\nu\); ancestor state is gone.
-Preservation of observation: every in-flight packet sits in some \texttt{pifo} within \texttt{C@}\(\nu\)'s subtree (the ancestor \texttt{pifo}s held routing entries, not packets), all preserved verbatim.
+Non-disruption: every in-flight packet sits in some \texttt{pifo} within \texttt{C@}\(\nu\)'s subtree (the ancestor \texttt{pifo}s held routing entries, not packets), all preserved verbatim.
 A pop immediately after this \(\sem{\ChangeRoot(\nu)}\) returns exactly what a pop immediately before would have: a pop before \(\delta\) fires descends through the unary chain by popping each ancestor's PIFO in turn, and since each such PIFO has a single slot (slot \texttt{0}), the popped entry is forced to be a slot-\texttt{0} entry regardless of its rank; the descent therefore lands at \texttt{C@}\(\nu\)'s root and pops from there.
 A pop after \(\delta\) fires acts on \texttt{C@}\(\nu\)'s root directly, returning the same packet.
 
@@ -1597,7 +1615,7 @@ This subsection speaks in \texttt{map} / \texttt{assoc} (which write the flow-to
 The substrate exposes its services to the planner as an atomic-commit interface.
 The ISA has exactly one unit: a \texttt{commit}, which is a list of instructions that the substrate installs \emph{atomically}.
 The entire list lands between two consecutive \texttt{push}/\texttt{pop} operations, with no intermediate state visible to the user's \texttt{pop} stream.
-This is precisely the atomicity that \cref{sec:per-production}'s \emph{Preservation of observation} obligation demanded.
+This is precisely the atomicity that \cref{sec:per-production}'s non-disruption obligation takes as given.
 A commit's \emph{length} may depend on live control state (how many flows are admitted, how many siblings need shifting), but its \emph{atomicity} does not.
 
 Each \(\delta\) (\cref{sec:delta-grammar}) lowers to one \texttt{commit}; that is the entire ISA-level contract.
