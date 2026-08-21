@@ -146,18 +146,18 @@ The two layers compose.
 
 \section{A Grammar of Atomic Policy Differences}\label{sec:grammar}
 
-\cref{sec:runtime-model} lays out the runtime model: a PIFO tree wrapped in per-node scheduling logic that we call a \emph{control}.
-\cref{sec:policy-dsl} defines a small policy DSL and a compiler from the DSL into a control, giving us the syntactic handle on the fully compiled hardware-level scheduler that is actually running.
-\cref{sec:delta-grammar} fixes a grammar \(\delta\) of structural edits over that DSL, where every production of \(\delta\) is, by construction, atomically realizable in hardware.
-\cref{sec:per-production} proves each production is \emph{sound}: for every production of \(\delta\), we say what running it does to the scheduler that is actually running in hardware, show that this matches the policy-level edit we were expecting, and check that the rest of the tree is left alone, with unrelated nodes keeping their state and the live packets staying accounted for.
-\cref{sec:interplay} states the interplay of \(\den(\delta)\), \(\sem{\delta}\), and \(\lfloor \cdot \rfloor\) as a formal theorem that packages the per-production work of \cref{sec:per-production} into a single commuting-square statement.
-\cref{sec:hw-preservation} argues that this per-production soundness survives the lowering to hardware.
-The productions of \(\delta\) need to be arranged in \emph{guarded sequences} in order to realize a full reconfiguration; this is deferred to \cref{sec:sequences}.
+This section builds up in layers.
+\cref{sec:runtime-model} gives the runtime model: a PIFO tree wrapped in per-node scheduling logic, which we call a \emph{control}.
+\cref{sec:policy-dsl} adds a small policy DSL and compiles it to a control, giving a syntactic handle on the scheduler actually running in hardware.
+\cref{sec:delta-grammar} fixes a grammar \(\delta\) of structural edits over that DSL, admitting a production only when the hardware can install it atomically.
+\cref{sec:per-production} proves each production \emph{sound}: running it has the policy-level effect we expect and leaves the rest of the tree, its state and its live packets, alone.
+\cref{sec:interplay} draws these per-production results together into a single commuting-square theorem.
+\cref{sec:hw-preservation} carries the soundness down to hardware, and \cref{sec:sequences} composes productions into the \emph{guarded sequences} that realize a full reconfiguration.
 
 \subsection{The runtime model: PIFO trees and controls}\label{sec:runtime-model}
 
 The runtime object we are ultimately editing is not a bare PIFO tree but a PIFO tree wrapped with per-node scheduling logic; we call the wrapped object a \emph{control}.
-This subsection lays out both layers, first the tree (\cref{sec:pifo-trees}) then the wrapping (\cref{sec:controls}), so that when \cref{sec:policy-dsl} introduces a source-level policy language, its compilation target is already on the page.
+This subsection lays out both layers, first the tree (\cref{sec:pifo-trees}) then the wrapping (\cref{sec:controls}).
 
 \subsubsection{PIFO trees}\label{sec:pifo-trees}
 
@@ -172,11 +172,10 @@ This separation is key to making the grammar \(\delta\) of \cref{sec:delta-gramm
 
 \paragraph{The two observable operations}
 
-\texttt{push(q, pkt, pt)} enqueues \texttt{pkt} into tree \texttt{q} along a precomputed path \(\mathtt{pt} = (i_1, r_1) :: \ldots :: (i_n, r_n) :: r_{n+1}\).
-The path is richly decorated: it tells the PIFO of each internal node along the path what child index to enqueue and what rank to use for that enqueue.
-The trailing element is asymmetric: a bare rank \(r_{n+1}\) with no slot index, since it tells the leaf's PIFO what rank to use when enqueuing the packet itself.
-\texttt{pop(q)} returns the most favorably ranked packet in the tree by popping the tree's root to yield a child index, recursing into that child, until finally emitting a packet from the leaf.
-These are the \emph{only} observable interactions with a scheduler, which is why our notion of an \emph{atomic} transition is stated in terms of \texttt{push}/\texttt{pop} observability.
+A tree exposes two observable operations.
+\texttt{push} places a packet at the leaf meant to hold it and records, at each node along the way, the metadata a later \texttt{pop} will need: a rank, and which child to descend into.
+\texttt{pop} extracts the best-ranked packet in the whole tree and clears the metadata that was recorded for it.
+These are the \emph{only} observable interactions with a scheduler, which is why we frame an \emph{atomic} transition in terms of \texttt{push}/\texttt{pop} observability.
 
 \paragraph{Well-formedness}
 
@@ -235,35 +234,36 @@ They do not pin down a grammar for SDL or formalize the compilation, so our DSL 
 The compilation targets differ: vPIFO compiles straight to a virtualized PIFO substrate, whereas we compile first to a control (the abstraction that this section reasons over) and only then lower to a substrate (\cref{sec:hardware}).
 The strategy, though, is the same: give the operator a syntactic surface, then compile.
 
-\paragraph{Policy syntax: \texttt{pol}}
+\paragraph{Policy syntax}
 
-\begin{verbatim}
-flow   in  F                       (flow universe)
-pol    ::= flow
-         | D(pol_1, ..., pol_n)
-\end{verbatim}
+\begin{figure}[t]
+\small
+\[
+\begin{array}{@{}l@{}}
+\mathit{flow} \in F\\[2pt]
+\mathit{pol} \mathrel{::=} \mathit{flow} \;\mid\; D(\mathit{pol}_1, \ldots, \mathit{pol}_n)\\[8pt]
+\mathit{rank} \in \mathbb{N} \qquad w \in \mathbb{R}_{>0}\\[2pt]
+\mathit{sPol} \mathrel{::=} \mathit{flow}\\
+\qquad \mid\; \Strict(\mathit{rank}_1{:}\,\mathit{sPol}_1, \ldots, \mathit{rank}_n{:}\,\mathit{sPol}_n)\\
+\qquad \mid\; \RR(\mathit{sPol}_1, \ldots, \mathit{sPol}_n)\\
+\qquad \mid\; \WFQ(w_1{:}\,\mathit{sPol}_1, \ldots, w_n{:}\,\mathit{sPol}_n)
+\end{array}
+\]
+\caption{The abstract policy grammar \texttt{pol} (top) and its surface syntax \texttt{sPol} (bottom). \(F\) is the operator's flow universe and \texttt{D} ranges over disciplines. The surface syntax records the per-arm metadata that \texttt{pol} leaves implicit: a \texttt{Strict} priority rank (a natural) or a \texttt{WFQ} weight (a positive real) per arm.}
+\label{fig:pol-grammar}
+\end{figure}
 
-A \texttt{pol} is either a leaf labeled by a flow or an internal node running discipline \texttt{D} over \texttt{n} child policies.
+A \texttt{pol} is either a leaf labeled by a flow or an internal node running discipline \texttt{D} over \texttt{n} child policies (\cref{fig:pol-grammar}).
 \texttt{D} ranges over the disciplines (\texttt{Strict}, \texttt{RoundRobin}, \texttt{WFQ}, etc.).
-A discipline may need per-arm metadata that shapes how the arm is scheduled.
-\texttt{WFQ} takes a positive real weight per arm; \texttt{Strict} takes a priority rank per arm; \texttt{RoundRobin} takes nothing.
-The abstract grammar carries no structural mark of any of this; the operator writes it in the surface syntax:
-
-\begin{verbatim}
-rank   in  Nat                     (Strict priority ranks)
-w      in  R>0                     (WFQ weights)
-sPol   ::= flow
-         | Strict(rank_1: sPol_1, ..., rank_n: sPol_n)
-         | RR(sPol_1, ..., sPol_n)
-         | WFQ(w_1: sPol_1, ..., w_n: sPol_n)
-\end{verbatim}
+A discipline may need per-arm metadata that shapes how the arm is scheduled: \texttt{WFQ} takes a positive real weight per arm, \texttt{Strict} takes a priority rank per arm, and \texttt{RoundRobin} takes nothing.
+The abstract \texttt{pol} grammar carries no structural mark of this; the surface syntax \texttt{sPol} (\cref{fig:pol-grammar}, bottom) is where the operator writes it.
 
 Compilation from \texttt{sPol} to \texttt{pol} carries the per-arm metadata into the arm's \texttt{slot\_state} (see \texttt{init\_slot\_D} below), where \texttt{push}/\texttt{pop} can read it but not modify it; the abstract grammar is what \(\delta\) (\cref{sec:delta-grammar}) and the theorems of this section reason over.
 We read the arity off by counting children, so \texttt{Strict(zoom, gmail)} is the 2-ary instance of the discipline \texttt{Strict}.
 Each leaf label denotes a \emph{flow}: a predicate over packets.
 
-Arm order in the surface notation is a presentation choice, not a scheduling-meaningful one: \texttt{Strict(hi: A, lo: B)} and \texttt{Strict(lo: B, hi: A)} describe the same scheduler.
-We formalize this as the \emph{reorder-congruence} \(\eqR\) on \texttt{pol}; the compiler is free to pick any representative of an \(\eqR\)-class when laying out or editing a control (our implementation normalizes and commits to one, \cref{sec:hardware}).
+Arm order in the surface notation is just a presentation choice, e.g., \texttt{Strict(hi: A, lo: B)} and \texttt{Strict(lo: B, hi: A)} describe the same scheduler.
+We formalize this as the \emph{reorder-congruence} \(\eqR\) on \texttt{pol}; the compiler is free to pick any representative of an \(\eqR\)-class when laying out or editing a control.
 
 A \texttt{pol} is written against a fixed \emph{flow universe} \(F\): a finite set of flow predicates declared by the operator before constructing the \texttt{pol}.
 A \texttt{pol} is \emph{valid} over \(F\) when (a) every discipline is applied at the proper arity, (b) every discipline is provided with the per-arm metadata that the discipline requires, and (c) the leaves form a partition of a subset of \(F\): each leaf carries a flow drawn from \(F\), and no two leaves carry the same flow.
@@ -356,18 +356,25 @@ We call the node that a production's \texttt{path} names its \emph{edit site}.
 One production is irregular in this respect: \ChangeRoot{} gives the path to the surviving subtree rather than to the edit site.
 We explain this in \cref{sec:per-production}.
 
-\begin{verbatim}
-d ::= Add          (path, D, arm, meta?)
-    | ChangeMeta   (path, meta)
-    | Quiesce      (path)
-    | Remove       (path)
-    | Designate    (path, survivor)
-    | Undesignate  (path)
-    | ChangeRoot   (path)
+\begin{figure}[t]
+\small
+\[
+\begin{array}{@{}r@{\;\;}l@{}}
+\delta \mathrel{::=} & \Add(\mathit{path}, D, \mathit{arm}, \mathit{meta?})\\
+\mid & \ChangeMeta(\mathit{path}, \mathit{meta})\\
+\mid & \Quiesce(\mathit{path})\\
+\mid & \Remove(\mathit{path})\\
+\mid & \Designate(\mathit{path}, \mathit{survivor})\\
+\mid & \Undesignate(\mathit{path})\\
+\mid & \ChangeRoot(\mathit{path})\\[6pt]
+\mathit{path} \mathrel{::=} & [\,] \;\mid\; i \mathbin{::} \mathit{path}
+\end{array}
+\]
+\caption{The grammar of atomic policy differences. Each production names a \texttt{path}, its \emph{edit site}, together with the payload the edit needs.}
+\label{fig:delta-grammar}
+\end{figure}
 
-path   ::= []  |  i :: path
-\end{verbatim}
-
+The grammar is given in \cref{fig:delta-grammar}.
 A \texttt{path} is a (possibly empty) sequence of child indices \texttt{i} read from the root.
 \texttt{pol} is the nonterminal of \cref{sec:policy-dsl}; \texttt{arm} and \texttt{survivor} are field names for \texttt{pol}-typed payloads, chosen to read at the call site (the new arm under an \Add, the designated survivor under a \Designate).
 
@@ -398,7 +405,7 @@ When \(\mathtt{p1} \eqR \mathtt{p2}\), the planner emits the empty sequence (\cr
 \subsection{Per-Production Soundness}\label{sec:per-production}
 
 For each production, we must discharge five obligations.
-The first three stem from \emph{hardware-realizability} (the substrate can install \(\sem{\delta}\) atomically, so the production rule must say what \(\sem{\delta}\) does and produce a valid control with fully specified state).
+The first three stem from \emph{hardware-realizability} (the substrate can install \(\sem{\delta}\) atomically, so the production rule must say what \(\sem{\delta}\) does and produce a well-formed control with fully specified state).
 The fourth stems from \emph{pol-explainability} (the edit means what the operator's \texttt{pol} change asked).
 Together these four certify that the production is a \emph{correct} edit.
 Correctness, though, is not what sets this work apart: the stop-the-world reset of \cref{sec:intro} is realizable and explainable too, and it is the baseline we wish to beat.
@@ -409,21 +416,19 @@ The \emph{very act of changing policies} never introduces arbitrary artifacts su
 Throughout, we write \texttt{C} for the pre-edit control and \texttt{C'} for the post-edit control.
 
 \begin{itemize}
-\item \emph{Definition.} Specify \(\sem{\delta} : \mathtt{control} \rightharpoonup \mathtt{control}\) together with the preconditions under which it is defined; outside that region \(\delta\) is \emph{incompatible} with \texttt{C} and \(\sem{\delta}(\mathtt{C})\) is undefined.
+\item \emph{Definition.} Specify \(\sem{\delta} : \mathtt{control} \rightharpoonup \mathtt{control}\) together with the preconditions under which it is defined; outside them \(\sem{\delta}(\mathtt{C})\) is undefined.
 \item \emph{Preservation of \(\vdash\).} \(\vdash \mathtt{C}\) implies \(\vdash \mathtt{C'}\).
 Any packets or index entries that \(\sem{\delta}\) drops or adds must leave the per-node pifo and packet counts in balance.
 \item \emph{Preservation of state.} At every node structurally shared between \texttt{C} and \texttt{C'} and outside the production's local edit site, the local \texttt{state} is preserved verbatim.
 At the edit site, and at every node of a freshly-spawned subtree, the state is exactly what the production's \texttt{init\_node\_D} / \texttt{init\_slot\_D} (\cref{sec:policy-dsl}) invocation prescribes.
 \item \emph{Characterization.} Give \(\den(\delta)\) in closed form and prove \(\lfloor \mathtt{C'} \rfloor \eqR \den(\delta)(\lfloor \mathtt{C} \rfloor)\).
-The equation is up to \(\eqR\), not literal \texttt{=}: \(\den\) returns a definite representative of an \(\eqR\)-class, and \(\sem{\delta}\) is free to land on any other representative of the same class.
-Transaction-only effects (e.g., \Quiesce's shrinking of \texttt{z}'s domain) sit outside \(\den\); they are fixed by the operational rule, not by this equation.
-\item \emph{Non-disruption of in-flight traffic.} Applying \(\delta\) rewrites, reorders, or drops no packet already admitted to \texttt{C}: each already-enqueued entry keeps the rank it was given at \texttt{push} time, so nothing buffered is lost, corrupted, or reordered relative to the rest of the backlog.
-Buffered packets may of course be affected by the new policy in force (after \(\WFQ(1{:}A,\, 9{:}B) \to \WFQ(99{:}A,\, 9{:}B)\), a newly arriving \(A\)-packet can overtake previously buffered \(B\)s), but that is an example of the reconfigured policy correctly governing new arrivals, not a disturbance of the backlog.
-Non-disruption is distinct from atomicity, which states that the commit lands between two \texttt{push}/\texttt{pop} operations with no messy intermediate state exposed (\cref{sec:hardware}): a \texttt{push} is atomic too, yet it adds an entry to the backlog, whereas a \(\delta\) leaves the backlog untouched.
+The equation holds up to \(\eqR\), not as literal equality: \(\den\) returns a definite representative of its \(\eqR\)-class, and \(\sem{\delta}\) may land on any other representative of the same class.
+\item \emph{Non-disruption of in-flight traffic.} Applying \(\delta\) rewrites, reorders, or drops no packet already admitted to \texttt{C}: each already-enqueued entry keeps the rank it was given when it was \texttt{push}ed, so nothing buffered is lost, corrupted, or reordered relative to the rest of the backlog.
+Buffered packets may of course be affected by the new policy in force (e.g., after \(\WFQ(1{:}A,\, 9{:}B) \to \WFQ(99{:}A,\, 9{:}B)\), a newly arriving \(A\)-packet can overtake previously buffered \(B\)s), but that is an example of the reconfigured policy correctly governing new arrivals, not a disturbance of the backlog.
 \cref{lem:nondisruption} below reduces this obligation, for every production, to a check on the production's footprint.
 \end{itemize}
 
-The last four obligations assume \(\sem{\delta}(\mathtt{C})\) is defined; outside the region the production's Definition carves out, \(\delta\) is \emph{incompatible} with \texttt{C} and \(\sem{\delta}(\mathtt{C})\) is undefined.
+The last four obligations assume \(\sem{\delta}(\mathtt{C})\) is defined; outside the region its Definition carves out, \(\sem{\delta}(\mathtt{C})\) is undefined.
 We do not repeat this boilerplate at every production.
 
 Non-disruption need not be reproved from scratch at each production; it follows from a single fact about \texttt{pop}.
@@ -454,25 +459,23 @@ We write \texttt{ts[i]} for the \texttt{i}-th child and \texttt{ts[t/i]} for \te
 \texttt{ts[-/k]} drops the \texttt{k}-th child; later children shift left.
 Indices follow the \texttt{path} convention of \cref{sec:delta-grammar}.
 
-The operational rules walk controls the same way, so we fix a matching notation for control nodes.
-We write an internal control node as \(\langle\mathtt{state}, \mathtt{pifo}, \mathtt{z}\rangle(\mathtt{cs})\): the node's triple \texttt{(state, pifo, z)} of \cref{sec:controls} together with its child-control list \texttt{cs}.
-The discipline is not among these fields: a control node stores only \texttt{(state, pifo, z)}, with the source-level discipline already compiled into \texttt{z} (\cref{sec:policy-dsl}).
-When an operational rule must run a discipline-specific recipe, such as \texttt{init\_slot} for a freshly spliced arm, it takes that discipline from the production itself, which the sniffer carries from the source policy (\cref{sec:delta-grammar}); the running control is never inspected to recover it.
-The child-list operations \(\mathtt{cs}[\mathtt{C'}/i]\) and \(\mathtt{cs} \mathbin{+\!\!+} [\mathtt{C'}]\) act on control child lists just as \(\mathtt{ts}[t/i]\) and \(\mathtt{ts}\mathbin{+\!\!+}[t]\) act on \texttt{pol}.
+The operational rules walk controls the same way.
+We write an internal control node as \(\langle\mathtt{state}, \mathtt{pifo}, \mathtt{z}\rangle(\mathtt{cs})\), its triple \texttt{(state, pifo, z)} of \cref{sec:controls} together with its child list \texttt{cs}, and reuse \(\mathtt{cs}[\mathtt{C'}/i]\) and \(\mathtt{cs}\mathbin{+\!\!+}[\mathtt{C'}]\) for the list operations above.
+The discipline is not one of these fields; it is compiled into \texttt{z} and never stored, so when a rule needs a discipline-specific recipe (\texttt{init\_slot} for a spliced arm) it reads the discipline off the production, which the sniffer carries from the source policy.
 
-A node's \texttt{z} is defined for exactly those packets whose target leaf lies in that node's subtree, and routes each to the child on the path down to that leaf; this is the whole-path admission property of \cref{sec:controls} seen from \texttt{z}'s side, and it holds as an invariant that every production must maintain.
-This classification is carried inside \texttt{z}, not read off the tree's shape for free: for a node to admit a newly spliced leaf, its \texttt{z} must be edited to accept that leaf's flow and route it onward.
-Admission is thus decided per node, and a packet survives only if \emph{every} node on its root-to-leaf path admits it.
-A splice therefore edits \texttt{z} at every node on the new leaf's path, while leaving each node's \texttt{node\_state}, \texttt{slot\_states}, and rank computation untouched; \cref{sec:hardware} stores this per node and realizes each such edit as an \texttt{assoc}/\texttt{map} pair.
-Several productions edit a single arm relative to its parent.
-When the per-production rule hinges on this relation, we destruct \(\delta\)'s path as \(\pi \mathbin{+\!\!+} [k]\), with \(\pi\) the parent's path and \texttt{k} the local index by which that parent reaches the target.
+One invariant links \texttt{z} to the tree: a node's \texttt{z} is defined exactly for packets whose target leaf lies in its subtree, routing each toward that leaf.
+This is \cref{sec:controls}'s whole-path admission seen from \texttt{z}'s side, and every production must preserve it.
+The admission lives in \texttt{z}, not for free in the tree's shape: to admit a newly spliced leaf, a node's \texttt{z} must be edited to accept that leaf's flow and route it on, so a splice edits \texttt{z} at every node on the new leaf's path while leaving each node's \texttt{node\_state}, \texttt{slot\_states}, and rank computation untouched.
+\cref{sec:hardware} realizes each such edit as an \texttt{assoc}/\texttt{map} pair.
+
+When a production edits a single arm relative to its parent, we destruct its path as \(\pi \mathbin{+\!\!+} [k]\): \(\pi\) the parent, \texttt{k} the index reaching the target.
 
 As a warm-up, we discharge the five obligations in some detail for the production \Add.
 The remaining productions reuse the same obligations and arguments, so for them we present only what differs in substance: the closed-form \(\den\), the operationally interesting bits of the per-node rule, and the points where any of the preservation arguments departs from \Add's.
 
 \subsubsection{\texorpdfstring{\(\Add(\pi, \mathtt{D}, \mathtt{arm}, \mathtt{meta?})\)}{Add}}\label{sec:add}
 
-We rename \cref{sec:delta-grammar}'s positional arguments for clarity: \(\pi : \mathtt{path}\) is the path to the node that will receive the new arm as its last child, and \(\mathtt{arm} : \mathtt{pol}\) is the policy of the new arm; \texttt{meta?} is the discipline-dependent per-arm metadata of \cref{sec:delta-grammar}.
+We rename \cref{sec:delta-grammar}'s positional arguments for clarity: \(\pi : \mathtt{path}\) is the path to the node that will receive the new arm as its last child, \(\mathtt{arm} : \mathtt{pol}\) is the policy of the new arm, and \texttt{meta?} is the discipline-dependent per-arm metadata of \cref{sec:delta-grammar}.
 
 \paragraph{Definition}
 
@@ -482,41 +485,35 @@ Say the presently running control is \texttt{C}.
 Intuitively, \Add{} inserts a freshly compiled subtree \(\lceil \mathtt{arm} \rceil\) as the new last child of the subtree \texttt{C@}\(\pi\).
 Reaching the new arm means admitting its flows along the whole path: every node from the root down to \texttt{C@}\(\pi\) must begin to accept the new flows and route them toward the arm. In the old tree those flows were accepted nowhere and dropped; \Add{} extends the admission at each node on the path, and touches nothing else.
 
-\(\sem{\Add(\pi, \mathtt{D}, \mathtt{arm}, \mathtt{meta?})}(\mathtt{C})\) is defined when the path \(\pi\) resolves in \texttt{C} to an internal node running discipline \texttt{D}, \texttt{meta?} matches the slot-initialization schema of \texttt{D} (present iff \texttt{init\_slot\_D} requires it), and \texttt{arm}'s leaf labels are disjoint from those of \texttt{C}.
-A running control does not record the discipline of its nodes, so \(\sem{\Add}\) cannot itself check that the node at \(\pi\) runs \texttt{D}; the sniffer guarantees this by reading \texttt{D} off the source policy.
-The disjointness precondition rules out \emph{splitting} an already-running flow into two (e.g., splitting \texttt{gmail} into \texttt{gmail\_business} and \texttt{gmail\_personal}): such a split has to relocate already-admitted packets, which \Add{} cannot do by itself.
-It also keeps classification single-valued: the new leaf labels lie in no node's subtree beforehand, so admitting them extends each on-path \texttt{z} without disturbing any existing packet's route.
+\(\sem{\Add(\pi, \mathtt{D}, \mathtt{arm}, \mathtt{meta?})}(\mathtt{C})\) is defined when three things hold: the path \(\pi\) resolves in \texttt{C} to an internal node running discipline \texttt{D}; the payload \texttt{meta?} matches the slot-initialization schema of \texttt{D} (present iff \texttt{init\_slot\_D} requires it); and \texttt{arm}'s leaf labels are disjoint from those of \texttt{C}.
+The disjointness precondition rules out \emph{splitting} an already-running flow in two (e.g., \texttt{gmail} into \texttt{gmail\_business} and \texttt{gmail\_personal}): such a split would have to relocate already-admitted packets, which \Add{} cannot do by itself.
 
-We define \(\sem{\Add}\) by recursion on \(\pi\), given in \cref{fig:add-rules} (top).
-Let \(k\) be the number of children \texttt{C@}\(\pi\) has before the splice; this same \(k\) is the index of the new child, since indices \(0, \dots, k-1\) are already in use.
-Write \(\mathtt{flows}(\mathtt{arm})\) for the set of flow labels at \(\lceil \mathtt{arm} \rceil\)'s leaves.
-For a transaction \texttt{z} and a flow set \texttt{F} disjoint from \texttt{z}'s domain, write \(\mathtt{admit}(\mathtt{z}, \mathtt{F}, i)\) for the transaction that agrees with \texttt{z} everywhere it is defined and, on a packet whose flow lies in \texttt{F}, routes to child \texttt{i} at the rank this node's discipline assigns child \texttt{i}; disjointness makes the extension conflict-free.
+We define \(\sem{\Add}\) by recursion on \(\pi\) (\cref{fig:add-rules}, top); the payload \texttt{D}, \texttt{arm}, \texttt{meta?} rides along unchanged, so the figure suppresses it.
+Two abbreviations appear: \(\mathtt{flows}(\mathtt{arm})\) is the set of flows at \(\lceil \mathtt{arm} \rceil\)'s leaves, and \(\mathtt{admit}(\mathtt{z}, \mathtt{F}, i)\) is \texttt{z} extended to route every packet of a flow in \texttt{F} to child \texttt{i}, ranked by this node's discipline.
+Since \texttt{C@}\(\pi\) has \(k\) children before the splice, appending the new one lands at the next free index \(k\); and because \(\mathtt{flows}(\mathtt{arm})\) lies outside \texttt{z}'s domain, each \(\mathtt{admit}\) is conflict-free.
 
-\begin{figure*}[t]
+\begin{figure}[t]
+\small
 \centering
 \(
 \begin{array}{@{}l@{}}
-\sem{\Add([\,], \mathtt{D}, \mathtt{arm}, \mathtt{meta?})}\; \langle \mathtt{state}, \mathtt{pifo}, \mathtt{z} \rangle(\mathtt{cs}) \\[2pt]
-\quad =\; \langle \mathtt{state'}, \mathtt{pifo}, \mathtt{z'} \rangle\big(\, \mathtt{cs} \mathbin{+\!\!+} [\, \lceil \mathtt{arm} \rceil \,] \,\big) \\[3pt]
-\qquad \textbf{where}\;\; \mathtt{state'} = (\mathtt{node\_state},\; \mathtt{slot\_states} \mathbin{+\!\!+} [\, \mathtt{init\_slot\_D}(\mathtt{node\_state}, \mathtt{meta?}) \,]) \\[2pt]
-\qquad \phantom{\textbf{where}}\;\; \mathtt{z'} = \mathtt{admit}(\mathtt{z},\, \mathtt{flows}(\mathtt{arm}),\, \mathtt{k}) \\[8pt]
-\sem{\Add(\mathtt{i} \mathbin{::} \mathtt{rest}, \mathtt{D}, \mathtt{arm}, \mathtt{meta?})}\; \langle \mathtt{state}, \mathtt{pifo}, \mathtt{z} \rangle(\mathtt{cs}) \\[2pt]
-\quad =\; \langle \mathtt{state}, \mathtt{pifo}, \mathtt{z'} \rangle\big(\, \mathtt{cs}\big[\, \sem{\Add(\mathtt{rest}, \mathtt{D}, \mathtt{arm}, \mathtt{meta?})}(\mathtt{cs}[\mathtt{i}]) \,/\, \mathtt{i} \,\big] \,\big) \\[3pt]
-\qquad \textbf{where}\;\; \mathtt{z'} = \mathtt{admit}(\mathtt{z},\, \mathtt{flows}(\mathtt{arm}),\, \mathtt{i})
+\sem{\Add([\,])}\ \langle\mathtt{state},\mathtt{pifo},\mathtt{z}\rangle(\mathtt{cs}) \;=\\
+\quad \langle\mathtt{state'},\mathtt{pifo},\mathtt{z'}\rangle(\mathtt{cs}\mathbin{+\!\!+}[\lceil\mathtt{arm}\rceil])\\
+\quad \textbf{where}\ \mathtt{state'}=(\mathtt{node\_state},\ \mathtt{slot\_states}\mathbin{+\!\!+}[\mathtt{s}])\\
+\quad \phantom{\textbf{where}}\ \mathtt{s}=\mathtt{init\_slot\_D}(\mathtt{node\_state},\mathtt{meta?})\\
+\quad \phantom{\textbf{where}}\ \mathtt{z'}=\mathtt{admit}(\mathtt{z},\mathtt{flows}(\mathtt{arm}),\mathtt{k})\\[8pt]
+\sem{\Add(\mathtt{i}\mathbin{::}\mathtt{rest})}\ \langle\mathtt{state},\mathtt{pifo},\mathtt{z}\rangle(\mathtt{cs}) \;=\\
+\quad \langle\mathtt{state},\mathtt{pifo},\mathtt{z'}\rangle(\mathtt{cs}[\,\mathtt{c}/\mathtt{i}\,])\\
+\quad \textbf{where}\ \mathtt{c}=\sem{\Add(\mathtt{rest})}(\mathtt{cs}[\mathtt{i}])\\
+\quad \phantom{\textbf{where}}\ \mathtt{z'}=\mathtt{admit}(\mathtt{z},\mathtt{flows}(\mathtt{arm}),\mathtt{i})\\[10pt]
+\den(\Add([\,]))\ (\mathtt{D}\ \mathtt{ts}) \;=\; \mathtt{D}(\mathtt{ts}\mathbin{+\!\!+}[\mathtt{arm}])\\[4pt]
+\den(\Add(\mathtt{i}\mathbin{::}\mathtt{rest}))\ (\mathtt{E}\ \mathtt{ts}) \;=\\
+\quad \mathtt{E}(\mathtt{ts}[\,\den(\Add(\mathtt{rest}))(\mathtt{ts}[\mathtt{i}])/\mathtt{i}\,])
 \end{array}
 \)
-
-\vspace{10pt}
-
-\(
-\begin{array}{@{}l@{}}
-\den(\Add([\,], \mathtt{D}, \mathtt{arm}, \_))\; (\mathtt{D}\ \mathtt{ts}) \;=\; \mathtt{D}\big(\, \mathtt{ts} \mathbin{+\!\!+} [\, \mathtt{arm} \,] \,\big) \\[6pt]
-\den(\Add(\mathtt{i} \mathbin{::} \mathtt{rest}, \mathtt{D}, \mathtt{arm}, \mathtt{meta?}))\; (\mathtt{E}\ \mathtt{ts}) \;=\; \mathtt{E}\big(\, \mathtt{ts}\big[\, \den(\Add(\mathtt{rest}, \mathtt{D}, \mathtt{arm}, \mathtt{meta?}))(\mathtt{ts}[\mathtt{i}]) \,/\, \mathtt{i} \,\big] \,\big)
-\end{array}
-\)
-\caption{The operational reading \(\sem{\Add}\) (top) and the denotational reading \(\den(\Add)\) (bottom), as recursions on \(\pi\) of the same shape. \(\langle \mathtt{state}, \mathtt{pifo}, \mathtt{z} \rangle(\mathtt{cs})\) destructures a control node; \(\mathtt{D}\ \mathtt{ts}\) and \(\mathtt{E}\ \mathtt{ts}\) pattern-match a \texttt{pol} node into its discipline and child list.}
+\caption{The operational reading \(\sem{\Add}\) (top) and the denotational reading \(\den(\Add)\) (bottom), recursions on \(\pi\) of the same shape. The fixed payload \texttt{D}, \texttt{arm}, \texttt{meta?} is threaded unchanged and suppressed. \(\langle\mathtt{state},\mathtt{pifo},\mathtt{z}\rangle(\mathtt{cs})\) destructures a control node; \(\mathtt{D}\ \mathtt{ts}\) and \(\mathtt{E}\ \mathtt{ts}\) pattern-match a \texttt{pol} node into its discipline and child list.}
 \label{fig:add-rules}
-\end{figure*}
+\end{figure}
 
 Here \texttt{state = (node\_state, slot\_states)}.
 The base case (\(\pi = []\)) has reached the parent of the new arm: it appends \(\lceil \mathtt{arm} \rceil\) as the last child (slot \texttt{k}), appends that slot's bookkeeping \(\mathtt{init\_slot\_D}(\mathtt{node\_state}, \mathtt{meta?})\) (with \texttt{D} the discipline the production carries), and extends its transaction to \(\mathtt{admit}(\mathtt{z}, \mathtt{flows}(\mathtt{arm}), k)\), sending the new flows to the new child; \texttt{node\_state} and \texttt{pifo} are untouched, and the append is legitimate because our arm-order freedom (\cref{sec:policy-dsl}) lets us place the new child last.
@@ -549,20 +546,16 @@ Inside \(\lceil \mathtt{arm} \rceil\), every node's \texttt{node\_state} and \te
 
 We must state \(\den(\Add(\pi, \mathtt{D}, \mathtt{arm}, \mathtt{meta?}))\) in closed form and prove \(\lfloor \mathtt{C'} \rfloor \eqR \den(\Add(\pi, \mathtt{D}, \mathtt{arm}, \mathtt{meta?}))(\lfloor \mathtt{C} \rfloor)\).
 
-We define \(\den\) by recursion on \(\pi\), given in \cref{fig:add-rules} (bottom).
-On the left, \(\mathtt{D\ ts}\) and \(\mathtt{E\ ts}\) are patterns: they split the \texttt{pol} node at that point into its discipline and its child list \texttt{ts}, read the same way as the \(\mathtt{D}(\mathtt{arms})\) of \cref{sec:policy-dsl}.
-The base case reuses the payload name \texttt{D}, so it fires only when the reached node runs the \texttt{D} the production carries.
-At an intermediate ancestor the discipline is unconstrained, so the pattern names it \texttt{E} and simply carries it along.
-Once \(\pi = []\) the recursion has reached the node where the new arm goes, and \texttt{arm} is appended as the last child; otherwise it walks one step deeper into child \texttt{i} and writes the result back in place.
-The base case writes \texttt{meta?} as \texttt{\_}: \(\den\) never consumes it, since \(\lfloor \cdot \rfloor\) does not surface per-arm metadata at \texttt{pol}-level (a pure \ChangeMeta{} leaves \(\lfloor \mathtt{C} \rfloor\) unchanged, \cref{sec:changemeta}).
-The recursive case threads \texttt{meta?} only to rebuild the production for the child; \(\sem{\Add}\) is the sole consumer, at \texttt{init\_slot\_D}.
+We define \(\den\) by recursion on \(\pi\) (\cref{fig:add-rules}, bottom).
+Its node patterns \(\mathtt{D\ ts}\) and \(\mathtt{E\ ts}\) split a \texttt{pol} node into its discipline and child list \texttt{ts}, just as \(\mathtt{D}(\mathtt{arms})\) is written in \cref{sec:policy-dsl}.
+The base case reuses the payload name \texttt{D}, firing only when the reached node runs that discipline; an ancestor's discipline \texttt{E} is unconstrained and simply carried along.
+The suppressed \texttt{meta?} plays no role here: \(\lfloor \cdot \rfloor\) does not surface per-arm metadata at \texttt{pol}-level (a pure \ChangeMeta{} leaves \(\lfloor \mathtt{C} \rfloor\) unchanged, \cref{sec:changemeta}), so only \(\sem{\Add}\) consumes it, at \texttt{init\_slot\_D}.
 
-\emph{Proof of characterization.}
-The operational \(\sem{\Add}\) and the denotational \(\den(\Add)\) are recursions on \(\pi\) of the same shape, so we induct on \(\pi\) and read them off in lockstep.
-In the base case (\(\pi = []\)), \(\den(\Add)\) appends \texttt{arm} to the child list of \(\lfloor \mathtt{C} \rfloor\)'s node while \(\sem{\Add}\) appends \(\lceil \mathtt{arm} \rceil\) to the child list of \texttt{C}'s node; since \(\lfloor \lceil \mathtt{arm} \rceil \rfloor \eqR \mathtt{arm}\), the two agree on the new child, and every pre-existing child is untouched.
-In the recursive case, both step into child \texttt{i} and write the result back, so the claim follows from the induction hypothesis applied at \(\mathtt{C@}i\); the ancestor node contributes nothing to reconcile, since \(\sem{\Add}\) carries its \texttt{state} and \texttt{pifo} verbatim and its \texttt{z}-extension is invisible to \(\lfloor \cdot \rfloor\) (\texttt{z} does not appear in \texttt{pol}), so \(\lfloor \cdot \rfloor\) reads the same node either way.
-For \Add{} the reconciliation is tight: \(\lfloor \mathtt{C'} \rfloor\) and \(\den(\Add(\pi, \mathtt{D}, \mathtt{arm}, \mathtt{meta?}))(\lfloor \mathtt{C} \rfloor)\) agree on the entire spine down to \(\pi\) and on the position of the new child, differing at most inside the freshly compiled \(\lceil \mathtt{arm} \rceil\), where \(\lfloor \lceil \mathtt{arm} \rceil \rfloor \eqR \mathtt{arm}\) leaves the compiler its usual arm-order freedom.
-This is exactly the \(\eqR\)-slack the uniform statement anticipates: \(\lfloor \mathtt{C'} \rfloor \eqR \den(\Add(\pi, \mathtt{D}, \mathtt{arm}, \mathtt{meta?}))(\lfloor \mathtt{C} \rfloor)\).
+\emph{Proof.}
+Both recursions descend \(\pi\) in the same shape, so we induct on \(\pi\).
+At the base (\(\pi = []\)), \(\den\) appends \texttt{arm} and \(\sem{\Add}\) appends \(\lceil \mathtt{arm} \rceil\); since \(\lfloor \lceil \mathtt{arm} \rceil \rfloor \eqR \mathtt{arm}\), the two agree on the new child up to \(\eqR\), and every existing child is untouched.
+At a recursive step, both descend into child \texttt{i} and write the result back, so the claim follows from the induction hypothesis; the ancestor itself adds nothing to reconcile, since \(\sem{\Add}\) leaves its \texttt{state} and \texttt{pifo} verbatim and its \texttt{z}-extension is invisible to \(\lfloor \cdot \rfloor\).
+So the two sides agree down the whole spine and differ at most inside \(\lceil \mathtt{arm} \rceil\), the \(\eqR\)-slack the statement allows: \(\lfloor \mathtt{C'} \rfloor \eqR \den(\Add(\pi, \mathtt{D}, \mathtt{arm}, \mathtt{meta?}))(\lfloor \mathtt{C} \rfloor)\).
 
 \paragraph{Non-disruption}
 
