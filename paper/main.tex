@@ -248,11 +248,10 @@ The strategy, though, is the same: give the operator a syntactic surface, then c
 \end{figure}
 % // AM: I think the font is too small now.
 % // AM: should sPol be presented above pol? Both here and in the prose?
-% // AM: Generally I think it is a mistake to formalize things while only listing Strict, RR, and WFQ as our policies. Yes those are the only ones in our implementation, but that's not a true limitation of the math. I think we should take pains to stay general in prose, and merely mention these are representative examples. E.g. RR needs no state, WFQ needs some, SP needs some but of a differnet kind, etc. 
-
-A \texttt{pol} is either a leaf labeled by a flow or an internal node running the scheduling discipline \texttt{D} over \texttt{n} child policies (\cref{fig:pol-grammar}).
-\texttt{D} ranges over the disciplines (\texttt{Strict}, \texttt{RoundRobin}, \texttt{WFQ}, etc.).
-A discipline may need per-arm metadata that shapes how the arm is scheduled: \texttt{WFQ} takes a positive real weight per arm, \texttt{Strict} takes a priority rank per arm, and \texttt{RoundRobin} takes nothing.
+A \texttt{pol} is either a leaf labeled by a flow or an internal node running a scheduling discipline \texttt{D} over \texttt{n} child policies (\cref{fig:pol-grammar}).
+The family of disciplines is open: \texttt{D} is any discipline equipped with the compilation recipe of the next paragraph, and nothing in this section depends on which disciplines are on hand.
+Our surface syntax and implementation instantiate three representative ones, \texttt{Strict}, \texttt{RoundRobin}, and \texttt{WFQ}, chosen because they span the axis that matters here, the per-arm state a discipline keeps: \texttt{RoundRobin} keeps none, \texttt{WFQ} keeps a weight together with a virtual-time tag, \texttt{Strict} keeps a priority, and a further discipline might keep state of a different kind again.
+Accordingly a discipline may require per-arm metadata that shapes how an arm is scheduled: a \texttt{WFQ} weight, a \texttt{Strict} priority, nothing for \texttt{RoundRobin}.
 The abstract \texttt{pol} grammar carries no structural mark of this; the surface syntax \texttt{sPol} (\cref{fig:pol-grammar}, bottom) is where the operator writes it.
 
 Compilation from \texttt{sPol} to \texttt{pol} carries the per-arm metadata into the arm's \texttt{slot\_state} (see \texttt{init\_slot\_D} below), where \texttt{push}/\texttt{pop} can read it but not modify it; the abstract grammar is what \(\delta\) (\cref{sec:delta-grammar}) and the theorems of this section reason over.
@@ -289,7 +288,7 @@ When a new arm is spliced under an already-running \texttt{D}-parent (\cref{sec:
 Choosing \texttt{init\_slot\_D} is a scheduling decision, not just a structural one, since the choice changes how a freshly spliced arm competes with the established arms.
 We broadly make the choice to ``join the current round''.
 For example, if going from \texttt{WFQ(A,B)} to \texttt{WFQ(A,B,C)}, we do not want the newly added \texttt{C} to reap a huge benefit for ``having been silent all this while''; we just want it to join the others with neither a penalty nor an advantage.
-The choice plays out as follows for each \texttt{D}.
+The choice plays out as follows for each of our three representative disciplines.
 
 \begin{itemize}
 % // AM: I don't think we can afford so much real estate for this. Let's discuss. It may need to go into an appendix or something.
@@ -599,15 +598,14 @@ So \Add{} is non-disruptive by \cref{lem:nondisruption}.
 \(\tau : \mathtt{path}\) is the target arm, non-empty;
 % // AM: ", non-empty; " is too terse
 we destruct it as \(\pi \mathbin{+\!\!+} [k]\), so \texttt{k} is the arm's slot at its parent \texttt{C@}\(\pi\).
-The payload \(\mathit{meta}\) is a \Strict{} priority or a \WFQ{} weight, read per the parent's discipline.
-% // AM: rewrite for clarity, and generalize past our list of disciplines
+The payload \(\mathit{meta}\) is a fresh value of whatever per-arm metadata the parent's discipline reads off a slot (\cref{sec:policy-dsl}); for our three disciplines that is a \Strict{} priority or a \WFQ{} weight.
 
 \paragraph{Definition}
 
 \[
 \sem{\ChangeMeta(\pi \mathbin{+\!\!+} [k], \mathit{meta})} = \mathtt{at}(\pi,\, \mathtt{setmeta}_k),
 \]
-defined when the parent at \(\pi\) runs \Strict{} or \WFQ.
+defined when the parent at \(\pi\) runs a discipline that carries per-arm metadata (\Strict{} or \WFQ{} among our three; \RR{}, having none, is never a target).
 The node transformer \(\mathtt{setmeta}_k\) overwrites the discipline-metadata field of \texttt{slot\_states[k]} with \(\mathit{meta}\) (a \Strict{} priority or a \WFQ{} weight) and leaves everything else at the node untouched, including \texttt{node\_state}, \texttt{pifo}, \texttt{z}, the child list, and, under \WFQ, the virtual-finish tag in that same slot.
 % // AM: setmeta is undefined and I'm not sure how it works 
 
