@@ -185,18 +185,10 @@ A PIFO tree \texttt{q} is well-formed (written \(\vdash \mathtt{q}\)) when, at e
 This is the invariant that keeps \texttt{pop} from ever getting stuck.
 \texttt{push} always preserves \(\vdash \mathtt{q}\), and \texttt{pop} preserves it when \texttt{q} is non-empty (which is precisely the condition under which \texttt{pop} is defined).
 
-\xxx[AM]{this is still stated in the big brain model.
-If we want to state it in the small-brain model, I can, but that is not exactly faithful to Mohan et al (see line just below).}
-
-We adopt this much from Mohan et al.~\cite{Mohan23}; the rest of the formalism in this paper is ours, and we preserve backward compatibility with theirs.
-% // AM: feels out of place... generally _formal abstractions_ (FA) is not sacred, and we don't want the reader to need it in front of them when reading our paper. I think we should have a small note somewhere about how we are compatible with FA and vPIFO, but let's not make it a whole thing.
-
 \subsubsection{Controls}\label{sec:controls}
 
 A PIFO tree \emph{control} \texttt{C} wraps a PIFO tree with per-node scheduling logic.
 It is a tree of triples \texttt{(state, pifo, z)}, one per node of the topology.
-This distributed shape differs from FA~\cite{Mohan23}, which packages the same information as a single global triple; the two are straightforwardly interconvertible by gluing the per-node pieces, so any apparatus stated against the monolithic shape carries over.
-% // AM: Same note as above, re: FA not being a sacred cow.
 
 \begin{itemize}
 \item \texttt{state} is a pair \texttt{(node\_state, slot\_state list)}: the discipline's per-node bookkeeping and a list of per-arm entries, one per child.
