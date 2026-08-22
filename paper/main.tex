@@ -439,7 +439,7 @@ Hence if \(\sem{\delta}\) leaves the contents of every non-empty \texttt{pifo} o
 \end{lemma}
 
 We therefore discharge non-disruption per production by naming the production's \emph{footprint}, the nodes and fields it touches (the same footprint \cref{sec:confinement} uses), and checking that it contains no live \texttt{pifo} entry.
-Only productions that rewire a live path, \Designate{} and the idioms of \cref{sec:sequences}, need an argument beyond naming the footprint.
+Only the productions that add or drop a live \texttt{pifo} entry, \Designate, \Undesignate, and \ChangeRoot{} (and the idioms of \cref{sec:sequences}), need an argument beyond naming the footprint; the rest follow from \cref{lem:nondisruption} directly.
 
 The lemma can read counterintuitively, so it is worth one example.
 One might expect that inverting the two priorities of \(\Strict(\mathtt{hi}: A, \mathtt{lo}: B)\) with \ChangeMeta{} changes the next \texttt{pop}.
@@ -470,8 +470,20 @@ The admission lives in \texttt{z}, not for free in the tree's shape: to admit a 
 
 When a production edits a single arm relative to its parent, we destruct its path as \(\pi \mathbin{+\!\!+} [k]\): \(\pi\) the parent, \texttt{k} the index reaching the target.
 
+Most productions edit only the node their path names.
+For a node transformer \(g\), write \(\mathtt{at}(\pi, g)\) for the tree that applies \(g\) at that node and copies every other node verbatim:
+\[
+\begin{array}{@{}l@{}}
+\mathtt{at}([\,], g)\,(\mathtt{N}) = g(\mathtt{N})\\
+\mathtt{at}(i \mathbin{::} \mathtt{rest}, g)\,\langle\mathtt{state},\mathtt{pifo},\mathtt{z}\rangle(\mathtt{cs}) =\\
+\quad \langle\mathtt{state},\mathtt{pifo},\mathtt{z}\rangle(\mathtt{cs}[\,\mathtt{at}(\mathtt{rest}, g)(\mathtt{cs}[i]) / i\,])
+\end{array}
+\]
+The recursive case walks one step down and writes the result back, carrying \(\langle\mathtt{state},\mathtt{pifo},\mathtt{z}\rangle\) verbatim; the same combinator serves on \texttt{pol}, where a node is \(\mathtt{D}(\mathtt{ts})\).
+\Add, \Designate, and \Quiesce{} also touch \texttt{z} away from the edit site, and \ChangeRoot{} discards the spine above its target, so those are given directly; \ChangeMeta, \Remove, and \Undesignate{} are pure \(\mathtt{at}\).
+
 As a warm-up, we discharge the five obligations in some detail for the production \Add.
-The remaining productions reuse the same obligations and arguments, so for them we present only what differs in substance: the closed-form \(\den\), the operationally interesting bits of the per-node rule, and the points where any of the preservation arguments departs from \Add's.
+The remaining productions reuse the same obligations and arguments, so for them we give the closed-form \(\den\), the per-node rule, and only the points where a preservation argument departs from \Add's.
 
 \subsubsection{\texorpdfstring{\(\Add(\pi, \mathtt{D}, \mathtt{arm}, \mathtt{meta?})\)}{Add}}\label{sec:add}
 
@@ -565,84 +577,60 @@ So \Add{} is non-disruptive by \cref{lem:nondisruption}.
 
 \subsubsection{\texorpdfstring{\(\ChangeMeta(\tau, \mathtt{meta})\)}{ChangeMeta}}\label{sec:changemeta}
 
-\(\tau : \mathtt{path}\) is the path to the target arm whose per-arm metadata changes; it is non-empty (see precondition below) and we destruct it as \(\pi \mathbin{+\!\!+} [k]\), with \(\pi\) the path to the parent and \texttt{k} the slot at that parent.
-The payload \texttt{meta} is interpreted per the parent's discipline: a priority rank when the parent runs Strict, a weight when it runs WFQ.
-
-Say the presently running control is \texttt{C}.
-Intuitively, \ChangeMeta{} overwrites \(\mathtt{C@}\pi.\mathtt{slot\_states}[k]\)'s per-arm metadata with the new value provided.
+\(\tau : \mathtt{path}\) is the target arm, non-empty; we destruct it as \(\pi \mathbin{+\!\!+} [k]\), so \texttt{k} is the arm's slot at its parent \texttt{C@}\(\pi\).
+The payload \(\mathit{meta}\) is a \Strict{} priority or a \WFQ{} weight, read per the parent's discipline.
 
 \paragraph{Definition}
 
-\(\sem{\ChangeMeta(\tau, \mathtt{meta})}(\mathtt{C})\) is defined when \(\tau\) is non-empty and the parent at \(\pi\) runs Strict or WFQ.
-At \texttt{C@}\(\pi\), \texttt{node\_state} is unchanged; the per-arm metadata field of \texttt{slot\_states[k]} (the priority rank under Strict, the weight under WFQ) is overwritten with the new value, and every other field of \texttt{slot\_states[k]} is preserved verbatim.
-Under WFQ this includes the virtual-finish tag that records how far slot \texttt{k} has run in the current round.
-Other \texttt{slot\_states}, \texttt{pifo}, and \texttt{z} are unchanged.
-Everywhere else, the control is preserved verbatim.
+\[
+\sem{\ChangeMeta(\pi \mathbin{+\!\!+} [k], \mathit{meta})} = \mathtt{at}(\pi,\, \mathtt{setmeta}_k),
+\]
+defined when the parent at \(\pi\) runs \Strict{} or \WFQ.
+The node transformer \(\mathtt{setmeta}_k\) overwrites the discipline-metadata field of \texttt{slot\_states[k]} with \(\mathit{meta}\) (a \Strict{} priority or a \WFQ{} weight) and leaves everything else at the node untouched, including \texttt{node\_state}, \texttt{pifo}, \texttt{z}, the child list, and, under \WFQ, the virtual-finish tag in that same slot.
 
-\paragraph{Preservation}
+\paragraph{Characterization}
 
-Preservation of \(\vdash\): no \texttt{pifo} entry is rewritten, no subtree is touched, no packet is relocated, so well-formedness is inherited everywhere.
-Preservation of state: the targeted metadata field is the intended edit; every other field at \texttt{C@}\(\pi\) and everywhere else is verbatim.
-Non-disruption: ranks for in-flight \texttt{pifo} entries were determined when they were pushed.
-They remain fixed; the new metadata affects only the rank computation for future pushes.
-So a \texttt{pop} immediately after this \(\sem{\ChangeMeta(\tau, \mathtt{meta})}\) returns exactly what a \texttt{pop} immediately before would have.
+\[
+\den(\ChangeMeta(\tau, \mathit{meta}))\,\mathtt{p} = \mathtt{p}.
+\]
+\(\den\) is the identity because \(\lfloor \cdot \rfloor\) strips per-arm metadata: the rewritten field is invisible at \texttt{pol}-level, so \(\lfloor \mathtt{C'} \rfloor = \lfloor \mathtt{C} \rfloor\).
+
+\paragraph{Preservation and non-disruption}
+
+\(\mathtt{setmeta}_k\) touches one \texttt{slot\_state} field and no child, so \(\vdash\)-counts and every node's structure are inherited and \texttt{state} elsewhere is verbatim.
+Its footprint is that single field, not a live \texttt{pifo} entry, so \ChangeMeta{} is non-disruptive by \cref{lem:nondisruption}: an in-flight entry's rank was fixed when it was pushed, and the new metadata governs only future pushes.
 
 \paragraph{Note: Why the virtual-finish tag is preserved (WFQ)}
 
 When the parent runs WFQ, the virtual-finish tag at slot \texttt{k} is deliberately \emph{preserved} and not \emph{reset}: resetting would either reward or penalize the targeted arm by yanking it out of the current round, whereas \texttt{init\_slot\_WFQ} (\cref{sec:policy-dsl}) was designed precisely to let a fresh arm ``join the current round'' without disturbing siblings, and the same principle applies to a weight change on an already-running arm.
 Under Strict the slot carries no comparable round-bookkeeping field, so the question does not arise.
 
-\paragraph{Characterization}
-
-\begin{verbatim}
-den(ChangeMeta(t, m)) p = p
-\end{verbatim}
-
-is defined whenever \(\tau\) resolves in \texttt{p} and the parent at \(\pi\) runs Strict or WFQ.
-Every node's \texttt{node\_state}, child list, \texttt{pifo}, and \texttt{slot\_states.discipline} are preserved verbatim: the rewritten field is in \texttt{slot\_state}, which the compilation rule strips.
-So \(\lfloor \mathtt{C'} \rfloor = \lfloor \mathtt{C} \rfloor\).
-Hence \(\lfloor \mathtt{C'} \rfloor \eqR \den(\ChangeMeta(\tau, \mathtt{meta}))(\lfloor \mathtt{C} \rfloor)\).
-
 \subsubsection{\texorpdfstring{\(\Quiesce(\tau)\)}{Quiesce}}\label{sec:quiesce}
 
 \(\tau : \mathtt{path}\) is the path to the target subtree to silence.
 
 Say the presently running control is \texttt{C}.
-Intuitively, \Quiesce{} restricts \texttt{z}s at various parts of the control to ensure that any packet bound for a leaf under \texttt{C@}\(\tau\) is refused admission.
+\Quiesce{} restricts \texttt{z} so that no packet bound for a leaf under \texttt{C@}\(\tau\) is admitted anywhere, and changes nothing else.
 
 \paragraph{Definition}
 
-The topology, the discipline at every node, and every arm's slot index are unchanged.
-\(\sem{\Quiesce(\tau)}(\mathtt{C})\) is defined whenever \(\tau\) resolves to a node in \texttt{C}.
-The empty path is permitted: a root-\Quiesce{} silences every leaf in the tree.
-There is no precondition on the subtree's contents: \Quiesce{} is the production that stops further admissions, regardless of what is currently held below \texttt{C@}\(\tau\).
-
-Let \(T\) denote the set of leaves of \texttt{C@}\(\tau\) (the leaves we are silencing), and let \(A\) denote the union of their ancestor chains: every internal node within \texttt{C@}\(\tau\)'s subtree, the node \texttt{C@}\(\tau\) itself, and every ancestor of \texttt{C@}\(\tau\) up to and including the root.
-
-Outside \(T \cup A\) the local control is preserved verbatim.
-Inside \(T \cup A\), \texttt{node\_state}, \texttt{slot\_states}, and \texttt{pifo} are preserved verbatim at every node (including any packets a leaf currently holds and any pre-existing entries at an internal node pointing toward the quiesced subtree, which continue to be honored on \texttt{pop}); only \texttt{z} is restricted.
-At each leaf \(L\) in \(T\), \(\mathtt{C'@}L.\mathtt{z}\) drops every packet that \(L\) used to admit from its domain.
-At each internal node \(n\) in \(A\), \(\mathtt{C'@}n.\mathtt{z}\) drops any packet whose classifier predicate matches a leaf label in \(T\); for surviving inputs the output is \(\mathtt{C@}n.\mathtt{z}\)'s verbatim.
-
-\paragraph{Preservation}
-
-Preservation of \(\vdash\) and state: every node's \texttt{node\_state}, \texttt{slot\_states}, \texttt{pifo}, and child subtree are preserved verbatim, so well-formedness counts are inherited everywhere and \texttt{state} is preserved at every node.
-The \texttt{z} restrictions across \(T \cup A\) touch no \texttt{pifo} entry and no stored packet.
-They only refuse future \texttt{push}es.
-Non-disruption follows from \cref{sec:add}'s argument: every in-flight packet sits in some pre-existing \texttt{pifo} that survives verbatim, so a \texttt{pop} immediately after this \(\sem{\Quiesce(\tau)}\) returns exactly what a \texttt{pop} immediately before would have.
+\(\sem{\Quiesce(\tau)}(\mathtt{C})\) is defined whenever \(\tau\) resolves in \texttt{C} (the empty path silences the whole tree); there is no precondition on the subtree's contents.
+Let \(T\) be the leaves of \texttt{C@}\(\tau\) and \(A\) the union of their root-to-leaf chains: every node inside \texttt{C@}\(\tau\)'s subtree, together with \texttt{C@}\(\tau\) and its ancestors up to the root.
+For each \(v \in T \cup A\), \(\mathtt{C'@}v.\mathtt{z}\) is \(\mathtt{C@}v.\mathtt{z}\) with every packet bound for a leaf in \(T\) removed from its domain, and agrees with \(\mathtt{C@}v.\mathtt{z}\) on surviving inputs.
+Every other field of every node, and \texttt{z} outside \(T \cup A\), is verbatim.
+(The uniform restriction, at every node on every silenced push path rather than at the root alone, is needed to keep \(\vdash \mathtt{C'}\); see the Note below.)
 
 \paragraph{Characterization}
 
-\Quiesce{} is \texttt{pol}-invisible: its entire effect lies in \texttt{z}'s domain, which \texttt{pol} does not record.
+\[
+\den(\Quiesce(\tau))\,\mathtt{p} = \mathtt{p}.
+\]
+\Quiesce's whole effect is on \texttt{z}, which \(\lfloor \cdot \rfloor\) does not record, so \(\lfloor \mathtt{C'} \rfloor = \lfloor \mathtt{C} \rfloor\).
 
-\begin{verbatim}
-den(Quiesce(t)) p = p
-\end{verbatim}
+\paragraph{Preservation and non-disruption}
 
-is defined whenever \(\tau\) resolves in \texttt{p}.
-Every node's \texttt{node\_state}, \texttt{slot\_states}, \texttt{pifo}, and child list are preserved verbatim.
-Only the \texttt{z}s at nodes in \(T \cup A\) are restricted, and \texttt{z} is not visible at \texttt{pol}-level.
-So \(\lfloor \mathtt{C'} \rfloor \eqR \lfloor \mathtt{C} \rfloor = \den(\Quiesce(\tau))(\lfloor \mathtt{C} \rfloor)\).
+Every node's \texttt{node\_state}, \texttt{slot\_states}, \texttt{pifo}, and children are verbatim, so \(\vdash\) and \texttt{state} are preserved.
+The footprint is the \texttt{z}-restrictions across \(T \cup A\), which touch no \texttt{pifo} entry, so \Quiesce{} is non-disruptive by \cref{lem:nondisruption}: packets already buffered under \texttt{C@}\(\tau\) keep their entries and still drain on \texttt{pop}; only future \texttt{push}es are refused.
 
 \paragraph{Note: Why touch every node on every quiesced push path}
 
@@ -653,53 +641,32 @@ The cost is touching \(|T|\) leaves and the union of their ancestor chains; the 
 
 \subsubsection{\texorpdfstring{\(\Remove(\tau)\)}{Remove}}\label{sec:remove}
 
-As before, \(\tau : \mathtt{path}\) is the non-empty path to the target arm being removed; we destruct it as \(\pi \mathbin{+\!\!+} [k]\) with \(\pi\) the path to the parent and \texttt{k} the slot at that parent.
-
-Say the presently running control is \texttt{C}.
-Intuitively, \Remove{} unhooks the subtree at slot \texttt{k} of \texttt{C@}\(\pi\) and renumbers higher siblings down by one.
-It is defined only when the subtree at \(\tau\) is empty; we explain this restriction below.
+As before, \(\tau : \mathtt{path}\) is the non-empty target arm; destruct it as \(\pi \mathbin{+\!\!+} [k]\), \texttt{k} its slot at parent \texttt{C@}\(\pi\).
+\Remove{} unhooks that arm and renumbers higher siblings down by one; it fires only when the arm's subtree is empty (Note below).
 
 \paragraph{Definition}
 
-\(\sem{\Remove(\tau)}(\mathtt{C})\) is defined when \(\tau\) is non-empty and resolves to a node in \texttt{C}, the subtree at \(\tau\) is empty, and \texttt{C@}\(\tau\) does not carry the \(\Strictstar\) flag (the planner reaches a \(\Strictstar\) only through \Undesignate, see \cref{sec:undesignate}).
-
-The topology loses the arm at slot \texttt{k} of \texttt{C@}\(\pi\); arms at slots \(0, \ldots, k-1\) keep their indices; arms at slots \(k+1, \ldots\) shift down by one.
-
-Outside \texttt{C@}\(\pi\) and the removed subtree, the local control is preserved verbatim: this includes every proper ancestor of \(\pi\) (whose \texttt{z} is unchanged) and every sibling arm at \texttt{C@}\(\pi\) other than slot \texttt{k}, together with the subtrees under them.
-At \texttt{C@}\(\pi\), \texttt{node\_state} is unchanged and \(\mathtt{slot\_states} = \mathtt{C@}\pi.\mathtt{slot\_states}[-/k]\): the entry at slot \texttt{k} is dropped, and entries at slots \(> k\) shift down by one to track the renumbered arms.
-The precondition (subtree at \(\tau\) is empty) plus \(\vdash \mathtt{C}\) forces \(\mathtt{C@}\pi.\mathtt{pifo}\) to contain \emph{no entry equal to \texttt{k}}, so no \texttt{pifo} entry is deleted; whatever bookkeeping is needed to keep the surviving entries pointed at their (now-resident-at-arity-\(n-1\)) children must be done.
-If one were literally indexing children by their positions, that would mean decrementing entries \(> k\) by one; implementations have ways around even this, since the substrate model of \S6.1', for instance, keys children by stable per-edge handles, so survivors' pifo entries are unchanged.
-Finally, \texttt{z} is restricted on inputs and renumbered on outputs: packets that \(\mathtt{C@}\pi.\mathtt{z}\) would have routed to slot \texttt{k} are no longer in \(\mathtt{C'@}\pi.\mathtt{z}\)'s domain, and for surviving inputs an output of \texttt{(i, r)} with \(i > k\) becomes \texttt{(i - 1, r)}.
-Slots \(< k\) are untouched on either axis.
-
-A standalone \Remove{} thus restricts classification at \texttt{C@}\(\pi\) so that packets bound for the removed subtree are dropped at \texttt{C@}\(\pi\) rather than being routed to a non-existent slot.
-In the typical planner usage, a preceding \Quiesce{} has already restricted every \texttt{z} on every push path to the soon-to-be-removed leaves (\cref{sec:quiesce}), so no new packet bound for the removed subtree is even being admitted; the input restriction at \texttt{C@}\(\pi\) is then redundant but harmless, while the output renumbering at \texttt{C@}\(\pi\) is still needed.
-
-\paragraph{Preservation}
-
-Preservation of \(\vdash\): at \texttt{C@}\(\pi\), the precondition gives \(\mathtt{C@}\pi.\mathtt{pifo}\) no entry equal to \texttt{k}, so no pifo entry is deleted; surviving slots \(i' < k\) of \(\mathtt{C'@}\pi\) inherit their matched counts from slot \(i'\) of \(\mathtt{C@}\pi\), and surviving slots \(i' \geq k\) inherit theirs from slot \(i' + 1\) (same subtree).
-Every proper ancestor and every surviving sibling is verbatim, so its well-formedness count is inherited.
-Preservation of state: every proper ancestor and surviving sibling preserves its \texttt{state} verbatim.
-No \texttt{init}-rule fires, and \texttt{slot\_states} drops slot \texttt{k}'s entry while every other entry is preserved verbatim, with its position shifted to match the new arm order.
-Non-disruption follows from \cref{sec:add}'s argument applied to the surviving structure: every in-flight packet sits in a preserved \texttt{pifo} at the same slot (if \(< k\)) or one slot lower (if \(> k\)), and every surviving \texttt{pifo} entry points to the same child subtree after renumbering, so a \texttt{pop} immediately after this \(\sem{\Remove(\tau)}\) returns exactly what a \texttt{pop} immediately before would have.
-The restriction at \(\mathtt{C'@}\pi.\mathtt{z}\) comes into play only for \texttt{push}es that arrive after this \(\sem{\Remove(\tau)}\) fires.
+\[
+\sem{\Remove(\pi \mathbin{+\!\!+} [k])} = \mathtt{at}(\pi,\, \mathtt{drop}_k),
+\]
+defined when \(\tau\) resolves in \texttt{C}, the subtree at \(\tau\) is empty, and \texttt{C@}\(\tau\) is not a \(\Strictstar\) (the planner reaches a \(\Strictstar\) only through \Undesignate).
+\(\mathtt{drop}_k\) removes child \texttt{k} and its \texttt{slot\_states} entry, shifts siblings \(> k\) down by one, and adjusts the node's \texttt{z}: inputs that routed to slot \texttt{k} leave its domain, and a surviving output \((i, r)\) with \(i > k\) becomes \((i-1, r)\).
+Emptiness and \(\vdash \mathtt{C}\) force \(\mathtt{C@}\pi.\mathtt{pifo}\) to hold no entry equal to \texttt{k}, so \texttt{pifo} loses no entry, and surviving entries keep their child (a substrate keying children by stable handles, \cref{sec:hardware}, need not even renumber them).
+\texttt{node\_state}, and every node outside \texttt{C@}\(\pi\) and the removed subtree, is verbatim.
 
 \paragraph{Characterization}
 
-\begin{verbatim}
-den(Remove([k])) (D ts)
-    = D ( ts[-/k] )
-den(Remove(i :: rest)) (D ts)
-    = D ( ts[ den(Remove(rest)) (ts[i]) / i ] )
-    when rest is non-empty
-\end{verbatim}
+\[
+\den(\Remove(\pi \mathbin{+\!\!+} [k])) = \mathtt{at}(\pi,\; \mathtt{D}(\mathtt{ts}) \mapsto \mathtt{D}(\mathtt{ts}[-/k])),
+\]
+dropping arm \texttt{k} from the parent \texttt{pol} node; the emptiness precondition is operational, invisible at \texttt{pol}.
+As with \Add, outside the parent every node is structurally intact and the parent's child list loses slot \texttt{k}, so \(\lfloor \mathtt{C'} \rfloor \eqR \den(\Remove(\tau))(\lfloor \mathtt{C} \rfloor)\).
 
-The base case fires once \(\tau\) has been walked down to the parent of the removed arm: the \texttt{k}-th child is dropped from the arm list.
-The recursive case walks one step deeper into child \texttt{i} and writes the result back in place.
-\(\den(\Remove(\tau))\) is defined when \(\tau\) is non-empty and resolves in the input pol; the emptiness precondition that \(\sem{\Remove(\tau)}\) imposes is operational, not visible at \texttt{pol} level.
+\paragraph{Preservation and non-disruption}
 
-Proof shape is the same as \Add's: outside the removed subtree every node is structurally intact (ancestors verbatim, surviving siblings verbatim), and at \texttt{C@}\(\pi\) the child list shrinks by dropping slot \texttt{k}.
-So \(\lfloor \mathtt{C'} \rfloor \eqR \den(\Remove(\tau))(\lfloor \mathtt{C} \rfloor)\).
+Preservation of \(\vdash\): no \(\mathtt{C@}\pi.\mathtt{pifo}\) entry equals \texttt{k} (emptiness), so none is deleted; a surviving slot \(i' < k\) inherits its count from slot \(i'\) and \(i' \geq k\) from slot \(i'+1\) (same subtree); ancestors and siblings are verbatim.
+Preservation of state: \texttt{slot\_states} drops slot \texttt{k}, every other entry is verbatim in its shifted position, and no \texttt{init} fires.
+Non-disruption: \(\mathtt{drop}_k\) removes only an \emph{empty} slot and renumbers the parent's outputs, touching no live \texttt{pifo} entry, so \Remove{} is non-disruptive by \cref{lem:nondisruption}; its input restriction bites only on future \texttt{push}es.
 
 \paragraph{Note: Why an empty subtree}
 
@@ -808,31 +775,19 @@ The wrap is therefore \texttt{pol}-visible only as a \(\Strict\).
 
 \paragraph{Definition}
 
-\(\sem{\Designate(\tau, \mathtt{survivor})}(\mathtt{C})\) is defined when \(\tau\) resolves to a node in \texttt{C} and \texttt{survivor}'s leaf labels are disjoint from those of \texttt{C} outside the subtree \texttt{C@}\(\tau\).
-Overlap with \texttt{C@}\(\tau\)'s own leaves is explicitly permitted; we explain why in a separate Note below.
-Let \(N\) denote the freshly introduced \(\Strictstar\) node, and let \(P_0\) denote the number of packets currently held under \texttt{C@}\(\tau\).
+\(\sem{\Designate(\tau, \mathtt{survivor})}(\mathtt{C})\) is defined when \(\tau\) resolves in \texttt{C} and \texttt{survivor}'s leaf labels are disjoint from \texttt{C}'s outside \texttt{C@}\(\tau\); overlap with \texttt{C@}\(\tau\)'s own leaves is allowed (see Note).
+Let \(P_0\) be the number of packets held under \texttt{C@}\(\tau\).
+The rule is \(\mathtt{at}(\tau, \mathtt{wrap})\), together with the on-path \texttt{z}-extensions \Add{} performs for a new arm's flows, here admitting \(\mathtt{flows}(\mathtt{survivor})\) toward the wrap at each proper ancestor of \(\tau\).
 
+The transformer \(\mathtt{wrap}\) replaces the node \(M = \texttt{C@}\tau\) with a fresh \(\Strictstar\) node \(N\) over arms \([M, \lceil \mathtt{survivor} \rceil]\):
 \begin{itemize}
-\item \emph{Outside the subtree at \(\tau\), outside \(N\), and off the ancestor chain to \(\tau\):} preserved verbatim.
-If \(\tau = \pi \mathbin{+\!\!+} [k]\) is non-empty: at \texttt{C@}\(\pi\) the \texttt{node\_state}, \texttt{slot\_states}, and \texttt{pifo} are unchanged; the slot \texttt{k} that used to point to \texttt{C@}\(\tau\) now points to \(N\), inheriting \(\mathtt{C@}\pi.\mathtt{slot\_states}[k]\) (the per-arm meta is held by \texttt{C@}\(\pi\), not by \(N\), so the wrap is transparent to the parent); \texttt{z} is extended as described in the next bullet.
-\item \emph{At each proper ancestor of \(\tau\) (including the root, and including \(\pi\)):} \texttt{node\_state}, \texttt{slot\_states}, and \texttt{pifo} preserved verbatim.
-The local \texttt{z} is extended to admit packets that classify into the new arm-1 subtree under \(N\), mapping them to whichever child slot at this ancestor lies on the path down to \(N\).
-Pre-existing mappings are untouched.
-This is the exact analog of \Add's ancestor \texttt{z}-extensions (\cref{sec:add}).
-\item \emph{At \(N\):} for any priority ranks \(\mathtt{hi} < \mathtt{lo}\), set
-\(\mathtt{node\_state} = \mathtt{init\_node\_Strict}()\) and
-\begin{align*}
-\mathtt{slot\_states} = [
-& \mathtt{init\_slot\_Strict}(\mathtt{node\_state}, \mathtt{hi}),\\
-& \mathtt{init\_slot\_Strict}(\mathtt{node\_state}, \mathtt{lo})].
-\end{align*}
-Arm 0 is the old \texttt{C@}\(\tau\) (verbatim, including its entire subtree and contents); arm 1 is \(\lceil \mathtt{survivor} \rceil\); \texttt{pifo} is seeded with \(P_0\) entries with slot value \texttt{0} and rank \texttt{hi} (one per packet still held under arm 0).
-\texttt{z} routes packets by leaf label: a packet whose label exists in \(\lceil \mathtt{survivor} \rceil\) goes to slot \texttt{1}, otherwise (label exists only in the old subtree) it goes to slot \texttt{0}.
-This rule is total on \(N\)'s admitted labels and resolves the overlap case toward the survivor: a label shared between the old subtree and \texttt{survivor} belongs to the survivor from \(\delta\)'s firing onward, while the residual packets under arm 0 drain on their existing entries.
-\item \emph{Inside \(\lceil \mathtt{survivor} \rceil\):} the local control is \(\lceil \mathtt{survivor} \rceil\)'s, verbatim.
+\item arm 0 is \(M\) verbatim (its whole subtree and contents) and arm 1 is \(\lceil \mathtt{survivor} \rceil\);
+\item for priorities \(\mathtt{hi} < \mathtt{lo}\), \(N.\mathtt{node\_state} = \mathtt{init\_node\_Strict}()\) and \(N.\mathtt{slot\_states} = [\,\mathtt{init\_slot\_Strict}(\mathtt{hi}),\, \mathtt{init\_slot\_Strict}(\mathtt{lo})\,]\);
+\item \(N.\mathtt{pifo}\) is seeded with \(P_0\) entries of slot \texttt{0} and rank \(\mathtt{hi}\), one per packet still under arm 0;
+\item \(N.\mathtt{z}\) routes a packet whose label is in \(\lceil \mathtt{survivor} \rceil\) to slot \texttt{1}, and otherwise to slot \texttt{0}.
 \end{itemize}
-
-If \(\tau\) is empty, the entire control becomes \(N\), with the old root sitting as arm 0.
+Because \(\mathtt{at}\) writes \(N\) back into the parent's slot \texttt{k}, that slot's inherited per-arm metadata is unchanged, so the wrap is transparent to the parent.
+If \(\tau\) is empty the whole control becomes \(N\), with the old root as arm 0.
 
 \paragraph{Note: Overlap between the old subtree and \texttt{survivor}}
 
@@ -840,108 +795,78 @@ Overlap of leaf labels between \texttt{C@}\(\tau\) and \texttt{survivor} is expl
 The moment \(\delta\) fires becomes the boundary between old traffic (which continues to drain from arm 0, \texttt{C@}\(\tau\)) and new traffic (which arm 1 admits): from this instant on, an arriving packet whose label appears in \(\lceil \mathtt{survivor} \rceil\) is routed by \(N.\mathtt{z}\) to slot 1, while the residual packets already under arm 0 drain on their existing \texttt{pifo} entries.
 The two arms thus stay operationally disjoint even when their label sets overlap, which is the very property that lets \Designate{} express in-place subtree replacement (\cref{sec:sequences}).
 
-\paragraph{Preservation}
-
-Preservation of \(\vdash\) holds at \(N\): by construction the \texttt{0}-count in \(N.\mathtt{pifo}\) equals the packet count under arm 0, and arm 1 holds no packets and no \texttt{1}-entries in \(N.\mathtt{pifo}\).
-Every node inside arm 0 is preserved verbatim, so its well-formedness count is inherited.
-At \texttt{C@}\(\pi\) (if \(\tau\) non-empty), \texttt{pifo} is unchanged, and the slot-\texttt{k} count \(P_0 + 0\) matches the count that \texttt{C@}\(\tau\) had under \texttt{C@}\(\pi\).
-The ancestor \texttt{z}-extensions touch no \texttt{pifo} and route no in-flight packet, so they affect only \texttt{push}es that arrive after this \(\sem{\Designate(\tau, \mathtt{survivor})}\).
-Preservation of state is the standard split: arm 0 is verbatim; arm 1 is \(\lceil \mathtt{survivor} \rceil\) by construction; \(N\)'s \texttt{node\_state} and \texttt{slot\_states} come from the listed \texttt{init} calls; everything else is verbatim.
-Non-disruption: every in-flight packet under arm 0 sits at exactly the same position it did in \texttt{C@}\(\tau\), since arm 0 is \texttt{C@}\(\tau\) verbatim.
-If \(P_0 > 0\), the smallest entry in \(N.\mathtt{pifo}\) is \texttt{0}, so any pop that descends to \(N\) continues into arm 0 and returns exactly the packet a pop before \(\delta\) fired would have.
-If \(P_0 = 0\), then by \(\vdash \mathtt{C}\) no pop ever descends to \(N\) (the subtree at \(\tau\) was already empty), so the question is vacuous.
-Arm 1 first sees traffic only after a future \texttt{push}.
-
 \paragraph{Characterization}
 
-\begin{verbatim}
-den(Designate([], survivor)) p =
-    Strict(p, survivor)
-den(Designate(i :: r, survivor)) (D ts) =
-    D ( ts[ den(Designate(r, survivor))
-                (ts[i]) / i ] )
-\end{verbatim}
+\[
+\den(\Designate(\tau, \mathtt{survivor})) = \mathtt{at}(\tau,\; M \mapsto \Strict(M, \mathtt{survivor})),
+\]
+wrapping the \texttt{pol} subtree at \(\tau\); \(\den\) yields \(\Strict\), not \(\Strictstar\) (the designated bit is \texttt{pol}-invisible).
+As with \Add, outside the wrap every node is structurally intact, arm 1 is \(\lceil \mathtt{survivor} \rceil\), and the ancestor \texttt{z}-extensions are \texttt{pol}-invisible, so \(\lfloor \mathtt{C'} \rfloor \eqR \den(\Designate(\tau, \mathtt{survivor}))(\lfloor \mathtt{C} \rfloor)\).
 
-\(\den\) returns \(\Strict\), not \(\Strictstar\): the designated bit is \texttt{pol}-invisible.
-The proof is the same shape as \Add's: the operational rule leaves every node outside the wrap structurally intact, the new arm 1 is \(\lceil \mathtt{survivor} \rceil\), and the new \(\Strictstar\) reads as \(\Strict\) at \texttt{pol}-level.
-So \(\lfloor \mathtt{C'} \rfloor \eqR \den(\Designate(\tau, \mathtt{survivor}))(\lfloor \mathtt{C} \rfloor)\).
+\paragraph{Preservation and non-disruption}
+
+Preservation of \(\vdash\): at \(N\), the \(P_0\) slot-\texttt{0} entries match the packet count under arm 0, and arm 1 holds no packet and no slot-\texttt{1} entry; arm 0 is verbatim; at \texttt{C@}\(\pi\), \texttt{pifo} is unchanged and slot \texttt{k}'s count \(P_0\) matches what \texttt{C@}\(\tau\) carried.
+Preservation of state: arm 0 verbatim, arm 1 is \(\lceil \mathtt{survivor} \rceil\), \(N\)'s state comes from the \texttt{init} calls above, everything else verbatim.
+Non-disruption takes a real argument here, since \(\mathtt{wrap}\) inserts the live node \(N\) with a non-empty \texttt{pifo}, so \cref{lem:nondisruption} does not apply directly.
+Every in-flight packet lies under arm 0 \(= \texttt{C@}\tau\) verbatim, so its own entries are untouched.
+If \(P_0 > 0\), every entry in \(N.\mathtt{pifo}\) is slot \texttt{0}, so any \texttt{pop} reaching \(N\) descends into arm 0 and returns exactly what it would have before; if \(P_0 = 0\), \(\vdash \mathtt{C}\) means no \texttt{pop} ever reaches \(N\).
+Arm 1 sees traffic only on a future \texttt{push}, so no buffered packet is dropped, reordered, or re-ranked, and \Designate{} is non-disruptive.
 
 \subsubsection{\texorpdfstring{\(\Undesignate(\tau)\)}{Undesignate}}\label{sec:undesignate}
 
-\(\tau : \mathtt{path}\) is the path to the target \(\Strictstar\) node being unwrapped.
-
-Say the presently running control is \texttt{C}.
-Intuitively, \Undesignate{} unwraps the \(\Strictstar(A, B)\) at \texttt{C@}\(\tau\) whose \(A\)-arm is empty, leaving \(B\) in its slot.
-It is the structural inverse of \Designate.
+\(\tau : \mathtt{path}\) targets the \(\Strictstar\) node to unwrap.
+\Undesignate{} is the structural inverse of \Designate: it drops a \(\Strictstar(A, B)\) whose \(A\)-arm is empty, leaving \(B\).
 
 \paragraph{Definition}
 
-\(\sem{\Undesignate(\tau)}(\mathtt{C})\) is defined when \(\tau\) resolves to \texttt{C@}\(\tau\), \texttt{C@}\(\tau\) carries the \texttt{designated} bit (so it is a \(\Strictstar\) introduced by an earlier \Designate), and arm 0 of \texttt{C@}\(\tau\) is empty.
-Let \(N = \mathtt{C@}\tau\).
-
-Inside \(B\) (arm 1 of \(N\)), every node is preserved verbatim.
-If \(\tau = \pi \mathbin{+\!\!+} [k]\) is non-empty, then at \texttt{C@}\(\pi\) the \texttt{node\_state}, \texttt{pifo}, and \texttt{z} are unchanged; \texttt{slot\_states[k]} is preserved verbatim (the wrapper inherited it at \Designate{} time, and the unwrap returns it unchanged); slot \texttt{k} now points to \(B\) rather than to \(N\); and \(N\) itself and its arm-0 stub are discarded.
-If \(\tau\) is empty, the new root is \(B\), inheriting \(B\)'s own \texttt{node\_state}, \texttt{slot\_states}, \texttt{pifo}, \texttt{z}, and child list verbatim, and \(N\) and its arm-0 stub are discarded.
-
-\paragraph{Preservation}
-
-Preservation of \(\vdash\): at \texttt{C@}\(\pi\), \texttt{pifo} is unchanged; slot \texttt{k}'s count was \(0 + |B|\) under \(N\) and is now \(|B|\) under \(B\) directly, so the count matches.
-Inside \(B\), every node is verbatim.
-The discarded \(N.\mathtt{pifo}\) was carrying its own count of arm-1 entries one level too deep: by \(\vdash \mathtt{C}\) and the empty-arm-0 precondition, that count equals \(|B|\), which is exactly what \(\mathtt{C@}\pi.\mathtt{pifo}\)'s \texttt{k}-entries already carry one level up.
-After the unwrap, those \texttt{k}-entries route directly to \(B\), whose pifo count is still \(|B|\), so the well-formedness obligation at \texttt{C@}\(\pi\) reads \(|B| = |B|\) and inside \(B\) reads as before.
-The previously-redundant routing step (``\(\Strictstar\) says go to arm 1,'' which arm 0 being empty had already forced) is the only step elided.
-Preservation of state: standard verbatim everywhere outside \(N\); \(N\)'s local state vanishes.
-Non-disruption: arm 0 holds no packet by precondition, so \(\Strictstar\)'s ``favor arm 0'' behavior was already routing every pop to arm 1, and the unwrap preserves this routing exactly.
+\[
+\sem{\Undesignate(\tau)} = \mathtt{at}(\tau,\, \mathtt{unwrap}),
+\]
+defined when \texttt{C@}\(\tau\) is a \(\Strictstar\) (it carries the \texttt{designated} bit, so an earlier \Designate{} made it) and its arm 0 is empty.
+\(\mathtt{unwrap}\) returns arm 1 of the node, \(B\), with its subtree and contents verbatim; the node \(N = \texttt{C@}\tau\) and its empty arm-0 stub are discarded.
+Since \(\mathtt{at}\) writes \(B\) back into the parent's slot \texttt{k}, that slot keeps its inherited per-arm metadata and \(B\) now hangs directly where \(N\) did.
 
 \paragraph{Characterization}
 
-\begin{verbatim}
-den(Undesignate([])) (Strict(A, B))
-    = B
-den(Undesignate(i :: r)) (D ts)
-    = D ( ts[ den(Undesignate(r)) (ts[i]) / i ] )
-\end{verbatim}
+\[
+\den(\Undesignate(\tau)) = \mathtt{at}(\tau,\; \Strict(A, B) \mapsto B),
+\]
+collapsing the wrapper (which reads as \(\Strict\) at \texttt{pol}-level); the empty-arm-0 precondition is operational.
+As with \Remove, nothing structural outside \(N\) moves and the wrapper is dropped, so \(\lfloor \mathtt{C'} \rfloor \eqR \den(\Undesignate(\tau))(\lfloor \mathtt{C} \rfloor)\).
 
-The base case is defined when the input matches \(\Strict(\_, \_)\); the operational rule additionally requires that arm 0 of \texttt{C@}\(\tau\) be empty at the moment \(\delta\) fires.
-The base case consumes the \(\Strict\) wrapper (which on the \texttt{pol} side is what the \(\Strictstar\) reads as).
-Proof shape is \Remove's: outside \(N\) nothing structural moves, and at \(N\) the \(\Strict\) wrapper is dropped.
-So \(\lfloor \mathtt{C'} \rfloor \eqR \den(\Undesignate(\tau))(\lfloor \mathtt{C} \rfloor)\).
+\paragraph{Preservation and non-disruption}
+
+Preservation of \(\vdash\): with arm 0 empty, \(N.\mathtt{pifo}\) carried \(|B|\) slot-\texttt{1} entries, and \(\mathtt{C@}\pi.\mathtt{pifo}\)'s slot-\texttt{k} entries carried the same count one level up; after the unwrap those \texttt{k}-entries route straight to \(B\), whose count is still \(|B|\), so \texttt{C@}\(\pi\) reads \(|B| = |B|\) and \(B\) reads as before.
+Preservation of state: verbatim outside \(N\); \(N\)'s state vanishes.
+Non-disruption: the only entries \Undesignate{} drops are \(N\)'s slot-\texttt{1} entries, and with arm 0 empty every \texttt{pop} reaching \(N\) was already forced to slot \texttt{1} \(\to B\); eliding \(N\) removes that redundant hop and returns the same packet, and no entry inside \(B\) moves, so \Undesignate{} is non-disruptive.
 
 \subsubsection{\texorpdfstring{\(\ChangeRoot(\nu)\)}{ChangeRoot}}\label{sec:changeroot}
 
-\(\nu : \mathtt{path}\) is the path to the subtree being promoted to the new root.
-
-Say the presently running control is \texttt{C}.
-Intuitively, \ChangeRoot{} promotes \texttt{C@}\(\nu\) to the new root, discarding every ancestor above it.
-It is the only production that erases structural ancestors, and the only one whose \texttt{pol}-level effect is to shrink the tree from above rather than edit it locally.
-The mechanics are short; the notes below are substantive.
+\(\nu : \mathtt{path}\) is the subtree promoted to the new root; \ChangeRoot{} discards every ancestor above \texttt{C@}\(\nu\).
+It is the only production that erases structural ancestors; the mechanics are short but the Notes below are substantive.
 
 \paragraph{Definition}
 
-\(\sem{\ChangeRoot(\nu)}(\mathtt{C})\) is defined when \(\nu\) is non-empty, resolves to a node in \texttt{C}, and every internal node strictly above \texttt{C@}\(\nu\) is \emph{unary}, with its sole arm continuing toward \texttt{C@}\(\nu\).
-Under these preconditions the discarded ancestor chain carries scheduling metadata but no off-path traffic.
-
-At \texttt{C@}\(\nu\) and inside its subtree, everything is preserved verbatim: the result \(\mathtt{C'}\) is exactly \texttt{C@}\(\nu\) standing alone as a tree.
-At every proper ancestor of \(\nu\), the local \texttt{node\_state}, \texttt{slot\_states}, \texttt{pifo}, and \texttt{z} are discarded entirely.
-
-\paragraph{Preservation}
-
-Preservation of \(\vdash\): \(\vdash \mathtt{C}\) is a conjunction of per-node well-formedness obligations, and the subset of those obligations attached to \texttt{C@}\(\nu\)'s nodes constitutes \(\vdash \mathtt{C@}\nu\), which is exactly \(\vdash \mathtt{C'}\).
-The discarded ancestors' obligations are simply forgotten.
-Preservation of state: standard verbatim within \texttt{C@}\(\nu\); ancestor state is gone.
-Non-disruption: every in-flight packet sits in some \texttt{pifo} within \texttt{C@}\(\nu\)'s subtree (the ancestor \texttt{pifo}s held routing entries, not packets), all preserved verbatim.
-A pop immediately after this \(\sem{\ChangeRoot(\nu)}\) returns exactly what a pop immediately before would have: a pop before \(\delta\) fires descends through the unary chain by popping each ancestor's PIFO in turn, and since each such PIFO has a single slot (slot \texttt{0}), the popped entry is forced to be a slot-\texttt{0} entry regardless of its rank; the descent therefore lands at \texttt{C@}\(\nu\)'s root and pops from there.
-A pop after \(\delta\) fires acts on \texttt{C@}\(\nu\)'s root directly, returning the same packet.
+\[
+\sem{\ChangeRoot(\nu)}(\mathtt{C}) = \texttt{C@}\nu,
+\]
+defined when \(\nu\) is non-empty, resolves in \texttt{C}, and every node strictly above \texttt{C@}\(\nu\) is \emph{unary} with its sole arm continuing toward \texttt{C@}\(\nu\) (so the discarded chain carries no off-path traffic).
+\texttt{C@}\(\nu\) and its subtree are kept verbatim; every proper ancestor's \texttt{(state, pifo, z)} is discarded.
 
 \paragraph{Characterization}
 
-\begin{verbatim}
-den(ChangeRoot(v)) p = p@v
-\end{verbatim}
+\[
+\den(\ChangeRoot(\nu))\,\mathtt{p} = \mathtt{p@}\nu.
+\]
+Compilation is per-node, so \(\lfloor \texttt{C@}\nu \rfloor = \lfloor \mathtt{C} \rfloor \mathbin{@} \nu\), giving \(\lfloor \mathtt{C'} \rfloor \eqR \den(\ChangeRoot(\nu))(\lfloor \mathtt{C} \rfloor)\).
 
-is defined whenever \(\nu\) is non-empty and resolves in \texttt{p}.
-The realizes-relation propagates structurally: if \texttt{C} realizes \texttt{p}, then \texttt{C@}\(\nu\) realizes \(\mathtt{p@}\nu\), since compilation is per-node and the discipline at each surviving node is unchanged.
-So \(\lfloor \mathtt{C'} \rfloor \eqR \mathtt{p@}\nu = \den(\ChangeRoot(\nu))(\lfloor \mathtt{C} \rfloor)\).
+\paragraph{Preservation and non-disruption}
+
+Preservation of \(\vdash\): \(\vdash \mathtt{C}\) is a conjunction of per-node obligations, and those on \texttt{C@}\(\nu\)'s nodes are exactly \(\vdash \texttt{C@}\nu = \vdash \mathtt{C'}\); the discarded ancestors' obligations are forgotten.
+Preservation of state: verbatim within \texttt{C@}\(\nu\); ancestor state is gone.
+Non-disruption: every in-flight packet sits in a \texttt{pifo} within \texttt{C@}\(\nu\) (the discarded ancestor pifos held routing entries, not packets).
+Those entries are redundant: a \texttt{pop} before \(\delta\) descends the unary chain, and each ancestor pifo has the single slot \texttt{0}, so every such pop is forced to slot \texttt{0} and lands at \texttt{C@}\(\nu\); a \texttt{pop} after \(\delta\) acts on \texttt{C@}\(\nu\) directly and returns the same packet.
+So \ChangeRoot{} is non-disruptive.
 
 \paragraph{Notes}
 
