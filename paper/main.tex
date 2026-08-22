@@ -234,24 +234,23 @@ The strategy, though, is the same: give the operator a syntactic surface, then c
 \[
 \begin{array}{@{}l@{}}
 \mathit{flow} \in F\\[2pt]
-\mathit{pol} \mathrel{::=} \mathit{flow} \;\mid\; D(\mathit{pol}_1, \ldots, \mathit{pol}_n)\\[8pt]
 \mathit{rank} \in \mathbb{N} \qquad w \in \mathbb{R}_{>0}\\[2pt]
 \mathit{sPol} \mathrel{::=} \mathit{flow}\\
 \qquad \mid\; \Strict(\mathit{rank}_1{:}\,\mathit{sPol}_1, \ldots, \mathit{rank}_n{:}\,\mathit{sPol}_n)\\
 \qquad \mid\; \RR(\mathit{sPol}_1, \ldots, \mathit{sPol}_n)\\
-\qquad \mid\; \WFQ(w_1{:}\,\mathit{sPol}_1, \ldots, w_n{:}\,\mathit{sPol}_n)
+\qquad \mid\; \WFQ(w_1{:}\,\mathit{sPol}_1, \ldots, w_n{:}\,\mathit{sPol}_n)\\[8pt]
+\mathit{pol} \mathrel{::=} \mathit{flow} \;\mid\; D(\mathit{pol}_1, \ldots, \mathit{pol}_n)
 \end{array}
 \]
-\caption{The abstract policy grammar \texttt{pol} (top) and its surface syntax \texttt{sPol} (bottom).}
+\caption{The surface syntax \texttt{sPol} the operator writes (top) and the abstract policy grammar \texttt{pol} it compiles to (bottom).}
 \label{fig:pol-grammar}
 \end{figure}
-A \texttt{pol} is either a leaf labeled by a flow or an internal node running a scheduling discipline \texttt{D} over \texttt{n} child policies (\cref{fig:pol-grammar}).
+The operator writes a \emph{surface policy}, an \texttt{sPol} (\cref{fig:pol-grammar}, top): either a leaf labeled by a flow, or an internal node running a scheduling discipline \texttt{D} over \texttt{n} child policies, each arm annotated with the per-arm metadata that \texttt{D} needs to schedule it (a \texttt{Strict} priority, a \texttt{WFQ} weight, nothing for \texttt{RoundRobin}).
 The family of disciplines is open: \texttt{D} is any discipline equipped with the compilation recipe of the next paragraph, and nothing in this section depends on which disciplines are on hand.
 Our surface syntax and implementation instantiate three representative ones, \texttt{Strict}, \texttt{RoundRobin}, and \texttt{WFQ}, chosen because they span the axis that matters here, the per-arm state a discipline keeps: \texttt{RoundRobin} keeps none, \texttt{WFQ} keeps a weight together with a virtual-time tag, \texttt{Strict} keeps a priority, and a further discipline might keep state of a different kind again.
-Accordingly a discipline may require per-arm metadata that shapes how an arm is scheduled: a \texttt{WFQ} weight, a \texttt{Strict} priority, nothing for \texttt{RoundRobin}.
-The abstract \texttt{pol} grammar carries no structural mark of this; the surface syntax \texttt{sPol} (\cref{fig:pol-grammar}, bottom) is where the operator writes it.
 
-Compilation from \texttt{sPol} to \texttt{pol} carries the per-arm metadata into the arm's \texttt{slot\_state} (see \texttt{init\_slot\_D} below), where \texttt{push}/\texttt{pop} can read it but not modify it; the abstract grammar is what \(\delta\) (\cref{sec:delta-grammar}) and the theorems of this section reason over.
+Compilation erases these surface annotations, carrying each arm's metadata into its \texttt{slot\_state} (via \texttt{init\_slot\_D} below), where \texttt{push}/\texttt{pop} may read it but not modify it; it yields the \emph{abstract policy} \texttt{pol} (\cref{fig:pol-grammar}, bottom), a leaf flow or \(D(\mathit{pol}_1, \ldots, \mathit{pol}_n)\) that carries no structural mark of the metadata.
+The abstract \texttt{pol} is what \(\delta\) (\cref{sec:delta-grammar}) and the theorems of this section reason over.
 We read the arity off by counting children, so \texttt{Strict(zoom, gmail)} is the 2-ary instance of the discipline \texttt{Strict}.
 Each leaf label denotes a \emph{flow}: a predicate over packets.
 
@@ -286,18 +285,7 @@ When a new arm is spliced under an already-running \texttt{D}-parent (\cref{sec:
 Choosing \texttt{init\_slot\_D} is a scheduling decision, not just a structural one, since the choice changes how a freshly spliced arm competes with the established arms.
 We broadly make the choice to ``join the current round''.
 For example, if going from \texttt{WFQ(A,B)} to \texttt{WFQ(A,B,C)}, we do not want the newly added \texttt{C} to reap a huge benefit for ``having been silent all this while''; we just want it to join the others with neither a penalty nor an advantage.
-The choice plays out as follows for each of our three representative disciplines.
-
-\begin{itemize}
-% // AM: I don't think we can afford so much real estate for this. Let's discuss. It may need to go into an appendix or something.
-\item \textbf{\texttt{RoundRobin}.} \texttt{init\_slot\_RoundRobin} returns the empty tuple; RR has no per-arm bookkeeping.
-The round-robin cursor lives in \texttt{node\_state} instead, and at \Add{} we splice the new arm into the child list at the cursor's current position, so its first turn lands in the round already in progress.
-The cursor itself is left pointing at the same physical arm it was pointing at before the splice.
-\item \textbf{\texttt{Strict}.} \texttt{init\_slot\_Strict(\_, p) = p}: the arm's \texttt{slot\_state} is just its priority rank, drawn from a dense total order such as the rationals so that a fresh priority can always be slotted strictly between two existing ones.
-\item \textbf{\texttt{WFQ}.} The \texttt{node\_state} at a parent is the virtual time \texttt{vt}, and \texttt{init\_slot\_WFQ(vt, w) = (w, vt)}: a new arm carries its weight \texttt{w} and inherits the parent's current \texttt{vt} as its last-finish tag.
-Any standard WFQ tagging that derives the next packet's tag from the slot's last-finish tag and the parent's \texttt{vt} (e.g., the GPS-style \texttt{max(virtual\_clock, vt) + 1/w}) then slots the first packet on this arm into the round that the established arms are currently in.
-At compile time the parent's \texttt{vt} is freshly initialized (to zero), so all original arms get \texttt{(w, 0)} and the round is ``the zeroth''; at \Add{} the parent's \texttt{vt} is whatever the clock has advanced to.
-\end{itemize}
+The per-discipline recipes that realize this choice, for \texttt{Strict}, \texttt{RoundRobin}, and \texttt{WFQ}, are given in \cref{app:init-slot}.
 
 \paragraph{Policy Compilation: \texttt{pol} to control}
 
@@ -1819,5 +1807,22 @@ Mittal et al., LSTF, SIGCOMM 2016.
 \bibitem{Sivaraman16}
 Sivaraman et al., PIFO, SIGCOMM 2016.
 \end{thebibliography}
+
+\appendix
+
+\section{Per-Discipline Slot Initialization}\label{app:init-slot}
+
+\cref{sec:policy-dsl} fixes the design choice that a freshly spliced arm should ``join the current round'', entering with neither the penalty nor the advantage of having been absent.
+Here are the \texttt{init\_slot\_D} recipes that realize it for our three representative disciplines.
+
+\begin{itemize}
+\item \textbf{\texttt{RoundRobin}.} \texttt{init\_slot\_RoundRobin} returns the empty tuple; RR has no per-arm bookkeeping.
+The round-robin cursor lives in \texttt{node\_state} instead, and at \Add{} we splice the new arm into the child list at the cursor's current position, so its first turn lands in the round already in progress.
+The cursor itself is left pointing at the same physical arm it was pointing at before the splice.
+\item \textbf{\texttt{Strict}.} \texttt{init\_slot\_Strict(\_, p) = p}: the arm's \texttt{slot\_state} is just its priority rank, drawn from a dense total order such as the rationals so that a fresh priority can always be slotted strictly between two existing ones.
+\item \textbf{\texttt{WFQ}.} The \texttt{node\_state} at a parent is the virtual time \texttt{vt}, and \texttt{init\_slot\_WFQ(vt, w) = (w, vt)}: a new arm carries its weight \texttt{w} and inherits the parent's current \texttt{vt} as its last-finish tag.
+Any standard WFQ tagging that derives the next packet's tag from the slot's last-finish tag and the parent's \texttt{vt} (e.g., the GPS-style \texttt{max(virtual\_clock, vt) + 1/w}) then slots the first packet on this arm into the round that the established arms are currently in.
+At compile time the parent's \texttt{vt} is freshly initialized (to zero), so all original arms get \texttt{(w, 0)} and the round is ``the zeroth''; at \Add{} the parent's \texttt{vt} is whatever the clock has advanced to.
+\end{itemize}
 
 \end{document}
