@@ -231,7 +231,6 @@ The strategy, though, is the same: give the operator a syntactic surface, then c
 \paragraph{Policy syntax}
 
 \begin{figure}[t]
-\small
 \[
 \begin{array}{@{}l@{}}
 \mathit{flow} \in F\\[2pt]
@@ -246,8 +245,6 @@ The strategy, though, is the same: give the operator a syntactic surface, then c
 \caption{The abstract policy grammar \texttt{pol} (top) and its surface syntax \texttt{sPol} (bottom).}
 \label{fig:pol-grammar}
 \end{figure}
-% // AM: I think the font is too small now.
-% // AM: should sPol be presented above pol? Both here and in the prose?
 A \texttt{pol} is either a leaf labeled by a flow or an internal node running a scheduling discipline \texttt{D} over \texttt{n} child policies (\cref{fig:pol-grammar}).
 The family of disciplines is open: \texttt{D} is any discipline equipped with the compilation recipe of the next paragraph, and nothing in this section depends on which disciplines are on hand.
 Our surface syntax and implementation instantiate three representative ones, \texttt{Strict}, \texttt{RoundRobin}, and \texttt{WFQ}, chosen because they span the axis that matters here, the per-arm state a discipline keeps: \texttt{RoundRobin} keeps none, \texttt{WFQ} keeps a weight together with a virtual-time tag, \texttt{Strict} keeps a priority, and a further discipline might keep state of a different kind again.
@@ -271,12 +268,13 @@ Validity is a condition on the source \texttt{pol}, not to be confused with the 
 Each discipline \texttt{D} comes with a mechanical recipe for compiling a node that runs it: (a) a per-node scheduling transaction, (b) an initial \texttt{node\_state} for the node, and (c) a \texttt{slot\_state} for each child of the node.
 We name the two state-seeding projections:
 
-\begin{verbatim}
-init_node_D : () -> node_state
-init_slot_D : node_state x meta? -> slot_state
-meta?  ::= eps  |  priority-rank  |  weight
-\end{verbatim}
-% // AM: Make this math mode in a figure. Perhaps merged with the figure with pol and sPol.
+\[
+\begin{array}{@{}l@{}}
+\mathtt{init\_node}_{\mathtt{D}} : ()\ \to\ \mathtt{node\_state}\\[2pt]
+\mathtt{init\_slot}_{\mathtt{D}} : \mathtt{node\_state} \times \mathtt{meta?}\ \to\ \mathtt{slot\_state}\\[2pt]
+\mathtt{meta?} \mathrel{::=} \epsilon \;\mid\; \text{priority-rank} \;\mid\; \text{weight}
+\end{array}
+\]
 
 The \texttt{meta?} argument is the per-arm metadata that discipline \texttt{D} requires: a weight for \texttt{WFQ}, a priority rank for \texttt{Strict}, absent for \texttt{RoundRobin}.
 \texttt{init\_node\_D} is called only at \emph{compile time}, once per node, to seed that node's \texttt{node\_state}.
@@ -518,7 +516,6 @@ Since \texttt{C@}\(\pi\) has \(k\) children before the splice, appending the new
 \sem{\Add([\,])}\ \langle\mathtt{state},\mathtt{pifo},\mathtt{z}\rangle(\mathtt{cs}) \;=\\
 \quad \langle\mathtt{state'},\mathtt{pifo},\mathtt{z'}\rangle(\mathtt{cs}\mathbin{+\!\!+}[\lceil\mathtt{arm}\rceil])\\
 \quad \textbf{where}\ \mathtt{state'}=(\mathtt{node\_state},\ \mathtt{slot\_states}\mathbin{+\!\!+}[\mathtt{s}])\\
-% // AM: node_state and slot_states appear to be undef although they are. Add a "recall that state = ..." in the figure itself and cut it from the prose
 \quad \phantom{\textbf{where}}\ \mathtt{s}=\mathtt{init\_slot\_D}(\mathtt{node\_state},\mathtt{meta?})\\
 \quad \phantom{\textbf{where}}\ \mathtt{z'}=\mathtt{admit}(\mathtt{z},\mathtt{flows}(\mathtt{arm}),\mathtt{k})\\[8pt]
 % // AM: admit appears to be undef
@@ -531,11 +528,10 @@ Since \texttt{C@}\(\pi\) has \(k\) children before the splice, appending the new
 \quad \mathtt{E}(\mathtt{ts}[\,\den(\Add(\mathtt{rest}))(\mathtt{ts}[\mathtt{i}])/\mathtt{i}\,])
 \end{array}
 \)
-\caption{The operational reading \(\sem{\Add}\) (top) and the denotational reading \(\den(\Add)\) (bottom), recursions on \(\pi\) of the same shape. The fixed payload \texttt{D}, \texttt{arm}, \texttt{meta?} is threaded unchanged and suppressed. \(\langle\mathtt{state},\mathtt{pifo},\mathtt{z}\rangle(\mathtt{cs})\) destructures a control node; \(\mathtt{D}\ \mathtt{ts}\) and \(\mathtt{E}\ \mathtt{ts}\) pattern-match a \texttt{pol} node into its discipline and child list.}
+\caption{The operational reading \(\sem{\Add}\) (top) and the denotational reading \(\den(\Add)\) (bottom), recursions on \(\pi\) of the same shape. The fixed payload \texttt{D}, \texttt{arm}, \texttt{meta?} is threaded unchanged and suppressed. \(\langle\mathtt{state},\mathtt{pifo},\mathtt{z}\rangle(\mathtt{cs})\) destructures a control node; \(\mathtt{D}\ \mathtt{ts}\) and \(\mathtt{E}\ \mathtt{ts}\) pattern-match a \texttt{pol} node into its discipline and child list. Recall \(\mathtt{state}=(\mathtt{node\_state},\mathtt{slot\_states})\).}
 \label{fig:add-rules}
 \end{figure}
 
-Here \texttt{state = (node\_state, slot\_states)}.
 The base case (\(\pi = []\)) has reached the parent of the new arm: it appends \(\lceil \mathtt{arm} \rceil\) as the last child (slot \texttt{k}), appends that slot's bookkeeping \(\mathtt{init\_slot\_D}(\mathtt{node\_state}, \mathtt{meta?})\) (with \texttt{D}, the discipline the production carries), and extends its transaction to \(\mathtt{admit}(\mathtt{z}, \mathtt{flows}(\mathtt{arm}), k)\), sending the new flows to the new child; \texttt{node\_state} and \texttt{pifo} are untouched.
 Appending the arm is legitimate because our arm-order freedom (\cref{sec:policy-dsl}) lets us place the new child last.
 The recursive case steps into the on-path child \texttt{i}, writes the result back, and extends this ancestor's transaction to \(\mathtt{admit}(\mathtt{z}, \mathtt{flows}(\mathtt{arm}), i)\), sending the new flows one step further down toward \(\pi\); its \texttt{node\_state}, \texttt{slot\_states}, and \texttt{pifo} are carried verbatim.
@@ -711,10 +707,11 @@ Non-disruption: \(\mathtt{drop}_k\) removes only an \emph{empty} slot and renumb
     ]
     \node {$P$\\\texttt{[1,2,1,2,1,2,1,2]}}
       child {node {$Q$\\\texttt{[1,1,2,2]}}
-        child {node {$A$\\\texttt{[a2,a1]}}}
-        child {node {$B$\\\texttt{[b2,b1]}}}
+        child {node {$A$\\\texttt{[a2,a1]}} edge from parent node[left]{\texttt{1}}}
+        child {node {$B$\\\texttt{[b2,b1]}} edge from parent node[right]{\texttt{2}}}
+        edge from parent node[left]{\texttt{1}}
       }
-      child {node {$C$\\\texttt{[c4,c3,c2,c1]}}};
+      child {node {$C$\\\texttt{[c4,c3,c2,c1]}} edge from parent node[right]{\texttt{2}}};
     \end{tikzpicture}
     \caption{Original tree.}
     \label{fig:remove-orig}
@@ -728,9 +725,10 @@ Non-disruption: \(\mathtt{drop}_k\) removes only an \emph{empty} slot and renumb
     ]
     \node {$P$\\\texttt{[1,2,1,2,\cancel{1},2,\cancel{1},2]}}
       child {node {$Q$\\\texttt{[1,1]}}
-        child {node {$A$\\\texttt{[a2,a1]}}}
+        child {node {$A$\\\texttt{[a2,a1]}} edge from parent node[left]{\texttt{1}}}
+        edge from parent node[left]{\texttt{1}}
       }
-      child {node {$C$\\\texttt{[c4,c3,c2,c1]}}};
+      child {node {$C$\\\texttt{[c4,c3,c2,c1]}} edge from parent node[right]{\texttt{2}}};
     \end{tikzpicture}
     \caption{Keep leftmost \texttt{1}s: emits packets \texttt{c1, c2, c3, a1, c4, a2}.}
     \label{fig:remove-leftmost}
@@ -744,9 +742,10 @@ Non-disruption: \(\mathtt{drop}_k\) removes only an \emph{empty} slot and renumb
     ]
     \node {$P$\\\texttt{[\cancel{1},2,\cancel{1},2,1,2,1,2]}}
       child {node {$Q$\\\texttt{[1,1]}}
-        child {node {$A$\\\texttt{[a2,a1]}}}
+        child {node {$A$\\\texttt{[a2,a1]}} edge from parent node[left]{\texttt{1}}}
+        edge from parent node[left]{\texttt{1}}
       }
-      child {node {$C$\\\texttt{[c4,c3,c2,c1]}}};
+      child {node {$C$\\\texttt{[c4,c3,c2,c1]}} edge from parent node[right]{\texttt{2}}};
     \end{tikzpicture}
     \caption{Keep rightmost \texttt{1}s: emits packets \texttt{c1, a1, c2, a2, c3, c4}.}
     \label{fig:remove-rightmost}
@@ -754,7 +753,6 @@ Non-disruption: \(\mathtt{drop}_k\) removes only an \emph{empty} slot and renumb
   \caption{Removing the occupied leaf \texttt{B} from \texttt{P(Q(A, B), C)}. Each internal node carries its index-PIFO and each leaf carries its packet queue; the next entry to pop sits on the far right, so a leaf \texttt{[a2,a1]} releases \texttt{a1} before \texttt{a2}, and an internal-node PIFO \texttt{[1,2,1,2]} yields slot indices \texttt{2, 1, 2, 1} in pop order. A struck entry like \cancel{\texttt{1}} is one we have dropped from the PIFO. At \texttt{Q} the edit is forced; at \texttt{P} two arbitrary choices of which \texttt{1}s to drop yield two different service orders.}
   \label{fig:remove-ambiguity}
 \end{figure*}
-% // AM: in this figure I want the edges labeled with 1 and 2 as needed. E.g. from P to Q labeled "1".
 
 Deleting an \emph{occupied} child has no canonical local realization.
 Consider \texttt{P(Q(A, B), C)}, shown in \cref{fig:remove-orig}.
@@ -936,23 +934,32 @@ Picture a commuting square:
 
 \begin{center}
 \begin{tikzpicture}[
-  node distance=1.2cm and 3.2cm,
-  every node/.style={font=\small},
-  ->, >={Stealth[length=4pt]}
+  >={Stealth[length=4pt]},
+  every node/.style={font=\small}
 ]
-\node (p1) {\texttt{p1}};
-\node (p2) [right=of p1] {\texttt{p2}};
-\node[inner xsep=1pt] (c1) [below=of p1] {\texttt{C1}};
-\node[inner xsep=1pt, right=1pt of c1] (c1p) {$\sim$ \texttt{C1'}};
-\node[inner xsep=1pt] (c2) [below=of p2] {\texttt{C2}};
-\node[inner xsep=1pt, left=1pt of c2] (c2p) {\texttt{C2'} $\simR$};
-\draw (p1) -- node[above]{$\den(\delta)$} (p2);
-\draw (c1p) -- node[above]{$\sem{\delta}$} (c2p);
-\draw (p1) -- node[left]{$\lfloor\cdot\rfloor$} (c1);
-\draw (p2) -- node[right]{$\lfloor\cdot\rfloor$} (c2);
+% pol row (top)
+\node (p1)  at (0,2.2)    {\texttt{p1}};
+\node (p1p) at (0.95,2.2) {\texttt{p1'}};
+\node (p2)  at (6,2.2)    {\texttt{p2}};
+\node (p2p) at (6.95,2.2) {\texttt{p2'}};
+% control row (bottom)
+\node (c1)  at (0,0)      {\texttt{C1}};
+\node       at (0.48,0)   {$\sim$};
+\node (c1p) at (0.95,0)   {\texttt{C1'}};
+\node (c2p) at (6,0)      {\texttt{C2'}};
+\node (c2)  at (6,0.8)    {\texttt{C2}};
+\node       at (6,0.4)    {\rotatebox{90}{$\simR$}};
+% compilations (down)
+\draw[->] (p1) -- node[left]{$\lceil\cdot\rceil$} (c1);
+\draw[->] (p2) -- node[left]{$\lceil\cdot\rceil$} (c2);
+% read-offs (dotted, arced, up)
+\draw[->,dotted] (c1)  to[bend right=45] node[pos=0.5,right]{$\lfloor\cdot\rfloor$} (p1p);
+\draw[->,dotted] (c2p) to[bend right=45] node[pos=0.5,right]{$\lfloor\cdot\rfloor$} (p2p);
+% the two readings
+\draw[->] (p1p) -- node[above]{$\den(\delta)$} (p2);
+\draw[->] (c1p) -- node[above]{$\sem{\delta}$} (c2p);
 \end{tikzpicture}
 \end{center}
-% // AM: I kind of think it would be nice to have a arced dotted line from C1 to p1', which would sit to the right of p1. Then the den(delta) arrow would emerge from p1', not from p1. Similar with p2'... draw an ana arced dotted arrow from C2' to p2', and set p2' near p2. Finally, I would like the bottom right edge of the diagram to have C2', not C2. Let's pull C2 up a little, so that it sits above C2'. And let's write the ~R sideways between them.
 
 Read it with an eye to the user's experience.
 Our final goal will be to correctly relate \texttt{C2'} and \texttt{C2}.
