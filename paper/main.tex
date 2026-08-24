@@ -655,7 +655,7 @@ As before, \(\tau : \mathtt{path}\) is the non-empty target arm; destruct it as 
 defined when \(\tau\) resolves in \texttt{C}, the subtree at \(\tau\) is empty, and \texttt{C@}\(\tau\) does not run the discipline \(\Strictstar\) (the planner reaches a \(\Strictstar\) only through \Undesignate).
 \(\mathtt{drop}_k\) removes child \texttt{k} and its \texttt{slot\_states} entry, shifts siblings \(> k\) down by one, and adjusts the node's \texttt{z}: inputs that routed to slot \texttt{k} leave its domain, and a surviving output \((i, r)\) with \(i > k\) becomes \((i-1, r)\).
 Emptiness and \(\vdash \mathtt{C}\) force \(\mathtt{C@}\pi.\mathtt{pifo}\) to hold \emph{no entry} equal to \texttt{k}, so \texttt{pifo} loses no entry, and surviving entries keep their child (a substrate keying children by stable handles, \cref{sec:hardware}, need not even renumber them).
-% // AM: Add an xxx note from AM to Zhiyuan, asking if we ourselves do this stable handling thing. If we do, we should say so here and point ot S6 or whatever.
+\xxx[AM to Zhiyuan]{Does Rio's substrate actually key children by stable handles, so \Remove{} renumbers no live entry? If so, let's say so plainly here and cite the mechanism in \cref{sec:hardware}; if not, we should drop the ``need not even renumber'' parenthetical.}
 \texttt{node\_state}, and every node outside \texttt{C@}\(\pi\) and the removed subtree, is verbatim.
 
 \paragraph{Characterization}
