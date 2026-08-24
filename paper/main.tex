@@ -577,8 +577,11 @@ Inside \(\lceil \mathtt{arm} \rceil\), every node's \texttt{node\_state} and \te
 
 \paragraph{Characterization}
 
-% // AM: Before "we must state den...", we need some more preamble to explain what we're doing and why. Give the type of den. Explain its importance in user-space versus the importance of [[delta]] in hw space
-We must state \(\den(\Add(\pi, \mathtt{D}, \mathtt{arm}, \mathtt{meta?}))\) in closed form and prove \(\lfloor \mathtt{C'} \rfloor \eqR \den(\Add(\pi, \mathtt{D}, \mathtt{arm}, \mathtt{meta?}))(\lfloor \mathtt{C} \rfloor)\).
+The Definition said what \Add{} does to the running control; Characterization says what it \emph{means} to the operator.
+The two readings live in different worlds.
+\(\sem{\Add}\) is the operational rewrite the hardware installs, a map \(\mathtt{control} \rightharpoonup \mathtt{control}\); \(\den(\Add)\) is a closed-form map \(\mathtt{pol} \rightharpoonup \mathtt{pol}\) on the operator's source language, naming how the policy the operator sees changes.
+Characterization bridges them: running \(\sem{\Add}\) on the control realizes, at \texttt{pol}-level, exactly the edit \(\den(\Add)\) names, which is what lets the runtime echo the new policy back to the operator (\cref{sec:equivalences}).
+Concretely, we must state \(\den(\Add(\pi, \mathtt{D}, \mathtt{arm}, \mathtt{meta?}))\) in closed form and prove \(\lfloor \mathtt{C'} \rfloor \eqR \den(\Add(\pi, \mathtt{D}, \mathtt{arm}, \mathtt{meta?}))(\lfloor \mathtt{C} \rfloor)\).
 
 We define \(\den\) by recursion on \(\pi\) (\cref{fig:add-rules}, bottom).
 Its node patterns \(\mathtt{D\ ts}\) and \(\mathtt{E\ ts}\) split a \texttt{pol} node into its discipline and child list \texttt{ts}, just as \(\mathtt{D}(\mathtt{arms})\) is written in \cref{sec:policy-dsl}.
@@ -675,11 +678,10 @@ The footprint is the \texttt{z}-restrictions across \(T \cup A\), which touch no
 \paragraph{Note: Why touch every node on every quiesced push path}
 
 Under \cref{sec:policy-dsl}'s parallel \texttt{push}, every node on the path from a packet's destination leaf to the system root mints an index via its local \texttt{z} independently of the others.
-If we restricted \texttt{z} only at a strict subset of those nodes (only the root of the tree, or only inside \texttt{C@}\(\tau\)), the rest would happily mint indices and enqueue them, leaving the tree in a malformed state.
-% // AM: That is, |- would be violated and a future `pop` might get stuck
+If we restricted \texttt{z} only at a strict subset of those nodes (only the root of the tree, or only inside \texttt{C@}\(\tau\)), the rest would happily mint indices and enqueue them.
+The tree would then be malformed: some node's index-\texttt{pifo} would hold an entry with no matching packet in the subtree below it (or, symmetrically, a buffered packet with no index above it), breaking \(\vdash\); a later \texttt{pop} that followed such an entry could descend toward a leaf with nothing to emit and get stuck.
 \Quiesce{} therefore restricts uniformly, at the leaf (so it refuses to enqueue) and at every ancestor of every quiesced leaf (so no node mints a stray index).
-The cost is touching \(|T|\) leaves and the union of their ancestor chains; the gain is a rejection that preserves \(\vdash \mathtt{C'}\).
-% // AM: another gain is that we get to keep doing our massively parallel push
+The cost is touching \(|T|\) leaves and the union of their ancestor chains; the gains are two: the rejection preserves \(\vdash \mathtt{C'}\), and admission stays a purely node-local decision, so the massively parallel \texttt{push} of \cref{sec:policy-dsl} keeps working unchanged, with no node having to coordinate with another.
 
 \subsubsection{\texorpdfstring{\(\Remove(\tau)\)}{Remove}}\label{sec:remove}
 
