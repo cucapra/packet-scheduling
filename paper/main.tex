@@ -300,7 +300,6 @@ The per-discipline recipes that realize this choice, for \texttt{Strict}, \textt
 \paragraph{Policy Compilation: \texttt{pol} to control}
 
 We write \(\lceil p \rceil\) for the control compiled from \texttt{p}.
-% // AM: the p in ceil and the p in texttt are meant to be the same but do not look the same in PDF. A mathematician will read them as different objects.
 The tree shape of \(\lceil p \rceil\) exactly matches that of \texttt{p}, and at each node the local triple \texttt{(state, pifo, z)} of \cref{sec:controls} is filled in as follows: \texttt{state}'s \texttt{node\_state} is seeded by \texttt{init\_node\_D()} and each entry of the \texttt{slot\_state} list is seeded by the corresponding arm's \texttt{init\_slot\_D} call; \texttt{pifo} starts empty; \texttt{z} is \texttt{D}'s scheduling transaction at this node.
 
 \subsection{A Grammar for Tree Differences}\label{sec:delta-grammar}
@@ -310,7 +309,6 @@ Each production has two readings, both pinned down per-production in \cref{sec:p
 The grammar is shaped by two demands, the first of which is exactly what makes each edit \emph{atomic}.
 It must be \emph{hardware-realizable}: a production is admitted into the grammar iff \(\sem{\delta}\) can be committed atomically by the hardware substrate (\cref{sec:hardware}).
 It must also be \emph{pol-explainable}: every production has a \(\den(\delta)\)\footnote{for transaction-only productions (whose effect lives entirely in \texttt{z}), \(\den(\delta)\) is the identity on \texttt{pol}}, which is what lets the planner (\cref{sec:sequences}) infer a \(\delta\) whose \texttt{pol}-level meaning can be checked and echoed back to the user.
-% // Let's avoid footnotes, especially on math. It looks like "squared".
 
 Each edit names \emph{where} in the tree the change lands and \emph{what} the change is.
 Throughout this section, \texttt{p1} is the presently running policy; we write \texttt{p1@path} for the subtree of \texttt{p1} reached by following \texttt{path} down from its root.
@@ -426,7 +424,6 @@ The lemma can read counterintuitively: inverting the two priorities of \(\Strict
 Only packets pushed after the change feel the new priorities.
 
 Several productions (\Add, \Quiesce, \Remove, \Designate) modify~\texttt{z} at proper ancestors of the edit site, even though those nodes' \texttt{state} is preserved verbatim.
-% // AM: note that I used a non-breaking space ~, making it "modify~\texttt{z}". This prevents the z from being the first character on a new line. I would like to do this all over the paper whenever a single piece of math is liable to end up on the next line. I am noting this here, but we'll tackle it in a separate pass.
 There is no separate obligation for these \texttt{z} edits: their \texttt{pol}-invisible content is absorbed by Characterization (which is up to \(\eqR\), and \texttt{z} does not appear in \texttt{pol}), and their effect on the in-flight stream is absorbed by non-disruption (\cref{lem:nondisruption}: every live \texttt{pifo} entry survives a \texttt{z} edit verbatim).
 
 \paragraph{Notation}
@@ -460,7 +457,6 @@ As a warm-up, we discharge the five obligations in some detail for the productio
 The remaining productions reuse the same obligations and arguments, so for them we give the closed-form \(\den\), the per-node rule, and only the points where a preservation argument departs from \Add's.
 
 \subsubsection{\texorpdfstring{\(\Add(\pi, \mathtt{D}, \mathtt{arm}, \mathtt{meta?})\)}{Add}}\label{sec:add}
-% // AM: the font of arm, meta, etc has drifted compared to the font in the figure that has the BNF
 
 We rename \cref{sec:delta-grammar}'s positional arguments for clarity: \(\pi : \mathtt{path}\) is the path to the node that will receive the new arm as its last child, \(\mathtt{arm} : \mathtt{pol}\) is the policy of the new arm, and \texttt{meta?} is the discipline-dependent per-arm metadata of \cref{sec:delta-grammar}.
 
@@ -595,7 +591,6 @@ Under \WFQ, \texttt{init\_slot\_WFQ} (\cref{sec:policy-dsl}) seeds the slot with
 \paragraph{Preservation and non-disruption}
 
 \(\mathtt{setmeta}_k\) touches one \texttt{slot\_state} field and no child, so \(\vdash\)-counts and every node's structure are inherited and \texttt{state} elsewhere is verbatim.
-% // AM: In general I don't love your use of "verbatim" and I would like a change to "left unchanged" something like that. It needs to be done carefully case-by-case.
 Its footprint is that single field, which is not a live \texttt{pifo} entry, so \ChangeMeta{} is non-disruptive by \cref{lem:nondisruption}: an in-flight entry's rank was fixed when it was pushed, and the new metadata governs only future pushes.
 
 \paragraph{Note: Why the virtual-finish tag is preserved (WFQ)}
