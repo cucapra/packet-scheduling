@@ -56,6 +56,23 @@
 \newcommand{\PruneDownTo}{\textsf{PruneDownTo}}
 \newcommand{\den}{\mathsf{den}}
 
+% Small drawn queues for the Designate figure.
+% \leafbox{k}: a 5-cell buffer whose rightmost k cells each hold a packet (a dot).
+\newcommand{\leafbox}[1]{%
+\begin{tikzpicture}[baseline=-0.55ex,x=1.8ex,y=1.8ex]
+  \foreach \i in {1,...,5}{%
+    \node[draw,minimum size=1.8ex,inner sep=0pt] at (\i,0) {};%
+    \ifnum\i>\numexpr5-#1\relax \node at (\i,0) {$\cdot$};\fi}%
+\end{tikzpicture}%
+}
+% \pifobox{list}: one cell per comma-separated entry, drawn left to right (popped right to left).
+\newcommand{\pifobox}[1]{%
+\begin{tikzpicture}[baseline=-0.55ex,x=1.8ex,y=1.8ex]
+  \foreach \c [count=\i] in {#1}{%
+    \node[draw,minimum size=1.8ex,inner sep=0pt] at (\i,0) {\scriptsize$\c$};}%
+\end{tikzpicture}%
+}
+
 \begin{document}
 
 \title{Live Reconfiguration of Hierarchical Packet Schedulers}
@@ -492,8 +509,17 @@ The disjointness precondition rules out \emph{splitting} an already-running flow
 
 We define \(\sem{\Add}\) by recursion on \(\pi\) (\cref{fig:add-rules}, top); the payload \texttt{D}, \texttt{arm}, \texttt{meta?} rides along unchanged, so the figure suppresses it.
 % // AM: the sentence above is bonkers to the reader
-Two abbreviations appear: \(\mathtt{flows}(\mathtt{arm})\) is the set of flows at \(\lceil \mathtt{arm} \rceil\)'s leaves, and \(\mathtt{admit}(\mathtt{z}, \mathtt{F}, i)\) is \texttt{z} extended to route every packet of a flow in \texttt{F} to child \texttt{i}, ranked by this node's discipline.
-% // "ranked by this node's discipline."... so, by z? But how does z know how to rank these new entrants? We need to be clearer
+Two abbreviations appear.
+\(\mathtt{flows}(\mathtt{arm})\) is the set of flows at \(\lceil \mathtt{arm} \rceil\)'s leaves.
+For \(\mathtt{admit}\), recall that a node's discipline fixes a packet's rank from the local \texttt{state} and the chosen child alone, not from the packet itself; write \((r_i(s),\, s')\) for the \((\text{rank},\ \text{next state})\) it produces at child \(i\) in state \(s\).
+Then \(\mathtt{admit}(\mathtt{z}, F, i)\) extends \texttt{z} to route \(F\)'s packets to child \(i\) at that rank, agreeing with \texttt{z} on everything else:
+\[
+\mathtt{admit}(\mathtt{z}, F, i)\,(s, p) =
+\begin{cases}
+\mathtt{z}(s, p), & \mathtt{flow}(p) \notin F,\\[2pt]
+\big((i,\, r_i(s)),\ s'\big), & \mathtt{flow}(p) \in F.
+\end{cases}
+\]
 Since \texttt{C@}\(\pi\) has \(k\) children before the splice, appending the new one lands at the next free index \(k\); and because \(\mathtt{flows}(\mathtt{arm})\) lies outside \texttt{z}'s domain, each \(\mathtt{admit}\) is conflict-free.
 
 \begin{figure}[t]
@@ -506,7 +532,6 @@ Since \texttt{C@}\(\pi\) has \(k\) children before the splice, appending the new
 \quad \textbf{where}\ \mathtt{state'}=(\mathtt{node\_state},\ \mathtt{slot\_states}\mathbin{+\!\!+}[\mathtt{s}])\\
 \quad \phantom{\textbf{where}}\ \mathtt{s}=\mathtt{init\_slot\_D}(\mathtt{node\_state},\mathtt{meta?})\\
 \quad \phantom{\textbf{where}}\ \mathtt{z'}=\mathtt{admit}(\mathtt{z},\mathtt{flows}(\mathtt{arm}),\mathtt{k})\\[8pt]
-% // AM: admit appears to be undef
 \sem{\Add(\mathtt{i}\mathbin{::}\mathtt{rest})}\ \langle\mathtt{state},\mathtt{pifo},\mathtt{z}\rangle(\mathtt{cs}) \;=\\
 \quad \langle\mathtt{state},\mathtt{pifo},\mathtt{z'}\rangle(\mathtt{cs}[\,\mathtt{c}/\mathtt{i}\,])\\
 \quad \textbf{where}\ \mathtt{c}=\sem{\Add(\mathtt{rest})}(\mathtt{cs}[\mathtt{i}])\\
@@ -590,8 +615,9 @@ The payload \(\mathit{meta}\) is a fresh value of whatever per-arm metadata the 
 \sem{\ChangeMeta(\pi \mathbin{+\!\!+} [k], \mathit{meta})} = \mathtt{at}(\pi,\, \mathtt{setmeta}_k),
 \]
 defined when the parent at \(\pi\) runs a discipline that carries per-arm metadata (\Strict{} or \WFQ{} among our three; \RR{}, having none, is never a target).
-The node transformer \(\mathtt{setmeta}_k\) overwrites the discipline-metadata field of \texttt{slot\_states[k]} with \(\mathit{meta}\) (a \Strict{} priority or a \WFQ{} weight) and leaves everything else at the node untouched, including \texttt{node\_state}, \texttt{pifo}, \texttt{z}, the child list, and, under \WFQ, the virtual-finish tag in that same slot.
-% // AM: setmeta is undefined and I'm not sure how it works 
+\(\mathtt{setmeta}_k(\mathit{meta})\) is the node transformer that overwrites the per-arm metadatum in \texttt{slot\_states[k]} with \(\mathit{meta}\) and leaves every other field of the node unchanged.
+Under \Strict{} the slot is just its priority, which becomes \(\mathit{meta}\).
+Under \WFQ, \texttt{init\_slot\_WFQ} (\cref{sec:policy-dsl}) seeds the slot with its weight and a last-finish tag; \(\mathtt{setmeta}_k\) resets the weight to \(\mathit{meta}\) and leaves that tag untouched (the Note below says why).
 
 \paragraph{Characterization}
 
@@ -619,13 +645,19 @@ Say the presently running control is \texttt{C}.
 \Quiesce{} restricts \texttt{z} so that no packet bound for a leaf under \texttt{C@}\(\tau\) is admitted anywhere, and changes nothing else.
 
 \paragraph{Definition}
-% // AM: you were supposed to make this math. This is not math.
 
-\(\sem{\Quiesce(\tau)}(\mathtt{C})\) is defined whenever \(\tau\) resolves in \texttt{C} (the empty path silences the whole tree); there is no precondition on the subtree's contents.
-Let \(T\) be the leaves of \texttt{C@}\(\tau\) and \(A\) the union of their root-to-leaf chains: every node inside \texttt{C@}\(\tau\)'s subtree, together with \texttt{C@}\(\tau\) and its ancestors up to the root.
-For each \(v \in T \cup A\), \(\mathtt{C'@}v.\mathtt{z}\) is \(\mathtt{C@}v.\mathtt{z}\) with every packet bound for a leaf in \(T\) removed from its domain, and agrees with \(\mathtt{C@}v.\mathtt{z}\) on surviving inputs.
-Every other field of every node, and \texttt{z} outside \(T \cup A\), is verbatim.
-(The uniform restriction, at every node on every silenced push path rather than at the root alone, is needed to keep \(\vdash \mathtt{C'}\); see the Note below.)
+\(\sem{\Quiesce(\tau)}(\mathtt{C})\) is defined whenever \(\tau\) resolves in \texttt{C}; the empty path silences the whole tree, and there is no precondition on the subtree's contents.
+Let \(L = \mathtt{flows}(\texttt{C@}\tau)\) be the flows to silence, and write \(\mathtt{z} \setminus L\) for \texttt{z} with every packet whose target flow lies in \(L\) dropped from its domain (and \texttt{z} unchanged elsewhere).
+The nodes those flows traverse are the spine down to \(\tau\) together with \(\tau\)'s whole subtree:
+\[
+V_\tau = \{\, \texttt{C@}\nu \;:\; \nu \sqsubseteq \tau \,\} \;\cup\; \{\, \text{every node of } \texttt{C@}\tau \,\}.
+\]
+\Quiesce{} restricts the transaction at each of these nodes and touches nothing else:
+\[
+\sem{\Quiesce(\tau)}(\mathtt{C}) = \mathtt{at}\big(V_\tau,\ \langle\mathtt{s},\mathtt{q},\mathtt{z}\rangle(\mathtt{cs}) \mapsto \langle\mathtt{s},\mathtt{q},\ \mathtt{z} \setminus L\rangle(\mathtt{cs})\big),
+\]
+where \(\mathtt{at}(V, g)\) applies \(g\) at every node in the set \(V\) and copies every node outside \(V\) unchanged, the set analogue of the single-site \(\mathtt{at}(\pi, g)\) above.
+Every field other than \texttt{z}, and every node outside \(V_\tau\), is left unchanged; the Note below says why the restriction must reach all of \(V_\tau\) rather than the root alone.
 
 \paragraph{Characterization}
 % // AM: After the first one (ChangeMeta) let's just say "it's identity" instead of wriring it out and then saying "that's identity btw".
@@ -675,11 +707,11 @@ As with \Add, outside the parent every node is structurally intact and the paren
 
 \paragraph{Preservation and non-disruption}
 
-Preservation of \(\vdash\): no \(\mathtt{C@}\pi.\mathtt{pifo}\) entry equals \texttt{k} (by emptiness), so none is deleted; a surviving slot \(i' < k\) inherits its count from slot \(i'\) and \(i' \geq k\) from slot \(i'+1\) (same subtree); ancestors and siblings are verbatim.
-% // AM: "a surviving slot \(i' < k\) inherits its count from slot \(i'\)"? Don't you meant that it just retains its own count?
-Preservation of state: \texttt{slot\_states} drops slot \texttt{k}, every other entry is verbatim in its shifted position, and no \texttt{init} fires.
-Non-disruption: \(\mathtt{drop}_k\) removes only an \emph{empty} slot and renumbers the parent's outputs, touching no live \texttt{pifo} entry, so \Remove{} is non-disruptive by \cref{lem:nondisruption}; its input restriction bites only on future \texttt{push}es.
-% // AM: "bites" is extremely SW-bro-ey and I want to ban you from ever using it in this paper.
+Preservation of \(\vdash\): emptiness and \(\vdash \mathtt{C}\) leave \(\mathtt{C@}\pi.\mathtt{pifo}\) with no entry equal to \texttt{k}, so dropping slot \texttt{k} deletes no entry. 
+Every surviving child keeps its own subtree and its own entries (relabeled \(i \mapsto i-1\) for \(i > k\), or left on stable handles, \cref{sec:hardware}), so each count still matches.
+Ancestors and siblings are unchanged.
+Preservation of state: \texttt{slot\_states} drops slot \texttt{k}, every other entry is unchanged in its shifted position, and no \texttt{init} fires.
+Non-disruption: \(\mathtt{drop}_k\) removes only an \emph{empty} slot and renumbers the parent's outputs, touching no live \texttt{pifo} entry, so \Remove{} is non-disruptive by \cref{lem:nondisruption}; its input restriction applies only to future \texttt{push}es.
 
 \paragraph{Note: Why insist on an empty subtree}
 
@@ -782,30 +814,101 @@ There is nothing left to reconcile and no hidden policy choice to make: the stru
 
 Say the presently running control is \texttt{C}.
 Intuitively, \Designate{} replaces \texttt{C@}\(\tau\) in place with \(\Strictstar(\mathtt{C@}\tau, \lceil \mathtt{survivor} \rceil)\).
+It is the mechanism behind non-disruptive in-place replacement (\cref{fig:designate}): the wrap lets \texttt{survivor} begin accepting new traffic on a low-priority arm while the old subtree keeps draining, untouched, on a high-priority one; once the old subtree is empty, \Undesignate{} (\cref{sec:undesignate}) removes it and promotes \texttt{survivor} in its place.
+That is why the production exists: no single edit can swap one subtree for another without either dropping the old subtree's backlog or stalling the new arm, but the \(\Strictstar\) wrap lets both coexist for the length of a drain.
 
-\(\Strictstar\) is the same discipline as \(\Strict\), distinguished only by a one-bit \texttt{designated} flag that each node carries: \Designate{} sets the bit, \Undesignate (\cref{sec:undesignate}) clears it.
+\(\Strictstar\) is the same discipline as \(\Strict\), distinguished only by a one-bit \texttt{designated} flag that each node carries: \Designate{} sets the bit, \Undesignate{} clears it.
 Semantically the two are identical; every push, pop, and well-formedness check treats \(\Strictstar(A, B)\) exactly as \(\Strict(A, B)\), so the obligations below are stated against the ordinary \(\Strict\) semantics of \cref{sec:policy-dsl}.
 The star exists only so that \Undesignate's precondition (``\(\tau\) lands on a \(\Strictstar\)'') and a hardware-level argument in \cref{sec:hardware} (that \(\Strictstar\) adds no PE depth) can be stated structurally.
 The \cref{sec:policy-dsl} DSL in which the operator writes policies can parse only \(\Strict\), never \(\Strictstar\), so a \(\Strictstar\) is unreachable in any user-written \texttt{pol} and arises only in the middle of a planner sequence, between a \Designate{} and its eventual \Undesignate.
 The wrap is therefore \texttt{pol}-visible only as a \(\Strict\).
 
-% // AM: the whole paragraph is super hard for the user to grasp. Maybe we need a new figure? The intuitive need for this nonstandard production needs to be made clear. 
+\begin{figure*}[t]
+  \centering
+  \begin{subfigure}[b]{0.32\linewidth}
+    \centering
+    \begin{tikzpicture}[level distance=1.35cm, every node/.style={align=center, font=\scriptsize}]
+      \node {parent}
+        child {node {\texttt{old}\\[2pt] \leafbox{3}}};
+    \end{tikzpicture}
+    \caption{Before.}
+    \label{fig:designate-before}
+  \end{subfigure}\hfill
+  \begin{subfigure}[b]{0.32\linewidth}
+    \centering
+    \begin{tikzpicture}[level distance=1.35cm, level 1/.style={sibling distance=3.0cm}, every node/.style={align=center, font=\scriptsize}]
+      \node {parent}
+        child {node {$\Strictstar$\\[2pt] \pifobox{0,0,0}}
+          child {node {\texttt{old}\\[2pt] \leafbox{3}} edge from parent node[left]{$0$}}
+          child {node {\texttt{new}\\[2pt] \leafbox{0}} edge from parent node[right]{$1$}}
+        };
+    \end{tikzpicture}
+    \caption{After \Designate.}
+    \label{fig:designate-after}
+  \end{subfigure}\hfill
+  \begin{subfigure}[b]{0.32\linewidth}
+    \centering
+    \begin{tikzpicture}[level distance=1.35cm, level 1/.style={sibling distance=3.0cm}, every node/.style={align=center, font=\scriptsize}]
+      \node {parent}
+        child {node {$\Strictstar$\\[2pt] \pifobox{1,1,1,0,0}}
+          child {node {\texttt{old}\\[2pt] \leafbox{2}} edge from parent node[left]{$0$}}
+          child {node {\texttt{new}\\[2pt] \leafbox{3}} edge from parent node[right]{$1$}}
+        };
+    \end{tikzpicture}
+    \caption{Mid-drain.}
+    \label{fig:designate-drain}
+  \end{subfigure}
+
+  \par\medskip
+
+  \hspace*{\fill}
+  \begin{subfigure}[b]{0.32\linewidth}
+    \centering
+    \begin{tikzpicture}[level distance=1.35cm, level 1/.style={sibling distance=3.0cm}, every node/.style={align=center, font=\scriptsize}]
+      \node {parent}
+        child {node {$\Strictstar$\\[2pt] \pifobox{1,1,1}}
+          child {node {\texttt{old}\\[2pt] \leafbox{0}} edge from parent node[left]{$0$}}
+          child {node {\texttt{new}\\[2pt] \leafbox{3}} edge from parent node[right]{$1$}}
+        };
+    \end{tikzpicture}
+    \caption{Before \Undesignate.}
+    \label{fig:designate-predrop}
+  \end{subfigure}\hfill
+  \begin{subfigure}[b]{0.32\linewidth}
+    \centering
+    \begin{tikzpicture}[level distance=1.35cm, every node/.style={align=center, font=\scriptsize}]
+      \node {parent}
+        child {node {\texttt{new}\\[2pt] \leafbox{3}}};
+    \end{tikzpicture}
+    \caption{After \Undesignate.}
+    \label{fig:designate-done}
+  \end{subfigure}
+  \hspace*{\fill}
+
+  \caption{The \Designate\,+\,drain\,+\,\Undesignate{} lifecycle: in-place replacement of \texttt{old} (\(= M = \texttt{C@}\tau\)) by \texttt{new} (\(= \lceil\texttt{survivor}\rceil\)). A buffer cell with a dot holds a packet; a \(\Strictstar\) node shows its index-\texttt{pifo}, read right to left. \cref{sec:designate} walks the steps.}
+  \label{fig:designate}
+\end{figure*}
 
 \paragraph{Definition}
-% // AM: this was meant to become math. It's not math.
-% // AM: I am skipping the rest of S 3.4 until the previous changes are made. Moving on to S 3.5
 
 \(\sem{\Designate(\tau, \mathtt{survivor})}(\mathtt{C})\) is defined when \(\tau\) resolves in \texttt{C} and \texttt{survivor}'s leaf labels are disjoint from \texttt{C}'s outside \texttt{C@}\(\tau\); overlap with \texttt{C@}\(\tau\)'s own leaves is allowed (see Note).
-Let \(P_0\) be the number of packets held under \texttt{C@}\(\tau\).
-The rule is \(\mathtt{at}(\tau, \mathtt{wrap})\), together with the on-path \texttt{z}-extensions \Add{} performs for a new arm's flows, here admitting \(\mathtt{flows}(\mathtt{survivor})\) toward the wrap at each proper ancestor of \(\tau\).
-
-The transformer \(\mathtt{wrap}\) replaces the node \(M = \texttt{C@}\tau\) with a fresh \(\Strictstar\) node \(N\) over arms \([M, \lceil \mathtt{survivor} \rceil]\):
-\begin{itemize}
-\item arm 0 is \(M\) verbatim (its whole subtree and contents) and arm 1 is \(\lceil \mathtt{survivor} \rceil\);
-\item for priorities \(\mathtt{hi} < \mathtt{lo}\), \(N.\mathtt{node\_state} = \mathtt{init\_node\_Strict}()\) and \(N.\mathtt{slot\_states} = [\,\mathtt{init\_slot\_Strict}(\mathtt{hi}),\, \mathtt{init\_slot\_Strict}(\mathtt{lo})\,]\);
-\item \(N.\mathtt{pifo}\) is seeded with \(P_0\) entries of slot \texttt{0} and rank \(\mathtt{hi}\), one per packet still under arm 0;
-\item \(N.\mathtt{z}\) routes a packet whose label is in \(\lceil \mathtt{survivor} \rceil\) to slot \texttt{1}, and otherwise to slot \texttt{0}.
-\end{itemize}
+% The discussion below is out of touch with the refreshed picture.
+Write \(M = \texttt{C@}\tau\), and let \(P_0\) be the number of packets buffered under \(M\).
+The rule has two parts, both already seen in \Add{} (\cref{sec:add}): locally it wraps the target, \(\mathtt{at}(\tau, \mathtt{wrap})\); along the spine it extends each proper ancestor's transaction by \(\mathtt{admit}(\mathtt{z}, \mathtt{flows}(\mathtt{survivor}), i)\) toward the on-path child \(i\), admitting \texttt{survivor}'s new flows one step at a time down to \(\tau\).
+The transformer \(\mathtt{wrap}\) replaces \(M\) with a fresh node \(N\) that carries the \texttt{designated} bit (a \(\Strictstar\)) over arms \([\,M,\ \lceil\mathtt{survivor}\rceil\,]\), for priorities \(\mathtt{hi} < \mathtt{lo}\):
+{\small
+\[
+\begin{array}{@{}l@{}}
+\mathtt{wrap}(M) = N = \langle \mathtt{s}_N,\ \mathtt{q}_N,\ \mathtt{z}_N \rangle\big([\,M,\ \lceil\mathtt{survivor}\rceil\,]\big),\ \textbf{where}\\[3pt]
+\quad \mathtt{s}_N = (\,\mathtt{init\_node\_Strict}(),\\
+\quad\qquad\ [\,\mathtt{init\_slot\_Strict}(\mathtt{hi}),\ \mathtt{init\_slot\_Strict}(\mathtt{lo})\,]\,),\\[3pt]
+\quad \mathtt{q}_N = \text{the \texttt{pifo} of } P_0 \text{ copies of the entry } (0,\ \mathtt{hi}),\\[3pt]
+\quad \mathtt{z}_N(p) = (1,\ \mathtt{lo})\ \text{if}\ \mathtt{flow}(p) \in \mathtt{flows}(\mathtt{survivor}),\ \text{else}\ (0,\ \mathtt{hi}).
+\end{array}
+\]
+}
+Arm 0 is \(M\) verbatim, its whole subtree and buffered packets; arm 1 is the freshly compiled \(\lceil\mathtt{survivor}\rceil\).
+The \(P_0\) slot-\texttt{0} entries in \(\mathtt{q}_N\) are one per packet buffered under arm 0, so \(M\)'s backlog pops through the wrap unchanged (see \(\vdash\) below).
 Because \(\mathtt{at}\) writes \(N\) back into the parent's slot \texttt{k}, that slot's inherited per-arm metadata is unchanged, so the wrap is transparent to the parent.
 If \(\tau\) is empty the whole control becomes \(N\), with the old root as arm 0.
 
@@ -817,9 +920,11 @@ The two arms thus stay operationally disjoint even when their label sets overlap
 
 \paragraph{Characterization}
 
+{\small
 \[
 \den(\Designate(\tau, \mathtt{survivor})) = \mathtt{at}(\tau,\; M \mapsto \Strict(M, \mathtt{survivor})),
 \]
+}
 wrapping the \texttt{pol} subtree at \(\tau\); \(\den\) yields \(\Strict\), not \(\Strictstar\) (the designated bit is \texttt{pol}-invisible).
 As with \Add, outside the wrap every node is structurally intact, arm 1 is \(\lceil \mathtt{survivor} \rceil\), and the ancestor \texttt{z}-extensions are \texttt{pol}-invisible, so \(\lfloor \mathtt{C'} \rfloor \eqR \den(\Designate(\tau, \mathtt{survivor}))(\lfloor \mathtt{C} \rfloor)\).
 
@@ -835,7 +940,7 @@ Arm 1 sees traffic only on a future \texttt{push}, so no buffered packet is drop
 \subsubsection{\texorpdfstring{\(\Undesignate(\tau)\)}{Undesignate}}\label{sec:undesignate}
 
 \(\tau : \mathtt{path}\) targets the \(\Strictstar\) node to unwrap.
-\Undesignate{} is the structural inverse of \Designate: it drops a \(\Strictstar(A, B)\) whose \(A\)-arm is empty, leaving \(B\).
+\Undesignate{} is the structural inverse of \Designate: it drops a \(\Strictstar(A, B)\) whose \(A\)-arm is empty, leaving \(B\) (the last step of \cref{fig:designate}).
 
 \paragraph{Definition}
 
