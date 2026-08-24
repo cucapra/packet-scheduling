@@ -183,8 +183,7 @@ A \emph{PIFO tree} is a hierarchy of PIFO queues: leaves hold packets, while int
 
 A PIFO tree separates its structural shape (the underlying finite tree of nodes) from the data carried at each node.
 A leaf \texttt{Leaf(p)} holds a packet-carrying PIFO \texttt{p}.
-An internal node \texttt{Internal(qs, p)} carries a list \texttt{qs} of well-formed PIFO tree children and a PIFO \texttt{p} whose entries are indices into \texttt{qs}.
-% // AM: "well-formed PIFO tree children" is undef
+An internal node \texttt{Internal(ts, p)} carries a list \texttt{ts} of child PIFO trees and a PIFO \texttt{p} whose entries are indices into \texttt{ts}.
 This separation is key to making the grammar \(\delta\) of \cref{sec:delta-grammar} well-defined: a structural edit is a change to the shape, distinct from the running contents.
 % // AM: previous line is useless to the reader
 
@@ -197,10 +196,9 @@ These are the \emph{only} observable interactions with a scheduler, which is why
 
 \paragraph{Well-formedness}
 
-A PIFO tree \texttt{q} is well-formed (written \(\vdash \mathtt{q}\)) when, at every internal node with index-PIFO \texttt{p} and children \texttt{qs}, the number of occurrences of \texttt{i} in \texttt{p} equals the number of packets held under \texttt{qs[i]}, for every legal \texttt{i}.
-% // AM: can we write PIFO trees as \texttt{t} instead of q?
+A PIFO tree \texttt{t} is well-formed (written \(\vdash \mathtt{t}\)) when, at every internal node with index-PIFO \texttt{p} and children \texttt{ts}, the number of occurrences of \texttt{i} in \texttt{p} equals the number of packets held under \texttt{ts[i]}, for every legal \texttt{i}.
 This is the invariant that keeps \texttt{pop} from ever getting stuck.
-\texttt{push} always preserves \(\vdash \mathtt{q}\), and \texttt{pop} preserves it when \texttt{q} is non-empty (which is precisely the condition under which \texttt{pop} is defined).
+\texttt{push} always preserves \(\vdash \mathtt{t}\), and \texttt{pop} preserves it when \texttt{t} is non-empty (which is precisely the condition under which \texttt{pop} is defined).
 
 \subsubsection{Controls}\label{sec:controls}
 
@@ -208,9 +206,8 @@ A PIFO tree \emph{control} \texttt{C} wraps a PIFO tree with per-node scheduling
 It is a tree of triples \texttt{(state, pifo, z)}, one per node of the topology.
 
 \begin{itemize}
-\item \texttt{state} is a pair \texttt{(node\_state, slot\_state list)}: the discipline's per-node bookkeeping and a list of per-arm entries, one per child.
-When the node runs a discipline without per-arm bookkeeping (e.g., \texttt{RR}), the \texttt{slot\_state} list is empty.
-% // AM: Can we just say "slot\_states" instead of "slot\_state list"
+\item \texttt{state} is a pair \texttt{(node\_state, slot\_states)}: the discipline's per-node bookkeeping and a list of per-arm entries, one per child.
+When the node runs a discipline without per-arm bookkeeping (e.g., \texttt{RR}), \texttt{slot\_states} is empty.
 \item \texttt{pifo} is a PIFO: at an internal node, an index-PIFO whose entries are indices into the child list; at a leaf, a packet-PIFO.
 \item \texttt{z} is the node's \emph{scheduling transaction}.
 It examines the local \texttt{state} and the incoming packet and produces a path segment and an updated \texttt{state}.
@@ -277,7 +274,7 @@ We formalize this below as the \emph{reorder-congruence} \(\eqR\) on \texttt{pol
 A \texttt{pol} is written against a fixed \emph{flow universe} \(F\): a finite set of flow predicates declared by the operator before constructing the \texttt{pol}.
 A \texttt{pol} is \emph{valid} over \(F\) when (a) every discipline is applied at the proper arity, (b) every discipline is provided with the per-arm metadata that the discipline requires, and (c) the leaves form a partition of a subset of \(F\): each leaf carries a flow drawn from \(F\), and no two leaves carry the same flow.
 Any packet not matching any leaf-used flow is dropped.
-Validity is a condition on the source \texttt{pol}, not to be confused with the runtime invariant \(\vdash \mathtt{q}\).
+Validity is a condition on the source \texttt{pol}, not to be confused with the runtime invariant \(\vdash \mathtt{t}\).
 
 \paragraph{Discipline compilation: \texttt{init\_node\_D} and \texttt{init\_slot\_D}}
 
@@ -376,8 +373,7 @@ The per-arm metadata that discipline \texttt{D} requires (a \texttt{WFQ} weight,
 
 Two controls whose child lists at some internal node are permutations of one another (with the parent's \texttt{pifo} and \texttt{z} renumbered accordingly) present different positional layouts but realize the same scheduler.
 We write \(\mathtt{C} \simR \mathtt{C'}\) for the equivalence obtained by closing \(\sim\) under such sibling permutations.
-Every \(\sim\)-equivalent pair is \(\simR\)-equivalent; the converse is false.
-% // AM: This is a weirdly clunky presentation of a simple idea
+Every \(\sim\)-equivalent pair is \(\simR\)-equivalent, but not conversely: sibling permutation relates controls that no run of \texttt{push}/\texttt{pop} does.
 
 \paragraph{The bridge: \(\lfloor \cdot \rfloor\)}
 
@@ -434,8 +430,7 @@ A \texttt{pop} reads only \texttt{pifo} contents: it pops the root index-\texttt
 Hence if \(\sem{\delta}\) leaves the contents of every non-empty \texttt{pifo} of \texttt{C} unchanged (by never rewriting, reordering, and removing a live entry and by introducing only empty \texttt{pifo}s), then no previously buffered packet in \texttt{C} is dropped, reordered, or re-ranked in \texttt{C'}. That is, the buffered backlog is preserved entry-for-entry, and \(\delta\) is non-disruptive.
 \end{lemma}
 
-We therefore discharge non-disruption per production by naming the production's \emph{footprint}, the nodes and fields it touches (the same footprint \cref{sec:confinement} uses), and checking that it contains no live \texttt{pifo} entry.
-% // AM: FYI, this cref is failing
+We therefore discharge non-disruption per production by naming the production's \emph{footprint}, the nodes and fields it touches (the same footprint \cref{sec:fallback} uses), and checking that it contains no live \texttt{pifo} entry.
 Only the productions that add or drop a live \texttt{pifo} entry, \Designate, \Undesignate, and \ChangeRoot{} (and the idioms of \cref{sec:sequences}), need an argument beyond naming the footprint; the rest follow from \cref{lem:nondisruption} directly.
 
 The lemma can read counterintuitively, so it is worth one example.
@@ -1089,7 +1084,7 @@ The diagram is intuition; the formal statement is:
 Let \texttt{C} be a well-formed control, and let \(\delta\) be a production of the grammar (\cref{sec:delta-grammar}) such that \(\sem{\delta}(\mathtt{C})\) is defined.
 Then:
 \begin{enumerate}
-\item \(\vdash \sem{\delta}(\mathtt{C})\). // AM: just say "is well-formed" in English
+\item \(\sem{\delta}(\mathtt{C})\) is well-formed.
 \item \(\lfloor \sem{\delta}(\mathtt{C}) \rfloor \eqR \den(\delta)(\lfloor \mathtt{C} \rfloor)\).
 \end{enumerate}
 \end{theorem}
@@ -1145,10 +1140,8 @@ The IR alphabet and the substrate machinery are the subject of \cref{sec:hardwar
 We do not prove soundness at the IR level, but instead informally make the case for why the \cref{sec:per-production} proof survives the lowering.
 There are two reasons.
 First, the compilation is \emph{faithful}: each production of \(\delta\) expands to a fixed instruction sequence that, when run to completion, realizes exactly that production's effect.
-We give the command-to-commands translation and take its faithfulness to be uncontroversial.
-% // AM: "command-to-commands" makes sense to me but not to the new reader. Say "x-level command to y-level list of commands" or something like that
-Second, our substrate runs each such sequence as a single \emph{transactional commit}: a bracketed group of IR instructions that installs as one instant from the user's perspective, with no \texttt{push} or \texttt{pop} interleaved between the bracket's open and close (\S6.1' spells out the substrate machinery that makes this so).
-% // AM: we need a better word than "bracketed"
+We give the translation from each \(\delta\) production to its IR instruction sequence and take its faithfulness to be uncontroversial.
+Second, our substrate runs each such sequence as a single \emph{transactional commit}: a group of IR instructions, fenced by the commit's open and close, that installs as one instant from the user's perspective, with no \texttt{push} or \texttt{pop} interleaved between them (\S6.1' spells out the substrate machinery that makes this so).
 The transiently-malformed intermediate trees are therefore never observed.
 That commit is precisely how the substrate \emph{realizes} the atomicity property of \cref{sec:grammar}: atomicity asked for an instantaneous control replacement between two user operations, and the commit is what collapses a multi-instruction lowering into one such instant.
 Every \texttt{push}/\texttt{pop} therefore still lands on a well-formed control (\texttt{p1}, some \texttt{link}, or \texttt{p2}), exactly as \cref{sec:per-production} proved; the IR's transient malformedness lives entirely inside commits, invisible to the user.
