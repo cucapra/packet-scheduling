@@ -1075,11 +1075,7 @@ This converts the running control \texttt{C1'} into control \texttt{C2'} such th
 \]
 and we echo \(\mathtt{p2'} := \lfloor \mathtt{C2'} \rfloor\) back to the user.
 
-Now the operator changes to Imperative Mode (\cref{sec:sequences}) and writes the path-bearing edit \texttt{(True, Quiesce([2]))}.
-% // We're getting way ahead of ourselves by getting into Imperative Mode... we need to make a new plan for this worked example. I think it's useful but I don't want it to get off the rails
-The syntax and semantics do not matter here; what matters is that the operator has requested an edit and identified the target via path ``\texttt{[2]}''.
-Paths are interpreted against the \emph{actually running} representative \texttt{p2'}, so we \Quiesce{} the subtree \texttt{mid: spotify} (\texttt{p2'}'s third slot), not \texttt{lo: gmail} (\texttt{p2}'s third slot).
-If the operator had based the path on \texttt{p2} they would have edited the wrong arm; the system has no way to detect or recover from that.
+This is \cref{thm:interplay} in miniature: the operator wrote \texttt{p1} then \texttt{p2}; the runtime, exercising its arm-order freedom, produced \texttt{C1'} then \texttt{C2'}; and at each step we read off and echoed the running representative (\texttt{p1'}, then \texttt{p2'}), with \(\lfloor \mathtt{C2'} \rfloor \eqR \mathtt{p2}\), so the operator's request is faithfully realized despite the different slot order.
 
 \subsection{Preserving this proof down to hardware}\label{sec:hw-preservation}
 
@@ -1124,6 +1120,17 @@ In \emph{imperative mode}, the operator writes both their desired \texttt{p2} an
 Before running it we check the sequence at the pol level (\cref{sec:idioms}).
 The two modes are not formally distinct: they produce sequences over the same substrate and discharge the same per-production obligations from \cref{sec:per-production}.
 Imperative mode buys expressivity, not a different proof obligation.
+
+Because an imperative sequence carries \emph{paths}, those paths bind to the running representative, not to the \texttt{pol} the operator first wrote, which is exactly why we echo that representative back (\cref{sec:interplay}).
+Take that section's worked example, where the running control realizes \texttt{p2'} while the operator had written \texttt{p2}:
+\[
+\begin{aligned}
+\mathtt{p2'} &= \mathtt{Strict(lo: gmail, hi: zoom, mid: spotify)},\\
+\mathtt{p2}  &= \mathtt{Strict(lo: gmail, mid: spotify, hi: zoom)}.
+\end{aligned}
+\]
+An imperative edit \(\Quiesce([2])\) resolves against \texttt{p2'}: slot \texttt{2} there is \texttt{mid: spotify}, so \texttt{spotify} is quiesced.
+Had the operator read the path off their own \texttt{p2}, slot \texttt{2} is \texttt{hi: zoom}, a different arm; the runtime interprets the path against what is running and has no way to detect the mismatch.
 
 \paragraph{Follow-up requests}
 The transition planner engages with one reconfiguration at a time.
