@@ -246,12 +246,9 @@ Stating it directly on controls allows \texttt{push} and \texttt{pop} to preserv
 
 \subsection{A Policy DSL}\label{sec:policy-dsl}
 
-A control (\cref{sec:runtime-model}) is what the scheduler actually runs,
-% "what the scheduler actually runs" could be clearer. Let's get specific about this being a hardware configuration in an FPGA or SmartNIC 
-but a network operator cannot create a control directly.
-There is no source-level surface for stating a desired policy as a control.
-% Maybe add a clause sayin that even if such an option were exposed, it would be awfully clunky and would force the network operator to do lots of grunt work. So the answer is a DSL.
-To talk about reconfigurations, we need to expose a programming interface for the network operator.
+A control (\cref{sec:runtime-model}) is the hardware-level configuration the scheduler actually runs: the concrete state a programmable switch executes at line rate, realizable on an FPGA or SmartNIC (\cref{sec:hardware} lowers a control to exactly such a target).
+A network operator cannot author one directly, and would not want to: there is no source-level surface for stating a desired policy as a control, and even if the raw hardware knobs were exposed, assembling a control by hand would be tedious, error-prone grunt work.
+To talk about reconfigurations, we instead expose a programming interface for the operator.
 We design a small policy DSL \texttt{pol} using which the operator can specify their desired policy, and a compiler from \texttt{pol} terms to controls.
 The transition planner of \cref{sec:sequences} needs both a way to compile a starting control \texttt{C} from an operator's request and a way to compare two user requests to identify how they differ.
 \texttt{pol} is the common syntactic surface both rely on.
@@ -333,12 +330,10 @@ The tree shape of \(\lceil p \rceil\) exactly matches that of \texttt{p}, and at
 
 We fix a small grammar \(\delta\) of \emph{policy tree edits}: structural rewrites that transform one running policy tree into another.
 Each production has two readings, both pinned down per-production in \cref{sec:per-production}: an operational rewrite on the running control, \(\sem{\delta} : \mathtt{control} \rightharpoonup \mathtt{control}\), and a closed-form effect on the operator's policy, \(\den(\delta) : \mathtt{pol} \rightharpoonup \mathtt{pol}\).
-The grammar is shaped by two demands, 
-the first of which is exactly what makes each edit \emph{atomic}.
-% The line above is weirdly foreboding. If you want it, move it _after_ the demand has been stated
-It must be \emph{hardware-realizable}: a production is admitted into the grammar only if \(\sem{\delta}\) can be committed atomically by the hardware substrate (\cref{sec:hardware}).
-% pol-explainable below is still not clear. We need to explain this from a UX PoV, I think
-It must also be \emph{pol-explainable}: every production has a \(\den(\delta)\)\footnote{for transaction-only productions (whose effect lives entirely in \texttt{z}), \(\den(\delta)\) is the identity on \texttt{pol}}, which is what lets the planner (\cref{sec:sequences}) infer a \(\delta\) whose \texttt{pol}-level meaning can be checked and echoed back to the user.
+The grammar is shaped by two demands.
+It must be \emph{hardware-realizable}: a production is admitted into the grammar only if \(\sem{\delta}\) can be committed atomically by the hardware substrate (\cref{sec:hardware}); this is exactly what makes each edit \emph{atomic}.
+It must also be \emph{pol-explainable}: every production's effect can be stated back to the operator in the same DSL they wrote, as a closed-form map \(\den(\delta) : \mathtt{pol} \rightharpoonup \mathtt{pol}\) on policies.\footnote{For transaction-only productions, whose effect lives entirely in \texttt{z}, \(\den(\delta)\) is the identity on \texttt{pol}.}
+This is what keeps the operator in the loop: the planner (\cref{sec:sequences}) can infer a \(\delta\), report precisely which policy change it makes, and echo that change back for the operator to approve, rather than silently rewriting the running scheduler.
 
 An edit describes \emph{where} in the tree the change lands and \emph{what} the change is.
 Throughout this section, \texttt{p1} is the presently running policy; we write \texttt{p1@path} for the subtree of \texttt{p1} reached by following \texttt{path} down from its root.
@@ -375,12 +370,12 @@ The richer reconfigurations an operator may want (retiring a subtree that presen
 \cref{sec:per-production} takes up the seven productions one at a time, opening each with the intuition for what it does before pinning down its two readings.
 When \(\mathtt{p1} \eqR \mathtt{p2}\), the planner emits the empty sequence (\cref{sec:sequences}), and the live control is left untouched.
 
-% Would be good to give a brief explanation as to why we are going into 3.4 instead of 3.5. Something like "but first, we need to establish some systems that will let us relate..."
+Before we can prove those productions correct or read a running policy back to the operator, though, we need to say when two policies, or two controls, count as the same, and how to recover a \texttt{pol} from a control.
+We set up that apparatus first (\cref{sec:equivalences}), then return to the productions themselves (\cref{sec:per-production}).
 
 \subsection{Equivalences, and Reading Off the Running Policy}\label{sec:equivalences}
 
-With \(\delta\) now fixed, we set up the apparatus that relates a live control back to a source \texttt{pol}.
-% It's not going to be clear to the reader what a live control is. In our case we mean a hardware configuration that can be realized on an FPGA or SmartNIC. This needs to be explained. We are gesturing at "the live control" a fair bit without pinning it down in a much later section.
+With \(\delta\) now fixed, we set up the apparatus that relates a live control, the running hardware configuration of \cref{sec:policy-dsl}, back to a source \texttt{pol}.
 
 \paragraph{Equivalence under live operation: \(\sim\)}
 
@@ -403,8 +398,8 @@ Every \(\sim\)-equivalent pair is \(\simR\)-equivalent.
 \paragraph{The bridge: \(\lfloor \cdot \rfloor\)}
 
 We write \(\lfloor C \rfloor\) to mean ``the \texttt{pol} that \texttt{C} realizes''.
-% We need a sentence of intuition here. I believe the point is just that we can "read off" the control in the most literal way. Let's draft that language.
-\(\lfloor \cdot \rfloor\) is pinned down by three rules:
+Intuitively, \(\lfloor \cdot \rfloor\) reads the policy straight off the control: it walks the control's tree and recovers, node by node, the \texttt{pol} term the control implements, discarding the live \texttt{pifo} and \texttt{state} contents that traffic happens to have left behind.
+We pin it down by three rules:
 
 \begin{enumerate}
 % These items have the property of saying the dense math up front, and then explaining it. It would be good to attempt the opposite, where we give the English buildup and conclude with the math.
@@ -515,9 +510,8 @@ The remaining productions reuse the same obligations and arguments, so for them 
 % Shorten the sentence above. It's not that uncommon to offer the others in brief.
 
 \subsubsection{\texorpdfstring{\(\Add(\pi, \mathtt{D}, \mathtt{arm}, \mathtt{meta?})\)}{Add}}\label{sec:add}
-% I think we'd be happier just providing the types of the arguments in full. Then we can cut the "we rename..." sentence or trim it.
 
-We rename \cref{sec:delta-grammar}'s positional arguments for clarity: \(\pi : \mathtt{path}\) is the path to the node that will receive the new arm as its last child, \(\mathtt{arm} : \mathtt{pol}\) is the policy of the new arm, and \texttt{meta?} is the discipline-dependent per-arm metadata of \cref{sec:delta-grammar}.
+\Add{}'s arguments are \(\pi : \mathtt{path}\), the node that will receive the new arm as its last child; \(\mathtt{D}\), the discipline that node runs; \(\mathtt{arm} : \mathtt{pol}\), the policy of the new arm; and \texttt{meta?}, the per-arm metadata \texttt{D} requires (\cref{sec:policy-dsl}), present exactly when \texttt{init\_slot\_D} needs it.
 
 \paragraph{Definition}
 
@@ -534,8 +528,7 @@ The disjointness precondition rules out \emph{splitting} an already-running flow
 Going from a policy with a single \texttt{gmail} leaf to one that splits it into \texttt{gmail\_business} and \texttt{gmail\_personal} would have to re-sort the packets already buffered under \texttt{gmail} into the two new leaves, relocating admitted traffic; \Add{} only introduces flows disjoint that are from what is running.
 
 We define \(\sem{\Add}\) by recursion on \(\pi\) (\cref{fig:add-rules}, top).
-The payload (\texttt{D}, \texttt{arm}, \texttt{meta?}) is the same at every step of the recursion, so the figure leaves it implicit.
-% This suppression is too much. We need to re-debate this. I don't necessarily want meta running around all the time when it's useless, but at the same time I don't want the whole payload to be left implicit. That's far too much of a suppression for a reader to follow.
+The discipline \texttt{D} and new arm \texttt{arm} thread unchanged through the recursion, so the rules carry them; \texttt{meta?} is consumed only at the base case, which seeds the new slot, so only that rule mentions it.
 Two abbreviations appear.
 \(\mathtt{flows}(\mathtt{arm})\) is the set of flows at \(\lceil \mathtt{arm} \rceil\)'s leaves.
 For \(\mathtt{admit}\), recall that a node's discipline fixes a packet's rank from the local \texttt{state} and the chosen child alone, not from the packet itself; write \((r_i(s),\, s')\) for the \((\text{rank},\ \text{next state})\) it produces at child \(i\) in state \(s\).
@@ -554,21 +547,21 @@ Since \texttt{C@}\(\pi\) has \(k\) children before the splice, appending the new
 \centering
 \(
 \begin{array}{@{}l@{}}
-\sem{\Add([\,])}\ \langle\mathtt{state},\mathtt{pifo},\mathtt{z}\rangle(\mathtt{cs}) \;=\\
+\sem{\Add([\,],\ \mathtt{D},\ \mathtt{arm},\ \mathtt{meta?})}\ \langle\mathtt{state},\mathtt{pifo},\mathtt{z}\rangle(\mathtt{cs}) \;=\\
 \quad \langle\mathtt{state'},\mathtt{pifo},\mathtt{z'}\rangle(\mathtt{cs}\mathbin{+\!\!+}[\lceil\mathtt{arm}\rceil])\\
 \quad \textbf{where}\ \mathtt{state'}=(\mathtt{node\_state},\ \mathtt{slot\_states}\mathbin{+\!\!+}[\mathtt{s}])\\
 \quad \phantom{\textbf{where}}\ \mathtt{s}=\mathtt{init\_slot\_D}(\mathtt{node\_state},\mathtt{meta?})\\
 \quad \phantom{\textbf{where}}\ \mathtt{z'}=\mathtt{admit}(\mathtt{z},\mathtt{flows}(\mathtt{arm}),\mathtt{k})\\[8pt]
-\sem{\Add(\mathtt{i}\mathbin{::}\mathtt{rest})}\ \langle\mathtt{state},\mathtt{pifo},\mathtt{z}\rangle(\mathtt{cs}) \;=\\
+\sem{\Add(\mathtt{i}\mathbin{::}\mathtt{rest},\ \mathtt{D},\ \mathtt{arm})}\ \langle\mathtt{state},\mathtt{pifo},\mathtt{z}\rangle(\mathtt{cs}) \;=\\
 \quad \langle\mathtt{state},\mathtt{pifo},\mathtt{z'}\rangle(\mathtt{cs}[\,\mathtt{c}/\mathtt{i}\,])\\
-\quad \textbf{where}\ \mathtt{c}=\sem{\Add(\mathtt{rest})}(\mathtt{cs}[\mathtt{i}])\\
+\quad \textbf{where}\ \mathtt{c}=\sem{\Add(\mathtt{rest},\ \mathtt{D},\ \mathtt{arm})}(\mathtt{cs}[\mathtt{i}])\\
 \quad \phantom{\textbf{where}}\ \mathtt{z'}=\mathtt{admit}(\mathtt{z},\mathtt{flows}(\mathtt{arm}),\mathtt{i})\\[10pt]
 \den(\Add([\,]))\ (\mathtt{D}\ \mathtt{ts}) \;=\; \mathtt{D}(\mathtt{ts}\mathbin{+\!\!+}[\mathtt{arm}])\\[4pt]
 \den(\Add(\mathtt{i}\mathbin{::}\mathtt{rest}))\ (\mathtt{E}\ \mathtt{ts}) \;=\\
 \quad \mathtt{E}(\mathtt{ts}[\,\den(\Add(\mathtt{rest}))(\mathtt{ts}[\mathtt{i}])/\mathtt{i}\,])
 \end{array}
 \)
-\caption{The operational reading \(\sem{\Add}\) (top) and the denotational reading \(\den(\Add)\) (bottom). \(\langle\mathtt{state},\mathtt{pifo},\mathtt{z}\rangle(\mathtt{cs})\) destructures a control node; \(\mathtt{D}\ \mathtt{ts}\) and \(\mathtt{E}\ \mathtt{ts}\) pattern-match a \texttt{pol} node into its discipline and child list. Recall \(\mathtt{state}=(\mathtt{node\_state},\mathtt{slot\_states})\).}
+\caption{The operational reading \(\sem{\Add}\) (top) and the denotational reading \(\den(\Add)\) (bottom). \(\langle\mathtt{state},\mathtt{pifo},\mathtt{z}\rangle(\mathtt{cs})\) destructures a control node; \(\mathtt{D}\ \mathtt{ts}\) and \(\mathtt{E}\ \mathtt{ts}\) pattern-match a \texttt{pol} node into its discipline and child list. The operational rules carry the payload they use: \texttt{D} and \texttt{arm} at every step, \texttt{meta?} only at the base case that seeds a slot; the denotational rules need only \texttt{arm}. Recall \(\mathtt{state}=(\mathtt{node\_state},\mathtt{slot\_states})\).}
 \label{fig:add-rules}
 \end{figure}
 
@@ -914,10 +907,10 @@ The wrap is therefore \texttt{pol}-visible only as a \(\Strict\).
 \paragraph{Definition}
 
 \(\sem{\Designate(\tau, \mathtt{survivor})}(\mathtt{C})\) is defined when \(\tau\) resolves in \texttt{C} and \texttt{survivor}'s leaf labels are disjoint from \texttt{C}'s outside \texttt{C@}\(\tau\); overlap with \texttt{C@}\(\tau\)'s own leaves is allowed (see Note).
-% The discussion below is out of touch with the refreshed picture.
-Write \(M = \texttt{C@}\tau\), and let \(P_0\) be the number of packets buffered under \(M\).
-The rule has two parts, both already seen in \Add{} (\cref{sec:add}): locally it wraps the target, \(\mathtt{at}(\tau, \mathtt{wrap})\); along the spine it extends each proper ancestor's transaction by \(\mathtt{admit}(\mathtt{z}, \mathtt{flows}(\mathtt{survivor}), i)\) toward the on-path child \(i\), admitting \texttt{survivor}'s new flows one step at a time down to \(\tau\).
-The transformer \(\mathtt{wrap}\) replaces \(M\) with a fresh node \(N\) that carries the \texttt{designated} bit (a \(\Strictstar\)) over arms \([\,M,\ \lceil\mathtt{survivor}\rceil\,]\), for priorities \(\mathtt{hi} < \mathtt{lo}\):
+The figure labels the target subtree \texttt{old} and the survivor \texttt{new}.
+Write \(M = \texttt{C@}\tau\) for the target, and let \(P_0\) be the number of packets buffered under it (\(P_0 = 3\) in \cref{fig:designate-before}).
+\Designate{} has two parts, both already seen in \Add{} (\cref{sec:add}): locally it wraps the target, \(\mathtt{at}(\tau, \mathtt{wrap})\); along the spine it extends each proper ancestor's transaction by \(\mathtt{admit}(\mathtt{z}, \mathtt{flows}(\mathtt{survivor}), i)\) toward the on-path child \(i\), admitting \texttt{new}'s flows one step at a time down to \(\tau\).
+The transformer \(\mathtt{wrap}\) replaces \(M\) with a fresh \(\Strictstar\) node \(N\) over the two arms \([\,M,\ \lceil\mathtt{survivor}\rceil\,]\), giving the old arm strict priority over the new one (\(\mathtt{hi} < \mathtt{lo}\)):
 {\small
 \[
 \begin{array}{@{}l@{}}
@@ -929,10 +922,10 @@ The transformer \(\mathtt{wrap}\) replaces \(M\) with a fresh node \(N\) that ca
 \end{array}
 \]
 }
-Arm 0 is \(M\) verbatim, its whole subtree and buffered packets; arm 1 is the freshly compiled \(\lceil\mathtt{survivor}\rceil\).
-The \(P_0\) slot-\texttt{0} entries in \(\mathtt{q}_N\) are one per packet buffered under arm 0, so \(M\)'s backlog pops through the wrap unchanged (see \(\vdash\) below).
+Arm \texttt{0} is \(M\) (\texttt{old}) verbatim, its whole subtree and buffered packets; arm \texttt{1} is the freshly compiled \(\lceil\mathtt{survivor}\rceil\) (\texttt{new}), initially empty.
+This is \cref{fig:designate-after}: \(N\)'s index-\texttt{pifo} holds \(P_0\) entries for arm \texttt{0} and none for arm \texttt{1}, one per packet buffered under \texttt{old}, so that backlog keeps popping through the wrap ahead of any later arrival, unchanged (see \(\vdash\) below), while \texttt{new} fills only as fresh traffic arrives (\cref{fig:designate-drain}).
 Because \(\mathtt{at}\) writes \(N\) back into the parent's slot \texttt{k}, that slot's inherited per-arm metadata is unchanged, so the wrap is transparent to the parent.
-If \(\tau\) is empty the whole control becomes \(N\), with the old root as arm 0.
+If \(\tau\) is empty the whole control becomes \(N\), with the old root as arm \texttt{0}.
 
 \paragraph{Note: Overlap between the old subtree and \texttt{survivor}}
 
@@ -1154,7 +1147,7 @@ We do not prove soundness at the IR level, but instead informally make the case 
 There are two reasons.
 First, the compilation is \emph{faithful}: each production of \(\delta\) expands to a fixed instruction sequence that, when run to completion, realizes exactly that production's effect.
 We give the translation from each \(\delta\) production to its IR instruction sequence and take its faithfulness to be uncontroversial.
-Second, our substrate runs each such sequence as a single \emph{transactional commit}: a group of IR instructions, fenced by the commit's open and close, that installs as one instant from the user's perspective, with no \texttt{push} or \texttt{pop} interleaved between them (\S6.1' spells out the substrate machinery that makes this so).
+Second, our substrate runs each such sequence as a single \emph{transactional commit}: a group of IR instructions, fenced by the commit's open and close, that installs as one instant from the user's perspective, with no \texttt{push} or \texttt{pop} interleaved between them (\S7.1' spells out the substrate machinery that makes this so).
 The transiently-malformed intermediate trees are therefore never observed.
 That commit is precisely how the substrate \emph{realizes} the atomicity property of \cref{sec:grammar}: atomicity asked for an instantaneous control replacement between two user operations, and the commit is what collapses a multi-instruction lowering into one such instant.
 Every \texttt{push}/\texttt{pop} therefore still lands on a well-formed control (\texttt{p1}, some \texttt{link}, or \texttt{p2}), exactly as \cref{sec:per-production} proved; the IR's transient malformedness lives entirely inside commits, invisible to the user.
@@ -1211,14 +1204,20 @@ The two guard forms have sufficed for every sequence we have needed; the framewo
 The hardware substrate (\cref{sec:hardware}) does two things beyond ordinary \texttt{push}/\texttt{pop}: it waits for a guard \(\varphi\) to become true on the live control, and it fires a single \(\delta\) as an atomic replacement.
 A guarded sequence chains these: wait for \(\varphi_0\), fire \(\delta_0\), then wait for \(\varphi_1\) (now evaluated on the post-\(\delta_0\) control), fire \(\delta_1\), and so on.
 Each intermediate control between two consecutive \(\delta\) firings is an ordinary \cref{sec:runtime-model} control, so the ``transitionary period'' has no new semantics; safety is entirely local, following from the per-production obligations of \cref{sec:per-production}.
-% Simplify and trim this paragraph
-\footnote{Liveness is a separate concern that this paper does not chase. A planner that emits an unsatisfiable guard, or an imperative-mode operator whose sequence adversarial traffic will never satisfy, will stall; the live control remains safe but never reaches the target. Follow-up requests during a sequence are queued (see \cref{sec:sequences}'s intro).}
-% This footnote is a huge weakening of our argument. It's not just that we don't chase liveness. It's impossible to chase liveness. The user needs to cooperate with us if they want to see some nodes get collected, etc. We should lift this from a footnote to main text, and maybe even make it a \paragraph of its own
+
+\paragraph{Liveness}
+
+Safety is unconditional; liveness is not, and cannot be.
+A guarded sequence progresses only as its guards become true, and a guard like \(\mathtt{empty}(\mathtt{path})\) becomes true only once the traffic under \texttt{path} drains, which is up to the network, not up to us.
+A persistent or adversarial flow can keep a subtree busy indefinitely, and then a \SlowRetire{} or \Replace{} waiting on it never fires.
+This is inherent, not an engineering gap: draining a subtree gracefully means letting its buffered packets leave on their own, and no reconfiguration can hurry that along without dropping them, which the grammar refuses to do.
+So completing a sequence takes the operator's cooperation, for instance quiescing a flow at its source or accepting a hard \Replace{} that resets more of the tree but drops nothing.
+The live control stays safe throughout; it simply may not reach the target until the traffic allows.
+Follow-up requests submitted during a stalled sequence are queued (\cref{sec:links}).
 
 \paragraph{Idioms}
 
 \emph{Idioms} are an operator-facing vocabulary for frequently-used guarded sequences, and are the typical building block of hand-authored, imperative sequences (\cref{sec:imperative}).
-% Well, so the diff-sniffer may also want to emit idioms instead of always desugaring the idioms into raw gseqs. Let's discuss. I think this may be a change worth making in the code too. 
 
 An idiom is a macro over the grammar \(\delta\) (and, recursively, over other idioms).
 It expands into a fixed \((\varphi; \delta)^{*}\) sequence: a list of productions with the guards between them spelling out what the system waits for.
@@ -1596,8 +1595,7 @@ Without the walk we are about to describe, the planner would give up and emit a 
 
 But the trees are not really that different.
 \texttt{gmail} in \texttt{p1} and \texttt{RR(gmail, gmail\_control)} in \texttt{p2} share the class label \texttt{gmail}; \texttt{drive} is the same on both sides; \texttt{slack} is the only arm in \texttt{p2} whose labels appear nowhere in \texttt{p1}.
-The correct reading is that \texttt{drive} stays, \texttt{gmail} has grown a sub-channel, and \texttt{slack} is fresh.
-% It would be more accurate, and indeed far more powerful, to say "a tighter reading" or something like that. Both readings are correct.
+Both readings are correct, but one is far tighter: \texttt{drive} stays, \texttt{gmail} has grown a sub-channel, and \texttt{slack} is fresh, so only the changed slots need touching rather than the whole subtree.
 
 The label-overlap walk produces that reading.
 It pairs arms in \texttt{p1} with arms in \texttt{p2} whose class-label sets overlap (by a greedy left-to-right walk); arms in \texttt{p1} with no overlapping partner retire, arms in \texttt{p2} with no overlapping partner are added, and matched pairs are recursed on.
@@ -1684,8 +1682,8 @@ As a result, existing PIFO-based substrates support only stop-the-world policy u
 
 \subsection{Transactional Update and Hardware Component Support}\label{sec:hw-transactional}
 
-\emph{Vocabulary bridge to \S6.1' (temporary, until the two subsections are reconciled).}
-The ``flow-to-child mapping'', ``next-hop mapping'', and ``match-action tables'' of this subsection are the tables that \S6.1''s \texttt{map} / \texttt{assoc} / \texttt{adopt} opcodes write to; the ``virtual PIFOs'' of this subsection are the PIFOs of \S6.1', one per PIFO-tree node.
+\emph{Vocabulary bridge to \S7.1' (temporary, until the two subsections are reconciled).}
+The ``flow-to-child mapping'', ``next-hop mapping'', and ``match-action tables'' of this subsection are the tables that \S7.1''s \texttt{map} / \texttt{assoc} / \texttt{adopt} opcodes write to; the ``virtual PIFOs'' of this subsection are the PIFOs of \S7.1', one per PIFO-tree node.
 
 Rio enables online policy update by packaging multiple hardware state updates into a single ``commit'' and making them visible atomically in hardware: every enqueue or dequeue request observes either the whole commit applied, or none of it.
 Each \(\delta\) (\cref{sec:delta-grammar}) lowers to one \texttt{commit} under this abstraction.
@@ -1705,8 +1703,8 @@ Instead, policy-table updates correspond to adding metadata for newly admitted f
 Because these updates do not change the interpretation of existing live packets, Rio applies them incrementally rather than through a full transactional table swap.
 This keeps the hardware cost low while still preserving the atomicity needed for observable scheduling behavior.
 
-\subsection*{6.1' The commit model and the ISA}
-\addcontentsline{toc}{subsection}{6.1' The commit model and the ISA}
+\subsection*{7.1' The commit model and the ISA}
+\addcontentsline{toc}{subsection}{7.1' The commit model and the ISA}
 
 \emph{Vocabulary bridge from \cref{sec:hw-transactional} (temporary, until the two subsections are reconciled).}
 \cref{sec:hw-transactional} speaks in ``flow-to-child mapping'', ``next-hop mapping'', ``match-action tables'', and ``virtual PIFOs''.
@@ -1791,7 +1789,7 @@ We fix a handful of reading conventions.
 We identify a tree position with the PIFO that lives there.
 Live queries against a node \texttt{v} (its \texttt{arity(v)}, \texttt{discipline(v)}, etc.) are read off the tree at issue time.
 When an opcode names an unmentioned parameter at \texttt{v} (e.g., \texttt{set\_policy}'s discipline, \texttt{change\_arity}'s arity), it is the live value at \texttt{v}.
-\texttt{spawn}'s \texttt{pe} argument is similarly elided: it is \texttt{pe(pos(v))}, drawn from \S6.1''s deployment convention.
+\texttt{spawn}'s \texttt{pe} argument is similarly elided: it is \texttt{pe(pos(v))}, drawn from \S7.1''s deployment convention.
 
 Alongside the opcodes, the listings use a small codegen vocabulary:
 \begin{itemize}
