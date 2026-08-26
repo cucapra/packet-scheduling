@@ -137,15 +137,16 @@ Programmable packet scheduling.
 Emphasize that policies are often hierarchical, and that clients demand line rate.
 
 \paragraph{The reconfiguration problem.}
-Consider a small-office gateway running \texttt{Strict(hi: zoom, lo: gmail)}, strictly prioritizing real-time \texttt{zoom} traffic over \texttt{gmail} traffic.
+Consider a small-office gateway running \texttt{p1 = Strict(hi: zoom, lo: gmail)}, strictly prioritizing real-time \texttt{zoom} traffic over \texttt{gmail} traffic.
 The operator wants to add a new \texttt{spotify} flow, and is considering two candidate policies:
-(1) \texttt{Strict(hi: zoom, mid: spotify, lo: gmail)}, extending the strict-priority list with \texttt{spotify} slotting between \texttt{zoom} and \texttt{gmail} in priority; or
-(2) \texttt{Strict(hi: zoom, lo: RoundRobin(gmail, spotify))}, keeping \texttt{zoom} at the higher tier but having \texttt{gmail} and \texttt{spotify} share the lower tier via round-robin.
+(1) \texttt{p2 = Strict(hi: zoom, mid: spotify, lo: gmail)}, extending the strict-priority list with \texttt{spotify} slotting between \texttt{zoom} and \texttt{gmail} in priority; or
+(2) \texttt{p2' = Strict(hi: zoom, lo: RoundRobin(gmail, spotify))}, keeping \texttt{zoom} at the higher tier but having \texttt{gmail} and \texttt{spotify} share the lower tier via round-robin.
 In either case, the state of the art~\cite{vPIFO} would stop the world, drop or recirculate buffered packets, recompile, and reinstall.
 The costs are dropped or recirculated (and therefore delayed) packets, downtime, and the rebuilding of nodes that did not need to be rebuilt.
 
 The alternative is to reprogram a scheduler without stopping the world.
-Revisiting the examples above, write \texttt{p1} for the running policy and \texttt{p2} for the requested one; \cref{fig:two-timelines} contrasts the two cases as timelines.
+A transition from a running policy \texttt{p1} to a requested one takes one of two shapes (\cref{fig:two-timelines}): sometimes the requested policy can be installed immediately, as a single atomic switch (case~(1)); sometimes it cannot, and the scheduler must first pass through a transitionary policy we call \texttt{link} (case~(2)).
+Our two candidates illustrate the two cases, one apiece.
 
 \begin{figure}[t]
 \centering
@@ -171,21 +172,21 @@ Revisiting the examples above, write \texttt{p1} for the running policy and \tex
 \node[lbl] at (4.25,-0.2) {link};
 \node[lbl] at (6.85,-0.2) {p2};
 \end{tikzpicture}
-\caption{The two candidate transitions from the running policy \texttt{p1} = \texttt{Strict(hi:zoom, lo:gmail)}. In case~(1) the requested \texttt{p2} = \texttt{Strict(hi:zoom, mid:spotify, lo:gmail)} installs atomically at \(t_1\). In case~(2) the requested \texttt{p2} = \texttt{Strict(hi:zoom, lo:RR(gmail,spotify))} cannot install immediately, since \texttt{gmail} packets are still buffered; at \(t_1\) the scheduler enters the transitionary policy \texttt{link}, reaching \texttt{p2} only at \(t_2\), when a guard becomes true. The two \(t_1\)s mark the same instant.}
+\caption{The two shapes a transition from a running \texttt{p1} to a requested \texttt{p2} can take. Sometimes \texttt{p2} installs immediately, as a single atomic switch at \(t_1\) (case~(1)). Sometimes it cannot, and the scheduler passes through a transitionary \texttt{link} policy from \(t_1\) until a guard becomes true at \(t_2\) (case~(2)). Both \(t_1\)s mark the same instant.}
 \label{fig:two-timelines}
 \end{figure}
 
-Transitioning to \texttt{Strict(hi: zoom, mid: spotify, lo: gmail)} is actually quite easy, and we can achieve the strongest property we could ask for.
-Before time \(t_1\), \texttt{Strict(hi: zoom, lo: gmail)} is running; at time \(t_1\) the request to move to \texttt{Strict(hi: zoom, mid: spotify, lo: gmail)} is received, and we move to it.
-The transition at \(t_1\) is \emph{atomic}, meaning that whatever user-observable interaction (push/pop) happened immediately before \(t_1\) happened entirely in the \texttt{Strict(hi: zoom, lo: gmail)} regime, and whatever push/pop happened immediately after \(t_1\) happened entirely in the \texttt{Strict(hi: zoom, mid: spotify, lo: gmail)} regime.
-This transition happens to be both atomic and \emph{immediate}, in that we do not need a period of preparation before we atomically jump into the new policy; the concepts are distinct.
+Candidate~(1), \texttt{p2}, is a case-(1) transition, and achieves the strongest property we could ask for.
+Before time \(t_1\), \texttt{p1} is running; at time \(t_1\) the request to move to \texttt{p2} is received, and we move to it.
+The transition at \(t_1\) is \emph{atomic}, meaning that whatever user-observable interaction (push/pop) happened immediately before \(t_1\) happened entirely in the \texttt{p1} regime, and whatever push/pop happened immediately after \(t_1\) happened entirely in the \texttt{p2} regime.
+It is also \emph{immediate}: no period of preparation precedes the atomic jump into \texttt{p2}. The two concepts are distinct.
 \xxx[AM]{Can we think of a nice small example that is atomic but not immediate?}
 
-Transitioning to \texttt{Strict(hi: zoom, lo: RoundRobin(gmail, spotify))} is not as easy.
-As before, \texttt{Strict(hi: zoom, lo: gmail)} runs before \(t_1\) and the operator's request arrives at \(t_1\), but we cannot move to the requested policy immediately since there are still \texttt{gmail} packets buffered in the scheduler.
+Candidate~(2), \texttt{p2'}, is a case-(2) transition, and is not as easy.
+As before, \texttt{p1} runs before \(t_1\) and the operator's request arrives at \(t_1\), but we cannot move to \texttt{p2'} immediately since there are still \texttt{gmail} packets buffered in the scheduler.
 We atomically step instead into a \emph{transitionary period} that is \emph{not} the user's desired policy\footnote{it is \texttt{Strict(hi: zoom, lo: Strict*(hi: gmail\_pre\_t1, lo: RoundRobin(gmail\_post\_t1, spotify)))}, but understanding why it is precisely that policy is not necessary at present.}.
 After \(t_1\) but before \(t_2\), the scheduler still accepts and emits packets under this regime.
-At time \(t_2\), which is defined to be the instant that a well-defined guard becomes true, we atomically step into the user-requested policy.
+At time \(t_2\), defined as the instant that a well-defined guard becomes true, we atomically step into \texttt{p2'}.
 
 Although the user never specified the semantics of this transitionary period (\(t_1\) to \(t_2\)), the period is itself a \emph{de facto} packet scheduling regime: the transition is unavoidable, it persists for nonzero time, and during it the scheduler must continue to serve the network's pushes and pops rather than ignore them.
 \emph{Scheduling decisions} are being made during that window, whether we acknowledge it or not.
@@ -345,7 +346,7 @@ The strategy, though, is the same: give the operator a syntactic surface, then c
 \mathit{init\_slot}_{D} : \mathit{node\_state} \times \mathit{meta?}\ \to\ \mathit{slot\_state}
 \end{array}
 \]
-\caption{The surface syntax \texttt{sPol} the operator writes and the abstract policy grammar \texttt{pol} it compiles to, together with the per-discipline compilation interface: the per-arm metadata \texttt{meta?} and the state-seeding projections \(\mathtt{init\_node}_{\mathtt{D}}\), \(\mathtt{init\_slot}_{\mathtt{D}}\).}
+\caption{The surface syntax \(\mathit{sPol}\) the operator writes, the abstract \(\mathit{pol}\) it compiles to, and the per-discipline compilation interface (\(\mathit{meta?}\), \(\mathit{init\_node}_{D}\), \(\mathit{init\_slot}_{D}\)).}
 \label{fig:pol-grammar}
 \end{figure}
 The operator writes a \emph{surface policy}, an \texttt{sPol} (\cref{fig:pol-grammar}, top): either a leaf labeled by a flow, or an internal node running a scheduling discipline \texttt{D} over \texttt{n} child policies, each arm annotated with the per-arm metadata that \texttt{D} needs to schedule it (a \texttt{Strict} priority, a \texttt{WFQ} weight, nothing for \texttt{RoundRobin}).
@@ -501,7 +502,7 @@ Every \(\sim\)-equivalent pair is \(\simR\)-equivalent, but not conversely: a si
 \smallskip
 \(\mathtt{a} \sim \mathtt{b} \qquad \lfloor\mathtt{a}\rfloor \eqR \lfloor\mathtt{c}\rfloor \qquad \mathtt{a} \simR \mathtt{d}\)
 
-\caption{The three equivalences of this subsection, on controls over \(\mathtt{z}\) (\texttt{zoom}, priority \texttt{hi}) and \(\mathtt{g}\) (\texttt{gmail}, priority \texttt{lo}); each dot is a buffered packet, and \((\mathtt{a})\) is the running control. \((\mathtt{a}) \sim (\mathtt{b})\): \texttt{push}/\texttt{pop} have only moved packets, leaving the tree, its ranks, and \texttt{z} identical. \((\mathtt{c})\) draws the two arms in the other order but keeps the same backlog, so it reads off to a reorder-congruent policy: \(\lfloor \mathtt{a} \rfloor \eqR \lfloor \mathtt{c} \rfloor\) at the \texttt{pol} level. \((\mathtt{d})\) reorders the arms \emph{and} moves packets, so relating the two controls needs \(\simR\), the lift of \(\eqR\) that also absorbs \texttt{push}/\texttt{pop}: \((\mathtt{a}) \simR (\mathtt{d})\). Each arm keeps its own priority throughout (\(\mathtt{z}\) stays \texttt{hi}), which is why reordering never changes the scheduler.}
+\caption{Controls over \(\mathtt{z}\) (\texttt{zoom}, \texttt{hi}) and \(\mathtt{g}\) (\texttt{gmail}, \texttt{lo}); each dot is a buffered packet. \((\mathtt{b})\) is reachable from \((\mathtt{a})\) by pushes and pops, so \((\mathtt{a}) \sim (\mathtt{b})\). \((\mathtt{c})\) reorders the arms but keeps \((\mathtt{a})\)'s backlog, so \(\lfloor \mathtt{a} \rfloor \eqR \lfloor \mathtt{c} \rfloor\). \((\mathtt{d})\) reorders the arms and is otherwise reachable by pushes and pops, so \((\mathtt{a}) \simR (\mathtt{d})\).}
 \label{fig:equiv-gallery}
 \end{figure}
 
@@ -649,7 +650,7 @@ Since \texttt{C@}\(\pi\) has \(k\) children before the splice, appending the new
 \quad \mathtt{E}(\mathtt{ts}[\,\den(\Add(\mathtt{rest}))(\mathtt{ts}[\mathtt{i}])/\mathtt{i}\,])
 \end{array}
 \)
-\caption{The operational reading \(\sem{\Add}\) (top) and the denotational reading \(\den(\Add)\) (bottom). \(\langle\mathtt{state},\mathtt{pifo},\mathtt{z}\rangle(\mathtt{cs})\) destructures a control node; \(\mathtt{D}\ \mathtt{ts}\) and \(\mathtt{E}\ \mathtt{ts}\) pattern-match a \texttt{pol} node into its discipline and child list. The operational rules carry the payload they use: \texttt{D} and \texttt{arm} at every step, \texttt{meta?} only at the base case that seeds a slot; the denotational rules need only \texttt{arm}. Recall \(\mathtt{state}=(\mathtt{node\_state},\mathtt{slot\_states})\).}
+\caption{The operational reading \(\sem{\Add}\) (top) and denotational reading \(\den(\Add)\) (bottom).}
 \label{fig:add-rules}
 \end{figure}
 
@@ -840,7 +841,7 @@ Non-disruption: \(\mathtt{drop}_k\) removes only an \emph{empty} slot and renumb
   \begin{subfigure}[t]{0.32\linewidth}\centering\rmpanel{0}{0}{0}\caption{Original.}\label{fig:remove-orig}\end{subfigure}\hfill
   \begin{subfigure}[t]{0.32\linewidth}\centering\rmpanel{5,7}{3,4}{1}\caption{Keep the leftmost 0s.}\label{fig:remove-leftmost}\end{subfigure}\hfill
   \begin{subfigure}[t]{0.32\linewidth}\centering\rmpanel{1,3}{3,4}{1}\caption{Keep the rightmost 0s.}\label{fig:remove-rightmost}\end{subfigure}
-  \caption{Removing an occupied subtree (orange, under \(Q\)). Its removal forces out \(Q\)'s two index-1 entries and, one level up, two of \(P\)'s four index-0 entries (struck red). It is unspecified which two instances of \(0\) to drop from \(P\), so (b) and (c) are both legal. However, they differ in how they emit the buffered packets.}
+  \caption{Removing the orange subtree forces out \(Q\)'s two index-1 entries and two of \(P\)'s four index-0 entries (struck red). Which two \(0\)s to drop is unspecified, so (b) and (c) are both legal. They emit the backlog differently.}
   \label{fig:remove-ambiguity}
 \end{figure}
 
@@ -953,14 +954,14 @@ The wrap is therefore \texttt{pol}-visible only as a \(\Strict\).
     \label{fig:designate-done}
   \end{subfigure}
 
-  \caption{The \Designate\,+\,drain\,+\,\Undesignate{} lifecycle: in-place replacement of the \textcolor{oldcol}{old subtree} (\(= M = \texttt{C@}\tau\)) by the \textcolor{newcol}{new subtree} (\(= \lceil\texttt{survivor}\rceil\)), both hanging off the parent \(P\). Each triangle is a subtree; the dots along its base are the packets buffered inside it. \Designate{} wraps old under a \(\Strictstar\) beside new; as traffic drains the old subtree empties while the new one fills, and once old is empty \Undesignate{} removes it and promotes new. \cref{sec:designate} walks the steps.}
+  \caption{The \Designate\,+\,drain\,+\,\Undesignate{} lifecycle: in-place replacement of the \textcolor{oldcol}{blue subtree} by the \textcolor{newcol}{orange subtree}, both under parent \(P\). \Designate{} wraps blue under a \(\Strictstar\) beside orange; as traffic drains, blue empties and orange fills; once blue is empty \Undesignate{} removes it and promotes orange. \cref{sec:designate} walks the steps.}
   \label{fig:designate}
 \end{figure*}
 
 \paragraph{Definition}
 
 \(\sem{\Designate(\tau, \mathtt{survivor})}(\mathtt{C})\) is defined when \(\tau\) resolves in \texttt{C} and \texttt{survivor}'s leaf labels are disjoint from \texttt{C}'s outside \texttt{C@}\(\tau\); overlap with \texttt{C@}\(\tau\)'s own leaves is allowed (see Note).
-The figure labels the target subtree \texttt{old} and the survivor \texttt{new}.
+The figure draws the target subtree in blue and the survivor in orange; below we call them the old and new arms.
 Write \(M = \texttt{C@}\tau\) for the target, and let \(P_0\) be the number of packets buffered under it (\(P_0 = 3\) in \cref{fig:designate-before}).
 \Designate{} has two parts, both already seen in \Add{} (\cref{sec:add}): locally it wraps the target, \(\mathtt{at}(\tau, \mathtt{wrap})\); along the spine it extends each proper ancestor's transaction by \(\mathtt{admit}(\mathtt{z}, \mathtt{flows}(\mathtt{survivor}), i)\) toward the on-path child \(i\), admitting \texttt{new}'s flows one step at a time down to \(\tau\).
 The transformer \(\mathtt{wrap}\) replaces \(M\) with a fresh \(\Strictstar\) node \(N\) over the two arms \([\,M,\ \lceil\mathtt{survivor}\rceil\,]\), giving the old arm strict priority over the new one (\(\mathtt{hi} < \mathtt{lo}\)):
@@ -1257,7 +1258,7 @@ We do not pursue this here; the splicing analysis introduces its own correctness
 \quad \Retire(\pi_a)\,;\, \ldots\,;\, \Retire(\pi_z)\,;\, (\mathtt{true};\, \ChangeRoot(\mathit{path}))
 \end{array}
 \]
-\caption{The grammar of guarded sequences and the four starter idioms, each a named \((\varphi;\delta)^{*}\). \(\delta\) ranges over the productions of \cref{sec:grammar}; in \PruneDownTo, \(\pi_a, \ldots, \pi_z\) are the off-path subtrees between the root and \texttt{path}.}
+\caption{The grammar of guarded sequences and the four starter idioms, each a named \((\varphi;\delta)^{*}\).}
 \label{fig:gseq-idioms}
 \end{figure}
 
@@ -1463,7 +1464,7 @@ The planner has two ways to realize this, shown in \cref{fig:planner-add-vs-repl
     \caption{\Add{} at \(\mathtt{Q}\).}
     \label{fig:planner-add}
   \end{subfigure}
-  \caption{Two ways to add \(\mathtt{s}\) (\texttt{spotify}): wrap the whole running tree \(\mathtt{p1}\) under a fresh \(\Strictstar\) beside a freshly-compiled \(\mathtt{p2}\) (a), or splice the one new arm into \(\mathtt{Q}\) in place (b). The \textcolor{newcol}{new} \(\mathtt{p2}\) is shaded. \(\mathtt{P}\), \(\mathtt{Q}\) stand for the strict-priority and round-robin disciplines; the footprint contrast does not turn on which they are.}
+  \caption{Two ways to add \(\mathtt{s}\) (\texttt{spotify}): (a) \Replace{} wraps the whole running tree under a fresh \(\Strictstar\) beside a freshly-compiled \(\mathtt{p2}\); (b) \Add{} splices the one new arm into \(\mathtt{Q}\) in place. Freshly built material is shaded.}
   \label{fig:planner-add-vs-replace}
 \end{figure}
 
@@ -1606,7 +1607,7 @@ The installed tree previews what lands on the substrate: not \texttt{p2} literal
     \caption{installed (\(\eqR \mathtt{p2}\))}
     \label{fig:label-overlap-installed}
   \end{subfigure}
-  \caption{The label-overlap walk on \(\mathtt{p1}\to\mathtt{p2}\); the disciplines are abstracted to \(\mathtt{P}\), \(\mathtt{Q}\) so the inserted \(\Strictstar\) stands out. Leaf \(\mathtt{g}\) (\texttt{gmail}) appears in \(\mathtt{p1}\) and inside \(\mathtt{p2}\)'s nested \(\mathtt{Q}\), so the planner installs a sibling-reordered \(\eqR\)-equivalent of \(\mathtt{p2}\) (c) to keep the walk local. Other leaves: \(\mathtt{d}\) \texttt{drive}, \(\mathtt{s}\) \texttt{slack}, \(\mathtt{c}\) gmail's control channel.}
+  \caption{The label-overlap walk on \(\mathtt{p1}\to\mathtt{p2}\). Because \(\mathtt{g}\) recurs in \(\mathtt{p2}\)'s nested \(\mathtt{Q}\), the planner installs (c), a sibling-reordered \(\eqR\)-equivalent of \(\mathtt{p2}\).}
   \label{fig:label-overlap-example}
 \end{figure}
 
