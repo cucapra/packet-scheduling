@@ -112,14 +112,14 @@
 % \leaftri{color}{apex x}{apex y}{dots 0-4}{struck 0/1}: a small subtree triangle with
 % fringe-dot packets; if struck, a red slash marks it for removal.
 \newcommand{\leaftri}[5]{%
-  \draw[fill=#1!12, draw=#1, line width=0.55pt] (#2,#3) -- (#2-0.36,#3-0.56) -- (#2+0.36,#3-0.56) -- cycle;
+  \draw[fill=#1!12, draw=#1, line width=0.55pt] (#2,#3) -- (#2-0.3,#3-0.56) -- (#2+0.3,#3-0.56) -- cycle;
   \ifcase#4\relax\or
-    \fill[#1] (#2,#3-0.42) circle (0.9pt);\or
-    \fill[#1] (#2-0.1,#3-0.42) circle (0.9pt); \fill[#1] (#2+0.1,#3-0.42) circle (0.9pt);\or
-    \fill[#1] (#2-0.16,#3-0.42) circle (0.9pt); \fill[#1] (#2,#3-0.42) circle (0.9pt); \fill[#1] (#2+0.16,#3-0.42) circle (0.9pt);\or
-    \fill[#1] (#2-0.21,#3-0.42) circle (0.9pt); \fill[#1] (#2-0.07,#3-0.42) circle (0.9pt); \fill[#1] (#2+0.07,#3-0.42) circle (0.9pt); \fill[#1] (#2+0.21,#3-0.42) circle (0.9pt);%
+    \fill[#1] (#2,#3-0.44) circle (0.9pt);\or
+    \fill[#1] (#2-0.09,#3-0.44) circle (0.9pt); \fill[#1] (#2+0.09,#3-0.44) circle (0.9pt);\or
+    \fill[#1] (#2-0.15,#3-0.44) circle (0.9pt); \fill[#1] (#2,#3-0.44) circle (0.9pt); \fill[#1] (#2+0.15,#3-0.44) circle (0.9pt);\or
+    \fill[#1] (#2-0.18,#3-0.44) circle (0.9pt); \fill[#1] (#2-0.06,#3-0.44) circle (0.9pt); \fill[#1] (#2+0.06,#3-0.44) circle (0.9pt); \fill[#1] (#2+0.18,#3-0.44) circle (0.9pt);%
   \fi
-  \ifnum#5=1 \draw[red, line width=0.9pt] (#2-0.24,#3-0.5) -- (#2+0.2,#3-0.08);\fi
+  \ifnum#5=1 \draw[red, line width=0.9pt] (#2-0.2,#3-0.5) -- (#2+0.16,#3-0.08);\fi
 }
 
 \begin{document}
@@ -1446,72 +1446,63 @@ Only when the descent ends without a match does the planner fall back to \Replac
 A concrete example will help.
 Suppose
 \[
-\mathtt{p1} = \mathtt{SP}(\mathtt{zoom}, \mathtt{RR}(\mathtt{gmail}, \mathtt{netflix}))
+\mathtt{p1} = \mathtt{Strict}(\mathtt{zoom}, \mathtt{RR}(\mathtt{gmail}, \mathtt{netflix}))
 \]
 and the operator requests
 \[
-\mathtt{p2} = \mathtt{SP}(\mathtt{zoom}, \mathtt{RR}(\mathtt{gmail}, \mathtt{netflix}, \mathtt{spotify})).
+\mathtt{p2} = \mathtt{Strict}(\mathtt{zoom}, \mathtt{RR}(\mathtt{gmail}, \mathtt{netflix}, \mathtt{spotify})).
 \]
 The planner has two ways to realize this, shown in \cref{fig:planner-add-vs-replace}.
 
 \begin{figure}[t]
   \centering
-  \begin{subfigure}[b]{0.55\linewidth}
+  \begin{subfigure}[b]{0.6\linewidth}
     \centering
-    \begin{tikzpicture}[
-      level distance=0.9cm,
-      level 1/.style={sibling distance=1.8cm},
-      level 2/.style={sibling distance=0.9cm},
-      level 3/.style={sibling distance=0.6cm},
-      every node/.style={font=\scriptsize}
-    ]
-    \node {$\Strictstar$}
-      child {node {$\mathtt{SP}$}
-        child {node {$\mathtt{z}$}}
-        child {node {$\mathtt{RR}$}
-          child {node {$\mathtt{g}$}}
-          child {node {$\mathtt{n}$}}
-        }
-      }
-      child {node {$\mathtt{SP}$}
-        child {node {$\mathtt{z}$}}
-        child {node {$\mathtt{RR}$}
-          child {node {$\mathtt{g}$}}
-          child {node {$\mathtt{n}$}}
-          child {node {$\mathtt{s}$}}
-        }
-      };
-    \end{tikzpicture}
-    \caption{\(\Replace([], \mathtt{p2})\)}
-    \label{fig:planner-replace}
-  \end{subfigure}%
-  \begin{subfigure}[b]{0.4\linewidth}
-    \centering
-    \begin{tikzpicture}[
-      level distance=0.9cm,
-      level 1/.style={sibling distance=1.4cm},
-      level 2/.style={sibling distance=0.6cm},
-      every node/.style={font=\scriptsize}
-    ]
-    \node {$\mathtt{SP}$}
+    \begin{tikzpicture}[level distance=0.78cm, level 1/.style={sibling distance=0.82cm}, level 2/.style={sibling distance=0.5cm}, every node/.style={font=\scriptsize}]
+    \fill[newcol!12, rounded corners=2pt] (1.05,0.28) rectangle (2.78,-1.72);
+    \node (L) at (-1.35,0) {\textsf{Strict}}
       child {node {$\mathtt{z}$}}
-      child {node {$\mathtt{RR}$}
+      child {node {\textsf{RR}}
         child {node {$\mathtt{g}$}}
         child {node {$\mathtt{n}$}}
-        child[edge from parent/.style={draw,thick}] {node[label={[font=\tiny]below:new}] {$\mathtt{s}$}}
+      };
+    \node (R) at (1.7,0) {\textsf{Strict}}
+      child {node {$\mathtt{z}$}}
+      child {node {\textsf{RR}}
+        child {node {$\mathtt{g}$}}
+        child {node {$\mathtt{n}$}}
+        child {node {$\mathtt{s}$}}
+      };
+    \node (S) at (0.15,0) {$\Strictstar$};
+    \draw (S) -- (L);
+    \draw (S) -- (R);
+    \end{tikzpicture}
+    \caption{\(\Replace([], \mathtt{p2})\): wrap the whole tree.}
+    \label{fig:planner-replace}
+  \end{subfigure}\hfill
+  \begin{subfigure}[b]{0.36\linewidth}
+    \centering
+    \begin{tikzpicture}[level distance=0.78cm, level 1/.style={sibling distance=0.9cm}, level 2/.style={sibling distance=0.5cm}, every node/.style={font=\scriptsize}]
+    \fill[newcol!12, rounded corners=2pt] (0.72,-1.34) rectangle (1.18,-1.74);
+    \node {\textsf{Strict}}
+      child {node {$\mathtt{z}$}}
+      child {node {\textsf{RR}}
+        child {node {$\mathtt{g}$}}
+        child {node {$\mathtt{n}$}}
+        child {node {$\mathtt{s}$}}
       };
     \end{tikzpicture}
-    \caption{\Add{} at the \texttt{RR} (new arm \(\mathtt{s}\) on the thick edge)}
+    \caption{\Add{} at the \textsf{RR}.}
     \label{fig:planner-add}
   \end{subfigure}
-  \caption{Two ways to realize \(\mathtt{p1} \to \mathtt{p2}\) when \texttt{p2} adds a \texttt{spotify} arm to the \texttt{RR}.}
+  \caption{Two ways to add \(\mathtt{s}\) (\texttt{spotify}) to the \textsf{RR}: wrap the whole running tree under a fresh \(\Strictstar\) (a, all of it new), or splice the one new arm in place (b). New parts shaded.}
   \label{fig:planner-add-vs-replace}
 \end{figure}
 
 Option (a) wraps the entire running tree under a fresh \(\Strictstar\) and grows a freshly-compiled \texttt{p2} alongside; every node sits inside the wrap, and the original \texttt{p1} (with all its in-flight packets) drains as the loser.
 The footprint is the whole tree.
 
-Option (b) extends the \texttt{RR}'s arity by one and attaches a freshly compiled \texttt{spotify} leaf as the third arm; the \texttt{SP} and \texttt{RR} ancestors have only their \texttt{z} extended (no packet movement, no state reset), and the \texttt{zoom} leaf is left completely undisturbed.
+Option (b) extends the \texttt{RR}'s arity by one and attaches a freshly compiled \texttt{spotify} leaf as the third arm; the \texttt{Strict} and \texttt{RR} ancestors have only their \texttt{z} extended (no packet movement, no state reset), and the \texttt{zoom} leaf is left completely undisturbed.
 The footprint is the \texttt{RR} node and its single ancestor.
 
 Much of the tree is left alone under option (b).
@@ -1551,11 +1542,11 @@ This test runs only at the top level.
 \paragraph{The per-level comparator}
 
 The per-level comparator looks at the roots of \texttt{p1} and \texttt{p2}.
-If the two roots use different constructors (for example \texttt{SP} and \texttt{RR}, or two \texttt{FIFO}s with different classes), it emits a slot-level \Replace{} directly: the always-available \cref{sec:fallback} idiom restricted to the current slot.
+If the two roots use different constructors (for example \texttt{Strict} and \texttt{RR}, or two \texttt{FIFO}s with different classes), it emits a slot-level \Replace{} directly: the always-available \cref{sec:fallback} idiom restricted to the current slot.
 If the constructors agree, it then looks at the two child lists and compares their lengths.
 
 \textbf{Equal arity.}
-For the constructors that carry per-arm metas (\texttt{SP} and \texttt{WFQ}), we first check for a meta-only reshuffle: if \texttt{p1} and \texttt{p2} hold the same multiset of arms in different positions, we emit one \ChangeMeta{} per slot whose meta moved and we are done.
+For the constructors that carry per-arm metas (\texttt{Strict} and \texttt{WFQ}), we first check for a meta-only reshuffle: if \texttt{p1} and \texttt{p2} hold the same multiset of arms in different positions, we emit one \ChangeMeta{} per slot whose meta moved and we are done.
 
 Otherwise, we walk the child lists slot-by-slot.
 A slot whose arm and meta both agree contributes nothing.
@@ -1568,7 +1559,7 @@ The label-overlap walk (below) catches it; when that walk finds at least one suc
 \textbf{\texttt{p2} longer.}
 When \texttt{p1}'s arms appear in order as a sub-sequence of \texttt{p2}'s, the surplus arms in \texttt{p2} are pure additions, and we emit one \Add{} per surplus arm in ascending index order.
 \cref{sec:add}'s leaf-disjointness precondition holds automatically: every surplus arm's leaves are leaves of \texttt{p2} not in \texttt{p1}, which by \cref{sec:policy-dsl}'s leaf-partition validity are disjoint from \texttt{p1}'s arms and from each other.
-At an \texttt{SP} or \texttt{WFQ} parent, each \Add{} carries the surplus arm's meta.
+At an \texttt{Strict} or \texttt{WFQ} parent, each \Add{} carries the surplus arm's meta.
 If a stable arm has changed metadata, we emit \ChangeMeta{}s after completing the \Add{}s.
 
 When \texttt{p1}'s arms are \emph{not} a sub-sequence of \texttt{p2}'s, we try the label-overlap walk.
@@ -1670,7 +1661,7 @@ The justification is that a class label identifies a unique flow across the whol
 For our example, the walk pairs \texttt{drive} with \texttt{drive} (no edit) and \texttt{gmail} with \texttt{RR(gmail, gmail\_control)} (recurse), and treats \texttt{slack} as a pure add.
 
 Our final emission is two atomic steps: an \Add{} of \texttt{slack} appended at the root \texttt{RR}'s tail, and an inner \Replace{} at \texttt{gmail}'s existing slot.
-The third panel of the figure above shows the resulting substrate state: \texttt{slack} sits beside the morphed \texttt{gmail} subtree in an order that does not match \texttt{p2} literally, but \cref{sec:policy-dsl}'s normalization invariant says sibling order at \texttt{SP}/\texttt{RR}/\texttt{WFQ} carries no semantics, so the re-ordering is invisible to any observer.
+The third panel of the figure above shows the resulting substrate state: \texttt{slack} sits beside the morphed \texttt{gmail} subtree in an order that does not match \texttt{p2} literally, but \cref{sec:policy-dsl}'s normalization invariant says sibling order at \texttt{Strict}/\texttt{RR}/\texttt{WFQ} carries no semantics, so the re-ordering is invisible to any observer.
 % Simplify and trim
 
 A few notes.
@@ -1963,7 +1954,7 @@ Three items in the list deserve unpacking.
 The chain walk is what \cref{sec:quiesce} calls \emph{restricting \texttt{z} uniformly}.
 \Quiesce{} does not issue \texttt{unmap}: silenced flows' Map entries \emph{must outlive the silencing} so that buffered packets can be popped.
 \Remove{} pairs \texttt{emancipate} with \texttt{unmap} precisely because it fires after the drain, when there is no longer any in-flight traffic to preserve.
-One subtlety in the loser arm of an SP\(^*\) super-node (i.e., a \Quiesce{} that fires mid-\Replace{}): the lowering restricts the deassoc walk to loser-only classes, since \Designate{} routed the shared classes to the survivor's slot at commit time (\cref{sec:designate}), and deassoc'ing them here would silence live traffic on the survivor.
+One subtlety in the loser arm of a \(\Strictstar\) super-node (i.e., a \Quiesce{} that fires mid-\Replace{}): the lowering restricts the deassoc walk to loser-only classes, since \Designate{} routed the shared classes to the survivor's slot at commit time (\cref{sec:designate}), and deassoc'ing them here would silence live traffic on the survivor.
 
 The lowering for \Designate{} matches \cref{sec:grammar}'s tree-level reading verbatim: a fresh Strict-2 PIFO \texttt{sp\_v} is spawned, \texttt{path}'s previous occupant becomes its favored child (rank 1.0), and the survivor becomes its second child (rank 2.0).
 The lowering rewires \texttt{path}'s parent edge from \texttt{loser} to \texttt{sp\_v}, reusing the same parent-side index \texttt{k}; the parent's per-arm metadata for the slot is therefore preserved across \Designate{} and across the eventual \Undesignate{} that retires the give-up.
