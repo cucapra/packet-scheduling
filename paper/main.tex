@@ -56,21 +56,39 @@
 \newcommand{\PruneDownTo}{\textsf{PruneDownTo}}
 \newcommand{\den}{\mathsf{den}}
 
-% Small drawn queues for the Designate figure.
-% \leafbox{k}: a 5-cell buffer whose rightmost k cells each hold a packet (a dot).
+% Small drawn queues for the tree figures.
+% \leafbox{k}: a 5-cell buffer whose rightmost k cells each hold a packet (a filled disc).
 \newcommand{\leafbox}[1]{%
-\begin{tikzpicture}[baseline=-0.55ex,x=1.8ex,y=1.8ex]
+\begin{tikzpicture}[baseline=-0.55ex, x=2.0ex, y=2.0ex,
+   cell/.style={draw=black!55, rounded corners=0.3ex, minimum size=1.9ex, inner sep=0pt, line width=0.45pt}]
   \foreach \i in {1,...,5}{%
-    \node[draw,minimum size=1.8ex,inner sep=0pt] at (\i,0) {};%
-    \ifnum\i>\numexpr5-#1\relax \node at (\i,0) {$\cdot$};\fi}%
+    \ifnum\i>\numexpr5-#1\relax
+      \node[cell, fill=black!8] at (\i,0) {};
+      \fill[black!78] (\i,0) circle (0.42ex);
+    \else
+      \node[cell] at (\i,0) {};
+    \fi}%
 \end{tikzpicture}%
 }
-% \pifobox{list}: one cell per comma-separated entry, drawn left to right (popped right to left).
+% \pifobox{list}: one rounded cell per comma-separated entry, left to right (popped right to left).
 \newcommand{\pifobox}[1]{%
-\begin{tikzpicture}[baseline=-0.55ex,x=1.8ex,y=1.8ex]
+\begin{tikzpicture}[baseline=-0.55ex, x=2.15ex, y=2.0ex,
+   cell/.style={draw=black!55, rounded corners=0.3ex, minimum size=1.9ex, inner sep=1pt, font=\scriptsize, line width=0.45pt}]
   \foreach \c [count=\i] in {#1}{%
-    \node[draw,minimum size=1.8ex,inner sep=0pt] at (\i,0) {\scriptsize$\c$};}%
+    \node[cell] at (\i,0) {\(\c\)};}%
 \end{tikzpicture}%
+}
+% House style for opaque subtrees: a colored triangle is a subtree; dots along its base
+% are the packets buffered inside it. Colors are Okabe-Ito (colorblind-friendly).
+\definecolor{oldcol}{HTML}{0072B2}% blue
+\definecolor{newcol}{HTML}{E69F00}% orange
+\newcommand{\subtri}[4]{% #1 color, #2 apex x, #3 apex y, #4 dot count (0-3)
+  \draw[fill=#1!12, draw=#1, line width=0.6pt] (#2,#3) -- (#2-0.55,#3-0.9) -- (#2+0.55,#3-0.9) -- cycle;
+  \ifcase#4\relax\or
+    \fill[#1] (#2,#3-0.72) circle (1.3pt);\or
+    \fill[#1] (#2-0.16,#3-0.72) circle (1.3pt); \fill[#1] (#2+0.16,#3-0.72) circle (1.3pt);\or
+    \fill[#1] (#2-0.24,#3-0.72) circle (1.3pt); \fill[#1] (#2,#3-0.72) circle (1.3pt); \fill[#1] (#2+0.24,#3-0.72) circle (1.3pt);%
+  \fi
 }
 
 \begin{document}
@@ -97,9 +115,36 @@ In either case, the state of the art~\cite{vPIFO} would stop the world, drop or 
 The costs are dropped or recirculated (and therefore delayed) packets, downtime, and the rebuilding of nodes that did not need to be rebuilt.
 
 The alternative is to reprogram a scheduler without stopping the world.
-Revisiting the examples above:
+Revisiting the examples above, write \texttt{p1} for the running policy and \texttt{p2} for the requested one; \cref{fig:two-timelines} contrasts the two cases as timelines.
 
-% Idea: we should draw a figure with two timelines showing moments t1, t2 in each case
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[
+  x=1cm, y=1cm,
+  lbl/.style={font=\small\ttfamily, anchor=north},
+]
+% ---- Row (1): the easy, immediate transition ----
+\node at (-0.05,1.5) {(1)};
+\draw[->,thick] (0.4,1.5) -- (8.2,1.5);
+\draw[thick] (3,1.3) -- (3,1.7);
+\node[above] at (3,1.7) {$t_1$};
+\node[lbl] at (1.6,1.3) {p1};
+\node[lbl] at (5.6,1.3) {p2};
+% ---- Row (2): the hard transition, with a link period ----
+\node at (-0.05,0) {(2)};
+\draw[->,thick] (0.4,0) -- (8.2,0);
+\draw[thick] (3,-0.2) -- (3,0.2);
+\draw[thick] (5.5,-0.2) -- (5.5,0.2);
+\node[above] at (3,0.2) {$t_1$};
+\node[above] at (5.5,0.2) {$t_2$};
+\node[lbl] at (1.6,-0.2) {p1};
+\node[lbl] at (4.25,-0.2) {link};
+\node[lbl] at (6.85,-0.2) {p2};
+\end{tikzpicture}
+\caption{The two candidate transitions from the running policy \texttt{p1} = \texttt{Strict(hi:zoom, lo:gmail)}. In case~(1) the requested \texttt{p2} = \texttt{Strict(hi:zoom, mid:spotify, lo:gmail)} installs atomically at \(t_1\). In case~(2) the requested \texttt{p2} = \texttt{Strict(hi:zoom, lo:RR(gmail,spotify))} cannot install immediately, since \texttt{gmail} packets are still buffered; at \(t_1\) the scheduler enters the transitionary policy \texttt{link}, reaching \texttt{p2} only at \(t_2\), when a guard becomes true. The two \(t_1\)s mark the same instant.}
+\label{fig:two-timelines}
+\end{figure}
+
 Transitioning to \texttt{Strict(hi: zoom, mid: spotify, lo: gmail)} is actually quite easy, and we can achieve the strongest property we could ask for.
 Before time \(t_1\), \texttt{Strict(hi: zoom, lo: gmail)} is running; at time \(t_1\) the request to move to \texttt{Strict(hi: zoom, mid: spotify, lo: gmail)} is received, and we move to it.
 The transition at \(t_1\) is \emph{atomic}, meaning that whatever user-observable interaction (push/pop) happened immediately before \(t_1\) happened entirely in the \texttt{Strict(hi: zoom, lo: gmail)} regime, and whatever push/pop happened immediately after \(t_1\) happened entirely in the \texttt{Strict(hi: zoom, mid: spotify, lo: gmail)} regime.
@@ -269,10 +314,13 @@ The strategy, though, is the same: give the operator a syntactic surface, then c
 \qquad \mid\; \Strict(\mathit{rank}_1{:}\,\mathit{sPol}_1, \ldots, \mathit{rank}_n{:}\,\mathit{sPol}_n)\\
 \qquad \mid\; \RR(\mathit{sPol}_1, \ldots, \mathit{sPol}_n)\\
 \qquad \mid\; \WFQ(w_1{:}\,\mathit{sPol}_1, \ldots, w_n{:}\,\mathit{sPol}_n)\\[8pt]
-\mathit{pol} \mathrel{::=} \mathit{flow} \;\mid\; D(\mathit{pol}_1, \ldots, \mathit{pol}_n)
+\mathit{pol} \mathrel{::=} \mathit{flow} \;\mid\; D(\mathit{pol}_1, \ldots, \mathit{pol}_n)\\[8pt]
+\mathit{meta?} \mathrel{::=} \epsilon \;\mid\; \mathit{rank} \;\mid\; w\\[2pt]
+\mathit{init\_node}_{D} : ()\ \to\ \mathit{node\_state}\\[2pt]
+\mathit{init\_slot}_{D} : \mathit{node\_state} \times \mathit{meta?}\ \to\ \mathit{slot\_state}
 \end{array}
 \]
-\caption{The surface syntax \texttt{sPol} the operator writes (top) and the abstract policy grammar \texttt{pol} it compiles to (bottom).}
+\caption{The surface syntax \texttt{sPol} the operator writes and the abstract policy grammar \texttt{pol} it compiles to, together with the per-discipline compilation interface: the per-arm metadata \texttt{meta?} and the state-seeding projections \(\mathtt{init\_node}_{\mathtt{D}}\), \(\mathtt{init\_slot}_{\mathtt{D}}\).}
 \label{fig:pol-grammar}
 \end{figure}
 The operator writes a \emph{surface policy}, an \texttt{sPol} (\cref{fig:pol-grammar}, top): either a leaf labeled by a flow, or an internal node running a scheduling discipline \texttt{D} over \texttt{n} child policies, each arm annotated with the per-arm metadata that \texttt{D} needs to schedule it (a \texttt{Strict} priority, a \texttt{WFQ} weight, nothing for \texttt{RoundRobin}).
@@ -295,19 +343,9 @@ Validity is a condition on the source \texttt{pol}, not to be confused with the 
 \paragraph{Discipline compilation: \texttt{init\_node\_D} and \texttt{init\_slot\_D}}
 
 Each discipline \texttt{D} comes with a mechanical recipe for compiling a node that runs it: (a) a per-node scheduling transaction, (b) an initial \texttt{node\_state} for the node, and (c) a \texttt{slot\_state} for each child of the node.
-We name the two state-seeding projections:
+The two state-seeding projections \(\mathtt{init\_node}_{\mathtt{D}}\) and \(\mathtt{init\_slot}_{\mathtt{D}}\) are given with the grammar in \cref{fig:pol-grammar}.
 
-\[
-\begin{array}{@{}l@{}}
-\mathtt{init\_node}_{\mathtt{D}} : ()\ \to\ \mathtt{node\_state}\\[2pt]
-\mathtt{init\_slot}_{\mathtt{D}} : \mathtt{node\_state} \times \mathtt{meta?}\ \to\ \mathtt{slot\_state}\\[2pt]
-\mathtt{meta?} \mathrel{::=} \epsilon \;\mid\; \text{priority-rank} \;\mid\; \text{weight}
-\end{array}
-\]
-% I think this should be math, and should be in Fig 1. Thoughts from you?
-
-The \texttt{meta?} argument is the per-arm metadata that discipline \texttt{D} requires: a weight for \texttt{WFQ}, a priority rank for \texttt{Strict}, absent for \texttt{RoundRobin}.
-% Remember that we are trying to keep the list of available disciplines general and representative, not exhaustive.
+The \texttt{meta?} argument is the per-arm metadata that discipline \texttt{D} requires: for our three representative disciplines, a weight for \texttt{WFQ}, a priority rank for \texttt{Strict}, and nothing for \texttt{RoundRobin}.
 \texttt{init\_node\_D} runs once per node when the source \texttt{pol} is compiled into a control, seeding that node's \texttt{node\_state}.
 \texttt{init\_slot\_D} is called in two places.
 At \emph{compile time},
@@ -383,8 +421,6 @@ With \(\delta\) now fixed, we set up the apparatus that relates a live control, 
 We write \(\mathtt{C} \sim \mathtt{C'}\) for the equivalence relation on well-formed controls that identifies any two controls related by a finite sequence of \texttt{push} / \texttt{pop} operations.
 % How about... "such that you can start at one control, serve the network's pushes and pops for some time, and in so doing find yourself in the second control. That is, the policies cannot be modified; only the state can, and that too only via push and pop."
 % The draft above is too long but you get what I mean. 
-% I also think that a diagram with cartoon policies and packets may go a long way. Remember that the reader need not know anything about PIFOs and PIFO trees to read this paper. So these early sections are also an orientation to that.
-
 \paragraph{Reorder congruence and its lift to controls: \(\eqR\), \(\simR\)}
 
 We write \(p \eqR p'\) for the smallest congruence on \texttt{pol} such that, at any internal \texttt{D}-node, permuting the child arms gives a congruent pol: \(D(p_a, \ldots, p_z) \eqR D(p_{\sigma(a)}, \ldots, p_{\sigma(z)})\) for any permutation \(\sigma\).
@@ -393,7 +429,46 @@ The per-arm metadata that discipline \texttt{D} requires (a \texttt{WFQ} weight,
 % For parallelism with the paragraph above, let's start this one with "We write...".
 Two controls whose child lists at some internal node are permutations of one another (with the parent's \texttt{pifo} and \texttt{z} renumbered accordingly) present different positional layouts but realize the same scheduler.
 We write \(\mathtt{C} \simR \mathtt{C'}\) for the equivalence obtained by closing \(\sim\) under such sibling permutations.
-Every \(\sim\)-equivalent pair is \(\simR\)-equivalent.
+Every \(\sim\)-equivalent pair is \(\simR\)-equivalent, but not conversely: a sibling permutation relates controls that no run of \texttt{push}/\texttt{pop} does.
+\cref{fig:equiv-gallery} shows all three relations side by side.
+
+\begin{figure}[t]
+\centering
+\begin{tabular}{c@{\hskip 2.2em}c}
+\begin{tikzpicture}[level distance=0.8cm, level 1/.style={sibling distance=1.45cm}, every node/.style={font=\scriptsize, align=center}, edgelbl/.style={font=\tiny, inner sep=1.5pt}]
+\node {Strict}
+  child {node {zoom\\$\bullet\bullet$} edge from parent node[left,edgelbl]{hi}}
+  child {node {gmail\\$\bullet$} edge from parent node[right,edgelbl]{lo}};
+\end{tikzpicture}
+&
+\begin{tikzpicture}[level distance=0.8cm, level 1/.style={sibling distance=1.45cm}, every node/.style={font=\scriptsize, align=center}, edgelbl/.style={font=\tiny, inner sep=1.5pt}]
+\node {Strict}
+  child {node {zoom\\$\bullet$} edge from parent node[left,edgelbl]{hi}}
+  child {node {gmail\\$\bullet\bullet\bullet$} edge from parent node[right,edgelbl]{lo}};
+\end{tikzpicture}
+\\[-2pt]
+(a) & (b)\\[10pt]
+\begin{tikzpicture}[level distance=0.8cm, level 1/.style={sibling distance=1.45cm}, every node/.style={font=\scriptsize, align=center}, edgelbl/.style={font=\tiny, inner sep=1.5pt}]
+\node {Strict}
+  child {node {gmail\\$\bullet$} edge from parent node[left,edgelbl]{lo}}
+  child {node {zoom\\$\bullet\bullet$} edge from parent node[right,edgelbl]{hi}};
+\end{tikzpicture}
+&
+\begin{tikzpicture}[level distance=0.8cm, level 1/.style={sibling distance=1.45cm}, every node/.style={font=\scriptsize, align=center}, edgelbl/.style={font=\tiny, inner sep=1.5pt}]
+\node {Strict}
+  child {node {gmail\\$\bullet\bullet$} edge from parent node[left,edgelbl]{lo}}
+  child {node {zoom\\$\bullet$} edge from parent node[right,edgelbl]{hi}};
+\end{tikzpicture}
+\\[-2pt]
+(c) & (d)\\
+\end{tabular}
+
+\smallskip
+\(\mathtt{a} \sim \mathtt{b} \qquad \lfloor\mathtt{a}\rfloor \eqR \lfloor\mathtt{c}\rfloor \qquad \mathtt{a} \simR \mathtt{d}\)
+
+\caption{The three equivalences of this subsection, on controls over \texttt{zoom} (priority \texttt{hi}) and \texttt{gmail} (priority \texttt{lo}); each dot is a buffered packet, and \((\mathtt{a})\) is the running control. \((\mathtt{a}) \sim (\mathtt{b})\): \texttt{push}/\texttt{pop} have only moved packets, leaving the tree, its ranks, and \texttt{z} identical. \((\mathtt{c})\) draws the two arms in the other order but keeps the same backlog, so it reads off to a reorder-congruent policy: \(\lfloor \mathtt{a} \rfloor \eqR \lfloor \mathtt{c} \rfloor\) at the \texttt{pol} level. \((\mathtt{d})\) reorders the arms \emph{and} moves packets, so relating the two controls needs \(\simR\), the lift of \(\eqR\) that also absorbs \texttt{push}/\texttt{pop}: \((\mathtt{a}) \simR (\mathtt{d})\). Each arm keeps its own priority throughout (\texttt{zoom} stays \texttt{hi}), which is why reordering never changes the scheduler.}
+\label{fig:equiv-gallery}
+\end{figure}
 
 \paragraph{The bridge: \(\lfloor \cdot \rfloor\)}
 
@@ -737,7 +812,7 @@ Non-disruption: \(\mathtt{drop}_k\) removes only an \emph{empty} slot and renumb
 
 \begin{figure*}[t]
   \centering
-  \begin{subfigure}[b]{0.32\linewidth}
+  \begin{subfigure}[t]{0.32\linewidth}
     \centering
     \begin{tikzpicture}[
       level distance=1.1cm,
@@ -756,7 +831,7 @@ Non-disruption: \(\mathtt{drop}_k\) removes only an \emph{empty} slot and renumb
     \caption{Original tree.}
     \label{fig:remove-orig}
   \end{subfigure}\hfill
-  \begin{subfigure}[b]{0.32\linewidth}
+  \begin{subfigure}[t]{0.32\linewidth}
     \centering
     \begin{tikzpicture}[
       level distance=1.1cm,
@@ -773,7 +848,7 @@ Non-disruption: \(\mathtt{drop}_k\) removes only an \emph{empty} slot and renumb
     \caption{Keep leftmost \texttt{1}s: emits packets \texttt{c1, c2, c3, a1, c4, a2}.}
     \label{fig:remove-leftmost}
   \end{subfigure}\hfill
-  \begin{subfigure}[b]{0.32\linewidth}
+  \begin{subfigure}[t]{0.32\linewidth}
     \centering
     \begin{tikzpicture}[
       level distance=1.1cm,
@@ -840,67 +915,70 @@ The wrap is therefore \texttt{pol}-visible only as a \(\Strict\).
 
 \begin{figure*}[t]
   \centering
-  \begin{subfigure}[b]{0.32\linewidth}
+  \begin{subfigure}[t]{0.19\linewidth}
     \centering
-    \begin{tikzpicture}[level distance=1.35cm, every node/.style={align=center, font=\scriptsize}]
-      \node {parent}
-        child {node {\texttt{old}\\[2pt] \leafbox{3}}};
+    \begin{tikzpicture}[every node/.style={font=\scriptsize}]
+      \node (P) at (0,0) {$P$};
+      \draw (P) -- (0,-0.75);
+      \subtri{oldcol}{0}{-0.75}{3}
     \end{tikzpicture}
     \caption{Before.}
     \label{fig:designate-before}
   \end{subfigure}\hfill
-  \begin{subfigure}[b]{0.32\linewidth}
+  \begin{subfigure}[t]{0.19\linewidth}
     \centering
-    \begin{tikzpicture}[level distance=1.35cm, level 1/.style={sibling distance=3.0cm}, every node/.style={align=center, font=\scriptsize}]
-      \node {parent}
-        child {node {$\Strictstar$\\[2pt] \pifobox{0,0,0}}
-          child {node {\texttt{old}\\[2pt] \leafbox{3}} edge from parent node[left]{$0$}}
-          child {node {\texttt{new}\\[2pt] \leafbox{0}} edge from parent node[right]{$1$}}
-        };
+    \begin{tikzpicture}[every node/.style={font=\scriptsize}]
+      \node (P) at (0,0) {$P$};
+      \node (S) at (0,-0.75) {$\Strictstar$};
+      \draw (P) -- (S);
+      \draw (S) -- (-0.95,-0.75);
+      \draw (S) -- (0.95,-0.75);
+      \subtri{oldcol}{-0.95}{-0.75}{3}
+      \subtri{newcol}{0.95}{-0.75}{0}
     \end{tikzpicture}
     \caption{After \Designate.}
     \label{fig:designate-after}
   \end{subfigure}\hfill
-  \begin{subfigure}[b]{0.32\linewidth}
+  \begin{subfigure}[t]{0.19\linewidth}
     \centering
-    \begin{tikzpicture}[level distance=1.35cm, level 1/.style={sibling distance=3.0cm}, every node/.style={align=center, font=\scriptsize}]
-      \node {parent}
-        child {node {$\Strictstar$\\[2pt] \pifobox{1,1,1,0,0}}
-          child {node {\texttt{old}\\[2pt] \leafbox{2}} edge from parent node[left]{$0$}}
-          child {node {\texttt{new}\\[2pt] \leafbox{3}} edge from parent node[right]{$1$}}
-        };
+    \begin{tikzpicture}[every node/.style={font=\scriptsize}]
+      \node (P) at (0,0) {$P$};
+      \node (S) at (0,-0.75) {$\Strictstar$};
+      \draw (P) -- (S);
+      \draw (S) -- (-0.95,-0.75);
+      \draw (S) -- (0.95,-0.75);
+      \subtri{oldcol}{-0.95}{-0.75}{2}
+      \subtri{newcol}{0.95}{-0.75}{3}
     \end{tikzpicture}
     \caption{Mid-drain.}
     \label{fig:designate-drain}
-  \end{subfigure}
-
-  \par\medskip
-
-  \hspace*{\fill}
-  \begin{subfigure}[b]{0.32\linewidth}
+  \end{subfigure}\hfill
+  \begin{subfigure}[t]{0.19\linewidth}
     \centering
-    \begin{tikzpicture}[level distance=1.35cm, level 1/.style={sibling distance=3.0cm}, every node/.style={align=center, font=\scriptsize}]
-      \node {parent}
-        child {node {$\Strictstar$\\[2pt] \pifobox{1,1,1}}
-          child {node {\texttt{old}\\[2pt] \leafbox{0}} edge from parent node[left]{$0$}}
-          child {node {\texttt{new}\\[2pt] \leafbox{3}} edge from parent node[right]{$1$}}
-        };
+    \begin{tikzpicture}[every node/.style={font=\scriptsize}]
+      \node (P) at (0,0) {$P$};
+      \node (S) at (0,-0.75) {$\Strictstar$};
+      \draw (P) -- (S);
+      \draw (S) -- (-0.95,-0.75);
+      \draw (S) -- (0.95,-0.75);
+      \subtri{oldcol}{-0.95}{-0.75}{0}
+      \subtri{newcol}{0.95}{-0.75}{3}
     \end{tikzpicture}
     \caption{Before \Undesignate.}
     \label{fig:designate-predrop}
   \end{subfigure}\hfill
-  \begin{subfigure}[b]{0.32\linewidth}
+  \begin{subfigure}[t]{0.19\linewidth}
     \centering
-    \begin{tikzpicture}[level distance=1.35cm, every node/.style={align=center, font=\scriptsize}]
-      \node {parent}
-        child {node {\texttt{new}\\[2pt] \leafbox{3}}};
+    \begin{tikzpicture}[every node/.style={font=\scriptsize}]
+      \node (P) at (0,0) {$P$};
+      \draw (P) -- (0,-0.75);
+      \subtri{newcol}{0}{-0.75}{3}
     \end{tikzpicture}
     \caption{After \Undesignate.}
     \label{fig:designate-done}
   \end{subfigure}
-  \hspace*{\fill}
 
-  \caption{The \Designate\,+\,drain\,+\,\Undesignate{} lifecycle: in-place replacement of \texttt{old} (\(= M = \texttt{C@}\tau\)) by \texttt{new} (\(= \lceil\texttt{survivor}\rceil\)). A buffer cell with a dot holds a packet; a \(\Strictstar\) node shows its index-\texttt{pifo}, read right to left. \cref{sec:designate} walks the steps.}
+  \caption{The \Designate\,+\,drain\,+\,\Undesignate{} lifecycle: in-place replacement of the \textcolor{oldcol}{old subtree} (\(= M = \texttt{C@}\tau\)) by the \textcolor{newcol}{new subtree} (\(= \lceil\texttt{survivor}\rceil\)), both hanging off the parent \(P\). Each triangle is a subtree; the dots along its base are the packets buffered inside it. \Designate{} wraps old under a \(\Strictstar\) beside new; as traffic drains the old subtree empties while the new one fills, and once old is empty \Undesignate{} removes it and promotes new. \cref{sec:designate} walks the steps.}
   \label{fig:designate}
 \end{figure*}
 
@@ -1186,16 +1264,25 @@ We do not pursue this here; the splicing analysis introduces its own correctness
 
 \paragraph{Grammar}
 
-\begin{verbatim}
-phi    ::= true
-         | empty(path)
+\begin{figure*}[t]
+\centering
+\[
+\begin{array}{@{}l@{}}
+\textbf{Guarded sequences}\\[3pt]
+\varphi \mathrel{::=} \mathtt{true} \;\mid\; \mathtt{empty}(\mathit{path})\\[2pt]
+\mathit{gseq} \mathrel{::=} \epsilon \;\mid\; (\varphi\,;\, \delta)\,;\, \mathit{gseq}\\[8pt]
+\textbf{Idioms}\\[3pt]
+\Retire(\mathit{path}) \;=\; (\mathtt{true};\, \Quiesce(\mathit{path}))\,;\, (\mathtt{empty}(\mathit{path});\, \Remove(\mathit{path}))\\[2pt]
+\SlowRetire(\mathit{path}) \;=\; (\mathtt{empty}(\mathit{path});\, \Remove(\mathit{path}))\\[2pt]
+\Replace(\mathit{path}, B) \;=\; (\mathtt{true};\, \Designate(\mathit{path}, B))\,;\, (\mathtt{true};\, \Quiesce(\mathit{path} \mathbin{+\!\!+} [0]))\,;\, (\mathtt{empty}(\mathit{path} \mathbin{+\!\!+} [0]);\, \Undesignate(\mathit{path}))\\[2pt]
+\PruneDownTo(\mathit{path}) \;=\; \Retire(\pi_a)\,;\, \ldots\,;\, \Retire(\pi_z)\,;\, (\mathtt{true};\, \ChangeRoot(\mathit{path}))
+\end{array}
+\]
+\caption{The grammar of guarded sequences and the four starter idioms, each a named \((\varphi;\delta)^{*}\). \(\delta\) ranges over the productions of \cref{sec:grammar}; in \PruneDownTo, \(\pi_a, \ldots, \pi_z\) are the off-path subtrees between the root and \texttt{path}.}
+\label{fig:gseq-idioms}
+\end{figure*}
 
-gseq   ::= eps
-         | (phi ; d) ; gseq
-\end{verbatim}
-% Make it math in a figure
-
-We write \texttt{gseq} for ``guarded sequence.''
+We write \texttt{gseq} for ``guarded sequence'' (\cref{fig:gseq-idioms}, top).
 A guard \(\varphi\) is either trivially satisfied (\texttt{true}) or asserts that the subtree at \texttt{path} is empty; it is always paired with exactly one \(\delta\) drawn from \cref{sec:grammar}.
 The two guard forms have sufficed for every sequence we have needed; the framework does not depend on this minimality, and a richer predicate language can be slotted in without disturbing anything else.
 
@@ -1224,48 +1311,30 @@ It expands into a fixed \((\varphi; \delta)^{*}\) sequence: a list of production
 Soundness is compositional: each step of the expansion is sound by \cref{sec:per-production}, and the sequence inherits the sequence-level reasoning above.
 An idiom expansion that would hit an undefined production on the current control is rejected: the soundness checks fire on the expanded sequence just as they would on a hand-written one.
 
-We name four starter idioms.
+We name four starter idioms, their expansions collected in \cref{fig:gseq-idioms}.
 New ones can be added later without changing the framework, since an idiom is just a named \((\varphi; \delta)^{*}\).
 
-% Let's make all of these idiom recipes into math. They can be the same figure as gseq.
 \begin{itemize}
-\item \textbf{\Retire(\texttt{path})} expands to
-\[
-(\mathtt{true}; \Quiesce(\mathtt{path})) ; (\mathtt{empty}(\mathtt{path}); \Remove(\mathtt{path})).
-\]
-Quiesces the subtree at \texttt{path}, waits for it to drain to empty, then \Remove{}s it.
+\item \textbf{\Retire(\texttt{path})} quiesces the subtree at \texttt{path}, waits for it to drain to empty, then \Remove{}s it.
 The operator-facing way to say ``tear this subtree down gracefully.''
 
-\item \textbf{\SlowRetire(\texttt{path})} = \((\mathtt{empty}(\mathtt{path}); \Remove(\mathtt{path}))\).
-Waits for the subtree at \texttt{path} to drain, then \Remove{}s it.
+\item \textbf{\SlowRetire(\texttt{path})} waits for the subtree at \texttt{path} to drain, then \Remove{}s it.
 The operator may use this if the subtree at \texttt{path} needs to receive more traffic but is generally being phased out.
 
-\item \textbf{\Replace(\texttt{path, B})} =
-
-\begin{verbatim}
-(true; Designate(path, B)) ;
-(true; Quiesce(path ++ [0])) ;
-(empty(path ++ [0]); Undesignate(path))
-\end{verbatim}
-
-Designates \texttt{B} as the survivor of the current \texttt{pol@path} (which, after Designate, sits at \texttt{path ++ [0]} as the first arm of the inserted \(\Strictstar\) node), quiesces it, waits for it to drain, 
+\item \textbf{\Replace(\texttt{path, B})} designates \texttt{B} as the survivor of the current \texttt{pol@path} (which, after \Designate, sits at \texttt{path ++ [0]} as the first arm of the inserted \(\Strictstar\) node), quiesces it, waits for it to drain,
 then collapses the \(\Strictstar\) onto \texttt{B}.
 % the clause above is not standard English and is not clear. Use more words and clarify
 At the pol level the composite effect is wholesale replacement of \texttt{pol@path} by \texttt{B}; the operator-facing idiom adds the \Quiesce{} in the middle so that the original subtree empties out before the collapse fires.
 The footprint of \Replace(\texttt{path, B}) is the subtree at \texttt{path}, the wrap node inserted at \texttt{path} by \Designate, and the \texttt{z} chain at the ancestors of \texttt{path} (extended by \Designate, restored by \Undesignate); \cref{sec:planner} frames confinement against exactly this set.
 
-\item \textbf{\PruneDownTo(\texttt{path})} expands to
-\[
-\Retire(\pi_a) ; \ldots ; \Retire(\pi_z) ; (\mathtt{true}; \ChangeRoot(\mathtt{path})),
-\]
-where \(\pi_a, \ldots, \pi_z\) are paths to the off-path subtrees along the route from the root to \texttt{path}.
+\item \textbf{\PruneDownTo(\texttt{path})} retires every off-path subtree along the route from the root to \texttt{path} (call them \(\pi_a, \ldots, \pi_z\)), then \ChangeRoot{}s to \texttt{path}.
 This idiom is the operator-facing way to say ``abandon everything except this subtree.''
 
 Each \Retire{} removes one off-path subtree; once they have all fired, every ancestor along the path is unary, satisfying \ChangeRoot's precondition (\cref{sec:changeroot}).
 (If no off-path subtrees exist, the idiom reduces to \((\mathtt{true}; \ChangeRoot(\mathtt{path}))\) alone.)
 The \Retire{}s on disjoint off-path subtrees commute, so any ordering suffices; we use root-first as a stable convention.
 
-For instance, suppose the running tree is \texttt{A(B(E(F, G), D), C)}, with edges labeled by the parent-side index:
+For instance, suppose the running tree is \texttt{A(B(D(F, G), E), C)}, with edges labeled by the parent-side index:
 
 \begin{center}
 \begin{minipage}{0.55\linewidth}
@@ -1281,12 +1350,12 @@ For instance, suppose the running tree is \texttt{A(B(E(F, G), D), C)}, with edg
 ]
 \node {$A$}
   child {node {$B$}
-    child {node {$E$}
+    child {node {$D$}
       child {node {$F$} edge from parent node[left, xshift=-1pt] {\scriptsize 0}}
       child {node {$G$} edge from parent node[right, xshift=1pt] {\scriptsize 1}}
       edge from parent node[left, xshift=-1pt] {\scriptsize 0}
     }
-    child {node {$D$} edge from parent node[right, xshift=1pt] {\scriptsize 1}}
+    child {node {$E$} edge from parent node[right, xshift=1pt] {\scriptsize 1}}
     edge from parent node[left, xshift=-1pt] {\scriptsize 0}
   }
   child {node {$C$} edge from parent node[right, xshift=1pt] {\scriptsize 1}};
@@ -1299,22 +1368,20 @@ For instance, suppose the running tree is \texttt{A(B(E(F, G), D), C)}, with edg
 \texttt{A} & \texttt{[]} \\
 \texttt{B} & \texttt{[0]} \\
 \texttt{C} & \texttt{[1]} \\
-\texttt{E} & \texttt{[0, 0]} \\
-\texttt{D} & \texttt{[0, 1]} \\
+\texttt{D} & \texttt{[0, 0]} \\
+\texttt{E} & \texttt{[0, 1]} \\
 \texttt{F} & \texttt{[0, 0, 0]} \\
 \texttt{G} & \texttt{[0, 0, 1]} \\
 \end{tabular}
 \end{minipage}
 \end{center}
-% In this figure the naming of the nodes is a bit funny. If we look at it as a BFS naming, then D and E are flipped. Carefully fix this, making sure to propagate the change to the list of paths and to the English argument along with it
+The operator wants to retain only \texttt{E}, so they issue \PruneDownTo(\texttt{[0, 1]}).
 
-The operator wants to retain only \texttt{D}, so they issue \PruneDownTo(\texttt{[0, 1]}).
-
-The off-path subtrees are \texttt{E(F, G)} (at \texttt{[0, 0]}) and \texttt{C} (at \texttt{[1]}).
+The off-path subtrees are \texttt{D(F, G)} (at \texttt{[0, 0]}) and \texttt{C} (at \texttt{[1]}).
 So \PruneDownTo(\texttt{[0, 1]}) expands to: \Retire(\texttt{[0, 0]) ; Retire([1]) ; (true; ChangeRoot([0, 0])}).
 
-Note that the path \texttt{[0, 0]} appears twice in this expansion with different referents: in \Retire(\texttt{[0, 0]}) it points to \texttt{E(F, G)} (the operand at the moment that \Retire{} fires), and in the final \ChangeRoot(\texttt{[0, 0]}) it points to \texttt{D}, which moved from \texttt{[0, 1]} to \texttt{[0, 0]} once \texttt{E(F, G)} was retired.
-A path-resolution system computes these targets automatically at idiom expansion; the operator only writes \PruneDownTo(\texttt{[0, 1]}), naming \texttt{D} by its location at the moment of request.
+Note that the path \texttt{[0, 0]} appears twice in this expansion with different referents: in \Retire(\texttt{[0, 0]}) it points to \texttt{D(F, G)} (the operand at the moment that \Retire{} fires), and in the final \ChangeRoot(\texttt{[0, 0]}) it points to \texttt{E}, which moved from \texttt{[0, 1]} to \texttt{[0, 0]} once \texttt{D(F, G)} was retired.
+A path-resolution system computes these targets automatically at idiom expansion; the operator only writes \PruneDownTo(\texttt{[0, 1]}), naming \texttt{E} by its location at the moment of request.
 
 % This is a paragraph-ey thing inside of a list. It's also way too long for a simple idea that we _do not_ support. Trim it significantly and then I may even just move it to the appendix or something.
 \emph{On the natural-feeling opposite.}
@@ -1431,10 +1498,10 @@ The planner has two ways to realize this, shown in \cref{fig:planner-add-vs-repl
       child {node {$\mathtt{RR}$}
         child {node {$\mathtt{g}$}}
         child {node {$\mathtt{n}$}}
-        child[edge from parent/.style={draw,thick}] {node[draw,dashed,inner sep=1pt] {$\mathtt{s}$}}
+        child[edge from parent/.style={draw,thick}] {node[label={[font=\tiny]below:new}] {$\mathtt{s}$}}
       };
     \end{tikzpicture}
-    \caption{\Add{} at the \texttt{RR} (new arm in dashed box)}
+    \caption{\Add{} at the \texttt{RR} (new arm \(\mathtt{s}\) on the thick edge)}
     \label{fig:planner-add}
   \end{subfigure}
   \caption{Two ways to realize \(\mathtt{p1} \to \mathtt{p2}\) when \texttt{p2} adds a \texttt{spotify} arm to the \texttt{RR}.}
@@ -1529,7 +1596,7 @@ The installed tree previews what lands on the substrate: not \texttt{p2} literal
 
 \begin{figure}[t]
   \centering
-  \begin{subfigure}[b]{0.22\linewidth}
+  \begin{subfigure}[t]{0.22\linewidth}
     \centering
     \begin{tikzpicture}[
       level distance=0.8cm,
@@ -1543,7 +1610,7 @@ The installed tree previews what lands on the substrate: not \texttt{p2} literal
     \caption{\(\mathtt{p1} = \mathtt{RR(d,g)}\)}
     \label{fig:label-overlap-p1}
   \end{subfigure}%
-  \begin{subfigure}[b]{0.36\linewidth}
+  \begin{subfigure}[t]{0.36\linewidth}
     \centering
     \begin{tikzpicture}[
       level distance=0.8cm,
@@ -1562,7 +1629,7 @@ The installed tree previews what lands on the substrate: not \texttt{p2} literal
     \caption{\(\mathtt{p2} = \mathtt{RR(d,s,RR(g,c))}\)}
     \label{fig:label-overlap-p2}
   \end{subfigure}%
-  \begin{subfigure}[b]{0.4\linewidth}
+  \begin{subfigure}[t]{0.4\linewidth}
     \centering
     \begin{tikzpicture}[
       level distance=0.8cm,
