@@ -466,29 +466,45 @@ Every \(\sim\)-equivalent pair is \(\simR\)-equivalent, but not conversely: a si
 \begin{figure}[t]
 \centering
 \begin{tabular}{c@{\hskip 2.2em}c}
-\begin{tikzpicture}[level distance=0.8cm, level 1/.style={sibling distance=1.45cm}, every node/.style={font=\scriptsize, align=center}, edgelbl/.style={font=\tiny, inner sep=1.5pt}]
-\node {Strict}
-  child {node {zoom\\$\bullet\bullet$} edge from parent node[left,edgelbl]{hi}}
-  child {node {gmail\\$\bullet$} edge from parent node[right,edgelbl]{lo}};
+\begin{tikzpicture}[every node/.style={font=\scriptsize}]
+  \node (S) at (0,0.55) {Strict};
+  \draw (S) -- (-0.7,-0.2) node[midway,left,font=\tiny,inner sep=1pt]{hi};
+  \draw (S) -- (0.7,-0.2) node[midway,right,font=\tiny,inner sep=1pt]{lo};
+  \leaftri{flowA}{-0.7}{-0.2}{2}{0}
+  \leaftri{flowB}{0.7}{-0.2}{1}{0}
+  \node[font=\tiny] at (-0.7,-0.95) {$\mathtt{z}$};
+  \node[font=\tiny] at (0.7,-0.95) {$\mathtt{g}$};
 \end{tikzpicture}
 &
-\begin{tikzpicture}[level distance=0.8cm, level 1/.style={sibling distance=1.45cm}, every node/.style={font=\scriptsize, align=center}, edgelbl/.style={font=\tiny, inner sep=1.5pt}]
-\node {Strict}
-  child {node {zoom\\$\bullet$} edge from parent node[left,edgelbl]{hi}}
-  child {node {gmail\\$\bullet\bullet\bullet$} edge from parent node[right,edgelbl]{lo}};
+\begin{tikzpicture}[every node/.style={font=\scriptsize}]
+  \node (S) at (0,0.55) {Strict};
+  \draw (S) -- (-0.7,-0.2) node[midway,left,font=\tiny,inner sep=1pt]{hi};
+  \draw (S) -- (0.7,-0.2) node[midway,right,font=\tiny,inner sep=1pt]{lo};
+  \leaftri{flowA}{-0.7}{-0.2}{1}{0}
+  \leaftri{flowB}{0.7}{-0.2}{3}{0}
+  \node[font=\tiny] at (-0.7,-0.95) {$\mathtt{z}$};
+  \node[font=\tiny] at (0.7,-0.95) {$\mathtt{g}$};
 \end{tikzpicture}
 \\[-2pt]
 (a) & (b)\\[10pt]
-\begin{tikzpicture}[level distance=0.8cm, level 1/.style={sibling distance=1.45cm}, every node/.style={font=\scriptsize, align=center}, edgelbl/.style={font=\tiny, inner sep=1.5pt}]
-\node {Strict}
-  child {node {gmail\\$\bullet$} edge from parent node[left,edgelbl]{lo}}
-  child {node {zoom\\$\bullet\bullet$} edge from parent node[right,edgelbl]{hi}};
+\begin{tikzpicture}[every node/.style={font=\scriptsize}]
+  \node (S) at (0,0.55) {Strict};
+  \draw (S) -- (-0.7,-0.2) node[midway,left,font=\tiny,inner sep=1pt]{lo};
+  \draw (S) -- (0.7,-0.2) node[midway,right,font=\tiny,inner sep=1pt]{hi};
+  \leaftri{flowB}{-0.7}{-0.2}{1}{0}
+  \leaftri{flowA}{0.7}{-0.2}{2}{0}
+  \node[font=\tiny] at (-0.7,-0.95) {$\mathtt{g}$};
+  \node[font=\tiny] at (0.7,-0.95) {$\mathtt{z}$};
 \end{tikzpicture}
 &
-\begin{tikzpicture}[level distance=0.8cm, level 1/.style={sibling distance=1.45cm}, every node/.style={font=\scriptsize, align=center}, edgelbl/.style={font=\tiny, inner sep=1.5pt}]
-\node {Strict}
-  child {node {gmail\\$\bullet\bullet$} edge from parent node[left,edgelbl]{lo}}
-  child {node {zoom\\$\bullet$} edge from parent node[right,edgelbl]{hi}};
+\begin{tikzpicture}[every node/.style={font=\scriptsize}]
+  \node (S) at (0,0.55) {Strict};
+  \draw (S) -- (-0.7,-0.2) node[midway,left,font=\tiny,inner sep=1pt]{lo};
+  \draw (S) -- (0.7,-0.2) node[midway,right,font=\tiny,inner sep=1pt]{hi};
+  \leaftri{flowB}{-0.7}{-0.2}{2}{0}
+  \leaftri{flowA}{0.7}{-0.2}{1}{0}
+  \node[font=\tiny] at (-0.7,-0.95) {$\mathtt{g}$};
+  \node[font=\tiny] at (0.7,-0.95) {$\mathtt{z}$};
 \end{tikzpicture}
 \\[-2pt]
 (c) & (d)\\
@@ -497,7 +513,7 @@ Every \(\sim\)-equivalent pair is \(\simR\)-equivalent, but not conversely: a si
 \smallskip
 \(\mathtt{a} \sim \mathtt{b} \qquad \lfloor\mathtt{a}\rfloor \eqR \lfloor\mathtt{c}\rfloor \qquad \mathtt{a} \simR \mathtt{d}\)
 
-\caption{The three equivalences of this subsection, on controls over \texttt{zoom} (priority \texttt{hi}) and \texttt{gmail} (priority \texttt{lo}); each dot is a buffered packet, and \((\mathtt{a})\) is the running control. \((\mathtt{a}) \sim (\mathtt{b})\): \texttt{push}/\texttt{pop} have only moved packets, leaving the tree, its ranks, and \texttt{z} identical. \((\mathtt{c})\) draws the two arms in the other order but keeps the same backlog, so it reads off to a reorder-congruent policy: \(\lfloor \mathtt{a} \rfloor \eqR \lfloor \mathtt{c} \rfloor\) at the \texttt{pol} level. \((\mathtt{d})\) reorders the arms \emph{and} moves packets, so relating the two controls needs \(\simR\), the lift of \(\eqR\) that also absorbs \texttt{push}/\texttt{pop}: \((\mathtt{a}) \simR (\mathtt{d})\). Each arm keeps its own priority throughout (\texttt{zoom} stays \texttt{hi}), which is why reordering never changes the scheduler.}
+\caption{The three equivalences of this subsection, on controls over \(\mathtt{z}\) (\texttt{zoom}, priority \texttt{hi}) and \(\mathtt{g}\) (\texttt{gmail}, priority \texttt{lo}); each dot is a buffered packet, and \((\mathtt{a})\) is the running control. \((\mathtt{a}) \sim (\mathtt{b})\): \texttt{push}/\texttt{pop} have only moved packets, leaving the tree, its ranks, and \texttt{z} identical. \((\mathtt{c})\) draws the two arms in the other order but keeps the same backlog, so it reads off to a reorder-congruent policy: \(\lfloor \mathtt{a} \rfloor \eqR \lfloor \mathtt{c} \rfloor\) at the \texttt{pol} level. \((\mathtt{d})\) reorders the arms \emph{and} moves packets, so relating the two controls needs \(\simR\), the lift of \(\eqR\) that also absorbs \texttt{push}/\texttt{pop}: \((\mathtt{a}) \simR (\mathtt{d})\). Each arm keeps its own priority throughout (\(\mathtt{z}\) stays \texttt{hi}), which is why reordering never changes the scheduler.}
 \label{fig:equiv-gallery}
 \end{figure}
 
@@ -1264,7 +1280,7 @@ We do not pursue this here; the splicing analysis introduces its own correctness
 
 \paragraph{Grammar}
 
-\begin{figure*}[t]
+\begin{figure}[t]
 \centering
 \[
 \begin{array}{@{}l@{}}
@@ -1272,15 +1288,20 @@ We do not pursue this here; the splicing analysis introduces its own correctness
 \varphi \mathrel{::=} \mathtt{true} \;\mid\; \mathtt{empty}(\mathit{path})\\[2pt]
 \mathit{gseq} \mathrel{::=} \epsilon \;\mid\; (\varphi\,;\, \delta)\,;\, \mathit{gseq}\\[8pt]
 \textbf{Idioms}\\[3pt]
-\Retire(\mathit{path}) \;=\; (\mathtt{true};\, \Quiesce(\mathit{path}))\,;\, (\mathtt{empty}(\mathit{path});\, \Remove(\mathit{path}))\\[2pt]
-\SlowRetire(\mathit{path}) \;=\; (\mathtt{empty}(\mathit{path});\, \Remove(\mathit{path}))\\[2pt]
-\Replace(\mathit{path}, B) \;=\; (\mathtt{true};\, \Designate(\mathit{path}, B))\,;\, (\mathtt{true};\, \Quiesce(\mathit{path} \mathbin{+\!\!+} [0]))\,;\, (\mathtt{empty}(\mathit{path} \mathbin{+\!\!+} [0]);\, \Undesignate(\mathit{path}))\\[2pt]
-\PruneDownTo(\mathit{path}) \;=\; \Retire(\pi_a)\,;\, \ldots\,;\, \Retire(\pi_z)\,;\, (\mathtt{true};\, \ChangeRoot(\mathit{path}))
+\Retire(\mathit{path}) \;=\;\\
+\quad (\mathtt{true};\, \Quiesce(\mathit{path}))\,;\, (\mathtt{empty}(\mathit{path});\, \Remove(\mathit{path}))\\[4pt]
+\SlowRetire(\mathit{path}) \;=\; (\mathtt{empty}(\mathit{path});\, \Remove(\mathit{path}))\\[4pt]
+\Replace(\mathit{path}, B) \;=\;\\
+\quad (\mathtt{true};\, \Designate(\mathit{path}, B))\,;\\
+\quad (\mathtt{true};\, \Quiesce(\mathit{path} \mathbin{+\!\!+} [0]))\,;\\
+\quad (\mathtt{empty}(\mathit{path} \mathbin{+\!\!+} [0]);\, \Undesignate(\mathit{path}))\\[4pt]
+\PruneDownTo(\mathit{path}) \;=\;\\
+\quad \Retire(\pi_a)\,;\, \ldots\,;\, \Retire(\pi_z)\,;\, (\mathtt{true};\, \ChangeRoot(\mathit{path}))
 \end{array}
 \]
 \caption{The grammar of guarded sequences and the four starter idioms, each a named \((\varphi;\delta)^{*}\). \(\delta\) ranges over the productions of \cref{sec:grammar}; in \PruneDownTo, \(\pi_a, \ldots, \pi_z\) are the off-path subtrees between the root and \texttt{path}.}
 \label{fig:gseq-idioms}
-\end{figure*}
+\end{figure}
 
 We write \texttt{gseq} for ``guarded sequence'' (\cref{fig:gseq-idioms}, top).
 A guard \(\varphi\) is either trivially satisfied (\texttt{true}) or asserts that the subtree at \texttt{path} is empty; it is always paired with exactly one \(\delta\) drawn from \cref{sec:grammar}.
@@ -1443,67 +1464,67 @@ The planner descends through the tree as long as \texttt{p1} and \texttt{p2} agr
 When it finds one, it emits the matching production at that depth.
 Only when the descent ends without a match does the planner fall back to \Replace; but by then the recursion has localized the difference to the deepest slot at which the policies disagree, so the resulting \Replace{} wraps only that slot.
 
-A concrete example will help.
+A concrete example will help; we write \(\mathtt{P}\) and \(\mathtt{Q}\) for the strict-priority and round-robin disciplines, since the footprint argument does not turn on which they are.
 Suppose
 \[
-\mathtt{p1} = \mathtt{Strict}(\mathtt{zoom}, \mathtt{RR}(\mathtt{gmail}, \mathtt{netflix}))
+\mathtt{p1} = \mathtt{P}(\mathtt{zoom}, \mathtt{Q}(\mathtt{gmail}, \mathtt{netflix}))
 \]
 and the operator requests
 \[
-\mathtt{p2} = \mathtt{Strict}(\mathtt{zoom}, \mathtt{RR}(\mathtt{gmail}, \mathtt{netflix}, \mathtt{spotify})).
+\mathtt{p2} = \mathtt{P}(\mathtt{zoom}, \mathtt{Q}(\mathtt{gmail}, \mathtt{netflix}, \mathtt{spotify})).
 \]
 The planner has two ways to realize this, shown in \cref{fig:planner-add-vs-replace}.
 
 \begin{figure}[t]
   \centering
-  \begin{subfigure}[b]{0.6\linewidth}
+  \begin{subfigure}[t]{0.56\linewidth}
     \centering
-    \begin{tikzpicture}[level distance=0.78cm, level 1/.style={sibling distance=0.82cm}, level 2/.style={sibling distance=0.5cm}, every node/.style={font=\scriptsize}]
-    \fill[newcol!12, rounded corners=2pt] (1.05,0.28) rectangle (2.78,-1.72);
-    \node (L) at (-1.35,0) {\textsf{Strict}}
+    \begin{tikzpicture}[baseline=(L.north), level distance=0.72cm, level 1/.style={sibling distance=0.62cm}, level 2/.style={sibling distance=0.38cm}, every node/.style={font=\scriptsize}]
+    \fill[newcol!12, rounded corners=2pt] (0.92,0.3) rectangle (2.4,-1.62);
+    \node (L) at (-1.35,0) {$\mathtt{P}$}
       child {node {$\mathtt{z}$}}
-      child {node {\textsf{RR}}
+      child {node {$\mathtt{Q}$}
         child {node {$\mathtt{g}$}}
         child {node {$\mathtt{n}$}}
       };
-    \node (R) at (1.7,0) {\textsf{Strict}}
+    \node (R) at (1.45,0) {$\mathtt{P}$}
       child {node {$\mathtt{z}$}}
-      child {node {\textsf{RR}}
+      child {node {$\mathtt{Q}$}
         child {node {$\mathtt{g}$}}
         child {node {$\mathtt{n}$}}
         child {node {$\mathtt{s}$}}
       };
-    \node (S) at (0.15,0) {$\Strictstar$};
+    \node (S) at (0.05,0) {$\Strictstar$};
     \draw (S) -- (L);
     \draw (S) -- (R);
     \end{tikzpicture}
-    \caption{\(\Replace([], \mathtt{p2})\): wrap the whole tree.}
+    \caption{\(\Replace([], \mathtt{p2})\): wrap whole tree.}
     \label{fig:planner-replace}
   \end{subfigure}\hfill
-  \begin{subfigure}[b]{0.36\linewidth}
+  \begin{subfigure}[t]{0.4\linewidth}
     \centering
-    \begin{tikzpicture}[level distance=0.78cm, level 1/.style={sibling distance=0.9cm}, level 2/.style={sibling distance=0.5cm}, every node/.style={font=\scriptsize}]
-    \fill[newcol!12, rounded corners=2pt] (0.72,-1.34) rectangle (1.18,-1.74);
-    \node {\textsf{Strict}}
+    \begin{tikzpicture}[baseline=(Pb.north), level distance=0.72cm, level 1/.style={sibling distance=0.9cm}, level 2/.style={sibling distance=0.5cm}, every node/.style={font=\scriptsize}]
+    \fill[newcol!12, rounded corners=2pt] (0.72,-1.28) rectangle (1.18,-1.66);
+    \node (Pb) {$\mathtt{P}$}
       child {node {$\mathtt{z}$}}
-      child {node {\textsf{RR}}
+      child {node {$\mathtt{Q}$}
         child {node {$\mathtt{g}$}}
         child {node {$\mathtt{n}$}}
         child {node {$\mathtt{s}$}}
       };
     \end{tikzpicture}
-    \caption{\Add{} at the \textsf{RR}.}
+    \caption{\Add{} at \(\mathtt{Q}\).}
     \label{fig:planner-add}
   \end{subfigure}
-  \caption{Two ways to add \(\mathtt{s}\) (\texttt{spotify}) to the \textsf{RR}: wrap the whole running tree under a fresh \(\Strictstar\) (a, all of it new), or splice the one new arm in place (b). New parts shaded.}
+  \caption{Two ways to add \(\mathtt{s}\) (\texttt{spotify}): wrap the whole running tree \(\mathtt{p1}\) under a fresh \(\Strictstar\) beside a freshly-compiled \(\mathtt{p2}\) (a), or splice the one new arm into \(\mathtt{Q}\) in place (b). The \textcolor{newcol}{new} \(\mathtt{p2}\) is shaded. \(\mathtt{P}\), \(\mathtt{Q}\) stand for the strict-priority and round-robin disciplines; the footprint contrast does not turn on which they are.}
   \label{fig:planner-add-vs-replace}
 \end{figure}
 
 Option (a) wraps the entire running tree under a fresh \(\Strictstar\) and grows a freshly-compiled \texttt{p2} alongside; every node sits inside the wrap, and the original \texttt{p1} (with all its in-flight packets) drains as the loser.
 The footprint is the whole tree.
 
-Option (b) extends the \texttt{RR}'s arity by one and attaches a freshly compiled \texttt{spotify} leaf as the third arm; the \texttt{Strict} and \texttt{RR} ancestors have only their \texttt{z} extended (no packet movement, no state reset), and the \texttt{zoom} leaf is left completely undisturbed.
-The footprint is the \texttt{RR} node and its single ancestor.
+Option (b) extends \(\mathtt{Q}\)'s arity by one and attaches a freshly compiled \texttt{spotify} leaf as the third arm; the \(\mathtt{P}\) and \(\mathtt{Q}\) ancestors have only their \texttt{z} extended (no packet movement, no state reset), and the \texttt{zoom} leaf is left completely undisturbed.
+The footprint is the \(\mathtt{Q}\) node and its single ancestor.
 
 Much of the tree is left alone under option (b).
 The case analysis of \cref{sec:planner-emits} is built precisely to find option (b) when it exists, and falls back to a \Replace (at the deepest position the descent reached) only when no such tight production captures the difference.
@@ -1575,11 +1596,11 @@ When \texttt{p2}'s arms are not a sub-sequence of \texttt{p1}'s, we try the labe
 The simpler patterns above pair arms by slot position;
 % Previous clause is unreadable 
 the label-overlap walk pairs them by what they actually carry.
-Consider the following example.
+Consider the following example, where we abstract the two round-robin disciplines to \(\mathtt{P}\) and \(\mathtt{Q}\) (their discipline is immaterial to the walk) so the \(\Strictstar\) the planner will insert stands out.
 
 \begin{verbatim}
-p1 = RR(drive, gmail)
-p2 = RR(drive, slack, RR(gmail, controller_for_gmail))
+p1 = P(drive, gmail)
+p2 = P(drive, slack, Q(gmail, gmail_control))
 \end{verbatim}
 
 The two trees \texttt{p1} and \texttt{p2}, plus the tree the planner actually installs, are shown in \cref{fig:label-overlap-example}.
@@ -1587,80 +1608,82 @@ The installed tree previews what lands on the substrate: not \texttt{p2} literal
 
 \begin{figure}[t]
   \centering
-  \begin{subfigure}[t]{0.22\linewidth}
+  \begin{subfigure}[t]{0.23\linewidth}
     \centering
     \begin{tikzpicture}[
-      level distance=0.8cm,
+      baseline=(P.north), level distance=0.8cm,
       level 1/.style={sibling distance=0.9cm},
       every node/.style={font=\scriptsize}
     ]
-    \node {$\mathtt{RR}$}
+    \node (P) {$\mathtt{P}$}
       child {node {$\mathtt{d}$}}
       child {node {$\mathtt{g}$}};
+    \node[inner sep=0pt] at (0,-2.05) {};
     \end{tikzpicture}
-    \caption{\(\mathtt{p1} = \mathtt{RR(d,g)}\)}
+    \caption{\(\mathtt{p1} = \mathtt{P(d,g)}\)}
     \label{fig:label-overlap-p1}
   \end{subfigure}%
-  \begin{subfigure}[t]{0.36\linewidth}
+  \begin{subfigure}[t]{0.35\linewidth}
     \centering
     \begin{tikzpicture}[
-      level distance=0.8cm,
-      level 1/.style={sibling distance=1.1cm},
-      level 2/.style={sibling distance=0.7cm},
+      baseline=(P.north), level distance=0.8cm,
+      level 1/.style={sibling distance=1.0cm},
+      level 2/.style={sibling distance=0.6cm},
       every node/.style={font=\scriptsize}
     ]
-    \node {$\mathtt{RR}$}
+    \node (P) {$\mathtt{P}$}
       child {node {$\mathtt{d}$}}
       child {node {$\mathtt{s}$}}
-      child {node {$\mathtt{RR}$}
+      child {node {$\mathtt{Q}$}
         child {node {$\mathtt{g}$}}
         child {node {$\mathtt{c}$}}
       };
+    \node[inner sep=0pt] at (0,-2.05) {};
     \end{tikzpicture}
-    \caption{\(\mathtt{p2} = \mathtt{RR(d,s,RR(g,c))}\)}
+    \caption{\(\mathtt{p2} = \mathtt{P(d,s,Q(g,c))}\)}
     \label{fig:label-overlap-p2}
   \end{subfigure}%
-  \begin{subfigure}[t]{0.4\linewidth}
+  \begin{subfigure}[t]{0.41\linewidth}
     \centering
-    \begin{tikzpicture}[
-      level distance=0.8cm,
-      level 1/.style={sibling distance=1.1cm},
-      level 2/.style={sibling distance=0.7cm},
-      level 3/.style={sibling distance=0.5cm},
-      every node/.style={font=\scriptsize}
-    ]
-    \node {$\mathtt{RR}$}
-      child {node {$\mathtt{d}$}}
-      child {node {$\Strictstar$}
-        child {node {$\mathtt{g}$}}
-        child {node {$\mathtt{RR}$}
-          child {node {$\mathtt{g}$}}
-          child {node {$\mathtt{c}$}}
-        }
-      }
-      child {node {$\mathtt{s}$}};
+    \begin{tikzpicture}[baseline=(P.north), every node/.style={font=\scriptsize}]
+      \node (P)  at (0,0)      {$\mathtt{P}$};
+      \node (d)  at (-1.5,-1)  {$\mathtt{d}$};
+      \node (g1) at (-0.85,-1) {$\mathtt{g}$};
+      \node (SS) at (0,-1)     {$\Strictstar$};
+      \node (Q)  at (0.85,-1)  {$\mathtt{Q}$};
+      \node (s)  at (1.5,-1)   {$\mathtt{s}$};
+      \node (g2) at (0.6,-1.9) {$\mathtt{g}$};
+      \node (c)  at (1.1,-1.9) {$\mathtt{c}$};
+      \draw (P) -- (d);
+      \draw (P) -- (SS);
+      \draw (P) -- (s);
+      \draw (SS) -- (g1);
+      \draw (SS) -- (Q);
+      \draw (Q) -- (g2);
+      \draw (Q) -- (c);
+      \node[inner sep=0pt] at (0,-2.05) {};
     \end{tikzpicture}
     \caption{installed (\(\eqR \mathtt{p2}\))}
     \label{fig:label-overlap-installed}
   \end{subfigure}
-  \caption{The label-overlap walk on \(\mathtt{p1} \to \mathtt{p2}\): \texttt{gmail} appears once in \texttt{p1} and inside a nested \texttt{RR} in \texttt{p2}, and the planner installs a sibling-reordered \(\eqR\)-equivalent of \texttt{p2} to keep the walk local.}
+  \caption{The label-overlap walk on \(\mathtt{p1}\to\mathtt{p2}\); the disciplines are abstracted to \(\mathtt{P}\), \(\mathtt{Q}\) so the inserted \(\Strictstar\) stands out. Leaf \(\mathtt{g}\) (\texttt{gmail}) appears in \(\mathtt{p1}\) and inside \(\mathtt{p2}\)'s nested \(\mathtt{Q}\), so the planner installs a sibling-reordered \(\eqR\)-equivalent of \(\mathtt{p2}\) (c) to keep the walk local. Other leaves: \(\mathtt{d}\) \texttt{drive}, \(\mathtt{s}\) \texttt{slack}, \(\mathtt{c}\) gmail's control channel.}
   \label{fig:label-overlap-example}
 \end{figure}
 
 Comparing \texttt{p1} and \texttt{p2}: \texttt{d} is unchanged; \texttt{g} now round-robins with a control sub-channel; \texttt{s} is new.
-A slot-by-slot walk does not apply (the lengths differ), and the simpler sub-sequence check in the ``\texttt{p2} longer'' case fails because \texttt{gmail} in \texttt{p1} is not equal to any arm in \texttt{p2}.
-Without the walk we are about to describe, the planner would give up and emit a wholesale \Replace{} of the entire root \texttt{RR}.
+A slot-by-slot walk does not apply (the lengths differ), and the simpler sub-sequence check in the ``\texttt{p2} longer'' case fails because \(\mathtt{g}\) in \texttt{p1} is not equal to any arm in \texttt{p2}.
+Without the walk we are about to describe, the planner would give up and emit a wholesale \Replace{} of the entire root \(\mathtt{P}\).
 
 But the trees are not really that different.
-\texttt{gmail} in \texttt{p1} and \texttt{RR(gmail, gmail\_control)} in \texttt{p2} share the class label \texttt{gmail}; \texttt{drive} is the same on both sides; \texttt{slack} is the only arm in \texttt{p2} whose labels appear nowhere in \texttt{p1}.
+\(\mathtt{g}\) (\texttt{gmail}) in \texttt{p1} and the nested \(\mathtt{Q}\) (over \texttt{gmail} and its control channel) in \texttt{p2} share the class label \texttt{gmail}; \texttt{drive} is the same on both sides; \texttt{slack} is the only arm in \texttt{p2} whose labels appear nowhere in \texttt{p1}.
 Both readings are correct, but one is far tighter: \texttt{drive} stays, \texttt{gmail} has grown a sub-channel, and \texttt{slack} is fresh, so only the changed slots need touching rather than the whole subtree.
 
 The label-overlap walk produces that reading.
 It pairs arms in \texttt{p1} with arms in \texttt{p2} whose class-label sets overlap (by a greedy left-to-right walk); arms in \texttt{p1} with no overlapping partner retire, arms in \texttt{p2} with no overlapping partner are added, and matched pairs are recursed on.
 The justification is that a class label identifies a unique flow across the whole policy (\cref{sec:policy-dsl}'s leaf-partition validity), so a repeated label between an arm in \texttt{p1} and an arm in \texttt{p2} is evidence that the same host arm has morphed structurally, and an arm whose labels appear on no opposing arm is necessarily fresh or vanishing.
-For our example, the walk pairs \texttt{drive} with \texttt{drive} (no edit) and \texttt{gmail} with \texttt{RR(gmail, gmail\_control)} (recurse), and treats \texttt{slack} as a pure add.
+For our example, the walk pairs \texttt{drive} with \texttt{drive} (no edit) and \texttt{gmail} with the nested \(\mathtt{Q}\) (recurse), and treats \texttt{slack} as a pure add.
 
-Our final emission is two atomic steps: an \Add{} of \texttt{slack} appended at the root \texttt{RR}'s tail, and an inner \Replace{} at \texttt{gmail}'s existing slot.
+Our final emission is two atomic steps: an \Add{} of \texttt{slack} appended at the root \(\mathtt{P}\)'s tail, and an inner \Replace{} at \texttt{gmail}'s existing slot.
 The third panel of the figure above shows the resulting substrate state: \texttt{slack} sits beside the morphed \texttt{gmail} subtree in an order that does not match \texttt{p2} literally, but \cref{sec:policy-dsl}'s normalization invariant says sibling order at \texttt{Strict}/\texttt{RR}/\texttt{WFQ} carries no semantics, so the re-ordering is invisible to any observer.
 % Simplify and trim
 
