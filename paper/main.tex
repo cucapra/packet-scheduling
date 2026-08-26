@@ -519,8 +519,6 @@ The two are related by \(\eqR\) rather than \(=\) precisely because the compiler
 The relation is again \(\eqR\), not \(=\), because \(\sem{\delta}\) may lay the edited node's children out in any sibling order.
 \end{enumerate}
 
-% Minor, but I note that we say p1 vs p2 but we say C vs C'. I would be interested in a proposal that straightens this out. Either C1 versus C2, or p versus p'.
-
 The three rules together let us propagate \(\lfloor \cdot \rfloor\) from any \(\lceil p \rceil\) along any sequence of pushes, pops, and productions of \(\delta\).
 This is how we will discharge Obligation 1 of \cref{sec:intro}.
 Even when the presently running \texttt{pol} is a \texttt{link}, an intermediate the runtime crafted on the way from \texttt{p1} to the operator's true request, we can still read off and report exactly what is running.
@@ -534,7 +532,7 @@ The fourth stems from \emph{pol-explainability} (the edit must mean exactly what
 Together these four certify that the production is a \emph{correct} edit.
 Correctness, though, is not enough: the stop-the-world reset of \cref{sec:intro} is realizable and explainable too, and it is the baseline we wish to beat.
 We beat it with the property of \emph{non-disruption}: installing \(\delta\) may disturb previously buffered traffic \emph{only} in service of the newly installed policy; the \emph{very act of changing policies} never introduces arbitrary artifacts such as drops, reorders, or rewrites among buffered packets.
-Throughout, we write \texttt{C} for the pre-edit control and \texttt{C'} for the post-edit control.
+Throughout, we write \texttt{C} for the pre-edit control and \texttt{C'} for the post-edit control, and \(\mathtt{p} = \lfloor \mathtt{C} \rfloor\), \(\mathtt{p'} = \lfloor \mathtt{C'} \rfloor\) for the policies they realize.
 
 \begin{itemize}
 \item \emph{Definition.} Specify \(\sem{\delta} : \mathtt{control} \rightharpoonup \mathtt{control}\) together with the preconditions under which it is defined.
@@ -542,7 +540,7 @@ Throughout, we write \texttt{C} for the pre-edit control and \texttt{C'} for the
 Any packets or index entries that \(\sem{\delta}\) drops or adds must leave the per-node pifo and packet counts in balance.
 \item \emph{Preservation of state.} At every node structurally shared between \texttt{C} and \texttt{C'} and outside the production's local edit site, the local \texttt{state} is preserved verbatim.
 At the edit site, and at every node of a freshly-spawned subtree, the state is exactly what the production's \texttt{init\_node\_D} / \texttt{init\_slot\_D} (\cref{sec:policy-dsl}) invocation prescribes.
-\item \emph{Characterization.} Give \(\den(\delta)\) in closed form and prove \(\lfloor \mathtt{C'} \rfloor \eqR \den(\delta)(\lfloor \mathtt{C} \rfloor)\). % Now let's have an English explanation.
+\item \emph{Characterization.} Give \(\den(\delta)\) in closed form and prove that reading the policy off the edited control agrees, up to \(\eqR\), with applying \(\den(\delta)\) to the policy read off the original: \(\mathtt{p'} \eqR \den(\delta)(\mathtt{p})\).
 \item \emph{Non-disruption of in-flight traffic.} Applying \(\delta\) does not rewrite, reorder, or drop any packet already admitted to \texttt{C}:
 each already-enqueued entry keeps the rank it was given when it was \texttt{push}ed, so nothing buffered is lost, corrupted, or reordered relative to the rest of the backlog.
 Buffered packets may of course be affected by the new policy in force (e.g., after \(\WFQ(1{:}A,\, 9{:}B) \to \WFQ(99{:}A,\, 9{:}B)\), a newly arriving \(A\)-packet can overtake previously buffered \(B\) packets), but that is an example of the reconfigured policy \emph{correctly} governing new arrivals, not a disturbance of the backlog.
@@ -691,18 +689,18 @@ The two readings live in different worlds.
 \(\sem{\Add}\) is the operational rewrite the hardware installs: a partial map \(\mathtt{control} \rightharpoonup \mathtt{control}\).
 \(\den(\Add)\), by contrast, is a closed-form map \(\mathtt{pol} \rightharpoonup \mathtt{pol}\) on the operator's source language; it names how the policy the operator sees changes.
 Characterization bridges them: running \(\sem{\Add}\) on the control realizes, at \texttt{pol}-level, exactly the edit \(\den(\Add)\) names, which is what lets the runtime echo the new policy back to the operator (\cref{sec:equivalences}).
-Concretely, we must state \(\den(\Add(\pi, \mathtt{D}, \mathtt{arm}, \mathtt{meta?}))\) in closed form and prove \(\lfloor \mathtt{C'} \rfloor \eqR \den(\Add(\pi, \mathtt{D}, \mathtt{arm}, \mathtt{meta?}))(\lfloor \mathtt{C} \rfloor)\).
+Concretely, we must state \(\den(\Add(\pi, \mathtt{D}, \mathtt{arm}, \mathtt{meta?}))\) in closed form and prove \(\mathtt{p'} \eqR \den(\Add(\pi, \mathtt{D}, \mathtt{arm}, \mathtt{meta?}))(\mathtt{p})\).
 
 We define \(\den\) by recursion on \(\pi\) (\cref{fig:add-rules}, bottom).
 Its node patterns \(\mathtt{D\ ts}\) and \(\mathtt{E\ ts}\) split a \texttt{pol} node into its discipline and child list \texttt{ts}.
 The base case reuses the payload name \texttt{D}, firing only when the reached node runs that discipline; an ancestor's discipline \texttt{E} is unconstrained and simply carried along.
-The metadata \texttt{meta?} plays no role in \(\den\): \(\lfloor \cdot \rfloor\) does not surface per-arm metadata at \texttt{pol}-level (a pure \ChangeMeta{} leaves \(\lfloor \mathtt{C} \rfloor\) unchanged, \cref{sec:changemeta}), so only \(\sem{\Add}\) uses it, at \texttt{init\_slot\_D}.
+The metadata \texttt{meta?} plays no role in \(\den\): \(\lfloor \cdot \rfloor\) does not surface per-arm metadata at \texttt{pol}-level (a pure \ChangeMeta{} leaves \(\mathtt{p}\) unchanged, \cref{sec:changemeta}), so only \(\sem{\Add}\) uses it, at \texttt{init\_slot\_D}.
 
 \emph{Proof.}
 Both recursions descend \(\pi\) in the same shape, so we induct on \(\pi\).
 At the base (\(\pi = []\)), \(\den\) appends \texttt{arm} and \(\sem{\Add}\) appends \(\lceil \mathtt{arm} \rceil\); since \(\lfloor \lceil \mathtt{arm} \rceil \rfloor \eqR \mathtt{arm}\), the two agree on the new child up to \(\eqR\), and every existing child is untouched.
 At a recursive step, both descend into child \texttt{i} and write the result back, so the claim follows from the induction hypothesis; the ancestor itself adds nothing to reconcile, since \(\sem{\Add}\) leaves its \texttt{state} and \texttt{pifo} verbatim and its \texttt{z}-extension is invisible to \(\lfloor \cdot \rfloor\).
-So the two sides agree all the way down the spine and can differ only inside \(\lceil \mathtt{arm} \rceil\), where sibling order is free; that is exactly the \(\eqR\)-slack the claim allows, giving \(\lfloor \mathtt{C'} \rfloor \eqR \den(\Add(\pi, \mathtt{D}, \mathtt{arm}, \mathtt{meta?}))(\lfloor \mathtt{C} \rfloor)\).
+So the two sides agree all the way down the spine and can differ only inside \(\lceil \mathtt{arm} \rceil\), where sibling order is free; that is exactly the \(\eqR\)-slack the claim allows, giving \(\mathtt{p'} \eqR \den(\Add(\pi, \mathtt{D}, \mathtt{arm}, \mathtt{meta?}))(\mathtt{p})\).
 
 \paragraph{Non-disruption}
 
@@ -733,7 +731,7 @@ Under \WFQ, \texttt{init\_slot\_WFQ} (\cref{sec:policy-dsl}) seeds the slot with
 \[
 \den(\ChangeMeta(\tau, \mathit{meta}))\,\mathtt{p} = \mathtt{p}.
 \]
-\(\den\) is the identity because \(\lfloor \cdot \rfloor\) strips per-arm metadata: the rewritten field is invisible at \texttt{pol}-level, so \(\lfloor \mathtt{C'} \rfloor = \lfloor \mathtt{C} \rfloor\).
+\(\den\) is the identity because \(\lfloor \cdot \rfloor\) strips per-arm metadata: the rewritten field is invisible at \texttt{pol}-level, so \(\mathtt{p'} = \mathtt{p}\).
 
 \paragraph{Preservation and non-disruption}
 
@@ -769,7 +767,7 @@ Every field other than \texttt{z}, and every node outside \(V_\tau\), is left un
 
 \paragraph{Characterization}
 
-As with \ChangeMeta, \(\den(\Quiesce(\tau))\) is the identity on \texttt{pol}: \Quiesce's whole effect is on \texttt{z}, which \(\lfloor \cdot \rfloor\) does not record, so \(\lfloor \mathtt{C'} \rfloor = \lfloor \mathtt{C} \rfloor\).
+As with \ChangeMeta, \(\den(\Quiesce(\tau))\) is the identity on \texttt{pol}: \Quiesce's whole effect is on \texttt{z}, which \(\lfloor \cdot \rfloor\) does not record, so \(\mathtt{p'} = \mathtt{p}\).
 
 \paragraph{Preservation and non-disruption}
 
@@ -806,7 +804,7 @@ Emptiness and \(\vdash \mathtt{C}\) force \(\mathtt{C@}\pi.\mathtt{pifo}\) to ho
 \den(\Remove(\pi \mathbin{+\!\!+} [k])) = \mathtt{at}(\pi,\; \mathtt{D}(\mathtt{ts}) \mapsto \mathtt{D}(\mathtt{ts}[-/k])),
 \]
 dropping arm \texttt{k} from the parent \texttt{pol} node; the emptiness precondition is operational, invisible at \texttt{pol}.
-As with \Add, outside the parent every node is structurally intact and the parent's child list loses slot \texttt{k}, so \(\lfloor \mathtt{C'} \rfloor \eqR \den(\Remove(\tau))(\lfloor \mathtt{C} \rfloor)\).
+As with \Add, outside the parent every node is structurally intact and the parent's child list loses slot \texttt{k}, so \(\mathtt{p'} \eqR \den(\Remove(\tau))(\mathtt{p})\).
 
 \paragraph{Preservation and non-disruption}
 
@@ -996,7 +994,7 @@ The two arms thus stay operationally disjoint even when their label sets overlap
 \]
 }
 wrapping the \texttt{pol} subtree at \(\tau\); \(\den\) yields \(\Strict\), not \(\Strictstar\) (the designated bit is \texttt{pol}-invisible).
-As with \Add, outside the wrap every node is structurally intact, arm 1 is \(\lceil \mathtt{survivor} \rceil\), and the ancestor \texttt{z}-extensions are \texttt{pol}-invisible, so \(\lfloor \mathtt{C'} \rfloor \eqR \den(\Designate(\tau, \mathtt{survivor}))(\lfloor \mathtt{C} \rfloor)\).
+As with \Add, outside the wrap every node is structurally intact, arm 1 is \(\lceil \mathtt{survivor} \rceil\), and the ancestor \texttt{z}-extensions are \texttt{pol}-invisible, so \(\mathtt{p'} \eqR \den(\Designate(\tau, \mathtt{survivor}))(\mathtt{p})\).
 
 \paragraph{Preservation and non-disruption}
 
@@ -1027,7 +1025,7 @@ Since \(\mathtt{at}\) writes \(B\) back into the parent's slot \texttt{k}, that 
 \den(\Undesignate(\tau)) = \mathtt{at}(\tau,\; \Strict(A, B) \mapsto B),
 \]
 collapsing the wrapper (which reads as \(\Strict\) at \texttt{pol}-level); the empty-arm-0 precondition is operational.
-As with \Remove, nothing structural outside \(N\) moves and the wrapper is dropped, so \(\lfloor \mathtt{C'} \rfloor \eqR \den(\Undesignate(\tau))(\lfloor \mathtt{C} \rfloor)\).
+As with \Remove, nothing structural outside \(N\) moves and the wrapper is dropped, so \(\mathtt{p'} \eqR \den(\Undesignate(\tau))(\mathtt{p})\).
 
 \paragraph{Preservation and non-disruption}
 
@@ -1053,7 +1051,7 @@ defined when \(\nu\) is non-empty, resolves in \texttt{C}, and every node strict
 \[
 \den(\ChangeRoot(\nu))\,\mathtt{p} = \mathtt{p@}\nu.
 \]
-Compilation is per-node, so \(\lfloor \texttt{C@}\nu \rfloor = \lfloor \mathtt{C} \rfloor \mathbin{@} \nu\), giving \(\lfloor \mathtt{C'} \rfloor \eqR \den(\ChangeRoot(\nu))(\lfloor \mathtt{C} \rfloor)\).
+Compilation is per-node, so \(\lfloor \texttt{C@}\nu \rfloor = \mathtt{p} \mathbin{@} \nu\), giving \(\mathtt{p'} \eqR \den(\ChangeRoot(\nu))(\mathtt{p})\).
 
 \paragraph{Preservation and non-disruption}
 
