@@ -90,6 +90,37 @@
     \fill[#1] (#2-0.24,#3-0.72) circle (1.3pt); \fill[#1] (#2,#3-0.72) circle (1.3pt); \fill[#1] (#2+0.24,#3-0.72) circle (1.3pt);%
   \fi
 }
+% Explicit-PIFO house style: leaf packets are colored dots by flavor (colored rounded box);
+% internal index-PIFOs are gray with numbers; dropped entries get a steep red strikeout.
+\definecolor{flowA}{HTML}{0072B2}% blue
+\definecolor{flowB}{HTML}{E69F00}% orange
+\definecolor{flowC}{HTML}{009E73}% green
+\newcommand{\leafpifo}[2]{% #1 color, #2 packet count
+\begin{tikzpicture}[baseline=-0.55ex, x=1.75ex, y=1.75ex]
+  \draw[rounded corners=0.3ex, draw=#1, fill=#1!12, line width=0.7pt] (0.5,-0.62) rectangle ({#2+0.5},0.62);
+  \foreach \i in {1,...,#2}{\fill[#1] (\i,0) circle (0.44ex);}%
+\end{tikzpicture}%
+}
+\newcommand{\numpifo}[2]{% #1 entry list, #2 struck positions (0 for none)
+\begin{tikzpicture}[baseline=-0.55ex, x=1.75ex, y=1.75ex]
+  \foreach \e [count=\i] in {#1}{\xdef\lastn{\i}}%
+  \draw[draw=black!60, fill=black!6, rounded corners=0.3ex, line width=0.6pt] (0.5,-0.62) rectangle ({\lastn+0.5},0.62);
+  \foreach \e [count=\i] in {#1}{\node[inner sep=0.5pt] at (\i,0) {\scriptsize$\e$};}%
+  \foreach \s in {#2}{\ifnum\s>0 \draw[red, line width=0.65pt] (\s-0.17,-0.52) -- (\s+0.17,0.52);\fi}%
+\end{tikzpicture}%
+}
+% \leaftri{color}{apex x}{apex y}{dots 0-4}{struck 0/1}: a small subtree triangle with
+% fringe-dot packets; if struck, a red slash marks it for removal.
+\newcommand{\leaftri}[5]{%
+  \draw[fill=#1!12, draw=#1, line width=0.55pt] (#2,#3) -- (#2-0.36,#3-0.56) -- (#2+0.36,#3-0.56) -- cycle;
+  \ifcase#4\relax\or
+    \fill[#1] (#2,#3-0.42) circle (0.9pt);\or
+    \fill[#1] (#2-0.1,#3-0.42) circle (0.9pt); \fill[#1] (#2+0.1,#3-0.42) circle (0.9pt);\or
+    \fill[#1] (#2-0.16,#3-0.42) circle (0.9pt); \fill[#1] (#2,#3-0.42) circle (0.9pt); \fill[#1] (#2+0.16,#3-0.42) circle (0.9pt);\or
+    \fill[#1] (#2-0.21,#3-0.42) circle (0.9pt); \fill[#1] (#2-0.07,#3-0.42) circle (0.9pt); \fill[#1] (#2+0.07,#3-0.42) circle (0.9pt); \fill[#1] (#2+0.21,#3-0.42) circle (0.9pt);%
+  \fi
+  \ifnum#5=1 \draw[red, line width=0.9pt] (#2-0.24,#3-0.5) -- (#2+0.2,#3-0.08);\fi
+}
 
 \begin{document}
 
@@ -810,87 +841,56 @@ Non-disruption: \(\mathtt{drop}_k\) removes only an \emph{empty} slot and renumb
 
 \paragraph{Note: Why insist on an empty subtree}
 
-\begin{figure*}[t]
+\newcommand{\rmpanel}[3]{% #1 P-strikes, #2 Q-strikes, #3 B-struck (0/1)
+\begin{tikzpicture}[x=1cm,y=1cm]
+  \node (Pp) at (0,0) {\numpifo{0,1,0,1,0,1,0}{#1}};
+  \node[font=\scriptsize,anchor=east,inner sep=1.5pt] at (Pp.west) {$P$};
+  \node (Qp) at (-0.45,-1.05) {\numpifo{0,0,1,1}{#2}};
+  \node[font=\scriptsize,anchor=east,inner sep=1.5pt] at (Qp.west) {$Q$};
+  \leaftri{flowC}{0.95}{-0.95}{3}{0}
+  \leaftri{flowA}{-0.82}{-1.98}{2}{0}
+  \leaftri{flowB}{-0.12}{-1.98}{2}{#3}
+  \draw (Pp.south) -- (Qp.north);
+  \draw (Pp.south) -- (0.95,-0.95);
+  \draw (Qp.south) -- (-0.82,-1.98);
+  \draw (Qp.south) -- (-0.12,-1.98);
+  \node[font=\scriptsize,inner sep=0.5pt] at (-0.3,-0.52) {0};
+  \node[font=\scriptsize,inner sep=0.5pt] at (0.5,-0.5) {1};
+  \node[font=\scriptsize,inner sep=0.5pt] at (-0.72,-1.58) {0};
+  \node[font=\scriptsize,inner sep=0.5pt] at (-0.18,-1.58) {1};
+\end{tikzpicture}%
+}
+\begin{figure}[t]
   \centering
-  \begin{subfigure}[t]{0.32\linewidth}
-    \centering
-    \begin{tikzpicture}[
-      level distance=1.1cm,
-      level 1/.style={sibling distance=3.0cm},
-      level 2/.style={sibling distance=1.4cm},
-      every node/.style={align=center, font=\scriptsize}
-    ]
-    \node {$P$\\\texttt{[1,2,1,2,1,2,1,2]}}
-      child {node {$Q$\\\texttt{[1,1,2,2]}}
-        child {node {$A$\\\texttt{[a2,a1]}} edge from parent node[left]{\texttt{1}}}
-        child {node {$B$\\\texttt{[b2,b1]}} edge from parent node[right]{\texttt{2}}}
-        edge from parent node[left]{\texttt{1}}
-      }
-      child {node {$C$\\\texttt{[c4,c3,c2,c1]}} edge from parent node[right]{\texttt{2}}};
-    \end{tikzpicture}
-    \caption{Original tree.}
-    \label{fig:remove-orig}
-  \end{subfigure}\hfill
-  \begin{subfigure}[t]{0.32\linewidth}
-    \centering
-    \begin{tikzpicture}[
-      level distance=1.1cm,
-      level 1/.style={sibling distance=3.0cm},
-      every node/.style={align=center, font=\scriptsize}
-    ]
-    \node {$P$\\\texttt{[1,2,1,2,\cancel{1},2,\cancel{1},2]}}
-      child {node {$Q$\\\texttt{[1,1]}}
-        child {node {$A$\\\texttt{[a2,a1]}} edge from parent node[left]{\texttt{1}}}
-        edge from parent node[left]{\texttt{1}}
-      }
-      child {node {$C$\\\texttt{[c4,c3,c2,c1]}} edge from parent node[right]{\texttt{2}}};
-    \end{tikzpicture}
-    \caption{Keep leftmost \texttt{1}s: emits packets \texttt{c1, c2, c3, a1, c4, a2}.}
-    \label{fig:remove-leftmost}
-  \end{subfigure}\hfill
-  \begin{subfigure}[t]{0.32\linewidth}
-    \centering
-    \begin{tikzpicture}[
-      level distance=1.1cm,
-      level 1/.style={sibling distance=3.0cm},
-      every node/.style={align=center, font=\scriptsize}
-    ]
-    \node {$P$\\\texttt{[\cancel{1},2,\cancel{1},2,1,2,1,2]}}
-      child {node {$Q$\\\texttt{[1,1]}}
-        child {node {$A$\\\texttt{[a2,a1]}} edge from parent node[left]{\texttt{1}}}
-        edge from parent node[left]{\texttt{1}}
-      }
-      child {node {$C$\\\texttt{[c4,c3,c2,c1]}} edge from parent node[right]{\texttt{2}}};
-    \end{tikzpicture}
-    \caption{Keep rightmost \texttt{1}s: emits packets \texttt{c1, a1, c2, a2, c3, c4}.}
-    \label{fig:remove-rightmost}
-  \end{subfigure}
-  \caption{Removing the occupied leaf \texttt{B} from \texttt{P(Q(A, B), C)}. Each internal node carries its index-PIFO and each leaf carries its packet queue; the next entry to pop sits on the far right, so a leaf \texttt{[a2,a1]} releases \texttt{a1} before \texttt{a2}, and an internal-node PIFO \texttt{[1,2,1,2]} yields slot indices \texttt{2, 1, 2, 1} in pop order. A struck entry like \cancel{\texttt{1}} is one we have dropped from the PIFO. At \texttt{Q} the edit is forced; at \texttt{P} two arbitrary choices of which \texttt{1}s to drop yield two different service orders.}
+  \begin{subfigure}[t]{0.32\linewidth}\centering\rmpanel{0}{0}{0}\caption{Original.}\label{fig:remove-orig}\end{subfigure}\hfill
+  \begin{subfigure}[t]{0.32\linewidth}\centering\rmpanel{5,7}{3,4}{1}\caption{Keep the leftmost 0s.}\label{fig:remove-leftmost}\end{subfigure}\hfill
+  \begin{subfigure}[t]{0.32\linewidth}\centering\rmpanel{1,3}{3,4}{1}\caption{Keep the rightmost 0s.}\label{fig:remove-rightmost}\end{subfigure}
+  \caption{Removing an occupied subtree (orange, under \(Q\)). Its removal forces out \(Q\)'s two index-1 entries and, one level up, two of \(P\)'s four index-0 entries (struck red). It is unspecified which two instances of \(0\) to drop from \(P\), so (b) and (c) are both legal. However, they differ in how they emit the buffered packets.}
   \label{fig:remove-ambiguity}
-\end{figure*}
+\end{figure}
 
 Deleting an \emph{occupied} child has no canonical local realization.
-Consider \texttt{P(Q(A, B), C)}, shown in \cref{fig:remove-orig}.
-Here \texttt{Q} refers to \texttt{A} using the index \texttt{1}, and to \texttt{B} using \texttt{2}.
-\texttt{P} refers to \texttt{Q} using \texttt{1} and to \texttt{C} using \texttt{2}.
+Consider the tree \texttt{P(Q(A, B), C)} of \cref{fig:remove-orig}, whose subtrees \texttt{A}, \texttt{B}, \texttt{C} are drawn blue, orange, and green.
+Here \texttt{Q} refers to \texttt{A} using the index \texttt{0}, and to \texttt{B} using \texttt{1}.
+\texttt{P} refers to \texttt{Q} using \texttt{0} and to \texttt{C} using \texttt{1}.
 The tree is well-formed.
 \texttt{P} appears to be running a round-robin style policy and \texttt{Q} appears to be prioritizing \texttt{B} strictly over \texttt{A}.
 Say the user asks us to delete \texttt{B}, dropping its packets.
-To restore well-formedness, we need to remove two instances of the index \texttt{2} from \texttt{Q}'s PIFO and two instances of the index \texttt{1} from \texttt{P}'s PIFO.
+To restore well-formedness, we need to remove two instances of the index \texttt{1} from \texttt{Q}'s PIFO and two instances of the index \texttt{0} from \texttt{P}'s PIFO.
 
 At \texttt{Q} the edit is unambiguous.
-Well-formedness of the original tree forces \texttt{Q}'s PIFO to have exactly two instances of \texttt{2}, and we delete those two.
+Well-formedness of the original tree forces \texttt{Q}'s PIFO to have exactly two instances of \texttt{1}, and we delete those two.
 The trouble is one level up.
-\texttt{P}'s PIFO originally had four instances of \texttt{1}, and well-formedness demands that we remove two of them.
+\texttt{P}'s PIFO originally had four instances of \texttt{0}, and well-formedness demands that we remove two of them.
 But \emph{which} two?
-No entry in \texttt{P} carries the meta-information ``I was enqueued when a packet was inserted into \texttt{B}''; an entry \texttt{1} in \texttt{P} only means ``when this index is popped, recursively ask subtree \texttt{Q} to emit the next packet'' (see \cref{sec:hierarchical}).
+No entry in \texttt{P} carries the meta-information ``I was enqueued when a packet was inserted into \texttt{B}''; an entry \texttt{0} in \texttt{P} only means ``when this index is popped, recursively ask subtree \texttt{Q} to emit the next packet'' (see \cref{sec:hierarchical}).
 This absence of meta-information is a \emph{feature} of PIFO trees, not a defect: an entry is deliberately detached from the packet it was enqueued with, which is what lets each node schedule its own discipline in isolation and lets a subtree be reconfigured without rewriting its ancestors.
 We could make deletion unambiguous by tagging each entry at \texttt{push} with the leaf it is destined for, but that would discard the abstraction: every internal node would then have to track the entire downstream structure, and the composability that makes PIFO trees scale would be lost.
 
-Given this, there is no obvious or operator-provided answer: whichever two instances of \texttt{1} we drop, the choice is itself a scheduling decision, since it affects how \texttt{P} intermixes \texttt{C} and \texttt{Q} traffic.
-Keeping the two leftmost \texttt{1}s (\cref{fig:remove-leftmost}), six pops drain \texttt{P} and yield \texttt{c1, c2, c3, a1, c4, a2}: \texttt{A} is pushed to the back, both its packets emerging only after \texttt{C}'s run is mostly spent.
-Keeping the two rightmost \texttt{1}s instead (\cref{fig:remove-rightmost}), the same six pops yield \texttt{c1, a1, c2, a2, c3, c4}: this is exactly the round-robin schedule \texttt{P} was configured for, alternating \texttt{C} and \texttt{A} until \texttt{A} is exhausted and \texttt{C} drains alone.
-The \emph{choice of which} \texttt{1}s to drop \emph{silently reschedules \texttt{A} against \texttt{C}}, and nothing in \texttt{p1} or the operator's deletion request records what the operator wanted.
+Given this, there is no obvious or operator-provided answer: whichever two instances of \texttt{0} we drop, the choice is itself a scheduling decision, since it affects how \texttt{P} intermixes \texttt{C} and \texttt{Q} traffic.
+Keeping the two leftmost \texttt{0}s (\cref{fig:remove-leftmost}), five pops drain \texttt{P} and yield \texttt{c1, c2, a1, c3, a2}: \texttt{A} is pushed toward the back, its packets emerging only after \texttt{C}'s run is underway.
+Keeping the two rightmost \texttt{0}s instead (\cref{fig:remove-rightmost}), the same five pops yield \texttt{a1, c1, a2, c2, c3}: this is exactly the round-robin schedule \texttt{P} was configured for, alternating \texttt{A} and \texttt{C} until \texttt{A} is exhausted and \texttt{C} drains alone.
+The \emph{choice of which} \texttt{0}s to drop \emph{silently reschedules \texttt{A} against \texttt{C}}, and nothing in \texttt{p1} or the operator's deletion request records what the operator wanted.
 
 We do not wish to make a scheduling decision for the operator, so our only other option is to reconstruct the tree as if \texttt{B} had never been admitted: drain the tree completely, filter the \texttt{B}-packets, and re-push, recomputing every rank and cursor along the way.
 This would be a stop-the-world rebuild.
