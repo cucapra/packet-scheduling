@@ -432,7 +432,7 @@ We write \(\mathtt{C} \sim \mathtt{C'}\) for the equivalence on well-formed cont
 Two \(\sim\)-related controls thus have the same tree shape and the same \ensuremath{\mathit{z}} at every node (hence the same disciplines, per-arm metadata, and routing), and differ at most in the transient live state that traffic leaves behind.
 Serving \texttt{push}/\texttt{pop} operations is one way controls come to be \(\sim\)-related: \texttt{push} and \texttt{pop} move only the live \ensuremath{\mathit{pifo}}s and \ensuremath{\mathit{state}}s and leave the skeleton and \ensuremath{\mathit{z}} untouched, so any control and its push/pop-successor are \(\sim\)-equivalent.
 
-\xxx[AM to ALS]{The definitiona above has changed in response to a note from Adrian. I used to say that \(\mathtt{C} \sim \mathtt{C'}\) is true only if you can go from one to another via pushes and pops. I now say something coarser and more general.}
+\xxx[AM to ALS]{The definition above has changed in response to a note from Adrian. I used to say that \(\mathtt{C} \sim \mathtt{C'}\) is true only if you can go from one to another via pushes and pops. I now say something coarser and more general.}
 
 We write \(p \eqR p'\) for the smallest congruence on \ensuremath{\mathit{pol}} such that, at any internal \ensuremath{D}-node, permuting the child arms gives a congruent \textit{pol}.
 The per-arm metadata that discipline \ensuremath{D} requires (a \texttt{WFQ} weight, a \texttt{Strict} priority rank) travels with its arm under the permutation; the metadata is what carries the scheduling-meaningful content, so such a permutation does not change the scheduler.
@@ -489,7 +489,7 @@ Every \(\sim\)-equivalent pair is \(\simR\)-equivalent, but not conversely.
 
 We write \(\lfloor \mathtt{C} \rfloor\) to mean ``the \ensuremath{\mathit{pol}} that \texttt{C} realizes''.
 Intuitively, \(\lfloor \cdot \rfloor\) reads the policy straight off the control: it walks the control's tree and recovers, node by node, the \ensuremath{\mathit{pol}} term the control implements, discarding the live \ensuremath{\mathit{pifo}} and \ensuremath{\mathit{state}} contents that traffic happens to have left behind.
-We pin it down with three rules.
+We pin it down with three rules; the third does not follow from the first two but \emph{extends} the definition of \(\lfloor \cdot \rfloor\) to the controls that \(\delta\) reaches.
 
 \begin{enumerate}
 \item \emph{Base case (compilation).} Compile a \texttt{p} to a control and read it straight back, and you recover \texttt{p} itself, up to the sibling-order freedom the compiler enjoyed in laying it out: \(\lfloor \lceil \mathtt{p} \rceil \rfloor \eqR p\).
