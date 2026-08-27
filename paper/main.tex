@@ -1063,12 +1063,15 @@ Whether that pol-visible change reorders in-flight traffic depends on whether th
 
 \section{The Interplay of \(\den(\delta)\) and \(\sem{\delta}\)}\label{sec:interplay}
 
-\crefrange{sec:runtime-model}{sec:per-production} introduced all the moving parts: the runtime object \texttt{C}, the source \ensuremath{\mathit{pol}}, the compilation \(\lceil \cdot \rceil\), the reading-off \(\lfloor \cdot \rfloor\), the atomic-diff grammar \(\delta\), and its two readings \(\den(\delta)\) and \(\sem{\delta}\).
+The preceding sections introduced all the moving parts: the runtime object \texttt{C} (\cref{sec:runtime-model}), the source \ensuremath{\mathit{pol}} together with the compilation \(\lceil \cdot \rceil\) and the reading-off \(\lfloor \cdot \rfloor\) (\cref{sec:grammar}), the atomic-diff grammar \(\delta\), and its two readings \(\den(\delta)\) and \(\sem{\delta}\).
 This section states formally how they fit together.
 The interplay is what lets the runtime, at every step, echo to the operator the \ensuremath{\mathit{pol}} that the live control realizes.
 
+\subsection{A Single \(\delta\) on a Running Control}\label{sec:interplay-square}
+
 The situation we care about is a single \(\delta\) firing on a running control.
-Picture a commuting square:
+Consider the following commuting square, which we will read with an eye to the user's experience.
+Our final goal will be to correctly relate \texttt{C2'} and \texttt{C2}.
 
 \begin{center}
 \begin{tikzpicture}[
@@ -1099,32 +1102,29 @@ Picture a commuting square:
 \end{tikzpicture}
 \end{center}
 
-Read it with an eye to the user's experience.
-Our final goal will be to correctly relate \texttt{C2'} and \texttt{C2}.
-
-The operator writes \texttt{p1}, so \(\mathtt{C1} := \lceil \mathtt{p1} \rceil\), with \(\lfloor \mathtt{C1} \rfloor \eqR \mathtt{p1}\) by rule 1 of \(\lfloor \cdot \rfloor\) (\cref{sec:equivalences}).
-We echo \(\mathtt{p1'} := \lfloor \mathtt{C1} \rfloor\) back to the user; this is not shown in the diagram but will become important shortly.
-\texttt{p1'} faithfully represents the arm ordering that the compiler chose.
+The operator writes \texttt{p1}, which is compiled into control \(\mathtt{C1} := \lceil \mathtt{p1} \rceil\).
+Recall that \(\lfloor \mathtt{C1} \rfloor \eqR \mathtt{p1}\) by rule 1 of \(\lfloor \cdot \rfloor\) (\cref{sec:equivalences}).
+We echo \(\mathtt{p1'} := \lfloor \mathtt{C1} \rfloor\) back to the user.
+\texttt{p1'} is important because it faithfully represents to the user the arm ordering that the compiler chose.
 Push and pop operations then carry \texttt{C1} to \texttt{C1'}.
 We know that \(\mathtt{C1} \sim \mathtt{C1'}\) by the definition of \(\sim\), and \(\lfloor \mathtt{C1'} \rfloor = \lfloor \mathtt{C1} \rfloor\) by rule 2 of \(\lfloor \cdot \rfloor\), so the live \texttt{C1'} still realizes both \texttt{p1} and \texttt{p1'}.
 
-The operator writes \texttt{p2}, and the \emph{transition planner} (\crefrange{sec:sequences}{sec:planner}), the tool that infers atomic edits between two \ensuremath{\mathit{pol}}s, produces a \(\delta\) such that \(\den(\delta)(\mathtt{p1'}) \eqR \mathtt{p2}\).
-This matters: the \(\delta\) is expressed with paths into the running policy \texttt{p1'}, so it is \texttt{p1'} that \(\den(\delta)\) transforms, not the operator's original \texttt{p1} (whose arm order may differ).
+The operator writes \texttt{p2}, and the \emph{transition planner} (\cref{sec:planner}), the tool that infers atomic edits between two \ensuremath{\mathit{pol}}s, produces a \(\delta\) such that \(\den(\delta)(\mathtt{p1'}) \eqR \mathtt{p2}\).
+The \(\delta\) is expressed with paths into the running policy \texttt{p1'}, so it is \texttt{p1'} that \(\den(\delta)\) transforms, not the operator's original \texttt{p1} (whose arm order may differ).
 Applying \(\sem{\delta}\) to \texttt{C1'} brings us to control \texttt{C2'}.
 By rule 3 of \(\lfloor \cdot \rfloor\) we have \(\lfloor \mathtt{C2'} \rfloor \eqR \den(\delta)(\mathtt{p1'})\).
 Chaining this with the previously established \(\den(\delta)(\mathtt{p1'}) \eqR \mathtt{p2}\) gives \(\lfloor \mathtt{C2'} \rfloor \eqR \mathtt{p2}\).
 We again echo \(\mathtt{p2'} := \lfloor \mathtt{C2'} \rfloor\) to the user.
 
 The transformation is complete at this point, but we need to ground ourselves.
-\(\mathtt{C2} := \lceil \mathtt{p2} \rceil\) is the control we \emph{would have built} under the SOTA stop-the-world path, whose response to a \(\mathtt{p1} \to \mathtt{p2}\) request is simply to compile \texttt{p2} afresh, that is, to produce \(\lceil \mathtt{p2} \rceil\) (\cref{sec:intro}).
-We do not actually construct \texttt{C2}, but it is the correct reference point and it is crucial that we now relate \texttt{C2'} (which we have just produced) to \texttt{C2} (which the state-of-the-art would have produced).
-By rule 1, \(\lfloor \mathtt{C2} \rfloor \eqR \mathtt{p2}\), hence \(\lfloor \mathtt{C2'} \rfloor \eqR \lfloor \mathtt{C2} \rfloor\).
+\(\mathtt{C2} := \lceil \mathtt{p2} \rceil\) is the control that the state-of-the-art would have built, since all it can do is compile a new control from scratch.
+\emph{We} do not actually construct \texttt{C2}, but it is the correct reference point and it is crucial that we now relate \texttt{C2'} (which we have just produced) to \texttt{C2} (which the state-of-the-art would have produced).
 
-However, we would like to relate the \emph{controls} directly, not just their \ensuremath{\mathit{pol}}-level projections via \(\lfloor \cdot \rfloor\).
+By rule 1, \(\lfloor \mathtt{C2} \rfloor \eqR \mathtt{p2}\), hence \(\lfloor \mathtt{C2'} \rfloor \eqR \lfloor \mathtt{C2} \rfloor\).
+However, we would like to relate the \emph{controls} directly, not just relate their \ensuremath{\mathit{pol}}-level projections via \(\lfloor \cdot \rfloor\).
 The control-level relation we can write is \(\mathtt{C2'} \simR \mathtt{C2}\), which absorbs two gaps at once.
 \texttt{C2'} carries the live \ensuremath{\mathit{pifo}}/\ensuremath{\mathit{state}} accumulated since \texttt{C1}, while \texttt{C2} is freshly compiled and bare (the \(\sim\) component covers this); and \(\sem{\delta}\) and \(\lceil \cdot \rceil\) are free to pick different sibling orders at internal nodes, so \texttt{C2'} and \texttt{C2} may also differ in child arrangements (the R-closure covers this).
-
-The diagram is intuition; the formal statement is:
+The formal statement follows.
 
 \begin{theorem}[Interplay of \(\den(\delta)\) and \(\sem{\delta}\)]\label{thm:interplay}
 Let \texttt{C} be a well-formed control, and let \(\delta\) be a production of the grammar (\cref{sec:delta-grammar}) such that \(\sem{\delta}(\mathtt{C})\) is defined.
@@ -1140,10 +1140,7 @@ Each clause is an aggregation of per-production obligations already discharged i
 Clause 1 is exactly \emph{Preservation of \(\vdash\)}; clause 2 is exactly \emph{Characterization}.
 \end{proof}
 
-The diagram above is the unit cell of a fuller picture: a real reconfiguration is a \emph{sequence} of edits, not one \(\delta\), and \cref{sec:idioms} stacks copies of this cell, each intermediate control carrying its own \(\lfloor \cdot \rfloor\) meaning.
-Everything below about a single \(\delta\) lifts cell-by-cell to that picture.
-
-This suggests a practical convention: the operator should state \texttt{p2} against \texttt{p1'}, the running \ensuremath{\mathit{pol}} we echoed back, rather than against the original \texttt{p1}. Stating it this way keeps \(\delta\) small and aligns its paths with what is actually running.
+The diagram above is the unit cell of a fuller picture: a real reconfiguration is a \emph{sequence} of edits, not one \(\delta\), and \cref{sec:idioms} lines up copies of this cell end to end, each intermediate control carrying its own \(\lfloor \cdot \rfloor\) meaning.
 
 \paragraph{A worked example}
 
@@ -1153,8 +1150,8 @@ We echo back
 \[
 \mathtt{p1'} := \lfloor \mathtt{C1} \rfloor = \mathtt{Strict(lo: gmail, hi: zoom)}.
 \]
-We know that \(\mathtt{p1} \eqR \mathtt{p1'}\), so the scheduler the operator gets is the one they asked for; only the slot numbering differs.
-As the control serves pushes and pops, \texttt{C1} transforms into \texttt{C1'}: the same tree with its \ensuremath{\mathit{pifo}}s and \ensuremath{\mathit{state}}s advanced, so \(\mathtt{C1} \sim \mathtt{C1'}\) and \(\lfloor \mathtt{C1'} \rfloor = \mathtt{p1'}\) still.
+We know that \(\mathtt{p1} \eqR \mathtt{p1'}\), so the scheduler that the operator gets is still the one they asked for; only the slot numbering differs.
+As the control serves pushes and pops, \texttt{C1} transforms into \texttt{C1'}: the same tree with its \ensuremath{\mathit{pifo}}s and \ensuremath{\mathit{state}}s advanced, so it is still the case that \(\mathtt{C1} \sim \mathtt{C1'}\) and \(\lfloor \mathtt{C1'} \rfloor = \mathtt{p1'}\).
 
 Later, the operator requests \texttt{p2 = Strict(lo: gmail, mid: spotify, hi: zoom)}.
 The runtime can again use its freedom: instead of literally splicing \texttt{spotify} in between running arms \texttt{gmail} and \texttt{zoom}, it chooses to append \texttt{spotify} to the end.
@@ -1177,8 +1174,8 @@ There are two reasons.
 First, the compilation is \emph{faithful}: each production of \(\delta\) expands to a fixed instruction sequence that, when run to completion, realizes exactly that production's effect.
 We give the translation from each \(\delta\) production to its IR instruction sequence and take its faithfulness to be uncontroversial.
 Second, our substrate runs each such sequence as a single \emph{transactional commit}: a group of IR instructions, fenced by the commit's open and close, that installs as one instant from the user's perspective, with no \texttt{push} or \texttt{pop} interleaved between them (\S7.1' spells out the substrate machinery that makes this so).
-The transiently-malformed intermediate trees are therefore never observed.
-That commit is precisely how the substrate \emph{realizes} the atomicity property of \cref{sec:grammar}: atomicity asked for an instantaneous control replacement between two user operations, and the commit is what collapses a multi-instruction lowering into one such instant.
+The transiently-malformed intermediate trees are therefore never observed by the network.
+That commit is precisely how the substrate \emph{realizes} the atomicity property of \cref{sec:grammar}: atomicity asked for an instantaneous control replacement between two user operations, and the commit collapses a multi-instruction lowering into one such instant.
 Every \texttt{push}/\texttt{pop} therefore still lands on a well-formed control (\texttt{p1}, some transitionary policy, or \texttt{p2}), exactly as \cref{sec:per-production} proved; the IR's transient malformedness lives entirely inside commits, invisible to the user.
 
 The same argument carries from the IR down to hardware: the hardware executes a committed sequence atomically with respect to user operations, so what it exhibits is again what \cref{sec:per-production} proved.
@@ -1191,13 +1188,13 @@ Flagged here so the \cref{sec:hw-preservation} claim ``the proof survives the lo
 
 \section{Realizing Reconfigurations as Guarded Sequences}\label{sec:sequences}
 
-This section composes the productions of \(\delta\) (\cref{sec:delta-grammar}) into \emph{guarded sequences} \((\varphi ; \delta)^{*}\), where a guard \(\varphi\) is a predicate on the state of the live control.
+This section composes the productions of \(\delta\) (\cref{sec:grammar}) into \emph{guarded sequences} \((\varphi ; \delta)^{*}\), where a guard \(\varphi\) is a predicate on the state of the live control.
 Guarded sequences realize changes to the live control that no single \(\delta\) can express.
 We first show that the transitionary period such a sequence passes through needs no new semantics (\cref{sec:links}), then give the grammar of guarded sequences and the idioms operators build from them (\cref{sec:idioms}).
 
 \subsection{Transitionary Policies and Their Semantics}\label{sec:links}
 
-A guarded sequence threads the live control through a chain of intermediate controls, one per pair of consecutive productions.
+A guarded sequence threads the live control through a chain of intermediate controls.
 We call each such intermediate control a \emph{transitionary policy}, writing \(\mathtt{link}_i\) for the control on which the \texttt{i}-th \(\delta\) (zero-indexed) fires; \(\mathtt{link}_0 = \mathtt{C}\) is the starting control, and \(\mathtt{link}_{i+1} = \sem{\delta_i}(\mathtt{link}_i)\) is what the \texttt{i}-th \(\delta\) leaves behind (\cref{sec:idioms} makes this precise).
 
 The main observation of the section, developed in \cref{sec:idioms}, is that each transitionary policy is itself an ordinary \cref{sec:runtime-model}-style control, so the ``transitionary period'' \emph{needs no new semantics}: this is Obligation 1 of \cref{sec:intro}, discharged locally by the per-production obligations of \cref{sec:per-production}.
@@ -1206,8 +1203,8 @@ The chain of \(\den\)s starting from \(\lfloor \mathtt{C} \rfloor\) gives \(\lfl
 
 \paragraph{Follow-up requests}
 The transition planner engages with one reconfiguration at a time.
-When the operator submits a follow-up \texttt{p3} while a \(\mathtt{p1} \to \mathtt{p2}\) sequence is still mid-flight (some guard \(\varphi_i\) has not yet become true), we queue \texttt{p3}, and the planner does not begin work on it until the in-flight sequence completes and the live control \(C_z\) satisfies \(\lfloor C_z \rfloor \eqR \mathtt{p2}\).
-At that instant the planner pulls \texttt{p3} from the queue, treats \texttt{p2'} as the new starting point, and produces a fresh sequence to reach \texttt{p3}.
+If the operator submits a follow-up \texttt{p3} while a \(\mathtt{p1} \to \mathtt{p2}\) sequence is still mid-flight (some guard \(\varphi_i\) has not yet become true), we queue \texttt{p3}, and the planner does not begin work on it until the in-flight sequence completes and the live control \(C_z\) satisfies \(\lfloor C_z \rfloor \eqR \mathtt{p2}\).
+At that instant the planner pulls \texttt{p3} from the queue, treats \(\lfloor C_z \rfloor\) as the new starting point, and produces a fresh sequence to reach \texttt{p3}.
 A more aggressive strategy is possible: splicing or canceling the in-flight sequence to converge on \texttt{p3} directly, sometimes at lower total cost than running \(\mathtt{p1} \to \mathtt{p2} \to \mathtt{p3}\) in series.
 We do not pursue this here; the splicing analysis introduces its own correctness obligations (atomicity of the splice, what transitionary policy the operator observes between the splice and \texttt{p3}) that are out of scope of this paper.
 
@@ -1238,9 +1235,9 @@ We do not pursue this here; the splicing analysis introduces its own correctness
 \label{fig:gseq-idioms}
 \end{figure}
 
-We write \texttt{gseq} for ``guarded sequence'' (\cref{fig:gseq-idioms}, top).
+We write \texttt{gseq} for a guarded sequence (\cref{fig:gseq-idioms}, top).
 A guard \(\varphi\) is either trivially satisfied (\texttt{true}) or asserts that the subtree at \ensuremath{\mathit{path}} is empty; it is always paired with exactly one \(\delta\) drawn from \cref{sec:grammar}.
-The two guard forms have sufficed for every sequence we have needed; the framework does not depend on this minimality, and a richer predicate language can be slotted in without disturbing anything else.
+Those two guard forms have sufficed for every sequence we have needed; the framework does not depend on this minimality, and a richer predicate language can be slotted in without disturbing anything else.
 
 \paragraph{Intuition}
 
@@ -1248,44 +1245,53 @@ The hardware substrate (\cref{sec:hardware}) does two things beyond ordinary \te
 A guarded sequence chains these: wait for \(\varphi_0\), fire \(\delta_0\), then wait for \(\varphi_1\) (now evaluated on the post-\(\delta_0\) control), fire \(\delta_1\), and so on.
 Each intermediate control between two consecutive \(\delta\) firings is an ordinary \cref{sec:runtime-model} control, so the ``transitionary period'' has no new semantics; safety is entirely local, following from the per-production obligations of \cref{sec:per-production}.
 
+\paragraph{Reaching the target}
+
+Safety guarantees that every intermediate control is well-formed, but not that the sequence \emph{arrives} at the intended \texttt{p2}.
+We check arrival at the pol level, folding each production's \(\den(\delta_i)\) (\cref{sec:per-production}) along the sequence: starting from \(\mathtt{ip}_0 = \lfloor \mathtt{C} \rfloor\), the pol we echoed to the operator, set \(\mathtt{ip}_{i+1} := \den(\delta_i)(\mathtt{ip}_i)\).
+The sequence is admissible iff every \(\den(\delta_i)\) is defined on \(\mathtt{ip}_i\) and the final \(\mathtt{ip}_{n+1} \eqR \mathtt{p2}\); that is, it actually carries \(\lfloor \mathtt{C} \rfloor\) to \texttt{p2}.
+This is the Interplay theorem (\cref{sec:interplay}) iterated across the sequence: each \(\den(\delta_i)\) matches its operational counterpart \(\sem{\delta_i}\) (\cref{sec:per-production}), so a fold that lands at \(\mathtt{ip}_{n+1} \eqR \mathtt{p2}\) certifies, cell-by-cell, that the operational chain ends in a control whose \(\lfloor \cdot \rfloor\) is \texttt{p2}.
+Guards play no role in this check: they govern \emph{when} each \(\delta_i\) fires on the live control and are pol-invisible (\cref{sec:per-production}), so a \((\mathtt{empty}(\mathit{path}); \Remove(\mathit{path}))\) step folds exactly as if its guard were \texttt{true}.
+If the chain fails to reach \texttt{p2}, or some \(\den(\delta_i)\) is undefined on its \(\mathtt{ip}_i\), the sequence is rejected, and the rejection identifies the offending step: the first \(\delta_i\) whose \(\den(\delta_i)\) was undefined, or else the final mismatch \(\mathtt{ip}_{n+1} \not\eqR \mathtt{p2}\).
+Both clients of the framework rely on this check: the planner (\cref{sec:planner}) uses it as a backstop on the sequences it assembles, and an operator authoring by hand (\cref{sec:imperative}) uses it to validate theirs.
+
 \paragraph{Liveness}
 
 Safety is unconditional; liveness is not, and cannot be.
 A guarded sequence progresses only as its guards become true, and a guard like \(\mathtt{empty}(\mathit{path})\) becomes true only once the traffic under \ensuremath{\mathit{path}} drains, which is up to the network, not up to us.
-A persistent or adversarial flow can keep a subtree busy indefinitely, and then a \SlowRetire{} or \Replace{} waiting on it never fires.
+A persistent or adversarial flow can keep a subtree busy indefinitely, and then any step waiting on that subtree's emptiness never fires.
 This is inherent, not an engineering gap: draining a subtree gracefully means letting its buffered packets leave on their own, and no reconfiguration can hurry that along without dropping them, which the grammar refuses to do.
-So completing a sequence takes the operator's cooperation, for instance quiescing a flow at its source or accepting a hard \Replace{} that resets more of the tree but drops nothing.
+So completing a sequence takes the operator's cooperation, for instance quiescing a flow at its source or accepting a harder reconfiguration that resets more of the tree but drops nothing.
 The live control stays safe throughout; it simply may not reach the target until the traffic allows.
 Follow-up requests submitted during a stalled sequence are queued (\cref{sec:links}).
 
 \paragraph{Idioms}
 
-\emph{Idioms} are an operator-facing vocabulary for frequently-used guarded sequences, and are the typical building block of hand-authored, imperative sequences (\cref{sec:imperative}).
+\emph{Idioms} are a named vocabulary for frequently-used guarded sequences, whether the planner assembles them or an operator writes them by hand.
 
 An idiom is a macro over the grammar \(\delta\) (and, recursively, over other idioms).
 It expands into a fixed \((\varphi; \delta)^{*}\) sequence: a list of productions with the guards between them spelling out what the system waits for.
 Soundness is compositional: each step of the expansion is sound by \cref{sec:per-production}, and the sequence inherits the sequence-level reasoning above.
 An idiom expansion that would hit an undefined production on the current control is rejected: the soundness checks fire on the expanded sequence just as they would on a hand-written one.
 
-We name four starter idioms, their expansions collected in \cref{fig:gseq-idioms}.
+We name four starter idioms, with their expansions collected in \cref{fig:gseq-idioms}.
 New ones can be added later without changing the framework, since an idiom is just a named \((\varphi; \delta)^{*}\).
 
 \begin{itemize}
 \item \textbf{\Retire(\ensuremath{\mathit{path}})} quiesces the subtree at \ensuremath{\mathit{path}}, waits for it to drain to empty, then \Remove{}s it.
-The operator-facing way to say ``tear this subtree down gracefully.''
+This is the operator-facing way to say ``tear this subtree down gracefully.''
 
 \item \textbf{\SlowRetire(\ensuremath{\mathit{path}})} waits for the subtree at \ensuremath{\mathit{path}} to drain, then \Remove{}s it.
 The operator may use this if the subtree at \ensuremath{\mathit{path}} needs to receive more traffic but is generally being phased out.
 
-\item \textbf{\Replace(\ensuremath{\mathit{path}}, \texttt{B})} designates \texttt{B} as the survivor of the current \(\mathit{pol}@\mathit{path}\) (which, after \Designate, sits at \ensuremath{\mathit{path}}\texttt{ ++ [0]} as the first arm of the inserted \(\Strictstar\) node), quiesces the original subtree, waits for it to drain to empty, and then removes it and the now-superfluous \(\Strictstar\) wrapper, leaving \texttt{B} alone at \ensuremath{\mathit{path}}.
-At the pol level the composite effect is wholesale replacement of \(\mathit{pol}@\mathit{path}\) by \texttt{B}; the operator-facing idiom adds the \Quiesce{} in the middle so that the original subtree empties out before the collapse fires.
-The footprint of \Replace(\ensuremath{\mathit{path}}, \texttt{B}) is the subtree at \ensuremath{\mathit{path}}, the wrap node inserted at \ensuremath{\mathit{path}} by \Designate, and the \ensuremath{\mathit{z}} chain at the ancestors of \ensuremath{\mathit{path}} (extended by \Designate, restored by \Undesignate); \cref{sec:planner} frames confinement against exactly this set.
+\item \textbf{\Replace(\ensuremath{\mathit{path}}, \texttt{B})} phases \texttt{B} in as the survivor of \(\mathit{pol}@\mathit{path}\): it \Designate{}s \texttt{B}, quiesces and drains the original subtree, then removes it and the \(\Strictstar\) wrapper, leaving \texttt{B} alone at \ensuremath{\mathit{path}} (\cref{fig:gseq-idioms}).
+At the pol level the effect is wholesale replacement of \(\mathit{pol}@\mathit{path}\) by \texttt{B}.
+Its footprint is the subtree at \ensuremath{\mathit{path}}, the wrap node \Designate{} inserts, and the \ensuremath{\mathit{z}} chain at the ancestors of \ensuremath{\mathit{path}}; \cref{sec:planner} frames confinement against exactly this set.
 
 \item \textbf{\PruneDownTo(\ensuremath{\mathit{path}})} retires every off-path subtree along the route from the root to \ensuremath{\mathit{path}} (call them \(\pi_a, \ldots, \pi_z\)), then \ChangeRoot{}s to \ensuremath{\mathit{path}}.
 This idiom is the operator-facing way to say ``abandon everything except this subtree.''
 
 Each \Retire{} removes one off-path subtree; once they have all fired, every ancestor along the path is unary, satisfying \ChangeRoot's precondition (\cref{sec:changeroot}).
-(If no off-path subtrees exist, the idiom reduces to \((\mathtt{true}; \ChangeRoot(\mathit{path}))\) alone.)
 The \Retire{}s on disjoint off-path subtrees commute, so any ordering suffices; we use root-first as a stable convention.
 
 For instance, suppose the running tree is \texttt{A(B(D(F, G), E), C)}, with edges labeled by the parent-side index:
@@ -1330,7 +1336,6 @@ For instance, suppose the running tree is \texttt{A(B(D(F, G), E), C)}, with edg
 \end{minipage}
 \end{center}
 The operator wants to retain only \texttt{E}, so they issue \PruneDownTo(\texttt{[0, 1]}).
-
 The off-path subtrees are \texttt{D(F, G)} (at \texttt{[0, 0]}) and \texttt{C} (at \texttt{[1]}).
 So \PruneDownTo(\texttt{[0, 1]}) expands to: \Retire(\texttt{[0, 0]) ; Retire([1]) ; (true; ChangeRoot([0, 0])}).
 
@@ -1338,13 +1343,14 @@ Note that the path \texttt{[0, 0]} appears twice in this expansion with differen
 A path-resolution system computes these targets automatically at idiom expansion; the operator only writes \PruneDownTo(\texttt{[0, 1]}), naming \texttt{E} by its location at the moment of request.
 
 \emph{On the natural-feeling opposite.}
-\PruneDownTo{} keeps one subtree and abandons everything around it. The opposite move, keeping the running tree and splicing fresh structure \emph{above and around} it (the running root becoming a child of a newly-introduced context), we do not support as a production or an idiom. The obstruction is stateful, not structural: a fresh ancestor would need a \ensuremath{\mathit{node\_state}}, per-arm \ensuremath{\mathit{slot\_state}}s, a populated index \ensuremath{\mathit{pifo}}, and a \ensuremath{\mathit{z}} whose history matches the live traffic already flowing through the subtree it now wraps, and there is no honest way to synthesize the state it would have carried had it been present all along. The operator can still reach such a target through a \Replace{} at a sufficient ancestor (\cref{sec:fallback}), which freshly compiles the new wrapping and drains the old subtree through it.
+\PruneDownTo{} keeps one subtree and abandons everything around it. The opposite move would be to keep the running tree and splice fresh structure \emph{above and around} it (with the running root becoming a child of a newly-introduced context).
+We do not support this, as either a production or an idiom.
+The issue is that any fresh ancestor would need a \ensuremath{\mathit{node\_state}}, per-arm \ensuremath{\mathit{slot\_state}}s, a populated index \ensuremath{\mathit{pifo}}, and a \ensuremath{\mathit{z}} whose history matches the live traffic already flowing through the subtree it now wraps, and there is no honest way to synthesize the state it would have carried had it been present all along.
 \end{itemize}
 
 \section{The Transition Planner}\label{sec:planner}
 
-\cref{sec:sequences} referenced a \emph{transition planner}; this section spells it out.
-The operator hands the runtime \texttt{p1} (the presently-running policy) and \texttt{p2} (their new desire); the planner's job is to propose a \((\varphi ; \delta)^{*}\) sequence whose pol-level fold takes \texttt{p1} to \texttt{p2} up to \(\eqR\).
+The operator hands the runtime \texttt{p1} (the presently-running policy) and \texttt{p2} (their new desire); the transition planner's job is to propose a \((\varphi ; \delta)^{*}\) sequence whose pol-level fold takes \texttt{p1} to \texttt{p2} up to \(\eqR\).
 The operator accepts or rejects the proposal; they do not author it directly.
 
 Every sequence the planner emits is safe by the per-production guarantees of \cref{sec:per-production}, aggregated across the sequence as sketched in \cref{sec:idioms}, regardless of how the planner assembled it.
@@ -1354,20 +1360,17 @@ Optimality is a separate matter, and not guaranteed: the planner may fail to see
 
 \cref{sec:fallback} sets up \emph{confinement} as a metric for excellence, presents the always-available worst-case \Replace{} fallback, and frames the planner's strategy as descending the tree to find a tight production (Add, Remove, ChangeMeta) that captures the difference locally.
 \cref{sec:planner-emits} catalogs the cases the planner recognizes and emits a tight sequence for.
+\cref{sec:imperative} shows how an operator can instead author a sequence by hand, admitted by the same pol-level check.
 \cref{sec:planner-nonfeatures} lists deliberate non-features and candidate future work.
 
 \subsection{The Always-Available Fallback, and Confinement to do Better}\label{sec:fallback}
 
 To reach any \texttt{p2} from any \texttt{p1}, the planner can issue \(\Replace([], \mathtt{p2})\), the \cref{sec:idioms} idiom that expands to
 
-\begin{verbatim}
-(true ; Designate([], p2)) ;
-(true ; Quiesce([0])) ;
-(empty([0]) ; Undesignate([]))
-\end{verbatim}
-
-After \(\Designate([], \mathtt{p2})\) fires, the original \texttt{p1} sits at child index 0 of the freshly-introduced \(\Strictstar\) wrap and the survivor \texttt{p2} sits at index 1 (\cref{sec:designate}); the \texttt{[0]} in the next two steps targets the \texttt{p1} arm.
-This wraps \texttt{p1} and \texttt{p2} into a \(\Strictstar(\mathtt{hi}: \mathtt{p1}, \mathtt{lo}: \mathtt{p2})\) at the root, quiesces the \texttt{p1} arm, accepts pushes into \texttt{p2} and serves pops from \texttt{p1}, and, when \texttt{p1} has drained to empty, replaces \(\Strictstar(\mathtt{hi}: \mathtt{p1}, \mathtt{lo}: \mathtt{p2})\) with just \texttt{p2}, which then serves both pushes and pops.
+\[
+(\mathtt{true};\ \Designate([], \mathtt{p2}))\ ;\ (\mathtt{true};\ \Quiesce([0]))\ ;\ (\mathtt{empty}([0]);\ \Undesignate([]))
+\]
+This wraps \texttt{p1} and \texttt{p2} into \(\Strictstar(\mathtt{hi}: \mathtt{p1}, \mathtt{lo}: \mathtt{p2})\) at the root (so pops still drain \texttt{p1} while pushes go to \texttt{p2}), and, once \texttt{p1} is empty, collapses the wrapper to leave \texttt{p2} alone.
 Nothing is dropped and the sequence is safe by \cref{sec:per-production}, but \emph{no part of the scheduler is left undisturbed}.
 
 \paragraph{Footprint}
@@ -1375,7 +1378,7 @@ Nothing is dropped and the sequence is safe by \cref{sec:per-production}, but \e
 To measure how much of the tree a sequence touches, associate each production \(\delta\) with a \emph{footprint} on the live control it acts on.
 Define \(\mathtt{footprint}(\delta, \mathtt{C})\) as the set of nodes of \texttt{C} whose \ensuremath{\mathit{state}}, \ensuremath{\mathit{pifo}}, or \ensuremath{\mathit{z}} differs between \texttt{C} and \(\sem{\delta}(\mathtt{C})\).
 The set is read off the per-production Preservation paragraphs of \cref{sec:per-production}: it includes the edit site, the new or removed node where applicable, and every proper ancestor whose \ensuremath{\mathit{z}} is extended or restricted (e.g., the ancestors touched by \Add, \Quiesce, \Remove, \Designate).
-For a guarded sequence \((\varphi_0 ; \delta_0) ; \ldots ; (\varphi_n ; \delta_n)\), the sequence-level footprint is the union \(\bigcup_i \mathtt{footprint}(\delta_i, \mathtt{link}_i)\).
+For a guarded sequence \((\varphi_0 ; \delta_0) ; \ldots ; (\varphi_n ; \delta_n)\), the sequence-level footprint is \(\bigcup_i \mathtt{footprint}(\delta_i, \mathtt{link}_i)\).
 The root-level \(\Replace([], \mathtt{p2})\) above has the maximum possible footprint: the whole tree.
 
 \paragraph{The planner's strategy}
@@ -1386,14 +1389,15 @@ A sequence is well-confined when its footprint is small relative to the symmetri
 The planner's goal is to recognize whether the difference between \texttt{p1} and \texttt{p2} is captured by a tight production from \cref{sec:delta-grammar} (an \Add, \Remove, or \ChangeMeta) and to emit that production wherever in the tree it sits, leaving everything else untouched.
 The planner descends through the tree as long as \texttt{p1} and \texttt{p2} agree at the current level, looking for a recognized shape one level down.
 When it finds one, it emits the matching production at that depth.
-Only when the descent ends without a match does the planner fall back to \Replace; but by then the recursion has localized the difference to the deepest slot at which the policies disagree, so the resulting \Replace{} wraps only that slot.
+Only when the descent ends without a match does the planner fall back to \Replace.
+But the good news is that, by then, the recursion has localized the difference to the deepest slot at which the policies disagree, so the resulting \Replace{} wraps only that slot.
 
-A concrete example will help; we write \(\mathtt{P}\) and \(\mathtt{Q}\) for the strict-priority and round-robin disciplines, since the footprint argument does not turn on which they are.
+An example will help.
 Suppose
 \[
 \mathtt{p1} = \mathtt{P}(\mathtt{zoom}, \mathtt{Q}(\mathtt{gmail}, \mathtt{netflix}))
 \]
-and the operator requests
+for some scheduling disciplines \(\mathtt{P}\) and \(\mathtt{Q}\), and the operator requests
 \[
 \mathtt{p2} = \mathtt{P}(\mathtt{zoom}, \mathtt{Q}(\mathtt{gmail}, \mathtt{netflix}, \mathtt{spotify})).
 \]
@@ -1456,7 +1460,7 @@ The case analysis of \cref{sec:planner-emits} is built precisely to find option 
 We make no claim that the planner's choice is canonical or minimal.
 We claim only that whatever sequence it emits is safe (\cref{sec:per-production}) and no worse than the root-level fallback.
 
-\subsection{What the planner emits}\label{sec:planner-emits}
+\subsection{The Planner's Case Analysis}\label{sec:planner-emits}
 
 The planner has two parts: a top-level pass over \((\mathtt{p1}, \mathtt{p2})\) as whole trees, and a \emph{per-level comparator} it falls through to.
 Whatever the comparator emits is lifted back to the right depth by prepending the slot indices the recursion descended through.
@@ -1618,13 +1622,13 @@ The worst case is the root-level \(\Replace([], \mathtt{p2})\) of \cref{sec:fall
 
 \subsection{Imperative Authoring}\label{sec:imperative}
 
-The transition planner of this section realizes what we call \emph{declarative} authoring: the operator states a starting policy \texttt{p1} and a target \texttt{p2}, and the planner proposes a guarded sequence that achieves the change, which the operator either accepts (we apply it to the running control) or declines.
+The transition planner so far has realized what we call \emph{declarative} authoring: the operator states a starting policy \texttt{p1} and a target \texttt{p2}, and the planner proposes a guarded sequence that achieves the change, which the operator either accepts (we apply it to the running control) or declines.
 Operators may instead author \emph{imperatively}, writing their desired \texttt{p2} together with a \((\varphi; \delta)^{*}\) sequence intended to reach it, possibly built from idioms (\cref{sec:idioms}).
 Imperative authoring gives the operator hands-on control over the transitionary policies the live control passes through, rather than delegating their choice to the planner.
-The two modes are not formally distinct: they produce sequences over the same substrate and discharge the same per-production obligations of \cref{sec:per-production}.
+The two modes are not formally distinct: they produce sequences over the same substrate, discharge the same per-production obligations of \cref{sec:per-production}, and are admitted by the same pol-level check of \cref{sec:idioms}.
 
 Because an imperative sequence carries \emph{paths}, those paths bind to the running representative, not to the \ensuremath{\mathit{pol}} the operator first wrote, which is exactly why we echo that representative back (\cref{sec:interplay}).
-Take that section's worked example, where the running control realizes \texttt{p2'} while the operator had written \texttt{p2}:
+The worked example of \cref{sec:interplay} is the case in point: there the running control realizes \texttt{p2'} while the operator had written \texttt{p2}:
 \[
 \begin{aligned}
 \mathtt{p2'} &= \mathtt{Strict(lo: gmail, hi: zoom, mid: spotify)},\\
@@ -1634,22 +1638,9 @@ Take that section's worked example, where the running control realizes \texttt{p
 An imperative edit \(\Quiesce([2])\) resolves against \texttt{p2'}: slot \texttt{2} there is \texttt{mid: spotify}, so \texttt{spotify} is quiesced.
 Had the operator read the path off their own \texttt{p2}, slot \texttt{2} is \texttt{hi: zoom}, a different arm; the runtime interprets the path against what is running and has no way to detect the mismatch.
 
-\paragraph{Checking an imperative sequence at the pol level}
-
-Because imperative sequences are user-authored, we validate them before commit.
-The check folds each production's \(\den(\delta_i)\) (\cref{sec:per-production}) along the sequence, producing the intermediate pols \(\mathtt{ip}_0 = \mathtt{p1'}, \mathtt{ip}_1, \ldots, \mathtt{ip}_{n+1}\) with \(\mathtt{ip}_{i+1} := \den(\delta_i)(\mathtt{ip}_i)\), where \(\mathtt{p1'} = \lfloor \mathtt{C} \rfloor\) is the pol we echoed to the operator.
-We accept the request iff every \(\den(\delta_i)\) is defined on \(\mathtt{ip}_i\) and \(\mathtt{ip}_{n+1} \eqR \mathtt{p2}\).
-That is, the user-provided sequence actually takes \texttt{p1'} to \texttt{p2}.
-This is the Interplay theorem (\cref{sec:interplay}) iterated across the sequence: each step's \(\den(\delta_i)\) matches its operational counterpart \(\sem{\delta_i}\) per-production in \cref{sec:per-production}, so a fold that lands at \(\mathtt{ip}_{n+1} \eqR \mathtt{p2}\) certifies, cell-by-cell, that the operational chain ends in a control whose \(\lfloor \cdot \rfloor\) is \texttt{p2}.
-
-Each \(\mathtt{ip}_i\) is itself a valid pol with an explainable scheduling semantics, not a transient artifact of the proof.
+Before committing a user-authored sequence we run it through the pol-level check of \cref{sec:idioms}, folding \(\den(\delta_i)\) from \(\lfloor \mathtt{C} \rfloor\) and accepting only if the fold is everywhere defined and lands at \texttt{p2} up to \(\eqR\).
+The intermediate pols it produces are not transient artifacts of the proof: each is a valid pol with an explainable scheduling semantics.
 For instance, after the first step of \Replace(\ensuremath{\mathit{path}}, \texttt{B})'s expansion the intermediate pol holds \(\Strict(\mathit{pol}@\mathit{path}, B)\) at \ensuremath{\mathit{path}}: a temporary strict-priority node favoring the outgoing \(\mathit{pol}@\mathit{path}\) over the incoming \texttt{B}, with a readable scheduling interpretation in its own right.
-
-The ``defined when'' clauses on each \(\den(\delta_i)\) are the per-production preconditions listed in \crefrange{sec:add}{sec:changeroot}.
-Guards play no role in this check; they govern the operational timing of when each \(\delta_i\) fires on the live control, and are pol-invisible (\cref{sec:per-production}).
-For instance, a \((\mathtt{empty}(\mathit{path}); \Remove(\mathit{path}))\) step folds at the pol level exactly as if its guard were \texttt{true}, since \(\den\) only sees \(\delta\).
-If the chain fails to reach \texttt{p2}, or some \(\den(\delta_i)\) is undefined on its intermediate pol, we reject the request.
-The rejection identifies the offending step: the first \(\delta_i\) whose \(\den(\delta_i)\) was undefined on \(\mathtt{ip}_i\), or, if every step was defined, the final mismatch \(\mathtt{ip}_{n+1} \not\eqR \mathtt{p2}\).
 
 \subsection{What the planner does not do today}\label{sec:planner-nonfeatures}
 
