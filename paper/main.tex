@@ -430,6 +430,10 @@ We set up that apparatus first (\cref{sec:equivalences}), and then return to the
 
 We write \(\mathtt{C} \sim \mathtt{C'}\) for the equivalence on well-formed controls that holds when one can reach the other by serving some finite run of the network's \texttt{push}/\texttt{pop} operations.
 \texttt{push} and \texttt{pop} change the live \ensuremath{\mathit{pifo}}s and \ensuremath{\mathit{state}}s of a control but leave its structural skeleton untouched: no policy is modified along the way, and only the live state moves, and only as \texttt{push} and \texttt{pop} move it.
+We could instead have related any two controls that agree except on their live \ensuremath{\mathit{pifo}} and \ensuremath{\mathit{state}} contents, a coarser relation that never asks whether the differing contents are reachable at all.
+We prefer reachability: it relates two controls exactly when the running network could actually pass between them, so a result stated up to \(\sim\) speaks about configurations the runtime can genuinely construct, not about infeasible states that no run of \texttt{push}/\texttt{pop} can produce.
+
+\xxx[AM to ALS]{You asked whether we could weaken \(\sim\) to ``\texttt{C} and \texttt{C'} equal except for \ensuremath{\mathit{pifo}} contents and \ensuremath{\mathit{state}}s,'' noting it is coarser (it relates even infeasible controls) and guessing it would not break the theorems. You are likely right that the proofs survive, but we kept reachability on purpose; the sentence just above says why. Reachability relates only controls the hardware can actually toggle between, so a preservation result up to \(\sim\) claims something about the real running machine rather than about states no run can construct. Your own hedge (``sorta guessing this does not matter'') is the tell: coarsening would keep the theorems true while diluting what they assert.}
 
 We write \(p \eqR p'\) for the smallest congruence on \ensuremath{\mathit{pol}} such that, at any internal \ensuremath{D}-node, permuting the child arms gives a congruent \textit{pol}.
 The per-arm metadata that discipline \ensuremath{D} requires (a \texttt{WFQ} weight, a \texttt{Strict} priority rank) travels with its arm under the permutation; the metadata is what carries the scheduling-meaningful content, so such a permutation does not change the scheduler.
@@ -486,7 +490,8 @@ Every \(\sim\)-equivalent pair is \(\simR\)-equivalent, but not conversely.
 
 We write \(\lfloor \mathtt{C} \rfloor\) to mean ``the \ensuremath{\mathit{pol}} that \texttt{C} realizes''.
 Intuitively, \(\lfloor \cdot \rfloor\) reads the policy straight off the control: it walks the control's tree and recovers, node by node, the \ensuremath{\mathit{pol}} term the control implements, discarding the live \ensuremath{\mathit{pifo}} and \ensuremath{\mathit{state}} contents that traffic happens to have left behind.
-We pin it down by three rules:
+We pin it down by three rules.
+The first two fix \(\lfloor \cdot \rfloor\) on the freshly-compiled controls and on everything a run of \texttt{push}/\texttt{pop} can reach from them; the third \emph{extends} the definition to the controls a production of \(\delta\) can reach, by declaring that reading-off commutes with editing.
 
 \begin{enumerate}
 \item \emph{Base case (compilation).} Compile a \texttt{p} to a control and read it straight back, and you recover \texttt{p} itself, up to the sibling-order freedom the compiler enjoyed in laying it out: \(\lfloor \lceil \mathtt{p} \rceil \rfloor \eqR p\).
@@ -497,6 +502,11 @@ The relation is again \(\eqR\), not \(=\), because \(\sem{\delta}\) may lay the 
 \end{enumerate}
 
 The three rules together let us propagate \(\lfloor \cdot \rfloor\) from any \(\lceil \mathtt{p} \rceil\) along any sequence of pushes, pops, and productions of \(\delta\).
+So propagated, \(\lfloor \cdot \rfloor\) is a genuine \emph{function}: each well-formed control determines a single \ensuremath{\mathit{pol}}, unique up to \(\eqR\) (that is, up to sibling order), so we may legitimately write \(\lfloor \mathtt{C} \rfloor\) and use it as a function into \ensuremath{\mathit{pol}} taken modulo \(\eqR\).
+That the value is independent of \emph{which} sequence of pushes, pops, and productions we propagated along, and so is well-defined, is exactly the commuting-square consistency proved in \cref{sec:interplay}.
+
+\xxx[AM to ALS]{Two points from you. (1) You argued condition~3 (closure under \(\delta\)) is a \emph{theorem}, not part of the definition, since conditions~1--2 already make \(\lfloor \cdot \rfloor\) the inverse of \(\lceil \cdot \rceil\) modulo \(\sim\). The subtlety: conditions~1--2 pin \(\lfloor \cdot \rfloor\) down only on the \emph{image} of \(\lceil \cdot \rceil\) (compiled controls and their \texttt{push}/\texttt{pop} neighbors); the controls this paper cares about are the ones \(\delta\) reaches, which lie outside that image. Deleting condition~3 with nothing in its place leaves \(\lfloor \cdot \rfloor\) undefined exactly there. So we take option~(a): keep it, but frame it honestly as \emph{extending} the definition by that equation (see the reworded lead-in above), rather than pretending 1--2 alone suffice. Option~(b), redefining \(\lfloor \cdot \rfloor\) by structural recursion on \texttt{C} so condition~3 falls out as a theorem, is real work we chose not to take on now. (2) ``Is \(\lfloor \cdot \rfloor\) a function, unique up to reorder?'' Yes, and we now say so explicitly (sentence just above): it is a function into \ensuremath{\mathit{pol}} modulo \(\eqR\), unique up to sibling order, with path-independence riding on the \cref{sec:interplay} commuting square.}
+
 This is how we will discharge Obligation 1 of \cref{sec:intro}.
 Even when the presently running \ensuremath{\mathit{pol}} is just an intermediate policy that the runtime crafted on the way from the running policy to the operator's true request, we can still read off and report to the operator exactly what is running.
 The formal interplay of these three rules is the subject of \cref{sec:interplay}, where the ``commuting square'' they trace out is stated and proved as a theorem.
@@ -538,6 +548,8 @@ Only the productions that add or drop a live \ensuremath{\mathit{pifo}} entry, \
 
 The lemma can read counterintuitively. Inverting the two priorities of \(\Strict(\mathtt{hi}: A, \mathtt{lo}: B)\) with \ChangeMeta{} does \emph{not} change the next \texttt{pop}: ranks are frozen at \texttt{push} time, so the parent's index-\ensuremath{\mathit{pifo}} already holds \(A\) at \texttt{hi} and \(B\) at \texttt{lo}, and \ChangeMeta{} rewrites neither.
 Only packets pushed after the change feel the new priorities.
+
+\xxx[AM to ALS]{This is the obligation you flagged as ``Preservation of observation.'' Two fixes since your read. (1) We dropped the old literal claim that ``a \texttt{pop} after \(\delta\) returns what a \texttt{pop} before would'': you rightly noted that cannot hold for all \(\delta\) (invert an \(\Strict\) and the next \texttt{pop} does change). The property is now scoped to the \emph{already-buffered backlog}: \(\delta\) never drops, reorders, or re-ranks a packet already admitted, while new arrivals correctly feel the new policy. The \(\WFQ\) overtake in the bullet above and the \(\Strict\)-invert case in this paragraph are exactly your examples, now worked to show the backlog is untouched. (2) On ``how is this related to atomicity'': we agree your ``operations transform \texttt{C}s into \texttt{C}s'' bar is too low, so we renamed this \emph{Non-disruption of in-flight traffic} and separated it from atomicity. It is the property that beats stop-the-world: the \emph{act} of reconfiguring injects no artifacts, which is a real guarantee, not book-keeping. If you agree the reframing lands, we will close this comment.}
 
 Several productions (\Add, \Quiesce, \Remove, \Designate) modify~\ensuremath{\mathit{z}} at proper ancestors of the edit site, even though those nodes' \ensuremath{\mathit{state}} is left unchanged.
 There is no separate obligation for these \ensuremath{\mathit{z}} edits: their \ensuremath{\mathit{pol}}-invisible content is absorbed by Characterization (which is up to \(\eqR\), and \ensuremath{\mathit{z}} does not appear in \ensuremath{\mathit{pol}}), and their effect on the in-flight stream is absorbed by non-disruption (\cref{lem:nondisruption}: every live \ensuremath{\mathit{pifo}} entry survives a \ensuremath{\mathit{z}} edit unchanged).
@@ -1691,8 +1703,6 @@ As a result, existing PIFO-based substrates support only stop-the-world policy u
 
 \subsection{Transactional Update and Hardware Component Support}\label{sec:hw-transactional}
 
-\xxx[Claude]{Was section6-review item 8; that review predates the renumber, so it now lands here in \S7, not \S6. Vocabulary sweep: \S7 names the same concept ``commit'', ``transaction'', ``transactional commit'', ``atomic-commit interface'' (\cref{sec:hw-transactional}, \S7.1', \cref{sec:hw-transaction}), and ``atomic hardware transaction''. Pick one phrasing and use it throughout \S7.1--\S7.4. The deeper task these two subsections already flag for themselves is reconciling \S7.1 and \S7.1' into one story; the ``vocabulary bridge'' notes are placeholders for that.}
-
 \emph{Vocabulary bridge to \S7.1' (temporary, until the two subsections are reconciled).}
 The ``flow-to-child mapping'', ``next-hop mapping'', and ``match-action tables'' of this subsection are the tables that \S7.1''s \texttt{map} / \texttt{assoc} / \texttt{adopt} opcodes write to; the ``virtual PIFOs'' of this subsection are the PIFOs of \S7.1', one per PIFO-tree node.
 
@@ -1713,8 +1723,6 @@ Rio does not require arbitrary in-place replacement of a live scheduling policy.
 Instead, policy-table updates correspond to adding metadata for newly admitted flows (whose packets are not allowed before the update is finished) or removing metadata for flows that have already been drained.
 Because these updates do not change the interpretation of existing live packets, Rio applies them incrementally rather than through a full transactional table swap.
 This keeps the hardware cost low while still preserving the atomicity needed for observable scheduling behavior.
-
-\xxx[Claude]{Was section6-review item 16 (pre-renumber; now \S7, not \S6). This paragraph says some metadata updates bypass the double-buffered swap and apply incrementally, but the \S7.1' ISA exposes \texttt{set\_arm\_meta} as a single uniform opcode with no hint that some calls take the buffered path and others the incremental one. Say, per opcode (or per call condition), which path is taken.}
 
 \subsection*{7.1' The commit model and the ISA}
 \addcontentsline{toc}{subsection}{7.1' The commit model and the ISA}
@@ -1924,8 +1932,6 @@ These mechanisms are independent of the underlying PIFO implementation.
 Our prototype uses a shift-register-based PIFO similar to the original design, but Rio only assumes the standard push-in-first-out interface.
 Other PIFO implementations can be substituted.
 
-\xxx[Claude]{Was section6-review item 26 (pre-renumber; now \S7, not \S6). \cref{sec:vpifo} (L242--243) promises Rio composes \emph{above} a PIFO substrate ``which could well be vPIFO'', and ``the two layers compose''. This subsection only argues portability across \emph{physical} PIFO implementations (shift-register vs.\ others), which is a layer \emph{below} Rio, not the substrate layer \cref{sec:vpifo} sets up. Either re-add a substrate-level composability argument (what an install-without-interleave substrate like vPIFO must provide), or walk back \cref{sec:vpifo}'s promise. IRL-gated with Zhiyuan; relates to worklist Tier-1 item 2.}
-
 \subsection{Executing \(\delta\) as a transaction}\label{sec:hw-transaction}
 
 Rio implements a transactional update controller that executes each lowered \(\delta\) as an atomic hardware transaction.
@@ -1935,15 +1941,11 @@ When the controller reaches the commit instruction, it generates the hardware co
 These signals are delay-aligned across PEs according to the PIFO tree topology, so that no enqueue or dequeue operation can traverse a partially updated tree.
 Intuitively, the controller treats the commit boundary as a wavefront: the new configuration becomes visible at different PEs at carefully chosen times, ensuring that any individual packet observes a consistent configuration along its entire path.
 
-\xxx[Claude]{Was section6-review item 20 (pre-renumber; now \S7, not \S6). This delay-aligned wavefront across PEs and \cref{sec:hw-transactional}'s per-PE double-buffered shadow tables are two descriptions of ``make the commit atomic''; say how they compose. Is the wavefront the mechanism that delivers the commit marker to each PE's double buffer, or are these two independent stories?}
-
 The controller also implements guarded transitions.
 As described in \cref{sec:sequences}, some transitions are guarded by predicates such as the emptiness of a subtree.
 Rio lowers such guards to blocking commands in the controller queue.
 A blocking command remains at the head of the queue until its predicate becomes true; only then can the subsequent update instructions execute.
 FIFO execution therefore ensures that instructions depending on the guard are not issued prematurely.
-
-\xxx[Claude]{Was section6-review item 21 (pre-renumber; now \S7, not \S6). This looks already resolved: \S7.1' L1741--1743 states the ISA is unconditional and puts situation-dependent reasoning in a \cref{sec:sequences} guard ``not in the substrate'', and this paragraph lowers guards to blocking controller commands, i.e., a controller layer above the ISA. If you agree the two statements are consistent and explicit enough, delete this note; the worklist has it marked done.}
 
 Our current implementation uses a single controller queue, which provides a simple global serialization point for updates.
 This design is sufficient for correctness and avoids subtle ordering bugs between overlapping commits.
