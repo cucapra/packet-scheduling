@@ -1470,148 +1470,169 @@ Whatever the comparator emits is lifted back to the right depth by prepending th
 The pass tries three cases in order and stops at the first match.
 
 \begin{enumerate}
-\item \textbf{\(\mathtt{p1} = \mathtt{p2}\).} Emit \texttt{[]}.
+\item \(\mathtt{p1} = \mathtt{p2}\). Emit \texttt{[]}.
 The test is literal equality on the normalized \ensuremath{\mathit{pol}} terms.
 The compiler (\cref{sec:policy-dsl}) runs every operator-supplied policy through \texttt{Pol.normalize}, which rewrites a \ensuremath{\mathit{pol}} to a canonical representative of its \(\eqR\)-class (a fixed sibling ordering), before reaching the planner, so two \(\eqR\)-equivalent policies arrive here as identical terms.
 The live control is already serving the requested policy and there is nothing to install.
 
-\item \textbf{\texttt{p2} embeds in \texttt{p1} at \ensuremath{\mathit{path}}.} Emit \(\PruneDownTo(\mathit{path})\).
+\item \texttt{p2} embeds in \texttt{p1} at \ensuremath{\mathit{path}}. Emit \(\PruneDownTo(\mathit{path})\).
 A structural sub-policy test walks \texttt{p1} looking for a subtree equal to \texttt{p2}; if it finds one, \ensuremath{\mathit{path}} names where it sits.
 The match is unique: by \cref{sec:policy-dsl}'s leaf-partition validity each flow in \texttt{p2} may appear at most once in \texttt{p1}, so \texttt{p1} can host \texttt{p2} as a subtree in at most one position.
 This test runs only at the top level.
 
-\item \textbf{Otherwise.} Hand \((\mathtt{p1}, \mathtt{p2})\) to the per-level comparator.
+\item Otherwise. Hand \((\mathtt{p1}, \mathtt{p2})\) to the per-level comparator.
 \end{enumerate}
 
-\paragraph{The per-level comparator}
+\paragraph{What the comparator emits}
 
-The per-level comparator looks at the roots of \texttt{p1} and \texttt{p2}.
-If the two roots use different constructors (for example \texttt{Strict} and \texttt{RR}, or two \texttt{FIFO}s with different classes), it emits a slot-level \Replace{} directly: the always-available \cref{sec:fallback} idiom restricted to the current slot.
-If the constructors agree, it then looks at the two child lists and compares their lengths.
+The comparator compares the roots of \texttt{p1} and \texttt{p2}.
+If the roots' constructors disagree (say \texttt{Strict} against \texttt{RR}, or two \texttt{FIFO}s with different classes), it emits a \Replace{}: the always-available \cref{sec:fallback} idiom.
+If the constructors agree, the whole task reduces to \emph{pairing up the two child lists}, and each pairing yields one of four kinds of edit.
+An arm of \texttt{p2} with no partner in \texttt{p1} is a fresh \Add{}; an arm of \texttt{p1} with no partner in \texttt{p2} is a \Retire{}.
+A matched pair whose two arms are identical is set aside and contributes nothing; a matched pair whose arms agree but whose slot metadata differs contributes a lone \ChangeMeta{}; and a matched pair whose arms differ triggers a recursion into the pair to localize the change further, with a trailing \ChangeMeta{} appended when the metadata differs too.
 
-\textbf{Equal arity.}
-For the constructors that carry per-arm metas (\texttt{Strict} and \texttt{WFQ}), we first check for a meta-only reshuffle: if \texttt{p1} and \texttt{p2} hold the same multiset of arms in different positions, we emit one \ChangeMeta{} per slot whose meta moved and we are done.
+\paragraph{Pairing the child lists}
 
-Otherwise, we walk the child lists slot-by-slot.
-A slot whose arm and meta both agree contributes nothing.
-A slot whose meta differs but whose arm agrees contributes a \(\ChangeMeta(\mathit{path}, \mathtt{new\_meta})\).
-A slot whose arm differs is handled by recursing to try and narrow down the difference deeper in the tree; if the meta also differs, we append a follow-on \((\mathtt{true}; \ChangeMeta(\mathit{path}, \mathtt{new\_meta}))\) after the inner emission.
+The comparator pairs the arms by the tightest strategy that applies, dropping to a more general one only when the tighter fails.
+All three strategies lean on the upstream normalization pass: because \texttt{Pol.normalize} (\cref{sec:policy-dsl}) canonicalizes sibling order before the planner runs, arms that genuinely correspond appear in the same relative order on both sides, which is what lets the positional strategies pair by position at all.
 
-There is one wrinkle: this slot-by-slot walk can miss a cross-slot correspondence in which an arm has moved to a different slot in \texttt{p2} \emph{and} also changed structurally.
-The label-overlap walk (below) catches it; when that walk finds at least one such cross-slot pairing, we use it instead of the slot-by-slot walk.
+\textbf{By slot, at equal arity.}
+When the child lists have the same length, the comparator pairs arm \(i\) with arm \(i\).
+A slot whose arm and metadata both agree contributes nothing, and a slot whose metadata alone differs contributes a \ChangeMeta{}.
+A slot whose arm differs recurses: it emits whatever the recursion into that arm localizes, and, when the slot's metadata also changed, a trailing \ChangeMeta{} on top of it.
+One shape is caught before the slot walk: at \texttt{Strict} or \texttt{WFQ}, if \texttt{p1} and \texttt{p2} hold the same arms in a different order, the difference is a pure metadata reshuffle (a \texttt{Strict} priority swap, say, which \texttt{Pol.normalize}'s rank ordering surfaces as a reordering), and the comparator emits one \ChangeMeta{} per slot whose metadata changed.
 
-\textbf{\texttt{p2} longer.}
-When \texttt{p1}'s arms appear in order as a sub-sequence of \texttt{p2}'s, the surplus arms in \texttt{p2} are pure additions, and we emit one \Add{} per surplus arm in ascending index order.
-\cref{sec:add}'s leaf-disjointness precondition holds automatically: every surplus arm's leaves are leaves of \texttt{p2} not in \texttt{p1}, which by \cref{sec:policy-dsl}'s leaf-partition validity are disjoint from \texttt{p1}'s arms and from each other.
-At an \texttt{Strict} or \texttt{WFQ} parent, each \Add{} carries the surplus arm's meta.
-If a stable arm has changed metadata, we emit \ChangeMeta{}s after completing the \Add{}s.
+\textbf{By sub-sequence, at unequal arity.}
+When one child list embeds in the other as an in-order sub-sequence, the surplus arms are the whole of the change: normalization has already aligned the shared arms in a common order, so their appearing in order is exactly the signal that none of them moved or morphed and only the extra arms are new or gone.
+If \texttt{p1}'s arms are an in-order sub-sequence of \texttt{p2}'s, each surplus arm of \texttt{p2} is a fresh \Add{}.
+\cref{sec:add}'s leaf-disjointness precondition holds automatically, since a surplus arm's leaves are leaves of \texttt{p2} absent from \texttt{p1} and hence disjoint by \cref{sec:policy-dsl}'s leaf-partition validity.
+If instead \texttt{p2}'s arms are an in-order sub-sequence of \texttt{p1}'s, each surplus arm of \texttt{p1} \Retire{}s (\cref{sec:idioms}).
+Either way, a stable arm whose metadata changed picks up a trailing \ChangeMeta{}.
 
-When \texttt{p1}'s arms are \emph{not} a sub-sequence of \texttt{p2}'s, we try the label-overlap walk.
-If that fails too, we emit a slot-level \Replace.
+\textbf{By shared label, in general.}
+When neither list embeds in the other, the comparator pairs arms by the flows they carry rather than by position.
+A class label identifies a unique flow across the whole policy (by \cref{sec:policy-dsl}'s leaf-partition validity), so a label shared between an arm of \texttt{p1} and an arm of \texttt{p2} is evidence that one host arm morphed in place, while an arm whose labels appear on no opposing arm is fresh or vanishing.
+This \emph{label-overlap walk} greedily pairs each \texttt{p1} arm with the unique \texttt{p2} arm with which it shares a label, then recurses on the pair; unpaired \texttt{p1} arms are \Retire{}d and unpaired \texttt{p2} arms are \Add{}ed.
+The walk takes the first alignment that satisfies the label constraint, with no notion of cost (\cref{sec:planner-nonfeatures}); if no shared label yields even one pairing, it fails and the comparator gives up with a slot-level \Replace{}.
+At equal arity the walk still earns its keep.
+The slot strategy pairs strictly by position, so an arm that has both slid to a new slot \emph{and} changed its subtree gets lined up against whatever now occupies its old slot, and the change reads as two unrelated edits rather than one morph.
+The label walk instead follows the shared flow to the arm's new slot and sees the single morph, so the comparator runs it alongside the slot walk and, whenever it exposes such a cross-slot pairing, takes it instead.
 
-\textbf{\texttt{p1} longer.}
-Symmetric.
-When \texttt{p2}'s arms appear in order as a sub-sequence of \texttt{p1}'s, the surplus arms in \texttt{p1} are retired, and we emit one \Retire{} idiom (\cref{sec:idioms}) per surplus arm in descending index order.
-Descending order keeps the lower-index paths stable while higher-index siblings drain and disappear.
-When \texttt{p2}'s arms are not a sub-sequence of \texttt{p1}'s, we try the label-overlap walk, and emit a slot-level \Replace{} if it cannot align the arms either.
-
-\textbf{The label-overlap walk.}
-The patterns above pair each arm of \texttt{p1} with the arm of \texttt{p2} in the same slot; the label-overlap walk instead pairs arms by the flows they actually carry.
-Consider the following example, where we abstract the two round-robin disciplines to \(\mathtt{P}\) and \(\mathtt{Q}\) (their discipline is immaterial to the walk) so the \(\Strictstar\) the planner will insert stands out.
+Consider an example over an abstract discipline \(\mathtt{P}\) whose arms carry per-arm metadata, with a nested discipline \(\mathtt{Q}\) (the exact disciplines are immaterial to the walk).
+We write each arm's metadata after an \texttt{@}.
 
 \begin{verbatim}
-p1 = P(drive, gmail)
-p2 = P(drive, slack, Q(gmail, gmail_control))
+p1 = P(drive@m1, gmail@m2)
+p2 = P(drive@m1, slack@m3, Q(gmail, x)@m2)
 \end{verbatim}
 
-The two trees \texttt{p1} and \texttt{p2}, plus the tree the planner actually installs, are shown in \cref{fig:label-overlap-example}.
-The installed tree previews what lands on the substrate: not \texttt{p2} literally, but a sibling-reordered representative of its \(\eqR\)-class; we return to it below.
+\cref{fig:label-overlap-example} shows \texttt{p1} and \texttt{p2}, then the two policies the running control passes through once the planner's sequence fires: a transient, and the tree it settles into.
+The settled tree is not \texttt{p2} literally but a sibling-reordered representative of its \(\eqR\)-class; the transient is not \(\eqR\) to \texttt{p2} at all, and becomes so only once it drains and collapses.
+We return to both below.
 
 \begin{figure}[t]
   \centering
-  \begin{subfigure}[t]{0.23\linewidth}
+  \begin{subfigure}[t]{0.30\linewidth}
     \centering
     \begin{tikzpicture}[
-      baseline=(P.north), level distance=0.8cm,
-      level 1/.style={sibling distance=0.9cm},
+      baseline=(P.north), level distance=0.9cm,
+      level 1/.style={sibling distance=1.0cm},
       every node/.style={font=\scriptsize}
     ]
     \node (P) {$\mathtt{P}$}
-      child {node {$\mathtt{d}$}}
-      child {node {$\mathtt{g}$}};
-    \node[inner sep=0pt] at (0,-2.05) {};
+      child {node {$\mathtt{d}$} edge from parent node[left,font=\tiny]{$m_1$}}
+      child {node {$\mathtt{g}$} edge from parent node[right,font=\tiny]{$m_2$}};
+    \node[inner sep=0pt] at (0,-2.9) {};
     \end{tikzpicture}
-    \caption{\(\mathtt{p1} = \mathtt{P(d,g)}\)}
+    \caption{\(\mathtt{p1}\)}
     \label{fig:label-overlap-p1}
-  \end{subfigure}%
-  \begin{subfigure}[t]{0.35\linewidth}
+  \end{subfigure}\hfill
+  \begin{subfigure}[t]{0.44\linewidth}
     \centering
     \begin{tikzpicture}[
-      baseline=(P.north), level distance=0.8cm,
-      level 1/.style={sibling distance=1.0cm},
+      baseline=(P.north), level distance=0.9cm,
+      level 1/.style={sibling distance=1.3cm},
       level 2/.style={sibling distance=0.6cm},
       every node/.style={font=\scriptsize}
     ]
     \node (P) {$\mathtt{P}$}
-      child {node {$\mathtt{d}$}}
-      child {node {$\mathtt{s}$}}
-      child {node {$\mathtt{Q}$}
+      child {node {$\mathtt{d}$} edge from parent node[left,font=\tiny]{$m_1$}}
+      child {node {$\mathtt{s}$} edge from parent node[left,font=\tiny]{$m_3$}}
+      child {node {$\mathtt{Q}$} edge from parent node[right,font=\tiny]{$m_2$}
         child {node {$\mathtt{g}$}}
-        child {node {$\mathtt{c}$}}
+        child {node {$\mathtt{x}$}}
       };
-    \node[inner sep=0pt] at (0,-2.05) {};
+    \node[inner sep=0pt] at (0,-2.9) {};
     \end{tikzpicture}
-    \caption{\(\mathtt{p2} = \mathtt{P(d,s,Q(g,c))}\)}
+    \caption{\(\mathtt{p2}\)}
     \label{fig:label-overlap-p2}
-  \end{subfigure}%
-  \begin{subfigure}[t]{0.41\linewidth}
+  \end{subfigure}
+
+  \vspace{0.9em}
+
+  \begin{subfigure}[t]{0.54\linewidth}
     \centering
     \begin{tikzpicture}[baseline=(P.north), every node/.style={font=\scriptsize}]
-      \node (P)  at (0,0)      {$\mathtt{P}$};
-      \node (d)  at (-1.5,-1)  {$\mathtt{d}$};
-      \node (g1) at (-0.85,-1) {$\mathtt{g}$};
-      \node (SS) at (0,-1)     {$\Strictstar$};
-      \node (Q)  at (0.85,-1)  {$\mathtt{Q}$};
-      \node (s)  at (1.5,-1)   {$\mathtt{s}$};
-      \node (g2) at (0.6,-1.9) {$\mathtt{g}$};
-      \node (c)  at (1.1,-1.9) {$\mathtt{c}$};
-      \draw (P) -- (d);
-      \draw (P) -- (SS);
-      \draw (P) -- (s);
+      \node (P)  at (0,0)     {$\mathtt{P}$};
+      \node (d)  at (-2.2,-1) {$\mathtt{d}$};
+      \node (SS) at (-0.4,-1) {$\Strictstar$};
+      \node (s)  at (1.9,-1)  {$\mathtt{s}$};
+      \node (g1) at (-1.2,-2) {$\mathtt{g}$};
+      \node (Q)  at (0.4,-2)  {$\mathtt{Q}$};
+      \node (g2) at (0.0,-3)  {$\mathtt{g}$};
+      \node (x)  at (0.8,-3)  {$\mathtt{x}$};
+      \draw (P) -- node[left,font=\tiny]{$m_1$} (d);
+      \draw (P) -- node[left,font=\tiny]{$m_2$} (SS);
+      \draw (P) -- node[right,font=\tiny]{$m_3$} (s);
       \draw (SS) -- (g1);
       \draw (SS) -- (Q);
       \draw (Q) -- (g2);
-      \draw (Q) -- (c);
-      \node[inner sep=0pt] at (0,-2.05) {};
+      \draw (Q) -- (x);
     \end{tikzpicture}
-    \caption{installed (\(\eqR \mathtt{p2}\))}
-    \label{fig:label-overlap-installed}
+    \caption{transient (\emph{not} \(\eqR \mathtt{p2}\))}
+    \label{fig:label-overlap-transient}
+  \end{subfigure}\hfill
+  \begin{subfigure}[t]{0.40\linewidth}
+    \centering
+    \begin{tikzpicture}[baseline=(P.north), every node/.style={font=\scriptsize}]
+      \node (P) at (0,0)     {$\mathtt{P}$};
+      \node (d) at (-1.6,-1) {$\mathtt{d}$};
+      \node (Q) at (0,-1)    {$\mathtt{Q}$};
+      \node (s) at (1.6,-1)  {$\mathtt{s}$};
+      \node (g) at (-0.4,-2) {$\mathtt{g}$};
+      \node (x) at (0.4,-2)  {$\mathtt{x}$};
+      \draw (P) -- node[left,font=\tiny]{$m_1$} (d);
+      \draw (P) -- node[left,font=\tiny]{$m_2$} (Q);
+      \draw (P) -- node[right,font=\tiny]{$m_3$} (s);
+      \draw (Q) -- (g);
+      \draw (Q) -- (x);
+      \node[inner sep=0pt] at (0,-3) {};
+    \end{tikzpicture}
+    \caption{settled (\(\eqR \mathtt{p2}\))}
+    \label{fig:label-overlap-settled}
   \end{subfigure}
-  \caption{The label-overlap walk on \(\mathtt{p1}\to\mathtt{p2}\). Because \(\mathtt{g}\) recurs in \(\mathtt{p2}\)'s nested \(\mathtt{Q}\), the planner installs (c), a sibling-reordered \(\eqR\)-equivalent of \(\mathtt{p2}\).}
+  \caption{The label-overlap walk on \(\mathtt{p1} \to \mathtt{p2}\), with each of \(\mathtt{P}\)'s arms labeled by its per-arm metadata. Because \texttt{gmail} recurs inside \(\mathtt{p2}\)'s nested \(\mathtt{Q}\), the walk pairs that arm as a morph and adds \texttt{slack} alone. The planner's sequence carries the control through (c), a transient \(\Strictstar\) draining the old \texttt{gmail} leaf beside the incoming \(\mathtt{Q}\), into (d), which is \(\eqR\)-equivalent to \(\mathtt{p2}\). The morphing arm's metadatum \(m_2\) rides through unchanged, and \texttt{slack} arrives carrying \(m_3\).}
   \label{fig:label-overlap-example}
 \end{figure}
 
-Comparing \texttt{p1} and \texttt{p2}: \texttt{d} is unchanged; \texttt{g} now round-robins with a control sub-channel; \texttt{s} is new.
-A slot-by-slot walk does not apply (the lengths differ), and the simpler sub-sequence check in the ``\texttt{p2} longer'' case fails because \(\mathtt{g}\) in \texttt{p1} is not equal to any arm in \texttt{p2}.
-Without the walk we are about to describe, the planner would give up and emit a wholesale \Replace{} of the entire root \(\mathtt{P}\).
+Here \texttt{drive} is unchanged, \texttt{gmail} has grown into a nested \(\mathtt{Q}\) over itself and a fresh flow \texttt{x}, and \texttt{slack} is new.
+Neither positional rung applies: the lengths differ, and the sub-sequence check fails because \(\mathtt{g}\) in \texttt{p1} equals no arm of \texttt{p2}, so without the label-overlap walk the planner would emit a wholesale \Replace{} of the root \(\mathtt{P}\).
+But the trees share structure: \(\mathtt{g}\) (\texttt{gmail}) in \texttt{p1} and the nested \(\mathtt{Q}\) in \texttt{p2} share the label \texttt{gmail}, \texttt{drive} matches on both sides, and \texttt{slack} is the only arm whose labels appear nowhere in \texttt{p1}.
+The walk reads this off directly, pairing \texttt{drive} with \texttt{drive} (no edit) and \texttt{gmail} with the nested \(\mathtt{Q}\) (recurse), and treating \texttt{slack} as a pure add.
+The emission is two atomic steps: an \Add{} of \texttt{slack} (which the compiler can handle as a pure append) and a \Replace{} at \texttt{gmail}'s slot.
 
-But the trees are not really that different.
-\(\mathtt{g}\) (\texttt{gmail}) in \texttt{p1} and the nested \(\mathtt{Q}\) (over \texttt{gmail} and its control channel) in \texttt{p2} share the class label \texttt{gmail}; \texttt{drive} is the same on both sides; \texttt{slack} is the only arm in \texttt{p2} whose labels appear nowhere in \texttt{p1}.
-Both readings are correct, but one is far tighter: \texttt{drive} stays, \texttt{gmail} has grown a sub-channel, and \texttt{slack} is fresh, so only the changed slots need touching rather than the whole subtree.
+Watch the metadata as this fires.
+\texttt{slack}'s requested metadatum \(m_3\) rides along on the \Add{}: it is the \(\mathit{meta?}\) argument the production carries (\cref{sec:add}), so the new arm lands already carrying \(m_3\).
+The morphing arm keeps its metadatum \(m_2\) on both sides, so no \ChangeMeta{} is emitted for that slot; and because \Designate{} leaves the wrapped slot's inherited metadata untouched (\cref{sec:designate}), the transient \(\Strictstar\) arm sits in \(\mathtt{P}\) already carrying \(m_2\), exactly the metadatum the settled \(\mathtt{Q}\) arm will carry.
+The metadatum is never re-derived; it is the same \(m_2\) throughout.
 
-The label-overlap walk produces that reading.
-It pairs arms in \texttt{p1} with arms in \texttt{p2} whose class-label sets overlap (by a greedy left-to-right walk); arms in \texttt{p1} with no overlapping partner retire, arms in \texttt{p2} with no overlapping partner are added, and matched pairs are recursed on.
-The justification is that a class label identifies a unique flow across the whole policy (\cref{sec:policy-dsl}'s leaf-partition validity), so a repeated label between an arm in \texttt{p1} and an arm in \texttt{p2} is evidence that the same host arm has morphed structurally, and an arm whose labels appear on no opposing arm is necessarily fresh or vanishing.
-For our example, the walk pairs \texttt{drive} with \texttt{drive} (no edit) and \texttt{gmail} with the nested \(\mathtt{Q}\) (recurse), and treats \texttt{slack} as a pure add.
+Panels (c) and (d) of \cref{fig:label-overlap-example} show the two policies the control passes through: first the transient \(\Strictstar\) that drains the old \texttt{gmail} leaf beside the incoming \(\mathtt{Q}\), then the settled tree once that drain completes.
+In the settled tree \texttt{slack} sits beside the morphed \texttt{gmail} subtree in an order that does not match \texttt{p2} literally, but sibling order carries no semantics (\cref{sec:policy-dsl}), so the reordering is invisible to any observer.
 
-Our final emission is two atomic steps: an \Add{} of \texttt{slack} appended at the root \(\mathtt{P}\)'s tail, and an inner \Replace{} at \texttt{gmail}'s existing slot.
-The third panel shows the result: \texttt{slack} sits beside the morphed \texttt{gmail} subtree in an order that does not match \texttt{p2} literally, but sibling order carries no semantics (\cref{sec:policy-dsl}), so the reordering is invisible to any observer.
+\paragraph{Indexing a mixed emission}
 
-A few notes.
-The walk is greedy: when more than one alignment satisfies the label-overlap constraint, the first we find is taken, with no notion of cost (\cref{sec:planner-nonfeatures}).
-If no shared label admits even one match, the walk fails and the caller falls back to a slot-level \Replace.
-When the walk produces a mix of adds, retires, and matched-pair recursions, we appeal to the reorder freedom of \cref{sec:policy-dsl} to keep the indexing trivial: adds are appended at the parent's tail; retires fire at their ps1 indices, in descending order so the highest-index drain doesn't shift the lower indices still pending; matched-pair recursions land at each match's position in the matches list, which is also its slot once the retires drain.
-Issuing the adds first is deliberate: an \Add{} is instantaneous while a \Retire{} waits for its subtree to drain, so the new arms start carrying traffic immediately instead of waiting for the retirements to complete.
+When a comparison yields \Add{}s, \Retire{}s, and recursions at once (the label-overlap walk is the case that does), the planner uses the reorder freedom of \cref{sec:policy-dsl} to keep the indexing trivial: the \Add{}s are appended at the parent's tail, the \Retire{}s fire at their original \texttt{p1} indices in descending order so a higher-index drain does not shift the lower indices still pending, and each matched-pair recursion lands at its position among the matches, which is also its slot once the \Retire{}s drain.
+Issuing the \Add{}s first is deliberate: an \Add{} is instantaneous while a \Retire{} waits for its subtree to drain, so the new arms begin carrying traffic immediately instead of waiting on the retirements.
 
 \paragraph{Where the descent localizes the difference}
 
