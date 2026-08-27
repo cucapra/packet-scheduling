@@ -432,8 +432,6 @@ We write \(\mathtt{C} \sim \mathtt{C'}\) for the equivalence on well-formed cont
 Two \(\sim\)-related controls thus have the same tree shape and the same \ensuremath{\mathit{z}} at every node (hence the same disciplines, per-arm metadata, and routing), and differ at most in the transient live state that traffic leaves behind.
 Serving \texttt{push}/\texttt{pop} operations is one way controls come to be \(\sim\)-related: \texttt{push} and \texttt{pop} move only the live \ensuremath{\mathit{pifo}}s and \ensuremath{\mathit{state}}s and leave the skeleton and \ensuremath{\mathit{z}} untouched, so any control and its push/pop-successor are \(\sim\)-equivalent.
 
-\xxx[AM to AS]{The definition above has changed in response to a note from Adrian. I used to say that \(\mathtt{C} \sim \mathtt{C'}\) is true only if one control can be reached from the other via pushes and pops. I now say something coarser and more general.}
-
 We write \(p \eqR p'\) for the smallest congruence on \ensuremath{\mathit{pol}} such that, at any internal \ensuremath{D}-node, permuting the child arms gives a congruent \textit{pol}.
 The per-arm metadata that discipline \ensuremath{D} requires (a \texttt{WFQ} weight, a \texttt{Strict} priority rank) travels with its arm under the permutation; the metadata is what carries the scheduling-meaningful content, so such a permutation does not change the scheduler.
 
@@ -550,8 +548,6 @@ Only the productions that add or drop a live \ensuremath{\mathit{pifo}} entry, \
 
 The lemma can read counterintuitively. Inverting the two priorities of \(\Strict(\mathtt{hi}: A, \mathtt{lo}: B)\) with \ChangeMeta{} does \emph{not} change the next \texttt{pop}: ranks are frozen at \texttt{push} time, so the parent's index-\ensuremath{\mathit{pifo}} already holds \(A\) at \texttt{hi} and \(B\) at \texttt{lo}, and \ChangeMeta{} rewrites neither.
 Only packets pushed after the change are ranked under the new priorities.
-
-\xxx[AM to AS]{Adrian wasn't so sure about this one, but I still think it's worth keeping! Earlier I was saying ``a \texttt{pop} after \(\delta\) returns what a \texttt{pop} before would'', and Adrian noted that that felt weird (e.g., invert a \(\Strict\) and the next \texttt{pop} does change). The property is now scoped to the \emph{already-buffered backlog}: \(\delta\) never drops, reorders, or re-ranks a buffered packet, while new arrivals correctly get ranked under the new policy. Broadly the point of this, which is stated in text too, is that this is the property that beats stop-the-world: the \emph{act} of reconfiguring injects no artifacts.}
 
 Several productions (\Add, \Quiesce, \Remove, \Designate) modify~\ensuremath{\mathit{z}} at proper ancestors of the edit site, even though those nodes' \ensuremath{\mathit{state}} is left unchanged.
 There is no separate obligation for these \ensuremath{\mathit{z}} edits: their \ensuremath{\mathit{pol}}-invisible content is absorbed by Characterization (which is up to \(\eqR\), and \ensuremath{\mathit{z}} does not appear in \ensuremath{\mathit{pol}}), and their effect on the in-flight stream is absorbed by non-disruption (\cref{lem:nondisruption}: every live \ensuremath{\mathit{pifo}} entry survives a \ensuremath{\mathit{z}} edit unchanged).
