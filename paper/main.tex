@@ -228,61 +228,46 @@ A PIFO tree lowers to hardware by mapping each tree depth onto a dedicated proce
 Pinning a depth level to a single PE has well-studied benefits for computation and storage; Sivaraman (SIGCOMM '16), Mohan et al.\ (OOPSLA '23), Shrivastav (SIGCOMM '19), and vPIFO (Zhang et al., SIGCOMM '24) all build on this layout.
 The PE budget is fixed by the silicon, so the running tree's shape is constrained by what the deployed PEs can host.
 
-\subsection{The runtime model: PIFO trees and controls}\label{sec:runtime-model}
+\subsection{The runtime model: controls}\label{sec:controls}
 
-The runtime object we are ultimately editing is not a bare PIFO tree but a PIFO tree wrapped with per-node scheduling logic; we call the wrapped object a \emph{control}, after Mohan et al.\ (OOPSLA '23).
-This subsection lays out both layers, first the tree (\cref{sec:pifo-trees}) then the wrapping (\cref{sec:controls}).
-Both are a variation on the model of Mohan et al., and we note our departures from it as they arise.
+A PIFO tree fixes which queues sit where, and says nothing about how a packet's rank is chosen at each of them.
+The runtime object we edit supplies the missing half.
+% The sentence above is doing a TON of work
+It is a PIFO tree wrapped with per-node scheduling logic, and we call it a \emph{control}, after Mohan et al.\ (OOPSLA '23).
+% This is not a proper citation.
+A control is the concrete state a programmable switch executes at line rate, realizable on an FPGA or SmartNIC (\cref{sec:hardware} lowers a control to exactly such a target).
+It is the only tree this paper formalizes.
+The model is a variation on that of Mohan et al., and we note our departures from it as they arise.
 
-\subsubsection{PIFO trees}\label{sec:pifo-trees}
+\paragraph{Syntax}
 
-A \emph{PIFO tree} is a hierarchy of PIFOs: leaves hold packets, while internal nodes hold child indices that route each \texttt{pop} down to a chosen leaf.
-
-\paragraph{Shape vs.\ contents}
-
-A PIFO tree separates its structural shape (the underlying finite tree of nodes) from the data carried at each node.
-A leaf \texttt{Leaf(p)} holds a packet-carrying PIFO \texttt{p}.
-An internal node \texttt{Internal(ts, p)} carries a list \texttt{ts} of child PIFO trees and a PIFO \texttt{p} whose entries are indices into \texttt{ts}.
-
-\paragraph{The two observable operations}
-
-A tree exposes two observable operations, \texttt{push} and \texttt{pop}.
-
-To \texttt{push} a packet into a leaf, we offer it in parallel to every node on its root-to-leaf path.
-Each such node mints a rank for the packet and enqueues one entry at that rank.
-At an internal node, the entry enqueued is an \emph{index} naming the child that leads to the target leaf, and at the leaf the entry enqueued is the \emph{packet itself}.
-The rank that a node assigns to the entry comes from its own scheduling logic, which we will soon make precise as a \emph{scheduling transaction}, denoted \ensuremath{\mathit{z}}. 
-For now it is enough that every on-path node contributes one ranked entry, and that these ranks are fixed at \texttt{push} time and never revised.
-
-A \texttt{pop} extracts the best-ranked packet in the whole tree, where ``best'' is resolved top-down: pop releases the best-ranked index at the root, follows that index to identify one of the root's children, and recurses on that child.
-Eventually it reaches a leaf, at which point it releases the best-ranked packet at the leaf.
-Because an internal entry is only an index, the index enqueued on account of one packet may end up releasing a different, better-ranked packet that later joined the same leaf; this deferral is what lets a PIFO tree reorder buffered traffic in ways a single PIFO cannot.
-
-These are the \emph{only} observable interactions with a scheduler, which is why we frame an \emph{atomic} transition in terms of \texttt{push}/\texttt{pop} observability.
-
-\paragraph{Well-formedness}
-
-A PIFO tree \texttt{t} is well-formed (written \(\vdash \mathtt{t}\)) when, at every internal node with index-PIFO \texttt{p} and children \texttt{ts}, the number of occurrences of \texttt{i} in \texttt{p} equals the number of packets held under \texttt{ts[i]}, for every legal \texttt{i}.
-This is the invariant that keeps \texttt{pop} from ever getting stuck.
-
-\subsubsection{Controls}\label{sec:controls}
-
-A PIFO tree \emph{control} \texttt{C} wraps a PIFO tree with per-node scheduling logic: it is the concrete state a programmable switch executes at line rate, realizable on an FPGA or SmartNIC (\cref{sec:hardware} lowers a control to exactly such a target).
-It is a tree of triples \((\mathit{state}, \mathit{pifo}, \mathit{z})\), one per node of the topology.
+A control \texttt{C} is a finite tree whose every node carries a triple:
+\[
+\mathtt{C} \mathrel{::=} \langle \mathit{state}, \mathit{pifo}, \mathit{z} \rangle(\mathtt{C}_1, \ldots, \mathtt{C}_n), \qquad n \geq 0.
+\]
+A node with no children (\(n = 0\)) is a \emph{leaf}, and a node with children is \emph{internal}.
+What a node enqueues is called its \emph{payload}: at an internal node the payload is an index into the child list, and at a leaf the payload is a packet.
 
 \begin{itemize}
 \item \ensuremath{\mathit{state}} is a pair \((\mathit{node\_state}, \mathit{slot\_states})\): the scheduling discipline's per-node bookkeeping and a list of per-arm entries, one per child.
 Both evolve as the node serves traffic.
 When the node runs a discipline that keeps no per-arm bookkeeping, \ensuremath{\mathit{slot\_states}} is empty.
-\item \ensuremath{\mathit{pifo}} is a PIFO: at an internal node, the PIFO carries indices into the child list; at a leaf, the PIFO carries the packets themselves.
-\item \ensuremath{\mathit{z}} is the node's \emph{scheduling transaction}.
-Given the node's \ensuremath{\mathit{state}} and an incoming packet, \ensuremath{\mathit{z}} produces the node's \emph{path segment} for that packet, together with the node's updated \ensuremath{\mathit{state}}.
-The shape of the path segment differs between internal nodes and leaves.
-At an internal node, \(\mathit{z} : \mathit{state} \times \mathit{Pkt} \rightharpoonup (\mathit{idx} \times \mathit{rank}) \times \mathit{state}\), giving the child index that leads toward the packet's leaf and the rank with which to enqueue that index here.
-At a leaf, \(\mathit{z} : \mathit{state} \times \mathit{Pkt} \rightharpoonup \mathit{rank} \times \mathit{state}\), giving the rank for the packet's own entry into the leaf's packet-PIFO.
+\item \ensuremath{\mathit{pifo}} is a PIFO of ranked payloads.
+An internal node's \ensuremath{\mathit{pifo}} therefore holds indices into its child list, and a leaf's \ensuremath{\mathit{pifo}} holds packets.
+\item \ensuremath{\mathit{z}} is the node's \emph{scheduling transaction},
+\[
+\mathit{z} : \mathit{state} \times \mathit{Pkt} \rightharpoonup (\mathit{payload} \times \mathit{rank}) \times \mathit{state}.
+\]
+Given the node's \ensuremath{\mathit{state}} and an incoming packet, it returns the payload this node will enqueue for that packet, the rank to enqueue it at, and the node's updated \ensuremath{\mathit{state}}.
 \ensuremath{\mathit{z}} is partial.
 When it is undefined for a packet, nothing is enqueued at this node and \ensuremath{\mathit{state}} is unchanged.
 \end{itemize}
+
+\paragraph{Addressing a node}
+
+We address node-local components of a control by a \ensuremath{\mathit{path}}, a possibly empty sequence of child indices read from the root.
+The local triple at the node reached by following \ensuremath{\mathit{path}} from control \texttt{C}'s root is written \texttt{C@}\(\mathit{path}\), with fields \texttt{C@}\(\mathit{path}.\mathit{state}\), \texttt{C@}\(\mathit{path}.\mathit{pifo}\), and \texttt{C@}\(\mathit{path}.\mathit{z}\).
+We also write \texttt{C@}\(\mathit{path}.\mathit{node\_state}\) and \texttt{C@}\(\mathit{path}.\mathit{slot\_states}\) for the two components of \texttt{C@}\(\mathit{path}.\mathit{state}\).
 
 \paragraph{The many roles of \ensuremath{\mathit{z}}: classifying, annotating, and ranking}
 
@@ -311,7 +296,8 @@ So \(\mathit{z}(\mathit{state}, p)\) is defined exactly when \(\mathit{flow}(p) 
 It then finds \(p\)'s payload in \(\mathit{z}.\mathit{serves}\), and pairs that payload with the rank that \(\mathit{z}.\mathit{rank}\) computes.
 
 \ensuremath{\mathit{state}} and \ensuremath{\mathit{pifo}} change as the node serves traffic, whereas \ensuremath{\mathit{z}} changes only when an edit rewrites it.
-The per-arm metadata also changes only in the second way: \texttt{push} and \texttt{pop} read it and never write it, so it is that configuration the operator chose rather than bookkeeping that the traffic left behind.
+The per-arm metadata also changes only in the second way.
+Serving traffic reads it and never writes it, so it is that configuration the operator chose rather than bookkeeping that the traffic left behind.
 That is why it sits in \ensuremath{\mathit{z}} rather than in \ensuremath{\mathit{slot\_states}}.
 
 \xxx[AM to AS]{This is a change. The per-arm metadata used to live in \ensuremath{\mathit{slot\_states}}, so \(\lfloor \cdot \rfloor\) could not read it and \(\psem{\ChangeMeta}\) ended up being the identity function: an operator who re-tuned a weight got back an echo saying nothing had changed. Moving the metadata into \ensuremath{\mathit{z}} makes \(\psem{\ChangeMeta}\) a real function, and it matches the ISA of \cref{sec:hardware}, where \texttt{set\_arm\_meta} is its own opcode rather than a state write.}
@@ -325,6 +311,24 @@ That lets \cref{sec:equivalences} define \(\lfloor \cdot \rfloor\) by structural
 And \emph{that} turns closure under \(\delta\) into a theorem rather than a definitional rule.
 It supersedes an earlier decision of ours saying that the discipline is ``compiled into \ensuremath{\mathit{z}} and never stored''; note that \cref{sec:hw-compile} already stores it (\texttt{set\_policy}) and reads it back (\texttt{discipline(v)}). So maybe our earlier resolution was always in vain.}
 
+\paragraph{\texttt{push} and \texttt{pop}}
+
+A control exposes exactly two operations to the network:
+\[
+\mathtt{push} : \mathit{control} \times \mathit{Pkt} \to \mathit{control},
+\qquad
+\mathtt{pop} : \mathit{control} \rightharpoonup \mathit{Pkt} \times \mathit{control}.
+\]
+A \texttt{push} offers the packet in parallel to every node on its root-to-leaf path, and each of those nodes enqueues the payload its own \ensuremath{\mathit{z}} returns, at the rank \ensuremath{\mathit{z}} mints for it.
+Ranks are fixed at \texttt{push} time and never revised.
+A \texttt{pop} releases the best-ranked packet, resolving ``best-ranked'' from the top down.
+It releases the best-ranked index at the root, follows that index to a child, recurses, and releases a packet once it reaches a leaf.
+It consults \ensuremath{\mathit{pifo}} contents alone, never \ensuremath{\mathit{state}} or \ensuremath{\mathit{z}}.
+
+Because an internal entry is only an index, the index enqueued on account of one packet may end up releasing a different, better-ranked packet that later joined the same leaf.
+This deferral is what lets a PIFO tree reorder buffered traffic in ways a single PIFO cannot.
+These two are the \emph{only} observable interactions with a scheduler, which is why we frame an \emph{atomic} transition in terms of \texttt{push}/\texttt{pop} observability.
+
 \paragraph{Path-consistency of admission}
 
 One condition ties the node-local admitted sets together.
@@ -332,15 +336,11 @@ A packet's flow must be admitted at either \emph{every} node on that flow's root
 Otherwise a \texttt{push} would enqueue an index at some ancestor with no matching packet below it, or buffer a packet under a leaf with no index above it, and the well-formedness condition below would fail.
 This is a global property, not a concern of any node-local \ensuremath{\mathit{z}}.
 
-We address node-local components of a control by a \ensuremath{\mathit{path}}, a possibly empty sequence of child indices read from the root.
-The local triple at the node reached by following \ensuremath{\mathit{path}} from control \texttt{C}'s root is written \texttt{C@}\(\mathit{path}\), with fields \texttt{C@}\(\mathit{path}.\mathit{state}\), \texttt{C@}\(\mathit{path}.\mathit{pifo}\), and \texttt{C@}\(\mathit{path}.\mathit{z}\).
-We also write \texttt{C@}\(\mathit{path}.\mathit{node\_state}\) and \texttt{C@}\(\mathit{path}.\mathit{slot\_states}\) for the two components of \texttt{C@}\(\mathit{path}.\mathit{state}\).
-
-\paragraph{Well-formedness of controls}
+\paragraph{Well-formedness}
 
 A control \texttt{C} is \emph{well-formed} (written \(\vdash \mathtt{C}\)) when, at every internal node of \texttt{C}, the \ensuremath{\mathit{pifo}} has, for each legal child index \texttt{i}, exactly as many occurrences of \texttt{i} as there are packets stored in the leaf pifos of the subtree under the \texttt{i}-th child.
-This is the tree-level condition of \cref{sec:pifo-trees} lifted to controls.
-Stating it directly on controls allows \texttt{push} and \texttt{pop} to preserve it node-locally, without assembling a global PIFO tree to check.
+This is the invariant that keeps \texttt{pop} from ever getting stuck.
+Stating it on the control directly, rather than on an underlying tree of bare PIFOs, lets \texttt{push} and \texttt{pop} preserve it node-locally.
 
 \subsection{vPIFO, and the problem it leaves open}\label{sec:vpifo}
 
@@ -366,7 +366,7 @@ The two layers compose.
 
 \section{A Grammar of Atomic Policy Differences}\label{sec:grammar}
 
-Building on the runtime model of \cref{sec:runtime-model}, \cref{sec:policy-dsl} adds a small policy DSL and compiles it to a control, giving a syntactic handle on the scheduler actually running in hardware.
+Building on the runtime model of \cref{sec:controls}, \cref{sec:policy-dsl} adds a small policy DSL and compiles it to a control, giving a syntactic handle on the scheduler actually running in hardware.
 \cref{sec:delta-grammar} fixes a grammar \(\delta\) of structural edits over that DSL, admitting a production only when the hardware can install it atomically.
 \cref{sec:per-production} proves each production \emph{sound}: running it has the policy-level effect we expect and leaves the rest of the tree, its state and its live packets, alone.
 \cref{sec:interplay} draws these per-production results together into a single commuting-square theorem.
@@ -496,7 +496,7 @@ One production is irregular in this respect: \ChangeRoot{} gives the path to the
 
 The grammar is given in \cref{fig:delta-grammar}.
 A \ensuremath{\mathit{path}} is a (possibly empty) sequence of child indices \texttt{i} read from the root.
-Two productions carry a \ensuremath{\mathit{pol}} payload (\cref{sec:policy-dsl}): in \Add{} it is the new arm, and in \Designate{} it is the surviving subtree.
+Two productions take a \ensuremath{\mathit{pol}} argument (\cref{sec:policy-dsl}): in \Add{} it is the new arm, and in \Designate{} it is the surviving subtree.
 Two carry a metadatum \(m\), drawn from the metadata set of the discipline that owns the arm in question.
 
 Edits that would have to discard packets are expressly not in the grammar.
@@ -652,7 +652,7 @@ The last four obligations assume \(\csem{\delta}(\mathtt{C})\) is defined; outsi
 Non-disruption need not be reproved from scratch at each production; it follows from a single fact about \texttt{pop}.
 
 \begin{lemma}[Non-disruption reduces to \ensuremath{\mathit{pifo}}-content preservation]\label{lem:nondisruption}
-A \texttt{pop} reads only \ensuremath{\mathit{pifo}} contents: it pops the root index-\ensuremath{\mathit{pifo}} to a child, recurses, and finally emits a leaf packet, never consulting any \ensuremath{\mathit{state}} or \ensuremath{\mathit{z}} (\cref{sec:runtime-model}).
+A \texttt{pop} reads only \ensuremath{\mathit{pifo}} contents: it pops the root index-\ensuremath{\mathit{pifo}} to a child, recurses, and finally emits a leaf packet, never consulting any \ensuremath{\mathit{state}} or \ensuremath{\mathit{z}} (\cref{sec:controls}).
 So suppose \(\csem{\delta}\) leaves the contents of every non-empty \ensuremath{\mathit{pifo}} of \texttt{C} unchanged, never rewriting, reordering, or removing a live entry, and introducing only empty \ensuremath{\mathit{pifo}}s.
 Then no previously buffered packet in \texttt{C} is dropped, reordered, or re-ranked in \texttt{C'}.
 The buffered backlog is preserved entry-for-entry, and \(\delta\) is non-disruptive.
@@ -676,8 +676,7 @@ That arm keeps its annotation, and the arity does not change.
 Indices follow the \ensuremath{\mathit{path}} convention of \cref{sec:delta-grammar}.
 
 The control-level rules walk controls the same way.
-We write an internal control node as \(\langle\mathit{state}, \mathit{pifo}, \mathit{z}\rangle(\mathtt{cs})\),
-its triple \((\mathit{state}, \mathit{pifo}, \mathit{z})\) of \cref{sec:controls} together with its child list \texttt{cs}, and reuse \(\mathtt{cs}[\mathtt{C'}/i]\) and \(\mathtt{cs}\mathbin{+\!\!+}[\mathtt{C'}]\) for the list operations above.
+Nodes are written \(\langle\mathit{state}, \mathit{pifo}, \mathit{z}\rangle(\mathtt{cs})\), as in \cref{sec:controls}, and we reuse \(\mathtt{cs}[\mathtt{C'}/i]\) and \(\mathtt{cs}\mathbin{+\!\!+}[\mathtt{C'}]\) for the list operations on the child list \texttt{cs}.
 The discipline is not a field of its own; the ranker carries it (\cref{sec:controls}).
 
 Two invariants link a node's classifier to the tree, and every production preserves both.
@@ -729,7 +728,7 @@ The disjointness precondition rules out \emph{splitting} an already-running flow
 Going from a policy with a single \texttt{gmail} leaf to one that splits it into \texttt{gmail\_business} and \texttt{gmail\_personal} would have to re-sort the packets already buffered under \texttt{gmail} into the two new leaves, relocating admitted traffic; \Add{} only introduces flows disjoint from what is running, so it never has to relocate admitted traffic.
 
 We define \(\csem{\Add}\) by recursion on \(\pi\) (\cref{fig:add-rules}, top).
-The payloads \ensuremath{D}, \ensuremath{\mathit{arm}}, and \(m\) thread unchanged through the recursion, and \(m\) is consumed only at the base case, which annotates the new slot and seeds its bookkeeping.
+The arguments \ensuremath{D}, \ensuremath{\mathit{arm}}, and \(m\) thread unchanged through the recursion, and \(m\) is consumed only at the base case, which annotates the new slot and seeds its bookkeeping.
 Three abbreviations appear.
 \(\mathtt{flows}(\mathit{arm})\) is the set of flows at \(\lceil \mathit{arm} \rceil\)'s leaves.
 For \(\mathtt{extend}\), recall that a node's discipline fixes a packet's rank from the local \ensuremath{\mathit{state}} and the chosen child alone, not from the packet itself.
@@ -821,7 +820,7 @@ Concretely, we must state \(\psem{\Add(\pi, D, \mathit{arm}, m)}\) in closed for
 
 We define \(\psem{\cdot}\) by recursion on \(\pi\) (\cref{fig:add-rules}, bottom).
 Its node patterns \(\mathtt{D\ ts}\) and \(\mathtt{E\ ts}\) split a \ensuremath{\mathit{pol}} node into its discipline and child list \texttt{ts}.
-The base case reuses the payload name \ensuremath{D}, firing only when the reached node runs that discipline; an ancestor's discipline \texttt{E} is unconstrained and simply carried along.
+The base case reuses the argument name \ensuremath{D}, firing only when the reached node runs that discipline; an ancestor's discipline \texttt{E} is unconstrained and simply carried along.
 The metadatum \(m\) appears on both sides.
 \(\csem{\Add}\) records it at \(\mathit{z}.\mathit{meta}(\mathtt{k})\), and \(\psem{\Add}\) writes it onto the new arm, so reading the edited control back recovers the annotation the operator asked for.
 
@@ -847,7 +846,7 @@ So \Add{} is non-disruptive by \cref{lem:nondisruption}.
 
 \(\tau : \mathit{path}\) is the target arm.
 It is non-empty (an arm has a parent), and we destruct it as \(\pi \mathbin{+\!\!+} [k]\), so \texttt{k} is the arm's slot at its parent \texttt{C@}\(\pi\).
-The payload \(m\) is a fresh value from \(M_{D}\), where \ensuremath{D} is the discipline the parent runs (\cref{sec:policy-dsl}).
+The argument \(m\) is a fresh value from \(M_{D}\), where \ensuremath{D} is the discipline the parent runs (\cref{sec:policy-dsl}).
 Under \Strict{} that is a new priority, and under \WFQ{} a new weight.
 
 \paragraph{Definition}
@@ -1320,7 +1319,7 @@ The Characterizations were proved one at a time and against a \(\lfloor \cdot \r
 
 \section{The Interplay of \(\psem{\delta}\) and \(\csem{\delta}\)}\label{sec:interplay}
 
-Four pieces are now in hand: the runtime object \texttt{C} (\cref{sec:runtime-model}), the source \ensuremath{\mathit{pol}} together with the compilation \(\lceil \cdot \rceil\) and the reading-off \(\lfloor \cdot \rfloor\) (\cref{sec:grammar}), the grammar \(\delta\) of atomic edits, and its two readings \(\psem{\delta}\) and \(\csem{\delta}\).
+Four pieces are now in hand: the runtime object \texttt{C} (\cref{sec:controls}), the source \ensuremath{\mathit{pol}} together with the compilation \(\lceil \cdot \rceil\) and the reading-off \(\lfloor \cdot \rfloor\) (\cref{sec:grammar}), the grammar \(\delta\) of atomic edits, and its two readings \(\psem{\delta}\) and \(\csem{\delta}\).
 This section states formally how they fit together.
 The interplay is what lets the runtime, at every step, echo to the operator the \ensuremath{\mathit{pol}} that the live control realizes.
 
@@ -1464,7 +1463,7 @@ A guarded sequence threads the live control through a chain of intermediate cont
 We call each such intermediate control a \emph{transitionary policy}, and we write \(\mathtt{link}_i\) for the control on which the \texttt{i}-th \(\delta\) fires, counting from zero.
 So \(\mathtt{link}_0 = \mathtt{C}\) is the starting control, and \(\mathtt{link}_{i+1} = \csem{\delta_i}(\mathtt{link}_i)\) is what the \texttt{i}-th \(\delta\) leaves behind (\cref{sec:idioms} makes this precise).
 
-Each transitionary policy is itself an ordinary \cref{sec:runtime-model}-style control, so the transitionary period \emph{needs no new semantics}.
+Each transitionary policy is itself an ordinary \cref{sec:controls}-style control, so the transitionary period \emph{needs no new semantics}.
 That is Obligation 1 of \cref{sec:intro}, discharged locally by the per-production obligations of \cref{sec:per-production}.
 Moreover, since every production of \cref{sec:grammar} is \emph{pol-explainable} (each \(\delta\) has a \(\psem{\delta}\) that tracks its pol-level effect), we can echo to the operator, at every step of the sequence, the \ensuremath{\mathit{pol}} that the live control actually realizes.
 The chain of \(\psem{\cdot}\)s starting from \(\lfloor \mathtt{C} \rfloor\) gives \(\lfloor \mathtt{link}_i \rfloor\) for each \texttt{i}, so the operator always knows which policy is running.
@@ -2076,7 +2075,7 @@ Opcode & Effect \\
 \texttt{unmap(v, f)} & Forget PIFO \texttt{v}'s mapping for flow \texttt{f}. \\
 \texttt{set\_policy(v, t, n)} & Set PIFO \texttt{v}'s policy type to \texttt{t} and its initial arity to \texttt{n}; \texttt{t} ranges over \{FIFO, RoundRobin, Strict, Strict*, WFQ\}. Issued exactly once per PIFO, at spawn time. \\
 \texttt{change\_arity(v, n)} & Set the live PIFO \texttt{v}'s arity counter to \texttt{n}. Policy type is unchanged. \texttt{change\_arity} is what tells the discipline-level logic at \texttt{v} (e.g., RoundRobin's cursor wraparound, the WFQ slot-state table's size) the active arm count; the structural attaching and detaching themselves happen through explicit \texttt{adopt}/\texttt{emancipate} calls, each keyed by the stable per-edge index the parent minted at adoption time. The substrate is free to relocate live adoptions internally as the count changes; the indices the planner holds remain valid. \\
-\texttt{set\_arm\_meta(v, i, m)} & Set per-arm metadata on PIFO \texttt{v}'s child reached via index \texttt{i} to \texttt{m}. The payload \texttt{m} is interpreted per \texttt{v}'s policy type: a weight for RoundRobin/WFQ, a priority rank for Strict; FIFO carries none. Only the discipline-specified meta field is overwritten; any other per-arm state (e.g., WFQ's virtual-finish tag on the arm) is preserved, so a metadata change on a live arm does not remove it from the current round. \\
+\texttt{set\_arm\_meta(v, i, m)} & Set per-arm metadata on PIFO \texttt{v}'s child reached via index \texttt{i} to \texttt{m}. The operand \texttt{m} is interpreted per \texttt{v}'s policy type: a weight for RoundRobin/WFQ, a priority rank for Strict; FIFO carries none. Only the discipline-specified meta field is overwritten; any other per-arm state (e.g., WFQ's virtual-finish tag on the arm) is preserved, so a metadata change on a live arm does not remove it from the current round. \\
 \texttt{designate(v, surv)} & Inside an already-spawned Strict-2 super-node that has adopted both PIFOs \texttt{v} and \texttt{surv} (see \cref{sec:hw-compile}'s \Designate{} lowering), name \texttt{v} as the favored child and record \texttt{surv} as \texttt{v}'s designated successor for an eventual \texttt{undesignate}. No in-place wrapping is implied at the ISA level; the substrate may coalesce the Strict-2 super-node, \texttt{v}, and \texttt{surv} into a single physical slot when \cref{sec:hw-compile}'s same-PE invariant holds, but is not required to. \\
 \texttt{gc(v)} & Release PIFO \texttt{v}'s PE slot. \\
 \texttt{undesignate(v)} & Collapse the super-node \(\{v \to \mathtt{surv}\}\) to \texttt{surv}: the parent index that pointed at \(\{v \to \mathtt{surv}\}\) now points directly at \texttt{surv}, and \texttt{surv} inherits the slot's per-arm metadata. \\
@@ -2087,7 +2086,7 @@ Opcode & Effect \\
 Our single-purpose opcodes also mean that the tree can become transiently malformed \emph{within} a commit, in ways that the commit's atomicity hides from any observer.
 For an example from \cref{sec:hw-compile}, \Designate's commit first adopts \texttt{loser} as a child of the freshly-spawned \texttt{sp\_v}, then emancipates \texttt{loser} from its original parent and adopts \texttt{sp\_v} in its place.
 Between the first adopt and the emancipate, \texttt{loser} has two parents.
-The atomic install means no \texttt{push} or \texttt{pop} ever sees this state, but the planner is free to issue commits whose intermediate states would not satisfy the well-formedness conditions of \cref{sec:runtime-model}.
+The atomic install means no \texttt{push} or \texttt{pop} ever sees this state, but the planner is free to issue commits whose intermediate states would not satisfy the well-formedness conditions of \cref{sec:controls}.
 
 \emph{PE deployment.} One last piece of setup supports the lowerings in \cref{sec:hw-compile}.
 We treat the assignment of a PIFO to a PE as a deterministic function \texttt{pe(path)} of the PIFO's tree position, fixed at compile time.
