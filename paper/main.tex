@@ -230,12 +230,77 @@ A PIFO tree lowers to hardware by mapping each tree depth onto a dedicated proce
 Pinning a depth level to a single PE has well-studied benefits for computation and storage, and it is the layout that Sivaraman et al.~\cite{Sivaraman16}, Mohan et al.~\cite{Mohan23}, Shrivastav~\cite{Shrivastav19}, and vPIFO~\cite{vPIFO} all build on.
 The PE budget is fixed by the silicon, so the running tree's shape is constrained by what the deployed PEs can host.
 
+\subsection{vPIFO, and the problem it leaves open}\label{sec:vpifo}
+
+vPIFO~\cite{vPIFO} is the closest related work, and it explicitly leaves our problem open.
+It virtualizes a single physical PIFO into many logical ``PIFO instances,'' with a Scheduling Description Language (SDL) and compiler, so their PIFO Visor can \emph{flexibly establish} hierarchical PIFO trees of arbitrary shape on fixed hardware; its contribution is the reconfigurable substrate.
+As published, however, vPIFO has no notion of a difference between old and new policies, no formal semantics for what a policy change means, and no account of in-flight packets during a change.
+Their SDL IR computes ranks and is compiled to P4 or to a CPU.
+The two grammars we introduce in \cref{sec:grammar} are structural instead: one describes the shape of a policy tree, and the other describes how that shape changes.
+
+Our two running examples make the gap concrete.
+In vPIFO's own terms, the Operation Generation Table and the PIFO Instance Address Table encode the running tree's shape and its per-instance storage.
+The easy change, to \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{mid}{:}\,\textsf{spotify},\allowbreak\ \mathtt{lo}{:}\,\textsf{gmail})\), is the kind of edit vPIFO's substrate is architecturally close to absorbing.
+It over-provisions logical instances and its Visor can assemble them into arbitrary tree shapes, so a targeted append to those tables would register the new traffic and its operations while leaving the running instances untouched.
+vPIFO exposes no such edit at runtime, however: those tables are generated offline by its SDL compiler, so installing even this easy change on a running scheduler would require extending the substrate with an online-patch path it does not have today.
+The harder restructuring, to \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\RR(\textsf{gmail}, \textsf{spotify}))\), lies beyond what the vPIFO substrate can absorb in place.
+It changes the running tree's shape, inserting a new internal \RR{} node and re-parenting \textsf{gmail} under it, and neither table exposes that as an in-place edit.
+The closest vPIFO comes is a full reinitialization onto the new shape, which is precisely the stop-the-world baseline we want to improve on.
+vPIFO names runtime updating as future work, observing that the scheduling of packets during a modification's transitional phase is unresolved.
+
+We are not competing with vPIFO and do not claim a better PIFO substrate.
+We supply the layer \emph{above} a PIFO substrate (and that substrate could well be vPIFO): the formal transition between two policies, the small patch that realizes it, and the transitionary semantics.
+The two layers compose.
+
+\section{Policies and Controls}\label{sec:model}
+
+This section fixes the two objects that the rest of the paper edits.
+\cref{sec:policy-dsl} gives the small DSL an operator writes, \cref{sec:controls} gives the control a switch runs, and \cref{sec:compilation} compiles the first into the second.
+Of the three, only the control is inherited, and \cref{sec:controls} says from whom and where we depart from it.
+
+\subsection{What the operator writes}\label{sec:policy-dsl}
+
+An operator wants to say which flows exist and how they should share the link.
+A switch runs something much lower level, a tree of queues carrying scheduling logic at every node, which \cref{sec:controls} makes precise.
+We start on the operator's side, with a small policy DSL \ensuremath{\mathit{pol}}, and \cref{sec:compilation} compiles it down.
+
+\begin{figure}[t]
+\[
+\begin{array}{@{}l@{}}
+\mathit{flow} \in F\\[4pt]
+D\ \text{a scheduling discipline, declaring a metadata set } M_{D}\\[8pt]
+\mathit{pol} \mathrel{::=} \mathit{flow} \;\mid\; D(m_1{:}\,\mathit{pol}_1, \ldots, m_n{:}\,\mathit{pol}_n),\ m_i \in M_{D}
+\end{array}
+\]
+\caption{The policy language \(\mathit{pol}\).}
+\label{fig:pol-grammar}
+\end{figure}
+
+The operator writes a \ensuremath{\mathit{pol}} (\cref{fig:pol-grammar}).
+It is either a leaf labeled by a flow, or an internal node running a scheduling discipline \ensuremath{D} over child policies.
+Each arm carries a metadatum that tells \ensuremath{D} how to schedule it, drawn from a set \(M_{D}\) that \ensuremath{D} declares.
+\(M_{\Strict}\) is a set of priorities, and \(M_{\WFQ}\) is a set of weights.
+\RR{} treats its arms alike and consults nothing about any one of them, so \(M_{\RR}\) has a single element.
+That element carries no information, and we elide it when writing examples.
+We read the arity off by counting children, so, e.g., \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\textsf{gmail})\) is the 2-ary instance of the discipline \Strict.
+Each leaf label denotes a \emph{flow}: a predicate over packets.
+A \ensuremath{\mathit{pol}} is what \(\delta\) (\cref{sec:delta-grammar}) and the theorems of \cref{sec:correctness} reason over.
+
+The family of disciplines is open.
+\ensuremath{D} is any discipline equipped with the compilation recipe of \cref{sec:compilation}, and nothing that follows depends on which disciplines are available.
+Our implementation instantiates \Strict, \RR, and \WFQ.
+We chose these three because they place different demands on a node: \RR{} needs only a cursor, \Strict{} needs nothing beyond the priorities written on its arms, and \WFQ{} needs a virtual-time tag per arm that advances as traffic is served.
+
+A \ensuremath{\mathit{pol}} is written against a fixed \emph{flow universe} \(F\): a finite set of flow predicates declared by the operator before constructing the \ensuremath{\mathit{pol}}.
+A \ensuremath{\mathit{pol}} is \emph{valid} when (a) every discipline is applied at the proper arity, (b) every arm's metadatum is drawn from its parent discipline's set \(M_{D}\), and (c) the leaves form a partition of a subset of \(F\): each leaf carries a flow drawn from \(F\), and no two leaves carry the same flow.
+If a packet does not match any of the flows in the scheduling tree's leaves, the packet is dropped.
+Validity is a condition on the source \ensuremath{\mathit{pol}}, not to be confused with the runtime invariant of well-formedness.
+
 \subsection{The runtime model: controls}\label{sec:controls}
 
 A PIFO tree fixes which queues sit where, and says nothing about how a packet's rank is chosen at each of them.
 A \emph{control} attaches that logic to the tree, giving each node its own rule for ranking what it enqueues.
-The name is from Mohan et al.~\cite{Mohan23}, and our model is a variation on theirs.
-We note our departures as they arise.
+The name and the model are from Mohan et al.~\cite{Mohan23}, and we note our departures from them as they arise.
 A control is the concrete state a programmable switch executes at line rate, realizable on an FPGA or SmartNIC (\cref{sec:hardware} lowers a control to exactly such a target).
 It is the only tree this paper formalizes.
 
@@ -342,93 +407,29 @@ A control \(C\) is \emph{well-formed} (written \(\vdash C\)) when, at every inte
 This is the invariant that keeps \pop{} from ever getting stuck.
 Stating it on the control directly, rather than on an underlying tree of bare PIFOs, lets \push{} and \pop{} preserve it node-locally.
 
-\subsection{vPIFO, and the problem it leaves open}\label{sec:vpifo}
-
-vPIFO~\cite{vPIFO} is the closest related work, and it explicitly leaves our problem open.
-It virtualizes a single physical PIFO into many logical ``PIFO instances,'' with a Scheduling Description Language (SDL) and compiler, so their PIFO Visor can \emph{flexibly establish} hierarchical PIFO trees of arbitrary shape on fixed hardware; its contribution is the reconfigurable substrate.
-As published, however, vPIFO has no notion of a difference between old and new policies, no formal semantics for what a policy change means, and no account of in-flight packets during a change.
-Their SDL IR computes ranks and is compiled to P4 or to a CPU.
-The two grammars we introduce in \cref{sec:grammar} are structural instead: one describes the shape of a policy tree, and the other describes how that shape changes.
-
-Our two running examples make the gap concrete.
-In vPIFO's own terms, the Operation Generation Table and the PIFO Instance Address Table encode the running tree's shape and its per-instance storage.
-The easy change, to \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{mid}{:}\,\textsf{spotify},\allowbreak\ \mathtt{lo}{:}\,\textsf{gmail})\), is the kind of edit vPIFO's substrate is architecturally close to absorbing.
-It over-provisions logical instances and its Visor can assemble them into arbitrary tree shapes, so a targeted append to those tables would register the new traffic and its operations while leaving the running instances untouched.
-vPIFO exposes no such edit at runtime, however: those tables are generated offline by its SDL compiler, so installing even this easy change on a running scheduler would require extending the substrate with an online-patch path it does not have today.
-The harder restructuring, to \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\RR(\textsf{gmail}, \textsf{spotify}))\), lies beyond what the vPIFO substrate can absorb in place.
-It changes the running tree's shape, inserting a new internal \RR{} node and re-parenting \textsf{gmail} under it, and neither table exposes that as an in-place edit.
-The closest vPIFO comes is a full reinitialization onto the new shape, which is precisely the stop-the-world baseline we want to improve on.
-vPIFO names runtime updating as future work, observing that the scheduling of packets during a modification's transitional phase is unresolved.
-
-We are not competing with vPIFO and do not claim a better PIFO substrate.
-We supply the layer \emph{above} a PIFO substrate (and that substrate could well be vPIFO): the formal transition between two policies, the small patch that realizes it, and the transitionary semantics.
-The two layers compose.
-
-\section{A Grammar of Atomic Policy Edits}\label{sec:grammar}
-
-Building on the runtime model of \cref{sec:controls}, \cref{sec:policy-dsl} adds a small policy DSL and compiles it to a control, giving a syntactic handle on the scheduler actually running in hardware.
-\cref{sec:delta-grammar} fixes a grammar \(\delta\) of structural edits over that DSL, admitting a form only when the hardware can install it atomically.
-\cref{sec:edit-semantics} gives each form its two readings.
-\cref{sec:correctness} proves two things about them: that the two readings agree, and that running a form leaves the live packets alone.
-\cref{sec:hw-preservation} carries both down to hardware.
-
-\subsection{A Policy DSL}\label{sec:policy-dsl}
-
-A control is the hardware-level configuration the scheduler actually runs, but a network operator cannot author one directly.
-There is no source-level notation for stating a desired policy as a control, and even if the raw hardware controls were exposed, assembling one by hand would be tedious and error-prone.
-To talk about reconfigurations, we instead expose a programming interface for the operator.
-We design a small policy DSL \ensuremath{\mathit{pol}} using which the operator can specify their desired policy, and a compiler from \ensuremath{\mathit{pol}} terms to controls.
-
-This is essentially what the vPIFO paper's \emph{Scheduling Description Language} does informally~\cite{vPIFO}.
-They do not pin down a grammar for SDL or formalize the compilation, so our DSL can be read as a formal core of their concrete language.
-The compilation targets differ: vPIFO compiles straight to a virtualized PIFO substrate, whereas we compile first to a control (the abstraction that this section reasons over) and only then lower to a substrate (\cref{sec:hardware}).
-The strategy, though, is the same: give the operator a syntactic surface, then compile.
-
-\paragraph{Policy syntax}
+\subsection{Compiling a policy to a control}\label{sec:compilation}
 
 \begin{figure}[t]
 \[
 \begin{array}{@{}l@{}}
-\mathit{flow} \in F\\[8pt]
-\mathit{pol} \mathrel{::=} \mathit{flow} \;\mid\; D(m_1{:}\,\mathit{pol}_1, \ldots, m_n{:}\,\mathit{pol}_n),\ m_i \in M_{D}\\[10pt]
 D = (\,M_{D},\ \mathit{init\_node}_{D},\ \mathit{init\_slot}_{D},\ \mathit{rank}_{D}\,)\\[4pt]
 \quad \mathit{init\_node}_{D} : ()\ \to\ \mathit{node\_state}\\[2pt]
 \quad \mathit{init\_slot}_{D} : \mathit{node\_state} \times M_{D}\ \to\ \mathit{slot\_state}\\[2pt]
 \quad \mathit{rank}_{D} : \mathit{state} \times \mathit{payload} \times M_{D}\ \to\ \mathit{rank} \times \mathit{state}
 \end{array}
 \]
-\caption{The policy language \(\mathit{pol}\), and the four things a discipline \(D\) is.}
-\label{fig:pol-grammar}
+\caption{The four things a discipline \(D\) is.}
+\label{fig:discipline}
 \end{figure}
-
-The operator writes a \ensuremath{\mathit{pol}} (\cref{fig:pol-grammar}).
-It is either a leaf labeled by a flow, or an internal node running a scheduling discipline \ensuremath{D} over child policies.
-Each arm carries a metadatum that tells \ensuremath{D} how to schedule it, drawn from a set \(M_{D}\) that \ensuremath{D} declares.
-\(M_{\Strict}\) is a set of priorities, and \(M_{\WFQ}\) is a set of weights.
-\RR{} treats its arms alike and consults nothing about any one of them, so \(M_{\RR}\) has a single element.
-That element carries no information, and we elide it when writing examples.
-We read the arity off by counting children, so, e.g., \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\textsf{gmail})\) is the 2-ary instance of the discipline \Strict.
-Each leaf label denotes a \emph{flow}: a predicate over packets.
-A \ensuremath{\mathit{pol}} is what \(\delta\) (\cref{sec:delta-grammar}) and the theorems of this section reason over.
-
-The family of disciplines is open.
-\ensuremath{D} is any discipline equipped with a compilation recipe, given below, and nothing in this section depends on which disciplines are available.
-Our implementation instantiates \Strict, \RR, and \WFQ.
-We chose these three because they place different demands on a node: \RR{} needs only a cursor, \Strict{} needs nothing beyond the priorities written on its arms, and \WFQ{} needs a virtual-time tag per arm that advances as traffic is served.
-
-A \ensuremath{\mathit{pol}} is written against a fixed \emph{flow universe} \(F\): a finite set of flow predicates declared by the operator before constructing the \ensuremath{\mathit{pol}}.
-A \ensuremath{\mathit{pol}} is \emph{valid} when (a) every discipline is applied at the proper arity, (b) every arm's metadatum is drawn from its parent discipline's set \(M_{D}\), and (c) the leaves form a partition of a subset of \(F\): each leaf carries a flow drawn from \(F\), and no two leaves carry the same flow.
-If a packet does not match any of the flows in the scheduling tree's leaves, the packet is dropped.
-Validity is a condition on the source \ensuremath{\mathit{pol}}, not to be confused with the runtime invariant of well-formedness.
 
 \paragraph{What a discipline supplies}
 
-A discipline \ensuremath{D} is the four-tuple of \cref{fig:pol-grammar}: a metadata set \(M_{D}\), a node initializer, a slot initializer, and a ranker.
+A discipline \ensuremath{D} is the four-tuple of \cref{fig:discipline}: a metadata set \(M_{D}\), a node initializer, a slot initializer, and a ranker.
 Supplying those four is the whole interface, and an operator can ``bring their own'' \ensuremath{D} that way.
-Everything in this section then applies to \ensuremath{D} unchanged.
+Everything that follows then applies to \ensuremath{D} unchanged.
 
 \(\mathit{init\_node}_{D}\) runs once per node when a \ensuremath{\mathit{pol}} is compiled into a control, seeding that node's \ensuremath{\mathit{node\_state}}.
-\(\mathit{init\_slot}_{D}\) runs once per arm, at compile time and again whenever \Add{} splices a new arm under an already-running \ensuremath{D}-parent (\cref{sec:add}), taking the parent's current \ensuremath{\mathit{node\_state}} and the arm's metadatum.
+\(\mathit{init\_slot}_{D}\) runs once per arm, at compile time and again whenever an edit splices a new arm under an already-running \ensuremath{D}-parent (\cref{sec:add}), taking the parent's current \ensuremath{\mathit{node\_state}} and the arm's metadatum.
 The metadatum itself is not state, and \(\mathit{init\_slot}_{D}\) does not install it.
 It is copied into \(\mathit{z}.\mathit{meta}\) at compilation and rewritten only by an explicit edit (\cref{sec:controls}).
 What \(\mathit{init\_slot}_{D}\) supplies is the evolving per-arm bookkeeping that sits beside it, such as \WFQ's virtual-finish tag.
@@ -443,7 +444,7 @@ We choose throughout to have the new arm ``join the current round''.
 Going from \(\WFQ(A,B)\) to \(\WFQ(A,B,C)\), the newly added \(C\) should be neither rewarded for having been silent nor penalized for arriving late.
 \cref{app:init-slot} gives the recipes for \Strict, \RR, and \WFQ{} that realize this.
 
-\paragraph{Policy Compilation: \ensuremath{\mathit{pol}} to control}
+\paragraph{From \ensuremath{\mathit{pol}} to control}
 
 We write \(\lceil p \rceil\) for the control compiled from \ensuremath{\mathit{pol}} \(p\).
 The tree shape of \(\lceil p \rceil\) exactly matches that of \(p\), and at each node the local triple \((\mathit{state}, \mathit{pifo}, \mathit{z})\) of \cref{sec:controls} is filled in as follows.
@@ -454,6 +455,19 @@ The tree shape of \(\lceil p \rceil\) exactly matches that of \(p\), and at each
 \(\mathit{z}.\mathit{meta}\) sends each child index \(i\) to the \(m_i\) written on that arm in the source term.
 The classifier is read off the tree, so that \(\mathit{z}.\mathit{serves}\) sends each flow served beneath the node toward that flow's leaf and \(\mathit{z}.\mathit{admit} = \mathrm{dom}(\mathit{z}.\mathit{serves})\).
 A freshly compiled control therefore admits every flow it serves, and carries the operator's arm annotations verbatim.
+
+This is essentially what the vPIFO paper's \emph{Scheduling Description Language} does informally~\cite{vPIFO}.
+They do not pin down a grammar for SDL or formalize the compilation, so our DSL can be read as a formal core of their concrete language.
+The compilation targets differ, since vPIFO compiles straight to a virtualized PIFO substrate whereas we compile first to a control and only then lower to a substrate (\cref{sec:hardware}).
+The strategy, though, is the same: give the operator a syntactic surface, then compile.
+
+\section{A Grammar of Atomic Policy Edits}\label{sec:grammar}
+
+\cref{sec:delta-grammar} fixes a grammar \(\delta\) of structural edits over the policy DSL of \cref{sec:policy-dsl}, admitting a form only when the hardware can install it atomically.
+\cref{sec:equivalences} says when two policies, or two controls, count as the same, and how to read a policy off a running control.
+\cref{sec:edit-semantics} gives each form its two readings.
+\cref{sec:correctness} proves two things about them: that the two readings agree, and that running a form leaves the live packets alone.
+\cref{sec:hw-preservation} carries both down to hardware.
 
 \subsection{A Grammar for Policy Tree Edits}\label{sec:delta-grammar}
 
@@ -607,7 +621,7 @@ Three facts follow.
 
 \begin{enumerate}
 \item \emph{Compiler correctness.} Compiling a \(p\) to a control and reading it straight back recovers \(p\) itself, up to the sibling-order freedom the compiler enjoyed in laying it out: \(\lfloor \lceil p \rceil \rfloor \eqR p\).
-This is immediate from the compilation of \cref{sec:policy-dsl}, which installs \ensuremath{D}'s ranker at each internal node, copies each arm's annotation into \(\mathit{z}.\mathit{meta}\), and has each leaf serve its own flow.
+This is immediate from the compilation of \cref{sec:compilation}, which installs \ensuremath{D}'s ranker at each internal node, copies each arm's annotation into \(\mathit{z}.\mathit{meta}\), and has each leaf serve its own flow.
 The relation is \(\eqR\) rather than \(=\) precisely because the compiler may have chosen a different arm order when creating \(\lceil p \rceil\).
 \item \emph{Insensitivity to live contents.} \(\lfloor \cdot \rfloor\) reads only the tree shape, each leaf's served flow, and each internal node's ranker-discipline and per-arm metadata.
 It never reads \ensuremath{\mathit{state}}, \ensuremath{\mathit{pifo}}, or \(\mathit{z}.\mathit{admit}\).
@@ -816,7 +830,7 @@ The metadatum sits in \(\mathit{z}.\mathit{meta}\), which \(\lfloor \cdot \rfloo
 
 When the parent runs \WFQ, the virtual-finish tag at slot \(k\) is deliberately \emph{preserved} and not \emph{reset}.
 Resetting it would remove the targeted arm from the current round, rewarding or penalizing it for no reason the operator asked for.
-\(\mathit{init\_slot}_{\WFQ}\) (\cref{sec:policy-dsl}) was designed to let a fresh arm join the current round without disturbing its siblings, and a weight change on an already-running arm deserves the same treatment.
+\(\mathit{init\_slot}_{\WFQ}\) (\cref{sec:compilation}) was designed to let a fresh arm join the current round without disturbing its siblings, and a weight change on an already-running arm deserves the same treatment.
 \cref{sec:controls} already draws this line.
 The weight is configuration and lives in \(\mathit{z}.\mathit{meta}\), while the tag is bookkeeping and lives in \ensuremath{\mathit{slot\_states}}.
 \ChangeMeta{} reaches only the first of the two.
@@ -854,7 +868,7 @@ Every field other than \(\mathit{z}.\mathit{admit}\), and every node outside \(V
 
 \paragraph{Note: Why touch every node on every quiesced push path}
 
-Under \cref{sec:policy-dsl}'s parallel \push{}, every node on the path from a packet's destination leaf to the system root mints an index via its local \ensuremath{\mathit{z}} independently of the others.
+Under \cref{sec:controls}'s parallel \push{}, every node on the path from a packet's destination leaf to the system root mints an index via its local \ensuremath{\mathit{z}} independently of the others.
 If we restricted \ensuremath{\mathit{z}} only at a strict subset of those nodes (only the root of the tree, or only inside \(C@\tau\)), the rest would happily mint indices and enqueue them.
 The tree would then be malformed.
 Some node's index-\ensuremath{\mathit{pifo}} would hold an entry with no matching packet in the subtree below it, or, symmetrically, a buffered packet would sit with no index above it, and \(\vdash\) would break.
@@ -862,7 +876,7 @@ A later \pop{} that followed such an entry could descend toward a leaf with noth
 \Quiesce{} therefore narrows uniformly, at the leaf (so it refuses to enqueue) and at every ancestor of every quiesced leaf (so no node mints a stray index).
 The cost is touching every leaf under \(C@\tau\), and the union of their ancestor chains.
 Two things are gained in return.
-The rejection preserves \(\vdash C'\), and admission stays a purely node-local decision, so the parallel \push{} of \cref{sec:policy-dsl} keeps working unchanged, with no node having to coordinate with another.
+The rejection preserves \(\vdash C'\), and admission stays a purely node-local decision, so the parallel \push{} of \cref{sec:controls} keeps working unchanged, with no node having to coordinate with another.
 
 \subsubsection{\texorpdfstring{\(\Remove(\tau)\)}{Remove}}\label{sec:remove}
 
@@ -2319,7 +2333,7 @@ Shrivastav, PIEO, SIGCOMM 2019.
 
 \section{Per-Discipline Slot Initialization}\label{app:init-slot}
 
-\cref{sec:policy-dsl} fixes the design choice that a freshly spliced arm should ``join the current round'', entering with neither the penalty nor the advantage of having been absent.
+\cref{sec:compilation} fixes the design choice that a freshly spliced arm should ``join the current round'', entering with neither the penalty nor the advantage of having been absent.
 Here are the \(\mathit{init\_slot}_{D}\) recipes that realize it for our three representative disciplines.
 
 \begin{itemize}
