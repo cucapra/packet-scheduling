@@ -225,19 +225,17 @@ A \emph{PIFO} (push-in, first-out queue) is a priority queue that is additionall
 Where a single PIFO expresses just one scheduling decision, a PIFO tree composes a decision at every level (strict priority, weighted fair queueing, round-robin, and so on), capturing the hierarchical policies that operators actually deploy.
 
 A PIFO tree lowers to hardware by mapping each tree depth onto a dedicated processing element (PE), with siblings and cousins sharing the PE at their depth.
-Pinning a depth level to a single PE has well-studied benefits for computation and storage; Sivaraman (SIGCOMM '16), Mohan et al.\ (OOPSLA '23), Shrivastav (SIGCOMM '19), and vPIFO (Zhang et al., SIGCOMM '24) all build on this layout.
+Pinning a depth level to a single PE has well-studied benefits for computation and storage, and it is the layout that Sivaraman et al.~\cite{Sivaraman16}, Mohan et al.~\cite{Mohan23}, Shrivastav~\cite{Shrivastav19}, and vPIFO~\cite{vPIFO} all build on.
 The PE budget is fixed by the silicon, so the running tree's shape is constrained by what the deployed PEs can host.
 
 \subsection{The runtime model: controls}\label{sec:controls}
 
 A PIFO tree fixes which queues sit where, and says nothing about how a packet's rank is chosen at each of them.
-The runtime object we edit supplies the missing half.
-% The sentence above is doing a TON of work
-It is a PIFO tree wrapped with per-node scheduling logic, and we call it a \emph{control}, after Mohan et al.\ (OOPSLA '23).
-% This is not a proper citation.
+A \emph{control} attaches that logic to the tree, giving each node its own rule for ranking what it enqueues.
+The name is from Mohan et al.~\cite{Mohan23}, and our model is a variation on theirs.
+We note our departures as they arise.
 A control is the concrete state a programmable switch executes at line rate, realizable on an FPGA or SmartNIC (\cref{sec:hardware} lowers a control to exactly such a target).
 It is the only tree this paper formalizes.
-The model is a variation on that of Mohan et al., and we note our departures from it as they arise.
 
 \paragraph{Syntax}
 
@@ -344,7 +342,7 @@ Stating it on the control directly, rather than on an underlying tree of bare PI
 
 \subsection{vPIFO, and the problem it leaves open}\label{sec:vpifo}
 
-vPIFO (Zhang et al., SIGCOMM 2024) is the closest related work, and it explicitly leaves our problem open.
+vPIFO~\cite{vPIFO} is the closest related work, and it explicitly leaves our problem open.
 It virtualizes a single physical PIFO into many logical ``PIFO instances,'' with a Scheduling Description Language (SDL) and compiler, so their PIFO Visor can \emph{flexibly establish} hierarchical PIFO trees of arbitrary shape on fixed hardware; its contribution is the reconfigurable substrate.
 As published, however, vPIFO has no notion of a difference between old and new policies, no formal semantics for what a policy change means, and no account of in-flight packets during a change.
 Their SDL IR computes ranks and is compiled to P4 or to a CPU.
@@ -2280,6 +2278,8 @@ Mohan et al., Formal Abstractions for Packet Scheduling, OOPSLA 2023.
 Mittal et al., LSTF, SIGCOMM 2016.
 \bibitem{Sivaraman16}
 Sivaraman et al., PIFO, SIGCOMM 2016.
+\bibitem{Shrivastav19}
+Shrivastav, PIEO, SIGCOMM 2019.
 \end{thebibliography}
 
 \appendix
