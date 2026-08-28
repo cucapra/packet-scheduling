@@ -845,8 +845,8 @@ where \(A_\pi = \{\, \texttt{C@}\nu \;:\; \nu \sqsubset \pi \,\}\) is the spine 
 It is defined when \(\tau\) resolves in \texttt{C}, the subtree at \(\tau\) is empty, and \texttt{C@}\(\tau\) does not run the discipline \(\Strictstar\) (the planner reaches a \(\Strictstar\) only through \Undesignate).
 \(\mathtt{drop}_k\) removes child \texttt{k} and its \ensuremath{\mathit{slot\_states}} entry, shifts siblings \(> k\) down by one, and adjusts the node's classifier: the flows that slot \texttt{k} served leave \(\mathit{z}.\mathit{serves}\) and \(\mathit{z}.\mathit{admit}\) alike, and a surviving entry naming \(i > k\) comes to name \(i-1\).
 The ranker is untouched.
-Emptiness and \(\vdash \mathtt{C}\) force \(\mathtt{C@}\pi.\mathit{pifo}\) to hold \emph{no entry} equal to \texttt{k}, so \ensuremath{\mathit{pifo}} loses no entry, and surviving entries keep their child (a substrate keying children by stable handles, \cref{sec:hardware}, need not even renumber them).
-\xxx[AM to Zhiyuan]{Does Rio's substrate actually key children by stable handles, so \Remove{} renumbers no live entry? If so, let's say so plainly here and cite the mechanism in \cref{sec:hardware}; if not, we should drop the ``need not even renumber'' parenthetical.}
+Emptiness and \(\vdash \mathtt{C}\) force \(\mathtt{C@}\pi.\mathit{pifo}\) to hold \emph{no entry} equal to \texttt{k}, so \ensuremath{\mathit{pifo}} loses no entry, and surviving entries keep their child.
+\xxx[AM to Zhiyuan]{Does Rio's substrate actually key children by stable handles, so \Remove{} renumbers no live entry? If so, we can say so plainly here. The parenthetical that used to make the claim in passing is gone for now, since it pointed forward into \cref{sec:hardware}.}
 \ensuremath{\mathit{node\_state}}, and every field of every node outside \texttt{C@}\(\pi\) and the removed subtree other than the ancestor service maps just named, is unchanged.
 
 \paragraph{Note: Why the ancestors are retracted too}
@@ -870,7 +870,7 @@ So \(\mathtt{p'} \eqR \den(\Remove(\tau))(\mathtt{p})\).
 \paragraph{Preservation and non-disruption}
 
 Preservation of \(\vdash\): emptiness and \(\vdash \mathtt{C}\) leave \(\mathtt{C@}\pi.\mathit{pifo}\) with no entry equal to \texttt{k}, so dropping slot \texttt{k} deletes no entry; the ancestor retractions delete no entry either, since they narrow admission for future pushes only. 
-Every surviving child keeps its own subtree and its own entries (relabeled \(i \mapsto i-1\) for \(i > k\), or left on stable handles, \cref{sec:hardware}), so each count still matches.
+Every surviving child keeps its own subtree and its own entries, relabeled \(i \mapsto i-1\) for \(i > k\), so each count still matches.
 Ancestors and siblings are unchanged.
 Preservation of state: \ensuremath{\mathit{slot\_states}} drops slot \texttt{k}, every other entry is unchanged in its shifted position, and no \texttt{init} fires.
 Non-disruption: \(\mathtt{drop}_k\) removes only an \emph{empty} slot and renumbers the parent's service map, and the ancestor retractions rewrite classifiers, so together they touch no live \ensuremath{\mathit{pifo}} entry and \Remove{} is non-disruptive by \cref{lem:nondisruption}; the restriction applies only to future \texttt{push}es.
@@ -945,7 +945,7 @@ That is why the production exists: no single edit can swap one subtree for anoth
 
 \(\Strictstar\) is the same discipline as \(\Strict\), distinguished only by a one-bit \texttt{designated} flag that each node carries: \Designate{} sets the bit, \Undesignate{} clears it.
 Semantically the two are identical; every push, pop, and well-formedness check treats \(\Strictstar(A, B)\) exactly as \(\Strict(A, B)\), so the obligations below are stated against the ordinary \(\Strict\) semantics of \cref{sec:policy-dsl}.
-The star exists only so that \Undesignate's precondition (``\(\tau\) lands on a \(\Strictstar\)'') and a hardware-level argument in \cref{sec:hardware} (that \(\Strictstar\) adds no PE depth) can be stated structurally.
+The star exists only so that \Undesignate's precondition (``\(\tau\) lands on a \(\Strictstar\)'') can be stated structurally.
 The \cref{sec:policy-dsl} DSL in which the operator writes policies can parse only \(\Strict\), never \(\Strictstar\), so a \(\Strictstar\) is unreachable in any user-written \ensuremath{\mathit{pol}} and arises only in the middle of a planner sequence, between a \Designate{} and its eventual \Undesignate.
 The wrap is therefore \ensuremath{\mathit{pol}}-visible only as a \(\Strict\).
 
