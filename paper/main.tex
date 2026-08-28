@@ -628,6 +628,14 @@ Correctness, though, is not enough: the stop-the-world reset of \cref{sec:intro}
 We beat it with the property of \emph{non-disruption}.
 Installing \(\delta\) may disturb previously buffered traffic \emph{only} in service of the newly installed policy.
 The \emph{very act of changing policies} never introduces arbitrary artifacts such as drops, reorders, or rewrites among buffered packets.
+
+\xxx[AM to AS]{You proposed keeping only the agreement theorem and dropping this one.
+Here is why I want to keep it.
+Suppose we added a production \(\textsf{Reset}(\mathtt{p2})\), with \(\csem{\textsf{Reset}(\mathtt{p2})}(\mathtt{C}) = \lceil \mathtt{p2} \rceil\) and \(\psem{\textsf{Reset}(\mathtt{p2})}(\mathtt{p}) = \mathtt{p2}\).
+It satisfies both clauses of \cref{thm:interplay}, since \(\lceil \mathtt{p2} \rceil\) is well-formed and \(\lfloor \lceil \mathtt{p2} \rceil \rfloor \eqR \mathtt{p2}\), and it is exactly the stop-the-world baseline: buffered packets dropped on the floor.
+So the agreement theorem alone cannot tell our contribution apart from the thing we claim to beat, and Obligation 2 of \cref{sec:intro} is never discharged formally.
+My counter-offer is to promote non-disruption to a collected theorem rather than demote it: every \(\delta\) leaves the \texttt{pop} sequence unchanged, which is what the \Designate, \Undesignate, and \ChangeRoot{} arguments actually establish and what the current per-production wording understates.}
+
 Throughout, we write \texttt{C} for the pre-edit control and \texttt{C'} for the post-edit control, and \(\mathtt{p} = \lfloor \mathtt{C} \rfloor\), \(\mathtt{p'} = \lfloor \mathtt{C'} \rfloor\) for the policies they realize.
 
 \begin{itemize}
@@ -636,6 +644,11 @@ Throughout, we write \texttt{C} for the pre-edit control and \texttt{C'} for the
 Any packets or index entries that \(\csem{\delta}\) drops or adds must leave the per-node pifo and packet counts in balance.
 \item \emph{Preservation of state.} At every node structurally shared between \texttt{C} and \texttt{C'} and outside the production's local edit site, the local \ensuremath{\mathit{state}} is left unchanged.
 At the edit site, and at every node of a freshly compiled subtree, the state is exactly what the production's \(\mathit{init\_node}_{D}\) / \(\mathit{init\_slot}_{D}\) (\cref{sec:policy-dsl}) invocation prescribes.
+\xxx[AM to AS]{This is the obligation I would drop, and I think it was never a theorem.
+Every \(\csem{\delta}\) rule names every field of the node it produces, so ``the shared nodes keep their \ensuremath{\mathit{state}}, and the edit site gets what \(\mathit{init\_slot}_{D}\) prescribes'' is read off the rule rather than proved about it.
+The combinator \(\mathtt{at}(\pi, g)\) makes the same point for the off-path nodes, since copying them unchanged is part of its definition.
+Compare \(\vdash\), which appeals to a counting invariant the rules never mention, and non-disruption, which appeals to the behavior of \texttt{pop}.
+The catch is that \(\mathtt{drop}_k\), \(\mathtt{setmeta}_k\), and \(\mathtt{wrap}\) are given in prose rather than as equations today, so making this stick means tightening those into rules first.}
 \item \emph{Characterization.} Give \(\psem{\delta}\) in closed form and prove that reading the policy off the edited control agrees, up to \(\eqR\), with applying \(\psem{\delta}\) to the policy read off the original: \(\mathtt{p'} \eqR \psem{\delta}(\mathtt{p})\).
 \item \emph{Non-disruption of in-flight traffic.} Applying \(\delta\) does not rewrite, reorder, or drop any packet already admitted to \texttt{C}:
 each already-enqueued entry keeps the rank it was given when it was \texttt{push}ed, so nothing buffered is lost, corrupted, or reordered relative to the rest of the backlog.
