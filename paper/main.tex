@@ -625,6 +625,27 @@ This section gives each production of \(\delta\) its two readings and nothing mo
 Both are stated here without proof, together with the preconditions under which the production is defined.
 \cref{sec:per-production} takes up what has to be shown about them.
 
+
+\begin{figure*}[t]
+\small
+\centering
+\(
+\begin{array}{@{}l@{\quad}l@{\qquad}l@{}}
+\delta & \csem{\delta} & \psem{\delta}\\[2pt]
+\hline\\[-5pt]
+\Add(\pi, D, \mathit{arm}, m) & \multicolumn{2}{@{}l@{}}{\text{given in full in \cref{sec:add}}}\\[3pt]
+\ChangeMeta(\pi \mathbin{+\!\!+} [k], m) & \mathtt{at}(\pi,\, \mathtt{setmeta}_k) & \mathtt{at}\big(\pi,\; D(\ldots, m_k{:}\,t_k, \ldots) \mapsto D(\ldots, m{:}\,t_k, \ldots)\big)\\[3pt]
+\Quiesce(\tau) & \mathtt{at}(V_\tau,\ g_L) & \mathtt{p} \mapsto \mathtt{p}\\[3pt]
+\Remove(\pi \mathbin{+\!\!+} [k]) & \mathtt{at}(A_\pi,\ \mathit{z} \setminus\!\!\setminus R) \circ \mathtt{at}(\pi,\, \mathtt{drop}_k) & \mathtt{at}(\pi,\; D(\mathtt{ts}) \mapsto D(\mathtt{ts}[-/k]))\\[3pt]
+\Designate(\tau, \mathit{survivor}) & \mathtt{spine}(\tau,\ \mathtt{flows}(\mathit{survivor})) \circ \mathtt{at}(\tau,\, \mathtt{wrap}) & \mathtt{at}(\tau,\; t \mapsto \Strict(\mathtt{hi}{:}\,t,\ \mathtt{lo}{:}\,\mathit{survivor}))\\[3pt]
+\Undesignate(\tau) & \mathtt{at}(\tau,\, \mathtt{unwrap}) & \mathtt{at}(\tau,\; \Strict(\mathtt{hi}{:}\,a,\ \mathtt{lo}{:}\,b) \mapsto b)\\[3pt]
+\ChangeRoot(\nu) & \texttt{C@}\nu & \mathtt{p} \mapsto \mathtt{p@}\nu
+\end{array}
+\)
+\caption{The two readings of every production of \(\delta\). Each production's preconditions and its own node transformer are given with the production in the text.}
+\label{fig:delta-semantics}
+\end{figure*}
+
 \paragraph{Notation}
 
 The pol-level rules below read, overwrite, and shrink child lists.
@@ -661,6 +682,23 @@ For such a production we use a small combinator: given a node transformer \(g\) 
 The recursive case walks one step down and writes the result back, carrying \(\langle\mathit{state},\mathit{pifo},\mathit{z}\rangle\) unchanged.
 The same combinator serves on \ensuremath{\mathit{pol}}, where a node is \(D(\mathtt{ts})\).
 There the descent into arm \texttt{i} rewrites that arm's policy and carries its annotation along.
+We also write \(\mathtt{at}(V, g)\) for the set analogue, applying \(g\) at every node in \(V\) and copying every node outside \(V\) unchanged.
+
+Three operations recur across the productions, and the first two edit a single node's \ensuremath{\mathit{z}}.
+A node's discipline fixes a packet's rank from the local \ensuremath{\mathit{state}} and the chosen child alone, not from the packet itself, so admitting a flow at an already-running node calls for no new rank rule.
+\(\mathtt{extend}(\mathit{z}, F, i)\) therefore touches the classifier and nothing else, recording that child \(i\) is where \(F\) is served and adding \(F\) to the admitted set.
+\(\mathtt{setmeta}(\mathit{z}, i, m)\) annotates arm \(i\) with \(m\) and leaves the classifier and the ranker alone:
+\[
+\begin{array}{@{}l@{}}
+\mathtt{extend}(\mathit{z}, F, i).\mathit{serves} = \mathit{z}.\mathit{serves}\,[\,f \mapsto i \;\text{for}\; f \in F\,],\\[3pt]
+\mathtt{extend}(\mathit{z}, F, i).\mathit{admit} = \mathit{z}.\mathit{admit} \cup F,\\[3pt]
+\mathtt{setmeta}(\mathit{z}, i, m).\mathit{meta} = \mathit{z}.\mathit{meta}\,[\,i \mapsto m\,].
+\end{array}
+\]
+Every other field of \ensuremath{\mathit{z}} is carried through unchanged.
+The third is a walk rather than a single node edit, since a production that admits a new set of flows must extend every node on the way down to its target.
+We write \(\mathtt{spine}(\tau, F)\) for it.
+At each proper ancestor \texttt{C@}\(\nu\) of \texttt{C@}\(\tau\) it replaces \ensuremath{\mathit{z}} by \(\mathtt{extend}(\mathit{z}, F, \mathtt{i})\), where \texttt{i} is the index by which \(\nu\) continues toward \(\tau\), and it copies every other node unchanged.
 
 \Add{} comes first and is given in full detail.
 The six that follow lean on it, and we point out only where each one departs from \Add's pattern.
@@ -688,52 +726,26 @@ And \ensuremath{\mathit{arm}}'s leaf labels are disjoint from those of \texttt{C
 The disjointness precondition rules out \emph{splitting} an already-running flow.
 Going from a policy with a single \texttt{gmail} leaf to one that splits it into \texttt{gmail\_business} and \texttt{gmail\_personal} would have to re-sort the packets already buffered under \texttt{gmail} into the two new leaves, relocating admitted traffic; \Add{} only introduces flows disjoint from what is running, so it never has to relocate admitted traffic.
 
-We define \(\csem{\Add}\) by recursion on \(\pi\) (\cref{fig:add-rules}, top).
-The arguments \ensuremath{D}, \ensuremath{\mathit{arm}}, and \(m\) thread unchanged through the recursion, and \(m\) is consumed only at the base case, which annotates the new slot and seeds its bookkeeping.
-Three abbreviations appear.
-\(\mathtt{flows}(\mathit{arm})\) is the set of flows at \(\lceil \mathit{arm} \rceil\)'s leaves.
-For \(\mathtt{extend}\), recall that a node's discipline fixes a packet's rank from the local \ensuremath{\mathit{state}} and the chosen child alone, not from the packet itself.
-Admitting a flow at an already-running node therefore calls for no new rank rule: the node's ranker already covers the child that the flow will route to.
-So \(\mathtt{extend}(\mathit{z}, F, i)\) touches the classifier and nothing else.
-It records that child \(i\) is where \(F\) is served, and adds \(F\) to the admitted set:
+We define \(\csem{\Add}\) by recursion on \(\pi\), writing \(\mathtt{flows}(\mathit{arm})\) for the set of flows at \(\lceil \mathit{arm} \rceil\)'s leaves:
+{\small
 \[
-\begin{array}{@{}l@{}}
-\mathtt{extend}(\mathit{z}, F, i).\mathit{serves} = \mathit{z}.\mathit{serves}\,[\,f \mapsto i \;\text{for}\; f \in F\,],\\[3pt]
-\mathtt{extend}(\mathit{z}, F, i).\mathit{admit} = \mathit{z}.\mathit{admit} \cup F,\\[3pt]
-\mathtt{extend}(\mathit{z}, F, i).\mathit{rank} = \mathit{z}.\mathit{rank},\\[3pt]
-\mathtt{extend}(\mathit{z}, F, i).\mathit{meta} = \mathit{z}.\mathit{meta}.
-\end{array}
-\]
-The third, \(\mathtt{setmeta}(\mathit{z}, i, m)\), annotates arm \(i\) with \(m\).
-It leaves the classifier and the ranker alone:
-\[
-\mathtt{setmeta}(\mathit{z}, i, m).\mathit{meta} = \mathit{z}.\mathit{meta}\,[\,i \mapsto m\,].
-\]
-Since \texttt{C@}\(\pi\) has \(k\) children before the splice, appending the new one lands at the next free index \(k\); and because \(\mathtt{flows}(\mathit{arm})\) lies outside \(\mathrm{dom}(\mathit{z}.\mathit{serves})\), each \(\mathtt{extend}\) is conflict-free.
-
-\begin{figure}[t]
-\small
-\centering
-\(
 \begin{array}{@{}l@{}}
 \csem{\Add([\,],\ D,\ \mathit{arm},\ m)}\ \langle\mathit{state},\mathit{pifo},\mathit{z}\rangle(\mathtt{cs}) \;=\\
 \quad \langle\mathit{state'},\mathit{pifo},\mathtt{z'}\rangle(\mathtt{cs}\mathbin{+\!\!+}[\lceil\mathit{arm}\rceil])\\
-\quad \textbf{where}\ \mathit{state'}=(\mathit{node\_state},\ \mathit{slot\_states}\mathbin{+\!\!+}[\mathtt{s}])\\
-\quad \phantom{\textbf{where}}\ \mathtt{k}=|\mathtt{cs}|\ \text{(the next free slot)}\\
+\quad \textbf{where}\ \mathtt{k}=|\mathtt{cs}|\ \text{(the next free slot)}\\
+\quad \phantom{\textbf{where}}\ \mathit{state'}=(\mathit{node\_state},\ \mathit{slot\_states}\mathbin{+\!\!+}[\mathtt{s}])\\
 \quad \phantom{\textbf{where}}\ \mathtt{s}=\mathit{init\_slot}_{D}(\mathit{node\_state},m)\\
 \quad \phantom{\textbf{where}}\ \mathtt{z'}=\mathtt{setmeta}(\mathtt{extend}(\mathit{z},\mathtt{flows}(\mathit{arm}),\mathtt{k}),\mathtt{k},m)\\[8pt]
 \csem{\Add(\mathtt{i}\mathbin{::}\mathtt{rest},\ D,\ \mathit{arm},\ m)}\ \langle\mathit{state},\mathit{pifo},\mathit{z}\rangle(\mathtt{cs}) \;=\\
 \quad \langle\mathit{state},\mathit{pifo},\mathtt{z'}\rangle(\mathtt{cs}[\,\mathtt{c}/\mathtt{i}\,])\\
 \quad \textbf{where}\ \mathtt{c}=\csem{\Add(\mathtt{rest},\ D,\ \mathit{arm},\ m)}(\mathtt{cs}[\mathtt{i}])\\
-\quad \phantom{\textbf{where}}\ \mathtt{z'}=\mathtt{extend}(\mathit{z},\mathtt{flows}(\mathit{arm}),\mathtt{i})\\[10pt]
-\psem{\Add([\,],\ D,\ \mathit{arm},\ m)}\ (D\ \mathtt{ts}) \;=\; D(\mathtt{ts}\mathbin{+\!\!+}[m{:}\,\mathit{arm}])\\[4pt]
-\psem{\Add(\mathtt{i}\mathbin{::}\mathtt{rest},\ D,\ \mathit{arm},\ m)}\ (\mathtt{E}\ \mathtt{ts}) \;=\\
-\quad \mathtt{E}(\mathtt{ts}[\,\psem{\Add(\mathtt{rest},\ D,\ \mathit{arm},\ m)}(\mathtt{ts}[\mathtt{i}])/\mathtt{i}\,])
+\quad \phantom{\textbf{where}}\ \mathtt{z'}=\mathtt{extend}(\mathit{z},\mathtt{flows}(\mathit{arm}),\mathtt{i})
 \end{array}
-\)
-\caption{The control-level and pol-level readings of \Add.}
-\label{fig:add-rules}
-\end{figure}
+\]
+}
+The arguments \ensuremath{D}, \ensuremath{\mathit{arm}}, and \(m\) thread unchanged through the recursion, and \(m\) is consumed only at the base case, which annotates the new slot and seeds its bookkeeping.
+Since \texttt{C@}\(\pi\) has \(k\) children before the splice, appending the new one lands at the next free index \(k\), and because \(\mathtt{flows}(\mathit{arm})\) lies outside \(\mathrm{dom}(\mathit{z}.\mathit{serves})\), each \(\mathtt{extend}\) is conflict-free.
+The recursive case is exactly the walk that \(\mathtt{spine}(\pi, \mathtt{flows}(\mathit{arm}))\) abbreviates.
 
 The base case (\(\pi = []\)) has reached the parent of the new arm, where it does three things.
 It appends \(\lceil \mathit{arm} \rceil\) as the last child, at slot \texttt{k}.
@@ -748,7 +760,16 @@ The new flows were admitted nowhere before (by disjointness), so each extension 
 
 \paragraph{Pol-level reading}
 
-We define \(\psem{\cdot}\) by recursion on \(\pi\) (\cref{fig:add-rules}, bottom).
+We define \(\psem{\cdot}\) by recursion on \(\pi\) as well:
+{\small
+\[
+\begin{array}{@{}l@{}}
+\psem{\Add([\,],\ D,\ \mathit{arm},\ m)}\ (D\ \mathtt{ts}) \;=\; D(\mathtt{ts}\mathbin{+\!\!+}[m{:}\,\mathit{arm}])\\[4pt]
+\psem{\Add(\mathtt{i}\mathbin{::}\mathtt{rest},\ D,\ \mathit{arm},\ m)}\ (\mathtt{E}\ \mathtt{ts}) \;=\\
+\quad \mathtt{E}(\mathtt{ts}[\,\psem{\Add(\mathtt{rest},\ D,\ \mathit{arm},\ m)}(\mathtt{ts}[\mathtt{i}])/\mathtt{i}\,])
+\end{array}
+\]
+}
 Its node patterns \(\mathtt{D\ ts}\) and \(\mathtt{E\ ts}\) split a \ensuremath{\mathit{pol}} node into its discipline and child list \texttt{ts}.
 The base case reuses the argument name \ensuremath{D}, firing only when the reached node runs that discipline; an ancestor's discipline \texttt{E} is unconstrained and simply carried along.
 The metadatum \(m\) appears on both sides.
@@ -766,11 +787,8 @@ Under \Strict{} that is a new priority, and under \WFQ{} a new weight.
 
 \paragraph{Definition}
 
-\[
-\csem{\ChangeMeta(\pi \mathbin{+\!\!+} [k], m)} = \mathtt{at}(\pi,\, \mathtt{setmeta}_k),
-\]
-defined when \(\tau\) resolves in \texttt{C} to an arm whose parent runs \ensuremath{D}, and \(m \in M_{D}\).
-The node transformer \(\mathtt{setmeta}_k\) rewrites the node's \ensuremath{\mathit{z}} and nothing else, using the \(\mathtt{setmeta}\) of \cref{sec:add}:
+\ChangeMeta{} is defined when \(\tau\) resolves in \texttt{C} to an arm whose parent runs \ensuremath{D}, and \(m \in M_{D}\).
+Its node transformer \(\mathtt{setmeta}_k\) rewrites the node's \ensuremath{\mathit{z}} and nothing else:
 {\small
 \[
 \mathtt{setmeta}_k\ \langle\mathit{state},\mathit{pifo},\mathit{z}\rangle(\mathtt{cs}) = \langle\mathit{state},\mathit{pifo},\ \mathtt{setmeta}(\mathit{z},\mathtt{k},m)\rangle(\mathtt{cs}).
@@ -783,15 +801,10 @@ A \RR{} parent has a one-element metadata set, so \ChangeMeta{} on one of its ar
 
 \paragraph{Pol-level reading}
 
-\[
-\begin{array}{@{}l@{}}
-\psem{\ChangeMeta(\pi \mathbin{+\!\!+} [k], m)} =\\
-\quad \mathtt{at}\big(\pi,\; D(\ldots, m_k{:}\,t_k, \ldots) \mapsto D(\ldots, m{:}\,t_k, \ldots)\big),
-\end{array}
-\]
-reannotating arm \texttt{k} and leaving its policy \(t_k\), its siblings, and the discipline \ensuremath{D} alone.
+\ChangeMeta{} reannotates arm \texttt{k} and leaves that arm's policy, its siblings, and the discipline \ensuremath{D} alone.
 This is a real change to the \ensuremath{\mathit{pol}} rather than the identity.
 The metadatum sits in \(\mathit{z}.\mathit{meta}\), which \(\lfloor \cdot \rfloor\) does read (\cref{sec:equivalences}), so a re-tune is visible in the policy echoed back to the operator.
+
 \paragraph{Note: Why the virtual-finish tag is preserved (WFQ)}
 
 When the parent runs \WFQ, the virtual-finish tag at slot \texttt{k} is deliberately \emph{preserved} and not \emph{reset}.
@@ -821,14 +834,10 @@ The nodes that those flows traverse are the spine down to \(\tau\) together with
 \[
 V_\tau = \{\, \texttt{C@}\nu \;:\; \nu \sqsubseteq \tau \,\} \;\cup\; \{\, \text{every node of } \texttt{C@}\tau \,\}.
 \]
-\Quiesce{} narrows the admitted set at each of these nodes and touches nothing else:
+\Quiesce{} narrows the admitted set at each of these nodes and touches nothing else, through the node transformer
 \[
-\begin{array}{@{}l@{}}
-\csem{\Quiesce(\tau)}(\mathtt{C}) = \mathtt{at}(V_\tau,\ g_L),\ \textbf{where}\\[3pt]
-\quad g_L\ \langle\mathit{state},\mathit{pifo},\mathit{z}\rangle(\mathtt{cs}) = \langle\mathit{state},\mathit{pifo},\ \mathit{z} \setminus L\rangle(\mathtt{cs})
-\end{array}
+g_L\ \langle\mathit{state},\mathit{pifo},\mathit{z}\rangle(\mathtt{cs}) = \langle\mathit{state},\mathit{pifo},\ \mathit{z} \setminus L\rangle(\mathtt{cs}).
 \]
-where \(\mathtt{at}(V, g)\) applies \(g\) at every node in the set \(V\) and copies every node outside \(V\) unchanged, the set analogue of the single-site \(\mathtt{at}(\pi, g)\) above.
 Every field other than \(\mathit{z}.\mathit{admit}\), and every node outside \(V_\tau\), is left unchanged; the Note below says why the restriction must reach all of \(V_\tau\) rather than the root alone.
 
 \paragraph{Pol-level reading}
@@ -859,11 +868,7 @@ As before, \(\tau : \mathit{path}\) is the non-empty target arm; destruct it as 
 Write \(R = \mathtt{flows}(\texttt{C@}\tau)\) for the flows that the doomed arm serves.
 Write \(\mathit{z} \setminus\!\!\setminus R\) for \ensuremath{\mathit{z}} with \(R\) struck from its service map, and hence, by the containment of \cref{sec:controls}, from its admitted set too.
 Its ranker is unchanged.
-\Remove{} drops the arm at its parent and strikes \(R\) from the service map of every proper ancestor above that parent:
-\[
-\csem{\Remove(\pi \mathbin{+\!\!+} [k])} = \mathtt{at}\big(A_\pi,\ \mathit{z} \setminus\!\!\setminus R\big) \circ \mathtt{at}(\pi,\, \mathtt{drop}_k),
-\]
-where \(A_\pi = \{\, \texttt{C@}\nu \;:\; \nu \sqsubset \pi \,\}\) is the spine strictly above the parent.
+\Remove{} drops the arm at its parent and strikes \(R\) from the service map of every proper ancestor above that parent, the set \(A_\pi = \{\, \texttt{C@}\nu \;:\; \nu \sqsubset \pi \,\}\).
 It is defined when \(\tau\) resolves in \texttt{C}, the subtree at \(\tau\) is empty, and \texttt{C@}\(\tau\) is not the wrapper node that \Designate{} installs.
 That wrapper is introduced in \cref{sec:designate} and is retired only by \cref{sec:undesignate}'s \Undesignate, never by \Remove.
 The node transformer \(\mathtt{drop}_k\) unhooks child \texttt{k} and renumbers what named it:
@@ -897,11 +902,9 @@ In the \Retire{} idiom a preceding \Quiesce{} has already emptied those admitted
 
 \paragraph{Pol-level reading}
 
-\[
-\psem{\Remove(\pi \mathbin{+\!\!+} [k])} = \mathtt{at}(\pi,\; D(\mathtt{ts}) \mapsto D(\mathtt{ts}[-/k])),
-\]
-dropping arm \texttt{k} from the parent \ensuremath{\mathit{pol}} node.
+\Remove{} drops arm \texttt{k} from the parent \ensuremath{\mathit{pol}} node.
 The emptiness precondition is operational and leaves no trace at \ensuremath{\mathit{pol}}-level.
+
 \paragraph{Note: Why insist on an empty subtree}
 
 \newcommand{\rmpanel}[3]{% #1 P-strikes, #2 Q-strikes, #3 B-struck (0/1)
@@ -1058,20 +1061,9 @@ The wrap is therefore \ensuremath{\mathit{pol}}-visible only as a \(\Strict\).
 \(\csem{\Designate(\tau, \mathit{survivor})}(\mathtt{C})\) is defined when \(\tau\) resolves in \texttt{C} and \ensuremath{\mathit{survivor}}'s leaf labels are disjoint from \texttt{C}'s outside \texttt{C@}\(\tau\); overlap with \texttt{C@}\(\tau\)'s own leaves is allowed (see Note).
 The figure draws the target subtree in blue and the survivor in orange; below we call them the old and new arms.
 Write \(M = \texttt{C@}\tau\) for the target, and let \(P_0\) be the number of packets buffered under it (\(P_0 = 3\) in \cref{fig:designate-before}).
-\Designate{} walks down \(\tau\) exactly as \Add{} walks down \(\pi\), wrapping the target when it arrives and admitting \ensuremath{\mathit{survivor}}'s flows at each ancestor on the way:
-{\small
-\[
-\begin{array}{@{}l@{}}
-\csem{\Designate([\,],\ \mathit{survivor})}\ \mathtt{N} \;=\; \mathtt{wrap}(\mathtt{N})\\[6pt]
-\csem{\Designate(\mathtt{i}\mathbin{::}\mathtt{rest},\ \mathit{survivor})}\ \langle\mathit{state},\mathit{pifo},\mathit{z}\rangle(\mathtt{cs}) \;=\\
-\quad \langle\mathit{state},\mathit{pifo},\mathtt{z'}\rangle(\mathtt{cs}[\,\mathtt{c}/\mathtt{i}\,])\\
-\quad \textbf{where}\ \mathtt{c}=\csem{\Designate(\mathtt{rest},\ \mathit{survivor})}(\mathtt{cs}[\mathtt{i}])\\
-\quad \phantom{\textbf{where}}\ \mathtt{z'}=\mathtt{extend}(\mathit{z},\mathtt{flows}(\mathit{survivor}),\mathtt{i})
-\end{array}
-\]
-}
-The recursive case is \Add's, unchanged (\cref{sec:add}).
-The base case is where the two differ, since \Add{} appends an arm while \Designate{} wraps the node it has reached.
+\Designate{} wraps the target and admits \ensuremath{\mathit{survivor}}'s flows at every ancestor on the way down, which is the walk \(\mathtt{spine}(\tau, \mathtt{flows}(\mathit{survivor}))\) performs.
+That walk is \Add's, with \ensuremath{\mathit{survivor}}'s flows in place of the new arm's.
+The two differ only at the target, since \Add{} appends an arm there while \Designate{} wraps the node it has reached.
 The transformer \(\mathtt{wrap}\) replaces \(M\) with a fresh \(\Strictstar\) node \(N\) over the two arms \([\,M,\ \lceil\mathit{survivor}\rceil\,]\), giving the old arm strict priority over the new one (\(\mathtt{hi} < \mathtt{lo}\)):
 {\small
 \[
@@ -1105,13 +1097,9 @@ The two arms thus stay operationally disjoint even when their label sets overlap
 
 \paragraph{Pol-level reading}
 
-{\small
-\[
-\psem{\Designate(\tau, \mathit{survivor})} = \mathtt{at}(\tau,\; t \mapsto \Strict(\mathtt{hi}{:}\,t,\ \mathtt{lo}{:}\,\mathit{survivor})),
-\]
-}
-wrapping the \ensuremath{\mathit{pol}} subtree at \(\tau\).
+\Designate{} wraps the \ensuremath{\mathit{pol}} subtree at \(\tau\).
 \(\psem{\cdot}\) yields \(\Strict\), not \(\Strictstar\), since the star is \ensuremath{\mathit{pol}}-invisible.
+
 \subsubsection{\texorpdfstring{\(\Undesignate(\tau)\)}{Undesignate}}\label{sec:undesignate}
 
 
@@ -1122,21 +1110,17 @@ Below we write \(N\) for that node and \(B\) for its surviving arm, both as cont
 
 \paragraph{Definition}
 
-\[
-\csem{\Undesignate(\tau)} = \mathtt{at}(\tau,\, \mathtt{unwrap}),
-\]
-defined when \texttt{C@}\(\tau\)'s ranker names \(\Strictstar\), so an earlier \Designate{} made it, and when its arm 0 is empty.
+\Undesignate{} is defined when \texttt{C@}\(\tau\)'s ranker names \(\Strictstar\), so an earlier \Designate{} made it, and when its arm 0 is empty.
 \(\mathtt{unwrap}\) returns arm 1 of the node, \(B\), with its subtree and contents unchanged; the node \(N = \texttt{C@}\tau\) and its empty arm-0 subtree are discarded.
 Since \(\mathtt{at}\) writes \(B\) back into the parent's slot \texttt{k}, the parent's \(\mathit{z}.\mathit{meta}(\mathtt{k})\) is unchanged and \(B\) now hangs directly where \(N\) did.
 
 \paragraph{Pol-level reading}
 
-\[
-\psem{\Undesignate(\tau)} = \mathtt{at}(\tau,\; \Strict(\mathtt{hi}{:}\,a,\ \mathtt{lo}{:}\,b) \mapsto b),
-\]
-collapsing the wrapper, which reads as \(\Strict\) at \ensuremath{\mathit{pol}}-level; here \(a\) and \(b\) are the two arms as \ensuremath{\mathit{pol}}s, so \(b = \lfloor B \rfloor\).
-The wrapper's own annotations go with it, and \(b\) inherits the annotation the wrapper held at its parent.
+\Undesignate{} collapses the wrapper, which reads as \(\Strict\) at \ensuremath{\mathit{pol}}-level, and leaves its low arm behind.
+That arm is \(\lfloor B \rfloor\).
+The wrapper's own annotations go with it, and the surviving arm inherits the annotation the wrapper held at its parent.
 The empty-arm-0 precondition is operational and leaves no trace at \ensuremath{\mathit{pol}}-level.
+
 \subsubsection{\texorpdfstring{\(\ChangeRoot(\nu)\)}{ChangeRoot}}\label{sec:changeroot}
 
 
@@ -1145,17 +1129,11 @@ It is the only production that erases structural ancestors; the mechanics are sh
 
 \paragraph{Definition}
 
-\[
-\csem{\ChangeRoot(\nu)}(\mathtt{C}) = \texttt{C@}\nu,
-\]
-defined when \(\nu\) is non-empty, resolves in \texttt{C}, and every node strictly above \texttt{C@}\(\nu\) is \emph{unary} with its sole arm continuing toward \texttt{C@}\(\nu\) (so the discarded chain carries no off-path traffic).
+\ChangeRoot{} is defined when \(\nu\) is non-empty, resolves in \texttt{C}, and every node strictly above \texttt{C@}\(\nu\) is \emph{unary} with its sole arm continuing toward \texttt{C@}\(\nu\), so that the discarded chain carries no off-path traffic.
 \texttt{C@}\(\nu\) and its subtree are kept unchanged; every proper ancestor's \((\mathit{state}, \mathit{pifo}, \mathit{z})\) is discarded.
 
 \paragraph{Pol-level reading}
 
-\[
-\psem{\ChangeRoot(\nu)}\,\mathtt{p} = \mathtt{p@}\nu.
-\]
 The promoted subtree becomes the root, and a root has no parent to annotate it, so the metadatum it carried is discarded along with the ancestors that read it.
 
 \paragraph{Notes}
@@ -1454,6 +1432,7 @@ So \Undesignate{} is non-disruptive.
 
 \paragraph{Characterization}
 \(\lfloor \cdot \rfloor\) is a structural recursion, so it commutes with subtree projection: \(\lfloor \texttt{C@}\nu \rfloor = \mathtt{p} \mathbin{@} \nu\), giving \(\mathtt{p'} \eqR \psem{\ChangeRoot(\nu)}(\mathtt{p})\).
+
 \paragraph{Preservation and non-disruption}
 
 \emph{Preservation of \(\vdash\).} \(\vdash \mathtt{C}\) is a conjunction of per-node obligations, and those on \texttt{C@}\(\nu\)'s nodes are exactly \(\vdash \texttt{C@}\nu = \vdash \mathtt{C'}\).
