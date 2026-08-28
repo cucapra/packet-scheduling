@@ -119,7 +119,7 @@
     \fill[#1] (#2-0.15,#3-0.44) circle (0.9pt); \fill[#1] (#2,#3-0.44) circle (0.9pt); \fill[#1] (#2+0.15,#3-0.44) circle (0.9pt);\or
     \fill[#1] (#2-0.18,#3-0.44) circle (0.9pt); \fill[#1] (#2-0.06,#3-0.44) circle (0.9pt); \fill[#1] (#2+0.06,#3-0.44) circle (0.9pt); \fill[#1] (#2+0.18,#3-0.44) circle (0.9pt);%
   \fi
-  \ifnum#5=1 \draw[red, line width=0.9pt] (#2-0.2,#3-0.5) -- (#2+0.16,#3-0.08);\fi
+  \ifnum#5=1 \draw[red, line width=0.9pt] (#2-0.33,#3-0.62) -- (#2+0.21,#3-0.02);\fi
 }
 
 \begin{document}
@@ -692,7 +692,7 @@ Since \texttt{C@}\(\pi\) has \(k\) children before the splice, appending the new
 \quad \mathtt{E}(\mathtt{ts}[\,\psem{\Add(\mathtt{rest})}(\mathtt{ts}[\mathtt{i}])/\mathtt{i}\,])
 \end{array}
 \)
-\caption{The control-level reading \(\csem{\Add}\) (top) and pol-level reading \(\psem{\Add}\) (bottom).}
+\caption{The control-level and pol-level readings of \Add.}
 \label{fig:add-rules}
 \end{figure}
 
@@ -891,10 +891,13 @@ Non-disruption: \(\mathtt{drop}_k\) removes only an \emph{empty} slot and renumb
   \draw (Pp.south) -- (0.95,-0.95);
   \draw (Qp.south) -- (-0.82,-1.98);
   \draw (Qp.south) -- (-0.12,-1.98);
-  \node[font=\scriptsize,inner sep=0.5pt] at (-0.3,-0.52) {0};
-  \node[font=\scriptsize,inner sep=0.5pt] at (0.5,-0.5) {1};
-  \node[font=\scriptsize,inner sep=0.5pt] at (-0.72,-1.58) {0};
-  \node[font=\scriptsize,inner sep=0.5pt] at (-0.18,-1.58) {1};
+  % Edge labels: each pair shares a y, and each sits the same perpendicular
+  % distance from its own edge, so the shallower right edge takes a larger
+  % horizontal offset than the steep left one.
+  \node[font=\scriptsize,inner sep=0pt] at (-0.361,-0.53) {0};
+  \node[font=\scriptsize,inner sep=0pt] at ( 0.540,-0.53) {1};
+  \node[font=\scriptsize,inner sep=0pt] at (-0.734,-1.62) {0};
+  \node[font=\scriptsize,inner sep=0pt] at (-0.187,-1.62) {1};
 \end{tikzpicture}%
 }
 \begin{figure}[t]
@@ -1015,7 +1018,7 @@ The wrap is therefore \ensuremath{\mathit{pol}}-visible only as a \(\Strict\).
     \label{fig:designate-done}
   \end{subfigure}
 
-  \caption{The \Designate\,+\,drain\,+\,\Undesignate{} lifecycle: in-place replacement of the \textcolor{oldcol}{blue subtree} by the \textcolor{newcol}{orange subtree}, both under parent \(P\). \Designate{} wraps blue under a \(\Strictstar\) beside orange; as traffic drains, blue empties and orange fills; once blue is empty \Undesignate{} removes it and promotes orange. \cref{sec:designate} walks the steps.}
+  \caption{The \Designate\,+\,drain\,+\,\Undesignate{} lifecycle: in-place replacement of the \textcolor{oldcol}{blue subtree} by the \textcolor{newcol}{orange subtree}, both under parent \(P\). \Designate{} wraps blue under a \(\Strictstar\) beside orange; as traffic drains, blue empties and orange fills; once blue is empty \Undesignate{} removes it and promotes orange.}
   \label{fig:designate}
 \end{figure*}
 
@@ -1400,17 +1403,17 @@ For instance, suppose the running tree is \texttt{A(B(D(F, G), E), C)}, with edg
   edge from parent/.style={draw},
   every child/.style={font=\scriptsize}
 ]
-\node {$A$}
-  child {node {$B$}
-    child {node {$D$}
-      child {node {$F$} edge from parent node[left, xshift=-1pt] {\scriptsize 0}}
-      child {node {$G$} edge from parent node[right, xshift=1pt] {\scriptsize 1}}
+\node {\texttt{A}}
+  child {node {\texttt{B}}
+    child {node {\texttt{D}}
+      child {node {\texttt{F}} edge from parent node[left, xshift=-1pt] {\scriptsize 0}}
+      child {node {\texttt{G}} edge from parent node[right, xshift=1pt] {\scriptsize 1}}
       edge from parent node[left, xshift=-1pt] {\scriptsize 0}
     }
-    child {node {$E$} edge from parent node[right, xshift=1pt] {\scriptsize 1}}
+    child {node {\texttt{E}} edge from parent node[right, xshift=1pt] {\scriptsize 1}}
     edge from parent node[left, xshift=-1pt] {\scriptsize 0}
   }
-  child {node {$C$} edge from parent node[right, xshift=1pt] {\scriptsize 1}};
+  child {node {\texttt{C}} edge from parent node[right, xshift=1pt] {\scriptsize 1}};
 \end{tikzpicture}
 \end{minipage}%
 \begin{minipage}{0.35\linewidth}
@@ -1460,7 +1463,10 @@ Optimality is a separate matter, and not guaranteed: the planner may fail to see
 To reach any \texttt{p2} from any \texttt{p1}, the planner can issue \(\Replace([], \mathtt{p2})\), the \cref{sec:idioms} idiom that expands to
 
 \[
-(\mathtt{true};\ \Designate([], \mathtt{p2}))\ ;\ (\mathtt{true};\ \Quiesce([0]))\ ;\ (\mathtt{empty}([0]);\ \Undesignate([]))
+\begin{array}{@{}l@{}}
+(\mathtt{true};\ \Designate([], \mathtt{p2}))\ ;\ (\mathtt{true};\ \Quiesce([0]))\ ;\\[3pt]
+\qquad (\mathtt{empty}([0]);\ \Undesignate([]))
+\end{array}
 \]
 This wraps \texttt{p1} and \texttt{p2} into \(\Strictstar(\mathtt{hi}: \mathtt{p1}, \mathtt{lo}: \mathtt{p2})\) at the root (so pops still drain \texttt{p1} while pushes go to \texttt{p2}), and, once \texttt{p1} is empty, collapses the wrapper to leave \texttt{p2} alone.
 Nothing is dropped and the sequence is safe by \cref{sec:per-production}, but \emph{no part of the scheduler is left undisturbed}.
@@ -1615,67 +1621,64 @@ We write each arm's metadata after an \texttt{@}.
 
 \begin{verbatim}
 p1 = P(drive@m1, gmail@m2)
-p2 = P(drive@m1, slack@m3, Q(gmail, x)@m2)
+p2 = P(drive@m1, slack@m3, Q(gmail, x)@m4)
 \end{verbatim}
 
 \cref{fig:label-overlap-example} shows \texttt{p1} and \texttt{p2}, then the two policies the running control passes through once the planner's sequence fires: a transient, and the tree it settles into.
 The settled tree is not \texttt{p2} literally but a sibling-reordered representative of its \(\eqR\)-class; the transient is not \(\eqR\) to \texttt{p2} at all, and becomes so only once it drains and collapses.
 We return to both below.
 
-\begin{figure}[t]
+\begin{figure*}[t]
   \centering
-  \begin{subfigure}[t]{0.30\linewidth}
+  \begin{subfigure}[t]{0.17\linewidth}
     \centering
-    \begin{tikzpicture}[
-      baseline=(P.north), level distance=0.9cm,
-      level 1/.style={sibling distance=1.0cm},
-      every node/.style={font=\scriptsize}
-    ]
-    \node (P) {$\mathtt{P}$}
-      child {node {$\mathtt{d}$} edge from parent node[left,font=\tiny]{$m_1$}}
-      child {node {$\mathtt{g}$} edge from parent node[right,font=\tiny]{$m_2$}};
-    \node[inner sep=0pt] at (0,-2.9) {};
+    \begin{tikzpicture}[baseline=(P.north), every node/.style={font=\scriptsize}]
+      \node (P) at (0,0)       {$\mathtt{P}$};
+      \node (d) at (-0.6,-0.9) {$\mathtt{d}$};
+      \node (g) at (0.6,-0.9)  {$\mathtt{g}$};
+      \draw (P) -- node[left,font=\tiny]{$m_1$}  (d);
+      \draw (P) -- node[right,font=\tiny]{$m_2$} (g);
+      \node[inner sep=0pt] at (0,-1.8) {};
     \end{tikzpicture}
     \caption{\(\mathtt{p1}\)}
     \label{fig:label-overlap-p1}
   \end{subfigure}\hfill
-  \begin{subfigure}[t]{0.44\linewidth}
+  \begin{subfigure}[t]{0.23\linewidth}
     \centering
-    \begin{tikzpicture}[
-      baseline=(P.north), level distance=0.9cm,
-      level 1/.style={sibling distance=1.3cm},
-      level 2/.style={sibling distance=0.6cm},
-      every node/.style={font=\scriptsize}
-    ]
-    \node (P) {$\mathtt{P}$}
-      child {node {$\mathtt{d}$} edge from parent node[left,font=\tiny]{$m_1$}}
-      child {node {$\mathtt{s}$} edge from parent node[left,font=\tiny]{$m_3$}}
-      child {node {$\mathtt{Q}$} edge from parent node[right,font=\tiny]{$m_2$}
-        child {node {$\mathtt{g}$}}
-        child {node {$\mathtt{x}$}}
-      };
-    \node[inner sep=0pt] at (0,-2.9) {};
+    \begin{tikzpicture}[baseline=(P.north), every node/.style={font=\scriptsize}]
+      \fill[newcol!12, rounded corners=2pt] (-0.20,-0.72) rectangle (0.20,-1.08);
+      \fill[newcol!12, rounded corners=2pt] (0.60,-0.72) rectangle (1.70,-1.98);
+      \node (P) at (0,0)        {$\mathtt{P}$};
+      \node (d) at (-1.15,-0.9) {$\mathtt{d}$};
+      \node (s) at (0,-0.9)     {$\mathtt{s}$};
+      \node (Q) at (1.15,-0.9)  {$\mathtt{Q}$};
+      \node (g) at (0.80,-1.8)  {$\mathtt{g}$};
+      \node (x) at (1.50,-1.8)  {$\mathtt{x}$};
+      \draw (P) -- node[left,font=\tiny]{$m_1$}  (d);
+      \draw (P) -- node[left,font=\tiny,pos=0.8]{$m_3$}  (s);
+      \draw (P) -- node[right,font=\tiny]{$m_4$} (Q);
+      \draw (Q) -- (g);
+      \draw (Q) -- (x);
     \end{tikzpicture}
     \caption{\(\mathtt{p2}\)}
     \label{fig:label-overlap-p2}
-  \end{subfigure}
-
-  \vspace{0.9em}
-
-  \begin{subfigure}[t]{0.54\linewidth}
+  \end{subfigure}\hfill
+  \begin{subfigure}[t]{0.33\linewidth}
     \centering
     \begin{tikzpicture}[baseline=(P.north), every node/.style={font=\scriptsize}]
-      \node (P)  at (0,0)     {$\mathtt{P}$};
-      \node (d)  at (-2.2,-1) {$\mathtt{d}$};
-      \node (SS) at (-0.4,-1) {$\Strictstar$};
-      \node (s)  at (1.9,-1)  {$\mathtt{s}$};
-      \node (g1) at (-1.2,-2) {$\mathtt{g}$};
-      \node (Q)  at (0.4,-2)  {$\mathtt{Q}$};
-      \node (g2) at (0.0,-3)  {$\mathtt{g}$};
-      \node (x)  at (0.8,-3)  {$\mathtt{x}$};
-      \draw (P) -- node[left,font=\tiny]{$m_1$} (d);
-      \draw (P) -- node[left,font=\tiny]{$m_2$} (SS);
-      \draw (P) -- node[right,font=\tiny]{$m_3$} (s);
+      \fill[newcol!12, rounded corners=2pt] (2.10,-0.72) rectangle (2.50,-1.08);
+      \fill[newcol!12, rounded corners=2pt] (0.60,-0.72) rectangle (1.70,-1.98);
+      \node (P)  at (0,0)        {$\mathtt{P}$};
+      \node (d)  at (-2.3,-0.9)  {$\mathtt{d}$};
+      \node (SS) at (0,-0.9)     {$\Strictstar$};
+      \node (s)  at (2.3,-0.9)   {$\mathtt{s}$};
+      \node (g1) at (-1.15,-0.9) {$\mathtt{g}$};
+      \node (Q)  at (1.15,-0.9)  {$\mathtt{Q}$};
+      \node (g2) at (0.80,-1.8)  {$\mathtt{g}$};
+      \node (x)  at (1.50,-1.8)  {$\mathtt{x}$};
+      \draw (P) -- node[left,font=\tiny]{$m_1$}             (d);
+      \draw (P) -- node[left,font=\tiny,pos=0.6]{$m_2$}     (SS);
+      \draw (P) -- node[right,font=\tiny]{$m_3$}            (s);
       \draw (SS) -- (g1);
       \draw (SS) -- (Q);
       \draw (Q) -- (g2);
@@ -1684,39 +1687,48 @@ We return to both below.
     \caption{transient (\emph{not} \(\eqR \mathtt{p2}\))}
     \label{fig:label-overlap-transient}
   \end{subfigure}\hfill
-  \begin{subfigure}[t]{0.40\linewidth}
+  \begin{subfigure}[t]{0.23\linewidth}
     \centering
     \begin{tikzpicture}[baseline=(P.north), every node/.style={font=\scriptsize}]
-      \node (P) at (0,0)     {$\mathtt{P}$};
-      \node (d) at (-1.6,-1) {$\mathtt{d}$};
-      \node (Q) at (0,-1)    {$\mathtt{Q}$};
-      \node (s) at (1.6,-1)  {$\mathtt{s}$};
-      \node (g) at (-0.4,-2) {$\mathtt{g}$};
-      \node (x) at (0.4,-2)  {$\mathtt{x}$};
-      \draw (P) -- node[left,font=\tiny]{$m_1$} (d);
-      \draw (P) -- node[left,font=\tiny]{$m_2$} (Q);
+      \fill[newcol!12, rounded corners=2pt] (0.95,-0.72) rectangle (1.35,-1.08);
+      \fill[newcol!12, rounded corners=2pt] (-0.55,-0.74) rectangle (0.55,-1.98);
+      \node (P) at (0,0)        {$\mathtt{P}$};
+      \node (d) at (-1.15,-0.9) {$\mathtt{d}$};
+      \node (Q) at (0,-0.9)     {$\mathtt{Q}$};
+      \node (s) at (1.15,-0.9)  {$\mathtt{s}$};
+      \node (g) at (-0.35,-1.8) {$\mathtt{g}$};
+      \node (x) at (0.35,-1.8)  {$\mathtt{x}$};
+      \draw (P) -- node[left,font=\tiny]{$m_1$}  (d);
+      \draw (P) -- node[left,font=\tiny,pos=0.62]{$m_4$}  (Q);
       \draw (P) -- node[right,font=\tiny]{$m_3$} (s);
       \draw (Q) -- (g);
       \draw (Q) -- (x);
-      \node[inner sep=0pt] at (0,-3) {};
     \end{tikzpicture}
     \caption{settled (\(\eqR \mathtt{p2}\))}
     \label{fig:label-overlap-settled}
   \end{subfigure}
-  \caption{The label-overlap walk on \(\mathtt{p1} \to \mathtt{p2}\), with each of \(\mathtt{P}\)'s arms labeled by its per-arm metadata. Because \texttt{gmail} recurs inside \(\mathtt{p2}\)'s nested \(\mathtt{Q}\), the walk pairs that arm as a morph and adds \texttt{slack} alone. The planner's sequence carries the control through (c), a transient \(\Strictstar\) draining the old \texttt{gmail} leaf beside the incoming \(\mathtt{Q}\), into (d), which is \(\eqR\)-equivalent to \(\mathtt{p2}\). The morphing arm's metadatum \(m_2\) rides through unchanged, and \texttt{slack} arrives carrying \(m_3\).}
+
+  \caption{The label-overlap walk on \(\mathtt{p1} \to \mathtt{p2}\), with each of \(\mathtt{P}\)'s arms labeled by its per-arm metadata. Freshly built material is shaded.}
   \label{fig:label-overlap-example}
-\end{figure}
+\end{figure*}
 
 Here \texttt{drive} is unchanged, \texttt{gmail} has grown into a nested \(\mathtt{Q}\) over itself and a fresh flow \texttt{x}, and \texttt{slack} is new.
 Neither positional rung applies: the lengths differ, and the sub-sequence check fails because \(\mathtt{g}\) in \texttt{p1} equals no arm of \texttt{p2}, so without the label-overlap walk the planner would emit a wholesale \Replace{} of the root \(\mathtt{P}\).
 But the trees share structure: \(\mathtt{g}\) (\texttt{gmail}) in \texttt{p1} and the nested \(\mathtt{Q}\) in \texttt{p2} share the label \texttt{gmail}, \texttt{drive} matches on both sides, and \texttt{slack} is the only arm whose labels appear nowhere in \texttt{p1}.
 The walk reads this off directly, pairing \texttt{drive} with \texttt{drive} (no edit) and \texttt{gmail} with the nested \(\mathtt{Q}\) (recurse), and treating \texttt{slack} as a pure add.
-The emission is two atomic steps: an \Add{} of \texttt{slack} (which the compiler can handle as a pure append) and a \Replace{} at \texttt{gmail}'s slot.
+The emission is three steps.
+An \Add{} of \texttt{slack}, which the compiler can handle as a pure append; a \Replace{} at \texttt{gmail}'s slot; and a trailing \ChangeMeta{} that retunes that slot to \(m_4\).
 
 Watch the metadata as this fires.
-\texttt{slack}'s requested metadatum \(m_3\) rides along on the \Add{}: it is the \(\mathit{meta?}\) argument the production carries (\cref{sec:add}), so the new arm lands already carrying \(m_3\).
-The morphing arm keeps its metadatum \(m_2\) on both sides, so no \ChangeMeta{} is emitted for that slot; and because \Designate{} leaves the wrapped slot's inherited metadata untouched (\cref{sec:designate}), the transient \(\Strictstar\) arm sits in \(\mathtt{P}\) already carrying \(m_2\), exactly the metadatum the settled \(\mathtt{Q}\) arm will carry.
-The metadatum is never re-derived; it is the same \(m_2\) throughout.
+\texttt{slack}'s requested metadatum \(m_3\) rides along on the \Add.
+It is the \(\mathit{meta?}\) argument the production carries (\cref{sec:add}), so the new arm lands already carrying \(m_3\).
+The morphing arm is a different story, since its metadatum changes from \(m_2\) to \(m_4\).
+Nothing in the \Replace{} can carry that change, so the emission ends with a \ChangeMeta{} for the slot.
+That step is sequenced after the guarded \Undesignate, so it fires only once the old subtree has drained and the wrapper has collapsed.
+Until then the slot keeps \(m_2\).
+\Designate{} leaves the wrapped slot's inherited metadata untouched (\cref{sec:designate}), so the transient \(\Strictstar\) arm sits in \(\mathtt{P}\) still carrying the old metadatum, which is what panel (c) shows.
+The example therefore exhibits both behaviours at once.
+\(m_1\) and \(m_3\) survive the surgery untouched, while \(m_2\) is explicitly retuned to \(m_4\) once the drain is done.
 
 Panels (c) and (d) of \cref{fig:label-overlap-example} show the two policies the control passes through: first the transient \(\Strictstar\) that drains the old \texttt{gmail} leaf beside the incoming \(\mathtt{Q}\), then the settled tree once that drain completes.
 In the settled tree \texttt{slack} sits beside the morphed \texttt{gmail} subtree in an order that does not match \texttt{p2} literally, but sibling order carries no semantics (\cref{sec:policy-dsl}), so the reordering is invisible to any observer.
