@@ -232,6 +232,7 @@ The PE budget is fixed by the silicon, so the running tree's shape is constraine
 
 The runtime object we are ultimately editing is not a bare PIFO tree but a PIFO tree wrapped with per-node scheduling logic; we call the wrapped object a \emph{control}, after Mohan et al.\ (OOPSLA '23).
 This subsection lays out both layers, first the tree (\cref{sec:pifo-trees}) then the wrapping (\cref{sec:controls}).
+Both are a variation on the model of Mohan et al., and we note our departures from it as they arise.
 
 \subsubsection{PIFO trees}\label{sec:pifo-trees}
 
@@ -467,14 +468,15 @@ One production is irregular in this respect: \ChangeRoot{} gives the path to the
 \small
 \[
 \begin{array}{@{}r@{\;\;}l@{}}
-\delta \mathrel{::=} & \Add(\mathit{path}, D, \mathit{arm}, \mathit{meta?})\\
+\delta \mathrel{::=} & \Add(\mathit{path}, D, \mathit{pol}, \mathit{meta?})\\
 \mid & \ChangeMeta(\mathit{path}, \mathit{meta})\\
 \mid & \Quiesce(\mathit{path})\\
 \mid & \Remove(\mathit{path})\\
-\mid & \Designate(\mathit{path}, \mathit{survivor})\\
+\mid & \Designate(\mathit{path}, \mathit{pol})\\
 \mid & \Undesignate(\mathit{path})\\
 \mid & \ChangeRoot(\mathit{path})\\[6pt]
-\mathit{path} \mathrel{::=} & [\,] \;\mid\; i \mathbin{::} \mathit{path}
+\mathit{path} \mathrel{::=} & [\,] \;\mid\; i \mathbin{::} \mathit{path}\\[6pt]
+\multicolumn{2}{@{}l@{}}{i \in \mathbb{N}}
 \end{array}
 \]
 \caption{A grammar of atomic policy tree differences.}
@@ -483,7 +485,7 @@ One production is irregular in this respect: \ChangeRoot{} gives the path to the
 
 The grammar is given in \cref{fig:delta-grammar}.
 A \ensuremath{\mathit{path}} is a (possibly empty) sequence of child indices \texttt{i} read from the root.
-\ensuremath{\mathit{arm}} and \ensuremath{\mathit{survivor}} are \ensuremath{\mathit{pol}}-typed payloads (\cref{sec:policy-dsl}).
+Two productions carry a \ensuremath{\mathit{pol}} payload (\cref{sec:policy-dsl}): in \Add{} it is the new arm, and in \Designate{} it is the surviving subtree.
 
 Edits that would have to discard packets are expressly not in the grammar.
 For example, \Remove{} has a precondition saying that it may fire only when its target subtree is already empty, so structural deletion never has to discard a buffered packet.
@@ -511,6 +513,7 @@ We call the pass that computes it \emph{normalization}, and the compiler normali
 Two \(\eqR\)-equivalent policies therefore become the same term.
 
 We write \(\mathtt{C} \simR \mathtt{C'}\) for the equivalence obtained by closing \(\sim\) under sibling permutations.
+Permuting a node's children renumbers the slots they sit in, so the parent's \ensuremath{\mathit{pifo}} entries, its \ensuremath{\mathit{slot\_states}}, and its \(\mathit{z}.\mathit{serves}\) are all renumbered to match; the two controls present different positional layouts and realize the same scheduler.
 Every \(\sim\)-equivalent pair is \(\simR\)-equivalent, but not conversely.
 
 \cref{fig:equiv-gallery} shows all three relations by example, over a node running an abstract discipline \(P\) whose two arms carry per-arm metadata \(m_1\) and \(m_2\).
