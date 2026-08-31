@@ -652,7 +652,7 @@ The metadatum \(m\) is drawn from \(M_{D}\).
 And \ensuremath{\mathit{arm}}'s leaf labels are disjoint from those of \(C\).
 The disjointness precondition rules out \emph{splitting} an already-running flow.
 Going from a policy with a single \textsf{gmail} leaf to one that splits it into \textsf{gmail\_business} and \textsf{gmail\_personal} would have to re-sort the packets already buffered under \textsf{gmail} into the two new leaves, relocating admitted traffic; \Add{} only introduces flows disjoint from what is running, so it never has to relocate buffered traffic.
-% It would be good to give a forward pointer to the idiom section where this _does_ get done. And at that spot, make sure that we quickly handle this example.
+An operator may of course want that split, and \cref{sec:idioms} reaches it as a sequence rather than as a single form.
 
 We define \(\csem{\Add}\) by recursion on \(\pi\), writing \(\mathtt{flows}(\mathit{arm})\) for the set of flows at \(\lceil \mathit{arm} \rceil\)'s leaves:
 {\small
@@ -1476,6 +1476,16 @@ Its footprint is the subtree at \ensuremath{\mathit{path}}, the wrap node \Desig
 \cref{sec:planner} frames confinement against exactly this set.
 
 \end{itemize}
+
+\xxx[AM]{Owed here: the \textsf{gmail} split that \cref{sec:add} forward-references.
+\cref{sec:add} says \Add{} cannot split a running flow, and promises that this section reaches the split as a sequence, so the worked example has to appear.
+The sequence is \Replace{} at \textsf{gmail}'s slot, with survivor \(D(\textsf{gmail\_business}, \textsf{gmail\_personal})\): the old leaf drains on the wrap's high arm while the two new leaves take arriving traffic on the low arm, and nothing is re-sorted.
+Two things need working out before it can be written.
+First, \Designate's precondition is satisfied only because \textsf{gmail\_business} and \textsf{gmail\_personal} are flows nothing in \(C\) yet serves, which is fine, but the \Quiesce{} that follows silences \textsf{gmail} itself, so a packet still matching \textsf{gmail} and neither of the two new flows would be dropped.
+The example therefore only works when the split is exhaustive over \textsf{gmail}, and we should say so.
+Second, this is really a change to the flow universe \(F\) of \cref{sec:policy-dsl}, which gains two flows and loses one, and \(F\) is fixed there before the \ensuremath{\mathit{pol}} is constructed.
+Either \(F\) has to admit the finer flows from the start, or \cref{sec:policy-dsl} has to say what changing \(F\) means.
+The second is the more interesting question and we have not addressed it anywhere.}
 
 \section{The Transition Planner}\label{sec:planner}
 
