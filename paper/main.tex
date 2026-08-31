@@ -106,11 +106,23 @@
   \foreach \e [count=\i] in {#1}{\xdef\lastn{\i}}%
   \draw[draw=black!60, fill=black!6, rounded corners=0.3ex, line width=0.6pt] (0.5,-0.62) rectangle ({\lastn+0.5},0.62);
   \foreach \e [count=\i] in {#1}{\node[inner sep=0.5pt] at (\i,0) {\scriptsize$\e$};}%
-  \foreach \s in {#2}{\ifnum\s>0 \draw[red, line width=0.65pt] (\s-0.17,-0.52) -- (\s+0.17,0.52);\fi}%
+  \foreach \s in {#2}{\ifnum\s>0 \draw[red, line width=0.65pt] (\s-0.315,-0.35) -- (\s+0.315,0.35);\fi}%
 \end{tikzpicture}%
 }
 % \leaftri{color}{apex x}{apex y}{dots 0-4}{struck 0/1}: a small subtree triangle with
 % fringe-dot packets; if struck, a red slash marks it for removal.
+% \tritext{color}: a subtree triangle at text size, for naming a subtree in prose.
+\DeclareRobustCommand{\tritext}[1]{%
+\begin{tikzpicture}[baseline=-0.4ex, x=1ex, y=1ex]
+  \draw[fill=#1!35, draw=#1, line width=0.6pt] (0,0.95) -- (-0.8,-0.5) -- (0.8,-0.5) -- cycle;
+\end{tikzpicture}%
+}
+% \popseq{colors}: a left-to-right run of packets, one dot per pop.
+\newcommand{\popseq}[1]{%
+\begin{tikzpicture}[baseline=-0.55ex, x=1.65ex, y=1.65ex]
+  \foreach \c [count=\i] in {#1}{\fill[\c] (\i,0) circle (0.52ex);}%
+\end{tikzpicture}%
+}
 \newcommand{\leaftri}[5]{%
   \draw[fill=#1!12, draw=#1, line width=0.55pt] (#2,#3) -- (#2-0.3,#3-0.56) -- (#2+0.3,#3-0.56) -- cycle;
   \ifcase#4\relax\or
@@ -838,9 +850,9 @@ This would leave \(\vdash\) broken.
   \node[font=\scriptsize,anchor=east,inner sep=1.5pt] at (Pp.west) {$P$};
   \node (Qp) at (-0.45,-1.05) {\numpifo{0,0,1,1}{#2}};
   \node[font=\scriptsize,anchor=east,inner sep=1.5pt] at (Qp.west) {$Q$};
-  \leaftri{flowC}{0.95}{-0.95}{3}{0}
+  \leaftri{flowB}{0.95}{-0.95}{3}{0}
   \leaftri{flowA}{-0.82}{-1.98}{2}{0}
-  \leaftri{flowB}{-0.12}{-1.98}{2}{#3}
+  \leaftri{flowC}{-0.12}{-1.98}{2}{#3}
   \draw (Pp.south) -- (Qp.north);
   \draw (Pp.south) -- (0.95,-0.95);
   \draw (Qp.south) -- (-0.82,-1.98);
@@ -856,20 +868,16 @@ This would leave \(\vdash\) broken.
 }
 \begin{figure}[t]
   \centering
+  \captionsetup[subfigure]{justification=raggedright,singlelinecheck=false}
   \begin{subfigure}[t]{0.32\linewidth}\centering\rmpanel{0}{0}{0}\caption{Original.}\label{fig:remove-orig}\end{subfigure}\hfill
-  \begin{subfigure}[t]{0.32\linewidth}\centering\rmpanel{5,7}{3,4}{1}\caption{Keep the leftmost 0s.}\label{fig:remove-leftmost}\end{subfigure}\hfill
-  \begin{subfigure}[t]{0.32\linewidth}\centering\rmpanel{1,3}{3,4}{1}\caption{Keep the rightmost 0s.}\label{fig:remove-rightmost}\end{subfigure}
-  \caption{Removing the orange subtree forces out \(Q\)'s two index-1 entries and two of \(P\)'s four index-0 entries (struck red). Which two \(0\)s to drop is unspecified, so (b) and (c) are both legal. They emit the backlog differently.}
+  \begin{subfigure}[t]{0.32\linewidth}\centering\rmpanel{5,7}{3,4}{1}\caption{Rightmost 0s struck.}\label{fig:remove-strike-right}\end{subfigure}\hfill
+  \begin{subfigure}[t]{0.32\linewidth}\centering\rmpanel{1,3}{3,4}{1}\caption{Leftmost 0s struck.}\label{fig:remove-strike-left}\end{subfigure}
+  \caption{Removing \tritext{flowC} forces out \(Q\)'s two index-1 entries and two of \(P\)'s four index-0 entries (struck red). Which two \(0\)s to strike is unspecified, so (b) and (c) are both legal.}
   \label{fig:remove-ambiguity}
 \end{figure}
-% I like the angle of the slash through the triangles. Can we have the same angle for the strikes through the numbers
-
-% Tighten. No need for A, B, C; you can even put little triangles in the text here. So we can say "Say the user asks us to delete <orange triange>"
 Deleting an \emph{occupied} child has no canonical local realization.
-Consider the tree \(P(Q(A, B), C)\) of \cref{fig:remove-orig}, whose subtrees \(A\), \(B\), \(C\) are drawn blue, orange, and green.
-Annotations on the arms show how a parent refers to a child.
-The tree is well-formed.
-Say the user asks us to delete \(B\), dropping its packets.
+Consider the well-formed tree of \cref{fig:remove-orig}, whose internal nodes are \(P\) and \(Q\), with the annotations on the arms showing how a parent refers to a child.
+Say the operator asks us to delete \tritext{flowC}, dropping its packets.
 To restore well-formedness, we need to remove two instances of the index \(1\) from \(Q\)'s PIFO and two instances of the index \(0\) from \(P\)'s PIFO.
 
 At \(Q\) the edit is unambiguous.
@@ -877,17 +885,15 @@ Well-formedness of the original tree forces \(Q\)'s PIFO to have exactly two ins
 The trouble is one level up.
 \(P\)'s PIFO originally had four instances of \(0\), and well-formedness demands that we remove two of them.
 But \emph{which} two?
-No entry in \(P\) carries the meta-information ``I was enqueued when a packet was inserted into \(B\)''; an entry \(0\) in \(P\) only means ``when this index is popped, recursively ask subtree \(Q\) to emit the next packet'' (see \cref{sec:hierarchical}).
+No entry in \(P\) carries the meta-information ``I was enqueued when a packet was inserted into \tritext{flowC}''; an entry \(0\) in \(P\) only means ``when this index is popped, recursively ask subtree \(Q\) to emit the next packet'' (see \cref{sec:hierarchical}).
 This absence of meta-information is a \emph{feature} of PIFO trees, not a defect: an entry is deliberately detached from the packet it was enqueued with, which is what lets each node schedule its own discipline in isolation and lets a subtree be reconfigured without rewriting its ancestors.
 
-Given this, there is no obvious or operator-provided answer: whichever two instances of \(0\) we drop, the choice is itself a scheduling decision, since it affects how \(P\) intermixes \(C\) and \(Q\) traffic.
-Keeping the two leftmost \(0\)s (\cref{fig:remove-leftmost}), five pops drain \(P\) and yield \(c_1, c_2, a_1, c_3, a_2\).
-% Instead of naming packets that don't exist in the figure anymore, use little colored dots to show the yield as cartoon. The point is just the changed order 
-% Move to "striking the rightmost/leftmost" language, above and below
-Keeping the two rightmost \(0\)s instead (\cref{fig:remove-rightmost}), the same five pops yield \(a_1, c_1, a_2, c_2, c_3\).
-The \emph{choice of which} \(0\)s to drop \emph{silently reschedules \(A\) against \(C\)}, and nothing in the operator's deletion request records what the operator wanted.
+Given this, there is no obvious or operator-provided answer: whichever two instances of \(0\) we strike, the choice is itself a scheduling decision, since it affects how \(P\) intermixes \tritext{flowB} traffic with \(Q\)'s.
+Strike the two rightmost \(0\)s (\cref{fig:remove-strike-right}) and five pops drain \(P\) as \popseq{flowB,flowB,flowA,flowB,flowA}.
+Strike the two leftmost instead (\cref{fig:remove-strike-left}) and the same five pops drain it as \popseq{flowA,flowB,flowA,flowB,flowB}.
+The \emph{choice of which} \(0\)s to strike \emph{silently reschedules \tritext{flowA} against \tritext{flowB}}, and nothing in the operator's deletion request records what the operator wanted.
 
-We do not wish to make a scheduling decision for the operator, and the only way to avoid one is to drain the whole tree, filter the \(B\)-packets, and re-push, which is a stop-the-world rebuild.
+We do not wish to make a scheduling decision for the operator, and the only way to avoid one is to drain the whole tree, filter out \tritext{flowC}'s packets, and re-push, which is a stop-the-world rebuild.
 
 Our grammar sidesteps the question entirely, by asking that a targeted subtree be empty before it is deleted (\cref{sec:sequences}).
 At the instant \Remove{} fires, no entry above the doomed arm was enqueued on account of a packet inside it, so no entry has to be dropped and the structural deletion is unambiguous.
