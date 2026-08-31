@@ -901,19 +901,22 @@ At the instant \Remove{} fires, no entry above the doomed arm was enqueued on ac
 \(\tau : \mathit{path}\) is the path to the target subtree being wrapped, and \(\mathit{survivor} : \mathit{pol}\) is the designated-survivor policy that becomes the wrap's low-priority arm.
 
 Say the presently running control is \(C\).
-Intuitively, \Designate{} replaces \(C@\tau\) in place with \(\Strictstar(C@\tau, \lceil \mathit{survivor} \rceil)\).
+Intuitively, \Designate{} replaces \(C@\tau\) in place with \(\Strictstar(C@\tau, \lceil \mathit{survivor} \rceil)\), reading \(\Strictstar\) as \(\Strict\) for now.
 It is the mechanism behind non-disruptive in-place replacement (\cref{fig:designate}).
 The wrap lets \ensuremath{\mathit{survivor}} begin accepting new traffic on a low-priority arm, while the old subtree keeps draining, untouched, on a high-priority one.
 Once the old subtree is empty, \Undesignate{} (\cref{sec:undesignate}) removes it and promotes \ensuremath{\mathit{survivor}} in its place.
 That is why the form exists: no single edit can swap one subtree for another without either dropping the old subtree's backlog or stalling the new arm, but the \(\Strictstar\) wrap lets both coexist for the length of a drain.
 
-% Not true! We need to have a longer conversation about what Strict* is. Then you can write truthfully about it
-\(\Strictstar\) is the same discipline as \(\Strict\), distinguished only by its name: a node's ranker names \(\Strictstar\) where an ordinary strict-priority node would name \Strict{} (\cref{sec:controls}).
-\Designate{} installs a ranker of the first kind, and \Undesignate{} retires the node that carries it.
-Semantically the two are identical; every push, pop, and well-formedness check treats \(\Strictstar(A, B)\) exactly as \(\Strict(A, B)\), so the obligations below are stated against the ordinary \(\Strict\) semantics of \cref{sec:policy-dsl}.
-The star exists only so that \Undesignate's precondition (``\(\tau\) lands on a \(\Strictstar\)'') can be stated structurally.
-The \cref{sec:policy-dsl} DSL in which the operator writes policies can parse only \(\Strict\), never \(\Strictstar\), so a \(\Strictstar\) is unreachable in any user-written \ensuremath{\mathit{pol}} and arises only in the middle of a planner sequence, between a \Designate{} and its eventual \Undesignate.
-The wrap is therefore \ensuremath{\mathit{pol}}-visible only as a \(\Strict\).
+For the present discussion, \(\Strictstar\) can be thought of as the same thing as \(\Strict\).
+It is really a construction of our own, at the hardware level, and \cref{sec:hardware} explains it.
+We keep the separate name here so that \Undesignate{} can state its precondition structurally, since a node's ranker records which of the two the node runs (\cref{sec:controls}).
+\Designate{} installs a ranker that names \(\Strictstar\), and \Undesignate{} retires the node carrying it.
+No other form disturbs such a node, and in particular \Remove{} will not retire a \(\Strictstar\) node.
+That is a precondition on \Remove{} (\cref{sec:remove}), and this is the first point at which it can be stated, since \(\Strictstar\) is what makes such a node recognizable.
+
+An operator never writes a \(\Strictstar\), since the DSL of \cref{sec:policy-dsl} offers only \(\Strict\).
+One arises only in the middle of a planner sequence, between a \Designate{} and its eventual \Undesignate.
+This is the one place where \(\lfloor \cdot \rfloor\) (\cref{sec:equivalences}) does not simply report the discipline a node's ranker names: a \(\Strictstar\) node reads as a \(\Strict\), so the wrap is \ensuremath{\mathit{pol}}-visible only as a \(\Strict\).
 
 \begin{figure*}[t]
   \centering
@@ -1301,8 +1304,7 @@ The parent keeps its ranker, so it still reads as the same \ensuremath{D} with s
 
 \paragraph{Characterization}
 As with \Add, outside the wrap every node is structurally intact, arm 1 is \(\lceil \mathit{survivor} \rceil\), and the ancestor \ensuremath{\mathit{z}}-extensions touch only internal-node classifiers.
-The fresh wrapper \(N\) is the one node whose discipline \cref{sec:equivalences} did not have in view when it defined \(\lfloor \cdot \rfloor\).
-Its ranker names \(\Strictstar\), which \(\lfloor \cdot \rfloor\) reports as \Strict, with the two arms annotated \(\mathtt{hi}\) and \(\mathtt{lo}\) out of \(\mathit{z}_N.\mathit{meta}\).
+The fresh wrapper \(N\) reads as a \(\Strict\) by \cref{sec:designate}'s clause, with its two arms annotated \(\mathtt{hi}\) and \(\mathtt{lo}\) out of \(\mathit{z}_N.\mathit{meta}\).
 So \(p' \eqR \psem{\Designate(\tau, \mathit{survivor})}(p)\).
 
 \paragraph{Preservation and non-disruption}
@@ -2072,6 +2074,15 @@ The lowering rewires \ensuremath{\mathit{path}}'s parent edge from \texttt{loser
 \texttt{designate(loser, surv)} is the ISA-level marker that names the favored child and records the eventual successor; a later \texttt{undesignate} swings the parent's index over to \texttt{surv} and releases \texttt{sp\_v} along with the loser subtree.
 A substrate that recognizes the same-PE invariant on \texttt{(sp\_v, loser, surv)} may coalesce the three into a single physical slot, the ``super-node'' optimization named above.
 The ISA does not require it, leaving room for substrates that prefer the literal Strict-2 form.
+
+\xxx[AM]{\(\Strictstar\) needs to be done properly here, and this paragraph is the placeholder.
+\cref{sec:designate} tells the reader to read \(\Strictstar\) as \(\Strict\) and points here for the real account, so this section owes that account.
+Four things to write
+(1) What \(\Strictstar\) is: a lightweight gadget with no ranker, no scheduling transaction, and no entries naming its children, which sits beside its two subtrees rather than above them and so consumes no tree height.
+(2) Why we want it: with a literal Strict-2 wrapping, the old subtree moves down a level on the way in and the survivor moves up a level on the way out. The Strict* gadget avoids both, so \Designate{} and \Undesignate{} become pointer updates at the parent.
+(3) The three open questions: whether the gadget needs a classifier or simply pushes right and pops left-then-right; whether it needs a packet counter to know the left arm has drained, or attempts the left arm and falls through; and how a \cref{sec:edit-semantics} path lands on physical levels when a height-free gadget sits in the chain.
+(4) An equivalence argument, which \cref{sec:hw-preservation} is the place for: \cref{sec:per-form} discharges non-disruption for \Designate{} by reasoning about \(N\)'s \ensuremath{\mathit{pifo}} holding \(P_0\) entries for arm 0, and the gadget has no \ensuremath{\mathit{pifo}}, so this section has to show the gadget does what the modelled node does.
+Also to settle: whether the coalescing stays optional, as the two sentences above have it, or becomes what Rio does with the literal Strict-2 form kept as a portability fallback.}
 
 \subsection{Substrate portability}\label{sec:substrate-portability}
 
