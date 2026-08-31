@@ -600,17 +600,14 @@ Indices follow the \ensuremath{\mathit{path}} convention of \cref{sec:delta-gram
 The control-level rules walk controls the same way.
 Nodes are written \(\langle\mathit{state}, \mathit{pifo}, \mathit{z}\rangle(\mathit{cs})\), as in \cref{sec:controls}, and we reuse \(\mathit{cs}[C'/i]\) and \(\mathit{cs}\mathbin{+\!\!+}[C']\) for the list operations on the child list \(\mathit{cs}\).
 
-Two invariants link a node's classifier to the tree, and every form preserves both.
-First, \(\mathrm{dom}(\mathit{z}.\mathit{serves})\) at a node is exactly the set of flows served by the leaves beneath it, and \(\mathit{z}.\mathit{serves}\) sends each of them to the child that leads on toward its leaf.
-Second, \(\mathit{z}.\mathit{admit} \subseteq \mathrm{dom}(\mathit{z}.\mathit{serves})\), with the containment strict exactly where a flow has been silenced but not yet removed, and admission is path-consistent (\cref{sec:compilation}).
-Splicing in a new leaf, for instance, means extending both parts at each node along that leaf's path so the new flow is served and admitted.
-Those nodes' \ensuremath{\mathit{node\_state}}, \ensuremath{\mathit{slot\_states}}, ranker, and per-arm metadata are left untouched.
-% The above is throat-clearing. Crunch it significantly and put it where applicable inside Add, Quiesce, Remove
+One invariant links a node's classifier to the tree, and every form below preserves it.
+At any node, \(\mathrm{dom}(\mathit{z}.\mathit{serves})\) is exactly the set of flows served by the leaves beneath it, and \(\mathit{z}.\mathit{serves}\) sends each of them to the child that leads on toward its leaf.
 
 A form's path names a target node, but it is often more convenient to work with the target's parent and the index the parent uses to reach it.
 We recover both by splitting the given path as \(\pi \mathbin{+\!\!+} [k]\): \(\pi\) is the path to the parent, and \(k\) is the child index by which the parent reaches the target.
-We also order paths by prefix, writing \(\nu \sqsubseteq \tau\) when \(\nu\) is a prefix of \(\tau\), so that \(C@\nu\) is an ancestor of \(C@\tau\) or is \(C@\tau\) itself, and \(\nu \sqsubset \tau\) for the strict version.
-% I think you explanation will land more smoothly if you give the strict version first by example, and then give the loose version
+We also order paths by prefix.
+\(\nu \sqsubset \tau\) says that \(C@\nu\) is a proper ancestor of \(C@\tau\).
+The loose version \(\nu \sqsubseteq \tau\) allows \(\nu = \tau\) as well.
 
 Most forms edit only the node that their path points to.
 For such a form we use a small combinator: given a node transformer \(g\) and a path \(\pi\), write \(\mathtt{at}(\pi, g)\) for the operation that walks to the node at \(\pi\), applies \(g\) there, and copies every other node of the tree unchanged:
@@ -649,15 +646,14 @@ The six that follow lean on it, and we point out only where each one departs fro
 
 \Add{}'s arguments are \(\pi : \mathit{path}\), the node that will receive the new arm as its last child; \(D\), the discipline that node runs; \(\mathit{arm} : \mathit{pol}\), the policy of the new arm; and \(m \in M_{D}\), the metadatum that tells \ensuremath{D} how to schedule that arm (\cref{sec:policy-dsl}).
 
-\paragraph{Definition}
-
-We must define \(\csem{\Add(\pi, D, \mathit{arm}, m)} : \mathit{control} \rightharpoonup \mathit{control}\) together with the preconditions on the already-running control.
-
 Say the presently running control is \(C\).
 Intuitively, \Add{} inserts a freshly compiled subtree \(\lceil \mathit{arm} \rceil\) as the new last child of the subtree \(C@\pi\).
 For traffic to reach the new arm, the flows it serves, those bound for leaves inside it, must be admitted along the whole path.
 Every node from the root down to \(C@\pi\) must begin to accept the new flows and send them toward the arm.
-% This should be swum up to the be the intuition paragraph after the arguments are explained
+
+\paragraph{Definition}
+
+We must define \(\csem{\Add(\pi, D, \mathit{arm}, m)} : \mathit{control} \rightharpoonup \mathit{control}\) together with the preconditions on the already-running control.
 
 \(\csem{\Add(\pi, D, \mathit{arm}, m)}(C)\) is defined when three things hold.
 The path \(\pi\) resolves in \(C\) to an internal node running discipline \ensuremath{D}.
@@ -772,7 +768,7 @@ Say the presently running control is \(C\).
 It leaves every node's routing in place, so buffered packets can still be popped out.
 This is what keeping \(\mathit{z}.\mathit{admit}\) separate from \(\mathrm{dom}(\mathit{z}.\mathit{serves})\) (\cref{sec:controls}) is for.
 A silenced flow leaves the admitted set while its entry in the service map stays, so packets already buffered under the node still have a way out.
-Only \Remove{} deletes the mapping itself.
+This is the only way the containment \(\mathit{z}.\mathit{admit} \subseteq \mathrm{dom}(\mathit{z}.\mathit{serves})\) becomes strict, and only \Remove{} deletes the mapping itself.
 
 \paragraph{Definition}
 
@@ -792,18 +788,16 @@ applied at every node of \(V_\tau\):
 \[
 \csem{\Quiesce(\tau)} = \mathtt{at}(V_\tau,\ g_L).
 \]
-Every field other than \(\mathit{z}.\mathit{admit}\), and every node outside \(V_\tau\), is left unchanged; the Note below says why the restriction must reach all of \(V_\tau\) rather than the root alone.
-% Just promote the note here and get it over with
+Every field other than \(\mathit{z}.\mathit{admit}\), and every node outside \(V_\tau\), is left unchanged.
+
+The restriction has to reach every node of \(V_\tau\) rather than the root alone.
+Under \cref{sec:controls}'s parallel \push{}, every node on the path from the system root to a packet's destination leaf mints an index via its local \ensuremath{\mathit{z}} independently of the others.
+If we restricted \ensuremath{\mathit{z}} at only a subset of those nodes, say only the root or only inside \(C@\tau\), the rest would go on minting indices and enqueueing them.
+The tree would then be malformed, and a later \pop{} would get stuck.
 
 \paragraph{Pol-level reading}
 
 \(\psem{\Quiesce(\tau)}\) is the identity on \ensuremath{\mathit{pol}}.
-
-\paragraph{Note: Why touch every node on every quiesced push path}
-
-Under \cref{sec:controls}'s parallel \push{}, every node on the path from the system root to a packet's destination leaf mints an index via its local \ensuremath{\mathit{z}} independently of the others.
-If we restricted \ensuremath{\mathit{z}} only at a subset of those nodes (say, only the root of the tree, or only inside \(C@\tau\)), the rest would happily mint indices and enqueue them.
-The tree would then be malformed, and future \pop{} would get stuck.
 
 \subsubsection{\texorpdfstring{\(\Remove(\tau)\)}{Remove}}\label{sec:remove}
 
