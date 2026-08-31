@@ -307,9 +307,7 @@ If a packet does not match any of the flows in the scheduling tree's leaves, the
 
 \subsection{The runtime model: controls}\label{sec:controls}
 
-A PIFO tree fixes which queues sit where, and says nothing about how a packet's rank is chosen at each of them.
-% Above you've said a bunch of stuff, written in the negative, about something the reader has just met
-A \emph{control} attaches that logic to the tree, giving each node its own rule for ranking what it enqueues.
+A \emph{control} is a PIFO tree in which every node carries its own rule for ranking what it enqueues.
 The name and the model are from Mohan et al.~\cite{Mohan23}, and we note our departures from them as they arise.
 A control is the concrete state a programmable switch executes at line rate, realizable on an FPGA or SmartNIC (\cref{sec:hardware} lowers a control to exactly such a target).
 
@@ -319,16 +317,17 @@ A control \(C\) is a finite tree whose every node carries a triple:
 \[
 C \mathrel{::=} \langle \mathit{state}, \mathit{pifo}, \mathit{z} \rangle(C_1, \ldots, C_n), \qquad n \geq 0.
 \]
-A node with no children (\(n = 0\)) is a \emph{leaf}, and a node with children is \emph{internal}.
-What a node enqueues into its \emph{pifo} is called its \emph{payload}: at an internal node the payload is an index into the child list, and at a leaf the payload is a packet.
-% The paragraph above feels misplaced. It's talking about "node with no children (\(n = 0\))" but the reader doesn't even know how to read the triple. They don't know that the Cs are children, what n is, etc.
+The subtrees \(C_1 \ldots C_n\) are the node's children and \(n\) is its arity.
+A node with no children is a \emph{leaf}, and a node with children is \emph{internal}.
+The three components of the triple are as follows.
 
 \begin{itemize}
 \item \ensuremath{\mathit{state}} is a pair \((\mathit{node\_state}, \mathit{slot\_states})\): the scheduling discipline's per-node bookkeeping and a list of per-arm entries, one per child.
 Both evolve as the node serves traffic.
 When the node runs a discipline that keeps no per-arm bookkeeping, \ensuremath{\mathit{slot\_states}} is empty.
-\item \ensuremath{\mathit{pifo}} is a PIFO of ranked payloads.
-An internal node's \ensuremath{\mathit{pifo}} therefore holds indices into its child list, and a leaf's \ensuremath{\mathit{pifo}} holds packets.
+\item \ensuremath{\mathit{pifo}} is a PIFO of ranked \emph{payloads}.
+A payload is what this node enqueues when presented with a packet.
+At an internal node the payload is an index into the child list, and at a leaf it is the packet itself.
 \item \ensuremath{\mathit{z}} is the node's \emph{scheduling transaction},
 \[
 \mathit{z} : \mathit{state} \times \mathit{Pkt} \rightharpoonup (\mathit{payload} \times \mathit{rank}) \times \mathit{state}.
@@ -338,23 +337,11 @@ Given the node's \ensuremath{\mathit{state}} and an incoming packet, it returns 
 When it is undefined for a packet, nothing is enqueued at this node and \ensuremath{\mathit{state}} is unchanged.
 \end{itemize}
 
-% Graf below feels misplaced
-\paragraph{Addressing a node}
-
-We address node-local components of a control by a \ensuremath{\mathit{path}}, a possibly empty sequence of child indices read from the root.
-The local triple at the node reached by following \ensuremath{\mathit{path}} from control \(C\)'s root is written \(C@\mathit{path}\), with fields \(C@\mathit{path}.\mathit{state}\), \(C@\mathit{path}.\mathit{pifo}\), and \(C@\mathit{path}.\mathit{z}\).
-We also write \(C@\mathit{path}.\mathit{node\_state}\) and \(C@\mathit{path}.\mathit{slot\_states}\) for the two components of \(C@\mathit{path}.\mathit{state}\).
-
 \paragraph{The many roles of \ensuremath{\mathit{z}}: classifying, annotating, and ranking}
 
-We write \ensuremath{\mathit{z}} as a single partial function, but it actually has three parts.
-Mohan et al.\ keep one total transaction for the whole tree, returning an entire root-to-leaf path of indices and ranks.
-Ours is per-node and partial, and it does not pick the index.
-Distinct leaves carry distinct flows (\cref{sec:policy-dsl} makes this a validity condition), so a packet's leaf is settled before \ensuremath{\mathit{z}} is consulted.
-The payload is fixed by the tree's shape, and \ensuremath{\mathit{z}}'s job is only to rank it.
-% I see what you mean, but it's too terse. Starting from "so a packet's leaf is settled before"
+We write \ensuremath{\mathit{z}} as a single partial function, but it has three parts, and the edits of \cref{sec:grammar} rewrite them separately.
+Mohan et al.\ instead keep one total transaction for the whole tree, returning an entire root-to-leaf path of indices and ranks, where ours is per-node and partial.
 
-% The list below feels repetitive. I think it gives the right amount of info more or less, but the earlier paragraphs need to say less I guess. About z.
 \begin{itemize}
 \item The \emph{classifier} answers whether this node accepts a given packet and where it sends it.
 It has a \emph{service map}, written \(\mathit{z}.\mathit{serves}\), which is a partial map from flows to payloads.  
@@ -372,19 +359,16 @@ A node's ranker names the discipline that the node runs.
 So \(\mathit{z}(\mathit{state}, p)\) is defined exactly when \(\mathit{flow}(p) \in \mathit{z}.\mathit{admit}\). 
 It then finds \(p\)'s payload in \(\mathit{z}.\mathit{serves}\), and pairs that payload with the rank that \(\mathit{z}.\mathit{rank}\) computes.
 
+Note that \ensuremath{\mathit{z}} does not \emph{choose} the payload.
+Distinct leaves carry distinct flows (\cref{sec:policy-dsl} makes this a validity condition), so a packet's flow already fixes the one leaf it is bound for.
+That in turn fixes, at every node on the way down, which child the packet has to be handed to.
+The service map reports that child rather than selecting it, and what \ensuremath{\mathit{z}} genuinely decides is the rank.
+
 \ensuremath{\mathit{state}} and \ensuremath{\mathit{pifo}} change as the node serves traffic, whereas \ensuremath{\mathit{z}} changes only when an edit rewrites it.
-The per-arm metadata also changes only in the second way.
-% What's the point of the sentence above?
-Serving traffic reads it and never writes it, so it is that configuration the operator chose rather than bookkeeping that the traffic left behind.
-That is why it sits in \ensuremath{\mathit{z}} rather than in \ensuremath{\mathit{slot\_states}}.
-% Can't the above be compressed and merged into the preceeding discussion?
+That is why the per-arm metadata sits in \ensuremath{\mathit{z}} rather than in \ensuremath{\mathit{slot\_states}}.
+It is the configuration the operator chose, not bookkeeping that the traffic left behind.
 
 \xxx[AM to AS]{This is a change. The per-arm metadata used to live in \ensuremath{\mathit{slot\_states}}, so \(\lfloor \cdot \rfloor\) could not read it. And then \(\psem{\ChangeMeta}\) ended up being the identity function: an operator who re-tuned a weight got back an echo saying nothing had changed. Moving the metadata into \ensuremath{\mathit{z}} makes \(\psem{\ChangeMeta}\) a real function, and it matches the ISA of \cref{sec:hardware}, where \texttt{set\_arm\_meta} is its own opcode rather than a state write.}
-
-Keeping \(\mathit{z}.\mathit{admit}\) separate from \(\mathrm{dom}(\mathit{z}.\mathit{serves})\) proves useful.
-Silencing a flow drops it from \(\mathit{z}.\mathit{admit}\) while leaving \(\mathit{z}.\mathit{serves}\) in place, so packets already buffered under the node still have a way out.
-Only the structural deletion of a node removes the mapping itself.
-% Push the above deeper so that it's explained just in time
 
 \xxx[AM to AS]{I want to flag a new thing. A node's \emph{ranker} now names the discipline D that the node runs, so the discipline is recoverable from the running control rather than lost at compile time.
 That lets \cref{sec:equivalences} define \(\lfloor \cdot \rfloor\) by structural recursion.
@@ -404,16 +388,18 @@ Ranks are fixed at \push{} time and never revised.
 A \pop{} releases the best-ranked packet, resolving ``best-ranked'' from the top down.
 It releases the best-ranked index at the root, follows that index to a child, recurses, and releases a packet once it reaches a leaf.
 It consults \ensuremath{\mathit{pifo}} contents alone, never \ensuremath{\mathit{state}} or \ensuremath{\mathit{z}}.
-
-Because an internal entry is only an index, the index enqueued on account of one packet may end up releasing a different, better-ranked packet that later joined the same leaf.
-This deferral is what lets a PIFO tree reorder buffered traffic in ways a single PIFO cannot.
-% The above is all true, but it's totally irrelevant stated here?
 These two are the \emph{only} observable interactions with a scheduler, which is why we frame an \emph{atomic} transition in terms of \push{}/\pop{} observability.
 
 \paragraph{Well-formedness}
 
 A control \(C\) is \emph{well-formed} (written \(\vdash C\)) when, at every internal node of \(C\), the \ensuremath{\mathit{pifo}} has, for each legal child index \(i\), exactly as many occurrences of \(i\) as there are packets stored in the leaf pifos of the subtree under the \(i\)-th child.
 A control that fails this holds an index at some node with no packet under the corresponding child, so a \pop{} that follows that index down reaches a leaf with nothing to emit.
+
+\paragraph{Addressing a node}
+
+We address node-local components of a control by a \ensuremath{\mathit{path}}, a possibly empty sequence of child indices read from the root.
+The local triple at the node reached by following \ensuremath{\mathit{path}} from control \(C\)'s root is written \(C@\mathit{path}\), with fields \(C@\mathit{path}.\mathit{state}\), \(C@\mathit{path}.\mathit{pifo}\), and \(C@\mathit{path}.\mathit{z}\).
+We also write \(C@\mathit{path}.\mathit{node\_state}\) and \(C@\mathit{path}.\mathit{slot\_states}\) for the two components of \(C@\mathit{path}.\mathit{state}\).
 
 \subsection{Compiling a policy to a control}\label{sec:compilation}
 
@@ -784,6 +770,9 @@ Under \Strict{} the arm carries no comparable round-bookkeeping, so the question
 Say the presently running control is \(C\).
 \Quiesce{} strikes every flow served under \(C@\tau\) from the admitted sets of the nodes those flows traverse, so that no packet bound for a leaf there is admitted anywhere.
 It leaves every node's routing in place, so buffered packets can still be popped out.
+This is what keeping \(\mathit{z}.\mathit{admit}\) separate from \(\mathrm{dom}(\mathit{z}.\mathit{serves})\) (\cref{sec:controls}) is for.
+A silenced flow leaves the admitted set while its entry in the service map stays, so packets already buffered under the node still have a way out.
+Only \Remove{} deletes the mapping itself.
 
 \paragraph{Definition}
 
