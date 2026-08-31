@@ -290,10 +290,8 @@ D\ \text{a scheduling discipline, declaring a metadata set } M_{D}\\[8pt]
 The operator writes a \ensuremath{\mathit{pol}} (\cref{fig:pol-grammar}).
 It is either a leaf labeled by a flow, or an internal node running a scheduling discipline \ensuremath{D} over child policies.
 Each arm carries a metadatum that tells \ensuremath{D} how to schedule it, drawn from a set \(M_{D}\) that \ensuremath{D} declares.
-\(M_{\Strict}\) is a set of priorities, and \(M_{\WFQ}\) is a set of weights.
-\RR{} treats its arms alike and consults nothing about any one of them, so \(M_{\RR}\) has a single element.
-% Demote the above to examples more than a comprehensive list.
-That element carries no information, and we elide it when writing examples.
+For instance, \(M_{\Strict}\) is a set of priorities and \(M_{\WFQ}\) a set of weights.
+A discipline that treats its arms alike, such as \RR, declares a one-element set, and we elide that element when writing examples.
 We read the arity off by counting children, so, e.g., \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\textsf{gmail})\) is the 2-ary instance of the discipline \Strict.
 Each leaf label denotes a \emph{flow}: a predicate over packets.
 
@@ -423,31 +421,23 @@ Supplying those four is the whole interface, and an operator can ``bring their o
 
 \(\mathit{init\_node}_{D}\) runs once per node when a \ensuremath{\mathit{pol}} is compiled into a control, seeding that node's \ensuremath{\mathit{node\_state}}.
 \(\mathit{init\_slot}_{D}\) runs once per arm, at compile time and again whenever an edit splices a new arm under an already-running \ensuremath{D}-parent (\cref{sec:add}), taking the parent's current \ensuremath{\mathit{node\_state}} and the new arm's metadatum.
+Choosing it is a scheduling decision rather than a structural one, since it fixes how a freshly spliced arm competes with the established ones.
+We choose throughout to have the new arm join the current round, so that, e.g., going from \(\WFQ(A,B)\) to \(\WFQ(A,B,C)\) leaves \(C\) neither rewarded for having been silent nor penalized for arriving late.
+\cref{app:init-slot} gives the recipes for \Strict, \RR, and \WFQ.
 
 Two obligations attend the exchange.
 The first is path-consistency of admission: a packet's flow must be admitted at every node on that flow's root-to-leaf path, or at none of them.
 This is a global property rather than a concern of any node-local \ensuremath{\mathit{z}}, and it is what keeps \(\vdash\) true under compilation and under every \(\delta\).
 The second is that \(\mathit{rank}_{D}\) records which discipline the node runs, and not merely how that discipline ranks.
-Two disciplines that happen to schedule alike therefore stay distinct, which is what lets \cref{sec:equivalences} recover the operator's own \ensuremath{D} from a running control.
-% I think the second obligation is too subtle to be appreciated...
-
-Choosing \(\mathit{init\_slot}_{D}\) is a scheduling decision rather than a structural one, since it fixes how a freshly spliced arm competes with the established ones.
-We choose throughout to have the new arm ``join the current round''.
-Going from \(\WFQ(A,B)\) to \(\WFQ(A,B,C)\), the newly added \(C\) should be neither rewarded for having been silent nor penalized for arriving late.
-\cref{app:init-slot} gives the recipes for \Strict, \RR, and \WFQ{} that realize this.
-% Crunch and merge with preceeding discussion
+Suppose two disciplines happened to schedule identically on every input.
+If a node stored only its ranking behavior, the two would be indistinguishable in a running control, and the policy we echo back to the operator could name the wrong discipline.
+Recording \ensuremath{D} keeps them apart, which is what lets \cref{sec:equivalences} read the operator's own \ensuremath{D} off a running control.
 
 \paragraph{From \ensuremath{\mathit{pol}} to control}
 
-% I think the below is actually fairly straightforward and we're spilling too much ink on it. Tighten significantly
 We write \(\lceil p \rceil\) for the control compiled from \ensuremath{\mathit{pol}} \(p\).
-The tree shape of \(\lceil p \rceil\) exactly matches that of \(p\), and at each node the local triple \((\mathit{state}, \mathit{pifo}, \mathit{z})\) of \cref{sec:controls} is filled in as follows.
-\ensuremath{\mathit{state}}'s \ensuremath{\mathit{node\_state}} is seeded by \(\mathit{init\_node}_{D}()\), and each entry of the \ensuremath{\mathit{slot\_state}} list is seeded by the corresponding arm's \(\mathit{init\_slot}_{D}\) call.
-\ensuremath{\mathit{pifo}} starts empty.
-\ensuremath{\mathit{z}} is assembled from its three parts (\cref{sec:controls}).
-\(\mathit{z}.\mathit{rank}\) is \ensuremath{D}'s ranker \(\mathit{rank}_{D}\).
-\(\mathit{z}.\mathit{meta}\) sends each child index \(i\) to the \(m_i\) written on that arm in the source term.
-The classifier is read off the tree, so that \(\mathit{z}.\mathit{serves}\) sends each flow served beneath the node toward that flow's leaf and \(\mathit{z}.\mathit{admit} = \mathrm{dom}(\mathit{z}.\mathit{serves})\).
+It has \(p\)'s tree shape, an empty \ensuremath{\mathit{pifo}} at every node, and \ensuremath{\mathit{state}} seeded by \(\mathit{init\_node}_{D}\) and \(\mathit{init\_slot}_{D}\).
+Each node's \ensuremath{\mathit{z}} takes \ensuremath{D}'s ranker, copies each arm's written metadatum into \(\mathit{z}.\mathit{meta}\), and reads its classifier off the tree, sending every flow served beneath the node toward that flow's leaf.
 A freshly compiled control therefore admits every flow it serves, and carries the operator's arm annotations verbatim.
 
 This is essentially what the vPIFO paper's \emph{Scheduling Description Language} does informally~\cite{vPIFO}.
@@ -471,9 +461,7 @@ They are \emph{explainable}, since \(\psem{\delta}\) states every form's effect 
 And they are \emph{complete}, since the grammar can express a sequence that reaches any \(p_2\) from any \(p_1\), which \cref{sec:fallback} shows by exhibiting one that always works.
 
 An edit describes \emph{where} in the tree the change lands and \emph{what} the change is.
-Throughout this section \(p_1\) is the presently running policy, 
-and \(p_1@\mathit{path}\) is the subtree of \(p_1\) reached by following \ensuremath{\mathit{path}} down from its root.
-% crunch the clause above
+Throughout this section \(p_1\) is the presently running policy, and \(p_1@\mathit{path}\) is its subtree at \ensuremath{\mathit{path}}.
 The node a form's \ensuremath{\mathit{path}} names is its \emph{edit site}.
 
 \begin{figure}[t]
@@ -531,8 +519,6 @@ Because \(\eqR\) only permutes sibling arms, each \(\eqR\)-class has a canonical
 We write \(C \simR C'\) for the equivalence obtained by closing \(\sim\) under sibling permutations.
 Permuting a node's children renumbers the slots they sit in, so the parent's \ensuremath{\mathit{pifo}} entries, its \ensuremath{\mathit{slot\_states}}, its \(\mathit{z}.\mathit{serves}\), and its \(\mathit{z}.\mathit{meta}\) are all renumbered to match.
 The two controls present different positional layouts and realize the same scheduler.
-Every \(\sim\)-equivalent pair is \(\simR\)-equivalent, but not conversely.
-% Repetitious
 
 
 \paragraph{The bridge: \(\lfloor \cdot \rfloor\)}
@@ -669,8 +655,7 @@ We define \(\csem{\Add}\) by recursion on \(\pi\), writing \(\mathtt{flows}(\mat
 \begin{array}{@{}l@{}}
 \csem{\Add([\,],\ D,\ \mathit{arm},\ m)}\ \langle\mathit{state},\mathit{pifo},\mathit{z}\rangle(\mathit{cs}) \;=\\
 \quad \langle\mathit{state'},\mathit{pifo},z'\rangle(\mathit{cs}\mathbin{+\!\!+}[\lceil\mathit{arm}\rceil])\\
-\quad \textbf{where}\ k=|\mathit{cs}|\ \text{(the next free slot)}\\
-% "(the next free slot)" in unacceptable in a figure
+\quad \textbf{where}\ k=|\mathit{cs}|\\
 \quad \phantom{\textbf{where}}\ \mathit{state'}=(\mathit{node\_state},\ \mathit{slot\_states}\mathbin{+\!\!+}[s])\\
 \quad \phantom{\textbf{where}}\ s=\mathit{init\_slot}_{D}(\mathit{node\_state},m)\\
 \quad \phantom{\textbf{where}}\ z'=\mathtt{setmeta}(\mathtt{extend}(\mathit{z},\mathtt{flows}(\mathit{arm}),k),k,m)\\[8pt]
@@ -682,12 +667,11 @@ We define \(\csem{\Add}\) by recursion on \(\pi\), writing \(\mathtt{flows}(\mat
 \]
 }
 The arguments \ensuremath{D}, \ensuremath{\mathit{arm}}, and \(m\) thread unchanged through the recursion, and \(m\) is consumed only at the base case, which annotates the new slot and seeds its bookkeeping.
-Since \(C@\pi\) has \(k\) children before the splice, appending the new one lands at the next free index \(k\), and because \(\mathtt{flows}(\mathit{arm})\) lies outside \(\mathrm{dom}(\mathit{z}.\mathit{serves})\), each \(\mathtt{extend}\) is conflict-free.
-% Idk why you write about k above; the recursive case is not interested in k
+Because \(\mathtt{flows}(\mathit{arm})\) lies outside \(\mathrm{dom}(\mathit{z}.\mathit{serves})\), every \(\mathtt{extend}\) along the way is conflict-free.
 The recursive case is exactly the \(\mathtt{extend}\) walk of \cref{sec:edit-semantics}, carrying \(\mathtt{flows}(\mathit{arm})\) down to \(\pi\).
 
 The base case (\(\pi = []\)) has reached the parent of the new arm, where it does three things.
-It appends \(\lceil \mathit{arm} \rceil\) as the last child, at slot \(k\).
+It appends \(\lceil \mathit{arm} \rceil\) as the last child, which lands at the next free slot \(k = |\mathit{cs}|\).
 It appends that slot's bookkeeping, \(\mathit{init\_slot}_{D}(\mathit{node\_state}, m)\), using the discipline \ensuremath{D} that the form carries.
 And it rewrites the node's transaction, extending the classifier to send the new flows to the new child and annotating slot \(k\) with \(m\).
 Meanwhile, \ensuremath{\mathit{node\_state}} and \ensuremath{\mathit{pifo}} are untouched.
@@ -747,16 +731,14 @@ The evolving per-arm bookkeeping beside it, \WFQ's last-finish tag in \(\mathit{
 \psem{\ChangeMeta(\pi \mathbin{+\!\!+} [k],\, m)} = \mathtt{at}\big(\pi,\; D(\ldots, m_k{:}\,t_k, \ldots) \mapsto D(\ldots, m{:}\,t_k, \ldots)\big).
 \]
 
-\paragraph{Note: Why the virtual-finish tag is preserved (WFQ)}
+\paragraph{Note: Why the per-arm bookkeeping is preserved}
 
-When the parent runs \WFQ, the virtual-finish tag at slot \(k\) is deliberately \emph{preserved} and not \emph{reset}.
-Resetting it would remove the targeted arm from the current round, rewarding or penalizing it for no reason the operator asked for.
-\(\mathit{init\_slot}_{\WFQ}\) (\cref{sec:compilation}) was designed to let a fresh arm join the current round without disturbing its siblings, and a weight change on an already-running arm deserves the same treatment.
-\cref{sec:controls} already draws this line.
-The weight is configuration and lives in \(\mathit{z}.\mathit{meta}\), while the tag is bookkeeping and lives in \ensuremath{\mathit{slot\_states}}.
-\ChangeMeta{} reaches only the first of the two.
-Under \Strict{} the arm carries no comparable round-bookkeeping, so the question does not arise.
-% Compress, and generalize to not just be about WFQ. You can still mention WFQ but as an example, not as the whole point
+\ChangeMeta{} rewrites the arm's metadatum and leaves the per-arm bookkeeping beside it untouched.
+That is the line \cref{sec:controls} draws between the configuration the operator chose and what serving traffic left behind.
+Resetting the bookkeeping would pull the targeted arm out of the round in progress, rewarding or penalizing it for no reason the operator asked for.
+Under \WFQ, for instance, that bookkeeping is the arm's virtual-finish tag, and \(\mathit{init\_slot}_{\WFQ}\) was already designed to let a fresh arm join the current round without disturbing its siblings (\cref{sec:compilation}).
+A re-tuned arm deserves the same treatment.
+A discipline that keeps no per-arm bookkeeping, such as \Strict, does not raise the question.
 
 \subsubsection{\texorpdfstring{\(\Quiesce(\tau)\)}{Quiesce}}\label{sec:quiesce}
 
