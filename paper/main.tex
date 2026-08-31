@@ -47,6 +47,8 @@
 \newcommand{\RR}{\textsf{RoundRobin}}
 \newcommand{\FIFO}{\textsf{FIFO}}
 \newcommand{\Add}{\textsf{Add}}
+% \dsetminus: a compressed double set-minus, for striking a flow set from a service map.
+\newcommand{\dsetminus}{\mathbin{\smallsetminus\mkern-3mu\smallsetminus}}
 \newcommand{\ChangeMeta}{\textsf{ChangeMeta}}
 \newcommand{\Quiesce}{\textsf{Quiesce}}
 \newcommand{\Remove}{\textsf{Remove}}
@@ -473,7 +475,7 @@ The node a form's \ensuremath{\mathit{path}} names is its \emph{edit site}.
 \[
 \begin{array}{@{}r@{\;\;}l@{}}
 \delta \mathrel{::=} & \Add(\mathit{path}, D, \mathit{pol}, m)\\
-\mid & \ChangeMeta(\mathit{path}, m)\\ % This m is not connected to any D in its production?
+\mid & \ChangeMeta(\mathit{path}, D, m)\\
 \mid & \Quiesce(\mathit{path})\\
 \mid & \Remove(\mathit{path})\\
 \mid & \Designate(\mathit{path}, \mathit{pol})\\
@@ -492,7 +494,7 @@ A \ensuremath{\mathit{path}} is a (possibly empty) sequence of child indices \(i
 It is not only the figure that would have to change.
 Every rule in \cref{sec:edit-semantics} recurses on \(i \mathbin{::} \mathit{rest}\), \(\mathtt{at}\) is defined by that same split, and paths are destructed as \(\pi \mathbin{+\!\!+} [k]\) throughout, which has no comfortable reading under the pair syntax.}
 Two forms take a \ensuremath{\mathit{pol}} argument (\cref{sec:policy-dsl}): in \Add{} it is the new arm, and in \Designate{} it is the surviving subtree.
-Two carry a metadatum \(m\), drawn from the metadata set of the discipline that owns the arm in question.
+Two carry a discipline \ensuremath{D} together with a metadatum \(m\) drawn from \(M_{D}\), and in both the form is defined only when \ensuremath{D} is the discipline the node it names actually runs.
 
 Edits that would have to discard packets are expressly not in the grammar.
 For example, \Remove{} has a precondition saying that it may fire only when its target subtree is already empty, so structural deletion never has to discard a buffered packet.
@@ -574,9 +576,8 @@ Even when the presently running \ensuremath{\mathit{pol}} is just an intermediat
 
 This section gives each form of \(\delta\) its two readings.
 \(\csem{\delta}\) says what the form does to the running control, and \(\psem{\delta}\) says what it does to the operator's policy.
-Both are stated here without proof, together with the preconditions under which the form is defined.
-% "without proof"? What proof would be expected?
-\cref{sec:correctness} takes up what has to be shown about them, form by form in \cref{sec:per-form}.
+Each is given here as a definition, together with the preconditions under which the form is defined.
+That the two agree, and that neither disturbs the buffered backlog, are claims about the definitions rather than parts of them, and \cref{sec:correctness} proves both form by form.
 
 \paragraph{Notation}
 
@@ -646,7 +647,7 @@ Every node from the root down to \(C@\pi\) must begin to accept the new flows an
 We must define \(\csem{\Add(\pi, D, \mathit{arm}, m)} : \mathit{control} \rightharpoonup \mathit{control}\) together with the preconditions on the already-running control.
 
 \(\csem{\Add(\pi, D, \mathit{arm}, m)}(C)\) is defined when three things hold.
-The path \(\pi\) resolves in \(C\) to an internal node running discipline \ensuremath{D}.
+The path \(\pi\) resolves in \(C\) to an internal node, and that node runs the discipline \ensuremath{D} the form names.
 The metadatum \(m\) is drawn from \(M_{D}\).
 And \ensuremath{\mathit{arm}}'s leaf labels are disjoint from those of \(C\).
 The disjointness precondition rules out \emph{splitting} an already-running flow.
@@ -702,18 +703,19 @@ The base case reuses the argument name \ensuremath{D}, firing only when the reac
 The metadatum \(m\) appears on both sides.
 \(\csem{\Add}\) records it at \(\mathit{z}.\mathit{meta}(k)\), and \(\psem{\Add}\) writes it onto the new arm, so reading the edited control back recovers the annotation the operator asked for.
 
-\subsubsection{\texorpdfstring{\(\ChangeMeta(\tau, m)\)}{ChangeMeta}}\label{sec:changemeta}
+\subsubsection{\texorpdfstring{\(\ChangeMeta(\tau, D, m)\)}{ChangeMeta}}\label{sec:changemeta}
 
 
 \ChangeMeta{} re-tunes a single already-running arm, resetting the metadatum its parent schedules it by, without moving a packet or disturbing any sibling.
 
 \(\tau : \mathit{path}\) is the target arm.
 The path is non-empty (the target arm is required to have a parent), and we destruct it as \(\pi \mathbin{+\!\!+} [k]\), so \(k\) is the arm's slot at its parent \(C@\pi\).
-The argument \(m\) is a fresh value from \(M_{D}\), where \ensuremath{D} is the discipline the parent runs (\cref{sec:policy-dsl}).
+\ensuremath{D} is the discipline the parent runs, and \(m\) is a fresh value from \(M_{D}\) (\cref{sec:policy-dsl}).
+Carrying \ensuremath{D} on the form is what makes \(m \in M_{D}\) checkable from the form alone, rather than only against the control it is about to be applied to.
 
 \paragraph{Definition}
 
-\ChangeMeta{} is defined when \(\tau\) resolves in \(C\) to an arm whose parent runs \ensuremath{D}, and \(m \in M_{D}\).
+\ChangeMeta{} is defined when \(\tau\) resolves in \(C\) to an arm whose parent runs the \ensuremath{D} the form names, and \(m \in M_{D}\).
 Its node transformer \(\mathtt{setmeta}_k\) rewrites the node's \ensuremath{\mathit{z}} and nothing else:
 {\small
 \[
@@ -722,7 +724,7 @@ Its node transformer \(\mathtt{setmeta}_k\) rewrites the node's \ensuremath{\mat
 }
 The form applies that transformer at the parent and nowhere else:
 \[
-\csem{\ChangeMeta(\pi \mathbin{+\!\!+} [k],\, m)} = \mathtt{at}(\pi,\, \mathtt{setmeta}_k).
+\csem{\ChangeMeta(\pi \mathbin{+\!\!+} [k],\, D,\, m)} = \mathtt{at}(\pi,\, \mathtt{setmeta}_k).
 \]
 Under \Strict{} the arm's metadatum is its priority, and under \WFQ{} it is its weight.
 That value alone becomes \(m\).
@@ -732,7 +734,10 @@ The evolving per-arm bookkeeping beside it, \WFQ's last-finish tag in \(\mathit{
 
 \ChangeMeta{} reannotates arm \(k\) and leaves that arm's policy, its siblings, and the discipline \ensuremath{D} alone:
 \[
-\psem{\ChangeMeta(\pi \mathbin{+\!\!+} [k],\, m)} = \mathtt{at}\big(\pi,\; D(\ldots, m_k{:}\,t_k, \ldots) \mapsto D(\ldots, m{:}\,t_k, \ldots)\big).
+\begin{array}{@{}l@{}}
+\psem{\ChangeMeta(\pi \mathbin{+\!\!+} [k],\, D,\, m)} =\\[3pt]
+\quad \mathtt{at}\big(\pi,\; D(\ldots, m_k{:}\,t_k, \ldots) \mapsto D(\ldots, m{:}\,t_k, \ldots)\big).
+\end{array}
 \]
 
 \paragraph{Note: Why the per-arm bookkeeping is preserved}
@@ -793,8 +798,8 @@ As before, \(\tau : \mathit{path}\) is the non-empty target arm; destruct it as 
 \paragraph{Definition}
 
 As in \cref{sec:quiesce}, let \(L = \mathtt{flows}(C@\tau)\), here the flows that the doomed arm serves.
-Write \(\mathit{z} \setminus\!\!\setminus L\) for \ensuremath{\mathit{z}} with \(L\) struck from its service map, and hence, by the containment of \cref{sec:controls}, from its admitted set too.
-% It would be good to find a nice glyph that looks like \setminus\!\!\setminus but more compressed together
+Write \(\mathit{z} \dsetminus L\) for \ensuremath{\mathit{z}} with \(L\) struck from its service map, and hence, by the containment of \cref{sec:controls}, from its admitted set too.
+% It would be good to find a nice glyph that looks like \dsetminus but more compressed together
 Its ranker is unchanged.
 \Remove{} drops the arm at its parent and strikes \(L\) from the service map of every proper ancestor above that parent, the set \(A_\pi = \{\, C@\nu \;:\; \nu \sqsubset \pi \,\}\).
 It is defined when \(\tau\) resolves in \(C\) and the subtree at \(\tau\) is empty.
@@ -805,8 +810,8 @@ The node transformer \(\mathtt{drop}_k\) unhooks child \(k\) and renumbers what 
 \begin{array}{@{}l@{}}
 \mathtt{drop}_k\ \langle(\mathit{node\_state}, \mathit{ss}),\ \mathit{pifo},\ \mathit{z}\rangle(\mathit{cs}) \;=\\
 \quad \langle(\mathit{node\_state},\ \mathit{ss}[-/k]),\ \sigma_k(\mathit{pifo}),\ z'\rangle(\mathit{cs}[-/k])\\
-\quad \textbf{where}\ z'.\mathit{serves} = \sigma_k \circ (\mathit{z} \setminus\!\!\setminus L).\mathit{serves}\\
-\quad \phantom{\textbf{where}}\ z'.\mathit{admit} = (\mathit{z} \setminus\!\!\setminus L).\mathit{admit}\\
+\quad \textbf{where}\ z'.\mathit{serves} = \sigma_k \circ (\mathit{z} \dsetminus L).\mathit{serves}\\
+\quad \phantom{\textbf{where}}\ z'.\mathit{admit} = (\mathit{z} \dsetminus L).\mathit{admit}\\
 \quad \phantom{\textbf{where}}\ z'.\mathit{meta} = \mathit{z}.\mathit{meta} \circ \sigma_k^{-1}\\
 \quad \phantom{\textbf{where}}\ z'.\mathit{rank} = \mathit{z}.\mathit{rank}
 \end{array}
@@ -814,7 +819,7 @@ The node transformer \(\mathtt{drop}_k\) unhooks child \(k\) and renumbers what 
 }
 The form drops the arm at its parent and retracts \(L\) at every proper ancestor:
 \[
-\csem{\Remove(\pi \mathbin{+\!\!+} [k])} = \mathtt{at}(A_\pi,\ \mathit{z} \setminus\!\!\setminus L) \circ \mathtt{at}(\pi,\, \mathtt{drop}_k).
+\csem{\Remove(\pi \mathbin{+\!\!+} [k])} = \mathtt{at}(A_\pi,\ \mathit{z} \dsetminus L) \circ \mathtt{at}(\pi,\, \mathtt{drop}_k).
 \]
 Emptiness and \(\vdash C\) force \(C@\pi.\mathit{pifo}\) to hold \emph{no entry} equal to \(k\), so \ensuremath{\mathit{pifo}} loses no entry, and surviving entries keep their child.
 \ensuremath{\mathit{node\_state}}, and every field of every node outside \(C@\pi\) and the removed subtree other than the ancestor service maps just named, is unchanged.
@@ -981,8 +986,9 @@ The wrap is therefore \ensuremath{\mathit{pol}}-visible only as a \(\Strict\).
 
 \paragraph{Definition}
 
-\(\csem{\Designate(\tau, \mathit{survivor})}(C)\) is defined when \(\tau\) resolves in \(C\) and \ensuremath{\mathit{survivor}}'s leaf labels are disjoint from \(C\)'s outside \(C@\tau\); overlap with \(C@\tau\)'s own leaves is allowed (see Note).
-% "\ensuremath{\mathit{survivor}}'s leaf labels are disjoint from \(C\)'s outside \(C@\tau\)" is super unclear
+\(\csem{\Designate(\tau, \mathit{survivor})}(C)\) is defined when \(\tau\) resolves in \(C\), and when every flow \ensuremath{\mathit{survivor}} serves is one that either nothing in \(C\) serves or that \(C@\tau\) itself serves.
+So \ensuremath{\mathit{survivor}} may reuse the flows of the subtree it is replacing, and it may bring flows that are new to the whole tree, but it may not claim a flow that some other part of \(C\) is already serving.
+Reuse is the interesting case and the Note below takes it up.
 The figure draws the target subtree in blue and the survivor in orange; below we call them the old and new arms.
 Write \(M = C@\tau\) for the target, and let \(P_0\) be the number of packets buffered under it (\(P_0 = 3\) in \cref{fig:designate-before}).
 \Designate{} wraps the target and admits \ensuremath{\mathit{survivor}}'s flows at every ancestor on the way down.
@@ -1029,7 +1035,7 @@ The two arms thus stay operationally disjoint even when their label sets overlap
 
 \Designate{} wraps the \ensuremath{\mathit{pol}} subtree at \(\tau\):
 \[
-\psem{\Designate(\tau, \mathit{survivor})} = \mathtt{at}(\tau,\; t \mapsto \Strict(\mathtt{hi}{:}\,t,\ \mathtt{lo}{:}\,\mathit{survivor})).
+{\small \psem{\Designate(\tau, \mathit{survivor})} = \mathtt{at}(\tau,\; t \mapsto \Strict(\mathtt{hi}{:}\,t,\ \mathtt{lo}{:}\,\mathit{survivor})).}
 \]
 It yields \(\Strict\), not \(\Strictstar\), since the star is \ensuremath{\mathit{pol}}-invisible.
 
@@ -1280,7 +1286,7 @@ Each touches no live \ensuremath{\mathit{pifo}} entry, so \(\vdash\)-counts are 
 Each departs from \Add{} in one place, and that place is all we give.
 
 \emph{\ChangeMeta.} Its footprint is a single \(\mathit{z}.\mathit{meta}\) entry, so no child, no \ensuremath{\mathit{pifo}}, and no count moves at all.
-It is the one form whose two sides agree exactly rather than up to \(\eqR\), since no arm changes position: \(p' = \psem{\ChangeMeta(\tau, m)}(p)\).
+It is the one form whose two sides agree exactly rather than up to \(\eqR\), since no arm changes position: \(p' = \psem{\ChangeMeta(\tau, D, m)}(p)\).
 An in-flight entry's rank was fixed when it was pushed, so the new metadatum governs only future pushes.
 
 \emph{\Quiesce.} Its footprint is the admitted-set restrictions across \(V_\tau\), and every node's \ensuremath{\mathit{node\_state}}, \ensuremath{\mathit{slot\_states}}, \ensuremath{\mathit{pifo}}, and children are untouched.
@@ -1975,7 +1981,7 @@ The parent-side \texttt{adopt} that attaches \(\mathtt{root(T)}\) is left to the
 Where a form destructures \(\delta\)'s path as \(\pi \mathbin{+\!\!+} [k]\), we write \texttt{p} for the parent's path and \texttt{k} for the child's local index.
 For \(\mathit{path} = [\,]\), the parent is \texttt{port\_root} and \texttt{k} is \texttt{port\_step}.
 
-\paragraph*{\(\ChangeMeta(\pi \mathbin{+\!\!+} [k], m)\)}
+\paragraph*{\(\ChangeMeta(\pi \mathbin{+\!\!+} [k], D, m)\)}
 \begin{Verbatim}
 set_arm_meta(p, k, m)
 \end{Verbatim}
