@@ -412,19 +412,10 @@ This deferral is what lets a PIFO tree reorder buffered traffic in ways a single
 % The above is all true, but it's totally irrelevant stated here?
 These two are the \emph{only} observable interactions with a scheduler, which is why we frame an \emph{atomic} transition in terms of \push{}/\pop{} observability.
 
-\paragraph{Path-consistency of admission}
-
-One condition ties the node-local admitted sets together.
-A packet's flow must be admitted at either \emph{every} node on that flow's root-to-leaf path, or at none of them.
-Otherwise a \push{} would enqueue an index at some ancestor with no matching packet below it, or buffer a packet under a leaf with no index above it, and the well-formedness condition below would fail.
-This is a global property, not a concern of any node-local \ensuremath{\mathit{z}}.
-% The above is all true, but it's totally irrelevant stated here. Put it later, in {What a discipline supplies}
-
 \paragraph{Well-formedness}
 
 A control \(C\) is \emph{well-formed} (written \(\vdash C\)) when, at every internal node of \(C\), the \ensuremath{\mathit{pifo}} has, for each legal child index \(i\), exactly as many occurrences of \(i\) as there are packets stored in the leaf pifos of the subtree under the \(i\)-th child.
-This is the invariant that keeps \pop{} from ever getting stuck.
-% The above is all true, but it's totally irrelevant stated here?
+A control that fails this holds an index at some node with no packet under the corresponding child, so a \pop{} that follows that index down reaches a leaf with nothing to emit.
 
 \subsection{Compiling a policy to a control}\label{sec:compilation}
 
@@ -450,7 +441,8 @@ Supplying those four is the whole interface, and an operator can ``bring their o
 \(\mathit{init\_slot}_{D}\) runs once per arm, at compile time and again whenever an edit splices a new arm under an already-running \ensuremath{D}-parent (\cref{sec:add}), taking the parent's current \ensuremath{\mathit{node\_state}} and the new arm's metadatum.
 
 Two obligations attend the exchange.
-The first is path-consistency of admission (\cref{sec:controls}), so that compilation and every \(\delta\) preserve control well-formedness.
+The first is path-consistency of admission: a packet's flow must be admitted at every node on that flow's root-to-leaf path, or at none of them.
+This is a global property rather than a concern of any node-local \ensuremath{\mathit{z}}, and it is what keeps \(\vdash\) true under compilation and under every \(\delta\).
 The second is that \(\mathit{rank}_{D}\) records which discipline the node runs, and not merely how that discipline ranks.
 Two disciplines that happen to schedule alike therefore stay distinct, which is what lets \cref{sec:equivalences} recover the operator's own \ensuremath{D} from a running control.
 % I think the second obligation is too subtle to be appreciated...
@@ -549,9 +541,6 @@ Each arm's metadatum is tagged to the arm, so it travels with the arm under the 
 The metadata is what carries the scheduling-meaningful content, so such a permutation does not change the scheduler.
 
 Because \(\eqR\) only permutes sibling arms, each \(\eqR\)-class has a canonical representative under any fixed ordering of the arms at a node.
-We call the pass that computes it \emph{normalization}, and the compiler normalizes every operator-supplied policy before anything downstream sees it.
-Two \(\eqR\)-equivalent policies therefore become the same term.
-% I think it's a mistake to promise that we always keep controls normalized. We may append an arm instead of splicing it in, for example
 
 We write \(C \simR C'\) for the equivalence obtained by closing \(\sim\) under sibling permutations.
 Permuting a node's children renumbers the slots they sit in, so the parent's \ensuremath{\mathit{pifo}} entries, its \ensuremath{\mathit{slot\_states}}, its \(\mathit{z}.\mathit{serves}\), and its \(\mathit{z}.\mathit{meta}\) are all renumbered to match.
@@ -696,7 +685,7 @@ Nodes are written \(\langle\mathit{state}, \mathit{pifo}, \mathit{z}\rangle(\mat
 
 Two invariants link a node's classifier to the tree, and every form preserves both.
 First, \(\mathrm{dom}(\mathit{z}.\mathit{serves})\) at a node is exactly the set of flows served by the leaves beneath it, and \(\mathit{z}.\mathit{serves}\) sends each of them to the child that leads on toward its leaf.
-Second, \(\mathit{z}.\mathit{admit} \subseteq \mathrm{dom}(\mathit{z}.\mathit{serves})\), with the containment strict exactly where a flow has been silenced but not yet removed, and admission is path-consistent (\cref{sec:controls}).
+Second, \(\mathit{z}.\mathit{admit} \subseteq \mathrm{dom}(\mathit{z}.\mathit{serves})\), with the containment strict exactly where a flow has been silenced but not yet removed, and admission is path-consistent (\cref{sec:compilation}).
 Splicing in a new leaf, for instance, means extending both parts at each node along that leaf's path so the new flow is served and admitted.
 Those nodes' \ensuremath{\mathit{node\_state}}, \ensuremath{\mathit{slot\_states}}, ranker, and per-arm metadata are left untouched.
 % The above is throat-clearing. Crunch it significantly and put it where applicable inside Add, Quiesce, Remove
@@ -988,7 +977,7 @@ No entry in \(P\) carries the meta-information ``I was enqueued when a packet wa
 This absence of meta-information is a \emph{feature} of PIFO trees, not a defect: an entry is deliberately detached from the packet it was enqueued with, which is what lets each node schedule its own discipline in isolation and lets a subtree be reconfigured without rewriting its ancestors.
 
 Given this, there is no obvious or operator-provided answer: whichever two instances of \(0\) we drop, the choice is itself a scheduling decision, since it affects how \(P\) intermixes \(C\) and \(Q\) traffic.
-Keeping the two leftmost \(0\)s (\cref{fig:remove-leftmost}), five pops drain \(P\) and yield \(c_1, c_2, a_1, c_3, a_2\): \(A\) is pushed toward the back, its packets emerging only after \(C\)'s run is underway.
+Keeping the two leftmost \(0\)s (\cref{fig:remove-leftmost}), five pops drain \(P\) and yield \(c_1, c_2, a_1, c_3, a_2\).
 % Instead of naming packets that don't exist in the figure anymore, use little colored dots to show the yield as cartoon. The point is just the changed order 
 % Move to "striking the rightmost/leftmost" language, above and below
 Keeping the two rightmost \(0\)s instead (\cref{fig:remove-rightmost}), the same five pops yield \(a_1, c_1, a_2, c_2, c_3\).
@@ -999,7 +988,7 @@ This would be a stop-the-world rebuild.
 % trim? cut?
 
 Our grammar sidesteps the question entirely, by asking that a targeted subtree be empty before it is deleted (\cref{sec:sequences}).
-At the instant \Remove{} fires there is no metadata left to reconcile, and the structural deletion is unambiguous.
+At the instant \Remove{} fires, no entry above the doomed arm was enqueued on account of a packet inside it, so no entry has to be dropped and the structural deletion is unambiguous.
 
 \subsubsection{\texorpdfstring{\(\Designate(\tau, \mathit{survivor})\)}{Designate}}\label{sec:designate}
 
@@ -1815,14 +1804,19 @@ We claim only that whatever sequence it emits is safe (\cref{sec:per-form}) and 
 The planner has two parts: a top-level pass over \((p_1, p_2)\) as whole trees, and a \emph{per-level comparator} that the pass defers to.
 Whatever the comparator emits is lifted back to the right depth by prepending the slot indices the recursion descended through.
 
+Both parts compare policies up to \(\eqR\), by comparing canonical representatives.
+Each \(\eqR\)-class has one under any fixed ordering of the arms at a node (\cref{sec:equivalences}), and we call the pass that computes it \emph{normalization}.
+The planner normalizes both sides before it compares them, the operator's request and the policy it reads off the running control.
+The read-off is not canonical on its own, since an edit may splice a new arm into whatever slot the control has free rather than into the slot normalization would have chosen.
+So the planner keeps the permutation that normalizing the read-off applied, and the slot indices it prepends name slots of the running control rather than of the normalized term.
+
 \paragraph{The top-level pass}
 
 The pass tries three cases in order and stops at the first match.
 
 \begin{enumerate}
 \item \(p_1 = p_2\). Emit \([\,]\).
-The test is literal equality on the normalized \ensuremath{\mathit{pol}} terms.
-Normalization (\cref{sec:equivalences}) has already rewritten both policies to canonical representatives of their \(\eqR\)-classes, so two \(\eqR\)-equivalent policies arrive here as identical terms.
+The test is literal equality on the normalized \ensuremath{\mathit{pol}} terms, so two \(\eqR\)-equivalent policies arrive here as identical terms.
 The live control is already serving the requested policy and there is nothing to install.
 
 \item \(p_2\) embeds in \(p_1\) at \ensuremath{\mathit{path}}. Emit \(\PruneDownTo(\mathit{path})\).
@@ -1846,8 +1840,8 @@ A matched pair whose arms differ starts a recursion into the pair to localize th
 \paragraph{Pairing the child lists}
 
 The comparator pairs the arms by the tightest strategy that applies, dropping to a more general one only when the tighter fails.
-All three strategies lean on the upstream normalization pass (\cref{sec:equivalences}).
-Because normalization canonicalizes sibling order before the planner runs, arms that genuinely correspond appear in the same relative order on both sides, which is what lets the positional strategies pair by position at all.
+All three strategies lean on normalization.
+Arms that genuinely correspond appear in the same relative order on both sides, which is what lets the positional strategies pair by position at all.
 
 \textbf{By slot, at equal arity.}
 When the child lists have the same length, the comparator pairs arm \(i\) with arm \(i\).
