@@ -548,51 +548,6 @@ The two controls present different positional layouts and realize the same sched
 Every \(\sim\)-equivalent pair is \(\simR\)-equivalent, but not conversely.
 % Repetitious
 
-% Move the figure to the appendix and don't point to it from the main text.
-\cref{fig:equiv-gallery} shows all three relations by example, over a node running an abstract discipline \(P\) whose two arms carry per-arm metadata \(m_1\) and \(m_2\).
-
-\begin{figure}[t]
-\centering
-\begin{tabular}{c@{\hskip 2.2em}c}
-\begin{tikzpicture}[every node/.style={font=\scriptsize}]
-  \node (S) at (0,0.55) {$P$};
-  \draw (S) -- (-0.7,-0.2) node[midway,left,font=\tiny,inner sep=1pt]{$m_1$};
-  \draw (S) -- (0.7,-0.2) node[midway,right,font=\tiny,inner sep=1pt]{$m_2$};
-  \leaftri{flowA}{-0.7}{-0.2}{2}{0}
-  \leaftri{flowB}{0.7}{-0.2}{1}{0}
-\end{tikzpicture}
-&
-\begin{tikzpicture}[every node/.style={font=\scriptsize}]
-  \node (S) at (0,0.55) {$P$};
-  \draw (S) -- (-0.7,-0.2) node[midway,left,font=\tiny,inner sep=1pt]{$m_1$};
-  \draw (S) -- (0.7,-0.2) node[midway,right,font=\tiny,inner sep=1pt]{$m_2$};
-  \leaftri{flowA}{-0.7}{-0.2}{1}{0}
-  \leaftri{flowB}{0.7}{-0.2}{3}{0}
-\end{tikzpicture}
-\\[-2pt]
-(a) & (b)\\[10pt]
-\begin{tikzpicture}[every node/.style={font=\scriptsize}]
-  \node (S) at (0,0.55) {$P$};
-  \draw (S) -- (-0.7,-0.2) node[midway,left,font=\tiny,inner sep=1pt]{$m_2$};
-  \draw (S) -- (0.7,-0.2) node[midway,right,font=\tiny,inner sep=1pt]{$m_1$};
-  \leaftri{flowB}{-0.7}{-0.2}{1}{0}
-  \leaftri{flowA}{0.7}{-0.2}{2}{0}
-\end{tikzpicture}
-&
-\begin{tikzpicture}[every node/.style={font=\scriptsize}]
-  \node (S) at (0,0.55) {$P$};
-  \draw (S) -- (-0.7,-0.2) node[midway,left,font=\tiny,inner sep=1pt]{$m_2$};
-  \draw (S) -- (0.7,-0.2) node[midway,right,font=\tiny,inner sep=1pt]{$m_1$};
-  \leaftri{flowB}{-0.7}{-0.2}{2}{0}
-  \leaftri{flowA}{0.7}{-0.2}{1}{0}
-\end{tikzpicture}
-\\[-2pt]
-(c) & (d)\\
-\end{tabular}
-
-\caption{Controls running some discipline \(P\), whose per-arm metadata \(m_1\) and \(m_2\) are drawn from whatever set \(P\) declares; the two children are drawn in different colors so they can be tracked across reorderings, and each dot is a buffered packet. \((b)\) differs from \((a)\) only in its backlog, so \((a) \sim (b)\). \((c)\) reorders the arms but keeps \((a)\)'s backlog, so \(\lfloor a \rfloor \eqR \lfloor c \rfloor\). \((d)\) reorders the arms and otherwise differs from \((a)\) only in its backlog, so \((a) \simR (d)\).}
-\label{fig:equiv-gallery}
-\end{figure}
 
 \paragraph{The bridge: \(\lfloor \cdot \rfloor\)}
 
@@ -658,8 +613,8 @@ Both are stated here without proof, together with the preconditions under which 
 \Add(\pi, D, \mathit{arm}, m) & \multicolumn{2}{@{}l@{}}{\text{given in full in \cref{sec:add}}}\\[3pt]
 \ChangeMeta(\pi \mathbin{+\!\!+} [k], m) & \mathtt{at}(\pi,\, \mathtt{setmeta}_k) & \mathtt{at}\big(\pi,\; D(\ldots, m_k{:}\,t_k, \ldots) \mapsto D(\ldots, m{:}\,t_k, \ldots)\big)\\[3pt]
 \Quiesce(\tau) & \mathtt{at}(V_\tau,\ g_L) & p \mapsto p\\[3pt]
-\Remove(\pi \mathbin{+\!\!+} [k]) & \mathtt{at}(A_\pi,\ \mathit{z} \setminus\!\!\setminus R) \circ \mathtt{at}(\pi,\, \mathtt{drop}_k) & \mathtt{at}(\pi,\; D(\mathit{ts}) \mapsto D(\mathit{ts}[-/k]))\\[3pt]
-\Designate(\tau, \mathit{survivor}) & \mathtt{spine}(\tau,\ \mathtt{flows}(\mathit{survivor})) \circ \mathtt{at}(\tau,\, \mathtt{wrap}) & \mathtt{at}(\tau,\; t \mapsto \Strict(\mathtt{hi}{:}\,t,\ \mathtt{lo}{:}\,\mathit{survivor}))\\[3pt]
+\Remove(\pi \mathbin{+\!\!+} [k]) & \mathtt{at}(A_\pi,\ \mathit{z} \setminus\!\!\setminus L) \circ \mathtt{at}(\pi,\, \mathtt{drop}_k) & \mathtt{at}(\pi,\; D(\mathit{ts}) \mapsto D(\mathit{ts}[-/k]))\\[3pt]
+\Designate(\tau, \mathit{survivor}) & \mathtt{extend}\text{-walk}(\tau,\ \mathtt{flows}(\mathit{survivor})) \circ \mathtt{at}(\tau,\, \mathtt{wrap}) & \mathtt{at}(\tau,\; t \mapsto \Strict(\mathtt{hi}{:}\,t,\ \mathtt{lo}{:}\,\mathit{survivor}))\\[3pt]
 \Undesignate(\tau) & \mathtt{at}(\tau,\, \mathtt{unwrap}) & \mathtt{at}(\tau,\; \Strict(\mathtt{hi}{:}\,a,\ \mathtt{lo}{:}\,b) \mapsto b)\\[3pt]
 \end{array}
 \)
@@ -675,8 +630,6 @@ A \ensuremath{\mathit{pol}} node's child list \(\mathit{ts}\) holds \emph{annota
 We write \(\mathit{ts}[i]\) for the \(i\)-th arm, and \(\mathit{ts}[t/i]\) for \(\mathit{ts}\) with the \emph{policy} of its \(i\)-th arm overwritten by \(t\).
 That arm keeps its annotation, and the arity does not change.
 \(\mathit{ts}[-/k]\) drops the \(k\)-th arm, and later arms shift one slot to the left.
-We name that shift \(\sigma_k\), the map on child indices that fixes every \(i < k\) and sends every \(i > k\) to \(i-1\).
-% Overkill to define \(\sigma_k\)
 Indices follow the \ensuremath{\mathit{path}} convention of \cref{sec:delta-grammar}.
 
 The control-level rules walk controls the same way.
@@ -720,9 +673,8 @@ A node's discipline fixes a packet's rank from the local \ensuremath{\mathit{sta
 \end{array}
 \]
 Every other field of \ensuremath{\mathit{z}} is carried through unchanged.
-The third is a walk rather than a single node edit, since a form that admits a new set of flows must extend every node on the way down to its target.
-We write \(\mathtt{spine}(\tau, F)\) for it.
-At each proper ancestor \(C@\nu\) of \(C@\tau\) it replaces \ensuremath{\mathit{z}} by \(\mathtt{extend}(\mathit{z}, F, i)\), where \(i\) is the index by which \(\nu\) continues toward \(\tau\), and it copies every other node unchanged.
+A form that admits a new set of flows must extend every node on the way down to its target, so \(\mathtt{extend}\) is also applied as a walk.
+At each proper ancestor \(C@\nu\) of the target \(C@\tau\) the walk replaces \ensuremath{\mathit{z}} by \(\mathtt{extend}(\mathit{z}, F, i)\), where \(i\) is the index by which \(\nu\) continues toward \(\tau\), and it copies every other node unchanged.
 
 \Add{} comes first and is given in full detail.
 The six that follow lean on it, and we point out only where each one departs from \Add's pattern.
@@ -771,8 +723,7 @@ We define \(\csem{\Add}\) by recursion on \(\pi\), writing \(\mathtt{flows}(\mat
 The arguments \ensuremath{D}, \ensuremath{\mathit{arm}}, and \(m\) thread unchanged through the recursion, and \(m\) is consumed only at the base case, which annotates the new slot and seeds its bookkeeping.
 Since \(C@\pi\) has \(k\) children before the splice, appending the new one lands at the next free index \(k\), and because \(\mathtt{flows}(\mathit{arm})\) lies outside \(\mathrm{dom}(\mathit{z}.\mathit{serves})\), each \(\mathtt{extend}\) is conflict-free.
 % Idk why you write about k above; the recursive case is not interested in k
-The recursive case is exactly the walk that \(\mathtt{spine}(\pi, \mathtt{flows}(\mathit{arm}))\) abbreviates.
-% I think we should just dissolve the "spine" macro and write it explicitly everywhere
+The recursive case is exactly the \(\mathtt{extend}\) walk of \cref{sec:edit-semantics}, carrying \(\mathtt{flows}(\mathit{arm})\) down to \(\pi\).
 
 The base case (\(\pi = []\)) has reached the parent of the new arm, where it does three things.
 It appends \(\lceil \mathit{arm} \rceil\) as the last child, at slot \(k\).
@@ -823,8 +774,6 @@ Its node transformer \(\mathtt{setmeta}_k\) rewrites the node's \ensuremath{\mat
 Under \Strict{} the arm's metadatum is its priority, and under \WFQ{} it is its weight.
 That value alone becomes \(m\).
 The evolving per-arm bookkeeping beside it, \WFQ's last-finish tag in \(\mathit{slot\_states}[k]\), is left untouched (the Note below says why).
-A \RR{} parent has a one-element metadata set, so \ChangeMeta{} on one of its arms is well-formed and does nothing.
-% cut?
 
 \paragraph{Pol-level reading}
 
@@ -854,7 +803,6 @@ It leaves every node's routing in place, so buffered packets can still be popped
 
 \(\csem{\Quiesce(\tau)}(C)\) is defined whenever \(\tau\) resolves in \(C\) (the empty path silences the whole tree).
 Let \(L = \mathtt{flows}(C@\tau)\) be the flows to silence.
-% In a second you're going to use R to refer to \mathtt{flows}(C@\tau)\). Just pick one letter for all 
 Write \(\mathit{z} \setminus L\) for \ensuremath{\mathit{z}} with \(L\) struck from its admitted set, so \((\mathit{z} \setminus L).\mathit{admit} = \mathit{z}.\mathit{admit} \setminus L\).
 Its service map and its ranker are unchanged.
 The nodes that those flows traverse are the spine down to \(\tau\) together with \(\tau\)'s whole subtree:
@@ -885,39 +833,34 @@ As before, \(\tau : \mathit{path}\) is the non-empty target arm; destruct it as 
 
 \paragraph{Definition}
 
-Write \(R = \mathtt{flows}(C@\tau)\) for the flows that the doomed arm serves.
-Write \(\mathit{z} \setminus\!\!\setminus R\) for \ensuremath{\mathit{z}} with \(R\) struck from its service map, and hence, by the containment of \cref{sec:controls}, from its admitted set too.
+As in \cref{sec:quiesce}, let \(L = \mathtt{flows}(C@\tau)\), here the flows that the doomed arm serves.
+Write \(\mathit{z} \setminus\!\!\setminus L\) for \ensuremath{\mathit{z}} with \(L\) struck from its service map, and hence, by the containment of \cref{sec:controls}, from its admitted set too.
 % It would be good to find a nice glyph that looks like \setminus\!\!\setminus but more compressed together
 Its ranker is unchanged.
-\Remove{} drops the arm at its parent and strikes \(R\) from the service map of every proper ancestor above that parent, the set \(A_\pi = \{\, C@\nu \;:\; \nu \sqsubset \pi \,\}\).
-It is defined when \(\tau\) resolves in \(C\), the subtree at \(\tau\) is empty, and \(C@\tau\) is not the wrapper node that \Designate{} installs.
-That wrapper is introduced in \cref{sec:designate} and is retired only by \cref{sec:undesignate}'s \Undesignate, never by \Remove.
-% No, let's leave out this Des/Undes stuff
+\Remove{} drops the arm at its parent and strikes \(L\) from the service map of every proper ancestor above that parent, the set \(A_\pi = \{\, C@\nu \;:\; \nu \sqsubset \pi \,\}\).
+It is defined when \(\tau\) resolves in \(C\) and the subtree at \(\tau\) is empty.
+Dropping arm \(k\) shifts every later arm one slot to the left, and we name that shift \(\sigma_k\): the map on child indices that fixes every \(i < k\) and sends every \(i > k\) to \(i-1\).
 The node transformer \(\mathtt{drop}_k\) unhooks child \(k\) and renumbers what named it:
 {\small
 \[
 \begin{array}{@{}l@{}}
 \mathtt{drop}_k\ \langle(\mathit{node\_state}, \mathit{ss}),\ \mathit{pifo},\ \mathit{z}\rangle(\mathit{cs}) \;=\\
 \quad \langle(\mathit{node\_state},\ \mathit{ss}[-/k]),\ \sigma_k(\mathit{pifo}),\ z'\rangle(\mathit{cs}[-/k])\\
-\quad \textbf{where}\ z'.\mathit{serves} = \sigma_k \circ (\mathit{z} \setminus\!\!\setminus R).\mathit{serves}\\
-\quad \phantom{\textbf{where}}\ z'.\mathit{admit} = (\mathit{z} \setminus\!\!\setminus R).\mathit{admit}\\
+\quad \textbf{where}\ z'.\mathit{serves} = \sigma_k \circ (\mathit{z} \setminus\!\!\setminus L).\mathit{serves}\\
+\quad \phantom{\textbf{where}}\ z'.\mathit{admit} = (\mathit{z} \setminus\!\!\setminus L).\mathit{admit}\\
 \quad \phantom{\textbf{where}}\ z'.\mathit{meta} = \mathit{z}.\mathit{meta} \circ \sigma_k^{-1}\\
 \quad \phantom{\textbf{where}}\ z'.\mathit{rank} = \mathit{z}.\mathit{rank}
 \end{array}
 \]
 }
-% Is the below needed? Cut?
-Every component that named a child is carried through the shift \(\sigma_k\).
-Each surviving arm therefore keeps the traffic, the bookkeeping, and the annotation it had, now under its new index.
-The ranker is untouched, since it never names a child.
 Emptiness and \(\vdash C\) force \(C@\pi.\mathit{pifo}\) to hold \emph{no entry} equal to \(k\), so \ensuremath{\mathit{pifo}} loses no entry, and surviving entries keep their child.
 \ensuremath{\mathit{node\_state}}, and every field of every node outside \(C@\pi\) and the removed subtree other than the ancestor service maps just named, is unchanged.
 \xxx[AM to Zhiyuan]{Does Rio's substrate actually key children by stable handles, so \Remove{} renumbers no live entry? If so, we can say so plainly here.}
 
 \paragraph{Note: Why the ancestors are retracted too}
 
-Dropping the arm at its parent alone would leave every node above still mapping \(R\) toward it.
-A later \push{} of an \(R\)-packet would then be admitted at an ancestor and enqueue an index there, while the parent, which no longer serves \(R\), would enqueue nothing.
+Dropping the arm at its parent alone would leave every node above still mapping \(L\) toward it.
+A later \push{} of an \(L\)-packet would then be admitted at an ancestor and enqueue an index there, while the parent, which no longer serves \(L\), would enqueue nothing.
 This would leave \(\vdash\) broken.
 \Remove{} retracts unconditionally, so that it is sound on its own even when no \Quiesce{} has run, as when it undoes an \Add{} whose arm never carried traffic.
 
@@ -982,9 +925,7 @@ Keeping the two leftmost \(0\)s (\cref{fig:remove-leftmost}), five pops drain \(
 Keeping the two rightmost \(0\)s instead (\cref{fig:remove-rightmost}), the same five pops yield \(a_1, c_1, a_2, c_2, c_3\).
 The \emph{choice of which} \(0\)s to drop \emph{silently reschedules \(A\) against \(C\)}, and nothing in the operator's deletion request records what the operator wanted.
 
-We do not wish to make a scheduling decision for the operator, so our only other option is to reconstruct the tree as if \(B\) had never been admitted: drain the tree completely, filter the \(B\)-packets, and re-push, recomputing every rank and cursor along the way.
-This would be a stop-the-world rebuild.
-% trim? cut?
+We do not wish to make a scheduling decision for the operator, and the only way to avoid one is to drain the whole tree, filter the \(B\)-packets, and re-push, which is a stop-the-world rebuild.
 
 Our grammar sidesteps the question entirely, by asking that a targeted subtree be empty before it is deleted (\cref{sec:sequences}).
 At the instant \Remove{} fires, no entry above the doomed arm was enqueued on account of a packet inside it, so no entry has to be dropped and the structural deletion is unambiguous.
@@ -1084,7 +1025,7 @@ The wrap is therefore \ensuremath{\mathit{pol}}-visible only as a \(\Strict\).
 % "\ensuremath{\mathit{survivor}}'s leaf labels are disjoint from \(C\)'s outside \(C@\tau\)" is super unclear
 The figure draws the target subtree in blue and the survivor in orange; below we call them the old and new arms.
 Write \(M = C@\tau\) for the target, and let \(P_0\) be the number of packets buffered under it (\(P_0 = 3\) in \cref{fig:designate-before}).
-\Designate{} wraps the target and admits \ensuremath{\mathit{survivor}}'s flows at every ancestor on the way down, which is the walk \(\mathtt{spine}(\tau, \mathtt{flows}(\mathit{survivor}))\) performs.
+\Designate{} wraps the target and admits \ensuremath{\mathit{survivor}}'s flows at every ancestor on the way down.
 That walk is \Add's, with \ensuremath{\mathit{survivor}}'s flows in place of the new arm's.
 The two differ only at the target, since \Add{} appends an arm there while \Designate{} wraps the node it has reached.
 The transformer \(\mathtt{wrap}\) replaces \(M\) with a fresh \(\Strictstar\) node \(N\) over the two arms \([\,M,\ \lceil\mathit{survivor}\rceil\,]\), giving the old arm strict priority over the new arm:
@@ -2198,6 +2139,54 @@ Shrivastav, PIEO, SIGCOMM 2019.
 \end{thebibliography}
 
 \appendix
+
+\section{A Gallery of the Three Equivalences}
+
+The three relations of \cref{sec:equivalences} are shown by example in \cref{fig:equiv-gallery}, over a node running an abstract discipline \(P\) whose two arms carry per-arm metadata \(m_1\) and \(m_2\).
+
+\begin{figure}[t]
+\centering
+\begin{tabular}{c@{\hskip 2.2em}c}
+\begin{tikzpicture}[every node/.style={font=\scriptsize}]
+  \node (S) at (0,0.55) {$P$};
+  \draw (S) -- (-0.7,-0.2) node[midway,left,font=\tiny,inner sep=1pt]{$m_1$};
+  \draw (S) -- (0.7,-0.2) node[midway,right,font=\tiny,inner sep=1pt]{$m_2$};
+  \leaftri{flowA}{-0.7}{-0.2}{2}{0}
+  \leaftri{flowB}{0.7}{-0.2}{1}{0}
+\end{tikzpicture}
+&
+\begin{tikzpicture}[every node/.style={font=\scriptsize}]
+  \node (S) at (0,0.55) {$P$};
+  \draw (S) -- (-0.7,-0.2) node[midway,left,font=\tiny,inner sep=1pt]{$m_1$};
+  \draw (S) -- (0.7,-0.2) node[midway,right,font=\tiny,inner sep=1pt]{$m_2$};
+  \leaftri{flowA}{-0.7}{-0.2}{1}{0}
+  \leaftri{flowB}{0.7}{-0.2}{3}{0}
+\end{tikzpicture}
+\\[-2pt]
+(a) & (b)\\[10pt]
+\begin{tikzpicture}[every node/.style={font=\scriptsize}]
+  \node (S) at (0,0.55) {$P$};
+  \draw (S) -- (-0.7,-0.2) node[midway,left,font=\tiny,inner sep=1pt]{$m_2$};
+  \draw (S) -- (0.7,-0.2) node[midway,right,font=\tiny,inner sep=1pt]{$m_1$};
+  \leaftri{flowB}{-0.7}{-0.2}{1}{0}
+  \leaftri{flowA}{0.7}{-0.2}{2}{0}
+\end{tikzpicture}
+&
+\begin{tikzpicture}[every node/.style={font=\scriptsize}]
+  \node (S) at (0,0.55) {$P$};
+  \draw (S) -- (-0.7,-0.2) node[midway,left,font=\tiny,inner sep=1pt]{$m_2$};
+  \draw (S) -- (0.7,-0.2) node[midway,right,font=\tiny,inner sep=1pt]{$m_1$};
+  \leaftri{flowB}{-0.7}{-0.2}{2}{0}
+  \leaftri{flowA}{0.7}{-0.2}{1}{0}
+\end{tikzpicture}
+\\[-2pt]
+(c) & (d)\\
+\end{tabular}
+
+\caption{Controls running some discipline \(P\), whose per-arm metadata \(m_1\) and \(m_2\) are drawn from whatever set \(P\) declares; the two children are drawn in different colors so they can be tracked across reorderings, and each dot is a buffered packet. \((b)\) differs from \((a)\) only in its backlog, so \((a) \sim (b)\). \((c)\) reorders the arms but keeps \((a)\)'s backlog, so \(\lfloor a \rfloor \eqR \lfloor c \rfloor\). \((d)\) reorders the arms and otherwise differs from \((a)\) only in its backlog, so \((a) \simR (d)\).}
+\label{fig:equiv-gallery}
+\end{figure}
+
 
 \section{Per-Discipline Slot Initialization}\label{app:init-slot}
 
