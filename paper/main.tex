@@ -602,27 +602,6 @@ Both are stated here without proof, together with the preconditions under which 
 % "without proof"? What proof would be expected?
 \cref{sec:correctness} takes up what has to be shown about them, form by form in \cref{sec:per-form}.
 
-
-\begin{figure*}[t]
-\small
-\centering
-\(
-\begin{array}{@{}l@{\quad}l@{\qquad}l@{}}
-\delta & \csem{\delta} & \psem{\delta}\\[2pt]
-\hline\\[-5pt]
-\Add(\pi, D, \mathit{arm}, m) & \multicolumn{2}{@{}l@{}}{\text{given in full in \cref{sec:add}}}\\[3pt]
-\ChangeMeta(\pi \mathbin{+\!\!+} [k], m) & \mathtt{at}(\pi,\, \mathtt{setmeta}_k) & \mathtt{at}\big(\pi,\; D(\ldots, m_k{:}\,t_k, \ldots) \mapsto D(\ldots, m{:}\,t_k, \ldots)\big)\\[3pt]
-\Quiesce(\tau) & \mathtt{at}(V_\tau,\ g_L) & p \mapsto p\\[3pt]
-\Remove(\pi \mathbin{+\!\!+} [k]) & \mathtt{at}(A_\pi,\ \mathit{z} \setminus\!\!\setminus L) \circ \mathtt{at}(\pi,\, \mathtt{drop}_k) & \mathtt{at}(\pi,\; D(\mathit{ts}) \mapsto D(\mathit{ts}[-/k]))\\[3pt]
-\Designate(\tau, \mathit{survivor}) & \mathtt{extend}\text{-walk}(\tau,\ \mathtt{flows}(\mathit{survivor})) \circ \mathtt{at}(\tau,\, \mathtt{wrap}) & \mathtt{at}(\tau,\; t \mapsto \Strict(\mathtt{hi}{:}\,t,\ \mathtt{lo}{:}\,\mathit{survivor}))\\[3pt]
-\Undesignate(\tau) & \mathtt{at}(\tau,\, \mathtt{unwrap}) & \mathtt{at}(\tau,\; \Strict(\mathtt{hi}{:}\,a,\ \mathtt{lo}{:}\,b) \mapsto b)\\[3pt]
-\end{array}
-\)
-\caption{The two readings of every form of \(\delta\). Each form's preconditions and its own node transformer are given with the form in the text.}
-\label{fig:delta-semantics}
-\end{figure*}
-% I am thinking of getting rid of this table. The key info from the table is more badly needed in the respective paragraphs.
-
 \paragraph{Notation}
 
 The pol-level rules below read, overwrite, and shrink child lists.
@@ -771,13 +750,20 @@ Its node transformer \(\mathtt{setmeta}_k\) rewrites the node's \ensuremath{\mat
 \mathtt{setmeta}_k\ \langle\mathit{state},\mathit{pifo},\mathit{z}\rangle(\mathit{cs}) = \langle\mathit{state},\mathit{pifo},\ \mathtt{setmeta}(\mathit{z},k,m)\rangle(\mathit{cs}).
 \]
 }
+The form applies that transformer at the parent and nowhere else:
+\[
+\csem{\ChangeMeta(\pi \mathbin{+\!\!+} [k],\, m)} = \mathtt{at}(\pi,\, \mathtt{setmeta}_k).
+\]
 Under \Strict{} the arm's metadatum is its priority, and under \WFQ{} it is its weight.
 That value alone becomes \(m\).
 The evolving per-arm bookkeeping beside it, \WFQ's last-finish tag in \(\mathit{slot\_states}[k]\), is left untouched (the Note below says why).
 
 \paragraph{Pol-level reading}
 
-\ChangeMeta{} reannotates arm \(k\) and leaves that arm's policy, its siblings, and the discipline \ensuremath{D} alone.
+\ChangeMeta{} reannotates arm \(k\) and leaves that arm's policy, its siblings, and the discipline \ensuremath{D} alone:
+\[
+\psem{\ChangeMeta(\pi \mathbin{+\!\!+} [k],\, m)} = \mathtt{at}\big(\pi,\; D(\ldots, m_k{:}\,t_k, \ldots) \mapsto D(\ldots, m{:}\,t_k, \ldots)\big).
+\]
 
 \paragraph{Note: Why the virtual-finish tag is preserved (WFQ)}
 
@@ -811,7 +797,11 @@ V_\tau = \{\, C@\nu \;:\; \nu \sqsubseteq \tau \,\} \;\cup\; \{\, \text{every no
 \] 
 \Quiesce{} narrows the admitted set at each of these nodes and touches nothing else, through the node transformer
 \[
-g_L\ \langle\mathit{state},\mathit{pifo},\mathit{z}\rangle(\mathit{cs}) = \langle\mathit{state},\mathit{pifo},\ \mathit{z} \setminus L\rangle(\mathit{cs}).
+g_L\ \langle\mathit{state},\mathit{pifo},\mathit{z}\rangle(\mathit{cs}) = \langle\mathit{state},\mathit{pifo},\ \mathit{z} \setminus L\rangle(\mathit{cs}),
+\]
+applied at every node of \(V_\tau\):
+\[
+\csem{\Quiesce(\tau)} = \mathtt{at}(V_\tau,\ g_L).
 \]
 Every field other than \(\mathit{z}.\mathit{admit}\), and every node outside \(V_\tau\), is left unchanged; the Note below says why the restriction must reach all of \(V_\tau\) rather than the root alone.
 % Just promote the note here and get it over with
@@ -853,6 +843,10 @@ The node transformer \(\mathtt{drop}_k\) unhooks child \(k\) and renumbers what 
 \end{array}
 \]
 }
+The form drops the arm at its parent and retracts \(L\) at every proper ancestor:
+\[
+\csem{\Remove(\pi \mathbin{+\!\!+} [k])} = \mathtt{at}(A_\pi,\ \mathit{z} \setminus\!\!\setminus L) \circ \mathtt{at}(\pi,\, \mathtt{drop}_k).
+\]
 Emptiness and \(\vdash C\) force \(C@\pi.\mathit{pifo}\) to hold \emph{no entry} equal to \(k\), so \ensuremath{\mathit{pifo}} loses no entry, and surviving entries keep their child.
 \ensuremath{\mathit{node\_state}}, and every field of every node outside \(C@\pi\) and the removed subtree other than the ancestor service maps just named, is unchanged.
 \xxx[AM to Zhiyuan]{Does Rio's substrate actually key children by stable handles, so \Remove{} renumbers no live entry? If so, we can say so plainly here.}
@@ -866,7 +860,10 @@ This would leave \(\vdash\) broken.
 
 \paragraph{Pol-level reading}
 
-\Remove{} drops arm \(k\) from the parent \ensuremath{\mathit{pol}} node.
+\Remove{} drops arm \(k\) from the parent \ensuremath{\mathit{pol}} node:
+\[
+\psem{\Remove(\pi \mathbin{+\!\!+} [k])} = \mathtt{at}(\pi,\; D(\mathit{ts}) \mapsto D(\mathit{ts}[-/k])).
+\]
 
 \paragraph{Note: Why insist on an empty subtree}
 
@@ -1051,6 +1048,12 @@ That backlog therefore keeps popping through the wrap ahead of any later arrival
 Because \(\mathtt{at}\) writes \(N\) back into the parent's slot \(k\), the parent's \(\mathit{z}.\mathit{meta}(k)\) is unchanged, so the wrap is transparent to the parent.
 If \(\tau\) is empty the whole control becomes \(N\), with the old root as arm \(0\).
 
+Like \(\csem{\Add}\), the form is a recursion on the path, and only its base case is new:
+\[
+\csem{\Designate([\,],\ \mathit{survivor})}\ M = \mathtt{wrap}(M).
+\]
+Its recursive case is \(\csem{\Add}\)'s, carrying \(\mathtt{flows}(\mathit{survivor})\) rather than \(\mathtt{flows}(\mathit{arm})\) down toward \(\tau\).
+
 \paragraph{Note: Overlap between the old subtree and \ensuremath{\mathit{survivor}}}
 
 Overlap of leaf labels between \(C@\tau\) and \ensuremath{\mathit{survivor}} is explicitly permitted.
@@ -1061,8 +1064,11 @@ The two arms thus stay operationally disjoint even when their label sets overlap
 
 \paragraph{Pol-level reading}
 
-\Designate{} wraps the \ensuremath{\mathit{pol}} subtree at \(\tau\).
-\(\psem{\cdot}\) yields \(\Strict\), not \(\Strictstar\), since the star is \ensuremath{\mathit{pol}}-invisible.
+\Designate{} wraps the \ensuremath{\mathit{pol}} subtree at \(\tau\):
+\[
+\psem{\Designate(\tau, \mathit{survivor})} = \mathtt{at}(\tau,\; t \mapsto \Strict(\mathtt{hi}{:}\,t,\ \mathtt{lo}{:}\,\mathit{survivor})).
+\]
+It yields \(\Strict\), not \(\Strictstar\), since the star is \ensuremath{\mathit{pol}}-invisible.
 
 \subsubsection{\texorpdfstring{\(\Undesignate(\tau)\)}{Undesignate}}\label{sec:undesignate}
 
@@ -1076,11 +1082,17 @@ Below we write \(N\) for that node and \(B\) for its surviving arm, both as cont
 
 \Undesignate{} is defined when \(C@\tau\)'s ranker names \(\Strictstar\), and when its arm 0 is empty.
 \(\mathtt{unwrap}\) returns arm 1 of the node, \(B\), with its subtree and contents unchanged; the node \(N = C@\tau\) and its empty arm-0 subtree are discarded.
-Since \(\mathtt{at}\) writes \(B\) back into the parent's slot \(k\), the parent's \(\mathit{z}.\mathit{meta}(k)\) is unchanged and \(B\) now hangs directly where \(N\) did.
+Since \(\mathtt{at}\) writes \(B\) back into the parent's slot \(k\), the parent's \(\mathit{z}.\mathit{meta}(k)\) is unchanged and \(B\) now hangs directly where \(N\) did:
+\[
+\csem{\Undesignate(\tau)} = \mathtt{at}(\tau,\, \mathtt{unwrap}).
+\]
 
 \paragraph{Pol-level reading}
 
-\Undesignate{} collapses the wrapper, which reads as \(\Strict\) at \ensuremath{\mathit{pol}}-level, and leaves its low arm behind.
+\Undesignate{} collapses the wrapper, which reads as \(\Strict\) at \ensuremath{\mathit{pol}}-level, and leaves its low arm behind:
+\[
+\psem{\Undesignate(\tau)} = \mathtt{at}(\tau,\; \Strict(\mathtt{hi}{:}\,a,\ \mathtt{lo}{:}\,b) \mapsto b).
+\]
 That arm is \(\lfloor B \rfloor\).
 The wrapper's own annotations go with it, and the surviving arm inherits the annotation the wrapper held at its parent.
 The empty-arm-0 precondition is operational and leaves no trace at \ensuremath{\mathit{pol}}-level.
