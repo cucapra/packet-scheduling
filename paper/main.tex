@@ -52,11 +52,9 @@
 \newcommand{\Remove}{\textsf{Remove}}
 \newcommand{\Designate}{\textsf{Designate}}
 \newcommand{\Undesignate}{\textsf{Undesignate}}
-\newcommand{\ChangeRoot}{\textsf{ChangeRoot}}
 \newcommand{\Retire}{\textsf{Retire}}
 \newcommand{\SlowRetire}{\textsf{SlowRetire}}
 \newcommand{\Replace}{\textsf{Replace}}
-\newcommand{\PruneDownTo}{\textsf{PruneDownTo}}
 
 % Small drawn queues for the tree figures.
 % \leafbox{k}: a 5-cell buffer whose rightmost k cells each hold a packet (a filled disc).
@@ -484,14 +482,13 @@ Every form has two readings, pinned down form by form in \cref{sec:edit-semantic
 Three properties shape the choice of forms.
 They are \emph{atomic}, since a form is admitted only if the hardware substrate can commit \(\csem{\delta}\) as a single instant (\cref{sec:hardware}).
 They are \emph{explainable}, since \(\psem{\delta}\) states every form's effect back to the operator in the DSL they wrote, so the planner can report which policy change it is about to make and echo it back for approval (\cref{sec:planner}).
-And they are \emph{complete}, since the seven together reach any \(p_2\) from any \(p_1\), which \cref{sec:fallback} shows by exhibiting a sequence that always works.
-% "since the seven together" is misleading. Just a couple are needed, in truth. Just say that the grammar is sufficient to express a sequence that always works.
+And they are \emph{complete}, since the grammar can express a sequence that reaches any \(p_2\) from any \(p_1\), which \cref{sec:fallback} shows by exhibiting one that always works.
 
 An edit describes \emph{where} in the tree the change lands and \emph{what} the change is.
 Throughout this section \(p_1\) is the presently running policy, 
 and \(p_1@\mathit{path}\) is the subtree of \(p_1\) reached by following \ensuremath{\mathit{path}} down from its root.
 % crunch the clause above
-The node a form's \ensuremath{\mathit{path}} names is its \emph{edit site}, with \ChangeRoot{} the one exception, since there the path gives the surviving subtree instead.
+The node a form's \ensuremath{\mathit{path}} names is its \emph{edit site}.
 
 \begin{figure}[t]
 \small
@@ -503,7 +500,6 @@ The node a form's \ensuremath{\mathit{path}} names is its \emph{edit site}, with
 \mid & \Remove(\mathit{path})\\
 \mid & \Designate(\mathit{path}, \mathit{pol})\\
 \mid & \Undesignate(\mathit{path})\\
-\mid & \ChangeRoot(\mathit{path})\\[6pt]
 \mathit{path} \mathrel{::=} & [\,] \;\mid\; i \mathbin{::} \mathit{path}\\[6pt]
 \multicolumn{2}{@{}l@{}}{i \in \mathbb{N} \qquad m \in M_{D}}
 \end{array}
@@ -523,9 +519,13 @@ Two carry a metadatum \(m\), drawn from the metadata set of the discipline that 
 Edits that would have to discard packets are expressly not in the grammar.
 For example, \Remove{} has a precondition saying that it may fire only when its target subtree is already empty, so structural deletion never has to discard a buffered packet.
 The richer reconfigurations an operator may want are realized as sequences of these forms, called \emph{idioms}, which \cref{sec:idioms} defines.
-\Retire{} drains a subtree and then removes it, \Replace{} swaps one subtree for another in place, and \PruneDownTo{} discards everything except a chosen subtree.
+\Retire{} drains a subtree and then removes it, and \Replace{} swaps one subtree for another in place.
 
-\cref{sec:edit-semantics} takes up the seven forms one at a time.
+\xxx[AM]{I nixed \textsf{ChangeRoot} and \textsf{PruneDownTo} on 2026-08-31, on the grounds that no reader finishing this paper without them would ask where they went.
+The grammar is six forms rather than seven and the idiom set is three rather than four.
+Nothing in the completeness argument moved, since \cref{sec:fallback}'s always-available plan uses \Designate, \Quiesce, and \Undesignate{} only.
+\texttt{paper/cuts.tex} keeps every removed passage verbatim.}
+\cref{sec:edit-semantics} takes up the six forms one at a time.
 When \(p_1\) and \(p_2\) are already the same up to sibling order (written \(\eqR\), and pinned down in \cref{sec:equivalences}), the planner emits the empty sequence and the live control is left untouched.
 
 Before taking up the forms themselves, \cref{sec:equivalences} says when two policies, or two controls, count as the same, and how to recover a \ensuremath{\mathit{pol}} from a control.
@@ -661,7 +661,6 @@ Both are stated here without proof, together with the preconditions under which 
 \Remove(\pi \mathbin{+\!\!+} [k]) & \mathtt{at}(A_\pi,\ \mathit{z} \setminus\!\!\setminus R) \circ \mathtt{at}(\pi,\, \mathtt{drop}_k) & \mathtt{at}(\pi,\; D(\mathit{ts}) \mapsto D(\mathit{ts}[-/k]))\\[3pt]
 \Designate(\tau, \mathit{survivor}) & \mathtt{spine}(\tau,\ \mathtt{flows}(\mathit{survivor})) \circ \mathtt{at}(\tau,\, \mathtt{wrap}) & \mathtt{at}(\tau,\; t \mapsto \Strict(\mathtt{hi}{:}\,t,\ \mathtt{lo}{:}\,\mathit{survivor}))\\[3pt]
 \Undesignate(\tau) & \mathtt{at}(\tau,\, \mathtt{unwrap}) & \mathtt{at}(\tau,\; \Strict(\mathtt{hi}{:}\,a,\ \mathtt{lo}{:}\,b) \mapsto b)\\[3pt]
-\ChangeRoot(\nu) & C@\nu & p \mapsto p@\nu
 \end{array}
 \)
 \caption{The two readings of every form of \(\delta\). Each form's preconditions and its own node transformer are given with the form in the text.}
@@ -1145,52 +1144,6 @@ That arm is \(\lfloor B \rfloor\).
 The wrapper's own annotations go with it, and the surviving arm inherits the annotation the wrapper held at its parent.
 The empty-arm-0 precondition is operational and leaves no trace at \ensuremath{\mathit{pol}}-level.
 
-\subsubsection{\texorpdfstring{\(\ChangeRoot(\nu)\)}{ChangeRoot}}\label{sec:changeroot}
-% nu looks like v and looks confusing. Change to a different letter. 
-
-% I am strongly considering removing ChangeRoot and PruneDownTo. No reader will read this paper sans those and then say "hey, where are those?"
-
-\(\nu : \mathit{path}\) is the subtree promoted to the new root; \ChangeRoot{} discards every ancestor above \(C@\nu\).
-It is the only form that erases structural ancestors; the mechanics are short but the Notes below are substantive.
-
-\paragraph{Definition}
-
-\ChangeRoot{} is defined when \(\nu\) is non-empty, resolves in \(C\), and every node strictly above \(C@\nu\) is \emph{unary} with its sole arm continuing toward \(C@\nu\), so that the discarded chain carries no off-path traffic.
-\(C@\nu\) and its subtree are kept unchanged; every proper ancestor's \((\mathit{state}, \mathit{pifo}, \mathit{z})\) is discarded.
-
-\paragraph{Pol-level reading}
-
-The promoted subtree becomes the root, and a root has no parent to annotate it, so the metadatum it carried is discarded along with the ancestors that read it.
-
-\paragraph{Notes}
-
-\emph{Why the unary precondition.}
-The precondition rules out, by construction, any silently-dropped packet-bearing siblings.
-A non-unary ancestor would have arms branching off the path to \(C@\nu\); those subtrees would vanish with their ancestor, taking their packets with them.
-Allowing this would make \ChangeRoot{} a structural deletion of arbitrarily many off-path subtrees masquerading as a root change, with no semantic story for those packets.
-An operator may still want to prune to a subtree whose ancestor chain branches off into packet-bearing relatives.
-That is the \PruneDownTo{} idiom, which drains and \Remove{}s those siblings in sequence.
-Doing so reduces the chain above \(C@\nu\) to the unary shape that \ChangeRoot{} accepts.
-
-\emph{What the chain carries, and what is discarded.}
-An internal node's \ensuremath{\mathit{node\_state}}, rank function, and \ensuremath{\mathit{pifo}} ordering exist to pick among siblings.
-A unary node has no siblings to choose between.
-Every pop is forced into its one arm.
-
-What can remain active at a unary node is rank computation that depends on per-packet attributes rather than on sibling identity.
-If a chain's disciplines do no such per-packet reordering, each unary node along the chain is operationally a passthrough, and the non-disruption argument above extends to every subsequent pop and push.
-If they do, the chain is actively shaping traffic, and \ChangeRoot{} removes that shaping.
-LSTF~\cite{Mittal16} is a canonical example, ranking each packet by its deadline.
-It is not one of our three instantiated disciplines, but it is the kind of discipline the open family of \cref{sec:policy-dsl} admits.
-That is precisely the form's intended role.
-It is the atomic step by which the operator says ``promote \(p@\nu\) to the root and discard the ancestor shaping above it.''
-\PruneDownTo{} packages this with the upstream draining and \Remove{}s that make the chain unary in the first place, so the operator's request (``prune to this subtree'') is realized as a sequence whose final step discards exactly the ancestor influence that the operator has chosen to abandon.
-
-\emph{Pol-level effect.}
-The \ensuremath{\mathit{pol}} changes from the unary chain wrapping \(p@\nu\), for instance \(\Strict(p@\nu)\), to just \(p@\nu\).
-This is \ensuremath{\mathit{pol}}-visible: the root discipline observably changes, which is the substantive content of the form.
-Whether that pol-visible change reorders in-flight traffic depends on whether the discarded chain was doing per-packet reordering (see previous Note).
-
 \section{Correctness}\label{sec:correctness}
 
 \cref{sec:edit-semantics} gave each form of \(\delta\) its two readings.
@@ -1321,7 +1274,7 @@ Here is why I want to keep it.
 Suppose we added a form \(\textsf{Reset}(p_2)\), with \(\csem{\textsf{Reset}(p_2)}(C) = \lceil p_2 \rceil\) and \(\psem{\textsf{Reset}(p_2)}(p) = p_2\).
 It satisfies both clauses of \cref{thm:interplay}, since \(\lceil p_2 \rceil\) is well-formed and \(\lfloor \lceil p_2 \rceil \rfloor \eqR p_2\), and it is exactly the stop-the-world baseline: buffered packets dropped on the floor.
 So the agreement theorem alone cannot tell our contribution apart from the thing we claim to beat, and Obligation 2 of \cref{sec:intro} is never discharged formally.
-My counter-offer is to promote non-disruption to a collected theorem rather than demote it: every \(\delta\) leaves the \pop{} sequence unchanged, which is what the \Designate, \Undesignate, and \ChangeRoot{} arguments actually establish and what the current per-form wording understates.}
+My counter-offer is to promote non-disruption to a collected theorem rather than demote it: every \(\delta\) leaves the \pop{} sequence unchanged, which is what the \Designate{} and \Undesignate{} arguments actually establish and what the current per-form wording understates.}
 
 We state the property on what the network can observe, which is the sequence of packets that successive \pop{}s release.
 
@@ -1340,8 +1293,8 @@ The buffered backlog is preserved entry-for-entry, and \(\delta\) is non-disrupt
 \end{lemma}
 
 We therefore discharge non-disruption per form by naming the form's \emph{footprint}, the nodes and fields it touches, and checking that the footprint holds no live \ensuremath{\mathit{pifo}} entry.
-Four of the seven pass that check outright.
-\Designate{} inserts a node whose \ensuremath{\mathit{pifo}} is not empty, \Undesignate{} drops one, and \ChangeRoot{} discards a whole chain of them, so those three need an argument of their own.
+Four of the six pass that check outright.
+\Designate{} inserts a node whose \ensuremath{\mathit{pifo}} is not empty and \Undesignate{} drops one, so those two need an argument of their own.
 Each such argument shows that the \pop{} sequence is unchanged, which is why \cref{thm:nondisruption} is stated on that sequence rather than on \ensuremath{\mathit{pifo}} contents.
 
 The lemma can read counterintuitively.
@@ -1351,7 +1304,7 @@ Only packets pushed after the change are ranked under the new priorities.
 
 \subsection{Form by Form}\label{sec:per-form}
 
-Each form owes three checks, and together the seven sets of three prove the two theorems above.
+Each form owes three checks, and together the six sets of three prove the two theorems above.
 Two of the checks feed \cref{thm:interplay}, and the third feeds \cref{thm:nondisruption}.
 Throughout, we write \(C\) for the pre-edit control and \(C'\) for the post-edit control, and \(p = \lfloor C \rfloor\), \(p' = \lfloor C' \rfloor\) for the policies they realize.
 All three checks assume \(\csem{\delta}(C)\) is defined.
@@ -1454,25 +1407,10 @@ So \(C@\pi\) reads \(|B| = |B|\), and \(B\) reads as before.
 Eliding \(N\) removes that redundant hop and returns the same packet, and no entry inside \(B\) moves.
 So \Undesignate{} is non-disruptive.
 
-\subsubsection{\texorpdfstring{\(\ChangeRoot(\nu)\)}{ChangeRoot}}
-
-\paragraph{Characterization}
-\(\lfloor \cdot \rfloor\) is a structural recursion, so it commutes with subtree projection: \(\lfloor C@\nu \rfloor = p \mathbin{@} \nu\), giving \(p' \eqR \psem{\ChangeRoot(\nu)}(p)\).
-
-\paragraph{Preservation and non-disruption}
-
-\emph{Preservation of \(\vdash\).} \(\vdash C\) is a conjunction of per-node obligations, and those on \(C@\nu\)'s nodes are exactly \(\vdash C@\nu = \vdash C'\).
-The discarded ancestors' obligations are forgotten with them.
-\emph{Non-disruption.} Every in-flight packet sits in a \ensuremath{\mathit{pifo}} within \(C@\nu\) (the discarded ancestor pifos held routing entries, not packets).
-Those entries are redundant.
-A \pop{} before \(\delta\) descends the unary chain, and each ancestor pifo has the single slot \(0\), so every such pop is forced to slot \(0\) and lands at \(C@\nu\).
-A \pop{} after \(\delta\) acts on \(C@\nu\) directly and returns the same packet.
-So \ChangeRoot{} is non-disruptive.
-
 \paragraph{Taking stock}
 
-That is all seven forms, and together they discharge \cref{thm:interplay} and \cref{thm:nondisruption}.
-The Characterizations have content because each was proved against a \(\lfloor \cdot \rfloor\) fixed in advance, so they are seven separate claims rather than seven readings of one definition.
+That is all six forms, and together they discharge \cref{thm:interplay} and \cref{thm:nondisruption}.
+The Characterizations have content because each was proved against a \(\lfloor \cdot \rfloor\) fixed in advance, so they are six separate claims rather than six readings of one definition.
 \subsection{Preserving this proof down to hardware}\label{sec:hw-preservation}
 
 \cref{sec:per-form} proves soundness at the \(\delta\) level, where each form (\Add, \Quiesce, \Remove, \ldots) carries a well-formed tree to a well-formed tree.
@@ -1544,12 +1482,10 @@ We do not pursue this here, since the splicing analysis introduces its own corre
 \Replace(\mathit{path}, B) \;=\;\\
 \quad (\mathtt{true};\, \Designate(\mathit{path}, B))\,;\\
 \quad (\mathtt{true};\, \Quiesce(\mathit{path} \mathbin{+\!\!+} [0]))\,;\\
-\quad (\mathtt{empty}(\mathit{path} \mathbin{+\!\!+} [0]);\, \Undesignate(\mathit{path}))\\[4pt]
-\PruneDownTo(\mathit{path}) \;=\;\\
-\quad \Retire(\pi_a)\,;\, \ldots\,;\, \Retire(\pi_z)\,;\, (\mathtt{true};\, \ChangeRoot(\mathit{path}))
+\quad (\mathtt{empty}(\mathit{path} \mathbin{+\!\!+} [0]);\, \Undesignate(\mathit{path}))
 \end{array}
 \]
-\caption{The grammar of guarded sequences and the four starter idioms, each a named \((\varphi;\delta)^{*}\).}
+\caption{The grammar of guarded sequences and the three starter idioms, each a named \((\varphi;\delta)^{*}\).}
 \label{fig:gseq-idioms}
 \end{figure}
 
@@ -1599,7 +1535,7 @@ It expands into a fixed \((\varphi; \delta)^{*}\) sequence: a list of forms with
 Soundness is compositional: each step of the expansion is sound by \cref{sec:per-form}, and the sequence inherits the sequence-level reasoning above.
 An idiom expansion that would reach an undefined form on the current control is rejected, since the soundness checks run on the expanded sequence just as they would on a hand-written one.
 
-We name four starter idioms, with their expansions collected in \cref{fig:gseq-idioms}.
+We name three starter idioms, with their expansions collected in \cref{fig:gseq-idioms}.
 New ones can be added later without changing the framework, since an idiom is only a named \((\varphi; \delta)^{*}\).
 
 \begin{itemize}
@@ -1615,68 +1551,6 @@ At the pol level the effect is the outright replacement of \(\mathit{pol}@\mathi
 Its footprint is the subtree at \ensuremath{\mathit{path}}, the wrap node \Designate{} inserts, and the \ensuremath{\mathit{z}} chain at the ancestors of \ensuremath{\mathit{path}}.
 \cref{sec:planner} frames confinement against exactly this set.
 
-\item \textbf{\PruneDownTo(\ensuremath{\mathit{path}})} retires every off-path subtree along the route from the root to \ensuremath{\mathit{path}} (call them \(\pi_a, \ldots, \pi_z\)), then \ChangeRoot{}s to \ensuremath{\mathit{path}}.
-This idiom is the operator-facing way to say ``abandon everything except this subtree.''
-
-Each \Retire{} removes one off-path subtree; once they have all fired, every ancestor along the path is unary, satisfying \ChangeRoot's precondition (\cref{sec:changeroot}).
-The \Retire{}s on disjoint off-path subtrees commute, so any ordering suffices; we use root-first as a stable convention.
-
-For instance, suppose the running tree is \(A(B(D(F,\allowbreak G), E),\allowbreak C)\), with edges labeled by the parent-side index:
-
-\begin{center}
-\begin{minipage}{0.55\linewidth}
-\centering
-\begin{tikzpicture}[
-  level distance=0.65cm,
-  level 1/.style={sibling distance=1.9cm},
-  level 2/.style={sibling distance=1.1cm},
-  level 3/.style={sibling distance=0.7cm},
-  every node/.style={font=\small},
-  edge from parent/.style={draw},
-  every child/.style={font=\scriptsize}
-]
-\node {\(A\)}
-  child {node {\(B\)}
-    child {node {\(D\)}
-      child {node {\(F\)} edge from parent node[left, xshift=-1pt] {\scriptsize 0}}
-      child {node {\(G\)} edge from parent node[right, xshift=1pt] {\scriptsize 1}}
-      edge from parent node[left, xshift=-1pt] {\scriptsize 0}
-    }
-    child {node {\(E\)} edge from parent node[right, xshift=1pt] {\scriptsize 1}}
-    edge from parent node[left, xshift=-1pt] {\scriptsize 0}
-  }
-  child {node {\(C\)} edge from parent node[right, xshift=1pt] {\scriptsize 1}};
-\end{tikzpicture}
-\end{minipage}%
-\begin{minipage}{0.35\linewidth}
-\centering
-\small
-\begin{tabular}{@{}l@{\quad}l@{}}
-\(A\) & \([\,]\) \\
-\(B\) & \([0]\) \\
-\(C\) & \([1]\) \\
-\(D\) & \([0,0]\) \\
-\(E\) & \([0,1]\) \\
-\(F\) & \([0,0,0]\) \\
-\(G\) & \([0,0,1]\) \\
-\end{tabular}
-\end{minipage}
-\end{center}
-The operator wants to retain only \(E\), so they issue \PruneDownTo(\([0,1]\)).
-The off-path subtrees are \(D(F, G)\) (at \([0,0]\)) and \(C\) (at \([1]\)).
-So \PruneDownTo(\([0,1]\)) expands to \Retire(\([0,0]\)) ; \Retire(\([1]\)) ; (\(\mathtt{true}\); \ChangeRoot(\([0,0]\))).
-
-The path \([0,0]\) appears twice in this expansion with different referents.
-In \Retire(\([0,0]\)) it points to \(D(F, G)\), the operand at the moment that \Retire{} fires.
-In the final \ChangeRoot(\([0,0]\)) it points to \(E\), which moved from \([0,1]\) to \([0,0]\) once \(D(F, G)\) was retired.
-A path-resolution system computes these targets automatically at idiom expansion; the operator only writes \PruneDownTo(\([0,1]\)), naming \(E\) by its location at the moment of request.
-
-\emph{The opposite move.}
-\PruneDownTo{} keeps one subtree and abandons everything around it.
-The opposite move would keep the running tree and splice fresh structure \emph{above and around} it, with the running root becoming a child of a newly introduced context.
-We support this as neither a form nor an idiom.
-Any fresh ancestor would need a \ensuremath{\mathit{node\_state}}, per-arm \ensuremath{\mathit{slot\_state}}s, a populated index \ensuremath{\mathit{pifo}}, and a \ensuremath{\mathit{z}} whose history matches the live traffic already flowing through the subtree it now wraps.
-There is no honest way to synthesize the state such a node would have carried had it been present all along.
 \end{itemize}
 
 \section{The Transition Planner}\label{sec:planner}
@@ -1812,17 +1686,12 @@ So the planner keeps the permutation that normalizing the read-off applied, and 
 
 \paragraph{The top-level pass}
 
-The pass tries three cases in order and stops at the first match.
+The pass tries two cases in order and stops at the first match.
 
 \begin{enumerate}
 \item \(p_1 = p_2\). Emit \([\,]\).
 The test is literal equality on the normalized \ensuremath{\mathit{pol}} terms, so two \(\eqR\)-equivalent policies arrive here as identical terms.
 The live control is already serving the requested policy and there is nothing to install.
-
-\item \(p_2\) embeds in \(p_1\) at \ensuremath{\mathit{path}}. Emit \(\PruneDownTo(\mathit{path})\).
-A structural sub-policy test walks \(p_1\) looking for a subtree equal to \(p_2\); if it finds one, \ensuremath{\mathit{path}} names where it sits.
-The match is unique: by \cref{sec:policy-dsl}'s leaf-partition validity each flow in \(p_2\) may appear at most once in \(p_1\), so \(p_1\) can host \(p_2\) as a subtree in at most one position.
-This test runs only at the top level.
 
 \item Otherwise. Hand \((p_1, p_2)\) to the per-level comparator.
 \end{enumerate}
@@ -2159,11 +2028,11 @@ A switch with \(P\) output ports has \(P\) separate trees, and at the ISA we put
 Every port hosts a reserved PIFO \texttt{port\_root}, allocated at boot on a reserved PE, whose sole child is the actual tree root.
 \texttt{port\_root} runs a fixed 1-arm policy.
 Its \texttt{Assoc} set mirrors that of the live tree's actual root; its \texttt{Map} sends each Assoc'd flow through its single index \texttt{port\_step}.
-This \texttt{port\_root} state is what makes \ChangeRoot{} expressible, and it is maintained by two complementary mechanisms.
-On every form except \ChangeRoot, the \texttt{walk(...)} calls that touch \texttt{Assoc}/\texttt{Map} start at \texttt{port\_root} and so update its tables in lockstep with the actual root's.
-On \ChangeRoot, the lowering issues no flow-table writes against \texttt{port\_root} at all.
-The swap is exactly one \texttt{emancipate}/\texttt{adopt} pair against \texttt{port\_root}, and the existing \texttt{Assoc}/\texttt{Map} state survives it because \texttt{port\_step} is the index \emph{name}, unbound to any particular child.
-The wrapper exists so that ``swap the root'' can be said in the same vocabulary as any child-level edit, there being no opcode for changing the root of the tree directly.
+The \texttt{walk(...)} calls that touch \texttt{Assoc}/\texttt{Map} start at \texttt{port\_root}, so its tables stay in lockstep with the actual root's.
+\xxx[AM to Zhiyuan]{\textsf{ChangeRoot} and \textsf{PruneDownTo} are cut from the paper as of 2026-08-31; \texttt{paper/cuts.tex} holds the removed text and the reasoning.
+\texttt{port\_root} was justified here entirely by \textsf{ChangeRoot}, since it was the wrapper that let ``swap the root'' be said in the same vocabulary as a child-level edit.
+I have left the wrapper in, on the guess that it is still wanted for port multiplexing, but it now has no stated reason to exist.
+Either give it one or take it out.}
 
 The three parts of \ensuremath{\mathit{z}} (\cref{sec:controls}) line up one to one with this vocabulary.
 A node's \(\mathit{z}.\mathit{admit}\) is its \texttt{Assoc} set, its \(\mathit{z}.\mathit{serves}\) is its \texttt{Map} table, its \(\mathit{z}.\mathit{rank}\) is what \texttt{set\_policy} installs and \texttt{discipline(v)} reads back, and its \(\mathit{z}.\mathit{meta}\) is what \texttt{set\_arm\_meta} writes.
@@ -2266,16 +2135,7 @@ foreach v in nodes(loser_v):
 \end{Verbatim}
 \texttt{undesignate} rewires the parent's slot past \texttt{sp\_v} but does not deallocate it, so an explicit \texttt{gc(sp\_v)} follows.
 
-\paragraph*{\(\ChangeRoot(\mathit{path})\)}
-Let the live tree be \(\mathtt{port\_root} \to a_0 \to a_1 \to \ldots \to a_m \to \mathit{path}\) (the \cref{sec:delta-grammar} restriction makes \(a_0 \ldots a_m\) a unary vine).
-\begin{Verbatim}
-emancipate(port_step, port_root)
-adopt(port_step, port_root, path)
-foreach a in {a_0, ..., a_m}:
-    gc(a)
-\end{Verbatim}
-
-Three of these lowerings need further comment.
+Two of these lowerings need further comment.
 
 \Quiesce{}'s wide reach, covering the root-to-\ensuremath{\mathit{path}} chain along with the subtree under \ensuremath{\mathit{path}}, is forced by \cref{sec:policy-dsl}'s parallel push.
 Every node on a packet's path mints its own routing index independently, so dropping \texttt{f} at only some of those nodes would leave the rest minting stray indices, and the tree malformed.
@@ -2290,8 +2150,6 @@ The lowering rewires \ensuremath{\mathit{path}}'s parent edge from \texttt{loser
 \texttt{designate(loser, surv)} is the ISA-level marker that names the favored child and records the eventual successor; a later \texttt{undesignate} swings the parent's index over to \texttt{surv} and releases \texttt{sp\_v} along with the loser subtree.
 A substrate that recognizes the same-PE invariant on \texttt{(sp\_v, loser, surv)} may coalesce the three into a single physical slot, the ``super-node'' optimization named above.
 The ISA does not require it, leaving room for substrates that prefer the literal Strict-2 form.
-
-\ChangeRoot{} writes no flow tables: \ensuremath{\mathit{path}}'s \texttt{Assoc} and \texttt{Map} already describe the post-commit live tree, since collapsing the unary vine above \ensuremath{\mathit{path}} leaves the flows-to-leaves mapping unchanged.
 
 \subsection{Substrate portability}\label{sec:substrate-portability}
 

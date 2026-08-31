@@ -1,0 +1,295 @@
+%% cuts.tex --- text removed from main.tex, kept for the record.
+%%
+%% THIS FILE IS NOT \input BY main.tex. It does not compile on its own and is
+%% not meant to. It is an archive, so that nothing below has to be
+%% reconstructed from git if we change our minds.
+%%
+%% ---------------------------------------------------------------------------
+%% 2026-08-31: ChangeRoot and PruneDownTo removed.
+%% ---------------------------------------------------------------------------
+%%
+%% AM's call, from the pen-and-paper read of 2026-08-31, recorded as item 3 of
+%% paper/pen-notes-buckets.md: "I am strongly considering removing ChangeRoot
+%% and PruneDownTo. No reader will read this paper sans those and then say
+%% 'hey, where are those?'"
+%%
+%% What the cut costs, checked before it was made:
+%%
+%%   Nothing in the completeness argument. sec:fallback's always-available plan
+%%   is Replace([], p_2), which expands to Designate, Quiesce, and Undesignate.
+%%   Neither ChangeRoot nor PruneDownTo is needed to reach any p_2 from any p_1,
+%%   so no theorem weakens. The grammar goes from seven forms to six and the
+%%   idiom set from four to three.
+%%
+%%   One thing in section 8. port_root was justified there entirely by
+%%   ChangeRoot ("This port_root state is what makes ChangeRoot expressible").
+%%   The wrapper itself was left in place, since it may still be wanted for
+%%   port multiplexing, but it now has no stated reason to exist. An \xxx in
+%%   main.tex flags that for Zhiyuan. See region 15 below.
+%%
+%% To restore: the regions below are verbatim and in document order, each with
+%% the place it came from. Regions 1 through 6 and 8, 9, 11, 13, 14, 15 are
+%% fragments spliced into surviving prose; regions 7, 10, 12, and 16 are whole
+%% units that can be pasted back where their headers say.
+%%
+%% ===========================================================================
+
+
+% ---------------------------------------------------------------------------
+% 1. Preamble macros
+% From: main.tex preamble
+% ---------------------------------------------------------------------------
+
+\newcommand{\ChangeRoot}{\textsf{ChangeRoot}}
+\newcommand{\PruneDownTo}{\textsf{PruneDownTo}}
+
+
+% ---------------------------------------------------------------------------
+% 2. The grammar production
+% From: fig:delta-grammar, \S4.1
+% ---------------------------------------------------------------------------
+
+\mid & \ChangeRoot(\mathit{path})\\[6pt]
+
+
+% ---------------------------------------------------------------------------
+% 3. The edit-site exception
+% From: \S4.1, just before fig:delta-grammar
+% ---------------------------------------------------------------------------
+
+The node a form's \ensuremath{\mathit{path}} names is its \emph{edit site}, with \ChangeRoot{} the one exception, since there the path gives the surviving subtree instead.
+
+
+% ---------------------------------------------------------------------------
+% 4. The idiom one-liner
+% From: \S4.1, after the not-in-the-grammar paragraph
+% ---------------------------------------------------------------------------
+
+\Retire{} drains a subtree and then removes it, \Replace{} swaps one subtree for another in place, and \PruneDownTo{} discards everything except a chosen subtree.
+
+
+% ---------------------------------------------------------------------------
+% 5. The completeness clause
+% From: \S4.1, third of the three properties
+% ---------------------------------------------------------------------------
+
+And they are \emph{complete}, since the seven together reach any \(p_2\) from any \(p_1\), which \cref{sec:fallback} shows by exhibiting a sequence that always works.
+
+
+% ---------------------------------------------------------------------------
+% 6. The fig:delta-semantics row
+% From: fig:delta-semantics, \S4.3
+% ---------------------------------------------------------------------------
+
+\ChangeRoot(\nu) & C@\nu & p \mapsto p@\nu
+
+
+% ---------------------------------------------------------------------------
+% 7. \S4.3.7 in full
+% From: the whole subsubsection, sec:changeroot
+% ---------------------------------------------------------------------------
+
+\subsubsection{\texorpdfstring{\(\ChangeRoot(\nu)\)}{ChangeRoot}}\label{sec:changeroot}
+% nu looks like v and looks confusing. Change to a different letter. 
+
+% I am strongly considering removing ChangeRoot and PruneDownTo. No reader will read this paper sans those and then say "hey, where are those?"
+
+\(\nu : \mathit{path}\) is the subtree promoted to the new root; \ChangeRoot{} discards every ancestor above \(C@\nu\).
+It is the only form that erases structural ancestors; the mechanics are short but the Notes below are substantive.
+
+\paragraph{Definition}
+
+\ChangeRoot{} is defined when \(\nu\) is non-empty, resolves in \(C\), and every node strictly above \(C@\nu\) is \emph{unary} with its sole arm continuing toward \(C@\nu\), so that the discarded chain carries no off-path traffic.
+\(C@\nu\) and its subtree are kept unchanged; every proper ancestor's \((\mathit{state}, \mathit{pifo}, \mathit{z})\) is discarded.
+
+\paragraph{Pol-level reading}
+
+The promoted subtree becomes the root, and a root has no parent to annotate it, so the metadatum it carried is discarded along with the ancestors that read it.
+
+\paragraph{Notes}
+
+\emph{Why the unary precondition.}
+The precondition rules out, by construction, any silently-dropped packet-bearing siblings.
+A non-unary ancestor would have arms branching off the path to \(C@\nu\); those subtrees would vanish with their ancestor, taking their packets with them.
+Allowing this would make \ChangeRoot{} a structural deletion of arbitrarily many off-path subtrees masquerading as a root change, with no semantic story for those packets.
+An operator may still want to prune to a subtree whose ancestor chain branches off into packet-bearing relatives.
+That is the \PruneDownTo{} idiom, which drains and \Remove{}s those siblings in sequence.
+Doing so reduces the chain above \(C@\nu\) to the unary shape that \ChangeRoot{} accepts.
+
+\emph{What the chain carries, and what is discarded.}
+An internal node's \ensuremath{\mathit{node\_state}}, rank function, and \ensuremath{\mathit{pifo}} ordering exist to pick among siblings.
+A unary node has no siblings to choose between.
+Every pop is forced into its one arm.
+
+What can remain active at a unary node is rank computation that depends on per-packet attributes rather than on sibling identity.
+If a chain's disciplines do no such per-packet reordering, each unary node along the chain is operationally a passthrough, and the non-disruption argument above extends to every subsequent pop and push.
+If they do, the chain is actively shaping traffic, and \ChangeRoot{} removes that shaping.
+LSTF~\cite{Mittal16} is a canonical example, ranking each packet by its deadline.
+It is not one of our three instantiated disciplines, but it is the kind of discipline the open family of \cref{sec:policy-dsl} admits.
+That is precisely the form's intended role.
+It is the atomic step by which the operator says ``promote \(p@\nu\) to the root and discard the ancestor shaping above it.''
+\PruneDownTo{} packages this with the upstream draining and \Remove{}s that make the chain unary in the first place, so the operator's request (``prune to this subtree'') is realized as a sequence whose final step discards exactly the ancestor influence that the operator has chosen to abandon.
+
+\emph{Pol-level effect.}
+The \ensuremath{\mathit{pol}} changes from the unary chain wrapping \(p@\nu\), for instance \(\Strict(p@\nu)\), to just \(p@\nu\).
+This is \ensuremath{\mathit{pol}}-visible: the root discipline observably changes, which is the substantive content of the form.
+Whether that pol-visible change reorders in-flight traffic depends on whether the discarded chain was doing per-packet reordering (see previous Note).
+
+
+% ---------------------------------------------------------------------------
+% 8. \S5.2's clause in the \xxx to Adrian
+% From: sec:nondisruption
+% ---------------------------------------------------------------------------
+
+My counter-offer is to promote non-disruption to a collected theorem rather than demote it: every \(\delta\) leaves the \pop{} sequence unchanged, which is what the \Designate, \Undesignate, and \ChangeRoot{} arguments actually establish and what the current per-form wording understates.}
+
+
+% ---------------------------------------------------------------------------
+% 9. \S5.2's counting sentences
+% From: sec:nondisruption
+% ---------------------------------------------------------------------------
+
+Four of the seven pass that check outright.
+\Designate{} inserts a node whose \ensuremath{\mathit{pifo}} is not empty, \Undesignate{} drops one, and \ChangeRoot{} discards a whole chain of them, so those three need an argument of their own.
+
+
+% ---------------------------------------------------------------------------
+% 10. \S5.3.5 in full
+% From: the whole subsubsection
+% ---------------------------------------------------------------------------
+
+\subsubsection{\texorpdfstring{\(\ChangeRoot(\nu)\)}{ChangeRoot}}
+
+\paragraph{Characterization}
+\(\lfloor \cdot \rfloor\) is a structural recursion, so it commutes with subtree projection: \(\lfloor C@\nu \rfloor = p \mathbin{@} \nu\), giving \(p' \eqR \psem{\ChangeRoot(\nu)}(p)\).
+
+\paragraph{Preservation and non-disruption}
+
+\emph{Preservation of \(\vdash\).} \(\vdash C\) is a conjunction of per-node obligations, and those on \(C@\nu\)'s nodes are exactly \(\vdash C@\nu = \vdash C'\).
+The discarded ancestors' obligations are forgotten with them.
+\emph{Non-disruption.} Every in-flight packet sits in a \ensuremath{\mathit{pifo}} within \(C@\nu\) (the discarded ancestor pifos held routing entries, not packets).
+Those entries are redundant.
+A \pop{} before \(\delta\) descends the unary chain, and each ancestor pifo has the single slot \(0\), so every such pop is forced to slot \(0\) and lands at \(C@\nu\).
+A \pop{} after \(\delta\) acts on \(C@\nu\) directly and returns the same packet.
+So \ChangeRoot{} is non-disruptive.
+
+
+% ---------------------------------------------------------------------------
+% 11. The PruneDownTo idiom definition
+% From: fig:gseq-idioms, \S6.2
+% ---------------------------------------------------------------------------
+
+\PruneDownTo(\mathit{path}) \;=\;\\
+\quad \Retire(\pi_a)\,;\, \ldots\,;\, \Retire(\pi_z)\,;\, (\mathtt{true};\, \ChangeRoot(\mathit{path}))
+
+
+% ---------------------------------------------------------------------------
+% 12. \S6.2's PruneDownTo bullet in full
+% From: including the A(B(D(F,G),E),C) example and its path table
+% ---------------------------------------------------------------------------
+
+\item \textbf{\PruneDownTo(\ensuremath{\mathit{path}})} retires every off-path subtree along the route from the root to \ensuremath{\mathit{path}} (call them \(\pi_a, \ldots, \pi_z\)), then \ChangeRoot{}s to \ensuremath{\mathit{path}}.
+This idiom is the operator-facing way to say ``abandon everything except this subtree.''
+
+Each \Retire{} removes one off-path subtree; once they have all fired, every ancestor along the path is unary, satisfying \ChangeRoot's precondition (\cref{sec:changeroot}).
+The \Retire{}s on disjoint off-path subtrees commute, so any ordering suffices; we use root-first as a stable convention.
+
+For instance, suppose the running tree is \(A(B(D(F,\allowbreak G), E),\allowbreak C)\), with edges labeled by the parent-side index:
+
+\begin{center}
+\begin{minipage}{0.55\linewidth}
+\centering
+\begin{tikzpicture}[
+  level distance=0.65cm,
+  level 1/.style={sibling distance=1.9cm},
+  level 2/.style={sibling distance=1.1cm},
+  level 3/.style={sibling distance=0.7cm},
+  every node/.style={font=\small},
+  edge from parent/.style={draw},
+  every child/.style={font=\scriptsize}
+]
+\node {\(A\)}
+  child {node {\(B\)}
+    child {node {\(D\)}
+      child {node {\(F\)} edge from parent node[left, xshift=-1pt] {\scriptsize 0}}
+      child {node {\(G\)} edge from parent node[right, xshift=1pt] {\scriptsize 1}}
+      edge from parent node[left, xshift=-1pt] {\scriptsize 0}
+    }
+    child {node {\(E\)} edge from parent node[right, xshift=1pt] {\scriptsize 1}}
+    edge from parent node[left, xshift=-1pt] {\scriptsize 0}
+  }
+  child {node {\(C\)} edge from parent node[right, xshift=1pt] {\scriptsize 1}};
+\end{tikzpicture}
+\end{minipage}%
+\begin{minipage}{0.35\linewidth}
+\centering
+\small
+\begin{tabular}{@{}l@{\quad}l@{}}
+\(A\) & \([\,]\) \\
+\(B\) & \([0]\) \\
+\(C\) & \([1]\) \\
+\(D\) & \([0,0]\) \\
+\(E\) & \([0,1]\) \\
+\(F\) & \([0,0,0]\) \\
+\(G\) & \([0,0,1]\) \\
+\end{tabular}
+\end{minipage}
+\end{center}
+The operator wants to retain only \(E\), so they issue \PruneDownTo(\([0,1]\)).
+The off-path subtrees are \(D(F, G)\) (at \([0,0]\)) and \(C\) (at \([1]\)).
+So \PruneDownTo(\([0,1]\)) expands to \Retire(\([0,0]\)) ; \Retire(\([1]\)) ; (\(\mathtt{true}\); \ChangeRoot(\([0,0]\))).
+
+The path \([0,0]\) appears twice in this expansion with different referents.
+In \Retire(\([0,0]\)) it points to \(D(F, G)\), the operand at the moment that \Retire{} fires.
+In the final \ChangeRoot(\([0,0]\)) it points to \(E\), which moved from \([0,1]\) to \([0,0]\) once \(D(F, G)\) was retired.
+A path-resolution system computes these targets automatically at idiom expansion; the operator only writes \PruneDownTo(\([0,1]\)), naming \(E\) by its location at the moment of request.
+
+
+% ---------------------------------------------------------------------------
+% 13. \S6.2's opposite-move opening
+% From: the two sentences that framed the paragraph against PruneDownTo
+% ---------------------------------------------------------------------------
+
+\emph{The opposite move.}
+\PruneDownTo{} keeps one subtree and abandons everything around it.
+The opposite move would keep the running tree and splice fresh structure \emph{above and around} it, with the running root becoming a child of a newly introduced context.
+
+
+% ---------------------------------------------------------------------------
+% 14. The planner's second case
+% From: \S7.2's top-level pass
+% ---------------------------------------------------------------------------
+
+\item \(p_2\) embeds in \(p_1\) at \ensuremath{\mathit{path}}. Emit \(\PruneDownTo(\mathit{path})\).
+A structural sub-policy test walks \(p_1\) looking for a subtree equal to \(p_2\); if it finds one, \ensuremath{\mathit{path}} names where it sits.
+The match is unique: by \cref{sec:policy-dsl}'s leaf-partition validity each flow in \(p_2\) may appear at most once in \(p_1\), so \(p_1\) can host \(p_2\) as a subtree in at most one position.
+This test runs only at the top level.
+
+
+% ---------------------------------------------------------------------------
+% 15. \S8.2's port_root justification
+% From: the two sentences naming ChangeRoot
+% ---------------------------------------------------------------------------
+
+This \texttt{port\_root} state is what makes \ChangeRoot{} expressible, and it is maintained by two complementary mechanisms.
+On every form except \ChangeRoot, the \texttt{walk(...)} calls that touch \texttt{Assoc}/\texttt{Map} start at \texttt{port\_root} and so update its tables in lockstep with the actual root's.
+On \ChangeRoot, the lowering issues no flow-table writes against \texttt{port\_root} at all.
+
+
+% ---------------------------------------------------------------------------
+% 16. \S8.2's ChangeRoot lowering
+% From: schema and commentary
+% ---------------------------------------------------------------------------
+
+\paragraph*{\(\ChangeRoot(\mathit{path})\)}
+Let the live tree be \(\mathtt{port\_root} \to a_0 \to a_1 \to \ldots \to a_m \to \mathit{path}\) (the \cref{sec:delta-grammar} restriction makes \(a_0 \ldots a_m\) a unary vine).
+\begin{Verbatim}
+emancipate(port_step, port_root)
+adopt(port_step, port_root, path)
+foreach a in {a_0, ..., a_m}:
+    gc(a)
+\end{Verbatim}
+
+%% and, further down, after the three-lowerings commentary:
+
+\ChangeRoot{} writes no flow tables: \ensuremath{\mathit{path}}'s \texttt{Assoc} and \texttt{Map} already describe the post-commit live tree, since collapsing the unary vine above \ensuremath{\mathit{path}} leaves the flows-to-leaves mapping unchanged.
