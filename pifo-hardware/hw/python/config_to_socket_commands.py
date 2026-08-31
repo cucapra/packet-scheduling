@@ -170,6 +170,7 @@ def emit_transaction(transaction, index, mapping, args):
                 command(
                     "UpdateMapperPost",
                     current["engineId"],
+                    vpifo_id=current["vPifoId"],
                     flow_id=pack_flow_id(current["engineId"], flow, args),
                     data=pack_flow_id(child["engineId"], child["vPifoId"], args),
                 )

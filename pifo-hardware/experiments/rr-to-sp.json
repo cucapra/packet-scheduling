@@ -1,0 +1,46 @@
+{
+  "output_dir": "experiment-results/rr-to-sp",
+  "seed": 7,
+  "traffic": {
+    "flows": [1, 2],
+    "packets_per_flow": 80,
+    "start_cycle": 0,
+    "packet_rate": {
+      "distribution": "uniform",
+      "unit": "packets_per_cycle_per_flow",
+      "min": 0.1,
+      "max": 0.15
+    },
+    "packet_size_bytes": {
+      "distribution": "normal",
+      "mean": 256,
+      "stddev": 64,
+      "min": 64,
+      "max": 512
+    }
+  },
+  "reconfiguration": {
+    "type": "policy_change",
+    "cycle": 320,
+    "before": "RR",
+    "after": "SP",
+    "strict_priorities": {
+      "1": 1,
+      "2": 32769
+    }
+  },
+  "simulation": {
+    "link_bytes_per_cycle": 64,
+    "queue_depth": 256,
+    "max_cycles": 100000,
+    "max_packet_priority": 65536
+  },
+  "plot": {
+    "bandwidth_bin_cycles": 64,
+    "flow_labels": {
+      "1": "A",
+      "2": "B"
+    },
+    "dpi": 180
+  }
+}

@@ -110,8 +110,20 @@ object PifoEngineSim extends App {
     sendControl(ControlCommand.UpdateMapperPre, testEngineId, testVPifoId + 1, vPifoId = testVPifoId + 1)
 
     // Configure deque mapper: 0 for sending back to output
-    sendControl(ControlCommand.UpdateMapperPost, testEngineId, testVPifoId, flowId = testVPifoId)
-    sendControl(ControlCommand.UpdateMapperPost, testEngineId, testVPifoId + 1, flowId = testVPifoId + 1)
+    sendControl(
+      ControlCommand.UpdateMapperPost,
+      testEngineId,
+      testVPifoId,
+      vPifoId = testVPifoId,
+      flowId = testVPifoId
+    )
+    sendControl(
+      ControlCommand.UpdateMapperPost,
+      testEngineId,
+      testVPifoId + 1,
+      vPifoId = testVPifoId + 1,
+      flowId = testVPifoId + 1
+    )
     sendControl(ControlCommand.CommitMapper, testEngineId, 0)
 
     // Configure brain: vPifo 12 -> WFQ, vPifo 13 -> FIFO

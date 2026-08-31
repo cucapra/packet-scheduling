@@ -396,8 +396,13 @@ case class PifoEngine(config: EngineConfig) extends Component {
   }
 
   val deque = new Area {
-    // dequeue also need a mapper, reinterpret vpifoId if needed
-    val dequeMapper = TransactionalMapper(config.flowIdWidth, config.flowIdWidth)
+    // Qualify a dequeue rewrite with the PIFO port. This lets old and new
+    // copies of a tree carry the same flow IDs while retaining distinct next
+    // hops during a full-transitive reconfiguration.
+    val dequeMapper = TransactionalMapper(
+      config.vpifoIdWidth + config.flowIdWidth,
+      config.flowIdWidth
+    )
     val nonExistMapper = TransactionalMapper(config.vpifoIdWidth, config.flowIdWidth)
 
     pifos.io.popRequest.translateFrom(io.dequeueRequest.toFlow) { case (to, from) =>
@@ -408,7 +413,7 @@ case class PifoEngine(config: EngineConfig) extends Component {
 
     enque.brain.io.poped << popResps(0).throwWhen(!popResps(0).exist).toFlow
 
-    dequeMapper.io.readReq << popResps(1).map(_.data).toFlow
+    dequeMapper.io.readReq << popResps(1).map(response => response.port @@ response.data).toFlow
     nonExistMapper.io.readReq << popResps(2).map(_.port).toFlow
 
     // select the mapper based on the exist bit
@@ -441,7 +446,7 @@ case class PifoEngine(config: EngineConfig) extends Component {
     ControlCommand.UpdateMapperPost,
     deque.dequeMapper.io.writeReq
   ) { (to, from) =>
-    to.inputId := from.flowId
+    to.inputId := from.vPifoId @@ from.flowId
     to.outputId := from.data.resized
   }
 

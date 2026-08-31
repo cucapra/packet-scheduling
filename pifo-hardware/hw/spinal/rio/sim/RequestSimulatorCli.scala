@@ -1,7 +1,9 @@
 package rio.sim
 
-import java.nio.file.{Path, Paths}
+import java.nio.charset.StandardCharsets
+import java.nio.file.{Files, Path, Paths}
 
+import spinal.core._
 import spinal.core.sim._
 
 import rio._
@@ -28,7 +30,15 @@ case class RequestSimulatorOptions(
     fifoDepth: Int = 32,
     prefetchBufferDepth: Int = 2,
     waveEnabled: Boolean = true,
-    verbose: Boolean = true
+    verbose: Boolean = true,
+    scheduledTransactionFile: Option[Path] = None,
+    transactionCycle: Option[Long] = None,
+    transactionName: String = "reconfiguration",
+    transactionMode: String = "direct",
+    transactionBefore: String = "",
+    transactionAfter: String = "",
+    transactionDrainTarget: Option[TreeDrainTarget] = None,
+    transactionEventFile: Option[Path] = None
 )
 
 /** Full request-level PIFO mesh simulation CLI. */
@@ -54,6 +64,14 @@ object RequestSimulatorCli {
       |  --flat-fifo-flows IDS        Comma-separated global flow IDs for live flat-FIFO runs.
       |  --root-engine ID             Root engine (default 1).
       |  --root-vpifo ID              Root virtual PIFO (default 10).
+      |  --scheduled-transaction FILE Feed one command package at --transaction-cycle.
+      |  --transaction-cycle N        Workload cycle at which package feeding begins.
+      |  --transaction-name NAME      Stable event name (default reconfiguration).
+      |  --transaction-mode MODE      direct or full_transitive (default direct).
+      |  --transaction-before LABEL   Optional pre-change policy label.
+      |  --transaction-after LABEL    Optional post-change policy label.
+      |  --transaction-drain-root E:P Old-tree engine:vPifo to watch until drained.
+      |  --transaction-event-output F Write start/commit/finish/drain cycles as CSV.
       |
       |Request model:
       |  --queue-depth N              Simulator FIFO depth per global flow (default 32).
@@ -73,6 +91,10 @@ object RequestSimulatorCli {
       |
       |Canonical trace header:
       |  cycle,request_id,global_flow_id,size_bytes
+      |
+      |A transaction file uses one exact controller command per line:
+      |  command=<name> engineId=<n> vPifoId=<n> flowId=<n> data=<n>
+      |It must contain exactly one CommitMapper command, as its final command.
       |
       |If neither --control-file nor an explicit flat-FIFO flag is supplied, a flat FIFO is configured automatically.
       |For --live without an input trace, all usable global flow IDs are configured unless --flat-fifo-flows is given.
@@ -105,8 +127,45 @@ object RequestSimulatorCli {
     require(options.maxPacketPriority > 1, "--max-packet-priority must be greater than one")
     require(options.fifoDepth > 0, "--fifo-depth must be positive")
     require(options.prefetchBufferDepth > 0, "--prefetch-buffer-depth must be positive")
+    require(
+      options.scheduledTransactionFile.isDefined == options.transactionCycle.isDefined,
+      "--scheduled-transaction and --transaction-cycle must be supplied together"
+    )
+    require(
+      options.transactionEventFile.isEmpty || options.scheduledTransactionFile.nonEmpty,
+      "--transaction-event-output requires --scheduled-transaction"
+    )
     val pifoCapacity = options.numVPIFOs.toLong * options.fifoDepth
     require((pifoCapacity & (pifoCapacity - 1)) == 0, "--num-vpifos times --fifo-depth must be a power of two")
+
+    val transactionMode = TransactionMode.parse(options.transactionMode)
+    require(options.transactionName.trim.nonEmpty, "--transaction-name must not be empty")
+    options.transactionDrainTarget.foreach { target =>
+      require(target.engineId <= options.numEngines, "--transaction-drain-root engine is out of range")
+      require(target.vPifoId < options.numVPIFOs, "--transaction-drain-root vPifo is out of range")
+    }
+    val scheduledTransaction = options.scheduledTransactionFile.map { path =>
+      val cycle = options.transactionCycle.get
+      require(cycle >= 0, "--transaction-cycle must be non-negative")
+      require(cycle < options.maxCycles, "--transaction-cycle must be less than --max-cycles")
+      if (transactionMode == TransactionMode.FullTransitive) {
+        require(
+          options.transactionDrainTarget.nonEmpty,
+          "full_transitive mode requires --transaction-drain-root"
+        )
+      }
+      val instructions = RequestSimulationConfiguration.loadControlInstructions(path)
+      RequestSimulationConfiguration.validateTransactionPackage(instructions)
+      ScheduledTransaction(
+        scheduledCycle = cycle,
+        name = options.transactionName.trim,
+        mode = transactionMode,
+        before = options.transactionBefore.trim,
+        after = options.transactionAfter.trim,
+        drainTarget = options.transactionDrainTarget,
+        instructions = instructions
+      )
+    }
 
     val trace = options.traceFile.map(RequestTrace.load).getOrElse(Vector.empty)
     trace.foreach { request =>
@@ -114,6 +173,11 @@ object RequestSimulatorCli {
         request.globalFlowId < options.numVPIFOs - 1,
         s"trace flow ${request.globalFlowId} does not fit; ${options.numVPIFOs - 1} is reserved as the empty token"
       )
+    }
+    val traceFlows = trace.iterator.map(_.globalFlowId).toSet
+    val configuredFlows = options.flatFifoFlows ++ traceFlows match {
+      case flows if flows.nonEmpty => flows
+      case _                       => (0 until options.numVPIFOs - 1).toSet
     }
 
     val hardwareConfig = EngineConfig(
@@ -127,67 +191,112 @@ object RequestSimulatorCli {
     val baseSimConfig = SimConfig.withIVerilog.addSimulatorFlag("-g2012")
     val selectedSimConfig = if (options.waveEnabled) baseSimConfig.withFstWave else baseSimConfig
 
-    selectedSimConfig.compile(new PifoMesh(hardwareConfig)).doSim { dut =>
-      val controller = PifoMeshSimController(hardwareConfig, dut)
-      controller.start(options.controlSocketEnabled, options.controlSocketPath)
-
-      options.controlFile.foreach { path =>
-        println(s"[RequestSim] applying control commands from $path")
-        RequestSimulationConfiguration.loadControlFile(path, controller)
+    selectedSimConfig
+      .compile {
+        val mesh = new PifoMesh(hardwareConfig)
+        mesh.pifoEngines.foreach { engine =>
+          engine.pifos.io.popResponse.valid.simPublic()
+          engine.pifos.io.popResponse.port.simPublic()
+          engine.pifos.io.popResponse.exist.simPublic()
+        }
+        mesh
       }
+      .doSim { dut =>
+        val controller = PifoMeshSimController(hardwareConfig, dut)
+        controller.start(options.controlSocketEnabled, options.controlSocketPath, monitorPops = options.verbose)
 
-      val useFlatFifo = options.flatFifo.getOrElse(options.controlFile.isEmpty)
-      if (useFlatFifo) {
-        val traceFlows = trace.iterator.map(_.globalFlowId).toSet
-        val configuredFlows = options.flatFifoFlows ++ traceFlows match {
-          case flows if flows.nonEmpty => flows
-          case _                       => (0 until options.numVPIFOs - 1).toSet
+        options.controlFile.foreach { path =>
+          println(s"[RequestSim] applying control commands from $path")
+          RequestSimulationConfiguration.loadControlFile(path, controller)
+        }
+
+        val useFlatFifo = options.flatFifo.getOrElse(options.controlFile.isEmpty)
+        if (useFlatFifo) {
+          println(
+            s"[RequestSim] configuring flat FIFO at engine=${options.rootEngineId} vPifo=${options.rootVPifoId} " +
+              s"for flows=${configuredFlows.toSeq.sorted.mkString(",")}"
+          )
+          RequestSimulationConfiguration.configureFlatFifo(
+            hardwareConfig,
+            controller,
+            options.rootEngineId,
+            options.rootVPifoId,
+            configuredFlows
+          )
+        }
+
+        if (options.warmupCycles > 0) dut.clockDomain.waitRisingEdge(options.warmupCycles)
+
+        val scheduledActions = scheduledTransaction.toVector.map { transaction =>
+          ScheduledRequestAction(
+            scheduledCycle = transaction.scheduledCycle,
+            name = transaction.name,
+            drainTarget = transaction.drainTarget,
+            run = context =>
+              RequestSimulationConfiguration.executeTransactionPackage(
+                transaction.instructions,
+                controller,
+                context.beforeCommit,
+                context.markCommitAccepted,
+                context.markCommitApplied
+              )
+          )
+        }
+
+        val requestSimulator = new PifoRequestSimulator(
+          hardwareConfig,
+          dut,
+          controller,
+          RequestSimulationSettings(
+            rootEngineId = options.rootEngineId,
+            rootVPifoId = options.rootVPifoId,
+            perFlowQueueDepth = options.perFlowQueueDepth,
+            linkBytesPerCycle = options.linkBytesPerCycle,
+            maxCycles = options.maxCycles,
+            verbose = options.verbose
+          ),
+          scheduledActions
+        )
+
+        requestSimulator.submitAll(trace)
+        if (options.liveRequests) {
+          requestSimulator.startRequestSocket(options.requestSocketPath)
+        } else {
+          requestSimulator.closeInput()
+        }
+
+        val summary = requestSimulator.run()
+        options.resultFile.foreach(path => RequestTrace.writeResults(path, summary.completions))
+        val completedTransaction = scheduledTransaction.map { transaction =>
+          val action = summary.completedActions
+            .find(_.name == transaction.name)
+            .getOrElse(
+              throw new IllegalStateException(s"transaction '${transaction.name}' did not complete")
+            )
+          val commitCycle = action.commitCycle.getOrElse(
+            throw new IllegalStateException(s"transaction '${transaction.name}' did not accept CommitMapper")
+          )
+          val drainText = action.drainCycle.map(cycle => s" drain=$cycle").getOrElse("")
+          println(
+            s"[RequestSim] transaction ${transaction.name} mode=${transaction.mode.name} " +
+              s"scheduled=${action.scheduledCycle} start=${action.startCycle} " +
+              s"instructions=${transaction.instructions.size} commit=$commitCycle " +
+              s"finish=${action.finishCycle}$drainText"
+          )
+          (transaction, action)
+        }
+        options.transactionEventFile.foreach { path =>
+          val (transaction, action) = completedTransaction.get
+          writeTransactionEvent(path, transaction, action)
         }
         println(
-          s"[RequestSim] configuring flat FIFO at engine=${options.rootEngineId} vPifo=${options.rootVPifoId} " +
-            s"for flows=${configuredFlows.toSeq.sorted.mkString(",")}"
+          s"[RequestSim] complete cycles=${summary.elapsedCycles} submitted=${summary.submittedRequests} " +
+            s"admitted=${summary.admittedRequests} completed=${summary.completedRequests} bytes=${summary.completedBytes}"
         )
-        RequestSimulationConfiguration.configureFlatFifo(
-          hardwareConfig,
-          controller,
-          options.rootEngineId,
-          options.rootVPifoId,
-          configuredFlows
-        )
+        options.resultFile.foreach(path => println(s"[RequestSim] wrote completion trace to $path"))
+        options.transactionEventFile.foreach(path => println(s"[RequestSim] wrote transaction event to $path"))
+        simSuccess()
       }
-
-      if (options.warmupCycles > 0) dut.clockDomain.waitRisingEdge(options.warmupCycles)
-
-      val requestSimulator = new PifoRequestSimulator(
-        hardwareConfig,
-        dut,
-        controller,
-        RequestSimulationSettings(
-          rootEngineId = options.rootEngineId,
-          rootVPifoId = options.rootVPifoId,
-          perFlowQueueDepth = options.perFlowQueueDepth,
-          linkBytesPerCycle = options.linkBytesPerCycle,
-          maxCycles = options.maxCycles,
-          verbose = options.verbose
-        )
-      )
-
-      requestSimulator.submitAll(trace)
-      if (options.liveRequests) {
-        requestSimulator.startRequestSocket(options.requestSocketPath)
-      } else {
-        requestSimulator.closeInput()
-      }
-
-      val summary = requestSimulator.run()
-      options.resultFile.foreach(path => RequestTrace.writeResults(path, summary.completions))
-      println(
-        s"[RequestSim] complete cycles=${summary.elapsedCycles} submitted=${summary.submittedRequests} " +
-          s"admitted=${summary.admittedRequests} completed=${summary.completedRequests} bytes=${summary.completedBytes}"
-      )
-      options.resultFile.foreach(path => println(s"[RequestSim] wrote completion trace to $path"))
-      simSuccess()
-    }
   }
 
   private def parse(args: Array[String]): RequestSimulatorOptions = {
@@ -215,7 +324,19 @@ object RequestSimulatorCli {
         case "--flat-fifo-flows" => options = options.copy(flatFifoFlows = parseIntSet(nextValue("--flat-fifo-flows")))
         case "--root-engine"     => options = options.copy(rootEngineId = decodeInt(nextValue("--root-engine")))
         case "--root-vpifo"      => options = options.copy(rootVPifoId = decodeInt(nextValue("--root-vpifo")))
-        case "--queue-depth"     => options = options.copy(perFlowQueueDepth = decodeInt(nextValue("--queue-depth")))
+        case "--scheduled-transaction" =>
+          options = options.copy(scheduledTransactionFile = Some(Paths.get(nextValue("--scheduled-transaction"))))
+        case "--transaction-cycle" =>
+          options = options.copy(transactionCycle = Some(decodeLong(nextValue("--transaction-cycle"))))
+        case "--transaction-name"   => options = options.copy(transactionName = nextValue("--transaction-name"))
+        case "--transaction-mode"   => options = options.copy(transactionMode = nextValue("--transaction-mode"))
+        case "--transaction-before" => options = options.copy(transactionBefore = nextValue("--transaction-before"))
+        case "--transaction-after"  => options = options.copy(transactionAfter = nextValue("--transaction-after"))
+        case "--transaction-drain-root" =>
+          options = options.copy(transactionDrainTarget = Some(parseDrainTarget(nextValue("--transaction-drain-root"))))
+        case "--transaction-event-output" =>
+          options = options.copy(transactionEventFile = Some(Paths.get(nextValue("--transaction-event-output"))))
+        case "--queue-depth" => options = options.copy(perFlowQueueDepth = decodeInt(nextValue("--queue-depth")))
         case "--link-bytes-per-cycle" =>
           options = options.copy(linkBytesPerCycle = nextValue("--link-bytes-per-cycle").toDouble)
         case "--max-cycles"    => options = options.copy(maxCycles = decodeLong(nextValue("--max-cycles")))
@@ -241,6 +362,87 @@ object RequestSimulatorCli {
     val values = value.split(",").iterator.map(_.trim).filter(_.nonEmpty).map(decodeInt).toSet
     require(values.nonEmpty, "--flat-fifo-flows requires at least one ID")
     values
+  }
+
+  private def parseDrainTarget(value: String): TreeDrainTarget = {
+    value.split(":", 2) match {
+      case Array(engineId, vPifoId) => TreeDrainTarget(decodeInt(engineId), decodeInt(vPifoId))
+      case _                        => throw new IllegalArgumentException(s"invalid ENGINE:VPIFO drain root '$value'")
+    }
+  }
+
+  private sealed trait TransactionMode {
+    def name: String
+  }
+
+  private object TransactionMode {
+    case object Direct extends TransactionMode {
+      override val name = "direct"
+    }
+    case object FullTransitive extends TransactionMode {
+      override val name = "full_transitive"
+    }
+
+    def parse(value: String): TransactionMode = value.trim.toLowerCase match {
+      case "direct"          => Direct
+      case "full_transitive" => FullTransitive
+      case _ => throw new IllegalArgumentException("--transaction-mode must be direct or full_transitive")
+    }
+  }
+
+  private case class ScheduledTransaction(
+      scheduledCycle: Long,
+      name: String,
+      mode: TransactionMode,
+      before: String,
+      after: String,
+      drainTarget: Option[TreeDrainTarget],
+      instructions: Vector[RequestControlInstruction]
+  )
+
+  private def writeTransactionEvent(
+      path: Path,
+      transaction: ScheduledTransaction,
+      action: CompletedRequestAction
+  ): Unit = {
+    val commitCycle = action.commitCycle.getOrElse(
+      throw new IllegalArgumentException("transaction is missing its CommitMapper cycle")
+    )
+    val drainCycle = action.drainCycle.map(_.toString).getOrElse("")
+    val drainDuration = action.drainCycle.map(_ - commitCycle).map(_.toString).getOrElse("")
+    Option(path.getParent).foreach(Files.createDirectories(_))
+    val writer = Files.newBufferedWriter(path, StandardCharsets.UTF_8)
+    try {
+      writer.write(
+        "event,name,mode,from_policy,to_policy,instruction_count,scheduled_cycle,start_cycle,commit_cycle," +
+          "finish_cycle,drain_cycle,drain_duration_cycles"
+      )
+      writer.newLine()
+      writer.write(
+        Seq(
+          "reconfiguration",
+          transaction.name,
+          transaction.mode.name,
+          transaction.before,
+          transaction.after,
+          transaction.instructions.size,
+          action.scheduledCycle,
+          action.startCycle,
+          commitCycle,
+          action.finishCycle,
+          drainCycle,
+          drainDuration
+        ).map(csvCell).mkString(",")
+      )
+      writer.newLine()
+    } finally writer.close()
+  }
+
+  private def csvCell(value: Any): String = {
+    val raw = value.toString
+    if (raw.exists(character => character == ',' || character == '"' || character == '\n' || character == '\r')) {
+      "\"" + raw.replace("\"", "\"\"") + "\""
+    } else raw
   }
 
   private def decodeLong(value: String): Long = {

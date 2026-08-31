@@ -53,7 +53,15 @@ case class PifoMeshSimController(
     (engineId << config.vpifoIdWidth) | vPifoId
   }
 
-  def sendControl(cmd: ControlCommand.E, engineId: Int, data: Int, vPifoId: Int = 0, flowId: Int = 0): Unit = {
+  def sendControl(
+      cmd: ControlCommand.E,
+      engineId: Int,
+      data: Int,
+      vPifoId: Int = 0,
+      flowId: Int = 0,
+      onCommitApplied: () => Unit = () => (),
+      onAccepted: () => Unit = () => ()
+  ): Unit = {
     require(engineId >= 1 && engineId <= config.numEngines, s"Invalid control engineId: $engineId")
     dut.io.controlRequest.valid #= true
     dut.io.controlRequest.payload.command #= cmd
@@ -62,6 +70,7 @@ case class PifoMeshSimController(
     dut.io.controlRequest.payload.flowId #= flowId
     dut.io.controlRequest.payload.data #= data
     dut.clockDomain.waitSamplingWhere(dut.io.controlRequest.ready.toBoolean)
+    onAccepted()
     dut.io.controlRequest.valid #= false
 
     // A commit can be buffered behind earlier updates. Wait for the hardware to
@@ -69,6 +78,7 @@ case class PifoMeshSimController(
     // can safely begin another transaction.
     if (cmd == ControlCommand.CommitMapper) {
       dut.clockDomain.waitSamplingWhere(!dut.io.commitReady.toBoolean)
+      onCommitApplied()
       dut.clockDomain.waitSamplingWhere(dut.io.commitReady.toBoolean)
     }
   }
@@ -101,6 +111,10 @@ case class PifoMeshSimController(
   }
 
   def start(enableControlSocket: Boolean, controlSocketPath: String): Unit = {
+    start(enableControlSocket, controlSocketPath, monitorPops = true)
+  }
+
+  def start(enableControlSocket: Boolean, controlSocketPath: String, monitorPops: Boolean): Unit = {
     // Clock generation
     fork {
       while (true) {
@@ -114,13 +128,14 @@ case class PifoMeshSimController(
     dut.clockDomain.deassertReset()
     dut.clockDomain.waitRisingEdge(4)
 
-    fork {
-      while (true) {
-        dut.clockDomain.waitRisingEdge()
-        if (dut.io.pop.valid.toBoolean) {
-          val eng = dut.io.pop.payload.engineId.toLong
-          val vp = dut.io.pop.payload.vPifoId.toLong
-          println(s"[Monitor] Pop response: vPifoId=0x${vp.toHexString}")
+    if (monitorPops) {
+      fork {
+        while (true) {
+          dut.clockDomain.waitRisingEdge()
+          if (dut.io.pop.valid.toBoolean) {
+            val vp = dut.io.pop.payload.vPifoId.toLong
+            println(s"[Monitor] Pop response: vPifoId=0x${vp.toHexString}")
+          }
         }
       }
     }
@@ -162,7 +177,7 @@ case class PifoMeshSimController(
    *
    *   Supported command values:
    *     UpdateMapperPre       writes enque mapper: inputId=vPifoId, outputId=data
-   *     UpdateMapperPost      writes deque mapper: inputId=flowId, outputId=data
+   *     UpdateMapperPost      writes deque mapper: inputId=vPifoId @@ flowId, outputId=data
    *     UpdateMapperNonExist  writes non-exist mapper: inputId=vPifoId, outputId=data
    *     CommitMapper          atomically publishes all pending mapper updates; payload fields are still required
    *     UpdateBrainEngine     writes brain engine type: inputId=vPifoId, outputId=data
@@ -216,6 +231,7 @@ case class PifoMeshSimController(
             ControlCommand.UpdateMapperPost,
             engine,
             mkFlowId(nextEngine, nextvPifo),
+            vPifoId = vPifo,
             flowId = mkFlowId(engine, flowId)
           )
         }
@@ -224,10 +240,10 @@ case class PifoMeshSimController(
       // apply the non-exist rewrite at the root pifo
       def rootNonExistRewrite(newEngineId: Int, newPifoId: Int): TreeConfiger = {
         sendControl(
-          ControlCommand.UpdateMapperPost,
+          ControlCommand.UpdateMapperNonExist,
           tree.rootEngine,
           mkFlowId(newEngineId, newPifoId),
-          flowId = mkFlowId(tree.rootEngine, tree.rootPifo)
+          vPifoId = tree.rootPifo
         )
         this
       }
