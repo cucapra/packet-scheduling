@@ -145,23 +145,25 @@
 
 \section{Introduction}\label{sec:intro}
 
-Programmable packet scheduling.
-Emphasize that policies are often hierarchical, and that clients demand line rate.
-% Let's just write this paragraph out. It's been a bullet for a long time.
+A \emph{packet scheduler} decides which of the packets buffered at an output port leaves next.
+On a programmable switch, that decision belongs to the network operator rather than to the silicon, so the scheduler runs whatever policy the deployment calls for.
+Those policies are usually hierarchical, and each level of that hierarchy is a scheduling decision in its own right.
+Whatever the policy, the scheduler has to reach its decision at line rate, since a scheduler that cannot keep up with the wire drops the very traffic it was meant to schedule.
+In response to telemetry from downstream (shifting traffic patterns, changing tenants, etc.), the network operator may need to change the policy in force.
+Such changes need to be rapid and seamless.
 
 Consider a small-office gateway running \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\textsf{gmail})\), strictly prioritizing real-time \textsf{zoom} traffic over \textsf{gmail} traffic.
 The network operator wants to add a new \textsf{spotify} flow, and is considering two candidate policies:
 \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{mid}{:}\,\textsf{spotify},\allowbreak\ \mathtt{lo}{:}\,\textsf{gmail})\), extending the strict-priority list with \textsf{spotify}; or
 \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\RR(\textsf{gmail}, \textsf{spotify}))\), keeping \textsf{zoom} at the higher tier but having \textsf{gmail} and \textsf{spotify} share the lower tier via round-robin.
-In either case, the state of the art~\cite{vPIFO} would stop the world, drop or recirculate buffered packets, recompile, and reinstall.
-The costs are dropped or recirculated (and therefore delayed) packets, downtime, and the rebuilding of nodes that did not need to be rebuilt.
-% The sentence above should be crunched and merged above.
-% This feels like a good place to say something like "this paper's thesis is..."
+In either case, the state of the art~\cite{vPIFO} would stop the world, dropping or recirculating the buffered packets, recompiling, and reinstalling, at the cost of downtime, delay, and the rebuilding of nodes that did not need to be rebuilt.
 
-The alternative is to reprogram a scheduler without stopping the world.
+This paper refuses to stop the world.
+Our thesis is that the interval during which a scheduler is being reprogrammed is itself a scheduling policy.
+Stopping the world does not do away with that policy but only leaves it unstated and unchosen.
+
 A transition from a running policy \(p_1\) to a requested policy \(p_2\) takes one of two shapes (\cref{fig:two-timelines}).
-Sometimes the requested policy can be installed immediately, as a single atomic switch (case~1).
-% let's not say "switch" casually in this paper. You will need to do a sweet all around, and add a rule/memory saying not to reintroduce it. Above you can just say "transition".
+Sometimes the requested policy can be installed immediately, as a single atomic transition (case~1).
 Sometimes it cannot, and the scheduler must first pass through a transitionary policy (case~2).
 Our two candidates illustrate the two cases.
 
@@ -201,29 +203,22 @@ The two concepts are distinct.
 
 Moving to \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\RR(\textsf{gmail}, \textsf{spotify}))\) is a case~2 transition.
 As before, \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\textsf{gmail})\) runs before \(t_1\) and the operator's request arrives at \(t_1\), but we cannot move to \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\RR(\textsf{gmail}, \textsf{spotify}))\) immediately since there are still \textsf{gmail} packets buffered in the scheduler.
-Switching immediately would mean re-sorting those buffered \textsf{gmail} packets into the new round-robin leaf, but their scheduling order was fixed the moment they were enqueued; we cannot rewrite that past without dropping or reordering them.
-We atomically step instead into a \emph{transitionary period} that is \emph{not} the operator's desired policy.
-% let's stop saying "transitionary period". Say "transitionary policy".
-After \(t_1\) but before \(t_2\), the scheduler still accepts and emits packets under this transitionary regime.
+Transitioning immediately would mean re-sorting those buffered \textsf{gmail} packets into the new round-robin leaf, but their scheduling order was fixed the moment they were enqueued; we cannot rewrite that past without dropping or reordering them.
+We atomically step instead into a \emph{transitionary policy} that is \emph{not} the one the operator asked for.
+After \(t_1\) but before \(t_2\), the scheduler still accepts and emits packets under it.
 At time \(t_2\), defined as the instant that a well-defined guard becomes true, we atomically step into \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\RR(\textsf{gmail}, \textsf{spotify}))\).
 
-Although the operator never specified the semantics of this transitionary period (\(t_1\) to \(t_2\)), the period is itself a \emph{de facto} packet scheduling regime.
-The transition is unavoidable, it persists for nonzero time, and throughout it the scheduler must continue to serve the network by accepting and emitting packets.
-So \emph{scheduling decisions} are being made during that window.
-Once we refuse to stop the world, the interval between two policies is itself a scheduling policy, and that is a central thesis of this paper.
-% "Once we refuse to stop the world" needs to be motivated earlier on, and then referred to. Right now it comes out of the blue
-We call it the \emph{transitionary policy}, and treat it as a policy in its own right.
-Some transitions are better than others from a network operator's point of view, and the state of the art has settled on a trivial stop-the-world transitionary policy.
-Our contributions are to be clear about what the transitionary policy is and to improve on the state of the art.
-% The two paragraphs above can be tightened significantly.
+The operator never specified the semantics of the interval from \(t_1\) to \(t_2\), but that interval is a packet scheduling regime all the same.
+It is unavoidable, it persists for nonzero time, and throughout it the scheduler goes on accepting and emitting packets, so scheduling decisions are being made in it.
+Some of those decisions are better than others from the operator's point of view, and the state of the art has settled on a trivial one, discarding the backlog and starting over.
+Our contributions are to say what the transitionary policy is and to do better than that.
 
 We take on two obligations.
 \emph{Obligation 1: give a semantics to the transitionary policy.}
-The transitionary period is shaped by hardware-level manipulations on the way to realizing \(p_2\), rather than by anything the operator wrote, so its semantics is not handed to us.
+The transitionary policy is shaped by hardware-level manipulations on the way to realizing \(p_2\), rather than by anything the operator wrote, so its semantics is not handed to us.
 We develop a grammar of atomic edits (\cref{sec:grammar}) and a sequence planner (\cref{sec:sequences}) that carries us from the operator-supplied policy \(p_1\), through one or more transitionary policies, and finally to the operator-supplied policy \(p_2\).
 The grammar is designed so that \emph{any transitionary policy it produces is ordinary scheduling}.
 Such a policy has two valuable properties: it has a human-readable semantics just as the operator-written \(p_1\) and \(p_2\) do, \emph{and} the step into it is guaranteed to be one the hardware can commit in a single instant.
-% I fleshed out the above; take stock and give feedback
 \emph{Obligation 2: improve upon the state of the art.}
 We will give the semantics of the stop-the-world transitionary policy and use it as a baseline.
 Two practical goals guide the search for better ways to transition from a given \(p_1\) to a given \(p_2\).
@@ -242,11 +237,9 @@ We contribute a tool that achieves this and shows [improvements].
 
 A \emph{PIFO} (push-in, first-out queue) is a priority queue that is additionally defined to break rank-ties in FIFO order.
 Where a single PIFO expresses just one scheduling decision, a PIFO tree composes policies via parent-child relationships, capturing the hierarchical policies that operators actually deploy.
-% Check my rewrite
 
 A PIFO tree lowers to hardware by mapping each tree depth onto a dedicated processing element (PE), with siblings and cousins sharing the PE at their depth.
-Pinning a depth level to a single PE has well-studied benefits for computation and storage, and it is the layout that Sivaraman et al.~\cite{Sivaraman16}, Mohan et al.~\cite{Mohan23}, Shrivastav~\cite{Shrivastav19}, and vPIFO~\cite{vPIFO} all build on.
-% Just plain citations
+Pinning a depth level to a single PE has well-studied benefits for computation and storage, and it is the layout that prior PIFO designs all build on~\cite{Sivaraman16,Mohan23,Shrivastav19,vPIFO}.
 The PE budget is fixed by the silicon, so the running tree's shape is constrained by what the deployed PEs can host.
 
 
@@ -267,8 +260,7 @@ It over-provisions logical instances and its Visor can assemble them into arbitr
 vPIFO exposes no such edit at runtime, however: those tables are generated offline by its SDL compiler, so installing even this easy change on a running scheduler would require extending the substrate with an online-patch path it does not have today.
 The harder restructuring, to \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\RR(\textsf{gmail}, \textsf{spotify}))\), lies beyond what the vPIFO substrate can absorb in place.
 It changes the running tree's shape, inserting a new internal \RR{} node and re-parenting \textsf{gmail} under it, and neither table exposes that as an in-place edit.
-The closest vPIFO comes is a full reinitialization onto the new shape, which is precisely the stop-the-world baseline we want to improve on.
-% If we have soundly rejected this as an option in the intro, then we can again strengthen this "we want to improve on"
+The closest vPIFO comes is a full reinitialization onto the new shape, which is the stop-the-world baseline \cref{sec:intro} refuses.
 vPIFO names runtime updating as future work, observing that the scheduling of packets during a modification's transitional phase is unresolved.
 
 We are not competing with vPIFO and do not claim a better PIFO substrate.
