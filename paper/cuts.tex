@@ -293,3 +293,153 @@ foreach a in {a_0, ..., a_m}:
 %% and, further down, after the three-lowerings commentary:
 
 \ChangeRoot{} writes no flow tables: \ensuremath{\mathit{path}}'s \texttt{Assoc} and \texttt{Map} already describe the post-commit live tree, since collapsing the unary vine above \ensuremath{\mathit{path}} leaves the flows-to-leaves mapping unchanged.
+
+%% ---------------------------------------------------------------------------
+%% 2026-09-01: the manual-vs-paper pass on \S8.
+%% ---------------------------------------------------------------------------
+%%
+%% AM's call: \S8 "is written like a manual, not like a paper. We will need to
+%% cut many darlings here."
+%%
+%% The thesis of the pass: \S8 documented an interface; it should argue that
+%% Rio's edits run on real hardware. Reference material not carrying an argument
+%% went. \S8 fell from 366 source lines to 304 and the document from 22 pages to
+%% 21, with the five \xxx notes still in place.
+%%
+%% Kept deliberately, and not up for cutting again without a reason:
+%%   - tab:isa-opcodes, trimmed but whole. It is the one reference artifact a
+%%     hardware reviewer will want, and the lowerings are unreadable without it.
+%%   - The Add, ChangeMeta, Quiesce and Designate listings. Add is canonical,
+%%     ChangeMeta's single line is what makes Add's ten legible as a cost,
+%%     Quiesce carries the parallel-push insight, Designate is the novel one.
+%%   - sec:hw-survivor's push/pop asymmetry, entire. It is the heart of \S8.
+%%   - sec:substrate-portability, entire. It is what \S8 is for.
+%%
+%% Regions below are verbatim and in document order.
+%%
+
+%% --- Region S8-1: §8.1's four-bullet substrate glossary. ---
+%%
+%%   PIFO and PE are both defined in \S8's opening paragraphs; 'flow' is
+%%   sec:policy-dsl's; only 'index' was new, and it is now one clause in the
+%%   sentence that introduces the opcode table.
+%%
+Four pieces of substrate vocabulary appear in the listing below:
+
+\begin{itemize}
+\item \textbf{PIFO}: one node of the PIFO-tree, addressed by an opaque id \texttt{v}.
+The substrate exposes one PIFO per tree node.
+How those PIFOs are mapped onto hardware is a substrate concern, settled by the deployment function \texttt{pe} below.
+\item \textbf{PE}: hosts one or more PIFOs and owns their per-node state and logic.
+Sibling PIFOs commonly cohabit a PE.
+\item \textbf{flow}: a traffic class, as in \cref{sec:policy-dsl}.
+\item \textbf{index}: opaque per-PIFO handle naming one of that PIFO's children; what a PIFO uses internally to refer to a child arm.
+\end{itemize}
+
+%% --- Region S8-2: §8.1's set_arm_meta and designate notes beneath the ISA table. ---
+%%
+%%   designate is fully explained in sec:hw-survivor, at length and better.
+%%   set_arm_meta's operand table is in its own ISA row, and the
+%%   preserve-other-per-arm-state detail is a manual detail that nothing in the
+%%   paper leans on; sec:changemeta already dropped its counterpart.
+%%   change_arity's note survives, compressed, because init_slot_D is
+%%   load-bearing and because the separate-attach point prevents a misreading.
+%%
+\texttt{set\_arm\_meta}'s operand \texttt{m} is a weight for \RR{} and \WFQ, a priority rank for \Strict, and nothing at all for FIFO.
+Only the discipline-specified meta field is overwritten, and any other per-arm state, such as \WFQ's virtual-finish tag on the arm, is preserved, so a metadata change on a live arm does not remove it from the current round.
+
+\texttt{designate}'s link is consulted on \pop{} alone.
+A \pop{} that finds \texttt{v} empty queries \texttt{surv} rather than underflowing, and \push{} is unaffected, since \texttt{surv} admits its own flows through the ordinary \texttt{Assoc} tables.
+\texttt{v} keeps its arity, its policy type, and its parent edge, and \texttt{undesignate} later retargets that parent edge at \texttt{surv}, which is what lets the survivor inherit the slot's metadata.
+\cref{sec:hw-survivor} is the full account.
+
+%% --- Region S8-3: §8.2's six-bullet codegen vocabulary and its longer reading conventions. ---
+%%
+%%   Fourteen lines of glossary stood between the subsection's opening and its
+%%   first three-line listing. The six bullets are now four sentences of prose,
+%%   and edges(T) went entirely, since only layout(T)'s own definition used it.
+%%
+The lowerings follow, one per form of \cref{sec:delta-grammar}.
+We fix a handful of reading conventions.
+A tree position and the PIFO sitting at it are different things, and the listings keep them apart.
+Each lowering opens by binding a name to the PIFO the form targets, and speaks of that PIFO thereafter.
+Live queries against a node \texttt{v} (its \texttt{arity(v)}, \texttt{discipline(v)}, etc.) are read off the tree at issue time.
+When an opcode names an unmentioned parameter at \texttt{v} (e.g., \texttt{set\_policy}'s discipline, \texttt{change\_arity}'s arity), it is the live value at \texttt{v}.
+\texttt{spawn}'s \texttt{pe} argument is similarly elided: it is \texttt{pe(pos(v))}, drawn from the deployment convention of \cref{sec:hw-isa}.
+
+Alongside the opcodes, the listings use a small codegen vocabulary:
+\begin{itemize}
+\item \texttt{foreach x in S: BODY} emits \texttt{BODY} once per \texttt{x} drawn from \texttt{S}.
+\item \texttt{walk(op, C, f)} emits \texttt{op(v, f, \ldots)} at each \(v \in C\); positional remainders such as \texttt{map}'s routing index \(i_{v,f}\) are read off the live tree.
+\item \texttt{flows(v)} is the set of flows admitted by some leaf under the PIFO \texttt{v}.
+\item \texttt{chain(f)} is the sequence of PIFOs from \texttt{port\_root} to the leaf admitting \texttt{f}, and \texttt{internals(f)} is that sequence minus the leaf.
+\item \texttt{nodes(T)} and \texttt{edges(T)} are the PIFOs and parent-child edges of a compiled subtree \texttt{T}; \texttt{root(T)} is \texttt{T}'s root PIFO.
+\item \texttt{layout(T)} expands to \texttt{spawn}+\texttt{set\_policy} at every \(v \in \mathtt{nodes(T)}\), \texttt{adopt} at every internal edge in \(\mathtt{edges(T)}\), and \texttt{set\_arm\_meta} at each per-arm slot where \texttt{v}'s discipline requires it.
+The parent-side \texttt{adopt} that attaches \(\mathtt{root(T)}\) is left to the caller.
+\end{itemize}
+
+%% --- Region S8-4: §8.2's Remove and Undesignate listings. ---
+%%
+%%   Each is the inverse of a listing that is still shown in full (Add and
+%%   Designate respectively), so the Verbatim added nothing the prose cannot
+%%   carry. Every claim attached to them survives: sigma_k has no counterpart,
+%%   only loser-only flows are unmapped, then gc.
+%%
+\paragraph{\(\Remove(\pi \mathbin{+\!\!+} [k])\)}
+\begin{Verbatim}
+v := PIFO at path
+change_arity(parent, arity(parent) - 1)
+emancipate(k, parent)
+foreach f in flows(v):
+    walk(unmap, internals(f), f)
+foreach u in nodes(v):
+    gc(u)
+\end{Verbatim}
+The \(\sigma_k\) renumbering of \cref{sec:remove} has no counterpart here.
+A child is reached by an opaque per-edge index that \texttt{parent} minted when it adopted that child, so dropping one child leaves every sibling's index as it was.
+
+\paragraph{\(\Undesignate(\pi \mathbin{+\!\!+} [k])\)}
+\begin{Verbatim}
+loser := PIFO at path
+surv  := designated survivor of loser
+undesignate(loser)
+foreach f in flows(loser) \ flows(surv):
+    walk(unmap, internals(f), f)
+foreach u in nodes(loser):
+    gc(u)
+\end{Verbatim}
+\texttt{undesignate} retargets \texttt{parent}'s index \texttt{k} from \texttt{loser} to \texttt{surv}.
+Reusing \texttt{k} is what preserves \texttt{parent}'s per-arm metadata for that slot, so the survivor inherits the annotation that the outgoing subtree held.
+The shared flows are deliberately not unmapped, since they serve \texttt{surv} now.
+
+%% --- Region S8-5: §8.2's longer port_root convention. ---
+%%
+%%   Six sentences for a wrapper that has no stated reason to exist; the \xxx
+%%   asking Adrian whether to keep it at all is still in main.tex. Compressed to
+%%   two sentences rather than cut, since the listings reference port_root and
+%%   port_step. If A4 comes back 'cut it', the rest goes too.
+%%
+Before working through the forms, we set up one structural convention.
+A switch with \(P\) output ports has \(P\) separate trees, and at the ISA we put a uniform thin wrapper around each.
+Every port hosts a reserved PIFO \texttt{port\_root}, allocated at boot on a reserved PE, whose sole child is the actual tree root.
+\texttt{port\_root} runs a fixed 1-arm policy.
+Its \texttt{Assoc} set mirrors that of the live tree's actual root; its \texttt{Map} sends each Assoc'd flow through its single index \texttt{port\_step}.
+The \texttt{walk(...)} calls that touch \texttt{Assoc}/\texttt{Map} start at \texttt{port\_root}, so its tables stay in lockstep with the actual root's.
+\xxx[AM to AS]{\textsf{ChangeRoot} and \textsf{PruneDownTo} are cut from the paper as of 2026-08-31; \texttt{paper/cuts.tex} holds the removed text and the reasoning.
+\texttt{port\_root} was justified here entirely by \textsf{ChangeRoot}, since it was the wrapper that let ``swap the root'' be said in the same vocabulary as a child-level edit.
+I have left the wrapper in, on the guess that it is still wanted for port multiplexing, but it now has no stated reason to exist.
+Either give it one or take it out.}
+
+%% --- Region S8-6: §8.3's level-budget worked example, and its fourth run-in head. ---
+%%
+%%   The example made its point in three sentences rather than six. The
+%%   'A Strict* the operator wrote' head was two sentences under a heading of
+%%   its own; it is now the closing sentence of the preceding paragraph.
+%%
+Sibling subtrees share a root level.
+Suppose the outgoing subtree has height two and sits on levels 5 and 6, and a survivor of height three is to replace it.
+The survivor's root belongs on level 5, beside the root it replaces, and its leaves reach level 7.
+A node that holds a \ensuremath{\mathit{pifo}} has to live somewhere, and a literal \Strict-2 wrapper would take level 5 for itself.
+That pushes the outgoing subtree down to levels 6 and 7 and puts the survivor on 6 through 8, and retiring the wrapper afterwards pulls the survivor back up.
+Two subtrees are laid out twice over, on account of a node that exists only for the length of a drain.
+
