@@ -347,10 +347,15 @@ let rr_ab_to_ad_expected =
   ]
 
 (* SP[A,B] -> SP[A,C]: arm-swap at slot 1, AND the slot's rank changes
-   (B was rank 2 in strict_AB; C is rank 3 in strict_AC). A trailing
-   [ChangeMeta] step under [True] fires immediately after [Undesignate]. *)
+   (B was rank 2 in strict_AB; C is rank 3 in strict_AC). A leading
+   [ChangeMeta] step under [True] fires before [Designate], so the slot
+   already carries rank 3 when it starts accepting C's traffic. The
+   [Emancipate]/[Adopt] pair that follows reuses step 1001, and the
+   metadatum lives on the parent's slot rather than on the child, so the
+   swap leaves it in place. *)
 let strict_ab_to_ac_expected =
   [
+    t_ [ Set_arm_meta (100, 1001, 3.0) ];
     t_
       [
         Spawn (103, 1);
@@ -381,7 +386,6 @@ let strict_ab_to_ac_expected =
         Deassoc (102, "B");
       ];
     e_ [ 1; 0 ] [ Undesignate 102; GC 104; GC 102 ];
-    t_ [ Set_arm_meta (100, 1001, 3.0) ];
   ]
 
 let one_arm_replaced_tests =
@@ -398,9 +402,12 @@ let one_arm_replaced_tests =
    v103/v104/v105 live on PE 1. After [Quiesce] drains C, [Undesignate] emits
    its §6 marker and GCs v105 + the loser subtree; step_1002's rewire from
    v105 to v104 is implicit in the marker. The slot's new weight is set in a
-   trailing [True]-guarded [ChangeMeta] step. *)
+   leading [True]-guarded [ChangeMeta] step, before [Designate] hands the
+   slot to Z; step_1002 is reused by the [Emancipate]/[Adopt] pair, and the
+   metadatum sits on the parent's slot, so the swap leaves it in place. *)
 let wfq_abc_to_abz_diff_expected =
   [
+    t_ [ Set_arm_meta (100, 1002, 7.0) ];
     t_
       [
         Spawn (104, 1);
@@ -431,7 +438,6 @@ let wfq_abc_to_abz_diff_expected =
         Deassoc (103, "C");
       ];
     e_ [ 2; 0 ] [ Undesignate 103; GC 105; GC 103 ];
-    t_ [ Set_arm_meta (100, 1002, 7.0) ];
   ]
 
 let one_arm_replaced_wfq_tests =

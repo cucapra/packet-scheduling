@@ -2043,7 +2043,12 @@ If the roots agree, the task reduces to \emph{pairing up the two child lists}, a
 An arm of \(p_2\) with no partner in \(p_1\) is a fresh \Add{}; an arm of \(p_1\) with no partner in \(p_2\) is a \Retire{}.
 A matched pair whose two arms are identical is set aside and contributes nothing.
 A matched pair whose arms agree but whose slot metadata differs contributes a lone \ChangeMeta{}.
-A matched pair whose arms differ starts a recursion into the pair to localize the change further, with a trailing \ChangeMeta{} appended when the metadata differs too.
+A matched pair whose arms differ starts a recursion into the pair to localize the change further, with a \ChangeMeta{} beside it when the metadata differs too.
+
+Where that \ChangeMeta{} sits depends on what the recursion does to the slot.
+Ranks freeze at \push{} time (\cref{sec:nondisruption}), so a \ChangeMeta{} governs only the packets that arrive after it fires.
+When the recursion replaces the whole slot the \ChangeMeta{} goes first, since \Designate{} hands the slot to the survivor at once and the \Quiesce{} silences the old arm, so everything the slot accepts from that instant is traffic the new metadatum was written for, while the old subtree drains on ranks no \ChangeMeta{} rewrites.
+When the recursion works strictly below the slot the \ChangeMeta{} goes last, since until the drain completes the slot goes on serving arms that are neither arriving nor departing, and re-tuning them early would hold them at the new metadatum for as long as the drain runs.
 
 \paragraph{Pairing the child lists}
 
@@ -2054,7 +2059,7 @@ Arms that genuinely correspond appear in the same relative order on both sides, 
 \textbf{By slot, at equal arity.}
 When the child lists have the same length, the comparator pairs arm \(i\) with arm \(i\).
 A slot whose arm and metadata both agree contributes nothing, and a slot whose metadata alone differs contributes a \ChangeMeta{}.
-A slot whose arm differs recurses: it emits whatever the recursion into that arm localizes, and, when the slot's metadata also changed, a trailing \ChangeMeta{} on top of it.
+A slot whose arm differs recurses: it emits whatever the recursion into that arm localizes, and, when the slot's metadata also changed, a \ChangeMeta{} placed as above.
 One shape is caught before the slot walk.
 At \Strict{} or \WFQ{}, if \(p_1\) and \(p_2\) hold the same arms in a different order, the difference is a pure metadata reshuffle, such as a \Strict{} priority swap that normalization's rank ordering presents as a reordering.
 The comparator then emits one \ChangeMeta{} per slot whose metadata changed.
@@ -2065,7 +2070,9 @@ Normalization has already aligned the shared arms in a common order, so their ap
 If \(p_1\)'s arms are an in-order sub-sequence of \(p_2\)'s, each surplus arm of \(p_2\) is a fresh \Add{}.
 \cref{sec:add}'s leaf-disjointness precondition holds automatically, since a surplus arm's leaves are leaves of \(p_2\) absent from \(p_1\) and hence disjoint by \cref{sec:policy-dsl}'s leaf-partition validity.
 If instead \(p_2\)'s arms are an in-order sub-sequence of \(p_1\)'s, each surplus arm of \(p_1\) \Retire{}s (\cref{sec:idioms}).
-Either way, a stable arm whose metadata changed picks up a trailing \ChangeMeta{}.
+Either way, a stable arm whose metadata changed picks up a \ChangeMeta{} of its own.
+Alongside \Add{}s its position is immaterial, since no step in that emission waits on a guard.
+Alongside \Retire{}s it goes first, since it shares nothing with the drains and would otherwise wait behind them.
 
 \textbf{By shared label, in general.}
 When neither list embeds in the other, the comparator pairs arms by the flows they carry rather than by position.
@@ -2138,7 +2145,7 @@ The transient is not \(\eqR\) to \(p_2\) at all, and becomes so only once it dra
       \node (g2) at (0.80,-1.8)  {$g$};
       \node (x)  at (1.50,-1.8)  {$x$};
       \draw (P) -- node[left,font=\tiny]{$m_1$}             (d);
-      \draw (P) -- node[left,font=\tiny,pos=0.6]{$m_2$}     (SS);
+      \draw (P) -- node[left,font=\tiny,pos=0.6]{$m_4$}     (SS);
       \draw (P) -- node[right,font=\tiny]{$m_3$}            (s);
       \draw (SS) -- (g1);
       \draw (SS) -- (Q);
@@ -2180,18 +2187,16 @@ The lengths differ, and the sub-sequence check fails because \(g\) in \(p_1\) eq
 The trees do share structure.
 \(g\) (\textsf{gmail}) in \(p_1\) and the nested \(Q\) in \(p_2\) share the label \textsf{gmail}, \textsf{drive} matches on both sides, and \textsf{slack} is the only arm whose labels appear nowhere in \(p_1\).
 The walk reads this off directly, pairing \textsf{drive} with \textsf{drive} (no edit) and \textsf{gmail} with the nested \(Q\) (recurse), and treating \textsf{slack} as a pure add.
-The emission is three steps: an \Add{} of \textsf{slack}, which the compiler can handle as a pure append; a \Replace{} at \textsf{gmail}'s slot; and a trailing \ChangeMeta{} that re-tunes that slot to \(m_4\).
+The emission is three steps: an \Add{} of \textsf{slack}, which the compiler can handle as a pure append; a \ChangeMeta{} that re-tunes \textsf{gmail}'s slot to \(m_4\); and a \Replace{} at that slot.
 
 The metadata moves in two different ways as this fires.
 \textsf{slack}'s requested metadatum \(m_3\) is carried by the \Add.
 It is the metadatum the form carries (\cref{sec:add}), so the new arm lands already carrying \(m_3\).
 The changing arm is handled differently, since its metadatum moves from \(m_2\) to \(m_4\).
-Nothing in the \Replace{} can carry that change, so the emission ends with a \ChangeMeta{} for the slot.
-That step is sequenced after the guarded \Undesignate, so it fires only once the old subtree has drained and the wrapper has collapsed.
-Until then the slot keeps \(m_2\).
-\Designate{} leaves the wrapped slot's inherited metadata untouched (\cref{sec:designate}), so the transient \(\Strictstar\) arm sits in \(P\) still carrying the old metadatum, which is what panel (c) shows.
-The example therefore exhibits both behaviors.
-\(m_1\) and \(m_3\) come through untouched, while \(m_2\) is explicitly re-tuned to \(m_4\) once the drain is done.
+Nothing in the \Replace{} can carry that change, so the slot needs a \ChangeMeta{} of its own, and it goes in front, since the \Replace{} takes the whole slot.
+Had it gone last, every packet arriving for the incoming \(Q\) during the drain would stay ranked under \(m_2\) for the rest of its life.
+The slot therefore carries \(m_4\) throughout the transient, which is what panel (c) shows, and \Designate{} itself still leaves the slot's metadatum alone (\cref{sec:designate}).
+The example exhibits both behaviors: \(m_1\) and \(m_3\) come through untouched, while \(m_2\) is explicitly re-tuned to \(m_4\).
 
 Panels (c) and (d) of \cref{fig:label-overlap-example} show the two policies the control passes through: first the transient \(\Strictstar\) that drains the old \textsf{gmail} leaf beside the incoming \(Q\), then the settled tree once that drain completes.
 In the settled tree \textsf{slack} sits beside the rebuilt \textsf{gmail} subtree in an order that does not match \(p_2\) literally, but sibling order carries no semantics (\cref{sec:policy-dsl}), so the reordering is invisible to any observer.
@@ -2203,6 +2208,8 @@ The \Add{}s are appended at the parent's tail.
 The \Retire{}s fire at their original \(p_1\) indices in descending order, so a higher-index drain does not shift the lower indices still pending.
 Each matched-pair recursion lands at its position among the matches, which is also its slot once the \Retire{}s drain.
 Issuing the \Add{}s first is deliberate: an \Add{} is instantaneous while a \Retire{} waits for its subtree to drain, so the new arms begin carrying traffic immediately instead of waiting on the retirements.
+A matched pair whose arms agree and whose metadata alone moved is issued first for the same reason, since its \ChangeMeta{} shares nothing with any of the drains and would otherwise wait behind them.
+Such a step names the arm's index before the \Retire{}s rather than after, since that is where the arm sits when it fires.
 
 \paragraph{Where the descent localizes the difference}
 

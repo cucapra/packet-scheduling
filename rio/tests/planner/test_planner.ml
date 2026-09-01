@@ -22,9 +22,8 @@ let make_planner_test name file1 file2 expected_seq =
    After [Designate] fires, the slot is a designated SP* with the loser at
    child index 0; [Quiesce] tears down the loser's class routing; [Undesignate]
    waits for the loser to drain before collapsing the SP* down to the
-   survivor. When the replace also rebinds the slot's per-arm meta, a trailing
-   [ChangeMeta] step under [True] fires immediately after [Undesignate]
-   (sequential dependency carries the drain). *)
+   survivor. When the replace also rebinds the slot's per-arm meta, a leading
+   [ChangeMeta] step under [True] fires before [Designate]. *)
 let replace_seq ?meta path arm =
   let loser_path = path @ [ 0 ] in
   let base =
@@ -34,9 +33,13 @@ let replace_seq ?meta path arm =
       (Planner.Empty loser_path, Delta.Undesignate path);
     ]
   in
+  (* A whole-slot replace carries its [ChangeMeta] first: [Designate] hands
+     the slot over to the survivor at once, so every packet the slot accepts
+     from that instant belongs to [arm] and should be ranked under the new
+     metadatum. See [slot_arm_edit]. *)
   match meta with
   | None -> base
-  | Some m -> base @ [ (Planner.True, Delta.ChangeMeta { path; new_meta = m }) ]
+  | Some m -> (Planner.True, Delta.ChangeMeta { path; new_meta = m }) :: base
 
 (* The planner's [Retire] idiom: drain the subtree at [path], then structurally
    remove the slot once the subtree is empty. *)
@@ -203,6 +206,16 @@ let multi_arms_removed_metaed =
   [
     make_planner_test "WFQ with two arms removed at end" "wfq_BACD" "wfq_BA"
       (retire_seq [ 3 ] @ retire_seq [ 2 ]);
+    (* wfq_BACD normalizes to (A,2),(B,1),(C,3),(D,4); wfq_AC_diff to
+       (A,2),(C,7). Arms B and D retire and the surviving C is re-weighted
+       3 -> 7. C's weight has nothing to do with either drain, so its
+       [ChangeMeta] fires before the retires, which means it carries C's
+       pre-retire index 2 rather than the index 1 it will occupy once the
+       retires drain. *)
+    make_planner_test "WFQ arms removed around a re-weighted survivor"
+      "wfq_BACD" "wfq_AC_diff"
+      ([ (Planner.True, Delta.ChangeMeta { path = [ 2 ]; new_meta = 7.0 }) ]
+      @ retire_seq [ 3 ] @ retire_seq [ 1 ]);
   ]
 
 let metachanged =
@@ -270,7 +283,7 @@ let multi_arms_replaced =
    slot emits its own slot-level edit independently; the per-slot emissions
    target distinct indices and concatenate in ascending order with no
    interference. Sub-cases by inner-recursion shape: a [Replace]-root inner
-   takes any meta change as a trailing [ChangeMeta]; a constructor-mismatch
+   takes any meta change as a leading [ChangeMeta]; a constructor-mismatch
    inner emits a slot-level [Replace] directly (with meta if
    applicable); any clean smaller inner edit bubbles via [prepend_seq] with
    a separate [ChangeMeta] for the meta change. *)
@@ -500,6 +513,21 @@ let same_length_bidir =
       @ retire_seq [ 1 ]
       @ replace_seq ~meta:7.0 [ 0 ] (Pol.RR [ Pol.FIFO "A"; Pol.FIFO "Y" ])
       @ replace_seq ~meta:8.0 [ 1 ] (Pol.RR [ Pol.FIFO "C"; Pol.FIFO "W" ]));
+    (* wfq_A_D_rrBC normalizes to WFQ[(A,1); (D,3); (RR[B,C],2)];
+       wfq_Y_rrBC_diff to WFQ[(Y,1); (RR[B,C],9)]. Y is in neither
+       arm-multiset, so no subsequence embeds and the label walk runs: A
+       and D pair with nothing and retire, Y is a fresh Add, and the RR
+       arm matches itself with only its weight moving 2 -> 9. That lone
+       [ChangeMeta] shares nothing with either drain, so it fires first,
+       carrying the RR's pre-retire index 2. *)
+    make_planner_test "WFQ re-weighted survivor across a label walk"
+      "wfq_A_D_rrBC" "wfq_Y_rrBC_diff"
+      ([ (Planner.True, Delta.ChangeMeta { path = [ 2 ]; new_meta = 9.0 }) ]
+      @ [
+          ( Planner.True,
+            Delta.Add { path = [ 3 ]; arm = Pol.FIFO "Y"; meta = Some 1.0 } );
+        ]
+      @ retire_seq [ 1 ] @ retire_seq [ 0 ]);
   ]
 
 (* Pairs that would have looked like sub-policy embeddings at depth (FIFO B
