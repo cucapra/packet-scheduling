@@ -1639,7 +1639,7 @@ That is a temporary strict-priority node favoring the outgoing \(\mathit{pol}@\m
 \section{Rio Hardware Implementation}\label{sec:hardware}
 
 A PIFO tree is a clean scheduling abstraction, but instantiating one dynamically on line-rate switching hardware needs more than a fixed set of hardwired PIFOs.
-Existing designs~\cite{TODO} therefore leave the tree unwired: the switch exposes programmable processing elements, or PEs, and each PE hosts several PIFOs, one per node of the tree it carries.
+Existing designs~\cite{vPIFO} therefore leave the tree unwired: the switch exposes programmable processing elements, or PEs, and each PE hosts several PIFOs, one per node of the tree it carries.
 Each PE carries hardware, usually match-action pipelines, that assigns a packet to one of its PIFOs and computes the packet's rank and next-hop destination; behind that, a single physical PIFO supplies the storage that all of the PE's PIFOs share.
 
 We call the hardware-level realizations of \push{} and \pop{} \emph{enqueue} and \emph{dequeue}, and on this substrate both are pipelined and non-atomic.
@@ -1780,20 +1780,9 @@ The parent-side \texttt{adopt} that attaches \(\mathtt{root(T)}\) is left to the
 
 We write \ensuremath{\mathit{path}} for the form's path argument, \texttt{parent} for the PIFO at the position above it, and \texttt{k} for its index at that PIFO.
 For \(\mathit{path} = [\,]\), \texttt{parent} is \texttt{port\_root} and \texttt{k} is \texttt{port\_step}.
+Three of the forms are written below with their argument split as \(\pi \mathbin{+\!\!+} [k]\) rather than as \ensuremath{\mathit{path}}, because their lowerings address the parent's slot rather than the node itself, and so need \texttt{k} by name.
 
-\paragraph*{\(\ChangeMeta(\pi \mathbin{+\!\!+} [k], D, m)\)}
-\begin{Verbatim}
-set_arm_meta(parent, k, m)
-\end{Verbatim}
-
-\paragraph*{\(\Quiesce(\mathit{path})\)}
-\begin{Verbatim}
-v := PIFO at path
-foreach f in flows(v):
-    walk(deassoc, chain(f), f)
-\end{Verbatim}
-
-\paragraph*{\(\Add(\mathit{path}, D, \mathit{arm}, m)\)}
+\paragraph{\(\Add(\mathit{path}, D, \mathit{arm}, m)\)}
 \begin{Verbatim}
 v := PIFO at path
 n := arity(v)
@@ -1807,7 +1796,19 @@ foreach f in flows(arm):
 \end{Verbatim}
 The new subtree occupies \texttt{v}'s rightmost slot (index \texttt{n}), so existing children's indices are undisturbed.
 
-\paragraph*{\(\Remove(\pi \mathbin{+\!\!+} [k])\)}
+\paragraph{\(\ChangeMeta(\pi \mathbin{+\!\!+} [k], D, m)\)}
+\begin{Verbatim}
+set_arm_meta(parent, k, m)
+\end{Verbatim}
+
+\paragraph{\(\Quiesce(\mathit{path})\)}
+\begin{Verbatim}
+v := PIFO at path
+foreach f in flows(v):
+    walk(deassoc, chain(f), f)
+\end{Verbatim}
+
+\paragraph{\(\Remove(\pi \mathbin{+\!\!+} [k])\)}
 \begin{Verbatim}
 v := PIFO at path
 change_arity(parent, arity(parent) - 1)
@@ -1820,7 +1821,7 @@ foreach u in nodes(v):
 The \(\sigma_k\) renumbering of \cref{sec:remove} has no counterpart here.
 A child is reached by an opaque per-edge index that \texttt{parent} minted when it adopted that child, so dropping one child leaves every sibling's index as it was.
 
-\paragraph*{\(\Designate(\mathit{path}, \mathit{survivor})\)}
+\paragraph{\(\Designate(\mathit{path}, \mathit{survivor})\)}
 \begin{Verbatim}
 loser := PIFO at path
 surv  := root(survivor)
@@ -1847,7 +1848,7 @@ For a shared flow the chain above the two roots is already in place and the walk
 Flows in \(\mathtt{flows(loser)} \setminus \mathtt{flows(surv)}\) are left alone entirely, and go on reaching \texttt{loser}'s own subtree, matching \cref{sec:designate}'s rule that loser-only labels drain on arm 0.
 Silencing those, when the operator ultimately wants it, comes from the \Quiesce{} step of the surrounding \Replace{} idiom (\cref{sec:sequences}), not from \Designate.
 
-\paragraph*{\(\Undesignate(\pi \mathbin{+\!\!+} [k])\)}
+\paragraph{\(\Undesignate(\pi \mathbin{+\!\!+} [k])\)}
 \begin{Verbatim}
 loser := PIFO at path
 surv  := designated survivor of loser
@@ -1871,11 +1872,14 @@ The chain walk is what \cref{sec:quiesce} calls narrowing the admitted set unifo
 One subtlety attends a \Quiesce{} that fires in the middle of a \Replace, on the outgoing arm of a \(\Strictstar\).
 There the lowering restricts the deassoc walk to loser-only flows, since \Designate{} routed the shared flows to the survivor at commit time (\cref{sec:designate}), and de-associating them here would silence live traffic on the survivor.
 
-\subsection{Designated survivors}\label{sec:hw-survivor}
+\subsection{Designated Survivors}\label{sec:hw-survivor}
+
+A \(\Strictstar\) node is realized not as a PIFO but as a \emph{designated-survivor link}, a pointer from the node it replaces to the subtree replacing it.
+This subsection says why the link is worth having and how a \push{} and a \pop{} each reach the survivor through it.
 
 \cref{sec:policy-dsl} offers \(\Strictstar\) as a discipline of its own even though it schedules exactly as the 2-ary \Strict{} does.
 The difference is not in the schedule.
-It is that a \(\Strictstar\) node needs no \ensuremath{\mathit{pifo}}, and a node that needs no \ensuremath{\mathit{pifo}} needs no level.
+It is that a \(\Strictstar\) node needs no \ensuremath{\mathit{pifo}}, and a node that needs no \ensuremath{\mathit{pifo}} needs no \emph{level}: a PE holds one level of the tree, so every node that must be stored somewhere costs a level for itself and everything beneath it.
 
 A substrate that offers \(\Strictstar\) guarantees two things of it.
 Arm 0 is drained before arm 1 is served, and the two arms' priorities never change.
@@ -1884,9 +1888,9 @@ A \ChangeMeta{} may invert its priorities under a standing backlog, and ranks ar
 Nothing can invert a \(\Strictstar\): \ChangeMeta{} may not target its arms (\cref{sec:changemeta}), and nothing else disturbs it between the \Designate{} that creates it and the \Undesignate{} that retires it.
 The drain order therefore holds at every instant of the node's life, and a \ensuremath{\mathit{pifo}} there would record nothing the two arms do not already record.
 
-\paragraph{Why dropping it is worth the trouble}
+\paragraph{Why dropping the \texorpdfstring{\ensuremath{\mathit{pifo}}}{pifo} is worth the trouble}
 
-A PE level holds one tree level, so sibling subtrees share a root level.
+Sibling subtrees share a root level.
 Suppose the outgoing subtree has height two and sits on levels 5 and 6, and a survivor of height three is to replace it.
 The survivor's root belongs on level 5, beside the root it replaces, and its leaves reach level 7.
 A node that holds a \ensuremath{\mathit{pifo}} has to live somewhere, and a literal \Strict-2 wrapper would take level 5 for itself.
@@ -1913,6 +1917,9 @@ Once \texttt{v} is empty it defers to its designated survivor, and the query pas
 
 The parent therefore holds one index per packet in \emph{either} subtree, and spends them on \texttt{v} until \texttt{v} is dry and on \texttt{surv} thereafter, which is the arm-0-before-arm-1 order \cref{sec:wrap-nondisruption} proves non-disruptive.
 \cref{sec:controls}'s well-formedness reads the same way, since ``the subtree under index \(i\)'' there means the subtree at \(i\) together with its designated survivor's.
+\xxx[AM to AS]{This sentence amends a \cref{sec:controls} definition from here, in a trailing clause: \cref{sec:controls} does not know about designated survivors, so ``the subtree under index \(i\)'' means something narrower there than it has to mean for the well-formedness argument to hold.
+Either \cref{sec:controls} carries the caveat where the definition is given, or this subsection makes more of it than one clause.
+Worth deciding which.}
 
 \paragraph{Ending the transition}
 
@@ -1976,7 +1983,7 @@ This design is sufficient for correctness and avoids subtle ordering bugs betwee
 It can, however, introduce head-of-line blocking when a guarded transition waits for a long-running drain.
 Supporting multiple independent queues for disjoint subtrees is a natural optimization and does not change Rio's ISA or correctness argument; we leave this extension to future work.
 
-\subsection{What Rio asks of a substrate}\label{sec:substrate-portability}
+\subsection{What Rio Asks of a Substrate}\label{sec:substrate-portability}
 
 Our substrate is deliberately unambitious; we built it because the compiler needed something to run against.
 We do not offer it as a contribution, and nothing in \cref{sec:correctness} depends on it.
