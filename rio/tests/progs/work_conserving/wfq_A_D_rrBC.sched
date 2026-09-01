@@ -1,0 +1,10 @@
+classes A, B, C, D;
+
+// Normalizes to wfq[(A,1), (D,3), (rr[B,C],2)] (WFQ sorts by arm content,
+// and FIFO < RR). Paired with [wfq_Y_rrBC_diff], whose arms are not an
+// in-order subsequence of these, so the comparator reaches the label
+// walk: A and D are unmatched and retire, Y is fresh, and the RR arm is
+// matched with only its weight changed.
+policy = wfq[(A, 1), (D, 3), (rr[B, C], 2)];
+
+return policy

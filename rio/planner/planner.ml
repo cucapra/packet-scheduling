@@ -108,8 +108,9 @@ let prepend_seq i seq = List.map (prepend_step i) seq
    index 1; [Quiesce] tears down the loser's class routing, and [Undesignate]
    waits for the loser to drain before collapsing the SP* down to the
    survivor. When the swap also rebinds the slot's per-arm meta, the caller
-   appends a [(True) ChangeMeta] step after the bubble-up; sequential
-   dependency carries the drain so no extra guard is needed.
+   puts a [(True) ChangeMeta] step in front of the bubble-up, so the slot
+   already carries the new metadatum when [Designate] hands it over; see
+   [slot_arm_edit] for why that is the right end.
 
    Also serves as [analyze]'s give-up sequence: when no smaller atomic edit
    applies, [Replace] fires at the divergent slot.
@@ -215,18 +216,46 @@ let rec compare_children ~next:p2 ?ms ps1 ps2 =
         let m2 = List.nth ms2 j in
         if m1 = m2 then None else Some m2)
   in
+  let change_meta_at j new_meta =
+    (True, Delta.ChangeMeta { path = [ j ]; new_meta })
+  in
   (* Slot-level edit at index [i], carrying [arm1] to [arm2] and optionally
      rebinding the slot's meta. The inner sequence bubbles via
-     [prepend_seq]; a [Some m] meta tacks on a separate [ChangeMeta] step
-     at the same slot, sequenced after the inner. [analyze_inner] never
-     returns a [PruneDownTo] (top level only; see [analyze]), so the
-     inner always bubbles cleanly. *)
+     [prepend_seq]; a [Some m] meta contributes a separate [ChangeMeta]
+     step at the same slot. [analyze_inner] never returns a [PruneDownTo]
+     (top level only; see [analyze]), so the inner always bubbles cleanly.
+
+     Where that [ChangeMeta] sits depends on what the inner sequence does
+     to slot [i]. Ranks freeze at push, so a [ChangeMeta] reaches only
+     packets that arrive after it fires, and firing it late leaves the
+     incoming traffic permanently ranked under the outgoing metadatum.
+
+     When the inner replaces the whole slot, [ChangeMeta] goes first:
+     [Designate] routes every survivor flow to the new arm at once and
+     [Quiesce] silences the old one, so from that instant everything the
+     slot accepts belongs to [arm2], and the old backlog drains on ranks
+     no [ChangeMeta] can rewrite.
+
+     When the inner acts strictly below slot [i], [ChangeMeta] goes last.
+     The slot keeps serving arms that are neither arriving nor departing,
+     and moving the metadatum early would re-tune them for as long as the
+     drain runs, which nothing bounds. *)
   let slot_arm_edit i arm1 arm2 ?meta () =
-    let base = prepend_seq i (analyze_inner arm1 arm2) in
+    let inner = analyze_inner arm1 arm2 in
+    let base = prepend_seq i inner in
     match meta with
     | None -> base
     | Some m ->
-        base @ [ (True, Delta.ChangeMeta { path = [ i ]; new_meta = m }) ]
+        let step = (True, Delta.ChangeMeta { path = [ i ]; new_meta = m }) in
+        (* [analyze_inner] gives up by emitting the [Replace] idiom, whose
+           [Designate] carries the empty path before [prepend_seq] pins it;
+           every other emission it makes acts below slot [i]. *)
+        let replaces_whole_slot =
+          match inner with
+          | (True, Delta.Designate { path = []; _ }) :: _ -> true
+          | _ -> false
+        in
+        if replaces_whole_slot then step :: base else base @ [ step ]
   in
   (* Edit at one matched pair, fired at parent-relative [slot]: arm
      difference -> [slot_arm_edit] (with meta when the meta also
@@ -259,14 +288,29 @@ let rec compare_children ~next:p2 ?ms ps1 ps2 =
             Delta.Add { path = [ frame_size + n ]; arm; meta = meta_for_j j } ))
         ps2_only
     in
-    let matched =
-      List.concat
-        (List.mapi (fun k (i, j, a1, a2) -> edit_pair_at k i j a1 a2) matches)
+    (* A match whose arms agree and whose meta moved shares nothing with
+       the retires, so it fires up front rather than waiting behind an
+       unbounded drain. It is indexed in [ps1]'s frame, at the arm's
+       current slot [i], since nothing has moved yet when it fires; the
+       adds land past [frame_size], so they cannot collide. Matches whose
+       arms differ keep their post-retire slot [k], which is where
+       [slot_arm_edit] expects to be. *)
+    let meta_only, arm_edits =
+      List.partition
+        (fun (_, (_, _, a1, a2)) -> a1 = a2)
+        (List.mapi (fun k m -> (k, m)) matches)
     in
-    adds @ retires_descending ps1_only @ matched
-  in
-  let change_meta_at j new_meta =
-    (True, Delta.ChangeMeta { path = [ j ]; new_meta })
+    let early_metas =
+      List.filter_map
+        (fun (_, (i, j, _, _)) -> Option.map (change_meta_at i) (meta_diff i j))
+        meta_only
+    in
+    let matched =
+      List.concat_map
+        (fun (k, (i, j, a1, a2)) -> edit_pair_at k i j a1 a2)
+        arm_edits
+    in
+    early_metas @ adds @ retires_descending ps1_only @ matched
   in
   match List.compare_lengths ps1 ps2 with
   | 0 ->
@@ -289,12 +333,27 @@ let rec compare_children ~next:p2 ?ms ps1 ps2 =
                ps1)
       | _ ->
           (* Per-slot walk pairs arms at the same index; bidir picks up
-             cross-slot morphs that [Pol.normalize]'s sort exposed. *)
+             cross-slot morphs that [Pol.normalize]'s sort exposed. Slots
+             whose arms agree contribute a lone [ChangeMeta], independent
+             of every other slot, so they fire before the arm edits rather
+             than behind whichever drain an earlier slot happens to open.
+             Arity is equal and no arm moves, so indices are stable and
+             the two groups can be reordered freely. *)
           let per_slot () =
-            List.concat
-              (List.mapi
-                 (fun i (arm1, arm2) -> edit_pair_at i i i arm1 arm2)
-                 (List.combine ps1 ps2))
+            let pairs =
+              List.mapi
+                (fun i (arm1, arm2) -> (i, arm1, arm2))
+                (List.combine ps1 ps2)
+            in
+            let meta_only, arm_edits =
+              List.partition (fun (_, arm1, arm2) -> arm1 = arm2) pairs
+            in
+            let steps group =
+              List.concat_map
+                (fun (i, arm1, arm2) -> edit_pair_at i i i arm1 arm2)
+                group
+            in
+            steps meta_only @ steps arm_edits
           in
           try_bidir_cross_slot ~emit ~per_slot ps1 ps2
       end
@@ -302,7 +361,9 @@ let rec compare_children ~next:p2 ?ms ps1 ps2 =
       (* Multi-arm add: every surplus entry in [ps2] is a pure addition
          (the arms of [ps1] appear in-order as a subsequence of [ps2]).
          When metaed, shared arms whose meta differs contribute a
-         trailing [ChangeMeta] in [ps2]'s frame. *)
+         trailing [ChangeMeta] in [ps2]'s frame. Nothing here blocks --
+         every step is [True]-guarded -- so, unlike the retire branch,
+         these need not be hoisted ahead of the adds. *)
       begin match insertions ps1 ps2 with
       | Some adds ->
           let add_indices = List.map fst adds in
@@ -337,12 +398,16 @@ let rec compare_children ~next:p2 ?ms ps1 ps2 =
               (fun i -> not (List.mem i retire_indices))
               (List.init (List.length ps1) (fun i -> i))
           in
+          (* These [ChangeMeta]s land on arms no retire touches, so they
+             fire before the retires rather than behind their drains. They
+             are therefore indexed at the arm's pre-retire slot [i1] in
+             [ps1]'s frame, not at its post-retire slot [j]. *)
           let change_meta_steps =
             List.filter_map
-              (fun (j, i1) -> Option.map (change_meta_at j) (meta_diff i1 j))
+              (fun (j, i1) -> Option.map (change_meta_at i1) (meta_diff i1 j))
               (List.mapi (fun j i1 -> (j, i1)) ps1_matched)
           in
-          retires_descending retires @ change_meta_steps
+          change_meta_steps @ retires_descending retires
       | None -> bidir_or ~emit ~give_up ps1 ps2
       end
   | _ -> failwith "Can't get here"
