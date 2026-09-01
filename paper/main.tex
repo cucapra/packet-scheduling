@@ -1723,10 +1723,11 @@ Each form names a fixed sequence of opcodes, and the planner reads live state at
 
 A switch with \(P\) output ports has \(P\) separate trees, each wrapped at the ISA in a reserved 1-arm PIFO \texttt{port\_root} whose sole child, reached through the index \texttt{port\_step}, is the actual tree root.
 Its \texttt{Assoc} and \texttt{Map} mirror the actual root's, since every walk below begins there.
-\xxx[AM to AS]{\textsf{ChangeRoot} and \textsf{PruneDownTo} are cut from the paper as of 2026-08-31; \texttt{paper/cuts.tex} holds the removed text and the reasoning.
-\texttt{port\_root} was justified here entirely by \textsf{ChangeRoot}, since it was the wrapper that let ``swap the root'' be said in the same vocabulary as a child-level edit.
-I have left the wrapper in, on the guess that it is still wanted for port multiplexing, but it now has no stated reason to exist.
-Either give it one or take it out.}
+The wrapper is what makes the tree root an ordinary position.
+\texttt{undesignate} retargets a parent's index from a PIFO to that PIFO's designated survivor, and at the root there is no parent's index to retarget.
+That case is not hypothetical: \cref{sec:fallback}'s always-available plan is \(\Replace([], p_2)\), whose last step is \(\Undesignate([])\).
+Without a wrapper the substrate could not execute the one transition the planner is guaranteed to be able to fall back on, and would need a second opcode meaning ``make this PIFO the tree root'', doing at one position what \texttt{undesignate} does everywhere else.
+\Designate{} itself needs no parent, since it only writes the outgoing node's own link; it is retiring the wrapper, not installing it, that wants a slot above.
 
 The three parts of \ensuremath{\mathit{z}} (\cref{sec:controls}) line up one to one with this vocabulary.
 A node's \(\mathit{z}.\mathit{admit}\) is its \texttt{Assoc} set, its \(\mathit{z}.\mathit{serves}\) is its \texttt{Map} table, its \(\mathit{z}.\mathit{rank}\) is what \texttt{set\_policy} installs and \texttt{discipline(v)} reads back, and its \(\mathit{z}.\mathit{meta}\) is what \texttt{set\_arm\_meta} writes.
