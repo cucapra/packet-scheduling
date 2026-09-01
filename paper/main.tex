@@ -1858,10 +1858,10 @@ While \texttt{v} holds packets, it returns packets.
 Once \texttt{v} is empty it defers to its designated survivor, and the query passes to \texttt{surv} rather than underflowing.
 
 The parent therefore holds one index per packet in \emph{either} subtree, and spends them on \texttt{v} until \texttt{v} is dry and on \texttt{surv} thereafter, which is the arm-0-before-arm-1 order \cref{sec:wrap-nondisruption} proves non-disruptive.
-\cref{sec:controls}'s well-formedness reads the same way, since ``the subtree under index \(i\)'' there means the subtree at \(i\) together with its designated survivor's.
-\xxx[AM to AS]{This sentence amends a \cref{sec:controls} definition from here, in a trailing clause: \cref{sec:controls} does not know about designated survivors, so ``the subtree under index \(i\)'' means something narrower there than it has to mean for the well-formedness argument to hold.
-Either \cref{sec:controls} carries the caveat where the definition is given, or this subsection makes more of it than one clause.
-Worth deciding which.}
+The elision does change what \cref{sec:controls}'s well-formedness ranges over.
+That invariant counts, at each node, one \ensuremath{\mathit{pifo}} entry per packet in the subtree under the corresponding child, and here the parent holds entries for packets in a subtree that is not its child at all.
+This count is still correct once ``the subtree under index \(i\)'' is read as the subtree at \(i\) together with its designated survivor's, and an index that leads to \texttt{v} when \texttt{v} is empty does not actually reach a leaf with nothing to emit; it reaches \texttt{surv}.
+At the \ensuremath{\mathit{pol}} level no reading is needed, since \(\mathtt{wrap}\) (\cref{sec:designate}) builds a real \(\Strictstar\) node with two real children and a \ensuremath{\mathit{pifo}} of its own, and \cref{sec:controls} applies to it word for word.
 
 \paragraph{Ending the transition}
 
