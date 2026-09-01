@@ -1940,18 +1940,7 @@ A \(\delta\) that lowers to many instructions has to install as a single instant
 The tree is transiently malformed partway through a commit, and no \push{} or \pop{} may observe it in that state.
 That is the whole of what \cref{sec:hw-preservation}'s argument leans on, and \cref{sec:hw-transaction} is how our own controller supplies it.
 
-Two further properties of our substrate show up in the lowerings, and it is worth saying that neither is a demand.
-Per-arm metadata is addressed by the parent's index rather than held on the child, so \Undesignate{} retargets an index and the survivor inherits the slot's annotation.
-A substrate that dropped the annotation on a rewire would need one \texttt{set\_arm\_meta} afterwards and nothing more.
-Children are addressed by stable handles, so \Remove{} unhooks an arm without re-adopting its siblings.
-A substrate that renumbered would emit those re-adoptions, which is exactly the shift \(\sigma_k\) (\cref{sec:remove}) already describes.
-
-A third property is not the substrate's business in the first place.
-A new arm's slot is seeded from its parent's live \ensuremath{\mathit{node\_state}}, so a freshly spliced \WFQ{} arm starts at the parent's current virtual time rather than at zero.
-That is \(\mathit{init\_slot}_{D}\) (\cref{sec:compilation}), which belongs to \ensuremath{D} rather than to Rio, and \texttt{change\_arity} does no more than let \ensuremath{D} run it.
-Rio never reads the state involved.
-
-The designated-survivor link of \cref{sec:hw-survivor} is likewise an optimization and not a requirement, since a substrate without one lowers \Designate{} to a literal \Strict-2 wrapper and pays for the relayouts.
+The designated-survivor link of \cref{sec:hw-survivor} is an optimization rather than a requirement, since a substrate without one lowers \Designate{} to a literal \Strict-2 wrapper and pays for the relayouts.
 The bar for hosting Rio is therefore a single property, and we expect other PIFO substrates, vPIFO~\cite{vPIFO} among them, to clear it and to be able to adopt the link besides.
 
 \subsection{Executing \(\delta\) as a transaction}\label{sec:hw-transaction}
