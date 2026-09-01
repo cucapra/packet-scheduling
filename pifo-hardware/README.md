@@ -77,7 +77,10 @@ The packet-visible mapping commands are transactional:
 - Every command uses the mesh's single ready/valid control ingress. It accepts at most one instruction per clock;
   targeting different engines does not create parallel configuration ports. The ingress queue absorbs stalls but does
   not increase this rate.
-- `UpdateMapperPre`, `UpdateMapperPost`, and `UpdateMapperNonExist` write backup banks and do not immediately affect packets.
+- `UpdateMapperPre` and `UpdateMapperPost` write backup banks and do not immediately affect packets.
+- `UpdateMapperNonExist` writes a single-bank per-engine front table as `{source vPIFO -> target vPIFO, enabled=false}`.
+  Commit arms the new entry; popping the source's final entry enables it. The PE holds its input for that activation
+  cycle, then subsequent requests are rewritten before the PIFO lookup without a retry or crossbar loopback.
 - `UpdateMapperPost` is keyed by `(vPifoId, flowId)`, so multiple tree versions can retain different next hops for the same flow.
 - `CommitMapper` publishes every pending mapper update across every engine on one clock edge. Its payload and `engineId` are ignored.
 - A packet request accepted on the commit edge uses the old mappings; requests accepted after that edge use the new mappings.
@@ -87,8 +90,8 @@ The packet-visible mapping commands are transactional:
 The experiment tools use explicit compiler and simulator boundaries:
 
 - `pifo_tree_compiler.py` is the only component that understands a declarative tree move. It emits an initial package
-  plus a `full_transitive` direct package that allocates a fresh complete tree, redirects every input, and chains the
-  drained old root to the new root.
+  plus a `full_transitive` direct package that allocates a fresh complete tree, redirects every input, and installs a
+  same-engine front rewrite from the drained old root to the new root.
 - `pifo_simulator.py` accepts that direct transaction timeline and a separate traffic-pattern timeline. It supports
   multiple packages at different cycles and never interprets trees or policies.
 - `pifo_bandwidth_figure.py` and `pifo_packet_scatter_figure.py` render independently. Their data and resources stay
@@ -111,7 +114,7 @@ checks automatic and produces machine-readable and Markdown reports beside the e
 
 ## TODO List
 
-- [ ] Support per-PIFO copy, make non-exist pifo pop return an invalid message
+- [x] Make an unconfigured non-exist PIFO pop return no valid mesh message.
 - [ ] Support packet meta data and packet identifier in mesh message and brain
 - [ ] Support configurable brain policy
     - [ ] support configurable rank in WFQ

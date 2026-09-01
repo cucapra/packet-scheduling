@@ -25,7 +25,7 @@ LARGE_CONFIG = HARDWARE_ROOT / "experiments" / "large-tree-rr-to-sp.json"
 
 
 class PifoExperimentVerifyTest(unittest.TestCase):
-    def test_large_checked_config_builds_a_28_command_full_tree_copy(self) -> None:
+    def test_large_checked_config_builds_a_27_command_full_tree_copy(self) -> None:
         config = load_experiment_config(LARGE_CONFIG)
         plan = build_transaction_plan(
             config.initial_tree,
@@ -35,7 +35,7 @@ class PifoExperimentVerifyTest(unittest.TestCase):
 
         self.assertEqual(len(config.initial_tree.nodes), 7)
         self.assertEqual(config.simulation.num_engines, 4)
-        self.assertEqual(len(plan.transaction_commands), 28)
+        self.assertEqual(len(plan.transaction_commands), 27)
         self.assertEqual(plan.mode, "full_transitive")
         self.assertEqual(plan.transaction_commands[-1].command, "CommitMapper")
         self.assertIsNotNone(config.verification)
@@ -88,7 +88,7 @@ class PifoExperimentVerifyTest(unittest.TestCase):
             TransactionTiming(
                 mode="full_transitive",
                 start_cycle=7,
-                commit_cycle=10,
+                commit_cycle=9,
                 finish_cycle=40,
                 drain_cycle=20,
                 instruction_count=4,
@@ -98,8 +98,8 @@ class PifoExperimentVerifyTest(unittest.TestCase):
         self.assertFalse(report["passed"])
         staging_fact = report["facts"][0]
         checks = {check["id"]: check for check in staging_fact["checks"]}
-        self.assertEqual(checks["serialized_configuration_rate"]["expected"], ">= 4")
-        self.assertEqual(checks["serialized_configuration_rate"]["observed"], 3)
+        self.assertEqual(checks["serialized_configuration_rate"]["expected"], ">= 3")
+        self.assertEqual(checks["serialized_configuration_rate"]["observed"], 2)
         self.assertFalse(checks["serialized_configuration_rate"]["passed"])
 
     def test_admission_on_commit_edge_belongs_to_old_rr_epoch(self) -> None:

@@ -180,6 +180,8 @@ object RequestSimulatorCli {
           engine.pifos.io.popResponse.valid.simPublic()
           engine.pifos.io.popResponse.port.simPublic()
           engine.pifos.io.popResponse.exist.simPublic()
+          engine.pifos.io.portDrained.valid.simPublic()
+          engine.pifos.io.portDrained.payload.simPublic()
         }
         mesh
       }

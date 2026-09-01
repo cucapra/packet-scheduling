@@ -178,7 +178,7 @@ case class PifoMeshSimController(
    *   Supported command values:
    *     UpdateMapperPre       writes enque mapper: inputId=vPifoId, outputId=data
    *     UpdateMapperPost      writes deque mapper: inputId=vPifoId @@ flowId, outputId=data
-   *     UpdateMapperNonExist  writes non-exist mapper: inputId=vPifoId, outputId=data
+   *     UpdateMapperNonExist  installs a local underflow rewrite: source=vPifoId, target=data
    *     CommitMapper          atomically publishes all pending mapper updates; payload fields are still required
    *     UpdateBrainEngine     writes brain engine type: inputId=vPifoId, outputId=data
    *     UpdateBrainState      writes brain state: inputId=vPifoId, outputId=data
@@ -239,10 +239,14 @@ case class PifoMeshSimController(
       }
       // apply the non-exist rewrite at the root pifo
       def rootNonExistRewrite(newEngineId: Int, newPifoId: Int): TreeConfiger = {
+        require(
+          newEngineId == tree.rootEngine,
+          "front underflow rewrites must remain within the source engine"
+        )
         sendControl(
           ControlCommand.UpdateMapperNonExist,
           tree.rootEngine,
-          mkFlowId(newEngineId, newPifoId),
+          newPifoId,
           vPifoId = tree.rootPifo
         )
         this
@@ -335,11 +339,4 @@ case class TreeController(
     pifoMap(pifoId) = engineId
   }
 
-  // make sure rootPifo forwards to output for non-exist
-  meshController.sendControl(
-    ControlCommand.UpdateMapperNonExist,
-    rootEngine,
-    meshController.mkFlowId(0, meshController.config.numVPIFOs - 1),
-    vPifoId = rootPifo
-  )
 }

@@ -238,8 +238,8 @@ def verify_rr_to_sp_phases(
                     [
                         _at_least(
                             "serialized_configuration_rate",
-                            "cycles from package start through commit acceptance at no more than one instruction per cycle",
-                            timing.instruction_count,
+                            "cycle span from first through final acceptance at no more than one instruction per cycle",
+                            max(0, timing.instruction_count - 1),
                             timing.staging_cycles,
                         )
                     ]

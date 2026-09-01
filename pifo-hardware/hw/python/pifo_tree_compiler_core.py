@@ -128,16 +128,6 @@ def _configure_tree(
 ) -> list[ControllerCommand]:
     commands = _configure_brains(tree, num_vpifos)
     commands.extend(_configure_flow_mappings(tree, num_vpifos, include_pre=True))
-    root = tree.nodes[tree.root]
-    commands.append(
-        ControllerCommand(
-            command="UpdateMapperNonExist",
-            engine_id=root.engine_id,
-            vpifo_id=root.vpifo_id,
-            flow_id=0,
-            data=pack_flow_id(0, num_vpifos - 1, num_vpifos),
-        )
-    )
     commands.append(_commit_command())
     return commands
 
@@ -152,26 +142,20 @@ def _configure_full_transitive(
 
     new_root = new_tree.nodes[new_tree.root]
     old_root = old_tree.nodes[old_tree.root]
-    commands.append(
-        ControllerCommand(
-            command="UpdateMapperNonExist",
-            engine_id=new_root.engine_id,
-            vpifo_id=new_root.vpifo_id,
-            flow_id=0,
-            data=pack_flow_id(0, num_vpifos - 1, num_vpifos),
+    if old_root.engine_id != new_root.engine_id:
+        raise ValueError(
+            "front underflow rewrite requires old and new roots on the same engine"
         )
-    )
     # Root dequeue requests intentionally keep targeting old_root. Once its old
-    # tokens drain, this miss rewrite advances the dequeue into new_root.
+    # tokens drain, the per-engine front table rewrites later requests directly
+    # to new_root. The engine holds the next request for the activation cycle.
     commands.append(
         ControllerCommand(
             command="UpdateMapperNonExist",
             engine_id=old_root.engine_id,
             vpifo_id=old_root.vpifo_id,
             flow_id=0,
-            data=pack_flow_id(
-                new_root.engine_id, new_root.vpifo_id, num_vpifos
-            ),
+            data=new_root.vpifo_id,
         )
     )
     commands.append(_commit_command())

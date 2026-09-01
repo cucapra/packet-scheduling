@@ -31,7 +31,6 @@ object TransactionalConfigSim extends App {
         engine.enque.brain.io.response.payload.priority.simPublic()
         engine.enque.enqueMapper.activeBank.simPublic()
         engine.deque.dequeMapper.activeBank.simPublic()
-        engine.deque.nonExistMapper.activeBank.simPublic()
       }
       mesh
     }
@@ -125,8 +124,7 @@ object TransactionalConfigSim extends App {
       val activeBanks = dut.pifoEngines.flatMap { engine =>
         Seq(
           engine.enque.enqueMapper.activeBank,
-          engine.deque.dequeMapper.activeBank,
-          engine.deque.nonExistMapper.activeBank
+          engine.deque.dequeMapper.activeBank
         )
       }
       assert(activeBanks.forall(bank => !bank.toBoolean))

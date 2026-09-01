@@ -126,11 +126,16 @@ final class PifoRequestSimulator(
   private val submittedIds = mutable.Set.empty[Long]
   private val remainingActions = mutable.Queue.from(scheduledActions.sortBy(_.scheduledCycle))
   private val completedActions = mutable.ArrayBuffer.empty[CompletedRequestAction]
-  private case class DrainWatch(target: TreeDrainTarget, var armed: Boolean, var cycle: Option[Long])
+  private case class DrainWatch(
+      target: TreeDrainTarget,
+      var armed: Boolean,
+      var rootDrained: Boolean,
+      var cycle: Option[Long]
+  )
   private val drainWatches = mutable.Map.from(
     scheduledActions.flatMap { action =>
       action.drainTarget.map { target =>
-        action.name -> DrainWatch(target, armed = false, cycle = None)
+        action.name -> DrainWatch(target, armed = false, rootDrained = false, cycle = None)
       }
     }
   )
@@ -361,6 +366,9 @@ final class PifoRequestSimulator(
           math.max(1L, math.ceil(completed.request.sizeBytes / settings.linkBytesPerCycle).toLong)
         nextDequeueCycle = currentCycle + serializationCycles
         dequeueInFlight = false
+        // Completion occurs on this edge; the tree is fully drained starting
+        // with the following cycle.
+        completeRootDrainedWatches(currentCycle + 1)
         if (requestQueues.isEmpty) completeArmedDrains(currentCycle)
         if (settings.verbose) {
           println(
@@ -402,15 +410,23 @@ final class PifoRequestSimulator(
 
   private def observeTreeDrains(): Unit = {
     drainWatches.valuesIterator.filter(watch => watch.armed && watch.cycle.isEmpty).foreach { watch =>
-      val response = dut.pifoEngines(watch.target.engineId - 1).pifos.io.popResponse
+      val drained = dut.pifoEngines(watch.target.engineId - 1).pifos.io.portDrained
       if (
-        response.valid.toBoolean &&
-        response.port.toInt == watch.target.vPifoId &&
-        !response.exist.toBoolean
+        drained.valid.toBoolean &&
+        drained.payload.toInt == watch.target.vPifoId
       ) {
-        watch.cycle = Some(currentCycle)
+        watch.rootDrained = true
       }
     }
+  }
+
+  private def completeRootDrainedWatches(cycle: Long): Unit = {
+    // The request-level harness permits one root dequeue in flight. Therefore
+    // the first terminal completion after the root's final-pop pulse is the
+    // completion of the final old-tree request.
+    drainWatches.valuesIterator
+      .filter(watch => watch.armed && watch.rootDrained && watch.cycle.isEmpty)
+      .foreach(_.cycle = Some(cycle))
   }
 
   private def completeArmedDrains(cycle: Long): Unit = {
@@ -615,12 +631,6 @@ object RequestSimulationConfiguration {
         flowId = controller.mkFlowId(rootEngineId, globalFlowId)
       )
     }
-    controller.sendControl(
-      ControlCommand.UpdateMapperNonExist,
-      rootEngineId,
-      controller.mkFlowId(0, config.numVPIFOs - 1),
-      vPifoId = rootVPifoId
-    )
     controller.sendControl(ControlCommand.CommitMapper, engineId = 1, data = 0)
   }
 }

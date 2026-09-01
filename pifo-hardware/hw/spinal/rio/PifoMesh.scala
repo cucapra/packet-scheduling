@@ -68,9 +68,11 @@ case class PifoMesh(config: EngineConfig) extends Component {
     engine.io.enqueRequest << in
   }
 
-  // All control-plane commands are ordered through one hardware queue. Mapper
-  // updates target backup banks; a commit is broadcast synchronously so every
-  // engine changes its packet-visible mappings on the same cycle.
+  // All control-plane commands are ordered through one hardware queue. The pre
+  // and post mapper updates target backup banks; a commit is broadcast
+  // synchronously so every engine changes those packet-visible mappings on the
+  // same cycle. Underflow-rewrite entries are single-bank and never wait for
+  // mapper bank synchronization.
   val controlQueue = io.controlRequest.queue(config.commitQueueLength)
   val mapperCommitReady = pifoEngines.map(_.io.commitReady).reduce(_ && _)
   io.commitReady := mapperCommitReady
@@ -82,8 +84,7 @@ case class PifoMesh(config: EngineConfig) extends Component {
   )
   val isMapperUpdate =
     withoutCommit.payload.command === ControlCommand.UpdateMapperPre ||
-      withoutCommit.payload.command === ControlCommand.UpdateMapperPost ||
-      withoutCommit.payload.command === ControlCommand.UpdateMapperNonExist
+      withoutCommit.payload.command === ControlCommand.UpdateMapperPost
   val routedControl = withoutCommit.haltWhen(isMapperUpdate && !mapperCommitReady)
 
   val commitControl = commitHead

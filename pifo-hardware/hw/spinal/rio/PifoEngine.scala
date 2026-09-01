@@ -148,6 +148,94 @@ case class TransactionalMapper(inputWidth: Int, outputWidth: Int) extends Compon
   }
 }
 
+/** A single-bank front-end rewrite table activated by a drained PIFO port.
+  *
+  * Control writes install source -> target with rewriting disabled. A mapper
+  * commit arms newly installed entries, and the successful pop of the source's
+  * final entry enables its rewrite. The table is intentionally not copied or
+  * banked: its runtime enable bit is data-plane state rather than transactional
+  * mapper state.
+  */
+case class FrontRewriteTable(pifoIdWidth: Int) extends Component {
+  require(pifoIdWidth > 0, "pifoIdWidth must be positive")
+
+  val numPifos = 1 << pifoIdWidth
+
+  val io = new Bundle {
+    val lookupSource = in UInt (pifoIdWidth bits)
+    val lookupTarget = out UInt (pifoIdWidth bits)
+    val lookupEnabled = out Bool ()
+    val lookupCanEnable = out Bool ()
+
+    val drained = slave Flow (UInt(pifoIdWidth bits))
+    val drainEnablesRewrite = out Bool ()
+    val emptySource = slave Flow (UInt(pifoIdWidth bits))
+    val emptyEnablesRewrite = out Bool ()
+
+    val writeReq = slave Stream (MapperUpdater(pifoIdWidth, pifoIdWidth))
+    val commit = in Bool ()
+  }
+
+  val targets = Vec.fill(numPifos)(Reg(UInt(pifoIdWidth bits)) init (0))
+  val configured = Vec.fill(numPifos)(Reg(Bool()) init (False))
+  val pending = Vec.fill(numPifos)(Reg(Bool()) init (False))
+  val armed = Vec.fill(numPifos)(Reg(Bool()) init (False))
+  val enabled = Vec.fill(numPifos)(Reg(Bool()) init (False))
+
+  val drainedEntryEligible =
+    armed(io.drained.payload) || (io.commit && pending(io.drained.payload))
+  io.drainEnablesRewrite :=
+    io.drained.valid && configured(io.drained.payload) && drainedEntryEligible
+
+  io.lookupTarget := targets(io.lookupSource)
+  io.lookupEnabled := enabled(io.lookupSource)
+  io.lookupCanEnable :=
+    configured(io.lookupSource) && !enabled(io.lookupSource) && (
+      armed(io.lookupSource) || (io.commit && pending(io.lookupSource))
+    )
+
+  val emptyEntryEligible =
+    armed(io.emptySource.payload) || (io.commit && pending(io.emptySource.payload))
+  io.emptyEnablesRewrite :=
+    io.emptySource.valid && configured(io.emptySource.payload) && emptyEntryEligible
+
+  io.writeReq.ready := True
+
+  // The final successful source pop enables the entry for all subsequent
+  // requests. This can coincide with the commit that arms the entry.
+  when(io.drainEnablesRewrite) {
+    enabled(io.drained.payload) := True
+  }
+
+  // If an entry was already empty when it became armed, suppress its first
+  // would-underflow request and enable the rewrite directly.
+  when(io.emptyEnablesRewrite) {
+    enabled(io.emptySource.payload) := True
+  }
+
+  // Mapper publication arms entries written since the preceding commit. The
+  // target itself is single-bank and was already installed by the control write.
+  when(io.commit) {
+    for (index <- 0 until numPifos) {
+      when(pending(index)) {
+        pending(index) := False
+        armed(index) := True
+      }
+    }
+  }
+
+  // Give a new control write priority over a coincident old drain/commit for
+  // the same source. Reprogramming starts a fresh disabled, pending entry.
+  when(io.writeReq.fire) {
+    val source = io.writeReq.payload.inputId
+    targets(source) := io.writeReq.payload.outputId
+    configured(source) := True
+    pending(source) := True
+    armed(source) := False
+    enabled(source) := False
+  }
+}
+
 case class BrainInput(config: EngineConfig) extends Bundle {
   val vpifoId = UInt(config.vpifoIdWidth bits)
   val flowId = UInt(config.flowIdWidth bits)
@@ -403,33 +491,47 @@ case class PifoEngine(config: EngineConfig) extends Component {
       config.vpifoIdWidth + config.flowIdWidth,
       config.flowIdWidth
     )
-    val nonExistMapper = TransactionalMapper(config.vpifoIdWidth, config.flowIdWidth)
+    val frontRewrite = FrontRewriteTable(config.vpifoIdWidth)
 
-    pifos.io.popRequest.translateFrom(io.dequeueRequest.toFlow) { case (to, from) =>
-      to.port := from.vPifoId
-    }
+    // Rewrites happen before the PIFO lookup. The last successful source pop
+    // enables its entry. The activating cycle backpressures this PE once so the
+    // waiting request observes the registered enable on the following cycle.
+    frontRewrite.io.lookupSource := io.dequeueRequest.payload.vPifoId
+    val frontPort = Mux(
+      frontRewrite.io.lookupEnabled,
+      frontRewrite.io.lookupTarget,
+      io.dequeueRequest.payload.vPifoId
+    )
 
-    val popResps = StreamFork(pifos.io.popResponse.toStream, 4)
+    frontRewrite.io.drained << pifos.io.portDrained
 
-    enque.brain.io.poped << popResps(0).throwWhen(!popResps(0).exist).toFlow
+    frontRewrite.io.emptySource.valid :=
+      io.dequeueRequest.valid && frontRewrite.io.lookupCanEnable && pifos.io.popPortEmpty
+    frontRewrite.io.emptySource.payload := io.dequeueRequest.payload.vPifoId
+
+    val enablingRewrite =
+      frontRewrite.io.drainEnablesRewrite || frontRewrite.io.emptyEnablesRewrite
+    pifos.io.popRequest.valid := io.dequeueRequest.valid && !enablingRewrite
+    pifos.io.popRequest.port := frontPort
+    io.dequeueRequest.ready := !enablingRewrite
+
+    // An underflow is an invalid pop and produces no mesh message. A configured
+    // transition enables before the next request, so it does not underflow.
+    val existingPop = pifos.io.popResponse.toStream.throwWhen(!pifos.io.popResponse.exist)
+    val popResps = StreamFork(existingPop, 3)
+
+    enque.brain.io.poped << popResps(0).toFlow
 
     dequeMapper.io.readReq << popResps(1).map(response => response.port @@ response.data).toFlow
-    nonExistMapper.io.readReq << popResps(2).map(_.port).toFlow
 
-    // select the mapper based on the exist bit
-    val popFifo = popResps(3).queueLowLatency(2)
+    val popFifo = popResps(2).queueLowLatency(2)
     StreamJoin(
       Seq(
         dequeMapper.io.readRes.toStream,
-        nonExistMapper.io.readRes.toStream,
         popFifo
       )
     ).translateInto(io.dequeueResponse) { case (to, from) =>
-      when(popFifo.payload.exist) {
-        to.fromFlowId(dequeMapper.io.readRes.payload)
-      } otherwise {
-        to.fromFlowId(nonExistMapper.io.readRes.payload)
-      }
+      to.fromFlowId(dequeMapper.io.readRes.payload)
     }
   }
 
@@ -452,16 +554,15 @@ case class PifoEngine(config: EngineConfig) extends Component {
 
   controller.dispatchStream(
     ControlCommand.UpdateMapperNonExist,
-    deque.nonExistMapper.io.writeReq
+    deque.frontRewrite.io.writeReq
   ) { (to, from) =>
     to.inputId := from.vPifoId
-    to.outputId := from.data.resized
+    to.outputId := from.data(config.vpifoIdWidth - 1 downto 0)
   }
 
   val mapperCommitReady =
     enque.enqueMapper.io.commitReady &&
-      deque.dequeMapper.io.commitReady &&
-      deque.nonExistMapper.io.commitReady
+      deque.dequeMapper.io.commitReady
   io.commitReady := mapperCommitReady
 
   val (control, brainControl, commitControl) = StreamFork3(io.control)
@@ -474,5 +575,5 @@ case class PifoEngine(config: EngineConfig) extends Component {
 
   enque.enqueMapper.io.commit := commitPulse
   deque.dequeMapper.io.commit := commitPulse
-  deque.nonExistMapper.io.commit := commitPulse
+  deque.frontRewrite.io.commit := commitPulse
 }

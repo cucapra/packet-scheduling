@@ -15,6 +15,9 @@ class ConcurrentPifoRTL(config: PifoConfig) extends Component {
     val push2 = slave(Flow(PifoEntry(config)))
     val popRequest = slave(Flow(PifoPopInterface(config)))
     val popResponse = master(Flow(PifoPopResponse(config)))
+    val popPortEmpty = out Bool ()
+    // Pulses when a successful pop leaves its virtual PIFO with no entries.
+    val portDrained = master(Flow(UInt(config.bitPort bits)))
   }
 
   private val countWidth = config.bitPifo + 1
@@ -42,7 +45,16 @@ class ConcurrentPifoRTL(config: PifoConfig) extends Component {
   }
 
   val (popExists, popPosition) = firstPosition(pifoArray, pifoCount)(_.port === io.popRequest.port)
+  io.popPortEmpty := !popExists
   val popFire = io.popRequest.valid && popExists
+  val otherPortMatches = Vec(Bool(), config.numPifo)
+  pifoArray.zip(otherPortMatches).zipWithIndex.foreach { case ((entry, matches), index) =>
+    matches :=
+      U(index, countWidth bits) < pifoCount &&
+        entry.port === io.popRequest.port &&
+        U(index, config.bitPifo bits) =/= popPosition
+  }
+  val popWasLastForPort = popExists && !otherPortMatches.asBits.orR
 
   val countAfterPop = UInt(countWidth bits)
   countAfterPop := pifoCount
@@ -106,6 +118,15 @@ class ConcurrentPifoRTL(config: PifoConfig) extends Component {
     pifoArray(index) := afterPush2(index)
   }
   pifoCount := countAfterPush2
+
+  // A simultaneous accepted push to the same port keeps that port non-empty,
+  // so it must not activate a drain rewrite.
+  val samePortPush =
+    (push1Fire && io.push1.port === io.popRequest.port) ||
+      (push2Fire && io.push2.port === io.popRequest.port)
+  val portDrained = popFire && popWasLastForPort && !samePortPush
+  io.portDrained.valid := RegNext(portDrained) init (False)
+  io.portDrained.payload := RegNext(io.popRequest.port) init (0)
 
   io.popResponse.valid := RegNext(io.popRequest.valid)
   io.popResponse.port := RegNext(io.popRequest.port)

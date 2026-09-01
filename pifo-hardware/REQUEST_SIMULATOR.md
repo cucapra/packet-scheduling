@@ -227,9 +227,12 @@ The compact policy-change form is:
 
 Every `policy_change` is forced to `full_transitive`; specifying any other `mode` is rejected. The tree compiler
 creates an unused copy of every node in the old tree, configures the new brains, stages new per-flow input and
-port-qualified output mappings, maps the new root's miss to output, maps the old root's miss to the new root, and then
-emits `CommitMapper`. Root dequeue requests continue to target the old physical root. Packets accepted before commit
-drain through the old tree, while later packets enter the new tree.
+port-qualified output mappings, installs a same-engine front rewrite from the old root to the new root, and then emits
+`CommitMapper`. Root dequeue requests continue to name the old physical root. The front entry is initially disabled;
+popping the old root's final entry enables it. The engine holds its input for that activation cycle, and the waiting
+request is rewritten on the following cycle. It therefore needs neither an underflow nor a retry and does not traverse
+an extra crossbar/PIFO hop. Packets accepted before commit drain through the old tree, while later packets enter the new
+tree.
 
 The implicit initial tree is one root at engine 1 / vPIFO 10. For a multi-node tree, add:
 
@@ -283,9 +286,17 @@ containing `N` command lines therefore has `N` instruction acceptances and can t
 
 `UpdateMapperPre` uses `vPifoId` as the raw input flow and `data` as the destination vPIFO.
 `UpdateMapperPost` uses `(vPifoId, flowId)` as its key and `data` as the packed next-hop `(engine, vPifo)`.
-`UpdateMapperNonExist` uses `vPifoId` as its key and `data` as the packed miss next hop. Brain commands use
-`engineId`/`vPifoId` as their target and `flowId` where required. Brain writes are immediate, so a direct package owns
-their ordering and does not gain brain atomicity from `CommitMapper`.
+`UpdateMapperNonExist` directly writes the selected engine's single-bank front table with source `vPifoId`, target
+vPIFO `data`, and runtime enable false. Source and target must reside on the same engine. `CommitMapper` arms newly
+written front entries but does not bank or copy them; the successful pop of the source's final entry sets runtime enable. Brain
+commands use `engineId`/`vPifoId` as their target and `flowId` where required. Brain writes are immediate, so a direct
+package owns their ordering and does not gain brain atomicity from `CommitMapper`.
+
+An enabled front entry substitutes the target vPIFO before the engine performs its PIFO lookup. On the activation
+cycle, the engine backpressures its input once so the waiting request observes the registered enable on the next cycle.
+There is no retry: the last source pop remains valid, and the next request directly pops the target. The transition II
+is two cycles and steady-state traffic retains one accepted pop per engine cycle without a mesh loopback. An
+unconfigured underflow produces no valid mesh message.
 
 ### Reconfiguration timestamps and drain time
 
@@ -293,13 +304,13 @@ A full-transitive run records, for example:
 
 ```csv
 event,name,mode,from_policy,to_policy,instruction_count,scheduled_cycle,start_cycle,commit_cycle,finish_cycle,drain_cycle,drain_duration_cycles
-reconfiguration,policy-change,full_transitive,RR,SP,10,600,600,610,4709,2429,1819
+reconfiguration,policy-change,full_transitive,RR,SP,9,600,600,608,4708,2424,1816
 ```
 
 - `start_cycle`: package feeding starts.
 - `instruction_count`: controller instructions in the package, including `CommitMapper`.
 - `commit_cycle`: the `CommitMapper` ready/valid transfer is accepted by the controller queue.
-- `drain_cycle`: the old root first reports non-existence after commit, or the final old request completes.
+- `drain_cycle`: the first cycle after the request that popped the old root's final entry completes at mesh output.
 - `finish_cycle`: commit application and backup-bank synchronization have completed.
 - `drain_duration_cycles`: `drain_cycle - commit_cycle`.
 
@@ -345,9 +356,9 @@ python3 hw/python/pifo_experiment_figures.py verify \
   --output-dir experiment-results/large-tree-rr-to-sp
 ```
 
-The reference package has 28 commands: 7 new-node brain selections, 2 SP flow-state writes, 16 per-path mapper
-writes, 2 miss redirects, and 1 commit. The run accepted them in 28 cycles (`start=240`, `commit=268`), had 45 old
-packets pending at commit, drained the old tree at cycle 1475 (1207 drain cycles), and finished mapper synchronization
+The reference package has 27 commands: 7 new-node brain selections, 2 SP flow-state writes, 16 per-path mapper
+writes, 1 front underflow rewrite, and 1 commit. The run accepted them with a 28-cycle span (`start=240`, `commit=268`), had 45 old
+packets pending at commit, drained the old tree at cycle 1464 (1196 drain cycles), and finished mapper synchronization
 at cycle 8464. It observed
 9 completions before commit, 45 during old-tree drain, and 66 after drain, with zero RR repetitions, zero early
 new-tree outputs, zero late old-tree outputs, and zero SP priority reversals. A packet admitted on the commit edge is

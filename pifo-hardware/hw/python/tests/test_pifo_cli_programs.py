@@ -90,10 +90,10 @@ class PifoCliProgramsTest(unittest.TestCase):
 
         self.assertIsNotNone(loaded.initial)
         assert loaded.initial is not None
-        self.assertEqual(len(loaded.initial.commands), 7)
+        self.assertEqual(len(loaded.initial.commands), 6)
         self.assertEqual(len(loaded.transactions), 1)
         self.assertEqual(loaded.transactions[0].at_cycle, 600)
-        self.assertEqual(len(loaded.transactions[0].commands), 10)
+        self.assertEqual(len(loaded.transactions[0].commands), 9)
         self.assertEqual(loaded.transactions[0].mode, "full_transitive")
         self.assertEqual(loaded.transactions[0].drain_root, (1, 10))
 

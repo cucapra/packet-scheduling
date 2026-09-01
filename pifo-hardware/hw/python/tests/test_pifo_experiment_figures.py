@@ -209,8 +209,12 @@ class PifoExperimentFiguresTest(unittest.TestCase):
         self.assertEqual((plan.drain_engine_id, plan.drain_vpifo_id), (1, 10))
         lines = [controller_command_line(command) for command in plan.transaction_commands]
         self.assertIn(
-            "command=UpdateMapperNonExist engineId=1 vPifoId=10 flowId=0 data=43",
+            "command=UpdateMapperNonExist engineId=1 vPifoId=10 flowId=0 data=11",
             lines,
+        )
+        self.assertEqual(
+            sum(command.command == "UpdateMapperNonExist" for command in plan.transaction_commands),
+            1,
         )
         self.assertEqual(plan.transaction_commands[-1].command, "CommitMapper")
 
