@@ -268,8 +268,7 @@ vPIFO names runtime updating as future work, observing that the scheduling of pa
 
 We are not competing with vPIFO and do not claim a better PIFO substrate.
 We supply the layer \emph{above} a PIFO substrate: the formal transition between two policies, the small patch that realizes it, and the transitionary semantics.
-The two layers compose.
-\xxx[AM]{Once our own substrate section is in, we can say more here.}
+The two layers can plausibly compose, and \cref{sec:substrate-portability} sets out the minimal requirement our contributions place on a substrate.
 
 \section{Policies and Controls}\label{sec:model}
 
@@ -1935,7 +1934,7 @@ That is the whole of what \cref{sec:hw-preservation}'s argument leans on, and \c
 The substrate also supplies the disciplines themselves.
 \(\mathit{init\_node}_{D}\), \(\mathit{init\_slot}_{D}\) and \(\mathit{rank}_{D}\) are the substrate's (\cref{sec:compilation}), and the menu it implements is the menu an operator may write from.
 That is a parameter rather than a bar to clear, since a substrate with a shorter menu hosts Rio just as well over a smaller \ensuremath{\mathit{pol}}.
-If the network operator wishes to install a discipline that the menu lacks, they need to supply the substrate with three new pieces of logic.
+If the network operator wishes to install a discipline that the menu lacks, they need to supply the substrate with an \(\mathit{init\_node}_{D}\), an \(\mathit{init\_slot}_{D}\) and a \(\mathit{rank}_{D}\) of their own.
 A small programmable core beside the PIFO tree would be one way to supply this.
 
 The designated-survivor link of \cref{sec:hw-survivor} is an optimization rather than a requirement, since a substrate without one lowers \Designate{} to a literal \Strict-2 wrapper and pays for the relayouts.
