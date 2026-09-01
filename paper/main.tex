@@ -722,7 +722,7 @@ Carrying \ensuremath{D} on the form is what makes \(m \in M_{D}\) checkable from
 \paragraph{Definition}
 
 \ChangeMeta{} is defined when \(\tau\) resolves in \(C\) to an arm whose parent runs the \ensuremath{D} the form names, when \(m \in M_{D}\), and when that parent's ranker does not name \(\Strictstar\).
-Changing the metadata of a \(\Strictstar\) is illegal for reasons desribed in <hardware>.
+Changing the metadata of a \(\Strictstar\) is illegal, because \cref{sec:hw-survivor} gives such a node no \ensuremath{\mathit{pifo}} of its own, which is sound only while its two priorities stay fixed.
 Its node transformer \(\mathtt{setmeta}_k\) rewrites the node's \ensuremath{\mathit{z}} and nothing else:
 {\small
 \[
@@ -809,7 +809,7 @@ Write \(\mathit{z} \dsetminus L\) for \ensuremath{\mathit{z}} with \(L\) struck 
 Its ranker is unchanged.
 \Remove{} drops the arm at its parent and strikes \(L\) from the service map of every proper ancestor above that parent, the set \(A_\pi = \{\, C@\nu \;:\; \nu \sqsubset \pi \,\}\).
 It is defined when \(\tau\) resolves in \(C\), when the subtree at \(\tau\) is empty, and when \(C@\tau\)'s ranker does not name \(\Strictstar\).
-A \(\Strictstar\) node can only be retired by \Undesignate{} (\cref{sec:undesignate}), for reasons described in <hardware>.
+A \(\Strictstar\) node can only be retired by \Undesignate{} (\cref{sec:undesignate}), which promotes the arm beneath it and is the only way \cref{sec:hw-survivor} leaves the substrate to dismantle one.
 Dropping arm \(k\) shifts every later arm one slot to the left, and we name that shift \(\sigma_k\): the map on child indices that fixes every \(i < k\) and sends every \(i > k\) to \(i-1\).
 The node transformer \(\mathtt{drop}_k\) unhooks child \(k\) and renumbers what named it:
 {\small
@@ -1839,11 +1839,9 @@ No PIFO is spawned for the \(\Strictstar\) node, and \texttt{loser}'s parent is 
 The two walks are the whole of the traffic handover.
 
 The deassoc walk hands the shared flows over to the survivor.
-A flow that both subtrees serve is admitted by \texttt{loser} when \Designate{} fires, and the assoc walk is about to have \texttt{surv} admit it too.
-The two roots occupy one position, so a packet of such a flow would then be enqueued on both sides, under a parent that minted one index for it.
-Striking the flow inside \texttt{loser} leaves \texttt{surv} as its only admitter, which is what \cref{sec:designate}'s wrapper accomplishes by routing shared labels to arm 1.
-The walk has to run first for a second reason: while \texttt{loser} still admits \texttt{f}, \(\mathtt{chain(f)}\) resolves through \texttt{loser}, and intersecting it with \(\mathtt{nodes(loser)}\) is what picks out the nodes to strike.
-% Too verbose. It's not a mystery novel.
+Both subtrees can serve such shared flows, and the two roots occupy one position, so we need to carefully deassociate the losing arm from such traffic.
+If we did not do that, a packet would be enqueued on both sides, under a parent that minted one index for it.
+The deassociation runs before the assoc walk because \(\mathtt{chain(f)}\) resolves through \texttt{loser} only while \texttt{loser} still admits \texttt{f}.
 
 The assoc and map walks are the same as for \Add{}.
 For a shared flow the chain above the two roots is already in place and the walks rewrite it to no effect.
@@ -1880,20 +1878,9 @@ There the lowering restricts the deassoc walk to loser-only flows, since \Design
 The difference is not in the schedule.
 It is that a \(\Strictstar\) node needs no \ensuremath{\mathit{pifo}}, and a node that needs no \ensuremath{\mathit{pifo}} needs no level.
 
-% No one is thinkign about this whole paragraph. I think it can be cut.
-\paragraph{Why an ordinary \texorpdfstring{\Strict}{Strict} node needs its pifo}
-
-It is tempting to think that a \Strict{} node could work out its own \pop{} order on demand, by serving the highest-priority arm that is not empty.
-It cannot, and \cref{sec:nondisruption} says why.
-Ranks are frozen at \push{} time, so inverting the two priorities of \(\Strict(\mathtt{hi}{:}\,A,\ \mathtt{lo}{:}\,B)\) with \ChangeMeta{} leaves the standing backlog ordered as it was, the node's \ensuremath{\mathit{pifo}} already holding \(A\)'s entries at \(\mathtt{hi}\).
-A node that recomputed at \pop{} time would re-sort that backlog under the new priorities, which is the disturbance \cref{sec:nondisruption} rules out.
-So a \Strict{} node stores a \ensuremath{\mathit{pifo}} for the same reason \RR{} and \WFQ{} store theirs.
-
-% This is good. Worth tightening and then keeping
-A \(\Strictstar\) node is the case where that reasoning does not bite.
-Its two priorities are fixed when \Designate{} creates it and never change, since \ChangeMeta{} may not target its arms (\cref{sec:changemeta}) and nothing else disturbs it before \Undesignate{} retires it.
-With no inversion to guard against, freezing has nothing to preserve, and ``drain arm 0, then arm 1'' is the right order at every instant of the node's life.
-Its \ensuremath{\mathit{pifo}} records nothing its two arms do not already record, so it can go.
+An ordinary \Strict{} node does need one, because ranks are frozen at \push{} time (\cref{sec:nondisruption}) and a \ChangeMeta{} may invert its priorities under a standing backlog.
+A \(\Strictstar\) node's priorities cannot be inverted: they are fixed when \Designate{} creates it, \ChangeMeta{} may not target its arms (\cref{sec:changemeta}), and nothing else disturbs it before \Undesignate{} retires it.
+So ``drain arm 0, then arm 1'' is the correct order at every instant of its life, and its \ensuremath{\mathit{pifo}} records nothing its two arms do not already record.
 
 \paragraph{Why dropping it is worth the trouble}
 
@@ -1909,6 +1896,7 @@ Two subtrees are laid out twice over, on account of a node that exists only for 
 Every PIFO carries a \emph{designated-survivor link}, which is left null in an ordinary node.
 \texttt{designate(v, surv)} points \texttt{v}'s link at \texttt{surv}.
 The survivor is laid out beside \texttt{v} rather than beneath it, and \texttt{v}'s parent is not told: it keeps the one index it had.
+A designated survivor occupies its designator's physical position, so the two roots share a PE, and a model path reaches a physical level by discarding the \(\Strictstar\) nodes above it.
 
 \emph{A \push{} reaches the survivor directly.}
 The admitting chain for one of the survivor's flows runs from the root, through the parent, into the survivor, and down to a leaf.
@@ -1921,30 +1909,8 @@ The parent spends an index on that slot and queries \texttt{v}.
 While \texttt{v} holds packets, it returns packets.
 Once \texttt{v} is empty it defers to its designated survivor, and the query passes to \texttt{surv} rather than underflowing.
 
-The parent therefore holds one index per packet in \emph{either} subtree, and spends them on \texttt{v} until \texttt{v} is dry and on \texttt{surv} thereafter.
-That is the departure order of the wrapper \Designate{} installs, in which everything buffered under arm 0 drains before anything under arm 1, and \cref{sec:wrap-nondisruption} is where that order is proved non-disruptive.
-% Not sure what the sentence above does for us
-
-% This whole discussion should be two sentences that are pushed in somewhere above.
-\paragraph{Where the survivor lives}
-
-% What. We can't write like this in a paper. It's not Hemingway.
-One definition carries the elision.
-
-\begin{quote}
-A designated survivor occupies its designator's physical position.
-\end{quote}
-
-Three things follow from it.
-First, the survivor's root lands on the PE that its designator's root sits on, which the depth-by-PE deployment convention would have given it in any case, the two roots being destined for one depth.
-Second, a model path lands on a physical level by discarding the wrappers above it, so physical depth is model depth less the number of \(\Strictstar\) nodes on the path from the root.
-\(\mathit{path} \mathbin{+\!\!+} [0]\) and \(\mathit{path} \mathbin{+\!\!+} [1]\) both name physical position \(\mathit{path}\), and the outgoing and incoming subtrees are laid out level for level against one another.
-Third, well-formedness reads the same way.
-\cref{sec:controls} asks that a node's \ensuremath{\mathit{pifo}} hold, for each child index \(i\), one entry per packet under the \(i\)-th child.
-The parent above a designated pair holds one entry per packet on either side, so the condition holds exactly when ``the subtree under index \(i\)'' means the subtree at \(i\) together with its designated survivor's.
-Under that reading the substrate satisfies \cref{sec:controls} as written, and the argument of \cref{sec:hw-preservation} carries down untouched.
-
-Two model paths naming one physical position is harmless at the ISA, whose opcodes address PIFOs by handle and never by path.
+The parent therefore holds one index per packet in \emph{either} subtree, and spends them on \texttt{v} until \texttt{v} is dry and on \texttt{surv} thereafter, which is the arm-0-before-arm-1 order \cref{sec:wrap-nondisruption} proves non-disruptive.
+\cref{sec:controls}'s well-formedness reads the same way, since ``the subtree under index \(i\)'' there means the subtree at \(i\) together with its designated survivor's.
 
 \paragraph{Ending the transition}
 
