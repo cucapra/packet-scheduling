@@ -413,29 +413,35 @@ We also write \(C@\mathit{path}.\mathit{node\_state}\) and \(C@\mathit{path}.\ma
 \subsection{Compiling a policy to a control}\label{sec:compilation}
 
 \begin{figure}[t]
+\small
 \[
-\begin{array}{@{}l@{}}
-D = (\,M_{D},\ \mathit{init\_node}_{D},\ \mathit{init\_slot}_{D},\ \mathit{rank}_{D}\,)\\[4pt]
-\quad \mathit{init\_node}_{D} : \mathit{node\_state}\\[2pt]
-\quad \mathit{init\_slot}_{D} : \mathit{node\_state} \times M_{D}\ \to\ \mathit{slot\_state}\\[2pt]
-\quad \mathit{rank}_{D} : \mathit{state} \times \mathit{payload} \times M_{D}\ \to\ \mathit{rank} \times \mathit{state}
+\begin{array}{@{}l@{\qquad}l@{}}
+M_{D} & \text{opaque; the per-arm configuration \ensuremath{\mathit{z}} holds}\\
+\mathit{node\_state}_{D} & \text{opaque; \ensuremath{D}'s per-node bookkeeping}\\
+\mathit{slot\_state}_{D} & \text{opaque; \ensuremath{D}'s per-arm bookkeeping}\\[9pt]
+\multicolumn{2}{@{}l@{}}{\mathit{state}_{D} \;=\; \mathit{node\_state}_{D} \times \mathit{slot\_state}_{D}\ \mathrm{list}}\\[3pt]
+\mathit{Pkt},\ \mathit{rank},\ \mathit{payload} & \text{opaque; shared by every \ensuremath{D}}\\[9pt]
+\multicolumn{2}{@{}l@{}}{\mathit{init\_node\_state}_{D} : \mathit{node\_state}_{D}}\\[3pt]
+\multicolumn{2}{@{}l@{}}{\mathit{init\_slot\_state}_{D} : \mathit{node\_state}_{D} \times M_{D} \to \mathit{slot\_state}_{D}}\\[3pt]
+\multicolumn{2}{@{}l@{}}{\mathit{rank}_{D} : \mathit{state}_{D} \times \mathit{payload} \times M_{D} \to \mathit{rank} \times \mathit{state}_{D}}
 \end{array}
 \]
-\caption{The four things a discipline \(D\) is.}
+\caption{What a discipline \(D\) supplies.}
 \label{fig:discipline}
 \end{figure}
 
 \paragraph{What a discipline supplies}
 
-A discipline \ensuremath{D} is the four-tuple of \cref{fig:discipline}: a metadata set \(M_{D}\), a node initializer, a slot initializer, and a ranker.
-Supplying those four is the whole interface, and any \ensuremath{D} that supplies them is one Rio can compile.
+\cref{fig:discipline} lists what has to be supplied to realize a discipline \ensuremath{D}: a metadata set \(M_{D}\), two state types of \ensuremath{D}'s own, and three operations.
+Supplying those is the whole interface, and any \ensuremath{D} that supplies them is one Rio can compile.
 
-\(\mathit{init\_node}_{D}\) is the \ensuremath{\mathit{node\_state}} every \ensuremath{D}-node starts in, installed when a \ensuremath{\mathit{pol}} is compiled into a control.
-\(\mathit{init\_slot}_{D}\) runs once per arm, at compile time and again whenever an edit splices a new arm under an already-running \ensuremath{D}-parent (\cref{sec:add}), taking the parent's current \ensuremath{\mathit{node\_state}} and the new arm's metadatum.
+\(\mathit{init\_node\_state}_{D}\) is the \(\mathit{node\_state}_{D}\) every \ensuremath{D}-node starts in, installed when a \ensuremath{\mathit{pol}} is compiled into a control.
+\(\mathit{init\_slot\_state}_{D}\) runs once per arm, at compile time and again whenever an edit splices a new arm under an already-running \ensuremath{D}-parent (\cref{sec:add}), taking the parent's current \(\mathit{node\_state}_{D}\) and the new arm's metadatum.
 
-Three of the four are opaque to us.
-Rio names \(\mathit{init\_node}_{D}\), \(\mathit{init\_slot}_{D}\) and \(\mathit{rank}_{D}\), and never unfolds them.
-The fourth, \(M_{D}\), is not opaque, since the compiler checks an arm's metadatum against it (\cref{sec:policy-dsl}) and \ChangeMeta{} carries \ensuremath{D} so that the same check is possible on a form alone.
+The three operations are opaque to us.
+Rio names \(\mathit{init\_node\_state}_{D}\), \(\mathit{init\_slot\_state}_{D}\) and \(\mathit{rank}_{D}\), and never unfolds them.
+The two state types are opaque in a stronger sense: nothing outside \ensuremath{D} builds or reads a \(\mathit{node\_state}_{D}\) or a \(\mathit{slot\_state}_{D}\), and Rio only ever appends, deletes and renumbers slot entries.
+\(M_{D}\) is the exception, since the compiler checks an arm's metadatum against it (\cref{sec:policy-dsl}) and \ChangeMeta{} carries \ensuremath{D} so that the same check is possible on a form alone.
 A discipline's interface is visible to us and its behavior is not.
 
 Two obligations attend the exchange.
@@ -449,7 +455,7 @@ Recording \ensuremath{D} keeps them apart, which is what lets \cref{sec:equivale
 \paragraph{From \ensuremath{\mathit{pol}} to control}
 
 We write \(\lceil p \rceil\) for the control compiled from \ensuremath{\mathit{pol}} \(p\).
-It has \(p\)'s tree shape, an empty \ensuremath{\mathit{pifo}} at every node, and \ensuremath{\mathit{state}} seeded by \(\mathit{init\_node}_{D}\) and \(\mathit{init\_slot}_{D}\).
+It has \(p\)'s tree shape, an empty \ensuremath{\mathit{pifo}} at every node, and \ensuremath{\mathit{state}} seeded by \(\mathit{init\_node\_state}_{D}\) and \(\mathit{init\_slot\_state}_{D}\).
 Each node's \ensuremath{\mathit{z}} takes \ensuremath{D}'s ranker, copies each arm's written metadatum into \(\mathit{z}.\mathit{meta}\), and reads its classifier off the tree, sending every flow served beneath the node toward that flow's leaf.
 A freshly compiled control therefore admits every flow it serves, and carries the operator's arm annotations verbatim.
 
@@ -669,7 +675,7 @@ We define \(\csem{\Add}\) by recursion on \(\pi\), writing \(\mathtt{flows}(\mat
 \quad \langle\mathit{state'},\mathit{pifo},z'\rangle(\mathit{cs}\mathbin{+\!\!+}[\lceil\mathit{arm}\rceil])\\
 \quad \textbf{where}\ k=|\mathit{cs}|\\
 \quad \phantom{\textbf{where}}\ \mathit{state'}=(\mathit{node\_state},\ \mathit{slot\_states}\mathbin{+\!\!+}[s])\\
-\quad \phantom{\textbf{where}}\ s=\mathit{init\_slot}_{D}(\mathit{node\_state},m)\\
+\quad \phantom{\textbf{where}}\ s=\mathit{init\_slot\_state}_{D}(\mathit{node\_state},m)\\
 \quad \phantom{\textbf{where}}\ z'=\mathtt{setmeta}(\mathtt{extend}(\mathit{z},\mathtt{flows}(\mathit{arm}),k),k,m)\\[8pt]
 \csem{\Add(i\mathbin{::}\mathit{rest},\ D,\ \mathit{arm},\ m)}\ \langle\mathit{state},\mathit{pifo},\mathit{z}\rangle(\mathit{cs}) \;=\\
 \quad \langle\mathit{state},\mathit{pifo},z'\rangle(\mathit{cs}[\,c/i\,])\\
@@ -684,7 +690,7 @@ The recursive case is exactly the \(\mathtt{extend}\) walk of \cref{sec:edit-sem
 
 The base case (\(\pi = []\)) has reached the parent of the new arm, where it does three things.
 It appends \(\lceil \mathit{arm} \rceil\) as the last child, which lands at the next free slot \(k = |\mathit{cs}|\).
-It appends that slot's bookkeeping, \(\mathit{init\_slot}_{D}(\mathit{node\_state}, m)\), using the discipline \ensuremath{D} that the form carries.
+It appends that slot's bookkeeping, \(\mathit{init\_slot\_state}_{D}(\mathit{node\_state}, m)\), using the discipline \ensuremath{D} that the form carries.
 And it rewrites the node's transaction, extending the classifier to send the new flows to the new child and annotating slot \(k\) with \(m\).
 Meanwhile, \ensuremath{\mathit{node\_state}} and \ensuremath{\mathit{pifo}} are untouched.
 Appending the arm is legitimate because our arm-order freedom (\cref{sec:policy-dsl}) lets us place the new child last.
@@ -1005,9 +1011,9 @@ The transformer \(\mathtt{wrap}\) replaces \(M\) with a fresh \(\Strictstar\) no
 \[
 \begin{array}{@{}l@{}}
 \mathtt{wrap}(M) = N = \langle s_N,\ q_N,\ \mathit{z}_N \rangle\big([\,M,\ \lceil\mathit{survivor}\rceil\,]\big),\ \textbf{where}\\[3pt]
-\quad n_N = \mathit{init\_node}_{\Strictstar},\\[3pt]
-\quad s_N = (\,n_N,\ [\,\mathit{init\_slot}_{\Strictstar}(n_N, \mathtt{hi}),\\
-\quad\qquad\qquad\ \ \mathit{init\_slot}_{\Strictstar}(n_N, \mathtt{lo})\,]\,),\\[3pt]
+\quad n_N = \mathit{init\_node\_state}_{\Strictstar},\\[3pt]
+\quad s_N = (\,n_N,\ [\,\mathit{init\_slot\_state}_{\Strictstar}(n_N, \mathtt{hi}),\\
+\quad\qquad\qquad\ \ \mathit{init\_slot\_state}_{\Strictstar}(n_N, \mathtt{lo})\,]\,),\\[3pt]
 \quad q_N = \text{the \ensuremath{\mathit{pifo}} of } P_0 \text{ copies of the entry } (0,\ \mathtt{hi}),\\[3pt]
 \quad \mathit{z}_N.\mathit{meta} = \{\, 0 \mapsto \mathtt{hi},\ 1 \mapsto \mathtt{lo} \,\},\\[3pt]
 \quad \mathit{z}_N(p) = (1,\ \mathtt{lo})\ \text{if}\ \mathit{flow}(p) \in \mathtt{flows}(\mathit{survivor}),\ \text{else}\ (0,\ \mathtt{hi}).
@@ -1703,7 +1709,7 @@ Opcode & Effect \\
 \end{table*}
 
 \texttt{change\_arity} carries the one subtlety in the table.
-It tells the discipline-level logic at \texttt{v} how many arms are active, and growing the count creates the new slot, which the substrate seeds from \texttt{v}'s current node state by \(\mathit{init\_slot}_{D}\) (\cref{sec:compilation}).
+It tells the discipline-level logic at \texttt{v} how many arms are active, and growing the count creates the new slot, which the substrate seeds from \texttt{v}'s current node state by \(\mathit{init\_slot\_state}_{D}\) (\cref{sec:compilation}).
 The structural attaching and detaching happen separately, through \texttt{adopt} and \texttt{emancipate}, each keyed by the stable per-edge index the parent minted at adoption time.
 
 Our single-purpose opcodes also mean that the tree can become transiently malformed \emph{within} a commit, in ways that the commit's atomicity hides from any observer.
@@ -1932,9 +1938,9 @@ The tree is transiently malformed partway through a commit, and no \push{} or \p
 That is the whole of what \cref{sec:hw-preservation}'s argument leans on, and \cref{sec:hw-commit} is how our own controller supplies it.
 
 The substrate also supplies the disciplines themselves.
-\(\mathit{init\_node}_{D}\), \(\mathit{init\_slot}_{D}\) and \(\mathit{rank}_{D}\) are the substrate's (\cref{sec:compilation}), and the menu it implements is the menu an operator may write from.
+\(\mathit{init\_node\_state}_{D}\), \(\mathit{init\_slot\_state}_{D}\) and \(\mathit{rank}_{D}\) are the substrate's (\cref{sec:compilation}), and the menu it implements is the menu an operator may write from.
 That is a parameter rather than a bar to clear, since a substrate with a shorter menu hosts Rio just as well over a smaller \ensuremath{\mathit{pol}}.
-If the network operator wishes to install a discipline that the menu lacks, they need to supply the substrate with an \(\mathit{init\_node}_{D}\), an \(\mathit{init\_slot}_{D}\) and a \(\mathit{rank}_{D}\) of their own.
+If the network operator wishes to install a discipline that the menu lacks, they need to supply the substrate with an \(\mathit{init\_node\_state}_{D}\), an \(\mathit{init\_slot\_state}_{D}\) and a \(\mathit{rank}_{D}\) of their own.
 A small programmable core beside the PIFO tree would be one way to supply this.
 
 The designated-survivor link of \cref{sec:hw-survivor} is an optimization rather than a requirement, since a substrate without one lowers \Designate{} to a literal \Strict-2 wrapper and pays for the relayouts.
