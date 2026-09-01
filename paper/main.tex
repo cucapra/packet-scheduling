@@ -582,7 +582,7 @@ That the two agree, and that neither disturbs the buffered backlog, are claims a
 
 \paragraph{Notation}
 
-The pol-level rules below read, overwrite, and shrink child lists.
+The \ensuremath{\mathit{pol}}-level rules below read, overwrite, and shrink child lists.
 A \ensuremath{\mathit{pol}} node's child list \(\mathit{ts}\) holds \emph{annotated arms}, each a metadatum paired with a policy (\cref{sec:policy-dsl}).
 We write \(\mathit{ts}[i]\) for the \(i\)-th arm, and \(\mathit{ts}[t/i]\) for \(\mathit{ts}\) with the \emph{policy} of its \(i\)-th arm overwritten by \(t\).
 That arm keeps its annotation, and the arity does not change.
@@ -800,7 +800,6 @@ As before, \(\tau : \mathit{path}\) is the non-empty target arm; destruct it as 
 
 As in \cref{sec:quiesce}, let \(L = \mathtt{flows}(C@\tau)\), here the flows that the doomed arm serves.
 Write \(\mathit{z} \dsetminus L\) for \ensuremath{\mathit{z}} with \(L\) struck from its service map, and hence, by the containment of \cref{sec:controls}, from its admitted set too.
-% It would be good to find a nice glyph that looks like \dsetminus but more compressed together
 Its ranker is unchanged.
 \Remove{} drops the arm at its parent and strikes \(L\) from the service map of every proper ancestor above that parent, the set \(A_\pi = \{\, C@\nu \;:\; \nu \sqsubset \pi \,\}\).
 It is defined when \(\tau\) resolves in \(C\) and the subtree at \(\tau\) is empty.
@@ -984,17 +983,16 @@ This is the one place where \(\lfloor \cdot \rfloor\) (\cref{sec:equivalences}) 
     \label{fig:designate-done}
   \end{subfigure}
 
-  \caption{The \Designate\,+\,drain\,+\,\Undesignate{} lifecycle: in-place replacement of the \textcolor{oldcol}{blue subtree} by the \textcolor{newcol}{orange subtree}, both under parent \(P\). \Designate{} wraps blue under a \(\Strictstar\) beside orange; as network traffic is served, blue empties and orange fills; once blue is empty \Undesignate{} removes it and promotes orange.}
+  \caption{The \Designate\,+\,drain\,+\,\Undesignate{} lifecycle. The outgoing subtree is \tritext{oldcol} and the survivor \tritext{newcol}, both under parent \(P\).}
   \label{fig:designate}
 \end{figure*}
-% Since we're now using little triangles in text, let's just use those? Instead of \textcolor{oldcol}{blue subtree} and \textcolor{newcol}{orange subtree} and blue and orange in words
 
 \paragraph{Definition}
 
 \(\csem{\Designate(\tau, \mathit{survivor})}(C)\) is defined when \(\tau\) resolves in \(C\), and when every flow \ensuremath{\mathit{survivor}} serves is one that either nothing in \(C\) serves or that \(C@\tau\) itself serves.
 So \ensuremath{\mathit{survivor}} may reuse the flows of the subtree it is replacing, and it may bring flows that are new to the whole tree, but it may not claim a flow that some other part of \(C\) is already serving.
 Reuse is the interesting case and the Note below takes it up.
-The figure draws the target subtree in blue and the survivor in orange; below we call them the old and new arms.
+\cref{fig:designate} draws the target subtree as \tritext{oldcol} and the survivor as \tritext{newcol}, and below we call them the old and new arms.
 Write \(M = C@\tau\) for the target, and let \(P_0\) be the number of packets buffered under it (\(P_0 = 3\) in \cref{fig:designate-before}).
 \Designate{} wraps the target and admits \ensuremath{\mathit{survivor}}'s flows at every ancestor on the way down.
 That walk is \Add's, with \ensuremath{\mathit{survivor}}'s flows in place of the new arm's.
@@ -1073,19 +1071,12 @@ The empty-arm-0 precondition is operational and leaves no trace at \ensuremath{\
 
 \section{Correctness}\label{sec:correctness}
 
-\cref{sec:edit-semantics} gave each form of \(\delta\) its two readings.
-Two things have to be true of them.
-The first is that the two readings agree, so that the \ensuremath{\mathit{pol}} we echo to the operator is the one the live control realizes.
+\cref{sec:edit-semantics} gave each form of \(\delta\) two readings, and two things have to be true of them.
+The first is that they agree, so that the \ensuremath{\mathit{pol}} we echo to the operator is the one the live control realizes.
 The second is that installing an edit costs the buffered backlog nothing.
-This section states both as theorems and then proves them one form at a time.
-% It really feels like we're not moving forward
+This section states both as theorems and proves them one form at a time.
 
 \subsection{Agreement}\label{sec:interplay}
-
-Four pieces are now in hand: the runtime object \(C\) (\cref{sec:controls}), the source \ensuremath{\mathit{pol}} together with the compilation \(\lceil \cdot \rceil\) and the reading-off \(\lfloor \cdot \rfloor\) (\cref{sec:grammar}), the grammar \(\delta\) of atomic edits, and its two readings \(\psem{\delta}\) and \(\csem{\delta}\).
-We state here how they fit together.
-Their interplay is what lets the runtime, at every step, echo to the operator the \ensuremath{\mathit{pol}} that the live control realizes.
-% This is a lot of stuff to keep track of
 
 The situation we care about is a single \(\delta\) firing on a running control.
 Consider the following commuting square, which we will read with an eye to the operator's experience.
@@ -1144,7 +1135,7 @@ The control-level relation we can write is \(C_2' \simR C_2\), which absorbs two
 \(\csem{\delta}\) and \(\lceil \cdot \rceil\) are also free to pick different sibling orders at internal nodes, so the two may differ in child arrangements; the R-closure covers that.
 
 \begin{theorem}[Interplay of \(\psem{\delta}\) and \(\csem{\delta}\)]\label{thm:interplay}
-Let \(C\) be a well-formed control, and let \(\delta\) be a form of the grammar (\cref{sec:delta-grammar}) such that \(\csem{\delta}(C)\) is defined.
+Let \(C\) be a well-formed control, and let \(\csem{\delta}(C)\) be defined for some form \(\delta\) of the grammar (\cref{sec:delta-grammar}).
 Then:
 \begin{enumerate}
 \item \(\csem{\delta}(C)\) is well-formed.
@@ -1155,10 +1146,14 @@ Then:
 \begin{proof}[Proof sketch]
 Each clause aggregates one of the per-form checks of \cref{sec:per-form}.
 Clause 1 is exactly \emph{Preservation of \(\vdash\)}, and clause 2 is exactly \emph{Characterization}.
-% I don't follow the rest of the sketch
-Clause 2 has content because \(\lfloor \cdot \rfloor\) is fixed in advance, by structural recursion on the control (\cref{sec:equivalences}), rather than extended along \(\delta\).
-Each form's Characterization must show that the recursion, rerun on the edited control, lands where \(\psem{\delta}\) says it should.
 \end{proof}
+
+\paragraph{Note: Why clause 2 is not vacuous}
+
+Clause 2 can look true by construction, as though \(\lfloor \cdot \rfloor\) were being defined to make it hold.
+It is not.
+\(\lfloor \cdot \rfloor\) is fixed in advance, by structural recursion on the control (\cref{sec:equivalences}), rather than extended along \(\delta\).
+So each form's Characterization has to show that this fixed recursion, rerun on the edited control, lands where \(\psem{\delta}\) independently says it should.
 
 The diagram above is the unit cell of a fuller picture: a real reconfiguration is a \emph{sequence} of edits, not one \(\delta\), and \cref{sec:idioms} lines up copies of this cell end to end, each intermediate control carrying its own \(\lfloor \cdot \rfloor\) meaning.
 
@@ -1194,8 +1189,9 @@ Installing \(\delta\) may disturb previously buffered traffic \emph{only} in ser
 The \emph{very act of changing policies} never introduces arbitrary artifacts such as drops, reorders, or rewrites among buffered packets.
 Each buffered entry keeps the rank it was given when it was \push{}ed, so nothing buffered is lost, corrupted, or reordered relative to the rest of the backlog.
 
-Buffered packets may of course be affected by the new policy in force.
-After \(\WFQ(1{:}A,\, 9{:}B) \to \WFQ(99{:}A,\, 9{:}B)\), for instance, a newly arriving \(A\)-packet can overtake previously buffered \(B\) packets.
+Ranks are frozen at \push{} time, and that cuts both ways.
+Inverting the two priorities of \(\Strict(\mathtt{hi}{:}\,A,\ \mathtt{lo}{:}\,B)\) with \ChangeMeta{} does \emph{not} change the next \pop{}, since the parent's index-\ensuremath{\mathit{pifo}} already holds \(A\) at \(\mathtt{hi}\) and \(B\) at \(\mathtt{lo}\) and \ChangeMeta{} rewrites neither.
+Only packets pushed after the change are ranked under the new priorities, so a \(B\)-packet arriving after the inversion is served ahead of one that arrived before it.
 That is the reconfigured policy \emph{correctly} governing new arrivals, not a disturbance of the backlog.
 
 \xxx[AM to AS]{You proposed keeping only the agreement theorem and dropping this one.
@@ -1208,7 +1204,7 @@ My counter-offer is to promote non-disruption to a collected theorem rather than
 We state the property on what the network can observe, which is the sequence of packets that successive \pop{}s release.
 
 \begin{theorem}[Non-disruption]\label{thm:nondisruption}
-Let \(C\) be a well-formed control, and let \(\csem{\delta}(C)\) be defined for some \(\delta\).
+Let \(C\) be a well-formed control, and let \(\csem{\delta}(C)\) be defined for some form \(\delta\) of the grammar (\cref{sec:delta-grammar}).
 Then \(C\) and \(\csem{\delta}(C)\) release the same sequence of packets under any run of \pop{}s alone.
 \end{theorem}
 
@@ -1216,21 +1212,14 @@ Most forms discharge this through a single fact about \pop{}, and need no argume
 
 \begin{lemma}[Non-disruption reduces to \ensuremath{\mathit{pifo}}-content preservation]\label{lem:nondisruption}
 A \pop{} reads only \ensuremath{\mathit{pifo}} contents: it pops the root index-\ensuremath{\mathit{pifo}} to a child, recurses, and finally emits a leaf packet, never consulting any \ensuremath{\mathit{state}} or \ensuremath{\mathit{z}} (\cref{sec:controls}).
-So suppose \(\csem{\delta}\) leaves the contents of every non-empty \ensuremath{\mathit{pifo}} of \(C\) unchanged (never rewriting, reordering, or removing a live entry, and introducing only empty \ensuremath{\mathit{pifo}}s).
+Write \(C' = \csem{\delta}(C)\), and suppose \(\csem{\delta}\) leaves the contents of every non-empty \ensuremath{\mathit{pifo}} of \(C\) unchanged (never rewriting, reordering, or removing a live entry, and introducing only empty \ensuremath{\mathit{pifo}}s).
 Then the buffered backlog is preserved entry-for-entry in \(C'\) and \(\delta\) is non-disruptive.
-% Did I say C' correctly up there?
 \end{lemma}
 
 We therefore discharge non-disruption per form by naming the form's \emph{footprint}, the nodes and fields it touches, and checking that the footprint holds no live \ensuremath{\mathit{pifo}} entry.
 Four of the six pass that check outright.
 \Designate{} inserts a node whose \ensuremath{\mathit{pifo}} is not empty and \Undesignate{} drops one, so those two need an argument of their own.
 Each such argument shows that the \pop{} sequence is unchanged, which is why \cref{thm:nondisruption} is stated on that sequence rather than on \ensuremath{\mathit{pifo}} contents.
-
-% I think the below is repetitious and does nothing new for us
-The lemma can read counterintuitively.
-Inverting the two priorities of \(\Strict(\mathtt{hi}: A, \mathtt{lo}: B)\) with \ChangeMeta{} does \emph{not} change the next \pop{}.
-Ranks are frozen at \push{} time, so the parent's index-\ensuremath{\mathit{pifo}} already holds \(A\) at \(\mathtt{hi}\) and \(B\) at \(\mathtt{lo}\), and \ChangeMeta{} rewrites neither.
-Only packets pushed after the change are ranked under the new priorities.
 
 \subsection{Form by Form}\label{sec:per-form}
 
@@ -1247,10 +1236,6 @@ Any packets or index entries that \(\csem{\delta}\) drops or adds must leave the
 \item \emph{Non-disruption.} Name the form's footprint and check that it holds no live \ensuremath{\mathit{pifo}} entry, so that \cref{lem:nondisruption} applies.
 Where it does not apply, argue directly that the \pop{} sequence is unchanged.
 \end{itemize}
-
-A fourth check might be expected here, and is deliberately absent.
-Nothing has to be proved about the \ensuremath{\mathit{state}} of the nodes an edit leaves alone, because every \(\csem{\delta}\) rule names each field of the node it produces, and \(\mathtt{at}(\pi, g)\) copies every off-path node by definition.
-What state survives an edit is therefore read off \cref{sec:edit-semantics} rather than argued for here.
 
 \cref{fig:per-form-checks} discharges all eighteen checks.
 Fifteen of them are immediate from the rules of \cref{sec:edit-semantics} and are given in the table itself.
@@ -1324,6 +1309,7 @@ So the two sides agree all the way down the spine and can differ only inside \(\
 
 These are the two forms \cref{lem:nondisruption} does not reach.
 \(\mathtt{wrap}\) inserts the live node \(N\) with a non-empty \ensuremath{\mathit{pifo}}, and \(\mathtt{unwrap}\) drops one, so each needs a direct argument that the \pop{} sequence is unchanged.
+As in \cref{sec:undesignate}, \(N\) is the wrapper and \(B\) the control under its arm 1.
 
 For \Designate, every in-flight packet lies under arm 0, which is \(C@\tau\) carried over unchanged, so its own entries are untouched.
 If \(P_0 > 0\), every entry in \(N.\mathit{pifo}\) is slot \(0\), so any \pop{} reaching \(N\) descends into arm 0 and returns exactly what it would have returned before.
@@ -1338,6 +1324,12 @@ Eliding \(N\) removes that redundant hop and returns the same packet, and no ent
 
 With \cref{fig:per-form-checks}, that is all six forms, and together they discharge \cref{thm:interplay} and \cref{thm:nondisruption}.
 The Characterizations have content because each was proved against a \(\lfloor \cdot \rfloor\) fixed in advance, so they are six separate claims rather than six readings of one definition.
+
+\paragraph{Note: The check that is deliberately absent}
+
+A fourth check might be expected, and is not there.
+Nothing has to be proved about the \ensuremath{\mathit{state}} of the nodes an edit leaves alone, because every \(\csem{\delta}\) rule names each field of the node it produces, and \(\mathtt{at}(\pi, g)\) copies every off-path node by definition.
+What state survives an edit is therefore read off \cref{sec:edit-semantics} rather than argued for.
 
 \subsection{Preserving this proof down to hardware}\label{sec:hw-preservation}
 
@@ -1380,7 +1372,7 @@ So \(\mathit{link}_0 = C\) is the starting control, and \(\mathit{link}_{i+1} = 
 
 Each transitionary policy is itself an ordinary \cref{sec:controls}-style control, so the transitionary period \emph{needs no new semantics}.
 That is Obligation 1 of \cref{sec:intro}, discharged locally by the per-form checks of \cref{sec:per-form}.
-Moreover, since every form of \cref{sec:grammar} is \emph{pol-explainable} (each \(\delta\) has a \(\psem{\delta}\) that tracks its pol-level effect), we can echo to the operator, at every step of the sequence, the \ensuremath{\mathit{pol}} that the live control actually realizes.
+Moreover, since every form of \cref{sec:grammar} is \emph{\ensuremath{\mathit{pol}}-explainable} (each \(\delta\) has a \(\psem{\delta}\) that tracks its \ensuremath{\mathit{pol}}-level effect), we can echo to the operator, at every step of the sequence, the \ensuremath{\mathit{pol}} that the live control actually realizes.
 The chain of \(\psem{\cdot}\)s starting from \(\lfloor C \rfloor\) gives \(\lfloor \mathit{link}_i \rfloor\) for each \(i\), so the operator always knows which policy is running.
 
 \paragraph{Follow-up requests}
@@ -1406,8 +1398,8 @@ We do not pursue this here, since the splicing analysis introduces its own corre
 \Retire(\mathit{path}) \;=\;\\
 \quad (\mathtt{true};\, \Quiesce(\mathit{path}))\,;\, (\mathtt{empty}(\mathit{path});\, \Remove(\mathit{path}))\\[4pt]
 \SlowRetire(\mathit{path}) \;=\; (\mathtt{empty}(\mathit{path});\, \Remove(\mathit{path}))\\[4pt]
-\Replace(\mathit{path}, B) \;=\;\\
-\quad (\mathtt{true};\, \Designate(\mathit{path}, B))\,;\\
+\Replace(\mathit{path}, \mathit{survivor}) \;=\;\\
+\quad (\mathtt{true};\, \Designate(\mathit{path}, \mathit{survivor}))\,;\\
 \quad (\mathtt{true};\, \Quiesce(\mathit{path} \mathbin{+\!\!+} [0]))\,;\\
 \quad (\mathtt{empty}(\mathit{path} \mathbin{+\!\!+} [0]);\, \Undesignate(\mathit{path}))
 \end{array}
@@ -1427,18 +1419,17 @@ The hardware substrate (\cref{sec:hardware}) does two things beyond ordinary \pu
 A guarded sequence chains these: wait for \(\varphi_0\), fire \(\delta_0\), then wait for \(\varphi_1\) (now evaluated on the post-\(\delta_0\) control), fire \(\delta_1\), and so on.
 Each intermediate control between two consecutive \(\delta\) firings is well-formed, and we call this property the sequence's \emph{safety}.
 Safety is entirely local, following from the per-form checks of \cref{sec:per-form}.
-% Did we define safety?
 
 \paragraph{Reaching the target}
 
 Safety guarantees that every intermediate control is well-formed, but not that the sequence \emph{arrives} at the intended \(p_2\).
-We check arrival at the pol level, folding each form's \(\psem{\delta_i}\) along the sequence.
-Write \(\mathit{ip}_i\) for the \(i\)-th intermediate pol.
-Starting from \(\mathit{ip}_0 = \lfloor C \rfloor\), the pol we echoed to the operator, set \(\mathit{ip}_{i+1} := \psem{\delta_i}(\mathit{ip}_i)\).
+We check arrival at the \ensuremath{\mathit{pol}} level, folding each form's \(\psem{\delta_i}\) along the sequence.
+Write \(\mathit{ip}_i\) for the \(i\)-th intermediate \ensuremath{\mathit{pol}}.
+Starting from \(\mathit{ip}_0 = \lfloor C \rfloor\), the \ensuremath{\mathit{pol}} we echoed to the operator, set \(\mathit{ip}_{i+1} := \psem{\delta_i}(\mathit{ip}_i)\).
 The sequence is admissible when every \(\psem{\delta_i}\) is defined on \(\mathit{ip}_i\) and the final \(\mathit{ip}_{n+1} \eqR p_2\).
 This is the Interplay theorem (\cref{sec:interplay}) iterated across the sequence.
 Each \(\psem{\delta_i}\) matches its operational counterpart \(\csem{\delta_i}\) (\cref{sec:per-form}), so a fold that lands at \(\mathit{ip}_{n+1} \eqR p_2\) certifies, cell by cell, that the operational chain ends in a control whose \(\lfloor \cdot \rfloor\) is \(p_2\).
-Guards play no role in this check: they govern \emph{when} each \(\delta_i\) fires on the live control and are pol-invisible (\cref{sec:edit-semantics}), so a \((\mathtt{empty}(\mathit{path}); \Remove(\mathit{path}))\) step folds exactly as if its guard were \(\mathtt{true}\).
+Guards play no role in this check: they govern \emph{when} each \(\delta_i\) fires on the live control and are \ensuremath{\mathit{pol}}-invisible (\cref{sec:edit-semantics}), so a \((\mathtt{empty}(\mathit{path}); \Remove(\mathit{path}))\) step folds exactly as if its guard were \(\mathtt{true}\).
 If the chain fails to reach \(p_2\), or some \(\psem{\delta_i}\) is undefined on its \(\mathit{ip}_i\), the sequence is rejected.
 The rejection identifies the offending step, either the first \(\delta_i\) whose \(\psem{\delta_i}\) was undefined or else the final mismatch \(\mathit{ip}_{n+1} \not\eqR p_2\).
 Both clients of the framework rely on this check: the planner (\cref{sec:planner}) uses it as a backstop on the sequences it assembles, and an operator authoring by hand (\cref{sec:imperative}) uses it to validate theirs.
@@ -1452,36 +1443,32 @@ A persistent or adversarial flow can keep a subtree busy indefinitely, and then 
 This is inherent.
 Draining a subtree gracefully means letting its buffered packets leave on their own, and the only way to speed that up is to drop them, which the grammar refuses to do.
 So completing a sequence takes the operator's cooperation, for instance quiescing a flow at its source or accepting a harder reconfiguration that resets more of the tree but drops nothing.
-The live control stays safe throughout, but may not reach the target pol until the traffic allows.
-% Please typeset "pol" correctly above
+The live control stays safe throughout, but may not reach the target \ensuremath{\mathit{pol}} until the traffic allows.
 Follow-up requests submitted during a stalled sequence are queued (\cref{sec:links}).
 
 \paragraph{Idioms}
 
-\emph{Idioms} are a named vocabulary for frequently-used guarded sequences.
+A sequence that reconfigures a real tree is a long list of small edits, and such a list does not tell the operator what is being done to their scheduler.
+\emph{Idioms} are a named vocabulary for the sequences that recur, each one collecting a run of edits into a single goal acting on a single subtree.
+The transition planner (\cref{sec:planner}) emits them, so what the operator reads back is ``retire this subtree'' rather than a silencing, a wait, and an unhooking.
 
-% The below is repetitious
-An idiom is a macro over the grammar \(\delta\) (and, recursively, over other idioms).
-It expands into a fixed \((\varphi; \delta)^{*}\) sequence: a list of forms with the guards between them spelling out what the system waits for.
-Soundness is compositional: each step of the expansion is sound by \cref{sec:per-form}, and the sequence inherits the sequence-level reasoning above.
-An idiom expansion that would reach an undefined form on the current control is rejected, since the soundness checks run on the expanded sequence just as they would on a hand-written one.
+An idiom is a macro over \(\delta\), and recursively over other idioms, that expands into a fixed \ensuremath{\mathit{gseq}}.
+Expansion changes nothing about soundness, since the checks above run on the expanded sequence exactly as they would on a hand-written one.
+So an expansion that would reach an undefined form on the current control is rejected.
 
 We name three starter idioms, with their expansions collected in \cref{fig:gseq-idioms}.
-New ones can be added later without changing the framework, since an idiom is only a named \((\varphi; \delta)^{*}\).
-% Just say "...only a named gseq"? 
-% It's still gonna be super unclear to the reader when emits these idioms, the transition planner or the imperative mode-using network operator. I think we should assume the former for now. Let's pitch it as an explainability win. So, like, it's sometimes a bit much to grok a whole list of small changes that are happening for some overall goal. Let's use idioms to collect together these sensible goals that act on specific subtrees.
+New ones can be added later without changing the framework, since an idiom is only a named \ensuremath{\mathit{gseq}}.
 
 \begin{itemize}
 \item \textbf{\Retire(\ensuremath{\mathit{path}})} quiesces the subtree at \ensuremath{\mathit{path}}, waits for it to drain to empty, then \Remove{}s it.
 This is the operator-facing way to say ``tear this subtree down gracefully.''
 
 \item \textbf{\SlowRetire(\ensuremath{\mathit{path}})} waits for the subtree at \ensuremath{\mathit{path}} to drain, then \Remove{}s it.
-The operator may use this if the subtree at \ensuremath{\mathit{path}} needs to receive more traffic but is generally being phased out.
+This suits a subtree that must keep receiving traffic while it is being phased out.
 
-% why not "N" for new? Why "B"?
-\item \textbf{\Replace(\ensuremath{\mathit{path}}, \(B\))} phases \(B\) in as the survivor of \(\mathit{pol}@\mathit{path}\).
-It \Designate{}s \(B\), quiesces the original subtree, waits for it to drain to empty, and then removes that subtree and the \(\Strictstar\) wrapper, leaving \(B\) alone at \ensuremath{\mathit{path}} (\cref{fig:gseq-idioms}).
-At the pol level the effect is the outright replacement of \(\mathit{pol}@\mathit{path}\) by \(B\).
+\item \textbf{\Replace(\ensuremath{\mathit{path}}, \ensuremath{\mathit{survivor}})} phases \ensuremath{\mathit{survivor}} in and \(\mathit{pol}@\mathit{path}\) out.
+It \Designate{}s \ensuremath{\mathit{survivor}}, quiesces the original subtree, waits for it to drain to empty, and then removes that subtree and the \(\Strictstar\) wrapper, leaving \ensuremath{\mathit{survivor}} alone at \ensuremath{\mathit{path}} (\cref{fig:gseq-idioms}).
+At the \ensuremath{\mathit{pol}} level the effect is the outright replacement of \(\mathit{pol}@\mathit{path}\) by \ensuremath{\mathit{survivor}}.
 
 \end{itemize}
 
@@ -1498,18 +1485,18 @@ The second is the more interesting question and we have not addressed it anywher
 \section{The Transition Planner}\label{sec:planner}
 
 The operator hands the runtime \(p_1\), the presently running policy, and \(p_2\), the one they now want.
-The transition planner's job is to propose a \((\varphi ; \delta)^{*}\) sequence whose pol-level fold takes \(p_1\) to \(p_2\) up to \(\eqR\).
+The transition planner's job is to propose a \((\varphi ; \delta)^{*}\) sequence whose \ensuremath{\mathit{pol}}-level fold takes \(p_1\) to \(p_2\) up to \(\eqR\).
 The operator accepts or rejects the proposal; they do not author it directly.
 
 Every sequence the planner emits is safe by the per-form guarantees of \cref{sec:per-form}, aggregated across the sequence as sketched in \cref{sec:idioms}, regardless of how the planner assembled it.
-The planner aims to land at \(p_2\) by construction: each case below emits a \(\delta\) or idiom whose \(\psem{\cdot}\) realizes the locally-observed pol-level difference.
+The planner aims to land at \(p_2\) by construction: each case below emits a \(\delta\) or idiom whose \(\psem{\cdot}\) realizes the locally-observed \ensuremath{\mathit{pol}}-level difference.
 A misstep in the case analysis could in principle yield a sequence whose fold \(\psem{\delta_n} \circ \ldots \circ \psem{\delta_1} (p_1)\) misses \(p_2\)'s \(\eqR\)-class.
-The pol-level check of \cref{sec:idioms} catches this, and rejects any such sequence before it is installed.
+The \ensuremath{\mathit{pol}}-level check of \cref{sec:idioms} catches this, and rejects any such sequence before it is installed.
 Optimality is a separate matter, and is not guaranteed, since the planner may fail to see a better sequence that the operator has in mind.
 
 \cref{sec:fallback} sets up \emph{confinement} as the metric we judge a plan by, presents the always-available worst-case \Replace{} fallback, and frames the planner's strategy as descending the tree to find a tight form (\Add, \Remove, or \ChangeMeta) that captures the difference locally.
 \cref{sec:planner-emits} catalogs the cases the planner recognizes and emits a tight sequence for.
-\cref{sec:imperative} shows how an operator can instead author a sequence by hand, admitted by the same pol-level check.
+\cref{sec:imperative} shows how an operator can instead author a sequence by hand, admitted by the same \ensuremath{\mathit{pol}}-level check.
 \cref{sec:planner-nonfeatures} lists deliberate non-features and candidate future work.
 
 \subsection{The Always-Available Fallback, and Confinement to do Better}\label{sec:fallback}
@@ -1538,7 +1525,7 @@ The root-level \(\Replace([], p_2)\) above has the maximum possible footprint: t
 
 The metric by which we judge the planner is \emph{confinement}.
 A good plan disturbs as little of the running scheduler as possible, leaving the parts of the tree that did not need to change still running.
-A sequence is well-confined when its footprint is small relative to the symmetric pol-level difference between \(p_1\) and \(p_2\).
+A sequence is well-confined when its footprint is small relative to the symmetric \ensuremath{\mathit{pol}}-level difference between \(p_1\) and \(p_2\).
 
 The planner's goal is to recognize whether the difference between \(p_1\) and \(p_2\) is captured by a tight form from \cref{sec:delta-grammar} (an \Add, \Remove, or \ChangeMeta) and to emit that form wherever in the tree it sits, leaving everything else untouched.
 The planner descends through the tree as long as \(p_1\) and \(p_2\) agree at the current level, looking for a recognized shape one level down.
@@ -1821,7 +1808,7 @@ The operator states a starting policy \(p_1\) and a target \(p_2\), and the plan
 Operators may instead author \emph{imperatively}, writing their desired \(p_2\) together with a \((\varphi; \delta)^{*}\) sequence intended to reach it, possibly built from idioms (\cref{sec:idioms}).
 Imperative authoring gives the operator hands-on control over the transitionary policies the live control passes through, rather than delegating their choice to the planner.
 The two modes are not formally distinct.
-They produce sequences over the same grammar, discharge the same per-form checks of \cref{sec:per-form}, and are admitted by the same pol-level check of \cref{sec:idioms}.
+They produce sequences over the same grammar, discharge the same per-form checks of \cref{sec:per-form}, and are admitted by the same \ensuremath{\mathit{pol}}-level check of \cref{sec:idioms}.
 
 Because an imperative sequence carries \emph{paths}, those paths bind to the running representative, not to the \ensuremath{\mathit{pol}} the operator first wrote, which is exactly why we echo that representative back (\cref{sec:interplay}).
 The worked example of \cref{sec:interplay} makes the point, since there the running control realizes \(p_2'\) while the operator had written \(p_2\):
@@ -1835,11 +1822,11 @@ An imperative edit \(\Quiesce([2])\) resolves against \(p_2'\): slot \(2\) there
 Had the operator read the path off their own \(p_2\), slot \(2\) would be \(\mathtt{hi}{:}\,\textsf{zoom}\), a different arm.
 The runtime interprets the path against what is running and has no way to detect the mismatch.
 
-Before committing an operator-authored sequence we run it through the pol-level check of \cref{sec:idioms}, folding \(\psem{\delta_i}\) from \(\lfloor C \rfloor\) and accepting only if the fold is everywhere defined and lands at \(p_2\) up to \(\eqR\).
+Before committing an operator-authored sequence we run it through the \ensuremath{\mathit{pol}}-level check of \cref{sec:idioms}, folding \(\psem{\delta_i}\) from \(\lfloor C \rfloor\) and accepting only if the fold is everywhere defined and lands at \(p_2\) up to \(\eqR\).
 The intermediate pols it produces are not transient artifacts of the proof.
-Each is a valid pol with an explainable scheduling semantics.
-After the first step of \Replace(\ensuremath{\mathit{path}}, \(B\))'s expansion, for instance, the intermediate pol holds \(\Strict(\mathit{pol}@\mathit{path}, B)\) at \ensuremath{\mathit{path}}.
-That is a temporary strict-priority node favoring the outgoing \(\mathit{pol}@\mathit{path}\) over the incoming \(B\), and it has a readable scheduling interpretation in its own right.
+Each is a valid \ensuremath{\mathit{pol}} with an explainable scheduling semantics.
+After the first step of \Replace(\ensuremath{\mathit{path}}, \ensuremath{\mathit{survivor}})'s expansion, for instance, the intermediate \ensuremath{\mathit{pol}} holds \(\Strict(\mathit{pol}@\mathit{path},\ \mathit{survivor})\) at \ensuremath{\mathit{path}}.
+That is a temporary strict-priority node favoring the outgoing \(\mathit{pol}@\mathit{path}\) over the incoming \ensuremath{\mathit{survivor}}, and it has a readable scheduling interpretation in its own right.
 
 \subsection{What the planner does not do today}\label{sec:planner-nonfeatures}
 
@@ -1848,7 +1835,7 @@ The planner has two deliberate non-features today.
 A cost-aware planner could prefer different decompositions (e.g., several small \Add{}s vs.\ a single root-level \Replace) based on per-flow drop and delay tolerances or per-PE budgets.
 Presently we take the first admissible alignment without ranking competitors.
 \emph{No imperative-mode service.} The planner serves declarative mode only.
-Imperative authoring (\cref{sec:imperative}) goes through its own pol-level check directly, with the operator naming each \(\delta\) themselves; the planner is not consulted.
+Imperative authoring (\cref{sec:imperative}) goes through its own \ensuremath{\mathit{pol}}-level check directly, with the operator naming each \(\delta\) themselves; the planner is not consulted.
 
 \section{Rio Hardware Implementation}\label{sec:hardware}
 
