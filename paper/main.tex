@@ -831,7 +831,6 @@ The form drops the arm at its parent and retracts \(L\) at every proper ancestor
 \]
 Emptiness and \(\vdash C\) force \(C@\pi.\mathit{pifo}\) to hold \emph{no entry} equal to \(k\), so \ensuremath{\mathit{pifo}} loses no entry, and surviving entries keep their child.
 \ensuremath{\mathit{node\_state}}, and every field of every node outside \(C@\pi\) and the removed subtree other than the ancestor service maps just named, is unchanged.
-\xxx[AM to Zhiyuan]{Does Rio's substrate actually key children by stable handles, so \Remove{} renumbers no live entry? If so, we can say so plainly here.}
 
 \paragraph{Note: Why the ancestors are retracted too}
 
@@ -1824,7 +1823,8 @@ foreach f in flows(v):
 foreach u in nodes(v):
     gc(u)
 \end{Verbatim}
-\texttt{parent}'s remaining children keep their indices: each was minted at adoption time, so no sibling-shift cascade is needed.
+The \(\sigma_k\) renumbering of \cref{sec:remove} has no counterpart here.
+A child is reached by an opaque per-edge index that \texttt{parent} minted when it adopted that child, so dropping one child leaves every sibling's index as it was.
 
 \paragraph*{\(\Designate(\mathit{path}, \mathit{survivor})\)}
 \begin{Verbatim}
