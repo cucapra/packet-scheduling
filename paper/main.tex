@@ -1767,7 +1767,8 @@ Each of \ensuremath{\mathit{z}}'s parts is thus an opcode's target, and none of 
 
 The lowerings follow, one per form of \cref{sec:delta-grammar}.
 We fix a handful of reading conventions.
-We identify a tree position with the PIFO that lives there.
+A tree position and the PIFO sitting at it are different things, and the listings keep them apart.
+Each lowering opens by binding a name to the PIFO the form targets, and speaks of that PIFO thereafter.
 Live queries against a node \texttt{v} (its \texttt{arity(v)}, \texttt{discipline(v)}, etc.) are read off the tree at issue time.
 When an opcode names an unmentioned parameter at \texttt{v} (e.g., \texttt{set\_policy}'s discipline, \texttt{change\_arity}'s arity), it is the live value at \texttt{v}.
 \texttt{spawn}'s \texttt{pe} argument is similarly elided: it is \texttt{pe(pos(v))}, drawn from the deployment convention of \S8.1'.
@@ -1776,50 +1777,53 @@ Alongside the opcodes, the listings use a small codegen vocabulary:
 \begin{itemize}
 \item \texttt{foreach x in S: BODY} emits \texttt{BODY} once per \texttt{x} drawn from \texttt{S}.
 \item \texttt{walk(op, C, f)} emits \texttt{op(v, f, \ldots)} at each \(v \in C\); positional remainders such as \texttt{map}'s routing index \(i_{v,f}\) are read off the live tree.
-\item \texttt{flows(path)} is the set of flows admitted by some leaf under \ensuremath{\mathit{path}}.
+\item \texttt{flows(v)} is the set of flows admitted by some leaf under the PIFO \texttt{v}.
 \item \texttt{chain(f)} is the sequence of PIFOs from \texttt{port\_root} to the leaf admitting \texttt{f}, and \texttt{internals(f)} is that sequence minus the leaf.
 \item \texttt{nodes(T)} and \texttt{edges(T)} are the PIFOs and parent-child edges of a compiled subtree \texttt{T}; \texttt{root(T)} is \texttt{T}'s root PIFO.
 \item \texttt{layout(T)} expands to \texttt{spawn}+\texttt{set\_policy} at every \(v \in \mathtt{nodes(T)}\), \texttt{adopt} at every internal edge in \(\mathtt{edges(T)}\), and \texttt{set\_arm\_meta} at each per-arm slot where \texttt{v}'s discipline requires it.
 The parent-side \texttt{adopt} that attaches \(\mathtt{root(T)}\) is left to the caller.
 \end{itemize}
 
-Where a form destructures \(\delta\)'s path as \(\pi \mathbin{+\!\!+} [k]\), we write \texttt{p} for the parent's path and \texttt{k} for the child's local index.
-For \(\mathit{path} = [\,]\), the parent is \texttt{port\_root} and \texttt{k} is \texttt{port\_step}.
+We write \ensuremath{\mathit{path}} for the form's path argument, \texttt{parent} for the PIFO at the position above it, and \texttt{k} for its index at that PIFO.
+For \(\mathit{path} = [\,]\), \texttt{parent} is \texttt{port\_root} and \texttt{k} is \texttt{port\_step}.
 
 \paragraph*{\(\ChangeMeta(\pi \mathbin{+\!\!+} [k], D, m)\)}
 \begin{Verbatim}
-set_arm_meta(p, k, m)
+set_arm_meta(parent, k, m)
 \end{Verbatim}
 
 \paragraph*{\(\Quiesce(\mathit{path})\)}
 \begin{Verbatim}
-foreach f in flows(path):
+v := PIFO at path
+foreach f in flows(v):
     walk(deassoc, chain(f), f)
 \end{Verbatim}
 
 \paragraph*{\(\Add(\mathit{path}, D, \mathit{arm}, m)\)}
 \begin{Verbatim}
-n := arity(path)
+v := PIFO at path
+n := arity(v)
 layout(arm)
-change_arity(path, n+1)
-set_arm_meta(path, n, m)
-adopt(n, path, root(arm))
+change_arity(v, n+1)
+set_arm_meta(v, n, m)
+adopt(n, v, root(arm))
 foreach f in flows(arm):
     walk(assoc, chain(f), f)
     walk(map,   internals(f), f)
 \end{Verbatim}
-The new subtree occupies \ensuremath{\mathit{path}}'s rightmost slot (index \texttt{n}), so existing children's indices are undisturbed.
+The new subtree occupies \texttt{v}'s rightmost slot (index \texttt{n}), so existing children's indices are undisturbed.
 
 \paragraph*{\(\Remove(\pi \mathbin{+\!\!+} [k])\)}
 \begin{Verbatim}
-change_arity(p, arity(p) - 1)
-emancipate(k, p)
-foreach f in flows(p ++ [k]):
+v := PIFO at path
+change_arity(parent, arity(parent) - 1)
+emancipate(k, parent)
+foreach f in flows(v):
     walk(unmap, internals(f), f)
-foreach v in nodes(p ++ [k]):
-    gc(v)
+foreach u in nodes(v):
+    gc(u)
 \end{Verbatim}
-\texttt{p}'s remaining children keep their indices: each was minted at adoption time, so no sibling-shift cascade is needed.
+\texttt{parent}'s remaining children keep their indices: each was minted at adoption time, so no sibling-shift cascade is needed.
 
 \paragraph*{\(\Designate(\mathit{path}, \mathit{survivor})\)}
 \begin{Verbatim}
@@ -1850,21 +1854,21 @@ Silencing those, when the operator ultimately wants it, comes from the \Quiesce{
 
 \paragraph*{\(\Undesignate(\pi \mathbin{+\!\!+} [k])\)}
 \begin{Verbatim}
-loser := PIFO at p ++ [k]
+loser := PIFO at path
 surv  := designated survivor of loser
 undesignate(loser)
 foreach f in flows(loser) \ flows(surv):
     walk(unmap, internals(f), f)
-foreach v in nodes(loser):
-    gc(v)
+foreach u in nodes(loser):
+    gc(u)
 \end{Verbatim}
-\texttt{undesignate} retargets \texttt{p}'s index \texttt{k} from \texttt{loser} to \texttt{surv}.
-Reusing \texttt{k} is what preserves \texttt{p}'s per-arm metadata for that slot, so the survivor inherits the annotation that the outgoing subtree held.
+\texttt{undesignate} retargets \texttt{parent}'s index \texttt{k} from \texttt{loser} to \texttt{surv}.
+Reusing \texttt{k} is what preserves \texttt{parent}'s per-arm metadata for that slot, so the survivor inherits the annotation that the outgoing subtree held.
 The shared flows are deliberately not unmapped, since they serve \texttt{surv} now.
 
 Two of these lowerings need further comment.
 
-\Quiesce{}'s wide reach, covering the root-to-\ensuremath{\mathit{path}} chain along with the subtree under \ensuremath{\mathit{path}}, is forced by \cref{sec:policy-dsl}'s parallel push.
+\Quiesce{}'s wide reach, covering the root-to-\ensuremath{\mathit{path}} chain along with the whole subtree under \texttt{v}, is forced by \cref{sec:policy-dsl}'s parallel push.
 Every node on a packet's path mints its own routing index independently, so dropping \texttt{f} at only some of those nodes would leave the rest minting stray indices, and the tree malformed.
 The chain walk is what \cref{sec:quiesce} calls narrowing the admitted set uniformly.
 \Quiesce{} does not issue \texttt{unmap}: silenced flows' Map entries \emph{must outlive the silencing} so that buffered packets can be popped.
@@ -1931,29 +1935,24 @@ It compiles to what \Designate{} builds, with \(\mathtt{layout}\) running on bot
 Our substrate is deliberately unambitious; we built it because the compiler needed something to run against.
 We do not offer it as a contribution, and nothing in \cref{sec:correctness} depends on it.
 
-What we do claim is that the demands Rio makes of a substrate are few enough to state, and modest enough that an existing PIFO substrate could meet them.
-There are four.
+Rio asks a substrate for one thing: commits that are atomic with respect to traffic.
+A \(\delta\) that lowers to many instructions has to install as a single instant.
+The tree is transiently malformed partway through a commit, and no \push{} or \pop{} may observe it in that state.
+That is the whole of what \cref{sec:hw-preservation}'s argument leans on, and \cref{sec:hw-transaction} is how our own controller supplies it.
 
-\begin{enumerate}
-\item \emph{Commits are atomic with respect to traffic.}
-A \(\delta\) that lowers to many instructions installs as a single instant.
-The tree is transiently malformed partway through a commit, and no \push{} or \pop{} may observe it in that state (\cref{sec:hw-transaction}).
-\item \emph{A slot's metadata belongs to the parent and survives a rewire.}
-Per-arm metadata is addressed by the parent's index rather than held on the child, so detaching one child at an index and attaching another leaves the metadatum standing.
-\Undesignate{} relies on this when the survivor inherits the outgoing subtree's annotation, and so does the planner when it sets an arm's metadata before the step that swings the slot (\cref{sec:planner-emits}).
-% Is the above really a big deal? If this were gone, we could just re-add the metadata
-\item \emph{Growing a node's arity seeds the new slot from the node's live state.}
-\(\mathit{init\_slot}_{D}\) (\cref{sec:compilation}) takes the parent's \emph{current} \ensuremath{\mathit{node\_state}}, so a freshly spliced \WFQ{} arm starts at the parent's live virtual time rather than at zero.
-\texttt{change\_arity} is where that happens.
-% Is the above really a big deal? I think we should make the seeding of the new slot's state an opaque thing anyway... let's discuss more.
-\item \emph{Children are addressed by stable handles.}
-Detaching one child renumbers no surviving sibling, which is what lets \Remove{} unhook an arm without re-adopting the others.
-% Is the above really a big deal? If this were gone, we could just do some renumbering. It feels like a minor convenience that you made into a hard requirement
-\end{enumerate}
+Two further properties of our substrate show up in the lowerings, and it is worth saying that neither is a demand.
+Per-arm metadata is addressed by the parent's index rather than held on the child, so \Undesignate{} retargets an index and the survivor inherits the slot's annotation.
+A substrate that dropped the annotation on a rewire would need one \texttt{set\_arm\_meta} afterwards and nothing more.
+Children are addressed by stable handles, so \Remove{} unhooks an arm without re-adopting its siblings.
+A substrate that renumbered would emit those re-adoptions, which is exactly the shift \(\sigma_k\) (\cref{sec:remove}) already describes.
 
-A substrate meeting these four can host Rio.
-The designated-survivor link of \cref{sec:hw-survivor} is not on the list, because it is an optimization rather than a requirement: a substrate without one can lower \Designate{} to a literal \Strict-2 wrapper and pay for the relayouts.
-We expect other PIFO substrates, vPIFO~\cite{vPIFO} among them, to satisfy the four and to be able to adopt the link.
+A third property is not the substrate's business in the first place.
+A new arm's slot is seeded from its parent's live \ensuremath{\mathit{node\_state}}, so a freshly spliced \WFQ{} arm starts at the parent's current virtual time rather than at zero.
+That is \(\mathit{init\_slot}_{D}\) (\cref{sec:compilation}), which belongs to \ensuremath{D} rather than to Rio, and \texttt{change\_arity} does no more than let \ensuremath{D} run it.
+Rio never reads the state involved.
+
+The designated-survivor link of \cref{sec:hw-survivor} is likewise an optimization and not a requirement, since a substrate without one lowers \Designate{} to a literal \Strict-2 wrapper and pays for the relayouts.
+The bar for hosting Rio is therefore a single property, and we expect other PIFO substrates, vPIFO~\cite{vPIFO} among them, to clear it and to be able to adopt the link besides.
 
 \subsection{Executing \(\delta\) as a transaction}\label{sec:hw-transaction}
 
