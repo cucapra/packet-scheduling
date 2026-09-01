@@ -306,6 +306,11 @@ The family of disciplines is open.
 \ensuremath{D} is any discipline equipped with the compilation recipe of \cref{sec:compilation}, and nothing that follows depends on which disciplines are available.
 Our implementation instantiates \Strict, \RR, and \WFQ because they aid our exposition.
 
+We also have the discipline \(\Strictstar\), which for the most part can be thought of as merely an instance of 2-ary \Strict{}.
+While the user may use \(\Strictstar\) in their policies, it is really designed to be introduced and removed by the compiler during an in-place subtree replacement, which \cref{sec:idioms} assembles as the \Replace{} idiom.
+The two disciplines are told apart in \cref{sec:hardware}, where a novel optimization allows us to realize \(\Strictstar\) without a pifo or a tree level of its own.
+That is what makes an in-place replacement smooth.
+
 A \ensuremath{\mathit{pol}} is written against a fixed \emph{flow universe} \(F\): a finite set of flow predicates declared by the operator before constructing the \ensuremath{\mathit{pol}}.
 A \ensuremath{\mathit{pol}} is \emph{valid} when (a) every discipline is applied at the proper arity, (b) every arm's metadatum is drawn from its parent discipline's set \(M_{D}\), and (c) the leaves form a partition of a subset of \(F\): each leaf carries a flow drawn from \(F\), and no two leaves carry the same flow.
 If a packet does not match any of the flows in the scheduling tree's leaves, the packet is dropped.
@@ -716,7 +721,8 @@ Carrying \ensuremath{D} on the form is what makes \(m \in M_{D}\) checkable from
 
 \paragraph{Definition}
 
-\ChangeMeta{} is defined when \(\tau\) resolves in \(C\) to an arm whose parent runs the \ensuremath{D} the form names, and \(m \in M_{D}\).
+\ChangeMeta{} is defined when \(\tau\) resolves in \(C\) to an arm whose parent runs the \ensuremath{D} the form names, when \(m \in M_{D}\), and when that parent's ranker does not name \(\Strictstar\).
+Changing the metadata of a \(\Strictstar\) is illegal for reasons desribed in <hardware>.
 Its node transformer \(\mathtt{setmeta}_k\) rewrites the node's \ensuremath{\mathit{z}} and nothing else:
 {\small
 \[
@@ -802,7 +808,8 @@ As in \cref{sec:quiesce}, let \(L = \mathtt{flows}(C@\tau)\), here the flows tha
 Write \(\mathit{z} \dsetminus L\) for \ensuremath{\mathit{z}} with \(L\) struck from its service map, and hence, by the containment of \cref{sec:controls}, from its admitted set too.
 Its ranker is unchanged.
 \Remove{} drops the arm at its parent and strikes \(L\) from the service map of every proper ancestor above that parent, the set \(A_\pi = \{\, C@\nu \;:\; \nu \sqsubset \pi \,\}\).
-It is defined when \(\tau\) resolves in \(C\) and the subtree at \(\tau\) is empty.
+It is defined when \(\tau\) resolves in \(C\), when the subtree at \(\tau\) is empty, and when \(C@\tau\)'s ranker does not name \(\Strictstar\).
+A \(\Strictstar\) node can only be retired by \Undesignate{} (\cref{sec:undesignate}), for reasons described in <hardware>.
 Dropping arm \(k\) shifts every later arm one slot to the left, and we name that shift \(\sigma_k\): the map on child indices that fixes every \(i < k\) and sends every \(i > k\) to \(i-1\).
 The node transformer \(\mathtt{drop}_k\) unhooks child \(k\) and renumbers what named it:
 {\small
@@ -901,22 +908,19 @@ At the instant \Remove{} fires, no entry above the doomed arm was enqueued on ac
 \(\tau : \mathit{path}\) is the path to the target subtree being wrapped, and \(\mathit{survivor} : \mathit{pol}\) is the designated-survivor policy that becomes the wrap's low-priority arm.
 
 Say the presently running control is \(C\).
-Intuitively, \Designate{} replaces \(C@\tau\) in place with \(\Strictstar(C@\tau, \lceil \mathit{survivor} \rceil)\), reading \(\Strictstar\) as \(\Strict\) for now.
+Intuitively, \Designate{} replaces \(C@\tau\) in place with \(\Strictstar(C@\tau, \lceil \mathit{survivor} \rceil)\).
 It is the mechanism behind non-disruptive in-place replacement (\cref{fig:designate}).
 The wrap lets \ensuremath{\mathit{survivor}} begin accepting new traffic on a low-priority arm, while the old subtree keeps draining, untouched, on a high-priority one.
 Once the old subtree is empty, \Undesignate{} (\cref{sec:undesignate}) removes it and promotes \ensuremath{\mathit{survivor}} in its place.
 That is why the form exists: no single edit can swap one subtree for another without either dropping the old subtree's backlog or stalling the new arm, but the \(\Strictstar\) wrap lets both coexist for the length of a drain.
 
-For the present discussion, \(\Strictstar\) can be thought of as the same thing as \(\Strict\).
-It is really a construction of our own, at the hardware level, and \cref{sec:hardware} explains it.
-We keep the separate name here so that \Undesignate{} can state its precondition structurally, since a node's ranker records which of the two the node runs (\cref{sec:controls}).
 \Designate{} installs a ranker that names \(\Strictstar\), and \Undesignate{} retires the node carrying it.
-No other form disturbs such a node, and in particular \Remove{} will not retire a \(\Strictstar\) node.
-That is a precondition on \Remove{} (\cref{sec:remove}), and this is the first point at which it can be stated, since \(\Strictstar\) is what makes such a node recognizable.
-
-An operator never writes a \(\Strictstar\), since the DSL of \cref{sec:policy-dsl} offers only \(\Strict\).
-One arises only in the middle of a planner sequence, between a \Designate{} and its eventual \Undesignate.
-This is the one place where \(\lfloor \cdot \rfloor\) (\cref{sec:equivalences}) does not simply report the discipline a node's ranker names: a \(\Strictstar\) node reads as a \(\Strict\), so the wrap is \ensuremath{\mathit{pol}}-visible only as a \(\Strict\).
+A node's ranker records which discipline the node runs (\cref{sec:controls}), so both forms state their preconditions structurally.
+No other form disturbs such a node.
+\Remove{} will not retire one (\cref{sec:remove}), and \ChangeMeta{} will not retune its arms (\cref{sec:changemeta}), so its two priorities are the ones \Designate{} gave it for as long as it exists.
+The wrap is visible at \ensuremath{\mathit{pol}}-level as a \(\Strictstar\), which is what \(\lfloor \cdot \rfloor\) (\cref{sec:equivalences}) reports of it.
+An operator may write a \(\Strictstar\) directly (\cref{sec:policy-dsl}), but one usually arises in the middle of a planner sequence, between a \Designate{} and its eventual \Undesignate.
+\cref{sec:hardware} takes up why the two disciplines are kept apart, which turns out to be a question about hardware layout rather than about scheduling.
 
 \begin{figure*}[t]
   \centering
@@ -1002,9 +1006,9 @@ The transformer \(\mathtt{wrap}\) replaces \(M\) with a fresh \(\Strictstar\) no
 \[
 \begin{array}{@{}l@{}}
 \mathtt{wrap}(M) = N = \langle s_N,\ q_N,\ \mathit{z}_N \rangle\big([\,M,\ \lceil\mathit{survivor}\rceil\,]\big),\ \textbf{where}\\[3pt]
-\quad n_N = \mathit{init\_node}_{\Strict}(),\\[3pt]
-\quad s_N = (\,n_N,\ [\,\mathit{init\_slot}_{\Strict}(n_N, \mathtt{hi}),\\
-\quad\qquad\qquad\ \ \mathit{init\_slot}_{\Strict}(n_N, \mathtt{lo})\,]\,),\\[3pt]
+\quad n_N = \mathit{init\_node}_{\Strictstar}(),\\[3pt]
+\quad s_N = (\,n_N,\ [\,\mathit{init\_slot}_{\Strictstar}(n_N, \mathtt{hi}),\\
+\quad\qquad\qquad\ \ \mathit{init\_slot}_{\Strictstar}(n_N, \mathtt{lo})\,]\,),\\[3pt]
 \quad q_N = \text{the \ensuremath{\mathit{pifo}} of } P_0 \text{ copies of the entry } (0,\ \mathtt{hi}),\\[3pt]
 \quad \mathit{z}_N.\mathit{meta} = \{\, 0 \mapsto \mathtt{hi},\ 1 \mapsto \mathtt{lo} \,\},\\[3pt]
 \quad \mathit{z}_N(p) = (1,\ \mathtt{lo})\ \text{if}\ \mathit{flow}(p) \in \mathtt{flows}(\mathit{survivor}),\ \text{else}\ (0,\ \mathtt{hi}).
@@ -1038,9 +1042,8 @@ The two arms thus stay operationally disjoint even when their label sets overlap
 
 \Designate{} wraps the \ensuremath{\mathit{pol}} subtree at \(\tau\):
 \[
-{\small \psem{\Designate(\tau, \mathit{survivor})} = \mathtt{at}(\tau,\; t \mapsto \Strict(\mathtt{hi}{:}\,t,\ \mathtt{lo}{:}\,\mathit{survivor})).}
+{\small \psem{\Designate(\tau, \mathit{survivor})} = \mathtt{at}(\tau, t \mapsto \Strictstar(\mathtt{hi}{:}\,t, \mathtt{lo}{:}\,\mathit{survivor})).}
 \]
-It yields \(\Strict\), not \(\Strictstar\), since the star is \ensuremath{\mathit{pol}}-invisible.
 
 \subsubsection{\texorpdfstring{\(\Undesignate(\tau)\)}{Undesignate}}\label{sec:undesignate}
 
@@ -1061,9 +1064,9 @@ Since \(\mathtt{at}\) writes \(B\) back into the parent's slot \(k\), the parent
 
 \paragraph{Pol-level reading}
 
-\Undesignate{} collapses the wrapper, which reads as \(\Strict\) at \ensuremath{\mathit{pol}}-level, and leaves its low arm behind:
+\Undesignate{} collapses the wrapper and leaves its low arm behind:
 \[
-\psem{\Undesignate(\tau)} = \mathtt{at}(\tau,\; \Strict(\mathtt{hi}{:}\,a,\ \mathtt{lo}{:}\,b) \mapsto b).
+\psem{\Undesignate(\tau)} = \mathtt{at}(\tau,\; \Strictstar(\mathtt{hi}{:}\,a,\ \mathtt{lo}{:}\,b) \mapsto b).
 \]
 That arm is \(\lfloor B \rfloor\).
 The wrapper's own annotations go with it, and the surviving arm inherits the annotation the wrapper held at its parent.
@@ -1279,7 +1282,7 @@ The remaining three are the ones with an argument to make, and the rest of this 
 \Designate
 & At \(N\), the \(P_0\) slot-\(0\) entries match the packet count under arm 0, and arm 1 holds neither a packet nor an entry.
   At \(C@\pi\), slot \(k\)'s count is the \(P_0\) that \(C@\tau\) carried.
-& Outside the wrap every node is structurally intact, and \(N\) reads as a \(\Strict\) by \cref{sec:designate}'s clause, its arms annotated out of \(\mathit{z}_N.\mathit{meta}\).
+& Outside the wrap every node is structurally intact, and \(N\) reads as a \(\Strictstar\), its arms annotated out of \(\mathit{z}_N.\mathit{meta}\).
 & \cref{sec:wrap-nondisruption}. \\
 \addlinespace
 
@@ -1354,10 +1357,6 @@ The same argument carries from the IR down to hardware.
 The hardware executes a committed sequence atomically with respect to \push{} and \pop{}, so what it exhibits is again what \cref{sec:per-form} proved.
 The compilation itself, and the substrate machinery that makes a commit atomic, are the subject of \cref{sec:hardware}.
 
-\xxx[AM for Zhiyuan]{the \cref{sec:hw-preservation} argument leans on the substrate supporting \emph{atomic transactional commits}: a multi-instruction lowering must install as a single instant from the user's perspective, so that the transiently-malformed intermediate trees inside a commit are never observed.
-Our own substrate provides this.
-The open question for \cref{sec:hardware} is whether composition with a third-party substrate (e.g., vPIFO) requires the same property and, if so, whether vPIFO offers it.}
-
 \section{Realizing Reconfigurations as Guarded Sequences}\label{sec:sequences}
 
 This section composes the forms of \(\delta\) into \emph{guarded sequences} \((\varphi ; \delta)^{*}\), where a guard \(\varphi\) is a predicate on the state of the live control.
@@ -1392,16 +1391,16 @@ We do not pursue this here, since the splicing analysis introduces its own corre
 \[
 \begin{array}{@{}l@{}}
 \textbf{Guarded sequences}\\[3pt]
-\varphi \mathrel{::=} \mathtt{true} \;\mid\; \mathtt{empty}(\mathit{path})\\[2pt]
+\varphi \mathrel{::=} \mathtt{true} \;\mid\; \mathtt{isEmpty}(\mathit{path})\\[2pt]
 \mathit{gseq} \mathrel{::=} \epsilon \;\mid\; (\varphi\,;\, \delta)\,;\, \mathit{gseq}\\[8pt]
 \textbf{Idioms}\\[3pt]
 \Retire(\mathit{path}) \;=\;\\
-\quad (\mathtt{true};\, \Quiesce(\mathit{path}))\,;\, (\mathtt{empty}(\mathit{path});\, \Remove(\mathit{path}))\\[4pt]
-\SlowRetire(\mathit{path}) \;=\; (\mathtt{empty}(\mathit{path});\, \Remove(\mathit{path}))\\[4pt]
+\quad (\mathtt{true};\, \Quiesce(\mathit{path}))\,;\, (\mathtt{isEmpty}(\mathit{path});\, \Remove(\mathit{path}))\\[4pt]
+\SlowRetire(\mathit{path}) \;=\; (\mathtt{isEmpty}(\mathit{path});\, \Remove(\mathit{path}))\\[4pt]
 \Replace(\mathit{path}, \mathit{survivor}) \;=\;\\
 \quad (\mathtt{true};\, \Designate(\mathit{path}, \mathit{survivor}))\,;\\
 \quad (\mathtt{true};\, \Quiesce(\mathit{path} \mathbin{+\!\!+} [0]))\,;\\
-\quad (\mathtt{empty}(\mathit{path} \mathbin{+\!\!+} [0]);\, \Undesignate(\mathit{path}))
+\quad (\mathtt{isEmpty}(\mathit{path} \mathbin{+\!\!+} [0]);\, \Undesignate(\mathit{path}))
 \end{array}
 \]
 \caption{The grammar of guarded sequences and the three starter idioms, each a named \((\varphi;\delta)^{*}\).}
@@ -1429,7 +1428,7 @@ Starting from \(\mathit{ip}_0 = \lfloor C \rfloor\), the \ensuremath{\mathit{pol
 The sequence is admissible when every \(\psem{\delta_i}\) is defined on \(\mathit{ip}_i\) and the final \(\mathit{ip}_{n+1} \eqR p_2\).
 This is the Interplay theorem (\cref{sec:interplay}) iterated across the sequence.
 Each \(\psem{\delta_i}\) matches its operational counterpart \(\csem{\delta_i}\) (\cref{sec:per-form}), so a fold that lands at \(\mathit{ip}_{n+1} \eqR p_2\) certifies, cell by cell, that the operational chain ends in a control whose \(\lfloor \cdot \rfloor\) is \(p_2\).
-Guards play no role in this check: they govern \emph{when} each \(\delta_i\) fires on the live control and are \ensuremath{\mathit{pol}}-invisible (\cref{sec:edit-semantics}), so a \((\mathtt{empty}(\mathit{path}); \Remove(\mathit{path}))\) step folds exactly as if its guard were \(\mathtt{true}\).
+Guards play no role in this check: they govern \emph{when} each \(\delta_i\) fires on the live control and are \ensuremath{\mathit{pol}}-invisible (\cref{sec:edit-semantics}), so a \((\mathtt{isEmpty}(\mathit{path}); \Remove(\mathit{path}))\) step folds exactly as if its guard were \(\mathtt{true}\).
 If the chain fails to reach \(p_2\), or some \(\psem{\delta_i}\) is undefined on its \(\mathit{ip}_i\), the sequence is rejected.
 The rejection identifies the offending step, either the first \(\delta_i\) whose \(\psem{\delta_i}\) was undefined or else the final mismatch \(\mathit{ip}_{n+1} \not\eqR p_2\).
 Both clients of the framework rely on this check: the planner (\cref{sec:planner}) uses it as a backstop on the sequences it assembles, and an operator authoring by hand (\cref{sec:imperative}) uses it to validate theirs.
@@ -1437,7 +1436,7 @@ Both clients of the framework rely on this check: the planner (\cref{sec:planner
 \paragraph{Liveness}
 
 Safety is unconditional; liveness is not, and cannot be.
-A guarded sequence progresses only as its guards become true, and a guard like \(\mathtt{empty}(\mathit{path})\) becomes true only once the traffic under \ensuremath{\mathit{path}} drains.
+A guarded sequence progresses only as its guards become true, and a guard like \(\mathtt{isEmpty}(\mathit{path})\) becomes true only once the traffic under \ensuremath{\mathit{path}} drains.
 That is up to the network, not up to us.
 A persistent or adversarial flow can keep a subtree busy indefinitely, and then any step waiting on that subtree's emptiness never fires.
 This is inherent.
@@ -1505,7 +1504,7 @@ To reach any \(p_2\) from any \(p_1\), the planner can issue \(\Replace([], p_2)
 \[
 \begin{array}{@{}l@{}}
 (\mathtt{true};\ \Designate([], p_2))\ ;\ (\mathtt{true};\ \Quiesce([0]))\ ;\\[3pt]
-\qquad (\mathtt{empty}([0]);\ \Undesignate([]))
+\qquad (\mathtt{isEmpty}([0]);\ \Undesignate([]))
 \end{array}
 \]
 This wraps \(p_1\) and \(p_2\) into \(\Strictstar(\mathtt{hi}: p_1, \mathtt{lo}: p_2)\) at the root (so pops still drain \(p_1\) while pushes go to \(p_2\)), and, once \(p_1\) is empty, collapses the wrapper to leave \(p_2\) alone.
@@ -1729,16 +1728,15 @@ Opcode & Effect \\
 \texttt{set\_policy(v, t, n)} & Set PIFO \texttt{v}'s policy type to \texttt{t} and its initial arity to \texttt{n}; \texttt{t} ranges over \{FIFO, RoundRobin, Strict, Strict*, WFQ\}. Issued exactly once per PIFO, at spawn time. \\
 \texttt{change\_arity(v, n)} & Set the live PIFO \texttt{v}'s arity counter to \texttt{n}. Policy type is unchanged. \texttt{change\_arity} is what tells the discipline-level logic at \texttt{v} (e.g., RoundRobin's cursor wraparound, the WFQ slot-state table's size) the active arm count; the structural attaching and detaching themselves happen through explicit \texttt{adopt}/\texttt{emancipate} calls, each keyed by the stable per-edge index the parent minted at adoption time. The substrate is free to relocate live adoptions internally as the count changes; the indices the planner holds remain valid. \\
 \texttt{set\_arm\_meta(v, i, m)} & Set per-arm metadata on PIFO \texttt{v}'s child reached via index \texttt{i} to \texttt{m}. The operand \texttt{m} is interpreted per \texttt{v}'s policy type: a weight for RoundRobin/WFQ, a priority rank for Strict; FIFO carries none. Only the discipline-specified meta field is overwritten; any other per-arm state (e.g., WFQ's virtual-finish tag on the arm) is preserved, so a metadata change on a live arm does not remove it from the current round. \\
-\texttt{designate(v, surv)} & Inside an already-spawned Strict-2 super-node that has adopted both PIFOs \texttt{v} and \texttt{surv} (see \cref{sec:hw-compile}'s \Designate{} lowering), name \texttt{v} as the favored child and record \texttt{surv} as \texttt{v}'s designated successor for an eventual \texttt{undesignate}. No in-place wrapping is implied at the ISA level; the substrate may coalesce the Strict-2 super-node, \texttt{v}, and \texttt{surv} into a single physical slot when \cref{sec:hw-compile}'s same-PE invariant holds, but is not required to. \\
+\texttt{designate(v, surv)} & Point PIFO \texttt{v}'s designated-survivor link at \texttt{surv}. The link is consulted on \texttt{pop} alone: a \texttt{pop} that finds \texttt{v} empty queries \texttt{surv} rather than underflowing, and \texttt{push} is unaffected, since \texttt{surv} admits its own flows through the ordinary Assoc tables (\cref{sec:hw-survivor}). \texttt{v} keeps its arity, its policy type, and its parent edge, and \texttt{surv} is laid out beside \texttt{v} rather than beneath it. \\
 \texttt{gc(v)} & Release PIFO \texttt{v}'s PE slot. \\
-\texttt{undesignate(v)} & Collapse the super-node \(\{v \to \mathtt{surv}\}\) to \texttt{surv}: the parent index that pointed at \(\{v \to \mathtt{surv}\}\) now points directly at \texttt{surv}, and \texttt{surv} inherits the slot's per-arm metadata. \\
+\texttt{undesignate(v)} & Whatever index \texttt{v}'s parent used to reach \texttt{v} now reaches \texttt{v}'s designated survivor instead, and that survivor inherits the slot's per-arm metadata. Issued behind an \(\mathtt{isEmpty}\) guard (\cref{sec:hw-transaction}). \\
 \hline
 \end{tabular}
 \end{table*}
 
 Our single-purpose opcodes also mean that the tree can become transiently malformed \emph{within} a commit, in ways that the commit's atomicity hides from any observer.
-For an example from \cref{sec:hw-compile}, \Designate's commit first adopts \texttt{loser} as a child of the freshly-spawned \texttt{sp\_v}, then emancipates \texttt{loser} from its original parent and adopts \texttt{sp\_v} in its place.
-Between the first adopt and the emancipate, \texttt{loser} has two parents.
+For an example from \cref{sec:hw-compile}, \Add{}'s commit raises the target's arity to \texttt{n+1} before the \texttt{adopt} that actually attaches a child.
 The atomic install means no \texttt{push} or \texttt{pop} ever sees this state, but the planner is free to issue commits whose intermediate states would not satisfy the well-formedness conditions of \cref{sec:controls}.
 
 \emph{PE deployment.} One last piece of setup supports the lowerings in \cref{sec:hw-compile}.
@@ -1825,44 +1823,46 @@ foreach v in nodes(p ++ [k]):
 
 \paragraph*{\(\Designate(\mathit{path}, \mathit{survivor})\)}
 \begin{Verbatim}
-loser  := PIFO at path;   parent := PIFO at path's parent
-k      := path's last index
-surv   := root(survivor)
+loser := PIFO at path
+surv  := root(survivor)
 layout(survivor)
-spawn(sp_v, pe(path))
-set_policy(sp_v, Strict*, 2)
-adopt(0, sp_v, loser); adopt(1, sp_v, surv)
-set_arm_meta(sp_v, 0, 1.0)
-set_arm_meta(sp_v, 1, 2.0)
-emancipate(k, parent); adopt(k, parent, sp_v)
 designate(loser, surv)
-foreach f in flows(loser) \ flows(surv):
-    assoc(sp_v, f); map(sp_v, f, 0)
+foreach f in flows(loser) & flows(surv):
+    walk(deassoc, chain(f) & nodes(loser), f)
 foreach f in flows(surv):
-    assoc(sp_v, f); map(sp_v, f, 1)
-foreach f in flows(surv) \ flows(path):
     walk(assoc, chain(f), f)
     walk(map,   internals(f), f)
 \end{Verbatim}
-Reusing the same \texttt{k} for the rewire preserves \texttt{parent}'s per-arm metadata for that slot.
-Flows in \(\mathtt{flows(surv)} \cap \mathtt{flows(path)}\) need no above-\texttt{sp\_v} wiring: the chain is already in place from \ensuremath{\mathit{path}}'s prior wiring.
-Flows in \(\mathtt{flows(loser)} \setminus \mathtt{flows(surv)}\) keep their existing above-\texttt{sp\_v} Assoc/Map state and are routed to slot 0 by \texttt{sp\_v}.\ensuremath{\mathit{z}}, matching \cref{sec:designate}'s operational rule that loser-only labels drain on arm 0.
-Operator-level silencing of those flows, when the operator ultimately wants it, comes from the \Quiesce{} step of the surrounding \Replace{} idiom (\cref{sec:sequences}), not from \Designate.
+This is \Add{}'s lowering, with \texttt{designate} in place of \texttt{change\_arity} and \texttt{adopt} and one walk in front.
+No PIFO is spawned for the \(\Strictstar\) node, and \texttt{loser}'s parent is not touched.
+\texttt{designate} points \texttt{loser}'s designated-survivor link at \texttt{surv}, which \cref{sec:hw-survivor} discusses in greater detail.
+The two walks are the whole of the traffic handover.
 
-\emph{Same-PE invariant.}
-The planner places \texttt{sp\_v}, \texttt{loser}'s root, and \texttt{surv}'s root on the same PE (a deterministic property of the lowering: all three sit at depth \(|\mathit{path}|\), and \texttt{pe(path)} returns one PE).
-The substrate may exploit this to coalesce the three into a single physical slot, so that it need not move all of \texttt{loser} down one PE level.
+The deassoc walk hands the shared flows over to the survivor.
+A flow that both subtrees serve is admitted by \texttt{loser} when \Designate{} fires, and the assoc walk is about to have \texttt{surv} admit it too.
+The two roots occupy one position, so a packet of such a flow would then be enqueued on both sides, under a parent that minted one index for it.
+Striking the flow inside \texttt{loser} leaves \texttt{surv} as its only admitter, which is what \cref{sec:designate}'s wrapper accomplishes by routing shared labels to arm 1.
+The walk has to run first for a second reason: while \texttt{loser} still admits \texttt{f}, \(\mathtt{chain(f)}\) resolves through \texttt{loser}, and intersecting it with \(\mathtt{nodes(loser)}\) is what picks out the nodes to strike.
+% Too verbose. It's not a mystery novel.
 
-\paragraph*{\(\Undesignate(\mathit{path})\)}
+The assoc and map walks are the same as for \Add{}.
+For a shared flow the chain above the two roots is already in place and the walks rewrite it to no effect.
+Flows in \(\mathtt{flows(loser)} \setminus \mathtt{flows(surv)}\) are left alone entirely, and go on reaching \texttt{loser}'s own subtree, matching \cref{sec:designate}'s rule that loser-only labels drain on arm 0.
+Silencing those, when the operator ultimately wants it, comes from the \Quiesce{} step of the surrounding \Replace{} idiom (\cref{sec:sequences}), not from \Designate.
+
+\paragraph*{\(\Undesignate(\pi \mathbin{+\!\!+} [k])\)}
 \begin{Verbatim}
-sp_v    := super-node head at path
-loser_v := its retiring arm
-undesignate(loser_v)
-gc(sp_v)
-foreach v in nodes(loser_v):
+loser := PIFO at p ++ [k]
+surv  := designated survivor of loser
+undesignate(loser)
+foreach f in flows(loser) \ flows(surv):
+    walk(unmap, internals(f), f)
+foreach v in nodes(loser):
     gc(v)
 \end{Verbatim}
-\texttt{undesignate} rewires the parent's slot past \texttt{sp\_v} but does not deallocate it, so an explicit \texttt{gc(sp\_v)} follows.
+\texttt{undesignate} retargets \texttt{p}'s index \texttt{k} from \texttt{loser} to \texttt{surv}.
+Reusing \texttt{k} is what preserves \texttt{p}'s per-arm metadata for that slot, so the survivor inherits the annotation that the outgoing subtree held.
+The shared flows are deliberately not unmapped, since they serve \texttt{surv} now.
 
 Two of these lowerings need further comment.
 
@@ -1871,29 +1871,123 @@ Every node on a packet's path mints its own routing index independently, so drop
 The chain walk is what \cref{sec:quiesce} calls narrowing the admitted set uniformly.
 \Quiesce{} does not issue \texttt{unmap}: silenced flows' Map entries \emph{must outlive the silencing} so that buffered packets can be popped.
 \Remove{} pairs \texttt{emancipate} with \texttt{unmap} precisely because it fires after the drain, when there is no longer any in-flight traffic to preserve.
-One subtlety attends the loser arm of a \(\Strictstar\) super-node, that is, a \Quiesce{} that fires in the middle of a \Replace{}.
-There the lowering restricts the deassoc walk to loser-only flows, since \Designate{} routed the shared flows to the survivor's slot at commit time (\cref{sec:designate}), and de-associating them here would silence live traffic on the survivor.
+One subtlety attends a \Quiesce{} that fires in the middle of a \Replace, on the outgoing arm of a \(\Strictstar\).
+There the lowering restricts the deassoc walk to loser-only flows, since \Designate{} routed the shared flows to the survivor at commit time (\cref{sec:designate}), and de-associating them here would silence live traffic on the survivor.
 
-The lowering for \Designate{} matches \cref{sec:grammar}'s tree-level reading exactly: a fresh Strict-2 PIFO \texttt{sp\_v} is spawned, \ensuremath{\mathit{path}}'s previous occupant becomes its favored child (rank 1.0), and the survivor becomes its second child (rank 2.0).
-The lowering rewires \ensuremath{\mathit{path}}'s parent edge from \texttt{loser} to \texttt{sp\_v}, reusing the same parent-side index \texttt{k}; the parent's per-arm metadata for the slot is therefore preserved across \Designate{} and across the eventual \Undesignate{} that retires the loser.
-\texttt{designate(loser, surv)} is the ISA-level marker that names the favored child and records the eventual successor; a later \texttt{undesignate} swings the parent's index over to \texttt{surv} and releases \texttt{sp\_v} along with the loser subtree.
-A substrate that recognizes the same-PE invariant on \texttt{(sp\_v, loser, surv)} may coalesce the three into a single physical slot, the ``super-node'' optimization named above.
-The ISA does not require it, leaving room for substrates that prefer the literal Strict-2 form.
+\subsection{Designated survivors}\label{sec:hw-survivor}
 
-\xxx[AM]{\(\Strictstar\) needs to be done properly here, and this paragraph is the placeholder.
-\cref{sec:designate} tells the reader to read \(\Strictstar\) as \(\Strict\) and points here for the real account, so this section owes that account.
-Four things to write
-(1) What \(\Strictstar\) is: a lightweight gadget with no ranker, no scheduling transaction, and no entries naming its children, which sits beside its two subtrees rather than above them and so consumes no tree height.
-(2) Why we want it: with a literal Strict-2 wrapping, the old subtree moves down a level on the way in and the survivor moves up a level on the way out. The Strict* gadget avoids both, so \Designate{} and \Undesignate{} become pointer updates at the parent.
-(3) The three open questions: whether the gadget needs a classifier or simply pushes right and pops left-then-right; whether it needs a packet counter to know the left arm has drained, or attempts the left arm and falls through; and how a \cref{sec:edit-semantics} path lands on physical levels when a height-free gadget sits in the chain.
-(4) An equivalence argument, which \cref{sec:hw-preservation} is the place for: \cref{sec:per-form} discharges non-disruption for \Designate{} by reasoning about \(N\)'s \ensuremath{\mathit{pifo}} holding \(P_0\) entries for arm 0, and the gadget has no \ensuremath{\mathit{pifo}}, so this section has to show the gadget does what the modelled node does.
-Also to settle: whether the coalescing stays optional, as the two sentences above have it, or becomes what Rio does with the literal Strict-2 form kept as a portability fallback.}
+\cref{sec:policy-dsl} offers \(\Strictstar\) as a discipline of its own even though it schedules exactly as the 2-ary \Strict{} does.
+The difference is not in the schedule.
+It is that a \(\Strictstar\) node needs no \ensuremath{\mathit{pifo}}, and a node that needs no \ensuremath{\mathit{pifo}} needs no level.
 
-\subsection{Substrate portability}\label{sec:substrate-portability}
+% No one is thinkign about this whole paragraph. I think it can be cut.
+\paragraph{Why an ordinary \texorpdfstring{\Strict}{Strict} node needs its pifo}
 
-These mechanisms are independent of the underlying PIFO implementation.
-Our prototype uses a shift-register-based PIFO similar to the original design~\cite{Sivaraman16}, but Rio assumes only the push-in, first-out interface of \cref{sec:hierarchical}.
-Other PIFO implementations can be substituted.
+It is tempting to think that a \Strict{} node could work out its own \pop{} order on demand, by serving the highest-priority arm that is not empty.
+It cannot, and \cref{sec:nondisruption} says why.
+Ranks are frozen at \push{} time, so inverting the two priorities of \(\Strict(\mathtt{hi}{:}\,A,\ \mathtt{lo}{:}\,B)\) with \ChangeMeta{} leaves the standing backlog ordered as it was, the node's \ensuremath{\mathit{pifo}} already holding \(A\)'s entries at \(\mathtt{hi}\).
+A node that recomputed at \pop{} time would re-sort that backlog under the new priorities, which is the disturbance \cref{sec:nondisruption} rules out.
+So a \Strict{} node stores a \ensuremath{\mathit{pifo}} for the same reason \RR{} and \WFQ{} store theirs.
+
+% This is good. Worth tightening and then keeping
+A \(\Strictstar\) node is the case where that reasoning does not bite.
+Its two priorities are fixed when \Designate{} creates it and never change, since \ChangeMeta{} may not target its arms (\cref{sec:changemeta}) and nothing else disturbs it before \Undesignate{} retires it.
+With no inversion to guard against, freezing has nothing to preserve, and ``drain arm 0, then arm 1'' is the right order at every instant of the node's life.
+Its \ensuremath{\mathit{pifo}} records nothing its two arms do not already record, so it can go.
+
+\paragraph{Why dropping it is worth the trouble}
+
+A PE level holds one tree level, so sibling subtrees share a root level.
+Suppose the outgoing subtree has height two and sits on levels 5 and 6, and a survivor of height three is to replace it.
+The survivor's root belongs on level 5, beside the root it replaces, and its leaves reach level 7.
+A node that holds a \ensuremath{\mathit{pifo}} has to live somewhere, and a literal \Strict-2 wrapper would take level 5 for itself.
+That pushes the outgoing subtree down to levels 6 and 7 and puts the survivor on 6 through 8, and retiring the wrapper afterwards pulls the survivor back up.
+Two subtrees are laid out twice over, on account of a node that exists only for the length of a drain.
+
+\paragraph{The link}
+
+Every PIFO carries a \emph{designated-survivor link}, which is left null in an ordinary node.
+\texttt{designate(v, surv)} points \texttt{v}'s link at \texttt{surv}.
+The survivor is laid out beside \texttt{v} rather than beneath it, and \texttt{v}'s parent is not told: it keeps the one index it had.
+
+\emph{A \push{} reaches the survivor directly.}
+The admitting chain for one of the survivor's flows runs from the root, through the parent, into the survivor, and down to a leaf.
+\texttt{v} is not on that chain, because the \Designate{} lowering struck those flows from \texttt{v}'s Assoc.
+Every node on the chain mints one index, exactly as it would for an \Add, and the link is never consulted.
+No node classifies anything it was not classifying already, which is why the construction needs no table of its own.
+
+\emph{A \pop{} reaches the survivor only through \texttt{v}.}
+The parent spends an index on that slot and queries \texttt{v}.
+While \texttt{v} holds packets, it returns packets.
+Once \texttt{v} is empty it defers to its designated survivor, and the query passes to \texttt{surv} rather than underflowing.
+
+The parent therefore holds one index per packet in \emph{either} subtree, and spends them on \texttt{v} until \texttt{v} is dry and on \texttt{surv} thereafter.
+That is the departure order of the wrapper \Designate{} installs, in which everything buffered under arm 0 drains before anything under arm 1, and \cref{sec:wrap-nondisruption} is where that order is proved non-disruptive.
+% Not sure what the sentence above does for us
+
+% This whole discussion should be two sentences that are pushed in somewhere above.
+\paragraph{Where the survivor lives}
+
+% What. We can't write like this in a paper. It's not Hemingway.
+One definition carries the elision.
+
+\begin{quote}
+A designated survivor occupies its designator's physical position.
+\end{quote}
+
+Three things follow from it.
+First, the survivor's root lands on the PE that its designator's root sits on, which the depth-by-PE deployment convention would have given it in any case, the two roots being destined for one depth.
+Second, a model path lands on a physical level by discarding the wrappers above it, so physical depth is model depth less the number of \(\Strictstar\) nodes on the path from the root.
+\(\mathit{path} \mathbin{+\!\!+} [0]\) and \(\mathit{path} \mathbin{+\!\!+} [1]\) both name physical position \(\mathit{path}\), and the outgoing and incoming subtrees are laid out level for level against one another.
+Third, well-formedness reads the same way.
+\cref{sec:controls} asks that a node's \ensuremath{\mathit{pifo}} hold, for each child index \(i\), one entry per packet under the \(i\)-th child.
+The parent above a designated pair holds one entry per packet on either side, so the condition holds exactly when ``the subtree under index \(i\)'' means the subtree at \(i\) together with its designated survivor's.
+Under that reading the substrate satisfies \cref{sec:controls} as written, and the argument of \cref{sec:hw-preservation} carries down untouched.
+
+Two model paths naming one physical position is harmless at the ISA, whose opcodes address PIFOs by handle and never by path.
+
+\paragraph{Ending the transition}
+
+The indirection is not free.
+Once \texttt{v} has drained, every \pop{} that reaches that slot queries \texttt{v}, learns nothing, and asks again, at the tree level where the two roots sit.
+So the transition has to end rather than merely settle.
+\cref{sec:sequences} pairs \Undesignate{} with the guard \(\mathtt{isEmpty}(\mathit{path})\), and \cref{sec:hw-transaction} lowers such a guard to a blocking command in the controller queue.
+The commit sits at the head of that queue until the outgoing subtree drains, and then fires atomically.
+After it the parent's index reaches the survivor directly, and nothing in the tree records that a transition happened.
+
+\paragraph{A \texorpdfstring{\(\Strictstar\)}{Strict*} the operator wrote}
+
+An operator may put a \(\Strictstar\) in a policy of their own (\cref{sec:policy-dsl}), and \(\lceil \cdot \rceil\) has to compile it.
+It compiles to what \Designate{} builds, with \(\mathtt{layout}\) running on both arms and \texttt{designate} pointing the first arm's link at the second.
+
+\subsection{What Rio asks of a substrate}\label{sec:substrate-portability}
+
+Our substrate is deliberately unambitious; we built it because the compiler needed something to run against.
+We do not offer it as a contribution, and nothing in \cref{sec:correctness} depends on it.
+
+What we do claim is that the demands Rio makes of a substrate are few enough to state, and modest enough that an existing PIFO substrate could meet them.
+There are four.
+
+\begin{enumerate}
+\item \emph{Commits are atomic with respect to traffic.}
+A \(\delta\) that lowers to many instructions installs as a single instant.
+The tree is transiently malformed partway through a commit, and no \push{} or \pop{} may observe it in that state (\cref{sec:hw-transaction}).
+\item \emph{A slot's metadata belongs to the parent and survives a rewire.}
+Per-arm metadata is addressed by the parent's index rather than held on the child, so detaching one child at an index and attaching another leaves the metadatum standing.
+\Undesignate{} relies on this when the survivor inherits the outgoing subtree's annotation, and so does the planner when it sets an arm's metadata before the step that swings the slot (\cref{sec:planner-emits}).
+% Is the above really a big deal? If this were gone, we could just re-add the metadata
+\item \emph{Growing a node's arity seeds the new slot from the node's live state.}
+\(\mathit{init\_slot}_{D}\) (\cref{sec:compilation}) takes the parent's \emph{current} \ensuremath{\mathit{node\_state}}, so a freshly spliced \WFQ{} arm starts at the parent's live virtual time rather than at zero.
+\texttt{change\_arity} is where that happens.
+% Is the above really a big deal? I think we should make the seeding of the new slot's state an opaque thing anyway... let's discuss more.
+\item \emph{Children are addressed by stable handles.}
+Detaching one child renumbers no surviving sibling, which is what lets \Remove{} unhook an arm without re-adopting the others.
+% Is the above really a big deal? If this were gone, we could just do some renumbering. It feels like a minor convenience that you made into a hard requirement
+\end{enumerate}
+
+A substrate meeting these four can host Rio.
+The designated-survivor link of \cref{sec:hw-survivor} is not on the list, because it is an optimization rather than a requirement: a substrate without one can lower \Designate{} to a literal \Strict-2 wrapper and pay for the relayouts.
+We expect other PIFO substrates, vPIFO~\cite{vPIFO} among them, to satisfy the four and to be able to adopt the link.
 
 \subsection{Executing \(\delta\) as a transaction}\label{sec:hw-transaction}
 
@@ -1997,6 +2091,7 @@ The cursor itself is left pointing at the same physical arm it was pointing at b
 \item \textbf{\texttt{Strict}.} An arm's priority is its metadatum and lives in \(\mathit{z}.\mathit{meta}\) (\cref{sec:controls}).
 \Strict{} therefore has no per-arm bookkeeping of its own, and \texttt{init\_slot\_Strict} returns the empty tuple.
 \(M_{\Strict}\) is a dense total order such as the rationals, so that a fresh priority can always be slotted strictly between two existing ones.
+\(\Strictstar\) declares the same metadata set and the same recipes, at arity two.
 \item \textbf{\texttt{WFQ}.} The \ensuremath{\mathit{node\_state}} at a parent is the virtual time \texttt{vt}, and \texttt{init\_slot\_WFQ(vt, w) = vt}.
 A new arm therefore inherits the parent's current \texttt{vt} as its last-finish tag, while its weight \texttt{w} sits in \(\mathit{z}.\mathit{meta}\).
 Any standard WFQ tagging that derives the next packet's tag from the slot's last-finish tag and the parent's \texttt{vt}, such as the GPS-style \texttt{max(virtual\_clock, vt) + 1/w}, then places the first packet on this arm in the round that the established arms are currently in.
