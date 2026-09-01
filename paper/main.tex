@@ -1619,31 +1619,26 @@ The transition planner so far has realized what we call \emph{declarative} autho
 The operator states a starting policy \(p_1\) and a target \(p_2\), and the planner proposes a guarded sequence that achieves the change, which the operator either accepts, in which case we apply it to the running control, or declines.
 Operators may instead author \emph{imperatively}, writing their desired \(p_2\) together with a \((\varphi; \delta)^{*}\) sequence intended to reach it, possibly built from idioms (\cref{sec:idioms}).
 Imperative authoring gives the operator hands-on control over the transitionary policies the live control passes through, rather than delegating their choice to the planner.
-% We need to mention that imperative mode may allow the network operator to show the runtime exactly what they want, which may be more or less efficient than what the planner may discover
+An operator who already knows the transition they want can hand it over directly, instead of naming a destination and leaving the route to the case analysis of \cref{sec:planner-emits}.
+The sequence they write may be better confined than the one the planner would have found, since the planner may fail to see it, and it may equally be worse.
+The check below admits either, since it certifies that a sequence arrives and says nothing about what it cost.
+
 The two modes are not formally distinct.
 They produce sequences over the same grammar, discharge the same per-form checks of \cref{sec:per-form}, and are admitted by the same \ensuremath{\mathit{pol}}-level check of \cref{sec:idioms}.
+The paths in a hand-written sequence resolve against the running control rather than against the \ensuremath{\mathit{pol}} the operator wrote, which is why we echo \(\lfloor C \rfloor\) back to them (\cref{sec:interplay}).
+An operator who reads a path off their own \(p_2\) can name a different arm than they meant, and the runtime has no way to detect it.
 
-% This is interesting but not all that interesting. I say we cut this along woth the whole example. Cut until "...detect the mismatch"
-Because an imperative sequence carries \emph{paths}, those paths bind to the running representative, not to the \ensuremath{\mathit{pol}} the operator first wrote, which is exactly why we echo that representative back (\cref{sec:interplay}).
-The worked example of \cref{sec:interplay} makes the point, since there the running control realizes \(p_2'\) while the operator had written \(p_2\):
-\[
-\begin{aligned}
-p_2' &= \Strict(\mathtt{lo}{:}\,\textsf{gmail},\allowbreak\ \mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{mid}{:}\,\textsf{spotify}),\\
-p_2  &= \Strict(\mathtt{lo}{:}\,\textsf{gmail},\allowbreak\ \mathtt{mid}{:}\,\textsf{spotify},\allowbreak\ \mathtt{hi}{:}\,\textsf{zoom}).
-\end{aligned}
-\]
-An imperative edit \(\Quiesce([2])\) resolves against \(p_2'\): slot \(2\) there is \(\mathtt{mid}{:}\,\textsf{spotify}\), so \textsf{spotify} is quiesced.
-Had the operator read the path off their own \(p_2\), slot \(2\) would be \(\mathtt{hi}{:}\,\textsf{zoom}\), a different arm.
-The runtime interprets the path against what is running and has no way to detect the mismatch.
+Before committing an operator-authored sequence we run it through the \ensuremath{\mathit{pol}}-level check of \cref{sec:idioms}.
+Starting from \(\lfloor C \rfloor\), the \ensuremath{\mathit{pol}} we echoed back, we fold each \(\psem{\delta_i}\) along the sequence, and we admit it when every \(\psem{\delta_i}\) is defined on the \ensuremath{\mathit{pol}} it meets and the fold lands at some \(p_2'\) with \(p_2' \eqR p_2\).
+Idioms are expanded before the fold runs, so a sequence written with \Retire{} and \Replace{} is checked as the \(\delta\)s they stand for, and naming a run of edits buys the operator brevity rather than a weaker obligation.
+A rejection names the step that caused it, either the first \(\delta_i\) whose \(\psem{\delta_i}\) was undefined or else the final mismatch against \(p_2\).
+An operator debugging a sequence of a dozen steps needs to know which one failed, and the fold supplies it without extra work.
 
-Before committing an operator-authored sequence we run it through the \ensuremath{\mathit{pol}}-level check of \cref{sec:idioms}, folding \(\psem{\delta_i}\) from \(\lfloor C \rfloor\) and accepting only if the fold is defined everywhere and lands at \(p_2\) up to \(\eqR\).
-% Again I prefer a more fleshed-out explanation of this
-The intermediate pols it produces are not transient artifacts of the proof.
+The intermediate pols the fold produces are not transient artifacts of the proof.
 Each is a valid \ensuremath{\mathit{pol}} with an explainable scheduling semantics.
 After the first step of \Replace(\ensuremath{\mathit{path}}, \ensuremath{\mathit{survivor}})'s expansion, for instance, the intermediate \ensuremath{\mathit{pol}} holds \(\Strict(\mathit{pol}@\mathit{path},\ \mathit{survivor})\) at \ensuremath{\mathit{path}}.
 That is a temporary strict-priority node favoring the outgoing \(\mathit{pol}@\mathit{path}\) over the incoming \ensuremath{\mathit{survivor}}, and it has a readable scheduling interpretation in its own right.
 
-% I am leaving this alone, but I will point out that you sometimes say 7.1' but you now mean 8.1'
 \section{Rio Hardware Implementation}\label{sec:hardware}
 
 A PIFO tree is a clean scheduling abstraction, but instantiating one dynamically on line-rate switching hardware needs more than a fixed set of hardwired PIFOs.
@@ -2179,7 +2174,6 @@ The transient is not \(\eqR\) to \(p_2\) at all, and becomes so only once it dra
   \caption{The label-overlap walk on \(p_1 \to p_2\), with each of \(P\)'s arms labeled by its per-arm metadata. Freshly built material is shaded.}
   \label{fig:label-overlap-example}
 \end{figure*}
-% Actually I think that in panel (c) the metadata for Strict* should already be m4. That is what allows the Q(g,x) arm to receive its traffic under the correct metadata. Check the code to ensure this is actually happening right now. Then fix the figure. Debate with me if you want.
 
 Here \textsf{drive} is unchanged, \textsf{gmail} has grown into a nested \(Q\) over itself and a fresh flow \(x\), and \textsf{slack} is new.
 Neither positional strategy applies.
