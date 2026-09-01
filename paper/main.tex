@@ -1344,7 +1344,7 @@ We do not prove soundness at the IR level, but instead informally make the case 
 There are two reasons.
 First, the compilation is \emph{faithful}: each form of \(\delta\) expands to a fixed instruction sequence that, when run to completion, realizes exactly that form's effect.
 We give the translation from each \(\delta\) form to its IR instruction sequence and take its faithfulness to be uncontroversial.
-Second, our substrate runs each such sequence as a single \emph{transactional commit}: a group of IR instructions, fenced by the commit's open and close, that installs as one instant, with no \push{} or \pop{} interleaved between them (\S7.1' spells out the substrate machinery that makes this so).
+Second, our substrate runs each such sequence as a single \emph{transactional commit}: a group of IR instructions, fenced by the commit's open and close, that installs as one instant, with no \push{} or \pop{} interleaved between them (\S8.1' spells out the substrate machinery that makes this so).
 The transiently-malformed intermediate trees are therefore never observed by the network.
 That commit is precisely how the substrate \emph{realizes} the atomicity property of \cref{sec:grammar}.
 Atomicity asked for an instantaneous control replacement between two \push{}/\pop{} operations, and the commit collapses a multi-instruction lowering into one such instant.
@@ -1485,8 +1485,7 @@ The second is the more interesting question and we have not addressed it anywher
 \section{The Transition Planner}\label{sec:planner}
 
 The operator hands the runtime \(p_1\), the presently running policy, and \(p_2\), the one they now want.
-The transition planner's job is to propose a \((\varphi ; \delta)^{*}\) sequence whose \ensuremath{\mathit{pol}}-level fold takes \(p_1\) to \(p_2\) up to \(\eqR\).
-% I think it's annoying to write it like that. Why not say that it takes to some p2', s.t. p2 =R p2'
+The transition planner's job is to propose a \((\varphi ; \delta)^{*}\) sequence whose \ensuremath{\mathit{pol}}-level fold takes \(p_1\) to some \(p_2'\) with \(p_2' \eqR p_2\).
 The operator accepts or rejects the proposal; they do not author it directly.
 
 Every sequence the planner emits is safe by the per-form guarantees of \cref{sec:per-form}, aggregated across the sequence as sketched in \cref{sec:idioms}, regardless of how the planner assembled it.
@@ -1535,14 +1534,13 @@ By then the recursion has localized the difference to the deepest slot at which 
 
 Suppose
 \[
-p_1 = P(\textsf{zoom}, Q(\textsf{gmail}, \textsf{netflix}))
+p_1 = P(a, Q(b, c))
 \]
 for some scheduling disciplines \(P\) and \(Q\), and the operator requests
 \[
-p_2 = P(\textsf{zoom}, Q(\textsf{gmail}, \textsf{netflix}, \textsf{spotify})).
+p_2 = P(a, Q(b, c, d)).
 \]
 The planner has two ways to realize this, shown in \cref{fig:planner-add-vs-replace}.
-% Let's move away from this concrete example and try to stay abstract. The point is already made nicely in the figure and we don't need to flesh it out with zoom, spotify, etc
 
 \begin{figure}[t]
   \centering
@@ -1551,17 +1549,17 @@ The planner has two ways to realize this, shown in \cref{fig:planner-add-vs-repl
     \begin{tikzpicture}[baseline=(L.north), level distance=0.72cm, level 1/.style={sibling distance=0.62cm}, level 2/.style={sibling distance=0.38cm}, every node/.style={font=\scriptsize}]
     \fill[newcol!12, rounded corners=2pt] (0.92,0.3) rectangle (2.4,-1.62);
     \node (L) at (-1.35,0) {$P$}
-      child {node {$\mathit{z}$}}
+      child {node {$a$}}
       child {node {$Q$}
-        child {node {$g$}}
-        child {node {$n$}}
+        child {node {$b$}}
+        child {node {$c$}}
       };
     \node (R) at (1.45,0) {$P$}
-      child {node {$\mathit{z}$}}
+      child {node {$a$}}
       child {node {$Q$}
-        child {node {$g$}}
-        child {node {$n$}}
-        child {node {$s$}}
+        child {node {$b$}}
+        child {node {$c$}}
+        child {node {$d$}}
       };
     \node (S) at (0.05,0) {$\Strictstar$};
     \draw (S) -- (L);
@@ -1575,17 +1573,17 @@ The planner has two ways to realize this, shown in \cref{fig:planner-add-vs-repl
     \begin{tikzpicture}[baseline=(Pb.north), level distance=0.72cm, level 1/.style={sibling distance=0.9cm}, level 2/.style={sibling distance=0.5cm}, every node/.style={font=\scriptsize}]
     \fill[newcol!12, rounded corners=2pt] (0.72,-1.28) rectangle (1.18,-1.66);
     \node (Pb) {$P$}
-      child {node {$\mathit{z}$}}
+      child {node {$a$}}
       child {node {$Q$}
-        child {node {$g$}}
-        child {node {$n$}}
-        child {node {$s$}}
+        child {node {$b$}}
+        child {node {$c$}}
+        child {node {$d$}}
       };
     \end{tikzpicture}
     \caption{\Add{} at \(Q\).}
     \label{fig:planner-add}
   \end{subfigure}
-  \caption{Two ways to add \(s\) (\textsf{spotify}): (a) \Replace{} wraps the whole running tree under a fresh \(\Strictstar\) beside a freshly-compiled \(p_2\); (b) \Add{} splices the one new arm into \(Q\) in place. Freshly built material is shaded.}
+  \caption{Two ways to add \(d\): (a) \Replace{} wraps the whole running tree under a fresh \(\Strictstar\) beside a freshly-compiled \(p_2\); (b) \Add{} splices the one new arm into \(Q\) in place. Freshly built material is shaded.}
   \label{fig:planner-add-vs-replace}
 \end{figure}
 
@@ -1593,8 +1591,8 @@ Option (a) wraps the entire running tree under a fresh \(\Strictstar\) and grows
 Every node sits inside the wrap, and the original \(p_1\), with all its in-flight packets, drains on the high-priority arm.
 The footprint is the whole tree.
 
-Option (b) extends \(Q\)'s arity by one and attaches a freshly compiled \textsf{spotify} leaf as the third arm.
-The \(P\) and \(Q\) ancestors have only their \ensuremath{\mathit{z}} extended, with no packet movement and no state reset, and the \textsf{zoom} leaf is left undisturbed.
+Option (b) extends \(Q\)'s arity by one and attaches a freshly compiled \(d\) leaf as the third arm.
+The \(P\) and \(Q\) ancestors have only their \ensuremath{\mathit{z}} extended, with no packet movement and no state reset, and the \(a\) leaf is left undisturbed.
 The footprint is the \(Q\) node and its single ancestor.
 
 Much of the tree is left alone under option (b).
@@ -1660,8 +1658,8 @@ As a result, existing PIFO-based substrates support only stop-the-world policy u
 
 \subsection{Transactional Update and Hardware Component Support}\label{sec:hw-transactional}
 
-\emph{Vocabulary bridge to \S7.1' (temporary, until the two subsections are reconciled).}
-The ``flow-to-child mapping'', ``next-hop mapping'', and ``match-action tables'' of this subsection are the tables that \S7.1''s \texttt{map} / \texttt{assoc} / \texttt{adopt} opcodes write to; the ``virtual PIFOs'' of this subsection are the PIFOs of \S7.1', one per PIFO-tree node.
+\emph{Vocabulary bridge to \S8.1' (temporary, until the two subsections are reconciled).}
+The ``flow-to-child mapping'', ``next-hop mapping'', and ``match-action tables'' of this subsection are the tables that the \texttt{map} / \texttt{assoc} / \texttt{adopt} opcodes of \S8.1' write to; the ``virtual PIFOs'' of this subsection are the PIFOs of \S8.1', one per PIFO-tree node.
 
 Rio enables online policy update by packaging multiple hardware state updates into a single ``commit'' and making them visible atomically in hardware: every enqueue or dequeue request observes either the whole commit applied, or none of it.
 Each \(\delta\) (\cref{sec:delta-grammar}) lowers to one \texttt{commit} under this abstraction.
@@ -1681,8 +1679,8 @@ Instead, policy-table updates add metadata for newly admitted flows, whose packe
 Because these updates do not change the interpretation of existing live packets, Rio applies them incrementally rather than through a full transactional table swap.
 This keeps the hardware cost low while still preserving the atomicity needed for observable scheduling behavior.
 
-\subsection*{7.1' The commit model and the ISA}
-\addcontentsline{toc}{subsection}{7.1' The commit model and the ISA}
+\subsection*{8.1' The commit model and the ISA}
+\addcontentsline{toc}{subsection}{8.1' The commit model and the ISA}
 
 \emph{Vocabulary bridge from \cref{sec:hw-transactional} (temporary, until the two subsections are reconciled).}
 \cref{sec:hw-transactional} speaks in ``flow-to-child mapping'', ``next-hop mapping'', ``match-action tables'', and ``virtual PIFOs''.
@@ -1774,7 +1772,7 @@ We fix a handful of reading conventions.
 We identify a tree position with the PIFO that lives there.
 Live queries against a node \texttt{v} (its \texttt{arity(v)}, \texttt{discipline(v)}, etc.) are read off the tree at issue time.
 When an opcode names an unmentioned parameter at \texttt{v} (e.g., \texttt{set\_policy}'s discipline, \texttt{change\_arity}'s arity), it is the live value at \texttt{v}.
-\texttt{spawn}'s \texttt{pe} argument is similarly elided: it is \texttt{pe(pos(v))}, drawn from \S7.1''s deployment convention.
+\texttt{spawn}'s \texttt{pe} argument is similarly elided: it is \texttt{pe(pos(v))}, drawn from the deployment convention of \S8.1'.
 
 Alongside the opcodes, the listings use a small codegen vocabulary:
 \begin{itemize}
