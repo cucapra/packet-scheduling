@@ -84,13 +84,17 @@ The packet-visible mapping commands are transactional:
 - `io.commitReady` is low while the newly active banks are copied back into the backup banks. Another mapper update or commit waits until it returns high. Packet traffic continues during this synchronization.
 - Brain policy and brain-state commands remain immediate and are intentionally outside the mapper transaction.
 
-The experiment runner has two reconfiguration modes:
+The experiment tools use explicit compiler and simulator boundaries:
 
-- `transaction_package` is direct: its exact five-field controller commands are queued in order at the configured
-  cycle, and the package must end in one `CommitMapper`.
-- Every declarative `policy_change` uses `full_transitive`: allocate a fresh physical copy of the complete tree,
-  configure it while unused, transactionally redirect every input flow, set `new-root miss -> output`, and set
-  `old-root miss -> new-root`. Dequeue requests remain anchored at the old root while its tokens drain.
+- `pifo_tree_compiler.py` is the only component that understands a declarative tree move. It emits an initial package
+  plus a `full_transitive` direct package that allocates a fresh complete tree, redirects every input, and chains the
+  drained old root to the new root.
+- `pifo_simulator.py` accepts that direct transaction timeline and a separate traffic-pattern timeline. It supports
+  multiple packages at different cycles and never interprets trees or policies.
+- `pifo_bandwidth_figure.py` and `pifo_packet_scatter_figure.py` render independently. Their data and resources stay
+  in separate directories; only result/event loading and low-level drawing helpers are shared in
+  `pifo_figures/common.py`.
+- `pifo_experiment_figures.py` invokes the compiler, simulator, and both per-figure CLIs before verification.
 
 The request simulator records package start, commit acceptance, synchronization finish, and—only for full-transitive
 changes—the old-root drain cycle. It briefly gates new request admission at the commit edge so the per-engine tokens

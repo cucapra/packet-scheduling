@@ -41,21 +41,153 @@ sbt 'runMain rio.sim.RequestSimulatorCli \
 
 The result CSV contains arrival, admission, completion, admission-delay, and total-sojourn cycles for each request.
 
-## Reconfiguration experiment figures
+## Reconfiguration workflow
 
-`hw/python/pifo_experiment_figures.py` generates the workload, controller instructions, RTL results, and both requested
-figure styles. The checked example starts with RR and changes to SP:
+The scripts have four narrow layers:
+
+1. `pifo_tree_compiler.py` converts a declarative full-tree move into direct controller transactions.
+2. `pifo_simulator.py` accepts exactly two model files—a direct transaction timeline and a traffic-pattern timeline—and
+   produces the raw request, completion, and event CSVs.
+3. `pifo_bandwidth_figure.py` and `pifo_packet_scatter_figure.py` independently derive and render one figure each.
+   Shared result/event parsing and drawing primitives live in `pifo_figures/common.py`; figure-specific data and
+   rendering stay in `pifo_figures/bandwidth.py` and `pifo_figures/packet_scatter.py`.
+4. `pifo_experiment_figures.py` invokes the compiler, simulator, both figure CLIs, and optional verification.
+
+The checked example starts with RR and changes to SP:
 
 ```bash
 python3 hw/python/pifo_experiment_figures.py validate experiments/rr-to-sp.json
 python3 hw/python/pifo_experiment_figures.py run --config experiments/rr-to-sp.json
 ```
 
-The output directory contains the effective JSON, `initial-tree.commands`, `reconfiguration.commands`, request and
-completion CSVs, `reconfiguration-events.csv`, aggregate/per-flow bandwidth data and figure, and the full packet
-input/output scatter data and figure. Matplotlib is preferred; SVG plus FFmpeg is used automatically when Matplotlib
-is unavailable. The scatter uses one shared 1:1 range for its input/output axes, keeps `y = x` at 45 degrees, and
-draws start, commit, and old-tree-drain lines on both axes.
+The output directory exposes every boundary: `tree-move.json`, `traffic.json`, compiled `transactions.txt`, request and
+completion CSVs, and `reconfiguration-events.csv`. Each figure owns a separate artifact directory:
+
+- `figures/bandwidth/{data.csv,figure.svg,figure.png}`
+- `figures/packet-scatter/{data.csv,figure.svg,figure.png}`
+
+Matplotlib is preferred; SVG plus FFmpeg is used automatically when Matplotlib is unavailable. The scatter uses one
+shared 1:1 range for its input/output axes, keeps `y = x` at 45 degrees, and draws start, commit, and old-tree-drain
+lines on both axes.
+
+### Per-figure CLIs
+
+Regenerate only the bandwidth figure and its aggregate/per-flow data:
+
+```bash
+python3 hw/python/pifo_bandwidth_figure.py \
+  --results experiment-results/rr-to-sp/request-results.csv \
+  --events experiment-results/rr-to-sp/reconfiguration-events.csv \
+  --output-dir experiment-results/rr-to-sp/figures/bandwidth \
+  --link-bytes-per-cycle 64 \
+  --window-cycles 320 --sample-cycles 8 --flow-labels 1:A,2:B
+```
+
+The bandwidth series is a centered, normalized Hann convolution of packet-completion bytes. `--window-cycles`
+sets the averaging timescale (larger is smoother), while `--sample-cycles` controls only how often that continuous
+estimate is written and drawn. In an experiment JSON file, use the equivalent plot controls:
+
+```json
+"plot": {
+  "bandwidth_window_cycles": 320,
+  "bandwidth_sample_cycles": 8
+}
+```
+
+Regenerate only the packet timing data and 1:1 scatter figure:
+
+```bash
+python3 hw/python/pifo_packet_scatter_figure.py \
+  --results experiment-results/rr-to-sp/request-results.csv \
+  --events experiment-results/rr-to-sp/reconfiguration-events.csv \
+  --output-dir experiment-results/rr-to-sp/figures/packet-scatter \
+  --flow-labels 1:A,2:B
+```
+
+### Two-file simulator CLI
+
+Run an already-compiled workload without involving tree logic:
+
+```bash
+python3 hw/python/pifo_simulator.py \
+  --transactions experiment-results/rr-to-sp/transactions.txt \
+  --traffic experiment-results/rr-to-sp/traffic.json \
+  --output-dir /tmp/pifo-run \
+  --queue-depth 256 --link-bytes-per-cycle 64 --max-cycles 100000
+```
+
+The traffic file contains independently configurable patterns over time. Patterns may overlap; generated packets are
+merged by cycle and assigned stable request IDs:
+
+```json
+{
+  "schema": "pifo-traffic-v1",
+  "seed": 7,
+  "patterns": [
+    {
+      "name": "warmup",
+      "start_cycle": 0,
+      "flows": [1, 2],
+      "packets_per_flow": 20,
+      "packet_rate": {
+        "distribution": "constant",
+        "unit": "packets_per_cycle_per_flow",
+        "value": 0.1
+      },
+      "packet_size_bytes": {"distribution": "constant", "value": 256}
+    },
+    {
+      "name": "load-step",
+      "start_cycle": 200,
+      "flows": [1, 2],
+      "packets_per_flow": 40,
+      "packet_rate": {
+        "distribution": "uniform",
+        "unit": "packets_per_cycle_per_flow",
+        "min": 0.15,
+        "max": 0.25
+      },
+      "packet_size_bytes": {
+        "distribution": "normal",
+        "mean": 512,
+        "stddev": 64,
+        "min": 64,
+        "max": 1500
+      }
+    }
+  ]
+}
+```
+
+The transaction timeline is deliberately not JSON: it is a compact, line-oriented stream that both humans and the
+Scala simulator consume directly. Its first line defines hardware shape and the root. Every later line is one control
+instruction tagged with `at=init` or an integer cycle and a transaction name:
+
+```text
+schema=pifo-transactions-v1 rootEngine=1 rootVPifoId=10 numEngines=2 numVPifos=32 maxPacketPriority=65536 fifoDepth=32 prefetchBufferDepth=2
+at=init name=initial-tree mode=direct command=UpdateBrainEngine engineId=1 vPifoId=10 flowId=0 data=1
+at=init name=initial-tree mode=direct command=CommitMapper engineId=1 vPifoId=0 flowId=0 data=0
+at=600 name=policy-change mode=full_transitive before=RR after=SP drainRoot=1:10 command=UpdateBrainEngine engineId=1 vPifoId=11 flowId=0 data=2
+at=600 name=policy-change mode=full_transitive before=RR after=SP drainRoot=1:10 command=CommitMapper engineId=1 vPifoId=0 flowId=0 data=0
+```
+
+Lines with the same `at` and `name` form one contiguous package, which must end with exactly one `CommitMapper`.
+Multiple timed packages are supported and must be ordered by cycle. `mode`, labels, and `drainRoot` are event metadata;
+the simulator executes only the direct `command` fields.
+
+### Tree-move compiler CLI
+
+The compiler is the only layer that understands trees, policies, full-tree copying, or miss rewrites:
+
+```bash
+python3 hw/python/pifo_tree_compiler.py \
+  --input experiment-results/rr-to-sp/tree-move.json \
+  --output /tmp/transactions.txt
+```
+
+Its `pifo-tree-move-v1` input contains `hardware`, `old_tree`, and one declarative `move`. The output is the exact direct
+timeline above: an initial-tree package followed by the compiled full-transitive package. The simulator therefore has
+no implicit tree-to-command translation.
 
 ### Traffic and policy-change format
 
@@ -67,25 +199,25 @@ The compact policy-change form is:
   "seed": 7,
   "traffic": {
     "flows": [1, 2],
-    "packets_per_flow": 80,
+    "packets_per_flow": 240,
     "start_cycle": 0,
     "packet_rate": {
       "distribution": "uniform",
       "unit": "packets_per_cycle_per_flow",
-      "min": 0.1,
-      "max": 0.15
+      "min": 0.18,
+      "max": 0.24
     },
     "packet_size_bytes": {
       "distribution": "normal",
-      "mean": 256,
-      "stddev": 64,
+      "mean": 128,
+      "stddev": 24,
       "min": 64,
-      "max": 512
+      "max": 192
     }
   },
   "reconfiguration": {
     "type": "policy_change",
-    "cycle": 320,
+    "cycle": 600,
     "before": "RR",
     "after": "SP",
     "strict_priorities": {"1": 1, "2": 32769}
@@ -93,7 +225,7 @@ The compact policy-change form is:
 }
 ```
 
-Every non-direct `policy_change` is forced to `full_transitive`; specifying any other `mode` is rejected. The runner
+Every `policy_change` is forced to `full_transitive`; specifying any other `mode` is rejected. The tree compiler
 creates an unused copy of every node in the old tree, configures the new brains, stages new per-flow input and
 port-qualified output mappings, maps the new root's miss to output, maps the old root's miss to the new root, and then
 emits `CommitMapper`. Root dequeue requests continue to target the old physical root. Packets accepted before commit
@@ -142,37 +274,12 @@ Packet rates must also set `"unit": "packets_per_cycle_per_flow"`. Normal sample
 sizes are rounded to positive bytes. Rate and size use separate seeded random streams. Lower SP values run first, and
 priority zero is rejected.
 
-### Direct transaction packages
+### Direct transaction semantics
 
-Use `transaction_package` when the experiment already has exact controller instructions. The package is not expanded,
-rewritten, or interpreted as a policy change; its commands are fed to the hardware control queue in listed order at
-`cycle`. It must end with exactly one `CommitMapper`:
-
-```json
-"reconfiguration": {
-  "type": "transaction_package",
-  "cycle": 320,
-  "name": "manual-change",
-  "before_label": "RR",
-  "after_label": "SP",
-  "commands": [
-    {"command": "UpdateBrainFlowState", "engineId": 1, "vPifoId": 10, "flowId": 33, "data": 1},
-    {"command": "UpdateBrainFlowState", "engineId": 1, "vPifoId": 10, "flowId": 34, "data": 32769},
-    {"command": "UpdateBrainEngine", "engineId": 1, "vPifoId": 10, "flowId": 0, "data": 2},
-    {"command": "CommitMapper", "engineId": 1, "vPifoId": 0, "flowId": 0, "data": 0}
-  ]
-}
-```
-
-Each object translates literally to one controller line:
-
-```text
-command=UpdateBrainFlowState engineId=1 vPifoId=10 flowId=33 data=1
-```
-
-There is one mesh-wide ready/valid configuration ingress, so at most one of these lines can be accepted on each clock.
-Commands for different engines are still serialized. A package containing `N` objects therefore has `N` instruction
-acceptances (and can take longer if the ingress is backpressured); the small queue only buffers accepted commands.
+To bypass compilation, author or edit `pifo-transactions-v1` directly and pass it to `pifo_simulator.py`. Nothing in a
+direct package is expanded, rewritten, or interpreted as a policy. There is one mesh-wide ready/valid configuration
+ingress, so commands for different engines are still serialized and at most one line is accepted per clock. A package
+containing `N` command lines therefore has `N` instruction acceptances and can take longer under backpressure.
 
 `UpdateMapperPre` uses `vPifoId` as the raw input flow and `data` as the destination vPIFO.
 `UpdateMapperPost` uses `(vPifoId, flowId)` as its key and `data` as the packed next-hop `(engine, vPifo)`.
@@ -186,7 +293,7 @@ A full-transitive run records, for example:
 
 ```csv
 event,name,mode,from_policy,to_policy,instruction_count,scheduled_cycle,start_cycle,commit_cycle,finish_cycle,drain_cycle,drain_duration_cycles
-reconfiguration,policy-change,full_transitive,RR,SP,10,320,320,330,4429,939,609
+reconfiguration,policy-change,full_transitive,RR,SP,10,600,600,610,4709,2429,1819
 ```
 
 - `start_cycle`: package feeding starts.
@@ -246,18 +353,9 @@ at cycle 8464. It observed
 new-tree outputs, zero late old-tree outputs, and zero SP priority reversals. A packet admitted on the commit edge is
 classified as old, matching the mapper-bank publication contract.
 
-To replot an existing run:
-
-```bash
-python3 hw/python/pifo_experiment_figures.py plot \
-  --results experiment-results/rr-to-sp/request-results.csv \
-  --events experiment-results/rr-to-sp/reconfiguration-events.csv \
-  --output-dir experiment-results/rr-to-sp
-```
-
-The Scala CLI accepts the generated streams directly with `--control-file`, `--scheduled-transaction`,
-`--transaction-cycle`, `--transaction-mode`, `--transaction-drain-root`, and `--transaction-event-output`. Run
-`sbt 'runMain rio.sim.RequestSimulatorCli --help'` for the complete syntax. The live control socket remains available
+The Python simulator converts only the traffic patterns to canonical request CSV. It passes that CSV and the unchanged
+direct timeline to Scala with `--trace` and `--transactions`; the old bundle of single-transaction flags is gone. Run
+`sbt 'runMain rio.sim.RequestSimulatorCli --help'` for the low-level syntax. The live control socket remains available
 at `/tmp/rio-control.sock` unless disabled.
 
 ## Live request feeder

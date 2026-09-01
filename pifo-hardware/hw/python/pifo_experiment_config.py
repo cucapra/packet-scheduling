@@ -14,15 +14,6 @@ from request_trace import Request
 
 PACKET_RATE_UNIT = "packets_per_cycle_per_flow"
 SUPPORTED_POLICIES = {"RR", "WFQ", "SP", "FIFO"}
-SUPPORTED_CONTROL_COMMANDS = {
-    "UpdateMapperPre",
-    "UpdateMapperPost",
-    "UpdateMapperNonExist",
-    "CommitMapper",
-    "UpdateBrainEngine",
-    "UpdateBrainState",
-    "UpdateBrainFlowState",
-}
 
 
 @dataclass(frozen=True)
@@ -124,32 +115,6 @@ class TrafficConfig:
 
 
 @dataclass(frozen=True)
-class ControllerCommandConfig:
-    command: str
-    engine_id: int
-    vpifo_id: int
-    flow_id: int
-    data: int
-
-    def __post_init__(self) -> None:
-        if self.command not in SUPPORTED_CONTROL_COMMANDS:
-            raise ValueError(f"unsupported controller command {self.command!r}")
-        if self.engine_id <= 0:
-            raise ValueError("controller command engineId must be positive")
-        if self.vpifo_id < 0 or self.flow_id < 0 or self.data < 0:
-            raise ValueError("controller command numeric fields must be non-negative")
-
-    def to_dict(self) -> dict[str, object]:
-        return {
-            "command": self.command,
-            "engineId": self.engine_id,
-            "vPifoId": self.vpifo_id,
-            "flowId": self.flow_id,
-            "data": self.data,
-        }
-
-
-@dataclass(frozen=True)
 class TreeNodeConfig:
     engine_id: int
     vpifo_id: int
@@ -236,32 +201,83 @@ class PolicyChangeConfig:
         return "full_transitive"
 
 
-@dataclass(frozen=True)
-class DirectTransactionConfig:
-    cycle: int
-    name: str
-    before_label: str
-    after_label: str
-    commands: tuple[ControllerCommandConfig, ...]
-
-    def __post_init__(self) -> None:
-        if self.cycle < 0:
-            raise ValueError("reconfiguration.cycle must be non-negative")
-        if not self.name:
-            raise ValueError("reconfiguration.name must not be empty")
-        commit_indexes = [
-            index
-            for index, command in enumerate(self.commands)
-            if command.command == "CommitMapper"
-        ]
-        if commit_indexes != [len(self.commands) - 1]:
+def validate_tree_move(
+    tree: InitialTreeConfig,
+    change: PolicyChangeConfig,
+    num_engines: int,
+    num_vpifos: int,
+    max_packet_priority: int,
+) -> None:
+    flow_ids = set(tree.flow_paths)
+    if any(flow_id >= num_vpifos - 1 for flow_id in flow_ids):
+        raise ValueError(
+            "tree flow IDs must be below num_vpifos - 1; "
+            "the highest ID is reserved for empty-PIFO output"
+        )
+    physical_nodes: set[tuple[int, int]] = set()
+    for name, node in tree.nodes.items():
+        if node.engine_id > num_engines:
+            raise ValueError(f"tree.nodes.{name}.engine_id is out of range")
+        if node.vpifo_id >= num_vpifos - 1:
             raise ValueError(
-                "transaction package must end with exactly one CommitMapper"
+                f"tree.nodes.{name}.vpifo_id must be below num_vpifos - 1"
             )
+        physical = (node.engine_id, node.vpifo_id)
+        if physical in physical_nodes:
+            raise ValueError(
+                f"tree has duplicate physical node {node.engine_id}:{node.vpifo_id}"
+            )
+        physical_nodes.add(physical)
+        _validate_node_state(tree, name, node.policy, node.flow_state, max_packet_priority)
 
-    @property
-    def mode(self) -> str:
-        return "direct"
+    unknown_changes = set(change.changes).difference(tree.nodes)
+    if unknown_changes:
+        raise ValueError(
+            "move.changes contains unknown nodes: "
+            + ",".join(sorted(unknown_changes))
+        )
+    for name, node_change in change.changes.items():
+        merged_state = dict(tree.nodes[name].flow_state)
+        merged_state.update(node_change.flow_state)
+        _validate_node_state(
+            tree, name, node_change.policy, merged_state, max_packet_priority
+        )
+
+
+def _validate_node_state(
+    tree: InitialTreeConfig,
+    node_name: str,
+    policy: str,
+    flow_state: Mapping[int, int],
+    max_packet_priority: int,
+) -> None:
+    node_flows = {
+        flow_id for flow_id, path in tree.flow_paths.items() if node_name in path
+    }
+    unknown = set(flow_state).difference(node_flows)
+    if unknown:
+        raise ValueError(
+            f"flow_state for node {node_name!r} contains flows not on that node: "
+            + ",".join(map(str, sorted(unknown)))
+        )
+    if any(state >= 2**32 for state in flow_state.values()):
+        raise ValueError("flow-state values must fit in 32 bits")
+    if policy == "SP":
+        missing = node_flows.difference(flow_state)
+        if missing:
+            raise ValueError(
+                f"SP node {node_name!r} is missing flow_state for flows: "
+                + ",".join(map(str, sorted(missing)))
+            )
+        if any(
+            flow_state[flow_id] <= 0
+            or flow_state[flow_id] >= max_packet_priority
+            for flow_id in node_flows
+        ):
+            raise ValueError(
+                f"SP node {node_name!r} priorities must be in "
+                f"[1, {max_packet_priority - 1}]"
+            )
 
 
 @dataclass(frozen=True)
@@ -304,13 +320,21 @@ class SimulationConfig:
 
 @dataclass(frozen=True)
 class PlotConfig:
-    bandwidth_bin_cycles: int = 64
+    bandwidth_window_cycles: int = 256
+    bandwidth_sample_cycles: int = 8
     flow_labels: Mapping[int, str] | None = None
     dpi: int = 180
 
     def __post_init__(self) -> None:
-        if self.bandwidth_bin_cycles <= 0:
-            raise ValueError("plot.bandwidth_bin_cycles must be positive")
+        if self.bandwidth_window_cycles < 3:
+            raise ValueError("plot.bandwidth_window_cycles must be at least 3")
+        if self.bandwidth_sample_cycles <= 0:
+            raise ValueError("plot.bandwidth_sample_cycles must be positive")
+        if self.bandwidth_sample_cycles > self.bandwidth_window_cycles:
+            raise ValueError(
+                "plot.bandwidth_sample_cycles cannot exceed "
+                "plot.bandwidth_window_cycles"
+            )
         if self.dpi <= 0:
             raise ValueError("plot.dpi must be positive")
 
@@ -340,7 +364,7 @@ class ExperimentConfig:
     seed: int
     traffic: TrafficConfig
     initial_tree: InitialTreeConfig
-    reconfiguration: PolicyChangeConfig | DirectTransactionConfig
+    reconfiguration: PolicyChangeConfig
     simulation: SimulationConfig
     plot: PlotConfig
     verification: PhaseVerificationConfig | None = None
@@ -361,48 +385,14 @@ class ExperimentConfig:
             if extra:
                 details.append("unknown " + ",".join(map(str, extra)))
             raise ValueError("initial_tree.flow_paths: " + "; ".join(details))
-        if any(flow_id >= self.simulation.num_vpifos - 1 for flow_id in traffic_flows):
-            raise ValueError(
-                "traffic flow IDs must be below simulation.num_vpifos - 1; "
-                "the highest ID is reserved for empty-PIFO output"
-            )
-        physical_nodes: set[tuple[int, int]] = set()
-        for name, node in self.initial_tree.nodes.items():
-            if node.engine_id > self.simulation.num_engines:
-                raise ValueError(f"initial_tree.nodes.{name}.engine_id is out of range")
-            if node.vpifo_id >= self.simulation.num_vpifos - 1:
-                raise ValueError(
-                    f"initial_tree.nodes.{name}.vpifo_id must be below "
-                    "simulation.num_vpifos - 1"
-                )
-            physical = (node.engine_id, node.vpifo_id)
-            if physical in physical_nodes:
-                raise ValueError(
-                    f"initial_tree has duplicate physical node {node.engine_id}:{node.vpifo_id}"
-                )
-            physical_nodes.add(physical)
-            self._validate_node_state(name, node.policy, node.flow_state)
-        if isinstance(self.reconfiguration, PolicyChangeConfig):
-            unknown_changes = set(self.reconfiguration.changes).difference(
-                self.initial_tree.nodes
-            )
-            if unknown_changes:
-                raise ValueError(
-                    "reconfiguration.changes contains unknown nodes: "
-                    + ",".join(sorted(unknown_changes))
-                )
-            for name, change in self.reconfiguration.changes.items():
-                old_node = self.initial_tree.nodes[name]
-                merged_state = dict(old_node.flow_state)
-                merged_state.update(change.flow_state)
-                self._validate_node_state(name, change.policy, merged_state)
-        else:
-            self._validate_direct_commands(self.reconfiguration.commands)
+        validate_tree_move(
+            self.initial_tree,
+            self.reconfiguration,
+            self.simulation.num_engines,
+            self.simulation.num_vpifos,
+            self.simulation.max_packet_priority,
+        )
         if self.verification is not None:
-            if not isinstance(self.reconfiguration, PolicyChangeConfig):
-                raise ValueError(
-                    "phase verification requires a declarative policy_change"
-                )
             root_name = self.initial_tree.root
             old_root = self.initial_tree.nodes[root_name]
             new_root = self.reconfiguration.changes.get(root_name)
@@ -418,70 +408,14 @@ class ExperimentConfig:
                 + ",".join(map(str, sorted(unknown_labels)))
             )
 
-    def _validate_node_state(
-        self, node_name: str, policy: str, flow_state: Mapping[int, int]
-    ) -> None:
-        node_flows = {
-            flow_id
-            for flow_id, path in self.initial_tree.flow_paths.items()
-            if node_name in path
-        }
-        unknown = set(flow_state).difference(node_flows)
-        if unknown:
-            raise ValueError(
-                f"flow_state for node {node_name!r} contains flows not on that node: "
-                + ",".join(map(str, sorted(unknown)))
-            )
-        if any(state >= 2**32 for state in flow_state.values()):
-            raise ValueError("flow-state values must fit in 32 bits")
-        if policy == "SP":
-            missing = node_flows.difference(flow_state)
-            if missing:
-                raise ValueError(
-                    f"SP node {node_name!r} is missing flow_state for flows: "
-                    + ",".join(map(str, sorted(missing)))
-                )
-            if any(
-                flow_state[flow_id] <= 0
-                or flow_state[flow_id] >= self.simulation.max_packet_priority
-                for flow_id in node_flows
-            ):
-                raise ValueError(
-                    f"SP node {node_name!r} priorities must be in "
-                    f"[1, {self.simulation.max_packet_priority - 1}]"
-                )
-
-    def _validate_direct_commands(
-        self, commands: tuple[ControllerCommandConfig, ...]
-    ) -> None:
-        engine_width = self.simulation.num_engines.bit_length()
-        vpifo_width = (self.simulation.num_vpifos - 1).bit_length()
-        max_flow_id = 1 << (engine_width + vpifo_width)
-        for index, command in enumerate(commands):
-            location = f"reconfiguration.commands[{index}]"
-            if command.engine_id > self.simulation.num_engines:
-                raise ValueError(f"{location}.engineId is out of range")
-            if command.vpifo_id >= self.simulation.num_vpifos:
-                raise ValueError(f"{location}.vPifoId is out of range")
-            if command.flow_id >= max_flow_id:
-                raise ValueError(f"{location}.flowId does not fit hardware width")
-            if command.data >= 2**32:
-                raise ValueError(f"{location}.data does not fit in 32 bits")
-
     def to_dict(self) -> dict[str, object]:
         labels = self.plot.flow_labels or {}
         result: dict[str, object] = {
             "output_dir": str(self.output_dir),
             "seed": self.seed,
-            "traffic": {
-                "flows": list(self.traffic.flow_ids),
-                "packets_per_flow": self.traffic.packets_per_flow,
-                "start_cycle": self.traffic.start_cycle,
-                "packet_rate": self.traffic.packet_rate.to_dict(),
-                "packet_size_bytes": self.traffic.packet_size_bytes.to_dict(),
-            },
-            "initial_tree": _tree_to_dict(self.initial_tree),
-            "reconfiguration": _reconfiguration_to_dict(self.reconfiguration),
+            "traffic": traffic_to_dict(self.traffic),
+            "initial_tree": tree_to_dict(self.initial_tree),
+            "reconfiguration": reconfiguration_to_dict(self.reconfiguration),
             "simulation": {
                 "link_bytes_per_cycle": self.simulation.link_bytes_per_cycle,
                 "queue_depth": self.simulation.queue_depth,
@@ -493,7 +427,8 @@ class ExperimentConfig:
                 "prefetch_buffer_depth": self.simulation.prefetch_buffer_depth,
             },
             "plot": {
-                "bandwidth_bin_cycles": self.plot.bandwidth_bin_cycles,
+                "bandwidth_window_cycles": self.plot.bandwidth_window_cycles,
+                "bandwidth_sample_cycles": self.plot.bandwidth_sample_cycles,
                 "flow_labels": {
                     str(flow_id): label
                     for flow_id, label in sorted(labels.items())
@@ -515,7 +450,7 @@ class ExperimentConfig:
         return result
 
 
-def _tree_to_dict(tree: InitialTreeConfig) -> dict[str, object]:
+def tree_to_dict(tree: InitialTreeConfig) -> dict[str, object]:
     return {
         "root": tree.root,
         "nodes": {
@@ -537,36 +472,36 @@ def _tree_to_dict(tree: InitialTreeConfig) -> dict[str, object]:
     }
 
 
-def _reconfiguration_to_dict(
-    reconfiguration: PolicyChangeConfig | DirectTransactionConfig,
-) -> dict[str, object]:
-    if isinstance(reconfiguration, PolicyChangeConfig):
-        return {
-            "type": "policy_change",
-            "mode": "full_transitive",
-            "cycle": reconfiguration.cycle,
-            "name": reconfiguration.name,
-            "before_label": reconfiguration.before_label,
-            "after_label": reconfiguration.after_label,
-            "changes": {
-                name: {
-                    "policy": change.policy,
-                    "flow_state": {
-                        str(flow_id): state
-                        for flow_id, state in sorted(change.flow_state.items())
-                    },
-                }
-                for name, change in reconfiguration.changes.items()
-            },
-        }
+def traffic_to_dict(traffic: TrafficConfig) -> dict[str, object]:
     return {
-        "type": "transaction_package",
-        "mode": "direct",
+        "flows": list(traffic.flow_ids),
+        "packets_per_flow": traffic.packets_per_flow,
+        "start_cycle": traffic.start_cycle,
+        "packet_rate": traffic.packet_rate.to_dict(),
+        "packet_size_bytes": traffic.packet_size_bytes.to_dict(),
+    }
+
+
+def reconfiguration_to_dict(
+    reconfiguration: PolicyChangeConfig,
+) -> dict[str, object]:
+    return {
+        "type": "policy_change",
+        "mode": "full_transitive",
         "cycle": reconfiguration.cycle,
         "name": reconfiguration.name,
         "before_label": reconfiguration.before_label,
         "after_label": reconfiguration.after_label,
-        "commands": [command.to_dict() for command in reconfiguration.commands],
+        "changes": {
+            name: {
+                "policy": change.policy,
+                "flow_state": {
+                    str(flow_id): state
+                    for flow_id, state in sorted(change.flow_state.items())
+                },
+            }
+            for name, change in reconfiguration.changes.items()
+        },
     }
 
 
@@ -744,8 +679,8 @@ def load_experiment_config(
         reconfiguration_raw, reconfiguration_location, legacy_change
     )
     if "initial_tree" in root:
-        initial_tree = _parse_initial_tree(
-            _required_object(root, "initial_tree", "config"), traffic.flow_ids
+        initial_tree = parse_tree_config(
+            _required_object(root, "initial_tree", "config"), "initial_tree"
         )
     else:
         initial_state: Mapping[int, int] = {}
@@ -770,7 +705,16 @@ def load_experiment_config(
     )
 
     plot_raw = _object(root.get("plot", {}), "plot")
-    _only_keys(plot_raw, {"bandwidth_bin_cycles", "flow_labels", "dpi"}, "plot")
+    _only_keys(
+        plot_raw,
+        {
+            "bandwidth_window_cycles",
+            "bandwidth_sample_cycles",
+            "flow_labels",
+            "dpi",
+        },
+        "plot",
+    )
     labels_raw = _object(plot_raw.get("flow_labels", {}), "plot.flow_labels")
     labels: dict[int, str] = {}
     for raw_flow_id, raw_label in labels_raw.items():
@@ -782,9 +726,13 @@ def load_experiment_config(
             ) from error
         labels[flow_id] = _string(raw_label, f"plot.flow_labels.{raw_flow_id}")
     plot = PlotConfig(
-        bandwidth_bin_cycles=_integer(
-            plot_raw.get("bandwidth_bin_cycles", 64),
-            "plot.bandwidth_bin_cycles",
+        bandwidth_window_cycles=_integer(
+            plot_raw.get("bandwidth_window_cycles", 256),
+            "plot.bandwidth_window_cycles",
+        ),
+        bandwidth_sample_cycles=_integer(
+            plot_raw.get("bandwidth_sample_cycles", 8),
+            "plot.bandwidth_sample_cycles",
         ),
         flow_labels=labels,
         dpi=_integer(plot_raw.get("dpi", 180), "plot.dpi"),
@@ -867,53 +815,84 @@ def _default_initial_tree(
     )
 
 
-def _parse_initial_tree(
-    value: Mapping[str, object], traffic_flows: tuple[int, ...]
+def parse_tree_config(
+    value: object, location: str = "tree"
 ) -> InitialTreeConfig:
-    _only_keys(value, {"root", "nodes", "flow_paths"}, "initial_tree")
-    root_name = _string(_required(value, "root", "initial_tree"), "initial_tree.root")
+    tree = _object(value, location)
+    _only_keys(tree, {"root", "nodes", "flow_paths"}, location)
+    root_name = _string(_required(tree, "root", location), f"{location}.root")
     nodes_raw = _object(
-        _required(value, "nodes", "initial_tree"), "initial_tree.nodes"
+        _required(tree, "nodes", location), f"{location}.nodes"
     )
     nodes: dict[str, TreeNodeConfig] = {}
     for name, raw_node in nodes_raw.items():
-        location = f"initial_tree.nodes.{name}"
-        node = _object(raw_node, location)
+        node_location = f"{location}.nodes.{name}"
+        node = _object(raw_node, node_location)
         _only_keys(
-            node, {"engine_id", "vpifo_id", "policy", "flow_state"}, location
+            node,
+            {"engine_id", "vpifo_id", "policy", "flow_state"},
+            node_location,
         )
         nodes[name] = TreeNodeConfig(
             engine_id=_integer(
-                _required(node, "engine_id", location), f"{location}.engine_id"
+                _required(node, "engine_id", node_location),
+                f"{node_location}.engine_id",
             ),
             vpifo_id=_integer(
-                _required(node, "vpifo_id", location), f"{location}.vpifo_id"
+                _required(node, "vpifo_id", node_location),
+                f"{node_location}.vpifo_id",
             ),
             policy=_string(
-                _required(node, "policy", location), f"{location}.policy"
+                _required(node, "policy", node_location),
+                f"{node_location}.policy",
             ).upper(),
             flow_state=_parse_integer_mapping(
-                node.get("flow_state", {}), f"{location}.flow_state"
+                node.get("flow_state", {}), f"{node_location}.flow_state"
             ),
         )
     paths_raw = _object(
-        _required(value, "flow_paths", "initial_tree"),
-        "initial_tree.flow_paths",
+        _required(tree, "flow_paths", location),
+        f"{location}.flow_paths",
     )
     paths: dict[int, tuple[str, ...]] = {}
     for raw_flow_id, raw_path in paths_raw.items():
         flow_id = _mapping_key_integer(
-            raw_flow_id, "initial_tree.flow_paths keys"
+            raw_flow_id, f"{location}.flow_paths keys"
         )
         if not isinstance(raw_path, list):
             raise ValueError(
-                f"initial_tree.flow_paths.{raw_flow_id} must be an array of node names"
+                f"{location}.flow_paths.{raw_flow_id} must be an array of node names"
             )
         paths[flow_id] = tuple(
-            _string(node_name, f"initial_tree.flow_paths.{raw_flow_id}[{index}]")
+            _string(node_name, f"{location}.flow_paths.{raw_flow_id}[{index}]")
             for index, node_name in enumerate(raw_path)
         )
     return InitialTreeConfig(root=root_name, nodes=nodes, flow_paths=paths)
+
+
+def parse_policy_change_config(
+    value: object,
+    initial_tree: InitialTreeConfig,
+    max_packet_priority: int,
+    location: str = "move",
+) -> PolicyChangeConfig:
+    move = _object(value, location)
+    return _parse_reconfiguration(
+        move,
+        location,
+        legacy=False,
+        initial_tree=initial_tree,
+        traffic_flows=tuple(sorted(initial_tree.flow_paths)),
+        max_packet_priority=max_packet_priority,
+    )
+
+
+def parse_distribution_spec(
+    value: object,
+    location: str,
+    required_unit: str | None = None,
+) -> DistributionSpec:
+    return _parse_distribution(value, location, required_unit)
 
 
 def _parse_reconfiguration(
@@ -923,7 +902,7 @@ def _parse_reconfiguration(
     initial_tree: InitialTreeConfig,
     traffic_flows: tuple[int, ...],
     max_packet_priority: int,
-) -> PolicyChangeConfig | DirectTransactionConfig:
+) -> PolicyChangeConfig:
     if legacy:
         _only_keys(
             value,
@@ -957,40 +936,8 @@ def _parse_reconfiguration(
         )
 
     kind = _string(_required(value, "type", location), f"{location}.type").lower()
-    if kind == "transaction_package":
-        _only_keys(
-            value,
-            {
-                "type",
-                "mode",
-                "cycle",
-                "name",
-                "before_label",
-                "after_label",
-                "commands",
-            },
-            location,
-        )
-        if _string(value.get("mode", "direct"), f"{location}.mode").lower() != "direct":
-            raise ValueError("transaction_package mode must be 'direct'")
-        commands_raw = _required(value, "commands", location)
-        if not isinstance(commands_raw, list):
-            raise ValueError(f"{location}.commands must be an array")
-        commands = tuple(
-            _parse_controller_command(raw_command, f"{location}.commands[{index}]")
-            for index, raw_command in enumerate(commands_raw)
-        )
-        return DirectTransactionConfig(
-            cycle=_integer(_required(value, "cycle", location), f"{location}.cycle"),
-            name=_string(value.get("name", "transaction-package"), f"{location}.name"),
-            before_label=_optional_label(value.get("before_label", ""), f"{location}.before_label"),
-            after_label=_optional_label(value.get("after_label", ""), f"{location}.after_label"),
-            commands=commands,
-        )
     if kind != "policy_change":
-        raise ValueError(
-            f"{location}.type must be policy_change or transaction_package"
-        )
+        raise ValueError(f"{location}.type must be policy_change")
 
     _only_keys(
         value,
@@ -1082,27 +1029,6 @@ def _parse_node_changes(
             ),
         )
     return result
-
-
-def _parse_controller_command(
-    raw: object, location: str
-) -> ControllerCommandConfig:
-    value = _object(raw, location)
-    fields = {"command", "engineId", "vPifoId", "flowId", "data"}
-    _only_keys(value, fields, location)
-    return ControllerCommandConfig(
-        command=_string(_required(value, "command", location), f"{location}.command"),
-        engine_id=_integer(
-            _required(value, "engineId", location), f"{location}.engineId"
-        ),
-        vpifo_id=_integer(
-            _required(value, "vPifoId", location), f"{location}.vPifoId"
-        ),
-        flow_id=_integer(
-            _required(value, "flowId", location), f"{location}.flowId"
-        ),
-        data=_integer(_required(value, "data", location), f"{location}.data"),
-    )
 
 
 def _parse_flow_state(

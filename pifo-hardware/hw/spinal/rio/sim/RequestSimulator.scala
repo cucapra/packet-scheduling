@@ -492,6 +492,33 @@ object RequestSimulationConfiguration {
   )
   private val commandFields = Set("command", "engineId", "vPifoId", "flowId", "data")
 
+  private[sim] def parseControlInstruction(
+      fields: Map[String, String],
+      location: String
+  ): RequestControlInstruction = {
+    val unknown = fields.keySet.diff(commandFields)
+    require(unknown.isEmpty, s"$location: unknown fields: ${unknown.toSeq.sorted.mkString(", ")}")
+    val missing = commandFields.diff(fields.keySet)
+    require(missing.isEmpty, s"$location: missing fields: ${missing.toSeq.sorted.mkString(", ")}")
+    val commandName = fields("command")
+    val command = commandByName.getOrElse(
+      commandName,
+      throw new IllegalArgumentException(s"$location: unknown command '$commandName'")
+    )
+    try {
+      RequestControlInstruction(
+        command = command,
+        engineId = UnixDomainSocketLineServer.parseInt(fields("engineId")),
+        vPifoId = UnixDomainSocketLineServer.parseInt(fields("vPifoId")),
+        flowId = UnixDomainSocketLineServer.parseInt(fields("flowId")),
+        data = UnixDomainSocketLineServer.parseInt(fields("data"))
+      )
+    } catch {
+      case error: NumberFormatException =>
+        throw new IllegalArgumentException(s"$location: invalid integer: ${error.getMessage}", error)
+    }
+  }
+
   def loadControlFile(path: Path, controller: PifoMeshSimController): Unit = {
     loadControlInstructions(path).foreach(instruction => sendInstruction(instruction, controller))
   }
@@ -504,23 +531,11 @@ object RequestSimulationConfiguration {
       .flatMap { case (raw, index) =>
         try {
           UnixDomainSocketLineServer.parseKeyValueLine(raw).map { line =>
-            val unknown = line.fields.keySet.diff(commandFields)
-            require(unknown.isEmpty, s"unknown fields: ${unknown.toSeq.sorted.mkString(", ")}")
-            val commandName = line.requireString("command")
-            val command = commandByName.getOrElse(
-              commandName,
-              throw new IllegalArgumentException(s"unknown command '$commandName'")
-            )
-            RequestControlInstruction(
-              command = command,
-              engineId = line.requireInt("engineId"),
-              vPifoId = line.requireInt("vPifoId"),
-              flowId = line.requireInt("flowId"),
-              data = line.requireInt("data")
-            )
+            parseControlInstruction(line.fields, s"$path:${index + 1}")
           }
         } catch {
           case error: IllegalArgumentException =>
+            if (error.getMessage.startsWith(s"$path:${index + 1}:")) throw error
             throw new IllegalArgumentException(s"$path:${index + 1}: ${error.getMessage}", error)
         }
       }

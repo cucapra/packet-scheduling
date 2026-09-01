@@ -3,25 +3,25 @@
   "seed": 7,
   "traffic": {
     "flows": [1, 2],
-    "packets_per_flow": 80,
+    "packets_per_flow": 240,
     "start_cycle": 0,
     "packet_rate": {
       "distribution": "uniform",
       "unit": "packets_per_cycle_per_flow",
-      "min": 0.1,
-      "max": 0.15
+      "min": 0.18,
+      "max": 0.24
     },
     "packet_size_bytes": {
       "distribution": "normal",
-      "mean": 256,
-      "stddev": 64,
+      "mean": 128,
+      "stddev": 24,
       "min": 64,
-      "max": 512
+      "max": 192
     }
   },
   "reconfiguration": {
     "type": "policy_change",
-    "cycle": 320,
+    "cycle": 600,
     "before": "RR",
     "after": "SP",
     "strict_priorities": {
@@ -31,12 +31,13 @@
   },
   "simulation": {
     "link_bytes_per_cycle": 64,
-    "queue_depth": 256,
+    "queue_depth": 128,
     "max_cycles": 100000,
     "max_packet_priority": 65536
   },
   "plot": {
-    "bandwidth_bin_cycles": 64,
+    "bandwidth_window_cycles": 320,
+    "bandwidth_sample_cycles": 8,
     "flow_labels": {
       "1": "A",
       "2": "B"

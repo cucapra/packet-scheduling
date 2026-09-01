@@ -11,62 +11,37 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from pifo_experiment_figures import (  # noqa: E402
-    BandwidthSample,
+from pifo_figures.common import (  # noqa: E402
     PacketTiming,
     PolicyEvent,
-    build_bandwidth_samples,
-    generate_requests,
-    parse_priorities,
     read_packet_results,
     read_policy_event,
-    write_packet_times,
+)
+from pifo_figures.bandwidth import (  # noqa: E402
+    BandwidthSample,
+    build_samples as build_bandwidth_samples,
+    render_svg as render_bandwidth_svg,
+)
+from pifo_figures.packet_scatter import (  # noqa: E402
+    render_svg as render_scatter_svg,
+    write_data as write_packet_times,
 )
 from pifo_experiment_config import (  # noqa: E402
     PACKET_RATE_UNIT,
-    DirectTransactionConfig,
     DistributionSpec,
     PolicyChangeConfig,
     TrafficConfig,
     generate_distributed_requests,
     load_experiment_config,
 )
-from pifo_experiment_transactions import (  # noqa: E402
+from pifo_tree_compiler_core import (  # noqa: E402
     build_transaction_plan,
-    controller_command_line,
 )
-from pifo_experiment_svg import (  # noqa: E402
-    render_bandwidth_svg,
-    render_scatter_svg,
-)
+from pifo_transaction_program import controller_command_line  # noqa: E402
 
 
 class PifoExperimentFiguresTest(unittest.TestCase):
-    def test_generates_simultaneous_rounds_for_each_flow(self) -> None:
-        requests = generate_requests(
-            flow_ids=[1, 2],
-            packets_per_flow=3,
-            start_cycle=4,
-            arrival_gap_cycles=5,
-            packet_size_bytes=128,
-        )
-        self.assertEqual([request.cycle for request in requests], [4, 4, 9, 9, 14, 14])
-        self.assertEqual(
-            [request.global_flow_id for request in requests],
-            [1, 2, 1, 2, 1, 2],
-        )
-        self.assertEqual(
-            [request.request_id for request in requests],
-            [1, 2, 3, 4, 5, 6],
-        )
-
-    def test_default_strict_priorities_favor_lower_flow_id(self) -> None:
-        self.assertEqual(
-            parse_priorities(None, [2, 1], 65536),
-            {1: 1, 2: 32769},
-        )
-
-    def test_bandwidth_contains_total_and_each_flow(self) -> None:
+    def test_bandwidth_uses_a_normalized_hann_convolution(self) -> None:
         packets = [
             PacketTiming(1, 1, 64, 0, 1),
             PacketTiming(2, 2, 32, 4, 5),
@@ -75,13 +50,27 @@ class PifoExperimentFiguresTest(unittest.TestCase):
         flow_ids, samples = build_bandwidth_samples(
             packets=packets,
             event=event,
-            bin_cycles=4,
+            window_cycles=5,
+            sample_cycles=1,
             link_bytes_per_cycle=16,
         )
         self.assertEqual(flow_ids, [1, 2])
-        self.assertEqual(len(samples), 2)
-        self.assertEqual(samples[0].flow_bytes_per_cycle, {1: 16, 2: 0})
-        self.assertEqual(samples[1].flow_bytes_per_cycle, {1: 0, 2: 8})
+        self.assertAlmostEqual(
+            sum(sample.flow_bytes_per_cycle[1] for sample in samples),
+            64,
+        )
+        self.assertAlmostEqual(
+            sum(sample.flow_bytes_per_cycle[2] for sample in samples),
+            32,
+        )
+        nonzero_flow_one = [
+            sample.flow_bytes_per_cycle[1]
+            for sample in samples
+            if sample.flow_bytes_per_cycle[1] > 0
+        ]
+        self.assertEqual(len(nonzero_flow_one), 3)
+        for actual, expected in zip(nonzero_flow_one, (16, 32, 16)):
+            self.assertAlmostEqual(actual, expected)
         for sample in samples:
             self.assertAlmostEqual(
                 sample.total_bytes_per_cycle,
@@ -202,7 +191,7 @@ class PifoExperimentFiguresTest(unittest.TestCase):
         )
         config = load_experiment_config(config_path)
         requests = generate_distributed_requests(config.traffic, config.seed)
-        self.assertEqual(len(requests), 160)
+        self.assertEqual(len(requests), 480)
         self.assertIsInstance(config.reconfiguration, PolicyChangeConfig)
         assert isinstance(config.reconfiguration, PolicyChangeConfig)
         self.assertEqual(config.reconfiguration.before_label, "RR")
@@ -211,7 +200,11 @@ class PifoExperimentFiguresTest(unittest.TestCase):
             config.reconfiguration.changes["root"].flow_state,
             {1: 1, 2: 32769},
         )
-        plan = build_transaction_plan(config)
+        plan = build_transaction_plan(
+            config.initial_tree,
+            config.reconfiguration,
+            config.simulation.num_vpifos,
+        )
         self.assertEqual(plan.mode, "full_transitive")
         self.assertEqual((plan.drain_engine_id, plan.drain_vpifo_id), (1, 10))
         lines = [controller_command_line(command) for command in plan.transaction_commands]
@@ -220,47 +213,6 @@ class PifoExperimentFiguresTest(unittest.TestCase):
             lines,
         )
         self.assertEqual(plan.transaction_commands[-1].command, "CommitMapper")
-
-    def test_direct_transaction_package_is_preserved_verbatim(self) -> None:
-        example_path = (
-            Path(__file__).resolve().parents[3] / "experiments" / "rr-to-sp.json"
-        )
-        raw = json.loads(example_path.read_text(encoding="utf-8"))
-        commands = [
-            {
-                "command": "UpdateBrainEngine",
-                "engineId": 1,
-                "vPifoId": 10,
-                "flowId": 0,
-                "data": 2,
-            },
-            {
-                "command": "CommitMapper",
-                "engineId": 1,
-                "vPifoId": 0,
-                "flowId": 0,
-                "data": 0,
-            },
-        ]
-        raw["reconfiguration"] = {
-            "type": "transaction_package",
-            "cycle": 123,
-            "name": "direct-test",
-            "before_label": "RR",
-            "after_label": "SP",
-            "commands": commands,
-        }
-        with tempfile.TemporaryDirectory() as directory:
-            config_path = Path(directory) / "direct.json"
-            config_path.write_text(json.dumps(raw), encoding="utf-8")
-            config = load_experiment_config(config_path)
-        self.assertIsInstance(config.reconfiguration, DirectTransactionConfig)
-        plan = build_transaction_plan(config)
-        self.assertEqual(plan.mode, "direct")
-        self.assertIsNone(plan.drain_engine_id)
-        self.assertEqual(
-            [command.to_dict() for command in plan.transaction_commands], commands
-        )
 
     def test_full_transitive_change_copies_every_tree_node(self) -> None:
         example_path = (
@@ -286,7 +238,12 @@ class PifoExperimentFiguresTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             config_path = Path(directory) / "tree.json"
             config_path.write_text(json.dumps(raw), encoding="utf-8")
-            plan = build_transaction_plan(load_experiment_config(config_path))
+            config = load_experiment_config(config_path)
+            plan = build_transaction_plan(
+                config.initial_tree,
+                config.reconfiguration,
+                config.simulation.num_vpifos,
+            )
         brain_targets = {
             (command.engine_id, command.vpifo_id)
             for command in plan.transaction_commands

@@ -12,7 +12,7 @@ from pifo_experiment_config import (  # noqa: E402
     PhaseVerificationConfig,
     load_experiment_config,
 )
-from pifo_experiment_transactions import build_transaction_plan  # noqa: E402
+from pifo_tree_compiler_core import build_transaction_plan  # noqa: E402
 from pifo_experiment_verify import (  # noqa: E402
     CompletedPacket,
     TransactionTiming,
@@ -27,7 +27,11 @@ LARGE_CONFIG = HARDWARE_ROOT / "experiments" / "large-tree-rr-to-sp.json"
 class PifoExperimentVerifyTest(unittest.TestCase):
     def test_large_checked_config_builds_a_28_command_full_tree_copy(self) -> None:
         config = load_experiment_config(LARGE_CONFIG)
-        plan = build_transaction_plan(config)
+        plan = build_transaction_plan(
+            config.initial_tree,
+            config.reconfiguration,
+            config.simulation.num_vpifos,
+        )
 
         self.assertEqual(len(config.initial_tree.nodes), 7)
         self.assertEqual(config.simulation.num_engines, 4)

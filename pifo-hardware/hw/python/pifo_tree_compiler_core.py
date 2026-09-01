@@ -1,18 +1,15 @@
-"""Translate experiment tree changes into exact PIFO controller commands."""
+"""Core compiler from a declarative tree move to controller commands."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import Path
 
 from pifo_experiment_config import (
-    ControllerCommandConfig,
-    DirectTransactionConfig,
-    ExperimentConfig,
     InitialTreeConfig,
     PolicyChangeConfig,
     TreeNodeConfig,
 )
+from pifo_transaction_program import ControllerCommand
 
 
 POLICY_TO_BRAIN = {
@@ -25,8 +22,8 @@ POLICY_TO_BRAIN = {
 
 @dataclass(frozen=True)
 class TransactionPlan:
-    initial_commands: tuple[ControllerCommandConfig, ...]
-    transaction_commands: tuple[ControllerCommandConfig, ...]
+    initial_commands: tuple[ControllerCommand, ...]
+    transaction_commands: tuple[ControllerCommand, ...]
     name: str
     mode: str
     cycle: int
@@ -43,37 +40,23 @@ def pack_flow_id(engine_id: int, vpifo_or_flow_id: int, num_vpifos: int) -> int:
     return (engine_id << vpifo_width) | vpifo_or_flow_id
 
 
-def build_transaction_plan(config: ExperimentConfig) -> TransactionPlan:
-    initial_commands = tuple(
-        _configure_tree(config.initial_tree, config.simulation.num_vpifos)
-    )
-    root = config.initial_tree.nodes[config.initial_tree.root]
-    reconfiguration = config.reconfiguration
-    if isinstance(reconfiguration, DirectTransactionConfig):
-        return TransactionPlan(
-            initial_commands=initial_commands,
-            transaction_commands=reconfiguration.commands,
-            name=reconfiguration.name,
-            mode=reconfiguration.mode,
-            cycle=reconfiguration.cycle,
-            before_label=reconfiguration.before_label,
-            after_label=reconfiguration.after_label,
-            root_engine_id=root.engine_id,
-            root_vpifo_id=root.vpifo_id,
-            drain_engine_id=None,
-            drain_vpifo_id=None,
-        )
-
+def build_transaction_plan(
+    initial_tree: InitialTreeConfig,
+    reconfiguration: PolicyChangeConfig,
+    num_vpifos: int,
+) -> TransactionPlan:
+    initial_commands = tuple(_configure_tree(initial_tree, num_vpifos))
+    root = initial_tree.nodes[initial_tree.root]
     new_tree = _copy_tree_for_policy_change(
-        config.initial_tree,
+        initial_tree,
         reconfiguration,
-        config.simulation.num_vpifos,
+        num_vpifos,
     )
     transaction_commands = tuple(
         _configure_full_transitive(
-            old_tree=config.initial_tree,
+            old_tree=initial_tree,
             new_tree=new_tree,
-            num_vpifos=config.simulation.num_vpifos,
+            num_vpifos=num_vpifos,
         )
     )
     return TransactionPlan(
@@ -88,26 +71,6 @@ def build_transaction_plan(config: ExperimentConfig) -> TransactionPlan:
         root_vpifo_id=root.vpifo_id,
         drain_engine_id=root.engine_id,
         drain_vpifo_id=root.vpifo_id,
-    )
-
-
-def controller_command_line(command: ControllerCommandConfig) -> str:
-    return (
-        f"command={command.command} "
-        f"engineId={command.engine_id} "
-        f"vPifoId={command.vpifo_id} "
-        f"flowId={command.flow_id} "
-        f"data={command.data}"
-    )
-
-
-def write_controller_commands(
-    path: Path, commands: tuple[ControllerCommandConfig, ...]
-) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
-        "".join(controller_command_line(command) + "\n" for command in commands),
-        encoding="utf-8",
     )
 
 
@@ -144,7 +107,9 @@ def _allocate_copy_ids(
         used_by_engine.setdefault(node.engine_id, set()).add(node.vpifo_id)
 
     result: dict[str, int] = {}
-    preferred = tuple(range(10, num_vpifos - 1)) + tuple(range(0, min(10, num_vpifos - 1)))
+    preferred = tuple(range(10, num_vpifos - 1)) + tuple(
+        range(0, min(10, num_vpifos - 1))
+    )
     for name, node in tree.nodes.items():
         used = used_by_engine.setdefault(node.engine_id, set())
         try:
@@ -160,12 +125,12 @@ def _allocate_copy_ids(
 
 def _configure_tree(
     tree: InitialTreeConfig, num_vpifos: int
-) -> list[ControllerCommandConfig]:
+) -> list[ControllerCommand]:
     commands = _configure_brains(tree, num_vpifos)
     commands.extend(_configure_flow_mappings(tree, num_vpifos, include_pre=True))
     root = tree.nodes[tree.root]
     commands.append(
-        ControllerCommandConfig(
+        ControllerCommand(
             command="UpdateMapperNonExist",
             engine_id=root.engine_id,
             vpifo_id=root.vpifo_id,
@@ -181,14 +146,14 @@ def _configure_full_transitive(
     old_tree: InitialTreeConfig,
     new_tree: InitialTreeConfig,
     num_vpifos: int,
-) -> list[ControllerCommandConfig]:
+) -> list[ControllerCommand]:
     commands = _configure_brains(new_tree, num_vpifos)
     commands.extend(_configure_flow_mappings(new_tree, num_vpifos, include_pre=True))
 
     new_root = new_tree.nodes[new_tree.root]
     old_root = old_tree.nodes[old_tree.root]
     commands.append(
-        ControllerCommandConfig(
+        ControllerCommand(
             command="UpdateMapperNonExist",
             engine_id=new_root.engine_id,
             vpifo_id=new_root.vpifo_id,
@@ -199,7 +164,7 @@ def _configure_full_transitive(
     # Root dequeue requests intentionally keep targeting old_root. Once its old
     # tokens drain, this miss rewrite advances the dequeue into new_root.
     commands.append(
-        ControllerCommandConfig(
+        ControllerCommand(
             command="UpdateMapperNonExist",
             engine_id=old_root.engine_id,
             vpifo_id=old_root.vpifo_id,
@@ -215,11 +180,11 @@ def _configure_full_transitive(
 
 def _configure_brains(
     tree: InitialTreeConfig, num_vpifos: int
-) -> list[ControllerCommandConfig]:
-    commands: list[ControllerCommandConfig] = []
+) -> list[ControllerCommand]:
+    commands: list[ControllerCommand] = []
     for name, node in tree.nodes.items():
         commands.append(
-            ControllerCommandConfig(
+            ControllerCommand(
                 command="UpdateBrainEngine",
                 engine_id=node.engine_id,
                 vpifo_id=node.vpifo_id,
@@ -229,7 +194,7 @@ def _configure_brains(
         )
         for flow_id, state in sorted(node.flow_state.items()):
             commands.append(
-                ControllerCommandConfig(
+                ControllerCommand(
                     command="UpdateBrainFlowState",
                     engine_id=node.engine_id,
                     vpifo_id=node.vpifo_id,
@@ -244,14 +209,14 @@ def _configure_flow_mappings(
     tree: InitialTreeConfig,
     num_vpifos: int,
     include_pre: bool,
-) -> list[ControllerCommandConfig]:
-    commands: list[ControllerCommandConfig] = []
+) -> list[ControllerCommand]:
+    commands: list[ControllerCommand] = []
     for flow_id, path in sorted(tree.flow_paths.items()):
         for index, node_name in enumerate(path):
             node = tree.nodes[node_name]
             if include_pre:
                 commands.append(
-                    ControllerCommandConfig(
+                    ControllerCommand(
                         command="UpdateMapperPre",
                         engine_id=node.engine_id,
                         vpifo_id=flow_id,
@@ -267,7 +232,7 @@ def _configure_flow_mappings(
             else:
                 output = pack_flow_id(0, flow_id, num_vpifos)
             commands.append(
-                ControllerCommandConfig(
+                ControllerCommand(
                     command="UpdateMapperPost",
                     engine_id=node.engine_id,
                     vpifo_id=node.vpifo_id,
@@ -278,7 +243,7 @@ def _configure_flow_mappings(
     return commands
 
 
-def _commit_command() -> ControllerCommandConfig:
-    return ControllerCommandConfig(
+def _commit_command() -> ControllerCommand:
+    return ControllerCommand(
         command="CommitMapper", engine_id=1, vpifo_id=0, flow_id=0, data=0
     )
