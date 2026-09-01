@@ -417,7 +417,7 @@ We also write \(C@\mathit{path}.\mathit{node\_state}\) and \(C@\mathit{path}.\ma
 \[
 \begin{array}{@{}l@{}}
 D = (\,M_{D},\ \mathit{init\_node}_{D},\ \mathit{init\_slot}_{D},\ \mathit{rank}_{D}\,)\\[4pt]
-\quad \mathit{init\_node}_{D} : ()\ \to\ \mathit{node\_state}\\[2pt]
+\quad \mathit{init\_node}_{D} : \mathit{node\_state}\\[2pt]
 \quad \mathit{init\_slot}_{D} : \mathit{node\_state} \times M_{D}\ \to\ \mathit{slot\_state}\\[2pt]
 \quad \mathit{rank}_{D} : \mathit{state} \times \mathit{payload} \times M_{D}\ \to\ \mathit{rank} \times \mathit{state}
 \end{array}
@@ -431,7 +431,7 @@ D = (\,M_{D},\ \mathit{init\_node}_{D},\ \mathit{init\_slot}_{D},\ \mathit{rank}
 A discipline \ensuremath{D} is the four-tuple of \cref{fig:discipline}: a metadata set \(M_{D}\), a node initializer, a slot initializer, and a ranker.
 Supplying those four is the whole interface, and any \ensuremath{D} that supplies them is one Rio can compile.
 
-\(\mathit{init\_node}_{D}\) runs once per node when a \ensuremath{\mathit{pol}} is compiled into a control, seeding that node's \ensuremath{\mathit{node\_state}}.
+\(\mathit{init\_node}_{D}\) is the \ensuremath{\mathit{node\_state}} every \ensuremath{D}-node starts in, installed when a \ensuremath{\mathit{pol}} is compiled into a control.
 \(\mathit{init\_slot}_{D}\) runs once per arm, at compile time and again whenever an edit splices a new arm under an already-running \ensuremath{D}-parent (\cref{sec:add}), taking the parent's current \ensuremath{\mathit{node\_state}} and the new arm's metadatum.
 
 Three of the four are opaque to us.
@@ -1007,7 +1007,7 @@ The transformer \(\mathtt{wrap}\) replaces \(M\) with a fresh \(\Strictstar\) no
 \[
 \begin{array}{@{}l@{}}
 \mathtt{wrap}(M) = N = \langle s_N,\ q_N,\ \mathit{z}_N \rangle\big([\,M,\ \lceil\mathit{survivor}\rceil\,]\big),\ \textbf{where}\\[3pt]
-\quad n_N = \mathit{init\_node}_{\Strictstar}(),\\[3pt]
+\quad n_N = \mathit{init\_node}_{\Strictstar},\\[3pt]
 \quad s_N = (\,n_N,\ [\,\mathit{init\_slot}_{\Strictstar}(n_N, \mathtt{hi}),\\
 \quad\qquad\qquad\ \ \mathit{init\_slot}_{\Strictstar}(n_N, \mathtt{lo})\,]\,),\\[3pt]
 \quad q_N = \text{the \ensuremath{\mathit{pifo}} of } P_0 \text{ copies of the entry } (0,\ \mathtt{hi}),\\[3pt]
