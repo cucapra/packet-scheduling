@@ -429,13 +429,15 @@ D = (\,M_{D},\ \mathit{init\_node}_{D},\ \mathit{init\_slot}_{D},\ \mathit{rank}
 \paragraph{What a discipline supplies}
 
 A discipline \ensuremath{D} is the four-tuple of \cref{fig:discipline}: a metadata set \(M_{D}\), a node initializer, a slot initializer, and a ranker.
-Supplying those four is the whole interface, and an operator can ``bring their own'' \ensuremath{D}.
+Supplying those four is the whole interface, and any \ensuremath{D} that supplies them is one Rio can compile.
 
 \(\mathit{init\_node}_{D}\) runs once per node when a \ensuremath{\mathit{pol}} is compiled into a control, seeding that node's \ensuremath{\mathit{node\_state}}.
 \(\mathit{init\_slot}_{D}\) runs once per arm, at compile time and again whenever an edit splices a new arm under an already-running \ensuremath{D}-parent (\cref{sec:add}), taking the parent's current \ensuremath{\mathit{node\_state}} and the new arm's metadatum.
-Choosing it is a scheduling decision rather than a structural one, since it fixes how a freshly spliced arm competes with the established ones.
-We choose throughout to have the new arm join the current round, so that, e.g., going from \(\WFQ(A,B)\) to \(\WFQ(A,B,C)\) leaves \(C\) neither rewarded for having been silent nor penalized for arriving late.
-\cref{app:init-slot} gives the recipes for \Strict, \RR, and \WFQ.
+
+Three of the four are opaque to us.
+Rio names \(\mathit{init\_node}_{D}\), \(\mathit{init\_slot}_{D}\) and \(\mathit{rank}_{D}\), and never unfolds them.
+The fourth, \(M_{D}\), is not opaque, since the compiler checks an arm's metadatum against it (\cref{sec:policy-dsl}) and \ChangeMeta{} carries \ensuremath{D} so that the same check is possible on a form alone.
+A discipline's interface is visible to us and its behavior is not.
 
 Two obligations attend the exchange.
 The first is path-consistency of admission: a packet's flow must be admitted at every node on that flow's root-to-leaf path, or at none of them.
@@ -752,8 +754,7 @@ The evolving per-arm bookkeeping beside it, \WFQ's last-finish tag in \(\mathit{
 \ChangeMeta{} rewrites the arm's metadatum and leaves the per-arm bookkeeping beside it untouched.
 That is the line \cref{sec:controls} draws between the configuration the operator chose and what serving traffic left behind.
 Resetting the bookkeeping would pull the targeted arm out of the round in progress, rewarding or penalizing it for no reason the operator asked for.
-Under \WFQ, for instance, that bookkeeping is the arm's virtual-finish tag, and \(\mathit{init\_slot}_{\WFQ}\) was already designed to let a fresh arm join the current round without disturbing its siblings (\cref{sec:compilation}).
-A re-tuned arm deserves the same treatment.
+Whatever \ensuremath{D} keeps beside the metadatum belongs to \ensuremath{D} (\cref{sec:compilation}), and a re-tuning does not touch it.
 A discipline that keeps no per-arm bookkeeping, such as \Strict, does not raise the question.
 
 \subsubsection{\texorpdfstring{\(\Quiesce(\tau)\)}{Quiesce}}\label{sec:quiesce}
@@ -1726,7 +1727,7 @@ Opcode & Effect \\
 \texttt{map(v, f, i)} & In PIFO \texttt{v}'s routing table, route flow \texttt{f} to index \texttt{i}. \\
 \texttt{unmap(v, f)} & Forget PIFO \texttt{v}'s mapping for flow \texttt{f}. \\
 \texttt{set\_policy(v, t, n)} & Set PIFO \texttt{v}'s policy type to \texttt{t} and its initial arity to \texttt{n}; \texttt{t} ranges over \{FIFO, RoundRobin, Strict, Strict*, WFQ\}. Issued exactly once per PIFO, at spawn time. \\
-\texttt{change\_arity(v, n)} & Set the live PIFO \texttt{v}'s arity counter to \texttt{n}. Policy type is unchanged. \texttt{change\_arity} is what tells the discipline-level logic at \texttt{v} (e.g., RoundRobin's cursor wraparound, the WFQ slot-state table's size) the active arm count; the structural attaching and detaching themselves happen through explicit \texttt{adopt}/\texttt{emancipate} calls, each keyed by the stable per-edge index the parent minted at adoption time. The substrate is free to relocate live adoptions internally as the count changes; the indices the planner holds remain valid. \\
+\texttt{change\_arity(v, n)} & Set the live PIFO \texttt{v}'s arity counter to \texttt{n}. Policy type is unchanged. Growing the count creates the new slot, which the substrate initializes from \texttt{v}'s current node state by \texttt{v}'s discipline's own rule, the \(\mathit{init\_slot}_{D}\) of \cref{sec:compilation}. \texttt{change\_arity} is what tells the discipline-level logic at \texttt{v} (e.g., RoundRobin's cursor wraparound, the WFQ slot-state table's size) the active arm count; the structural attaching and detaching themselves happen through explicit \texttt{adopt}/\texttt{emancipate} calls, each keyed by the stable per-edge index the parent minted at adoption time. The substrate is free to relocate live adoptions internally as the count changes; the indices the planner holds remain valid. \\
 \texttt{set\_arm\_meta(v, i, m)} & Set per-arm metadata on PIFO \texttt{v}'s child reached via index \texttt{i} to \texttt{m}. The operand \texttt{m} is interpreted per \texttt{v}'s policy type: a weight for RoundRobin/WFQ, a priority rank for Strict; FIFO carries none. Only the discipline-specified meta field is overwritten; any other per-arm state (e.g., WFQ's virtual-finish tag on the arm) is preserved, so a metadata change on a live arm does not remove it from the current round. \\
 \texttt{designate(v, surv)} & Point PIFO \texttt{v}'s designated-survivor link at \texttt{surv}. The link is consulted on \texttt{pop} alone: a \texttt{pop} that finds \texttt{v} empty queries \texttt{surv} rather than underflowing, and \texttt{push} is unaffected, since \texttt{surv} admits its own flows through the ordinary Assoc tables (\cref{sec:hw-survivor}). \texttt{v} keeps its arity, its policy type, and its parent edge, and \texttt{surv} is laid out beside \texttt{v} rather than beneath it. \\
 \texttt{gc(v)} & Release PIFO \texttt{v}'s PE slot. \\
@@ -1882,9 +1883,12 @@ There the lowering restricts the deassoc walk to loser-only flows, since \Design
 The difference is not in the schedule.
 It is that a \(\Strictstar\) node needs no \ensuremath{\mathit{pifo}}, and a node that needs no \ensuremath{\mathit{pifo}} needs no level.
 
-An ordinary \Strict{} node does need one, because ranks are frozen at \push{} time (\cref{sec:nondisruption}) and a \ChangeMeta{} may invert its priorities under a standing backlog.
-A \(\Strictstar\) node's priorities cannot be inverted: they are fixed when \Designate{} creates it, \ChangeMeta{} may not target its arms (\cref{sec:changemeta}), and nothing else disturbs it before \Undesignate{} retires it.
-So ``drain arm 0, then arm 1'' is the correct order at every instant of its life, and its \ensuremath{\mathit{pifo}} records nothing its two arms do not already record.
+A substrate that offers \(\Strictstar\) guarantees two things of it.
+Arm 0 is drained before arm 1 is served, and the two arms' priorities never change.
+An ordinary \Strict{} can promise only the first.
+A \ChangeMeta{} may invert its priorities under a standing backlog, and ranks are frozen at \push{} time (\cref{sec:nondisruption}) so that the backlog survives the inversion, which is what the node's \ensuremath{\mathit{pifo}} is for.
+Nothing can invert a \(\Strictstar\): \ChangeMeta{} may not target its arms (\cref{sec:changemeta}), and nothing else disturbs it between the \Designate{} that creates it and the \Undesignate{} that retires it.
+The drain order therefore holds at every instant of the node's life, and a \ensuremath{\mathit{pifo}} there would record nothing the two arms do not already record.
 
 \paragraph{Why dropping it is worth the trouble}
 
@@ -1939,6 +1943,12 @@ Rio asks a substrate for one thing: commits that are atomic with respect to traf
 A \(\delta\) that lowers to many instructions has to install as a single instant.
 The tree is transiently malformed partway through a commit, and no \push{} or \pop{} may observe it in that state.
 That is the whole of what \cref{sec:hw-preservation}'s argument leans on, and \cref{sec:hw-transaction} is how our own controller supplies it.
+
+The substrate also supplies the disciplines themselves.
+\(\mathit{init\_node}_{D}\), \(\mathit{init\_slot}_{D}\) and \(\mathit{rank}_{D}\) are the substrate's (\cref{sec:compilation}), and the menu it implements is the menu an operator may write from.
+That is a parameter rather than a bar to clear, since a substrate with a shorter menu hosts Rio just as well over a smaller \ensuremath{\mathit{pol}}.
+If the network operator wishes to install a discipline that the menu lacks, they need to supply the substrate with three new pieces of logic.
+A small programmable core beside the PIFO tree would be one way to supply this.
 
 The designated-survivor link of \cref{sec:hw-survivor} is an optimization rather than a requirement, since a substrate without one lowers \Designate{} to a literal \Strict-2 wrapper and pays for the relayouts.
 The bar for hosting Rio is therefore a single property, and we expect other PIFO substrates, vPIFO~\cite{vPIFO} among them, to clear it and to be able to adopt the link besides.
@@ -2032,25 +2042,6 @@ The three relations of \cref{sec:equivalences} are shown by example in \cref{fig
 \label{fig:equiv-gallery}
 \end{figure}
 
-
-\section{Per-Discipline Slot Initialization}\label{app:init-slot}
-
-\cref{sec:compilation} fixes the design choice that a freshly spliced arm should ``join the current round'', entering with neither the penalty nor the advantage of having been absent.
-Here are the \(\mathit{init\_slot}_{D}\) recipes that realize it for our three representative disciplines.
-
-\begin{itemize}
-\item \textbf{\texttt{RoundRobin}.} \texttt{init\_slot\_RoundRobin} returns the empty tuple, since \RR{} has no per-arm bookkeeping.
-The round-robin cursor lives in \ensuremath{\mathit{node\_state}} instead, and at \Add{} we splice the new arm into the child list at the cursor's current position, so its first turn lands in the round already in progress.
-The cursor itself is left pointing at the same physical arm it was pointing at before the splice.
-\item \textbf{\texttt{Strict}.} An arm's priority is its metadatum and lives in \(\mathit{z}.\mathit{meta}\) (\cref{sec:controls}).
-\Strict{} therefore has no per-arm bookkeeping of its own, and \texttt{init\_slot\_Strict} returns the empty tuple.
-\(M_{\Strict}\) is a dense total order such as the rationals, so that a fresh priority can always be slotted strictly between two existing ones.
-\(\Strictstar\) declares the same metadata set and the same recipes, at arity two.
-\item \textbf{\texttt{WFQ}.} The \ensuremath{\mathit{node\_state}} at a parent is the virtual time \texttt{vt}, and \texttt{init\_slot\_WFQ(vt, w) = vt}.
-A new arm therefore inherits the parent's current \texttt{vt} as its last-finish tag, while its weight \texttt{w} sits in \(\mathit{z}.\mathit{meta}\).
-Any standard WFQ tagging that derives the next packet's tag from the slot's last-finish tag and the parent's \texttt{vt}, such as the GPS-style \texttt{max(virtual\_clock, vt) + 1/w}, then places the first packet on this arm in the round that the established arms are currently in.
-At compile time the parent's \texttt{vt} is freshly initialized (to zero), so every original arm starts tagged \texttt{0} and the round is ``the zeroth''; at \Add{} the parent's \texttt{vt} is whatever the clock has advanced to.
-\end{itemize}
 
 \section{The Planner's Case Analysis in Full}\label{app:planner-emits}
 
