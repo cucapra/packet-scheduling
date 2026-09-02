@@ -219,7 +219,7 @@ Our contributions are to say what the transitionary policy is and to do better t
 We take on two obligations.
 \emph{Obligation 1: give a semantics to the transitionary policy.}
 The transitionary policy is shaped by hardware-level manipulations on the way to realizing \(p_2\), rather than by anything the operator wrote, so its semantics is not handed to us.
-We develop a grammar of atomic edits (\cref{sec:grammar}) and a sequence planner (\cref{sec:sequences}) that carries us from the operator-supplied policy \(p_1\), through one or more transitionary policies, and finally to the operator-supplied policy \(p_2\).
+We develop a grammar of atomic edits (\cref{sec:grammar}) and a transition planner (\cref{sec:sequences}) that carries us from the operator-supplied policy \(p_1\), through one or more transitionary policies, and finally to the operator-supplied policy \(p_2\).
 The grammar is designed so that \emph{any transitionary policy it produces is ordinary scheduling}.
 Such a policy has two valuable properties: it has a human-readable semantics just as the operator-written \(p_1\) and \(p_2\) do, \emph{and} the step into it is guaranteed to be one the hardware can commit in a single instant.
 \emph{Obligation 2: improve upon the state of the art.}
@@ -310,8 +310,9 @@ While the user may use \(\Strictstar\) in their policies, it is really designed 
 The two disciplines are told apart in \cref{sec:hardware}, where a novel optimization allows us to realize \(\Strictstar\) without a pifo or a tree level of its own.
 That is what makes an in-place replacement smooth.
 
-A \ensuremath{\mathit{pol}} is written against a fixed \emph{flow universe} \(F\): a finite set of flow predicates declared by the operator before constructing the \ensuremath{\mathit{pol}}.
+A \ensuremath{\mathit{pol}} is written against a fixed \emph{flow universe} \(F\): a finite set of pairwise disjoint flow predicates declared by the operator before constructing the \ensuremath{\mathit{pol}}.
 A \ensuremath{\mathit{pol}} is \emph{valid} when (a) every discipline is applied at the proper arity, (b) every arm's metadatum is drawn from its parent discipline's set \(M_{D}\), and (c) the leaves form a partition of a subset of \(F\): each leaf carries a flow drawn from \(F\), and no two leaves carry the same flow.
+A packet therefore matches at most one leaf's flow.
 If a packet does not match any of the flows in the scheduling tree's leaves, the packet is dropped.
 
 \subsection{The runtime model: controls}\label{sec:controls}
@@ -663,13 +664,9 @@ Every node from the root down to \(C@\pi\) must begin to accept the new flows an
 
 We must define \(\csem{\Add(\pi, D, \mathit{arm}, m)} : \mathit{control} \rightharpoonup \mathit{control}\) together with the preconditions on the already-running control.
 
-\(\csem{\Add(\pi, D, \mathit{arm}, m)}(C)\) is defined when three things hold.
-The path \(\pi\) resolves in \(C\) to an internal node, and that node runs the discipline \ensuremath{D} the form names.
-The metadatum \(m\) is drawn from \(M_{D}\).
-And \ensuremath{\mathit{arm}}'s leaf labels are disjoint from those of \(C\).
-The disjointness precondition rules out \emph{splitting} an already-running flow.
-Going from a policy with a single \textsf{gmail} leaf to one that splits it into \textsf{gmail\_business} and \textsf{gmail\_personal} would have to re-sort the packets already buffered under \textsf{gmail} into the two new leaves, relocating admitted traffic; \Add{} only introduces flows disjoint from what is running, so it never has to relocate buffered traffic.
-An operator may of course want that split, and \cref{sec:idioms} reaches it as a sequence rather than as a single form.
+\(\csem{\Add(\pi, D, \mathit{arm}, m)}(C)\) is defined when four things hold: the path \(\pi\) resolves in \(C\) to an internal node, that node runs the discipline \ensuremath{D} the form names, the metadatum \(m\) is drawn from \(M_{D}\), and \ensuremath{\mathit{arm}}'s leaf labels are disjoint from those of \(C\).
+The last condition spares \Add{} from relocating traffic.
+A change that would move admitted traffic is reached instead as a sequence, in which the old traffic drains in place rather than being re-enqueued (\cref{sec:idioms}).
 
 We define \(\csem{\Add}\) by recursion on \(\pi\), writing \(\mathtt{flows}(\mathit{arm})\) for the set of flows at \(\lceil \mathit{arm} \rceil\)'s leaves:
 {\small
@@ -1046,6 +1043,10 @@ The moment when \(\delta\) fires becomes the boundary between old traffic and ne
 Old traffic continues to drain from arm 0, which is \(C@\tau\) carried over; new traffic goes to arm 1.
 From that instant on, an arriving packet whose label appears in \(\lceil \mathit{survivor} \rceil\) is sent by \(N.\mathit{z}\) to slot 1, while the residual packets already under arm 0 drain on their existing \ensuremath{\mathit{pifo}} entries.
 The two arms thus stay operationally disjoint even when their label sets overlap.
+\cref{sec:policy-dsl} requires that no two leaves of a \ensuremath{\mathit{pol}} carry the same flow, and a wrap is the one construction whose \ensuremath{\mathit{pol}}-level reading can break that.
+The condition constrains the policies an operator writes, not the policies a running control passes through.
+A wrap is transient by construction, since \Designate{} creates it and \Undesignate{} retires it.
+% "wrap" is a terrible formal name; it is used informally all over the document. I also don't think we should say that we have broken anything. We have just finished arguing that what we are doing is NOT breakage, as the even overlapping flows can easily be distinguished via time of arrival. I think we are saying too many words here, and only hurting ourselves.
 
 \paragraph{Pol-level reading}
 
@@ -1480,15 +1481,18 @@ At the \ensuremath{\mathit{pol}} level the effect is the outright replacement of
 
 \end{itemize}
 
-\xxx[AM]{Owed here: the \textsf{gmail} split that \cref{sec:add} forward-references.
-\cref{sec:add} says \Add{} cannot split a running flow, and promises that this section reaches the split as a sequence, so the worked example has to appear.
-The sequence is \Replace{} at \textsf{gmail}'s slot, with survivor \(D(\textsf{gmail\_business}, \textsf{gmail\_personal})\): the old leaf drains on the wrap's high arm while the two new leaves take arriving traffic on the low arm, and nothing is re-sorted.
-Two things need working out before it can be written.
-First, \Designate's precondition is satisfied only because \textsf{gmail\_business} and \textsf{gmail\_personal} are flows nothing in \(C\) yet serves, which is fine, but the \Quiesce{} that follows silences \textsf{gmail} itself, so a packet still matching \textsf{gmail} and neither of the two new flows would be dropped.
-The example therefore only works when the split is exhaustive over \textsf{gmail}, and we should say so.
-Second, this is really a change to the flow universe \(F\) of \cref{sec:policy-dsl}, which gains two flows and loses one, and \(F\) is fixed there before the \ensuremath{\mathit{pol}} is constructed.
-Either \(F\) has to admit the finer flows from the start, or \cref{sec:policy-dsl} has to say what changing \(F\) means.
-The second is the more interesting question and we have not addressed it anywhere.}
+\cref{sec:intro}'s gateway supplies a worked example, running \(p_1\) while its operator asks for \(p_2\), where
+% What is "gateway"
+{\small
+\[
+\begin{array}{@{}r@{\;}c@{\;}l@{}}
+p_1 &=& \Strict(\mathtt{hi}{:}\,\textsf{zoom},\ \mathtt{lo}{:}\,\textsf{gmail})\\[2pt]
+p_2 &=& \Strict(\mathtt{hi}{:}\,\textsf{zoom},\ \mathtt{lo}{:}\,\RR(\textsf{gmail}, \textsf{spotify})).
+\end{array}
+\]}
+\Add{} cannot directly reach \(p_2\), since the \textsf{gmail} leaf has to become an interior \RR{} node and \Add{} only appends arms to a node that is already internal.
+\Replace{} at the \(\mathtt{lo}\) slot does reach it, with survivor \(\RR(\textsf{gmail}, \textsf{spotify})\).
+This is the transition \cref{sec:intro} reaches at \(t_2\).
 
 \section{The Transition Planner}\label{sec:planner}
 
