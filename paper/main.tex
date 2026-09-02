@@ -1720,6 +1720,11 @@ Our single-purpose opcodes also mean that the tree can become transiently malfor
 For an example from \cref{sec:hw-compile}, \Add{}'s commit raises the target's arity to \texttt{n+1} before the \texttt{adopt} that actually attaches a child.
 The atomic install means no \texttt{push} or \texttt{pop} ever sees this state, but the planner is free to issue commits whose intermediate states would not satisfy the well-formedness conditions of \cref{sec:controls}.
 
+The ISA is the compiler's interface, and not all of the state it names reaches the switch.
+A tree's shape lives in the compiler, which is what per-edge indices and arities are for, and a PE stores no edge.
+A PE holds an ingress table that decides whether to admit a flow and, when it does, names the PIFO the packet enters and the token that carries it onward, an egress table that maps that token to the next PE, and the designated-survivor link of \cref{sec:hw-survivor}.
+The structural opcodes reach the switch only through what they make those tables say.
+
 Which PE holds a given PIFO is the substrate's choice, written \texttt{pe(path)} and fixed at compile time as a function of the PIFO's position in the tree.
 A typical choice is depth-by-PE, where all PIFOs at one depth share a PE~\cite{Sivaraman16}, so siblings do too.
 The planner consults \texttt{pe(path)} for a \texttt{spawn}'s \texttt{pe} argument and cannot otherwise observe it.
@@ -1898,7 +1903,7 @@ I have written two, since two is what this subsection delivers.
 If a change to the PIFOs themselves belongs here, the paragraph describing it is missing.}
 
 Rio builds transactional tables for the mappings the opcodes write.
-Each PE holds those tables, the \texttt{Assoc} sets and \texttt{Map} tables of \cref{sec:hw-compile} along with the parent-child edges that \texttt{adopt} and \texttt{emancipate} install, in a specialized structure that accepts a stream of update instructions followed by a commit marker.
+Each PE holds those tables, the \texttt{Assoc} sets and \texttt{Map} tables of \cref{sec:hw-compile}, in a specialized structure that accepts a stream of update instructions followed by a commit marker.
 Only when the marker is applied does the new version become active.
 We implement this using double buffering.
 An update instruction modifies a shadow copy of the table, which packet processing does not read, and the commit signal atomically swaps the active and shadow copies.
