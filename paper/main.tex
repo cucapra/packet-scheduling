@@ -911,20 +911,20 @@ At the instant \Remove{} fires, no entry above the doomed arm was enqueued on ac
 \subsubsection{\texorpdfstring{\(\Designate(\tau, \mathit{survivor})\)}{Designate}}\label{sec:designate}
 
 
-\(\tau : \mathit{path}\) is the path to the target subtree being wrapped, and \(\mathit{survivor} : \mathit{pol}\) is the designated-survivor policy that becomes the wrap's low-priority arm.
+\(\tau : \mathit{path}\) is the path to the target subtree being wrapped, and \(\mathit{survivor} : \mathit{pol}\) is the designated-survivor policy that becomes the new \(\Strictstar\) node's low-priority arm.
 
 Say the presently running control is \(C\).
 Intuitively, \Designate{} replaces \(C@\tau\) in place with \(\Strictstar(C@\tau, \lceil \mathit{survivor} \rceil)\).
 It is the mechanism behind non-disruptive in-place replacement (\cref{fig:designate}).
-The wrap lets \ensuremath{\mathit{survivor}} begin accepting new traffic on a low-priority arm, while the old subtree keeps draining, untouched, on a high-priority one.
+The \(\Strictstar\) node lets \ensuremath{\mathit{survivor}} begin accepting new traffic on a low-priority arm, while the old subtree keeps draining, untouched, on a high-priority one.
 Once the old subtree is empty, \Undesignate{} (\cref{sec:undesignate}) removes it and promotes \ensuremath{\mathit{survivor}} in its place.
-That is why the form exists: no single edit can swap one subtree for another without either dropping the old subtree's backlog or stalling the new arm, but the \(\Strictstar\) wrap lets both coexist for the length of a drain.
+That is why the form exists: no single edit can swap one subtree for another without either dropping the old subtree's backlog or stalling the new arm, but the \(\Strictstar\) node lets both coexist for the length of a drain.
 
 \Designate{} installs a ranker that names \(\Strictstar\), and \Undesignate{} retires the node carrying it.
 A node's ranker records which discipline the node runs (\cref{sec:controls}), so both forms state their preconditions structurally.
 No other form disturbs such a node.
 \Remove{} will not retire one (\cref{sec:remove}), and \ChangeMeta{} will not retune its arms (\cref{sec:changemeta}), so its two priorities are the ones \Designate{} gave it for as long as it exists.
-The wrap is visible at \ensuremath{\mathit{pol}}-level as a \(\Strictstar\), which is what \(\lfloor \cdot \rfloor\) (\cref{sec:equivalences}) reports of it.
+That node is visible at \ensuremath{\mathit{pol}}-level as a \(\Strictstar\), which is what \(\lfloor \cdot \rfloor\) (\cref{sec:equivalences}) reports of it.
 An operator may write a \(\Strictstar\) directly (\cref{sec:policy-dsl}), but one usually arises in the middle of a planner sequence, between a \Designate{} and its eventual \Undesignate.
 \cref{sec:hardware} takes up why the two disciplines are kept apart, which turns out to be a question about hardware layout rather than about scheduling.
 
@@ -1026,8 +1026,8 @@ Its ranker names \(\Strictstar\) rather than \Strict, which is what \cref{sec:un
 Arm \(0\) is \(M\) (\textsf{old}), unchanged down to its whole subtree and buffered packets; arm \(1\) is the freshly compiled \(\lceil\mathit{survivor}\rceil\) (\textsf{new}), initially empty.
 This is \cref{fig:designate-after}.
 \(N\)'s index-\ensuremath{\mathit{pifo}} holds \(P_0\) entries for arm \(0\) and none for arm \(1\), one per packet buffered under \textsf{old}.
-That backlog therefore keeps popping through the wrap ahead of any later arrival, unchanged, while \textsf{new} fills only as fresh traffic arrives (\cref{fig:designate-drain}).
-Because \(\mathtt{at}\) writes \(N\) back into the parent's slot \(k\), the parent's \(\mathit{z}.\mathit{meta}(k)\) is unchanged, so the wrap is transparent to the parent.
+That backlog therefore keeps popping through \(N\) ahead of any later arrival, unchanged, while \textsf{new} fills only as fresh traffic arrives (\cref{fig:designate-drain}).
+Because \(\mathtt{at}\) writes \(N\) back into the parent's slot \(k\), the parent's \(\mathit{z}.\mathit{meta}(k)\) is unchanged, so \(N\) is transparent to the parent.
 If \(\tau\) is empty the whole control becomes \(N\), with the old root as arm \(0\).
 
 Like \(\csem{\Add}\), the form is a recursion on the path, and only its base case is new:
@@ -1288,7 +1288,7 @@ The remaining three are the ones with an argument to make, and the rest of this 
 \Designate
 & At \(N\), the \(P_0\) slot-\(0\) entries match the packet count under arm 0, and arm 1 holds neither a packet nor an entry.
   At \(C@\pi\), slot \(k\)'s count is the \(P_0\) that \(C@\tau\) carried.
-& Outside the wrap every node is structurally intact, and \(N\) reads as a \(\Strictstar\), its arms annotated out of \(\mathit{z}_N.\mathit{meta}\).
+& Outside \(N\) every node is structurally intact, and \(N\) reads as a \(\Strictstar\), its arms annotated out of \(\mathit{z}_N.\mathit{meta}\).
 & \cref{sec:wrap-nondisruption}. \\
 \addlinespace
 
@@ -1595,7 +1595,7 @@ The planner has two ways to realize this, shown in \cref{fig:planner-add-vs-repl
 \end{figure}
 
 Option (a) wraps the entire running tree under a fresh \(\Strictstar\) and grows a freshly compiled \(p_2\) alongside.
-Every node sits inside the wrap, and the original \(p_1\), with all its in-flight packets, drains on the high-priority arm.
+Every node sits inside that \(\Strictstar\), and the original \(p_1\), with all its in-flight packets, drains on the high-priority arm.
 The footprint is the whole tree.
 
 Option (b) extends \(Q\)'s arity by one and attaches a freshly compiled \(d\) leaf as the third arm.
@@ -1731,11 +1731,12 @@ Each form names a fixed sequence of opcodes, and the planner reads live state at
 
 A switch with \(P\) output ports has \(P\) separate trees, each wrapped at the ISA in a reserved 1-arm PIFO \texttt{port\_root} whose sole child, reached through the index \texttt{port\_step}, is the actual tree root.
 Its \texttt{Assoc} and \texttt{Map} mirror the actual root's, since every walk below begins there.
-The wrapper is what makes the tree root an ordinary position.
+The port root is what makes the tree root an ordinary position.
 \texttt{undesignate} retargets a parent's index from a PIFO to that PIFO's designated survivor, and at the root there is no parent's index to retarget.
 That case is not hypothetical: \cref{sec:fallback}'s always-available plan is \(\Replace([], p_2)\), whose last step is \(\Undesignate([])\).
-Without a wrapper the substrate could not execute the one transition the planner is guaranteed to be able to fall back on, and would need a second opcode meaning ``make this PIFO the tree root'', doing at one position what \texttt{undesignate} does everywhere else.
-\Designate{} itself needs no parent, since it only writes the outgoing node's own link; it is retiring the wrapper, not installing it, that wants a slot above.
+Without the port root the substrate could not execute the one transition the planner is guaranteed to be able to fall back on, and would need a second opcode meaning ``make this PIFO the tree root'', doing at one position what \texttt{undesignate} does everywhere else.
+\Designate{} itself needs no parent, since it only writes the outgoing node's own link.
+It is \Undesignate{} rather than \Designate{} that wants a slot above.
 
 The three parts of \ensuremath{\mathit{z}} (\cref{sec:controls}) line up one to one with this vocabulary.
 A node's \(\mathit{z}.\mathit{admit}\) is its \texttt{Assoc} set, its \(\mathit{z}.\mathit{serves}\) is its \texttt{Map} table, its \(\mathit{z}.\mathit{rank}\) is what \texttt{set\_policy} installs and \texttt{discipline(v)} reads back, and its \(\mathit{z}.\mathit{meta}\) is what \texttt{set\_arm\_meta} writes.
