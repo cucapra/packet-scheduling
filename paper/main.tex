@@ -1725,6 +1725,9 @@ Per-edge indices and arities are how the compiler addresses a tree position, and
 A PE stores its \texttt{Assoc} set, a \texttt{Map} naming the PIFO each admitted flow enters and the PE that holds it, and the designated-survivor link of \cref{sec:hw-survivor}.
 An index is meaningful only against the tree the compiler holds, so an \texttt{adopt} reaches the switch only by changing which PIFO an index names.
 
+\xxx[AM to Zhiyuan]{This paragraph is written from your account of what the switch actually stores, so please confirm or correct it.
+The two claims that matter are that a PE holds no parent-child edge, and that the \texttt{Map} reaching hardware names a PIFO and the PE holding it rather than an index.}
+
 Which PE holds a given PIFO is the substrate's choice, written \texttt{pe(path)} and fixed at compile time as a function of the PIFO's position in the tree.
 A typical choice is depth-by-PE, where all PIFOs at one depth share a PE~\cite{Sivaraman16}, so siblings do too.
 The planner consults \texttt{pe(path)} for a \texttt{spawn}'s \texttt{pe} argument and cannot otherwise observe it.
@@ -1734,6 +1737,11 @@ The planner consults \texttt{pe(path)} for a \texttt{spawn}'s \texttt{pe} argume
 Each form of \(\delta\) (\cref{sec:delta-grammar}) lowers to a list of opcodes.
 The lowering \emph{schema} is mechanical.
 Each form names a fixed sequence of opcodes, and the planner reads live state at issue time to fill in the schema's positional parameters, such as flow lists, chain shapes, and routing indices, before dispatching the commit to the substrate.
+
+\xxx[AM to Zhiyuan]{When does a later commit in a guarded sequence get these parameters?
+This paragraph says the planner fills them in at issue time and then dispatches, while \cref{sec:hw-commit} lowers a guard to a blocking command sitting in the controller queue, which reads as the whole sequence being queued at once.
+The two cannot both be right for a sequence with a drain in the middle: after a \Designate{} and its drain, the flow lists and chain shapes a later \Quiesce{} or \Undesignate{} needs are not what they were when the sequence was planned.
+Either the planner dispatches one commit at a time, or the substrate resolves the live remainders late, which the \texttt{walk} description below would support.}
 
 A switch with \(P\) output ports has \(P\) separate trees, each wrapped at the ISA in a reserved 1-arm PIFO \texttt{port\_root} whose sole child, reached through the index \texttt{port\_step}, is the actual tree root.
 Its \texttt{Assoc} and \texttt{Map} mirror the actual root's, since every walk below begins there.
