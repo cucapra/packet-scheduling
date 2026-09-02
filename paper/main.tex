@@ -219,7 +219,7 @@ Our contributions are to say what the transitionary policy is and to do better t
 We take on two obligations.
 \emph{Obligation 1: give a semantics to the transitionary policy.}
 The transitionary policy is shaped by hardware-level manipulations on the way to realizing \(p_2\), rather than by anything the operator wrote, so its semantics is not handed to us.
-We develop a grammar of atomic edits (\cref{sec:grammar}) and a transition planner (\cref{sec:sequences}) that carries us from the operator-supplied policy \(p_1\), through one or more transitionary policies, and finally to the operator-supplied policy \(p_2\).
+We develop a grammar of atomic edits (\cref{sec:grammar}) and a transition planner (\cref{sec:planner}) that carries us from the operator-supplied policy \(p_1\), through one or more transitionary policies, and finally to the operator-supplied policy \(p_2\).
 The grammar is designed so that \emph{any transitionary policy it produces is ordinary scheduling}.
 Such a policy has two valuable properties: it has a human-readable semantics just as the operator-written \(p_1\) and \(p_2\) do, \emph{and} the step into it is guaranteed to be one the hardware can commit in a single instant.
 \emph{Obligation 2: improve upon the state of the art.}
@@ -1043,10 +1043,6 @@ The moment when \(\delta\) fires becomes the boundary between old traffic and ne
 Old traffic continues to drain from arm 0, which is \(C@\tau\) carried over; new traffic goes to arm 1.
 From that instant on, an arriving packet whose label appears in \(\lceil \mathit{survivor} \rceil\) is sent by \(N.\mathit{z}\) to slot 1, while the residual packets already under arm 0 drain on their existing \ensuremath{\mathit{pifo}} entries.
 The two arms thus stay operationally disjoint even when their label sets overlap.
-\cref{sec:policy-dsl} requires that no two leaves of a \ensuremath{\mathit{pol}} carry the same flow, and a wrap is the one construction whose \ensuremath{\mathit{pol}}-level reading can break that.
-The condition constrains the policies an operator writes, not the policies a running control passes through.
-A wrap is transient by construction, since \Designate{} creates it and \Undesignate{} retires it.
-% "wrap" is a terrible formal name; it is used informally all over the document. I also don't think we should say that we have broken anything. We have just finished arguing that what we are doing is NOT breakage, as the even overlapping flows can easily be distinguished via time of arrival. I think we are saying too many words here, and only hurting ourselves.
 
 \paragraph{Pol-level reading}
 
@@ -1481,8 +1477,7 @@ At the \ensuremath{\mathit{pol}} level the effect is the outright replacement of
 
 \end{itemize}
 
-\cref{sec:intro}'s gateway supplies a worked example, running \(p_1\) while its operator asks for \(p_2\), where
-% What is "gateway"
+\cref{sec:intro}'s transition supplies a worked example, with the scheduler running \(p_1\) while its operator asks for \(p_2\), where
 {\small
 \[
 \begin{array}{@{}r@{\;}c@{\;}l@{}}
@@ -1645,7 +1640,7 @@ A rejection names the step that caused it, either the first \(\delta_i\) whose \
 An operator debugging a sequence of a dozen steps needs to know which one failed, and the fold supplies it without extra work.
 
 The intermediate pols the fold produces are not transient artifacts of the proof.
-Each is a valid \ensuremath{\mathit{pol}} with an explainable scheduling semantics.
+Each has an explainable scheduling semantics.
 After the first step of \Replace(\ensuremath{\mathit{path}}, \ensuremath{\mathit{survivor}})'s expansion, for instance, the intermediate \ensuremath{\mathit{pol}} holds \(\Strict(\mathit{pol}@\mathit{path},\ \mathit{survivor})\) at \ensuremath{\mathit{path}}.
 That is a temporary strict-priority node favoring the outgoing \(\mathit{pol}@\mathit{path}\) over the incoming \ensuremath{\mathit{survivor}}, and it has a readable scheduling interpretation in its own right.
 
