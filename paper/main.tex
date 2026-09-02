@@ -373,6 +373,10 @@ Distinct leaves carry distinct flows (\cref{sec:policy-dsl} makes this a validit
 That in turn fixes, at every node on the way down, which child the packet has to be handed to.
 The service map reports that child rather than selecting it, and what \ensuremath{\mathit{z}} genuinely decides is the rank.
 
+At an internal node the ranker sees the payload and not the packet, meaning that the node can discriminate only among its own children. 
+It cannot do finer-grained discrimination based on packet- or flow-specific information. 
+The node's behavior is therefore a function of its own arms alone, which is a win for modularity and composability.
+
 \ensuremath{\mathit{state}} and \ensuremath{\mathit{pifo}} change as the node serves traffic, whereas \ensuremath{\mathit{z}} changes only when an edit rewrites it.
 That is why the per-arm metadata sits in \ensuremath{\mathit{z}} rather than in \ensuremath{\mathit{slot\_states}}.
 It is the configuration the operator chose, not bookkeeping that the traffic left behind.
