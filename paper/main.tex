@@ -1674,8 +1674,7 @@ The entire list lands between two consecutive \push{}/\pop{} operations, with no
 This is the atomicity that \cref{sec:delta-grammar} demanded of every form it admits.
 A commit's \emph{length} may depend on live control state (how many flows are admitted, how many siblings need shifting), but its \emph{atomicity} does not.
 
-Each \(\delta\) (\cref{sec:delta-grammar}) lowers to one \texttt{commit}, and that is the entire ISA-level contract.
-A guarded sequence (\cref{sec:sequences}) therefore becomes one commit per \(\delta\), with its guards lowered to the blocking commands of \cref{sec:hw-commit}.
+Each \(\delta\) (\cref{sec:delta-grammar}) lowers to one \texttt{commit}.
 The ISA itself is unconditional.
 The substrate trusts that its caller has issued a well-formed commit.
 Any situation-dependent reasoning, such as ``the subtree we are about to collapse is empty'', lives at \cref{sec:sequences}, in a guard \(\varphi\) that had to become true before the corresponding \(\delta\) fired.
