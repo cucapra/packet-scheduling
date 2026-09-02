@@ -1721,9 +1721,9 @@ For an example from \cref{sec:hw-compile}, \Add{}'s commit raises the target's a
 The atomic install means no \texttt{push} or \texttt{pop} ever sees this state, but the planner is free to issue commits whose intermediate states would not satisfy the well-formedness conditions of \cref{sec:controls}.
 
 The ISA is the compiler's interface, and not all of the state it names reaches the switch.
-A tree's shape lives in the compiler, which is what per-edge indices and arities are for, and a PE stores no edge.
-A PE holds an ingress table that decides whether to admit a flow and, when it does, names the PIFO the packet enters and the token that carries it onward, an egress table that maps that token to the next PE, and the designated-survivor link of \cref{sec:hw-survivor}.
-The structural opcodes reach the switch only through what they make those tables say.
+Per-edge indices and arities are how the compiler addresses a tree position, and a PE stores neither.
+A PE stores its \texttt{Assoc} set, a \texttt{Map} naming the PIFO each admitted flow enters and the PE that holds it, and the designated-survivor link of \cref{sec:hw-survivor}.
+An index is meaningful only against the tree the compiler holds, so an \texttt{adopt} reaches the switch only by changing which PIFO an index names.
 
 Which PE holds a given PIFO is the substrate's choice, written \texttt{pe(path)} and fixed at compile time as a function of the PIFO's position in the tree.
 A typical choice is depth-by-PE, where all PIFOs at one depth share a PE~\cite{Sivaraman16}, so siblings do too.
