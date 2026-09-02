@@ -1982,13 +1982,24 @@ In ours, a scheduler node holds packets whose ranks were fixed when they were \p
 Rio therefore retires the old configuration by draining it, which is what a guard waits for (\cref{sec:idioms}).
 
 \citet{Mahajan13} study the dependencies that a consistency property imposes among rule updates, and find that stronger properties induce more intricate dependencies and therefore slower updates.
+\citet{Namjoshi24} keep the guarantee and drop the versioning, sequencing the updates so that route consistency holds with a single table edited in place.
 A guarded sequence is a dependency structure of the same kind, drawn inside one scheduler.
 Where their dependencies run between rules on separate devices, ours run between edits at different positions of one tree.
 What a guard waits on is a subtree becoming empty.
 
+\citet{Xing22} carry the question onto the switch itself, reconfiguring a live data plane's match-action tables, control flow, and parser with no draining and no downtime.
+They define three guarantees of decreasing strictness.
+Program consistency exposes no intermediate state to any packet, element consistency makes modifications visible one element at a time, and execution consistency forbids only that a packet traverse a mixture of old and new program elements.
+Rio's commit is program consistency at the scale of a single \(\delta\), which is what \cref{sec:delta-grammar} demands of every form it admits.
+A transition that has to wait for a drain cannot be a single commit, so states in between are exposed by design.
+\cref{sec:links} gives each of those states a semantics, so what a packet meets is a policy the operator can read.
+Their partial-reconfiguration primitives exist so that program consistency does not require the whole new program to sit in scratch beside the old one.
+That is the same pressure that makes \cref{sec:fallback}'s whole-tree \Replace{} a fallback rather than the plan.
+
 These updates run through the interface P4 calls \emph{population}, the insertion and removal of match-action table entries~\cite{Bosshart14}.
 Population determines the policy applied to packets at any given instant.
 P4 anticipates reconfiguration that does not interrupt forwarding, and leaves the mechanism to implementations.
+\citet{Yang24} take that interface as far as it goes, compiling whole runtime programs down to table entries and installing them without disrupting traffic.
 Rio's commit is a group of such entry writes that installs together, so that the tables that a packet consults along its path never disagree about which policy is in force (\cref{sec:hw-commit}).
 
 \paragraph{Reconfiguring a live scheduler}
@@ -2003,9 +2014,15 @@ SP-PIFO also changes its scheduler as it runs, adapting the mapping from packet 
 That adaptation is measured as error against an ideal PIFO, so what SP-PIFO converges on is the policy the operator already wrote.
 Rio instead changes that policy, and reports the change back in the operator's own DSL (\cref{sec:equivalences}).
 
+\citet{Alcoz23} raise the question directly.
+Their scheduling hypervisor deploys per-tenant scheduling policies onto one switch, and they ask how to move from one such policy to another as tenants arrive and depart.
+They name two obstacles, emptying the buffers and resetting the state of the scheduling functions, and leave the mechanism to future runtime-programmable data planes.
+Rio answers the first by draining rather than dropping (\cref{sec:quiesce}), and the second by declining to reset (\cref{sec:changemeta}).
+
 Reconfiguration is routine in the schedulers deployed at hosts and NICs.
 Loom updates rate limiters whenever a VM or a flow starts or stops~\cite{Stephens19}.
 PicNIC reacts to a breakdown of isolation between tenants at sub-millisecond timescales~\cite{Kumar19}.
+FairNIC gives each tenant an independent subtree of packet schedulers to configure~\cite{Grant20}, so the set of tenants fixes the shape of the tree.
 Carousel shapes tens of thousands of flows and policies on a single server~\cite{Saeed17}.
 Eiffel argues for scheduling in software on the grounds of a shorter development cycle~\cite{Saeed19}.
 
@@ -2014,7 +2031,10 @@ Eiffel argues for scheduling in software on the grounds of a shorter development
 \citet{Sivaraman16} introduced the PIFO and the PIFO tree, observing that a switch offers a small menu of scheduling algorithms, and that once the silicon is designed an operator can tune a parameter and nothing more.
 PIEO generalizes the primitive to extraction from an arbitrary position in the queue~\cite{Shrivastav19}.
 SP-PIFO approximates a PIFO with a stack of strict-priority queues on devices that ship today~\cite{Alcoz20}.
+PACKS approximates a PIFO's scheduling order together with its admission control, where earlier approximations captured one at a time~\cite{Alcoz25}.
+Exp-PIFO approximates one with adaptive exponential bins, keeping two memory cells of state~\cite{Mostafaei25}.
 BMW Tree implements one as a balanced multi-way sorting tree that scales to large flow counts~\cite{Yao23}.
+BBQ reaches hundreds of thousands of concurrent flows by carrying hierarchical find-first-set into a pipelined integer priority queue~\cite{Atre24}.
 Gearbox approximates weighted fair queuing with a hierarchy of queuing levels at constant cost per operation~\cite{Gao22}.
 vPIFO virtualizes a single physical PIFO into many instances that its PIFO Visor can wire into a tree of any shape~\cite{vPIFO}.
 The gap it leaves at runtime is the subject of \cref{sec:vpifo}.
@@ -2022,6 +2042,11 @@ The gap it leaves at runtime is the subject of \cref{sec:vpifo}.
 All of them fix the tree's shape and the discipline at each node when the scheduler is configured.
 Rio runs above any of them and asks for one property, commits atomic with respect to traffic (\cref{sec:substrate-portability}).
 Each is therefore a plausible host, and what it would have to add is a transactional path to the tables the opcodes write.
+
+One recent substrate offers more than Rio assumes.
+UIFO adds a level of classes above packets, so that the service order of already-buffered traffic can be updated after the fact~\cite{Wang26}.
+Rio's forms are defined against a substrate where a rank is fixed at \push{} time (\cref{sec:controls}), and \cref{thm:nondisruption} is stated against that.
+A substrate that can re-rank a backlog admits reconfigurations for which this grammar has no form.
 
 \xxx[AM]{Proposal for the team: move \cref{sec:vpifo} out of \cref{sec:background} and land it here, as the worked example this paragraph wants.
 The part worth moving is the one that runs \cref{sec:intro}'s two candidate targets against vPIFO's own two tables, showing that the first is an edit its substrate is architecturally close to absorbing and the second is not.
@@ -2043,8 +2068,12 @@ That relates the two trees at a single instant and leaves the instant of the mov
 The backlog is laid out under the first embedding, and reading it under the second would make the scheduling decision that \cref{sec:remove} declines to make on the operator's behalf.
 Embedding settles which tree can host a policy, and leaves open what becomes of the packets buffered when the policy changes.
 
-\citet{Mittal16} ask when one scheduling algorithm can replay the departure order that another produced.
-That compares two schedulers by the order in which they release packets, which is how \cref{thm:nondisruption} compares a scheduler with itself across an edit.
+\citet{Campbell26} ask that same portability question of match-action tables rather than of trees.
+They give table transformations an algebra and a type system under which every well-typed transformation denotes one realizable function, and compile a specification into concrete tables for a chosen target.
+The object there is a table and the target is another environment, where ours is a tree and the target is the same tree a moment later.
+
+\citet{Mittal16} ask whether a single scheduling algorithm can replay the schedule that any other algorithm produced, and find that in general none can.
+That compares two schedulers by what they emit, which is how \cref{thm:nondisruption} compares a scheduler with itself across an edit.
 
 \section{Conclusion}\label{sec:concl}
 
