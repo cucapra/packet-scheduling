@@ -28,6 +28,17 @@ Software/NIC scheduling work that motivates the kinds of policies operators actu
 
 - P4-Bosshart-CCR14.pdf by Bosshart et al., _P4: Programming Protocol-Independent Packet Processors_. Cited indirectly: vPIFO targets P4, and any deployment story we tell flows through P4-runtime-style update mechanisms.
 
+## Newer work, added 2026-09-02
+
+Found by search rather than by hand; `paper/comments-newer-work.md` says what each is for and which are still missing.
+
+- QVISOR-Alcoz-HotNets23.pdf by Gran Alcoz, Vanbever, _QVISOR: Virtualizing Packet Scheduling Policies_. Asks how to move seamlessly from one scheduling policy to another, and names emptying the buffers and resetting scheduling-function state as the obstacles. A second group, independent of vPIFO, calling our problem open.
+- UIFO-Wang-arXiv26.pdf by Wang et al., _Programmable Packet Scheduling with Dynamic Reordering at Line Rate_. A class/packet abstraction that reorders already-buffered packets; the one recent paper that bears on our frozen-rank assumption.
+- InPlaceUpdate-Namjoshi-SIGCOMM24.pdf by Namjoshi, Gheissi, Sabnani, _Algorithms for In-Place, Consistent Network Update_. Route consistency without versioned tables; the current state of the Reitblatt lineage.
+- PACKS-Alcoz-NSDI25.pdf by Gran Alcoz et al., _Everything Matters in Programmable Packet Scheduling_. Approximates a PIFO's scheduling behavior and its admission control together.
+
+Still to fetch: FlexCore (_Runtime Programmable Switches_, NSDI 22), BBQ (NSDI 24), Exp-PIFO (Proc. ACM Netw. 2025).
+
 ## Live / consistent reconfiguration
 
 These are the closest works on _changing_ a deployed dataplane safely. They belong in a new §2.x (or fold into §2.2) on consistent updates. Reitblatt is the canonical reference for transition semantics, even though it targets SDN forwarding rather than scheduling.

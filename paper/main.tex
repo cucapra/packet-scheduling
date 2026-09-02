@@ -1965,21 +1965,91 @@ The bar for hosting Rio is therefore a single property, and we expect other PIFO
 
 \section{Related Work}\label{sec:related}
 
+\paragraph{Consistent network update}
+
+The work closest to ours in spirit concerns forwarding rather than scheduling.
+An operator who changes the forwarding rules across a set of devices cannot install them everywhere at once, so packets are in flight through the network while the change is spreading.
+\citet{Reitblatt12} observe that such an update passes through intermediate configurations, and that those configurations can behave in ways neither the old configuration nor the new one would.
+\cref{sec:intro} makes that same observation about scheduling.
+Their answer is a versioning discipline, which yields two consistency levels, per-packet and per-flow.
+A packet is stamped on entry and handled under the stamped version at every device, so one configuration handles it from end to end.
+Rio reaches their per-packet consistency by another means.
+The entire commit lands between two consecutive \push{}/\pop{} operations, so a packet meets one configuration or the other (\cref{sec:hw-isa}).
+
+The two settings part company over what the old configuration holds.
+In theirs, a forwarding rule holds no traffic, so the old configuration can be retired once the packets stamped with it have left the network.
+In ours, a scheduler node holds packets whose ranks were fixed when they were \push{}ed, and no version tag can re-sort them.
+Rio therefore retires the old configuration by draining it, which is what a guard waits for (\cref{sec:idioms}).
+
+\citet{Mahajan13} study the dependencies that a consistency property imposes among rule updates, and find that stronger properties induce more intricate dependencies and therefore slower updates.
+A guarded sequence is a dependency structure of the same kind, drawn inside one scheduler.
+Where their dependencies run between rules on separate devices, ours run between edits at different positions of one tree.
+What a guard waits on is a subtree becoming empty.
+
+These updates run through the interface P4 calls \emph{population}, the insertion and removal of match-action table entries~\cite{Bosshart14}.
+Population determines the policy applied to packets at any given instant.
+P4 anticipates reconfiguration that does not interrupt forwarding, and leaves the mechanism to implementations.
+Rio's commit is a group of such entry writes that installs together, so that the tables that a packet consults along its path never disagree about which policy is in force (\cref{sec:hw-commit}).
+
+\paragraph{Reconfiguring a live scheduler}
+
+Loom schedules at the NIC over a policy written as a restricted directed acyclic graph, and it reconfigures that hierarchy while traffic flows~\cite{Stephens19}.
+Configuration values travel inline with packet descriptors and doorbells, and each stage of the match-action pipeline saves the values it is given to its local memory as it processes them.
+A descriptor and the configuration it carries therefore reach each stage together, which is the effect \cref{sec:hw-commit} obtains by delay-aligning commit signals across PEs.
+Loom does not say what becomes of the packets already buffered under a node whose configuration changes.
+The interval in which an update spreads through the pipeline is given no scheduling meaning.
+
+SP-PIFO also changes its scheduler as it runs, adapting the mapping from packet ranks to a fixed set of strict-priority queues as traffic shifts~\cite{Alcoz20}.
+That adaptation is measured as error against an ideal PIFO, so what SP-PIFO converges on is the policy the operator already wrote.
+Rio instead changes that policy, and reports the change back in the operator's own DSL (\cref{sec:equivalences}).
+
+Reconfiguration is routine in the schedulers deployed at hosts and NICs.
+Loom updates rate limiters whenever a VM or a flow starts or stops~\cite{Stephens19}.
+PicNIC reacts to a breakdown of isolation between tenants at sub-millisecond timescales~\cite{Kumar19}.
+Carousel shapes tens of thousands of flows and policies on a single server~\cite{Saeed17}.
+Eiffel argues for scheduling in software on the grounds of a shorter development cycle~\cite{Saeed19}.
+
+\paragraph{Programmable scheduling substrates}
+
+\citet{Sivaraman16} introduced the PIFO and the PIFO tree, observing that a switch offers a small menu of scheduling algorithms, and that once the silicon is designed an operator can tune a parameter and nothing more.
+PIEO generalizes the primitive to extraction from an arbitrary position in the queue~\cite{Shrivastav19}.
+SP-PIFO approximates a PIFO with a stack of strict-priority queues on devices that ship today~\cite{Alcoz20}.
+BMW Tree implements one as a balanced multi-way sorting tree that scales to large flow counts~\cite{Yao23}.
+Gearbox approximates weighted fair queuing with a hierarchy of queuing levels at constant cost per operation~\cite{Gao22}.
+vPIFO virtualizes a single physical PIFO into many instances that its PIFO Visor can wire into a tree of any shape~\cite{vPIFO}.
+The gap it leaves at runtime is the subject of \cref{sec:vpifo}.
+
+All of them fix the tree's shape and the discipline at each node when the scheduler is configured.
+Rio runs above any of them and asks for one property, commits atomic with respect to traffic (\cref{sec:substrate-portability}).
+Each is therefore a plausible host, and what it would have to add is a transactional path to the tables the opcodes write.
+
+\xxx[AM]{Proposal for the team: move \cref{sec:vpifo} out of \cref{sec:background} and land it here, as the worked example this paragraph wants.
+The part worth moving is the one that runs \cref{sec:intro}'s two candidate targets against vPIFO's own two tables, showing that the first is an edit its substrate is architecturally close to absorbing and the second is not.
+The cost is that \cref{sec:intro} rests ``the state of the art would stop the world'' on \cite{vPIFO} alone, and \cref{sec:vpifo} is where that claim is cashed out, so moving the whole subsection would leave the claim unsupported for eight sections.
+Leaving a short paragraph behind would answer that, and the note already at \cref{sec:vpifo} asks the neighboring question of whether vPIFO deserves a subsection at all.}
+
+\paragraph{Formal models of scheduling}
+
+\citet{Mohan23} give a syntax and an operational semantics for PIFO trees, separating a tree's topology from the control that runs on it.
+The runtime model of \cref{sec:controls} is adapted from theirs.
+Its well-formedness condition, that a node holds one index per packet buffered beneath the corresponding child, is taken over unchanged.
+Every form of the grammar has to preserve it.
+Their question is whether a policy written for one topology can be realized on a tree of a different shape, which they answer by embedding one topology in another.
+Ours is how a tree may be changed while it runs, answered by the edits of \cref{sec:delta-grammar}, their agreement with the policy the operator reads back (\cref{thm:interplay}), and their cost to the backlog (\cref{thm:nondisruption}).
+
+Embedding suggests a route to reconfiguration of its own.
+One could embed both \(p_1\)'s tree and \(p_2\)'s tree into a common target, and move between the two embeddings.
+That relates the two trees at a single instant and leaves the instant of the move unaccounted for.
+The backlog is laid out under the first embedding, and reading it under the second would make the scheduling decision that \cref{sec:remove} declines to make on the operator's behalf.
+Embedding settles which tree can host a policy, and leaves open what becomes of the packets buffered when the policy changes.
+
+\citet{Mittal16} ask when one scheduling algorithm can replay the departure order that another produced.
+That compares two schedulers by the order in which they release packets, which is how \cref{thm:nondisruption} compares a scheduler with itself across an edit.
+
 \section{Conclusion}\label{sec:concl}
 
 \bibliographystyle{ACM-Reference-Format}
-\begin{thebibliography}{9}
-\bibitem{vPIFO}
-Zhang et al., vPIFO, SIGCOMM 2024.
-\bibitem{Mohan23}
-Mohan et al., Formal Abstractions for Packet Scheduling, OOPSLA 2023.
-\bibitem{Mittal16}
-Mittal et al., LSTF, SIGCOMM 2016.
-\bibitem{Sivaraman16}
-Sivaraman et al., PIFO, SIGCOMM 2016.
-\bibitem{Shrivastav19}
-Shrivastav, PIEO, SIGCOMM 2019.
-\end{thebibliography}
+\bibliography{main}
 
 \appendix
 
