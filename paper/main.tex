@@ -1691,23 +1691,23 @@ They address a PIFO by an opaque id \texttt{v}, one per tree node, and one of it
 Opcode & Effect \\
 \hline
 \multicolumn{2}{@{}l}{\emph{Lifecycle}} \\
-\texttt{spawn(v, pe)} & Allocate an empty PIFO with id \texttt{v} on PE \texttt{pe}. The id \texttt{v} must be fresh. \\
-\texttt{gc(v)} & Release PIFO \texttt{v}'s PE slot. \\[3pt]
+\texttt{spawn(v, pe)} & Allocate an empty PIFO with fresh id \texttt{v} on PE \texttt{pe} \\
+\texttt{gc(v)} & Release PIFO \texttt{v}'s PE slot \\[3pt]
 \multicolumn{2}{@{}l}{\emph{Structure}} \\
-\texttt{adopt(i, p, c)} & Parent PIFO \texttt{p} gains child PIFO \texttt{c}, reachable via index \texttt{i}. \\
-\texttt{emancipate(i, p)} & Inverse of \texttt{adopt}: detach parent \texttt{p}'s child at index \texttt{i}. \\
-\texttt{change\_arity(v, n)} & Set the live PIFO \texttt{v}'s arity counter to \texttt{n}, leaving its policy type unchanged. \\[3pt]
+\texttt{adopt(i, p, c)} & Parent PIFO \texttt{p} gains child PIFO \texttt{c}, reachable via index \texttt{i} \\
+\texttt{emancipate(i, p)} & Inverse of \texttt{adopt}: detach parent \texttt{p}'s child at index \texttt{i} \\
+\texttt{change\_arity(v, n)} & Set the live PIFO \texttt{v}'s arity counter to \texttt{n}, leaving its policy type unchanged \\[3pt]
 \multicolumn{2}{@{}l}{\emph{Classification}} \\
-\texttt{assoc(v, f)} & \texttt{v} begins accepting flow \texttt{f}. \\
-\texttt{deassoc(v, f)} & \texttt{v} stops accepting flow \texttt{f}. \\
-\texttt{map(v, f, i)} & \texttt{v} routes flow \texttt{f} to index \texttt{i}. \\
-\texttt{unmap(v, f)} & \texttt{v} forgets its mapping for \texttt{f}. \\[3pt]
+\texttt{assoc(v, f)} & \texttt{v} begins accepting flow \texttt{f} \\
+\texttt{deassoc(v, f)} & \texttt{v} stops accepting flow \texttt{f} \\
+\texttt{map(v, f, i)} & \texttt{v} routes flow \texttt{f} to index \texttt{i} \\
+\texttt{unmap(v, f)} & \texttt{v} forgets its mapping for \texttt{f} \\[3pt]
 \multicolumn{2}{@{}l}{\emph{Discipline}} \\
-\texttt{set\_policy(v, t, n)} & Set PIFO \texttt{v}'s policy type to \texttt{t} and its initial arity to \texttt{n}; \texttt{t} ranges over \{FIFO, RoundRobin, Strict, Strict*, WFQ\}. Issued exactly once per PIFO, at spawn time. \\
-\texttt{set\_arm\_meta(v, i, m)} & Set per-arm metadata on PIFO \texttt{v}'s child reached via index \texttt{i} to \texttt{m}, interpreted per \texttt{v}'s policy type. \\[3pt]
+\texttt{set\_policy(v, t, n)} & Set PIFO \texttt{v}'s policy type to \texttt{t} and its initial arity to \texttt{n}, once per PIFO at spawn time \\
+\texttt{set\_arm\_meta(v, i, m)} & Set per-arm metadata on PIFO \texttt{v}'s child reached via index \texttt{i} to \texttt{m}, interpreted per \texttt{v}'s policy type \\[3pt]
 \multicolumn{2}{@{}l}{\emph{Survivor}} \\
-\texttt{designate(v, surv)} & Point \texttt{v}'s designated-survivor link at \texttt{surv} (\cref{sec:hw-survivor}). \\
-\texttt{undesignate(v)} & \texttt{v}'s parent's index now reaches \texttt{v}'s designated survivor, which inherits the slot's metadata. \\
+\texttt{designate(v, surv)} & Point \texttt{v}'s designated-survivor link at \texttt{surv} (\cref{sec:hw-survivor}) \\
+\texttt{undesignate(v)} & \texttt{v}'s parent's index now reaches \texttt{v}'s designated survivor, which inherits the slot's metadata \\
 \hline
 \end{tabular}
 \end{table*}
@@ -1904,21 +1904,14 @@ After the swap, the inactive copy is synchronized in the background to serve as 
 A swap is atomic within one PE, but a commit generally spans several, and a packet in flight visits them in sequence.
 The commit signals are therefore delay-aligned across PEs according to the PIFO tree topology, so that no enqueue or dequeue operation can traverse a partially updated tree.
 Intuitively, the controller treats the commit boundary as a wavefront: the new configuration becomes visible at different PEs at carefully chosen times, ensuring that any individual packet observes a consistent configuration along its entire path.
+The double buffer and the wavefront are two mechanisms rather than one mechanism described at two scales.
+Their shared purpose is pipelined dequeue, so that a request travelling the chain of PEs never observes state that a commit has left inconsistent.
 
-\xxx[AM to Zhiyuan]{The per-PE double buffer and the cross-PE wavefront are now adjacent, as they should be, but the sentence joining them is mine and may be wrong.
-Is the wavefront the schedule on which the commit signal reaches each PE's shadow table, or are these two independent mechanisms?
-If the first, say so outright and the two paragraphs become one.}
-
-Rio supports incremental updates to the rank-computing match-action tables, which \texttt{set\_policy} and \texttt{set\_arm\_meta} write.
-It does not require arbitrary in-place replacement of a live scheduling policy.
-Instead, a policy-table update adds metadata for a newly admitted flow, whose packets are not admitted until the update finishes, or removes metadata for a flow that has already drained.
-Because such an update does not change the interpretation of any live packet, Rio applies it incrementally rather than through a full table swap.
-This keeps the hardware cost low while still preserving the atomicity needed for observable scheduling behavior.
-
-\xxx[AM to Zhiyuan]{\texttt{set\_arm\_meta} is one uniform opcode in \cref{tab:isa-opcodes}, with no hint that some calls bypass the swap, so the paragraph above owes a statement of which calls take the incremental path.
-This is not only presentation.
-\Add{}'s commit issues a \texttt{set\_arm\_meta} beside \texttt{change\_arity} and \texttt{adopt}; if that write lands outside the buffered swap then the commit is not atomic, and atomicity is the one thing \cref{sec:substrate-portability} asks of a substrate.
-Either the incremental path is confined to commits whose only instruction is a \texttt{set\_arm\_meta}, or the claim needs narrowing.}
+Rio supports incremental updates to the rank-computing match-action tables, which \texttt{set\_policy} and \texttt{set\_arm\_meta} write, and does not require arbitrary in-place replacement of a live scheduling policy.
+Such an update either installs metadata for a flow whose packets are not admitted until the commit finishes, or retires metadata for a flow that has already drained, so it never changes the interpretation of a packet already in flight.
+Our controller stages and swaps these writes along with every other instruction in their commit, so the \texttt{set\_arm\_meta} that \Add{} issues beside \texttt{change\_arity} and \texttt{adopt} lands inside the same atomic instant.
+Rio does not lean on that, since the table whose commit must be a single instant is the one mapping a flow to the PIFO that serves it, and that mapping is what admits a packet at all.
+The rank computation behind it is a reference design, and a substrate may configure its own disciplines by whatever means it has.
 
 The controller also implements guarded transitions.
 As described in \cref{sec:sequences}, some transitions are guarded by predicates such as the emptiness of a subtree.
