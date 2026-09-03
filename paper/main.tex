@@ -1981,17 +1981,17 @@ Rio therefore retires the old configuration by draining it, which is what a guar
 
 \citet{Mahajan13} study the dependencies that a consistency property imposes among rule updates, and find that stronger properties induce more intricate dependencies and therefore slower updates.
 \citet{Namjoshi24} keep the guarantee and drop the versioning, sequencing the updates so that route consistency holds with a single table edited in place.
-A guarded sequence is a dependency structure of the same kind, drawn inside one scheduler.
+Our guarded sequences are dependency structures of the same kind, drawn inside one scheduler.
 While their dependencies run between rules on separate devices, ours run between edits at different positions of one tree.
 
-\citet{Xing22} carry the question onto the switch itself, reconfiguring a live data plane's match-action tables, control flow, and parser with no draining and no downtime.
-They define three guarantees of decreasing strictness.
+\citet{Xing22} carry the question onto the switch itself with FlexCore, which reconfigures a live data plane's match-action tables, control flow, and parser with no draining and no downtime.
+FlexCore defines three guarantees of decreasing strictness.
 Program consistency exposes no intermediate state to any packet, element consistency makes modifications visible one element at a time, and execution consistency forbids only that a packet traverse a mixture of old and new program elements.
-Rio's commit is program consistency at the scale of a single \(\delta\), which is what \cref{sec:delta-grammar} demands of every form it admits.
-A transition that has to wait for a drain cannot be a single commit, so states in between are exposed by design.
-\cref{sec:links} gives each of those states a semantics, so every packet is handled by a policy the operator can understand.
-Their partial-reconfiguration primitives exist so that program consistency does not require the whole new program to sit in scratch beside the old one.
-We are similarly uncomfortable with large footprints, which is why \cref{sec:fallback}'s whole-tree \Replace{} is our fallback rather than our plan.
+Rio's commit is program consistency at the scale of a single \(\delta\), which is what our grammar demands of every form it admits (\cref{sec:delta-grammar}).
+A Rio transition that has to wait for a drain cannot be a single commit, so states in between are exposed by design.
+We give each of those states a semantics (\cref{sec:links}), so every packet is handled by a policy the operator can understand.
+FlexCore's partial-reconfiguration primitives exist so that program consistency does not require the whole new program to sit in scratch beside the old one.
+We are similarly uncomfortable with large footprints, which is why our whole-tree \Replace{} is a fallback rather than a plan (\cref{sec:fallback}).
 
 These updates run through the interface that P4 calls \emph{population}, the insertion and removal of match-action table entries~\cite{Bosshart14}.
 Population determines the policy applied to packets at any given instant.
@@ -2003,7 +2003,7 @@ Rio's commit is a group of such entry writes that installs together, so that the
 
 Loom schedules at the NIC over a policy written as a restricted DAG, and it reconfigures that hierarchy while traffic flows~\cite{Stephens19}.
 Configuration values travel inline with packet descriptors and doorbells, and each stage of the match-action pipeline saves the values it is given to its local memory as it processes them.
-A descriptor and the configuration it carries therefore reach each stage together, which is the effect \cref{sec:hw-commit} obtains by delay-aligning commit signals across PEs.
+A descriptor and the configuration it carries therefore reach each stage together, which is the effect Rio obtains by delay-aligning commit signals across PEs (\cref{sec:hw-commit}).
 Loom does not say what becomes of the packets already buffered under a node whose configuration changes, and the interval in which an update spreads through the pipeline is given no scheduling meaning.
 
 SP-PIFO also changes its scheduler as it runs, adapting the mapping from packet ranks to a fixed set of strict-priority queues as traffic shifts~\cite{Alcoz20}.
@@ -2032,15 +2032,15 @@ Exp-PIFO approximates one with adaptive exponential bins, keeping two memory cel
 BMW Tree implements one as a balanced multi-way sorting tree that scales to large flow counts~\cite{Yao23}.
 BBQ reaches hundreds of thousands of concurrent flows by carrying hierarchical find-first-set into a pipelined integer priority queue~\cite{Atre24}.
 Gearbox approximates weighted fair queuing with a hierarchy of queuing levels at constant cost per operation~\cite{Gao22}.
-vPIFO virtualizes a single physical PIFO into many instances that its PIFO Visor can wire into a tree of any shape~\cite{vPIFO}; the gap it leaves at runtime is discussed as a case study in \cref{sec:vpifo}.
+vPIFO virtualizes a single physical PIFO into many instances that its PIFO Visor can wire into a tree of any shape~\cite{vPIFO}; we take the gap it leaves at runtime as a case study in \cref{sec:vpifo}.
 
 All of these substrates fix the tree's shape and the discipline at each node when the scheduler is configured.
 Rio runs above any of them and asks for one property: commits that are atomic with respect to traffic (\cref{sec:substrate-portability}).
-Each is therefore a plausible host, and what it would have to add is a transactional path to the tables that the opcodes write.
+Each is therefore a plausible host, and what it would have to add is a transactional path to the tables that our opcodes write.
 
 One recent substrate offers more than Rio assumes.
 UIFO adds a level of classes above packets, so that the service order of already-buffered traffic can be updated after the fact~\cite{Wang26}.
-Rio's forms are defined against a substrate where a rank is fixed at \push{} time (\cref{sec:controls}), and \cref{thm:nondisruption} is stated against that.
+Rio's forms are defined against a substrate where a rank is fixed at \push{} time (\cref{sec:controls}), and our non-disruption theorem (\cref{thm:nondisruption}) is stated against that.
 A substrate that can re-rank a backlog admits reconfigurations for which this grammar has no form.
 
 \xxx[AM]{Proposal for the team: move \cref{sec:vpifo} out of \cref{sec:background} and put it here. It can be a kind of ``worked example'' to show that none of the existing PIFO substrates are our competition. I don't feel super strongly about this; the vPIFO discussion early on is also doing something useful. Just a thought.}
@@ -2048,9 +2048,9 @@ A substrate that can re-rank a backlog admits reconfigurations for which this gr
 \paragraph{Formal models of scheduling}
 
 \citet{Mohan23} give a syntax and an operational semantics for PIFO trees, separating a tree's topology from the control that runs on it.
-The runtime model of \cref{sec:controls} is adapted from theirs.
+Our runtime model (\cref{sec:controls}) is adapted from theirs.
 Their question is whether a policy written for one topology can be realized on a tree of a different shape, which they answer by embedding one topology in another.
-Ours is how a tree may be changed while it runs, answered by the edits of \cref{sec:delta-grammar}, their agreement with the policy the operator reads back (\cref{thm:interplay}), and their cost to the backlog (\cref{thm:nondisruption}).
+Ours is how a tree may be changed while it runs, answered by our edits (\cref{sec:delta-grammar}), by their agreement with the policy the operator reads back (\cref{thm:interplay}), and by what they cost the backlog (\cref{thm:nondisruption}).
 
 Embedding suggests a route to reconfiguration of its own: embed both \(p_1\)'s tree and \(p_2\)'s tree into a common target, and move between the two embeddings.
 The backlog would be laid out under the first embedding and read under the second.
@@ -2061,7 +2061,7 @@ They give table transformations an algebra and a type system under which every w
 The object there is a table and the target is another environment, where ours is a tree and the target is the same tree a moment later.
 
 \citet{Mittal16} ask whether a single scheduling algorithm can replay the schedule that any other algorithm produced, and find that in general none can.
-That compares two schedulers by what they emit, which is how \cref{thm:nondisruption} compares a scheduler with itself across an edit.
+That compares two schedulers by what they emit, which is how we compare a scheduler with itself across an edit (\cref{thm:nondisruption}).
 
 \section{Conclusion}\label{sec:concl}
 
