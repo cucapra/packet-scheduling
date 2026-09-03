@@ -11,6 +11,16 @@ These works define and refine the hardware/algorithmic substrate that we (and vP
 - Gearbox-Gao-NSDI22.pdf by Gao et al., _Gearbox: A Hierarchical Packet Scheduler for Approximate Weighted Fair Queuing_. Hardware hierarchical scheduling, a substrate alternative.
 - vPIFO-Zhang-SIGCOMM24.pdf by Zhang et al., _Virtualized Packet Scheduler for Programmable Hierarchical Scheduling_. The closest related work; subject of §2.2. Their §8 explicitly leaves our transitional-phase problem open.
 
+## Universal Packet Scheduling
+
+- UniversalPacketScheduling-Mittal-NSDI16.pdf by Mittal, Agarwal, Ratnasamy, Shenker. NSDI 2016, pages 501--521. There is also a 7-page HotNets 2015 version of the same title; `\cite{Mittal16}` points at this one.
+
+## Second-pass search, added 2026-09-02
+
+- FairNIC-Grant-SIGCOMM20.pdf by Grant, Yelam, Bland, Snoeren, _SmartNIC Performance Isolation with FairNIC_. Each tenant gets an independent subtree of packet schedulers to configure, so the set of tenants fixes the tree's shape. Motivation for why a hierarchy changes; says nothing about doing it while running.
+- P4runpro-Yang-SIGCOMM24.pdf by Yang, He, Zhou, Shi, Cao, Liu. Runtime programmability for RMT switches, reached by compiling whole runtime programs down to table entries and installing them without disrupting traffic. Companion to FlexCore, and evidence that entry writes alone go a long way.
+- MatchBox-Campbell-PLDI26.pdf by Campbell, Zhang, Saxena, Akella, Dillig. An algebra and type system for match-action table transformations, so tables written for one environment can be realized in another. The portability question asked of tables rather than of trees. PLDI 2026 distinguished paper.
+
 ## Formal/PL grounding
 
 - FormalAbstractions-Mohan-OOPSLA23.pdf by Mohan, Liu, Foster, Kappé, Kozen. Our prior work formalizing PIFO-tree semantics. The semantics of `link` (§3-onwards) builds on this.
@@ -27,6 +37,18 @@ Software/NIC scheduling work that motivates the kinds of policies operators actu
 ## Programmable data planes (substrate language)
 
 - P4-Bosshart-CCR14.pdf by Bosshart et al., _P4: Programming Protocol-Independent Packet Processors_. Cited indirectly: vPIFO targets P4, and any deployment story we tell flows through P4-runtime-style update mechanisms.
+
+## Newer work, added 2026-09-02
+
+Found by search rather than by hand. All seven are cited in `sec:related`.
+
+- FlexCore-Xing-NSDI22.pdf by Xing, Hsu, Kadosh, Lo, Piasetzky, Krishnamurthy, Chen, _Runtime Programmable Switches_. Reconfigures a live data plane's tables, control flow, and parser with no downtime, under three named consistency guarantees. Our `sec:hw-commit` argument, carried out for the forwarding pipeline.
+- QVISOR-Alcoz-HotNets23.pdf by Gran Alcoz, Vanbever, _QVISOR: Virtualizing Packet Scheduling Policies_. Asks how to move from one scheduling policy to another, and names emptying the buffers and resetting scheduling-function state as the obstacles. A second group, independent of vPIFO, calling our problem open.
+- UIFO-Wang-arXiv26.pdf by Wang et al., _Programmable Packet Scheduling with Dynamic Reordering at Line Rate_. A class/packet abstraction that reorders already-buffered packets; the one recent paper that bears on our frozen-rank assumption.
+- InPlaceUpdate-Namjoshi-SIGCOMM24.pdf by Namjoshi, Gheissi, Sabnani, _Algorithms for In-Place, Consistent Network Update_. Route consistency without versioned tables; the current state of the Reitblatt lineage.
+- PACKS-Alcoz-NSDI25.pdf by Gran Alcoz, Vass, Namyar, Arzani, Rétvári, Vanbever, _Everything Matters in Programmable Packet Scheduling_. Approximates a PIFO's scheduling order and its admission control together. Published NSDI '25 version, replacing the arXiv v1 copy.
+- BBQ-Atre-NSDI24.pdf by Atre, Sadok, Sherry, _BBQ: A Fast and Scalable Integer Priority Queue for Hardware Packet Scheduling_. Hierarchical find-first-set ported to a pipeline-parallel hardware design.
+- Exp-PIFO-Mostafaei-CoNEXT25.pdf by Mostafaei, Ezzati, Cuijpers, Schmid, Rétvári, Borst. PIFO approximation by adaptive exponential bins, on two memory cells of state.
 
 ## Live / consistent reconfiguration
 

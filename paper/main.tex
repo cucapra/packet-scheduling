@@ -150,7 +150,7 @@
 
 A \emph{packet scheduler} decides which of the packets buffered at an output port leaves next.
 On a programmable switch, that decision belongs to the network operator rather than to the silicon, so the scheduler runs whatever policy the deployment calls for.
-Those policies are usually hierarchical, and each level of that hierarchy is a scheduling decision in its own right.
+Those policies are usually hierarchical~\cite{Stephens19,Kumar19,Grant20,vPIFO}, and each level of that hierarchy is a scheduling decision in its own right.
 Whatever the policy, the scheduler has to reach its decision at line rate, since a scheduler that cannot keep up with the wire drops the very traffic it was meant to schedule.
 In response to telemetry from downstream (shifting traffic patterns, changing tenants, etc.), the network operator may need to change the policy in force.
 Such changes need to be rapid and seamless.
@@ -213,7 +213,7 @@ At time \(t_2\), defined as the instant that a well-defined guard becomes true, 
 
 The operator never specified the semantics of the interval from \(t_1\) to \(t_2\), but that interval is a packet scheduling regime all the same.
 It is unavoidable, it persists for nonzero time, and throughout it the scheduler goes on accepting and emitting packets, so scheduling decisions are being made in it.
-Some of those decisions are better than others from the operator's point of view, and the state of the art has settled on a trivial one, discarding the backlog and starting over.
+Some of those decisions are better than others from the operator's point of view, and the state of the art has settled on a trivial one, discarding the backlog and starting over~\cite{vPIFO}.
 Our contributions are to say what the transitionary policy is and to do better than that.
 
 We take on two obligations.
@@ -241,8 +241,8 @@ We contribute a tool that achieves this and shows [improvements].
 A \emph{PIFO} (push-in, first-out queue) is a priority queue that is additionally defined to break rank-ties in FIFO order.
 Where a single PIFO expresses just one scheduling decision, a PIFO tree composes policies via parent-child relationships, capturing the hierarchical policies that operators actually deploy.
 
-A PIFO tree lowers to hardware by mapping each tree depth onto a dedicated processing element (PE), with siblings and cousins sharing the PE at their depth.
-Pinning a depth level to a single PE has well-studied benefits for computation and storage, and it is the layout that prior PIFO designs all build on~\cite{Sivaraman16,Mohan23,Shrivastav19,vPIFO}.
+A PIFO tree is typically lowered to hardware by mapping each tree depth onto a dedicated processing element (PE), with siblings and cousins sharing the PE at their depth.
+Pinning a depth level to a single PE has well-studied benefits for computation and storage, and it is the layout \citet{Sivaraman16} introduced.
 The PE budget is fixed by the silicon, so the running tree's shape is constrained by what the deployed PEs can host.
 
 
@@ -306,7 +306,7 @@ The family of disciplines is open.
 Our implementation instantiates \Strict, \RR, and \WFQ because they aid our exposition.
 
 We also have the discipline \(\Strictstar\), which for the most part can be thought of as merely an instance of 2-ary \Strict{}.
-While the user may use \(\Strictstar\) in their policies, it is really designed to be introduced and removed by the compiler during an in-place subtree replacement, which \cref{sec:idioms} assembles as the \Replace{} idiom.
+While the operator may use \(\Strictstar\) in their policies, it is really designed to be introduced and removed by the compiler during an in-place subtree replacement, which \cref{sec:idioms} assembles as the \Replace{} idiom.
 The two disciplines are told apart in \cref{sec:hardware}, where a novel optimization allows us to realize \(\Strictstar\) without a pifo or a tree level of its own.
 That is what makes an in-place replacement smooth.
 
@@ -1645,7 +1645,7 @@ That is a temporary strict-priority node favoring the outgoing \(\mathit{pol}@\m
 \section{Rio Hardware Implementation}\label{sec:hardware}
 
 A PIFO tree is a scheduling abstraction, and a scheduler must be laid out on top of existing silicon.
-Existing designs~\cite{vPIFO} therefore build the tree out of programmable processing elements, or PEs, each hosting several PIFOs, one per node of the tree it carries.
+Existing designs~\cite{Sivaraman16,Yao23,vPIFO} therefore build the tree out of programmable processing elements, or PEs, each hosting several PIFOs, one per node of the tree it carries.
 Each PE carries hardware, usually match-action pipelines, that assigns a packet to one of its PIFOs and computes the packet's rank and next-hop destination.
 Behind that, a single physical PIFO supplies the storage that all of the PE's PIFOs share.
 
@@ -1659,7 +1659,7 @@ On dequeue, the switch starts from the output port's root PIFO, pops the best-ra
 This is sufficient for a static policy, but it does not by itself support dynamic policy updates concurrent with packet enqueue and dequeue.
 In such a case, a single packet operation can observe a mixture of old and new scheduler state.
 For example, an enqueue may choose its path using the old flow-to-child mapping but compute its rank using newly updated per-arm metadata, or a dequeue may pop from one version of the tree and then follow next-hop state from another.
-As a result, existing PIFO-based substrates support only stop-the-world policy update.
+As a result, existing PIFO-based substrates support only stop-the-world policy update~\cite{vPIFO,Alcoz23}.
 
 \cref{sec:hw-isa} gives the interface Rio's substrate offers instead, a \emph{commit} that installs a whole list of instructions atomically with respect to traffic, along with the thirteen opcodes such a list is drawn from.
 \cref{sec:hw-compile} lowers each form of \(\delta\) to one commit, and \cref{sec:hw-survivor} supplies the one piece of substrate machinery with no counterpart in the model, the designated-survivor link.
@@ -1916,6 +1916,8 @@ Only when the marker is applied does the new version become active.
 We implement this using double buffering.
 An update instruction modifies a shadow copy of the table, which packet processing does not read, and the commit signal atomically swaps the active and shadow copies.
 After the swap, the inactive copy is synchronized in the background to serve as the shadow for the next commit.
+Staging updates in a shadow copy and swapping them in is also how runtime reconfiguration is done for the forwarding pipeline~\cite{Xing22,Yang24}.
+Rio therefore asks its substrate for no primitive that runtime-programmable switch designs do not already provide.
 
 A swap is atomic within one PE, but a commit generally spans several, and a packet in flight visits them in sequence.
 The commit signals are therefore delay-aligned across PEs according to the PIFO tree topology, so that no enqueue or dequeue operation can traverse a partially updated tree.
@@ -1959,27 +1961,116 @@ If the network operator wishes to install a discipline that the menu lacks, they
 A small programmable core beside the PIFO tree would be one way to supply this.
 
 The designated-survivor link of \cref{sec:hw-survivor} is an optimization rather than a requirement, since a substrate without one lowers \Designate{} to a literal \Strict-2 wrapper and pays for the relayouts.
-The bar for hosting Rio is therefore a single property, and we expect other PIFO substrates, vPIFO~\cite{vPIFO} among them, to clear it and to be able to adopt the link besides.
+The bar for hosting Rio is therefore a single property, and we expect other PIFO substrates to clear it and to be able to adopt the link besides~\cite{Shrivastav19,Gao22,Yao23,vPIFO,Atre24,Alcoz25}.
 
 \section{Evaluation}\label{sec:eval}
 
 \section{Related Work}\label{sec:related}
 
+\paragraph{Consistent network update}
+
+The work closest to ours in spirit concerns packet \emph{forwarding} rather than packet scheduling.
+An operator who changes the forwarding rules across a set of devices cannot install them everywhere at once, so packets are in flight through the network while the change is spreading.
+\citet{Reitblatt12} observe that such an update passes through intermediate configurations, and that those configurations can behave in ways that neither the old configuration nor the new one would.
+Our work makes that same observation about scheduling.
+Their answer is a versioning discipline, which yields two consistency levels, per-packet and per-flow: a packet is stamped on entry and handled under the stamped version at every device, so one configuration handles it from end to end.
+Rio reaches per-packet consistency by another means: the entire commit lands between two consecutive \push{}/\pop{} operations, so a packet meets one configuration or the other (\cref{sec:hw-isa}).
+
+The two settings differ in what the old configuration holds.
+In forwarding, a forwarding rule holds no traffic, so the old configuration can be retired once the packets stamped with it have left the network.
+In scheduling, a scheduler node holds packets whose ranks were fixed when they were \push{}ed, and no version tag can re-sort them.
+Rio therefore retires the old configuration by draining it, which is what a guard waits for (\cref{sec:idioms}).
+
+\citet{Mahajan13} study the dependencies that a consistency property imposes among rule updates, and find that stronger properties induce more intricate dependencies and therefore slower updates.
+\citet{Namjoshi24} keep the guarantee and drop the versioning, sequencing the updates so that route consistency holds with a single table edited in place.
+Our guarded sequences are dependency structures of the same kind, drawn inside one scheduler.
+While their dependencies run between rules on separate devices, ours run between edits at different positions of one tree.
+
+All of that work rewrites the entries that a device's tables hold.
+FlexCore~\cite{Xing22} reconfigures the \emph{program} those tables belong to: it changes a live data plane's match-action tables, control flow, and parser.
+It computes a reconfiguration script, which is a sequence of atomic graph edits that carries the old program to the new one, and defines three consistency guarantees over the intermediate states along the way.
+Our guarded sequences (\cref{sec:sequences}) have the same shape.
+This similarity is unsurprising: changing the structure that a packet passes through, without first stopping the traffic, calls for atomic steps and an account of what holds between them, in either their domain (forwarding) or ours (scheduling).
+The strongest of their guarantees, program consistency, lets no intermediate state reach a packet, and a Rio commit provides that for a single \(\delta\) (\cref{sec:delta-grammar}).
+The two domains diverge over what is being changed.
+A match-action table holds no packet, and FlexCore does not handle stateful programs, leaving for future work how state should be ported to a new program.
+A packet scheduler is exactly such a stateful case, since its entire content is buffered packets whose ranks were fixed at \push{} time.
+Reconfiguring a packet scheduler is therefore what FlexCore sets aside, and what this paper takes up.
+
+These updates run through the interface that P4 calls \emph{population}, the insertion and removal of match-action table entries~\cite{Bosshart14}.
+Population determines the policy applied to packets at any given instant.
+P4 anticipates reconfiguration that does not interrupt forwarding, and leaves the mechanism to implementations.
+\citet{Yang24} take that interface as far as it goes, compiling whole runtime programs down to table entries and installing them without disrupting traffic.
+Rio's commit is a group of such entry writes that installs together, so that the tables that a packet consults along its path never disagree about which policy is in force (\cref{sec:hw-commit}).
+
+\paragraph{Reconfiguring a live scheduler}
+
+Loom schedules at the NIC over a policy written as a restricted DAG, and it reconfigures that hierarchy while traffic flows~\cite{Stephens19}.
+Configuration values travel inline with packet descriptors and doorbells, and each stage of the match-action pipeline saves the values it is given to its local memory as it processes them.
+A descriptor and the configuration it carries therefore reach each stage together, which is the effect Rio obtains by delay-aligning commit signals across PEs (\cref{sec:hw-commit}).
+Loom does not say what becomes of the packets already buffered under a node whose configuration changes, and the interval in which an update spreads through the pipeline is given no scheduling meaning.
+
+SP-PIFO also changes its scheduler as it runs, adapting the mapping from packet ranks to a fixed set of strict-priority queues as traffic shifts~\cite{Alcoz20}.
+That adaptation is measured as error against an ideal PIFO, so what SP-PIFO converges on is the policy the operator already wrote.
+Rio instead changes that policy, and reports the change back in the operator's own DSL (\cref{sec:equivalences}).
+
+\citet{Alcoz23} raise the question directly.
+Their scheduling hypervisor deploys per-tenant scheduling policies onto one switch, and they ask how to move from one such policy to another as tenants arrive and depart.
+They name two obstacles, emptying the buffers and resetting the state of the scheduling functions, and leave the mechanism to future runtime-programmable data planes.
+Rio answers the first by draining rather than dropping (\cref{sec:quiesce}), and the second by declining to reset (\cref{sec:changemeta}).
+
+Reconfiguration is routine in the schedulers deployed at hosts and NICs.
+Loom updates rate limiters whenever a VM or a flow starts or stops~\cite{Stephens19}.
+PicNIC reacts to a breakdown of isolation between tenants at sub-millisecond timescales~\cite{Kumar19}.
+FairNIC gives each tenant an independent subtree of packet schedulers to configure~\cite{Grant20}, so the set of tenants fixes the shape of the tree.
+Carousel shapes tens of thousands of flows and policies on a single server~\cite{Saeed17}.
+Eiffel argues for scheduling in software on the grounds of a shorter development cycle~\cite{Saeed19}.
+
+\paragraph{Programmable scheduling substrates}
+
+\citet{Sivaraman16} introduce the PIFO and the PIFO tree, observing that a switch offers a small menu of scheduling algorithms, and that once the silicon is designed an operator can tune a parameter and nothing more.
+PIEO generalizes the primitive to extraction from an arbitrary position in the queue~\cite{Shrivastav19}.
+SP-PIFO approximates a PIFO with a stack of strict-priority queues on devices that ship today~\cite{Alcoz20}.
+PACKS approximates a PIFO's scheduling order together with its admission control, where earlier approximations captured one at a time~\cite{Alcoz25}.
+Exp-PIFO approximates one with adaptive exponential bins, keeping two memory cells of state~\cite{Mostafaei25}.
+BMW Tree implements one as a balanced multi-way sorting tree that scales to large flow counts~\cite{Yao23}.
+BBQ reaches hundreds of thousands of concurrent flows by carrying hierarchical find-first-set into a pipelined integer priority queue~\cite{Atre24}.
+Gearbox approximates weighted fair queuing with a hierarchy of queuing levels at constant cost per operation~\cite{Gao22}.
+vPIFO virtualizes a single physical PIFO into many instances that its PIFO Visor can wire into a tree of any shape~\cite{vPIFO}; we take the gap it leaves at runtime as a case study in \cref{sec:vpifo}.
+
+All of these substrates fix the tree's shape and the discipline at each node when the scheduler is configured.
+Rio runs above any of them and asks for one property: commits that are atomic with respect to traffic (\cref{sec:substrate-portability}).
+Each is therefore a plausible host, and what it would have to add is a transactional path to the tables that our opcodes write.
+
+One recent substrate offers more than Rio assumes.
+UIFO adds a level of classes above packets, so that the service order of already-buffered traffic can be updated after the fact~\cite{Wang26}.
+Rio's forms are defined against a substrate where a rank is fixed at \push{} time (\cref{sec:controls}), and our non-disruption theorem (\cref{thm:nondisruption}) is stated against that.
+A substrate that can re-rank a backlog admits reconfigurations for which this grammar has no form.
+
+\xxx[AM]{Proposal for the team: move \cref{sec:vpifo} out of \cref{sec:background} and put it here. It can be a kind of ``worked example'' to show that none of the existing PIFO substrates are our competition. I don't feel super strongly about this; the vPIFO discussion early on is also doing something useful. Just a thought.}
+
+\paragraph{Formal models of scheduling}
+
+\citet{Mohan23} give a syntax and an operational semantics for PIFO trees, separating a tree's topology from the control that runs on it.
+Our runtime model (\cref{sec:controls}) is adapted from theirs.
+Their question is whether a policy written for one topology can be realized on a tree of a different shape, which they answer by embedding one topology in another.
+Ours is how a tree may be changed while it runs, answered by our edits (\cref{sec:delta-grammar}), by their agreement with the policy the operator reads back (\cref{thm:interplay}), and by what they cost the backlog (\cref{thm:nondisruption}).
+
+Embedding suggests a route to reconfiguration of its own: embed both \(p_1\)'s tree and \(p_2\)'s tree into a common target, and move between the two embeddings.
+The backlog would be laid out under the first embedding and read under the second.
+In our work, we decline to make such a scheduling decision on the operator's behalf (\cref{sec:remove}).
+
+\citet{Campbell26} ask that same portability question of match-action tables rather than of trees.
+They give table transformations an algebra and a type system under which every well-typed transformation denotes one realizable function, and compile a specification into concrete tables for a chosen target.
+The object there is a table and the target is another environment, where ours is a tree and the target is the same tree a moment later.
+
+\citet{Mittal16} ask whether a single scheduling algorithm can replay the schedule that any other algorithm produced, and find that in general none can.
+That compares two schedulers by what they emit, which is how we compare a scheduler with itself across an edit (\cref{thm:nondisruption}).
+
 \section{Conclusion}\label{sec:concl}
 
 \bibliographystyle{ACM-Reference-Format}
-\begin{thebibliography}{9}
-\bibitem{vPIFO}
-Zhang et al., vPIFO, SIGCOMM 2024.
-\bibitem{Mohan23}
-Mohan et al., Formal Abstractions for Packet Scheduling, OOPSLA 2023.
-\bibitem{Mittal16}
-Mittal et al., LSTF, SIGCOMM 2016.
-\bibitem{Sivaraman16}
-Sivaraman et al., PIFO, SIGCOMM 2016.
-\bibitem{Shrivastav19}
-Shrivastav, PIEO, SIGCOMM 2019.
-\end{thebibliography}
+\bibliography{main}
 
 \appendix
 
