@@ -162,7 +162,7 @@ Its tree shape, its per-node disciplines, and its table contents are all artifac
 Consider a small-office gateway running \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\textsf{gmail})\), strictly prioritizing real-time \textsf{zoom} traffic over \textsf{gmail} traffic.
 The network operator wants to add a new \textsf{spotify} flow, and is considering two candidate policies:
 \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{mid}{:}\,\textsf{spotify},\allowbreak\ \mathtt{lo}{:}\,\textsf{gmail})\), extending the strict-priority list with \textsf{spotify}; or
-\(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\RR(\textsf{gmail}, \textsf{spotify}))\), keeping \textsf{zoom} at the higher tier but having \textsf{gmail} and \textsf{spotify} share the lower tier via round-robin.
+\(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\RR(\textsf{gmail},\allowbreak\ \textsf{spotify}))\), keeping \textsf{zoom} at the higher tier but having \textsf{gmail} and \textsf{spotify} share the lower tier via round-robin.
 In either case, the state of the art~\cite{vPIFO} would stop the world: drop or recirculate the buffered packets, recompile, and reinstall.
 The costs are downtime, delay, and the rebuilding of nodes that did not need to be rebuilt.
 
@@ -182,7 +182,7 @@ Our two candidates illustrate the two cases.
 \begin{figure}[t]
 \centering
 \begin{tikzpicture}[
-  x=1cm, y=1cm,
+  x=0.95cm, y=1cm,
   lbl/.style={font=\small\ttfamily, anchor=north},
 ]
 % ---- Row (1): the easy, immediate transition ----
@@ -213,12 +213,12 @@ The transition at \(t_1\) is \emph{atomic}, meaning that any interaction that th
 It is also \emph{immediate}, in that no period of preparation precedes the atomic jump into \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{mid}{:}\,\textsf{spotify},\allowbreak\ \mathtt{lo}{:}\,\textsf{gmail})\).
 The two concepts are distinct.
 
-Moving to \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\RR(\textsf{gmail}, \textsf{spotify}))\) is a case~2 transition.
-As before, \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\textsf{gmail})\) runs before \(t_1\) and the operator's request arrives at \(t_1\), but we cannot move to \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\RR(\textsf{gmail}, \textsf{spotify}))\) immediately since there are still \textsf{gmail} packets buffered in the scheduler.
+Moving to \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\RR(\textsf{gmail},\allowbreak\ \textsf{spotify}))\) is a case~2 transition.
+As before, \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\textsf{gmail})\) runs before \(t_1\) and the operator's request arrives at \(t_1\), but we cannot move to \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\RR(\textsf{gmail},\allowbreak\ \textsf{spotify}))\) immediately since there are still \textsf{gmail} packets buffered in the scheduler.
 Transitioning immediately would mean re-sorting those buffered \textsf{gmail} packets into the new round-robin leaf, but their scheduling order was fixed the moment they were enqueued; we cannot rewrite that past without dropping or reordering them.
 We atomically step instead into a \emph{transitionary policy} that is \emph{not} the one the operator asked for.
 After \(t_1\) but before \(t_2\), the scheduler still accepts and emits packets under it.
-At time \(t_2\), defined as the instant that a well-defined guard becomes true, we atomically step into \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\RR(\textsf{gmail}, \textsf{spotify}))\).
+At time \(t_2\), defined as the instant that a well-defined guard becomes true, we atomically step into \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\RR(\textsf{gmail},\allowbreak\ \textsf{spotify}))\).
 
 The operator never specified the semantics of the interval from \(t_1\) to \(t_2\), but that interval is a packet scheduling regime all the same.
 It is unavoidable, it persists for nonzero time, and throughout it the scheduler goes on accepting and emitting packets, so scheduling decisions are being made in it.
@@ -266,7 +266,7 @@ In vPIFO's own terms, the Operation Generation Table and the PIFO Instance Addre
 The easy change, to \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{mid}{:}\,\textsf{spotify},\allowbreak\ \mathtt{lo}{:}\,\textsf{gmail})\), is the kind of edit vPIFO's substrate is architecturally close to absorbing.
 It over-provisions logical instances and its Visor can assemble them into arbitrary tree shapes, so a targeted append to those tables would register the new traffic and its operations while leaving the running instances untouched.
 vPIFO exposes no such edit at runtime, however: those tables are generated offline by its SDL compiler, so installing even this easy change on a running scheduler would require extending the substrate with an online-patch path it does not have today.
-The harder restructuring, to \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\RR(\textsf{gmail}, \textsf{spotify}))\), lies beyond what the vPIFO substrate can absorb in place.
+The harder restructuring, to \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\RR(\textsf{gmail},\allowbreak\ \textsf{spotify}))\), lies beyond what the vPIFO substrate can absorb in place.
 It changes the running tree's shape, inserting a new internal \RR{} node and re-parenting \textsf{gmail} under it, and neither table exposes that as an in-place edit.
 The closest vPIFO comes is a full reinitialization onto the new shape, which is the stop-the-world baseline \cref{sec:intro} refuses.
 vPIFO names runtime updating as future work, observing that the scheduling of packets during a modification's transitional phase is unresolved.
@@ -398,9 +398,10 @@ It supersedes an earlier decision of ours saying that the discipline is ``compil
 
 A control exposes exactly two operations to the network:
 \[
-\push{} : \mathit{control} \times \mathit{Pkt} \to \mathit{control},
-\qquad
-\pop{} : \mathit{control} \rightharpoonup \mathit{Pkt} \times \mathit{control}.
+\begin{array}{@{}r@{\;}l@{}}
+\push{} &: \mathit{control} \times \mathit{Pkt} \to \mathit{control},\\
+\pop{} &: \mathit{control} \rightharpoonup \mathit{Pkt} \times \mathit{control}.
+\end{array}
 \]
 A \push{} offers the packet in parallel to every node on its root-to-leaf path, and each of those nodes enqueues the payload its own \ensuremath{\mathit{z}} returns, at the rank \ensuremath{\mathit{z}} mints for it.
 Ranks are fixed at \push{} time and never revised.
@@ -425,7 +426,7 @@ We also write \(C@\mathit{path}.\mathit{node\_state}\) and \(C@\mathit{path}.\ma
 \begin{figure}[t]
 \small
 \[
-\begin{array}{@{}l@{\qquad}l@{}}
+\begin{array}{@{}l@{\quad}l@{}}
 M_{D} & \text{opaque; the per-arm configuration \ensuremath{\mathit{z}} holds}\\
 \mathit{node\_state}_{D} & \text{opaque; \ensuremath{D}'s per-node bookkeeping}\\
 \mathit{slot\_state}_{D} & \text{opaque; \ensuremath{D}'s per-arm bookkeeping}\\[9pt]
@@ -1053,7 +1054,10 @@ The two arms thus stay operationally disjoint even when their label sets overlap
 
 \Designate{} wraps the \ensuremath{\mathit{pol}} subtree at \(\tau\):
 \[
-{\small \psem{\Designate(\tau, \mathit{survivor})} = \mathtt{at}(\tau, t \mapsto \Strictstar(\mathtt{hi}{:}\,t, \mathtt{lo}{:}\,\mathit{survivor})).}
+\begin{array}{@{}l@{}}
+\psem{\Designate(\tau, \mathit{survivor})} ={}\\
+\quad \mathtt{at}(\tau, t \mapsto \Strictstar(\mathtt{hi}{:}\,t, \mathtt{lo}{:}\,\mathit{survivor})).
+\end{array}
 \]
 
 \subsubsection{\texorpdfstring{\(\Undesignate(\tau)\)}{Undesignate}}\label{sec:undesignate}
@@ -1406,7 +1410,8 @@ We do not pursue this here, since the splicing analysis introduces its own corre
 \mathit{gseq} \mathrel{::=} \epsilon \;\mid\; (\varphi\,;\, \delta)\,;\, \mathit{gseq}\\[8pt]
 \textbf{Idioms}\\[3pt]
 \Retire(\mathit{path}) \;=\;\\
-\quad (\mathtt{true};\, \Quiesce(\mathit{path}))\,;\, (\mathtt{isEmpty}(\mathit{path});\, \Remove(\mathit{path}))\\[4pt]
+\quad (\mathtt{true};\, \Quiesce(\mathit{path}))\,;\\
+\quad (\mathtt{isEmpty}(\mathit{path});\, \Remove(\mathit{path}))\\[4pt]
 \SlowRetire(\mathit{path}) \;=\; (\mathtt{isEmpty}(\mathit{path});\, \Remove(\mathit{path}))\\[4pt]
 \Replace(\mathit{path}, \mathit{survivor}) \;=\;\\
 \quad (\mathtt{true};\, \Designate(\mathit{path}, \mathit{survivor}))\,;\\
@@ -1487,11 +1492,11 @@ At the \ensuremath{\mathit{pol}} level the effect is the outright replacement of
 \[
 \begin{array}{@{}r@{\;}c@{\;}l@{}}
 p_1 &=& \Strict(\mathtt{hi}{:}\,\textsf{zoom},\ \mathtt{lo}{:}\,\textsf{gmail})\\[2pt]
-p_2 &=& \Strict(\mathtt{hi}{:}\,\textsf{zoom},\ \mathtt{lo}{:}\,\RR(\textsf{gmail}, \textsf{spotify})).
+p_2 &=& \Strict(\mathtt{hi}{:}\,\textsf{zoom},\ \mathtt{lo}{:}\,\RR(\textsf{gmail},\allowbreak\ \textsf{spotify})).
 \end{array}
 \]}
 \Add{} cannot directly reach \(p_2\), since the \textsf{gmail} leaf has to become an interior \RR{} node and \Add{} only appends arms to a node that is already internal.
-\Replace{} at the \(\mathtt{lo}\) slot does reach it, with survivor \(\RR(\textsf{gmail}, \textsf{spotify})\).
+\Replace{} at the \(\mathtt{lo}\) slot does reach it, with survivor \(\RR(\textsf{gmail},\allowbreak\ \textsf{spotify})\).
 This is the transition \cref{sec:intro} reaches at \(t_2\).
 
 \section{The Transition Planner}\label{sec:planner}
