@@ -1661,7 +1661,7 @@ That is a temporary strict-priority node favoring the outgoing \(\mathit{pol}@\m
 \subsection{The Substrate as it Stands}\label{sec:hw-substrate}
 
 A PIFO tree needs programmable hardware to run on.
-Existing designs~\cite{Sivaraman16,Yao23,vPIFO} build it out of processing elements (PEs), each hosting several PIFOs, one PIFO per node of the tree.
+Existing designs~\cite{Sivaraman16,Yao23,vPIFO} build it out of the PEs of \cref{sec:hierarchical}, each hosting several PIFOs, one PIFO per node of the tree.
 Each PE carries hardware that assigns a packet to one of its PIFOs and computes the packet's rank and next-hop destination.
 Behind that, a single physical PIFO supplies the storage that all of the PE's PIFOs share.
 
@@ -1876,7 +1876,7 @@ A PE stores its \texttt{Assoc} set, a \texttt{Map} naming the PIFO each admitted
 An index is meaningful only against the tree the compiler holds, so an \texttt{adopt} reaches the switch only by changing which PIFO an index names.
 
 Which PE holds a given PIFO is the substrate's choice, written \texttt{pe(path)} and fixed at compile time as a function of the PIFO's position in the tree.
-A typical choice is depth-by-PE, where all PIFOs at one depth share a PE~\cite{Sivaraman16}, so siblings do too.
+A typical choice is the depth-by-PE layout of \cref{sec:hierarchical}, under which siblings share a PE.
 The planner consults \texttt{pe(path)} for a \texttt{spawn}'s \texttt{pe} argument and cannot otherwise observe it.
 
 \subsection{Compiling Policy Edits}\label{sec:hw-compile}
@@ -1897,6 +1897,7 @@ I have written this paragraph instead, because this subsection and \cref{sec:hw-
 Please check. We can still cut it if you feel strongly.}
 
 A switch with \(P\) output ports has \(P\) separate trees, each wrapped at the ISA in a reserved 1-arm PIFO \texttt{port\_root} whose sole child, reached through the index \texttt{port\_step}, is the actual tree root.
+The forwarding pipeline selects a packet's output port before the packet reaches the scheduler, so a \push{} enters that port's tree at its port root.
 Its \texttt{Assoc} and \texttt{Map} mirror the actual root's, since every walk below begins there.
 The port root is what makes the tree root an ordinary position.
 \texttt{undesignate} retargets a parent's index from a PIFO to that PIFO's designated survivor, and at the root there is no parent's index to retarget.
@@ -1904,6 +1905,10 @@ That case is not hypothetical: \cref{sec:fallback}'s always-available plan is \(
 Without the port root the substrate could not execute the one transition the planner is guaranteed to be able to fall back on, and would need a second opcode meaning ``make this PIFO the tree root'', doing at one position what \texttt{undesignate} does everywhere else.
 \Designate{} itself needs no parent, since it only writes the outgoing node's own link.
 It is \Undesignate{} rather than \Designate{} that wants a slot above.
+
+\xxx[AM to Zhiyuan]{The port-selection sentence above is my best guess.
+I am assuming the output port is already fixed by the forwarding pipeline, so the scheduler never chooses among the \(P\) trees and needs no table to do it.
+Please confirm that is how your switch works, or tell me what does the selecting.}
 
 The three parts of \ensuremath{\mathit{z}} (\cref{sec:controls}) line up one to one with this vocabulary.
 A node's \(\mathit{z}.\mathit{admit}\) is its \texttt{Assoc} set, its \(\mathit{z}.\mathit{serves}\) is its \texttt{Map} table, its \(\mathit{z}.\mathit{rank}\) is what \texttt{set\_policy} installs and \texttt{discipline(v)} reads back, and its \(\mathit{z}.\mathit{meta}\) is what \texttt{set\_arm\_meta} writes.
@@ -1935,6 +1940,10 @@ foreach f in flows(arm):
     walk(map,   internals(f), f)
 \end{Verbatim}
 The new subtree occupies \texttt{v}'s rightmost slot (index \texttt{n}), so existing children's indices are undisturbed.
+
+Becasue of these two walks, admitting a flow writes an entry at every node on its path rather than one entry somewhere central.
+A switch could instead classify once at ingress, compute a packet's whole path there, and leave the interior nodes as pure rankers.
+We keep classification distributed, since it leaves each PE self-contained and matches the depth-by-PE layout, whereas a central classifier would have been one structure that every packet must visit before the tree.
 
 \paragraph{\(\ChangeMeta(\pi \mathbin{+\!\!+} [k], D, m)\)}
 \begin{Verbatim}
