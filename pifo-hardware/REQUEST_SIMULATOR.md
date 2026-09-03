@@ -98,15 +98,17 @@ Run all four plus the shared-axis comparisons with:
 
 Resources live under `experiments/motivating-example/`; outputs live under
 `experiment-results/motivating-example/<case>/`. Every case contains `packet-outcomes.csv` with
-`flow,push_cycle,pop_cycle,dropped` (plus request ID and size), `reconfiguration-events.csv`, and:
+`flow,push_cycle,pop_cycle,dropped` (plus request ID and size), where `push_cycle` is the source-generation cycle,
+`reconfiguration-events.csv`, and:
 
 - `figures/throughput/{data.csv,figure.svg,figure.png}`
 - `figures/delay-scatter/{data.csv,figure.svg,figure.png}`
 
 The combined outputs are `comparisons/r2-r4-delay-scatter` and `comparisons/r3-r4-throughput`. Use `--render-only`
 on any case or the all-case script to regenerate figures without rerunning RTL. The all-case validator checks identical
-input traces, losslessness and per-flow FIFO order for all four runs, R2's minimum stop interval and retained-token
-count, the R3/R4 drain ordering, and the expected R3-only zoom delay spike.
+input traces, generation-time packet timestamps, losslessness and per-flow FIFO order for all four runs, R2's minimum
+stop interval, outage delay, and peak buffer occupancy, plus the R3/R4 drain ordering and R3's whole-tree zoom delay
+spike relative to R4.
 
 ### Per-figure CLIs
 
@@ -272,10 +274,11 @@ after it drains. `confined_transitive` finds the single changed subtree boundary
 unchanged ancestors in place, and installs the rewrite at that boundary. `in_place` accepts additive flow/path state
 that leaves existing nodes and paths unchanged. `stop_the_world` pauses admission and root pops, lets prefetched output
 finish, retains the buffered request metadata, resets the mesh, installs the target on the original physical root, and
-replays one scheduler token for every retained request before resuming. Arrivals during the stop remain pending rather
-than being dropped. The motivating R2 resource sets `minimum_stop_cycles` to 1024, which is at least 1.024 microseconds
-for clocks at or below 1 GHz. In both transitive modes the front entry is initially disabled; the source's final
-successful pop enables it for the next request, with no underflow retry or extra mesh hop.
+replays one scheduler token for every retained request before resuming. Traffic sources continue generating at their
+configured rates during the stop; those arrivals wait at the closed admission gate without losing their original
+generation timestamps. The motivating R2 resource sets `minimum_stop_cycles` to 1024, which is at least 1.024
+microseconds for clocks at or below 1 GHz. In both transitive modes the front entry is initially disabled; the source's
+final successful pop enables it for the next request, with no underflow retry or extra mesh hop.
 
 The implicit initial tree is one root at engine 1 / vPIFO 10. For a multi-node tree, add:
 
@@ -359,16 +362,22 @@ reconfiguration,policy-change,full_transitive,RR,SP,9,600,600,608,4708,2424,1816
   means retained tokens have been replayed, the minimum stop has elapsed, and traffic has resumed.
 - `drain_duration_cycles`: `drain_cycle - commit_cycle` for transitive drain modes; blank for stop-the-world because
   capture precedes commit.
-- `retained_packets`, `minimum_stop_cycles`, and `stop_duration_cycles` describe a lossless stop; the last value is
+- `retained_packets` is the old-tree queue snapshot captured immediately before reset. It excludes packets waiting at
+  the admission gate and is not a high-water mark.
+- `peak_buffer_occupancy_packets` is the largest number of generated-but-not-completed packets during the outage,
+  including admitted queues, the closed admission gate, and link-prefetched packets. It is the aggregate buffer size
+  needed for this trace to remain lossless.
+- `minimum_stop_cycles` and `stop_duration_cycles` describe the configured and observed stop; the latter is
   `finish_cycle - drain_cycle`.
 
 `finish_cycle` and `drain_cycle` are independent: mapper synchronization may finish while an old transitive tree is
 still draining. For stop-the-world, capture occurs before the replacement package commits and finish marks resume.
 
-Packet admission is paused only across the commit edge so one packet cannot be split between tree versions. Existing
-PIFO traffic continues during staging, drain, and mapper synchronization. Figure captions show the instruction count
-and the one-accepted-instruction-per-cycle limit. Direct packages record start, commit, and finish; drain fields are
-blank because their semantics are intentionally opaque.
+Outside stop-the-world, packet admission is paused only across the commit edge so one packet cannot be split between
+tree versions; existing PIFO traffic continues during staging, drain, and mapper synchronization. Stop-the-world gates
+admission and dequeue from start until finish while source arrivals continue accumulating. Figure captions show the
+instruction count and the one-accepted-instruction-per-cycle limit. Direct packages record start, commit, and finish;
+drain fields are blank because their semantics are intentionally opaque.
 
 ### Large-tree phase regression
 

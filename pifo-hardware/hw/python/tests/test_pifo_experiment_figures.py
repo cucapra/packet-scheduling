@@ -38,6 +38,7 @@ from pifo_tree_compiler_core import (  # noqa: E402
     build_transaction_plan,
 )
 from pifo_transaction_program import controller_command_line  # noqa: E402
+from pifo_motivation_verify import validate_run  # noqa: E402
 
 
 class PifoExperimentFiguresTest(unittest.TestCase):
@@ -138,9 +139,10 @@ class PifoExperimentFiguresTest(unittest.TestCase):
             events.write_text(
                 "event,name,mode,from_policy,to_policy,instruction_count,scheduled_cycle,"
                 "start_cycle,commit_cycle,finish_cycle,drain_cycle,drain_duration_cycles,"
-                "dropped_packets,retained_packets,minimum_stop_cycles,stop_duration_cycles\n"
+                "dropped_packets,retained_packets,peak_buffer_occupancy_packets,"
+                "minimum_stop_cycles,stop_duration_cycles\n"
                 "reconfiguration,stop,stop_the_world,p1,p2,16,2000,2000,2031,3038,"
-                "2013,,0,137,1024,1025\n",
+                "2013,,0,137,417,1024,1025\n",
                 encoding="utf-8",
             )
             event = read_policy_event(events)
@@ -148,8 +150,52 @@ class PifoExperimentFiguresTest(unittest.TestCase):
         self.assertEqual(event.mode, "stop_the_world")
         self.assertEqual(event.dropped_packets, 0)
         self.assertEqual(event.retained_packets, 137)
+        self.assertEqual(event.peak_buffer_occupancy_packets, 417)
         self.assertEqual(event.minimum_stop_cycles, 1024)
         self.assertEqual(event.stop_duration_cycles, 1025)
+
+    def test_motivating_validation_rejects_admission_cycle_as_push(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            run_dir = Path(directory)
+            (run_dir / "requests.csv").write_text(
+                "cycle,request_id,global_flow_id,size_bytes\n"
+                "10,1,1,48\n",
+                encoding="utf-8",
+            )
+            (run_dir / "packet-outcomes.csv").write_text(
+                "request_id,flow,size_bytes,push_cycle,pop_cycle,dropped\n"
+                "1,1,48,11,20,false\n",
+                encoding="utf-8",
+            )
+            (run_dir / "reconfiguration-events.csv").write_text(
+                "event,name,mode,from_policy,to_policy,instruction_count,scheduled_cycle,"
+                "start_cycle,commit_cycle,finish_cycle,drain_cycle,drain_duration_cycles,"
+                "dropped_packets,retained_packets,peak_buffer_occupancy_packets,"
+                "minimum_stop_cycles,stop_duration_cycles\n"
+                "reconfiguration,add,in_place,p1,p2a,4,12,12,13,16,16,3,0,0,0,0,\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ValueError, "generation cycle"):
+                validate_run("r1-add", run_dir)
+
+    def test_checked_in_stop_world_result_exposes_delay_and_peak_buffer(self) -> None:
+        run_dir = (
+            Path(__file__).resolve().parents[3]
+            / "experiment-results"
+            / "motivating-example"
+            / "r2-stop-the-world"
+        )
+        outcomes, event = validate_run("r2-stop-the-world", run_dir)
+        zoom_delay = max(
+            outcome.delay or 0
+            for outcome in outcomes
+            if outcome.flow_id == 1 and outcome.push_cycle >= event.start_cycle
+        )
+
+        self.assertEqual(event.retained_packets, 137)
+        self.assertEqual(event.peak_buffer_occupancy_packets, 417)
+        self.assertGreaterEqual(zoom_delay, event.minimum_stop_cycles)
 
     def test_seeded_uniform_rate_and_normal_size_are_reproducible(self) -> None:
         traffic = TrafficConfig(

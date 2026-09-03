@@ -292,7 +292,8 @@ object RequestSimulatorCli {
           val drainText = action.drainCycle.map(cycle => s" drain=$cycle").getOrElse("")
           val dropText = if (action.droppedPackets > 0) s" dropped=${action.droppedPackets}" else ""
           val stopText = if (transaction.mode == "stop_the_world") {
-            s" retained=${action.retainedPackets} minStop=${transaction.minimumStopCycles}"
+            s" retained=${action.retainedPackets} peakBuffer=${action.peakBufferOccupancyPackets} " +
+              s"minStop=${transaction.minimumStopCycles}"
           } else ""
           println(
             s"[RequestSim] transaction ${transaction.name} mode=${transaction.mode} " +
@@ -384,7 +385,7 @@ object RequestSimulatorCli {
       writer.write(
         "event,name,mode,from_policy,to_policy,instruction_count,scheduled_cycle,start_cycle,commit_cycle," +
           "finish_cycle,drain_cycle,drain_duration_cycles,dropped_packets,retained_packets," +
-          "minimum_stop_cycles,stop_duration_cycles"
+          "peak_buffer_occupancy_packets,minimum_stop_cycles,stop_duration_cycles"
       )
       writer.newLine()
       completed.foreach { case (transaction, action) =>
@@ -416,6 +417,7 @@ object RequestSimulatorCli {
             drainDuration,
             action.droppedPackets,
             action.retainedPackets,
+            action.peakBufferOccupancyPackets,
             transaction.minimumStopCycles,
             stopDuration.getOrElse("")
           ).map(csvCell).mkString(",")

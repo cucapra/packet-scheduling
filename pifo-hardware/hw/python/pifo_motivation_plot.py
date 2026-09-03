@@ -167,9 +167,9 @@ def render_delay_comparison(
     for axis, (title, outcomes, event) in zip(axes, runs):
         _draw_delay_panel(axis, outcomes, event, labels, flow_ids, line_type)
         axis.set_title(title)
-    axes[0].set_ylabel("Per-packet delay (pop − push cycles)")
+    axes[0].set_ylabel("Per-packet delay (pop − generation cycles)")
     for axis in axes:
-        axis.set_xlabel("Push cycle relative to reconfiguration start")
+        axis.set_xlabel("Generation cycle relative to reconfiguration start")
     figure.suptitle("R2–R4 packet-delay comparison (shared axes)")
     figure.savefig(paths.svg, bbox_inches="tight")
     figure.savefig(paths.png, dpi=dpi, bbox_inches="tight")
@@ -282,8 +282,19 @@ def _draw_delay_panel(
         handles.append(line_type([0], [0], color="0.25", marker="x", linestyle="None"))
         legend_labels.append("dropped (shown at y=0)")
     axis.legend(handles, legend_labels, loc="best", markerscale=1.5)
-    axis.set_xlabel("Push cycle relative to reconfiguration start")
-    axis.set_ylabel("Per-packet delay (pop − push cycles)")
+    if event.mode == "stop_the_world":
+        axis.text(
+            0.02,
+            0.98,
+            f"retained at capture: {event.retained_packets} packets\n"
+            f"peak buffer occupancy: {event.peak_buffer_occupancy_packets} packets",
+            transform=axis.transAxes,
+            va="top",
+            fontsize=8.5,
+            bbox={"boxstyle": "round", "facecolor": "white", "alpha": 0.8},
+        )
+    axis.set_xlabel("Generation cycle relative to reconfiguration start")
+    axis.set_ylabel("Per-packet delay (pop − generation cycles)")
 
 
 def _draw_event_lines(axis, event: PolicyEvent) -> None:

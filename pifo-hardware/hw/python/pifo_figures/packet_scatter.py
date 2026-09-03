@@ -340,10 +340,16 @@ def _timing_text(event: PolicyEvent, unicode_limit: bool) -> str:
         if event.instruction_count is not None
         else ""
     )
+    stop_text = (
+        f"  retained={event.retained_packets}  "
+        f"peak buffer={event.peak_buffer_occupancy_packets} packets"
+        if event.stop_duration_cycles is not None
+        else ""
+    )
     return (
         f"start={event.start_cycle}  commit={event.commit_cycle}  "
         f"drain={event.drain_cycle if event.drain_cycle is not None else '-'}  "
-        f"finish={event.finish_cycle}{instruction_text}"
+        f"finish={event.finish_cycle}{instruction_text}{stop_text}"
     )
 
 

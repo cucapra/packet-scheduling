@@ -35,12 +35,22 @@ case class TreeDrainTarget(engineId: Int, vPifoId: Int) {
   require(vPifoId >= 0, s"drain vPifo ID must be non-negative, got $vPifoId")
 }
 
+case class StopTheWorldCapture(captureCycle: Long, retainedPackets: Long) {
+  require(captureCycle >= 0, "stop-the-world capture cycle must be non-negative")
+  require(retainedPackets >= 0, "retained packet count must be non-negative")
+}
+
+case class StopTheWorldFinish(resumeCycle: Long, peakBufferOccupancyPackets: Long) {
+  require(resumeCycle >= 0, "stop-the-world resume cycle must be non-negative")
+  require(peakBufferOccupancyPackets >= 0, "peak buffer occupancy must be non-negative")
+}
+
 case class ScheduledRequestActionContext(
     beforeCommit: () => Unit,
     markCommitAccepted: () => Unit,
     markCommitApplied: () => Unit,
-    beginStopTheWorld: Long => (Long, Long),
-    finishStopTheWorld: () => Long
+    beginStopTheWorld: Long => StopTheWorldCapture,
+    finishStopTheWorld: () => StopTheWorldFinish
 )
 
 /** One deterministic control action to run at a workload-relative cycle. */
@@ -67,7 +77,8 @@ case class CompletedRequestAction(
     finishCycle: Long,
     drainCycle: Option[Long] = None,
     droppedPackets: Long = 0L,
-    retainedPackets: Long = 0L
+    retainedPackets: Long = 0L,
+    peakBufferOccupancyPackets: Long = 0L
 ) {
   require(startCycle >= scheduledCycle, "a scheduled action cannot start before its scheduled cycle")
   require(
@@ -81,6 +92,7 @@ case class CompletedRequestAction(
   )
   require(droppedPackets >= 0, "dropped packet count must be non-negative")
   require(retainedPackets >= 0, "retained packet count must be non-negative")
+  require(peakBufferOccupancyPackets >= retainedPackets, "peak occupancy cannot be below retained packets")
 }
 
 case class RequestControlInstruction(
@@ -183,6 +195,7 @@ final class PifoRequestSimulator(
   private var dequeuePaused = false
   private var stopWorldDeadline = Option.empty[Long]
   private var stopWorldTokens = Option.empty[Vector[Int]]
+  private var stopWorldPeakBufferOccupancy = Option.empty[Long]
   private var cycleThread = Option.empty[SimThread]
   private var admissionThread = Option.empty[SimThread]
   private var dequeueThread = Option.empty[SimThread]
@@ -293,6 +306,7 @@ final class PifoRequestSimulator(
             observePifoResponses()
             observeTreeDrains()
             if (dut.io.pop.valid.toBoolean && dut.io.pop.ready.toBoolean) completePoppedRequest()
+            observeStopWorldBufferOccupancy()
           }
         }
       }
@@ -366,6 +380,7 @@ final class PifoRequestSimulator(
                 var directDrainCycle = Option.empty[Long]
                 var droppedPackets = 0L
                 var retainedPackets = 0L
+                var peakBufferOccupancyPackets = 0L
                 action.run(
                   ScheduledRequestActionContext(
                     beforeCommit = () => {
@@ -389,8 +404,8 @@ final class PifoRequestSimulator(
                         s"scheduled action '${action.name}' is not stop-the-world"
                       )
                       val result = beginStopTheWorld(minimumStopCycles)
-                      directDrainCycle = Some(result._1)
-                      retainedPackets = result._2
+                      directDrainCycle = Some(result.captureCycle)
+                      retainedPackets = result.retainedPackets
                       result
                     },
                     finishStopTheWorld = () => {
@@ -398,7 +413,9 @@ final class PifoRequestSimulator(
                         action.mode == "stop_the_world",
                         s"scheduled action '${action.name}' is not stop-the-world"
                       )
-                      finishStopTheWorld()
+                      val result = finishStopTheWorld()
+                      peakBufferOccupancyPackets = result.peakBufferOccupancyPackets
+                      result
                     }
                   )
                 )
@@ -410,7 +427,8 @@ final class PifoRequestSimulator(
                   finishCycle = currentCycle,
                   drainCycle = directDrainCycle,
                   droppedPackets = droppedPackets,
-                  retainedPackets = retainedPackets
+                  retainedPackets = retainedPackets,
+                  peakBufferOccupancyPackets = peakBufferOccupancyPackets
                 )
                 actionInFlight = false
               case _ => dut.clockDomain.waitRisingEdge()
@@ -504,19 +522,24 @@ final class PifoRequestSimulator(
     while (currentCycle < lastTokenReadyCycle) dut.clockDomain.waitRisingEdge()
   }
 
-  private def beginStopTheWorld(minimumStopCycles: Long): (Long, Long) = {
+  private def beginStopTheWorld(minimumStopCycles: Long): StopTheWorldCapture = {
     require(!commitAdmissionBarrier, "an admission barrier is already active")
     require(!dequeuePaused, "root dequeue is already paused")
-    require(stopWorldDeadline.isEmpty && stopWorldTokens.isEmpty, "a stop-the-world action is already active")
+    require(
+      stopWorldDeadline.isEmpty && stopWorldTokens.isEmpty && stopWorldPeakBufferOccupancy.isEmpty,
+      "a stop-the-world action is already active"
+    )
     require(minimumStopCycles >= 0, "minimum stop cycles must be non-negative")
     commitAdmissionBarrier = true
     dequeuePaused = true
+    stopWorldPeakBufferOccupancy = Some(currentBufferedPacketOccupancy)
     while (
       admissionInFlight || currentCycle < lastTokenReadyCycle || dequeuesInFlight > 0 ||
       linkPrefetchReleaseCycles.nonEmpty || currentCycle < nextDequeueCycle
     ) {
       dut.clockDomain.waitRisingEdge()
     }
+    observeStopWorldBufferOccupancy()
     val drainCycle = currentCycle
     val retained = requestQueues.queuedRequestsInAdmissionOrder.map(_.request.globalFlowId)
     require(
@@ -530,10 +553,10 @@ final class PifoRequestSimulator(
     dut.clockDomain.waitRisingEdge()
     stopWorldDeadline = Some(drainCycle + minimumStopCycles)
     stopWorldTokens = Some(retained)
-    (drainCycle, retained.size.toLong)
+    StopTheWorldCapture(drainCycle, retained.size.toLong)
   }
 
-  private def finishStopTheWorld(): Long = {
+  private def finishStopTheWorld(): StopTheWorldFinish = {
     val deadline = stopWorldDeadline.getOrElse(
       throw new IllegalStateException("no stop-the-world action is active")
     )
@@ -548,10 +571,27 @@ final class PifoRequestSimulator(
     }
     val resumeCycle = math.max(deadline, lastTokenReadyCycle)
     while (currentCycle < resumeCycle) dut.clockDomain.waitRisingEdge()
+    observeStopWorldBufferOccupancy()
+    val peakBufferOccupancy = stopWorldPeakBufferOccupancy.getOrElse(
+      throw new IllegalStateException("no stop-the-world occupancy measurement is active")
+    )
     stopWorldDeadline = None
     stopWorldTokens = None
+    stopWorldPeakBufferOccupancy = None
     endCommitAdmissionBarrier()
-    currentCycle
+    StopTheWorldFinish(currentCycle, peakBufferOccupancy)
+  }
+
+  private def currentBufferedPacketOccupancy: Long = {
+    val arrivedAtGate = pending.iterator.count(_.request.cycle <= currentCycle).toLong
+    val admissionPipeline = if (admissionInFlight) 1L else 0L
+    requestQueues.totalQueued + arrivedAtGate + admissionPipeline + linkPrefetchReleaseCycles.size
+  }
+
+  private def observeStopWorldBufferOccupancy(): Unit = {
+    stopWorldPeakBufferOccupancy = stopWorldPeakBufferOccupancy.map(
+      _.max(currentBufferedPacketOccupancy)
+    )
   }
 
   private def endCommitAdmissionBarrier(): Unit = {

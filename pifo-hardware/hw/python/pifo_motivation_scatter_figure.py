@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render one motivating-example push-cycle versus packet-delay scatter."""
+"""Render one motivating-example generation-cycle versus packet-delay scatter."""
 
 from __future__ import annotations
 

@@ -269,7 +269,7 @@ object RequestTrace {
           result.request.requestId,
           result.request.globalFlowId,
           result.request.sizeBytes,
-          result.admittedCycle,
+          result.request.cycle,
           result.completedCycle.toString,
           false
         )
@@ -278,7 +278,7 @@ object RequestTrace {
           result.request.requestId,
           result.request.globalFlowId,
           result.request.sizeBytes,
-          result.admittedCycle,
+          result.request.cycle,
           "",
           true
         )

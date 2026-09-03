@@ -41,8 +41,11 @@ def validate_run(case: str, run_dir: Path) -> tuple[list[PacketOutcome], PolicyE
         flow_id, size_bytes, arrival_cycle = requests[outcome.request_id]
         if (outcome.flow_id, outcome.size_bytes) != (flow_id, size_bytes):
             raise ValueError(f"{case}: request {outcome.request_id} metadata changed")
-        if outcome.push_cycle < arrival_cycle:
-            raise ValueError(f"{case}: request {outcome.request_id} was pushed before arrival")
+        if outcome.push_cycle != arrival_cycle:
+            raise ValueError(
+                f"{case}: request {outcome.request_id} push cycle "
+                f"{outcome.push_cycle} does not equal generation cycle {arrival_cycle}"
+            )
 
     dropped = sum(outcome.dropped for outcome in outcomes)
     if dropped != event.dropped_packets:
@@ -55,6 +58,11 @@ def validate_run(case: str, run_dir: Path) -> tuple[list[PacketOutcome], PolicyE
     if case == "r2-stop-the-world":
         if event.retained_packets <= 0:
             raise ValueError("r2-stop-the-world: no queued packets were retained")
+        if event.peak_buffer_occupancy_packets <= event.retained_packets:
+            raise ValueError(
+                "r2-stop-the-world: peak occupancy does not include traffic "
+                "generated during the stop"
+            )
         if event.minimum_stop_cycles < 1000:
             raise ValueError(
                 "r2-stop-the-world: minimum stop must be at least 1000 cycles"
@@ -75,6 +83,13 @@ def validate_run(case: str, run_dir: Path) -> tuple[list[PacketOutcome], PolicyE
         ]
         if completions_during_stop:
             raise ValueError("r2-stop-the-world: packets completed while traffic was stopped")
+        measured_peak = _peak_outstanding_packets(outcomes, event)
+        if event.peak_buffer_occupancy_packets != measured_peak:
+            raise ValueError(
+                "r2-stop-the-world: reported peak buffer occupancy "
+                f"{event.peak_buffer_occupancy_packets} differs from packet trace "
+                f"peak {measured_peak}"
+            )
 
     _validate_per_flow_fifo(case, outcomes)
     return outcomes, event
@@ -104,9 +119,16 @@ def validate_comparison(output_root: Path) -> str:
         raise ValueError("R1-R4 did not replay an identical request trace")
 
     r1_event = validated["r1-add"][1]
+    r2_event = validated["r2-stop-the-world"][1]
     r1_zoom_max = _maximum_delay(validated["r1-add"][0], r1_event, 1)
+    r2_zoom_max = _maximum_delay(validated["r2-stop-the-world"][0], r2_event, 1)
     r3_zoom_max = _maximum_delay(validated["r3-whole-tree"][0], r3_event, 1)
     r4_zoom_max = _maximum_delay(validated["r4-confined"][0], r4_event, 1)
+    if r2_zoom_max < r2_event.minimum_stop_cycles:
+        raise ValueError(
+            "R2 does not expose the stop in zoom delay: "
+            f"max={r2_zoom_max}, minimum stop={r2_event.minimum_stop_cycles}"
+        )
     if r3_zoom_max <= 4 * r4_zoom_max:
         raise ValueError(
             "R3 does not show the expected whole-tree zoom delay spike: "
@@ -127,7 +149,6 @@ def validate_comparison(output_root: Path) -> str:
             f"finish={event.finish_cycle}"
         )
     lines.append(f"drain duration: R3={r3_drain} cycles, R4={r4_drain} cycles")
-    r2_event = validated["r2-stop-the-world"][1]
     r2_gap = _maximum_completion_gap(validated["r2-stop-the-world"][0])
     if r2_gap < r2_event.minimum_stop_cycles:
         raise ValueError(
@@ -136,11 +157,12 @@ def validate_comparison(output_root: Path) -> str:
         )
     lines.append(
         f"R2 lossless stop: retained={r2_event.retained_packets} "
+        f"peak_buffer={r2_event.peak_buffer_occupancy_packets} "
         f"duration={r2_event.stop_duration_cycles} cycles "
         f"minimum={r2_event.minimum_stop_cycles} cycles output_gap={r2_gap} cycles"
     )
     lines.append(
-        f"post-start zoom max delay: R1={r1_zoom_max}, "
+        f"post-start zoom max delay: R1={r1_zoom_max}, R2={r2_zoom_max}, "
         f"R3={r3_zoom_max}, R4={r4_zoom_max} cycles"
     )
     report = "\n".join(lines) + "\n"
@@ -190,6 +212,19 @@ def _maximum_completion_gap(outcomes: Sequence[PacketOutcome]) -> int:
     if len(cycles) < 2:
         raise ValueError("need at least two completions to calculate an output gap")
     return max(right - left for left, right in zip(cycles, cycles[1:]))
+
+
+def _peak_outstanding_packets(
+    outcomes: Sequence[PacketOutcome], event: PolicyEvent
+) -> int:
+    return max(
+        sum(
+            outcome.push_cycle <= cycle
+            and (outcome.pop_cycle is None or outcome.pop_cycle > cycle)
+            for outcome in outcomes
+        )
+        for cycle in range(event.start_cycle, event.finish_cycle + 1)
+    )
 
 
 def _read_requests(path: Path) -> dict[int, tuple[int, int, int]]:

@@ -502,7 +502,9 @@ def _timing_text(event: PolicyEvent, unicode_limit: bool) -> str:
         else ""
     )
     stop_text = (
-        f"  retained={event.retained_packets}  stop={event.stop_duration_cycles} cycles"
+        f"  retained={event.retained_packets}  "
+        f"peak buffer={event.peak_buffer_occupancy_packets} packets  "
+        f"stop={event.stop_duration_cycles} cycles"
         if event.stop_duration_cycles is not None
         else ""
     )

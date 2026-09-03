@@ -71,6 +71,7 @@ class PolicyEvent:
     instruction_count: int | None = None
     dropped_packets: int = 0
     retained_packets: int = 0
+    peak_buffer_occupancy_packets: int = 0
     minimum_stop_cycles: int = 0
     stop_duration_cycles: int | None = None
 
@@ -277,6 +278,11 @@ def read_policy_event(path: Path) -> PolicyEvent:
             if (row.get("retained_packets") or "").strip()
             else 0
         ),
+        peak_buffer_occupancy_packets=(
+            parse_int(row["peak_buffer_occupancy_packets"])
+            if (row.get("peak_buffer_occupancy_packets") or "").strip()
+            else 0
+        ),
         minimum_stop_cycles=(
             parse_int(row["minimum_stop_cycles"])
             if (row.get("minimum_stop_cycles") or "").strip()
@@ -315,8 +321,20 @@ def _validate_event(
         raise ValueError(f"{path}: instruction count must be positive")
     if event.dropped_packets < 0:
         raise ValueError(f"{path}: dropped packet count must be non-negative")
-    if event.retained_packets < 0 or event.minimum_stop_cycles < 0:
-        raise ValueError(f"{path}: retained packets and minimum stop must be non-negative")
+    if (
+        event.retained_packets < 0
+        or event.peak_buffer_occupancy_packets < 0
+        or event.minimum_stop_cycles < 0
+    ):
+        raise ValueError(
+            f"{path}: retained packets, peak occupancy, and minimum stop "
+            "must be non-negative"
+        )
+    if (
+        (row.get("peak_buffer_occupancy_packets") or "").strip()
+        and event.peak_buffer_occupancy_packets < event.retained_packets
+    ):
+        raise ValueError(f"{path}: peak occupancy is below retained packets")
     if event.stop_duration_cycles is not None:
         if event.mode != "stop_the_world" or event.drain_cycle is None:
             raise ValueError(f"{path}: stop duration requires a stop_the_world drain cycle")

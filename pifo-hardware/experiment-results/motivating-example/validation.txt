@@ -4,5 +4,5 @@ r2-stop-the-world: packets=2136 dropped=0 instructions=16 start=2000 commit=2031
 r3-whole-tree: packets=2136 dropped=0 instructions=17 start=2000 commit=2027 drain=2431 finish=2287
 r4-confined: packets=2136 dropped=0 instructions=10 start=2000 commit=2018 drain=2705 finish=2278
 drain duration: R3=404 cycles, R4=687 cycles
-R2 lossless stop: retained=137 duration=1025 cycles minimum=1024 cycles output_gap=1039 cycles
-post-start zoom max delay: R1=12, R3=403, R4=10 cycles
+R2 lossless stop: retained=137 peak_buffer=417 duration=1025 cycles minimum=1024 cycles output_gap=1039 cycles
+post-start zoom max delay: R1=21, R2=1049, R3=416, R4=17 cycles

@@ -104,7 +104,9 @@ The request simulator records package start, commit acceptance, action finish, a
 transition modes that define one. It briefly gates new request admission at the commit edge so the per-engine tokens
 for one request cannot land in different tree versions; packets already admitted continue normally. Lossless
 stop-the-world additionally freezes admission and dequeue, captures the buffered packet metadata, resets and installs
-the target, replays exactly one scheduler token per retained packet, and then resumes after `minStopCycles`.
+the target, replays exactly one scheduler token per retained packet, and then resumes after `minStopCycles`. Traffic
+sources continue generating while the gate is closed. Packet delay is measured from source generation, and the stop
+event reports both the capture-time retained count and the peak number of outstanding buffered packets.
 
 The four motivating-example runs each generate an independent throughput and packet-delay scatter figure. R2–R4 also
 share one scatter figure, and R3/R4 share one throughput comparison:
