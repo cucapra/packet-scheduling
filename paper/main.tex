@@ -1984,14 +1984,16 @@ Rio therefore retires the old configuration by draining it, which is what a guar
 Our guarded sequences are dependency structures of the same kind, drawn inside one scheduler.
 While their dependencies run between rules on separate devices, ours run between edits at different positions of one tree.
 
-\citet{Xing22} carry the question onto the switch itself with FlexCore, which reconfigures a live data plane's match-action tables, control flow, and parser with no draining and no downtime.
-FlexCore defines three guarantees of decreasing strictness.
-Program consistency exposes no intermediate state to any packet, element consistency makes modifications visible one element at a time, and execution consistency forbids only that a packet traverse a mixture of old and new program elements.
-Rio's commit is program consistency at the scale of a single \(\delta\), which is what our grammar demands of every form it admits (\cref{sec:delta-grammar}).
-A Rio transition that has to wait for a drain cannot be a single commit, so states in between are exposed by design.
-We give each of those states a semantics (\cref{sec:links}), so every packet is handled by a policy the operator can understand.
-FlexCore's partial-reconfiguration primitives exist so that program consistency does not require the whole new program to sit in scratch beside the old one.
-We are similarly uncomfortable with large footprints, which is why our whole-tree \Replace{} is a fallback rather than a plan (\cref{sec:fallback}).
+All of that work rewrites the entries that a device's tables hold.
+FlexCore~\cite{Xing22} reconfigures the \emph{program} those tables belong to: it changes a live data plane's match-action tables, control flow, and parser.
+It computes a reconfiguration script, which is a sequence of atomic graph edits that carries the old program to the new one, and defines three consistency guarantees over the intermediate states along the way.
+Our guarded sequences (\cref{sec:sequences}) have the same shape.
+This similarity is unsurprising: changing the structure that a packet passes through, without first stopping the traffic, calls for atomic steps and an account of what holds between them, in either their domain (forwarding) or ours (scheduling).
+The strongest of their guarantees, program consistency, lets no intermediate state reach a packet, and a Rio commit provides that for a single \(\delta\) (\cref{sec:delta-grammar}).
+The two domains diverge over what is being changed.
+A match-action table holds no packet, and FlexCore does not handle stateful programs, leaving for future work how state should be ported to a new program.
+A packet scheduler is exactly such a stateful case, since its entire content is buffered packets whose ranks were fixed at \push{} time.
+Reconfiguring a packet scheduler is therefore what FlexCore sets aside, and what this paper takes up.
 
 These updates run through the interface that P4 calls \emph{population}, the insertion and removal of match-action table entries~\cite{Bosshart14}.
 Population determines the policy applied to packets at any given instant.
