@@ -1670,6 +1670,7 @@ On enqueue, the switch must compute two pieces of information before issuing PE 
 Classification determines the first, by mapping a flow to a child.
 The PIFO's scheduling policy computes the second, from packet fields, flow state, and per-arm metadata.
 For example, a \WFQ{} PIFO uses the child weight to compute a virtual finish time, while a \Strict{} PIFO interprets the metadata as a priority rank.
+Both are computed by match-action tables~\cite{Bosshart14}, so installing a policy on such a substrate means writing entries into those tables.
 On dequeue, the switch starts from the output port's root PIFO, pops the best-ranked entry, and follows the stored next-hop information until it reaches a packet to transmit or another PIFO to pop.
 
 This is sufficient for a static policy, but it does not by itself support dynamic policy updates concurrent with packet enqueue and dequeue.
@@ -1850,9 +1851,6 @@ Per-edge indices and arities are how the compiler addresses a tree position, and
 A PE stores its \texttt{Assoc} set, a \texttt{Map} naming the PIFO each admitted flow enters and the PE that holds it, and the designated-survivor link of \cref{sec:hw-survivor}.
 An index is meaningful only against the tree the compiler holds, so an \texttt{adopt} reaches the switch only by changing which PIFO an index names.
 
-\xxx[AM to Zhiyuan]{This paragraph is written from your account of what the switch actually stores, so please confirm or correct it.
-The two claims that matter are that a PE holds no parent-child edge, and that the \texttt{Map} reaching hardware names a PIFO and the PE holding it rather than an index.}
-
 Which PE holds a given PIFO is the substrate's choice, written \texttt{pe(path)} and fixed at compile time as a function of the PIFO's position in the tree.
 A typical choice is depth-by-PE, where all PIFOs at one depth share a PE~\cite{Sivaraman16}, so siblings do too.
 The planner consults \texttt{pe(path)} for a \texttt{spawn}'s \texttt{pe} argument and cannot otherwise observe it.
@@ -1861,12 +1859,14 @@ The planner consults \texttt{pe(path)} for a \texttt{spawn}'s \texttt{pe} argume
 
 Each form of \(\delta\) (\cref{sec:delta-grammar}) lowers to a list of opcodes.
 The lowering \emph{schema} is mechanical.
-Each form names a fixed sequence of opcodes, and the planner reads live state at issue time to fill in the schema's positional parameters, such as flow lists, chain shapes, and routing indices, before dispatching the commit to the substrate.
+Each form names a fixed sequence of opcodes, and the planner fills in the schema's positional parameters, such as flow lists, chain shapes, and routing indices.
 
-\xxx[AM to Zhiyuan]{When does a later commit in a guarded sequence get these parameters?
-This paragraph says the planner fills them in at issue time and then dispatches, while \cref{sec:hw-commit} lowers a guard to a blocking command sitting in the controller queue, which reads as the whole sequence being queued at once.
-The two cannot both be right for a sequence with a drain in the middle: after a \Designate{} and its drain, the flow lists and chain shapes a later \Quiesce{} or \Undesignate{} needs are not what they were when the sequence was planned.
-Either the planner dispatches one commit at a time, or the substrate resolves the live remainders late, which the \texttt{walk} description below would support.}
+The planner resolves those parameters when it plans the sequence, rather than when a commit reaches the substrate.
+It reads them off its own model of the tree, which is host-side state that no PE holds.
+Nothing that happens while the sequence runs can invalidate them.
+A lowering reads tree shape, flow sets and arities.
+Only traffic runs while a guard waits, and traffic changes none of those.
+The whole of a guarded sequence can therefore be dispatched at once, and \cref{sec:hw-commit}'s controller queue holds it as fully resolved commits.
 
 A switch with \(P\) output ports has \(P\) separate trees, each wrapped at the ISA in a reserved 1-arm PIFO \texttt{port\_root} whose sole child, reached through the index \texttt{port\_step}, is the actual tree root.
 Its \texttt{Assoc} and \texttt{Map} mirror the actual root's, since every walk below begins there.
@@ -1882,11 +1882,11 @@ A node's \(\mathit{z}.\mathit{admit}\) is its \texttt{Assoc} set, its \(\mathit{
 Each of \ensuremath{\mathit{z}}'s parts is thus an opcode's target, and none of them is state that \texttt{push} or \texttt{pop} advances.
 
 A tree position and the PIFO sitting at it are different things, so each lowering binds a name to the PIFO that the form targets, and speaks of that PIFO thereafter.
-Queries against a PIFO \texttt{v}, its \texttt{arity(v)} and \texttt{discipline(v)}, are read off the live tree at issue time, and a parameter an opcode leaves unmentioned is \texttt{v}'s live value.
+Queries against a PIFO \texttt{v}, its \texttt{arity(v)} and \texttt{discipline(v)}, are read off the planner's model of the tree as it stands at that point in the sequence, and a parameter an opcode leaves unmentioned is \texttt{v}'s value there.
 \texttt{spawn}'s elided \texttt{pe} argument is \texttt{pe(pos(v))}.
 
 Two notations recur.
-\texttt{foreach x in S} emits its body once per \texttt{x}, and \texttt{walk(op, C, f)} emits \texttt{op(v, f, \ldots)} at each \(v \in C\), reading positional remainders such as \texttt{map}'s routing index off the live tree.
+\texttt{foreach x in S} emits its body once per \texttt{x}, and \texttt{walk(op, C, f)} emits \texttt{op(v, f, \ldots)} at each \(v \in C\), reading positional remainders such as \texttt{map}'s routing index off that same model.
 Of the queries, \texttt{flows(v)} is the set of flows admitted beneath \texttt{v}, and \texttt{chain(f)} runs from \texttt{port\_root} to the leaf admitting \texttt{f}, with \texttt{internals(f)} that chain minus the leaf.
 For a compiled subtree \texttt{T}, \texttt{nodes(T)} is its PIFOs and \texttt{root(T)} its root, and \texttt{layout(T)} spawns and configures all of \texttt{T}, leaving the parent-side \texttt{adopt} of \(\mathtt{root(T)}\) to the caller.
 
