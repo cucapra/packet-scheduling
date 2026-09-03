@@ -273,7 +273,7 @@ vPIFO names runtime updating as future work, observing that the scheduling of pa
 
 We are not competing with vPIFO and do not claim a better PIFO substrate.
 We supply the layer \emph{above} a PIFO substrate: the formal transition between two policies, the small patch that realizes it, and the transitionary semantics.
-The two layers can plausibly compose, and \cref{sec:substrate-portability} sets out the minimal requirement our contributions place on a substrate.
+The two layers can plausibly compose, and \cref{sec:hw-substrate} sets out the minimal requirement our contributions place on a substrate.
 
 \section{Policies and Controls}\label{sec:model}
 
@@ -1362,7 +1362,7 @@ We do not prove soundness at the instruction level, but instead informally make 
 There are two reasons.
 First, the compilation is \emph{faithful}: each form of \(\delta\) expands to a fixed instruction sequence that, when run to completion, realizes exactly that form's effect.
 We give the translation from each \(\delta\) form to its instruction sequence and take its faithfulness to be uncontroversial.
-Second, our substrate runs each such sequence as a single \emph{commit}: a group of instructions that installs as one instant, with no \push{} or \pop{} interleaved between them (\cref{sec:hw-isa} spells out the substrate machinery that makes this so).
+Second, our substrate runs each such sequence as a single \emph{commit}: a group of instructions that installs as one instant, with no \push{} or \pop{} interleaved between them (\cref{sec:hw-commit} spells out the substrate machinery that makes this so).
 The transiently-malformed intermediate trees are therefore never observed by the network.
 That commit is precisely how the substrate \emph{realizes} the atomicity property of \cref{sec:grammar}.
 Atomicity asked for an instantaneous control replacement between two \push{}/\pop{} operations, and the commit collapses a multi-instruction lowering into one such instant.
@@ -1426,7 +1426,7 @@ We do not pursue this here, since the splicing analysis introduces its own corre
 We write \(\mathit{gseq}\) for a guarded sequence (\cref{fig:gseq-idioms}, top).
 A guard \(\varphi\) is either trivially satisfied (\(\mathtt{true}\)) or asserts that the subtree at \ensuremath{\mathit{path}} is empty; it is always paired with exactly one \(\delta\).
 Those two guard forms have sufficed for every sequence we have needed.
-The framework does not depend on this minimality, and a richer predicate language is welcome if desired.
+The framework does not depend on this minimality, and a richer predicate language is available provided the underlying substrate can test the predicates.
 
 \paragraph{Intuition}
 
@@ -1654,9 +1654,15 @@ That is a temporary strict-priority node favoring the outgoing \(\mathit{pol}@\m
 
 \section{Rio Hardware Implementation}\label{sec:hardware}
 
-A PIFO tree is a scheduling abstraction, and a scheduler must be laid out on top of existing silicon.
-Existing designs~\cite{Sivaraman16,Yao23,vPIFO} therefore build the tree out of programmable processing elements, or PEs, each hosting several PIFOs, one per node of the tree it carries.
-Each PE carries hardware, usually match-action pipelines, that assigns a packet to one of its PIFOs and computes the packet's rank and next-hop destination.
+\cref{sec:hw-substrate} describes the substrate a PIFO tree runs on today, and states the one property Rio needs that such a substrate does not offer: a commit that installs a whole list of instructions atomically with respect to traffic.
+\cref{sec:hw-commit} is the change that supplies it, and \cref{sec:hw-survivor} adds the one piece of substrate machinery with no counterpart in the model, the designated-survivor link.
+\cref{sec:hw-isa} gives the instruction set a commit is drawn from, \cref{sec:hw-compile} lowers each form of \(\delta\) to one commit, and \cref{sec:substrate-portability} separates what Rio needs from what our own substrate happens to do.
+
+\subsection{The Substrate as it Stands}\label{sec:hw-substrate}
+
+A PIFO tree needs programmable hardware to run on.
+Existing designs~\cite{Sivaraman16,Yao23,vPIFO} build it out of the PEs of \cref{sec:hierarchical}, each hosting several PIFOs, one PIFO per node of the tree.
+Each PE carries hardware that assigns a packet to one of its PIFOs and computes the packet's rank and next-hop destination.
 Behind that, a single physical PIFO supplies the storage that all of the PE's PIFOs share.
 
 We call the hardware-level realizations of \push{} and \pop{} \emph{enqueue} and \emph{dequeue}, and on this substrate both are pipelined and non-atomic.
@@ -1664,6 +1670,10 @@ On enqueue, the switch must compute two pieces of information before issuing PE 
 Classification determines the first, by mapping a flow to a child.
 The PIFO's scheduling policy computes the second, from packet fields, flow state, and per-arm metadata.
 For example, a \WFQ{} PIFO uses the child weight to compute a virtual finish time, while a \Strict{} PIFO interprets the metadata as a priority rank.
+Both are computed by match-action tables~\cite{Bosshart14}, so installing a policy on such a substrate means writing entries into those tables.
+\xxx[AM to Zhiyuan]{You asked me to cite the P4 reconfiguration papers here, to show that installing a policy this way is stop-the-world.
+At present I only cite P4 itself, because FlexCore and P4runpro are the designs that make forwarding-pipeline reconfiguration \emph{not} stop-the-world, and \cref{sec:hw-commit} and \cref{sec:related} both already describe them as non-STW.
+If you had other papers in mind, please add them here.}
 On dequeue, the switch starts from the output port's root PIFO, pops the best-ranked entry, and follows the stored next-hop information until it reaches a packet to transmit or another PIFO to pop.
 
 This is sufficient for a static policy, but it does not by itself support dynamic policy updates concurrent with packet enqueue and dequeue.
@@ -1671,18 +1681,148 @@ In such a case, a single packet operation can observe a mixture of old and new s
 For example, an enqueue may choose its path using the old flow-to-child mapping but compute its rank using newly updated per-arm metadata, or a dequeue may pop from one version of the tree and then follow next-hop state from another.
 As a result, existing PIFO-based substrates support only stop-the-world policy update~\cite{vPIFO,Alcoz23}.
 
-\cref{sec:hw-isa} gives the interface Rio's substrate offers instead, a \emph{commit} that installs a whole list of instructions atomically with respect to traffic, along with the thirteen opcodes such a list is drawn from.
-\cref{sec:hw-compile} lowers each form of \(\delta\) to one commit, and \cref{sec:hw-survivor} supplies the one piece of substrate machinery with no counterpart in the model, the designated-survivor link.
-\cref{sec:hw-commit} is how the hardware makes a commit atomic, and \cref{sec:substrate-portability} separates what Rio needs from what our own substrate happens to do.
+Rio asks a substrate for two things.
+The first is commits that are atomic with respect to traffic.
+A \(\delta\) that lowers to many instructions has to install as a single instant.
+The tree is transiently malformed partway through a commit, and no \push{} or \pop{} may observe it in that state.
+That is the whole of what \cref{sec:hw-preservation}'s argument rests on.
+
+The second is that a commit can be held until a stated predicate becomes true.
+A guarded sequence (\cref{sec:sequences}) waits for its guard before firing the \(\delta\) associated with it, and in real terms the substrate needs to do this waiting.
+Since our grammar of guards is quite simple, our substrate tests one predicate: the emptiness of a subtree.
+That is a local test at a single PIFO, since a node's \ensuremath{\mathit{pifo}} holds an entry for every packet in its subtree (\cref{sec:controls}).
+
+\xxx[AM to Zhiyuan]{I decided to add this second requirement, and I think you'll see why. Is that okay?}
+
+Our substrate is deliberately unambitious; we built it because the compiler needed something to run against and we wanted to understand precisely what features we needed from our substrate.
+
+\subsection{Making a Commit Atomic}\label{sec:hw-commit}
+
+Rio's change to the substrate is small, and it is small because the transactional scope is narrow.
+The only state that has to install as one instant is the mapping from a flow to the PIFO that serves it, which is what admits a packet at all.
+The rank computation need not be inside that scope.
+The writing of metadata either installs metadata for a flow whose packets are not admitted until the commit finishes, or retires metadata for a flow that has already drained, so it never changes the interpretation of a packet already in flight.
+
+Rio implements a transactional update controller, and every commit passes through it.
+A commit reaches the controller as a stream of update instructions terminated by a commit marker, and the controller executes that stream in order.
+Ordinary update instructions are routed to the PEs they target and staged locally, where they remain invisible to packet processing.
+When the controller reaches the marker, it generates the hardware commit signals that make the staged updates visible.
+Two pieces of hardware need small changes.
+First, the tables that hold a node's classification must become transactional, so that a commit signal makes a whole list of writes visible at once.
+Second, the rank computation must accept incremental updates rather than wholesale replacement of a live scheduling policy.
+
+\xxx[AM to Zhiyuan]{We used to claim ``small changes to three pieces of hardware: the virtual PIFOs, the rank computation, and the next-hop mapping'', and then described two, neither of which was the PIFOs.
+I have written ``two'', since two is what this subsection actually talks about.
+Is there also a change to the PIFOs themselves? If so, we need to add a paragraph describing that.
+I have also split what the two changes are \emph{for}: the classification tables must become transactional, while the rank computation only has to take incremental writes. 
+Please check for correctness.}
+
+Rio builds transactional tables for a node's classification.
+Each PE holds the set of flows each of its nodes admits, and the mapping from an admitted flow to the child that serves it, in a specialized structure that accepts a stream of update instructions followed by a commit marker.
+Only when the marker is applied does the new version become active.
+We implement this using double buffering.
+An update instruction modifies a shadow copy of the table, which packet processing does not read, and the commit signal atomically swaps the active and shadow copies.
+After the swap, the inactive copy is synchronized in the background to serve as the shadow for the next commit.
+Staging updates in a shadow copy and swapping them in is also how runtime reconfiguration is done for the forwarding pipeline~\cite{Xing22,Yang24}.
+Rio therefore asks its substrate for no primitive that runtime-programmable switch designs do not already provide.
+
+A swap is atomic within one PE, but a commit generally spans several, and a packet in flight visits them in sequence.
+The commit signals are therefore delay-aligned across PEs according to the PIFO tree topology, so that no enqueue or dequeue operation can traverse a partially updated tree.
+The controller treats the commit boundary as a wavefront.
+The new configuration becomes visible at different PEs at carefully chosen times, so that any individual packet observes a consistent configuration along its entire path.
+The double buffer and the wavefront are two mechanisms.
+Their shared purpose is pipelined dequeue, so that a request travelling the chain of PEs never observes state that a commit has left inconsistent.
+
+Our controller stages and swaps the rank-computing writes along with every other instruction in their commit, so the metadata an \Add{} carries lands in the same atomic instant as the structural change it accompanies.
+That is more than Rio needs.
+The rank computation is a reference design, and a substrate may configure its own disciplines by whatever means it has.
+
+The controller also implements guarded transitions.
+Some transitions are guarded by predicates such as the emptiness of a subtree (\cref{sec:sequences}).
+Rio lowers such guards to blocking commands in the controller queue.
+A blocking command remains at the head of the queue until its predicate becomes true.
+Only then can the subsequent update instructions execute.
+In-order execution therefore ensures that instructions depending on the guard are not issued prematurely.
+
+Our current implementation uses a single controller queue, which provides a simple global serialization point for updates.
+This design is sufficient for correctness and avoids subtle ordering bugs between overlapping commits.
+It can, however, introduce head-of-line blocking when a guarded transition waits for a long-running drain.
+Supporting multiple independent queues for disjoint subtrees is a natural optimization, and it changes neither Rio's ISA nor its correctness argument.
+We leave that extension to future work.
+
+\subsection{Designated Survivors}\label{sec:hw-survivor}
+
+A \(\Strictstar\) node is realized not as a PIFO but as a \emph{designated-survivor link}, a pointer from the node it replaces to the subtree replacing it.
+This subsection says why the link is worth having and how a \push{} and a \pop{} each reach the survivor through it.
+
+\cref{sec:policy-dsl} offers \(\Strictstar\) as a discipline of its own even though it schedules exactly as the 2-ary \Strict{} does.
+The difference is that a \(\Strictstar\) node needs no \ensuremath{\mathit{pifo}}, and a node that needs no \ensuremath{\mathit{pifo}} needs no \emph{level}.
+A PE holds one level of the tree, so every node that must be stored somewhere costs a level for itself and everything beneath it.
+
+A substrate that offers \(\Strictstar\) guarantees two things of it.
+Arm 0 is drained before arm 1 is served, and the two arms' priorities never change.
+An ordinary \Strict{} can promise only the first.
+A \ChangeMeta{} may invert its priorities under a standing backlog, and ranks are frozen at \push{} time (\cref{sec:nondisruption}) so that the backlog survives the inversion, which is what the node's \ensuremath{\mathit{pifo}} is for.
+Nothing can invert a \(\Strictstar\): \ChangeMeta{} may not target its arms (\cref{sec:changemeta}), and nothing else disturbs it between the \Designate{} that creates it and the \Undesignate{} that retires it.
+The drain order therefore holds at every instant of the node's life, and a \ensuremath{\mathit{pifo}} there would record nothing the two arms do not already record.
+
+\paragraph{What dropping the \texorpdfstring{\ensuremath{\mathit{pifo}}}{pifo} saves}
+
+Suppose the outgoing subtree has height two on levels 5 and 6, and a survivor of height three is to replace it from level 5 beside it.
+A literal \Strict-2 wrapper holds a \ensuremath{\mathit{pifo}} and so has to live somewhere.
+It takes level 5, pushing the outgoing subtree to 6 and 7 and the survivor to 6 through 8, and retiring it afterwards pulls the survivor back up.
+Two subtrees are laid out twice over, for a node that exists only for the length of a drain.
+
+\paragraph{The designated-survivor link}
+
+Every PIFO carries a \emph{designated-survivor link}, which is left null in an ordinary node.
+A \Designate{} points the outgoing node \texttt{v}'s link at the survivor's root \texttt{surv}.
+The survivor is laid out beside \texttt{v} rather than beneath it, and \texttt{v}'s parent is not told.
+It keeps the one index it had.
+A designated survivor occupies its designator's physical position, so the two roots share a PE, and a model path reaches a physical level by discarding the \(\Strictstar\) nodes above it.
+
+\emph{A \push{} reaches the survivor directly.}
+The admitting chain for one of the survivor's flows runs from the root, through the parent, into the survivor, and down to a leaf.
+\texttt{v} is not on that chain, because \Designate{} stopped \texttt{v} admitting those flows.
+Every node on the chain mints one index, exactly as it would for an \Add, and the link is never consulted.
+No node classifies anything it was not classifying already, which is why the construction needs no table of its own.
+
+\emph{A \pop{} reaches the survivor only through \texttt{v}.}
+The parent spends an index on that slot and queries \texttt{v}.
+While \texttt{v} holds packets, it returns packets.
+Once \texttt{v} is empty it defers to its designated survivor, and the query passes to \texttt{surv} rather than underflowing.
+
+The parent therefore holds one index per packet in \emph{either} subtree, and spends them on \texttt{v} until \texttt{v} is dry and on \texttt{surv} thereafter, which is the arm-0-before-arm-1 order \cref{sec:wrap-nondisruption} proves non-disruptive.
+The elision does change what \cref{sec:controls}'s well-formedness ranges over.
+That invariant counts, at each node, one \ensuremath{\mathit{pifo}} entry per packet in the subtree under the corresponding child, and here the parent holds entries for packets in a subtree that is not its child at all.
+This count is still correct once ``the subtree under index \(i\)'' is read as the subtree at \(i\) together with its designated survivor's, and an index that leads to \texttt{v} when \texttt{v} is empty does not actually reach a leaf with nothing to emit, since it reaches \texttt{surv}.
+At the \ensuremath{\mathit{pol}} level no reading is needed, since \(\mathtt{wrap}\) (\cref{sec:designate}) builds a real \(\Strictstar\) node with two real children and a \ensuremath{\mathit{pifo}} of its own, and \cref{sec:controls} applies to it word for word.
+
+\paragraph{Ending the transition}
+
+The indirection has a cost.
+Once \texttt{v} has drained, every \pop{} that reaches that slot queries \texttt{v}, gets nothing, and queries again, at the tree level where the two roots sit.
+So the transition has to end rather than merely settle.
+\cref{sec:sequences} pairs \Undesignate{} with the guard \(\mathtt{isEmpty}(\mathit{path})\), and \cref{sec:hw-commit} lowers such a guard to a blocking command in the controller queue.
+The commit sits at the head of that queue until the outgoing subtree drains, and then fires atomically.
+After it the parent's index reaches the survivor directly, and nothing in the tree records that a transition happened.
+
+An operator may also put a \(\Strictstar\) in a policy of their own (\cref{sec:policy-dsl}), and \(\lceil \cdot \rceil\) compiles it to what \Designate{} builds, laying out both arms and pointing the first arm's link at the second.
 
 \subsection{The Commit Interface and its ISA}\label{sec:hw-isa}
 
 Rio enables online policy update by packaging many hardware state updates into a single \emph{commit}, and the ISA the substrate exposes has exactly one unit.
 A \texttt{commit} is a list of instructions that the substrate installs \emph{atomically}.
-Every enqueue or dequeue observes either the whole list applied, or none of it.
-The entire list lands between two consecutive \push{}/\pop{} operations, with no intermediate state visible to the network's \pop{} stream.
+The substrate goes on serving enqueues and dequeues while it prepares the list, and the swap that installs it takes a single cycle at each PE (\cref{sec:hw-commit}).
+Every enqueue or dequeue therefore observes either the whole list applied, or none of it.
 This is the atomicity that \cref{sec:delta-grammar} demanded of every form it admits.
 A commit's \emph{length} may depend on live control state (how many flows are admitted, how many siblings need shifting), but its \emph{atomicity} does not.
+
+\xxx[AM to Zhiyuan]{You wrote in Slack that the commit happens in one hardware cycle... did you mean a single cycle \emph{at each PE}? That is what I wrote.
+The reason is that \cref{sec:hw-commit} delay-aligns the commit signals so the new configuration becomes visible at different PEs at different times.
+If that is so then how do we do it in a flat one-cycle-across-the-tree way?
+If the commit really is one cycle across the whole tree, say so.
+The wavefront paragraph may be wrong.}
 
 Each \(\delta\) (\cref{sec:delta-grammar}) lowers to one \texttt{commit}.
 The ISA itself is unconditional.
@@ -1735,25 +1875,29 @@ Per-edge indices and arities are how the compiler addresses a tree position, and
 A PE stores its \texttt{Assoc} set, a \texttt{Map} naming the PIFO each admitted flow enters and the PE that holds it, and the designated-survivor link of \cref{sec:hw-survivor}.
 An index is meaningful only against the tree the compiler holds, so an \texttt{adopt} reaches the switch only by changing which PIFO an index names.
 
-\xxx[AM to Zhiyuan]{This paragraph is written from your account of what the switch actually stores, so please confirm or correct it.
-The two claims that matter are that a PE holds no parent-child edge, and that the \texttt{Map} reaching hardware names a PIFO and the PE holding it rather than an index.}
-
 Which PE holds a given PIFO is the substrate's choice, written \texttt{pe(path)} and fixed at compile time as a function of the PIFO's position in the tree.
-A typical choice is depth-by-PE, where all PIFOs at one depth share a PE~\cite{Sivaraman16}, so siblings do too.
+A typical choice is the depth-by-PE layout of \cref{sec:hierarchical}, under which siblings share a PE.
 The planner consults \texttt{pe(path)} for a \texttt{spawn}'s \texttt{pe} argument and cannot otherwise observe it.
 
 \subsection{Compiling Policy Edits}\label{sec:hw-compile}
 
 Each form of \(\delta\) (\cref{sec:delta-grammar}) lowers to a list of opcodes.
 The lowering \emph{schema} is mechanical.
-Each form names a fixed sequence of opcodes, and the planner reads live state at issue time to fill in the schema's positional parameters, such as flow lists, chain shapes, and routing indices, before dispatching the commit to the substrate.
+Each form names a fixed sequence of opcodes, and the planner fills in the schema's positional parameters, such as flow lists, chain shapes, and routing indices.
 
-\xxx[AM to Zhiyuan]{When does a later commit in a guarded sequence get these parameters?
-This paragraph says the planner fills them in at issue time and then dispatches, while \cref{sec:hw-commit} lowers a guard to a blocking command sitting in the controller queue, which reads as the whole sequence being queued at once.
-The two cannot both be right for a sequence with a drain in the middle: after a \Designate{} and its drain, the flow lists and chain shapes a later \Quiesce{} or \Undesignate{} needs are not what they were when the sequence was planned.
-Either the planner dispatches one commit at a time, or the substrate resolves the live remainders late, which the \texttt{walk} description below would support.}
+The planner resolves those parameters when it plans the sequence, rather than when a commit reaches the substrate.
+It reads them off its own model of the tree, which is host-side state that no PE holds.
+Nothing that happens while the sequence runs can invalidate them.
+A lowering reads tree shape, flow sets and arities.
+Only traffic runs while a guard waits, and traffic changes none of those.
+The whole of a guarded sequence can therefore be dispatched at once, and \cref{sec:hw-commit}'s controller queue holds it as fully resolved commits.
+
+\xxx[AM to Zhiyuan]{You said we could simply avoid saying when a later commit gets its parameters.
+I have written this paragraph instead, because this subsection and \cref{sec:hw-commit} otherwise say different things about a sequence with a drain in the middle.
+Please check. We can still cut it if you feel strongly.}
 
 A switch with \(P\) output ports has \(P\) separate trees, each wrapped at the ISA in a reserved 1-arm PIFO \texttt{port\_root} whose sole child, reached through the index \texttt{port\_step}, is the actual tree root.
+The forwarding pipeline selects a packet's output port before the packet reaches the scheduler, so a \push{} enters that port's tree at its port root.
 Its \texttt{Assoc} and \texttt{Map} mirror the actual root's, since every walk below begins there.
 The port root is what makes the tree root an ordinary position.
 \texttt{undesignate} retargets a parent's index from a PIFO to that PIFO's designated survivor, and at the root there is no parent's index to retarget.
@@ -1762,16 +1906,20 @@ Without the port root the substrate could not execute the one transition the pla
 \Designate{} itself needs no parent, since it only writes the outgoing node's own link.
 It is \Undesignate{} rather than \Designate{} that wants a slot above.
 
+\xxx[AM to Zhiyuan]{The port-selection sentence above is my best guess.
+I am assuming the output port is already fixed by the forwarding pipeline, so the scheduler never chooses among the \(P\) trees and needs no table to do it.
+Please confirm that is how your switch works, or tell me what does the selecting.}
+
 The three parts of \ensuremath{\mathit{z}} (\cref{sec:controls}) line up one to one with this vocabulary.
 A node's \(\mathit{z}.\mathit{admit}\) is its \texttt{Assoc} set, its \(\mathit{z}.\mathit{serves}\) is its \texttt{Map} table, its \(\mathit{z}.\mathit{rank}\) is what \texttt{set\_policy} installs and \texttt{discipline(v)} reads back, and its \(\mathit{z}.\mathit{meta}\) is what \texttt{set\_arm\_meta} writes.
 Each of \ensuremath{\mathit{z}}'s parts is thus an opcode's target, and none of them is state that \texttt{push} or \texttt{pop} advances.
 
 A tree position and the PIFO sitting at it are different things, so each lowering binds a name to the PIFO that the form targets, and speaks of that PIFO thereafter.
-Queries against a PIFO \texttt{v}, its \texttt{arity(v)} and \texttt{discipline(v)}, are read off the live tree at issue time, and a parameter an opcode leaves unmentioned is \texttt{v}'s live value.
+Queries against a PIFO \texttt{v}, its \texttt{arity(v)} and \texttt{discipline(v)}, are read off the planner's model of the tree as it stands at that point in the sequence, and a parameter an opcode leaves unmentioned is \texttt{v}'s value there.
 \texttt{spawn}'s elided \texttt{pe} argument is \texttt{pe(pos(v))}.
 
 Two notations recur.
-\texttt{foreach x in S} emits its body once per \texttt{x}, and \texttt{walk(op, C, f)} emits \texttt{op(v, f, \ldots)} at each \(v \in C\), reading positional remainders such as \texttt{map}'s routing index off the live tree.
+\texttt{foreach x in S} emits its body once per \texttt{x}, and \texttt{walk(op, C, f)} emits \texttt{op(v, f, \ldots)} at each \(v \in C\), reading positional remainders such as \texttt{map}'s routing index off that same model.
 Of the queries, \texttt{flows(v)} is the set of flows admitted beneath \texttt{v}, and \texttt{chain(f)} runs from \texttt{port\_root} to the leaf admitting \texttt{f}, with \texttt{internals(f)} that chain minus the leaf.
 For a compiled subtree \texttt{T}, \texttt{nodes(T)} is its PIFOs and \texttt{root(T)} its root, and \texttt{layout(T)} spawns and configures all of \texttt{T}, leaving the parent-side \texttt{adopt} of \(\mathtt{root(T)}\) to the caller.
 
@@ -1792,6 +1940,10 @@ foreach f in flows(arm):
     walk(map,   internals(f), f)
 \end{Verbatim}
 The new subtree occupies \texttt{v}'s rightmost slot (index \texttt{n}), so existing children's indices are undisturbed.
+
+Becasue of these two walks, admitting a flow writes an entry at every node on its path rather than one entry somewhere central.
+A switch could instead classify once at ingress, compute a packet's whole path there, and leave the interior nodes as pure rankers.
+We keep classification distributed, since it leaves each PE self-contained and matches the depth-by-PE layout, whereas a central classifier would have been one structure that every packet must visit before the tree.
 
 \paragraph{\(\ChangeMeta(\pi \mathbin{+\!\!+} [k], D, m)\)}
 \begin{Verbatim}
@@ -1849,120 +2001,7 @@ A silenced flow's Map entries \emph{must outlive the silencing} so that buffered
 \Remove{} pairs \texttt{emancipate} with \texttt{unmap} precisely because it fires after the drain, when there is no longer any in-flight traffic to preserve.
 A \Quiesce{} that fires in the middle of a \Replace, on the outgoing arm of a \(\Strictstar\), restricts its deassoc walk to loser-only flows, since \Designate{} routed the shared flows to the survivor at commit time (\cref{sec:designate}), and de-associating them here would silence live traffic on the survivor.
 
-\subsection{Designated Survivors}\label{sec:hw-survivor}
-
-A \(\Strictstar\) node is realized not as a PIFO but as a \emph{designated-survivor link}, a pointer from the node it replaces to the subtree replacing it.
-This subsection says why the link is worth having and how a \push{} and a \pop{} each reach the survivor through it.
-
-\cref{sec:policy-dsl} offers \(\Strictstar\) as a discipline of its own even though it schedules exactly as the 2-ary \Strict{} does.
-The difference is that a \(\Strictstar\) node needs no \ensuremath{\mathit{pifo}}, and a node that needs no \ensuremath{\mathit{pifo}} needs no \emph{level}.
-A PE holds one level of the tree, so every node that must be stored somewhere costs a level for itself and everything beneath it.
-
-A substrate that offers \(\Strictstar\) guarantees two things of it.
-Arm 0 is drained before arm 1 is served, and the two arms' priorities never change.
-An ordinary \Strict{} can promise only the first.
-A \ChangeMeta{} may invert its priorities under a standing backlog, and ranks are frozen at \push{} time (\cref{sec:nondisruption}) so that the backlog survives the inversion, which is what the node's \ensuremath{\mathit{pifo}} is for.
-Nothing can invert a \(\Strictstar\): \ChangeMeta{} may not target its arms (\cref{sec:changemeta}), and nothing else disturbs it between the \Designate{} that creates it and the \Undesignate{} that retires it.
-The drain order therefore holds at every instant of the node's life, and a \ensuremath{\mathit{pifo}} there would record nothing the two arms do not already record.
-
-\paragraph{What dropping the \texorpdfstring{\ensuremath{\mathit{pifo}}}{pifo} saves}
-
-Suppose the outgoing subtree has height two on levels 5 and 6, and a survivor of height three is to replace it from level 5 beside it.
-A literal \Strict-2 wrapper holds a \ensuremath{\mathit{pifo}} and so has to live somewhere.
-It takes level 5, pushing the outgoing subtree to 6 and 7 and the survivor to 6 through 8, and retiring it afterwards pulls the survivor back up.
-Two subtrees are laid out twice over, for a node that exists only for the length of a drain.
-
-\paragraph{The designated-survivor link}
-
-Every PIFO carries a \emph{designated-survivor link}, which is left null in an ordinary node.
-\texttt{designate(v, surv)} points \texttt{v}'s link at \texttt{surv}.
-The survivor is laid out beside \texttt{v} rather than beneath it, and \texttt{v}'s parent is not told.
-It keeps the one index it had.
-A designated survivor occupies its designator's physical position, so the two roots share a PE, and a model path reaches a physical level by discarding the \(\Strictstar\) nodes above it.
-
-\emph{A \push{} reaches the survivor directly.}
-The admitting chain for one of the survivor's flows runs from the root, through the parent, into the survivor, and down to a leaf.
-\texttt{v} is not on that chain, because the \Designate{} lowering struck those flows from \texttt{v}'s Assoc.
-Every node on the chain mints one index, exactly as it would for an \Add, and the link is never consulted.
-No node classifies anything it was not classifying already, which is why the construction needs no table of its own.
-
-\emph{A \pop{} reaches the survivor only through \texttt{v}.}
-The parent spends an index on that slot and queries \texttt{v}.
-While \texttt{v} holds packets, it returns packets.
-Once \texttt{v} is empty it defers to its designated survivor, and the query passes to \texttt{surv} rather than underflowing.
-
-The parent therefore holds one index per packet in \emph{either} subtree, and spends them on \texttt{v} until \texttt{v} is dry and on \texttt{surv} thereafter, which is the arm-0-before-arm-1 order \cref{sec:wrap-nondisruption} proves non-disruptive.
-The elision does change what \cref{sec:controls}'s well-formedness ranges over.
-That invariant counts, at each node, one \ensuremath{\mathit{pifo}} entry per packet in the subtree under the corresponding child, and here the parent holds entries for packets in a subtree that is not its child at all.
-This count is still correct once ``the subtree under index \(i\)'' is read as the subtree at \(i\) together with its designated survivor's, and an index that leads to \texttt{v} when \texttt{v} is empty does not actually reach a leaf with nothing to emit, since it reaches \texttt{surv}.
-At the \ensuremath{\mathit{pol}} level no reading is needed, since \(\mathtt{wrap}\) (\cref{sec:designate}) builds a real \(\Strictstar\) node with two real children and a \ensuremath{\mathit{pifo}} of its own, and \cref{sec:controls} applies to it word for word.
-
-\paragraph{Ending the transition}
-
-The indirection has a cost.
-Once \texttt{v} has drained, every \pop{} that reaches that slot queries \texttt{v}, gets nothing, and queries again, at the tree level where the two roots sit.
-So the transition has to end rather than merely settle.
-\cref{sec:sequences} pairs \Undesignate{} with the guard \(\mathtt{isEmpty}(\mathit{path})\), and \cref{sec:hw-commit} lowers such a guard to a blocking command in the controller queue.
-The commit sits at the head of that queue until the outgoing subtree drains, and then fires atomically.
-After it the parent's index reaches the survivor directly, and nothing in the tree records that a transition happened.
-
-An operator may also put a \(\Strictstar\) in a policy of their own (\cref{sec:policy-dsl}), and \(\lceil \cdot \rceil\) compiles it to what \Designate{} builds, with \(\mathtt{layout}\) running on both arms and \texttt{designate} pointing the first arm's link at the second.
-
-\subsection{Making a Commit Atomic}\label{sec:hw-commit}
-
-Rio implements a transactional update controller, and every commit passes through it.
-A commit reaches the controller as a stream of update instructions terminated by a commit marker, and the controller executes that stream in order.
-Ordinary update instructions are routed to the PEs they target and staged locally, where they remain invisible to packet processing.
-When the controller reaches the marker, it generates the hardware commit signals that make the staged updates visible.
-Two pieces of hardware need small changes for those signals to be atomic: the tables that \cref{tab:isa-opcodes}'s opcodes write to, and the rank computation.
-
-\xxx[AM to Zhiyuan]{The sentence above read ``small changes to three pieces of hardware: the virtual PIFOs, the rank computation, and the next-hop mapping'', and then described two, neither of which was the PIFOs.
-I have written two, since two is what this subsection delivers.
-If a change to the PIFOs themselves belongs here, the paragraph describing it is missing.}
-
-Rio builds transactional tables for the mappings the opcodes write.
-Each PE holds those tables, the \texttt{Assoc} sets and \texttt{Map} tables of \cref{sec:hw-compile}, in a specialized structure that accepts a stream of update instructions followed by a commit marker.
-Only when the marker is applied does the new version become active.
-We implement this using double buffering.
-An update instruction modifies a shadow copy of the table, which packet processing does not read, and the commit signal atomically swaps the active and shadow copies.
-After the swap, the inactive copy is synchronized in the background to serve as the shadow for the next commit.
-Staging updates in a shadow copy and swapping them in is also how runtime reconfiguration is done for the forwarding pipeline~\cite{Xing22,Yang24}.
-Rio therefore asks its substrate for no primitive that runtime-programmable switch designs do not already provide.
-
-A swap is atomic within one PE, but a commit generally spans several, and a packet in flight visits them in sequence.
-The commit signals are therefore delay-aligned across PEs according to the PIFO tree topology, so that no enqueue or dequeue operation can traverse a partially updated tree.
-The controller treats the commit boundary as a wavefront.
-The new configuration becomes visible at different PEs at carefully chosen times, so that any individual packet observes a consistent configuration along its entire path.
-The double buffer and the wavefront are two mechanisms.
-Their shared purpose is pipelined dequeue, so that a request travelling the chain of PEs never observes state that a commit has left inconsistent.
-
-Rio supports incremental updates to the rank-computing match-action tables, which \texttt{set\_policy} and \texttt{set\_arm\_meta} write, and does not require arbitrary in-place replacement of a live scheduling policy.
-Such an update either installs metadata for a flow whose packets are not admitted until the commit finishes, or retires metadata for a flow that has already drained, so it never changes the interpretation of a packet already in flight.
-Our controller stages and swaps these writes along with every other instruction in their commit, so the \texttt{set\_arm\_meta} that \Add{} issues beside \texttt{change\_arity} and \texttt{adopt} lands inside the same atomic instant.
-Rio does not require that, since the table whose commit must be a single instant is the one mapping a flow to the PIFO that serves it, and that mapping is what admits a packet at all.
-The rank computation behind it is a reference design, and a substrate may configure its own disciplines by whatever means it has.
-
-The controller also implements guarded transitions.
-Some transitions are guarded by predicates such as the emptiness of a subtree (\cref{sec:sequences}).
-Rio lowers such guards to blocking commands in the controller queue.
-A blocking command remains at the head of the queue until its predicate becomes true.
-Only then can the subsequent update instructions execute.
-In-order execution therefore ensures that instructions depending on the guard are not issued prematurely.
-
-Our current implementation uses a single controller queue, which provides a simple global serialization point for updates.
-This design is sufficient for correctness and avoids subtle ordering bugs between overlapping commits.
-It can, however, introduce head-of-line blocking when a guarded transition waits for a long-running drain.
-Supporting multiple independent queues for disjoint subtrees is a natural optimization, and it changes neither Rio's ISA nor its correctness argument.
-We leave that extension to future work.
-
-\subsection{What Rio Asks of a Substrate}\label{sec:substrate-portability}
-
-Our substrate is deliberately unambitious; we built it because the compiler needed something to run against and we wanted to understand precisely what features we needed from our substrate.
-
-Rio asks a substrate for one thing: commits that are atomic with respect to traffic.
-A \(\delta\) that lowers to many instructions has to install as a single instant.
-The tree is transiently malformed partway through a commit, and no \push{} or \pop{} may observe it in that state.
-That is the whole of what \cref{sec:hw-preservation}'s argument rests on, and \cref{sec:hw-commit} is how our own controller supplies it.
+\subsection{Hosting Rio on Another Substrate}\label{sec:substrate-portability}
 
 The substrate also supplies the disciplines themselves.
 \(\mathit{init\_node\_state}_{D}\), \(\mathit{init\_slot\_state}_{D}\) and \(\mathit{rank}_{D}\) are the substrate's (\cref{sec:compilation}), and the menu it implements is the menu an operator may write from.
@@ -1970,8 +2009,11 @@ That is a parameter, since a substrate with a shorter menu hosts Rio just as wel
 If the network operator wishes to install a discipline that the menu lacks, they need to supply the substrate with an \(\mathit{init\_node\_state}_{D}\), an \(\mathit{init\_slot\_state}_{D}\) and a \(\mathit{rank}_{D}\) of their own.
 A small programmable core beside the PIFO tree would be one way to supply this.
 
-The designated-survivor link of \cref{sec:hw-survivor} is an optimization rather than a requirement, since a substrate without one lowers \Designate{} to a literal \Strict-2 wrapper and pays for the relayouts.
-The bar for hosting Rio is therefore a single property, and we expect other PIFO substrates to clear it and to be able to adopt the link besides~\cite{Shrivastav19,Gao22,Yao23,vPIFO,Atre24,Alcoz25}.
+The guard language is a parameter in the same way.
+Our substrate can test the two forms of \cref{sec:idioms}, and a substrate that can test more predicates offers richer guards to the network operator or transition planner.
+
+The designated-survivor link of \cref{sec:hw-survivor} is an optimization rather than a requirement, since a substrate without one lowers \Designate{} to a literal \Strict-2 wrapper and accepts the cost of laying out some trees repeatedly.
+The bar for hosting Rio is therefore atomic commits and a predicate the substrate can wait on, and we expect other PIFO substrates to clear both and to be able to adopt the link~\cite{Shrivastav19,Gao22,Yao23,vPIFO,Atre24,Alcoz25}.
 
 \section{Evaluation}\label{sec:eval}
 
@@ -1984,7 +2026,7 @@ An operator who changes the forwarding rules across a set of devices cannot inst
 \citet{Reitblatt12} observe that such an update passes through intermediate configurations, and that those configurations can behave in ways that neither the old configuration nor the new one would.
 Our work makes that same observation about scheduling.
 Their answer is a versioning discipline, which yields two consistency levels, per-packet and per-flow: a packet is stamped on entry and handled under the stamped version at every device, so one configuration handles it from end to end.
-Rio reaches per-packet consistency by another means: the entire commit lands between two consecutive \push{}/\pop{} operations, so a packet meets one configuration or the other (\cref{sec:hw-isa}).
+Rio reaches per-packet consistency by another means: a commit installs in a single cycle at each PE, so a packet meets one configuration or the other (\cref{sec:hw-isa}).
 
 The two settings differ in what the old configuration holds.
 In forwarding, a forwarding rule holds no traffic, so the old configuration can be retired once the packets stamped with it have left the network.
@@ -2049,7 +2091,7 @@ Gearbox approximates weighted fair queuing with a hierarchy of queuing levels at
 vPIFO virtualizes a single physical PIFO into many instances that its PIFO Visor can wire into a tree of any shape~\cite{vPIFO}; we take the gap it leaves at runtime as a case study in \cref{sec:vpifo}.
 
 All of these substrates fix the tree's shape and the discipline at each node when the scheduler is configured.
-Rio runs above any of them and asks for one property: commits that are atomic with respect to traffic (\cref{sec:substrate-portability}).
+Rio runs above any of them and asks for one property: commits that are atomic with respect to traffic (\cref{sec:hw-substrate}).
 Each is therefore a plausible host, and what it would have to add is a transactional path to the tables that our opcodes write.
 
 One recent substrate offers more than Rio assumes.
