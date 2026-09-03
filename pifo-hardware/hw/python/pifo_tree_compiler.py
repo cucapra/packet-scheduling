@@ -115,8 +115,11 @@ def compile_tree_move(program: TreeMoveProgram) -> TransactionProgram:
     plan = build_transaction_plan(
         program.old_tree, program.move, program.hardware.num_vpifos
     )
-    assert plan.drain_engine_id is not None
-    assert plan.drain_vpifo_id is not None
+    drain_root = (
+        (plan.drain_engine_id, plan.drain_vpifo_id)
+        if plan.drain_engine_id is not None and plan.drain_vpifo_id is not None
+        else None
+    )
     return TransactionProgram(
         hardware=program.hardware,
         root_engine_id=plan.root_engine_id,
@@ -134,7 +137,9 @@ def compile_tree_move(program: TreeMoveProgram) -> TransactionProgram:
                 mode=plan.mode,
                 before_label=plan.before_label,
                 after_label=plan.after_label,
-                drain_root=(plan.drain_engine_id, plan.drain_vpifo_id),
+                drain_root=drain_root,
+                gated_flow_ids=plan.gated_flow_ids,
+                minimum_stop_cycles=plan.minimum_stop_cycles,
                 commands=plan.transaction_commands,
             ),
         ),

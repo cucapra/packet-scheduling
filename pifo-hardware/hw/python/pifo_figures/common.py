@@ -69,6 +69,10 @@ class PolicyEvent:
     mode: str = "full_transitive"
     drain_cycle: int | None = None
     instruction_count: int | None = None
+    dropped_packets: int = 0
+    retained_packets: int = 0
+    minimum_stop_cycles: int = 0
+    stop_duration_cycles: int | None = None
 
     @property
     def label(self) -> str:
@@ -263,6 +267,26 @@ def read_policy_event(path: Path) -> PolicyEvent:
             if (row.get("instruction_count") or "").strip()
             else None
         ),
+        dropped_packets=(
+            parse_int(row["dropped_packets"])
+            if (row.get("dropped_packets") or "").strip()
+            else 0
+        ),
+        retained_packets=(
+            parse_int(row["retained_packets"])
+            if (row.get("retained_packets") or "").strip()
+            else 0
+        ),
+        minimum_stop_cycles=(
+            parse_int(row["minimum_stop_cycles"])
+            if (row.get("minimum_stop_cycles") or "").strip()
+            else 0
+        ),
+        stop_duration_cycles=(
+            parse_int(row["stop_duration_cycles"])
+            if (row.get("stop_duration_cycles") or "").strip()
+            else None
+        ),
     )
     _validate_event(path, row, event)
     return event
@@ -281,10 +305,25 @@ def _validate_event(
         raise ValueError(f"{path}: commit cycle precedes start cycle")
     if event.finish_cycle < event.commit_cycle:
         raise ValueError(f"{path}: finish cycle precedes commit cycle")
-    if event.drain_cycle is not None and event.drain_cycle < event.commit_cycle:
+    if (
+        event.drain_cycle is not None
+        and event.drain_cycle < event.commit_cycle
+        and event.mode != "stop_the_world"
+    ):
         raise ValueError(f"{path}: drain cycle precedes commit cycle")
     if event.instruction_count is not None and event.instruction_count <= 0:
         raise ValueError(f"{path}: instruction count must be positive")
+    if event.dropped_packets < 0:
+        raise ValueError(f"{path}: dropped packet count must be non-negative")
+    if event.retained_packets < 0 or event.minimum_stop_cycles < 0:
+        raise ValueError(f"{path}: retained packets and minimum stop must be non-negative")
+    if event.stop_duration_cycles is not None:
+        if event.mode != "stop_the_world" or event.drain_cycle is None:
+            raise ValueError(f"{path}: stop duration requires a stop_the_world drain cycle")
+        if event.stop_duration_cycles != event.finish_cycle - event.drain_cycle:
+            raise ValueError(f"{path}: stop duration does not match finish and drain cycles")
+        if event.stop_duration_cycles < event.minimum_stop_cycles:
+            raise ValueError(f"{path}: stop duration is shorter than its configured minimum")
     duration_raw = (row.get("drain_duration_cycles") or "").strip()
     if duration_raw:
         if event.drain_cycle is None:

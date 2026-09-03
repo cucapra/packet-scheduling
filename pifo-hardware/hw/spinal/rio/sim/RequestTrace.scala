@@ -27,12 +27,18 @@ case class CompletedRequest(request: SimRequest, admittedCycle: Long, completedC
   def sojournCycles: Long = completedCycle - request.cycle
 }
 
+case class DroppedRequest(request: SimRequest, admittedCycle: Long, droppedCycle: Long) {
+  require(droppedCycle >= admittedCycle, "a request cannot be dropped before it is admitted")
+}
+
 case class RequestQueueSnapshot(
     queuedRequests: Long,
     queuedBytes: Long,
     admittedRequests: Long,
     completedRequests: Long,
-    completedBytes: Long
+    completedBytes: Long,
+    droppedRequests: Long,
+    droppedBytes: Long
 )
 
 /** Bounded simulator-side FIFO queues, one queue per global flow ID. */
@@ -43,10 +49,13 @@ final class RequestQueueBank(val perFlowDepth: Int, val maxGlobalFlowId: Int) {
   private val queues = mutable.Map.empty[Int, mutable.Queue[QueuedRequest]]
   private val admittedIds = mutable.Set.empty[Long]
   private val completedBuffer = mutable.ArrayBuffer.empty[CompletedRequest]
+  private val droppedBuffer = mutable.ArrayBuffer.empty[DroppedRequest]
   private var queuedByteCount = 0L
   private var admittedCount = 0L
   private var completedCount = 0L
   private var completedByteSum = 0L
+  private var droppedCount = 0L
+  private var droppedByteSum = 0L
 
   def canEnqueue(globalFlowId: Int): Boolean = {
     validateFlowId(globalFlowId)
@@ -88,6 +97,19 @@ final class RequestQueueBank(val perFlowDepth: Int, val maxGlobalFlowId: Int) {
     }
   }
 
+  def dropAll(droppedCycle: Long): Vector[DroppedRequest] = {
+    val dropped = queues.valuesIterator.flatMap(_.iterator).map { queued =>
+      DroppedRequest(queued.request, queued.admittedCycle, droppedCycle)
+    }.toVector.sortBy(_.request.requestId)
+    queues.clear()
+    val bytes = dropped.iterator.map(_.request.sizeBytes.toLong).sum
+    droppedBuffer ++= dropped
+    droppedCount += dropped.size
+    droppedByteSum += bytes
+    queuedByteCount = 0L
+    dropped
+  }
+
   def queuedForFlow(globalFlowId: Int): Int = {
     validateFlowId(globalFlowId)
     queues.get(globalFlowId).fold(0)(_.size)
@@ -96,18 +118,29 @@ final class RequestQueueBank(val perFlowDepth: Int, val maxGlobalFlowId: Int) {
   def activeFlowIds: Seq[Int] =
     queues.iterator.collect { case (flowId, queue) if queue.nonEmpty => flowId }.toSeq.sorted
 
-  def totalQueued: Long = admittedCount - completedCount
+  /** Stable replay order for scheduler tokens retained across a lossless reset. */
+  def queuedRequestsInAdmissionOrder: Vector[QueuedRequest] =
+    queues.valuesIterator
+      .flatMap(_.iterator)
+      .toVector
+      .sortBy(queued => (queued.admittedCycle, queued.request.requestId))
+
+  def totalQueued: Long = admittedCount - completedCount - droppedCount
 
   def isEmpty: Boolean = totalQueued == 0
 
   def completions: Vector[CompletedRequest] = completedBuffer.toVector
+
+  def drops: Vector[DroppedRequest] = droppedBuffer.toVector
 
   def snapshot: RequestQueueSnapshot = RequestQueueSnapshot(
     queuedRequests = totalQueued,
     queuedBytes = queuedByteCount,
     admittedRequests = admittedCount,
     completedRequests = completedCount,
-    completedBytes = completedByteSum
+    completedBytes = completedByteSum,
+    droppedRequests = droppedCount,
+    droppedBytes = droppedByteSum
   )
 
   private def validateFlowId(globalFlowId: Int): Unit = {
@@ -219,6 +252,43 @@ object RequestTrace {
             result.sojournCycles
           ).mkString(",")
         )
+        writer.newLine()
+      }
+    } finally writer.close()
+  }
+
+  def writePacketOutcomes(
+      path: Path,
+      completed: Iterable[CompletedRequest],
+      dropped: Iterable[DroppedRequest]
+  ): Unit = {
+    Option(path.getParent).foreach(Files.createDirectories(_))
+    val rows =
+      completed.map { result =>
+        (
+          result.request.requestId,
+          result.request.globalFlowId,
+          result.request.sizeBytes,
+          result.admittedCycle,
+          result.completedCycle.toString,
+          false
+        )
+      } ++ dropped.map { result =>
+        (
+          result.request.requestId,
+          result.request.globalFlowId,
+          result.request.sizeBytes,
+          result.admittedCycle,
+          "",
+          true
+        )
+      }
+    val writer = Files.newBufferedWriter(path, StandardCharsets.UTF_8)
+    try {
+      writer.write("request_id,flow,size_bytes,push_cycle,pop_cycle,dropped")
+      writer.newLine()
+      rows.toVector.sortBy(_._1).foreach { row =>
+        writer.write(Seq(row._1, row._2, row._3, row._4, row._5, row._6).mkString(","))
         writer.newLine()
       }
     } finally writer.close()

@@ -16,6 +16,7 @@ case class RequestSimulatorOptions(
     controlSocketEnabled: Boolean = true,
     controlSocketPath: String = SimUtils.DefaultControlSocketPath,
     resultFile: Option[Path] = Some(Paths.get("request-results.csv")),
+    packetOutcomeFile: Option[Path] = None,
     flatFifo: Option[Boolean] = None,
     flatFifoFlows: Set[Int] = Set.empty,
     rootEngineId: Int = 1,
@@ -47,6 +48,7 @@ object RequestSimulatorCli {
       |  --live                       Accept requests on a Unix socket until command=end.
       |  --request-socket PATH        Request socket (default /tmp/rio-request.sock).
       |  --output FILE                Completion CSV (default request-results.csv).
+      |  --packet-outcomes FILE       Per-packet push/pop/drop CSV.
       |  --no-output                  Do not write a completion CSV.
       |
       |Scheduler configuration:
@@ -180,6 +182,9 @@ object RequestSimulatorCli {
           engine.pifos.io.popResponse.valid.simPublic()
           engine.pifos.io.popResponse.port.simPublic()
           engine.pifos.io.popResponse.exist.simPublic()
+          engine.pifos.io.popResponse.data.simPublic()
+          engine.pifos.io.popResponse.priority.simPublic()
+          engine.pifos.io.popPortEmpty.simPublic()
           engine.pifos.io.portDrained.valid.simPublic()
           engine.pifos.io.portDrained.payload.simPublic()
         }
@@ -227,7 +232,13 @@ object RequestSimulatorCli {
             scheduledCycle = transaction.scheduledCycle,
             name = transaction.name,
             drainTarget = transaction.drainTarget,
-            run = context =>
+            mode = transaction.mode,
+            gatedFlowIds = transaction.gatedFlowIds,
+            minimumStopCycles = transaction.minimumStopCycles,
+            run = context => {
+              if (transaction.mode == "stop_the_world") {
+                context.beginStopTheWorld(transaction.minimumStopCycles)
+              }
               RequestSimulationConfiguration.executeTransactionPackage(
                 transaction.instructions,
                 controller,
@@ -235,6 +246,10 @@ object RequestSimulatorCli {
                 context.markCommitAccepted,
                 context.markCommitApplied
               )
+              if (transaction.mode == "stop_the_world") {
+                context.finishStopTheWorld()
+              }
+            }
           )
         }
 
@@ -262,6 +277,9 @@ object RequestSimulatorCli {
 
         val summary = requestSimulator.run()
         options.resultFile.foreach(path => RequestTrace.writeResults(path, summary.completions))
+        options.packetOutcomeFile.foreach(path =>
+          RequestTrace.writePacketOutcomes(path, summary.completions, summary.drops)
+        )
         val completedTransactions = scheduledTransactions.map { transaction =>
           val action = summary.completedActions
             .find(_.name == transaction.name)
@@ -272,20 +290,26 @@ object RequestSimulatorCli {
             throw new IllegalStateException(s"transaction '${transaction.name}' did not accept CommitMapper")
           )
           val drainText = action.drainCycle.map(cycle => s" drain=$cycle").getOrElse("")
+          val dropText = if (action.droppedPackets > 0) s" dropped=${action.droppedPackets}" else ""
+          val stopText = if (transaction.mode == "stop_the_world") {
+            s" retained=${action.retainedPackets} minStop=${transaction.minimumStopCycles}"
+          } else ""
           println(
             s"[RequestSim] transaction ${transaction.name} mode=${transaction.mode} " +
               s"scheduled=${action.scheduledCycle} start=${action.startCycle} " +
               s"instructions=${transaction.instructions.size} commit=$commitCycle " +
-              s"finish=${action.finishCycle}$drainText"
+              s"finish=${action.finishCycle}$drainText$dropText$stopText"
           )
           (transaction, action)
         }
         options.transactionEventFile.foreach(path => writeTransactionEvents(path, completedTransactions))
         println(
           s"[RequestSim] complete cycles=${summary.elapsedCycles} submitted=${summary.submittedRequests} " +
-            s"admitted=${summary.admittedRequests} completed=${summary.completedRequests} bytes=${summary.completedBytes}"
+            s"admitted=${summary.admittedRequests} completed=${summary.completedRequests} " +
+              s"dropped=${summary.droppedRequests} bytes=${summary.completedBytes}"
         )
         options.resultFile.foreach(path => println(s"[RequestSim] wrote completion trace to $path"))
+        options.packetOutcomeFile.foreach(path => println(s"[RequestSim] wrote packet outcomes to $path"))
         options.transactionEventFile.foreach(path => println(s"[RequestSim] wrote transaction event to $path"))
         simSuccess()
       }
@@ -312,6 +336,8 @@ object RequestSimulatorCli {
         case "--control-socket"    => options = options.copy(controlSocketPath = nextValue("--control-socket"))
         case "--no-control-socket" => options = options.copy(controlSocketEnabled = false)
         case "--output"            => options = options.copy(resultFile = Some(Paths.get(nextValue("--output"))))
+        case "--packet-outcomes" =>
+          options = options.copy(packetOutcomeFile = Some(Paths.get(nextValue("--packet-outcomes"))))
         case "--no-output"         => options = options.copy(resultFile = None)
         case "--flat-fifo"         => options = options.copy(flatFifo = Some(true))
         case "--no-flat-fifo"      => options = options.copy(flatFifo = Some(false))
@@ -357,7 +383,8 @@ object RequestSimulatorCli {
     try {
       writer.write(
         "event,name,mode,from_policy,to_policy,instruction_count,scheduled_cycle,start_cycle,commit_cycle," +
-          "finish_cycle,drain_cycle,drain_duration_cycles"
+          "finish_cycle,drain_cycle,drain_duration_cycles,dropped_packets,retained_packets," +
+          "minimum_stop_cycles,stop_duration_cycles"
       )
       writer.newLine()
       completed.foreach { case (transaction, action) =>
@@ -367,7 +394,12 @@ object RequestSimulatorCli {
           )
         )
         val drainCycle = action.drainCycle.map(_.toString).getOrElse("")
-        val drainDuration = action.drainCycle.map(_ - commitCycle).map(_.toString).getOrElse("")
+        val drainDuration =
+          if (transaction.mode == "stop_the_world") ""
+          else action.drainCycle.map(_ - commitCycle).map(_.toString).getOrElse("")
+        val stopDuration =
+          if (transaction.mode == "stop_the_world") action.drainCycle.map(action.finishCycle - _).map(_.toString)
+          else None
         writer.write(
           Seq(
             "reconfiguration",
@@ -381,7 +413,11 @@ object RequestSimulatorCli {
             commitCycle,
             action.finishCycle,
             drainCycle,
-            drainDuration
+            drainDuration,
+            action.droppedPackets,
+            action.retainedPackets,
+            transaction.minimumStopCycles,
+            stopDuration.getOrElse("")
           ).map(csvCell).mkString(",")
         )
         writer.newLine()

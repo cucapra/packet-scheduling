@@ -1,0 +1,156 @@
+{
+  "schema_version": 1,
+  "passed": true,
+  "event": {
+    "start_cycle": 240,
+    "commit_cycle": 268,
+    "drain_cycle": 1475,
+    "finish_cycle": 8464,
+    "staging_cycles": 28,
+    "drain_cycles": 1207,
+    "synchronization_cycles": 8196,
+    "instruction_count": 28
+  },
+  "packet_counts": {
+    "total": 120,
+    "old_epoch": 54,
+    "new_epoch": 66,
+    "old_backlog_at_commit": 45,
+    "admitted_on_commit_edge_as_old": 1,
+    "before_commit": 9,
+    "during_drain": 45,
+    "after_drain": 66
+  },
+  "sp_priorities": {
+    "1": 1,
+    "2": 32769
+  },
+  "facts": [
+    {
+      "id": "longer_queue_to_drain",
+      "description": "A large transaction and old-tree backlog make staging and drain visible.",
+      "passed": true,
+      "checks": [
+        {
+          "id": "serialized_configuration_rate",
+          "description": "cycles from package start through commit acceptance at no more than one instruction per cycle",
+          "expected": ">= 28",
+          "observed": 28,
+          "passed": true
+        },
+        {
+          "id": "staging_duration",
+          "description": "cycles from package start to CommitMapper acceptance",
+          "expected": ">= 20",
+          "observed": 28,
+          "passed": true
+        },
+        {
+          "id": "old_backlog_at_commit",
+          "description": "old-tree packets still pending when commit is emitted",
+          "expected": ">= 32",
+          "observed": 45,
+          "passed": true
+        },
+        {
+          "id": "drain_duration",
+          "description": "cycles from commit emission until the old root drains",
+          "expected": ">= 800",
+          "observed": 1207,
+          "passed": true
+        }
+      ]
+    },
+    {
+      "id": "before_commit_old_policy",
+      "description": "Before commit, completed packets come from the old RR tree.",
+      "passed": true,
+      "checks": [
+        {
+          "id": "precommit_packet_count",
+          "description": "packets completed before commit",
+          "expected": ">= 6",
+          "observed": 9,
+          "passed": true
+        },
+        {
+          "id": "new_packets_before_commit",
+          "description": "new-tree packets completed before commit",
+          "expected": 0,
+          "observed": 0,
+          "passed": true
+        },
+        {
+          "id": "rr_repetitions_before_commit",
+          "description": "adjacent same-flow completions under balanced RR traffic",
+          "expected": 0,
+          "observed": 0,
+          "passed": true
+        }
+      ]
+    },
+    {
+      "id": "after_commit_drain_old_first",
+      "description": "After commit, the old RR tree drains before any new-tree output.",
+      "passed": true,
+      "checks": [
+        {
+          "id": "drain_phase_packet_count",
+          "description": "packets completed from commit until drain",
+          "expected": ">= 6",
+          "observed": 45,
+          "passed": true
+        },
+        {
+          "id": "new_packets_during_drain",
+          "description": "new-tree packets completed before the old root drained",
+          "expected": 0,
+          "observed": 0,
+          "passed": true
+        },
+        {
+          "id": "rr_repetitions_during_drain",
+          "description": "adjacent same-flow old completions while draining",
+          "expected": 0,
+          "observed": 0,
+          "passed": true
+        },
+        {
+          "id": "rr_repetitions_all_old",
+          "description": "adjacent same-flow completions across the complete old epoch",
+          "expected": 0,
+          "observed": 0,
+          "passed": true
+        }
+      ]
+    },
+    {
+      "id": "after_drain_new_policy",
+      "description": "After drain, only the new SP tree runs and lower priorities finish first.",
+      "passed": true,
+      "checks": [
+        {
+          "id": "postdrain_packet_count",
+          "description": "packets completed after drain",
+          "expected": ">= 6",
+          "observed": 66,
+          "passed": true
+        },
+        {
+          "id": "old_packets_after_drain",
+          "description": "old-tree packets completed after drain",
+          "expected": 0,
+          "observed": 0,
+          "passed": true
+        },
+        {
+          "id": "sp_priority_reversals",
+          "description": "higher numeric SP priority followed by a lower one",
+          "expected": 0,
+          "observed": 0,
+          "passed": true
+        }
+      ]
+    }
+  ]
+}

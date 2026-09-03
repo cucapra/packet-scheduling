@@ -14,6 +14,12 @@ from request_trace import Request
 
 PACKET_RATE_UNIT = "packets_per_cycle_per_flow"
 SUPPORTED_POLICIES = {"RR", "WFQ", "SP", "FIFO"}
+SUPPORTED_RECONFIGURATION_MODES = {
+    "in_place",
+    "stop_the_world",
+    "full_transitive",
+    "confined_transitive",
+}
 
 
 @dataclass(frozen=True)
@@ -124,8 +130,10 @@ class TreeNodeConfig:
     def __post_init__(self) -> None:
         if self.engine_id <= 0:
             raise ValueError("tree node engine_id must be positive")
-        if self.vpifo_id < 0:
-            raise ValueError("tree node vpifo_id must be non-negative")
+        if self.vpifo_id <= 0:
+            raise ValueError(
+                "tree node vpifo_id must be positive; vPIFO 0 is the null sink"
+            )
         if self.policy not in SUPPORTED_POLICIES:
             raise ValueError(f"unsupported tree node policy {self.policy!r}")
         if any(flow_id < 0 or state < 0 for flow_id, state in self.flow_state.items()):
@@ -185,6 +193,9 @@ class PolicyChangeConfig:
     before_label: str
     after_label: str
     changes: Mapping[str, NodePolicyChangeConfig]
+    mode: str = "full_transitive"
+    target_tree: InitialTreeConfig | None = None
+    minimum_stop_cycles: int = 0
 
     def __post_init__(self) -> None:
         if self.cycle < 0:
@@ -193,12 +204,19 @@ class PolicyChangeConfig:
             raise ValueError("reconfiguration.name must not be empty")
         if not self.before_label or not self.after_label:
             raise ValueError("policy-change labels must not be empty")
-        if not self.changes:
-            raise ValueError("policy change must change at least one node")
-
-    @property
-    def mode(self) -> str:
-        return "full_transitive"
+        if not self.changes and self.target_tree is None:
+            raise ValueError("policy change requires changes or target_tree")
+        if self.mode not in SUPPORTED_RECONFIGURATION_MODES:
+            raise ValueError(
+                "policy-change mode must be in_place, stop_the_world, "
+                "full_transitive, or confined_transitive"
+            )
+        if self.minimum_stop_cycles < 0:
+            raise ValueError("minimum_stop_cycles must be non-negative")
+        if self.mode != "stop_the_world" and self.minimum_stop_cycles:
+            raise ValueError(
+                "minimum_stop_cycles is only valid for stop_the_world"
+            )
 
 
 def validate_tree_move(
@@ -208,27 +226,39 @@ def validate_tree_move(
     num_vpifos: int,
     max_packet_priority: int,
 ) -> None:
-    flow_ids = set(tree.flow_paths)
-    if any(flow_id >= num_vpifos - 1 for flow_id in flow_ids):
-        raise ValueError(
-            "tree flow IDs must be below num_vpifos - 1; "
-            "the highest ID is reserved for empty-PIFO output"
+    _validate_tree_shape(
+        tree,
+        "old tree",
+        num_engines,
+        num_vpifos,
+        max_packet_priority,
+    )
+    if change.target_tree is not None:
+        _validate_tree_shape(
+            change.target_tree,
+            "target tree",
+            num_engines,
+            num_vpifos,
+            max_packet_priority,
         )
-    physical_nodes: set[tuple[int, int]] = set()
-    for name, node in tree.nodes.items():
-        if node.engine_id > num_engines:
-            raise ValueError(f"tree.nodes.{name}.engine_id is out of range")
-        if node.vpifo_id >= num_vpifos - 1:
+        removed_flows = set(tree.flow_paths).difference(change.target_tree.flow_paths)
+        if removed_flows:
             raise ValueError(
-                f"tree.nodes.{name}.vpifo_id must be below num_vpifos - 1"
+                "target tree removes flows: "
+                + ",".join(map(str, sorted(removed_flows)))
             )
-        physical = (node.engine_id, node.vpifo_id)
-        if physical in physical_nodes:
-            raise ValueError(
-                f"tree has duplicate physical node {node.engine_id}:{node.vpifo_id}"
-            )
-        physical_nodes.add(physical)
-        _validate_node_state(tree, name, node.policy, node.flow_state, max_packet_priority)
+        if change.mode == "stop_the_world":
+            old_root = tree.nodes[tree.root]
+            target_root = change.target_tree.nodes[change.target_tree.root]
+            if (old_root.engine_id, old_root.vpifo_id) != (
+                target_root.engine_id,
+                target_root.vpifo_id,
+            ):
+                raise ValueError(
+                    "stop_the_world must reuse the old physical root"
+                )
+    elif change.mode != "full_transitive":
+        raise ValueError(f"{change.mode} requires an explicit target_tree")
 
     unknown_changes = set(change.changes).difference(tree.nodes)
     if unknown_changes:
@@ -242,6 +272,38 @@ def validate_tree_move(
         _validate_node_state(
             tree, name, node_change.policy, merged_state, max_packet_priority
         )
+
+
+def _validate_tree_shape(
+    tree: InitialTreeConfig,
+    label: str,
+    num_engines: int,
+    num_vpifos: int,
+    max_packet_priority: int,
+) -> None:
+    flow_ids = set(tree.flow_paths)
+    if any(flow_id >= num_vpifos - 1 for flow_id in flow_ids):
+        raise ValueError(
+            f"{label} flow IDs must be below num_vpifos - 1; "
+            "the highest ID is reserved for empty-PIFO output"
+        )
+    physical_nodes: set[tuple[int, int]] = set()
+    for name, node in tree.nodes.items():
+        if node.engine_id > num_engines:
+            raise ValueError(f"{label}.nodes.{name}.engine_id is out of range")
+        if node.vpifo_id >= num_vpifos - 1:
+            raise ValueError(
+                f"{label}.nodes.{name}.vpifo_id must be below num_vpifos - 1"
+            )
+        physical = (node.engine_id, node.vpifo_id)
+        if physical in physical_nodes:
+            raise ValueError(
+                f"{label} has duplicate physical node "
+                f"{node.engine_id}:{node.vpifo_id}"
+            )
+        physical_nodes.add(physical)
+        _validate_node_state(tree, name, node.policy, node.flow_state, max_packet_priority)
+
 
 
 def _validate_node_state(
@@ -485,14 +547,18 @@ def traffic_to_dict(traffic: TrafficConfig) -> dict[str, object]:
 def reconfiguration_to_dict(
     reconfiguration: PolicyChangeConfig,
 ) -> dict[str, object]:
-    return {
+    result: dict[str, object] = {
         "type": "policy_change",
-        "mode": "full_transitive",
+        "mode": reconfiguration.mode,
         "cycle": reconfiguration.cycle,
         "name": reconfiguration.name,
         "before_label": reconfiguration.before_label,
         "after_label": reconfiguration.after_label,
-        "changes": {
+    }
+    if reconfiguration.target_tree is not None:
+        result["target_tree"] = tree_to_dict(reconfiguration.target_tree)
+    else:
+        result["changes"] = {
             name: {
                 "policy": change.policy,
                 "flow_state": {
@@ -501,8 +567,10 @@ def reconfiguration_to_dict(
                 },
             }
             for name, change in reconfiguration.changes.items()
-        },
-    }
+        }
+    if reconfiguration.minimum_stop_cycles:
+        result["minimum_stop_cycles"] = reconfiguration.minimum_stop_cycles
+    return result
 
 
 def default_strict_priorities(
@@ -952,13 +1020,40 @@ def _parse_reconfiguration(
             "before_label",
             "after_label",
             "changes",
+            "target_tree",
+            "minimum_stop_cycles",
         },
         location,
     )
-    mode = _string(value.get("mode", "full_transitive"), f"{location}.mode")
-    if mode.lower() != "full_transitive":
-        raise ValueError("policy_change mode is always 'full_transitive'")
-    if "changes" in value:
+    mode = _string(value.get("mode", "full_transitive"), f"{location}.mode").lower()
+    if mode not in SUPPORTED_RECONFIGURATION_MODES:
+        raise ValueError(
+            "policy_change mode must be in_place, stop_the_world, "
+            "full_transitive, or confined_transitive"
+        )
+    target_tree: InitialTreeConfig | None = None
+    if "target_tree" in value:
+        if any(
+            key in value
+            for key in ("changes", "before", "after", "strict_priorities")
+        ):
+            raise ValueError(
+                f"{location}.target_tree cannot be combined with changes, before, "
+                "after, or strict_priorities"
+            )
+        target_tree = parse_tree_config(
+            value["target_tree"], f"{location}.target_tree"
+        )
+        changes = {}
+        root_before = initial_tree.nodes[initial_tree.root].policy
+        root_after = target_tree.nodes[target_tree.root].policy
+        before_label = _optional_label(
+            value.get("before_label", root_before), f"{location}.before_label"
+        )
+        after_label = _optional_label(
+            value.get("after_label", root_after), f"{location}.after_label"
+        )
+    elif "changes" in value:
         if any(key in value for key in ("before", "after", "strict_priorities")):
             raise ValueError(
                 f"{location}.changes cannot be combined with before, after, or strict_priorities"
@@ -1007,6 +1102,12 @@ def _parse_reconfiguration(
         before_label=before_label,
         after_label=after_label,
         changes=changes,
+        mode=mode,
+        target_tree=target_tree,
+        minimum_stop_cycles=_integer(
+            value.get("minimum_stop_cycles", 0),
+            f"{location}.minimum_stop_cycles",
+        ),
     )
 
 

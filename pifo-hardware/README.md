@@ -89,9 +89,10 @@ The packet-visible mapping commands are transactional:
 
 The experiment tools use explicit compiler and simulator boundaries:
 
-- `pifo_tree_compiler.py` is the only component that understands a declarative tree move. It emits an initial package
-  plus a `full_transitive` direct package that allocates a fresh complete tree, redirects every input, and installs a
-  same-engine front rewrite from the drained old root to the new root.
+- `pifo_tree_compiler.py` is the only component that understands a declarative tree move. It supports additive
+  `in_place`, lossless `stop_the_world`, `full_transitive`, and partial-tree `confined_transitive` plans.
+  Full and confined replacements allocate nonzero vPIFO IDs (vPIFO 0 remains the null sink) and emit the required
+  same-engine front rewrite.
 - `pifo_simulator.py` accepts that direct transaction timeline and a separate traffic-pattern timeline. It supports
   multiple packages at different cycles and never interprets trees or policies.
 - `pifo_bandwidth_figure.py` and `pifo_packet_scatter_figure.py` render independently. Their data and resources stay
@@ -99,9 +100,22 @@ The experiment tools use explicit compiler and simulator boundaries:
   `pifo_figures/common.py`.
 - `pifo_experiment_figures.py` invokes the compiler, simulator, and both per-figure CLIs before verification.
 
-The request simulator records package start, commit acceptance, synchronization finish, and—only for full-transitive
-changes—the old-root drain cycle. It briefly gates new request admission at the commit edge so the per-engine tokens
-for one request cannot land in different tree versions; packets already admitted continue normally.
+The request simulator records package start, commit acceptance, action finish, and a drain/capture cycle for
+transition modes that define one. It briefly gates new request admission at the commit edge so the per-engine tokens
+for one request cannot land in different tree versions; packets already admitted continue normally. Lossless
+stop-the-world additionally freezes admission and dequeue, captures the buffered packet metadata, resets and installs
+the target, replays exactly one scheduler token per retained packet, and then resumes after `minStopCycles`.
+
+The four motivating-example runs each generate an independent throughput and packet-delay scatter figure. R2–R4 also
+share one scatter figure, and R3/R4 share one throughput comparison:
+
+```bash
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+.venv/bin/python hw/python/pifo_motivation_all.py
+```
+
+Use `pifo_motivation_r1.py` through `pifo_motivation_r4.py` to run one case, or pass `--render-only` to reuse raw CSVs.
 
 The checked `experiments/large-tree-rr-to-sp.json` regression uses a seven-node tree over four engines and validates
 the observable RR-before-commit, old-tree-drain-first, and SP-after-drain phases. A `verification` block makes these

@@ -16,6 +16,13 @@ SUPPORTED_CONTROL_COMMANDS = {
     "UpdateBrainState",
     "UpdateBrainFlowState",
 }
+SUPPORTED_TRANSACTION_MODES = {
+    "direct",
+    "in_place",
+    "stop_the_world",
+    "full_transitive",
+    "confined_transitive",
+}
 HEADER_FIELDS = {
     "schema",
     "rootEngine",
@@ -33,6 +40,8 @@ TRANSACTION_FIELDS = {
     "before",
     "after",
     "drainRoot",
+    "gateFlows",
+    "minStopCycles",
     "command",
     "engineId",
     "vPifoId",
@@ -99,21 +108,34 @@ class TimedTransaction:
     before_label: str = ""
     after_label: str = ""
     drain_root: tuple[int, int] | None = None
+    gated_flow_ids: tuple[int, ...] = ()
+    minimum_stop_cycles: int = 0
 
     def __post_init__(self) -> None:
         if self.at_cycle is not None and self.at_cycle < 0:
             raise ValueError("transaction cycle must be non-negative")
         _require_token(self.name, "transaction name")
-        if self.mode not in {"direct", "full_transitive"}:
-            raise ValueError("transaction mode must be direct or full_transitive")
+        if self.mode not in SUPPORTED_TRANSACTION_MODES:
+            raise ValueError(
+                "transaction mode must be direct, in_place, "
+                "stop_the_world, full_transitive, or confined_transitive"
+            )
         if self.before_label:
             _require_token(self.before_label, "before label")
         if self.after_label:
             _require_token(self.after_label, "after label")
-        if self.mode == "full_transitive" and self.drain_root is None:
-            raise ValueError("full_transitive transaction requires drainRoot")
+        if self.mode in {"full_transitive", "confined_transitive"} and self.drain_root is None:
+            raise ValueError(f"{self.mode} transaction requires drainRoot")
         if self.at_cycle is None and self.drain_root is not None:
             raise ValueError("initial transaction cannot have drainRoot")
+        if tuple(sorted(set(self.gated_flow_ids))) != self.gated_flow_ids:
+            raise ValueError("gateFlows must contain sorted unique flow IDs")
+        if any(flow_id < 0 for flow_id in self.gated_flow_ids):
+            raise ValueError("gateFlows IDs must be non-negative")
+        if self.minimum_stop_cycles < 0:
+            raise ValueError("minStopCycles must be non-negative")
+        if self.mode != "stop_the_world" and self.minimum_stop_cycles:
+            raise ValueError("minStopCycles is only valid for stop_the_world")
         commit_indexes = [
             index
             for index, command in enumerate(self.commands)
@@ -153,6 +175,14 @@ class TransactionProgram:
             + (self.hardware.num_vpifos - 1).bit_length()
         )
         for transaction in self._all_transactions():
+            if any(
+                flow_id >= self.hardware.num_vpifos - 1
+                for flow_id in transaction.gated_flow_ids
+            ):
+                raise ValueError(
+                    f"transaction {transaction.name!r} gateFlows contains a "
+                    "reserved or out-of-range flow ID"
+                )
             if transaction.drain_root is not None:
                 drain_engine, drain_vpifo = transaction.drain_root
                 if not 1 <= drain_engine <= self.hardware.num_engines:
@@ -215,6 +245,12 @@ def write_transaction_program(path: Path, program: TransactionProgram) -> None:
             metadata.append(
                 f"drainRoot={transaction.drain_root[0]}:{transaction.drain_root[1]}"
             )
+        if transaction.gated_flow_ids:
+            metadata.append(
+                "gateFlows=" + ",".join(map(str, transaction.gated_flow_ids))
+            )
+        if transaction.minimum_stop_cycles:
+            metadata.append(f"minStopCycles={transaction.minimum_stop_cycles}")
         prefix = " ".join(metadata)
         lines.extend(
             f"{prefix} {controller_command_line(command)}"
@@ -277,6 +313,16 @@ def load_transaction_program(path: Path) -> TransactionProgram:
             if "drainRoot" in fields
             else None
         )
+        gated_flow_ids = (
+            _parse_flow_ids(fields["gateFlows"], path, line_number)
+            if "gateFlows" in fields
+            else ()
+        )
+        minimum_stop_cycles = (
+            _integer(fields["minStopCycles"], path, line_number)
+            if "minStopCycles" in fields
+            else 0
+        )
         metadata = (
             at_cycle,
             fields["name"],
@@ -284,6 +330,8 @@ def load_transaction_program(path: Path) -> TransactionProgram:
             fields.get("before", ""),
             fields.get("after", ""),
             drain_root,
+            gated_flow_ids,
+            minimum_stop_cycles,
         )
         group_key = (at_text, fields["name"])
         if not grouped or grouped[-1][0] != metadata:
@@ -311,6 +359,8 @@ def load_transaction_program(path: Path) -> TransactionProgram:
             before_label=metadata[3],
             after_label=metadata[4],
             drain_root=metadata[5],
+            gated_flow_ids=metadata[6],
+            minimum_stop_cycles=metadata[7],
             commands=tuple(commands),
         )
         for metadata, commands in grouped
@@ -383,6 +433,22 @@ def _parse_drain_root(
         _integer(parts[0], path, line_number),
         _integer(parts[1], path, line_number),
     )
+
+
+def _parse_flow_ids(
+    value: str, path: Path, line_number: int
+) -> tuple[int, ...]:
+    try:
+        result = tuple(sorted({int(item, 0) for item in value.split(",")}))
+    except ValueError as error:
+        raise ValueError(
+            f"{path}:{line_number}: gateFlows must be comma-separated integers"
+        ) from error
+    if not result or any(flow_id < 0 for flow_id in result):
+        raise ValueError(
+            f"{path}:{line_number}: gateFlows must contain non-negative IDs"
+        )
+    return result
 
 
 def _require_token(value: str, label: str) -> None:

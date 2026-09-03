@@ -14,9 +14,10 @@ and the global flow ID must fit the configured vPIFO width. The highest possible
 empty-PIFO response.
 
 For every admitted request, the harness inserts one token into each engine, matching the existing Scala simulator. The
-request is then stored in a bounded FIFO selected by `global_flow_id`. When a terminal token leaves the mesh, the head
-request from that flow is completed. The output link remains busy for
-`ceil(size_bytes / link_bytes_per_cycle)` cycles before the next root dequeue.
+request is then stored in a bounded FIFO selected by `global_flow_id`. Root pops are issued at the hardware's
+three-cycle accepted initiation interval. Terminal scheduler tokens enter the configured prefetch window; the request
+model independently serializes packet bytes at `ceil(size_bytes / link_bytes_per_cycle)` cycles. This reflects the
+real split between compact scheduling tokens and the external packet-data link.
 
 ## Generate and run a trace
 
@@ -45,7 +46,8 @@ The result CSV contains arrival, admission, completion, admission-delay, and tot
 
 The scripts have four narrow layers:
 
-1. `pifo_tree_compiler.py` converts a declarative full-tree move into direct controller transactions.
+1. `pifo_tree_compiler.py` converts a declarative tree move into direct controller transactions. It supports
+   `in_place`, `stop_the_world`, `full_transitive`, and `confined_transitive` modes.
 2. `pifo_simulator.py` accepts exactly two model files—a direct transaction timeline and a traffic-pattern timeline—and
    produces the raw request, completion, and event CSVs.
 3. `pifo_bandwidth_figure.py` and `pifo_packet_scatter_figure.py` independently derive and render one figure each.
@@ -69,6 +71,42 @@ completion CSVs, and `reconfiguration-events.csv`. Each figure owns a separate a
 Matplotlib is preferred; SVG plus FFmpeg is used automatically when Matplotlib is unavailable. The scatter uses one
 shared 1:1 range for its input/output axes, keeps `y = x` at 45 degrees, and draws start, commit, and old-tree-drain
 lines on both axes.
+
+Install the plotting dependency for the motivating-example delay plots in an isolated environment:
+
+```bash
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+```
+
+### Four-run motivating example
+
+Each run has a minimal standalone script and always creates both formats requested from its own raw packet CSV:
+
+```bash
+.venv/bin/python hw/python/pifo_motivation_r1.py
+.venv/bin/python hw/python/pifo_motivation_r2.py
+.venv/bin/python hw/python/pifo_motivation_r3.py
+.venv/bin/python hw/python/pifo_motivation_r4.py
+```
+
+Run all four plus the shared-axis comparisons with:
+
+```bash
+.venv/bin/python hw/python/pifo_motivation_all.py
+```
+
+Resources live under `experiments/motivating-example/`; outputs live under
+`experiment-results/motivating-example/<case>/`. Every case contains `packet-outcomes.csv` with
+`flow,push_cycle,pop_cycle,dropped` (plus request ID and size), `reconfiguration-events.csv`, and:
+
+- `figures/throughput/{data.csv,figure.svg,figure.png}`
+- `figures/delay-scatter/{data.csv,figure.svg,figure.png}`
+
+The combined outputs are `comparisons/r2-r4-delay-scatter` and `comparisons/r3-r4-throughput`. Use `--render-only`
+on any case or the all-case script to regenerate figures without rerunning RTL. The all-case validator checks identical
+input traces, losslessness and per-flow FIFO order for all four runs, R2's minimum stop interval and retained-token
+count, the R3/R4 drain ordering, and the expected R3-only zoom delay spike.
 
 ### Per-figure CLIs
 
@@ -172,12 +210,15 @@ at=600 name=policy-change mode=full_transitive before=RR after=SP drainRoot=1:10
 ```
 
 Lines with the same `at` and `name` form one contiguous package, which must end with exactly one `CommitMapper`.
-Multiple timed packages are supported and must be ordered by cycle. `mode`, labels, and `drainRoot` are event metadata;
-the simulator executes only the direct `command` fields.
+Multiple timed packages are supported and must be ordered by cycle. `mode`, labels, `drainRoot`, optional
+`gateFlows=1,2`, and optional `minStopCycles=1024` describe evaluator behavior around the otherwise direct command
+package. `gateFlows` holds newly admitted flows until the commit is applied, so they cannot enter an unconfigured path
+while commands are staging. `minStopCycles` is valid only for `stop_the_world` and sets the minimum interval from
+capturing the old tree until traffic resumes.
 
 ### Tree-move compiler CLI
 
-The compiler is the only layer that understands trees, policies, full-tree copying, or miss rewrites:
+The compiler is the only layer that understands trees, policies, tree copying, or miss rewrites:
 
 ```bash
 python3 hw/python/pifo_tree_compiler.py \
@@ -185,9 +226,10 @@ python3 hw/python/pifo_tree_compiler.py \
   --output /tmp/transactions.txt
 ```
 
-Its `pifo-tree-move-v1` input contains `hardware`, `old_tree`, and one declarative `move`. The output is the exact direct
-timeline above: an initial-tree package followed by the compiled full-transitive package. The simulator therefore has
-no implicit tree-to-command translation.
+Its `pifo-tree-move-v1` input contains `hardware`, `old_tree`, and one declarative `move`. The move can provide a full
+`target_tree` and one of the four modes above. The output is the exact direct timeline above: an initial-tree package
+followed by one compiled package. The simulator therefore has no implicit tree-to-command translation. vPIFO 0 is
+reserved as the mapper-reset null/NOP sink and is never allocated as a real copied node.
 
 ### Traffic and policy-change format
 
@@ -225,14 +267,15 @@ The compact policy-change form is:
 }
 ```
 
-Every `policy_change` is forced to `full_transitive`; specifying any other `mode` is rejected. The tree compiler
-creates an unused copy of every node in the old tree, configures the new brains, stages new per-flow input and
-port-qualified output mappings, installs a same-engine front rewrite from the old root to the new root, and then emits
-`CommitMapper`. Root dequeue requests continue to name the old physical root. The front entry is initially disabled;
-popping the old root's final entry enables it. The engine holds its input for that activation cycle, and the waiting
-request is rewritten on the following cycle. It therefore needs neither an underflow nor a retry and does not traverse
-an extra crossbar/PIFO hop. Packets accepted before commit drain through the old tree, while later packets enter the new
-tree.
+`full_transitive` copies every target node, redirects new inputs to the copy, and front-rewrites the old physical root
+after it drains. `confined_transitive` finds the single changed subtree boundary, copies only that subtree, keeps all
+unchanged ancestors in place, and installs the rewrite at that boundary. `in_place` accepts additive flow/path state
+that leaves existing nodes and paths unchanged. `stop_the_world` pauses admission and root pops, lets prefetched output
+finish, retains the buffered request metadata, resets the mesh, installs the target on the original physical root, and
+replays one scheduler token for every retained request before resuming. Arrivals during the stop remain pending rather
+than being dropped. The motivating R2 resource sets `minimum_stop_cycles` to 1024, which is at least 1.024 microseconds
+for clocks at or below 1 GHz. In both transitive modes the front entry is initially disabled; the source's final
+successful pop enables it for the next request, with no underflow retry or extra mesh hop.
 
 The implicit initial tree is one root at engine 1 / vPIFO 10. For a multi-node tree, add:
 
@@ -310,9 +353,17 @@ reconfiguration,policy-change,full_transitive,RR,SP,9,600,600,608,4708,2424,1816
 - `start_cycle`: package feeding starts.
 - `instruction_count`: controller instructions in the package, including `CommitMapper`.
 - `commit_cycle`: the `CommitMapper` ready/valid transfer is accepted by the controller queue.
-- `drain_cycle`: the first cycle after the request that popped the old root's final entry completes at mesh output.
-- `finish_cycle`: commit application and backup-bank synchronization have completed.
-- `drain_duration_cycles`: `drain_cycle - commit_cycle`.
+- `drain_cycle`: the cycle on which the old boundary's final successful PIFO pop raises `portDrained`; for
+  `stop_the_world`, this is the cycle on which the quiesced old tokens are captured before reset.
+- `finish_cycle`: commit application and backup-bank synchronization have completed. For `stop_the_world`, it also
+  means retained tokens have been replayed, the minimum stop has elapsed, and traffic has resumed.
+- `drain_duration_cycles`: `drain_cycle - commit_cycle` for transitive drain modes; blank for stop-the-world because
+  capture precedes commit.
+- `retained_packets`, `minimum_stop_cycles`, and `stop_duration_cycles` describe a lossless stop; the last value is
+  `finish_cycle - drain_cycle`.
+
+`finish_cycle` and `drain_cycle` are independent: mapper synchronization may finish while an old transitive tree is
+still draining. For stop-the-world, capture occurs before the replacement package commits and finish marks resume.
 
 Packet admission is paused only across the commit edge so one packet cannot be split between tree versions. Existing
 PIFO traffic continues during staging, drain, and mapper synchronization. Figure captions show the instruction count

@@ -132,6 +132,25 @@ class PifoExperimentFiguresTest(unittest.TestCase):
             self.assertEqual(event.commit_cycle, 13)
             self.assertEqual(event.finish_cycle, 15)
 
+    def test_reads_lossless_stop_event(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            events = Path(directory) / "events.csv"
+            events.write_text(
+                "event,name,mode,from_policy,to_policy,instruction_count,scheduled_cycle,"
+                "start_cycle,commit_cycle,finish_cycle,drain_cycle,drain_duration_cycles,"
+                "dropped_packets,retained_packets,minimum_stop_cycles,stop_duration_cycles\n"
+                "reconfiguration,stop,stop_the_world,p1,p2,16,2000,2000,2031,3038,"
+                "2013,,0,137,1024,1025\n",
+                encoding="utf-8",
+            )
+            event = read_policy_event(events)
+
+        self.assertEqual(event.mode, "stop_the_world")
+        self.assertEqual(event.dropped_packets, 0)
+        self.assertEqual(event.retained_packets, 137)
+        self.assertEqual(event.minimum_stop_cycles, 1024)
+        self.assertEqual(event.stop_duration_cycles, 1025)
+
     def test_seeded_uniform_rate_and_normal_size_are_reproducible(self) -> None:
         traffic = TrafficConfig(
             flow_ids=(1, 2),
@@ -274,6 +293,24 @@ class PifoExperimentFiguresTest(unittest.TestCase):
             config_path = Path(directory) / "bad.json"
             config_path.write_text(json.dumps(raw), encoding="utf-8")
             with self.assertRaisesRegex(ValueError, "unknown field.*packet_raet"):
+                load_experiment_config(config_path)
+
+    def test_tree_rejects_vpifo_zero_null_sink(self) -> None:
+        example_path = (
+            Path(__file__).resolve().parents[3] / "experiments" / "rr-to-sp.json"
+        )
+        raw = json.loads(example_path.read_text(encoding="utf-8"))
+        raw["initial_tree"] = {
+            "root": "root",
+            "nodes": {
+                "root": {"engine_id": 1, "vpifo_id": 0, "policy": "RR"}
+            },
+            "flow_paths": {"1": ["root"], "2": ["root"]},
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            config_path = Path(directory) / "bad-null-tree.json"
+            config_path.write_text(json.dumps(raw), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "vPIFO 0 is the null sink"):
                 load_experiment_config(config_path)
 
     def test_dependency_free_svg_renderer_writes_both_figures(self) -> None:

@@ -130,6 +130,84 @@ class PifoCliProgramsTest(unittest.TestCase):
             ["policy-change", "second-package"],
         )
 
+    def test_motivating_example_compiles_all_four_modes(self) -> None:
+        root = HARDWARE_ROOT / "experiments" / "motivating-example"
+        expected = {
+            "r1-add": ("in_place", 4, None, 0),
+            "r2-stop-the-world": ("stop_the_world", 16, None, 1024),
+            "r3-whole-tree": ("full_transitive", 17, (1, 1), 0),
+            "r4-confined": ("confined_transitive", 10, (2, 2), 0),
+        }
+        for case, (mode, command_count, drain_root, minimum_stop_cycles) in expected.items():
+            with self.subTest(case=case):
+                program = compile_tree_move(
+                    load_tree_move_program(root / case / "tree-move.json")
+                )
+                transaction = program.transactions[0]
+                self.assertEqual(transaction.mode, mode)
+                self.assertEqual(len(transaction.commands), command_count)
+                self.assertEqual(transaction.drain_root, drain_root)
+                self.assertEqual(
+                    transaction.minimum_stop_cycles, minimum_stop_cycles
+                )
+                self.assertEqual(transaction.gated_flow_ids, (3,))
+                self.assertTrue(
+                    all(
+                        command.vpifo_id != 0
+                        for command in transaction.commands
+                        if command.command == "UpdateBrainEngine"
+                    ),
+                    "vPIFO 0 must remain the unconfigured null sink",
+                )
+
+        full = compile_tree_move(
+            load_tree_move_program(root / "r3-whole-tree" / "tree-move.json")
+        ).transactions[0]
+        confined = compile_tree_move(
+            load_tree_move_program(root / "r4-confined" / "tree-move.json")
+        ).transactions[0]
+        stop_program = compile_tree_move(
+            load_tree_move_program(root / "r2-stop-the-world" / "tree-move.json")
+        )
+        full_rewrite = next(
+            command
+            for command in full.commands
+            if command.command == "UpdateMapperNonExist"
+        )
+        confined_rewrite = next(
+            command
+            for command in confined.commands
+            if command.command == "UpdateMapperNonExist"
+        )
+        self.assertEqual(
+            (full_rewrite.engine_id, full_rewrite.vpifo_id, full_rewrite.data),
+            (1, 1, 2),
+        )
+        self.assertEqual(
+            (
+                confined_rewrite.engine_id,
+                confined_rewrite.vpifo_id,
+                confined_rewrite.data,
+            ),
+            (2, 2, 1),
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "stop.transactions"
+            write_transaction_program(path, stop_program)
+            loaded_stop = load_transaction_program(path).transactions[0]
+        self.assertEqual(loaded_stop.mode, "stop_the_world")
+        self.assertEqual(loaded_stop.minimum_stop_cycles, 1024)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "confined.transactions"
+            confined_program = compile_tree_move(
+                load_tree_move_program(root / "r4-confined" / "tree-move.json")
+            )
+            write_transaction_program(path, confined_program)
+            reloaded = load_transaction_program(path).transactions[0]
+        self.assertEqual(reloaded.mode, "confined_transitive")
+        self.assertEqual(reloaded.drain_root, (2, 2))
+        self.assertEqual(reloaded.gated_flow_ids, (3,))
+
     def test_traffic_program_merges_patterns_in_time_order(self) -> None:
         rate = DistributionSpec(
             distribution="constant",

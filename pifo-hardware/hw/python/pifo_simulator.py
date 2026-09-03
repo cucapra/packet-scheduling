@@ -17,7 +17,7 @@ from request_trace import write_trace
 HARDWARE_ROOT = Path(__file__).resolve().parents[2]
 
 
-def run_simulator(args: argparse.Namespace) -> tuple[Path, Path, Path]:
+def run_simulator(args: argparse.Namespace) -> tuple[Path, Path, Path, Path]:
     if args.queue_depth <= 0:
         raise ValueError("--queue-depth must be positive")
     if not math.isfinite(args.link_bytes_per_cycle) or args.link_bytes_per_cycle <= 0:
@@ -60,6 +60,7 @@ def run_simulator(args: argparse.Namespace) -> tuple[Path, Path, Path]:
     output_dir.mkdir(parents=True, exist_ok=True)
     trace_path = output_dir / "requests.csv"
     results_path = output_dir / "request-results.csv"
+    outcomes_path = output_dir / "packet-outcomes.csv"
     events_path = output_dir / "reconfiguration-events.csv"
     with trace_path.open("w", newline="", encoding="utf-8") as destination:
         write_trace(requests, destination)
@@ -74,6 +75,8 @@ def run_simulator(args: argparse.Namespace) -> tuple[Path, Path, Path]:
         str(args.transactions.resolve()),
         "--output",
         str(results_path),
+        "--packet-outcomes",
+        str(outcomes_path),
         "--transaction-event-output",
         str(events_path),
         "--queue-depth",
@@ -100,7 +103,7 @@ def run_simulator(args: argparse.Namespace) -> tuple[Path, Path, Path]:
         flush=True,
     )
     subprocess.run([sbt_path, sbt_command], cwd=HARDWARE_ROOT, check=True)
-    return trace_path, results_path, events_path
+    return trace_path, results_path, outcomes_path, events_path
 
 
 def build_parser() -> argparse.ArgumentParser:

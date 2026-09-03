@@ -179,6 +179,7 @@ def render_matplotlib(
     event: PolicyEvent,
     labels: Mapping[int, str],
     dpi: int,
+    title: str | None = None,
 ) -> None:
     plt, _ = load_pyplot()
     colors = plt.get_cmap("tab10")
@@ -254,8 +255,9 @@ def render_matplotlib(
         axis.set_ylim(bottom=0)
 
     window_cycles = samples[0].window_end_cycle - samples[0].window_start_cycle
+    heading = title or event.label
     total_axis.set_title(
-        f"{event.label}: Hann-smoothed output bandwidth "
+        f"{heading}: Hann-smoothed output bandwidth "
         f"({event.mode}, {window_cycles}-cycle window)"
     )
     total_axis.set_ylabel("Aggregate bandwidth / link capacity")
@@ -270,6 +272,8 @@ def render_matplotlib(
 
 
 def _annotate_matplotlib(axis, event: PolicyEvent, low: float, high: float) -> None:
+    finish_label = "traffic resumed" if event.mode == "stop_the_world" else "config sync done"
+    drain_label = "old tree captured" if event.mode == "stop_the_world" else "old tree drained"
     markers = [
         ("start", 0, "tab:blue", -8),
         (
@@ -278,12 +282,12 @@ def _annotate_matplotlib(axis, event: PolicyEvent, low: float, high: float) -> N
             "tab:orange",
             -25,
         ),
-        ("finish", event.finish_cycle - event.start_cycle, "tab:green", -42),
+        (finish_label, event.finish_cycle - event.start_cycle, "tab:green", -42),
     ]
     if event.drain_cycle is not None:
         markers.append(
             (
-                "old tree drained",
+                drain_label,
                 event.drain_cycle - event.start_cycle,
                 "tab:purple",
                 -59,
@@ -492,10 +496,20 @@ def _timing_text(event: PolicyEvent, unicode_limit: bool) -> str:
         if event.instruction_count is not None
         else ""
     )
+    drop_text = (
+        f"  dropped={event.dropped_packets}"
+        if event.dropped_packets
+        else ""
+    )
+    stop_text = (
+        f"  retained={event.retained_packets}  stop={event.stop_duration_cycles} cycles"
+        if event.stop_duration_cycles is not None
+        else ""
+    )
     return (
         f"start={event.start_cycle}  commit={event.commit_cycle}  "
         f"drain={event.drain_cycle if event.drain_cycle is not None else '-'}  "
-        f"finish={event.finish_cycle}{instruction_text}"
+        f"finish={event.finish_cycle}{instruction_text}{drop_text}{stop_text}"
     )
 
 

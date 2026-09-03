@@ -1,0 +1,35 @@
+{
+  "schema": "pifo-tree-move-v1",
+  "hardware": {
+    "num_engines": 2,
+    "num_vpifos": 8,
+    "max_packet_priority": 16384,
+    "fifo_depth": 32,
+    "prefetch_buffer_depth": 16
+  },
+  "old_tree": {
+    "root": "root",
+    "nodes": {
+      "root": {"engine_id": 1, "vpifo_id": 1, "policy": "SP", "flow_state": {"1": 1, "2": 3}},
+      "gmail_leaf": {"engine_id": 2, "vpifo_id": 2, "policy": "FIFO", "flow_state": {}}
+    },
+    "flow_paths": {"1": ["root"], "2": ["root", "gmail_leaf"]}
+  },
+  "move": {
+    "type": "policy_change",
+    "mode": "stop_the_world",
+    "minimum_stop_cycles": 1024,
+    "cycle": 2000,
+    "name": "r2-stop-the-world",
+    "before_label": "p1",
+    "after_label": "p2b",
+    "target_tree": {
+      "root": "root",
+      "nodes": {
+        "root": {"engine_id": 1, "vpifo_id": 1, "policy": "SP", "flow_state": {"1": 1, "2": 3, "3": 3}},
+        "shared_rr": {"engine_id": 2, "vpifo_id": 2, "policy": "RR", "flow_state": {}}
+      },
+      "flow_paths": {"1": ["root"], "2": ["root", "shared_rr"], "3": ["root", "shared_rr"]}
+    }
+  }
+}

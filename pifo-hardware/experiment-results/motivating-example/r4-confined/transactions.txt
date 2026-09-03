@@ -1,0 +1,22 @@
+schema=pifo-transactions-v1 rootEngine=1 rootVPifoId=1 numEngines=2 numVPifos=8 maxPacketPriority=16384 fifoDepth=32 prefetchBufferDepth=16
+at=init name=initial-tree mode=direct command=UpdateBrainEngine engineId=1 vPifoId=1 flowId=0 data=2
+at=init name=initial-tree mode=direct command=UpdateBrainFlowState engineId=1 vPifoId=1 flowId=9 data=1
+at=init name=initial-tree mode=direct command=UpdateBrainFlowState engineId=1 vPifoId=1 flowId=10 data=3
+at=init name=initial-tree mode=direct command=UpdateBrainEngine engineId=2 vPifoId=2 flowId=0 data=3
+at=init name=initial-tree mode=direct command=UpdateMapperPre engineId=1 vPifoId=1 flowId=0 data=1
+at=init name=initial-tree mode=direct command=UpdateMapperPost engineId=1 vPifoId=1 flowId=9 data=1
+at=init name=initial-tree mode=direct command=UpdateMapperPre engineId=1 vPifoId=2 flowId=0 data=1
+at=init name=initial-tree mode=direct command=UpdateMapperPost engineId=1 vPifoId=1 flowId=10 data=18
+at=init name=initial-tree mode=direct command=UpdateMapperPre engineId=2 vPifoId=2 flowId=0 data=2
+at=init name=initial-tree mode=direct command=UpdateMapperPost engineId=2 vPifoId=2 flowId=18 data=2
+at=init name=initial-tree mode=direct command=CommitMapper engineId=1 vPifoId=0 flowId=0 data=0
+at=2000 name=r4-confined-replace mode=confined_transitive before=p1 after=p2b drainRoot=2:2 gateFlows=3 command=UpdateBrainEngine engineId=2 vPifoId=1 flowId=0 data=1
+at=2000 name=r4-confined-replace mode=confined_transitive before=p1 after=p2b drainRoot=2:2 gateFlows=3 command=UpdateBrainFlowState engineId=1 vPifoId=1 flowId=11 data=3
+at=2000 name=r4-confined-replace mode=confined_transitive before=p1 after=p2b drainRoot=2:2 gateFlows=3 command=UpdateMapperPre engineId=2 vPifoId=2 flowId=0 data=1
+at=2000 name=r4-confined-replace mode=confined_transitive before=p1 after=p2b drainRoot=2:2 gateFlows=3 command=UpdateMapperPost engineId=2 vPifoId=1 flowId=18 data=2
+at=2000 name=r4-confined-replace mode=confined_transitive before=p1 after=p2b drainRoot=2:2 gateFlows=3 command=UpdateMapperPre engineId=1 vPifoId=3 flowId=0 data=1
+at=2000 name=r4-confined-replace mode=confined_transitive before=p1 after=p2b drainRoot=2:2 gateFlows=3 command=UpdateMapperPost engineId=1 vPifoId=1 flowId=11 data=18
+at=2000 name=r4-confined-replace mode=confined_transitive before=p1 after=p2b drainRoot=2:2 gateFlows=3 command=UpdateMapperPre engineId=2 vPifoId=3 flowId=0 data=1
+at=2000 name=r4-confined-replace mode=confined_transitive before=p1 after=p2b drainRoot=2:2 gateFlows=3 command=UpdateMapperPost engineId=2 vPifoId=1 flowId=19 data=3
+at=2000 name=r4-confined-replace mode=confined_transitive before=p1 after=p2b drainRoot=2:2 gateFlows=3 command=UpdateMapperNonExist engineId=2 vPifoId=2 flowId=0 data=1
+at=2000 name=r4-confined-replace mode=confined_transitive before=p1 after=p2b drainRoot=2:2 gateFlows=3 command=CommitMapper engineId=1 vPifoId=0 flowId=0 data=0

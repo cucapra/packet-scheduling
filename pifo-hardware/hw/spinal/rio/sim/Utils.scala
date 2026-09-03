@@ -72,6 +72,10 @@ case class PifoMeshSimController(
     dut.clockDomain.waitSamplingWhere(dut.io.controlRequest.ready.toBoolean)
     onAccepted()
     dut.io.controlRequest.valid #= false
+    // Leave the sampling phase before a caller can present the next command.
+    // This gives both Icarus and Verilator identical one-command-per-cycle
+    // ready/valid behaviour without adding an idle cycle.
+    dut.clockDomain.waitFallingEdge()
 
     // A commit can be buffered behind earlier updates. Wait for the hardware to
     // apply it and finish restoring the backup banks before returning, so callers
@@ -92,6 +96,7 @@ case class PifoMeshSimController(
     dut.io.insert(pid).payload.vPifoId #= vPifoId
     dut.clockDomain.waitSamplingWhere(dut.io.insert(pid).ready.toBoolean)
     dut.io.insert(pid).valid #= false
+    dut.clockDomain.waitFallingEdge()
   }
 
   def requestDequeue(engineId: Int, vPifoId: Int): Unit = {
@@ -102,6 +107,7 @@ case class PifoMeshSimController(
     dut.io.dataRequest.payload.vPifoId #= vPifoId
     dut.clockDomain.waitSamplingWhere(dut.io.dataRequest.ready.toBoolean)
     dut.io.dataRequest.valid #= false
+    dut.clockDomain.waitFallingEdge()
   }
 
   def start: Unit = start(enableControlSocket = false)

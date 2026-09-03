@@ -3,6 +3,7 @@
 *.bak
 __pycache__/
 *.py[cod]
+.venv/
 
 # sbt specific
 .cache/
@@ -41,6 +42,8 @@ bin/
 *.cf
 *.json
 !experiments/*.json
+!experiments/**/*.json
+!experiment-results/**/*.json
 *.vcd
 !tester/src/test/resources/*.vhd
 

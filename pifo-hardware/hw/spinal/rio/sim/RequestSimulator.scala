@@ -38,7 +38,9 @@ case class TreeDrainTarget(engineId: Int, vPifoId: Int) {
 case class ScheduledRequestActionContext(
     beforeCommit: () => Unit,
     markCommitAccepted: () => Unit,
-    markCommitApplied: () => Unit
+    markCommitApplied: () => Unit,
+    beginStopTheWorld: Long => (Long, Long),
+    finishStopTheWorld: () => Long
 )
 
 /** One deterministic control action to run at a workload-relative cycle. */
@@ -46,10 +48,15 @@ case class ScheduledRequestAction(
     scheduledCycle: Long,
     name: String,
     drainTarget: Option[TreeDrainTarget] = None,
+    mode: String = "direct",
+    gatedFlowIds: Set[Int] = Set.empty,
+    minimumStopCycles: Long = 0L,
     run: ScheduledRequestActionContext => Unit
 ) {
   require(scheduledCycle >= 0, s"scheduled action cycle must be non-negative, got $scheduledCycle")
   require(name.trim.nonEmpty, "scheduled action name must not be empty")
+  require(minimumStopCycles >= 0, "minimum stop cycles must be non-negative")
+  require(mode == "stop_the_world" || minimumStopCycles == 0, "minimum stop cycles require stop_the_world mode")
 }
 
 case class CompletedRequestAction(
@@ -58,7 +65,9 @@ case class CompletedRequestAction(
     startCycle: Long,
     commitCycle: Option[Long],
     finishCycle: Long,
-    drainCycle: Option[Long] = None
+    drainCycle: Option[Long] = None,
+    droppedPackets: Long = 0L,
+    retainedPackets: Long = 0L
 ) {
   require(startCycle >= scheduledCycle, "a scheduled action cannot start before its scheduled cycle")
   require(
@@ -67,9 +76,11 @@ case class CompletedRequestAction(
   )
   require(finishCycle >= startCycle, "a scheduled action cannot finish before it starts")
   require(
-    drainCycle.forall(cycle => commitCycle.exists(_ <= cycle)),
-    "an old-tree drain must occur at or after the action commit"
+    drainCycle.forall(_ >= startCycle),
+    "an old-tree drain cannot occur before the action starts"
   )
+  require(droppedPackets >= 0, "dropped packet count must be non-negative")
+  require(retainedPackets >= 0, "retained packet count must be non-negative")
 }
 
 case class RequestControlInstruction(
@@ -86,15 +97,20 @@ case class RequestSimulationSummary(
     admittedRequests: Long,
     completedRequests: Long,
     completedBytes: Long,
+    droppedRequests: Long,
+    droppedBytes: Long,
     completions: Vector[CompletedRequest],
+    drops: Vector[DroppedRequest],
     completedActions: Vector[CompletedRequestAction]
 )
 
 /** Request-level harness around PifoMesh.
   *
   * The RTL schedules one token per request per engine. Simulator-side queues retain the complete request metadata and
-  * are indexed by the globally unique flow ID. Only one root dequeue is in flight at a time; after completion, request
-  * size occupies the modeled output link for ceil(sizeBytes / linkBytesPerCycle) cycles.
+  * are indexed by the globally unique flow ID. Root dequeues are pipelined at the
+  * hardware's three-cycle per-PE initiation interval; after completion, request
+  * size occupies the modeled output link for ceil(sizeBytes / linkBytesPerCycle)
+  * cycles.
   */
 final class PifoRequestSimulator(
     config: EngineConfig,
@@ -103,6 +119,9 @@ final class PifoRequestSimulator(
     settings: RequestSimulationSettings,
     scheduledActions: Vector[ScheduledRequestAction] = Vector.empty
 ) {
+  private val InsertToVisibleCycles = 8L
+  private val RootTokenCapacity = config.numVPIFOs * config.fifoDepth
+
   require(settings.rootEngineId <= config.numEngines, s"root engine ${settings.rootEngineId} is not configured")
   require(settings.rootVPifoId < config.numVPIFOs, s"root vPifo ${settings.rootVPifoId} is not configured")
   require(
@@ -123,9 +142,18 @@ final class PifoRequestSimulator(
     .reverse
 
   private val pending = mutable.PriorityQueue.empty[PendingRequest]
+  private val rootTokenReadyCycles = mutable.Queue.empty[Long]
+  private val linkPrefetchReleaseCycles = mutable.Queue.empty[Long]
   private val submittedIds = mutable.Set.empty[Long]
   private val remainingActions = mutable.Queue.from(scheduledActions.sortBy(_.scheduledCycle))
   private val completedActions = mutable.ArrayBuffer.empty[CompletedRequestAction]
+  private val recentPifoPops = mutable.Queue.empty[String]
+  private case class FlowGate(scheduledCycle: Long, flowIds: Set[Int], var released: Boolean)
+  private val flowGates = mutable.Map.from(
+    scheduledActions.map(action =>
+      action.name -> FlowGate(action.scheduledCycle, action.gatedFlowIds, released = false)
+    )
+  )
   private case class DrainWatch(
       target: TreeDrainTarget,
       var armed: Boolean,
@@ -143,13 +171,18 @@ final class PifoRequestSimulator(
   private var nextSequence = 0L
   private var currentCycle = 0L
   private var nextDequeueCycle = 0L
-  private var dequeueInFlight = false
+  private var nextRootRequestCycle = 0L
+  private var lastTokenReadyCycle = 0L
+  private var dequeuesInFlight = 0
   private var inputClosed = false
   private var running = false
   private var terminalFailure = Option.empty[Throwable]
   private var actionInFlight = false
   private var admissionInFlight = false
   private var commitAdmissionBarrier = false
+  private var dequeuePaused = false
+  private var stopWorldDeadline = Option.empty[Long]
+  private var stopWorldTokens = Option.empty[Vector[Int]]
   private var cycleThread = Option.empty[SimThread]
   private var admissionThread = Option.empty[SimThread]
   private var dequeueThread = Option.empty[SimThread]
@@ -203,10 +236,15 @@ final class PifoRequestSimulator(
     }
 
     if (terminalFailure.isEmpty && !isFinished) {
+      val perFlow = requestQueues.activeFlowIds
+        .map(id => s"$id:${requestQueues.queuedForFlow(id)}")
+        .mkString(",")
       fail(
         new IllegalStateException(
           s"request simulation timed out at cycle $currentCycle: submitted=${submittedIds.size}, " +
-            s"pending=${pending.size}, queued=${requestQueues.totalQueued}, dequeueInFlight=$dequeueInFlight, " +
+            s"pending=${pending.size}, queued=${requestQueues.totalQueued}, dequeuesInFlight=$dequeuesInFlight, " +
+            s"linkPrefetched=${linkPrefetchReleaseCycles.size}, " +
+            s"perFlow=$perFlow, " +
             s"inputClosed=$inputClosed"
         )
       )
@@ -222,20 +260,37 @@ final class PifoRequestSimulator(
       admittedRequests = snapshot.admittedRequests,
       completedRequests = snapshot.completedRequests,
       completedBytes = snapshot.completedBytes,
+      droppedRequests = snapshot.droppedRequests,
+      droppedBytes = snapshot.droppedBytes,
       completions = requestQueues.completions,
+      drops = requestQueues.drops,
       completedActions = completedActions.toVector.map { action =>
-        action.copy(drainCycle = drainWatches.get(action.name).flatMap(_.cycle))
+        action.copy(
+          drainCycle = action.drainCycle.orElse(
+            drainWatches.get(action.name).flatMap(_.cycle)
+          )
+        )
       }
     )
   }
 
   private def startWorkers(): Unit = {
+    // Keep the root address stable even between request handshakes so the
+    // engine's combinational popPortEmpty status is meaningful to the driver.
+    dut.io.dataRequest.payload.engineId #= settings.rootEngineId
+    dut.io.dataRequest.payload.vPifoId #= settings.rootVPifoId
     cycleThread = Some(fork {
       guardWorker {
+        // Scheduler tokens enter a small prefetch buffer; packet bytes are
+        // serialized by the request model below. Packet serialization must not
+        // backpressure the PIFO's non-backpressurable pop-response Flow.
+        dut.io.pop.ready #= true
         while (running) {
           dut.clockDomain.waitRisingEdge()
           if (running) {
             currentCycle += 1
+            releaseLinkPrefetch()
+            observePifoResponses()
             observeTreeDrains()
             if (dut.io.pop.valid.toBoolean && dut.io.pop.ready.toBoolean) completePoppedRequest()
           }
@@ -257,6 +312,9 @@ final class PifoRequestSimulator(
                 try {
                   controller.enque(request.globalFlowId)
                   requestQueues.enqueue(request, currentCycle)
+                  val readyCycle = currentCycle + InsertToVisibleCycles
+                  rootTokenReadyCycles.enqueue(readyCycle)
+                  lastTokenReadyCycle = readyCycle
                 } finally admissionInFlight = false
                 if (settings.verbose) {
                   println(
@@ -273,9 +331,21 @@ final class PifoRequestSimulator(
     dequeueThread = Some(fork {
       guardWorker {
         while (running) {
-          if (!dequeueInFlight && requestQueues.totalQueued > 0 && currentCycle >= nextDequeueCycle) {
-            dequeueInFlight = true
+          if (
+            !dequeuePaused &&
+            currentCycle >= nextRootRequestCycle &&
+            rootTokenReadyCycles.headOption.exists(_ <= currentCycle) &&
+            !rootPortEmpty &&
+            dequeuesInFlight + linkPrefetchReleaseCycles.size < config.prefetchBufferDepth &&
+            requestQueues.totalQueued > dequeuesInFlight
+          ) {
+            dequeuesInFlight += 1
+            rootTokenReadyCycles.dequeue()
             controller.requestDequeue(settings.rootEngineId, settings.rootVPifoId)
+            // requestDequeue returns on this cycle's falling edge. Waiting two
+            // more rising edges before presenting the next valid makes the
+            // accepted root-pop interval exactly three cycles.
+            nextRootRequestCycle = currentCycle + 2
           } else {
             dut.clockDomain.waitRisingEdge()
           }
@@ -293,16 +363,42 @@ final class PifoRequestSimulator(
                 actionInFlight = true
                 val startCycle = currentCycle
                 var commitCycle = Option.empty[Long]
+                var directDrainCycle = Option.empty[Long]
+                var droppedPackets = 0L
+                var retainedPackets = 0L
                 action.run(
                   ScheduledRequestActionContext(
-                    beforeCommit = () => beginCommitAdmissionBarrier(),
+                    beforeCommit = () => {
+                      if (!commitAdmissionBarrier) beginCommitAdmissionBarrier()
+                    },
                     markCommitAccepted = () => {
                       require(commitCycle.isEmpty, s"scheduled action '${action.name}' accepted more than one commit")
                       commitCycle = Some(currentCycle)
                     },
                     markCommitApplied = () => {
                       armTreeDrain(action.name)
-                      endCommitAdmissionBarrier()
+                      releaseFlowGate(action.name)
+                      if (action.mode == "in_place") {
+                        directDrainCycle = Some(currentCycle)
+                      }
+                      if (action.mode != "stop_the_world") endCommitAdmissionBarrier()
+                    },
+                    beginStopTheWorld = minimumStopCycles => {
+                      require(
+                        action.mode == "stop_the_world",
+                        s"scheduled action '${action.name}' is not stop-the-world"
+                      )
+                      val result = beginStopTheWorld(minimumStopCycles)
+                      directDrainCycle = Some(result._1)
+                      retainedPackets = result._2
+                      result
+                    },
+                    finishStopTheWorld = () => {
+                      require(
+                        action.mode == "stop_the_world",
+                        s"scheduled action '${action.name}' is not stop-the-world"
+                      )
+                      finishStopTheWorld()
                     }
                   )
                 )
@@ -312,7 +408,9 @@ final class PifoRequestSimulator(
                   startCycle = startCycle,
                   commitCycle = commitCycle,
                   finishCycle = currentCycle,
-                  drainCycle = None
+                  drainCycle = directDrainCycle,
+                  droppedPackets = droppedPackets,
+                  retainedPackets = retainedPackets
                 )
                 actionInFlight = false
               case _ => dut.clockDomain.waitRisingEdge()
@@ -329,7 +427,14 @@ final class PifoRequestSimulator(
 
     while (selected.isEmpty && pending.headOption.exists(_.request.cycle <= currentCycle)) {
       val candidate = pending.dequeue()
-      if (requestQueues.canEnqueue(candidate.request.globalFlowId)) {
+      if (
+        !flowBlocked(candidate.request.globalFlowId) &&
+        // Metadata remains queued until the terminal PE pops. Counting it is
+        // conservative for every PE, including lower-tree tokens that outlive
+        // an already-issued root pop during a catch-up burst.
+        requestQueues.totalQueued < RootTokenCapacity &&
+        requestQueues.canEnqueue(candidate.request.globalFlowId)
+      ) {
         selected = Some(candidate.request)
       } else {
         deferred += candidate
@@ -360,15 +465,14 @@ final class PifoRequestSimulator(
       return
     }
 
-    requestQueues.dequeue(globalFlowId, currentCycle) match {
+    val outputCycle = math.max(currentCycle, nextDequeueCycle)
+    requestQueues.dequeue(globalFlowId, outputCycle) match {
       case Some(completed) =>
         val serializationCycles =
           math.max(1L, math.ceil(completed.request.sizeBytes / settings.linkBytesPerCycle).toLong)
-        nextDequeueCycle = currentCycle + serializationCycles
-        dequeueInFlight = false
-        // Completion occurs on this edge; the tree is fully drained starting
-        // with the following cycle.
-        completeRootDrainedWatches(currentCycle + 1)
+        nextDequeueCycle = outputCycle + serializationCycles
+        if (outputCycle > currentCycle) linkPrefetchReleaseCycles.enqueue(outputCycle)
+        dequeuesInFlight -= 1
         if (requestQueues.isEmpty) completeArmedDrains(currentCycle)
         if (settings.verbose) {
           println(
@@ -379,32 +483,130 @@ final class PifoRequestSimulator(
       case None =>
         fail(
           new IllegalStateException(
-            s"mesh popped flow $globalFlowId at cycle $currentCycle, but its simulator request queue is empty"
+            s"mesh popped flow $globalFlowId at cycle $currentCycle, but its simulator request queue is empty; " +
+              "recent PIFO pops: " + recentPifoPops.mkString(" | ")
           )
         )
     }
   }
 
   private def isFinished: Boolean =
-    inputClosed && pending.isEmpty && requestQueues.isEmpty && !dequeueInFlight &&
-      requestQueues.snapshot.completedRequests == submittedIds.size && remainingActions.isEmpty && !actionInFlight &&
+    inputClosed && pending.isEmpty && requestQueues.isEmpty && dequeuesInFlight == 0 &&
+      rootTokenReadyCycles.isEmpty && linkPrefetchReleaseCycles.isEmpty && currentCycle >= nextDequeueCycle &&
+      requestQueues.snapshot.completedRequests + requestQueues.snapshot.droppedRequests == submittedIds.size &&
+      remainingActions.isEmpty && !actionInFlight &&
       drainWatches.valuesIterator.forall(watch => !watch.armed || watch.cycle.nonEmpty)
 
   private def beginCommitAdmissionBarrier(): Unit = {
     require(!commitAdmissionBarrier, "a commit admission barrier is already active")
     commitAdmissionBarrier = true
     while (admissionInFlight) dut.clockDomain.waitRisingEdge()
+    while (currentCycle < lastTokenReadyCycle) dut.clockDomain.waitRisingEdge()
+  }
+
+  private def beginStopTheWorld(minimumStopCycles: Long): (Long, Long) = {
+    require(!commitAdmissionBarrier, "an admission barrier is already active")
+    require(!dequeuePaused, "root dequeue is already paused")
+    require(stopWorldDeadline.isEmpty && stopWorldTokens.isEmpty, "a stop-the-world action is already active")
+    require(minimumStopCycles >= 0, "minimum stop cycles must be non-negative")
+    commitAdmissionBarrier = true
+    dequeuePaused = true
+    while (
+      admissionInFlight || currentCycle < lastTokenReadyCycle || dequeuesInFlight > 0 ||
+      linkPrefetchReleaseCycles.nonEmpty || currentCycle < nextDequeueCycle
+    ) {
+      dut.clockDomain.waitRisingEdge()
+    }
+    val drainCycle = currentCycle
+    val retained = requestQueues.queuedRequestsInAdmissionOrder.map(_.request.globalFlowId)
+    require(
+      retained.size <= RootTokenCapacity,
+      s"cannot replay ${retained.size} root tokens into capacity $RootTokenCapacity"
+    )
+    rootTokenReadyCycles.clear()
+    dut.clockDomain.assertReset()
+    dut.clockDomain.waitRisingEdge(2)
+    dut.clockDomain.deassertReset()
+    dut.clockDomain.waitRisingEdge()
+    stopWorldDeadline = Some(drainCycle + minimumStopCycles)
+    stopWorldTokens = Some(retained)
+    (drainCycle, retained.size.toLong)
+  }
+
+  private def finishStopTheWorld(): Long = {
+    val deadline = stopWorldDeadline.getOrElse(
+      throw new IllegalStateException("no stop-the-world action is active")
+    )
+    val tokens = stopWorldTokens.getOrElse(
+      throw new IllegalStateException("no stop-the-world token snapshot is available")
+    )
+    tokens.foreach { flowId =>
+      controller.enque(flowId)
+      val readyCycle = currentCycle + InsertToVisibleCycles
+      rootTokenReadyCycles.enqueue(readyCycle)
+      lastTokenReadyCycle = readyCycle
+    }
+    val resumeCycle = math.max(deadline, lastTokenReadyCycle)
+    while (currentCycle < resumeCycle) dut.clockDomain.waitRisingEdge()
+    stopWorldDeadline = None
+    stopWorldTokens = None
+    endCommitAdmissionBarrier()
+    currentCycle
   }
 
   private def endCommitAdmissionBarrier(): Unit = {
     require(commitAdmissionBarrier, "no commit admission barrier is active")
     commitAdmissionBarrier = false
+    dequeuePaused = false
+  }
+
+  private def flowBlocked(flowId: Int): Boolean =
+    flowGates.valuesIterator.exists(gate =>
+      !gate.released &&
+        currentCycle >= gate.scheduledCycle &&
+        gate.flowIds.contains(flowId)
+    )
+
+  private def releaseLinkPrefetch(): Unit = {
+    while (linkPrefetchReleaseCycles.headOption.exists(_ <= currentCycle)) {
+      linkPrefetchReleaseCycles.dequeue()
+    }
+  }
+
+  private def rootPortEmpty: Boolean =
+    dut.pifoEngines(settings.rootEngineId - 1).pifos.io.popPortEmpty.toBoolean
+
+  private def observePifoResponses(): Unit = {
+    dut.pifoEngines.zipWithIndex.foreach { case (engine, index) =>
+      val response = engine.pifos.io.popResponse
+      if (response.valid.toBoolean) {
+        if (!response.exist.toBoolean) {
+          fail(
+            new IllegalStateException(
+              s"PIFO underflow at cycle $currentCycle engine=${index + 1} port=${response.port.toInt}; " +
+                s"queued=${requestQueues.totalQueued} rootReady=${rootTokenReadyCycles.size} " +
+                s"dequeuesInFlight=$dequeuesInFlight linkPrefetched=${linkPrefetchReleaseCycles.size}"
+            )
+          )
+        } else {
+          recentPifoPops.enqueue(
+            s"cycle=$currentCycle engine=${index + 1} port=${response.port.toInt} " +
+              s"data=${response.data.toInt} priority=${response.priority.toBigInt}"
+          )
+          while (recentPifoPops.size > 24) recentPifoPops.dequeue()
+        }
+      }
+    }
+  }
+
+  private def releaseFlowGate(actionName: String): Unit = {
+    flowGates.get(actionName).foreach(_.released = true)
   }
 
   private def armTreeDrain(actionName: String): Unit = {
     drainWatches.get(actionName).foreach { watch =>
       watch.armed = true
-      if (requestQueues.isEmpty && !dequeueInFlight) watch.cycle = Some(currentCycle)
+      if (requestQueues.isEmpty && dequeuesInFlight == 0) watch.cycle = Some(currentCycle)
     }
   }
 
@@ -416,17 +618,9 @@ final class PifoRequestSimulator(
         drained.payload.toInt == watch.target.vPifoId
       ) {
         watch.rootDrained = true
+        watch.cycle = Some(currentCycle)
       }
     }
-  }
-
-  private def completeRootDrainedWatches(cycle: Long): Unit = {
-    // The request-level harness permits one root dequeue in flight. Therefore
-    // the first terminal completion after the root's final-pop pulse is the
-    // completion of the final old-tree request.
-    drainWatches.valuesIterator
-      .filter(watch => watch.armed && watch.rootDrained && watch.cycle.isEmpty)
-      .foreach(_.cycle = Some(cycle))
   }
 
   private def completeArmedDrains(cycle: Long): Unit = {
