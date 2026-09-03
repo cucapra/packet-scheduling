@@ -149,21 +149,33 @@
 \section{Introduction}\label{sec:intro}
 
 A \emph{packet scheduler} decides which of the packets buffered at an output port leaves next.
-On a programmable switch, that decision belongs to the network operator rather than to the silicon, so the scheduler runs whatever policy the deployment calls for.
-Those policies are usually hierarchical~\cite{Stephens19,Kumar19,Grant20,vPIFO}, and each level of that hierarchy is a scheduling decision in its own right.
+On a programmable switch, that decision belongs to the network operator rather than to the silicon.
+Operators use that freedom to isolate tenants from one another and to hold latency-sensitive traffic to its budget.
+The policies they write are usually hierarchical~\cite{Stephens19,Kumar19,Grant20,vPIFO}, and each level of that hierarchy is a scheduling decision in its own right.
 Whatever the policy, the scheduler has to reach its decision at line rate, since a scheduler that cannot keep up with the wire drops the very traffic it was meant to schedule.
-In response to telemetry from downstream (shifting traffic patterns, changing tenants, etc.), the network operator may need to change the policy in force.
+The abstraction that makes this affordable in hardware is the \emph{PIFO}, a priority queue that a switch can maintain at line rate~\cite{Sivaraman16}.
+A hierarchical policy runs on a tree of PIFOs, one queue per node.
+
+A deployment's policy is not fixed for the life of the deployment.
+Traffic patterns shift, tenants arrive and leave, and telemetry from downstream tells the operator that the policy in force is no longer the right one.
 Such changes need to be rapid and seamless.
+The scheduler, however, was compiled for the policy it is running.
+Its tree shape, its per-node disciplines, and its table contents are all artifacts of a decision made before the switch was brought up, and the compilers that produce them accept \emph{a policy to run} rather than \emph{a change to the policy already running}.
 
 Consider a small-office gateway running \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\textsf{gmail})\), strictly prioritizing real-time \textsf{zoom} traffic over \textsf{gmail} traffic.
 The network operator wants to add a new \textsf{spotify} flow, and is considering two candidate policies:
 \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{mid}{:}\,\textsf{spotify},\allowbreak\ \mathtt{lo}{:}\,\textsf{gmail})\), extending the strict-priority list with \textsf{spotify}; or
 \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\RR(\textsf{gmail}, \textsf{spotify}))\), keeping \textsf{zoom} at the higher tier but having \textsf{gmail} and \textsf{spotify} share the lower tier via round-robin.
-In either case, the state of the art~\cite{vPIFO} would stop the world, dropping or recirculating the buffered packets, recompiling, and reinstalling, at the cost of downtime, delay, and the rebuilding of nodes that did not need to be rebuilt.
+In either case, the state of the art~\cite{vPIFO} would stop the world: drop or recirculate the buffered packets, recompile, and reinstall.
+The costs are downtime, delay, and the rebuilding of nodes that did not need to be rebuilt.
 
 This paper refuses to stop the world.
 Our thesis is that the interval during which a scheduler is being reprogrammed is itself a scheduling policy.
 Stopping the world does not do away with that policy but only leaves it unstated and unchosen.
+Understanding this unstated policy is a language problem.
+A transitionary policy needs a syntax that the operator can read, a semantics that says which packet leaves next, and a compiler that installs it on hardware built for a policy fixed in advance.
+With those in hand, the question of whether a transition was carried out correctly becomes a theorem about the semantics rather than a measurement of the hardware.
+Rio supplies all three: a language of policy edits, a semantics for them, and a compiler that lowers them onto a PIFO substrate.
 
 A transition from a running policy \(p_1\) to a requested policy \(p_2\) takes one of two shapes (\cref{fig:two-timelines}).
 Sometimes the requested policy can be installed immediately, as a single atomic transition (case~1).
