@@ -1970,7 +1970,7 @@ The bar for hosting Rio is therefore a single property, and we expect other PIFO
 The work closest to ours in spirit concerns packet \emph{forwarding} rather than packet scheduling.
 An operator who changes the forwarding rules across a set of devices cannot install them everywhere at once, so packets are in flight through the network while the change is spreading.
 \citet{Reitblatt12} observe that such an update passes through intermediate configurations, and that those configurations can behave in ways that neither the old configuration nor the new one would.
-\cref{sec:intro} makes that same observation about scheduling.
+Our work makes that same observation about scheduling.
 Their answer is a versioning discipline, which yields two consistency levels, per-packet and per-flow: a packet is stamped on entry and handled under the stamped version at every device, so one configuration handles it from end to end.
 Rio reaches per-packet consistency by another means: the entire commit lands between two consecutive \push{}/\pop{} operations, so a packet meets one configuration or the other (\cref{sec:hw-isa}).
 
