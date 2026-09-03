@@ -1698,15 +1698,24 @@ Our substrate is deliberately unambitious; we built it because the compiler need
 
 \subsection{Making a Commit Atomic}\label{sec:hw-commit}
 
+Rio's change to the substrate is small, and it is small because the transactional scope is narrow.
+The only state that has to install as one instant is the mapping from a flow to the PIFO that serves it, which is what admits a packet at all.
+The rank computation need not be inside that scope.
+The writing of metadata either installs metadata for a flow whose packets are not admitted until the commit finishes, or retires metadata for a flow that has already drained, so it never changes the interpretation of a packet already in flight.
+
 Rio implements a transactional update controller, and every commit passes through it.
 A commit reaches the controller as a stream of update instructions terminated by a commit marker, and the controller executes that stream in order.
 Ordinary update instructions are routed to the PEs they target and staged locally, where they remain invisible to packet processing.
 When the controller reaches the marker, it generates the hardware commit signals that make the staged updates visible.
-Two pieces of hardware need small changes for those signals to be atomic: the tables that hold a node's classification, and the rank computation.
+Two pieces of hardware need small changes.
+First, the tables that hold a node's classification must become transactional, so that a commit signal makes a whole list of writes visible at once.
+Second, the rank computation must accept incremental updates rather than wholesale replacement of a live scheduling policy.
 
-\xxx[AM to Zhiyuan]{The sentence above read ``small changes to three pieces of hardware: the virtual PIFOs, the rank computation, and the next-hop mapping'', and then described two, neither of which was the PIFOs.
-I have written two, since two is what this subsection actually talks about.
-Is there also a change to the PIFOs themselves? If so, we need to add a paragraph describing that.}
+\xxx[AM to Zhiyuan]{We used to claim ``small changes to three pieces of hardware: the virtual PIFOs, the rank computation, and the next-hop mapping'', and then described two, neither of which was the PIFOs.
+I have written ``two'', since two is what this subsection actually talks about.
+Is there also a change to the PIFOs themselves? If so, we need to add a paragraph describing that.
+I have also split what the two changes are \emph{for}: the classification tables must become transactional, while the rank computation only has to take incremental writes. 
+Please check for correctness.}
 
 Rio builds transactional tables for a node's classification.
 Each PE holds the set of flows each of its nodes admits, and the mapping from an admitted flow to the child that serves it, in a specialized structure that accepts a stream of update instructions followed by a commit marker.
@@ -1724,11 +1733,9 @@ The new configuration becomes visible at different PEs at carefully chosen times
 The double buffer and the wavefront are two mechanisms.
 Their shared purpose is pipelined dequeue, so that a request travelling the chain of PEs never observes state that a commit has left inconsistent.
 
-Rio supports incremental updates to the rank-computing match-action tables, and does not require arbitrary in-place replacement of a live scheduling policy.
-Such an update either installs metadata for a flow whose packets are not admitted until the commit finishes, or retires metadata for a flow that has already drained, so it never changes the interpretation of a packet already in flight.
-Our controller stages and swaps these writes along with every other instruction in their commit, so the metadata an \Add{} carries lands in the same atomic instant as the structural change it accompanies.
-Rio does not require that, since the table whose commit must be a single instant is the one mapping a flow to the PIFO that serves it, and that mapping is what admits a packet at all.
-The rank computation behind it is a reference design, and a substrate may configure its own disciplines by whatever means it has.
+Our controller stages and swaps the rank-computing writes along with every other instruction in their commit, so the metadata an \Add{} carries lands in the same atomic instant as the structural change it accompanies.
+That is more than Rio needs.
+The rank computation is a reference design, and a substrate may configure its own disciplines by whatever means it has.
 
 The controller also implements guarded transitions.
 Some transitions are guarded by predicates such as the emptiness of a subtree (\cref{sec:sequences}).
