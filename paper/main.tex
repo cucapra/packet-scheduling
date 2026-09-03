@@ -1426,7 +1426,7 @@ We do not pursue this here, since the splicing analysis introduces its own corre
 We write \(\mathit{gseq}\) for a guarded sequence (\cref{fig:gseq-idioms}, top).
 A guard \(\varphi\) is either trivially satisfied (\(\mathtt{true}\)) or asserts that the subtree at \ensuremath{\mathit{path}} is empty; it is always paired with exactly one \(\delta\).
 Those two guard forms have sufficed for every sequence we have needed.
-The framework does not depend on this minimality, and a richer predicate language is welcome if desired.
+The framework does not depend on this minimality, and a richer predicate language is available provided the underlying substrate can test the predicates.
 
 \paragraph{Intuition}
 
@@ -1678,10 +1678,16 @@ In such a case, a single packet operation can observe a mixture of old and new s
 For example, an enqueue may choose its path using the old flow-to-child mapping but compute its rank using newly updated per-arm metadata, or a dequeue may pop from one version of the tree and then follow next-hop state from another.
 As a result, existing PIFO-based substrates support only stop-the-world policy update~\cite{vPIFO,Alcoz23}.
 
-Rio asks a substrate for one thing: commits that are atomic with respect to traffic.
+Rio asks a substrate for two things.
+The first is commits that are atomic with respect to traffic.
 A \(\delta\) that lowers to many instructions has to install as a single instant.
 The tree is transiently malformed partway through a commit, and no \push{} or \pop{} may observe it in that state.
 That is the whole of what \cref{sec:hw-preservation}'s argument rests on.
+
+The second is that a commit can be held until a stated predicate becomes true.
+A guarded sequence (\cref{sec:sequences}) waits for its guard before firing the \(\delta\) associated with it, and in real terms the substrate needs to do this waiting.
+Since our grammar of guards is quite simple, our substrate tests one predicate: the emptiness of a subtree.
+That is a local test at a single PIFO, since a node's \ensuremath{\mathit{pifo}} holds an entry for every packet in its subtree (\cref{sec:controls}).
 
 Our substrate is deliberately unambitious; we built it because the compiler needed something to run against and we wanted to understand precisely what features we needed from our substrate.
 
@@ -1972,8 +1978,11 @@ That is a parameter, since a substrate with a shorter menu hosts Rio just as wel
 If the network operator wishes to install a discipline that the menu lacks, they need to supply the substrate with an \(\mathit{init\_node\_state}_{D}\), an \(\mathit{init\_slot\_state}_{D}\) and a \(\mathit{rank}_{D}\) of their own.
 A small programmable core beside the PIFO tree would be one way to supply this.
 
-The designated-survivor link of \cref{sec:hw-survivor} is an optimization rather than a requirement, since a substrate without one lowers \Designate{} to a literal \Strict-2 wrapper and pays for the relayouts.
-The bar for hosting Rio is therefore a single property, and we expect other PIFO substrates to clear it and to be able to adopt the link besides~\cite{Shrivastav19,Gao22,Yao23,vPIFO,Atre24,Alcoz25}.
+The guard language is a parameter in the same way.
+Our substrate can test the two forms of \cref{sec:idioms}, and a substrate that can test more predicates offers richer guards to the network operator or transition planner.
+
+The designated-survivor link of \cref{sec:hw-survivor} is an optimization rather than a requirement, since a substrate without one lowers \Designate{} to a literal \Strict-2 wrapper and accepts the cost of laying out some trees repeatedly.
+The bar for hosting Rio is therefore atomic commits and a predicate the substrate can wait on, and we expect other PIFO substrates to clear both and to be able to adopt the link~\cite{Shrivastav19,Gao22,Yao23,vPIFO,Atre24,Alcoz25}.
 
 \section{Evaluation}\label{sec:eval}
 
