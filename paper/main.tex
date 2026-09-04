@@ -271,31 +271,27 @@ D\ \text{a scheduling discipline, declaring a metadata set } M_{D}\\[8pt]
 \label{fig:pol-grammar}
 \end{figure}
 
-An operator writes a \emph{policy}, and the language of policies is written \ensuremath{\mathit{pol}} (\cref{fig:pol-grammar}).
-A policy is either a leaf carrying a \emph{flow} (a predicate over packets), or an internal node applying a scheduling discipline to child policies.
+An operator writes a policy in \ensuremath{\mathit{pol}} (\cref{fig:pol-grammar}), a small grammar that permits either a leaf carrying a \emph{flow} (a predicate over packets), or an internal node applying a scheduling discipline to its child policies, each arm labeled with a metadatum the discipline declares.
 No flow may label two leaves of a policy that an operator writes.
 Say that the network operator initially writes
 \[ p_1 = \Strict(\mathtt{hi}{:}\,\textsf{zoom},\ \mathtt{lo}{:}\,\textsf{gmail}), \]
 which is visualized in the top left of \cref{fig:tour}.
-Everything on that figure's top row is written in \ensuremath{\mathit{pol}} and is what an operator reads.
-Everything on its bottom row is what a switch runs.
-The two policies carrying an operator's mark are the two that an operator wrote.
-Here \(\mathtt{hi}\) and \(\mathtt{lo}\) are drawn from the metadata set that \Strict{} declares, and \WFQ{} would declare weights instead.
+Everything on that figure's top row is written in \ensuremath{\mathit{pol}} and is human readable.
 
-\paragraph{What the switch runs}
+\paragraph{What the policy compiles to}
 
-A policy is a human-readable and -writable description, but the physical network switch runs something at a lower level.
-It runs a \emph{control}, which is a tree of PIFOs carrying scheduling logic at every node (\cref{sec:controls}).
-Compiling a policy into a control is written \(\lceil \cdot \rceil\), and the bottom-left object of \cref{fig:tour} is \(C_1 = \lceil p_1 \rceil\).
-A packet is ranked as it arrives and at no other time, and a pop reads the queued ranks alone.
-So an edit to a node's scheduling logic cannot reach a packet already buffered under it.
+A policy is a human-readable description, and underneath it the scheduler is a \emph{control}, a tree of PIFOs carrying scheduling logic at every node (\cref{sec:controls}).
+The bottom row of \cref{fig:tour} shows controls.
+Compiling a policy into a control is written \(\lceil \cdot \rceil\), and the leftmost is \(C_1 = \lceil p_1 \rceil\).
+So \(C_1\) is a freshly compiled control that is entirely faithful to the operator's wish.
+\cref{sec:hardware} lowers a control onto a real switch.
 
 \paragraph{An easy change}
 
-The operator adds \textsf{spotify} to the strict-priority list, asking for \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{mid}{:}\,\textsf{spotify},\allowbreak\ \mathtt{lo}{:}\,\textsf{gmail})\).
-Rio's \emph{transition planner} reads the running policy and the requested one, and proposes a way from the first to the second (\cref{sec:planner}).
-Whatever it proposes is drawn from a small grammar of tree edits (\cref{sec:grammar}), and here the proposal is one edit long.
-That edit is \Add, which splices a freshly compiled arm under a node that is already running (\cref{sec:add}).
+Say the operator wants to add \textsf{spotify} to the strict-priority list, asking for \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{mid}{:}\,\textsf{spotify},\allowbreak\ \mathtt{lo}{:}\,\textsf{gmail})\).
+Rio's \emph{transition planner} (\cref{sec:planner}) reads the running policy and the requested one, and proposes a way from the first to the second.
+Whatever it proposes is drawn from a small grammar of tree edits, whose productions are written \(\delta\) (\cref{sec:grammar}), and here the proposal is a single \(\delta\).
+That \(\delta\) is \Add, which splices a freshly compiled arm under a node that is already running (\cref{sec:add}).
 The nodes above the new arm begin admitting \textsf{spotify} traffic and passing it downward.
 Every other field of every node is left as it was, and nothing that was already buffered is affected.
 The edit installs in one instant, so each packet is scheduled either wholly under the old policy or wholly under the new one.
@@ -303,43 +299,46 @@ This is case~1 of \cref{fig:two-timelines}.
 
 \paragraph{A change that cannot be installed at once}
 
-Suppose instead the operator wanted to move from \(p_1\) to
+Suppose instead that the operator wanted to move from \(p_1\) to
 \[ p_2 = \Strict(\mathtt{hi}{:}\,\textsf{zoom},\ \mathtt{lo}{:}\,\RR(\textsf{gmail},\allowbreak\ \textsf{spotify})), \]
-the rightmost policy of \cref{fig:tour}, which turns the \textsf{gmail} leaf into an interior round-robin node.
+which is the rightmost policy of \cref{fig:tour}.
 Installing it in one instant would mean dropping the buffered \textsf{gmail} packets or moving them under the new round-robin node.
 Rio does neither.
-\xxx[AM]{The reason why Rio does neither is currently in the Intro. If the Intro is trimmed, let's remember to save that reasoning, to to attempt a fresh explanation here.}
+\xxx[AM]{The reason why Rio does neither is currently in the Intro. If the Intro is trimmed, let's remember to save that reasoning, or to attempt a fresh explanation here.}
 
 
 \paragraph{Reaching it anyway}
 
-No single edit reaches \(p_2\), so the planner proposes a short run of them, each installable in a single instant, which together arrive where the operator asked to be.
-In between, the scheduler runs a policy that is neither \(p_1\) nor \(p_2\), and a stated condition says when it may leave.
-Rio steps into that \emph{transitionary policy} first, and the middle panel of \cref{fig:tour} is it.
+No one form of \(\delta\) carries \(p_1\) to \(p_2\), so the planner proposes a short sequence of them, each installable in a single instant, which together arrive where the operator asked to be.
+These \(\delta\)s do not all fire at once.
+The sequence has to wait, in this case for the buffered \textsf{gmail} packets to drain, and while it waits the scheduler runs a policy that is neither \(p_1\) nor \(p_2\).
+Rio steps into that \emph{transitionary policy} first, and the middle panel of \cref{fig:tour} shows that policy.
 \Designate{} replaces \textsf{gmail}, the root's \(\mathtt{lo}\) arm, in place with a two-arm strict node, written \(\Strictstar\) (\cref{sec:designate}).
 Its high arm is the doomed \textsf{gmail} subtree, carried over with its buffered packets untouched.
 Its low arm is a freshly compiled \(\RR(\textsf{gmail},\allowbreak\ \textsf{spotify})\), which starts empty.
-\Quiesce{} closes the doomed arm to new arrivals (\cref{sec:quiesce}).
+\Quiesce{} closes the doomed arm to new packets (\cref{sec:quiesce}).
 The \emph{instant that \Designate{} fires} becomes the boundary between old \textsf{gmail} traffic, which drains from the doomed arm, and new \textsf{gmail} traffic, which the surviving arm schedules and stores.
 The backlog drains in its original order while new traffic gathers beside it.
-Once the doomed arm is empty, \Undesignate{} unhooks it together with the wrapper, leaving the survivor where the \textsf{gmail} leaf stood (\cref{sec:undesignate}).
-That is \(p_2\), reached without dropping, reordering, or re-ranking a single buffered packet, which is a theorem rather than a happy accident of this example.
+Once the doomed arm is empty, \Undesignate{} unhooks it together with the \(\Strictstar\) wrapper, leaving the survivor where the \textsf{gmail} leaf stood (\cref{sec:undesignate}).
+That is \(p_2\).
+We have reached it without dropping, reordering, or re-ranking a single buffered packet, which is the key theorem of this paper rather than a happy accident of this example.
 
 \paragraph{Steps and guards}
 
-Those three edits form one \emph{guarded sequence}, and \cref{fig:tour} draws its two \emph{step}s.
+Those three \(\delta\)s form one \emph{guarded sequence}, and \cref{fig:tour} draws its two \emph{step}s.
 A step is a guard together with the edits that guard releases.
 The first step's guard is trivially true, and it releases \Designate{} and \Quiesce{} at once.
 The second step's guard becomes true when the doomed arm is empty, and it releases \Undesignate.
 So the sequence waits in one place, and the operator passes through one policy they did not ask for.
-Rio names the sequences that recur, so an operator asks for this one as \Replace{} rather than by its three edits (\cref{sec:idioms}).
+Rio gives names to idiomatic sequences that tend to recur; we have just seen the idiom \Replace{} (\cref{sec:idioms}).
 
 \paragraph{What the operator is told throughout}
 
-The middle panel of \cref{fig:tour} is a policy, expressed in the same \ensuremath{\mathit{pol}} the operator used to write \(p_1\) and \(p_2\).
+The middle panel of \cref{fig:tour} is a policy, expressed in the same grammar \ensuremath{\mathit{pol}} in which the operator wrote \(p_1\) and \(p_2\).
 The middle policy was recovered from the running control by a read-off written \(\lfloor \cdot \rfloor\) (\cref{sec:equivalences}).
-The solid arrow rising out of the transitionary control is that recovery.
-The dashed arrow on the right is the route Rio does not take, since it never compiles \(p_2\) from scratch, and had it done so it would have built a scheduler that behaves like \(C_2\) rather than \(C_2\) itself.
+The solid upward arrow rising out of the transitionary control is that recovery.
+The dashed arrow on the right is the route Rio does not take.
+It never compiles \(p_2\) from scratch, and a from-scratch compile would have produced a different control that behaves the same.
 So at every instant of the transition, including the whole interval in which the physical scheduler runs a policy that \emph{no operator asked for}, Rio can say which policy is in force, and say it in the operator's own terms.
 
 Two theorems make this worth something (\cref{sec:correctness}).
@@ -348,12 +347,9 @@ The second is that installing an edit leaves every queued packet exactly where i
 
 \paragraph{Confinement}
 
-Whatever the planner proposes goes to the operator to accept or decline (\cref{sec:planner}).
-We show that some sequence always exists (\cref{sec:fallback}), but the one that is always available disturbs every node in the tree.
-Doing better is the planner's job.
-It descends while the two policies still agree, and emits the tightest edit it can at the deepest point the descent reaches.
-Rio calls the resulting economy \emph{confinement}.
-\cref{fig:tour} shows it, since the \Strict{} root and the \textsf{zoom} arm are identical in all three panels while everything shaded is freshly built.
+Some sequence always exists (\cref{sec:fallback}), but the one that is always available disturbs every node in the tree.
+The planner does better by descending while the two policies still agree, then emitting the tightest \(\delta\) it can at the deepest point it reaches.
+Rio calls that economy \emph{confinement}, and \cref{fig:tour} shows it: the \Strict{} root and the \textsf{zoom} arm are untouched in all three panels, and everything shaded is freshly built.
 
 \paragraph{Down to the switch}
 

@@ -2,13 +2,6 @@
 % Encoding: red is what Rio actually does, black is the pol-level narration of it,
 % dashed is the route not taken, and shading is freshly built material (as in \cref{fig:planner-add-vs-replace}).
 \definecolor{actcol}{HTML}{D55E00}
-% \opicon: the operator, at text size. Presence marks a policy someone wrote.
-\newcommand{\opicon}{%
-\begin{tikzpicture}[baseline=-0.35ex, x=1ex, y=1ex]
-  \fill[black!62] (0,0.78) circle (0.46);
-  \fill[black!62] (-0.86,-1.05) .. controls (-0.86,0.22) and (0.86,0.22) .. (0.86,-1.05) -- cycle;
-\end{tikzpicture}}
-
 \begin{figure*}[t]
 \centering
   \begin{tikzpicture}[
@@ -80,15 +73,15 @@
     \draw[edge] (d0.south) -- (rr.north) node[el, midway, above=1pt, xshift=2pt] {lo};
   \end{tikzpicture}};
 
-  % ===== headings: the operator marks the two policies somebody wrote =====
-  \node[hd] at (P1.north) {\opicon\;\(p_1\)};
+  % ===== headings: named policies are the ones an operator wrote =====
+  \node[hd] at (P1.north) {\(p_1\)};
   \node[hd] at (P2.north) {\emph{transitionary policy}};
-  \node[hd] at (P3.north) {\opicon\;\(p_2\)};
+  \node[hd] at (P3.north) {\(p_2\)};
 
   % ============================ controls ============================
-  \node[ctlbox] (C1)  at (P1.south |- 0,-3.55) {\(C_1\)};
-  \node[ctlbox] (C2m) at (P2.south |- 0,-3.55) {\emph{transitionary control}};
-  \node[ctlbox] (C2)  at (P3.south |- 0,-3.55) {\(C_2\)};
+  \node[ctlbox] (C1)  at (P1.south |- 0,-4.15) {\(C_1\)};
+  \node[ctlbox] (C2m) at (P2.south |- 0,-4.15) {\emph{transitionary control}};
+  \node[ctlbox] (C2)  at (P3.south |- 0,-4.15) {\(C_2\)};
 
   % ============ black: the pol-level narration of the path ============
   \draw[says,->] ($(P1.north east)+(0.10,-0.42)$) -- ($(P2.north west)+(-0.10,-0.42)$)
@@ -106,7 +99,8 @@
   \draw[does,->] (P1.south) -- (C1.north)
     node[act, midway, anchor=east, xshift=-2pt] {\(\lceil \cdot \rceil\)};
   \draw[does,->] (C2m.north) -- (P2.south)
-    node[act, midway, anchor=west, xshift=2pt] {\(\lfloor \cdot \rfloor\)};
+    node[act, midway, anchor=west, xshift=2pt] {\(\lfloor \cdot \rfloor\)}
+    node[gd, midway, anchor=east, xshift=-3pt] {what the operator\\is told};
 
   % ================ dashed: the route not taken ================
   \draw[notaken,->] (P3.south) -- (C2.north)
