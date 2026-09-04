@@ -1469,7 +1469,7 @@ The compilation itself, and the substrate machinery that makes a commit atomic, 
 
 \section{Realizing Reconfigurations as Guarded Sequences}\label{sec:sequences}
 
-This section composes the forms of \(\delta\) into \emph{guarded sequences} \((\varphi ; \delta)^{*}\), where a guard \(\varphi\) is a predicate on the state of the live control.
+This section composes the forms of \(\delta\) into \emph{guarded sequences} \((\varphi ; \delta^{*})^{*}\), where a guard \(\varphi\) is a predicate on the state of the live control.
 Guarded sequences realize changes to the live control that no single \(\delta\) can express.
 We first show that the transitionary period such a sequence passes through needs no new semantics (\cref{sec:links}), then give the grammar of guarded sequences (\cref{sec:idioms}).
 
@@ -1481,7 +1481,7 @@ So \(\mathit{link}_0 = C\) is the starting control, and \(\mathit{link}_{i+1} = 
 
 Each transitionary policy is itself an ordinary \cref{sec:controls}-style control, so the transitionary period \emph{needs no new semantics}.
 That is the promise of \cref{sec:intro}, discharged locally by the per-form checks of \cref{sec:per-form}.
-Moreover, since every form of \cref{sec:grammar} is \emph{\ensuremath{\mathit{pol}}-explainable} (each \(\delta\) has a \(\psem{\delta}\) that tracks its \ensuremath{\mathit{pol}}-level effect), we can echo to the operator, at every step of the sequence, the \ensuremath{\mathit{pol}} that the live control actually realizes.
+Moreover, since every form of \cref{sec:grammar} is \emph{\ensuremath{\mathit{pol}}-explainable} (each \(\delta\) has a \(\psem{\delta}\) that tracks its \ensuremath{\mathit{pol}}-level effect), we can echo to the operator, at every point in the sequence, the \ensuremath{\mathit{pol}} that the live control actually realizes.
 The chain of \(\psem{\cdot}\)s starting from \(\lfloor C \rfloor\) gives \(\lfloor \mathit{link}_i \rfloor\) for each \(i\), so the operator always knows which policy is running.
 
 \paragraph{Follow-up requests}
@@ -1502,33 +1502,43 @@ We do not pursue this here, since the splicing analysis introduces its own corre
 \begin{array}{@{}l@{}}
 \textbf{Guarded sequences}\\[3pt]
 \varphi \mathrel{::=} \mathtt{true} \;\mid\; \mathtt{isEmpty}(\mathit{path})\\[2pt]
-\mathit{gseq} \mathrel{::=} \epsilon \;\mid\; (\varphi\,;\, \delta)\,;\, \mathit{gseq}\\[8pt]
+\mathit{step} \mathrel{::=} (\varphi\,;\, \delta_1\,;\, \ldots\,;\, \delta_n),\ n \geq 1\\[2pt]
+\mathit{gseq} \mathrel{::=} \epsilon \;\mid\; \mathit{step}\,;\, \mathit{gseq}\\[8pt]
 \textbf{Idioms}\\[3pt]
 \Retire(\mathit{path}) \;=\;\\
 \quad (\mathtt{true};\, \Quiesce(\mathit{path}))\,;\\
 \quad (\mathtt{isEmpty}(\mathit{path});\, \Remove(\mathit{path}))\\[4pt]
 \SlowRetire(\mathit{path}) \;=\; (\mathtt{isEmpty}(\mathit{path});\, \Remove(\mathit{path}))\\[4pt]
 \Replace(\mathit{path}, \mathit{survivor}) \;=\;\\
-\quad (\mathtt{true};\, \Designate(\mathit{path}, \mathit{survivor}))\,;\\
-\quad (\mathtt{true};\, \Quiesce(\mathit{path} \mathbin{+\!\!+} [0]))\,;\\
+\quad (\mathtt{true};\, \Designate(\mathit{path}, \mathit{survivor})\,;\\
+\quad\qquad \Quiesce(\mathit{path} \mathbin{+\!\!+} [0]))\,;\\
 \quad (\mathtt{isEmpty}(\mathit{path} \mathbin{+\!\!+} [0]);\, \Undesignate(\mathit{path}))
 \end{array}
 \]
-\caption{The grammar of guarded sequences and the three starter idioms, each a named \((\varphi;\delta)^{*}\).}
+\caption{The grammar of guarded sequences and the three starter idioms, each a named \ensuremath{\mathit{gseq}}.}
 \label{fig:gseq-idioms}
 \end{figure}
+% This fig is a little hard to read since there are guards and deltas all mixed up. For presentation let's write the guards in red in the idioms. And let's line up the deltas that are collected together under one guard. So in this figure you would like up \Designate(\mathit{path}, \mathit{survivor})\,;\\ and \Quiesce(\mathit{path} \mathbin{+\!\!+} [0]))\,;\\ (line up D and Q)
 
 We write \(\mathit{gseq}\) for a guarded sequence (\cref{fig:gseq-idioms}, top).
-A guard \(\varphi\) is either trivially satisfied (\(\mathtt{true}\)) or asserts that the subtree at \ensuremath{\mathit{path}} is empty; it is always paired with exactly one \(\delta\).
+A guard \(\varphi\) is either trivially satisfied (\(\mathtt{true}\)) or asserts that the subtree at \ensuremath{\mathit{path}} is empty.
+A \emph{step} pairs one guard with the run of \(\delta\)s that guard releases, so a sequence waits exactly as many times as it has steps.
 Those two guard forms have sufficed for every sequence we have needed.
 The framework does not depend on this minimality, and a richer predicate language is welcome if desired.
 
 \paragraph{Intuition}
 
-The hardware substrate (\cref{sec:hardware}) does two things beyond ordinary \push{}/\pop{}: it waits for a guard \(\varphi\) to become true on the live control, and it fires a single \(\delta\) as an atomic replacement.
-A guarded sequence chains these: wait for \(\varphi_0\), fire \(\delta_0\), then wait for \(\varphi_1\) (now evaluated on the post-\(\delta_0\) control), fire \(\delta_1\), and so on.
+The hardware substrate (\cref{sec:hardware}) does two things beyond ordinary \push{}/\pop{}.
+It waits for a guard \(\varphi\) to become true on the live control, and it fires a \(\delta\) as an atomic replacement.
+A guarded sequence chains these.
+It waits for \(\varphi_0\), fires that step's \(\delta\)s in order, then waits for \(\varphi_1\), now evaluated on the control the first step left behind, and so on.
 Each intermediate control between two consecutive \(\delta\) firings is well-formed, and we call this property the sequence's \emph{safety}.
 Safety is entirely local, following from the per-form checks of \cref{sec:per-form}.
+
+\xxx[AM to Zhiyuan]{A step's \(\delta\)s fire back to back with no waiting between them, and each one installs as its own commit, so the substrate needs nothing it does not already have.
+The question is whether it could instead install a whole step as one commit, so that no intermediate control inside a step is ever observed.
+That would be better for the operator, since the policies they are shown would then be exactly the ``waits''.
+It asks the commit buffer to hold one step's worth of instructions rather than one form's, which \cref{sec:hw-preservation} suggests is a question of how much fits rather than of a new capability.}
 
 \paragraph{Reaching the target}
 
@@ -1597,7 +1607,7 @@ This is the transition \cref{sec:intro} reaches at \(t_2\).
 \section{The Transition Planner}\label{sec:planner}
 
 The operator hands the runtime \(p_1\), the presently running policy, and \(p_2\), the one they now want.
-The transition planner's job is to propose a \((\varphi ; \delta)^{*}\) sequence whose \ensuremath{\mathit{pol}}-level fold takes \(p_1\) to some \(p_2'\) with \(p_2' \eqR p_2\).
+The transition planner's job is to propose a \((\varphi ; \delta^{*})^{*}\) sequence whose \ensuremath{\mathit{pol}}-level fold takes \(p_1\) to some \(p_2'\) with \(p_2' \eqR p_2\).
 The operator accepts or rejects the proposal; they do not author it directly.
 
 Every sequence the planner emits is safe by the per-form guarantees of \cref{sec:per-form}, aggregated across the sequence as sketched in \cref{sec:idioms}, regardless of how the planner assembled it.
@@ -1616,7 +1626,7 @@ To reach any \(p_2\) from any \(p_1\), the planner can issue \(\Replace([], p_2)
 
 \[
 \begin{array}{@{}l@{}}
-(\mathtt{true};\ \Designate([], p_2))\ ;\ (\mathtt{true};\ \Quiesce([0]))\ ;\\[3pt]
+(\mathtt{true};\ \Designate([], p_2)\ ;\ \Quiesce([0]))\ ;\\[3pt]
 \qquad (\mathtt{isEmpty}([0]);\ \Undesignate([]))
 \end{array}
 \]
@@ -1629,7 +1639,7 @@ To measure how much of the tree a sequence touches, associate each form \(\delta
 Define \(\mathtt{footprint}(\delta, C)\) as the set of nodes of \(C\) whose \ensuremath{\mathit{state}}, \ensuremath{\mathit{pifo}}, or \ensuremath{\mathit{z}} differs between \(C\) and \(\csem{\delta}(C)\).
 The set is read off the \(\csem{\delta}\) rules of \cref{sec:edit-semantics}, each of which names every field of every node it produces.
 It includes the edit site, the new or removed node where applicable, and every proper ancestor whose \ensuremath{\mathit{z}} is extended or restricted, such as the ancestors touched by \Add, \Quiesce, \Remove, and \Designate.
-For a guarded sequence \((\varphi_0 ; \delta_0) ; \ldots ; (\varphi_n ; \delta_n)\), the sequence-level footprint is \(\bigcup_i \mathtt{footprint}(\delta_i, \mathit{link}_i)\).
+The sequence-level footprint is \(\bigcup_i \mathtt{footprint}(\delta_i, \mathit{link}_i)\), taken over the \(\delta\)s of the sequence in order and irrespective of how they are grouped into steps.
 The root-level \(\Replace([], p_2)\) above has the maximum possible footprint: the whole tree.
 
 \paragraph{The planner's strategy}
@@ -1727,7 +1737,7 @@ Every recursion descends through a slot at which the two trees already agree, so
 
 The transition planner so far has realized what we call \emph{declarative} authoring.
 The operator states a starting policy \(p_1\) and a target \(p_2\), and the planner proposes a guarded sequence that achieves the change, which the operator either accepts, in which case we apply it to the running control, or declines.
-Operators may instead author \emph{imperatively}, writing their desired \(p_2\) together with a \((\varphi; \delta)^{*}\) sequence intended to reach it, possibly built from idioms (\cref{sec:idioms}).
+Operators may instead author \emph{imperatively}, writing their desired \(p_2\) together with a \((\varphi ; \delta^{*})^{*}\) sequence intended to reach it, possibly built from idioms (\cref{sec:idioms}).
 Imperative authoring gives the operator hands-on control over the transitionary policies the live control passes through, rather than delegating their choice to the planner.
 An operator who already knows the transition they want can hand it over directly, instead of naming a destination and leaving the route to the case analysis of \cref{sec:planner-emits}.
 The sequence they write may be better confined than the one the planner would have found, since the planner may fail to see it, and it may equally be worse.
