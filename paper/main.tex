@@ -4,7 +4,7 @@
 \usepackage{array}
 \usepackage{mathtools}
 \usepackage{tikz}
-\usetikzlibrary{positioning,arrows.meta,calc,trees,matrix}
+\usetikzlibrary{positioning,arrows.meta,calc,trees,matrix,fit,backgrounds}
 \usepackage{cancel}
 \usepackage{forest}
 \usepackage{xcolor}
@@ -90,6 +90,16 @@
     \fill[#1] (#2-0.24,#3-0.72) circle (1.3pt); \fill[#1] (#2,#3-0.72) circle (1.3pt); \fill[#1] (#2+0.24,#3-0.72) circle (1.3pt);%
   \fi
 }
+% Freshly built material is shaded: \freshbehind{(a)(b)} lays the wash behind the named
+% nodes. It sits on a background layer, so the wash can never ride over what it marks,
+% and it is fitted to those nodes, so it can never drift off them either.
+% anchor=center is load-bearing where a picture is drawn inside a \node, since such a
+% picture inherits that node's anchor.
+\pgfsetlayers{background,main}
+\newcommand{\freshbehind}[1]{%
+  \begin{pgfonlayer}{background}
+    \node[fill=newcol!12, rounded corners=2pt, anchor=center, inner sep=3.5pt, fit=#1] {};
+  \end{pgfonlayer}}
 % Explicit-PIFO house style: leaf packets are colored dots by flavor (colored rounded box);
 % internal index-PIFOs are gray with numbers; dropped entries get a steep red strikeout.
 \definecolor{flowA}{HTML}{0072B2}% blue
@@ -245,7 +255,7 @@ We contribute a tool that achieves this and shows [improvements].
 
 \section{Rio by Example}\label{sec:tour}
 
-Opener TK
+\xxx[AM]{Opening sentences TK, and obviously the Intro before this will shrink considerably. For now I am drafting this section and making \emph{none} of the cuts that it will trigger.}
 
 \paragraph{The policy an operator writes}
 
@@ -261,84 +271,89 @@ D\ \text{a scheduling discipline, declaring a metadata set } M_{D}\\[8pt]
 \label{fig:pol-grammar}
 \end{figure}
 
-An operator writes a \emph{policy}, and the language of policies is written \ensuremath{\mathit{pol}}.
-\cref{fig:pol-grammar} gives all of it.
-A policy is either a leaf carrying a \emph{flow}, which is a predicate over packets, or an internal node applying a scheduling discipline to child policies.
+An operator writes a \emph{policy}, and the language of policies is written \ensuremath{\mathit{pol}} (\cref{fig:pol-grammar}).
+A policy is either a leaf carrying a \emph{flow} (a predicate over packets), or an internal node applying a scheduling discipline to child policies.
 No flow may label two leaves of a policy that an operator writes.
-The gateway runs
+Say that the network operator initially writes
 \[ p_1 = \Strict(\mathtt{hi}{:}\,\textsf{zoom},\ \mathtt{lo}{:}\,\textsf{gmail}), \]
-which is the leftmost policy of \cref{fig:tour}.
-Its \(\mathtt{hi}\) and \(\mathtt{lo}\) annotations are the metadata that \Strict{} declares, and each discipline declares its own, so \WFQ{} would annotate the same two arms with weights (\cref{sec:policy-dsl}).
+which is visualized in the top left of \cref{fig:tour}.
+Everything on that figure's top row is written in \ensuremath{\mathit{pol}} and is what an operator reads.
+Everything on its bottom row is what a switch runs.
+The two policies carrying an operator's mark are the two that an operator wrote.
+Here \(\mathtt{hi}\) and \(\mathtt{lo}\) are drawn from the metadata set that \Strict{} declares, and \WFQ{} would declare weights instead.
 
 \paragraph{What the switch runs}
 
-A policy is a human-readable and -writable description, but the switch runs something at a lower level.
+A policy is a human-readable and -writable description, but the physical network switch runs something at a lower level.
 It runs a \emph{control}, which is a tree of PIFOs carrying scheduling logic at every node (\cref{sec:controls}).
 Compiling a policy into a control is written \(\lceil \cdot \rceil\), and the bottom-left object of \cref{fig:tour} is \(C_1 = \lceil p_1 \rceil\).
-A packet's rank is fixed when that packet is pushed and is never revised, and a pop reads the queued entries alone.
-So rewriting a node's scheduling logic cannot affect a packet already buffered under it.
+A packet is ranked as it arrives and at no other time, and a pop reads the queued ranks alone.
+So an edit to a node's scheduling logic cannot reach a packet already buffered under it.
 
 \paragraph{An easy change}
 
 The operator adds \textsf{spotify} to the strict-priority list, asking for \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{mid}{:}\,\textsf{spotify},\allowbreak\ \mathtt{lo}{:}\,\textsf{gmail})\).
-Rio expresses this as a single \emph{edit}, \Add, which splices a freshly compiled arm under a node that is already running (\cref{sec:add}).
+Rio's \emph{transition planner} reads the running policy and the requested one, and proposes a way from the first to the second (\cref{sec:planner}).
+Whatever it proposes is drawn from a small grammar of tree edits (\cref{sec:grammar}), and here the proposal is one edit long.
+That edit is \Add, which splices a freshly compiled arm under a node that is already running (\cref{sec:add}).
 The nodes above the new arm begin admitting \textsf{spotify} traffic and passing it downward.
 Every other field of every node is left as it was, and nothing that was already buffered is affected.
 The edit installs in one instant, so each packet is scheduled either wholly under the old policy or wholly under the new one.
 This is case~1 of \cref{fig:two-timelines}.
 
-\Add{} appends rather than inserts, so Rio compares policies up to sibling order (\cref{sec:equivalences}).
-
 \paragraph{A change that cannot be installed at once}
 
-The other candidate is
+Suppose instead the operator wanted to move from \(p_1\) to
 \[ p_2 = \Strict(\mathtt{hi}{:}\,\textsf{zoom},\ \mathtt{lo}{:}\,\RR(\textsf{gmail},\allowbreak\ \textsf{spotify})), \]
 the rightmost policy of \cref{fig:tour}, which turns the \textsf{gmail} leaf into an interior round-robin node.
 Installing it in one instant would mean dropping the buffered \textsf{gmail} packets or moving them under the new round-robin node.
 Rio does neither.
+\xxx[AM]{The reason why Rio does neither is currently in the Intro. If the Intro is trimmed, let's remember to save that reasoning, to to attempt a fresh explanation here.}
+
 
 \paragraph{Reaching it anyway}
 
-Rio steps into a \emph{transitionary policy} first, and the middle panel of \cref{fig:tour} is that policy.
-\Designate{} replaces the \(\mathtt{lo}\) arm in place with a two-arm strict node, written \(\Strictstar\) (\cref{sec:designate}).
-Its high arm is the doomed \textsf{gmail} leaf, carried over with its buffered packets untouched.
+No single edit reaches \(p_2\), so the planner proposes a short run of them, each installable in a single instant, which together arrive where the operator asked to be.
+In between, the scheduler runs a policy that is neither \(p_1\) nor \(p_2\), and a stated condition says when it may leave.
+Rio steps into that \emph{transitionary policy} first, and the middle panel of \cref{fig:tour} is it.
+\Designate{} replaces \textsf{gmail}, the root's \(\mathtt{lo}\) arm, in place with a two-arm strict node, written \(\Strictstar\) (\cref{sec:designate}).
+Its high arm is the doomed \textsf{gmail} subtree, carried over with its buffered packets untouched.
 Its low arm is a freshly compiled \(\RR(\textsf{gmail},\allowbreak\ \textsf{spotify})\), which starts empty.
 \Quiesce{} closes the doomed arm to new arrivals (\cref{sec:quiesce}).
-The instant that \Designate{} fires becomes the boundary between old \textsf{gmail} traffic, which drains from the doomed arm, and new \textsf{gmail} traffic, which the surviving arm schedules and stores.
+The \emph{instant that \Designate{} fires} becomes the boundary between old \textsf{gmail} traffic, which drains from the doomed arm, and new \textsf{gmail} traffic, which the surviving arm schedules and stores.
 The backlog drains in its original order while new traffic gathers beside it.
 Once the doomed arm is empty, \Undesignate{} unhooks it together with the wrapper, leaving the survivor where the \textsf{gmail} leaf stood (\cref{sec:undesignate}).
-That is \(p_2\), reached without dropping, reordering, or re-ranking a single buffered packet.
+That is \(p_2\), reached without dropping, reordering, or re-ranking a single buffered packet, which is a theorem rather than a happy accident of this example.
 
 \paragraph{Steps and guards}
 
-Those three edits form one \emph{guarded sequence}, and \cref{fig:tour} draws its two steps.
+Those three edits form one \emph{guarded sequence}, and \cref{fig:tour} draws its two \emph{step}s.
 A step is a guard together with the edits that guard releases.
 The first step's guard is trivially true, and it releases \Designate{} and \Quiesce{} at once.
 The second step's guard becomes true when the doomed arm is empty, and it releases \Undesignate.
 So the sequence waits in one place, and the operator passes through one policy they did not ask for.
-A subtree that never stops receiving traffic never drains, so completing a sequence needs the operator's cooperation (\cref{sec:idioms}).
-
-Rio names the sequences that recur, and this one is \Replace, which phases one subtree out and another in.
-An operator asks for it by that name rather than by its three edits.
+Rio names the sequences that recur, so an operator asks for this one as \Replace{} rather than by its three edits (\cref{sec:idioms}).
 
 \paragraph{What the operator is told throughout}
 
-The middle panel of \cref{fig:tour} is a policy, in the same language the operator wrote \(p_1\) in, recovered from the running control by a read-off written \(\lfloor \cdot \rfloor\) (\cref{sec:equivalences}).
-The dashed arrow is that recovery.
-So at every instant of the transition, including the whole interval in which the scheduler runs a policy that \emph{no operator asked for}, Rio can say which policy is in force, and say it in the operator's own terms.
+The middle panel of \cref{fig:tour} is a policy, expressed in the same \ensuremath{\mathit{pol}} the operator used to write \(p_1\) and \(p_2\).
+The middle policy was recovered from the running control by a read-off written \(\lfloor \cdot \rfloor\) (\cref{sec:equivalences}).
+The solid arrow rising out of the transitionary control is that recovery.
+The dashed arrow on the right is the route Rio does not take, since it never compiles \(p_2\) from scratch, and had it done so it would have built a scheduler that behaves like \(C_2\) rather than \(C_2\) itself.
+So at every instant of the transition, including the whole interval in which the physical scheduler runs a policy that \emph{no operator asked for}, Rio can say which policy is in force, and say it in the operator's own terms.
 
 Two theorems make this worth something (\cref{sec:correctness}).
-The first is that the policy Rio reports and the policy the live control realizes agree, edit by edit.
-The second is that installing an edit never drops, reorders, or re-ranks a packet that is already buffered, so whatever change the operator observes is the new policy correctly governing new arrivals.
+The first is that the policy that Rio reports and the policy that the live control realizes \emph{agree}, edit by edit.
+The second is that installing an edit leaves every queued packet exactly where it was, so any change the operator observes is the new policy governing new arrivals rather than a cost of the transition itself.
 
-\paragraph{Who writes the sequence}
+\paragraph{Confinement}
 
-The operator supplies \(p_1\) and \(p_2\), and Rio's \emph{transition planner} proposes a sequence for them to accept or decline (\cref{sec:planner}).
+Whatever the planner proposes goes to the operator to accept or decline (\cref{sec:planner}).
 We show that some sequence always exists (\cref{sec:fallback}), but the one that is always available disturbs every node in the tree.
 Doing better is the planner's job.
 It descends while the two policies still agree, and emits the tightest edit it can at the deepest point the descent reaches.
 Rio calls the resulting economy \emph{confinement}.
-\cref{fig:tour} shows it in black, where the \Strict{} root and the \textsf{zoom} arm stand untouched across all three panels.
+\cref{fig:tour} shows it, since the \Strict{} root and the \textsf{zoom} arm are identical in all three panels while everything shaded is freshly built.
 
 \paragraph{Down to the switch}
 
@@ -1094,7 +1109,7 @@ An operator may write a \(\Strictstar\) directly (\cref{sec:policy-dsl}), but on
     \label{fig:designate-done}
   \end{subfigure}
 
-  \caption{The \Designate\,+\,drain\,+\,\Undesignate{} lifecycle. The outgoing subtree is \tritext{oldcol} and the survivor \tritext{newcol}, both under parent \(P\).}
+  \caption{The \Designate\,+\,drain\,+\,\Undesignate{} lifecycle. The doomed subtree is \tritext{oldcol} and the survivor \tritext{newcol}, both under parent \(P\).}
   \label{fig:designate}
 \end{figure*}
 
@@ -1669,7 +1684,6 @@ The planner has two ways to realize this, shown in \cref{fig:planner-add-vs-repl
   \begin{subfigure}[t]{0.56\linewidth}
     \centering
     \begin{tikzpicture}[baseline=(L.north), level distance=0.72cm, level 1/.style={sibling distance=0.62cm}, level 2/.style={sibling distance=0.38cm}, every node/.style={font=\scriptsize}]
-    \fill[newcol!12, rounded corners=2pt] (0.92,0.3) rectangle (2.4,-1.62);
     \node (L) at (-1.35,0) {$P$}
       child {node {$a$}}
       child {node {$Q$}
@@ -1677,15 +1691,17 @@ The planner has two ways to realize this, shown in \cref{fig:planner-add-vs-repl
         child {node {$c$}}
       };
     \node (R) at (1.45,0) {$P$}
-      child {node {$a$}}
-      child {node {$Q$}
-        child {node {$b$}}
-        child {node {$c$}}
-        child {node {$d$}}
+      child {node (Ra) {$a$}}
+      child {node (RQ) {$Q$}
+        child {node (Rb) {$b$}}
+        child {node (Rc) {$c$}}
+        child {node (Rd) {$d$}}
       };
     \node (S) at (0.05,0) {$\Strictstar$};
     \draw (S) -- (L);
     \draw (S) -- (R);
+    \freshbehind{(S)}
+    \freshbehind{(R)(Ra)(RQ)(Rb)(Rc)(Rd)}
     \end{tikzpicture}
     \caption{\(\Replace([], p_2)\): wrap whole tree.}
     \label{fig:planner-replace}
@@ -1693,14 +1709,14 @@ The planner has two ways to realize this, shown in \cref{fig:planner-add-vs-repl
   \begin{subfigure}[t]{0.4\linewidth}
     \centering
     \begin{tikzpicture}[baseline=(Pb.north), level distance=0.72cm, level 1/.style={sibling distance=0.9cm}, level 2/.style={sibling distance=0.5cm}, every node/.style={font=\scriptsize}]
-    \fill[newcol!12, rounded corners=2pt] (0.72,-1.28) rectangle (1.18,-1.66);
     \node (Pb) {$P$}
       child {node {$a$}}
       child {node {$Q$}
         child {node {$b$}}
         child {node {$c$}}
-        child {node {$d$}}
+        child {node (Ad) {$d$}}
       };
+    \freshbehind{(Ad)}
     \end{tikzpicture}
     \caption{\Add{} at \(Q\).}
     \label{fig:planner-add}
@@ -1755,7 +1771,7 @@ An operator debugging a sequence of a dozen steps needs to know which one failed
 
 Each intermediate \ensuremath{\mathit{pol}} that the fold produces has an explainable scheduling semantics.
 After the first step of \Replace(\ensuremath{\mathit{path}}, \ensuremath{\mathit{survivor}})'s expansion, for instance, the intermediate \ensuremath{\mathit{pol}} holds \(\Strict(\mathit{pol}@\mathit{path},\ \mathit{survivor})\) at \ensuremath{\mathit{path}}.
-That is a temporary strict-priority node favoring the outgoing \(\mathit{pol}@\mathit{path}\) over the incoming \ensuremath{\mathit{survivor}}, and it has a readable scheduling interpretation in its own right.
+That is a temporary strict-priority node favoring the doomed \(\mathit{pol}@\mathit{path}\) over the incoming \ensuremath{\mathit{survivor}}, and it has a readable scheduling interpretation in its own right.
 
 \section{Rio Hardware Implementation}\label{sec:hardware}
 
@@ -2341,8 +2357,6 @@ The transient is not \(\eqR\) to \(p_2\) at all, and becomes so only once it dra
   \begin{subfigure}[t]{0.23\linewidth}
     \centering
     \begin{tikzpicture}[baseline=(P.north), every node/.style={font=\scriptsize}]
-      \fill[newcol!12, rounded corners=2pt] (-0.20,-0.72) rectangle (0.20,-1.08);
-      \fill[newcol!12, rounded corners=2pt] (0.60,-0.72) rectangle (1.70,-1.98);
       \node (P) at (0,0)        {$P$};
       \node (d) at (-1.15,-0.9) {$d$};
       \node (s) at (0,-0.9)     {$s$};
@@ -2354,6 +2368,8 @@ The transient is not \(\eqR\) to \(p_2\) at all, and becomes so only once it dra
       \draw (P) -- node[right,font=\tiny]{$m_4$} (Q);
       \draw (Q) -- (g);
       \draw (Q) -- (x);
+      \freshbehind{(s)}
+      \freshbehind{(Q)(g)(x)}
     \end{tikzpicture}
     \caption{\(p_2\)}
     \label{fig:label-overlap-p2}
@@ -2361,8 +2377,6 @@ The transient is not \(\eqR\) to \(p_2\) at all, and becomes so only once it dra
   \begin{subfigure}[t]{0.33\linewidth}
     \centering
     \begin{tikzpicture}[baseline=(P.north), every node/.style={font=\scriptsize}]
-      \fill[newcol!12, rounded corners=2pt] (2.10,-0.72) rectangle (2.50,-1.08);
-      \fill[newcol!12, rounded corners=2pt] (0.60,-0.72) rectangle (1.70,-1.98);
       \node (P)  at (0,0)        {$P$};
       \node (d)  at (-2.3,-0.9)  {$d$};
       \node (SS) at (0,-0.9)     {$\Strictstar$};
@@ -2378,6 +2392,8 @@ The transient is not \(\eqR\) to \(p_2\) at all, and becomes so only once it dra
       \draw (SS) -- (Q);
       \draw (Q) -- (g2);
       \draw (Q) -- (x);
+      \freshbehind{(s)}
+      \freshbehind{(Q)(g2)(x)}
     \end{tikzpicture}
     \caption{transient (\emph{not} \(\eqR p_2\))}
     \label{fig:label-overlap-transient}
@@ -2385,8 +2401,6 @@ The transient is not \(\eqR\) to \(p_2\) at all, and becomes so only once it dra
   \begin{subfigure}[t]{0.23\linewidth}
     \centering
     \begin{tikzpicture}[baseline=(P.north), every node/.style={font=\scriptsize}]
-      \fill[newcol!12, rounded corners=2pt] (0.95,-0.72) rectangle (1.35,-1.08);
-      \fill[newcol!12, rounded corners=2pt] (-0.55,-0.74) rectangle (0.55,-1.98);
       \node (P) at (0,0)        {$P$};
       \node (d) at (-1.15,-0.9) {$d$};
       \node (Q) at (0,-0.9)     {$Q$};
@@ -2398,6 +2412,8 @@ The transient is not \(\eqR\) to \(p_2\) at all, and becomes so only once it dra
       \draw (P) -- node[right,font=\tiny]{$m_3$} (s);
       \draw (Q) -- (g);
       \draw (Q) -- (x);
+      \freshbehind{(s)}
+      \freshbehind{(Q)(g)(x)}
     \end{tikzpicture}
     \caption{settled (\(\eqR p_2\))}
     \label{fig:label-overlap-settled}
