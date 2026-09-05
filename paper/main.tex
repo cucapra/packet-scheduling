@@ -473,16 +473,28 @@ A \pth is a (possibly empty) sequence of child indices \(i\) read from the root.
 We use \(p@\mathit{path}\) to denote the subtree of $p$ at \pth.
 An edit's \pth names is its \emph{edit site}.
 
-\xxx[as]{Is there anything we want to say at this point about the individual edits? We could, for example, list all of them and give 1 sentence about their informal semantics.}
+\xxx[as]{Is there anything we want to say at this point about the individual edits? We could, for example, list all of them and give 1 sentence about their informal semantics. In particular, now would be a good time to give some attention to $\Strictstar$ in an informal way to illustrate how important it is for completeness.}
 
 \Cref{sec:xxx} gives the formal semantics for policy edits, in terms of both their effects on policies $p$ and on the state of live PIFO trees.
 
+\section{Semantics}
+\label{sec:semantics}
 
-\subsection{The runtime model: controls}\label{sec:controls}
+This section formalizes the semantics of PIFO trees.
+We formalize the state of PIFO tree hardware (\cref{sec:controls}),
+outline the compilation process from high-level policy trees $p$ into this state (\cref{sec:compilation}),
+and describe what each policy edit denotes (\cref{sec:xxx}).
 
-A \emph{control} is a PIFO tree in which every node carries its own rule for ranking what it enqueues.
+\subsection{PIFO Tree Controls}\label{sec:controls}
+
+We first introduce a formal model for PIFO-tree-based packet schedulers.
+A \emph{control} includes the complete state of the PIFO tree:
+the shape of the tree,
+the policy-specific scheduling logic,
+the PIFO contents (packets),
+and any policy bookkeeping state.
 The name and the model are from Mohan et al.~\cite{Mohan23}, and we note our departures from them as they arise.
-A control is the concrete state a programmable switch executes at line rate, realizable on an FPGA or SmartNIC (\cref{sec:hardware} lowers a control to exactly such a target).
+% A control is the concrete state a programmable switch executes at line rate, realizable on an FPGA or SmartNIC (\cref{sec:hardware} lowers a control to exactly such a target).
 
 \paragraph{Syntax}
 
@@ -579,7 +591,7 @@ We address node-local components of a control by a \pth, a possibly empty sequen
 The local triple at the node reached by following \pth from control \(C\)'s root is written \(C@\mathit{path}\), with fields \(C@\mathit{path}.\mathit{state}\), \(C@\mathit{path}.\mathit{pifo}\), and \(C@\mathit{path}.\mathit{z}\).
 We also write \(C@\mathit{path}.\mathit{node\_state}\) and \(C@\mathit{path}.\mathit{slot\_states}\) for the two components of \(C@\mathit{path}.\mathit{state}\).
 
-\subsection{Compiling a policy to a control}\label{sec:compilation}
+\subsection{Compiling a Policy to a Control}\label{sec:compilation}
 
 \begin{figure}[t]
 \small
@@ -631,80 +643,15 @@ A freshly compiled control therefore admits every flow it serves, and carries th
 This is essentially what the vPIFO paper's \emph{Scheduling Description Language} does informally~\cite{vPIFO}.
 They do not pin down a grammar for SDL or formalize the compilation, so our DSL can be read as a formal core of their concrete language.
 
-\section{A Grammar of Atomic Policy Edits}\label{sec:grammar}
+\subsection{Edit Semantics}
 
-\cref{sec:delta-grammar} fixes a grammar \(\delta\) of structural edits over the policy DSL of \cref{sec:policy-dsl}, admitting a grammatical form only when the hardware can install it atomically.
-\cref{sec:equivalences} says when two policies, or two controls, count as the same, and how to read a policy off a running control.
-\cref{sec:edit-semantics} gives each form its two readings.
-
-\subsection{Equivalences, and Reading Off the Running Policy}\label{sec:equivalences}
-
-We write \(C \sim C'\) for the equivalence on well-formed controls that holds when the two are identical except in their live \pifo contents and \stt{}s.
-Two \(\sim\)-related controls thus have the same tree shape and the same \zz at every node, and differ at most in the transient live state that traffic leaves behind.
-Serving \push{}/\pop{} operations is one way controls come to be \(\sim\)-related.
-
-We write \(p \eqR p'\) for the smallest congruence on \pol such that, at any internal \disc-node, permuting the child arms gives a congruent \pol.
-Each arm's metadatum is tagged to the arm, so it travels with the arm under the permutation.
-The metadata is what carries the scheduling-meaningful content, so such a permutation does not change the scheduler.
-
-Because \(\eqR\) only permutes sibling arms, each \(\eqR\)-class has a canonical representative under any fixed ordering of the arms at a node.
-
-We write \(C \simR C'\) for the equivalence obtained by closing \(\sim\) under sibling permutations.
-Permuting a node's children renumbers the slots they sit in, so the parent's \pifo entries, its \slotstates, its \(\mathit{z}.\mathit{serves}\), and its \(\mathit{z}.\mathit{meta}\) are all renumbered to match.
-The two controls present different positional layouts and realize the same scheduler.
-
-
-\paragraph{The bridge: \(\lfloor \cdot \rfloor\)}
-
-We write \(\lfloor C \rfloor\) to mean ``the \pol that \(C\) realizes''.
-Intuitively, \(\lfloor \cdot \rfloor\) reads the policy straight off the control.
-It walks the control's tree and recovers, node by node, the \pol term the control implements, discarding the live \pifo and \stt contents that traffic happens to have left behind.
-We define it by structural recursion on \(C\), with one clause for leaves and one for internal nodes.
-Both clauses read out of \zz (\cref{sec:controls}).
-A leaf is named by the flow its classifier serves.
-An internal node is named by the discipline its ranker names, and its arms are annotated out of its metadata.
-
-\[
-\begin{array}{@{}l@{}}
-\lfloor C \rfloor = f,\ \text{when \(C\) is a leaf and } \mathrm{dom}(\mathit{z}.\mathit{serves}) = \{f\};\\[4pt]
-\lfloor C \rfloor = D(m_1{:}\,\lfloor c_1 \rfloor, \ldots, m_n{:}\,\lfloor c_n \rfloor),\\
-\qquad \text{when \(C\) is internal with children } c_1 \ldots c_n,\\
-\qquad \mathit{z}.\mathit{rank} \text{ names } D, \text{ and } m_i = \mathit{z}.\mathit{meta}(i).
-\end{array}
-\]
-
-The recursion runs on a finite tree and consults neither \stt nor \pifo nor \(\mathit{z}.\mathit{admit}\), so it returns a single value.
-\xxx[AM to AS]{You suggested defining \(\lfloor \cdot \rfloor\) as the inverse of \(\lceil \cdot \rceil\), and then worried that \(\lceil \cdot \rceil\) is not invertible if one is strict about sibling order.
-\(\lfloor \cdot \rfloor\) is now a structural recursion on \(C\), so it is total and single-valued by construction, and no inverse has to be argued for.
-The three items below are then consequences rather than defining rules, and the third of them is a theorem.}
-Every well-formed control therefore determines one \pol, independently of how that control was reached, and we may write \(\lfloor C \rfloor\) and use it as a function.
-
-Three facts follow.
-
-\begin{enumerate}
-\item \emph{Compiler correctness.} Compiling a \(p\) to a control and reading it straight back recovers \(p\) itself, up to the sibling-order freedom the compiler enjoyed in laying it out: \(\lfloor \lceil p \rceil \rfloor \eqR p\).
-This is immediate from the compilation of \cref{sec:compilation}, which installs \disc's ranker at each internal node, copies each arm's annotation into \(\mathit{z}.\mathit{meta}\), and has each leaf serve its own flow.
-The relation is \(\eqR\) rather than \(=\) precisely because the compiler can choose arm order when creating \(\lceil p \rceil\).
-\item \emph{Insensitivity to live contents.} \(\lfloor \cdot \rfloor\) reads only the tree shape, each leaf's served flow, and each internal node's ranker-discipline and per-arm metadata.
-It never reads \stt, \pifo, or \(\mathit{z}.\mathit{admit}\).
-So \(\sim\)-related controls, which share shape and \zz outright, are equal when read off using \(\lfloor \cdot \rfloor\). 
-Thus, if \(C \sim C'\), then \(\lfloor C \rfloor = \lfloor C' \rfloor\).
-\item \emph{Closure under \(\delta\).} A form's two readings (\cref{sec:delta-grammar}) agree.
-Editing the control and reading it off gives the same \pol, up to sibling order, as applying the \pol-level effect to the read-off, so \(\lfloor \csem{\delta}(C) \rfloor \eqR \psem{\delta}(\lfloor C \rfloor)\).
-This theorem is proved one form at a time in \cref{sec:per-form} and collected as \cref{thm:interplay}.
-The relation is again \(\eqR\), not \(=\), because \(\csem{\delta}\) may lay the edited node's children out in any sibling order.
-\end{enumerate}
-
-This is how we give the transitionary policy the semantics that \cref{sec:intro} promises.
-Even when the presently running \pol is just an intermediate policy that the runtime crafted on the way from the running policy to the operator's true request, we can still read off and report to the operator exactly what is running.
-\cref{sec:interplay} takes up the third fact and proves it, as the ``commuting square'' these pieces trace out.
-
-\subsection{Edit Semantics}\label{sec:edit-semantics}
-
-This section gives each form of \(\delta\) its two readings.
+We formalize the semantics of each policy edit (\cref{sec:grammar}) using two denotations.
+For any edit $\delta$,
 \(\csem{\delta}\) says what the form does to the running control, and \(\psem{\delta}\) says what it does to the operator's policy.
-Each is given here as a definition, together with the preconditions under which the form is defined.
-That the two agree, and that neither disturbs the buffered backlog, are claims about the definitions rather than parts of them, and \cref{sec:correctness} proves both form by form.
+Each edit includes preconditions under which it is defined.
+Our primary theoretical claim is that these two denotations agree, as outlined in \cref{sec:correctness} proves both form by form.
+
+\xxx[as]{Now I am very confident that what we need to do here is relegate almost all of this subsection to an appendix. Let us show one illustrative edit and demote everything else.}
 
 \paragraph{Notation}
 
@@ -1189,6 +1136,74 @@ Since \(\mathtt{at}\) writes \(B\) back into the parent's slot \(k\), the parent
 That arm is \(\lfloor B \rfloor\).
 The wrapper's own annotations go with it, and the surviving arm inherits the annotation the wrapper held at its parent.
 The empty-arm-0 precondition is operational and leaves no trace at \pol-level.
+
+
+
+\section{A Grammar of Atomic Policy Edits}\label{sec:grammar}
+
+\subsection{Equivalences, and Reading Off the Running Policy}\label{sec:equivalences}
+
+We write \(C \sim C'\) for the equivalence on well-formed controls that holds when the two are identical except in their live \pifo contents and \stt{}s.
+Two \(\sim\)-related controls thus have the same tree shape and the same \zz at every node, and differ at most in the transient live state that traffic leaves behind.
+Serving \push{}/\pop{} operations is one way controls come to be \(\sim\)-related.
+
+We write \(p \eqR p'\) for the smallest congruence on \pol such that, at any internal \disc-node, permuting the child arms gives a congruent \pol.
+Each arm's metadatum is tagged to the arm, so it travels with the arm under the permutation.
+The metadata is what carries the scheduling-meaningful content, so such a permutation does not change the scheduler.
+
+Because \(\eqR\) only permutes sibling arms, each \(\eqR\)-class has a canonical representative under any fixed ordering of the arms at a node.
+
+We write \(C \simR C'\) for the equivalence obtained by closing \(\sim\) under sibling permutations.
+Permuting a node's children renumbers the slots they sit in, so the parent's \pifo entries, its \slotstates, its \(\mathit{z}.\mathit{serves}\), and its \(\mathit{z}.\mathit{meta}\) are all renumbered to match.
+The two controls present different positional layouts and realize the same scheduler.
+
+
+\paragraph{The bridge: \(\lfloor \cdot \rfloor\)}
+
+We write \(\lfloor C \rfloor\) to mean ``the \pol that \(C\) realizes''.
+Intuitively, \(\lfloor \cdot \rfloor\) reads the policy straight off the control.
+It walks the control's tree and recovers, node by node, the \pol term the control implements, discarding the live \pifo and \stt contents that traffic happens to have left behind.
+We define it by structural recursion on \(C\), with one clause for leaves and one for internal nodes.
+Both clauses read out of \zz (\cref{sec:controls}).
+A leaf is named by the flow its classifier serves.
+An internal node is named by the discipline its ranker names, and its arms are annotated out of its metadata.
+
+\[
+\begin{array}{@{}l@{}}
+\lfloor C \rfloor = f,\ \text{when \(C\) is a leaf and } \mathrm{dom}(\mathit{z}.\mathit{serves}) = \{f\};\\[4pt]
+\lfloor C \rfloor = D(m_1{:}\,\lfloor c_1 \rfloor, \ldots, m_n{:}\,\lfloor c_n \rfloor),\\
+\qquad \text{when \(C\) is internal with children } c_1 \ldots c_n,\\
+\qquad \mathit{z}.\mathit{rank} \text{ names } D, \text{ and } m_i = \mathit{z}.\mathit{meta}(i).
+\end{array}
+\]
+
+The recursion runs on a finite tree and consults neither \stt nor \pifo nor \(\mathit{z}.\mathit{admit}\), so it returns a single value.
+\xxx[AM to AS]{You suggested defining \(\lfloor \cdot \rfloor\) as the inverse of \(\lceil \cdot \rceil\), and then worried that \(\lceil \cdot \rceil\) is not invertible if one is strict about sibling order.
+\(\lfloor \cdot \rfloor\) is now a structural recursion on \(C\), so it is total and single-valued by construction, and no inverse has to be argued for.
+The three items below are then consequences rather than defining rules, and the third of them is a theorem.}
+Every well-formed control therefore determines one \pol, independently of how that control was reached, and we may write \(\lfloor C \rfloor\) and use it as a function.
+
+Three facts follow.
+
+\begin{enumerate}
+\item \emph{Compiler correctness.} Compiling a \(p\) to a control and reading it straight back recovers \(p\) itself, up to the sibling-order freedom the compiler enjoyed in laying it out: \(\lfloor \lceil p \rceil \rfloor \eqR p\).
+This is immediate from the compilation of \cref{sec:compilation}, which installs \disc's ranker at each internal node, copies each arm's annotation into \(\mathit{z}.\mathit{meta}\), and has each leaf serve its own flow.
+The relation is \(\eqR\) rather than \(=\) precisely because the compiler can choose arm order when creating \(\lceil p \rceil\).
+\item \emph{Insensitivity to live contents.} \(\lfloor \cdot \rfloor\) reads only the tree shape, each leaf's served flow, and each internal node's ranker-discipline and per-arm metadata.
+It never reads \stt, \pifo, or \(\mathit{z}.\mathit{admit}\).
+So \(\sim\)-related controls, which share shape and \zz outright, are equal when read off using \(\lfloor \cdot \rfloor\). 
+Thus, if \(C \sim C'\), then \(\lfloor C \rfloor = \lfloor C' \rfloor\).
+\item \emph{Closure under \(\delta\).} A form's two readings (\cref{sec:delta-grammar}) agree.
+Editing the control and reading it off gives the same \pol, up to sibling order, as applying the \pol-level effect to the read-off, so \(\lfloor \csem{\delta}(C) \rfloor \eqR \psem{\delta}(\lfloor C \rfloor)\).
+This theorem is proved one form at a time in \cref{sec:per-form} and collected as \cref{thm:interplay}.
+The relation is again \(\eqR\), not \(=\), because \(\csem{\delta}\) may lay the edited node's children out in any sibling order.
+\end{enumerate}
+
+This is how we give the transitionary policy the semantics that \cref{sec:intro} promises.
+Even when the presently running \pol is just an intermediate policy that the runtime crafted on the way from the running policy to the operator's true request, we can still read off and report to the operator exactly what is running.
+\cref{sec:interplay} takes up the third fact and proves it, as the ``commuting square'' these pieces trace out.
+
+\subsection{Edit Semantics}\label{sec:edit-semantics}
 
 \section{Correctness}\label{sec:correctness}
 
