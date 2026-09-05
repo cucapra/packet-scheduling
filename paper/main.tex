@@ -270,9 +270,28 @@ We contribute a tool that achieves this and shows [improvements].
 
 \section{Rio by Example}\label{sec:tour}
 
-\xxx[AM]{Opening sentences TK, and obviously the Intro before this will shrink considerably. For now I am drafting this section and making \emph{none} of the cuts that it will trigger.}
+\Cref{fig:tour} illustrates Rio's approach to implementing an incremental update to a packet-scheduling policy.
+This section walks through the example to provide an overview of the Rio system and this paper.
 
-\paragraph{The policy an operator writes}
+\paragraph{Scheduling policies}
+
+Imagine a router \xxx[as]{is a router what we want to conjure? maybe a SmartNIC? I don't know what a ``gateway'' is, really} that needs to prioritize traffic from two flows, labeled \textsf{zoom} and \textsf{gmail}.
+This router uses a reconfigurable packet scheduler based on PIFO trees~\cite{Sivaraman16}.
+An operator opts to configure the router to always prioritize \textsf{zoom} packets over \textsf{gmail} packets.
+
+Instead of directly configuring the PIFO-based hardware's scheduling transactions, the operator specifies the policy using a simple hierarchical policy language.
+The policy for this strict prioritization is:
+%
+\[ p_1 = \Strict(\mathtt{hi}{:}\,\textsf{zoom},\ \mathtt{lo}{:}\,\textsf{gmail}) \]
+%
+The policy is a tree where internal nodes are scheduling disciplines and the leaves are packet flows.
+Semantically, the packet scheduler works by queueing incoming packets at the leaves and recursively popping packets according to each discipline.
+% When a packet arrives, the classifies the packet and pushes it into the FIFO queue for the corresponding leaf in the policy tree.
+% Scheduling disciplines determine which child to (recursively) pop when sending packets.
+This $\Strict$ discipline always picks the $\mathtt{hi}$ subtree over the $\mathtt{lo}$ subtree.
+% In this example, the $\Strict$ discipline always forwards packets from the $\mathtt{hi}$ subtree when they are available, only falling back to the $\mathtt{lo}$ subtree when the former queue is empty.
+\cref{fig:pol-grammar} lists the grammar for this simple policy language, and \Cref{sec:policy-dsl} formalizes it.
+\xxx[as]{I am having second thoughts about putting the grammar here. If this is really just an overview section, maybe the grammar belongs in the formalism section.}
 
 \begin{figure}[t]
 \[
@@ -286,12 +305,50 @@ D\ \text{a scheduling discipline, declaring a metadata set } M_{D}\\[8pt]
 \label{fig:pol-grammar}
 \end{figure}
 
-An operator writes a policy in \pol (\cref{fig:pol-grammar}), a small grammar that permits either a leaf carrying a \emph{flow} (a predicate over packets), or an internal node applying a scheduling discipline to its child policies.
-Each arm is labeled with a metadatum the discipline declares, and no flow may label two leaves of a policy that an operator writes.
-Say that the network operator initially writes
-\[ p_1 = \Strict(\mathtt{hi}{:}\,\textsf{zoom},\ \mathtt{lo}{:}\,\textsf{gmail}), \]
-which is visualized in the top left of \cref{fig:tour}.
-Everything on that figure's top row is written in \pol and is human readable.
+\paragraph{Changing the scheduling policy}
+
+Next, imagine that a new flow arrives, labeled $\mathsf{spotify}$.
+The operator wants to implement a new packet scheduling policy that incorporates this flow:
+%
+\[ p_2 = \Strict(\mathtt{hi}{:}\,\textsf{zoom},\ \mathtt{lo}{:}\,\RR(\textsf{gmail},\allowbreak\ \textsf{spotify})) \]
+%
+The upper-left and upper-right of \cref{fig:tour} illustrate the policies $p_1$ and $p_2$.
+This paper's purpose is to implement policy changes, like the one from $p_1$ to $p_2$, with low latency and without dropping packets.
+
+Our key thesis is that PIFO-tree-based packet schedulers can efficiently support some kinds of policy changes but not others.
+We identify a set of \emph{policy edits} that this kind of hardware can implement atomically:
+i.e., so that the policy changes between the processing of two adjacent packets in the traffic stream.
+\Cref{sec:grammar} enumerates and formalizes these policy edits,
+and \Cref{sec:hardware} demonstrates how PIFO tree hardware can implement them atomically.
+\xxx[as]{Maybe some examples?}
+
+In our example, we do not support an atomic transition from $p_1$ to $p_2$.
+The problem is that \xxx[as]{brief intuition about why this would be hard to implement in PIFO tree hardware---something about needing to move gmail to a different PE because it appears at a different level in the hierarchy}.
+Instead, we can implement the transition in two steps.
+We introduce a temporary transitionary policy, $p_\text{temp}$ (shown in the middle of \cref{fig:tour}).
+\xxx[as]{As shown, $p_\text{temp}$ seems to violate the invariant that the leaves are unique. Can we relabel one ``gmail old'' or something?}
+\xxx[as]{Explain why both of these transitions can be made efficient.}
+
+\xxx[as]{It may seem disappointing that we need to use a policy that is neither $p_1$ or $p_2$. But we argue that this is strictly better than the alternatives, which are (a) drop packets, (b) recirculate, or (c) some chaotic period where you don't know what policy is running.}
+
+\paragraph{Formal guarantees}
+We formalize the semantics of policy edits and their effects on PIFO tree operation.
+Our goal is to guarantee that policy edits correctly update PIFO tree state to achieve the desired change in the high-level policy.
+
+Specifically, \Cref{sec:xxx} presents a formal description of a PIFO tree \emph{control}, $C$, representing the state of a packet scheduler.
+The control includes the logic to implement a desired policy,
+the in-flight packets,
+and any necessary policy bookkeeping state.
+A compiler translates a policy tree $p$ into a control $C$.
+
+\Cref{sec:grammar} formalizes the semantics of policy edits, $\delta$.
+We describe how each edit affects both high-level policies $p$ and low-level controls $C$.
+Our central guarantee is that these edits agree.
+\Cref{sec:correctness} states and proves this theorem.
+
+\paragraph{Hardware implementation}
+\xxx[as]{We show what extensions you need, and we have RTL}
+
 
 \paragraph{What the policy compiles to}
 
