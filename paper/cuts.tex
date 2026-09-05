@@ -57,7 +57,7 @@
 % From: \S4.1, just before fig:delta-grammar
 % ---------------------------------------------------------------------------
 
-The node a form's \ensuremath{\mathit{path}} names is its \emph{edit site}, with \ChangeRoot{} the one exception, since there the path gives the surviving subtree instead.
+The node a form's \pth names is its \emph{edit site}, with \ChangeRoot{} the one exception, since there the path gives the surviving subtree instead.
 
 
 % ---------------------------------------------------------------------------
@@ -117,7 +117,7 @@ That is the \PruneDownTo{} idiom, which drains and \Remove{}s those siblings in 
 Doing so reduces the chain above \(C@\nu\) to the unary shape that \ChangeRoot{} accepts.
 
 \emph{What the chain carries, and what is discarded.}
-An internal node's \ensuremath{\mathit{node\_state}}, rank function, and \ensuremath{\mathit{pifo}} ordering exist to pick among siblings.
+An internal node's \nodestate, rank function, and \pifo ordering exist to pick among siblings.
 A unary node has no siblings to choose between.
 Every pop is forced into its one arm.
 
@@ -131,8 +131,8 @@ It is the atomic step by which the operator says ``promote \(p@\nu\) to the root
 \PruneDownTo{} packages this with the upstream draining and \Remove{}s that make the chain unary in the first place, so the operator's request (``prune to this subtree'') is realized as a sequence whose final step discards exactly the ancestor influence that the operator has chosen to abandon.
 
 \emph{Pol-level effect.}
-The \ensuremath{\mathit{pol}} changes from the unary chain wrapping \(p@\nu\), for instance \(\Strict(p@\nu)\), to just \(p@\nu\).
-This is \ensuremath{\mathit{pol}}-visible: the root discipline observably changes, which is the substantive content of the form.
+The \pol changes from the unary chain wrapping \(p@\nu\), for instance \(\Strict(p@\nu)\), to just \(p@\nu\).
+This is \pol-visible: the root discipline observably changes, which is the substantive content of the form.
 Whether that pol-visible change reorders in-flight traffic depends on whether the discarded chain was doing per-packet reordering (see previous Note).
 
 
@@ -150,7 +150,7 @@ My counter-offer is to promote non-disruption to a collected theorem rather than
 % ---------------------------------------------------------------------------
 
 Four of the seven pass that check outright.
-\Designate{} inserts a node whose \ensuremath{\mathit{pifo}} is not empty, \Undesignate{} drops one, and \ChangeRoot{} discards a whole chain of them, so those three need an argument of their own.
+\Designate{} inserts a node whose \pifo is not empty, \Undesignate{} drops one, and \ChangeRoot{} discards a whole chain of them, so those three need an argument of their own.
 
 
 % ---------------------------------------------------------------------------
@@ -167,7 +167,7 @@ Four of the seven pass that check outright.
 
 \emph{Preservation of \(\vdash\).} \(\vdash C\) is a conjunction of per-node obligations, and those on \(C@\nu\)'s nodes are exactly \(\vdash C@\nu = \vdash C'\).
 The discarded ancestors' obligations are forgotten with them.
-\emph{Non-disruption.} Every in-flight packet sits in a \ensuremath{\mathit{pifo}} within \(C@\nu\) (the discarded ancestor pifos held routing entries, not packets).
+\emph{Non-disruption.} Every in-flight packet sits in a \pifo within \(C@\nu\) (the discarded ancestor pifos held routing entries, not packets).
 Those entries are redundant.
 A \pop{} before \(\delta\) descends the unary chain, and each ancestor pifo has the single slot \(0\), so every such pop is forced to slot \(0\) and lands at \(C@\nu\).
 A \pop{} after \(\delta\) acts on \(C@\nu\) directly and returns the same packet.
@@ -188,7 +188,7 @@ So \ChangeRoot{} is non-disruptive.
 % From: including the A(B(D(F,G),E),C) example and its path table
 % ---------------------------------------------------------------------------
 
-\item \textbf{\PruneDownTo(\ensuremath{\mathit{path}})} retires every off-path subtree along the route from the root to \ensuremath{\mathit{path}} (call them \(\pi_a, \ldots, \pi_z\)), then \ChangeRoot{}s to \ensuremath{\mathit{path}}.
+\item \textbf{\PruneDownTo(\pth)} retires every off-path subtree along the route from the root to \pth (call them \(\pi_a, \ldots, \pi_z\)), then \ChangeRoot{}s to \pth.
 This idiom is the operator-facing way to say ``abandon everything except this subtree.''
 
 Each \Retire{} removes one off-path subtree; once they have all fired, every ancestor along the path is unary, satisfying \ChangeRoot's precondition (\cref{sec:changeroot}).
@@ -260,8 +260,8 @@ The opposite move would keep the running tree and splice fresh structure \emph{a
 % From: \S7.2's top-level pass
 % ---------------------------------------------------------------------------
 
-\item \(p_2\) embeds in \(p_1\) at \ensuremath{\mathit{path}}. Emit \(\PruneDownTo(\mathit{path})\).
-A structural sub-policy test walks \(p_1\) looking for a subtree equal to \(p_2\); if it finds one, \ensuremath{\mathit{path}} names where it sits.
+\item \(p_2\) embeds in \(p_1\) at \pth. Emit \(\PruneDownTo(\mathit{path})\).
+A structural sub-policy test walks \(p_1\) looking for a subtree equal to \(p_2\); if it finds one, \pth names where it sits.
 The match is unique: by \cref{sec:policy-dsl}'s leaf-partition validity each flow in \(p_2\) may appear at most once in \(p_1\), so \(p_1\) can host \(p_2\) as a subtree in at most one position.
 This test runs only at the top level.
 
@@ -292,7 +292,7 @@ foreach a in {a_0, ..., a_m}:
 
 %% and, further down, after the three-lowerings commentary:
 
-\ChangeRoot{} writes no flow tables: \ensuremath{\mathit{path}}'s \texttt{Assoc} and \texttt{Map} already describe the post-commit live tree, since collapsing the unary vine above \ensuremath{\mathit{path}} leaves the flows-to-leaves mapping unchanged.
+\ChangeRoot{} writes no flow tables: \pth's \texttt{Assoc} and \texttt{Map} already describe the post-commit live tree, since collapsing the unary vine above \pth leaves the flows-to-leaves mapping unchanged.
 
 %% ---------------------------------------------------------------------------
 %% 2026-09-01: the manual-vs-paper pass on \S8.
@@ -439,7 +439,7 @@ Either give it one or take it out.}
 Sibling subtrees share a root level.
 Suppose the outgoing subtree has height two and sits on levels 5 and 6, and a survivor of height three is to replace it.
 The survivor's root belongs on level 5, beside the root it replaces, and its leaves reach level 7.
-A node that holds a \ensuremath{\mathit{pifo}} has to live somewhere, and a literal \Strict-2 wrapper would take level 5 for itself.
+A node that holds a \pifo has to live somewhere, and a literal \Strict-2 wrapper would take level 5 for itself.
 That pushes the outgoing subtree down to levels 6 and 7 and puts the survivor on 6 through 8, and retiring the wrapper afterwards pulls the survivor back up.
 Two subtrees are laid out twice over, on account of a node that exists only for the length of a drain.
 
