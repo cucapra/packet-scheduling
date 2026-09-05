@@ -331,7 +331,7 @@ and \Cref{sec:hardware} demonstrates how PIFO tree hardware can implement them a
 
 \paragraph{A two-step policy change}
 
-Suppose that, instead of $p'$, the operator wants to move from $p_1$ to:
+Suppose that, instead of $p'$, the operator wants to move from $p_1$ to one that replaces a leaf with a subtree:
 %
 \[ p_2 = \Strict(\mathtt{hi}{:}\,\textsf{zoom},\ \mathtt{lo}{:}\,\RR(\textsf{gmail},\allowbreak\ \textsf{spotify})) \]
 %
@@ -342,7 +342,17 @@ The problem is that \xxx[as]{brief intuition about why this would be hard to imp
 Instead, we can implement the transition in two steps.
 We introduce a temporary transitionary policy, $p_\text{temp}$ (shown in the middle of \cref{fig:tour}).
 \xxx[as]{As shown, $p_\text{temp}$ seems to violate the invariant that the leaves are unique. Can we relabel one ``gmail old'' or something?}
-\xxx[as]{Explain why both of these transitions can be made efficient.}
+The idea is to insert a new, empty $\RR$ subtree
+without yet deleting the old \textsf{gmail} queue and its in-flight packets.
+New traffic will go to the new subtree while the old \textsf{gmail} queue drains.
+The $\Strictstar$ policy prioritizes the old packets over new packets.
+When the old \textsf{gmail} queue becomes empty, $p_\text{tmp}$ behaves identically to $p_2$.
+At this point, a second atomic policy edit can collapse the $\Strictstar$ policy and transition to $p_2$, as desired.
+
+% Although an atomic transition from $p_1$ to $p_2$ is not possible,
+Rio can implement atomic transitions from $p_1$ to $p_\text{temp}$ and from $p_\text{temp}$ to $p_2$.
+The key mechanism is the $\Strictstar$ policy node, which reflects a special mechanism we add to PIFO tree hardware to enable efficient policy changes.
+\xxx[as]{Forward-reference to the section(s) that explain the deal with $\Strictstar$.}
 
 \xxx[as]{It may seem disappointing that we need to use a policy that is neither $p_1$ or $p_2$. But we argue that this is strictly better than the alternatives, which are (a) drop packets, (b) recirculate, or (c) some chaotic period where you don't know what policy is running.}
 
@@ -383,14 +393,6 @@ Every other field of every node is left as it was, and nothing that was already 
 The edit installs \emph{atomically}, meaning each packet is scheduled either wholly under the old policy or wholly under the new one.
 This is case~1 of \cref{fig:two-timelines}.
 
-\paragraph{A change that cannot be installed at once}
-
-Suppose instead that the operator wanted to move from \(p_1\) to
-\[ p_2 = \Strict(\mathtt{hi}{:}\,\textsf{zoom},\ \mathtt{lo}{:}\,\RR(\textsf{gmail},\allowbreak\ \textsf{spotify})), \]
-which is the rightmost policy of \cref{fig:tour}.
-Installing it atomically would mean dropping the buffered \textsf{gmail} packets or moving them under the new round-robin node.
-Rio does neither.
-\xxx[AM]{The \emph{reason} why Rio does neither is currently in the Intro. If the Intro is trimmed, let's remember to save that reasoning, or to attempt a fresh explanation here.}
 
 
 \paragraph{Reaching it anyway}
