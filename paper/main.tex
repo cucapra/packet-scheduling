@@ -331,7 +331,7 @@ and \Cref{sec:hardware} demonstrates how PIFO tree hardware can implement them a
 
 \paragraph{A two-step policy change}
 
-Suppose that, instead of $p'$, the operator wants to move from $p_1$ to one that replaces a leaf with a subtree:
+Suppose that, instead of $p'$, the operator wants to move from $p_1$ to a policy that replaces a leaf with a subtree:
 %
 \[ p_2 = \Strict(\mathtt{hi}{:}\,\textsf{zoom},\ \mathtt{lo}{:}\,\RR(\textsf{gmail},\allowbreak\ \textsf{spotify})) \]
 %
@@ -357,7 +357,7 @@ The key mechanism is the $\Strictstar$ policy node, which reflects a special mec
 \paragraph{Planning policy transitions}
 
 Our set of atomic policy edits (\Cref{sec:grammar}) is \emph{complete:}
-for any pair of policies, there exists at least one chain of edits that can implement a transition between them.
+for any pair of policies, there exists a chain of edits that implements a transition between them.
 However, some policy changes are more disruptive than others.
 A change from $p_1$ to $p'$ happens in a single atomic step, while
 changing from $p_1$ to $p_2$ requires some time in the transitionary policy $p_\text{temp}$.
