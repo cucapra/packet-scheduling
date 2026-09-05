@@ -439,19 +439,6 @@ If a packet does not match any of the flows in the scheduling tree's leaves, the
 
 \subsection{Policy Edits}\label{sec:delta-grammar}
 
-We fix a small grammar \(\delta\) of \emph{policy tree edits}, which are structural rewrites that transform one running policy tree into another.
-Every form has two readings, pinned down form by form in \cref{sec:edit-semantics}.
-\(\csem{\delta} : \mathit{control} \rightharpoonup \mathit{control}\) rewrites the running control, and \(\psem{\delta} : \mathit{pol} \rightharpoonup \mathit{pol}\) names that same edit's effect on the operator's policy in closed form.
-
-Three properties shape the choice of forms.
-They are \emph{atomic}, since a form is admitted only if the hardware substrate can commit \(\csem{\delta}\) as a single instant (\cref{sec:hardware}).
-They are \emph{explainable}, since \(\psem{\delta}\) states every form's effect back to the operator in the DSL they wrote, so the planner can report which policy change it is about to make and echo it back for approval (\cref{sec:planner}).
-And they are \emph{complete}, since the grammar can express a sequence that reaches any \(p_2\) from any \(p_1\), which \cref{sec:fallback} shows by exhibiting one that always works.
-
-An edit describes \emph{where} in the tree the change lands and \emph{what} the change is.
-Throughout this section \(p_1\) is the presently running policy, and \(p_1@\mathit{path}\) is its subtree at \pth.
-The node a form's \pth names is its \emph{edit site}.
-
 \begin{figure}[t]
 \small
 \[
@@ -470,27 +457,25 @@ The node a form's \pth names is its \emph{edit site}.
 \label{fig:delta-grammar}
 \end{figure}
 
-The grammar is given in \cref{fig:delta-grammar}.
+\Cref{fig:delta-grammar} lists a small grammar of \emph{policy tree edits}, which are rewrites that transform one policy tree into another.
+We choose the set of edits to meet these criteria:
+%
+\begin{enumerate}
+\item They are \emph{atomic}. PIFO tree hardware can commit each edit such that packets are processed either by the original policy or the edited one (\Cref{sec:hardware}).
+\xxx[as]{Do we need more intuition here to suggest why the reader should believe that all of these are atomic?}
+\item They are \emph{explainable}. Each edit transforms a policy $p$ in our policy DSL into a new policy $p'$. Later, we also show how each edit applies to live PIFO tree state to reflect these changes (\cref{sec:xxx}).
+\item They are \emph{complete}. For any pair of policies $p_1$ and $p_2$, a sequence of edits suffices to transform $p_1$ into $p_2$. \cref{sec:fallback} demonstrates a ``fallback'' path that always works.
+\item They are \emph{non-destructive}, i.e., edits do not drop in-flight packets. Edits that delete subtrees, such as $\Remove$, have preconditions that require those subtrees to be empty.
+\end{enumerate}
+%
+An edit describes \emph{where} in the tree the change lands and \emph{what} the change is.
 A \pth is a (possibly empty) sequence of child indices \(i\) read from the root.
-\xxx[AM to AS]{On writing \(\mathit{path}\) as \(\cdot \mid (i, \mathit{path})\) rather than \([\,] \mid i \mathbin{::} \mathit{path}\): I would rather keep the list notation.
-It is not only the figure that would have to change.
-Every rule in \cref{sec:edit-semantics} recurses on \(i \mathbin{::} \mathit{rest}\), \(\mathtt{at}\) is defined by that same split, and paths are destructed as \(\pi \mathbin{+\!\!+} [k]\) throughout, which has no comfortable reading under the pair syntax.}
-Two forms take a \pol argument (\cref{sec:policy-dsl}): in \Add{} it is the new arm, and in \Designate{} it is the surviving subtree.
-Two carry a discipline \disc together with a metadatum \(m\) drawn from \(M_{D}\), and in both the form is defined only when \disc is the discipline the node it names actually runs.
+We use \(p@\mathit{path}\) to denote the subtree of $p$ at \pth.
+An edit's \pth names is its \emph{edit site}.
 
-Edits that would have to discard packets are expressly not in the grammar.
-For example, \Remove{} has a precondition saying that it may fire only when its target subtree is already empty, so structural deletion never has to discard a buffered packet.
-The richer reconfigurations an operator may want are realized as sequences of these forms, called \emph{idioms}, which \cref{sec:idioms} defines.
-\Retire{} drains a subtree and then removes it, and \Replace{} swaps one subtree for another in place.
+\xxx[as]{Is there anything we want to say at this point about the individual edits? We could, for example, list all of them and give 1 sentence about their informal semantics.}
 
-\xxx[AM]{I nixed \textsf{ChangeRoot} and \textsf{PruneDownTo} on 2026-08-31, on the grounds that no reader finishing this paper without them would ask where they went.
-The grammar is six forms rather than seven and the idiom set is three rather than four.
-Nothing in the completeness argument moved, since \cref{sec:fallback}'s always-available plan uses \Designate, \Quiesce, and \Undesignate{} only.
-\texttt{paper/cuts.tex} keeps every removed passage verbatim.}
-\cref{sec:edit-semantics} takes up the six forms one at a time.
-When \(p_1\) and \(p_2\) are already the same up to sibling order (written \(\eqR\), and pinned down in \cref{sec:equivalences}), the planner emits the empty sequence and the live control is left untouched.
-
-Before taking up the forms themselves, \cref{sec:equivalences} says when two policies, or two controls, count as the same, and how to recover a \pol from a control.
+\Cref{sec:xxx} gives the formal semantics for policy edits, in terms of both their effects on policies $p$ and on the state of live PIFO trees.
 
 
 \subsection{The runtime model: controls}\label{sec:controls}
