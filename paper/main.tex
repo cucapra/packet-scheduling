@@ -370,9 +370,7 @@ Rio calls that economy \emph{confinement}, and \cref{fig:tour} shows it: the \St
 Each edit is lowered mechanically into a short list of instructions that a programmable switch can run, and the substrate installs one such list as a single commit (\cref{sec:hardware}).
 That commit is what makes an edit atomic in practice.
 
-\section{Background \& Motivation}\label{sec:background}
-
-\subsection{Hierarchical scheduling on hardware}\label{sec:hierarchical}
+\section{Background}\label{sec:background}
 
 A \emph{PIFO} (push-in, first-out queue) is a priority queue that is additionally defined to break rank-ties in FIFO order.
 Where a single PIFO expresses just one scheduling decision, a PIFO tree composes policies via parent-child relationships, capturing the hierarchical policies that operators actually deploy.
@@ -380,14 +378,14 @@ Where a single PIFO expresses just one scheduling decision, a PIFO tree composes
 A PIFO tree is typically lowered to hardware by mapping each tree depth onto a dedicated processing element (PE), with siblings and cousins sharing the PE at their depth.
 Pinning a depth level to a single PE has well-studied benefits for computation and storage, and it is the layout \citet{Sivaraman16} introduced.
 The PE budget is fixed by the silicon, so the running tree's shape is constrained by what the deployed PEs can host.
+\xxx[as]{Is there any other general PIFO tree background necessary to make the rest of the paper understandable? Such as: it's meant to be reconfigurable; what parts need to be reconfigured (what is the ``brain''); all the work is done on push, so pops are fast; every internal node needs a PIFO (rather than buffering everything at the leaves, as in the high-level semantics); something about the typical implementation that uses a single PE per ``layer''}
 
+\xxx[as]{Let us make this claim: to the best of our knowledge, no prior paper on PIFO trees has addressed the details of how to reconfigure without disrupting live traffic}
 
-\subsection{vPIFO, and the problem it leaves open}\label{sec:vpifo}
-
-\xxx[AM]{Not sure if they get their own section}
-
-vPIFO~\cite{vPIFO} is the closest related work, and it explicitly leaves our problem open.
-It virtualizes a single physical PIFO into many logical ``PIFO instances,'' with a Scheduling Description Language (SDL) and compiler, so their PIFO Visor can \emph{flexibly establish} hierarchical PIFO trees of arbitrary shape on fixed hardware; its contribution is the reconfigurable substrate.
+\xxx[as]{I offer the bold suggestion that we do not mention vPIFO here at all. All this goes in the RW section only. vPIFO is not unique in \emph{theoretically} allowing reconfiguration; plenty of PIFO tree papers could supposedly do that too. And they explicitly do not address the live reconfiguration problem.}
+vPIFO~\cite{vPIFO} is a design for a PIFO-tree-based packet scheduler that
+virtualizes a single physical PIFO into many logical ``PIFO instances.''
+It includes a Scheduling Description Language (SDL) and compiler, so their PIFO Visor can \emph{flexibly establish} hierarchical PIFO trees of arbitrary shape on fixed hardware; its contribution is the reconfigurable substrate.
 As published, however, vPIFO has no notion of a difference between old and new policies, no formal semantics for what a policy change means, and no account of in-flight packets during a change.
 Their SDL IR computes ranks and is compiled to P4 or to a CPU.
 The two grammars we introduce in \cref{sec:grammar} are structural instead: one describes the shape of a policy tree, and the other describes how that shape changes.
