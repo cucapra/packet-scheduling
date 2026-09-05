@@ -644,6 +644,7 @@ This is essentially what the vPIFO paper's \emph{Scheduling Description Language
 They do not pin down a grammar for SDL or formalize the compilation, so our DSL can be read as a formal core of their concrete language.
 
 \subsection{Edit Semantics}
+\label{sec:edit-semantics}
 
 We formalize the semantics of each policy edit (\cref{sec:grammar}) using two denotations.
 For any edit $\delta$,
@@ -1138,8 +1139,13 @@ The wrapper's own annotations go with it, and the surviving arm inherits the ann
 The empty-arm-0 precondition is operational and leaves no trace at \pol-level.
 
 
+\section{Correctness}\label{sec:correctness}
 
-\section{A Grammar of Atomic Policy Edits}\label{sec:grammar}
+This section presents two correctness theorems.
+First, the policy-level and control-level denotations of edits agree.
+Second, installing an edit costs the buffered backlog nothing.
+
+We begin with some definitions necessary for the theorems.
 
 \subsection{Equivalences, and Reading Off the Running Policy}\label{sec:equivalences}
 
@@ -1202,15 +1208,6 @@ The relation is again \(\eqR\), not \(=\), because \(\csem{\delta}\) may lay the
 This is how we give the transitionary policy the semantics that \cref{sec:intro} promises.
 Even when the presently running \pol is just an intermediate policy that the runtime crafted on the way from the running policy to the operator's true request, we can still read off and report to the operator exactly what is running.
 \cref{sec:interplay} takes up the third fact and proves it, as the ``commuting square'' these pieces trace out.
-
-\subsection{Edit Semantics}\label{sec:edit-semantics}
-
-\section{Correctness}\label{sec:correctness}
-
-\cref{sec:edit-semantics} gave each form of \(\delta\) two readings, and two things have to be true of them.
-The first is that they agree, so that the \pol we echo to the operator is the one the live control realizes.
-The second is that installing an edit costs the buffered backlog nothing.
-This section states both as theorems and proves them one form at a time.
 
 \subsection{Agreement}\label{sec:interplay}
 
