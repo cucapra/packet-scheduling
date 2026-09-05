@@ -388,8 +388,11 @@ Our central guarantee is that these edits agree.
 \Cref{sec:correctness} states and proves this theorem.
 
 \paragraph{Hardware implementation}
-\xxx[as]{We show what extensions you need, and we have RTL}
-
+\Cref{sec:hardware} shows how to augment PIFO tree hardware with support for Rio's policy edits.
+We start with a basic PIFO-tree-based packet scheduler and make two additions:
+(1) an instruction set for atomically updating policy scheduler state and lookup tables,
+and (2) support for $\Strictstar$, the mechanism that allows splicing arbitrary policy subtrees without relocating packets across hardware queues.
+\xxx[as]{Short preview of results: e.g., the additions do not add much area, and RTL simulations show that transitions actually work.}
 
 \paragraph{What the policy compiles to}
 
