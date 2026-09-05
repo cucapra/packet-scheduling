@@ -338,12 +338,13 @@ Suppose that, instead of $p'$, the operator wants to move from $p_1$ to a policy
 The upper-left and upper-right of \cref{fig:tour} illustrate the policies $p_1$ and $p_2$.
 
 Rio does not support an atomic transition from $p_1$ to $p_2$.
-The problem is that \xxx[as]{brief intuition about why this would be hard to implement in PIFO tree hardware---something about needing to move gmail to a different PE because it appears at a different level in the hierarchy}.
+The problem is that inserting the $\RR$ node would require relocating all the in-flight \textsf{gmail} packets from one hardware queue to another:
+a costly, long-latency data copy.
 Instead, we can implement the transition in two steps.
 We introduce a temporary transitionary policy, $p_\text{temp}$ (shown in the middle of \cref{fig:tour}).
-\xxx[as]{As shown, $p_\text{temp}$ seems to violate the invariant that the leaves are unique. Can we relabel one ``gmail old'' or something?}
+\xxx[as]{As shown, $p_\text{temp}$ seems to violate the invariant that the leaves are unique. Can we relabel one ``gmail old'' or ``gmail new'' or something?}
 The idea is to insert a new, empty $\RR$ subtree
-without yet deleting the old \textsf{gmail} queue and its in-flight packets.
+without deleting the old \textsf{gmail} queue and its in-flight packets.
 New traffic will go to the new subtree while the old \textsf{gmail} queue drains.
 The $\Strictstar$ policy prioritizes the old packets over new packets.
 When the old \textsf{gmail} queue becomes empty, $p_\text{tmp}$ behaves identically to $p_2$.
@@ -352,7 +353,7 @@ At this point, a second atomic policy edit can collapse the $\Strictstar$ policy
 % Although an atomic transition from $p_1$ to $p_2$ is not possible,
 Rio can implement atomic transitions from $p_1$ to $p_\text{temp}$ and from $p_\text{temp}$ to $p_2$.
 The key mechanism is the $\Strictstar$ policy node, which reflects a special mechanism we add to PIFO tree hardware to enable efficient policy changes.
-\xxx[as]{Forward-reference to the section(s) that explain the deal with $\Strictstar$.}
+\Cref{sec:hw-survivor} details $\Strictstar$ and the atomic edits that add and remove it.
 
 \paragraph{Planning policy transitions}
 
@@ -376,7 +377,7 @@ With Rio, all intermediate states are clearly described as policy trees, and tra
 We formalize the semantics of policy edits and their effects on PIFO tree operation.
 Our goal is to guarantee that policy edits correctly update PIFO tree state to achieve the desired change in the high-level policy.
 
-Specifically, \Cref{sec:xxx} presents a formal description of a PIFO tree \emph{control}, $C$, representing the state of a packet scheduler.
+Specifically, \Cref{sec:controls} presents a formal description of a PIFO tree \emph{control}, $C$, representing the state of a packet scheduler.
 The control includes the logic to implement a desired policy,
 the in-flight packets,
 and any necessary policy bookkeeping state.
