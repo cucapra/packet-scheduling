@@ -404,12 +404,13 @@ We are not competing with vPIFO and do not claim a better PIFO substrate.
 We supply the layer \emph{above} a PIFO substrate: the formal transition between two policies, the small patch that realizes it, and the transitionary semantics.
 The two layers can plausibly compose, and \cref{sec:substrate-portability} sets out the minimal requirement our contributions place on a substrate.
 
-\section{Policies and Controls}\label{sec:model}
+\section{Policies and Edits}\label{sec:model}
 
-This section introduces the two objects that the rest of the paper edits.
-\cref{sec:policy-dsl} gives the small DSL an operator writes, \cref{sec:controls} gives the control a switch runs, and \cref{sec:compilation} compiles the first into the second.
+This section introduces the high-level programming interface for Rio.
+\cref{sec:policy-dsl} gives a small DSL for specifying hierarchical packet scheduling policies,
+and \cref{sec:edits} enumerates a set of \emph{policy edits} for incrementally modifying these policies.
 
-\subsection{The policy language}\label{sec:policy-dsl}
+\subsection{Policy Language}\label{sec:policy-dsl}
 
 An operator wants to say which flows exist and how they should share the link.
 A switch runs something much lower level, a tree of queues carrying scheduling logic at every node, which \cref{sec:controls} makes precise.
@@ -420,22 +421,21 @@ It is either a leaf labeled by a flow, or an internal node running a scheduling 
 Each arm carries a metadatum that tells \disc how to schedule it, drawn from a set \(M_{D}\) that \disc declares.
 For instance, \(M_{\Strict}\) is a set of priorities and \(M_{\WFQ}\) a set of weights.
 A discipline that treats its arms alike, such as \RR, declares a one-element set, and we elide that element when writing examples.
-We read the arity off by counting children, so, e.g., \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\textsf{gmail})\) is the 2-ary instance of the discipline \Strict.
+We read the arity off by counting children, so, e.g., \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\textsf{gmail})\) is the 2-ary \xxx[as]{let's just say ``binary''} instance of the discipline \Strict.
 Each leaf label denotes a \emph{flow}: a predicate over packets.
 
 The family of disciplines is open.
 \disc is any discipline equipped with the compilation recipe of \cref{sec:compilation}, and nothing that follows depends on which disciplines are available.
 Our implementation instantiates \Strict, \RR, and \WFQ because they aid our exposition.
 
-We also have the discipline \(\Strictstar\), which for the most part can be thought of as merely an instance of 2-ary \Strict{}.
-While the operator may use \(\Strictstar\) in their policies, it is really designed to be introduced and removed by the compiler during an in-place subtree replacement, which \cref{sec:idioms} assembles as the \Replace{} idiom.
-The two disciplines are told apart in \cref{sec:hardware}, where a novel optimization allows us to realize \(\Strictstar\) without a pifo or a tree level of its own.
-That is what makes an in-place replacement smooth.
+We also have the discipline \(\Strictstar\), which behaves semantically identically to 2-ary \Strict{}.
+It exists to support policy edits (see the next section).
 
 A \pol is written against a fixed \emph{flow universe} \(F\): a finite set of pairwise disjoint flow predicates declared by the operator before constructing the \pol.
 A \pol is \emph{valid} when (a) every discipline is applied at the proper arity, (b) every arm's metadatum is drawn from its parent discipline's set \(M_{D}\), and (c) the leaves form a partition of a subset of \(F\): each leaf carries a flow drawn from \(F\), and no two leaves carry the same flow.
 A packet therefore matches at most one leaf's flow.
 If a packet does not match any of the flows in the scheduling tree's leaves, the packet is dropped.
+\xxx[as]{Let's give the systems perspective on this: we assume someone else (e.g., a P4 pipeline) does the classification; we only do the scheduling.}
 
 \subsection{The runtime model: controls}\label{sec:controls}
 
