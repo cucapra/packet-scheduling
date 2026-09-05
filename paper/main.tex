@@ -4,7 +4,7 @@
 \usepackage{array}
 \usepackage{mathtools}
 \usepackage{tikz}
-\usetikzlibrary{positioning,arrows.meta,calc,trees,matrix}
+\usetikzlibrary{positioning,arrows.meta,calc,trees,matrix,fit,backgrounds}
 \usepackage{cancel}
 \usepackage{forest}
 \usepackage{xcolor}
@@ -90,6 +90,16 @@
     \fill[#1] (#2-0.24,#3-0.72) circle (1.3pt); \fill[#1] (#2,#3-0.72) circle (1.3pt); \fill[#1] (#2+0.24,#3-0.72) circle (1.3pt);%
   \fi
 }
+% Freshly built material is shaded: \freshbehind{(a)(b)} lays the wash behind the named
+% nodes. It sits on a background layer, so the wash can never ride over what it marks,
+% and it is fitted to those nodes, so it can never drift off them either.
+% anchor=center is load-bearing where a picture is drawn inside a \node, since such a
+% picture inherits that node's anchor.
+\pgfsetlayers{background,main}
+\newcommand{\freshbehind}[1]{%
+  \begin{pgfonlayer}{background}
+    \node[fill=newcol!12, rounded corners=2pt, anchor=center, inner sep=3.5pt, fit=#1] {};
+  \end{pgfonlayer}}
 % Explicit-PIFO house style: leaf packets are colored dots by flavor (colored rounded box);
 % internal index-PIFOs are gray with numbers; dropped entries get a steep red strikeout.
 \definecolor{flowA}{HTML}{0072B2}% blue
@@ -207,6 +217,8 @@ Our two candidates illustrate the two cases.
 \label{fig:two-timelines}
 \end{figure}
 
+\input{fig-tour}
+
 Moving to \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{mid}{:}\,\textsf{spotify},\allowbreak\ \mathtt{lo}{:}\,\textsf{gmail})\) is a case~1 transition.
 Before time \(t_1\), \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\textsf{gmail})\) is running; at time \(t_1\) the request to transition is received, and we immediately satisfy it.
 The transition at \(t_1\) is \emph{atomic}, meaning that any interaction that the network had with the scheduler before \(t_1\) happened entirely in the old regime, and whatever interaction the network had with the scheduler after \(t_1\) happened entirely in the new regime.
@@ -215,7 +227,9 @@ The two concepts are distinct.
 
 Moving to \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\RR(\textsf{gmail},\allowbreak\ \textsf{spotify}))\) is a case~2 transition.
 As before, \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\textsf{gmail})\) runs before \(t_1\) and the operator's request arrives at \(t_1\), but we cannot move to \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\RR(\textsf{gmail},\allowbreak\ \textsf{spotify}))\) immediately since there are still \textsf{gmail} packets buffered in the scheduler.
-Transitioning immediately would mean re-sorting those buffered \textsf{gmail} packets into the new round-robin leaf, but their scheduling order was fixed the moment they were enqueued; we cannot rewrite that past without dropping or reordering them.
+Transitioning immediately would mean moving those buffered \textsf{gmail} packets under the new round-robin node.
+A packet is ranked as it arrives and at no other time.
+These packets arrived before the round-robin node existed, so that node never ranked them and now cannot.
 We atomically step instead into a \emph{transitionary policy} that is \emph{not} the one the operator asked for.
 After \(t_1\) but before \(t_2\), the scheduler still accepts and emits packets under it.
 At time \(t_2\), defined as the instant that a well-defined guard becomes true, we atomically step into \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\RR(\textsf{gmail},\allowbreak\ \textsf{spotify}))\).
@@ -238,6 +252,108 @@ Right now \cref{sec:per-form} introduces it out of nowhere, and says ``the stop-
 The reader mayyy look back at the promises above, which are only shorter transitions and fewer drops.
 I like the idea of promoting nondisturbance: the \emph{act} of reconfiguring never reorders, re-ranks, or drops a packet that is already buffered, so any disturbance a reader observes is the new policy correctly governing new arrivals.}
 We contribute a tool that achieves this and shows [improvements].
+
+\section{Rio by Example}\label{sec:tour}
+
+\xxx[AM]{Opening sentences TK, and obviously the Intro before this will shrink considerably. For now I am drafting this section and making \emph{none} of the cuts that it will trigger.}
+
+\paragraph{The policy an operator writes}
+
+\begin{figure}[t]
+\[
+\begin{array}{@{}l@{}}
+\mathit{flow} \in F\\[4pt]
+D\ \text{a scheduling discipline, declaring a metadata set } M_{D}\\[8pt]
+\mathit{pol} \mathrel{::=} \mathit{flow} \;\mid\; D(m_1{:}\,\mathit{pol}_1, \ldots, m_n{:}\,\mathit{pol}_n),\ m_i \in M_{D}
+\end{array}
+\]
+\caption{The policy language \(\mathit{pol}\).}
+\label{fig:pol-grammar}
+\end{figure}
+
+An operator writes a policy in \ensuremath{\mathit{pol}} (\cref{fig:pol-grammar}), a small grammar that permits either a leaf carrying a \emph{flow} (a predicate over packets), or an internal node applying a scheduling discipline to its child policies.
+Each arm is labeled with a metadatum the discipline declares, and no flow may label two leaves of a policy that an operator writes.
+Say that the network operator initially writes
+\[ p_1 = \Strict(\mathtt{hi}{:}\,\textsf{zoom},\ \mathtt{lo}{:}\,\textsf{gmail}), \]
+which is visualized in the top left of \cref{fig:tour}.
+Everything on that figure's top row is written in \ensuremath{\mathit{pol}} and is human readable.
+
+\paragraph{What the policy compiles to}
+
+A policy is a human-readable description, and underneath it the scheduler is a \emph{control}, a tree of PIFOs carrying scheduling logic at every node (\cref{sec:controls}).
+The bottom row of \cref{fig:tour} shows controls.
+Compiling a policy into a control is written \(\lceil \cdot \rceil\), and the leftmost is \(C_1 = \lceil p_1 \rceil\), a freshly compiled control that is entirely faithful to the operator's wish.
+\cref{sec:hardware} lowers a control onto a real switch.
+
+\paragraph{An easy change}
+
+Say the operator wants to add \textsf{spotify} to the strict-priority list, asking for \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{mid}{:}\,\textsf{spotify},\allowbreak\ \mathtt{lo}{:}\,\textsf{gmail})\).
+Rio's \emph{transition planner} (\cref{sec:planner}) reads the running policy and the requested one, and proposes a way from the first to the second.
+Whatever it proposes is drawn from a small grammar of tree edits, whose productions are written \(\delta\) (\cref{sec:grammar}).
+Here the proposal is a single \(\delta\), \Add, which splices a freshly compiled arm under a node that is already running (\cref{sec:add}).
+The nodes above the new arm begin admitting \textsf{spotify} traffic and passing it downward.
+Every other field of every node is left as it was, and nothing that was already buffered is affected.
+The edit installs \emph{atomically}, meaning each packet is scheduled either wholly under the old policy or wholly under the new one.
+This is case~1 of \cref{fig:two-timelines}.
+
+\paragraph{A change that cannot be installed at once}
+
+Suppose instead that the operator wanted to move from \(p_1\) to
+\[ p_2 = \Strict(\mathtt{hi}{:}\,\textsf{zoom},\ \mathtt{lo}{:}\,\RR(\textsf{gmail},\allowbreak\ \textsf{spotify})), \]
+which is the rightmost policy of \cref{fig:tour}.
+Installing it atomically would mean dropping the buffered \textsf{gmail} packets or moving them under the new round-robin node.
+Rio does neither.
+\xxx[AM]{The \emph{reason} why Rio does neither is currently in the Intro. If the Intro is trimmed, let's remember to save that reasoning, or to attempt a fresh explanation here.}
+
+
+\paragraph{Reaching it anyway}
+
+No one form of \(\delta\) carries \(p_1\) to \(p_2\), so the transition planner proposes a short sequence of \(\delta\)s, each installable atomically, which together arrive at \(p_2\).
+These \(\delta\)s do not all fire at once.
+The sequence has to wait, in this case for the buffered \textsf{gmail} packets to drain, and while it waits the scheduler runs a policy that is neither \(p_1\) nor \(p_2\).
+Rio steps into that \emph{transitionary policy} first, and the middle panel of \cref{fig:tour} shows that policy.
+\Designate{} replaces \textsf{gmail}, the root's \(\mathtt{lo}\) arm, in place with a two-arm strict node, written \(\Strictstar\) (\cref{sec:designate}).
+Its high arm is the doomed \textsf{gmail} subtree, carried over with its buffered packets untouched.
+Its low arm is a freshly compiled \(\RR(\textsf{gmail},\allowbreak\ \textsf{spotify})\), which starts empty.
+\Quiesce{} closes the doomed arm to new packets (\cref{sec:quiesce}).
+The \emph{instant that \Designate{} fires} becomes the boundary between old \textsf{gmail} traffic, which drains from the doomed arm, and new \textsf{gmail} traffic, which the surviving arm schedules and stores.
+The backlog drains in its original order while new traffic gathers beside it.
+Once the doomed arm is empty, \Undesignate{} unhooks it together with the \(\Strictstar\) wrapper, leaving the survivor where the \textsf{gmail} leaf once stood (\cref{sec:undesignate}).
+That is \(p_2\).
+We have reached it without dropping, reordering, or re-ranking a single buffered packet, which is the key theorem of this paper rather than a happy accident of this example.
+
+\paragraph{Steps and guards}
+
+Those three \(\delta\)s form one \emph{guarded sequence}, and \cref{fig:tour} draws the two \emph{step}s needed in our example.
+A step is a guard together with the \(\delta\)s that guard releases.
+Here the first step's guard is trivially true, and it releases \Designate{} and \Quiesce{} at once.
+The second step's guard becomes true when the doomed arm is empty, and it releases \Undesignate.
+So this sequence waits in one place, and in this example the operator passes through precisely one policy they did not ask for.
+Rio gives names to idiomatic sequences that tend to recur; in our example we have just seen the idiom \Replace{} (\cref{sec:idioms}).
+
+\paragraph{What the operator is told throughout}
+
+The middle panel of \cref{fig:tour} is a policy, expressed in the same grammar \ensuremath{\mathit{pol}} in which the operator wrote \(p_1\) and \(p_2\).
+The middle policy was recovered from the running control by a read-off written \(\lfloor \cdot \rfloor\) (\cref{sec:equivalences}).
+The solid upward arrow rising out of the transitionary control is that recovery.
+The dashed arrow on the right is the route Rio does not take.
+It never compiles \(p_2\) from scratch, and a from-scratch compile would have produced a different control that behaves the same.
+So at every instant of the transition, including the whole interval in which the physical scheduler runs a policy that \emph{no operator asked for}, Rio can say which policy is in force, and say it in the operator's own terms.
+
+Two theorems make this worth something (\cref{sec:correctness}).
+The first is that the policy that Rio reports and the policy that the live control realizes \emph{agree}, edit by edit.
+The second is that installing an edit leaves every queued packet exactly where it was, so any change the operator observes is the new policy governing new arrivals rather than a cost of the transition itself.
+
+\paragraph{Confinement}
+
+We show in \cref{sec:fallback} that there always exists a fallback sequence from any \(p_1\) to any \(p_2\).
+That fallback disturbs every node in the tree, so the transition planner attempts to improve upon it by descending while the two policies still agree, then emitting the tightest \(\delta\) it can at the deepest point it reaches.
+Rio calls that economy \emph{confinement}, and \cref{fig:tour} shows it: the \Strict{} root and the \textsf{zoom} arm are untouched in all three panels, and everything shaded is freshly built.
+
+\paragraph{Down to the switch}
+
+Each edit is lowered mechanically into a short list of instructions that a programmable switch can run, and the substrate installs one such list as a single commit (\cref{sec:hardware}).
+That commit is what makes an edit atomic in practice.
 
 \section{Background \& Motivation}\label{sec:background}
 
@@ -285,18 +401,6 @@ This section introduces the two objects that the rest of the paper edits.
 An operator wants to say which flows exist and how they should share the link.
 A switch runs something much lower level, a tree of queues carrying scheduling logic at every node, which \cref{sec:controls} makes precise.
 We start on the operator's side, with a small policy DSL \ensuremath{\mathit{pol}}, and \cref{sec:compilation} compiles it down.
-
-\begin{figure}[t]
-\[
-\begin{array}{@{}l@{}}
-\mathit{flow} \in F\\[4pt]
-D\ \text{a scheduling discipline, declaring a metadata set } M_{D}\\[8pt]
-\mathit{pol} \mathrel{::=} \mathit{flow} \;\mid\; D(m_1{:}\,\mathit{pol}_1, \ldots, m_n{:}\,\mathit{pol}_n),\ m_i \in M_{D}
-\end{array}
-\]
-\caption{The policy language \(\mathit{pol}\).}
-\label{fig:pol-grammar}
-\end{figure}
 
 The operator writes a \ensuremath{\mathit{pol}} (\cref{fig:pol-grammar}).
 It is either a leaf labeled by a flow, or an internal node running a scheduling discipline \ensuremath{D} over child policies.
@@ -999,7 +1103,7 @@ An operator may write a \(\Strictstar\) directly (\cref{sec:policy-dsl}), but on
     \label{fig:designate-done}
   \end{subfigure}
 
-  \caption{The \Designate\,+\,drain\,+\,\Undesignate{} lifecycle. The outgoing subtree is \tritext{oldcol} and the survivor \tritext{newcol}, both under parent \(P\).}
+  \caption{The \Designate\,+\,drain\,+\,\Undesignate{} lifecycle. The doomed subtree is \tritext{oldcol} and the survivor \tritext{newcol}, both under parent \(P\).}
   \label{fig:designate}
 \end{figure*}
 
@@ -1374,7 +1478,7 @@ The compilation itself, and the substrate machinery that makes a commit atomic, 
 
 \section{Realizing Reconfigurations as Guarded Sequences}\label{sec:sequences}
 
-This section composes the forms of \(\delta\) into \emph{guarded sequences} \((\varphi ; \delta)^{*}\), where a guard \(\varphi\) is a predicate on the state of the live control.
+This section composes the forms of \(\delta\) into \emph{guarded sequences} \((\varphi ; \delta^{*})^{*}\), where a guard \(\varphi\) is a predicate on the state of the live control.
 Guarded sequences realize changes to the live control that no single \(\delta\) can express.
 We first show that the transitionary period such a sequence passes through needs no new semantics (\cref{sec:links}), then give the grammar of guarded sequences (\cref{sec:idioms}).
 
@@ -1386,7 +1490,7 @@ So \(\mathit{link}_0 = C\) is the starting control, and \(\mathit{link}_{i+1} = 
 
 Each transitionary policy is itself an ordinary \cref{sec:controls}-style control, so the transitionary period \emph{needs no new semantics}.
 That is the promise of \cref{sec:intro}, discharged locally by the per-form checks of \cref{sec:per-form}.
-Moreover, since every form of \cref{sec:grammar} is \emph{\ensuremath{\mathit{pol}}-explainable} (each \(\delta\) has a \(\psem{\delta}\) that tracks its \ensuremath{\mathit{pol}}-level effect), we can echo to the operator, at every step of the sequence, the \ensuremath{\mathit{pol}} that the live control actually realizes.
+Moreover, since every form of \cref{sec:grammar} is \emph{\ensuremath{\mathit{pol}}-explainable} (each \(\delta\) has a \(\psem{\delta}\) that tracks its \ensuremath{\mathit{pol}}-level effect), we can echo to the operator, at every point in the sequence, the \ensuremath{\mathit{pol}} that the live control actually realizes.
 The chain of \(\psem{\cdot}\)s starting from \(\lfloor C \rfloor\) gives \(\lfloor \mathit{link}_i \rfloor\) for each \(i\), so the operator always knows which policy is running.
 
 \paragraph{Follow-up requests}
@@ -1407,33 +1511,43 @@ We do not pursue this here, since the splicing analysis introduces its own corre
 \begin{array}{@{}l@{}}
 \textbf{Guarded sequences}\\[3pt]
 \varphi \mathrel{::=} \mathtt{true} \;\mid\; \mathtt{isEmpty}(\mathit{path})\\[2pt]
-\mathit{gseq} \mathrel{::=} \epsilon \;\mid\; (\varphi\,;\, \delta)\,;\, \mathit{gseq}\\[8pt]
+\mathit{step} \mathrel{::=} (\varphi\,;\, \delta_1\,;\, \ldots\,;\, \delta_n),\ n \geq 1\\[2pt]
+\mathit{gseq} \mathrel{::=} \epsilon \;\mid\; \mathit{step}\,;\, \mathit{gseq}\\[8pt]
 \textbf{Idioms}\\[3pt]
 \Retire(\mathit{path}) \;=\;\\
 \quad (\mathtt{true};\, \Quiesce(\mathit{path}))\,;\\
 \quad (\mathtt{isEmpty}(\mathit{path});\, \Remove(\mathit{path}))\\[4pt]
 \SlowRetire(\mathit{path}) \;=\; (\mathtt{isEmpty}(\mathit{path});\, \Remove(\mathit{path}))\\[4pt]
 \Replace(\mathit{path}, \mathit{survivor}) \;=\;\\
-\quad (\mathtt{true};\, \Designate(\mathit{path}, \mathit{survivor}))\,;\\
-\quad (\mathtt{true};\, \Quiesce(\mathit{path} \mathbin{+\!\!+} [0]))\,;\\
+\quad (\mathtt{true};\, \Designate(\mathit{path}, \mathit{survivor})\,;\\
+\quad\qquad \Quiesce(\mathit{path} \mathbin{+\!\!+} [0]))\,;\\
 \quad (\mathtt{isEmpty}(\mathit{path} \mathbin{+\!\!+} [0]);\, \Undesignate(\mathit{path}))
 \end{array}
 \]
-\caption{The grammar of guarded sequences and the three starter idioms, each a named \((\varphi;\delta)^{*}\).}
+\caption{The grammar of guarded sequences and the three starter idioms, each a named \ensuremath{\mathit{gseq}}.}
 \label{fig:gseq-idioms}
 \end{figure}
+% This fig is a little hard to read since there are guards and deltas all mixed up. For presentation let's write the guards in red in the idioms. And let's line up the deltas that are collected together under one guard. So in this figure you would like up \Designate(\mathit{path}, \mathit{survivor})\,;\\ and \Quiesce(\mathit{path} \mathbin{+\!\!+} [0]))\,;\\ (line up D and Q)
 
 We write \(\mathit{gseq}\) for a guarded sequence (\cref{fig:gseq-idioms}, top).
-A guard \(\varphi\) is either trivially satisfied (\(\mathtt{true}\)) or asserts that the subtree at \ensuremath{\mathit{path}} is empty; it is always paired with exactly one \(\delta\).
+A guard \(\varphi\) is either trivially satisfied (\(\mathtt{true}\)) or asserts that the subtree at \ensuremath{\mathit{path}} is empty.
+A \emph{step} pairs one guard with the run of \(\delta\)s that guard releases, so a sequence waits exactly as many times as it has steps.
 Those two guard forms have sufficed for every sequence we have needed.
 The framework does not depend on this minimality, and a richer predicate language is welcome if desired.
 
 \paragraph{Intuition}
 
-The hardware substrate (\cref{sec:hardware}) does two things beyond ordinary \push{}/\pop{}: it waits for a guard \(\varphi\) to become true on the live control, and it fires a single \(\delta\) as an atomic replacement.
-A guarded sequence chains these: wait for \(\varphi_0\), fire \(\delta_0\), then wait for \(\varphi_1\) (now evaluated on the post-\(\delta_0\) control), fire \(\delta_1\), and so on.
+The hardware substrate (\cref{sec:hardware}) does two things beyond ordinary \push{}/\pop{}.
+It waits for a guard \(\varphi\) to become true on the live control, and it fires a \(\delta\) as an atomic replacement.
+A guarded sequence chains these.
+It waits for \(\varphi_0\), fires that step's \(\delta\)s in order, then waits for \(\varphi_1\), now evaluated on the control the first step left behind, and so on.
 Each intermediate control between two consecutive \(\delta\) firings is well-formed, and we call this property the sequence's \emph{safety}.
 Safety is entirely local, following from the per-form checks of \cref{sec:per-form}.
+
+\xxx[AM to Zhiyuan]{A step's \(\delta\)s fire back to back with no waiting between them, and each one installs as its own commit, so the substrate needs nothing it does not already have.
+The question is whether it could instead install a whole step as one commit, so that no intermediate control inside a step is ever observed.
+That would be better for the operator, since the policies they are shown would then be exactly the ``waits''.
+It asks the commit buffer to hold one step's worth of instructions rather than one form's, which \cref{sec:hw-preservation} suggests is a question of how much fits rather than of a new capability.}
 
 \paragraph{Reaching the target}
 
@@ -1502,7 +1616,7 @@ This is the transition \cref{sec:intro} reaches at \(t_2\).
 \section{The Transition Planner}\label{sec:planner}
 
 The operator hands the runtime \(p_1\), the presently running policy, and \(p_2\), the one they now want.
-The transition planner's job is to propose a \((\varphi ; \delta)^{*}\) sequence whose \ensuremath{\mathit{pol}}-level fold takes \(p_1\) to some \(p_2'\) with \(p_2' \eqR p_2\).
+The transition planner's job is to propose a \((\varphi ; \delta^{*})^{*}\) sequence whose \ensuremath{\mathit{pol}}-level fold takes \(p_1\) to some \(p_2'\) with \(p_2' \eqR p_2\).
 The operator accepts or rejects the proposal; they do not author it directly.
 
 Every sequence the planner emits is safe by the per-form guarantees of \cref{sec:per-form}, aggregated across the sequence as sketched in \cref{sec:idioms}, regardless of how the planner assembled it.
@@ -1521,7 +1635,7 @@ To reach any \(p_2\) from any \(p_1\), the planner can issue \(\Replace([], p_2)
 
 \[
 \begin{array}{@{}l@{}}
-(\mathtt{true};\ \Designate([], p_2))\ ;\ (\mathtt{true};\ \Quiesce([0]))\ ;\\[3pt]
+(\mathtt{true};\ \Designate([], p_2)\ ;\ \Quiesce([0]))\ ;\\[3pt]
 \qquad (\mathtt{isEmpty}([0]);\ \Undesignate([]))
 \end{array}
 \]
@@ -1534,7 +1648,7 @@ To measure how much of the tree a sequence touches, associate each form \(\delta
 Define \(\mathtt{footprint}(\delta, C)\) as the set of nodes of \(C\) whose \ensuremath{\mathit{state}}, \ensuremath{\mathit{pifo}}, or \ensuremath{\mathit{z}} differs between \(C\) and \(\csem{\delta}(C)\).
 The set is read off the \(\csem{\delta}\) rules of \cref{sec:edit-semantics}, each of which names every field of every node it produces.
 It includes the edit site, the new or removed node where applicable, and every proper ancestor whose \ensuremath{\mathit{z}} is extended or restricted, such as the ancestors touched by \Add, \Quiesce, \Remove, and \Designate.
-For a guarded sequence \((\varphi_0 ; \delta_0) ; \ldots ; (\varphi_n ; \delta_n)\), the sequence-level footprint is \(\bigcup_i \mathtt{footprint}(\delta_i, \mathit{link}_i)\).
+The sequence-level footprint is \(\bigcup_i \mathtt{footprint}(\delta_i, \mathit{link}_i)\), taken over the \(\delta\)s of the sequence in order and irrespective of how they are grouped into steps.
 The root-level \(\Replace([], p_2)\) above has the maximum possible footprint: the whole tree.
 
 \paragraph{The planner's strategy}
@@ -1564,7 +1678,6 @@ The planner has two ways to realize this, shown in \cref{fig:planner-add-vs-repl
   \begin{subfigure}[t]{0.56\linewidth}
     \centering
     \begin{tikzpicture}[baseline=(L.north), level distance=0.72cm, level 1/.style={sibling distance=0.62cm}, level 2/.style={sibling distance=0.38cm}, every node/.style={font=\scriptsize}]
-    \fill[newcol!12, rounded corners=2pt] (0.92,0.3) rectangle (2.4,-1.62);
     \node (L) at (-1.35,0) {$P$}
       child {node {$a$}}
       child {node {$Q$}
@@ -1572,15 +1685,17 @@ The planner has two ways to realize this, shown in \cref{fig:planner-add-vs-repl
         child {node {$c$}}
       };
     \node (R) at (1.45,0) {$P$}
-      child {node {$a$}}
-      child {node {$Q$}
-        child {node {$b$}}
-        child {node {$c$}}
-        child {node {$d$}}
+      child {node (Ra) {$a$}}
+      child {node (RQ) {$Q$}
+        child {node (Rb) {$b$}}
+        child {node (Rc) {$c$}}
+        child {node (Rd) {$d$}}
       };
     \node (S) at (0.05,0) {$\Strictstar$};
     \draw (S) -- (L);
     \draw (S) -- (R);
+    \freshbehind{(S)}
+    \freshbehind{(R)(Ra)(RQ)(Rb)(Rc)(Rd)}
     \end{tikzpicture}
     \caption{\(\Replace([], p_2)\): wrap whole tree.}
     \label{fig:planner-replace}
@@ -1588,14 +1703,14 @@ The planner has two ways to realize this, shown in \cref{fig:planner-add-vs-repl
   \begin{subfigure}[t]{0.4\linewidth}
     \centering
     \begin{tikzpicture}[baseline=(Pb.north), level distance=0.72cm, level 1/.style={sibling distance=0.9cm}, level 2/.style={sibling distance=0.5cm}, every node/.style={font=\scriptsize}]
-    \fill[newcol!12, rounded corners=2pt] (0.72,-1.28) rectangle (1.18,-1.66);
     \node (Pb) {$P$}
       child {node {$a$}}
       child {node {$Q$}
         child {node {$b$}}
         child {node {$c$}}
-        child {node {$d$}}
+        child {node (Ad) {$d$}}
       };
+    \freshbehind{(Ad)}
     \end{tikzpicture}
     \caption{\Add{} at \(Q\).}
     \label{fig:planner-add}
@@ -1632,7 +1747,7 @@ Every recursion descends through a slot at which the two trees already agree, so
 
 The transition planner so far has realized what we call \emph{declarative} authoring.
 The operator states a starting policy \(p_1\) and a target \(p_2\), and the planner proposes a guarded sequence that achieves the change, which the operator either accepts, in which case we apply it to the running control, or declines.
-Operators may instead author \emph{imperatively}, writing their desired \(p_2\) together with a \((\varphi; \delta)^{*}\) sequence intended to reach it, possibly built from idioms (\cref{sec:idioms}).
+Operators may instead author \emph{imperatively}, writing their desired \(p_2\) together with a \((\varphi ; \delta^{*})^{*}\) sequence intended to reach it, possibly built from idioms (\cref{sec:idioms}).
 Imperative authoring gives the operator hands-on control over the transitionary policies the live control passes through, rather than delegating their choice to the planner.
 An operator who already knows the transition they want can hand it over directly, instead of naming a destination and leaving the route to the case analysis of \cref{sec:planner-emits}.
 The sequence they write may be better confined than the one the planner would have found, since the planner may fail to see it, and it may equally be worse.
@@ -1650,7 +1765,7 @@ An operator debugging a sequence of a dozen steps needs to know which one failed
 
 Each intermediate \ensuremath{\mathit{pol}} that the fold produces has an explainable scheduling semantics.
 After the first step of \Replace(\ensuremath{\mathit{path}}, \ensuremath{\mathit{survivor}})'s expansion, for instance, the intermediate \ensuremath{\mathit{pol}} holds \(\Strict(\mathit{pol}@\mathit{path},\ \mathit{survivor})\) at \ensuremath{\mathit{path}}.
-That is a temporary strict-priority node favoring the outgoing \(\mathit{pol}@\mathit{path}\) over the incoming \ensuremath{\mathit{survivor}}, and it has a readable scheduling interpretation in its own right.
+That is a temporary strict-priority node favoring the doomed \(\mathit{pol}@\mathit{path}\) over the incoming \ensuremath{\mathit{survivor}}, and it has a readable scheduling interpretation in its own right.
 
 \section{Rio Hardware Implementation}\label{sec:hardware}
 
@@ -2236,8 +2351,6 @@ The transient is not \(\eqR\) to \(p_2\) at all, and becomes so only once it dra
   \begin{subfigure}[t]{0.23\linewidth}
     \centering
     \begin{tikzpicture}[baseline=(P.north), every node/.style={font=\scriptsize}]
-      \fill[newcol!12, rounded corners=2pt] (-0.20,-0.72) rectangle (0.20,-1.08);
-      \fill[newcol!12, rounded corners=2pt] (0.60,-0.72) rectangle (1.70,-1.98);
       \node (P) at (0,0)        {$P$};
       \node (d) at (-1.15,-0.9) {$d$};
       \node (s) at (0,-0.9)     {$s$};
@@ -2249,6 +2362,8 @@ The transient is not \(\eqR\) to \(p_2\) at all, and becomes so only once it dra
       \draw (P) -- node[right,font=\tiny]{$m_4$} (Q);
       \draw (Q) -- (g);
       \draw (Q) -- (x);
+      \freshbehind{(s)}
+      \freshbehind{(Q)(g)(x)}
     \end{tikzpicture}
     \caption{\(p_2\)}
     \label{fig:label-overlap-p2}
@@ -2256,8 +2371,6 @@ The transient is not \(\eqR\) to \(p_2\) at all, and becomes so only once it dra
   \begin{subfigure}[t]{0.33\linewidth}
     \centering
     \begin{tikzpicture}[baseline=(P.north), every node/.style={font=\scriptsize}]
-      \fill[newcol!12, rounded corners=2pt] (2.10,-0.72) rectangle (2.50,-1.08);
-      \fill[newcol!12, rounded corners=2pt] (0.60,-0.72) rectangle (1.70,-1.98);
       \node (P)  at (0,0)        {$P$};
       \node (d)  at (-2.3,-0.9)  {$d$};
       \node (SS) at (0,-0.9)     {$\Strictstar$};
@@ -2273,6 +2386,8 @@ The transient is not \(\eqR\) to \(p_2\) at all, and becomes so only once it dra
       \draw (SS) -- (Q);
       \draw (Q) -- (g2);
       \draw (Q) -- (x);
+      \freshbehind{(s)}
+      \freshbehind{(Q)(g2)(x)}
     \end{tikzpicture}
     \caption{transient (\emph{not} \(\eqR p_2\))}
     \label{fig:label-overlap-transient}
@@ -2280,8 +2395,6 @@ The transient is not \(\eqR\) to \(p_2\) at all, and becomes so only once it dra
   \begin{subfigure}[t]{0.23\linewidth}
     \centering
     \begin{tikzpicture}[baseline=(P.north), every node/.style={font=\scriptsize}]
-      \fill[newcol!12, rounded corners=2pt] (0.95,-0.72) rectangle (1.35,-1.08);
-      \fill[newcol!12, rounded corners=2pt] (-0.55,-0.74) rectangle (0.55,-1.98);
       \node (P) at (0,0)        {$P$};
       \node (d) at (-1.15,-0.9) {$d$};
       \node (Q) at (0,-0.9)     {$Q$};
@@ -2293,6 +2406,8 @@ The transient is not \(\eqR\) to \(p_2\) at all, and becomes so only once it dra
       \draw (P) -- node[right,font=\tiny]{$m_3$} (s);
       \draw (Q) -- (g);
       \draw (Q) -- (x);
+      \freshbehind{(s)}
+      \freshbehind{(Q)(g)(x)}
     \end{tikzpicture}
     \caption{settled (\(\eqR p_2\))}
     \label{fig:label-overlap-settled}
