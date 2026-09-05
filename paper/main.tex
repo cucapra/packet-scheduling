@@ -1147,27 +1147,29 @@ Second, installing an edit costs the buffered backlog nothing.
 
 We begin with some definitions necessary for the theorems.
 
-\subsection{Equivalences, and Reading Off the Running Policy}\label{sec:equivalences}
+\subsection{Equivalence Definitions}\label{sec:equivalences}
+\xxx[as]{I would like to make this section as brief as possible, so it serves as ``just'' a notation introduction so we can move on to stating the theorem(s).}
 
 We write \(C \sim C'\) for the equivalence on well-formed controls that holds when the two are identical except in their live \pifo contents and \stt{}s.
-Two \(\sim\)-related controls thus have the same tree shape and the same \zz at every node, and differ at most in the transient live state that traffic leaves behind.
-Serving \push{}/\pop{} operations is one way controls come to be \(\sim\)-related.
+Two \(\sim\)-related controls thus have the same tree shape and the same \zz at every node.
+%, and differ at most in the transient live state that traffic leaves behind.
+% Serving \push{}/\pop{} operations is one way controls come to be \(\sim\)-related.
 
 We write \(p \eqR p'\) for the smallest congruence on \pol such that, at any internal \disc-node, permuting the child arms gives a congruent \pol.
-Each arm's metadatum is tagged to the arm, so it travels with the arm under the permutation.
-The metadata is what carries the scheduling-meaningful content, so such a permutation does not change the scheduler.
+In other words, \(p \eqR p'\) iff the two policies are identical up to reordering.
+% Each arm's metadatum is tagged to the arm, so it travels with the arm under the permutation.
+% The metadata is what carries the scheduling-meaningful content, so such a permutation does not change the scheduler.
 
 Because \(\eqR\) only permutes sibling arms, each \(\eqR\)-class has a canonical representative under any fixed ordering of the arms at a node.
+\xxx[as]{Does this matter for stating our theorems? If not, let's delete it or demote it the proof appendix.}
 
 We write \(C \simR C'\) for the equivalence obtained by closing \(\sim\) under sibling permutations.
-Permuting a node's children renumbers the slots they sit in, so the parent's \pifo entries, its \slotstates, its \(\mathit{z}.\mathit{serves}\), and its \(\mathit{z}.\mathit{meta}\) are all renumbered to match.
-The two controls present different positional layouts and realize the same scheduler.
+% Permuting a node's children renumbers the slots they sit in, so the parent's \pifo entries, its \slotstates, its \(\mathit{z}.\mathit{serves}\), and its \(\mathit{z}.\mathit{meta}\) are all renumbered to match.
+% The two controls present different positional layouts and realize the same scheduler.
 
-
-\paragraph{The bridge: \(\lfloor \cdot \rfloor\)}
-
-We write \(\lfloor C \rfloor\) to mean ``the \pol that \(C\) realizes''.
-Intuitively, \(\lfloor \cdot \rfloor\) reads the policy straight off the control.
+We write \(\lfloor C \rfloor\) to mean ``the \pol that \(C\) realizes.''
+% Intuitively, \(\lfloor \cdot \rfloor\) reads the policy straight off the control.
+\xxx[as]{Regardless of how $\lfloor C \rfloor$ ends up getting defined (see below), I think we should here: (1) state here that it is supposed to be the opposite of $\lceil p \rceil$, and (2) leave everything else in an appendix.}
 It walks the control's tree and recovers, node by node, the \pol term the control implements, discarding the live \pifo and \stt contents that traffic happens to have left behind.
 We define it by structural recursion on \(C\), with one clause for leaves and one for internal nodes.
 Both clauses read out of \zz (\cref{sec:controls}).
@@ -1187,9 +1189,11 @@ The recursion runs on a finite tree and consults neither \stt nor \pifo nor \(\m
 \xxx[AM to AS]{You suggested defining \(\lfloor \cdot \rfloor\) as the inverse of \(\lceil \cdot \rceil\), and then worried that \(\lceil \cdot \rceil\) is not invertible if one is strict about sibling order.
 \(\lfloor \cdot \rfloor\) is now a structural recursion on \(C\), so it is total and single-valued by construction, and no inverse has to be argued for.
 The three items below are then consequences rather than defining rules, and the third of them is a theorem.}
+\xxx[as]{OK, I see that this is true. But I am not sure what this separate definition (instead of defining it as an inverse) has bought us. It seems to create a new proof obligation, i.e., to prove that the two things happen to be inverses. Let's discuss this.}
 Every well-formed control therefore determines one \pol, independently of how that control was reached, and we may write \(\lfloor C \rfloor\) and use it as a function.
 
 Three facts follow.
+\xxx[as]{Let's think about how many of these facts we can delete or convert into a single sentence without further elaboration. Let's only keep things that are material for stating our theorem(s).}
 
 \begin{enumerate}
 \item \emph{Compiler correctness.} Compiling a \(p\) to a control and reading it straight back recovers \(p\) itself, up to the sibling-order freedom the compiler enjoyed in laying it out: \(\lfloor \lceil p \rceil \rfloor \eqR p\).
