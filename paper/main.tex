@@ -354,7 +354,23 @@ Rio can implement atomic transitions from $p_1$ to $p_\text{temp}$ and from $p_\
 The key mechanism is the $\Strictstar$ policy node, which reflects a special mechanism we add to PIFO tree hardware to enable efficient policy changes.
 \xxx[as]{Forward-reference to the section(s) that explain the deal with $\Strictstar$.}
 
-\xxx[as]{It may seem disappointing that we need to use a policy that is neither $p_1$ or $p_2$. But we argue that this is strictly better than the alternatives, which are (a) drop packets, (b) recirculate, or (c) some chaotic period where you don't know what policy is running.}
+\paragraph{Planning policy transitions}
+
+Our set of atomic policy edits (\Cref{sec:grammar}) is \emph{complete:}
+for any pair of policies, there exists at least one chain of edits that can implement a transition between them.
+However, some policy changes are more disruptive than others.
+A change from $p_1$ to $p'$ happens in a single atomic step, while
+changing from $p_1$ to $p_2$ requires some time in the transitionary policy $p_\text{temp}$.
+More drastic policy changes might require intermediate policies that are even more different than the endpoints.
+
+Rio puts the network operator in charge of which transition strategy to use.
+By specifying a sequence of policy edits, a user can choose which intermediate policies to deploy in each step.
+We also implement a simple automatic \emph{transition planner} that suffices in the common case (\Cref{sec:planner}).
+
+It may seem disappointing that some policy transitions require a period of time when scheduling behaves like neither the initial policy nor the final policy.
+We argue that this situation is nonetheless better than the potential alternatives:
+dropping packets, recirculating traffic, or a period of chaos during which the hardware uses no clearly defined scheduling policy.
+With Rio, all intermediate states are clearly described as policy trees, and transitions between these states are always atomic.
 
 \paragraph{Formal guarantees}
 We formalize the semantics of policy edits and their effects on PIFO tree operation.
