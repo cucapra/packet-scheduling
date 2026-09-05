@@ -184,7 +184,7 @@ Such changes need to be rapid and seamless.
 The scheduler, however, was compiled for the policy it is running.
 Its tree shape, its per-node disciplines, and its table contents are all artifacts of a decision made before the switch was brought up, and the compilers that produce them accept \emph{a policy to run} rather than \emph{a change to the policy already running}.
 
-Consider a small-office gateway running \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\textsf{gmail})\), strictly prioritizing real-time \textsf{zoom} traffic over \textsf{gmail} traffic.
+Consider a programmable switch running \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\textsf{gmail})\), strictly prioritizing real-time \textsf{zoom} traffic over \textsf{gmail} traffic.
 The network operator wants to add a new \textsf{spotify} flow, and is considering two candidate policies:
 \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{mid}{:}\,\textsf{spotify},\allowbreak\ \mathtt{lo}{:}\,\textsf{gmail})\), extending the strict-priority list with \textsf{spotify}; or
 \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\RR(\textsf{gmail},\allowbreak\ \textsf{spotify}))\), keeping \textsf{zoom} at the higher tier but having \textsf{gmail} and \textsf{spotify} share the lower tier via round-robin.
@@ -275,9 +275,9 @@ This section walks through the example to provide an overview of the Rio system 
 
 \paragraph{Scheduling policies}
 
-Imagine a router \xxx[as]{is a router what we want to conjure? maybe a SmartNIC? I don't know what a ``gateway'' is, really} that needs to prioritize traffic from two flows, labeled \textsf{zoom} and \textsf{gmail}.
-This router uses a reconfigurable packet scheduler based on PIFO trees~\cite{Sivaraman16}.
-An operator opts to configure the router to always prioritize \textsf{zoom} packets over \textsf{gmail} packets.
+Imagine a programmable switch that needs to prioritize traffic from two flows, labeled \textsf{zoom} and \textsf{gmail}.
+This switch uses a reconfigurable packet scheduler based on PIFO trees~\cite{Sivaraman16}.
+An operator opts to configure the switch to always prioritize \textsf{zoom} packets over \textsf{gmail} packets.
 
 Instead of directly configuring the PIFO-based hardware's scheduling transactions, the operator specifies the policy using a simple hierarchical policy language.
 The policy for this strict prioritization is:
