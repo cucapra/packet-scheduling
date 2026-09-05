@@ -11,6 +11,7 @@
 \usepackage{fancyvrb}
 \fvset{frame=single,framesep=3pt,fontsize=\small,xleftmargin=0pt,rulecolor=\color{black!25}}
 \usepackage{subcaption}
+\usepackage{xspace}
 \newcount\draft \draft=1
 \usepackage{xxx}
 \usepackage[capitalize,noabbrev]{cleveref}
@@ -37,7 +38,21 @@
 \newcommand{\psem}[1]{\mathcal{P}\llbracket #1 \rrbracket}
 \newcommand{\eqR}{=_R}
 \newcommand{\simR}{\sim_R}
-\newcommand{\pol}{\textsf{pol}}
+% \notation: a notation name from the formal model. Math-italic, usable in
+% both text and math mode, and does not swallow the space that follows it in
+% text. Write \pol{}s for a plural, \pol{} before any other brace group.
+\newcommand{\notation}[1]{\ensuremath{#1}\ifmmode\else\xspace\fi}
+\newcommand{\pol}{\notation{\mathit{pol}}}
+\newcommand{\pifo}{\notation{\mathit{pifo}}}
+\newcommand{\zz}{\notation{\mathit{z}}}
+\newcommand{\stt}{\notation{\mathit{state}}}
+\newcommand{\pth}{\notation{\mathit{path}}}
+\newcommand{\survivor}{\notation{\mathit{survivor}}}
+\newcommand{\slotstates}{\notation{\mathit{slot\_states}}}
+\newcommand{\nodestate}{\notation{\mathit{node\_state}}}
+\newcommand{\gseq}{\notation{\mathit{gseq}}}
+\newcommand{\arm}{\notation{\mathit{arm}}}
+\newcommand{\disc}{\notation{D}}
 \newcommand{\rio}{\textsf{Rio}}
 \newcommand{\Strict}{\textsf{Strict}}
 \newcommand{\Strictstar}{\textsf{Strict}^{*}}
@@ -271,12 +286,12 @@ D\ \text{a scheduling discipline, declaring a metadata set } M_{D}\\[8pt]
 \label{fig:pol-grammar}
 \end{figure}
 
-An operator writes a policy in \ensuremath{\mathit{pol}} (\cref{fig:pol-grammar}), a small grammar that permits either a leaf carrying a \emph{flow} (a predicate over packets), or an internal node applying a scheduling discipline to its child policies.
+An operator writes a policy in \pol (\cref{fig:pol-grammar}), a small grammar that permits either a leaf carrying a \emph{flow} (a predicate over packets), or an internal node applying a scheduling discipline to its child policies.
 Each arm is labeled with a metadatum the discipline declares, and no flow may label two leaves of a policy that an operator writes.
 Say that the network operator initially writes
 \[ p_1 = \Strict(\mathtt{hi}{:}\,\textsf{zoom},\ \mathtt{lo}{:}\,\textsf{gmail}), \]
 which is visualized in the top left of \cref{fig:tour}.
-Everything on that figure's top row is written in \ensuremath{\mathit{pol}} and is human readable.
+Everything on that figure's top row is written in \pol and is human readable.
 
 \paragraph{What the policy compiles to}
 
@@ -333,7 +348,7 @@ Rio gives names to idiomatic sequences that tend to recur; in our example we hav
 
 \paragraph{What the operator is told throughout}
 
-The middle panel of \cref{fig:tour} is a policy, expressed in the same grammar \ensuremath{\mathit{pol}} in which the operator wrote \(p_1\) and \(p_2\).
+The middle panel of \cref{fig:tour} is a policy, expressed in the same grammar \pol in which the operator wrote \(p_1\) and \(p_2\).
 The middle policy was recovered from the running control by a read-off written \(\lfloor \cdot \rfloor\) (\cref{sec:equivalences}).
 The solid upward arrow rising out of the transitionary control is that recovery.
 The dashed arrow on the right is the route Rio does not take.
@@ -396,22 +411,22 @@ The two layers can plausibly compose, and \cref{sec:substrate-portability} sets 
 This section introduces the two objects that the rest of the paper edits.
 \cref{sec:policy-dsl} gives the small DSL an operator writes, \cref{sec:controls} gives the control a switch runs, and \cref{sec:compilation} compiles the first into the second.
 
-\subsection{What the operator writes}\label{sec:policy-dsl}
+\subsection{The policy language}\label{sec:policy-dsl}
 
 An operator wants to say which flows exist and how they should share the link.
 A switch runs something much lower level, a tree of queues carrying scheduling logic at every node, which \cref{sec:controls} makes precise.
-We start on the operator's side, with a small policy DSL \ensuremath{\mathit{pol}}, and \cref{sec:compilation} compiles it down.
+We start on the operator's side, with a small policy DSL \pol, and \cref{sec:compilation} compiles it down.
 
-The operator writes a \ensuremath{\mathit{pol}} (\cref{fig:pol-grammar}).
-It is either a leaf labeled by a flow, or an internal node running a scheduling discipline \ensuremath{D} over child policies.
-Each arm carries a metadatum that tells \ensuremath{D} how to schedule it, drawn from a set \(M_{D}\) that \ensuremath{D} declares.
+The operator writes a \pol (\cref{fig:pol-grammar}).
+It is either a leaf labeled by a flow, or an internal node running a scheduling discipline \disc over child policies.
+Each arm carries a metadatum that tells \disc how to schedule it, drawn from a set \(M_{D}\) that \disc declares.
 For instance, \(M_{\Strict}\) is a set of priorities and \(M_{\WFQ}\) a set of weights.
 A discipline that treats its arms alike, such as \RR, declares a one-element set, and we elide that element when writing examples.
 We read the arity off by counting children, so, e.g., \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\textsf{gmail})\) is the 2-ary instance of the discipline \Strict.
 Each leaf label denotes a \emph{flow}: a predicate over packets.
 
 The family of disciplines is open.
-\ensuremath{D} is any discipline equipped with the compilation recipe of \cref{sec:compilation}, and nothing that follows depends on which disciplines are available.
+\disc is any discipline equipped with the compilation recipe of \cref{sec:compilation}, and nothing that follows depends on which disciplines are available.
 Our implementation instantiates \Strict, \RR, and \WFQ because they aid our exposition.
 
 We also have the discipline \(\Strictstar\), which for the most part can be thought of as merely an instance of 2-ary \Strict{}.
@@ -419,8 +434,8 @@ While the operator may use \(\Strictstar\) in their policies, it is really desig
 The two disciplines are told apart in \cref{sec:hardware}, where a novel optimization allows us to realize \(\Strictstar\) without a pifo or a tree level of its own.
 That is what makes an in-place replacement smooth.
 
-A \ensuremath{\mathit{pol}} is written against a fixed \emph{flow universe} \(F\): a finite set of pairwise disjoint flow predicates declared by the operator before constructing the \ensuremath{\mathit{pol}}.
-A \ensuremath{\mathit{pol}} is \emph{valid} when (a) every discipline is applied at the proper arity, (b) every arm's metadatum is drawn from its parent discipline's set \(M_{D}\), and (c) the leaves form a partition of a subset of \(F\): each leaf carries a flow drawn from \(F\), and no two leaves carry the same flow.
+A \pol is written against a fixed \emph{flow universe} \(F\): a finite set of pairwise disjoint flow predicates declared by the operator before constructing the \pol.
+A \pol is \emph{valid} when (a) every discipline is applied at the proper arity, (b) every arm's metadatum is drawn from its parent discipline's set \(M_{D}\), and (c) the leaves form a partition of a subset of \(F\): each leaf carries a flow drawn from \(F\), and no two leaves carry the same flow.
 A packet therefore matches at most one leaf's flow.
 If a packet does not match any of the flows in the scheduling tree's leaves, the packet is dropped.
 
@@ -441,24 +456,24 @@ A node with no children is a \emph{leaf}, and a node with children is \emph{inte
 The three components of the triple are as follows.
 
 \begin{itemize}
-\item \ensuremath{\mathit{state}} is a pair \((\mathit{node\_state}, \mathit{slot\_states})\): the scheduling discipline's per-node bookkeeping and a list of per-arm entries, one per child.
+\item \stt is a pair \((\mathit{node\_state}, \mathit{slot\_states})\): the scheduling discipline's per-node bookkeeping and a list of per-arm entries, one per child.
 Both evolve as the node serves traffic.
-When the node runs a discipline that keeps no per-arm bookkeeping, \ensuremath{\mathit{slot\_states}} is empty.
-\item \ensuremath{\mathit{pifo}} is a PIFO of ranked \emph{payloads}.
+When the node runs a discipline that keeps no per-arm bookkeeping, \slotstates is empty.
+\item \pifo is a PIFO of ranked \emph{payloads}.
 A payload is what this node enqueues when presented with a packet.
 At an internal node the payload is an index into the child list, and at a leaf it is the packet itself.
-\item \ensuremath{\mathit{z}} is the node's \emph{scheduling transaction},
+\item \zz is the node's \emph{scheduling transaction},
 \[
 \mathit{z} : \mathit{state} \times \mathit{Pkt} \rightharpoonup (\mathit{payload} \times \mathit{rank}) \times \mathit{state}.
 \]
-Given the node's \ensuremath{\mathit{state}} and an incoming packet, it returns the payload this node will enqueue for that packet, the rank to enqueue it at, and the node's updated \ensuremath{\mathit{state}}.
-\ensuremath{\mathit{z}} is partial.
-When it is undefined for a packet, nothing is enqueued at this node and \ensuremath{\mathit{state}} is unchanged.
+Given the node's \stt and an incoming packet, it returns the payload this node will enqueue for that packet, the rank to enqueue it at, and the node's updated \stt.
+\zz is partial.
+When it is undefined for a packet, nothing is enqueued at this node and \stt is unchanged.
 \end{itemize}
 
-\paragraph{The many roles of \ensuremath{\mathit{z}}: classifying, annotating, and ranking}
+\paragraph{The many roles of \zz: classifying, annotating, and ranking}
 
-We write \ensuremath{\mathit{z}} as a single partial function, but it has three parts, and the edits of \cref{sec:grammar} rewrite them separately.
+We write \zz as a single partial function, but it has three parts, and the edits of \cref{sec:grammar} rewrite them separately.
 Mohan et al.\ instead keep one total transaction for the whole tree, returning an entire root-to-leaf path of indices and ranks, where ours is per-node and partial.
 
 \begin{itemize}
@@ -470,33 +485,33 @@ Its \emph{admitted set}, written \(\mathit{z}.\mathit{admit} \subseteq \mathrm{d
 \item The \emph{per-arm metadata}, written \(\mathit{z}.\mathit{meta}\), records what this node's discipline needs to know about each of its arms, such as priorities or weights.
 A leaf has no arms, and so no metadata.
 \item The \emph{ranker}, written \(\mathit{z}.\mathit{rank}\), is the scheduling logic that the node's discipline contributes.
-Its inputs are the node's \ensuremath{\mathit{state}}, the chosen payload, and that payload's arm metadatum.
-From this it mints the rank and the updated \ensuremath{\mathit{state}}.
+Its inputs are the node's \stt, the chosen payload, and that payload's arm metadatum.
+From this it mints the rank and the updated \stt.
 A node's ranker names the discipline that the node runs.
 \end{itemize}
 
 So \(\mathit{z}(\mathit{state}, p)\) is defined exactly when \(\mathit{flow}(p) \in \mathit{z}.\mathit{admit}\). 
 It then finds \(p\)'s payload in \(\mathit{z}.\mathit{serves}\), and pairs that payload with the rank that \(\mathit{z}.\mathit{rank}\) computes.
 
-\ensuremath{\mathit{z}} does not \emph{choose} the payload.
+\zz does not \emph{choose} the payload.
 Distinct leaves carry distinct flows (\cref{sec:policy-dsl} makes this a validity condition), so a packet's flow already fixes the one leaf it is bound for.
 That in turn fixes, at every node on the way down, which child the packet has to be handed to.
-The service map reports that child rather than selecting it, and what \ensuremath{\mathit{z}} genuinely decides is the rank.
+The service map reports that child rather than selecting it, and what \zz genuinely decides is the rank.
 
 At an internal node the ranker sees the payload and not the packet, meaning that the node can discriminate only among its own children. 
 It cannot do finer-grained discrimination based on packet- or flow-specific information. 
 The node's behavior is therefore a function of its own arms alone, which is a win for modularity and composability.
 
-\ensuremath{\mathit{state}} and \ensuremath{\mathit{pifo}} change as the node serves traffic, whereas \ensuremath{\mathit{z}} changes only when an edit rewrites it.
-That is why the per-arm metadata sits in \ensuremath{\mathit{z}} rather than in \ensuremath{\mathit{slot\_states}}.
+\stt and \pifo change as the node serves traffic, whereas \zz changes only when an edit rewrites it.
+That is why the per-arm metadata sits in \zz rather than in \slotstates.
 It is the configuration the operator chose, not bookkeeping that the traffic left behind.
 
-\xxx[AM to AS]{This is a change. The per-arm metadata used to live in \ensuremath{\mathit{slot\_states}}, so \(\lfloor \cdot \rfloor\) could not read it. And then \(\psem{\ChangeMeta}\) ended up being the identity function: an operator who re-tuned a weight got back an echo saying nothing had changed. Moving the metadata into \ensuremath{\mathit{z}} makes \(\psem{\ChangeMeta}\) a real function, and it matches the ISA of \cref{sec:hardware}, where \texttt{set\_arm\_meta} is its own opcode rather than a state write.}
+\xxx[AM to AS]{This is a change. The per-arm metadata used to live in \slotstates, so \(\lfloor \cdot \rfloor\) could not read it. And then \(\psem{\ChangeMeta}\) ended up being the identity function: an operator who re-tuned a weight got back an echo saying nothing had changed. Moving the metadata into \zz makes \(\psem{\ChangeMeta}\) a real function, and it matches the ISA of \cref{sec:hardware}, where \texttt{set\_arm\_meta} is its own opcode rather than a state write.}
 
 \xxx[AM to AS]{I want to flag a new thing. A node's \emph{ranker} now names the discipline D that the node runs, so the discipline is recoverable from the running control rather than lost at compile time.
 That lets \cref{sec:equivalences} define \(\lfloor \cdot \rfloor\) by structural recursion.
 And \emph{that} turns closure under \(\delta\) into a theorem rather than a definitional rule.
-It supersedes an earlier decision of ours saying that the discipline is ``compiled into \ensuremath{\mathit{z}} and never stored''; note that \cref{sec:hw-compile} already stores it (\texttt{set\_policy}) and reads it back (\texttt{discipline(v)}). So maybe our earlier resolution was always in vain.}
+It supersedes an earlier decision of ours saying that the discipline is ``compiled into \zz and never stored''; note that \cref{sec:hw-compile} already stores it (\texttt{set\_policy}) and reads it back (\texttt{discipline(v)}). So maybe our earlier resolution was always in vain.}
 
 \paragraph{\push{} and \pop{}}
 
@@ -507,22 +522,22 @@ A control exposes exactly two operations to the network:
 \pop{} &: \mathit{control} \rightharpoonup \mathit{Pkt} \times \mathit{control}.
 \end{array}
 \]
-A \push{} offers the packet in parallel to every node on its root-to-leaf path, and each of those nodes enqueues the payload its own \ensuremath{\mathit{z}} returns, at the rank \ensuremath{\mathit{z}} mints for it.
+A \push{} offers the packet in parallel to every node on its root-to-leaf path, and each of those nodes enqueues the payload its own \zz returns, at the rank \zz mints for it.
 Ranks are fixed at \push{} time and never revised.
 A \pop{} releases the best-ranked packet, resolving ``best-ranked'' from the top down.
 It releases the best-ranked index at the root, follows that index to a child, recurses, and releases a packet once it reaches a leaf.
-It consults \ensuremath{\mathit{pifo}} contents alone, never \ensuremath{\mathit{state}} or \ensuremath{\mathit{z}}.
+It consults \pifo contents alone, never \stt or \zz.
 These two are the \emph{only} observable interactions with a scheduler, which is why we frame an \emph{atomic} transition in terms of \push{}/\pop{} observability.
 
 \paragraph{Well-formedness}
 
-A control \(C\) is \emph{well-formed} (written \(\vdash C\)) when, at every internal node of \(C\), the \ensuremath{\mathit{pifo}} has, for each legal child index \(i\), exactly as many occurrences of \(i\) as there are packets stored in the leaf pifos of the subtree under the \(i\)-th child.
+A control \(C\) is \emph{well-formed} (written \(\vdash C\)) when, at every internal node of \(C\), the \pifo has, for each legal child index \(i\), exactly as many occurrences of \(i\) as there are packets stored in the leaf pifos of the subtree under the \(i\)-th child.
 A control that fails this holds an index at some node with no packet under the corresponding child, so a \pop{} that follows that index down reaches a leaf with nothing to emit.
 
 \paragraph{Addressing a node}
 
-We address node-local components of a control by a \ensuremath{\mathit{path}}, a possibly empty sequence of child indices read from the root.
-The local triple at the node reached by following \ensuremath{\mathit{path}} from control \(C\)'s root is written \(C@\mathit{path}\), with fields \(C@\mathit{path}.\mathit{state}\), \(C@\mathit{path}.\mathit{pifo}\), and \(C@\mathit{path}.\mathit{z}\).
+We address node-local components of a control by a \pth, a possibly empty sequence of child indices read from the root.
+The local triple at the node reached by following \pth from control \(C\)'s root is written \(C@\mathit{path}\), with fields \(C@\mathit{path}.\mathit{state}\), \(C@\mathit{path}.\mathit{pifo}\), and \(C@\mathit{path}.\mathit{z}\).
 We also write \(C@\mathit{path}.\mathit{node\_state}\) and \(C@\mathit{path}.\mathit{slot\_states}\) for the two components of \(C@\mathit{path}.\mathit{state}\).
 
 \subsection{Compiling a policy to a control}\label{sec:compilation}
@@ -531,11 +546,11 @@ We also write \(C@\mathit{path}.\mathit{node\_state}\) and \(C@\mathit{path}.\ma
 \small
 \[
 \begin{array}{@{}l@{\quad}l@{}}
-M_{D} & \text{opaque; the per-arm configuration \ensuremath{\mathit{z}} holds}\\
-\mathit{node\_state}_{D} & \text{opaque; \ensuremath{D}'s per-node bookkeeping}\\
-\mathit{slot\_state}_{D} & \text{opaque; \ensuremath{D}'s per-arm bookkeeping}\\[9pt]
+M_{D} & \text{opaque; the per-arm configuration \zz holds}\\
+\mathit{node\_state}_{D} & \text{opaque; \disc's per-node bookkeeping}\\
+\mathit{slot\_state}_{D} & \text{opaque; \disc's per-arm bookkeeping}\\[9pt]
 \multicolumn{2}{@{}l@{}}{\mathit{state}_{D} \;=\; \mathit{node\_state}_{D} \times \mathit{slot\_state}_{D}\ \mathrm{list}}\\[3pt]
-\mathit{Pkt},\ \mathit{rank},\ \mathit{payload} & \text{opaque; shared by every \ensuremath{D}}\\[9pt]
+\mathit{Pkt},\ \mathit{rank},\ \mathit{payload} & \text{opaque; shared by every \disc}\\[9pt]
 \multicolumn{2}{@{}l@{}}{\mathit{init\_node\_state}_{D} : \mathit{node\_state}_{D}}\\[3pt]
 \multicolumn{2}{@{}l@{}}{\mathit{init\_slot\_state}_{D} : \mathit{node\_state}_{D} \times M_{D} \to \mathit{slot\_state}_{D}}\\[3pt]
 \multicolumn{2}{@{}l@{}}{\mathit{rank}_{D} : \mathit{state}_{D} \times \mathit{payload} \times M_{D} \to \mathit{rank} \times \mathit{state}_{D}}
@@ -547,31 +562,31 @@ M_{D} & \text{opaque; the per-arm configuration \ensuremath{\mathit{z}} holds}\\
 
 \paragraph{What a discipline supplies}
 
-\cref{fig:discipline} lists what has to be supplied to realize a discipline \ensuremath{D}: a metadata set \(M_{D}\), two state types of \ensuremath{D}'s own, and three operations.
-Supplying those is the whole interface, and any \ensuremath{D} that supplies them is one Rio can compile.
+\cref{fig:discipline} lists what has to be supplied to realize a discipline \disc: a metadata set \(M_{D}\), two state types of \disc's own, and three operations.
+Supplying those is the whole interface, and any \disc that supplies them is one Rio can compile.
 
-\(\mathit{init\_node\_state}_{D}\) is the \(\mathit{node\_state}_{D}\) every \ensuremath{D}-node starts in, installed when a \ensuremath{\mathit{pol}} is compiled into a control.
-\(\mathit{init\_slot\_state}_{D}\) runs once per arm, at compile time and again whenever an edit splices a new arm under an already-running \ensuremath{D}-parent (\cref{sec:add}), taking the parent's current \(\mathit{node\_state}_{D}\) and the new arm's metadatum.
+\(\mathit{init\_node\_state}_{D}\) is the \(\mathit{node\_state}_{D}\) every \disc-node starts in, installed when a \pol is compiled into a control.
+\(\mathit{init\_slot\_state}_{D}\) runs once per arm, at compile time and again whenever an edit splices a new arm under an already-running \disc-parent (\cref{sec:add}), taking the parent's current \(\mathit{node\_state}_{D}\) and the new arm's metadatum.
 
 The three operations are opaque to us.
 Rio names \(\mathit{init\_node\_state}_{D}\), \(\mathit{init\_slot\_state}_{D}\) and \(\mathit{rank}_{D}\), and never unfolds them.
-The two state types are opaque in a stronger sense: nothing outside \ensuremath{D} builds or reads a \(\mathit{node\_state}_{D}\) or a \(\mathit{slot\_state}_{D}\), and Rio only ever appends, deletes and renumbers slot entries.
-\(M_{D}\) is the exception, since the compiler checks an arm's metadatum against it (\cref{sec:policy-dsl}) and \ChangeMeta{} carries \ensuremath{D} so that the same check is possible on a form alone.
+The two state types are opaque in a stronger sense: nothing outside \disc builds or reads a \(\mathit{node\_state}_{D}\) or a \(\mathit{slot\_state}_{D}\), and Rio only ever appends, deletes and renumbers slot entries.
+\(M_{D}\) is the exception, since the compiler checks an arm's metadatum against it (\cref{sec:policy-dsl}) and \ChangeMeta{} carries \disc so that the same check is possible on a form alone.
 A discipline's interface is visible to us and its behavior is not.
 
 Two obligations attend the exchange.
 The first is path-consistency of admission: a packet's flow must be admitted at every node on that flow's root-to-leaf path, or at none of them.
-This is a global property rather than a concern of any node-local \ensuremath{\mathit{z}}, and it is what keeps \(\vdash\) true under compilation and under every \(\delta\).
+This is a global property rather than a concern of any node-local \zz, and it is what keeps \(\vdash\) true under compilation and under every \(\delta\).
 The second is that \(\mathit{rank}_{D}\) records which discipline the node runs, and not merely how that discipline ranks.
 Suppose two disciplines happened to schedule identically on every input.
 If a node stored only its ranking behavior, the two would be indistinguishable in a running control, and the policy we echo back to the operator could name the wrong discipline.
-Recording \ensuremath{D} keeps them apart, which is what lets \cref{sec:equivalences} read the operator's own \ensuremath{D} off a running control.
+Recording \disc keeps them apart, which is what lets \cref{sec:equivalences} read the operator's own \disc off a running control.
 
-\paragraph{From \ensuremath{\mathit{pol}} to control}
+\paragraph{From \pol to control}
 
-We write \(\lceil p \rceil\) for the control compiled from \ensuremath{\mathit{pol}} \(p\).
-It has \(p\)'s tree shape, an empty \ensuremath{\mathit{pifo}} at every node, and \ensuremath{\mathit{state}} seeded by \(\mathit{init\_node\_state}_{D}\) and \(\mathit{init\_slot\_state}_{D}\).
-Each node's \ensuremath{\mathit{z}} takes \ensuremath{D}'s ranker, copies each arm's written metadatum into \(\mathit{z}.\mathit{meta}\), and reads its classifier off the tree, sending every flow served beneath the node toward that flow's leaf.
+We write \(\lceil p \rceil\) for the control compiled from \pol \(p\).
+It has \(p\)'s tree shape, an empty \pifo at every node, and \stt seeded by \(\mathit{init\_node\_state}_{D}\) and \(\mathit{init\_slot\_state}_{D}\).
+Each node's \zz takes \disc's ranker, copies each arm's written metadatum into \(\mathit{z}.\mathit{meta}\), and reads its classifier off the tree, sending every flow served beneath the node toward that flow's leaf.
 A freshly compiled control therefore admits every flow it serves, and carries the operator's arm annotations verbatim.
 
 This is essentially what the vPIFO paper's \emph{Scheduling Description Language} does informally~\cite{vPIFO}.
@@ -595,8 +610,8 @@ They are \emph{explainable}, since \(\psem{\delta}\) states every form's effect 
 And they are \emph{complete}, since the grammar can express a sequence that reaches any \(p_2\) from any \(p_1\), which \cref{sec:fallback} shows by exhibiting one that always works.
 
 An edit describes \emph{where} in the tree the change lands and \emph{what} the change is.
-Throughout this section \(p_1\) is the presently running policy, and \(p_1@\mathit{path}\) is its subtree at \ensuremath{\mathit{path}}.
-The node a form's \ensuremath{\mathit{path}} names is its \emph{edit site}.
+Throughout this section \(p_1\) is the presently running policy, and \(p_1@\mathit{path}\) is its subtree at \pth.
+The node a form's \pth names is its \emph{edit site}.
 
 \begin{figure}[t]
 \small
@@ -617,12 +632,12 @@ The node a form's \ensuremath{\mathit{path}} names is its \emph{edit site}.
 \end{figure}
 
 The grammar is given in \cref{fig:delta-grammar}.
-A \ensuremath{\mathit{path}} is a (possibly empty) sequence of child indices \(i\) read from the root.
+A \pth is a (possibly empty) sequence of child indices \(i\) read from the root.
 \xxx[AM to AS]{On writing \(\mathit{path}\) as \(\cdot \mid (i, \mathit{path})\) rather than \([\,] \mid i \mathbin{::} \mathit{path}\): I would rather keep the list notation.
 It is not only the figure that would have to change.
 Every rule in \cref{sec:edit-semantics} recurses on \(i \mathbin{::} \mathit{rest}\), \(\mathtt{at}\) is defined by that same split, and paths are destructed as \(\pi \mathbin{+\!\!+} [k]\) throughout, which has no comfortable reading under the pair syntax.}
-Two forms take a \ensuremath{\mathit{pol}} argument (\cref{sec:policy-dsl}): in \Add{} it is the new arm, and in \Designate{} it is the surviving subtree.
-Two carry a discipline \ensuremath{D} together with a metadatum \(m\) drawn from \(M_{D}\), and in both the form is defined only when \ensuremath{D} is the discipline the node it names actually runs.
+Two forms take a \pol argument (\cref{sec:policy-dsl}): in \Add{} it is the new arm, and in \Designate{} it is the surviving subtree.
+Two carry a discipline \disc together with a metadatum \(m\) drawn from \(M_{D}\), and in both the form is defined only when \disc is the discipline the node it names actually runs.
 
 Edits that would have to discard packets are expressly not in the grammar.
 For example, \Remove{} has a precondition saying that it may fire only when its target subtree is already empty, so structural deletion never has to discard a buffered packet.
@@ -636,32 +651,32 @@ Nothing in the completeness argument moved, since \cref{sec:fallback}'s always-a
 \cref{sec:edit-semantics} takes up the six forms one at a time.
 When \(p_1\) and \(p_2\) are already the same up to sibling order (written \(\eqR\), and pinned down in \cref{sec:equivalences}), the planner emits the empty sequence and the live control is left untouched.
 
-Before taking up the forms themselves, \cref{sec:equivalences} says when two policies, or two controls, count as the same, and how to recover a \ensuremath{\mathit{pol}} from a control.
+Before taking up the forms themselves, \cref{sec:equivalences} says when two policies, or two controls, count as the same, and how to recover a \pol from a control.
 
 \subsection{Equivalences, and Reading Off the Running Policy}\label{sec:equivalences}
 
-We write \(C \sim C'\) for the equivalence on well-formed controls that holds when the two are identical except in their live \ensuremath{\mathit{pifo}} contents and \ensuremath{\mathit{state}}s.
-Two \(\sim\)-related controls thus have the same tree shape and the same \ensuremath{\mathit{z}} at every node, and differ at most in the transient live state that traffic leaves behind.
+We write \(C \sim C'\) for the equivalence on well-formed controls that holds when the two are identical except in their live \pifo contents and \stt{}s.
+Two \(\sim\)-related controls thus have the same tree shape and the same \zz at every node, and differ at most in the transient live state that traffic leaves behind.
 Serving \push{}/\pop{} operations is one way controls come to be \(\sim\)-related.
 
-We write \(p \eqR p'\) for the smallest congruence on \ensuremath{\mathit{pol}} such that, at any internal \ensuremath{D}-node, permuting the child arms gives a congruent \ensuremath{\mathit{pol}}.
+We write \(p \eqR p'\) for the smallest congruence on \pol such that, at any internal \disc-node, permuting the child arms gives a congruent \pol.
 Each arm's metadatum is tagged to the arm, so it travels with the arm under the permutation.
 The metadata is what carries the scheduling-meaningful content, so such a permutation does not change the scheduler.
 
 Because \(\eqR\) only permutes sibling arms, each \(\eqR\)-class has a canonical representative under any fixed ordering of the arms at a node.
 
 We write \(C \simR C'\) for the equivalence obtained by closing \(\sim\) under sibling permutations.
-Permuting a node's children renumbers the slots they sit in, so the parent's \ensuremath{\mathit{pifo}} entries, its \ensuremath{\mathit{slot\_states}}, its \(\mathit{z}.\mathit{serves}\), and its \(\mathit{z}.\mathit{meta}\) are all renumbered to match.
+Permuting a node's children renumbers the slots they sit in, so the parent's \pifo entries, its \slotstates, its \(\mathit{z}.\mathit{serves}\), and its \(\mathit{z}.\mathit{meta}\) are all renumbered to match.
 The two controls present different positional layouts and realize the same scheduler.
 
 
 \paragraph{The bridge: \(\lfloor \cdot \rfloor\)}
 
-We write \(\lfloor C \rfloor\) to mean ``the \ensuremath{\mathit{pol}} that \(C\) realizes''.
+We write \(\lfloor C \rfloor\) to mean ``the \pol that \(C\) realizes''.
 Intuitively, \(\lfloor \cdot \rfloor\) reads the policy straight off the control.
-It walks the control's tree and recovers, node by node, the \ensuremath{\mathit{pol}} term the control implements, discarding the live \ensuremath{\mathit{pifo}} and \ensuremath{\mathit{state}} contents that traffic happens to have left behind.
+It walks the control's tree and recovers, node by node, the \pol term the control implements, discarding the live \pifo and \stt contents that traffic happens to have left behind.
 We define it by structural recursion on \(C\), with one clause for leaves and one for internal nodes.
-Both clauses read out of \ensuremath{\mathit{z}} (\cref{sec:controls}).
+Both clauses read out of \zz (\cref{sec:controls}).
 A leaf is named by the flow its classifier serves.
 An internal node is named by the discipline its ranker names, and its arms are annotated out of its metadata.
 
@@ -674,30 +689,30 @@ An internal node is named by the discipline its ranker names, and its arms are a
 \end{array}
 \]
 
-The recursion runs on a finite tree and consults neither \ensuremath{\mathit{state}} nor \ensuremath{\mathit{pifo}} nor \(\mathit{z}.\mathit{admit}\), so it returns a single value.
+The recursion runs on a finite tree and consults neither \stt nor \pifo nor \(\mathit{z}.\mathit{admit}\), so it returns a single value.
 \xxx[AM to AS]{You suggested defining \(\lfloor \cdot \rfloor\) as the inverse of \(\lceil \cdot \rceil\), and then worried that \(\lceil \cdot \rceil\) is not invertible if one is strict about sibling order.
 \(\lfloor \cdot \rfloor\) is now a structural recursion on \(C\), so it is total and single-valued by construction, and no inverse has to be argued for.
 The three items below are then consequences rather than defining rules, and the third of them is a theorem.}
-Every well-formed control therefore determines one \ensuremath{\mathit{pol}}, independently of how that control was reached, and we may write \(\lfloor C \rfloor\) and use it as a function.
+Every well-formed control therefore determines one \pol, independently of how that control was reached, and we may write \(\lfloor C \rfloor\) and use it as a function.
 
 Three facts follow.
 
 \begin{enumerate}
 \item \emph{Compiler correctness.} Compiling a \(p\) to a control and reading it straight back recovers \(p\) itself, up to the sibling-order freedom the compiler enjoyed in laying it out: \(\lfloor \lceil p \rceil \rfloor \eqR p\).
-This is immediate from the compilation of \cref{sec:compilation}, which installs \ensuremath{D}'s ranker at each internal node, copies each arm's annotation into \(\mathit{z}.\mathit{meta}\), and has each leaf serve its own flow.
+This is immediate from the compilation of \cref{sec:compilation}, which installs \disc's ranker at each internal node, copies each arm's annotation into \(\mathit{z}.\mathit{meta}\), and has each leaf serve its own flow.
 The relation is \(\eqR\) rather than \(=\) precisely because the compiler can choose arm order when creating \(\lceil p \rceil\).
 \item \emph{Insensitivity to live contents.} \(\lfloor \cdot \rfloor\) reads only the tree shape, each leaf's served flow, and each internal node's ranker-discipline and per-arm metadata.
-It never reads \ensuremath{\mathit{state}}, \ensuremath{\mathit{pifo}}, or \(\mathit{z}.\mathit{admit}\).
-So \(\sim\)-related controls, which share shape and \ensuremath{\mathit{z}} outright, are equal when read off using \(\lfloor \cdot \rfloor\). 
+It never reads \stt, \pifo, or \(\mathit{z}.\mathit{admit}\).
+So \(\sim\)-related controls, which share shape and \zz outright, are equal when read off using \(\lfloor \cdot \rfloor\). 
 Thus, if \(C \sim C'\), then \(\lfloor C \rfloor = \lfloor C' \rfloor\).
 \item \emph{Closure under \(\delta\).} A form's two readings (\cref{sec:delta-grammar}) agree.
-Editing the control and reading it off gives the same \ensuremath{\mathit{pol}}, up to sibling order, as applying the \ensuremath{\mathit{pol}}-level effect to the read-off, so \(\lfloor \csem{\delta}(C) \rfloor \eqR \psem{\delta}(\lfloor C \rfloor)\).
+Editing the control and reading it off gives the same \pol, up to sibling order, as applying the \pol-level effect to the read-off, so \(\lfloor \csem{\delta}(C) \rfloor \eqR \psem{\delta}(\lfloor C \rfloor)\).
 This theorem is proved one form at a time in \cref{sec:per-form} and collected as \cref{thm:interplay}.
 The relation is again \(\eqR\), not \(=\), because \(\csem{\delta}\) may lay the edited node's children out in any sibling order.
 \end{enumerate}
 
 This is how we give the transitionary policy the semantics that \cref{sec:intro} promises.
-Even when the presently running \ensuremath{\mathit{pol}} is just an intermediate policy that the runtime crafted on the way from the running policy to the operator's true request, we can still read off and report to the operator exactly what is running.
+Even when the presently running \pol is just an intermediate policy that the runtime crafted on the way from the running policy to the operator's true request, we can still read off and report to the operator exactly what is running.
 \cref{sec:interplay} takes up the third fact and proves it, as the ``commuting square'' these pieces trace out.
 
 \subsection{Edit Semantics}\label{sec:edit-semantics}
@@ -709,12 +724,12 @@ That the two agree, and that neither disturbs the buffered backlog, are claims a
 
 \paragraph{Notation}
 
-The \ensuremath{\mathit{pol}}-level rules below read, overwrite, and shrink child lists.
-A \ensuremath{\mathit{pol}} node's child list \(\mathit{ts}\) holds \emph{annotated arms}, each a metadatum paired with a policy (\cref{sec:policy-dsl}).
+The \pol-level rules below read, overwrite, and shrink child lists.
+A \pol node's child list \(\mathit{ts}\) holds \emph{annotated arms}, each a metadatum paired with a policy (\cref{sec:policy-dsl}).
 We write \(\mathit{ts}[i]\) for the \(i\)-th arm, and \(\mathit{ts}[t/i]\) for \(\mathit{ts}\) with the \emph{policy} of its \(i\)-th arm overwritten by \(t\).
 That arm keeps its annotation, and the arity does not change.
 \(\mathit{ts}[-/k]\) drops the \(k\)-th arm, and later arms shift one slot to the left.
-Indices follow the \ensuremath{\mathit{path}} convention of \cref{sec:delta-grammar}.
+Indices follow the \pth convention of \cref{sec:delta-grammar}.
 
 The control-level rules walk controls the same way.
 Nodes are written \(\langle\mathit{state}, \mathit{pifo}, \mathit{z}\rangle(\mathit{cs})\), as in \cref{sec:controls}, and we reuse \(\mathit{cs}[C'/i]\) and \(\mathit{cs}\mathbin{+\!\!+}[C']\) for the list operations on the child list \(\mathit{cs}\).
@@ -738,12 +753,12 @@ For such a form we use a small combinator: given a node transformer \(g\) and a 
 \end{array}
 \]
 The recursive case walks one step down and writes the result back, carrying \(\langle\mathit{state},\mathit{pifo},\mathit{z}\rangle\) unchanged.
-The same combinator serves on \ensuremath{\mathit{pol}}, where a node is \(D(\mathit{ts})\).
+The same combinator serves on \pol, where a node is \(D(\mathit{ts})\).
 There the descent into arm \(i\) rewrites that arm's policy and carries its annotation along.
 We also write \(\mathtt{at}(V, g)\) for the set analogue, applying \(g\) at every node in \(V\) and copying every node outside \(V\) unchanged.
 
-Three operations recur across the forms, and the first two edit a single node's \ensuremath{\mathit{z}}.
-A node's discipline fixes a packet's rank from the local \ensuremath{\mathit{state}} and the chosen child alone, not from the packet itself, so admitting a flow at an already-running node calls for no new rank rule.
+Three operations recur across the forms, and the first two edit a single node's \zz.
+A node's discipline fixes a packet's rank from the local \stt and the chosen child alone, not from the packet itself, so admitting a flow at an already-running node calls for no new rank rule.
 \(\mathtt{extend}(\mathit{z}, F, i)\) therefore touches the classifier and nothing else, recording that child \(i\) is where \(F\) is served and adding \(F\) to the admitted set.
 \(\mathtt{setmeta}(\mathit{z}, i, m)\) annotates arm \(i\) with \(m\) and leaves the classifier and the ranker alone:
 \[
@@ -753,9 +768,9 @@ A node's discipline fixes a packet's rank from the local \ensuremath{\mathit{sta
 \mathtt{setmeta}(\mathit{z}, i, m).\mathit{meta} = \mathit{z}.\mathit{meta}\,[\,i \mapsto m\,].
 \end{array}
 \]
-Every other field of \ensuremath{\mathit{z}} is carried through unchanged.
+Every other field of \zz is carried through unchanged.
 A form that admits a new set of flows must extend every node on the way down to its target, so \(\mathtt{extend}\) is also applied as a walk.
-At each proper ancestor \(C@\nu\) of the target \(C@\tau\) the walk replaces \ensuremath{\mathit{z}} by \(\mathtt{extend}(\mathit{z}, F, i)\), where \(i\) is the index by which \(\nu\) continues toward \(\tau\), and it copies every other node unchanged.
+At each proper ancestor \(C@\nu\) of the target \(C@\tau\) the walk replaces \zz by \(\mathtt{extend}(\mathit{z}, F, i)\), where \(i\) is the index by which \(\nu\) continues toward \(\tau\), and it copies every other node unchanged.
 
 \Add{} comes first and is given in full detail.
 The six that follow lean on it, and we point out only where each one departs from \Add's pattern.
@@ -763,7 +778,7 @@ The six that follow lean on it, and we point out only where each one departs fro
 \subsubsection{\texorpdfstring{\(\Add(\pi, D, \mathit{arm}, m)\)}{Add}}\label{sec:add}
 
 
-\Add{}'s arguments are \(\pi : \mathit{path}\), the node that will receive the new arm as its last child; \(D\), the discipline that node runs; \(\mathit{arm} : \mathit{pol}\), the policy of the new arm; and \(m \in M_{D}\), the metadatum that tells \ensuremath{D} how to schedule that arm (\cref{sec:policy-dsl}).
+\Add{}'s arguments are \(\pi : \mathit{path}\), the node that will receive the new arm as its last child; \(D\), the discipline that node runs; \(\mathit{arm} : \mathit{pol}\), the policy of the new arm; and \(m \in M_{D}\), the metadatum that tells \disc how to schedule that arm (\cref{sec:policy-dsl}).
 
 Say the presently running control is \(C\).
 Intuitively, \Add{} inserts a freshly compiled subtree \(\lceil \mathit{arm} \rceil\) as the new last child of the subtree \(C@\pi\).
@@ -774,7 +789,7 @@ Every node from the root down to \(C@\pi\) must begin to accept the new flows an
 
 We must define \(\csem{\Add(\pi, D, \mathit{arm}, m)} : \mathit{control} \rightharpoonup \mathit{control}\) together with the preconditions on the already-running control.
 
-\(\csem{\Add(\pi, D, \mathit{arm}, m)}(C)\) is defined when four things hold: the path \(\pi\) resolves in \(C\) to an internal node, that node runs the discipline \ensuremath{D} the form names, the metadatum \(m\) is drawn from \(M_{D}\), and \ensuremath{\mathit{arm}}'s leaf labels are disjoint from those of \(C\).
+\(\csem{\Add(\pi, D, \mathit{arm}, m)}(C)\) is defined when four things hold: the path \(\pi\) resolves in \(C\) to an internal node, that node runs the discipline \disc the form names, the metadatum \(m\) is drawn from \(M_{D}\), and \arm's leaf labels are disjoint from those of \(C\).
 The last condition spares \Add{} from relocating traffic.
 A change that would move admitted traffic is reached instead as a sequence, in which the old traffic drains in place rather than being re-enqueued (\cref{sec:idioms}).
 
@@ -795,17 +810,17 @@ We define \(\csem{\Add}\) by recursion on \(\pi\), writing \(\mathtt{flows}(\mat
 \end{array}
 \]
 }
-The arguments \ensuremath{D}, \ensuremath{\mathit{arm}}, and \(m\) thread unchanged through the recursion, and \(m\) is consumed only at the base case, which annotates the new slot and seeds its bookkeeping.
+The arguments \disc, \arm, and \(m\) thread unchanged through the recursion, and \(m\) is consumed only at the base case, which annotates the new slot and seeds its bookkeeping.
 Because \(\mathtt{flows}(\mathit{arm})\) lies outside \(\mathrm{dom}(\mathit{z}.\mathit{serves})\), every \(\mathtt{extend}\) along the way is conflict-free.
 The recursive case is exactly the \(\mathtt{extend}\) walk of \cref{sec:edit-semantics}, carrying \(\mathtt{flows}(\mathit{arm})\) down to \(\pi\).
 
 The base case (\(\pi = []\)) has reached the parent of the new arm, where it does three things.
 It appends \(\lceil \mathit{arm} \rceil\) as the last child, which lands at the next free slot \(k = |\mathit{cs}|\).
-It appends that slot's bookkeeping, \(\mathit{init\_slot\_state}_{D}(\mathit{node\_state}, m)\), using the discipline \ensuremath{D} that the form carries.
+It appends that slot's bookkeeping, \(\mathit{init\_slot\_state}_{D}(\mathit{node\_state}, m)\), using the discipline \disc that the form carries.
 And it rewrites the node's transaction, extending the classifier to send the new flows to the new child and annotating slot \(k\) with \(m\).
-Meanwhile, \ensuremath{\mathit{node\_state}} and \ensuremath{\mathit{pifo}} are untouched.
+Meanwhile, \nodestate and \pifo are untouched.
 Appending the arm is legitimate because our arm-order freedom (\cref{sec:policy-dsl}) lets us place the new child last.
-The recursive case steps into the on-path child \(i\), writes the result back, and extends this ancestor's transaction to \(\mathtt{extend}(\mathit{z}, \mathtt{flows}(\mathit{arm}), i)\), sending the new flows one step further down toward \(\pi\); its \ensuremath{\mathit{node\_state}}, \ensuremath{\mathit{slot\_states}}, and \ensuremath{\mathit{pifo}} are carried unchanged.
+The recursive case steps into the on-path child \(i\), writes the result back, and extends this ancestor's transaction to \(\mathtt{extend}(\mathit{z}, \mathtt{flows}(\mathit{arm}), i)\), sending the new flows one step further down toward \(\pi\); its \nodestate, \slotstates, and \pifo are carried unchanged.
 
 So every node on the path from the root to \(C@\pi\) has its transaction extended to admit and route the new flows, and nothing else about those nodes changes.
 The new flows were admitted nowhere before (by disjointness), so each extension is conflict-free and no in-flight packet's route moves.
@@ -822,8 +837,8 @@ We define \(\psem{\cdot}\) by recursion on \(\pi\) as well:
 \end{array}
 \]
 }
-Its node patterns \(D\ \mathit{ts}\) and \(E\ \mathit{ts}\) split a \ensuremath{\mathit{pol}} node into its discipline and child list \(\mathit{ts}\).
-The base case reuses the argument name \ensuremath{D}, firing only when the reached node runs that discipline; an ancestor's discipline \(E\) is unconstrained and simply carried along.
+Its node patterns \(D\ \mathit{ts}\) and \(E\ \mathit{ts}\) split a \pol node into its discipline and child list \(\mathit{ts}\).
+The base case reuses the argument name \disc, firing only when the reached node runs that discipline; an ancestor's discipline \(E\) is unconstrained and simply carried along.
 The metadatum \(m\) appears on both sides.
 \(\csem{\Add}\) records it at \(\mathit{z}.\mathit{meta}(k)\), and \(\psem{\Add}\) writes it onto the new arm, so reading the edited control back recovers the annotation the operator asked for.
 
@@ -834,14 +849,14 @@ The metadatum \(m\) appears on both sides.
 
 \(\tau : \mathit{path}\) is the target arm.
 The path is non-empty (the target arm is required to have a parent), and we destruct it as \(\pi \mathbin{+\!\!+} [k]\), so \(k\) is the arm's slot at its parent \(C@\pi\).
-\ensuremath{D} is the discipline the parent runs, and \(m\) is a fresh value from \(M_{D}\) (\cref{sec:policy-dsl}).
-Carrying \ensuremath{D} on the form is what makes \(m \in M_{D}\) checkable from the form alone, rather than only against the control it is about to be applied to.
+\disc is the discipline the parent runs, and \(m\) is a fresh value from \(M_{D}\) (\cref{sec:policy-dsl}).
+Carrying \disc on the form is what makes \(m \in M_{D}\) checkable from the form alone, rather than only against the control it is about to be applied to.
 
 \paragraph{Definition}
 
-\ChangeMeta{} is defined when \(\tau\) resolves in \(C\) to an arm whose parent runs the \ensuremath{D} the form names, when \(m \in M_{D}\), and when that parent's ranker does not name \(\Strictstar\).
-Changing the metadata of a \(\Strictstar\) is illegal, because \cref{sec:hw-survivor} gives such a node no \ensuremath{\mathit{pifo}} of its own, which is sound only while its two priorities stay fixed.
-Its node transformer \(\mathtt{setmeta}_k\) rewrites the node's \ensuremath{\mathit{z}} and nothing else:
+\ChangeMeta{} is defined when \(\tau\) resolves in \(C\) to an arm whose parent runs the \disc the form names, when \(m \in M_{D}\), and when that parent's ranker does not name \(\Strictstar\).
+Changing the metadata of a \(\Strictstar\) is illegal, because \cref{sec:hw-survivor} gives such a node no \pifo of its own, which is sound only while its two priorities stay fixed.
+Its node transformer \(\mathtt{setmeta}_k\) rewrites the node's \zz and nothing else:
 {\small
 \[
 \mathtt{setmeta}_k\ \langle\mathit{state},\mathit{pifo},\mathit{z}\rangle(\mathit{cs}) = \langle\mathit{state},\mathit{pifo},\ \mathtt{setmeta}(\mathit{z},k,m)\rangle(\mathit{cs}).
@@ -857,7 +872,7 @@ The evolving per-arm bookkeeping beside it, \WFQ's last-finish tag in \(\mathit{
 
 \paragraph{Pol-level reading}
 
-\ChangeMeta{} reannotates arm \(k\) and leaves that arm's policy, its siblings, and the discipline \ensuremath{D} alone:
+\ChangeMeta{} reannotates arm \(k\) and leaves that arm's policy, its siblings, and the discipline \disc alone:
 \[
 \begin{array}{@{}l@{}}
 \psem{\ChangeMeta(\pi \mathbin{+\!\!+} [k],\, D,\, m)} =\\[3pt]
@@ -870,7 +885,7 @@ The evolving per-arm bookkeeping beside it, \WFQ's last-finish tag in \(\mathit{
 \ChangeMeta{} rewrites the arm's metadatum and leaves the per-arm bookkeeping beside it untouched.
 That is the line \cref{sec:controls} draws between the configuration the operator chose and what serving traffic left behind.
 Resetting the bookkeeping would pull the targeted arm out of the round in progress, rewarding or penalizing it for no reason the operator asked for.
-Whatever \ensuremath{D} keeps beside the metadatum belongs to \ensuremath{D} (\cref{sec:compilation}), and a re-tuning does not touch it.
+Whatever \disc keeps beside the metadatum belongs to \disc (\cref{sec:compilation}), and a re-tuning does not touch it.
 A discipline that keeps no per-arm bookkeeping, such as \Strict, does not raise the question.
 
 \subsubsection{\texorpdfstring{\(\Quiesce(\tau)\)}{Quiesce}}\label{sec:quiesce}
@@ -889,7 +904,7 @@ This is the only way the containment \(\mathit{z}.\mathit{admit} \subseteq \math
 
 \(\csem{\Quiesce(\tau)}(C)\) is defined whenever \(\tau\) resolves in \(C\) (the empty path silences the whole tree).
 Let \(L = \mathtt{flows}(C@\tau)\) be the flows to silence.
-Write \(\mathit{z} \setminus L\) for \ensuremath{\mathit{z}} with \(L\) struck from its admitted set, so \((\mathit{z} \setminus L).\mathit{admit} = \mathit{z}.\mathit{admit} \setminus L\).
+Write \(\mathit{z} \setminus L\) for \zz with \(L\) struck from its admitted set, so \((\mathit{z} \setminus L).\mathit{admit} = \mathit{z}.\mathit{admit} \setminus L\).
 Its service map and its ranker are unchanged.
 The nodes that those flows traverse are the spine down to \(\tau\) together with \(\tau\)'s whole subtree:
 \[
@@ -906,13 +921,13 @@ applied at every node of \(V_\tau\):
 Every field other than \(\mathit{z}.\mathit{admit}\), and every node outside \(V_\tau\), is left unchanged.
 
 The restriction has to reach every node of \(V_\tau\) rather than the root alone.
-Under \cref{sec:controls}'s parallel \push{}, every node on the path from the system root to a packet's destination leaf mints an index via its local \ensuremath{\mathit{z}} independently of the others.
-If we restricted \ensuremath{\mathit{z}} at only a subset of those nodes, say only the root or only inside \(C@\tau\), the rest would go on minting indices and enqueueing them.
+Under \cref{sec:controls}'s parallel \push{}, every node on the path from the system root to a packet's destination leaf mints an index via its local \zz independently of the others.
+If we restricted \zz at only a subset of those nodes, say only the root or only inside \(C@\tau\), the rest would go on minting indices and enqueueing them.
 The tree would then be malformed, and a later \pop{} would get stuck.
 
 \paragraph{Pol-level reading}
 
-\(\psem{\Quiesce(\tau)}\) is the identity on \ensuremath{\mathit{pol}}.
+\(\psem{\Quiesce(\tau)}\) is the identity on \pol.
 
 \subsubsection{\texorpdfstring{\(\Remove(\tau)\)}{Remove}}\label{sec:remove}
 
@@ -922,7 +937,7 @@ As before, \(\tau : \mathit{path}\) is the non-empty target arm; destruct it as 
 \paragraph{Definition}
 
 As in \cref{sec:quiesce}, let \(L = \mathtt{flows}(C@\tau)\), here the flows that the doomed arm serves.
-Write \(\mathit{z} \dsetminus L\) for \ensuremath{\mathit{z}} with \(L\) struck from its service map, and hence, by the containment of \cref{sec:controls}, from its admitted set too.
+Write \(\mathit{z} \dsetminus L\) for \zz with \(L\) struck from its service map, and hence, by the containment of \cref{sec:controls}, from its admitted set too.
 Its ranker is unchanged.
 \Remove{} drops the arm at its parent and strikes \(L\) from the service map of every proper ancestor above that parent, the set \(A_\pi = \{\, C@\nu \;:\; \nu \sqsubset \pi \,\}\).
 It is defined when \(\tau\) resolves in \(C\), when the subtree at \(\tau\) is empty, and when \(C@\tau\)'s ranker does not name \(\Strictstar\).
@@ -945,8 +960,8 @@ The form drops the arm at its parent and retracts \(L\) at every proper ancestor
 \[
 \csem{\Remove(\pi \mathbin{+\!\!+} [k])} = \mathtt{at}(A_\pi,\ \mathit{z} \dsetminus L) \circ \mathtt{at}(\pi,\, \mathtt{drop}_k).
 \]
-Emptiness and \(\vdash C\) force \(C@\pi.\mathit{pifo}\) to hold \emph{no entry} equal to \(k\), so \ensuremath{\mathit{pifo}} loses no entry, and surviving entries keep their child.
-\ensuremath{\mathit{node\_state}}, and every field of every node outside \(C@\pi\) and the removed subtree other than the ancestor service maps just named, is unchanged.
+Emptiness and \(\vdash C\) force \(C@\pi.\mathit{pifo}\) to hold \emph{no entry} equal to \(k\), so \pifo loses no entry, and surviving entries keep their child.
+\nodestate, and every field of every node outside \(C@\pi\) and the removed subtree other than the ancestor service maps just named, is unchanged.
 
 \paragraph{Note: Why the ancestors are retracted too}
 
@@ -957,7 +972,7 @@ This would leave \(\vdash\) broken.
 
 \paragraph{Pol-level reading}
 
-\Remove{} drops arm \(k\) from the parent \ensuremath{\mathit{pol}} node:
+\Remove{} drops arm \(k\) from the parent \pol node:
 \[
 \psem{\Remove(\pi \mathbin{+\!\!+} [k])} = \mathtt{at}(\pi,\; D(\mathit{ts}) \mapsto D(\mathit{ts}[-/k])).
 \]
@@ -1026,15 +1041,15 @@ At the instant \Remove{} fires, no entry above the doomed arm was enqueued on ac
 Say the presently running control is \(C\).
 Intuitively, \Designate{} replaces \(C@\tau\) in place with \(\Strictstar(C@\tau, \lceil \mathit{survivor} \rceil)\).
 It is the mechanism behind non-disruptive in-place replacement (\cref{fig:designate}).
-The \(\Strictstar\) node lets \ensuremath{\mathit{survivor}} begin accepting new traffic on a low-priority arm, while the old subtree keeps draining, untouched, on a high-priority one.
-Once the old subtree is empty, \Undesignate{} (\cref{sec:undesignate}) removes it and promotes \ensuremath{\mathit{survivor}} in its place.
+The \(\Strictstar\) node lets \survivor begin accepting new traffic on a low-priority arm, while the old subtree keeps draining, untouched, on a high-priority one.
+Once the old subtree is empty, \Undesignate{} (\cref{sec:undesignate}) removes it and promotes \survivor in its place.
 That is why the form exists: no single edit can swap one subtree for another without either dropping the old subtree's backlog or stalling the new arm, but the \(\Strictstar\) node lets both coexist for the length of a drain.
 
 \Designate{} installs a ranker that names \(\Strictstar\), and \Undesignate{} retires the node carrying it.
 A node's ranker records which discipline the node runs (\cref{sec:controls}), so both forms state their preconditions structurally.
 No other form disturbs such a node.
 \Remove{} will not retire one (\cref{sec:remove}), and \ChangeMeta{} will not retune its arms (\cref{sec:changemeta}), so its two priorities are the ones \Designate{} gave it for as long as it exists.
-That node is visible at \ensuremath{\mathit{pol}}-level as a \(\Strictstar\), which is what \(\lfloor \cdot \rfloor\) (\cref{sec:equivalences}) reports of it.
+That node is visible at \pol-level as a \(\Strictstar\), which is what \(\lfloor \cdot \rfloor\) (\cref{sec:equivalences}) reports of it.
 An operator may write a \(\Strictstar\) directly (\cref{sec:policy-dsl}), but one usually arises in the middle of a planner sequence, between a \Designate{} and its eventual \Undesignate.
 \cref{sec:hardware} takes up why the two disciplines are kept apart, which turns out to be a question about hardware layout rather than about scheduling.
 
@@ -1109,13 +1124,13 @@ An operator may write a \(\Strictstar\) directly (\cref{sec:policy-dsl}), but on
 
 \paragraph{Definition}
 
-\(\csem{\Designate(\tau, \mathit{survivor})}(C)\) is defined when \(\tau\) resolves in \(C\), and when every flow \ensuremath{\mathit{survivor}} serves is one that either nothing in \(C\) serves or that \(C@\tau\) itself serves.
-So \ensuremath{\mathit{survivor}} may reuse the flows of the subtree it is replacing, and it may bring flows that are new to the whole tree, but it may not claim a flow that some other part of \(C\) is already serving.
+\(\csem{\Designate(\tau, \mathit{survivor})}(C)\) is defined when \(\tau\) resolves in \(C\), and when every flow \survivor serves is one that either nothing in \(C\) serves or that \(C@\tau\) itself serves.
+So \survivor may reuse the flows of the subtree it is replacing, and it may bring flows that are new to the whole tree, but it may not claim a flow that some other part of \(C\) is already serving.
 Reuse is the interesting case and the Note below takes it up.
 \cref{fig:designate} draws the target subtree as \tritext{oldcol} and the survivor as \tritext{newcol}, and below we call them the old and new arms.
 Write \(M = C@\tau\) for the target, and let \(P_0\) be the number of packets buffered under it (\(P_0 = 3\) in \cref{fig:designate-before}).
-\Designate{} wraps the target and admits \ensuremath{\mathit{survivor}}'s flows at every ancestor on the way down.
-That walk is \Add's, with \ensuremath{\mathit{survivor}}'s flows in place of the new arm's.
+\Designate{} wraps the target and admits \survivor's flows at every ancestor on the way down.
+That walk is \Add's, with \survivor's flows in place of the new arm's.
 The two differ only at the target, since \Add{} appends an arm there while \Designate{} wraps the node it has reached.
 The transformer \(\mathtt{wrap}\) replaces \(M\) with a fresh \(\Strictstar\) node \(N\) over the two arms \([\,M,\ \lceil\mathit{survivor}\rceil\,]\), giving the old arm strict priority over the new arm:
 {\small
@@ -1125,17 +1140,17 @@ The transformer \(\mathtt{wrap}\) replaces \(M\) with a fresh \(\Strictstar\) no
 \quad n_N = \mathit{init\_node\_state}_{\Strictstar},\\[3pt]
 \quad s_N = (\,n_N,\ [\,\mathit{init\_slot\_state}_{\Strictstar}(n_N, \mathtt{hi}),\\
 \quad\qquad\qquad\ \ \mathit{init\_slot\_state}_{\Strictstar}(n_N, \mathtt{lo})\,]\,),\\[3pt]
-\quad q_N = \text{the \ensuremath{\mathit{pifo}} of } P_0 \text{ copies of the entry } (0,\ \mathtt{hi}),\\[3pt]
+\quad q_N = \text{the \pifo of } P_0 \text{ copies of the entry } (0,\ \mathtt{hi}),\\[3pt]
 \quad \mathit{z}_N.\mathit{meta} = \{\, 0 \mapsto \mathtt{hi},\ 1 \mapsto \mathtt{lo} \,\},\\[3pt]
 \quad \mathit{z}_N(p) = (1,\ \mathtt{lo})\ \text{if}\ \mathit{flow}(p) \in \mathtt{flows}(\mathit{survivor}),\ \text{else}\ (0,\ \mathtt{hi}).
 \end{array}
 \]
 }
-In the vocabulary of \cref{sec:controls}, \(\mathit{z}_N\) serves \ensuremath{\mathit{survivor}}'s flows at arm \(1\) and everything else the node serves at arm \(0\), and admits both.
+In the vocabulary of \cref{sec:controls}, \(\mathit{z}_N\) serves \survivor's flows at arm \(1\) and everything else the node serves at arm \(0\), and admits both.
 Its ranker names \(\Strictstar\) rather than \Strict, which is what \cref{sec:undesignate}'s \Undesignate{} later looks for.
 Arm \(0\) is \(M\) (\textsf{old}), unchanged down to its whole subtree and buffered packets; arm \(1\) is the freshly compiled \(\lceil\mathit{survivor}\rceil\) (\textsf{new}), initially empty.
 This is \cref{fig:designate-after}.
-\(N\)'s index-\ensuremath{\mathit{pifo}} holds \(P_0\) entries for arm \(0\) and none for arm \(1\), one per packet buffered under \textsf{old}.
+\(N\)'s index-\pifo holds \(P_0\) entries for arm \(0\) and none for arm \(1\), one per packet buffered under \textsf{old}.
 That backlog therefore keeps popping through \(N\) ahead of any later arrival, unchanged, while \textsf{new} fills only as fresh traffic arrives (\cref{fig:designate-drain}).
 Because \(\mathtt{at}\) writes \(N\) back into the parent's slot \(k\), the parent's \(\mathit{z}.\mathit{meta}(k)\) is unchanged, so \(N\) is transparent to the parent.
 If \(\tau\) is empty the whole control becomes \(N\), with the old root as arm \(0\).
@@ -1146,17 +1161,17 @@ Like \(\csem{\Add}\), the form is a recursion on the path, and only its base cas
 \]
 Its recursive case is \(\csem{\Add}\)'s, carrying \(\mathtt{flows}(\mathit{survivor})\) rather than \(\mathtt{flows}(\mathit{arm})\) down toward \(\tau\).
 
-\paragraph{Note: Overlap between the old subtree and \ensuremath{\mathit{survivor}}}
+\paragraph{Note: Overlap between the old subtree and \survivor}
 
-Overlap of leaf labels between \(C@\tau\) and \ensuremath{\mathit{survivor}} is explicitly permitted.
+Overlap of leaf labels between \(C@\tau\) and \survivor is explicitly permitted.
 The moment when \(\delta\) fires becomes the boundary between old traffic and new.
 Old traffic continues to drain from arm 0, which is \(C@\tau\) carried over; new traffic goes to arm 1.
-From that instant on, an arriving packet whose label appears in \(\lceil \mathit{survivor} \rceil\) is sent by \(N.\mathit{z}\) to slot 1, while the residual packets already under arm 0 drain on their existing \ensuremath{\mathit{pifo}} entries.
+From that instant on, an arriving packet whose label appears in \(\lceil \mathit{survivor} \rceil\) is sent by \(N.\mathit{z}\) to slot 1, while the residual packets already under arm 0 drain on their existing \pifo entries.
 The two arms thus stay operationally disjoint even when their label sets overlap.
 
 \paragraph{Pol-level reading}
 
-\Designate{} wraps the \ensuremath{\mathit{pol}} subtree at \(\tau\):
+\Designate{} wraps the \pol subtree at \(\tau\):
 \[
 \begin{array}{@{}l@{}}
 \psem{\Designate(\tau, \mathit{survivor})} ={}\\
@@ -1189,12 +1204,12 @@ Since \(\mathtt{at}\) writes \(B\) back into the parent's slot \(k\), the parent
 \]
 That arm is \(\lfloor B \rfloor\).
 The wrapper's own annotations go with it, and the surviving arm inherits the annotation the wrapper held at its parent.
-The empty-arm-0 precondition is operational and leaves no trace at \ensuremath{\mathit{pol}}-level.
+The empty-arm-0 precondition is operational and leaves no trace at \pol-level.
 
 \section{Correctness}\label{sec:correctness}
 
 \cref{sec:edit-semantics} gave each form of \(\delta\) two readings, and two things have to be true of them.
-The first is that they agree, so that the \ensuremath{\mathit{pol}} we echo to the operator is the one the live control realizes.
+The first is that they agree, so that the \pol we echo to the operator is the one the live control realizes.
 The second is that installing an edit costs the buffered backlog nothing.
 This section states both as theorems and proves them one form at a time.
 
@@ -1240,7 +1255,7 @@ We echo \(p_1' := \lfloor C_1 \rfloor\) back to the operator.
 Push and pop operations then carry \(C_1\) to \(C_1'\).
 We know that \(C_1 \sim C_1'\), since \push{} and \pop{} changed only live contents, and \(\lfloor C_1' \rfloor = \lfloor C_1 \rfloor\) by \(\lfloor \cdot \rfloor\)'s insensitivity to live contents, so the live \(C_1'\) still realizes both \(p_1\) and \(p_1'\).
 
-The operator next writes \(p_2\), and the \emph{transition planner} (\cref{sec:planner}), the tool that infers atomic edits between two \ensuremath{\mathit{pol}}s, produces a \(\delta\) such that \(\psem{\delta}(p_1') \eqR p_2\).
+The operator next writes \(p_2\), and the \emph{transition planner} (\cref{sec:planner}), the tool that infers atomic edits between two \pol{}s, produces a \(\delta\) such that \(\psem{\delta}(p_1') \eqR p_2\).
 Applying \(\csem{\delta}\) to \(C_1'\) brings us to control \(C_2'\).
 By closure under \(\delta\) (\cref{thm:interplay} below) we have \(\lfloor C_2' \rfloor \eqR \psem{\delta}(p_1')\).
 Chaining this with the previously established \(\psem{\delta}(p_1') \eqR p_2\) gives \(\lfloor C_2' \rfloor \eqR p_2\).
@@ -1251,9 +1266,9 @@ The transformation is complete at this point, but it still needs a reference poi
 \emph{We} do not actually construct \(C_2\), but it is still valuable to relate \(C_2'\), which we have just produced, to \(C_2\).
 
 By compiler correctness, \(\lfloor C_2 \rfloor \eqR p_2\), hence \(\lfloor C_2' \rfloor \eqR \lfloor C_2 \rfloor\).
-However, we would like to relate the \emph{controls} directly, not just relate their \ensuremath{\mathit{pol}}-level projections via \(\lfloor \cdot \rfloor\).
+However, we would like to relate the \emph{controls} directly, not just relate their \pol-level projections via \(\lfloor \cdot \rfloor\).
 The control-level relation we can write is \(C_2' \simR C_2\), which absorbs two gaps at once.
-\(C_2'\) carries the live \ensuremath{\mathit{pifo}} and \ensuremath{\mathit{state}} accumulated since \(C_1\), while \(C_2\) is freshly compiled and bare; the \(\sim\) component covers that.
+\(C_2'\) carries the live \pifo and \stt accumulated since \(C_1\), while \(C_2\) is freshly compiled and bare; the \(\sim\) component covers that.
 \(\csem{\delta}\) and \(\lceil \cdot \rceil\) are also free to pick different sibling orders at internal nodes, so the two may differ in child arrangements; the R-closure covers that.
 
 \begin{theorem}[Interplay of \(\psem{\delta}\) and \(\csem{\delta}\)]\label{thm:interplay}
@@ -1288,7 +1303,7 @@ We echo back
 p_1' := \lfloor C_1 \rfloor = \Strict(\mathtt{lo}{:}\,\textsf{gmail},\allowbreak\ \mathtt{hi}{:}\,\textsf{zoom}).
 \]
 We know that \(p_1 \eqR p_1'\), so the scheduler that the operator gets is still the one they asked for.
-As the control serves pushes and pops, \(C_1\) transforms into \(C_1'\): the same tree with its \ensuremath{\mathit{pifo}}s and \ensuremath{\mathit{state}}s advanced, so it is still the case that \(C_1 \sim C_1'\) and \(\lfloor C_1' \rfloor = p_1'\).
+As the control serves pushes and pops, \(C_1\) transforms into \(C_1'\): the same tree with its \pifo{}s and \stt{}s advanced, so it is still the case that \(C_1 \sim C_1'\) and \(\lfloor C_1' \rfloor = p_1'\).
 
 Later, the operator requests \(p_2 = \Strict(\mathtt{lo}{:}\,\textsf{gmail},\allowbreak\ \mathtt{mid}{:}\,\textsf{spotify},\allowbreak\ \mathtt{hi}{:}\,\textsf{zoom})\).
 The runtime can again use its freedom: instead of literally splicing \textsf{spotify} in between running arms \textsf{gmail} and \textsf{zoom}, it chooses to append \textsf{spotify} to the end.
@@ -1312,7 +1327,7 @@ The \emph{very act of changing policies} never introduces arbitrary artifacts su
 Each buffered entry keeps the rank it was given when it was \push{}ed, so nothing buffered is lost, corrupted, or reordered relative to the rest of the backlog.
 
 Ranks are frozen at \push{} time, and that cuts both ways.
-Inverting the two priorities of \(\Strict(\mathtt{hi}{:}\,A,\ \mathtt{lo}{:}\,B)\) with \ChangeMeta{} does \emph{not} change the next \pop{}, since the parent's index-\ensuremath{\mathit{pifo}} already holds \(A\) at \(\mathtt{hi}\) and \(B\) at \(\mathtt{lo}\) and \ChangeMeta{} rewrites neither.
+Inverting the two priorities of \(\Strict(\mathtt{hi}{:}\,A,\ \mathtt{lo}{:}\,B)\) with \ChangeMeta{} does \emph{not} change the next \pop{}, since the parent's index-\pifo already holds \(A\) at \(\mathtt{hi}\) and \(B\) at \(\mathtt{lo}\) and \ChangeMeta{} rewrites neither.
 Only packets pushed after the change are ranked under the new priorities, so a \(B\)-packet arriving after the inversion is served ahead of one that arrived before it.
 That is the reconfigured policy \emph{correctly} governing new arrivals, not a disturbance of the backlog.
 
@@ -1332,16 +1347,16 @@ Then \(C\) and \(\csem{\delta}(C)\) release the same sequence of packets under a
 
 Most forms discharge this through a single fact about \pop{}, and need no argument of their own.
 
-\begin{lemma}[Non-disruption reduces to \ensuremath{\mathit{pifo}}-content preservation]\label{lem:nondisruption}
-A \pop{} reads only \ensuremath{\mathit{pifo}} contents: it pops the root index-\ensuremath{\mathit{pifo}} to a child, recurses, and finally emits a leaf packet, never consulting any \ensuremath{\mathit{state}} or \ensuremath{\mathit{z}} (\cref{sec:controls}).
-Write \(C' = \csem{\delta}(C)\), and suppose \(\csem{\delta}\) leaves the contents of every non-empty \ensuremath{\mathit{pifo}} of \(C\) unchanged (never rewriting, reordering, or removing a live entry, and introducing only empty \ensuremath{\mathit{pifo}}s).
+\begin{lemma}[Non-disruption reduces to \pifo-content preservation]\label{lem:nondisruption}
+A \pop{} reads only \pifo contents: it pops the root index-\pifo to a child, recurses, and finally emits a leaf packet, never consulting any \stt or \zz (\cref{sec:controls}).
+Write \(C' = \csem{\delta}(C)\), and suppose \(\csem{\delta}\) leaves the contents of every non-empty \pifo of \(C\) unchanged (never rewriting, reordering, or removing a live entry, and introducing only empty \pifo{}s).
 Then the buffered backlog is preserved entry-for-entry in \(C'\) and \(\delta\) is non-disruptive.
 \end{lemma}
 
-We therefore discharge non-disruption per form by naming the form's \emph{footprint}, the nodes and fields it touches, and checking that the footprint holds no live \ensuremath{\mathit{pifo}} entry.
+We therefore discharge non-disruption per form by naming the form's \emph{footprint}, the nodes and fields it touches, and checking that the footprint holds no live \pifo entry.
 Four of the six pass that check outright.
-\Designate{} inserts a node whose \ensuremath{\mathit{pifo}} is not empty and \Undesignate{} drops one, so those two need an argument of their own.
-Each such argument shows that the \pop{} sequence is unchanged, which is why \cref{thm:nondisruption} is stated on that sequence rather than on \ensuremath{\mathit{pifo}} contents.
+\Designate{} inserts a node whose \pifo is not empty and \Undesignate{} drops one, so those two need an argument of their own.
+Each such argument shows that the \pop{} sequence is unchanged, which is why \cref{thm:nondisruption} is stated on that sequence rather than on \pifo contents.
 
 \subsection{Form by Form}\label{sec:per-form}
 
@@ -1355,7 +1370,7 @@ Outside the region \cref{sec:edit-semantics} specifies, \(\csem{\delta}\) is und
 \item \emph{Preservation of \(\vdash\).} \(\vdash C\) implies \(\vdash C'\).
 Any packets or index entries that \(\csem{\delta}\) drops or adds must leave the per-node pifo and packet counts in balance.
 \item \emph{Characterization.} Prove that reading the policy off the edited control agrees, up to \(\eqR\), with applying the \(\psem{\delta}\) of \cref{sec:edit-semantics} to the policy read off the original: \(p' \eqR \psem{\delta}(p)\).
-\item \emph{Non-disruption.} Name the form's footprint and check that it holds no live \ensuremath{\mathit{pifo}} entry, so that \cref{lem:nondisruption} applies.
+\item \emph{Non-disruption.} Name the form's footprint and check that it holds no live \pifo entry, so that \cref{lem:nondisruption} applies.
 Where it does not apply, argue directly that the \pop{} sequence is unchanged.
 \end{itemize}
 
@@ -1374,19 +1389,19 @@ The remaining three are the ones with an argument to make, and the rest of this 
 & No pre-existing entry can name the new slot \(k\), and \(\lceil \mathit{arm} \rceil\) compiles empty, so slot \(k\) counts \(0 = 0\).
   Every other slot inherits its count.
 & \cref{sec:add-char}.
-& The footprint is the empty slot \(k\), its metadatum, the empty \(\lceil \mathit{arm} \rceil\), and the on-path \ensuremath{\mathit{z}}-extensions.
-  A \ensuremath{\mathit{z}}-edit changes no \ensuremath{\mathit{pifo}}, so none of these is a live entry. \\
+& The footprint is the empty slot \(k\), its metadatum, the empty \(\lceil \mathit{arm} \rceil\), and the on-path \zz-extensions.
+  A \zz-edit changes no \pifo, so none of these is a live entry. \\
 \addlinespace
 
 \ChangeMeta
-& The footprint is one \(\mathit{z}.\mathit{meta}\) entry, so no child, no \ensuremath{\mathit{pifo}}, and no count moves.
+& The footprint is one \(\mathit{z}.\mathit{meta}\) entry, so no child, no \pifo, and no count moves.
 & No arm changes position, so the two sides agree exactly rather than up to \(\eqR\): \(p' = \psem{\ChangeMeta(\tau, D, m)}(p)\).
 & An entry's rank was fixed when it was \push{}ed, so the new metadatum governs future pushes only. \\
 \addlinespace
 
 \Quiesce
 & Only the admitted sets across \(V_\tau\) narrow.
-  Every \ensuremath{\mathit{pifo}}, child, and \ensuremath{\mathit{state}} is untouched.
+  Every \pifo, child, and \stt is untouched.
 & \(\lfloor \cdot \rfloor\) does not read \(\mathit{z}.\mathit{admit}\), and \(\mathit{z}.\mathit{serves}\) is left in place, so a silenced leaf keeps its identity and \(\psem{\Quiesce(\tau)}\) is the identity.
 & Packets already buffered under \(C@\tau\) keep their entries and still drain.
   Only future \push{}es are refused. \\
@@ -1394,7 +1409,7 @@ The remaining three are the ones with an argument to make, and the rest of this 
 
 \Remove
 & Emptiness and \(\vdash C\) leave \(C@\pi.\mathit{pifo}\) with no entry equal to \(k\), so \(\mathtt{drop}_k\) deletes none, and every surviving child keeps its entries under \(\sigma_k\).
-& The parent keeps its ranker, so it reads as the same \ensuremath{D} with slot \(k\) gone.
+& The parent keeps its ranker, so it reads as the same \disc with slot \(k\) gone.
 & The ancestor retractions delete nothing, since they narrow admission for future pushes only. \\
 \addlinespace
 
@@ -1424,13 +1439,13 @@ We have \(\lfloor \lceil \mathit{arm} \rceil \rfloor \eqR \mathit{arm}\), and \(
 So the two agree on the new arm up to \(\eqR\), and every existing arm is untouched.
 At a recursive step, both descend into child \(i\) and write the result back, so the claim follows from the induction hypothesis.
 The ancestor itself adds nothing to reconcile.
-\(\csem{\Add}\) leaves its \ensuremath{\mathit{state}} and \ensuremath{\mathit{pifo}} unchanged, and its \ensuremath{\mathit{z}}-extension is confined to the classifier of an internal node, which \(\lfloor \cdot \rfloor\) does not read.
+\(\csem{\Add}\) leaves its \stt and \pifo unchanged, and its \zz-extension is confined to the classifier of an internal node, which \(\lfloor \cdot \rfloor\) does not read.
 So the two sides agree all the way down the spine and can differ only inside \(\lceil \mathit{arm} \rceil\), where sibling order is free; that is exactly the \(\eqR\)-slack the claim allows, giving \(p' \eqR \psem{\Add(\pi, D, \mathit{arm}, m)}(p)\).
 
 \subsubsection{Non-disruption for \texorpdfstring{\Designate{} and \Undesignate}{Designate and Undesignate}}\label{sec:wrap-nondisruption}
 
 These are the two forms \cref{lem:nondisruption} does not reach.
-\(\mathtt{wrap}\) inserts the live node \(N\) with a non-empty \ensuremath{\mathit{pifo}}, and \(\mathtt{unwrap}\) drops one, so each needs a direct argument that the \pop{} sequence is unchanged.
+\(\mathtt{wrap}\) inserts the live node \(N\) with a non-empty \pifo, and \(\mathtt{unwrap}\) drops one, so each needs a direct argument that the \pop{} sequence is unchanged.
 As in \cref{sec:undesignate}, \(N\) is the wrapper and \(B\) the control under its arm 1.
 
 For \Designate, every in-flight packet lies under arm 0, which is \(C@\tau\) carried over unchanged, so its own entries are untouched.
@@ -1450,7 +1465,7 @@ The Characterizations have content because each was proved against a \(\lfloor \
 \paragraph{Note: The check that is deliberately absent}
 
 A fourth check might be expected, and is not there.
-Nothing has to be proved about the \ensuremath{\mathit{state}} of the nodes an edit leaves alone, because every \(\csem{\delta}\) rule names each field of the node it produces, and \(\mathtt{at}(\pi, g)\) copies every off-path node by definition.
+Nothing has to be proved about the \stt of the nodes an edit leaves alone, because every \(\csem{\delta}\) rule names each field of the node it produces, and \(\mathtt{at}(\pi, g)\) copies every off-path node by definition.
 What state survives an edit is therefore read off \cref{sec:edit-semantics} rather than argued for.
 
 \subsection{Preserving this proof down to hardware}\label{sec:hw-preservation}
@@ -1490,7 +1505,7 @@ So \(\mathit{link}_0 = C\) is the starting control, and \(\mathit{link}_{i+1} = 
 
 Each transitionary policy is itself an ordinary \cref{sec:controls}-style control, so the transitionary period \emph{needs no new semantics}.
 That is the promise of \cref{sec:intro}, discharged locally by the per-form checks of \cref{sec:per-form}.
-Moreover, since every form of \cref{sec:grammar} is \emph{\ensuremath{\mathit{pol}}-explainable} (each \(\delta\) has a \(\psem{\delta}\) that tracks its \ensuremath{\mathit{pol}}-level effect), we can echo to the operator, at every point in the sequence, the \ensuremath{\mathit{pol}} that the live control actually realizes.
+Moreover, since every form of \cref{sec:grammar} is \emph{\pol-explainable} (each \(\delta\) has a \(\psem{\delta}\) that tracks its \pol-level effect), we can echo to the operator, at every point in the sequence, the \pol that the live control actually realizes.
 The chain of \(\psem{\cdot}\)s starting from \(\lfloor C \rfloor\) gives \(\lfloor \mathit{link}_i \rfloor\) for each \(i\), so the operator always knows which policy is running.
 
 \paragraph{Follow-up requests}
@@ -1524,13 +1539,13 @@ We do not pursue this here, since the splicing analysis introduces its own corre
 \quad (\mathtt{isEmpty}(\mathit{path} \mathbin{+\!\!+} [0]);\, \Undesignate(\mathit{path}))
 \end{array}
 \]
-\caption{The grammar of guarded sequences and the three starter idioms, each a named \ensuremath{\mathit{gseq}}.}
+\caption{The grammar of guarded sequences and the three starter idioms, each a named \gseq.}
 \label{fig:gseq-idioms}
 \end{figure}
 % This fig is a little hard to read since there are guards and deltas all mixed up. For presentation let's write the guards in red in the idioms. And let's line up the deltas that are collected together under one guard. So in this figure you would like up \Designate(\mathit{path}, \mathit{survivor})\,;\\ and \Quiesce(\mathit{path} \mathbin{+\!\!+} [0]))\,;\\ (line up D and Q)
 
 We write \(\mathit{gseq}\) for a guarded sequence (\cref{fig:gseq-idioms}, top).
-A guard \(\varphi\) is either trivially satisfied (\(\mathtt{true}\)) or asserts that the subtree at \ensuremath{\mathit{path}} is empty.
+A guard \(\varphi\) is either trivially satisfied (\(\mathtt{true}\)) or asserts that the subtree at \pth is empty.
 A \emph{step} pairs one guard with the run of \(\delta\)s that guard releases, so a sequence waits exactly as many times as it has steps.
 Those two guard forms have sufficed for every sequence we have needed.
 The framework does not depend on this minimality, and a richer predicate language is welcome if desired.
@@ -1552,13 +1567,13 @@ It asks the commit buffer to hold one step's worth of instructions rather than o
 \paragraph{Reaching the target}
 
 Safety guarantees that every intermediate control is well-formed, but not that the sequence \emph{arrives} at the intended \(p_2\).
-We check arrival at the \ensuremath{\mathit{pol}} level, folding each form's \(\psem{\delta_i}\) along the sequence.
-Write \(\mathit{ip}_i\) for the \(i\)-th intermediate \ensuremath{\mathit{pol}}.
-Starting from \(\mathit{ip}_0 = \lfloor C \rfloor\), the \ensuremath{\mathit{pol}} we echoed to the operator, set \(\mathit{ip}_{i+1} := \psem{\delta_i}(\mathit{ip}_i)\).
+We check arrival at the \pol level, folding each form's \(\psem{\delta_i}\) along the sequence.
+Write \(\mathit{ip}_i\) for the \(i\)-th intermediate \pol.
+Starting from \(\mathit{ip}_0 = \lfloor C \rfloor\), the \pol we echoed to the operator, set \(\mathit{ip}_{i+1} := \psem{\delta_i}(\mathit{ip}_i)\).
 The sequence is admissible when every \(\psem{\delta_i}\) is defined on \(\mathit{ip}_i\) and the final \(\mathit{ip}_{n+1} \eqR p_2\).
 This is the Interplay theorem (\cref{sec:interplay}) iterated across the sequence.
 Each \(\psem{\delta_i}\) matches its operational counterpart \(\csem{\delta_i}\) (\cref{sec:per-form}), so a fold that lands at \(\mathit{ip}_{n+1} \eqR p_2\) certifies, cell by cell, that the operational chain ends in a control whose \(\lfloor \cdot \rfloor\) is \(p_2\).
-Guards play no role in this check: they govern \emph{when} each \(\delta_i\) fires on the live control and are \ensuremath{\mathit{pol}}-invisible (\cref{sec:edit-semantics}), so a \((\mathtt{isEmpty}(\mathit{path}); \Remove(\mathit{path}))\) step folds exactly as if its guard were \(\mathtt{true}\).
+Guards play no role in this check: they govern \emph{when} each \(\delta_i\) fires on the live control and are \pol-invisible (\cref{sec:edit-semantics}), so a \((\mathtt{isEmpty}(\mathit{path}); \Remove(\mathit{path}))\) step folds exactly as if its guard were \(\mathtt{true}\).
 If the chain fails to reach \(p_2\), or some \(\psem{\delta_i}\) is undefined on its \(\mathit{ip}_i\), the sequence is rejected.
 The rejection identifies the offending step, either the first \(\delta_i\) whose \(\psem{\delta_i}\) was undefined or else the final mismatch \(\mathit{ip}_{n+1} \not\eqR p_2\).
 Both clients of the framework rely on this check: the planner (\cref{sec:planner}) uses it as a backstop on the sequences it assembles, and an operator authoring by hand (\cref{sec:imperative}) uses it to validate theirs.
@@ -1566,13 +1581,13 @@ Both clients of the framework rely on this check: the planner (\cref{sec:planner
 \paragraph{Liveness}
 
 Safety is unconditional; liveness is not, and cannot be.
-A guarded sequence progresses only as its guards become true, and a guard like \(\mathtt{isEmpty}(\mathit{path})\) becomes true only once the traffic under \ensuremath{\mathit{path}} drains.
+A guarded sequence progresses only as its guards become true, and a guard like \(\mathtt{isEmpty}(\mathit{path})\) becomes true only once the traffic under \pth drains.
 That is up to the network, not up to us.
 A persistent or adversarial flow can keep a subtree busy indefinitely, and then any step waiting on that subtree's emptiness never fires.
 This is inherent.
 Draining a subtree gracefully means letting its buffered packets leave on their own, and the only way to speed that up is to drop them, which the grammar refuses to do.
 So completing a sequence takes the operator's cooperation, for instance quiescing a flow at its source or accepting a harder reconfiguration that resets more of the tree but drops nothing.
-The live control stays safe throughout, but may not reach the target \ensuremath{\mathit{pol}} until the traffic allows.
+The live control stays safe throughout, but may not reach the target \pol until the traffic allows.
 Follow-up requests submitted during a stalled sequence are queued (\cref{sec:links}).
 
 \paragraph{Idioms}
@@ -1581,23 +1596,23 @@ A sequence that reconfigures a real tree is a long list of small edits, and such
 \emph{Idioms} are a named vocabulary for the sequences that recur, each one collecting a run of edits into a single goal acting on a single subtree.
 The transition planner (\cref{sec:planner}) emits them, so what the operator reads back is ``retire this subtree'' rather than a silencing, a wait, and an unhooking.
 
-An idiom is a macro over \(\delta\), and recursively over other idioms, that expands into a fixed \ensuremath{\mathit{gseq}}.
+An idiom is a macro over \(\delta\), and recursively over other idioms, that expands into a fixed \gseq.
 Expansion changes nothing about soundness, since the checks above run on the expanded sequence exactly as they would on a hand-written one.
 So an expansion that would reach an undefined form on the current control is rejected.
 
 We name three starter idioms, with their expansions collected in \cref{fig:gseq-idioms}.
-New ones can be added later without changing the framework, since an idiom is only a named \ensuremath{\mathit{gseq}}.
+New ones can be added later without changing the framework, since an idiom is only a named \gseq.
 
 \begin{itemize}
-\item \textbf{\Retire(\ensuremath{\mathit{path}})} quiesces the subtree at \ensuremath{\mathit{path}}, waits for it to drain to empty, then \Remove{}s it.
+\item \textbf{\Retire(\pth)} quiesces the subtree at \pth, waits for it to drain to empty, then \Remove{}s it.
 This is the operator-facing way to say ``tear this subtree down gracefully.''
 
-\item \textbf{\SlowRetire(\ensuremath{\mathit{path}})} waits for the subtree at \ensuremath{\mathit{path}} to drain, then \Remove{}s it.
+\item \textbf{\SlowRetire(\pth)} waits for the subtree at \pth to drain, then \Remove{}s it.
 This suits a subtree that must keep receiving traffic while it is being phased out.
 
-\item \textbf{\Replace(\ensuremath{\mathit{path}}, \ensuremath{\mathit{survivor}})} phases \ensuremath{\mathit{survivor}} in and \(\mathit{pol}@\mathit{path}\) out.
-It \Designate{}s \ensuremath{\mathit{survivor}}, quiesces the original subtree, waits for it to drain to empty, and then removes that subtree and the \(\Strictstar\) wrapper, leaving \ensuremath{\mathit{survivor}} alone at \ensuremath{\mathit{path}} (\cref{fig:gseq-idioms}).
-At the \ensuremath{\mathit{pol}} level the effect is the outright replacement of \(\mathit{pol}@\mathit{path}\) by \ensuremath{\mathit{survivor}}.
+\item \textbf{\Replace(\pth, \survivor)} phases \survivor in and \(\mathit{pol}@\mathit{path}\) out.
+It \Designate{}s \survivor, quiesces the original subtree, waits for it to drain to empty, and then removes that subtree and the \(\Strictstar\) wrapper, leaving \survivor alone at \pth (\cref{fig:gseq-idioms}).
+At the \pol level the effect is the outright replacement of \(\mathit{pol}@\mathit{path}\) by \survivor.
 
 \end{itemize}
 
@@ -1616,18 +1631,18 @@ This is the transition \cref{sec:intro} reaches at \(t_2\).
 \section{The Transition Planner}\label{sec:planner}
 
 The operator hands the runtime \(p_1\), the presently running policy, and \(p_2\), the one they now want.
-The transition planner's job is to propose a \((\varphi ; \delta^{*})^{*}\) sequence whose \ensuremath{\mathit{pol}}-level fold takes \(p_1\) to some \(p_2'\) with \(p_2' \eqR p_2\).
+The transition planner's job is to propose a \((\varphi ; \delta^{*})^{*}\) sequence whose \pol-level fold takes \(p_1\) to some \(p_2'\) with \(p_2' \eqR p_2\).
 The operator accepts or rejects the proposal; they do not author it directly.
 
 Every sequence the planner emits is safe by the per-form guarantees of \cref{sec:per-form}, aggregated across the sequence as sketched in \cref{sec:idioms}, regardless of how the planner assembled it.
-The planner aims to land at \(p_2\) by construction: each case below emits a \(\delta\) or idiom whose \(\psem{\cdot}\) realizes the locally-observed \ensuremath{\mathit{pol}}-level difference.
+The planner aims to land at \(p_2\) by construction: each case below emits a \(\delta\) or idiom whose \(\psem{\cdot}\) realizes the locally-observed \pol-level difference.
 A misstep in the case analysis could in principle yield a sequence whose fold \(\psem{\delta_n} \circ \ldots \circ \psem{\delta_1} (p_1)\) misses \(p_2\)'s \(\eqR\)-class.
-The \ensuremath{\mathit{pol}}-level check of \cref{sec:idioms} catches this, and rejects any such sequence before it is installed.
+The \pol-level check of \cref{sec:idioms} catches this, and rejects any such sequence before it is installed.
 Optimality is a separate matter, and is not guaranteed, since the planner may fail to see a better sequence that the operator has in mind.
 
 \cref{sec:fallback} sets up \emph{confinement} as the metric we judge a plan by, presents the always-available worst-case \Replace{} fallback, and frames the planner's strategy as descending the tree to find a tight form (\Add, \Remove, or \ChangeMeta) that captures the difference locally.
 \cref{sec:planner-emits} catalogs the cases the planner recognizes and emits a tight sequence for.
-\cref{sec:imperative} shows how an operator can instead author a sequence by hand, admitted by the same \ensuremath{\mathit{pol}}-level check.
+\cref{sec:imperative} shows how an operator can instead author a sequence by hand, admitted by the same \pol-level check.
 
 \subsection{The Always-Available Fallback, and Confinement to do Better}\label{sec:fallback}
 
@@ -1645,9 +1660,9 @@ Nothing is dropped and the sequence is safe by \cref{sec:per-form}, but \emph{no
 \paragraph{Footprint}
 
 To measure how much of the tree a sequence touches, associate each form \(\delta\) with a \emph{footprint} on the live control it acts on.
-Define \(\mathtt{footprint}(\delta, C)\) as the set of nodes of \(C\) whose \ensuremath{\mathit{state}}, \ensuremath{\mathit{pifo}}, or \ensuremath{\mathit{z}} differs between \(C\) and \(\csem{\delta}(C)\).
+Define \(\mathtt{footprint}(\delta, C)\) as the set of nodes of \(C\) whose \stt, \pifo, or \zz differs between \(C\) and \(\csem{\delta}(C)\).
 The set is read off the \(\csem{\delta}\) rules of \cref{sec:edit-semantics}, each of which names every field of every node it produces.
-It includes the edit site, the new or removed node where applicable, and every proper ancestor whose \ensuremath{\mathit{z}} is extended or restricted, such as the ancestors touched by \Add, \Quiesce, \Remove, and \Designate.
+It includes the edit site, the new or removed node where applicable, and every proper ancestor whose \zz is extended or restricted, such as the ancestors touched by \Add, \Quiesce, \Remove, and \Designate.
 The sequence-level footprint is \(\bigcup_i \mathtt{footprint}(\delta_i, \mathit{link}_i)\), taken over the \(\delta\)s of the sequence in order and irrespective of how they are grouped into steps.
 The root-level \(\Replace([], p_2)\) above has the maximum possible footprint: the whole tree.
 
@@ -1655,7 +1670,7 @@ The root-level \(\Replace([], p_2)\) above has the maximum possible footprint: t
 
 The metric by which we judge the planner is \emph{confinement}.
 A good plan disturbs as little of the running scheduler as possible, leaving the parts of the tree that did not need to change still running.
-A sequence is well-confined when its footprint is small relative to the symmetric \ensuremath{\mathit{pol}}-level difference between \(p_1\) and \(p_2\).
+A sequence is well-confined when its footprint is small relative to the symmetric \pol-level difference between \(p_1\) and \(p_2\).
 
 The planner's goal is to recognize whether the difference between \(p_1\) and \(p_2\) is captured by a tight form from \cref{sec:delta-grammar} (an \Add, \Remove, or \ChangeMeta) and to emit that form wherever in the tree it sits, leaving everything else untouched.
 The planner descends through the tree as long as \(p_1\) and \(p_2\) agree at the current level, looking for a recognized shape one level down.
@@ -1724,7 +1739,7 @@ Every node sits inside that \(\Strictstar\), and the original \(p_1\), with all 
 The footprint is the whole tree.
 
 Option (b) extends \(Q\)'s arity by one and attaches a freshly compiled \(d\) leaf as the third arm.
-The \(P\) and \(Q\) ancestors have only their \ensuremath{\mathit{z}} extended, with no packet movement and no state reset, and the \(a\) leaf is left undisturbed.
+The \(P\) and \(Q\) ancestors have only their \zz extended, with no packet movement and no state reset, and the \(a\) leaf is left undisturbed.
 The footprint is the \(Q\) node and its single ancestor.
 
 Much of the tree is left alone under option (b).
@@ -1753,19 +1768,19 @@ An operator who already knows the transition they want can hand it over directly
 The sequence they write may be better confined than the one the planner would have found, since the planner may fail to see it, and it may equally be worse.
 The check below admits either, since it certifies that a sequence arrives and says nothing about what it cost.
 
-The two modes produce sequences over the same grammar, discharge the same per-form checks of \cref{sec:per-form}, and are admitted by the same \ensuremath{\mathit{pol}}-level check of \cref{sec:idioms}.
-The paths in a hand-written sequence resolve against the running control rather than against the \ensuremath{\mathit{pol}} the operator wrote, which is why we echo \(\lfloor C \rfloor\) back to them (\cref{sec:interplay}).
+The two modes produce sequences over the same grammar, discharge the same per-form checks of \cref{sec:per-form}, and are admitted by the same \pol-level check of \cref{sec:idioms}.
+The paths in a hand-written sequence resolve against the running control rather than against the \pol the operator wrote, which is why we echo \(\lfloor C \rfloor\) back to them (\cref{sec:interplay}).
 An operator who reads a path off their own \(p_2\) can name a different arm than they meant, and the runtime has no way to detect it.
 
-Before committing an operator-authored sequence we run it through the \ensuremath{\mathit{pol}}-level check of \cref{sec:idioms}.
-Starting from \(\lfloor C \rfloor\), the \ensuremath{\mathit{pol}} we echoed back, we fold each \(\psem{\delta_i}\) along the sequence, and we admit it when every \(\psem{\delta_i}\) is defined on the \ensuremath{\mathit{pol}} it meets and the fold lands at some \(p_2'\) with \(p_2' \eqR p_2\).
+Before committing an operator-authored sequence we run it through the \pol-level check of \cref{sec:idioms}.
+Starting from \(\lfloor C \rfloor\), the \pol we echoed back, we fold each \(\psem{\delta_i}\) along the sequence, and we admit it when every \(\psem{\delta_i}\) is defined on the \pol it meets and the fold lands at some \(p_2'\) with \(p_2' \eqR p_2\).
 Idioms are expanded before the fold runs, so a sequence written with \Retire{} and \Replace{} is checked as the \(\delta\)s they stand for, and naming a run of edits buys the operator brevity rather than a weaker obligation.
 A rejection names the step that caused it, either the first \(\delta_i\) whose \(\psem{\delta_i}\) was undefined or else the final mismatch against \(p_2\).
 An operator debugging a sequence of a dozen steps needs to know which one failed, and the fold supplies it without extra work.
 
-Each intermediate \ensuremath{\mathit{pol}} that the fold produces has an explainable scheduling semantics.
-After the first step of \Replace(\ensuremath{\mathit{path}}, \ensuremath{\mathit{survivor}})'s expansion, for instance, the intermediate \ensuremath{\mathit{pol}} holds \(\Strict(\mathit{pol}@\mathit{path},\ \mathit{survivor})\) at \ensuremath{\mathit{path}}.
-That is a temporary strict-priority node favoring the doomed \(\mathit{pol}@\mathit{path}\) over the incoming \ensuremath{\mathit{survivor}}, and it has a readable scheduling interpretation in its own right.
+Each intermediate \pol that the fold produces has an explainable scheduling semantics.
+After the first step of \Replace(\pth, \survivor)'s expansion, for instance, the intermediate \pol holds \(\Strict(\mathit{pol}@\mathit{path},\ \mathit{survivor})\) at \pth.
+That is a temporary strict-priority node favoring the doomed \(\mathit{pol}@\mathit{path}\) over the incoming \survivor, and it has a readable scheduling interpretation in its own right.
 
 \section{Rio Hardware Implementation}\label{sec:hardware}
 
@@ -1877,9 +1892,9 @@ Without the port root the substrate could not execute the one transition the pla
 \Designate{} itself needs no parent, since it only writes the outgoing node's own link.
 It is \Undesignate{} rather than \Designate{} that wants a slot above.
 
-The three parts of \ensuremath{\mathit{z}} (\cref{sec:controls}) line up one to one with this vocabulary.
+The three parts of \zz (\cref{sec:controls}) line up one to one with this vocabulary.
 A node's \(\mathit{z}.\mathit{admit}\) is its \texttt{Assoc} set, its \(\mathit{z}.\mathit{serves}\) is its \texttt{Map} table, its \(\mathit{z}.\mathit{rank}\) is what \texttt{set\_policy} installs and \texttt{discipline(v)} reads back, and its \(\mathit{z}.\mathit{meta}\) is what \texttt{set\_arm\_meta} writes.
-Each of \ensuremath{\mathit{z}}'s parts is thus an opcode's target, and none of them is state that \texttt{push} or \texttt{pop} advances.
+Each of \zz's parts is thus an opcode's target, and none of them is state that \texttt{push} or \texttt{pop} advances.
 
 A tree position and the PIFO sitting at it are different things, so each lowering binds a name to the PIFO that the form targets, and speaks of that PIFO thereafter.
 Queries against a PIFO \texttt{v}, its \texttt{arity(v)} and \texttt{discipline(v)}, are read off the live tree at issue time, and a parameter an opcode leaves unmentioned is \texttt{v}'s live value.
@@ -1890,9 +1905,9 @@ Two notations recur.
 Of the queries, \texttt{flows(v)} is the set of flows admitted beneath \texttt{v}, and \texttt{chain(f)} runs from \texttt{port\_root} to the leaf admitting \texttt{f}, with \texttt{internals(f)} that chain minus the leaf.
 For a compiled subtree \texttt{T}, \texttt{nodes(T)} is its PIFOs and \texttt{root(T)} its root, and \texttt{layout(T)} spawns and configures all of \texttt{T}, leaving the parent-side \texttt{adopt} of \(\mathtt{root(T)}\) to the caller.
 
-We write \ensuremath{\mathit{path}} for the form's path argument, \texttt{parent} for the PIFO at the position above it, and \texttt{k} for its index at that PIFO.
+We write \pth for the form's path argument, \texttt{parent} for the PIFO at the position above it, and \texttt{k} for its index at that PIFO.
 For \(\mathit{path} = [\,]\), \texttt{parent} is \texttt{port\_root} and \texttt{k} is \texttt{port\_step}.
-Three of the forms are written below with their argument split as \(\pi \mathbin{+\!\!+} [k]\) rather than as \ensuremath{\mathit{path}}, because their lowerings address the parent's slot rather than the node itself, and so need \texttt{k} by name.
+Three of the forms are written below with their argument split as \(\pi \mathbin{+\!\!+} [k]\) rather than as \pth, because their lowerings address the parent's slot rather than the node itself, and so need \texttt{k} by name.
 
 \paragraph{\(\Add(\mathit{path}, D, \mathit{arm}, m)\)}
 \begin{Verbatim}
@@ -1957,7 +1972,7 @@ A single \texttt{undesignate(loser)} retargets \texttt{parent}'s index \texttt{k
 Reusing \texttt{k} is what preserves \texttt{parent}'s per-arm metadata for that slot, so the survivor inherits the annotation that the outgoing subtree held.
 The shared flows are deliberately not unmapped, since they serve \texttt{surv} now.
 
-\Quiesce{}'s wide reach, covering the root-to-\ensuremath{\mathit{path}} chain along with the whole subtree under \texttt{v}, is forced by \cref{sec:policy-dsl}'s parallel push.
+\Quiesce{}'s wide reach, covering the root-to-\pth chain along with the whole subtree under \texttt{v}, is forced by \cref{sec:policy-dsl}'s parallel push.
 Every node on a packet's path mints its own routing index independently, so dropping \texttt{f} at only some of those nodes would leave the rest minting stray indices, and the tree malformed.
 \Quiesce{} does not issue \texttt{unmap}.
 A silenced flow's Map entries \emph{must outlive the silencing} so that buffered packets can be popped.
@@ -1970,20 +1985,20 @@ A \(\Strictstar\) node is realized not as a PIFO but as a \emph{designated-survi
 This subsection says why the link is worth having and how a \push{} and a \pop{} each reach the survivor through it.
 
 \cref{sec:policy-dsl} offers \(\Strictstar\) as a discipline of its own even though it schedules exactly as the 2-ary \Strict{} does.
-The difference is that a \(\Strictstar\) node needs no \ensuremath{\mathit{pifo}}, and a node that needs no \ensuremath{\mathit{pifo}} needs no \emph{level}.
+The difference is that a \(\Strictstar\) node needs no \pifo, and a node that needs no \pifo needs no \emph{level}.
 A PE holds one level of the tree, so every node that must be stored somewhere costs a level for itself and everything beneath it.
 
 A substrate that offers \(\Strictstar\) guarantees two things of it.
 Arm 0 is drained before arm 1 is served, and the two arms' priorities never change.
 An ordinary \Strict{} can promise only the first.
-A \ChangeMeta{} may invert its priorities under a standing backlog, and ranks are frozen at \push{} time (\cref{sec:nondisruption}) so that the backlog survives the inversion, which is what the node's \ensuremath{\mathit{pifo}} is for.
+A \ChangeMeta{} may invert its priorities under a standing backlog, and ranks are frozen at \push{} time (\cref{sec:nondisruption}) so that the backlog survives the inversion, which is what the node's \pifo is for.
 Nothing can invert a \(\Strictstar\): \ChangeMeta{} may not target its arms (\cref{sec:changemeta}), and nothing else disturbs it between the \Designate{} that creates it and the \Undesignate{} that retires it.
-The drain order therefore holds at every instant of the node's life, and a \ensuremath{\mathit{pifo}} there would record nothing the two arms do not already record.
+The drain order therefore holds at every instant of the node's life, and a \pifo there would record nothing the two arms do not already record.
 
-\paragraph{What dropping the \texorpdfstring{\ensuremath{\mathit{pifo}}}{pifo} saves}
+\paragraph{What dropping the \texorpdfstring{\pifo}{pifo} saves}
 
 Suppose the outgoing subtree has height two on levels 5 and 6, and a survivor of height three is to replace it from level 5 beside it.
-A literal \Strict-2 wrapper holds a \ensuremath{\mathit{pifo}} and so has to live somewhere.
+A literal \Strict-2 wrapper holds a \pifo and so has to live somewhere.
 It takes level 5, pushing the outgoing subtree to 6 and 7 and the survivor to 6 through 8, and retiring it afterwards pulls the survivor back up.
 Two subtrees are laid out twice over, for a node that exists only for the length of a drain.
 
@@ -2008,9 +2023,9 @@ Once \texttt{v} is empty it defers to its designated survivor, and the query pas
 
 The parent therefore holds one index per packet in \emph{either} subtree, and spends them on \texttt{v} until \texttt{v} is dry and on \texttt{surv} thereafter, which is the arm-0-before-arm-1 order \cref{sec:wrap-nondisruption} proves non-disruptive.
 The elision does change what \cref{sec:controls}'s well-formedness ranges over.
-That invariant counts, at each node, one \ensuremath{\mathit{pifo}} entry per packet in the subtree under the corresponding child, and here the parent holds entries for packets in a subtree that is not its child at all.
+That invariant counts, at each node, one \pifo entry per packet in the subtree under the corresponding child, and here the parent holds entries for packets in a subtree that is not its child at all.
 This count is still correct once ``the subtree under index \(i\)'' is read as the subtree at \(i\) together with its designated survivor's, and an index that leads to \texttt{v} when \texttt{v} is empty does not actually reach a leaf with nothing to emit, since it reaches \texttt{surv}.
-At the \ensuremath{\mathit{pol}} level no reading is needed, since \(\mathtt{wrap}\) (\cref{sec:designate}) builds a real \(\Strictstar\) node with two real children and a \ensuremath{\mathit{pifo}} of its own, and \cref{sec:controls} applies to it word for word.
+At the \pol level no reading is needed, since \(\mathtt{wrap}\) (\cref{sec:designate}) builds a real \(\Strictstar\) node with two real children and a \pifo of its own, and \cref{sec:controls} applies to it word for word.
 
 \paragraph{Ending the transition}
 
@@ -2081,7 +2096,7 @@ That is the whole of what \cref{sec:hw-preservation}'s argument rests on, and \c
 
 The substrate also supplies the disciplines themselves.
 \(\mathit{init\_node\_state}_{D}\), \(\mathit{init\_slot\_state}_{D}\) and \(\mathit{rank}_{D}\) are the substrate's (\cref{sec:compilation}), and the menu it implements is the menu an operator may write from.
-That is a parameter, since a substrate with a shorter menu hosts Rio just as well over a smaller \ensuremath{\mathit{pol}}.
+That is a parameter, since a substrate with a shorter menu hosts Rio just as well over a smaller \pol.
 If the network operator wishes to install a discipline that the menu lacks, they need to supply the substrate with an \(\mathit{init\_node\_state}_{D}\), an \(\mathit{init\_slot\_state}_{D}\) and a \(\mathit{rank}_{D}\) of their own.
 A small programmable core beside the PIFO tree would be one way to supply this.
 
@@ -2266,7 +2281,7 @@ The pass tries two cases in order and stops at the first match.
 
 \begin{enumerate}
 \item \(p_1 = p_2\). Emit \([\,]\).
-The test is literal equality on the normalized \ensuremath{\mathit{pol}} terms, so two \(\eqR\)-equivalent policies arrive here as identical terms.
+The test is literal equality on the normalized \pol terms, so two \(\eqR\)-equivalent policies arrive here as identical terms.
 The live control is already serving the requested policy and there is nothing to install.
 
 \item Otherwise. Hand \((p_1, p_2)\) to the per-level comparator.
