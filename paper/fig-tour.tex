@@ -107,6 +107,6 @@
     node[gd, midway, anchor=east, xshift=-4pt] {what a recompile\\would have built};
 
   \end{tikzpicture}
-  \caption{The \Replace{} transition of \cref{sec:tour}. Red is what Rio does, dashed is the route it does not take.}
+  \caption{An example transition between two packet scheduling policies, $p_1$ and $p_2$. Rio uses an intermediate policy, $p_\text{temp}$, to implement the transition in two steps. Each transition, from $p_1$ to $p_\text{temp}$ and from $p_\text{temp}$ to $p_2$, is atomic. Rio compiles $p_1$ to an initial PIFO tree control, $C_1$, and each edit into an update of the hardware state.}
   \label{fig:tour}
 \end{figure*}
