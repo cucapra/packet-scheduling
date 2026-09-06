@@ -344,10 +344,11 @@ The problem is that inserting the $\RR$ node would require relocating all the in
 a costly, long-latency data copy.
 Instead, we can implement the transition in two steps.
 We introduce a temporary transitionary policy, $p_\text{temp}$ (shown in the middle of \cref{fig:tour}).
-\xxx[as]{As shown, $p_\text{temp}$ seems to violate the invariant that the leaves are unique. Can we relabel one ``gmail old'' or ``gmail new'' or something?}
 The idea is to insert a new, empty $\RR$ subtree
 without deleting the old \textsf{gmail} queue and its in-flight packets.
 New traffic will go to the new subtree while the old \textsf{gmail} queue drains.
+The two leaves that \cref{fig:tour} tags \textsf{gmail}\textsubscript{old} and \textsf{gmail}\textsubscript{new} carry the same flow, and the tags mark a split by arrival time.
+The instant when the first edit fires becomes the boundary: \textsf{gmail}\textsubscript{old} holds the packets already buffered, and every \textsf{gmail} packet arriving after that instant goes to \textsf{gmail}\textsubscript{new}.
 The $\Strictstar$ policy prioritizes the old packets over new packets.
 When the old \textsf{gmail} queue becomes empty, $p_\text{tmp}$ behaves identically to $p_2$.
 At this point, a second atomic policy edit can collapse the $\Strictstar$ policy and transition to $p_2$, as desired.

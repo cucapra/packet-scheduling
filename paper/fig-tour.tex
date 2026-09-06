@@ -44,9 +44,9 @@
     \node[pn] (b0)  at ( 0.00, 0.00) {\(\Strict\)};
     \node[pn] (b1)  at (-1.30,-0.80) {\textsf{zoom}};
     \node[pn] (b2)  at ( 1.30,-0.80) {\(\Strictstar\)};
-    \node[pn] (b3)  at ( 0.40,-1.60) {\textsf{gmail}};
+    \node[pn] (b3)  at ( 0.40,-1.60) {\textsf{gmail}\textsubscript{old}};
     \node[pn] (rr)  at ( 2.20,-1.60) {\(\RR\)};
-    \node[pn] (rrA) at ( 1.60,-2.40) {\textsf{gmail}};
+    \node[pn] (rrA) at ( 1.60,-2.40) {\textsf{gmail}\textsubscript{new}};
     \node[pn] (rrB) at ( 2.80,-2.40) {\textsf{spotify}};
     \draw[edge] (rr.south) -- (rrA.north);
     \draw[edge] (rr.south) -- (rrB.north);
@@ -95,7 +95,7 @@
     node[gd, midway, below=1pt] {immediately};
   \draw[does,->] ($(C2m.east)+(0.10,0)$) -- ($(C2.west)+(-0.10,0)$)
     node[act, midway, above=1pt] {\(\csem{\Undesignate}\)}
-    node[gd, midway, below=1pt] {once the doomed \textsf{gmail} drains};
+    node[gd, midway, below=1pt] {once \textsf{gmail}\textsubscript{old} drains};
   \draw[does,->] (P1.south) -- (C1.north)
     node[act, midway, anchor=east, xshift=-2pt] {\(\lceil \cdot \rceil\)};
   \draw[does,->] (C2m.north) -- (P2.south)
