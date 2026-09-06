@@ -1436,29 +1436,6 @@ A fourth check might be expected, and is not there.
 Nothing has to be proved about the \stt of the nodes an edit leaves alone, because every \(\csem{\delta}\) rule names each field of the node it produces, and \(\mathtt{at}(\pi, g)\) copies every off-path node by definition.
 What state survives an edit is therefore read off \cref{sec:edit-semantics} rather than argued for.
 
-\subsection{Preserving this proof down to hardware}\label{sec:hw-preservation}
-
-\cref{sec:per-form} proves soundness at the \(\delta\) level, where each form (\Add, \Quiesce, \Remove, \ldots) carries a well-formed tree to a well-formed tree.
-To run on hardware, each edit is lowered, by a simple and mechanical compilation, into a sequence of fine-grained instructions drawn from the substrate's instruction set.
-That instruction set and the substrate machinery are the subject of \cref{sec:hardware}.
-Here we need only two things about those instructions.
-They are fine-grained, each doing one small thing such as allocating a node, attaching a node to a parent, or admitting a flow at a node.
-A single such instruction, unlike a whole form of \(\delta\), \emph{can} leave the tree malformed.
-
-We do not prove soundness at the instruction level, but instead informally make the case for why the \cref{sec:per-form} proof survives the lowering.
-There are two reasons.
-First, the compilation is \emph{faithful}: each form of \(\delta\) expands to a fixed instruction sequence that, when run to completion, realizes exactly that form's effect.
-We give the translation from each \(\delta\) form to its instruction sequence and take its faithfulness to be uncontroversial.
-Second, our substrate runs each such sequence as a single \emph{commit}: a group of instructions that installs as one instant, with no \push{} or \pop{} interleaved between them (\cref{sec:hw-isa} spells out the substrate machinery that makes this so).
-The transiently-malformed intermediate trees are therefore never observed by the network.
-That commit is precisely how the substrate \emph{realizes} the atomicity property of \cref{sec:grammar}.
-Atomicity asked for an instantaneous control replacement between two \push{}/\pop{} operations, and the commit collapses a multi-instruction lowering into one such instant.
-Every \push{}/\pop{} therefore still lands on a well-formed control (\(p_1\), some transitionary policy, or \(p_2\)), exactly as \cref{sec:per-form} proved.
-
-The same argument carries from the instruction sequence down to hardware.
-The hardware executes a committed sequence atomically with respect to \push{} and \pop{}, so what it exhibits is again what \cref{sec:per-form} proved.
-The compilation itself, and the substrate machinery that makes a commit atomic, are the subject of \cref{sec:hardware}.
-
 \section{Realizing Reconfigurations as Guarded Sequences}\label{sec:sequences}
 
 This section composes the forms of \(\delta\) into \emph{guarded sequences} \((\varphi ; \delta^{*})^{*}\), where a guard \(\varphi\) is a predicate on the state of the live control.
