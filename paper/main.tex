@@ -1280,7 +1280,9 @@ Each clause aggregates one of the per-form checks of \cref{sec:per-form}.
 Clause 1 is exactly \emph{Preservation of \(\vdash\)}, and clause 2 is exactly \emph{Characterization}.
 \end{proof}
 
-\subsection{Non-disruption}\label{sec:nondisruption}
+\subsection{Non-Disruption}\label{sec:nondisruption}
+
+\xxx[as]{Anshuman, your argument below about why to keep this theorem is good. Let's keep it. However: (1) I think we can delete the framing paragraphs below, in favor of a simple statement that says: we have chosen our set of edits to prevent disruption. (2) I think we probably need to preview that this is an advantage somewhat earlier, such as in the section when we introduce the edit grammar. (3) IIUC, we do not have an actual proof of this theorem. That is fine; it would be long, probably. But let's explicitly acknowledge that we are stating it without proof and simply sketching an argument. (4) Please introduce some notation for ``the sequence of packets you get out of a $C$ if you were to fully drain it.''}
 
 Agreement on its own is not enough.
 The stop-the-world reset of \cref{sec:intro} is realizable and explainable too, and it is the baseline we wish to beat.
@@ -1310,6 +1312,7 @@ Then \(C\) and \(\csem{\delta}(C)\) release the same sequence of packets under a
 
 Most forms discharge this through a single fact about \pop{}, and need no argument of their own.
 
+\xxx[as]{IMO this lemma reads more like the sketch of an argument to support the above theorem, and less like the formal statement of an actual lemma.}
 \begin{lemma}[Non-disruption reduces to \pifo-content preservation]\label{lem:nondisruption}
 A \pop{} reads only \pifo contents: it pops the root index-\pifo to a child, recurses, and finally emits a leaf packet, never consulting any \stt or \zz (\cref{sec:controls}).
 Write \(C' = \csem{\delta}(C)\), and suppose \(\csem{\delta}\) leaves the contents of every non-empty \pifo of \(C\) unchanged (never rewriting, reordering, or removing a live entry, and introducing only empty \pifo{}s).
@@ -1321,7 +1324,8 @@ Four of the six pass that check outright.
 \Designate{} inserts a node whose \pifo is not empty and \Undesignate{} drops one, so those two need an argument of their own.
 Each such argument shows that the \pop{} sequence is unchanged, which is why \cref{thm:nondisruption} is stated on that sequence rather than on \pifo contents.
 
-\subsection{Form by Form}\label{sec:per-form}
+\subsection{Proofs}\label{sec:per-form}
+\xxx[as]{I think it is a little weird, but maybe possible, that we have a single section for proving two different theorems. The usual way to see this go would be to have one section for proving theorem 1 and one section for proving theorem 2. They are both simple proofs by cases (because $\delta$ is not recursive), so they have the same set of cases. If you want to keep them together, that's fine---just noting that it's somewhat surprising.}
 
 Each form owes three checks, and together the six sets of three prove the two theorems above.
 Two of the checks feed \cref{thm:interplay}, and the third feeds \cref{thm:nondisruption}.
@@ -1338,6 +1342,7 @@ Where it does not apply, argue directly that the \pop{} sequence is unchanged.
 \end{itemize}
 
 \cref{fig:per-form-checks} discharges all eighteen checks.
+\xxx[as]{The paragraphs in the table are short enough that I'm not sure people will agree that they count as a complete, rigorous proof That is potentially OK, but we should be up front about how much detail we're going into. If we move these proofs to the appendix (which I think we should), then we could also liberate the arguments from their table cells and give them more space.}
 Fifteen of them are immediate from the rules of \cref{sec:edit-semantics} and are given in the table itself.
 The remaining three are the ones with an argument to make, and the rest of this section gives those: \Add's Characterization, and non-disruption for \Designate{} and \Undesignate.
 
