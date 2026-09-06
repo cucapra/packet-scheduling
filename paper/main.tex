@@ -871,13 +871,6 @@ Inverting the two priorities of \(\Strict(\mathtt{hi}{:}\,A,\ \mathtt{lo}{:}\,B)
 Only packets pushed after the change are ranked under the new priorities, so a \(B\)-packet arriving after the inversion is served ahead of one that arrived before it.
 That is the reconfigured policy \emph{correctly} governing new arrivals, not a disturbance of the backlog.
 
-\xxx[AM to AS]{You proposed keeping only the agreement theorem and dropping this one.
-Here is why I want to keep it.
-Suppose we added a form \(\textsf{Reset}(p_2)\), with \(\csem{\textsf{Reset}(p_2)}(C) = \lceil p_2 \rceil\) and \(\psem{\textsf{Reset}(p_2)}(p) = p_2\).
-It satisfies both clauses of \cref{thm:interplay}, since \(\lceil p_2 \rceil\) is well-formed and \(\lfloor \lceil p_2 \rceil \rfloor \eqR p_2\), and it is exactly the stop-the-world baseline: buffered packets dropped on the floor.
-So the agreement theorem alone cannot tell our contribution apart from the thing we claim to beat, and \cref{sec:intro}'s promise to improve on the state of the art is never discharged formally.
-My counter-offer is to promote non-disruption to a collected theorem rather than demote it.}
-
 We state the property on what the network can observe, which is the flush sequence.
 
 \begin{theorem}[Non-disruption]\label{thm:nondisruption}

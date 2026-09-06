@@ -994,3 +994,24 @@ That is a temporary strict-priority node favoring the doomed \(\mathit{pol}@\mat
 % ---------------------------------------------------------------------------
 
 Whether a given sequence arrives at \(p_2\) is a separate question, answered at the \pol level by folding \(\psem{\delta_i}\) along it and admitting it only when the fold ends \(\eqR\)-equal to \(p_2\).
+
+% ---------------------------------------------------------------------------
+% R10. The argument for keeping the non-disruption theorem
+% From: main.tex sec:nondisruption, an \xxx[AM to AS] note.
+% Cut 2026-09-06. It is spent: Adrian read it and conceded in his own note at
+% the head of the subsection, "your argument below about why to keep this
+% theorem is good. Let's keep it." The theorem stays; only the argument for it
+% leaves, since the paper does not need to argue with a settled reviewer.
+% The Reset(p_2) construction is kept here because it is the sharpest form of
+% the case, and it would have to be rebuilt from scratch if the question of
+% dropping the theorem is ever reopened. Region 8 above holds an earlier,
+% pre-ChangeRoot-cut sentence of the same note; this is the version Adrian
+% actually read and conceded to.
+% ---------------------------------------------------------------------------
+
+\xxx[AM to AS]{You proposed keeping only the agreement theorem and dropping this one.
+Here is why I want to keep it.
+Suppose we added a form \(\textsf{Reset}(p_2)\), with \(\csem{\textsf{Reset}(p_2)}(C) = \lceil p_2 \rceil\) and \(\psem{\textsf{Reset}(p_2)}(p) = p_2\).
+It satisfies both clauses of \cref{thm:interplay}, since \(\lceil p_2 \rceil\) is well-formed and \(\lfloor \lceil p_2 \rceil \rfloor \eqR p_2\), and it is exactly the stop-the-world baseline: buffered packets dropped on the floor.
+So the agreement theorem alone cannot tell our contribution apart from the thing we claim to beat, and \cref{sec:intro}'s promise to improve on the state of the art is never discharged formally.
+My counter-offer is to promote non-disruption to a collected theorem rather than demote it.}
