@@ -1661,27 +1661,49 @@ That is a temporary strict-priority node favoring the outgoing \(\mathit{pol}@\m
 \subsection{The Substrate as it Stands}\label{sec:hw-substrate}
 
 A PIFO tree needs programmable hardware to run on.
-Existing designs~\cite{Sivaraman16,Yao23,vPIFO} build it out of the PEs of \cref{sec:hierarchical}, each hosting several PIFOs, one PIFO per node of the tree.
-Each PE carries hardware that assigns a packet to one of its PIFOs and computes the packet's rank and next-hop destination.
-Behind that, a single physical PIFO supplies the storage that all of the PE's PIFOs share.
+Existing designs~\cite{Sivaraman16,Yao23,vPIFO} build it out of the PIFO Processing Elements (PEs) of \cref{sec:hierarchical}, each hosting a single physical PIFO supplies the storage that multiple logical PIFOs of the PE's PIFOs share.
+In additional to PIFOs, Each PE carries programmable hardware that assigns a packet to one of its PIFOs, computes the packet's rank and next-hop destination.
 
-We call the hardware-level realizations of \push{} and \pop{} \emph{enqueue} and \emph{dequeue}, and on this substrate both are pipelined and non-atomic.
+
+In detail,
+% We call the hardware-level realizations of \push{} and \pop{} \emph{enqueue} and \emph{dequeue}, and on this substrate both are pipelined and non-atomic.
 On enqueue, the switch must compute two pieces of information before issuing PE pushes: which PIFO the packet should enter, and what rank should be inserted at each of those PIFOs.
 Classification determines the first, by mapping a flow to a child.
 The PIFO's scheduling policy computes the second, from packet fields, flow state, and per-arm metadata.
 For example, a \WFQ{} PIFO uses the child weight to compute a virtual finish time, while a \Strict{} PIFO interprets the metadata as a priority rank.
-Both are computed by match-action tables~\cite{Bosshart14}, so installing a policy on such a substrate means writing entries into those tables.
-\xxx[AM to Zhiyuan]{You asked me to cite the P4 reconfiguration papers here, to show that installing a policy this way is stop-the-world.
-At present I only cite P4 itself, because FlexCore and P4runpro are the designs that make forwarding-pipeline reconfiguration \emph{not} stop-the-world, and \cref{sec:hw-commit} and \cref{sec:related} both already describe them as non-STW.
-If you had other papers in mind, please add them here.}
+% \xxx[AM to Zhiyuan]{You asked me to cite the P4 reconfiguration papers here, to show that installing a policy this way is stop-the-world.
+% At present I only cite P4 itself, because FlexCore and P4runpro are the designs that make forwarding-pipeline reconfiguration \emph{not} stop-the-world, and \cref{sec:hw-commit} and \cref{sec:related} both already describe them as non-STW.
+% If you had other papers in mind, please add them here.}
 On dequeue, the switch starts from the output port's root PIFO, pops the best-ranked entry, and follows the stored next-hop information until it reaches a packet to transmit or another PIFO to pop.
+As all comptuations are computed by match-action tables~\cite{Bosshart14}, so installing a policy on such a substrate means writing entries into those tables.
 
-This is sufficient for a static policy, but it does not by itself support dynamic policy updates concurrent with packet enqueue and dequeue.
+The hardware structure does not by itself support dynamic policy, mainly for two reasons.
+First, it cannot accommodate non-stoping substrate reconfiguration.
+Because packet assignment and rank computation are interleaved throughout the pipeline, policy migration can be destructive:
+a policy change may require updating and reomving table entries, or even chanign the pipeline structure, for exisitng packets.
+Second, conventional MAT table updates do not provide \textbf{atomic visibility} to packets already traversing the pipeline.
+When updates concurrent with packet enqueue and dequeue.
 In such a case, a single packet operation can observe a mixture of old and new scheduler state.
 For example, an enqueue may choose its path using the old flow-to-child mapping but compute its rank using newly updated per-arm metadata, or a dequeue may pop from one version of the tree and then follow next-hop state from another.
 As a result, existing PIFO-based substrates support only stop-the-world policy update~\cite{vPIFO,Alcoz23}.
 
-Rio asks a substrate for two things.
+Leveraging the Rio transition process,
+Rio enables dynamic policy updates with minimal changes to the hardware substrate by separating \emph{incremental installation} from \emph{atomic publication}.
+In particular, Rio introduces an indirection between packet classification and rank computation.
+The ingress pipeline first maps an incoming packet to an internal identifier,
+and subsequent stages compute its rank using the state associated with that identifier.
+During a policy transition, Rio does not destructively rewrite rank-computation state that may still
+be referenced by existing packets.
+Instead, it incrementally installs the rank-computation state required by the new policy under new
+internal identifiers, while leaving unchanged and still-live state intact.
+Once this state has been installed, Rio atomically redirects the relevant mappings to the new identifiers.
+Thus, the bulk of a policy transition remains \textbf{incremental and non-destructive},
+while atomicity is required only at the indirection boundary.
+Rio implements this boundary using a double-buffered transactional lookup table,
+which prepares updates in a standby copy and makes them visible through an atomic swap.
+
+Rio use commits, which is a sequence of updates that will be atomically visible by packets, to bridge the compiler and hardare.
+The commits have two properties:
 The first is commits that are atomic with respect to traffic.
 A \(\delta\) that lowers to many instructions has to install as a single instant.
 The tree is transiently malformed partway through a commit, and no \push{} or \pop{} may observe it in that state.
@@ -1692,16 +1714,16 @@ A guarded sequence (\cref{sec:sequences}) waits for its guard before firing the 
 Since our grammar of guards is quite simple, our substrate tests one predicate: the emptiness of a subtree.
 That is a local test at a single PIFO, since a node's \ensuremath{\mathit{pifo}} holds an entry for every packet in its subtree (\cref{sec:controls}).
 
-\xxx[AM to Zhiyuan]{I decided to add this second requirement, and I think you'll see why. Is that okay?}
+% \xxx[AM to Zhiyuan]{I decided to add this second requirement, and I think you'll see why. Is that okay?}
 
-Our substrate is deliberately unambitious; we built it because the compiler needed something to run against and we wanted to understand precisely what features we needed from our substrate.
+% Our substrate is deliberately unambitious; we built it because the compiler needed something to run against and we wanted to understand precisely what features we needed from our substrate.
 
 \subsection{Making a Commit Atomic}\label{sec:hw-commit}
 
-Rio's change to the substrate is small, and it is small because the transactional scope is narrow.
-The only state that has to install as one instant is the mapping from a flow to the PIFO that serves it, which is what admits a packet at all.
-The rank computation need not be inside that scope.
-The writing of metadata either installs metadata for a flow whose packets are not admitted until the commit finishes, or retires metadata for a flow that has already drained, so it never changes the interpretation of a packet already in flight.
+% Rio's change to the substrate is small, and it is small because the transactional scope is narrow.
+% The only state that has to install as one instant is the mapping from a flow to the PIFO that serves it, which is what admits a packet at all.
+% The rank computation need not be inside that scope.
+% The writing of metadata either installs metadata for a flow whose packets are not admitted until the commit finishes, or retires metadata for a flow that has already drained, so it never changes the interpretation of a packet already in flight.
 
 Rio implements a transactional update controller, and every commit passes through it.
 A commit reaches the controller as a stream of update instructions terminated by a commit marker, and the controller executes that stream in order.
@@ -1711,11 +1733,11 @@ Two pieces of hardware need small changes.
 First, the tables that hold a node's classification must become transactional, so that a commit signal makes a whole list of writes visible at once.
 Second, the rank computation must accept incremental updates rather than wholesale replacement of a live scheduling policy.
 
-\xxx[AM to Zhiyuan]{We used to claim ``small changes to three pieces of hardware: the virtual PIFOs, the rank computation, and the next-hop mapping'', and then described two, neither of which was the PIFOs.
-I have written ``two'', since two is what this subsection actually talks about.
-Is there also a change to the PIFOs themselves? If so, we need to add a paragraph describing that.
-I have also split what the two changes are \emph{for}: the classification tables must become transactional, while the rank computation only has to take incremental writes. 
-Please check for correctness.}
+% \xxx[AM to Zhiyuan]{We used to claim ``small changes to three pieces of hardware: the virtual PIFOs, the rank computation, and the next-hop mapping'', and then described two, neither of which was the PIFOs.
+% I have written ``two'', since two is what this subsection actually talks about.
+% Is there also a change to the PIFOs themselves? If so, we need to add a paragraph describing that.
+% I have also split what the two changes are \emph{for}: the classification tables must become transactional, while the rank computation only has to take incremental writes. 
+% Please check for correctness.}
 
 Rio builds transactional tables for a node's classification.
 Each PE holds the set of flows each of its nodes admits, and the mapping from an admitted flow to the child that serves it, in a specialized structure that accepts a stream of update instructions followed by a commit marker.
