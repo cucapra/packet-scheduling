@@ -292,27 +292,14 @@ The policy for this strict prioritization is:
 %
 \[ p_1 = \Strict(\mathtt{hi}{:}\,\textsf{zoom},\ \mathtt{lo}{:}\,\textsf{gmail}) \]
 %
-The policy is a tree where internal nodes are scheduling disciplines and the leaves are packet flows.
+The policy is a tree: each leaf names a flow, and each internal node runs a scheduling discipline over its children.
+Every arm of an internal node carries a label that tells the discipline how to treat that arm; here those labels are the priorities $\mathtt{hi}$ and $\mathtt{lo}$.
 Semantically, the packet scheduler works by queueing incoming packets at the leaves and recursively popping packets according to each discipline.
 % When a packet arrives, the classifies the packet and pushes it into the FIFO queue for the corresponding leaf in the policy tree.
 % Scheduling disciplines determine which child to (recursively) pop when sending packets.
 This $\Strict$ discipline always picks the $\mathtt{hi}$ subtree over the $\mathtt{lo}$ subtree.
 % In this example, the $\Strict$ discipline always forwards packets from the $\mathtt{hi}$ subtree when they are available, only falling back to the $\mathtt{lo}$ subtree when the former queue is empty.
-\cref{fig:pol-grammar} lists the grammar for this simple policy language, and \Cref{sec:policy-dsl} formalizes it.
-\xxx[as]{I am having second thoughts about putting the grammar here. If this is really just an overview section, maybe the grammar belongs in the formalism section.}
-\xxx[am]{I think that's fair, and that your new text already explains it well without the figure. Let's just go ahead and move it?}
-
-\begin{figure}[t]
-\[
-\begin{array}{@{}l@{}}
-\mathit{flow} \in F\\[4pt]
-D\ \text{a scheduling discipline, declaring a metadata set } M_{D}\\[8pt]
-\mathit{pol} \mathrel{::=} \mathit{flow} \;\mid\; D(m_1{:}\,\mathit{pol}_1, \ldots, m_n{:}\,\mathit{pol}_n),\ m_i \in M_{D}
-\end{array}
-\]
-\caption{The policy language \(\mathit{pol}\).}
-\label{fig:pol-grammar}
-\end{figure}
+\Cref{sec:policy-dsl} makes this policy language precise.
 
 \paragraph{Changing the scheduling policy}
 
@@ -460,6 +447,18 @@ The two layers can plausibly compose, and \cref{sec:substrate-portability} sets 
 
 This section introduces the two objects that the rest of the paper edits.
 \cref{sec:policy-dsl} gives the small DSL an operator writes, \cref{sec:controls} gives the control a switch runs, and \cref{sec:compilation} compiles the first into the second.
+
+\begin{figure}[t]
+\[
+\begin{array}{@{}l@{}}
+\mathit{flow} \in F\\[4pt]
+D\ \text{a scheduling discipline, declaring a metadata set } M_{D}\\[8pt]
+\mathit{pol} \mathrel{::=} \mathit{flow} \;\mid\; D(m_1{:}\,\mathit{pol}_1, \ldots, m_n{:}\,\mathit{pol}_n),\ m_i \in M_{D}
+\end{array}
+\]
+\caption{The policy language \(\mathit{pol}\).}
+\label{fig:pol-grammar}
+\end{figure}
 
 \subsection{The policy language}\label{sec:policy-dsl}
 
