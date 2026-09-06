@@ -1060,15 +1060,15 @@ The drain order therefore holds at every instant of the node's life, and a \ensu
 
 \paragraph{What dropping the \texorpdfstring{\ensuremath{\mathit{pifo}}}{pifo} saves}
 
-Suppose the outgoing subtree has height two on levels 5 and 6, and a survivor of height three is to replace it from level 5 beside it.
+Suppose the doomed subtree has height two on levels 5 and 6, and a survivor of height three is to replace it from level 5 beside it.
 A literal \Strict-2 wrapper holds a \ensuremath{\mathit{pifo}} and so has to live somewhere.
-It takes level 5, pushing the outgoing subtree to 6 and 7 and the survivor to 6 through 8, and retiring it afterwards pulls the survivor back up.
+It takes level 5, pushing the doomed subtree to 6 and 7 and the survivor to 6 through 8, and retiring it afterwards pulls the survivor back up.
 Two subtrees are laid out twice over, for a node that exists only for the length of a drain.
 
 \paragraph{The designated-survivor link}
 
 Every PIFO carries a \emph{designated-survivor link}, which is left null in an ordinary node.
-A \Designate{} points the outgoing node \texttt{v}'s link at the survivor's root \texttt{surv}.
+A \Designate{} points the doomed node \texttt{v}'s link at the survivor's root \texttt{surv}.
 The survivor is laid out beside \texttt{v} rather than beneath it, and \texttt{v}'s parent is not told.
 It keeps the one index it had.
 A designated survivor occupies its designator's physical position, so the two roots share a PE, and a model path reaches a physical level by discarding the \(\Strictstar\) nodes above it.
@@ -1096,7 +1096,7 @@ The indirection has a cost.
 Once \texttt{v} has drained, every \pop{} that reaches that slot queries \texttt{v}, gets nothing, and queries again, at the tree level where the two roots sit.
 So the transition has to end rather than merely settle.
 \cref{sec:sequences} pairs \Undesignate{} with a wait for the old subtree to drain empty, and \cref{sec:hw-commit} lowers such a wait to a blocking command in the controller queue.
-The commit sits at the head of that queue until the outgoing subtree drains, and then fires atomically.
+The commit sits at the head of that queue until the doomed subtree drains, and then fires atomically.
 After it the parent's index reaches the survivor directly, and nothing in the tree records that a transition happened.
 
 An operator may also put a \(\Strictstar\) in a policy of their own (\cref{sec:policy-dsl}), and \(\lceil \cdot \rceil\) compiles it to what \Designate{} builds, laying out both arms and pointing the first arm's link at the second.
@@ -1195,7 +1195,7 @@ The port root is what makes the tree root an ordinary position.
 \texttt{undesignate} retargets a parent's index from a PIFO to that PIFO's designated survivor, and at the root there is no parent's index to retarget.
 That case is not hypothetical: the always-available plan of \cref{sec:sequences} is \(\Replace([], p_2)\), whose last step is \(\Undesignate([])\).
 Without the port root the substrate could not execute the one transition the planner is guaranteed to be able to fall back on, and would need a second opcode meaning ``make this PIFO the tree root'', doing at one position what \texttt{undesignate} does everywhere else.
-\Designate{} itself needs no parent, since it only writes the outgoing node's own link.
+\Designate{} itself needs no parent, since it only writes the doomed node's own link.
 It is \Undesignate{} rather than \Designate{} that wants a slot above.
 
 \xxx[AM to Zhiyuan]{The port-selection sentence above is my best guess.
@@ -1283,7 +1283,7 @@ Silencing those, when the operator ultimately wants it, comes from the \Quiesce{
 \paragraph{\(\Undesignate(\pi \mathbin{+\!\!+} [k])\)}
 \Undesignate{} is likewise \Designate{} run backwards.
 A single \texttt{undesignate(loser)} retargets \texttt{parent}'s index \texttt{k} from \texttt{loser} to \texttt{surv}, the flows in \(\mathtt{flows(loser)} \setminus \mathtt{flows(surv)}\) are unmapped along their internals, and \texttt{loser}'s PIFOs are released.
-Reusing \texttt{k} is what preserves \texttt{parent}'s per-arm metadata for that slot, so the survivor inherits the annotation that the outgoing subtree held.
+Reusing \texttt{k} is what preserves \texttt{parent}'s per-arm metadata for that slot, so the survivor inherits the annotation that the doomed subtree held.
 The shared flows are deliberately not unmapped, since they serve \texttt{surv} now.
 
 \Quiesce{}'s wide reach, covering the root-to-\pth chain along with the whole subtree under \texttt{v}, is forced by \cref{sec:policy-dsl}'s parallel push.
@@ -1291,7 +1291,7 @@ Every node on a packet's path mints its own routing index independently, so drop
 \Quiesce{} does not issue \texttt{unmap}.
 A silenced flow's Map entries \emph{must outlive the silencing} so that buffered packets can be popped.
 \Remove{} pairs \texttt{emancipate} with \texttt{unmap} precisely because it fires after the drain, when there is no longer any in-flight traffic to preserve.
-A \Quiesce{} that fires in the middle of a \Replace, on the outgoing arm of a \(\Strictstar\), restricts its deassoc walk to loser-only flows, since \Designate{} routed the shared flows to the survivor at commit time (\cref{sec:designate}), and de-associating them here would silence live traffic on the survivor.
+A \Quiesce{} that fires in the middle of a \Replace, on the doomed arm of a \(\Strictstar\), restricts its deassoc walk to loser-only flows, since \Designate{} routed the shared flows to the survivor at commit time (\cref{sec:designate}), and de-associating them here would silence live traffic on the survivor.
 
 \subsection{Hosting Rio on Another Substrate}\label{sec:substrate-portability}
 
