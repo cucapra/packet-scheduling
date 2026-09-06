@@ -1438,6 +1438,13 @@ What state survives an edit is therefore read off \cref{sec:edit-semantics} rath
 
 \section{Realizing Reconfigurations as Guarded Sequences}\label{sec:sequences}
 
+\xxx[as]{Here is another bold suggestion for how to compress things to save a lot of space. We mostly delete this section, and remove all references to guarded sequences and idioms. We instead include a short discussion of ``the hardware interface'': how we imagine the control plane interacting with the scheduler. That includes things like:
+(1) the hardware can do one transition at a time, and you wait for one to be done before issuing the next,
+(2) we assume a way to wait for quiescence,
+(3) liveness is therefore not guaranteed,
+(4) you must deal with ``follow-up requests'' by queueing up edits and waiting for them to finish. But we frame this just as \emph{out design for the hardware--software interface}, and not as another language/theoretical development.
+Hopefully this only takes a couple of paragraphs, and can go in the hardware or compiler section?}
+
 This section composes the forms of \(\delta\) into \emph{guarded sequences} \((\varphi ; \delta^{*})^{*}\), where a guard \(\varphi\) is a predicate on the state of the live control.
 Guarded sequences realize changes to the live control that no single \(\delta\) can express.
 We first show that the transitionary period such a sequence passes through needs no new semantics (\cref{sec:links}), then give the grammar of guarded sequences (\cref{sec:idioms}).
