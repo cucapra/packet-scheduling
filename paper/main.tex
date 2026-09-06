@@ -755,11 +755,6 @@ In other words, \(p \eqR p'\) iff the two policies are identical up to reorderin
 % The metadata is what carries the scheduling-meaningful content, so such a permutation does not change the scheduler.
 
 Because \(\eqR\) only permutes sibling arms, each \(\eqR\)-class has a canonical representative under any fixed ordering of the arms at a node.
-\xxx[as]{Does this matter for stating our theorems? If not, let's delete it or demote it the proof appendix.}
-
-We write \(C \simR C'\) for the equivalence obtained by closing \(\sim\) under sibling permutations.
-% Permuting a node's children renumbers the slots they sit in, so the parent's \pifo entries, its \slotstates, its \(\mathit{z}.\mathit{serves}\), and its \(\mathit{z}.\mathit{meta}\) are all renumbered to match.
-% The two controls present different positional layouts and realize the same scheduler.
 
 We write \(\lfloor C \rfloor\) to mean ``the \pol that \(C\) realizes.''
 % Intuitively, \(\lfloor \cdot \rfloor\) reads the policy straight off the control.
@@ -829,8 +824,7 @@ We want to prove that every edit, $\delta$, has consistent effects on the low-le
 \node       at (0.48,0)   {$\sim$};
 \node (c1p) at (0.95,0)   {\(C_1'\)};
 \node (c2p) at (6,0)      {\(C_2'\)};
-\node (c2)  at (6,0.8)    {\(C_2\)};
-\node       at (6,0.4)    {\rotatebox{90}{$\simR$}};
+\node (c2)  at (6,0.9)    {\(C_2\)};
 % compilations (down)
 \draw[->] (p1) -- node[left]{$\lceil\cdot\rceil$} (c1);
 \draw[->] (p2) -- node[left]{$\lceil\cdot\rceil$} (c2);
@@ -1873,7 +1867,10 @@ The empty-arm-0 precondition is operational and leaves no trace at \pol-level.
 
 \section{A Gallery of the Three Equivalences}
 
-The three relations of \cref{sec:equivalences} are shown by example in \cref{fig:equiv-gallery}, over a node running an abstract discipline \(P\) whose two arms carry per-arm metadata \(m_1\) and \(m_2\).
+\Cref{sec:equivalences} defines \(\sim\) on controls and \(\eqR\) on policies.
+A third relation is convenient here: we write \(C \simR C'\) for the equivalence obtained by closing \(\sim\) under sibling permutations.
+Permuting a node's children renumbers the slots they sit in, so the parent's \pifo entries, its \slotstates, its \(\mathit{z}.\mathit{serves}\), and its \(\mathit{z}.\mathit{meta}\) are all renumbered to match.
+All three relations are shown by example in \cref{fig:equiv-gallery}, over a node running an abstract discipline \(P\) whose two arms carry per-arm metadata \(m_1\) and \(m_2\).
 
 \begin{figure}[t]
 \centering
