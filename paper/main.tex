@@ -263,7 +263,7 @@ Our contributions are to say what the transitionary policy is and to do better t
 
 Rio's language is a grammar of atomic policy edits, each one a change the hardware can install in a single instant (\cref{sec:delta-grammar}).
 Its semantics gives every edit a meaning in the operator's own policy language, so \emph{any transitionary policy the grammar produces is ordinary scheduling}, readable exactly as \(p_1\) and \(p_2\) are (\cref{sec:edit-semantics}).
-A planner turns a requested \(p_2\) into a guarded sequence of those edits (\cref{sec:planner}), and a mechanical lowering carries each edit down to the instructions that a switch runs (\cref{sec:hardware}).
+A planner turns a requested \(p_2\) into a guarded sequence of those edits (\cref{sec:planner}), and a mechanical lowering carries each edit down to the instructions that a switch runs (\cref{sec:hw-compile}).
 A transition from any \(p_1\) to any \(p_2\) is always available, and many admit a realization confined to the part of the tree that actually changes.
 We will give the semantics of the stop-the-world transitionary policy and use it as a baseline.
 Two practical goals guide the search for better ways to transition from a given \(p_1\) to a given \(p_2\).
@@ -487,7 +487,7 @@ We choose the set of edits to meet the following criteria:
 \item They are \emph{atomic}. PIFO tree hardware can commit each edit such that packets are processed either by the original policy or the edited one (\Cref{sec:hardware}).
 \xxx[as]{Do we need more intuition here to suggest why the reader should believe that all of these are atomic?}
 \item They are \emph{explainable}. Each edit transforms a policy $p$ in our policy DSL into a new policy $p'$. Later, we also show how each edit applies to live PIFO tree state to reflect these changes (\cref{sec:edit-semantics}).
-\item They are \emph{complete}. For any pair of policies $p_1$ and $p_2$, a sequence of edits suffices to transform $p_1$ into $p_2$. \cref{sec:fallback} demonstrates a ``fallback'' path that always works.
+\item They are \emph{complete}. For any pair of policies $p_1$ and $p_2$, a sequence of edits suffices to transform $p_1$ into $p_2$. \cref{sec:sequences} gives a ``fallback'' path that always works.
 \item They are \emph{non-destructive}, i.e., edits do not drop in-flight packets. Edits that delete subtrees, such as $\Remove$, have preconditions that require those subtrees to be empty.
 \end{enumerate}
 %
@@ -509,7 +509,7 @@ We chose these six forms with care, so that PIFO tree hardware can realize each 
 \(\Strictstar\) makes the set complete.
 \Designate{} can introduce an arbitrary new subtree beside a running one without moving a buffered packet, and \Undesignate{} retires the old one once it has drained, so any \(p_1\) reaches any \(p_2\) by wrapping, draining, and unwrapping.
 \Cref{sec:tour}'s two-step transition is exactly this: the \(\Strictstar\) node of \(p_\text{temp}\) holds the draining \textsf{gmail}\textsubscript{old} leaf beside the freshly built \RR{} subtree, and collapses once that leaf is empty.
-Everything outside the wrapper keeps running untouched, so it is valuable to wrap the smallest subtree that covers the change (\cref{sec:fallback}).
+Everything outside the wrapper keeps running untouched, so it is valuable to wrap the smallest subtree that covers the change (\cref{sec:planner}).
 
 \Cref{sec:edit-semantics} gives the formal semantics for policy edits, in terms of both their effects on policies $p$ and on the state of live PIFO trees.
 
@@ -908,168 +908,13 @@ A \emph{step} is one guard together with the run of \(\delta\)s that guard relea
 
 Both theorems hold at every step of a sequence.
 Each \(\delta\) fires on the well-formed control that the previous one left behind (\cref{thm:interplay}), so \(\lfloor \cdot \rfloor\) names the \pol in force at every point, which is what \cref{sec:intro} promises of the transitionary period, and the backlog survives the whole sequence (\cref{thm:nondisruption}).
-Whether a given sequence arrives at \(p_2\) is a separate question, answered at the \pol level by folding \(\psem{\delta_i}\) along it and admitting it only when the fold ends \(\eqR\)-equal to \(p_2\).
 
 A sequence that reconfigures a real tree is a list of small edits, which is not how an operator thinks about their scheduler.
 An \emph{idiom} is a name for a sequence that recurs, and two of them cover what we need.
 \Retire(\pth) tears a subtree down gracefully: it quiesces the subtree at \pth, waits for it to drain, and then removes it.
-\Replace(\pth, \survivor) swaps \survivor in for \(\mathit{pol}@\mathit{path}\): it designates \survivor beside the running subtree, silences that subtree, waits for it to drain, and then collapses the \(\Strictstar\) wrapper to leave \survivor alone at \pth.
-\(\Replace([\,], p_2)\) discharges the completeness criterion of \cref{sec:delta-grammar}: it reaches any \(p_2\) from any \(p_1\). 
-\cref{sec:fallback} treats it as the planner's fallback.
-
-\section{The Transition Planner}\label{sec:planner}
-
-\xxx[as]{One more drastic cut suggestion: we remove this section and replace it with a short subsection in the compiler/hardware section. The points we \emph{need} to get across are limited to:
-(1) the planner exists, but it is ``just'' a heuristic and we make no claims of optimality,
-(2) it can produce simple transitions when the change is small,
-(3) even when a $\Strictstar$ transition is necessary, it keeps things local when possible.
-We do not need to describe exactly how it works.}
-
-The operator hands the runtime \(p_1\), the presently running policy, and \(p_2\), the one they now want.
-The transition planner's job is to propose a \((\varphi ; \delta^{*})^{*}\) sequence whose \pol-level fold takes \(p_1\) to some \(p_2'\) with \(p_2' \eqR p_2\).
-The operator accepts or rejects the proposal; they do not author it directly.
-
-Every sequence the planner emits is safe by the per-form guarantees of \cref{sec:per-form}, aggregated across the sequence as sketched in \cref{sec:sequences}, regardless of how the planner assembled it.
-The planner aims to land at \(p_2\) by construction: each case below emits a \(\delta\) or idiom whose \(\psem{\cdot}\) realizes the locally-observed \pol-level difference.
-A misstep in the case analysis could in principle yield a sequence whose fold \(\psem{\delta_n} \circ \ldots \circ \psem{\delta_1} (p_1)\) misses \(p_2\)'s \(\eqR\)-class.
-The \pol-level check of \cref{sec:sequences} catches this, and rejects any such sequence before it is installed.
-% Not sure we're going to keep any pol-level check
-Optimality is a separate matter, and is not guaranteed, since the planner may fail to see a better sequence that the operator has in mind.
-
-\cref{sec:fallback} sets up \emph{confinement} as the metric we judge a plan by, presents the always-available worst-case \Replace{} fallback, and frames the planner's strategy as descending the tree to find a tight form (\Add, \Remove, or \ChangeMeta) that captures the difference locally.
-\cref{sec:planner-emits} catalogs the cases the planner recognizes and emits a tight sequence for.
-\cref{sec:imperative} shows how an operator can instead author a sequence by hand, admitted by the same \pol-level check.
-
-\subsection{The Always-Available Fallback, and Confinement to do Better}\label{sec:fallback}
-
-To reach any \(p_2\) from any \(p_1\), the planner can issue \(\Replace([], p_2)\), the idiom of \cref{sec:sequences} taken at the root.
-It wraps \(p_1\) and \(p_2\) into \(\Strictstar(\mathtt{hi}: p_1, \mathtt{lo}: p_2)\) at the root (so pops still drain \(p_1\) while pushes go to \(p_2\)), and, once \(p_1\) is empty, collapses the wrapper to leave \(p_2\) alone.
-Nothing is dropped and the sequence is safe by \cref{sec:per-form}, but \emph{no part of the scheduler is left undisturbed}.
-
-\paragraph{Footprint}
-
-To measure how much of the tree a sequence touches, associate each form \(\delta\) with a \emph{footprint} on the live control it acts on.
-Define \(\mathtt{footprint}(\delta, C)\) as the set of nodes of \(C\) whose \stt, \pifo, or \zz differs between \(C\) and \(\csem{\delta}(C)\).
-The set is read off the \(\csem{\delta}\) rules of \cref{sec:edit-semantics}, each of which names every field of every node it produces.
-It includes the edit site, the new or removed node where applicable, and every proper ancestor whose \zz is extended or restricted, such as the ancestors touched by \Add, \Quiesce, \Remove, and \Designate.
-A sequence's footprint is the union of its forms' footprints, each taken on the control that its own \(\delta\) fires on, and irrespective of how the \(\delta\)s are grouped into steps.
-The root-level \(\Replace([], p_2)\) above has the maximum possible footprint, which is the whole tree.
-
-\paragraph{The planner's strategy}
-
-The metric by which we judge the planner is \emph{confinement}.
-A good plan disturbs as little of the running scheduler as possible, leaving the parts of the tree that did not need to change still running.
-A sequence is well-confined when its footprint is small relative to the symmetric \pol-level difference between \(p_1\) and \(p_2\).
-
-The planner's goal is to recognize whether the difference between \(p_1\) and \(p_2\) is captured by a tight form from \cref{sec:delta-grammar} (an \Add, \Remove, or \ChangeMeta) and to emit that form wherever in the tree it sits, leaving everything else untouched.
-The planner descends through the tree as long as \(p_1\) and \(p_2\) agree at the current level, looking for a recognized shape one level down.
-When it finds one, it emits the matching form at that depth.
-Only when the descent ends without a match does the planner fall back to \Replace.
-By then the recursion has localized the difference to the deepest slot at which the policies disagree, so the resulting \Replace{} wraps only that slot.
-
-Suppose
-\[
-p_1 = P(a, Q(b, c))
-\]
-for some scheduling disciplines \(P\) and \(Q\), and the operator requests
-\[
-p_2 = P(a, Q(b, c, d)).
-\]
-The planner has two ways to realize this, shown in \cref{fig:planner-add-vs-replace}.
-
-\begin{figure}[t]
-  \centering
-  \begin{subfigure}[t]{0.56\linewidth}
-    \centering
-    \begin{tikzpicture}[baseline=(L.north), level distance=0.72cm, level 1/.style={sibling distance=0.62cm}, level 2/.style={sibling distance=0.38cm}, every node/.style={font=\scriptsize}]
-    \node (L) at (-1.35,0) {$P$}
-      child {node {$a$}}
-      child {node {$Q$}
-        child {node {$b$}}
-        child {node {$c$}}
-      };
-    \node (R) at (1.45,0) {$P$}
-      child {node (Ra) {$a$}}
-      child {node (RQ) {$Q$}
-        child {node (Rb) {$b$}}
-        child {node (Rc) {$c$}}
-        child {node (Rd) {$d$}}
-      };
-    \node (S) at (0.05,0) {$\Strictstar$};
-    \draw (S) -- (L);
-    \draw (S) -- (R);
-    \freshbehind{(S)}
-    \freshbehind{(R)(Ra)(RQ)(Rb)(Rc)(Rd)}
-    \end{tikzpicture}
-    \caption{\(\Replace([], p_2)\): wrap whole tree.}
-    \label{fig:planner-replace}
-  \end{subfigure}\hfill
-  \begin{subfigure}[t]{0.4\linewidth}
-    \centering
-    \begin{tikzpicture}[baseline=(Pb.north), level distance=0.72cm, level 1/.style={sibling distance=0.9cm}, level 2/.style={sibling distance=0.5cm}, every node/.style={font=\scriptsize}]
-    \node (Pb) {$P$}
-      child {node {$a$}}
-      child {node {$Q$}
-        child {node {$b$}}
-        child {node {$c$}}
-        child {node (Ad) {$d$}}
-      };
-    \freshbehind{(Ad)}
-    \end{tikzpicture}
-    \caption{\Add{} at \(Q\).}
-    \label{fig:planner-add}
-  \end{subfigure}
-  \caption{Two ways to add \(d\): (a) \Replace{} wraps the whole running tree under a fresh \(\Strictstar\) beside a freshly-compiled \(p_2\); (b) \Add{} splices the one new arm into \(Q\) in place. Freshly built material is shaded.}
-  \label{fig:planner-add-vs-replace}
-\end{figure}
-
-Option (a) wraps the entire running tree under a fresh \(\Strictstar\) and grows a freshly compiled \(p_2\) alongside.
-Every node sits inside that \(\Strictstar\), and the original \(p_1\), with all its in-flight packets, drains on the high-priority arm.
-The footprint is the whole tree.
-
-Option (b) extends \(Q\)'s arity by one and attaches a freshly compiled \(d\) leaf as the third arm.
-The \(P\) and \(Q\) ancestors have only their \zz extended, with no packet movement and no state reset, and the \(a\) leaf is left undisturbed.
-The footprint is the \(Q\) node and its single ancestor.
-
-Much of the tree is left alone under option (b).
-The case analysis of \cref{sec:planner-emits} is built precisely to find option (b) when it exists, and falls back to a \Replace{} (at the deepest position the descent reached) only when no such tight form captures the difference.
-
-We make no claim that the planner's choice is canonical or minimal.
-We claim only that whatever sequence it emits is safe (\cref{sec:per-form}) and no worse than the root-level fallback.
-
-\subsection{The Planner's Case Analysis}\label{sec:planner-emits}
-
-The planner has two parts: a top-level pass over \((p_1, p_2)\) as whole trees, and a \emph{per-level comparator} that the pass defers to.
-Both compare policies up to \(\eqR\) by comparing canonical representatives, and we call the pass that computes a representative \emph{normalization}.
-The comparator matches the two roots and then pairs up their child lists, emitting an \Add{} for an unpaired arm of \(p_2\), a \Retire{} for an unpaired arm of \(p_1\), a \ChangeMeta{} for a pair whose metadata alone differs, and a recursion into any pair whose arms differ.
-It pairs the arms by the tightest of three strategies that applies: by slot at equal arity, by in-order sub-sequence at unequal arity, and, when neither child list embeds in the other, by the flows the arms carry.
-Only when no strategy pairs the lists does the comparator give up and emit a \Replace{} at the position the recursion has reached.
-Every recursion descends through a slot at which the two trees already agree, so that \Replace{} lands at the deepest slot to which the planner could isolate the difference, and the root-level \(\Replace([], p_2)\) of \cref{sec:fallback} is reached only when the comparator gives up at the root.
-\cref{app:planner-emits} gives the case analysis in full, with a worked example.
-
-\subsection{Imperative Authoring}\label{sec:imperative}
-
-The transition planner so far has realized what we call \emph{declarative} authoring.
-The operator states a starting policy \(p_1\) and a target \(p_2\), and the planner proposes a guarded sequence that achieves the change, which the operator either accepts, in which case we apply it to the running control, or declines.
-Operators may instead author \emph{imperatively}, writing their desired \(p_2\) together with a \((\varphi ; \delta^{*})^{*}\) sequence intended to reach it, possibly built from idioms (\cref{sec:sequences}).
-Imperative authoring gives the operator hands-on control over the transitionary policies the live control passes through, rather than delegating their choice to the planner.
-An operator who already knows the transition they want can hand it over directly, instead of naming a destination and leaving the route to the case analysis of \cref{sec:planner-emits}.
-The sequence they write may be better confined than the one the planner would have found, since the planner may fail to see it, and it may equally be worse.
-The check below admits either, since it certifies that a sequence arrives and says nothing about what it cost.
-
-The two modes produce sequences over the same grammar, discharge the same per-form checks of \cref{sec:per-form}, and are admitted by the same \pol-level check of \cref{sec:sequences}.
-The paths in a hand-written sequence resolve against the running control rather than against the \pol the operator wrote, which is why we echo \(\lfloor C \rfloor\) back to them (\cref{sec:interplay}).
-An operator who reads a path off their own \(p_2\) can name a different arm than they meant, and the runtime has no way to detect it.
-
-Before committing an operator-authored sequence we run it through the \pol-level check of \cref{sec:sequences}.
-Starting from \(\lfloor C \rfloor\), the \pol we echoed back, we fold each \(\psem{\delta_i}\) along the sequence, and we admit it when every \(\psem{\delta_i}\) is defined on the \pol it meets and the fold lands at some \(p_2'\) with \(p_2' \eqR p_2\).
-Idioms are expanded before the fold runs, so a sequence written with \Retire{} and \Replace{} is checked as the \(\delta\)s they stand for, and naming a run of edits buys the operator brevity rather than a weaker obligation.
-A rejection names the step that caused it, either the first \(\delta_i\) whose \(\psem{\delta_i}\) was undefined or else the final mismatch against \(p_2\).
-An operator debugging a sequence of a dozen steps needs to know which one failed, and the fold supplies it without extra work.
-
-Each intermediate \pol that the fold produces has an explainable scheduling semantics.
-After the first step of \Replace(\pth, \survivor)'s expansion, for instance, the intermediate \pol holds \(\Strict(\mathit{pol}@\mathit{path},\ \mathit{survivor})\) at \pth.
-That is a temporary strict-priority node favoring the doomed \(\mathit{pol}@\mathit{path}\) over the incoming \survivor, and it has a readable scheduling interpretation in its own right.
+\Replace(\pth, \survivor) swaps \survivor in for \(\mathit{pol}@\mathit{path}\): it designates \survivor beside the running subtree, quiesces that subtree, waits for it to drain, and then collapses the \(\Strictstar\) wrapper to leave \survivor alone at \pth.
+\(\Replace([\,], p_2)\) discharges the completeness criterion of \cref{sec:delta-grammar}: it reaches any \(p_2\) from any \(p_1\).
+\cref{sec:planner} treats it as the planner's fallback.
 
 \section{Rio Hardware Implementation}\label{sec:hardware}
 
@@ -1090,9 +935,25 @@ In such a case, a single packet operation can observe a mixture of old and new s
 For example, an enqueue may choose its path using the old flow-to-child mapping but compute its rank using newly updated per-arm metadata, or a dequeue may pop from one version of the tree and then follow next-hop state from another.
 As a result, existing PIFO-based substrates support only stop-the-world policy update~\cite{vPIFO,Alcoz23}.
 
+\cref{sec:planner} says where a transition's \(\delta\)s come from.
 \cref{sec:hw-isa} gives the interface Rio's substrate offers instead, a \emph{commit} that installs a whole list of instructions atomically with respect to traffic, along with the thirteen opcodes such a list is drawn from.
 \cref{sec:hw-compile} lowers each form of \(\delta\) to one commit, and \cref{sec:hw-survivor} supplies the one piece of substrate machinery with no counterpart in the model, the designated-survivor link.
 \cref{sec:hw-commit} is how the hardware makes a commit atomic, and \cref{sec:substrate-portability} separates what Rio needs from what our own substrate happens to do.
+
+\subsection{The Transition Planner}\label{sec:planner}
+
+The \(\delta\)s that this section lowers have to come from somewhere.
+The operator hands the runtime \(p_1\), the presently running policy, and \(p_2\), the one they now want, and a \emph{transition planner} proposes a guarded sequence (\cref{sec:sequences}) that carries the one to the other.
+The operator accepts or rejects that proposal rather than authoring it.
+
+The planner is a heuristic, and we make no claim that what it emits is minimal.
+We claim that it always emits a sequence reaching \(p_2\), since \(\Replace([\,], p_2)\) is available at every point, and that it reaches for that fallback only when nothing tighter applies.
+It compares \(p_1\) and \(p_2\) level by level, descending through the slots at which they already agree, and emits an \Add, a \Retire{} or a \ChangeMeta{} wherever one of those captures the difference.
+Only when none of them suffices does it emit a \Replace, and that too at the deepest slot the descent reached, so the \(\Strictstar\) wrapper covers that subtree and the rest of the tree keeps running.
+The point of the descent is to keep the disturbance small.
+A difference that sits inside one subtree is installed inside that subtree, and every other part of the tree goes on scheduling its own traffic untouched.
+The root-level fallback shows what that is worth: it puts the entire running tree on the high-priority arm of a \(\Strictstar\), so every packet arriving during the transition waits behind the whole existing backlog.
+\cref{app:planner-emits} gives the case analysis in full.
 
 \subsection{The Commit Interface and its ISA}\label{sec:hw-isa}
 
@@ -1176,7 +1037,7 @@ A switch with \(P\) output ports has \(P\) separate trees, each wrapped at the I
 Its \texttt{Assoc} and \texttt{Map} mirror the actual root's, since every walk below begins there.
 The port root is what makes the tree root an ordinary position.
 \texttt{undesignate} retargets a parent's index from a PIFO to that PIFO's designated survivor, and at the root there is no parent's index to retarget.
-That case is not hypothetical: \cref{sec:fallback}'s always-available plan is \(\Replace([], p_2)\), whose last step is \(\Undesignate([])\).
+That case is not hypothetical: the always-available plan of \cref{sec:sequences} is \(\Replace([], p_2)\), whose last step is \(\Undesignate([])\).
 Without the port root the substrate could not execute the one transition the planner is guaranteed to be able to fall back on, and would need a second opcode meaning ``make this PIFO the tree root'', doing at one position what \texttt{undesignate} does everywhere else.
 \Designate{} itself needs no parent, since it only writes the outgoing node's own link.
 It is \Undesignate{} rather than \Designate{} that wants a slot above.
@@ -2165,7 +2026,7 @@ What state survives an edit is therefore read off \cref{sec:edit-semantics} rath
 
 \section{The Planner's Case Analysis in Full}\label{app:planner-emits}
 
-This appendix expands \cref{sec:planner-emits}.
+This appendix expands \cref{sec:planner}.
 
 The planner has two parts: a top-level pass over \((p_1, p_2)\) as whole trees, and a \emph{per-level comparator} that the pass defers to.
 Whatever the comparator emits is lifted back to the right depth by prepending the slot indices the recursion descended through.
@@ -2191,7 +2052,7 @@ The live control is already serving the requested policy and there is nothing to
 \paragraph{What the comparator emits}
 
 The comparator compares the roots of \(p_1\) and \(p_2\).
-If the two roots run different disciplines, or are leaves carrying different flows, it emits a \Replace{}, the always-available idiom of \cref{sec:fallback}.
+If the two roots run different disciplines, or are leaves carrying different flows, it emits a \Replace{}, the always-available idiom of \cref{sec:sequences}.
 If the roots agree, the task reduces to \emph{pairing up the two child lists}, and each pairing yields one of four kinds of edit.
 An arm of \(p_2\) with no partner in \(p_1\) is a fresh \Add{}; an arm of \(p_1\) with no partner in \(p_2\) is a \Retire{}.
 A matched pair whose two arms are identical is set aside and contributes nothing.
@@ -2368,8 +2229,8 @@ Such a step names the arm's index before the \Retire{}s rather than after, since
 Every recursion descends through a slot where the two trees agree or where the label-overlap walk has paired them.
 So by the time the per-level comparator gives up and emits a \Replace{} at depth \(k\), every shallower level has already matched a tight case.
 The \Replace{} lands at the deepest slot to which the planner could isolate the difference, leaving every ancestor's other subtrees running undisturbed.
-The slot-level \Replace{} is the \cref{sec:fallback} idiom with a non-empty path: it wraps only the slot's subtree, quiesces only that subtree, and rewires only the parent edge into it.
-The worst case is the root-level \(\Replace([], p_2)\) of \cref{sec:fallback}, reached only when the per-level comparator gives up at the root with no recursive descent.
+The slot-level \Replace{} is the \cref{sec:sequences} idiom with a non-empty path: it wraps only the slot's subtree, quiesces only that subtree, and rewires only the parent edge into it.
+The worst case is the root-level \(\Replace([], p_2)\) of \cref{sec:sequences}, reached only when the per-level comparator gives up at the root with no recursive descent.
 
 
 \end{document}
