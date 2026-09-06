@@ -460,14 +460,14 @@ It is either a leaf labeled by a flow, or an internal node running a scheduling 
 Each arm carries a metadatum that tells \disc how to schedule it, drawn from a set \(M_{D}\) that \disc declares.
 For instance, \(M_{\Strict}\) is a set of priorities and \(M_{\WFQ}\) a set of weights.
 A discipline that treats its arms alike, such as \RR, declares a one-element set, and we elide that element when writing examples.
-We read the arity off by counting children, so, e.g., \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\textsf{gmail})\) is the 2-ary \xxx[as]{let's just say ``binary''} instance of the discipline \Strict.
+We read the arity off by counting children, so, e.g., \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\textsf{gmail})\) is the binary instance of the discipline \Strict.
 Each leaf label denotes a \emph{flow}: a predicate over packets.
 
 The family of disciplines is open.
 \disc is any discipline equipped with the compilation recipe of \cref{sec:compilation}, and nothing that follows depends on which disciplines are available.
 Our implementation instantiates \Strict, \RR, and \WFQ because they aid our exposition.
 
-We also have the discipline \(\Strictstar\), which behaves semantically identically to 2-ary \Strict{}.
+We also have the discipline \(\Strictstar\), which behaves semantically identically to binary \Strict{}.
 It exists to support policy edits (see the next section).
 
 A \pol is written against a fixed \emph{flow universe} \(F\): a finite set of pairwise disjoint flow predicates declared by the operator before constructing the \pol.
@@ -516,8 +516,7 @@ An edit's \pth names is its \emph{edit site}.
 
 \Cref{sec:edit-semantics} gives the formal semantics for policy edits, in terms of both their effects on policies $p$ and on the state of live PIFO trees.
 
-\section{Semantics}
-\label{sec:semantics}
+\section{Semantics}\label{sec:semantics}
 
 This section formalizes the semantics of PIFO trees.
 We formalize the state of PIFO tree hardware (\cref{sec:controls}),
@@ -682,8 +681,7 @@ A freshly compiled control therefore admits every flow it serves, and carries th
 This is essentially what the vPIFO paper's \emph{Scheduling Description Language} does informally~\cite{vPIFO}.
 They do not pin down a grammar for SDL or formalize the compilation, so our DSL can be read as a formal core of their concrete language.
 
-\subsection{Edit Semantics}
-\label{sec:edit-semantics}
+\subsection{Edit Semantics}\label{sec:edit-semantics}
 
 We formalize the semantics of each policy edit (\cref{sec:delta-grammar}) using two denotations.
 For any edit $\delta$,
@@ -810,14 +808,15 @@ We want to prove that every edit, $\delta$, has consistent effects on the low-le
 The initial policy tree is $p_1$,
 which compiles to the PIFO tree state $C_1$.
 After handling some traffic, the PIFO tree becomes $C_1'$.
-The operator requests an edit $\delta$ in order to request
-a new policy tree $\psem{p_1}$.
+The operator issues an edit $\delta$ to request
+a new policy tree $\psem{\delta}(p_1)$.
 Applying this edit to the running scheduler state yields the PIFO tree
-$\csem{C_1'}$.
+$\csem{\delta}(C_1')$.
 We want to show that the new policy tree accurately describes the new PIFO tree state:
 in other words, that
-$\psem{p_1} =_R \lfloor\csem{C_1'}\rfloor$.
-\xxx[as]{Please check that I've summarized this correctly. I'm aiming for a an extremely succinct overview of the theorem that can now be understood because we have given enough definitions.}
+$\psem{\delta}(p_1) \eqR \lfloor\csem{\delta}(C_1')\rfloor$.
+\xxx[as]{Please check that I've summarized this correctly. I'm aiming for an extremely succinct overview of the theorem that can now be understood because we have given enough definitions.}
+\xxx[am]{Checked, and corrected in place. \(\psem{-}\) and \(\csem{-}\) are brackets over the \emph{edit}, so the objects go outside them: the paragraph had \(\psem{p_1}\) and \(\csem{C_1'}\) where it wanted \(\psem{\delta}(p_1)\) and \(\csem{\delta}(C_1')\). The scenario itself was right.}
 
 We prove this correctness theorem, which suffices to show agreement in the above scenario:
 %
@@ -1380,7 +1379,7 @@ A \Quiesce{} that fires in the middle of a \Replace, on the outgoing arm of a \(
 A \(\Strictstar\) node is realized not as a PIFO but as a \emph{designated-survivor link}, a pointer from the node it replaces to the subtree replacing it.
 This subsection says why the link is worth having and how a \push{} and a \pop{} each reach the survivor through it.
 
-\cref{sec:policy-dsl} offers \(\Strictstar\) as a discipline of its own even though it schedules exactly as the 2-ary \Strict{} does.
+\cref{sec:policy-dsl} offers \(\Strictstar\) as a discipline of its own even though it schedules exactly as binary \Strict{} does.
 The difference is that a \(\Strictstar\) node needs no \pifo, and a node that needs no \pifo needs no \emph{level}.
 A PE holds one level of the tree, so every node that must be stored somewhere costs a level for itself and everything beneath it.
 
@@ -1610,8 +1609,7 @@ That compares two schedulers by what they emit, which is how we compare a schedu
 
 \appendix
 
-\section{Edit Semantics}
-\label{sec:edit-semantics-full}
+\section{Edit Semantics}\label{sec:edit-semantics-full}
 
 This appendix lists the full denotational semantics of policy edits, $\delta$.
 We define both $\psem{\delta}$ for the effect on high-level policy trees
@@ -2149,8 +2147,7 @@ The three relations of \cref{sec:equivalences} are shown by example in \cref{fig
 \end{figure}
 
 
-\section{Proofs}
-\label{sec:per-form}
+\section{Proofs}\label{sec:per-form}
 \xxx[as]{I think it is a little weird, but maybe possible, that we have a single section for proving two different theorems. The usual way to see this go would be to have one section for proving theorem 1 and one section for proving theorem 2. They are both simple proofs by cases (because $\delta$ is not recursive), so they have the same set of cases. If you want to keep them together, that's fine---just noting that it's somewhat surprising.}
 
 This appendix argues the validity of the theorems in \cref{sec:correctness}.
