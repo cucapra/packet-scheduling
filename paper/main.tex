@@ -59,7 +59,6 @@
 \newcommand{\survivor}{\notation{\mathit{survivor}}}
 \newcommand{\slotstates}{\notation{\mathit{slot\_states}}}
 \newcommand{\nodestate}{\notation{\mathit{node\_state}}}
-\newcommand{\gseq}{\notation{\mathit{gseq}}}
 \newcommand{\arm}{\notation{\mathit{arm}}}
 \newcommand{\disc}{\notation{D}}
 \newcommand{\rio}{\textsf{Rio}}
@@ -77,7 +76,6 @@
 \newcommand{\Designate}{\textsf{Designate}}
 \newcommand{\Undesignate}{\textsf{Undesignate}}
 \newcommand{\Retire}{\textsf{Retire}}
-\newcommand{\SlowRetire}{\textsf{SlowRetire}}
 \newcommand{\Replace}{\textsf{Replace}}
 
 % Small drawn queues for the tree figures.
@@ -721,7 +719,7 @@ So every node from the root down to \(\pi\) comes to admit and route the new flo
 \nodestate and \pifo are left alone at every node, so no buffered packet moves.
 
 \(\csem{\Add}\) is defined when \(\pi\) resolves to an internal node running \disc, when \(m \in M_{D}\), and when \arm's flows are served nowhere in the control already.
-This last precondition spares \Add{} from relocating live traffic; a change that would move admitted traffic is reached as a sequence instead (\cref{sec:idioms}).
+This last precondition spares \Add{} from relocating live traffic; a change that would move admitted traffic is reached as a sequence instead (\cref{sec:sequences}).
 
 
 \section{Correctness}\label{sec:correctness}
@@ -901,149 +899,23 @@ Four of the six pass that check outright.
 \Designate{} inserts a node whose \pifo is not empty and \Undesignate{} drops one, so those two need an argument of their own.
 Each such argument shows that \flush{} is unchanged, which is why \cref{thm:nondisruption} is stated on the flush sequence rather than on \pifo contents.
 
-\section{Realizing Reconfigurations as Guarded Sequences}\label{sec:sequences}
+\subsection{Sequences of Edits}\label{sec:sequences}
 
-\xxx[as]{Here is another bold suggestion for how to compress things to save a lot of space. We mostly delete this section, and remove all references to guarded sequences and idioms. We instead include a short discussion of ``the hardware interface'': how we imagine the control plane interacting with the scheduler. That includes things like:
-(1) the hardware can do one transition at a time, and you wait for one to be done before issuing the next,
-(2) we assume a way to wait for quiescence,
-(3) liveness is therefore not guaranteed,
-(4) you must deal with ``follow-up requests'' by queueing up edits and waiting for them to finish. But we frame this just as \emph{out design for the hardware--software interface}, and not as another language/theoretical development.
-Hopefully this only takes a couple of paragraphs, and can go in the hardware or compiler section?}
+No single \(\delta\) carries a running scheduler from an arbitrary \(p_1\) to an arbitrary \(p_2\).
+We therefore compose the forms into \emph{guarded sequences}, written \((\varphi ; \delta^{*})^{*}\).
+A guard \(\varphi\) is a condition on the live control that the substrate can be asked to wait for, and the only one we need is that a given subtree has drained to empty.
+A \emph{step} is one guard together with the run of \(\delta\)s that guard releases.
 
-This section composes the forms of \(\delta\) into \emph{guarded sequences} \((\varphi ; \delta^{*})^{*}\), where a guard \(\varphi\) is a predicate on the state of the live control.
-Guarded sequences realize changes to the live control that no single \(\delta\) can express.
-We first show that the transitionary period such a sequence passes through needs no new semantics (\cref{sec:links}), then give the grammar of guarded sequences (\cref{sec:idioms}).
+Both theorems hold at every step of a sequence.
+Each \(\delta\) fires on the well-formed control that the previous one left behind (\cref{thm:interplay}), so \(\lfloor \cdot \rfloor\) names the \pol in force at every point, which is what \cref{sec:intro} promises of the transitionary period, and the backlog survives the whole sequence (\cref{thm:nondisruption}).
+Whether a given sequence arrives at \(p_2\) is a separate question, answered at the \pol level by folding \(\psem{\delta_i}\) along it and admitting it only when the fold ends \(\eqR\)-equal to \(p_2\).
 
-\subsection{Transitionary Policies and their Semantics}\label{sec:links}
-
-A guarded sequence threads the live control through a chain of intermediate controls.
-We call each such intermediate control a \emph{transitionary policy}, and we write \(\mathit{link}_i\) for the control on which the \(i\)-th \(\delta\) fires, counting from zero.
-So \(\mathit{link}_0 = C\) is the starting control, and \(\mathit{link}_{i+1} = \csem{\delta_i}(\mathit{link}_i)\) is what the \(i\)-th \(\delta\) leaves behind.
-
-Each transitionary policy is itself an ordinary \cref{sec:controls}-style control, so the transitionary period \emph{needs no new semantics}.
-That is the promise of \cref{sec:intro}, discharged locally by the per-form checks of \cref{sec:per-form}.
-Moreover, since every form of \cref{sec:delta-grammar} is \emph{\pol-explainable} (each \(\delta\) has a \(\psem{\delta}\) that tracks its \pol-level effect), we can echo to the operator, at every point in the sequence, the \pol that the live control actually realizes.
-The chain of \(\psem{\cdot}\)s starting from \(\lfloor C \rfloor\) gives \(\lfloor \mathit{link}_i \rfloor\) for each \(i\), so the operator always knows which policy is running.
-
-\paragraph{Follow-up requests}
-The transition planner engages with one reconfiguration at a time.
-Suppose the operator submits a follow-up \(p_3\) while a \(p_1 \to p_2\) sequence is still in flight, some guard \(\varphi_i\) not yet having become true.
-We queue \(p_3\), and the planner does not begin work on it until the in-flight sequence completes and the live control \(C_z\) satisfies \(\lfloor C_z \rfloor \eqR p_2\).
-At that instant the planner pulls \(p_3\) from the queue, treats \(\lfloor C_z \rfloor\) as the new starting point, and produces a fresh sequence to reach \(p_3\).
-A more aggressive strategy is possible: splicing or canceling the in-flight sequence to converge on \(p_3\) directly, perhaps at lower total cost than running \(p_1 \to p_2 \to p_3\) in series.
-We do not pursue this here, since the splicing analysis introduces its own correctness obligations: the atomicity of the splice, and what transitionary policy the operator observes between the splice and \(p_3\).
-
-\subsection{Guarded Sequences and their Idioms}\label{sec:idioms}
-
-\paragraph{Grammar}
-
-\begin{figure}[t]
-\centering
-\[
-\begin{array}{@{}l@{}}
-\textbf{Guarded sequences}\\[3pt]
-\varphi \mathrel{::=} \mathtt{true} \;\mid\; \mathtt{isEmpty}(\mathit{path})\\[2pt]
-\mathit{step} \mathrel{::=} (\varphi\,;\, \delta_1\,;\, \ldots\,;\, \delta_n),\ n \geq 1\\[2pt]
-\mathit{gseq} \mathrel{::=} \epsilon \;\mid\; \mathit{step}\,;\, \mathit{gseq}\\[8pt]
-\textbf{Idioms}\\[3pt]
-\Retire(\mathit{path}) \;=\;\\
-\quad (\mathtt{true};\, \Quiesce(\mathit{path}))\,;\\
-\quad (\mathtt{isEmpty}(\mathit{path});\, \Remove(\mathit{path}))\\[4pt]
-\SlowRetire(\mathit{path}) \;=\; (\mathtt{isEmpty}(\mathit{path});\, \Remove(\mathit{path}))\\[4pt]
-\Replace(\mathit{path}, \mathit{survivor}) \;=\;\\
-\quad (\mathtt{true};\, \Designate(\mathit{path}, \mathit{survivor})\,;\\
-\quad\qquad \Quiesce(\mathit{path} \mathbin{+\!\!+} [0]))\,;\\
-\quad (\mathtt{isEmpty}(\mathit{path} \mathbin{+\!\!+} [0]);\, \Undesignate(\mathit{path}))
-\end{array}
-\]
-\caption{The grammar of guarded sequences and the three starter idioms, each a named \gseq.}
-\label{fig:gseq-idioms}
-\end{figure}
-% This fig is a little hard to read since there are guards and deltas all mixed up. For presentation let's write the guards in red in the idioms. And let's line up the deltas that are collected together under one guard. So in this figure you would like up \Designate(\mathit{path}, \mathit{survivor})\,;\\ and \Quiesce(\mathit{path} \mathbin{+\!\!+} [0]))\,;\\ (line up D and Q)
-
-We write \(\mathit{gseq}\) for a guarded sequence (\cref{fig:gseq-idioms}, top).
-A guard \(\varphi\) is either trivially satisfied (\(\mathtt{true}\)) or asserts that the subtree at \pth is empty.
-A \emph{step} pairs one guard with the run of \(\delta\)s that guard releases, so a sequence waits exactly as many times as it has steps.
-Those two guard forms have sufficed for every sequence we have needed.
-The framework does not depend on this minimality, and a richer predicate language is welcome if desired.
-
-\paragraph{Intuition}
-
-The hardware substrate (\cref{sec:hardware}) does two things beyond ordinary \push{}/\pop{}.
-It waits for a guard \(\varphi\) to become true on the live control, and it fires a \(\delta\) as an atomic replacement.
-A guarded sequence chains these.
-It waits for \(\varphi_0\), fires that step's \(\delta\)s in order, then waits for \(\varphi_1\), now evaluated on the control the first step left behind, and so on.
-Each intermediate control between two consecutive \(\delta\) firings is well-formed, and we call this property the sequence's \emph{safety}.
-Safety is entirely local, following from the per-form checks of \cref{sec:per-form}.
-
-\xxx[AM to Zhiyuan]{A step's \(\delta\)s fire back to back with no waiting between them, and each one installs as its own commit, so the substrate needs nothing it does not already have.
-The question is whether it could instead install a whole step as one commit, so that no intermediate control inside a step is ever observed.
-That would be better for the operator, since the policies they are shown would then be exactly the ``waits''.
-It asks the commit buffer to hold one step's worth of instructions rather than one form's, which \cref{sec:hw-commit} suggests is a question of how much fits rather than of a new capability.}
-
-\paragraph{Reaching the target}
-
-Safety guarantees that every intermediate control is well-formed, but not that the sequence \emph{arrives} at the intended \(p_2\).
-We check arrival at the \pol level, folding each form's \(\psem{\delta_i}\) along the sequence.
-Write \(\mathit{ip}_i\) for the \(i\)-th intermediate \pol.
-Starting from \(\mathit{ip}_0 = \lfloor C \rfloor\), the \pol we echoed to the operator, set \(\mathit{ip}_{i+1} := \psem{\delta_i}(\mathit{ip}_i)\).
-The sequence is admissible when every \(\psem{\delta_i}\) is defined on \(\mathit{ip}_i\) and the final \(\mathit{ip}_{n+1} \eqR p_2\).
-This is the Interplay theorem (\cref{sec:interplay}) iterated across the sequence.
-Each \(\psem{\delta_i}\) matches its operational counterpart \(\csem{\delta_i}\) (\cref{sec:per-form}), so a fold that lands at \(\mathit{ip}_{n+1} \eqR p_2\) certifies, cell by cell, that the operational chain ends in a control whose \(\lfloor \cdot \rfloor\) is \(p_2\).
-Guards play no role in this check: they govern \emph{when} each \(\delta_i\) fires on the live control and are \pol-invisible (\cref{sec:edit-semantics}), so a \((\mathtt{isEmpty}(\mathit{path}); \Remove(\mathit{path}))\) step folds exactly as if its guard were \(\mathtt{true}\).
-If the chain fails to reach \(p_2\), or some \(\psem{\delta_i}\) is undefined on its \(\mathit{ip}_i\), the sequence is rejected.
-The rejection identifies the offending step, either the first \(\delta_i\) whose \(\psem{\delta_i}\) was undefined or else the final mismatch \(\mathit{ip}_{n+1} \not\eqR p_2\).
-Both clients of the framework rely on this check: the planner (\cref{sec:planner}) uses it as a backstop on the sequences it assembles, and an operator authoring by hand (\cref{sec:imperative}) uses it to validate theirs.
-
-\paragraph{Liveness}
-
-Safety is unconditional; liveness is not, and cannot be.
-A guarded sequence progresses only as its guards become true, and a guard like \(\mathtt{isEmpty}(\mathit{path})\) becomes true only once the traffic under \pth drains.
-That is up to the network, not up to us.
-A persistent or adversarial flow can keep a subtree busy indefinitely, and then any step waiting on that subtree's emptiness never fires.
-This is inherent.
-Draining a subtree gracefully means letting its buffered packets leave on their own, and the only way to speed that up is to drop them, which the grammar refuses to do.
-So completing a sequence takes the operator's cooperation, for instance quiescing a flow at its source or accepting a harder reconfiguration that resets more of the tree but drops nothing.
-The live control stays safe throughout, but may not reach the target \pol until the traffic allows.
-Follow-up requests submitted during a stalled sequence are queued (\cref{sec:links}).
-
-\paragraph{Idioms}
-
-A sequence that reconfigures a real tree is a long list of small edits, and such a list does not tell the operator what is being done to their scheduler.
-\emph{Idioms} are a named vocabulary for the sequences that recur, each one collecting a run of edits into a single goal acting on a single subtree.
-The transition planner (\cref{sec:planner}) emits them, so what the operator reads back is ``retire this subtree'' rather than a silencing, a wait, and an unhooking.
-
-An idiom is a macro over \(\delta\), and recursively over other idioms, that expands into a fixed \gseq.
-Expansion changes nothing about soundness, since the checks above run on the expanded sequence exactly as they would on a hand-written one.
-So an expansion that would reach an undefined form on the current control is rejected.
-
-We name three starter idioms, with their expansions collected in \cref{fig:gseq-idioms}.
-New ones can be added later without changing the framework, since an idiom is only a named \gseq.
-
-\begin{itemize}
-\item \textbf{\Retire(\pth)} quiesces the subtree at \pth, waits for it to drain to empty, then \Remove{}s it.
-This is the operator-facing way to say ``tear this subtree down gracefully.''
-
-\item \textbf{\SlowRetire(\pth)} waits for the subtree at \pth to drain, then \Remove{}s it.
-This suits a subtree that must keep receiving traffic while it is being phased out.
-
-\item \textbf{\Replace(\pth, \survivor)} phases \survivor in and \(\mathit{pol}@\mathit{path}\) out.
-It \Designate{}s \survivor, quiesces the original subtree, waits for it to drain to empty, and then removes that subtree and the \(\Strictstar\) wrapper, leaving \survivor alone at \pth (\cref{fig:gseq-idioms}).
-At the \pol level the effect is the outright replacement of \(\mathit{pol}@\mathit{path}\) by \survivor.
-
-\end{itemize}
-
-\cref{sec:intro}'s transition supplies a worked example, with the scheduler running \(p_1\) while its operator asks for \(p_2\), where
-{\small
-\[
-\begin{array}{@{}r@{\;}c@{\;}l@{}}
-p_1 &=& \Strict(\mathtt{hi}{:}\,\textsf{zoom},\ \mathtt{lo}{:}\,\textsf{gmail})\\[2pt]
-p_2 &=& \Strict(\mathtt{hi}{:}\,\textsf{zoom},\ \mathtt{lo}{:}\,\RR(\textsf{gmail},\allowbreak\ \textsf{spotify})).
-\end{array}
-\]}
-\Add{} cannot directly reach \(p_2\), since the \textsf{gmail} leaf has to become an interior \RR{} node and \Add{} only appends arms to a node that is already internal.
-\Replace{} at the \(\mathtt{lo}\) slot does reach it, with survivor \(\RR(\textsf{gmail},\allowbreak\ \textsf{spotify})\).
-This is the transition \cref{sec:intro} reaches at \(t_2\).
+A sequence that reconfigures a real tree is a list of small edits, which is not how an operator thinks about their scheduler.
+An \emph{idiom} is a name for a sequence that recurs, and two of them cover what we need.
+\Retire(\pth) tears a subtree down gracefully: it quiesces the subtree at \pth, waits for it to drain, and then removes it.
+\Replace(\pth, \survivor) swaps \survivor in for \(\mathit{pol}@\mathit{path}\): it designates \survivor beside the running subtree, silences that subtree, waits for it to drain, and then collapses the \(\Strictstar\) wrapper to leave \survivor alone at \pth.
+\(\Replace([\,], p_2)\) discharges the completeness criterion of \cref{sec:delta-grammar}: it reaches any \(p_2\) from any \(p_1\). 
+\cref{sec:fallback} treats it as the planner's fallback.
 
 \section{The Transition Planner}\label{sec:planner}
 
@@ -1057,10 +929,11 @@ The operator hands the runtime \(p_1\), the presently running policy, and \(p_2\
 The transition planner's job is to propose a \((\varphi ; \delta^{*})^{*}\) sequence whose \pol-level fold takes \(p_1\) to some \(p_2'\) with \(p_2' \eqR p_2\).
 The operator accepts or rejects the proposal; they do not author it directly.
 
-Every sequence the planner emits is safe by the per-form guarantees of \cref{sec:per-form}, aggregated across the sequence as sketched in \cref{sec:idioms}, regardless of how the planner assembled it.
+Every sequence the planner emits is safe by the per-form guarantees of \cref{sec:per-form}, aggregated across the sequence as sketched in \cref{sec:sequences}, regardless of how the planner assembled it.
 The planner aims to land at \(p_2\) by construction: each case below emits a \(\delta\) or idiom whose \(\psem{\cdot}\) realizes the locally-observed \pol-level difference.
 A misstep in the case analysis could in principle yield a sequence whose fold \(\psem{\delta_n} \circ \ldots \circ \psem{\delta_1} (p_1)\) misses \(p_2\)'s \(\eqR\)-class.
-The \pol-level check of \cref{sec:idioms} catches this, and rejects any such sequence before it is installed.
+The \pol-level check of \cref{sec:sequences} catches this, and rejects any such sequence before it is installed.
+% Not sure we're going to keep any pol-level check
 Optimality is a separate matter, and is not guaranteed, since the planner may fail to see a better sequence that the operator has in mind.
 
 \cref{sec:fallback} sets up \emph{confinement} as the metric we judge a plan by, presents the always-available worst-case \Replace{} fallback, and frames the planner's strategy as descending the tree to find a tight form (\Add, \Remove, or \ChangeMeta) that captures the difference locally.
@@ -1069,15 +942,8 @@ Optimality is a separate matter, and is not guaranteed, since the planner may fa
 
 \subsection{The Always-Available Fallback, and Confinement to do Better}\label{sec:fallback}
 
-To reach any \(p_2\) from any \(p_1\), the planner can issue \(\Replace([], p_2)\), the \cref{sec:idioms} idiom that expands to
-
-\[
-\begin{array}{@{}l@{}}
-(\mathtt{true};\ \Designate([], p_2)\ ;\ \Quiesce([0]))\ ;\\[3pt]
-\qquad (\mathtt{isEmpty}([0]);\ \Undesignate([]))
-\end{array}
-\]
-This wraps \(p_1\) and \(p_2\) into \(\Strictstar(\mathtt{hi}: p_1, \mathtt{lo}: p_2)\) at the root (so pops still drain \(p_1\) while pushes go to \(p_2\)), and, once \(p_1\) is empty, collapses the wrapper to leave \(p_2\) alone.
+To reach any \(p_2\) from any \(p_1\), the planner can issue \(\Replace([], p_2)\), the idiom of \cref{sec:sequences} taken at the root.
+It wraps \(p_1\) and \(p_2\) into \(\Strictstar(\mathtt{hi}: p_1, \mathtt{lo}: p_2)\) at the root (so pops still drain \(p_1\) while pushes go to \(p_2\)), and, once \(p_1\) is empty, collapses the wrapper to leave \(p_2\) alone.
 Nothing is dropped and the sequence is safe by \cref{sec:per-form}, but \emph{no part of the scheduler is left undisturbed}.
 
 \paragraph{Footprint}
@@ -1086,8 +952,8 @@ To measure how much of the tree a sequence touches, associate each form \(\delta
 Define \(\mathtt{footprint}(\delta, C)\) as the set of nodes of \(C\) whose \stt, \pifo, or \zz differs between \(C\) and \(\csem{\delta}(C)\).
 The set is read off the \(\csem{\delta}\) rules of \cref{sec:edit-semantics}, each of which names every field of every node it produces.
 It includes the edit site, the new or removed node where applicable, and every proper ancestor whose \zz is extended or restricted, such as the ancestors touched by \Add, \Quiesce, \Remove, and \Designate.
-The sequence-level footprint is \(\bigcup_i \mathtt{footprint}(\delta_i, \mathit{link}_i)\), taken over the \(\delta\)s of the sequence in order and irrespective of how they are grouped into steps.
-The root-level \(\Replace([], p_2)\) above has the maximum possible footprint: the whole tree.
+A sequence's footprint is the union of its forms' footprints, each taken on the control that its own \(\delta\) fires on, and irrespective of how the \(\delta\)s are grouped into steps.
+The root-level \(\Replace([], p_2)\) above has the maximum possible footprint, which is the whole tree.
 
 \paragraph{The planner's strategy}
 
@@ -1185,17 +1051,17 @@ Every recursion descends through a slot at which the two trees already agree, so
 
 The transition planner so far has realized what we call \emph{declarative} authoring.
 The operator states a starting policy \(p_1\) and a target \(p_2\), and the planner proposes a guarded sequence that achieves the change, which the operator either accepts, in which case we apply it to the running control, or declines.
-Operators may instead author \emph{imperatively}, writing their desired \(p_2\) together with a \((\varphi ; \delta^{*})^{*}\) sequence intended to reach it, possibly built from idioms (\cref{sec:idioms}).
+Operators may instead author \emph{imperatively}, writing their desired \(p_2\) together with a \((\varphi ; \delta^{*})^{*}\) sequence intended to reach it, possibly built from idioms (\cref{sec:sequences}).
 Imperative authoring gives the operator hands-on control over the transitionary policies the live control passes through, rather than delegating their choice to the planner.
 An operator who already knows the transition they want can hand it over directly, instead of naming a destination and leaving the route to the case analysis of \cref{sec:planner-emits}.
 The sequence they write may be better confined than the one the planner would have found, since the planner may fail to see it, and it may equally be worse.
 The check below admits either, since it certifies that a sequence arrives and says nothing about what it cost.
 
-The two modes produce sequences over the same grammar, discharge the same per-form checks of \cref{sec:per-form}, and are admitted by the same \pol-level check of \cref{sec:idioms}.
+The two modes produce sequences over the same grammar, discharge the same per-form checks of \cref{sec:per-form}, and are admitted by the same \pol-level check of \cref{sec:sequences}.
 The paths in a hand-written sequence resolve against the running control rather than against the \pol the operator wrote, which is why we echo \(\lfloor C \rfloor\) back to them (\cref{sec:interplay}).
 An operator who reads a path off their own \(p_2\) can name a different arm than they meant, and the runtime has no way to detect it.
 
-Before committing an operator-authored sequence we run it through the \pol-level check of \cref{sec:idioms}.
+Before committing an operator-authored sequence we run it through the \pol-level check of \cref{sec:sequences}.
 Starting from \(\lfloor C \rfloor\), the \pol we echoed back, we fold each \(\psem{\delta_i}\) along the sequence, and we admit it when every \(\psem{\delta_i}\) is defined on the \pol it meets and the fold lands at some \(p_2'\) with \(p_2' \eqR p_2\).
 Idioms are expanded before the fold runs, so a sequence written with \Retire{} and \Replace{} is checked as the \(\delta\)s they stand for, and naming a run of edits buys the operator brevity rather than a weaker obligation.
 A rejection names the step that caused it, either the first \(\delta_i\) whose \(\psem{\delta_i}\) was undefined or else the final mismatch against \(p_2\).
@@ -1455,7 +1321,7 @@ At the \pol level no reading is needed, since \(\mathtt{wrap}\) (\cref{sec:desig
 The indirection has a cost.
 Once \texttt{v} has drained, every \pop{} that reaches that slot queries \texttt{v}, gets nothing, and queries again, at the tree level where the two roots sit.
 So the transition has to end rather than merely settle.
-\cref{sec:sequences} pairs \Undesignate{} with the guard \(\mathtt{isEmpty}(\mathit{path})\), and \cref{sec:hw-commit} lowers such a guard to a blocking command in the controller queue.
+\cref{sec:sequences} pairs \Undesignate{} with a wait for the old subtree to drain empty, and \cref{sec:hw-commit} lowers such a wait to a blocking command in the controller queue.
 The commit sits at the head of that queue until the outgoing subtree drains, and then fires atomically.
 After it the parent's index reaches the survivor directly, and nothing in the tree records that a transition happened.
 
@@ -1502,6 +1368,12 @@ A blocking command remains at the head of the queue until its predicate becomes 
 Only then can the subsequent update instructions execute.
 In-order execution therefore ensures that instructions depending on the guard are not issued prematurely.
 
+This fixes the shape of the control plane's side of the interface.
+The controller runs one transition at a time, and an operator's next request waits for the one in flight to finish.
+A request that arrives mid-transition is queued, and the planner then starts it from the policy the finished transition left running.
+Rio cannot guarantee progress towards the completion of a request, since a guard on an emptiness predicate becomes true only once the traffic under that subtree drains, and a persistent flow can hold a subtree open indefinitely.
+The only way to hurry a drain is to drop what is buffered, which is what the forms of \cref{sec:delta-grammar} are chosen to avoid, so a stalled transition stays safe and stays where it is until the traffic allows.
+
 Our current implementation uses a single controller queue, which provides a simple global serialization point for updates.
 This design is sufficient for correctness and avoids subtle ordering bugs between overlapping commits.
 It can, however, introduce head-of-line blocking when a guarded transition waits for a long-running drain.
@@ -1542,7 +1414,7 @@ Rio reaches per-packet consistency by another means: the entire commit lands bet
 The two settings differ in what the old configuration holds.
 In forwarding, a forwarding rule holds no traffic, so the old configuration can be retired once the packets stamped with it have left the network.
 In scheduling, a scheduler node holds packets whose ranks were fixed when they were \push{}ed, and no version tag can re-sort them.
-Rio therefore retires the old configuration by draining it, which is what a guard waits for (\cref{sec:idioms}).
+Rio therefore retires the old configuration by draining it, which is what a guard waits for (\cref{sec:sequences}).
 
 \citet{Mahajan13} study the dependencies that a consistency property imposes among rule updates, and find that stronger properties induce more intricate dependencies and therefore slower updates.
 \citet{Namjoshi24} keep the guarantee and drop the versioning, sequencing the updates so that route consistency holds with a single table edited in place.
@@ -1712,7 +1584,7 @@ We must define \(\csem{\Add(\pi, D, \mathit{arm}, m)} : \mathit{control} \righth
 
 \(\csem{\Add(\pi, D, \mathit{arm}, m)}(C)\) is defined when four things hold: the path \(\pi\) resolves in \(C\) to an internal node, that node runs the discipline \disc the form names, the metadatum \(m\) is drawn from \(M_{D}\), and \arm's leaf labels are disjoint from those of \(C\).
 The last condition spares \Add{} from relocating traffic.
-A change that would move admitted traffic is reached instead as a sequence, in which the old traffic drains in place rather than being re-enqueued (\cref{sec:idioms}).
+A change that would move admitted traffic is reached instead as a sequence, in which the old traffic drains in place rather than being re-enqueued (\cref{sec:sequences}).
 
 We define \(\csem{\Add}\) by recursion on \(\pi\), writing \(\mathtt{flows}(\mathit{arm})\) for the set of flows at \(\lceil \mathit{arm} \rceil\)'s leaves:
 {\small
@@ -2350,7 +2222,7 @@ When one child list embeds in the other as an in-order sub-sequence, the surplus
 Normalization has already aligned the shared arms in a common order, so their appearing in order is the signal that none of them moved or changed and only the extra arms are new or gone.
 If \(p_1\)'s arms are an in-order sub-sequence of \(p_2\)'s, each surplus arm of \(p_2\) is a fresh \Add{}.
 \cref{sec:add}'s leaf-disjointness precondition holds automatically, since a surplus arm's leaves are leaves of \(p_2\) absent from \(p_1\) and hence disjoint by \cref{sec:policy-dsl}'s leaf-partition validity.
-If instead \(p_2\)'s arms are an in-order sub-sequence of \(p_1\)'s, each surplus arm of \(p_1\) \Retire{}s (\cref{sec:idioms}).
+If instead \(p_2\)'s arms are an in-order sub-sequence of \(p_1\)'s, each surplus arm of \(p_1\) \Retire{}s (\cref{sec:sequences}).
 Either way, a stable arm whose metadata changed picks up a \ChangeMeta{} of its own.
 Alongside \Add{}s its position is immaterial, since no step in that emission waits on a guard.
 Alongside \Retire{}s it goes first, since it shares nothing with the drains and would otherwise wait behind them.
