@@ -1702,6 +1702,12 @@ We claim only that whatever sequence it emits is safe (\cref{sec:per-form}) and 
 
 \subsection{The Planner's Case Analysis}\label{sec:planner-emits}
 
+\xxx[as]{One more drastic cut suggestion: we remove this section and replace it with a short subsection in the compiler/hardware section. The points we \emph{need} to get across are limited to:
+(1) the planner exists, but it is ``just'' a heuristic and we make no claims of optimality,
+(2) it can produce simple transitions when the change is small,
+(3) even when a $\Strictstar$ transition is necessary, it keeps things local when possible.
+We do not need to describe exactly how it works.}
+
 The planner has two parts: a top-level pass over \((p_1, p_2)\) as whole trees, and a \emph{per-level comparator} that the pass defers to.
 Both compare policies up to \(\eqR\) by comparing canonical representatives, and we call the pass that computes a representative \emph{normalization}.
 The comparator matches the two roots and then pairs up their child lists, emitting an \Add{} for an unpaired arm of \(p_2\), a \Retire{} for an unpaired arm of \(p_1\), a \ChangeMeta{} for a pair whose metadata alone differs, and a recursion into any pair whose arms differ.
