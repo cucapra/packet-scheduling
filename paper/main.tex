@@ -675,7 +675,7 @@ A discipline's interface is visible to us and its behavior is not.
 
 The interface comes with two conditions.
 The first is path-consistency of admission: a packet's flow must be admitted at every node on that flow's root-to-leaf path, or at none of them.
-This is a global property rather than a concern of any node-local \zz, and it is what keeps \(\vdash\) true under compilation and under every \(\delta\).
+This is a global property rather than a concern of any node-local \zz, and it keeps \(\vdash\) true under compilation and under every \(\delta\).
 The second is that \(\mathit{rank}_{D}\) records which discipline the node runs, and not merely how that discipline ranks payloads.
 Two disciplines that happened to rank alike would otherwise be indistinguishable in a running control, and \cref{sec:equivalences} could report the wrong one back to the operator.
 
@@ -756,7 +756,7 @@ Two \(\sim\)-related controls thus have the same tree shape and the same \zz at 
 We write \(p \eqR p'\) for the smallest congruence on \pol such that, at any internal \disc-node, permuting the child arms gives a congruent \pol.
 In other words, \(p \eqR p'\) iff the two policies are identical up to reordering.
 % Each arm's metadatum is tagged to the arm, so it travels with the arm under the permutation.
-% The metadata is what carries the scheduling-meaningful content, so such a permutation does not change the scheduler.
+% The metadata carries the scheduling-meaningful content, so such a permutation does not change the scheduler.
 
 Because \(\eqR\) only permutes sibling arms, each \(\eqR\)-class has a canonical representative under any fixed ordering of the arms at a node.
 
@@ -896,7 +896,8 @@ A guard \(\varphi\) is a condition on the live control that the substrate can be
 A \emph{step} is one guard together with the run of \(\delta\)s that guard releases.
 
 Both theorems hold at every step of a sequence.
-Each \(\delta\) fires on the well-formed control that the previous one left behind (\cref{thm:interplay}), so \(\lfloor \cdot \rfloor\) names the \pol in force at every point, which is what \cref{sec:intro} promises of the transitional period, and the backlog survives the whole sequence (\cref{thm:nondisruption}).
+Each \(\delta\) fires on the well-formed control that the previous one left behind (\cref{thm:interplay}), so \(\lfloor \cdot \rfloor\) names the \pol in force at every point, and \cref{sec:intro} promises exactly this of the transitional period.
+The backlog survives the whole sequence (\cref{thm:nondisruption}).
 
 A sequence that reconfigures a real tree is a list of small edits, which is not how an operator thinks about their scheduler.
 An \emph{idiom} is a name for a sequence that recurs, and two of them cover what we need.
@@ -975,7 +976,7 @@ The tree may be transiently malformed partway through a commit, and no \push{} o
 That is the whole of what \cref{sec:correctness}'s argument rests on.
 
 The second is that a commit can be held until a stated predicate becomes true.
-A guarded sequence (\cref{sec:sequences}) waits for its guard to become true before the \(\delta\) attached to it fires, and the substrate is what does the waiting.
+A guarded sequence (\cref{sec:sequences}) waits for its guard to become true before the \(\delta\) attached to it fires, and the substrate must do that waiting.
 Our grammar of guards is simple, and our substrate tests one predicate, the emptiness of a subtree.
 That is a local test at a single PIFO, since a node's \ensuremath{\mathit{pifo}} holds an entry for every packet in its subtree (\cref{sec:controls}).
 
@@ -1034,7 +1035,8 @@ This fixes the shape of the control plane's side of the interface.
 The controller runs one transition at a time, and an operator's next request waits for the one in flight to finish.
 A request that arrives mid-transition is queued, and the planner then starts it from the policy the finished transition left running.
 Rio cannot guarantee progress towards the completion of a request, since a guard on an emptiness predicate becomes true only once the traffic under that subtree drains, and a persistent flow can hold a subtree open indefinitely.
-The only way to hurry a drain is to drop what is buffered, which is what the forms of \cref{sec:delta-grammar} are chosen to avoid, so a stalled transition stays safe and stays where it is until the traffic allows.
+The only way to hurry a drain is to drop what is buffered.
+The forms of \cref{sec:delta-grammar} are chosen to avoid this, so a stalled transition stays safe and stays where it is until the traffic allows.
 
 Our current implementation uses a single controller queue, which provides a simple global serialization point for updates.
 This design is sufficient for correctness and avoids subtle ordering bugs between overlapping commits.
@@ -1191,7 +1193,7 @@ Please check. We can still cut it if you feel strongly.}
 A switch with \(P\) output ports has \(P\) separate trees, each wrapped at the ISA in a reserved 1-arm PIFO \texttt{port\_root} whose sole child, reached through the index \texttt{port\_step}, is the actual tree root.
 The forwarding pipeline selects a packet's output port before the packet reaches the scheduler, so a \push{} enters that port's tree at its port root.
 Its \texttt{Assoc} and \texttt{Map} mirror the actual root's, since every walk below begins there.
-The port root is what makes the tree root an ordinary position.
+The port root makes the tree root an ordinary position.
 \texttt{undesignate} retargets a parent's index from a PIFO to that PIFO's designated survivor, and at the root there is no parent's index to retarget.
 That case is not hypothetical: the always-available plan of \cref{sec:sequences} is \(\Replace([], p_2)\), whose last step is \(\Undesignate([])\).
 Without the port root the substrate could not execute the one transition the planner is guaranteed to be able to fall back on, and would need a second opcode meaning ``make this PIFO the tree root'', doing at one position what \texttt{undesignate} does everywhere else.
@@ -1283,7 +1285,7 @@ Silencing those, when the operator ultimately wants it, comes from the \Quiesce{
 \paragraph{\(\Undesignate(\pi \mathbin{+\!\!+} [k])\)}
 \Undesignate{} is likewise \Designate{} run backwards.
 A single \texttt{undesignate(loser)} retargets \texttt{parent}'s index \texttt{k} from \texttt{loser} to \texttt{surv}, the flows in \(\mathtt{flows(loser)} \setminus \mathtt{flows(surv)}\) are unmapped along their internals, and \texttt{loser}'s PIFOs are released.
-Reusing \texttt{k} is what preserves \texttt{parent}'s per-arm metadata for that slot, so the survivor inherits the annotation that the doomed subtree held.
+Reusing \texttt{k} preserves \texttt{parent}'s per-arm metadata for that slot, so the survivor inherits the annotation that the doomed subtree held.
 The shared flows are deliberately not unmapped, since they serve \texttt{surv} now.
 
 \Quiesce{}'s wide reach, covering the root-to-\pth chain along with the whole subtree under \texttt{v}, is forced by \cref{sec:policy-dsl}'s parallel push.
@@ -1323,7 +1325,7 @@ Rio reaches per-packet consistency by another means: a commit installs in a sing
 The two settings differ in what the old configuration holds.
 In forwarding, a forwarding rule holds no traffic, so the old configuration can be retired once the packets stamped with it have left the network.
 In scheduling, a scheduler node holds packets whose ranks were fixed when they were \push{}ed, and no version tag can re-sort them.
-Rio therefore retires the old configuration by draining it, which is what a guard waits for (\cref{sec:sequences}).
+Rio therefore retires the old configuration by draining it, which is precisely what a guard waits for (\cref{sec:sequences}).
 
 \citet{Mahajan13} study the dependencies that a consistency property imposes among rule updates, and find that stronger properties induce more intricate dependencies and therefore slower updates.
 \citet{Namjoshi24} keep the guarantee and drop the versioning, sequencing the updates so that route consistency holds with a single table edited in place.
@@ -1552,7 +1554,7 @@ The metadatum \(m\) appears on both sides.
 \(\tau : \mathit{path}\) is the target arm.
 The path is non-empty (the target arm is required to have a parent), and we destruct it as \(\pi \mathbin{+\!\!+} [k]\), so \(k\) is the arm's slot at its parent \(C@\pi\).
 \disc is the discipline the parent runs, and \(m\) is a fresh value from \(M_{D}\) (\cref{sec:policy-dsl}).
-Carrying \disc on the form is what makes \(m \in M_{D}\) checkable from the form alone, rather than only against the control it is about to be applied to.
+Carrying \disc on the form makes \(m \in M_{D}\) checkable from the form alone, rather than only against the control it is about to be applied to.
 
 \paragraph{Definition}
 
@@ -1598,7 +1600,7 @@ A discipline that keeps no per-arm bookkeeping, such as \Strict, does not raise 
 Say the presently running control is \(C\).
 \Quiesce{} strikes every flow served under \(C@\tau\) from the admitted sets of the nodes those flows traverse, so that no packet bound for a leaf there is admitted anywhere.
 It leaves every node's routing in place, so buffered packets can still be popped out.
-This is what keeping \(\mathit{z}.\mathit{admit}\) separate from \(\mathrm{dom}(\mathit{z}.\mathit{serves})\) (\cref{sec:controls}) is for.
+This is the payoff of keeping \(\mathit{z}.\mathit{admit}\) separate from \(\mathrm{dom}(\mathit{z}.\mathit{serves})\) (\cref{sec:controls}).
 A silenced flow leaves the admitted set while its entry in the service map stays, so packets already buffered under the node still have a way out.
 This is the only way the containment \(\mathit{z}.\mathit{admit} \subseteq \mathrm{dom}(\mathit{z}.\mathit{serves})\) becomes strict, and only \Remove{} deletes the mapping itself.
 
@@ -1723,7 +1725,7 @@ The trouble is one level up.
 \(P\)'s PIFO originally had four instances of \(0\), and well-formedness demands that we remove two of them.
 But \emph{which} two?
 No entry in \(P\) carries the meta-information ``I was enqueued when a packet was inserted into \tritext{flowC}''; an entry \(0\) in \(P\) only means ``when this index is popped, recursively ask subtree \(Q\) to emit the next packet'' (see \cref{sec:background}).
-This absence of meta-information is a \emph{feature} of PIFO trees, not a defect: an entry is deliberately detached from the packet it was enqueued with, which is what lets each node schedule its own discipline in isolation and lets a subtree be reconfigured without rewriting its ancestors.
+This absence of meta-information is a \emph{feature} of PIFO trees, not a defect: an entry is deliberately detached from the packet it was enqueued with, which lets each node schedule its own discipline in isolation and lets a subtree be reconfigured without rewriting its ancestors.
 
 Given this, there is no obvious or operator-provided answer: whichever two instances of \(0\) we strike, the choice is itself a scheduling decision, since it affects how \(P\) intermixes \tritext{flowB} traffic with \(Q\)'s.
 Strike the two rightmost \(0\)s (\cref{fig:remove-strike-right}) and five pops drain \(P\) as \popseq{flowB,flowB,flowA,flowB,flowA}.
@@ -1849,7 +1851,7 @@ The transformer \(\mathtt{wrap}\) replaces \(M\) with a fresh \(\Strictstar\) no
 \]
 }
 In the vocabulary of \cref{sec:controls}, \(\mathit{z}_N\) serves \survivor's flows at arm \(1\) and everything else the node serves at arm \(0\), and admits both.
-Its ranker names \(\Strictstar\) rather than \Strict, which is what \cref{sec:undesignate}'s \Undesignate{} later looks for.
+Its ranker names \(\Strictstar\) rather than \Strict, and \cref{sec:undesignate}'s \Undesignate{} later looks for that name.
 Arm \(0\) is \(M\) (\textsf{old}), unchanged down to its whole subtree and buffered packets; arm \(1\) is the freshly compiled \(\lceil\mathit{survivor}\rceil\) (\textsf{new}), initially empty.
 This is \cref{fig:designate-after}.
 \(N\)'s index-\pifo holds \(P_0\) entries for arm \(0\) and none for arm \(1\), one per packet buffered under \textsf{old}.
@@ -2131,7 +2133,7 @@ When the recursion works strictly below the slot the \ChangeMeta{} goes last, si
 
 The comparator pairs the arms by the tightest strategy that applies, dropping to a more general one only when the tighter fails.
 All three strategies lean on normalization.
-Arms that genuinely correspond appear in the same relative order on both sides, which is what lets the positional strategies pair by position at all.
+Arms that genuinely correspond appear in the same relative order on both sides, which is the property that lets the positional strategies pair by position at all.
 
 \textbf{By slot, at equal arity.}
 When the child lists have the same length, the comparator pairs arm \(i\) with arm \(i\).
