@@ -443,3 +443,330 @@ A node that holds a \pifo has to live somewhere, and a literal \Strict-2 wrapper
 That pushes the outgoing subtree down to levels 6 and 7 and puts the survivor on 6 through 8, and retiring the wrapper afterwards pulls the survivor back up.
 Two subtrees are laid out twice over, on account of a node that exists only for the length of a drain.
 
+
+%% ===========================================================================
+%% 2026-09-06: the printout pass, and the dissolution of \S7.
+%% ===========================================================================
+%%
+%% Three separate calls by AM, made across one afternoon's reading:
+%%
+%%   1. vPIFO leaves \S3 entirely. Adrian's \xxx proposed it; AM accepted with
+%%      "let's cut and put into RW, and even there they may not get so much
+%%      real estate." vPIFO now has three sentences in \S10's substrate list.
+%%      Regions R1, R2 and R3 below are what was removed to make that true.
+%%
+%%   2. \S7 is dissolved. Adrian proposed deleting it outright; AM's ruling was
+%%      "I don't think that broken crefs are the reason to save a section from
+%%      cutting. But okay, I can accept that these sequences are just such an
+%%      important conceptual handle that cutting them would be a huge loss...
+%%      we won't have a half-page-long section, and we'll need to find the
+%%      surviving stuff a new home."
+%%      The core became \S6.4 `Sequences of Edits` (label sec:sequences kept),
+%%      and the hardware-interface material became a paragraph in sec:hw-commit.
+%%      Region R5 is the old section verbatim, so the compression can be
+%%      compared against what it compressed.
+%%
+%%   3. SlowRetire is cut, on "it's a can of worms." It appears inside R5 in
+%%      two places, the fig:gseq-idioms row and the itemize entry, and it is
+%%      called out again as R6 so it is not lost inside a 144-line region.
+%%
+%% What the cuts cost, checked before they were made:
+%%
+%%   Nothing in the completeness argument. Replace([], p_2) is still the
+%%   witness, and it is now defined in \S6.4 rather than \S7.2.
+%%
+%%   Nothing in the theorems. \S7 stated no theorem of its own; its two claims
+%%   were thm:interplay and thm:nondisruption iterated along a sequence, and
+%%   that is the paragraph \S6.4 keeps.
+%%
+%%   The `link_i` notation is gone with sec:links, so sec:fallback's
+%%   sequence-level footprint is now stated in words. See R7.
+%%
+%%   Eleven crefs to sec:links and sec:idioms were repointed to sec:sequences.
+%%   The seven crefs to sec:sequences itself still resolve, since \S6.4 carries
+%%   that label.
+%%
+%% To restore: R5 is a whole unit and can be pasted back between \S6 and the
+%% planner section, at which point \S6.4 should be deleted. The rest are
+%% fragments, each with the place it came from.
+%%
+%% ===========================================================================
+
+
+% ---------------------------------------------------------------------------
+% R1. \S3's vPIFO passage
+% From: main.tex sec:background, between the PE paragraph and the closing one.
+% Cut 2026-09-06. Adrian's \xxx proposing the cut went with it. The specific
+% observation worth remembering is the one about the tables being generated
+% offline by the SDL compiler, which is the sentence that survives, in \S10.
+% ---------------------------------------------------------------------------
+
+vPIFO~\cite{vPIFO} is a design for a PIFO-tree-based packet scheduler that
+virtualizes a single physical PIFO into many logical ``PIFO instances.''
+It includes a Scheduling Description Language (SDL) and compiler, so their PIFO Visor can \emph{flexibly establish} hierarchical PIFO trees of arbitrary shape on fixed hardware; its contribution is the reconfigurable substrate.
+As published, however, vPIFO has no notion of a difference between old and new policies, no formal semantics for what a policy change means, and no account of in-flight packets during a change.
+Their SDL IR computes ranks and is compiled to P4 or to a CPU.
+The two grammars we introduce in \cref{sec:delta-grammar} are structural instead: one describes the shape of a policy tree, and the other describes how that shape changes.
+
+Our two running examples make the gap concrete.
+In vPIFO's own terms, the Operation Generation Table and the PIFO Instance Address Table encode the running tree's shape and its per-instance storage.
+The easy change, to \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{mid}{:}\,\textsf{spotify},\allowbreak\ \mathtt{lo}{:}\,\textsf{gmail})\), is the kind of edit vPIFO's substrate is architecturally close to absorbing.
+It over-provisions logical instances and its Visor can assemble them into arbitrary tree shapes, so a targeted append to those tables would register the new traffic and its operations while leaving the running instances untouched.
+vPIFO exposes no such edit at runtime, however: those tables are generated offline by its SDL compiler, so installing even this easy change on a running scheduler would require extending the substrate with an online-patch path it does not have today.
+The harder restructuring, to \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\RR(\textsf{gmail},\allowbreak\ \textsf{spotify}))\), lies beyond what the vPIFO substrate can absorb in place.
+It changes the running tree's shape, inserting a new internal \RR{} node and re-parenting \textsf{gmail} under it, and neither table exposes that as an in-place edit.
+The closest vPIFO comes is a full reinitialization onto the new shape, which is the stop-the-world baseline \cref{sec:intro} refuses.
+vPIFO names runtime updating as future work, observing that the scheduling of packets during a modification's transitional phase is unresolved.
+
+
+% ---------------------------------------------------------------------------
+% R2. \S3's ``we are not competing with vPIFO'' close
+% From: main.tex sec:background, the last paragraph before \S4.
+% Cut 2026-09-06, but only in the sense of being rewritten in place: the
+% substrate-general version that replaced it says the same thing without
+% naming vPIFO, and without the comparative ``better'' that AM flagged with
+% ``a better substrate than what?''
+% ---------------------------------------------------------------------------
+
+We are not competing with vPIFO and do not claim a better PIFO substrate.
+We supply the layer \emph{above} a PIFO substrate: the formal transition between two policies, the small patch that realizes it, and the transitionary semantics.
+The two layers can plausibly compose, and \cref{sec:substrate-portability} sets out the minimal requirement our contributions place on a substrate.
+
+
+% ---------------------------------------------------------------------------
+% R3. \S5.2's paragraph on vPIFO's Scheduling Description Language
+% From: main.tex sec:compilation, after the ``From pol to control'' paragraph.
+% Cut 2026-09-06 on AM's ``the below feels totally out of the blue.'' Its
+% surviving claim, that our policy language is a formal core of SDL, is one
+% sentence in \S10 now.
+% ---------------------------------------------------------------------------
+
+This is essentially what the vPIFO paper's \emph{Scheduling Description Language} does informally~\cite{vPIFO}.
+They do not pin down a grammar for SDL or formalize the compilation, so our DSL can be read as a formal core of their concrete language.
+
+
+% ---------------------------------------------------------------------------
+% R4. \S5.2's two-disciplines-that-rank-alike argument
+% From: main.tex sec:compilation, the second of the interface's two conditions.
+% Cut 2026-09-06 on AM's ``crunch or cut the rest of this graf.'' Three
+% sentences became one: ``Two disciplines that happened to rank alike would
+% otherwise be indistinguishable in a running control, and \S6.1 could report
+% the wrong one back to the operator.''
+% ---------------------------------------------------------------------------
+
+Suppose two disciplines happened to schedule identically on every input.
+If a node stored only its ranking behavior, the two would be indistinguishable in a running control, and the policy we echo back to the operator could name the wrong discipline.
+Recording \disc keeps them apart, which is what lets \cref{sec:equivalences} read the operator's own \disc off a running control.
+
+
+% ---------------------------------------------------------------------------
+% R5. \S7 in full, ``Realizing Reconfigurations as Guarded Sequences''
+% From: main.tex, between \S6 (Correctness) and \S7 (The Transition Planner).
+% Dissolved 2026-09-06. What survives, and where:
+%
+%   sec:idioms's grammar and the two surviving idioms -> \S6.4, inline rather
+%     than in the fig:gseq-idioms float, with Designate and Quiesce aligned as
+%     AM asked.
+%   sec:links's ``each transitionary policy is an ordinary control'' claim ->
+%     \S6.4, recast as the two theorems lifting one step at a time.
+%   the ``Reaching the target'' pol-level fold -> \S6.4, one paragraph.
+%   sec:links's ``Follow-up requests'' and the ``Liveness'' paragraph ->
+%     sec:hw-commit, one paragraph framed as the hardware/software interface,
+%     which is what Adrian's \xxx (preserved at the top of this region) asked
+%     for.
+%
+% Cut outright: the fig:gseq-idioms float, safety and arrival as separately
+% named properties, the link_i notation, the splicing-as-future-work aside,
+% and the closing p_1 -> p_2 worked example, which \S2 already tells with a
+% figure.
+%
+% The \xxx[AM to Zhiyuan] inside this region, on whether the substrate could
+% install a whole step as one commit, is unanswered and went with the section.
+% If it is still wanted it belongs in sec:hw-commit now.
+% ---------------------------------------------------------------------------
+
+\section{Realizing Reconfigurations as Guarded Sequences}\label{sec:sequences}
+
+\xxx[as]{Here is another bold suggestion for how to compress things to save a lot of space. We mostly delete this section, and remove all references to guarded sequences and idioms. We instead include a short discussion of ``the hardware interface'': how we imagine the control plane interacting with the scheduler. That includes things like:
+(1) the hardware can do one transition at a time, and you wait for one to be done before issuing the next,
+(2) we assume a way to wait for quiescence,
+(3) liveness is therefore not guaranteed,
+(4) you must deal with ``follow-up requests'' by queueing up edits and waiting for them to finish. But we frame this just as \emph{out design for the hardware--software interface}, and not as another language/theoretical development.
+Hopefully this only takes a couple of paragraphs, and can go in the hardware or compiler section?}
+
+This section composes the forms of \(\delta\) into \emph{guarded sequences} \((\varphi ; \delta^{*})^{*}\), where a guard \(\varphi\) is a predicate on the state of the live control.
+Guarded sequences realize changes to the live control that no single \(\delta\) can express.
+We first show that the transitionary period such a sequence passes through needs no new semantics (\cref{sec:links}), then give the grammar of guarded sequences (\cref{sec:idioms}).
+
+\subsection{Transitionary Policies and their Semantics}\label{sec:links}
+
+A guarded sequence threads the live control through a chain of intermediate controls.
+We call each such intermediate control a \emph{transitionary policy}, and we write \(\mathit{link}_i\) for the control on which the \(i\)-th \(\delta\) fires, counting from zero.
+So \(\mathit{link}_0 = C\) is the starting control, and \(\mathit{link}_{i+1} = \csem{\delta_i}(\mathit{link}_i)\) is what the \(i\)-th \(\delta\) leaves behind.
+
+Each transitionary policy is itself an ordinary \cref{sec:controls}-style control, so the transitionary period \emph{needs no new semantics}.
+That is the promise of \cref{sec:intro}, discharged locally by the per-form checks of \cref{sec:per-form}.
+Moreover, since every form of \cref{sec:delta-grammar} is \emph{\pol-explainable} (each \(\delta\) has a \(\psem{\delta}\) that tracks its \pol-level effect), we can echo to the operator, at every point in the sequence, the \pol that the live control actually realizes.
+The chain of \(\psem{\cdot}\)s starting from \(\lfloor C \rfloor\) gives \(\lfloor \mathit{link}_i \rfloor\) for each \(i\), so the operator always knows which policy is running.
+
+\paragraph{Follow-up requests}
+The transition planner engages with one reconfiguration at a time.
+Suppose the operator submits a follow-up \(p_3\) while a \(p_1 \to p_2\) sequence is still in flight, some guard \(\varphi_i\) not yet having become true.
+We queue \(p_3\), and the planner does not begin work on it until the in-flight sequence completes and the live control \(C_z\) satisfies \(\lfloor C_z \rfloor \eqR p_2\).
+At that instant the planner pulls \(p_3\) from the queue, treats \(\lfloor C_z \rfloor\) as the new starting point, and produces a fresh sequence to reach \(p_3\).
+A more aggressive strategy is possible: splicing or canceling the in-flight sequence to converge on \(p_3\) directly, perhaps at lower total cost than running \(p_1 \to p_2 \to p_3\) in series.
+We do not pursue this here, since the splicing analysis introduces its own correctness obligations: the atomicity of the splice, and what transitionary policy the operator observes between the splice and \(p_3\).
+
+\subsection{Guarded Sequences and their Idioms}\label{sec:idioms}
+
+\paragraph{Grammar}
+
+\begin{figure}[t]
+\centering
+\[
+\begin{array}{@{}l@{}}
+\textbf{Guarded sequences}\\[3pt]
+\varphi \mathrel{::=} \mathtt{true} \;\mid\; \mathtt{isEmpty}(\mathit{path})\\[2pt]
+\mathit{step} \mathrel{::=} (\varphi\,;\, \delta_1\,;\, \ldots\,;\, \delta_n),\ n \geq 1\\[2pt]
+\mathit{gseq} \mathrel{::=} \epsilon \;\mid\; \mathit{step}\,;\, \mathit{gseq}\\[8pt]
+\textbf{Idioms}\\[3pt]
+\Retire(\mathit{path}) \;=\;\\
+\quad (\mathtt{true};\, \Quiesce(\mathit{path}))\,;\\
+\quad (\mathtt{isEmpty}(\mathit{path});\, \Remove(\mathit{path}))\\[4pt]
+\SlowRetire(\mathit{path}) \;=\; (\mathtt{isEmpty}(\mathit{path});\, \Remove(\mathit{path}))\\[4pt]
+\Replace(\mathit{path}, \mathit{survivor}) \;=\;\\
+\quad (\mathtt{true};\, \Designate(\mathit{path}, \mathit{survivor})\,;\\
+\quad\qquad \Quiesce(\mathit{path} \mathbin{+\!\!+} [0]))\,;\\
+\quad (\mathtt{isEmpty}(\mathit{path} \mathbin{+\!\!+} [0]);\, \Undesignate(\mathit{path}))
+\end{array}
+\]
+\caption{The grammar of guarded sequences and the three starter idioms, each a named \gseq.}
+\label{fig:gseq-idioms}
+\end{figure}
+% This fig is a little hard to read since there are guards and deltas all mixed up. For presentation let's write the guards in red in the idioms. And let's line up the deltas that are collected together under one guard. So in this figure you would like up \Designate(\mathit{path}, \mathit{survivor})\,;\\ and \Quiesce(\mathit{path} \mathbin{+\!\!+} [0]))\,;\\ (line up D and Q)
+
+We write \(\mathit{gseq}\) for a guarded sequence (\cref{fig:gseq-idioms}, top).
+A guard \(\varphi\) is either trivially satisfied (\(\mathtt{true}\)) or asserts that the subtree at \pth is empty.
+A \emph{step} pairs one guard with the run of \(\delta\)s that guard releases, so a sequence waits exactly as many times as it has steps.
+Those two guard forms have sufficed for every sequence we have needed.
+The framework does not depend on this minimality, and a richer predicate language is welcome if desired.
+
+\paragraph{Intuition}
+
+The hardware substrate (\cref{sec:hardware}) does two things beyond ordinary \push{}/\pop{}.
+It waits for a guard \(\varphi\) to become true on the live control, and it fires a \(\delta\) as an atomic replacement.
+A guarded sequence chains these.
+It waits for \(\varphi_0\), fires that step's \(\delta\)s in order, then waits for \(\varphi_1\), now evaluated on the control the first step left behind, and so on.
+Each intermediate control between two consecutive \(\delta\) firings is well-formed, and we call this property the sequence's \emph{safety}.
+Safety is entirely local, following from the per-form checks of \cref{sec:per-form}.
+
+\xxx[AM to Zhiyuan]{A step's \(\delta\)s fire back to back with no waiting between them, and each one installs as its own commit, so the substrate needs nothing it does not already have.
+The question is whether it could instead install a whole step as one commit, so that no intermediate control inside a step is ever observed.
+That would be better for the operator, since the policies they are shown would then be exactly the ``waits''.
+It asks the commit buffer to hold one step's worth of instructions rather than one form's, which \cref{sec:hw-commit} suggests is a question of how much fits rather than of a new capability.}
+
+\paragraph{Reaching the target}
+
+Safety guarantees that every intermediate control is well-formed, but not that the sequence \emph{arrives} at the intended \(p_2\).
+We check arrival at the \pol level, folding each form's \(\psem{\delta_i}\) along the sequence.
+Write \(\mathit{ip}_i\) for the \(i\)-th intermediate \pol.
+Starting from \(\mathit{ip}_0 = \lfloor C \rfloor\), the \pol we echoed to the operator, set \(\mathit{ip}_{i+1} := \psem{\delta_i}(\mathit{ip}_i)\).
+The sequence is admissible when every \(\psem{\delta_i}\) is defined on \(\mathit{ip}_i\) and the final \(\mathit{ip}_{n+1} \eqR p_2\).
+This is the Interplay theorem (\cref{sec:interplay}) iterated across the sequence.
+Each \(\psem{\delta_i}\) matches its operational counterpart \(\csem{\delta_i}\) (\cref{sec:per-form}), so a fold that lands at \(\mathit{ip}_{n+1} \eqR p_2\) certifies, cell by cell, that the operational chain ends in a control whose \(\lfloor \cdot \rfloor\) is \(p_2\).
+Guards play no role in this check: they govern \emph{when} each \(\delta_i\) fires on the live control and are \pol-invisible (\cref{sec:edit-semantics}), so a \((\mathtt{isEmpty}(\mathit{path}); \Remove(\mathit{path}))\) step folds exactly as if its guard were \(\mathtt{true}\).
+If the chain fails to reach \(p_2\), or some \(\psem{\delta_i}\) is undefined on its \(\mathit{ip}_i\), the sequence is rejected.
+The rejection identifies the offending step, either the first \(\delta_i\) whose \(\psem{\delta_i}\) was undefined or else the final mismatch \(\mathit{ip}_{n+1} \not\eqR p_2\).
+Both clients of the framework rely on this check: the planner (\cref{sec:planner}) uses it as a backstop on the sequences it assembles, and an operator authoring by hand (\cref{sec:imperative}) uses it to validate theirs.
+
+\paragraph{Liveness}
+
+Safety is unconditional; liveness is not, and cannot be.
+A guarded sequence progresses only as its guards become true, and a guard like \(\mathtt{isEmpty}(\mathit{path})\) becomes true only once the traffic under \pth drains.
+That is up to the network, not up to us.
+A persistent or adversarial flow can keep a subtree busy indefinitely, and then any step waiting on that subtree's emptiness never fires.
+This is inherent.
+Draining a subtree gracefully means letting its buffered packets leave on their own, and the only way to speed that up is to drop them, which the grammar refuses to do.
+So completing a sequence takes the operator's cooperation, for instance quiescing a flow at its source or accepting a harder reconfiguration that resets more of the tree but drops nothing.
+The live control stays safe throughout, but may not reach the target \pol until the traffic allows.
+Follow-up requests submitted during a stalled sequence are queued (\cref{sec:links}).
+
+\paragraph{Idioms}
+
+A sequence that reconfigures a real tree is a long list of small edits, and such a list does not tell the operator what is being done to their scheduler.
+\emph{Idioms} are a named vocabulary for the sequences that recur, each one collecting a run of edits into a single goal acting on a single subtree.
+The transition planner (\cref{sec:planner}) emits them, so what the operator reads back is ``retire this subtree'' rather than a silencing, a wait, and an unhooking.
+
+An idiom is a macro over \(\delta\), and recursively over other idioms, that expands into a fixed \gseq.
+Expansion changes nothing about soundness, since the checks above run on the expanded sequence exactly as they would on a hand-written one.
+So an expansion that would reach an undefined form on the current control is rejected.
+
+We name three starter idioms, with their expansions collected in \cref{fig:gseq-idioms}.
+New ones can be added later without changing the framework, since an idiom is only a named \gseq.
+
+\begin{itemize}
+\item \textbf{\Retire(\pth)} quiesces the subtree at \pth, waits for it to drain to empty, then \Remove{}s it.
+This is the operator-facing way to say ``tear this subtree down gracefully.''
+
+\item \textbf{\SlowRetire(\pth)} waits for the subtree at \pth to drain, then \Remove{}s it.
+This suits a subtree that must keep receiving traffic while it is being phased out.
+
+\item \textbf{\Replace(\pth, \survivor)} phases \survivor in and \(\mathit{pol}@\mathit{path}\) out.
+It \Designate{}s \survivor, quiesces the original subtree, waits for it to drain to empty, and then removes that subtree and the \(\Strictstar\) wrapper, leaving \survivor alone at \pth (\cref{fig:gseq-idioms}).
+At the \pol level the effect is the outright replacement of \(\mathit{pol}@\mathit{path}\) by \survivor.
+
+\end{itemize}
+
+\cref{sec:intro}'s transition supplies a worked example, with the scheduler running \(p_1\) while its operator asks for \(p_2\), where
+{\small
+\[
+\begin{array}{@{}r@{\;}c@{\;}l@{}}
+p_1 &=& \Strict(\mathtt{hi}{:}\,\textsf{zoom},\ \mathtt{lo}{:}\,\textsf{gmail})\\[2pt]
+p_2 &=& \Strict(\mathtt{hi}{:}\,\textsf{zoom},\ \mathtt{lo}{:}\,\RR(\textsf{gmail},\allowbreak\ \textsf{spotify})).
+\end{array}
+\]}
+\Add{} cannot directly reach \(p_2\), since the \textsf{gmail} leaf has to become an interior \RR{} node and \Add{} only appends arms to a node that is already internal.
+\Replace{} at the \(\mathtt{lo}\) slot does reach it, with survivor \(\RR(\textsf{gmail},\allowbreak\ \textsf{spotify})\).
+This is the transition \cref{sec:intro} reaches at \(t_2\).
+
+
+% ---------------------------------------------------------------------------
+% R6. SlowRetire
+% From: main.tex preamble (the macro), fig:gseq-idioms (the expansion), and
+% sec:idioms's itemize (the gloss). All three inside R5 above; repeated here
+% so the cut is findable on its own.
+% Cut 2026-09-06 on AM's ``it's a can of worms.'' It was the one idiom whose
+% guard is not stable once true: a subtree that is empty now may be non-empty
+% by the time Remove fires, because SlowRetire never quiesces it. That is
+% worklist item D14, which this cut closes.
+% ---------------------------------------------------------------------------
+
+\newcommand{\SlowRetire}{\textsf{SlowRetire}}
+
+\SlowRetire(\mathit{path}) \;=\; (\mathtt{isEmpty}(\mathit{path});\, \Remove(\mathit{path}))\\[4pt]
+
+\item \textbf{\SlowRetire(\pth)} waits for the subtree at \pth to drain, then \Remove{}s it.
+This suits a subtree that must keep receiving traffic while it is being phased out.
+
+
+
+% ---------------------------------------------------------------------------
+% R7. sec:fallback's Replace expansion, and its link_i footprint sentence
+% From: main.tex sec:fallback, opening paragraph and the Footprint paragraph.
+% Cut 2026-09-06 as a consequence of R5. The expansion is now given one page
+% earlier, in \S6.4, so sec:fallback names the idiom instead of repeating it.
+% The footprint sentence used link_i, which was defined in the dissolved
+% sec:links; it is stated in words now.
+% ---------------------------------------------------------------------------
+
+To reach any \(p_2\) from any \(p_1\), the planner can issue \(\Replace([], p_2)\), the \cref{sec:idioms} idiom that expands to
+
+\[
+\begin{array}{@{}l@{}}
+(\mathtt{true};\ \Designate([], p_2)\ ;\ \Quiesce([0]))\ ;\\[3pt]
+\qquad (\mathtt{isEmpty}([0]);\ \Undesignate([]))
+\end{array}
+\]
+
+The sequence-level footprint is \(\bigcup_i \mathtt{footprint}(\delta_i, \mathit{link}_i)\), taken over the \(\delta\)s of the sequence in order and irrespective of how they are grouped into steps.
+The root-level \(\Replace([], p_2)\) above has the maximum possible footprint: the whole tree.
