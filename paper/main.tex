@@ -981,6 +981,12 @@ This is the transition \cref{sec:intro} reaches at \(t_2\).
 
 \section{The Transition Planner}\label{sec:planner}
 
+\xxx[as]{One more drastic cut suggestion: we remove this section and replace it with a short subsection in the compiler/hardware section. The points we \emph{need} to get across are limited to:
+(1) the planner exists, but it is ``just'' a heuristic and we make no claims of optimality,
+(2) it can produce simple transitions when the change is small,
+(3) even when a $\Strictstar$ transition is necessary, it keeps things local when possible.
+We do not need to describe exactly how it works.}
+
 The operator hands the runtime \(p_1\), the presently running policy, and \(p_2\), the one they now want.
 The transition planner's job is to propose a \((\varphi ; \delta^{*})^{*}\) sequence whose \pol-level fold takes \(p_1\) to some \(p_2'\) with \(p_2' \eqR p_2\).
 The operator accepts or rejects the proposal; they do not author it directly.
@@ -1100,12 +1106,6 @@ We make no claim that the planner's choice is canonical or minimal.
 We claim only that whatever sequence it emits is safe (\cref{sec:per-form}) and no worse than the root-level fallback.
 
 \subsection{The Planner's Case Analysis}\label{sec:planner-emits}
-
-\xxx[as]{One more drastic cut suggestion: we remove this section and replace it with a short subsection in the compiler/hardware section. The points we \emph{need} to get across are limited to:
-(1) the planner exists, but it is ``just'' a heuristic and we make no claims of optimality,
-(2) it can produce simple transitions when the change is small,
-(3) even when a $\Strictstar$ transition is necessary, it keeps things local when possible.
-We do not need to describe exactly how it works.}
 
 The planner has two parts: a top-level pass over \((p_1, p_2)\) as whole trees, and a \emph{per-level comparator} that the pass defers to.
 Both compare policies up to \(\eqR\) by comparing canonical representatives, and we call the pass that computes a representative \emph{normalization}.
