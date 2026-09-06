@@ -926,57 +926,53 @@ The root-level fallback shows what that is worth: it puts the entire running tre
 \subsection{The Substrate as it Stands}\label{sec:hw-substrate}
 
 A PIFO tree needs programmable hardware to run on.
-Existing designs~\cite{Sivaraman16,Yao23,vPIFO} build it out of the PIFO Processing Elements (PEs) of \cref{sec:background}, each hosting a single physical PIFO supplies the storage that multiple logical PIFOs of the PE's PIFOs share.
-In additional to PIFOs, Each PE carries programmable hardware that assigns a packet to one of its PIFOs, computes the packet's rank and next-hop destination.
+Existing designs~\cite{Sivaraman16,Yao23,vPIFO} build it out of the PEs of \cref{sec:background}.
+Each PE hosts a single physical PIFO, whose storage is shared by all the tree nodes at that PE's depth.
+Beyond that storage, a PE carries programmable hardware that assigns an arriving packet to one of the nodes it hosts and computes the packet's rank and next-hop destination.
 
-
-In detail,
 % We call the hardware-level realizations of \push{} and \pop{} \emph{enqueue} and \emph{dequeue}, and on this substrate both are pipelined and non-atomic.
-On enqueue, the switch must compute two pieces of information before issuing PE pushes: which PIFO the packet should enter, and what rank should be inserted at each of those PIFOs.
+On enqueue, the switch must compute two pieces of information before issuing PE pushes: which PIFOs the packet should enter, and what rank should be inserted at each of them.
 Classification determines the first, by mapping a flow to a child.
 The PIFO's scheduling policy computes the second, from packet fields, flow state, and per-arm metadata.
 For example, a \WFQ{} PIFO uses the child weight to compute a virtual finish time, while a \Strict{} PIFO interprets the metadata as a priority rank.
 % \xxx[AM to Zhiyuan]{You asked me to cite the P4 reconfiguration papers here, to show that installing a policy this way is stop-the-world.
 % At present I only cite P4 itself, because FlexCore and P4runpro are the designs that make forwarding-pipeline reconfiguration \emph{not} stop-the-world, and \cref{sec:hw-commit} and \cref{sec:related} both already describe them as non-STW.
 % If you had other papers in mind, please add them here.}
-On dequeue, the switch starts from the output port's root PIFO, pops the best-ranked entry, and follows the stored next-hop information until it reaches a packet to transmit or another PIFO to pop.
-As all comptuations are computed by match-action tables~\cite{Bosshart14}, so installing a policy on such a substrate means writing entries into those tables.
+On dequeue, the switch starts from the output port's root PIFO, pops the best-ranked entry, and follows the stored next-hop information from PIFO to PIFO until it reaches a packet to transmit.
+All of this computation is done by match-action tables~\cite{Bosshart14}, so installing a policy on such a substrate means writing entries into those tables.
 
-The hardware structure does not by itself support dynamic policy, mainly for two reasons.
-First, it cannot accommodate non-stoping substrate reconfiguration.
-Because packet assignment and rank computation are interleaved throughout the pipeline, policy migration can be destructive:
-a policy change may require updating and reomving table entries, or even chanign the pipeline structure, for exisitng packets.
-Second, conventional MAT table updates do not provide \textbf{atomic visibility} to packets already traversing the pipeline.
-When updates concurrent with packet enqueue and dequeue.
-In such a case, a single packet operation can observe a mixture of old and new scheduler state.
+This substrate does not by itself support a change of policy, for two reasons.
+First, it cannot be reconfigured without being stopped.
+Packet assignment and rank computation are interleaved throughout the pipeline, so migrating to a new policy is destructive: it updates or removes table entries that packets already in flight still depend on, and it may even change the pipeline structure beneath them.
+Second, conventional match-action table updates do not provide \emph{atomic visibility} to packets already traversing the pipeline.
+When an update lands concurrently with an enqueue or a dequeue, a single packet operation can observe a mixture of old and new scheduler state.
 For example, an enqueue may choose its path using the old flow-to-child mapping but compute its rank using newly updated per-arm metadata, or a dequeue may pop from one version of the tree and then follow next-hop state from another.
 As a result, existing PIFO-based substrates support only stop-the-world policy update~\cite{vPIFO,Alcoz23}.
 
-Leveraging the Rio transition process,
-Rio enables dynamic policy updates with minimal changes to the hardware substrate by separating \emph{incremental installation} from \emph{atomic publication}.
-In particular, Rio introduces an indirection between packet classification and rank computation.
+Rio updates the policy of a running scheduler, and it needs only small changes to this substrate to do so, because it separates \emph{incremental installation} from \emph{atomic publication}.
+The mechanism is an indirection between packet classification and rank computation.
 The ingress pipeline first maps an incoming packet to an internal identifier,
 and subsequent stages compute its rank using the state associated with that identifier.
-During a policy transition, Rio does not destructively rewrite rank-computation state that may still
-be referenced by existing packets.
-Instead, it incrementally installs the rank-computation state required by the new policy under new
-internal identifiers, while leaving unchanged and still-live state intact.
+During a policy transition, Rio does not destructively rewrite rank-computation state that packets
+already in flight may still reference.
+Instead, it installs the rank-computation state the new policy requires under fresh internal
+identifiers, leaving the state that is still live untouched.
 Once this state has been installed, Rio atomically redirects the relevant mappings to the new identifiers.
-Thus, the bulk of a policy transition remains \textbf{incremental and non-destructive},
+Thus, the bulk of a policy transition remains \emph{incremental and non-destructive},
 while atomicity is required only at the indirection boundary.
 Rio implements this boundary using a double-buffered transactional lookup table,
 which prepares updates in a standby copy and makes them visible through an atomic swap.
 
-Rio use commits, which is a sequence of updates that will be atomically visible by packets, to bridge the compiler and hardare.
-The commits have two properties:
-The first is commits that are atomic with respect to traffic.
-A \(\delta\) that lowers to many instructions has to install as a single instant.
-The tree is transiently malformed partway through a commit, and no \push{} or \pop{} may observe it in that state.
+A commit bridges the compiler and the hardware.
+It is a sequence of updates that becomes visible to packets all at once, and Rio asks two things of it.
+The first is that a commit is atomic with respect to traffic.
+A \(\delta\) that lowers to many instructions has to install in a single instant.
+The tree may be transiently malformed partway through a commit, and no \push{} or \pop{} may observe it in that state.
 That is the whole of what \cref{sec:correctness}'s argument rests on.
 
 The second is that a commit can be held until a stated predicate becomes true.
-A guarded sequence (\cref{sec:sequences}) waits for its guard before firing the \(\delta\) associated with it, and in real terms the substrate needs to do this waiting.
-Since our grammar of guards is quite simple, our substrate tests one predicate: the emptiness of a subtree.
+A guarded sequence (\cref{sec:sequences}) waits for its guard to become true before the \(\delta\) attached to it fires, and the substrate is what does the waiting.
+Our grammar of guards is simple, and our substrate tests one predicate, the emptiness of a subtree.
 That is a local test at a single PIFO, since a node's \ensuremath{\mathit{pifo}} holds an entry for every packet in its subtree (\cref{sec:controls}).
 
 % \xxx[AM to Zhiyuan]{I decided to add this second requirement, and I think you'll see why. Is that okay?}
@@ -1017,8 +1013,7 @@ A swap is atomic within one PE, but a commit generally spans several, and a pack
 The commit signals are therefore delay-aligned across PEs according to the PIFO tree topology, so that no enqueue or dequeue operation can traverse a partially updated tree.
 The controller treats the commit boundary as a wavefront.
 The new configuration becomes visible at different PEs at carefully chosen times, so that any individual packet observes a consistent configuration along its entire path.
-The double buffer and the wavefront are two mechanisms.
-Their shared purpose is pipelined dequeue, so that a request travelling the chain of PEs never observes state that a commit has left inconsistent.
+The double buffer and the wavefront both exist because dequeue is pipelined: a request travelling the chain of PEs must never observe state that a commit has left inconsistent.
 
 Our controller stages and swaps the rank-computing writes along with every other instruction in their commit, so the metadata an \Add{} carries lands in the same atomic instant as the structural change it accompanies.
 That is more than Rio needs.
@@ -1234,7 +1229,7 @@ foreach f in flows(arm):
 \end{Verbatim}
 The new subtree occupies \texttt{v}'s rightmost slot (index \texttt{n}), so existing children's indices are undisturbed.
 
-Becasue of these two walks, admitting a flow writes an entry at every node on its path rather than one entry somewhere central.
+Because of these two walks, admitting a flow writes an entry at every node on its path rather than one entry somewhere central.
 A switch could instead classify once at ingress, compute a packet's whole path there, and leave the interior nodes as pure rankers.
 We keep classification distributed, since it leaves each PE self-contained and matches the depth-by-PE layout, whereas a central classifier would have been one structure that every packet must visit before the tree.
 
