@@ -399,16 +399,26 @@ and (2) support for $\Strictstar$, the mechanism that allows splicing arbitrary 
 \section{Background}\label{sec:background}
 
 A \emph{PIFO} (push-in, first-out queue) is a priority queue that is additionally defined to break rank-ties in FIFO order.
+At enqueue a packet is assigned a \emph{rank}, and at dequeue the head of the queue is emitted.
+A PIFO is affordable at line rate because the scheduling work is done once, on arrival, and the departure side is straightforward.
 Where a single PIFO expresses just one scheduling decision, a PIFO tree composes policies via parent-child relationships, capturing the hierarchical policies that operators actually deploy.
+
+Every node of a PIFO tree holds a PIFO of its own.
+A leaf's PIFO holds packets, and an internal node's PIFO holds indices to the node's children.
+The enqueueing of a packet causes the packet itself to be placed in a leaf, and causes downward indices to be placed in all the nodes on the path from the root to that leaf.
+Each of those nodes enforces its own scheduling discipline by assigning an appropriate rank to the index it enqueues.
+A dequeue reads the best-ranked index at the root, follows it to that child, recurses, and releases the packet it finds at the leaf.
+Giving every node a queue keeps each scheduling decision local, so that a node compares only its own arms and never the backlog beneath them.
 
 A PIFO tree is typically lowered to hardware by mapping each tree depth onto a dedicated processing element (PE), with siblings and cousins sharing the PE at their depth.
 Pinning a depth level to a single PE has well-studied benefits for computation and storage, and it is the layout \citet{Sivaraman16} introduced.
 The PE budget is fixed by the silicon, so the running tree's shape is constrained by what the deployed PEs can host.
 We call such a design a PIFO \emph{substrate}: it is the hardware that buffers the packets, hosts the tree of PIFOs, and decides which packet to release next.
-A substrate is told the tree's shape and the discipline at each node when the scheduler is configured, and it holds both fixed from then on.
-\xxx[as]{Is there any other general PIFO tree background necessary to make the rest of the paper understandable? Such as: it's meant to be reconfigurable; what parts need to be reconfigured (what is the ``brain''); all the work is done on push, so pops are fast; every internal node needs a PIFO (rather than buffering everything at the leaves, as in the high-level semantics); something about the typical implementation that uses a single PE per ``layer''}
+Configuring a substrate means supplying three things: the shape of the tree, the ranking logic that each node runs, and the tables that tell a node which of its children a given flow descends into.
+Those three are the scheduler's \emph{brain}; the rest of the substrate is buffered packets and the per-node bookkeeping that the disciplines keep as they serve traffic.
+A substrate is programmable, so an operator can install a new brain at any point, but the installation is defined for a scheduler that is not in the middle of serving traffic: the brain is supplied when the scheduler is configured, and held fixed from then on.
 
-\xxx[as]{Let us make this claim: to the best of our knowledge, no prior paper on PIFO trees has addressed the details of how to reconfigure without disrupting live traffic}
+To the best of our knowledge, no prior work on PIFO trees says how to move a running scheduler from one brain to another without disturbing the traffic that the old one has already buffered.
 
 Rio supplies the layer \emph{above} a substrate: the formal transition between two policies, the small patch that realizes it, and the transitionary semantics.
 Any of the substrates surveyed in \cref{sec:related} is a plausible host, and \cref{sec:substrate-portability} sets out the minimal requirement Rio places on one.
