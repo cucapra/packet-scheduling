@@ -23,18 +23,22 @@
   \newcommand{\new}[1]{#1}
 \fi
 \usepackage[capitalize,noabbrev]{cleveref}
-\crefformat{section}{\S#2#1#3}
-\Crefformat{section}{\S#2#1#3}
-\crefformat{subsection}{\S#2#1#3}
-\Crefformat{subsection}{\S#2#1#3}
-\crefformat{subsubsection}{\S#2#1#3}
-\Crefformat{subsubsection}{\S#2#1#3}
-\crefrangeformat{section}{\S\S#3#1#4--#5#2#6}
-\Crefrangeformat{section}{\S\S#3#1#4--#5#2#6}
-\crefrangeformat{subsection}{\S\S#3#1#4--#5#2#6}
-\Crefrangeformat{subsection}{\S\S#3#1#4--#5#2#6}
-\crefrangeformat{subsubsection}{\S\S#3#1#4--#5#2#6}
-\Crefrangeformat{subsubsection}{\S\S#3#1#4--#5#2#6}
+\crefformat{section}{Section~#2#1#3}
+\Crefformat{section}{Section~#2#1#3}
+\crefformat{subsection}{Section~#2#1#3}
+\Crefformat{subsection}{Section~#2#1#3}
+\crefformat{subsubsection}{Section~#2#1#3}
+\Crefformat{subsubsection}{Section~#2#1#3}
+\crefmultiformat{section}{Sections~#2#1#3}{ and~#2#1#3}{, #2#1#3}{ and~#2#1#3}
+\Crefmultiformat{section}{Sections~#2#1#3}{ and~#2#1#3}{, #2#1#3}{ and~#2#1#3}
+\crefmultiformat{subsection}{Sections~#2#1#3}{ and~#2#1#3}{, #2#1#3}{ and~#2#1#3}
+\Crefmultiformat{subsection}{Sections~#2#1#3}{ and~#2#1#3}{, #2#1#3}{ and~#2#1#3}
+\crefrangeformat{section}{Sections~#3#1#4--#5#2#6}
+\Crefrangeformat{section}{Sections~#3#1#4--#5#2#6}
+\crefrangeformat{subsection}{Sections~#3#1#4--#5#2#6}
+\Crefrangeformat{subsection}{Sections~#3#1#4--#5#2#6}
+\crefrangeformat{subsubsection}{Sections~#3#1#4--#5#2#6}
+\Crefrangeformat{subsubsection}{Sections~#3#1#4--#5#2#6}
 
 \setlength{\emergencystretch}{3em}
 
@@ -202,13 +206,13 @@ This paper refuses to stop the world.
 Our thesis is that the interval during which a scheduler is being reprogrammed is itself a scheduling policy.
 Stopping the world does not do away with that policy but only leaves it unstated and unchosen.
 Understanding this unstated policy is a language problem.
-A transitionary policy needs a syntax that the operator can read, a semantics that says which packet leaves next, and a lowering onto hardware that was built for the policy it is already running.
+A transitional policy needs a syntax that the operator can read, a semantics that says which packet leaves next, and a lowering onto hardware that was built for the policy it is already running.
 With those in hand, the question of whether a transition was carried out correctly becomes a theorem about the semantics rather than a measurement of the hardware.
 Rio supplies all three: a language of policy edits, a semantics for them, and a lowering of them onto a PIFO substrate.
 
 A transition from a running policy \(p_1\) to a requested policy \(p_2\) takes one of two shapes (\cref{fig:two-timelines}).
 Sometimes the requested policy can be installed immediately, as a single atomic transition (case~1).
-Sometimes it cannot, and the scheduler must first pass through a transitionary policy (case~2).
+Sometimes it cannot, and the scheduler must first pass through a transitional policy (case~2).
 Our two candidates illustrate the two cases.
 
 \begin{figure}[t]
@@ -224,7 +228,7 @@ Our two candidates illustrate the two cases.
 \node[above] at (3,1.7) {$t_1$};
 \node[lbl] at (1.6,1.3) {p1};
 \node[lbl] at (5.6,1.3) {p2};
-% ---- Row (2): the hard transition, with a transitionary period ----
+% ---- Row (2): the hard transition, with a transitional period ----
 \node at (-0.05,0) {(2)};
 \draw[->,thick] (0.4,0) -- (8.2,0);
 \draw[thick] (3,-0.2) -- (3,0.2);
@@ -232,10 +236,10 @@ Our two candidates illustrate the two cases.
 \node[above] at (3,0.2) {$t_1$};
 \node[above] at (5.5,0.2) {$t_2$};
 \node[lbl] at (1.6,-0.2) {p1};
-\node[lbl, font=\small\itshape, align=center] at (4.25,-0.2) {transitionary\\policy};
+\node[lbl, font=\small\itshape, align=center] at (4.25,-0.2) {transitional\\policy};
 \node[lbl] at (6.85,-0.2) {p2};
 \end{tikzpicture}
-\caption{The two shapes a transition from a running \(p_1\) to a requested \(p_2\) can take. Sometimes \(p_2\) can be installed immediately, as a single atomic change at \(t_1\) (case~1). Sometimes it cannot, and the scheduler passes through a transitionary policy from \(t_1\) until a guard becomes true at \(t_2\) (case~2).}
+\caption{The two shapes a transition from a running \(p_1\) to a requested \(p_2\) can take. Sometimes \(p_2\) can be installed immediately, as a single atomic change at \(t_1\) (case~1). Sometimes it cannot, and the scheduler passes through a transitional policy from \(t_1\) until a guard becomes true at \(t_2\) (case~2).}
 \label{fig:two-timelines}
 \end{figure}
 
@@ -252,20 +256,20 @@ As before, \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,
 Transitioning immediately would mean moving those buffered \textsf{gmail} packets under the new round-robin node.
 A packet is ranked as it arrives and at no other time.
 These packets arrived before the round-robin node existed, so that node never ranked them and now cannot.
-We atomically step instead into a \emph{transitionary policy} that is \emph{not} the one the operator asked for.
+We atomically step instead into a \emph{transitional policy} that is \emph{not} the one the operator asked for.
 After \(t_1\) but before \(t_2\), the scheduler still accepts and emits packets under it.
 At time \(t_2\), defined as the instant that a well-defined guard becomes true, we atomically step into \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\RR(\textsf{gmail},\allowbreak\ \textsf{spotify}))\).
 
 The operator never specified the semantics of the interval from \(t_1\) to \(t_2\), but that interval is a packet scheduling regime all the same.
 It is unavoidable, it persists for nonzero time, and throughout it the scheduler goes on accepting and emitting packets, so scheduling decisions are being made in it.
 Some of those decisions are better than others from the operator's point of view, and the state of the art has settled on a trivial one, discarding the backlog and starting over~\cite{vPIFO}.
-Our contributions are to say what the transitionary policy is and to do better than that.
+Our contributions are to say what the transitional policy is and to do better than that.
 
 Rio's language is a grammar of atomic policy edits, each one a change the hardware can install in a single instant (\cref{sec:delta-grammar}).
-Its semantics gives every edit a meaning in the operator's own policy language, so \emph{any transitionary policy the grammar produces is ordinary scheduling}, readable exactly as \(p_1\) and \(p_2\) are (\cref{sec:edit-semantics}).
+Its semantics gives every edit a meaning in the operator's own policy language, so \emph{any transitional policy the grammar produces is ordinary scheduling}, readable exactly as \(p_1\) and \(p_2\) are (\cref{sec:edit-semantics}).
 A planner turns a requested \(p_2\) into a guarded sequence of those edits (\cref{sec:planner}), and a mechanical lowering carries each edit down to the instructions that a switch runs (\cref{sec:hw-compile}).
 A transition from any \(p_1\) to any \(p_2\) is always available, and many admit a realization confined to the part of the tree that actually changes.
-We will give the semantics of the stop-the-world transitionary policy and use it as a baseline.
+We will give the semantics of the stop-the-world transitional policy and use it as a baseline.
 Two practical goals guide the search for better ways to transition from a given \(p_1\) to a given \(p_2\).
 We would like to shorten the transition period, and we would like to avoid dropping or delaying packets.
 \xxx[AM]{more to come here; the cost model is a legit open question!}
@@ -339,7 +343,7 @@ Rio does not support a single atomic transition from $p_1$ to $p_2$.
 The problem is that inserting the $\RR$ node would require relocating all the in-flight \textsf{gmail} packets from one hardware queue to another:
 a costly, long-latency data copy.
 Instead, we can implement the transition in two atomic steps.
-In our first atomic step, we install a transitionary policy, $p_\text{temp}$ (shown in the middle of the top row of \cref{fig:tour}).
+In our first atomic step, we install a transitional policy, $p_\text{temp}$ (shown in the middle of the top row of \cref{fig:tour}).
 The idea is to insert a new, empty $\RR$ subtree
 without deleting the old \textsf{gmail} queue and its in-flight packets.
 The $\Strictstar$ policy prioritizes the old packets over new packets.
@@ -362,7 +366,7 @@ Our set of atomic policy edits (\Cref{sec:delta-grammar}) is \emph{complete:}
 for any pair of policies, there exists a chain of edits that implements a transition between them.
 However, some policy changes are more disruptive than others.
 A change from $p_1$ to $p'$ happens in a single atomic edit, while
-changing from $p_1$ to $p_2$ requires some time in the transitionary policy $p_\text{temp}$.
+changing from $p_1$ to $p_2$ requires some time in the transitional policy $p_\text{temp}$.
 A more drastic policy change may call for a longer chain of intermediate policies, or intermediate policies that are further from both endpoints.
 
 Rio puts the network operator in charge of which transition strategy to use.
@@ -420,7 +424,7 @@ A substrate is programmable, so an operator can install a new brain at any point
 
 To the best of our knowledge, no prior work on PIFO trees says how to move a running scheduler from one brain to another without disturbing the traffic that the old one has already buffered.
 
-Rio supplies the layer \emph{above} a substrate: the formal transition between two policies, the small patch that realizes it, and the transitionary semantics.
+Rio supplies the layer \emph{above} a substrate: the formal transition between two policies, the small patch that realizes it, and the transitional semantics.
 Any of the substrates surveyed in \cref{sec:related} is a plausible host, and \cref{sec:substrate-portability} sets out the minimal requirement Rio places on one.
 
 \section{Policies and Edits}\label{sec:model}
@@ -793,7 +797,7 @@ So \(\sim\)-related controls, which share shape and \zz outright, are equal when
 Thus, if \(C \sim C'\), then \(\lfloor C \rfloor = \lfloor C' \rfloor\).
 \end{enumerate}
 
-This is how we give the transitionary policy the semantics that \cref{sec:intro} promises.
+This is how we give the transitional policy the semantics that \cref{sec:intro} promises.
 Even when the presently running \pol is just an intermediate policy that the runtime crafted on the way from the running policy to the operator's true request, we can still read off and report to the operator exactly what is running.
 \cref{sec:interplay} adds the fact that makes this hold across an edit, that a form's two readings agree, and proves it as the ``commuting square'' these pieces trace out.
 
@@ -892,7 +896,7 @@ A guard \(\varphi\) is a condition on the live control that the substrate can be
 A \emph{step} is one guard together with the run of \(\delta\)s that guard releases.
 
 Both theorems hold at every step of a sequence.
-Each \(\delta\) fires on the well-formed control that the previous one left behind (\cref{thm:interplay}), so \(\lfloor \cdot \rfloor\) names the \pol in force at every point, which is what \cref{sec:intro} promises of the transitionary period, and the backlog survives the whole sequence (\cref{thm:nondisruption}).
+Each \(\delta\) fires on the well-formed control that the previous one left behind (\cref{thm:interplay}), so \(\lfloor \cdot \rfloor\) names the \pol in force at every point, which is what \cref{sec:intro} promises of the transitional period, and the backlog survives the whole sequence (\cref{thm:nondisruption}).
 
 A sequence that reconfigures a real tree is a list of small edits, which is not how an operator thinks about their scheduler.
 An \emph{idiom} is a name for a sequence that recurs, and two of them cover what we need.
@@ -1115,7 +1119,7 @@ The wavefront paragraph may be wrong.}
 Each \(\delta\) (\cref{sec:delta-grammar}) lowers to one \texttt{commit}.
 The ISA itself is unconditional.
 The substrate trusts that its caller has issued a well-formed commit.
-Any situation-dependent reasoning, such as ``the subtree we are about to collapse is empty'', lives at \cref{sec:sequences}, in a guard \(\varphi\) that had to become true before the corresponding \(\delta\) fired.
+Any situation-dependent reasoning, such as ``the subtree we are about to collapse is empty'', lives in \cref{sec:sequences}, in a guard \(\varphi\) that had to become true before the corresponding \(\delta\) fired.
 
 The ISA has thirteen opcodes, laid out in \cref{tab:isa-opcodes}.
 They address a PIFO by an opaque id \texttt{v}, one per tree node, and one of its arms by an \emph{index}, an opaque per-PIFO handle for a child.
@@ -2288,7 +2292,7 @@ Such a step names the arm's index before the \Retire{}s rather than after, since
 Every recursion descends through a slot where the two trees agree or where the label-overlap walk has paired them.
 So by the time the per-level comparator gives up and emits a \Replace{} at depth \(k\), every shallower level has already matched a tight case.
 The \Replace{} lands at the deepest slot to which the planner could isolate the difference, leaving every ancestor's other subtrees running undisturbed.
-The slot-level \Replace{} is the \cref{sec:sequences} idiom with a non-empty path: it wraps only the slot's subtree, quiesces only that subtree, and rewires only the parent edge into it.
+The slot-level \Replace{} is the idiom of \cref{sec:sequences} with a non-empty path: it wraps only the slot's subtree, quiesces only that subtree, and rewires only the parent edge into it.
 The worst case is the root-level \(\Replace([], p_2)\) of \cref{sec:sequences}, reached only when the per-level comparator gives up at the root with no recursive descent.
 
 
