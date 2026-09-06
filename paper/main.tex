@@ -14,6 +14,14 @@
 \usepackage{xspace}
 \newcount\draft \draft=1
 \usepackage{xxx}
+% Prose added during review, so a collaborator can see at a glance what is new.
+% Goes black the moment \draft is 0.
+\definecolor{newtext}{HTML}{1B7837}% green
+\ifnum\draft=1
+  \newcommand{\new}[1]{\textcolor{newtext}{#1}}
+\else
+  \newcommand{\new}[1]{#1}
+\fi
 \usepackage[capitalize,noabbrev]{cleveref}
 \crefformat{section}{\S#2#1#3}
 \Crefformat{section}{\S#2#1#3}
@@ -184,7 +192,7 @@ Such changes need to be rapid and seamless.
 The scheduler, however, was compiled for the policy it is running.
 Its tree shape, its per-node disciplines, and its table contents are all artifacts of a decision made before the switch was brought up, and the compilers that produce them accept \emph{a policy to run} rather than \emph{a change to the policy already running}.
 
-Consider a small-office gateway running \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\textsf{gmail})\), strictly prioritizing real-time \textsf{zoom} traffic over \textsf{gmail} traffic.
+Consider a programmable switch running \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\textsf{gmail})\), strictly prioritizing real-time \textsf{zoom} traffic over \textsf{gmail} traffic.
 The network operator wants to add a new \textsf{spotify} flow, and is considering two candidate policies:
 \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{mid}{:}\,\textsf{spotify},\allowbreak\ \mathtt{lo}{:}\,\textsf{gmail})\), extending the strict-priority list with \textsf{spotify}; or
 \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\RR(\textsf{gmail},\allowbreak\ \textsf{spotify}))\), keeping \textsf{zoom} at the higher tier but having \textsf{gmail} and \textsf{spotify} share the lower tier via round-robin.
@@ -270,105 +278,124 @@ We contribute a tool that achieves this and shows [improvements].
 
 \section{Rio by Example}\label{sec:tour}
 
-\xxx[AM]{Opening sentences TK, and obviously the Intro before this will shrink considerably. For now I am drafting this section and making \emph{none} of the cuts that it will trigger.}
+\Cref{fig:tour} illustrates Rio's approach to implementing an incremental update to a packet-scheduling policy.
+This section walks through the example to provide an overview of the Rio system and this paper.
 
-\paragraph{The policy an operator writes}
+\paragraph{Scheduling policies}
 
-\begin{figure}[t]
+Imagine a programmable switch that needs to prioritize traffic from two flows, labeled \textsf{zoom} and \textsf{gmail}.
+This switch uses a reconfigurable packet scheduler based on PIFO trees~\cite{Sivaraman16}.
+An operator configures the switch to always prioritize \textsf{zoom} packets over \textsf{gmail} packets.
+
+Instead of directly configuring the PIFO-based hardware's scheduling transactions, the operator specifies the policy using a simple hierarchical policy language.
+The policy for this strict prioritization is:
+%
+\[ p_1 = \Strict(\mathtt{hi}{:}\,\textsf{zoom},\ \mathtt{lo}{:}\,\textsf{gmail}) \]
+%
+The policy is a tree: each leaf names a flow, and each internal node runs a scheduling discipline over its children.
+Every arm of an internal node carries a label that tells the discipline how to treat that arm; here those labels are the priorities $\mathtt{hi}$ and $\mathtt{lo}$.
+Semantically, the packet scheduler works by queueing incoming packets at the leaves and recursively popping packets according to each discipline.
+% When a packet arrives, the classifies the packet and pushes it into the FIFO queue for the corresponding leaf in the policy tree.
+% Scheduling disciplines determine which child to (recursively) pop when sending packets.
+This $\Strict$ discipline always picks the $\mathtt{hi}$ subtree over the $\mathtt{lo}$ subtree.
+% In this example, the $\Strict$ discipline always forwards packets from the $\mathtt{hi}$ subtree when they are available, only falling back to the $\mathtt{lo}$ subtree when the former queue is empty.
+\Cref{sec:policy-dsl} makes this policy language precise.
+
+\paragraph{Changing the scheduling policy}
+
+Next, imagine that a new flow arrives, labeled $\mathsf{spotify}$.
+The operator wants to implement a new packet scheduling policy that incorporates this flow:
+%
 \[
-\begin{array}{@{}l@{}}
-\mathit{flow} \in F\\[4pt]
-D\ \text{a scheduling discipline, declaring a metadata set } M_{D}\\[8pt]
-\mathit{pol} \mathrel{::=} \mathit{flow} \;\mid\; D(m_1{:}\,\mathit{pol}_1, \ldots, m_n{:}\,\mathit{pol}_n),\ m_i \in M_{D}
-\end{array}
+p' = \Strict(\mathtt{hi}{:}\,\textsf{zoom},\ \mathtt{mid}{:}\,\textsf{spotify},\ \mathtt{lo}{:}\,\textsf{gmail})
 \]
-\caption{The policy language \(\mathit{pol}\).}
-\label{fig:pol-grammar}
-\end{figure}
+%
+This paper's purpose is to implement policy changes like this with low latency and without dropping packets.
+\xxx[am]{Minor: ``changes like this'' points at the single \Add{} the reader has just met, which is the easy case.
+The paper's purpose is the hard case, so this sentence may need to be widened once \S2 settles.}
 
-An operator writes a policy in \pol (\cref{fig:pol-grammar}), a small grammar that permits either a leaf carrying a \emph{flow} (a predicate over packets), or an internal node applying a scheduling discipline to its child policies.
-Each arm is labeled with a metadatum the discipline declares, and no flow may label two leaves of a policy that an operator writes.
-Say that the network operator initially writes
-\[ p_1 = \Strict(\mathtt{hi}{:}\,\textsf{zoom},\ \mathtt{lo}{:}\,\textsf{gmail}), \]
-which is visualized in the top left of \cref{fig:tour}.
-Everything on that figure's top row is written in \pol and is human readable.
+Our key thesis is that PIFO-tree-based packet schedulers can efficiently support some kinds of policy changes but not others.
+We identify a set of \emph{policy edits} that this kind of hardware can implement \emph{atomically:}
+i.e., so that the policy changes between the processing of two adjacent packets in the traffic stream.
+The change from \(p_1\) to \(p'\) is simple enough that a single atomic edit suffices:
+%
+\[
+\Add([\,],\ \Strict,\ \textsf{spotify},\ \mathtt{mid})
+\]
+%
+\xxx[AM to AS]{I can name the four arguments here if you would like them named: the path \([\,]\) points at the node that receives the new arm, here the root, and the other three are the discipline that node runs, the arm to splice in, and the metadatum that tells \Strict{} how to schedule it.
+My view is that leaving them until we meet the grammar in \cref{sec:grammar} is fine.}
+\Cref{sec:grammar} enumerates and formalizes these policy edits,
+and \Cref{sec:hardware} demonstrates how PIFO tree hardware can implement them atomically.
 
-\paragraph{What the policy compiles to}
+\paragraph{A two-step policy change}
 
-A policy is a human-readable description, and underneath it the scheduler is a \emph{control}, a tree of PIFOs carrying scheduling logic at every node (\cref{sec:controls}).
-The bottom row of \cref{fig:tour} shows controls.
-Compiling a policy into a control is written \(\lceil \cdot \rceil\), and the leftmost is \(C_1 = \lceil p_1 \rceil\), a freshly compiled control that is entirely faithful to the operator's wish.
-\cref{sec:hardware} lowers a control onto a real switch.
+Suppose that, instead of $p'$, the operator wants to move from $p_1$ to a policy that replaces a leaf with a subtree:
+%
+\[ p_2 = \Strict(\mathtt{hi}{:}\,\textsf{zoom},\ \mathtt{lo}{:}\,\RR(\textsf{gmail},\allowbreak\ \textsf{spotify})) \]
+%
+The upper-left and upper-right of \cref{fig:tour} illustrate the policies $p_1$ and $p_2$.
 
-\paragraph{An easy change}
+Rio does not support an atomic transition from $p_1$ to $p_2$.
+The problem is that inserting the $\RR$ node would require relocating all the in-flight \textsf{gmail} packets from one hardware queue to another:
+a costly, long-latency data copy.
+Instead, we can implement the transition in two atomic edits.
+In our first atomic edit, we install a transitionary policy, $p_\text{temp}$ (shown in the middle of the top row of \cref{fig:tour}).
+The idea is to insert a new, empty $\RR$ subtree
+without deleting the old \textsf{gmail} queue and its in-flight packets.
+The $\Strictstar$ policy prioritizes the old packets over new packets.
+The two leaves that \cref{fig:tour} tags \textsf{gmail}\textsubscript{old} and \textsf{gmail}\textsubscript{new} carry the same flow, split by arrival time: all new traffic (that is, traffic arriving after the first atomic edit has run) goes to the new subtree, while the previously buffered packets in \textsf{gmail}\textsubscript{old} drain.
+When \textsf{gmail}\textsubscript{old} becomes empty, $p_\text{temp}$ behaves identically to $p_2$.
+At this point, a second atomic edit runs, collapsing the $\Strictstar$ policy and transitioning to $p_2$, as desired.
 
-Say the operator wants to add \textsf{spotify} to the strict-priority list, asking for \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{mid}{:}\,\textsf{spotify},\allowbreak\ \mathtt{lo}{:}\,\textsf{gmail})\).
-Rio's \emph{transition planner} (\cref{sec:planner}) reads the running policy and the requested one, and proposes a way from the first to the second.
-Whatever it proposes is drawn from a small grammar of tree edits, whose productions are written \(\delta\) (\cref{sec:grammar}).
-Here the proposal is a single \(\delta\), \Add, which splices a freshly compiled arm under a node that is already running (\cref{sec:add}).
-The nodes above the new arm begin admitting \textsf{spotify} traffic and passing it downward.
-Every other field of every node is left as it was, and nothing that was already buffered is affected.
-The edit installs \emph{atomically}, meaning each packet is scheduled either wholly under the old policy or wholly under the new one.
-This is case~1 of \cref{fig:two-timelines}.
+% Although an atomic transition from $p_1$ to $p_2$ is not possible,
+Rio can implement atomic transitions from $p_1$ to $p_\text{temp}$ and from $p_\text{temp}$ to $p_2$.
+The key mechanism in this example is the $\Strictstar$ policy node, which reflects a special mechanism we add to PIFO tree hardware to enable efficient policy changes.
+\Cref{sec:hw-survivor} details $\Strictstar$ and the atomic edits that add and remove it.
 
-\paragraph{A change that cannot be installed at once}
+Rio can name the policy in force at every instant, in the operator's own language, including throughout the interval in which the scheduler runs a policy that \emph{no operator requested}.
+\xxx[am]{Keeping this claim, with a marker that both it and \cref{fig:tour} may want refining in a next step.
+The mechanism behind it now lives in the caption, and that is where a reader may stumble: we have not yet said what a \emph{control} is, and it is not obvious why we would care about reading a policy back off a control when the policy is the thing we edit.}
 
-Suppose instead that the operator wanted to move from \(p_1\) to
-\[ p_2 = \Strict(\mathtt{hi}{:}\,\textsf{zoom},\ \mathtt{lo}{:}\,\RR(\textsf{gmail},\allowbreak\ \textsf{spotify})), \]
-which is the rightmost policy of \cref{fig:tour}.
-Installing it atomically would mean dropping the buffered \textsf{gmail} packets or moving them under the new round-robin node.
-Rio does neither.
-\xxx[AM]{The \emph{reason} why Rio does neither is currently in the Intro. If the Intro is trimmed, let's remember to save that reasoning, or to attempt a fresh explanation here.}
+\paragraph{Planning policy transitions}
 
+Our set of atomic policy edits (\Cref{sec:grammar}) is \emph{complete:}
+for any pair of policies, there exists a chain of edits that implements a transition between them.
+However, some policy changes are more disruptive than others.
+A change from $p_1$ to $p'$ happens in a single atomic edit, while
+changing from $p_1$ to $p_2$ requires some time in the transitionary policy $p_\text{temp}$.
+More drastic policy changes might require intermediate policies that are even more different than the endpoints.
 
-\paragraph{Reaching it anyway}
+Rio puts the network operator in charge of which transition strategy to use.
+By specifying a sequence of policy edits, a user can choose which intermediate policies to deploy in each step.
+We also implement a simple automatic \emph{transition planner} that suffices in the common case (\Cref{sec:planner}).
 
-No one form of \(\delta\) carries \(p_1\) to \(p_2\), so the transition planner proposes a short sequence of \(\delta\)s, each installable atomically, which together arrive at \(p_2\).
-These \(\delta\)s do not all fire at once.
-The sequence has to wait, in this case for the buffered \textsf{gmail} packets to drain, and while it waits the scheduler runs a policy that is neither \(p_1\) nor \(p_2\).
-Rio steps into that \emph{transitionary policy} first, and the middle panel of \cref{fig:tour} shows that policy.
-\Designate{} replaces \textsf{gmail}, the root's \(\mathtt{lo}\) arm, in place with a two-arm strict node, written \(\Strictstar\) (\cref{sec:designate}).
-Its high arm is the doomed \textsf{gmail} subtree, carried over with its buffered packets untouched.
-Its low arm is a freshly compiled \(\RR(\textsf{gmail},\allowbreak\ \textsf{spotify})\), which starts empty.
-\Quiesce{} closes the doomed arm to new packets (\cref{sec:quiesce}).
-The \emph{instant that \Designate{} fires} becomes the boundary between old \textsf{gmail} traffic, which drains from the doomed arm, and new \textsf{gmail} traffic, which the surviving arm schedules and stores.
-The backlog drains in its original order while new traffic gathers beside it.
-Once the doomed arm is empty, \Undesignate{} unhooks it together with the \(\Strictstar\) wrapper, leaving the survivor where the \textsf{gmail} leaf once stood (\cref{sec:undesignate}).
-That is \(p_2\).
-We have reached it without dropping, reordering, or re-ranking a single buffered packet, which is the key theorem of this paper rather than a happy accident of this example.
+Any reconfiguration that cannot be installed in a single atomic edit has an interval in which the scheduler is running neither the initial policy nor the final one.
+What varies is how that interval is governed.
+The usual answers are to drop packets, to recirculate traffic, or to tolerate a period of chaos during which the hardware uses no clearly defined scheduling policy.
+Rio's interval is governed by a policy tree that the operator can read, and every transition into and out of it is atomic.
+The backlog drains and new arrivals are queued throughout.
 
-\paragraph{Steps and guards}
+\paragraph{Formal guarantees}
+We formalize the semantics of policy edits and their effects on PIFO tree operation.
+Our goal is to guarantee that policy edits correctly update PIFO tree state to achieve the desired change in the high-level policy.
 
-Those three \(\delta\)s form one \emph{guarded sequence}, and \cref{fig:tour} draws the two \emph{step}s needed in our example.
-A step is a guard together with the \(\delta\)s that guard releases.
-Here the first step's guard is trivially true, and it releases \Designate{} and \Quiesce{} at once.
-The second step's guard becomes true when the doomed arm is empty, and it releases \Undesignate.
-So this sequence waits in one place, and in this example the operator passes through precisely one policy they did not ask for.
-Rio gives names to idiomatic sequences that tend to recur; in our example we have just seen the idiom \Replace{} (\cref{sec:idioms}).
+Specifically, \Cref{sec:controls} presents a formal description of a PIFO tree \emph{control}, $C$, representing the state of a packet scheduler.
+The control includes the logic to implement a desired policy,
+the in-flight packets,
+and any necessary policy bookkeeping state.
+A compiler translates a policy tree $p$ into a control $C$.
 
-\paragraph{What the operator is told throughout}
+\Cref{sec:grammar} formalizes the semantics of policy edits, $\delta$.
+We describe how each edit affects both high-level policies $p$ and low-level controls $C$.
+Our central guarantee is that these edits agree; \cref{sec:correctness} states and proves this theorem.
 
-The middle panel of \cref{fig:tour} is a policy, expressed in the same grammar \pol in which the operator wrote \(p_1\) and \(p_2\).
-The middle policy was recovered from the running control by a read-off written \(\lfloor \cdot \rfloor\) (\cref{sec:equivalences}).
-The solid upward arrow rising out of the transitionary control is that recovery.
-The dashed arrow on the right is the route Rio does not take.
-It never compiles \(p_2\) from scratch, and a from-scratch compile would have produced a different control that behaves the same.
-So at every instant of the transition, including the whole interval in which the physical scheduler runs a policy that \emph{no operator asked for}, Rio can say which policy is in force, and say it in the operator's own terms.
-
-Two theorems make this worth something (\cref{sec:correctness}).
-The first is that the policy that Rio reports and the policy that the live control realizes \emph{agree}, edit by edit.
-The second is that installing an edit leaves every queued packet exactly where it was, so any change the operator observes is the new policy governing new arrivals rather than a cost of the transition itself.
-
-\paragraph{Confinement}
-
-We show in \cref{sec:fallback} that there always exists a fallback sequence from any \(p_1\) to any \(p_2\).
-That fallback disturbs every node in the tree, so the transition planner attempts to improve upon it by descending while the two policies still agree, then emitting the tightest \(\delta\) it can at the deepest point it reaches.
-Rio calls that economy \emph{confinement}, and \cref{fig:tour} shows it: the \Strict{} root and the \textsf{zoom} arm are untouched in all three panels, and everything shaded is freshly built.
-
-\paragraph{Down to the switch}
-
-Each edit is lowered mechanically into a short list of instructions that a programmable switch can run, and the substrate installs one such list as a single commit (\cref{sec:hardware}).
-That commit is what makes an edit atomic in practice.
+\paragraph{Hardware implementation}
+\Cref{sec:hardware} shows how to augment PIFO tree hardware with support for Rio's policy edits.
+We start with a basic PIFO-tree-based packet scheduler and make two additions:
+(1) an instruction set for atomically updating policy scheduler state and lookup tables,
+and (2) support for $\Strictstar$, the mechanism that allows splicing arbitrary policy subtrees without relocating packets across hardware queues.
+\xxx[as]{Short preview of results: e.g., the additions do not add much area, and RTL simulations show that transitions actually work.}
 
 \section{Background}\label{sec:background}
 
@@ -409,6 +436,18 @@ The two layers can plausibly compose, and \cref{sec:substrate-portability} sets 
 This section introduces the high-level programming interface for Rio.
 \cref{sec:policy-dsl} gives a small DSL for specifying hierarchical packet scheduling policies,
 and \cref{sec:edits} enumerates a set of \emph{policy edits} for incrementally modifying these policies.
+
+\begin{figure}[t]
+\[
+\begin{array}{@{}l@{}}
+\mathit{flow} \in F\\[4pt]
+D\ \text{a scheduling discipline, declaring a metadata set } M_{D}\\[8pt]
+\mathit{pol} \mathrel{::=} \mathit{flow} \;\mid\; D(m_1{:}\,\mathit{pol}_1, \ldots, m_n{:}\,\mathit{pol}_n),\ m_i \in M_{D}
+\end{array}
+\]
+\caption{The policy language \(\mathit{pol}\).}
+\label{fig:pol-grammar}
+\end{figure}
 
 \subsection{Policy Language}\label{sec:policy-dsl}
 
