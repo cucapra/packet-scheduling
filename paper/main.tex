@@ -313,7 +313,7 @@ p' = \Strict(\mathtt{hi}{:}\,\textsf{zoom},\ \mathtt{mid}{:}\,\textsf{spotify},\
 This paper's purpose is to implement policy changes like this with low latency and without dropping packets.
 
 Our key thesis is that PIFO-tree-based packet schedulers can efficiently support some kinds of policy changes but not others.
-We identify a set of \emph{policy edits} that this kind of hardware can implement \emph{atomically}:
+We identify a set of \emph{policy edits} that this kind of hardware can implement \emph{atomically:}
 i.e., so that the policy changes between the processing of two adjacent packets in the traffic stream.
 The change from \(p_1\) to \(p'\) is simple enough that a single atomic edit suffices:
 %
@@ -356,7 +356,7 @@ Rio can therefore name the policy in force at every instant, in the operator's o
 
 \paragraph{Planning policy transitions}
 
-Our set of atomic policy edits (\Cref{sec:grammar}) is \emph{complete}:
+Our set of atomic policy edits (\Cref{sec:grammar}) is \emph{complete:}
 for any pair of policies, there exists a chain of edits that implements a transition between them.
 However, some policy changes are more disruptive than others.
 A change from $p_1$ to $p'$ happens in a single atomic step, while
