@@ -369,17 +369,11 @@ Rio puts the network operator in charge of which transition strategy to use.
 By specifying a sequence of policy edits, a user can choose which intermediate policies to deploy in each step.
 We also implement a simple automatic \emph{transition planner} that suffices in the common case (\Cref{sec:planner}).
 
-It may seem disappointing that some policy transitions require a period of time when scheduling behaves like neither the initial policy nor the final policy.
-We argue that this situation is nonetheless better than the potential alternatives:
-dropping packets, recirculating traffic, or a period of chaos during which the hardware uses no clearly defined scheduling policy.
-With Rio, all intermediate states are clearly described as policy trees, and transitions between these states are always atomic.
-\xxx[AM to AS]{I would like to attempt another way to do the paragraph above.
-\S1's stance is that the transitionary interval is a scheduling policy whether or not anyone names it, so stopping the world does not do away with it and only leaves it unstated and unchosen.
-Your ``It may seem disappointing'' recasts that as a limitation of Rio's, which makes me uncomfortable. Replacement proposal below.}
-
-\new{Every reconfiguration has an interval in which the scheduler is running neither the initial policy nor the final one.
-Stopping the world does not remove that interval, but only leaves the policy that governs it unstated and unchosen.
-Rio's interval is governed by a policy tree the operator can read, and every transition into and out of it is atomic.}
+Any reconfiguration of a live scheduler has an interval in which the scheduler is running neither the initial policy nor the final one.
+What varies is how that interval is governed.
+The usual answers are to drop packets, to recirculate traffic, or to accept a period of chaos during which the hardware uses no clearly defined scheduling policy.
+Rio's interval is governed by a policy tree that the operator can read, and every transition into and out of it is atomic.
+The backlog drains and new arrivals are queued throughout.
 
 \paragraph{Formal guarantees}
 We formalize the semantics of policy edits and their effects on PIFO tree operation.
