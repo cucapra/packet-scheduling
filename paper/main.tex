@@ -195,7 +195,7 @@ Such changes need to be rapid and seamless.
 The scheduler, however, was compiled for the policy it is running.
 Its tree shape, its per-node disciplines, and its table contents are all artifacts of a decision made before the switch was brought up, and the compilers that produce them accept \emph{a policy to run} rather than \emph{a change to the policy already running}.
 
-Consider a programmable switch running \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\textsf{gmail})\), strictly prioritizing real-time \textsf{zoom} traffic over \textsf{gmail} traffic.
+Consider a programmable switch running the policy \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\textsf{gmail})\), strictly prioritizing real-time \textsf{zoom} traffic over \textsf{gmail} traffic.
 The network operator wants to add a new \textsf{spotify} flow, and is considering two candidate policies:
 \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{mid}{:}\,\textsf{spotify},\allowbreak\ \mathtt{lo}{:}\,\textsf{gmail})\), extending the strict-priority list with \textsf{spotify}; or
 \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\RR(\textsf{gmail},\allowbreak\ \textsf{spotify}))\), keeping \textsf{zoom} at the higher tier but having \textsf{gmail} and \textsf{spotify} share the lower tier via round-robin.
@@ -239,7 +239,7 @@ Our two candidates illustrate the two cases.
 \node[lbl, font=\small\itshape, align=center] at (4.25,-0.2) {transitional\\policy};
 \node[lbl] at (6.85,-0.2) {p2};
 \end{tikzpicture}
-\caption{The two shapes a transition from a running \(p_1\) to a requested \(p_2\) can take. Sometimes \(p_2\) can be installed immediately, as a single atomic change at \(t_1\) (case~1). Sometimes it cannot, and the scheduler passes through a transitional policy from \(t_1\) until a guard becomes true at \(t_2\) (case~2).}
+\caption{The two shapes a transition from a running \(p_1\) to a requested \(p_2\) can take, immediate at \(t_1\) (case~1) or through a transitional policy until \(t_2\) (case~2).}
 \label{fig:two-timelines}
 \end{figure}
 
@@ -315,7 +315,7 @@ p' = \Strict(\mathtt{hi}{:}\,\textsf{zoom},\ \mathtt{mid}{:}\,\textsf{spotify},\
 %
 This paper's purpose is to implement policy changes like this with low latency and without dropping packets.
 \xxx[am]{Minor: ``changes like this'' points at the single \Add{} the reader has just met, which is the easy case.
-The paper's purpose is the hard case, so this sentence may need to be widened once \S2 settles.}
+The paper's purpose is the hard case, so this sentence may need to be widened once \cref{sec:tour} settles.}
 
 Our key thesis is that PIFO-tree-based packet schedulers can efficiently support some kinds of policy changes but not others.
 We identify a set of \emph{policy edits} that this kind of hardware can implement \emph{atomically:}
@@ -391,7 +391,7 @@ A compiler translates a policy tree $p$ into a control $C$.
 
 \Cref{sec:delta-grammar} formalizes the semantics of policy edits, $\delta$.
 We describe how each edit affects both high-level policies $p$ and low-level controls $C$.
-Our central guarantee is that these edits agree; \cref{sec:correctness} states and proves this theorem.
+Our central guarantees are that these edits agree, and that installing one never disturbs the buffered backlog; \cref{sec:correctness} states and proves both theorems.
 
 \paragraph{Hardware implementation}
 \Cref{sec:hardware} shows how to augment PIFO tree hardware with support for Rio's policy edits.
@@ -417,7 +417,7 @@ Giving every node a queue keeps each scheduling decision local, so that a node c
 A PIFO tree is typically lowered to hardware by mapping each tree depth onto a dedicated processing element (PE), with siblings and cousins sharing the PE at their depth.
 Pinning a depth level to a single PE has well-studied benefits for computation and storage, and it is the layout \citet{Sivaraman16} introduced.
 The PE budget is fixed by the silicon, so the running tree's shape is constrained by what the deployed PEs can host.
-We call such a design a PIFO \emph{substrate}: it is the hardware that buffers the packets, hosts the tree of PIFOs, and decides which packet to release next.
+We call such a design a PIFO \emph{substrate:} it is the hardware that buffers the packets, hosts the tree of PIFOs, and decides which packet to release next.
 Configuring a substrate means supplying three things: the shape of the tree, the ranking logic that each node runs, and the tables that tell a node which of its children a given flow descends into.
 Those three are the scheduler's \emph{brain}; the rest of the substrate is buffered packets and the per-node bookkeeping that the disciplines keep as they serve traffic.
 A substrate is programmable, so an operator can install a new brain at any point, but the installation is defined for a scheduler that is not in the middle of serving traffic: the brain is supplied when the scheduler is configured, and held fixed from then on.
@@ -458,7 +458,7 @@ For instance, \(M_{\Strict}\) is a set of priorities, and \(M_{\WFQ}\), for weig
 The \(\mathtt{hi}\) and \(\mathtt{lo}\) labels on \(p_1\)'s arms in \cref{sec:tour} are metadata of the first kind.
 A discipline that treats its arms alike, such as \RR, declares a one-element set, and we elide that element when writing examples.
 We read the arity off by counting children, so, e.g., \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\textsf{gmail})\) is the binary instance of the discipline \Strict.
-Each leaf label denotes a \emph{flow}: a predicate over packets.
+Each leaf label denotes a \emph{flow}, a predicate over packets.
 
 The family of disciplines is open.
 \disc is any discipline equipped with the compilation recipe of \cref{sec:compilation}, and nothing that follows depends on which disciplines are available.
@@ -466,7 +466,7 @@ Our implementation instantiates \Strict, \RR, and \WFQ{} because they aid our ex
 We also have the discipline \(\Strictstar\), which behaves semantically identically to binary \Strict{}.
 It exists to support policy edits (\cref{sec:delta-grammar}).
 
-A \pol is written against a fixed \emph{flow universe} \(F\): a finite set of pairwise disjoint flow predicates declared by the operator before constructing the \pol.
+A \pol is written against a fixed \emph{flow universe} \(F\), a finite set of pairwise disjoint flow predicates declared by the operator before constructing the \pol.
 A \pol is \emph{valid} when (a) every discipline is applied at the proper arity, (b) every arm's metadatum is drawn from its parent discipline's set \(M_{D}\), and (c) the leaves form a partition of a subset of \(F\): each leaf carries a flow drawn from \(F\), and no two leaves carry the same flow.
 A packet therefore matches at most one leaf's flow.
 
@@ -2273,7 +2273,7 @@ It is the metadatum the form carries (\cref{sec:add}), so the new arm lands alre
 The changing arm is handled differently, since its metadatum moves from \(m_2\) to \(m_4\).
 Nothing in the \Replace{} can carry that change, so the slot needs a \ChangeMeta{} of its own, and it goes in front, since the \Replace{} takes the whole slot.
 Had it gone last, every packet arriving for the incoming \(Q\) during the drain would stay ranked under \(m_2\) for the rest of its life.
-The slot therefore carries \(m_4\) throughout the transient, which is what panel (c) shows, and \Designate{} itself still leaves the slot's metadatum alone (\cref{sec:designate}).
+The slot therefore carries \(m_4\) throughout the transient, which is what \cref{fig:label-overlap-transient} shows, and \Designate{} itself still leaves the slot's metadatum alone (\cref{sec:designate}).
 The example exhibits both behaviors: \(m_1\) and \(m_3\) come through untouched, while \(m_2\) is explicitly re-tuned to \(m_4\).
 
 Panels (c) and (d) of \cref{fig:label-overlap-example} show the two policies the control passes through: first the transient \(\Strictstar\) that drains the old \textsf{gmail} leaf beside the incoming \(Q\), then the settled tree once that drain completes.
