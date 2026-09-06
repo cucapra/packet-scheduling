@@ -339,14 +339,14 @@ The upper-left and upper-right of \cref{fig:tour} illustrate the policies $p_1$ 
 Rio does not support an atomic transition from $p_1$ to $p_2$.
 The problem is that inserting the $\RR$ node would require relocating all the in-flight \textsf{gmail} packets from one hardware queue to another:
 a costly, long-latency data copy.
-Instead, we can implement the transition in two atomic edits.
-In our first atomic edit, we install a transitionary policy, $p_\text{temp}$ (shown in the middle of the top row of \cref{fig:tour}).
+Instead, we can implement the transition in two atomic steps.
+In our first atomic step, we install a transitionary policy, $p_\text{temp}$ (shown in the middle of the top row of \cref{fig:tour}).
 The idea is to insert a new, empty $\RR$ subtree
 without deleting the old \textsf{gmail} queue and its in-flight packets.
 The $\Strictstar$ policy prioritizes the old packets over new packets.
-The two leaves that \cref{fig:tour} tags \textsf{gmail}\textsubscript{old} and \textsf{gmail}\textsubscript{new} carry the same flow, split by arrival time: all new traffic (that is, traffic arriving after the first atomic edit has run) goes to the new subtree, while the previously buffered packets in \textsf{gmail}\textsubscript{old} drain.
+The two leaves that \cref{fig:tour} tags \textsf{gmail}\textsubscript{old} and \textsf{gmail}\textsubscript{new} carry the same flow, split by arrival time: all new traffic (that is, traffic arriving after the first atomic step has run) goes to the new subtree, while the previously buffered packets in \textsf{gmail}\textsubscript{old} drain.
 When \textsf{gmail}\textsubscript{old} becomes empty, $p_\text{temp}$ behaves identically to $p_2$.
-At this point, a second atomic edit runs, collapsing the $\Strictstar$ policy and transitioning to $p_2$, as desired.
+At this point, a second atomic step runs, collapsing the $\Strictstar$ policy and transitioning to $p_2$, as desired.
 
 % Although an atomic transition from $p_1$ to $p_2$ is not possible,
 Rio can implement atomic transitions from $p_1$ to $p_\text{temp}$ and from $p_\text{temp}$ to $p_2$.
