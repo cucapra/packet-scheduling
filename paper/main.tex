@@ -878,19 +878,11 @@ Let \(C\) be a well-formed control, and let \(\csem{\delta}(C)\) be defined for 
 Then \(\flush(C) = \flush(\csem{\delta}(C))\).
 \end{theorem}
 
-Most forms discharge this through a single fact about \pop{}, and need no argument of their own.
-
-\xxx[as]{IMO this lemma reads more like the sketch of an argument to support the above theorem, and less like the formal statement of an actual lemma.}
-\begin{lemma}[Non-disruption reduces to \pifo-content preservation]\label{lem:nondisruption}
-A \pop{} reads only \pifo contents: it pops the root index-\pifo to a child, recurses, and finally emits a leaf packet, never consulting any \stt or \zz (\cref{sec:controls}).
-Write \(C' = \csem{\delta}(C)\), and suppose \(\csem{\delta}\) leaves the contents of every non-empty \pifo of \(C\) unchanged (never rewriting, reordering, or removing a live entry, and introducing only empty \pifo{}s).
-Then the buffered backlog is preserved entry-for-entry in \(C'\) and \(\delta\) is non-disruptive.
-\end{lemma}
-
-We therefore discharge non-disruption per form by naming the form's \emph{footprint}, the nodes and fields it touches, and checking that the footprint holds no live \pifo entry.
-Four of the six pass that check outright.
-\Designate{} inserts a node whose \pifo is not empty and \Undesignate{} drops one, so those two need an argument of their own.
-Each such argument shows that \flush{} is unchanged, which is why \cref{thm:nondisruption} is stated on the flush sequence rather than on \pifo contents.
+Most forms discharge this through a single fact about \pop{}.
+A \pop{} reads only \pifo contents, never any \stt or \zz (\cref{sec:controls}), so an edit that leaves every live \pifo entry exactly where it found it cannot change what the control emits.
+Four of the six forms touch no live entry at all, and are done on that observation alone.
+\Designate{} inserts a node whose \pifo is not empty and \Undesignate{} drops one, so those two are argued directly on the \pop{} sequence, which is why \cref{thm:nondisruption} is stated on the flush sequence rather than on \pifo contents.
+\cref{sec:per-form} runs the check form by form.
 
 \subsection{Sequences of Edits}\label{sec:sequences}
 
@@ -1919,8 +1911,10 @@ Outside the region \cref{sec:edit-semantics} specifies, \(\csem{\delta}\) is und
 \item \emph{Preservation of \(\vdash\).} \(\vdash C\) implies \(\vdash C'\).
 Any packets or index entries that \(\csem{\delta}\) drops or adds must leave the per-node pifo and packet counts in balance.
 \item \emph{Characterization.} Prove that reading the policy off the edited control agrees, up to \(\eqR\), with applying the \(\psem{\delta}\) of \cref{sec:edit-semantics} to the policy read off the original: \(p' \eqR \psem{\delta}(p)\).
-\item \emph{Non-disruption.} Name the form's footprint and check that it holds no live \pifo entry, so that \cref{lem:nondisruption} applies.
-Where it does not apply, argue directly that the \pop{} sequence is unchanged.
+\item \emph{Non-disruption.} A \pop{} reads only \pifo contents: it pops the root index-\pifo to a child, recurses, and finally emits a leaf packet, never consulting any \stt or \zz (\cref{sec:controls}).
+So if \(\csem{\delta}\) leaves the contents of every non-empty \pifo of \(C\) unchanged, never rewriting, reordering, or removing a live entry and introducing only empty \pifo{}s, then the backlog survives entry-for-entry and \(\flush(C) = \flush(C')\).
+We call the nodes and fields that a form touches its \emph{footprint}, and the check is that the footprint holds no live \pifo entry.
+Where a form's footprint does hold one, we argue directly that the \pop{} sequence is unchanged.
 \end{itemize}
 
 \cref{fig:per-form-checks} discharges all eighteen checks.
@@ -1994,7 +1988,7 @@ So the two sides agree all the way down the spine and can differ only inside \(\
 
 \subsection{Non-disruption for \texorpdfstring{\Designate{} and \Undesignate}{Designate and Undesignate}}\label{sec:wrap-nondisruption}
 
-These are the two forms \cref{lem:nondisruption} does not reach.
+These are the two forms the footprint check does not reach.
 \(\mathtt{wrap}\) inserts the live node \(N\) with a non-empty \pifo, and \(\mathtt{unwrap}\) drops one, so each needs a direct argument that the \pop{} sequence is unchanged.
 As in \cref{sec:undesignate}, \(N\) is the wrapper and \(B\) the control under its arm 1.
 
