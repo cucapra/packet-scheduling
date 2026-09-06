@@ -311,6 +311,8 @@ p' = \Strict(\mathtt{hi}{:}\,\textsf{zoom},\ \mathtt{mid}{:}\,\textsf{spotify},\
 \]
 %
 This paper's purpose is to implement policy changes like this with low latency and without dropping packets.
+\xxx[am]{Minor: ``changes like this'' points at the single \Add{} the reader has just met, which is the easy case.
+The paper's purpose is the hard case, so this sentence may need to be widened once \S2 settles.}
 
 Our key thesis is that PIFO-tree-based packet schedulers can efficiently support some kinds of policy changes but not others.
 We identify a set of \emph{policy edits} that this kind of hardware can implement \emph{atomically:}
@@ -337,31 +339,30 @@ The upper-left and upper-right of \cref{fig:tour} illustrate the policies $p_1$ 
 Rio does not support an atomic transition from $p_1$ to $p_2$.
 The problem is that inserting the $\RR$ node would require relocating all the in-flight \textsf{gmail} packets from one hardware queue to another:
 a costly, long-latency data copy.
-Instead, we can implement the transition in two atomic steps.
-In our first atomic step, we install a temporary transitionary policy, $p_\text{temp}$ (shown in the middle of \cref{fig:tour}).
+Instead, we can implement the transition in two atomic edits.
+In our first atomic edit, we install a transitionary policy, $p_\text{temp}$ (shown in the middle of the top row of \cref{fig:tour}).
 The idea is to insert a new, empty $\RR$ subtree
 without deleting the old \textsf{gmail} queue and its in-flight packets.
 The $\Strictstar$ policy prioritizes the old packets over new packets.
-The two leaves that \cref{fig:tour} tags \textsf{gmail}\textsubscript{old} and \textsf{gmail}\textsubscript{new} carry the same flow, split by arrival time: all new traffic (that is, traffic arriving after the first atomic step has run) goes to the new subtree, while the previously buffered packets in \textsf{gmail}\textsubscript{old} drain.
+The two leaves that \cref{fig:tour} tags \textsf{gmail}\textsubscript{old} and \textsf{gmail}\textsubscript{new} carry the same flow, split by arrival time: all new traffic (that is, traffic arriving after the first atomic edit has run) goes to the new subtree, while the previously buffered packets in \textsf{gmail}\textsubscript{old} drain.
 When the old \textsf{gmail} queue becomes empty, $p_\text{temp}$ behaves identically to $p_2$.
-At this point, a second atomic step runs, collapsing the $\Strictstar$ policy and transitioning to $p_2$, as desired.
+At this point, a second atomic edit runs, collapsing the $\Strictstar$ policy and transitioning to $p_2$, as desired.
 
 % Although an atomic transition from $p_1$ to $p_2$ is not possible,
 Rio can implement atomic transitions from $p_1$ to $p_\text{temp}$ and from $p_\text{temp}$ to $p_2$.
 The key mechanism in this example is the $\Strictstar$ policy node, which reflects a special mechanism we add to PIFO tree hardware to enable efficient policy changes.
 \Cref{sec:hw-survivor} details $\Strictstar$ and the atomic edits that add and remove it.
 
-Every policy in \cref{fig:tour}, $p_\text{temp}$ included, is read off the control the hardware is actually running.
-Rio can therefore name the policy in force at every instant, in the operator's own language, including throughout the interval in which the scheduler runs a policy that \emph{no operator requested}.
-\xxx[am]{Keeping this paragraph, with a marker that both it and \cref{fig:tour} may want refining in a next step.
-Two things a reader may stumble on here: we have not yet said what a \emph{control} is, and it is not obvious why we would care about reading a policy back off a control when the policy is the thing we edit.}
+Rio can name the policy in force at every instant, in the operator's own language, including throughout the interval in which the scheduler runs a policy that \emph{no operator requested}.
+\xxx[am]{Keeping this claim, with a marker that both it and \cref{fig:tour} may want refining in a next step.
+The mechanism behind it now lives in the caption, and that is where a reader may stumble: we have not yet said what a \emph{control} is, and it is not obvious why we would care about reading a policy back off a control when the policy is the thing we edit.}
 
 \paragraph{Planning policy transitions}
 
 Our set of atomic policy edits (\Cref{sec:grammar}) is \emph{complete:}
 for any pair of policies, there exists a chain of edits that implements a transition between them.
 However, some policy changes are more disruptive than others.
-A change from $p_1$ to $p'$ happens in a single atomic step, while
+A change from $p_1$ to $p'$ happens in a single atomic edit, while
 changing from $p_1$ to $p_2$ requires some time in the transitionary policy $p_\text{temp}$.
 More drastic policy changes might require intermediate policies that are even more different than the endpoints.
 
@@ -369,7 +370,7 @@ Rio puts the network operator in charge of which transition strategy to use.
 By specifying a sequence of policy edits, a user can choose which intermediate policies to deploy in each step.
 We also implement a simple automatic \emph{transition planner} that suffices in the common case (\Cref{sec:planner}).
 
-Any reconfiguration of a live scheduler has an interval in which the scheduler is running neither the initial policy nor the final one.
+Any reconfiguration that cannot be installed in a single atomic edit has an interval in which the scheduler is running neither the initial policy nor the final one.
 What varies is how that interval is governed.
 The usual answers are to drop packets, to recirculate traffic, or to accept a period of chaos during which the hardware uses no clearly defined scheduling policy.
 Rio's interval is governed by a policy tree that the operator can read, and every transition into and out of it is atomic.
