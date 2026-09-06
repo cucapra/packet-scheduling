@@ -262,7 +262,7 @@ It is unavoidable, it persists for nonzero time, and throughout it the scheduler
 Some of those decisions are better than others from the operator's point of view, and the state of the art has settled on a trivial one, discarding the backlog and starting over~\cite{vPIFO}.
 Our contributions are to say what the transitionary policy is and to do better than that.
 
-Rio's language is a grammar of atomic policy edits, each one a change the hardware can install in a single instant (\cref{sec:grammar}).
+Rio's language is a grammar of atomic policy edits, each one a change the hardware can install in a single instant (\cref{sec:delta-grammar}).
 Its semantics gives every edit a meaning in the operator's own policy language, so \emph{any transitionary policy the grammar produces is ordinary scheduling}, readable exactly as \(p_1\) and \(p_2\) are (\cref{sec:edit-semantics}).
 A planner turns a requested \(p_2\) into a guarded sequence of those edits (\cref{sec:planner}), and a mechanical lowering carries each edit down to the instructions that a switch runs (\cref{sec:hardware}).
 A transition from any \(p_1\) to any \(p_2\) is always available, and many admit a realization confined to the part of the tree that actually changes.
@@ -324,8 +324,8 @@ The change from \(p_1\) to \(p'\) is simple enough that a single atomic edit suf
 \]
 %
 \xxx[AM to AS]{I can name the four arguments here if you would like them named: the path \([\,]\) points at the node that receives the new arm, here the root, and the other three are the discipline that node runs, the arm to splice in, and the metadatum that tells \Strict{} how to schedule it.
-My view is that leaving them until we meet the grammar in \cref{sec:grammar} is fine.}
-\Cref{sec:grammar} enumerates and formalizes these policy edits,
+My view is that leaving them until we meet the grammar in \cref{sec:delta-grammar} is fine.}
+\Cref{sec:delta-grammar} enumerates and formalizes these policy edits,
 and \Cref{sec:hardware} demonstrates how PIFO tree hardware can implement them atomically.
 
 \paragraph{A two-step policy change}
@@ -359,7 +359,7 @@ The mechanism behind it now lives in the caption, and that is where a reader may
 
 \paragraph{Planning policy transitions}
 
-Our set of atomic policy edits (\Cref{sec:grammar}) is \emph{complete:}
+Our set of atomic policy edits (\Cref{sec:delta-grammar}) is \emph{complete:}
 for any pair of policies, there exists a chain of edits that implements a transition between them.
 However, some policy changes are more disruptive than others.
 A change from $p_1$ to $p'$ happens in a single atomic edit, while
@@ -386,7 +386,7 @@ the in-flight packets,
 and any necessary policy bookkeeping state.
 A compiler translates a policy tree $p$ into a control $C$.
 
-\Cref{sec:grammar} formalizes the semantics of policy edits, $\delta$.
+\Cref{sec:delta-grammar} formalizes the semantics of policy edits, $\delta$.
 We describe how each edit affects both high-level policies $p$ and low-level controls $C$.
 Our central guarantee is that these edits agree; \cref{sec:correctness} states and proves this theorem.
 
@@ -415,7 +415,7 @@ virtualizes a single physical PIFO into many logical ``PIFO instances.''
 It includes a Scheduling Description Language (SDL) and compiler, so their PIFO Visor can \emph{flexibly establish} hierarchical PIFO trees of arbitrary shape on fixed hardware; its contribution is the reconfigurable substrate.
 As published, however, vPIFO has no notion of a difference between old and new policies, no formal semantics for what a policy change means, and no account of in-flight packets during a change.
 Their SDL IR computes ranks and is compiled to P4 or to a CPU.
-The two grammars we introduce in \cref{sec:grammar} are structural instead: one describes the shape of a policy tree, and the other describes how that shape changes.
+The two grammars we introduce in \cref{sec:delta-grammar} are structural instead: one describes the shape of a policy tree, and the other describes how that shape changes.
 
 Our two running examples make the gap concrete.
 In vPIFO's own terms, the Operation Generation Table and the PIFO Instance Address Table encode the running tree's shape and its per-instance storage.
@@ -435,7 +435,7 @@ The two layers can plausibly compose, and \cref{sec:substrate-portability} sets 
 
 This section introduces the high-level programming interface for Rio.
 \cref{sec:policy-dsl} gives a small DSL for specifying hierarchical packet scheduling policies,
-and \cref{sec:edits} enumerates a set of \emph{policy edits} for incrementally modifying these policies.
+and \cref{sec:delta-grammar} enumerates a set of \emph{policy edits} for incrementally modifying these policies.
 
 \begin{figure}[t]
 \[
@@ -502,7 +502,7 @@ We choose the set of edits to meet these criteria:
 \begin{enumerate}
 \item They are \emph{atomic}. PIFO tree hardware can commit each edit such that packets are processed either by the original policy or the edited one (\Cref{sec:hardware}).
 \xxx[as]{Do we need more intuition here to suggest why the reader should believe that all of these are atomic?}
-\item They are \emph{explainable}. Each edit transforms a policy $p$ in our policy DSL into a new policy $p'$. Later, we also show how each edit applies to live PIFO tree state to reflect these changes (\cref{sec:xxx}).
+\item They are \emph{explainable}. Each edit transforms a policy $p$ in our policy DSL into a new policy $p'$. Later, we also show how each edit applies to live PIFO tree state to reflect these changes (\cref{sec:edit-semantics}).
 \item They are \emph{complete}. For any pair of policies $p_1$ and $p_2$, a sequence of edits suffices to transform $p_1$ into $p_2$. \cref{sec:fallback} demonstrates a ``fallback'' path that always works.
 \item They are \emph{non-destructive}, i.e., edits do not drop in-flight packets. Edits that delete subtrees, such as $\Remove$, have preconditions that require those subtrees to be empty.
 \end{enumerate}
@@ -514,7 +514,7 @@ An edit's \pth names is its \emph{edit site}.
 
 \xxx[as]{Is there anything we want to say at this point about the individual edits? We could, for example, list all of them and give 1 sentence about their informal semantics. In particular, now would be a good time to give some attention to $\Strictstar$ in an informal way to illustrate how important it is for completeness.}
 
-\Cref{sec:xxx} gives the formal semantics for policy edits, in terms of both their effects on policies $p$ and on the state of live PIFO trees.
+\Cref{sec:edit-semantics} gives the formal semantics for policy edits, in terms of both their effects on policies $p$ and on the state of live PIFO trees.
 
 \section{Semantics}
 \label{sec:semantics}
@@ -522,7 +522,7 @@ An edit's \pth names is its \emph{edit site}.
 This section formalizes the semantics of PIFO trees.
 We formalize the state of PIFO tree hardware (\cref{sec:controls}),
 outline the compilation process from high-level policy trees $p$ into this state (\cref{sec:compilation}),
-and describe what each policy edit denotes (\cref{sec:xxx}).
+and describe what each policy edit denotes (\cref{sec:edit-semantics}).
 
 \subsection{PIFO Tree Controls}\label{sec:controls}
 
@@ -563,7 +563,7 @@ When it is undefined for a packet, nothing is enqueued at this node and \stt is 
 
 \paragraph{The many roles of \zz: classifying, annotating, and ranking}
 
-We write \zz as a single partial function, but it has three parts, and the edits of \cref{sec:grammar} rewrite them separately.
+We write \zz as a single partial function, but it has three parts, and the edits of \cref{sec:delta-grammar} rewrite them separately.
 Mohan et al.\ instead keep one total transaction for the whole tree, returning an entire root-to-leaf path of indices and ranks, where ours is per-node and partial.
 
 \begin{itemize}
@@ -685,7 +685,7 @@ They do not pin down a grammar for SDL or formalize the compilation, so our DSL 
 \subsection{Edit Semantics}
 \label{sec:edit-semantics}
 
-We formalize the semantics of each policy edit (\cref{sec:grammar}) using two denotations.
+We formalize the semantics of each policy edit (\cref{sec:delta-grammar}) using two denotations.
 For any edit $\delta$,
 \(\csem{\delta}\) says what the form does to the running control, and \(\psem{\delta}\) says what it does to the operator's policy.
 Each edit includes preconditions under which it is defined.
@@ -895,7 +895,7 @@ So \(\mathit{link}_0 = C\) is the starting control, and \(\mathit{link}_{i+1} = 
 
 Each transitionary policy is itself an ordinary \cref{sec:controls}-style control, so the transitionary period \emph{needs no new semantics}.
 That is the promise of \cref{sec:intro}, discharged locally by the per-form checks of \cref{sec:per-form}.
-Moreover, since every form of \cref{sec:grammar} is \emph{\pol-explainable} (each \(\delta\) has a \(\psem{\delta}\) that tracks its \pol-level effect), we can echo to the operator, at every point in the sequence, the \pol that the live control actually realizes.
+Moreover, since every form of \cref{sec:delta-grammar} is \emph{\pol-explainable} (each \(\delta\) has a \(\psem{\delta}\) that tracks its \pol-level effect), we can echo to the operator, at every point in the sequence, the \pol that the live control actually realizes.
 The chain of \(\psem{\cdot}\)s starting from \(\lfloor C \rfloor\) gives \(\lfloor \mathit{link}_i \rfloor\) for each \(i\), so the operator always knows which policy is running.
 
 \paragraph{Follow-up requests}
@@ -952,7 +952,7 @@ Safety is entirely local, following from the per-form checks of \cref{sec:per-fo
 \xxx[AM to Zhiyuan]{A step's \(\delta\)s fire back to back with no waiting between them, and each one installs as its own commit, so the substrate needs nothing it does not already have.
 The question is whether it could instead install a whole step as one commit, so that no intermediate control inside a step is ever observed.
 That would be better for the operator, since the policies they are shown would then be exactly the ``waits''.
-It asks the commit buffer to hold one step's worth of instructions rather than one form's, which \cref{sec:hw-preservation} suggests is a question of how much fits rather than of a new capability.}
+It asks the commit buffer to hold one step's worth of instructions rather than one form's, which \cref{sec:hw-commit} suggests is a question of how much fits rather than of a new capability.}
 
 \paragraph{Reaching the target}
 
@@ -1488,7 +1488,7 @@ Our substrate is deliberately unambitious; we built it because the compiler need
 Rio asks a substrate for one thing: commits that are atomic with respect to traffic.
 A \(\delta\) that lowers to many instructions has to install as a single instant.
 The tree is transiently malformed partway through a commit, and no \push{} or \pop{} may observe it in that state.
-That is the whole of what \cref{sec:hw-preservation}'s argument rests on, and \cref{sec:hw-commit} is how our own controller supplies it.
+That is the whole of what \cref{sec:correctness}'s argument rests on, and \cref{sec:hw-commit} is how our own controller supplies it.
 
 The substrate also supplies the disciplines themselves.
 \(\mathit{init\_node\_state}_{D}\), \(\mathit{init\_slot\_state}_{D}\) and \(\mathit{rank}_{D}\) are the substrate's (\cref{sec:compilation}), and the menu it implements is the menu an operator may write from.
@@ -1572,7 +1572,7 @@ Exp-PIFO approximates one with adaptive exponential bins, keeping two memory cel
 BMW Tree implements one as a balanced multi-way sorting tree that scales to large flow counts~\cite{Yao23}.
 BBQ reaches hundreds of thousands of concurrent flows by carrying hierarchical find-first-set into a pipelined integer priority queue~\cite{Atre24}.
 Gearbox approximates weighted fair queuing with a hierarchy of queuing levels at constant cost per operation~\cite{Gao22}.
-vPIFO virtualizes a single physical PIFO into many instances that its PIFO Visor can wire into a tree of any shape~\cite{vPIFO}; we take the gap it leaves at runtime as a case study in \cref{sec:vpifo}.
+vPIFO virtualizes a single physical PIFO into many instances that its PIFO Visor can wire into a tree of any shape~\cite{vPIFO}; we take the gap it leaves at runtime as a case study in \cref{sec:background}.
 
 All of these substrates fix the tree's shape and the discipline at each node when the scheduler is configured.
 Rio runs above any of them and asks for one property: commits that are atomic with respect to traffic (\cref{sec:substrate-portability}).
@@ -1583,7 +1583,7 @@ UIFO adds a level of classes above packets, so that the service order of already
 Rio's forms are defined against a substrate where a rank is fixed at \push{} time (\cref{sec:controls}), and our non-disruption theorem (\cref{thm:nondisruption}) is stated against that.
 A substrate that can re-rank a backlog admits reconfigurations for which this grammar has no form.
 
-\xxx[AM]{Proposal for the team: move \cref{sec:vpifo} out of \cref{sec:background} and put it here. It can be a kind of ``worked example'' to show that none of the existing PIFO substrates are our competition. I don't feel super strongly about this; the vPIFO discussion early on is also doing something useful. Just a thought.}
+\xxx[AM]{Proposal for the team: move the vPIFO discussion out of \cref{sec:background} and put it here. It can be a kind of ``worked example'' to show that none of the existing PIFO substrates are our competition. I don't feel super strongly about this; the vPIFO discussion early on is also doing something useful. Just a thought.}
 
 \paragraph{Formal models of scheduling}
 
@@ -1915,7 +1915,7 @@ Well-formedness of the original tree forces \(Q\)'s PIFO to have exactly two ins
 The trouble is one level up.
 \(P\)'s PIFO originally had four instances of \(0\), and well-formedness demands that we remove two of them.
 But \emph{which} two?
-No entry in \(P\) carries the meta-information ``I was enqueued when a packet was inserted into \tritext{flowC}''; an entry \(0\) in \(P\) only means ``when this index is popped, recursively ask subtree \(Q\) to emit the next packet'' (see \cref{sec:hierarchical}).
+No entry in \(P\) carries the meta-information ``I was enqueued when a packet was inserted into \tritext{flowC}''; an entry \(0\) in \(P\) only means ``when this index is popped, recursively ask subtree \(Q\) to emit the next packet'' (see \cref{sec:background}).
 This absence of meta-information is a \emph{feature} of PIFO trees, not a defect: an entry is deliberately detached from the packet it was enqueued with, which is what lets each node schedule its own discipline in isolation and lets a subtree be reconfigured without rewriting its ancestors.
 
 Given this, there is no obvious or operator-provided answer: whichever two instances of \(0\) we strike, the choice is itself a scheduling decision, since it affects how \(P\) intermixes \tritext{flowB} traffic with \(Q\)'s.
