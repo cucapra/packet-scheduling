@@ -42,6 +42,7 @@
 
 \newcommand{\push}{\ensuremath{\mathtt{push}}}
 \newcommand{\pop}{\ensuremath{\mathtt{pop}}}
+\newcommand{\flush}{\ensuremath{\mathtt{flush}}}
 \newcommand{\csem}[1]{\mathcal{C}\llbracket #1 \rrbracket}
 \newcommand{\psem}[1]{\mathcal{P}\llbracket #1 \rrbracket}
 \newcommand{\eqR}{=_R}
@@ -336,7 +337,7 @@ Suppose that, instead of $p'$, the operator wants to move from $p_1$ to a policy
 %
 The upper-left and upper-right of \cref{fig:tour} illustrate the policies $p_1$ and $p_2$.
 
-Rio does not support an atomic transition from $p_1$ to $p_2$.
+Rio does not support a single atomic transition from $p_1$ to $p_2$.
 The problem is that inserting the $\RR$ node would require relocating all the in-flight \textsf{gmail} packets from one hardware queue to another:
 a costly, long-latency data copy.
 Instead, we can implement the transition in two atomic steps.
@@ -349,7 +350,7 @@ When \textsf{gmail}\textsubscript{old} becomes empty, $p_\text{temp}$ behaves id
 At this point, a second atomic step runs, collapsing the $\Strictstar$ policy and transitioning to $p_2$, as desired.
 
 % Although an atomic transition from $p_1$ to $p_2$ is not possible,
-Rio can implement atomic transitions from $p_1$ to $p_\text{temp}$ and from $p_\text{temp}$ to $p_2$.
+Rio supports atomic transitions from $p_1$ to $p_\text{temp}$ and from $p_\text{temp}$ to $p_2$.
 The key mechanism in this example is the $\Strictstar$ policy node, which reflects a special mechanism we add to PIFO tree hardware to enable efficient policy changes.
 \Cref{sec:hw-survivor} details $\Strictstar$ and the atomic edits that add and remove it.
 
@@ -364,11 +365,11 @@ for any pair of policies, there exists a chain of edits that implements a transi
 However, some policy changes are more disruptive than others.
 A change from $p_1$ to $p'$ happens in a single atomic edit, while
 changing from $p_1$ to $p_2$ requires some time in the transitionary policy $p_\text{temp}$.
-More drastic policy changes might require intermediate policies that are even more different than the endpoints.
+A more drastic policy change may call for a longer chain of intermediate policies, or intermediate policies that are further from both endpoints.
 
 Rio puts the network operator in charge of which transition strategy to use.
 By specifying a sequence of policy edits, a user can choose which intermediate policies to deploy in each step.
-We also implement a simple automatic \emph{transition planner} that suffices in the common case (\Cref{sec:planner}).
+We also implement an automatic \emph{transition planner} that always reaches the requested policy (\Cref{sec:planner}).
 
 Any reconfiguration that cannot be installed in a single atomic edit has an interval in which the scheduler is running neither the initial policy nor the final one.
 What varies is how that interval is governed.
@@ -409,27 +410,8 @@ The PE budget is fixed by the silicon, so the running tree's shape is constraine
 
 \xxx[as]{Let us make this claim: to the best of our knowledge, no prior paper on PIFO trees has addressed the details of how to reconfigure without disrupting live traffic}
 
-\xxx[as]{I offer the bold suggestion that we do not mention vPIFO here at all. All this goes in the RW section only. vPIFO is not unique in \emph{theoretically} allowing reconfiguration; plenty of PIFO tree papers could supposedly do that too. And they explicitly do not address the live reconfiguration problem.}
-vPIFO~\cite{vPIFO} is a design for a PIFO-tree-based packet scheduler that
-virtualizes a single physical PIFO into many logical ``PIFO instances.''
-It includes a Scheduling Description Language (SDL) and compiler, so their PIFO Visor can \emph{flexibly establish} hierarchical PIFO trees of arbitrary shape on fixed hardware; its contribution is the reconfigurable substrate.
-As published, however, vPIFO has no notion of a difference between old and new policies, no formal semantics for what a policy change means, and no account of in-flight packets during a change.
-Their SDL IR computes ranks and is compiled to P4 or to a CPU.
-The two grammars we introduce in \cref{sec:delta-grammar} are structural instead: one describes the shape of a policy tree, and the other describes how that shape changes.
-
-Our two running examples make the gap concrete.
-In vPIFO's own terms, the Operation Generation Table and the PIFO Instance Address Table encode the running tree's shape and its per-instance storage.
-The easy change, to \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{mid}{:}\,\textsf{spotify},\allowbreak\ \mathtt{lo}{:}\,\textsf{gmail})\), is the kind of edit vPIFO's substrate is architecturally close to absorbing.
-It over-provisions logical instances and its Visor can assemble them into arbitrary tree shapes, so a targeted append to those tables would register the new traffic and its operations while leaving the running instances untouched.
-vPIFO exposes no such edit at runtime, however: those tables are generated offline by its SDL compiler, so installing even this easy change on a running scheduler would require extending the substrate with an online-patch path it does not have today.
-The harder restructuring, to \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\RR(\textsf{gmail},\allowbreak\ \textsf{spotify}))\), lies beyond what the vPIFO substrate can absorb in place.
-It changes the running tree's shape, inserting a new internal \RR{} node and re-parenting \textsf{gmail} under it, and neither table exposes that as an in-place edit.
-The closest vPIFO comes is a full reinitialization onto the new shape, which is the stop-the-world baseline \cref{sec:intro} refuses.
-vPIFO names runtime updating as future work, observing that the scheduling of packets during a modification's transitional phase is unresolved.
-
-We are not competing with vPIFO and do not claim a better PIFO substrate.
-We supply the layer \emph{above} a PIFO substrate: the formal transition between two policies, the small patch that realizes it, and the transitionary semantics.
-The two layers can plausibly compose, and \cref{sec:substrate-portability} sets out the minimal requirement our contributions place on a substrate.
+Rio supplies the layer \emph{above} a PIFO substrate: the formal transition between two policies, the small patch that realizes it, and the transitionary semantics.
+Any of the substrates surveyed in \cref{sec:related} is a plausible host, and \cref{sec:substrate-portability} sets out the minimal requirement Rio places on one.
 
 \section{Policies and Edits}\label{sec:model}
 
@@ -458,23 +440,25 @@ We start on the operator's side, with a small policy DSL \pol, and \cref{sec:com
 The operator writes a \pol (\cref{fig:pol-grammar}).
 It is either a leaf labeled by a flow, or an internal node running a scheduling discipline \disc over child policies.
 Each arm carries a metadatum that tells \disc how to schedule it, drawn from a set \(M_{D}\) that \disc declares.
-For instance, \(M_{\Strict}\) is a set of priorities and \(M_{\WFQ}\) a set of weights.
+For instance, \(M_{\Strict}\) is a set of priorities, and \(M_{\WFQ}\), for weighted fair queueing, is a set of weights.
+The \(\mathtt{hi}\) and \(\mathtt{lo}\) labels on \(p_1\)'s arms in \cref{sec:tour} are metadata of the first kind.
 A discipline that treats its arms alike, such as \RR, declares a one-element set, and we elide that element when writing examples.
 We read the arity off by counting children, so, e.g., \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\textsf{gmail})\) is the binary instance of the discipline \Strict.
 Each leaf label denotes a \emph{flow}: a predicate over packets.
 
 The family of disciplines is open.
 \disc is any discipline equipped with the compilation recipe of \cref{sec:compilation}, and nothing that follows depends on which disciplines are available.
-Our implementation instantiates \Strict, \RR, and \WFQ because they aid our exposition.
-
+Our implementation instantiates \Strict, \RR, and \WFQ{} because they aid our exposition.
 We also have the discipline \(\Strictstar\), which behaves semantically identically to binary \Strict{}.
 It exists to support policy edits (\cref{sec:delta-grammar}).
 
 A \pol is written against a fixed \emph{flow universe} \(F\): a finite set of pairwise disjoint flow predicates declared by the operator before constructing the \pol.
 A \pol is \emph{valid} when (a) every discipline is applied at the proper arity, (b) every arm's metadatum is drawn from its parent discipline's set \(M_{D}\), and (c) the leaves form a partition of a subset of \(F\): each leaf carries a flow drawn from \(F\), and no two leaves carry the same flow.
 A packet therefore matches at most one leaf's flow.
-If a packet does not match any of the flows in the scheduling tree's leaves, the packet is dropped.
-\xxx[as]{Let's give the systems perspective on this: we assume someone else (e.g., a P4 pipeline) does the classification; we only do the scheduling.}
+
+Classification itself is not within Rio's scope.
+We assume that an upstream pipeline, a P4 program say, decides which flow of \(F\) a packet belongs to and tags it accordingly, and Rio schedules the packets it is handed.
+A packet matching no flow in the scheduling tree's leaves is dropped.
 
 \subsection{Policy Edits}\label{sec:delta-grammar}
 
@@ -497,7 +481,7 @@ If a packet does not match any of the flows in the scheduling tree's leaves, the
 \end{figure}
 
 \Cref{fig:delta-grammar} lists a small grammar of \emph{policy tree edits}, which are rewrites that transform one policy tree into another.
-We choose the set of edits to meet these criteria:
+We choose the set of edits to meet the following criteria:
 %
 \begin{enumerate}
 \item They are \emph{atomic}. PIFO tree hardware can commit each edit such that packets are processed either by the original policy or the edited one (\Cref{sec:hardware}).
@@ -507,12 +491,25 @@ We choose the set of edits to meet these criteria:
 \item They are \emph{non-destructive}, i.e., edits do not drop in-flight packets. Edits that delete subtrees, such as $\Remove$, have preconditions that require those subtrees to be empty.
 \end{enumerate}
 %
-An edit describes \emph{where} in the tree the change lands and \emph{what} the change is.
+An edit describes where in the tree the change lands and what the change is.
 A \pth is a (possibly empty) sequence of child indices \(i\) read from the root.
 We use \(p@\mathit{path}\) to denote the subtree of $p$ at \pth.
-An edit's \pth names is its \emph{edit site}.
+The node that an edit's \pth names is that edit's \emph{edit site}.
 
-\xxx[as]{Is there anything we want to say at this point about the individual edits? We could, for example, list all of them and give 1 sentence about their informal semantics. In particular, now would be a good time to give some attention to $\Strictstar$ in an informal way to illustrate how important it is for completeness.}
+Informally, the six forms do the following.
+\Add{} splices a freshly compiled arm under the internal node at the edit site.
+\ChangeMeta{} rewrites the metadatum on one arm without touching the tree's shape.
+\Quiesce{} stops new packets from being admitted to the subtree at the edit site.
+\Remove{} unhooks an already-empty arm.
+\Designate{} wraps the edit site in a fresh \(\Strictstar\) node, giving the running subtree the high-priority arm and a newly compiled \emph{survivor} policy the low-priority arm.
+\Undesignate{} collapses a \(\Strictstar\) node once its high-priority arm has drained, promoting the survivor into the slot that the \(\Strictstar\) node held.
+
+We chose these six forms with care, so that PIFO tree hardware can realize each one atomically (\cref{sec:hardware}).
+
+\(\Strictstar\) makes the set complete.
+\Designate{} can introduce an arbitrary new subtree beside a running one without moving a buffered packet, and \Undesignate{} retires the old one once it has drained, so any \(p_1\) reaches any \(p_2\) by wrapping, draining, and unwrapping.
+\Cref{sec:tour}'s two-step transition is exactly this: the \(\Strictstar\) node of \(p_\text{temp}\) holds the draining \textsf{gmail}\textsubscript{old} leaf beside the freshly built \RR{} subtree, and collapses once that leaf is empty.
+Everything outside the wrapper keeps running untouched, so it is valuable to wrap the smallest subtree that covers the change (\cref{sec:fallback}).
 
 \Cref{sec:edit-semantics} gives the formal semantics for policy edits, in terms of both their effects on policies $p$ and on the state of live PIFO trees.
 
@@ -563,12 +560,13 @@ When it is undefined for a packet, nothing is enqueued at this node and \stt is 
 \paragraph{The many roles of \zz: classifying, annotating, and ranking}
 
 We write \zz as a single partial function, but it has three parts, and the edits of \cref{sec:delta-grammar} rewrite them separately.
-Mohan et al.\ instead keep one total transaction for the whole tree, returning an entire root-to-leaf path of indices and ranks, where ours is per-node and partial.
+Mohan et al.\ instead keep one total transaction for the whole tree, returning an entire root-to-leaf path of indices and ranks, but ours is per-node and partial.
 
 \begin{itemize}
 \item The \emph{classifier} answers whether this node accepts a given packet and where it sends it.
 It has a \emph{service map}, written \(\mathit{z}.\mathit{serves}\), which is a partial map from flows to payloads.  
-At an internal node, \(\mathit{z}.\mathit{serves}(f)\) is a unique child index, and following it brings a packet of flow \(f\) one step closer to its leaf.
+At an internal node, \(\mathit{z}.\mathit{serves}(f)\) is a unique child index such that following that child brings a packet of flow \(f\) one step closer to its leaf.
+This map is easy to construct since distinct leaves carry distinct flows (\cref{sec:policy-dsl} makes this a validity condition).
 At a leaf the payload is the packet itself, so the map is the trivial one on the single flow that leaf carries.
 Its \emph{admitted set}, written \(\mathit{z}.\mathit{admit} \subseteq \mathrm{dom}(\mathit{z}.\mathit{serves})\), is the subset of the flows that the node currently accepts.
 \item The \emph{per-arm metadata}, written \(\mathit{z}.\mathit{meta}\), records what this node's discipline needs to know about each of its arms, such as priorities or weights.
@@ -581,11 +579,6 @@ A node's ranker names the discipline that the node runs.
 
 So \(\mathit{z}(\mathit{state}, p)\) is defined exactly when \(\mathit{flow}(p) \in \mathit{z}.\mathit{admit}\). 
 It then finds \(p\)'s payload in \(\mathit{z}.\mathit{serves}\), and pairs that payload with the rank that \(\mathit{z}.\mathit{rank}\) computes.
-
-\zz does not \emph{choose} the payload.
-Distinct leaves carry distinct flows (\cref{sec:policy-dsl} makes this a validity condition), so a packet's flow already fixes the one leaf it is bound for.
-That in turn fixes, at every node on the way down, which child the packet has to be handed to.
-The service map reports that child rather than selecting it, and what \zz genuinely decides is the rank.
 
 At an internal node the ranker sees the payload and not the packet, meaning that the node can discriminate only among its own children. 
 It cannot do finer-grained discrimination based on packet- or flow-specific information. 
@@ -617,11 +610,12 @@ A \pop{} releases the best-ranked packet, resolving ``best-ranked'' from the top
 It releases the best-ranked index at the root, follows that index to a child, recurses, and releases a packet once it reaches a leaf.
 It consults \pifo contents alone, never \stt or \zz.
 These two are the \emph{only} observable interactions with a scheduler, which is why we frame an \emph{atomic} transition in terms of \push{}/\pop{} observability.
+Following Mohan et al., we write \(\flush(C)\) for the sequence of packets that \(C\) releases under successive \pop{}s until it is empty~\cite{Mohan23}.
 
 \paragraph{Well-formedness}
 
 A control \(C\) is \emph{well-formed} (written \(\vdash C\)) when, at every internal node of \(C\), the \pifo has, for each legal child index \(i\), exactly as many occurrences of \(i\) as there are packets stored in the leaf pifos of the subtree under the \(i\)-th child.
-A control that fails this holds an index at some node with no packet under the corresponding child, so a \pop{} that follows that index down reaches a leaf with nothing to emit.
+Otherwise a \pop{} could start at the root and get stuck.
 
 \paragraph{Addressing a node}
 
@@ -652,24 +646,23 @@ M_{D} & \text{opaque; the per-arm configuration \zz holds}\\
 \paragraph{What a discipline supplies}
 
 \cref{fig:discipline} lists what has to be supplied to realize a discipline \disc: a metadata set \(M_{D}\), two state types of \disc's own, and three operations.
-Supplying those is the whole interface, and any \disc that supplies them is one Rio can compile.
+Supplying those is the whole interface, and Rio can compile any \disc that supplies them.
 
 \(\mathit{init\_node\_state}_{D}\) is the \(\mathit{node\_state}_{D}\) every \disc-node starts in, installed when a \pol is compiled into a control.
-\(\mathit{init\_slot\_state}_{D}\) runs once per arm, at compile time and again whenever an edit splices a new arm under an already-running \disc-parent (\cref{sec:add}), taking the parent's current \(\mathit{node\_state}_{D}\) and the new arm's metadatum.
+\(\mathit{init\_slot\_state}_{D}\) runs once per arm, at compile time and again whenever an edit splices a new arm under an already-running \disc-parent, taking the parent's current \(\mathit{node\_state}_{D}\) and the new arm's metadatum.
 
 The three operations are opaque to us.
 Rio names \(\mathit{init\_node\_state}_{D}\), \(\mathit{init\_slot\_state}_{D}\) and \(\mathit{rank}_{D}\), and never unfolds them.
 The two state types are opaque in a stronger sense: nothing outside \disc builds or reads a \(\mathit{node\_state}_{D}\) or a \(\mathit{slot\_state}_{D}\), and Rio only ever appends, deletes and renumbers slot entries.
-\(M_{D}\) is the exception, since the compiler checks an arm's metadatum against it (\cref{sec:policy-dsl}) and \ChangeMeta{} carries \disc so that the same check is possible on a form alone.
+\(M_{D}\) is the exception, since the compiler checks each arm's metadatum against it (\cref{sec:policy-dsl}).
+\Add{} and \ChangeMeta{} both name \disc among their arguments so that the same check can be run on the edit too.
 A discipline's interface is visible to us and its behavior is not.
 
-Two obligations attend the exchange.
+The interface comes with two conditions.
 The first is path-consistency of admission: a packet's flow must be admitted at every node on that flow's root-to-leaf path, or at none of them.
 This is a global property rather than a concern of any node-local \zz, and it is what keeps \(\vdash\) true under compilation and under every \(\delta\).
-The second is that \(\mathit{rank}_{D}\) records which discipline the node runs, and not merely how that discipline ranks.
-Suppose two disciplines happened to schedule identically on every input.
-If a node stored only its ranking behavior, the two would be indistinguishable in a running control, and the policy we echo back to the operator could name the wrong discipline.
-Recording \disc keeps them apart, which is what lets \cref{sec:equivalences} read the operator's own \disc off a running control.
+The second is that \(\mathit{rank}_{D}\) records which discipline the node runs, and not merely how that discipline ranks payloads.
+Two disciplines that happened to rank alike would otherwise be indistinguishable in a running control, and \cref{sec:equivalences} could report the wrong one back to the operator.
 
 \paragraph{From \pol to control}
 
@@ -678,26 +671,62 @@ It has \(p\)'s tree shape, an empty \pifo at every node, and \stt seeded by \(\m
 Each node's \zz takes \disc's ranker, copies each arm's written metadatum into \(\mathit{z}.\mathit{meta}\), and reads its classifier off the tree, sending every flow served beneath the node toward that flow's leaf.
 A freshly compiled control therefore admits every flow it serves, and carries the operator's arm annotations verbatim.
 
-This is essentially what the vPIFO paper's \emph{Scheduling Description Language} does informally~\cite{vPIFO}.
-They do not pin down a grammar for SDL or formalize the compilation, so our DSL can be read as a formal core of their concrete language.
-
 \subsection{Edit Semantics}\label{sec:edit-semantics}
 
 We formalize the semantics of each policy edit (\cref{sec:delta-grammar}) using two denotations.
 For any edit $\delta$,
-\(\csem{\delta}\) says what the form does to the running control, and \(\psem{\delta}\) says what it does to the operator's policy.
+\(\psem{\delta}\) says what the edit does to the operator's policy, and \(\csem{\delta}\) says what it does to the running control.
 Each edit includes preconditions under which it is defined.
 \Cref{sec:correctness} states a theorem that these two denotations agree.
 
-\xxx[as]{Consider showing one edit here. Otherwise...}
-\Cref{sec:edit-semantics-full} details these denotations for each syntactic form of $\delta$.
+The grammatical form \Add{} is representative, so we give it here, and \cref{sec:edit-semantics-full} details all six forms.
+Its arguments are the path \(\pi\) to the node that receives the new arm, the discipline \disc that node runs, the arm's policy \(\mathit{arm}\), and the metadatum \(m \in M_{D}\) that tells \disc how to schedule it.
+Both denotations are defined by recursion on \(\pi\), with a base case for the empty path \([\,]\) and a step case for \(i \mathbin{::} \mathit{rest}\).
+On the network operator's side, \Add{} appends an annotated arm to that node's child list:
+{\small
+\[
+\begin{array}{@{}l@{}}
+\psem{\Add([\,],\ D,\ \mathit{arm},\ m)}\ (D\ \mathit{ts}) \;=\; D(\mathit{ts}\mathbin{+\!\!+}[m{:}\,\mathit{arm}])\\[4pt]
+\psem{\Add(i\mathbin{::}\mathit{rest},\ D,\ \mathit{arm},\ m)}\ (E\ \mathit{ts}) \;=\\
+\quad E(\mathit{ts}[\,\psem{\Add(\mathit{rest},\ D,\ \mathit{arm},\ m)}(\mathit{ts}[i])/i\,])
+\end{array}
+\]
+}
+Here \(\mathit{ts}\) is a node's list of annotated arms and \(\mathit{ts}[t/i]\) overwrites the policy of the \(i\)-th arm.
+The base case fires only at a node running the \disc that the form names, while an ancestor's discipline \(E\) is unconstrained and is carried along.
+
+On the control's side, \Add{} appends the freshly compiled subtree \(\lceil \mathit{arm} \rceil\) as the last child of the node at \(\pi\), seeds that arm's bookkeeping, and annotates its slot:
+{\small
+\[
+\begin{array}{@{}l@{}}
+\csem{\Add([\,],\ D,\ \mathit{arm},\ m)}\ \langle\mathit{state},\mathit{pifo},\mathit{z}\rangle(\mathit{cs}) \;=\\
+\quad \langle\mathit{state'},\mathit{pifo},z'\rangle(\mathit{cs}\mathbin{+\!\!+}[\lceil\mathit{arm}\rceil])\\
+\quad \textbf{where}\ k=|\mathit{cs}|\\
+\quad \phantom{\textbf{where}}\ \mathit{state'}=(\mathit{node\_state},\ \mathit{slot\_states}\mathbin{+\!\!+}[s])\\
+\quad \phantom{\textbf{where}}\ s=\mathit{init\_slot\_state}_{D}(\mathit{node\_state},m)\\
+\quad \phantom{\textbf{where}}\ z'=\mathtt{setmeta}(\mathtt{extend}(\mathit{z},\mathtt{flows}(\mathit{arm}),k),k,m)\\[8pt]
+\csem{\Add(i\mathbin{::}\mathit{rest},\ D,\ \mathit{arm},\ m)}\ \langle\mathit{state},\mathit{pifo},\mathit{z}\rangle(\mathit{cs}) \;=\\
+\quad \langle\mathit{state},\mathit{pifo},z'\rangle(\mathit{cs}[\,c/i\,])\\
+\quad \textbf{where}\ c=\csem{\Add(\mathit{rest},\ D,\ \mathit{arm},\ m)}(\mathit{cs}[i])\\
+\quad \phantom{\textbf{where}}\ z'=\mathtt{extend}(\mathit{z},\mathtt{flows}(\mathit{arm}),i)
+\end{array}
+\]
+}
+Here \(\mathit{cs}\) is the node's child list and \(\mathtt{flows}(\mathit{arm})\) is the set of flows at the new arm's leaves.
+\(\mathtt{extend}(\mathit{z},F,i)\) records that the flows \(F\) are served at child \(i\) and adds them to the admitted set, and \(\mathtt{setmeta}(\mathit{z},k,m)\) annotates arm \(k\) with \(m\); neither touches the ranker.
+The step case walks into the on-path child \(i\), writes the result back, and extends this node's classifier to send the new flows one step further toward \(\pi\).
+So every node from the root down to \(\pi\) comes to admit and route the new flows, and nothing else about those nodes changes.
+\nodestate and \pifo are left alone at every node, so no buffered packet moves.
+
+\(\csem{\Add}\) is defined when \(\pi\) resolves to an internal node running \disc, when \(m \in M_{D}\), and when \arm's flows are served nowhere in the control already.
+This last precondition spares \Add{} from relocating live traffic; a change that would move admitted traffic is reached as a sequence instead (\cref{sec:idioms}).
 
 
 \section{Correctness}\label{sec:correctness}
 
 This section presents two correctness theorems.
 First, the policy-level and control-level denotations of edits agree.
-Second, installing an edit costs the buffered backlog nothing.
+Second, installing an edit never disturbs the packets already buffered: none of them is dropped, reordered, or re-ranked by the act of changing the policy.
 
 We begin with some definitions necessary for the theorems.
 
@@ -723,7 +752,7 @@ We write \(C \simR C'\) for the equivalence obtained by closing \(\sim\) under s
 
 We write \(\lfloor C \rfloor\) to mean ``the \pol that \(C\) realizes.''
 % Intuitively, \(\lfloor \cdot \rfloor\) reads the policy straight off the control.
-\xxx[as]{Regardless of how $\lfloor C \rfloor$ ends up getting defined (see below), I think we should here: (1) state here that it is supposed to be the opposite of $\lceil p \rceil$, and (2) leave everything else in an appendix.}
+\xxx[as]{Regardless of how $\lfloor C \rfloor$ ends up getting defined (see below), I think we should: (1) state here that it is supposed to be the opposite of $\lceil p \rceil$, and (2) leave everything else in an appendix.}
 It walks the control's tree and recovers, node by node, the \pol term the control implements, discarding the live \pifo and \stt contents that traffic happens to have left behind.
 We define it by structural recursion on \(C\), with one clause for leaves and one for internal nodes.
 Both clauses read out of \zz (\cref{sec:controls}).
@@ -771,6 +800,7 @@ Even when the presently running \pol is just an intermediate policy that the run
 
 We want to prove that every edit, $\delta$, has consistent effects on the low-level PIFO tree state and the high-level policy tree that describes it.
 \cref{fig:interplay} illustrates the goal.
+\Cref{fig:tour}, which we have already seen, essentially draws two instances of this square side by side.
 
 \begin{figure}
 \begin{center}
@@ -805,18 +835,13 @@ We want to prove that every edit, $\delta$, has consistent effects on the low-le
 \label{fig:interplay}
 \end{figure}
 
-The initial policy tree is $p_1$,
-which compiles to the PIFO tree state $C_1$.
-After handling some traffic, the PIFO tree becomes $C_1'$.
-The operator issues an edit $\delta$ to request
-a new policy tree $\psem{\delta}(p_1)$.
-Applying this edit to the running scheduler state yields the PIFO tree
-$\csem{\delta}(C_1')$.
-We want to show that the new policy tree accurately describes the new PIFO tree state:
-in other words, that
-$\psem{\delta}(p_1) \eqR \lfloor\csem{\delta}(C_1')\rfloor$.
-\xxx[as]{Please check that I've summarized this correctly. I'm aiming for an extremely succinct overview of the theorem that can now be understood because we have given enough definitions.}
-\xxx[am]{Checked, and corrected in place. \(\psem{-}\) and \(\csem{-}\) are brackets over the \emph{edit}, so the objects go outside them: the paragraph had \(\psem{p_1}\) and \(\csem{C_1'}\) where it wanted \(\psem{\delta}(p_1)\) and \(\csem{\delta}(C_1')\). The scenario itself was right.}
+The initial policy tree is \(p_1\), which compiles to the PIFO tree state \(C_1 = \lceil p_1 \rceil\).
+Reading that control straight back gives \(p_1' = \lfloor C_1 \rfloor\), with \(p_1' \eqR p_1\): the two are equivalent up to sibling order.
+After handling some traffic, the PIFO tree becomes \(C_1'\), and traffic moves only \pifo and \stt contents, so \(C_1 \sim C_1'\) and \(p_1'\) describes \(C_1'\) as well.
+The operator now issues an edit \(\delta\), requesting the policy tree \(p_2 = \psem{\delta}(p_1')\).
+Applying that edit to the running scheduler state yields the PIFO tree \(C_2' = \csem{\delta}(C_1')\), which can be reported to the network operator as the policy \(p_2' = \lfloor C_2' \rfloor\).
+We want the policy the operator requested and the policy we report to agree, that is, \(p_2 \eqR p_2'\).
+The figure also names \(C_2 = \lceil p_2 \rceil\), the control a fresh compile of \(p_2\) would have built, which realizes the same policy as \(C_2'\) but without its backlog.
 
 We prove this correctness theorem, which suffices to show agreement in the above scenario:
 %
@@ -832,6 +857,7 @@ Then:
 \subsection{Non-Disruption}\label{sec:nondisruption}
 
 \xxx[as]{Anshuman, your argument below about why to keep this theorem is good. Let's keep it. However: (1) I think we can delete the framing paragraphs below, in favor of a simple statement that says: we have chosen our set of edits to prevent disruption. (2) I think we probably need to preview that this is an advantage somewhat earlier, such as in the section when we introduce the edit grammar. (3) IIUC, we do not have an actual proof of this theorem. That is fine; it would be long, probably. But let's explicitly acknowledge that we are stating it without proof and simply sketching an argument. (4) Please introduce some notation for ``the sequence of packets you get out of a $C$ if you were to fully drain it.''}
+\xxx[am]{Point (4) is done: \flush{} is now defined in \cref{sec:controls} and \cref{thm:nondisruption} is stated on it. Points (1) to (3) are still open, and on (3) note that we do have a proof (see \cref{sec:per-form}) but we can discuss whether to emphasize it.}
 
 Agreement on its own is not enough.
 The stop-the-world reset of \cref{sec:intro} is realizable and explainable too, and it is the baseline we wish to beat.
@@ -852,11 +878,11 @@ It satisfies both clauses of \cref{thm:interplay}, since \(\lceil p_2 \rceil\) i
 So the agreement theorem alone cannot tell our contribution apart from the thing we claim to beat, and \cref{sec:intro}'s promise to improve on the state of the art is never discharged formally.
 My counter-offer is to promote non-disruption to a collected theorem rather than demote it.}
 
-We state the property on what the network can observe, which is the sequence of packets that successive \pop{}s release.
+We state the property on what the network can observe, which is the flush sequence.
 
 \begin{theorem}[Non-disruption]\label{thm:nondisruption}
 Let \(C\) be a well-formed control, and let \(\csem{\delta}(C)\) be defined for some form \(\delta\) of the grammar (\cref{sec:delta-grammar}).
-Then \(C\) and \(\csem{\delta}(C)\) release the same sequence of packets under any run of \pop{}s alone.
+Then \(\flush(C) = \flush(\csem{\delta}(C))\).
 \end{theorem}
 
 Most forms discharge this through a single fact about \pop{}, and need no argument of their own.
@@ -871,7 +897,7 @@ Then the buffered backlog is preserved entry-for-entry in \(C'\) and \(\delta\) 
 We therefore discharge non-disruption per form by naming the form's \emph{footprint}, the nodes and fields it touches, and checking that the footprint holds no live \pifo entry.
 Four of the six pass that check outright.
 \Designate{} inserts a node whose \pifo is not empty and \Undesignate{} drops one, so those two need an argument of their own.
-Each such argument shows that the \pop{} sequence is unchanged, which is why \cref{thm:nondisruption} is stated on that sequence rather than on \pifo contents.
+Each such argument shows that \flush{} is unchanged, which is why \cref{thm:nondisruption} is stated on the flush sequence rather than on \pifo contents.
 
 \section{Realizing Reconfigurations as Guarded Sequences}\label{sec:sequences}
 
@@ -1571,7 +1597,9 @@ Exp-PIFO approximates one with adaptive exponential bins, keeping two memory cel
 BMW Tree implements one as a balanced multi-way sorting tree that scales to large flow counts~\cite{Yao23}.
 BBQ reaches hundreds of thousands of concurrent flows by carrying hierarchical find-first-set into a pipelined integer priority queue~\cite{Atre24}.
 Gearbox approximates weighted fair queuing with a hierarchy of queuing levels at constant cost per operation~\cite{Gao22}.
-vPIFO virtualizes a single physical PIFO into many instances that its PIFO Visor can wire into a tree of any shape~\cite{vPIFO}; we take the gap it leaves at runtime as a case study in \cref{sec:background}.
+vPIFO virtualizes a single physical PIFO into many instances that its PIFO Visor can wire into a tree of any shape~\cite{vPIFO}.
+Its Scheduling Description Language compiler generates that wiring offline, so the shape is fixed before traffic arrives, and vPIFO names runtime updating as future work.
+Our policy language is a formal core of that one (\cref{sec:policy-dsl}).
 
 All of these substrates fix the tree's shape and the discipline at each node when the scheduler is configured.
 Rio runs above any of them and asks for one property: commits that are atomic with respect to traffic (\cref{sec:substrate-portability}).
@@ -1581,8 +1609,6 @@ One recent substrate offers more than Rio assumes.
 UIFO adds a level of classes above packets, so that the service order of already-buffered traffic can be updated after the fact~\cite{Wang26}.
 Rio's forms are defined against a substrate where a rank is fixed at \push{} time (\cref{sec:controls}), and our non-disruption theorem (\cref{thm:nondisruption}) is stated against that.
 A substrate that can re-rank a backlog admits reconfigurations for which this grammar has no form.
-
-\xxx[AM]{Proposal for the team: move the vPIFO discussion out of \cref{sec:background} and put it here. It can be a kind of ``worked example'' to show that none of the existing PIFO substrates are our competition. I don't feel super strongly about this; the vPIFO discussion early on is also doing something useful. Just a thought.}
 
 \paragraph{Formal models of scheduling}
 
@@ -1666,9 +1692,9 @@ A form that admits a new set of flows must extend every node on the way down to 
 At each proper ancestor \(C@\nu\) of the target \(C@\tau\) the walk replaces \zz by \(\mathtt{extend}(\mathit{z}, F, i)\), where \(i\) is the index by which \(\nu\) continues toward \(\tau\), and it copies every other node unchanged.
 
 \Add{} comes first and is given in full detail.
-The six that follow lean on it, and we point out only where each one departs from \Add's pattern.
+The five that follow lean on it, and we point out only where each one departs from \Add's pattern.
 
-\subsubsection{\texorpdfstring{\(\Add(\pi, D, \mathit{arm}, m)\)}{Add}}\label{sec:add}
+\subsection{\texorpdfstring{\(\Add(\pi, D, \mathit{arm}, m)\)}{Add}}\label{sec:add}
 
 
 \Add{}'s arguments are \(\pi : \mathit{path}\), the node that will receive the new arm as its last child; \(D\), the discipline that node runs; \(\mathit{arm} : \mathit{pol}\), the policy of the new arm; and \(m \in M_{D}\), the metadatum that tells \disc how to schedule that arm (\cref{sec:policy-dsl}).
@@ -1735,7 +1761,7 @@ The base case reuses the argument name \disc, firing only when the reached node 
 The metadatum \(m\) appears on both sides.
 \(\csem{\Add}\) records it at \(\mathit{z}.\mathit{meta}(k)\), and \(\psem{\Add}\) writes it onto the new arm, so reading the edited control back recovers the annotation the operator asked for.
 
-\subsubsection{\texorpdfstring{\(\ChangeMeta(\tau, D, m)\)}{ChangeMeta}}\label{sec:changemeta}
+\subsection{\texorpdfstring{\(\ChangeMeta(\tau, D, m)\)}{ChangeMeta}}\label{sec:changemeta}
 
 
 \ChangeMeta{} re-tunes a single already-running arm, resetting the metadatum its parent schedules it by, without moving a packet or disturbing any sibling.
@@ -1781,7 +1807,7 @@ Resetting the bookkeeping would pull the targeted arm out of the round in progre
 Whatever \disc keeps beside the metadatum belongs to \disc (\cref{sec:compilation}), and a re-tuning does not touch it.
 A discipline that keeps no per-arm bookkeeping, such as \Strict, does not raise the question.
 
-\subsubsection{\texorpdfstring{\(\Quiesce(\tau)\)}{Quiesce}}\label{sec:quiesce}
+\subsection{\texorpdfstring{\(\Quiesce(\tau)\)}{Quiesce}}\label{sec:quiesce}
 
 
 \(\tau : \mathit{path}\) is the path to the target subtree to silence.
@@ -1822,7 +1848,7 @@ The tree would then be malformed, and a later \pop{} would get stuck.
 
 \(\psem{\Quiesce(\tau)}\) is the identity on \pol.
 
-\subsubsection{\texorpdfstring{\(\Remove(\tau)\)}{Remove}}\label{sec:remove}
+\subsection{\texorpdfstring{\(\Remove(\tau)\)}{Remove}}\label{sec:remove}
 
 As before, \(\tau : \mathit{path}\) is the non-empty target arm; destruct it as \(\pi \mathbin{+\!\!+} [k]\).
 \Remove{} unhooks that arm and renumbers higher siblings down by one; it fires only when the arm's subtree is empty (see note below).
@@ -1926,7 +1952,7 @@ We do not wish to make a scheduling decision for the operator, and the only way 
 Our grammar sidesteps the question entirely, by asking that a targeted subtree be empty before it is deleted (\cref{sec:sequences}).
 At the instant \Remove{} fires, no entry above the doomed arm was enqueued on account of a packet inside it, so no entry has to be dropped and the structural deletion is unambiguous.
 
-\subsubsection{\texorpdfstring{\(\Designate(\tau, \mathit{survivor})\)}{Designate}}\label{sec:designate}
+\subsection{\texorpdfstring{\(\Designate(\tau, \mathit{survivor})\)}{Designate}}\label{sec:designate}
 
 
 \(\tau : \mathit{path}\) is the path to the target subtree being wrapped, and \(\mathit{survivor} : \mathit{pol}\) is the designated-survivor policy that becomes the new \(\Strictstar\) node's low-priority arm.
@@ -2072,7 +2098,7 @@ The two arms thus stay operationally disjoint even when their label sets overlap
 \end{array}
 \]
 
-\subsubsection{\texorpdfstring{\(\Undesignate(\tau)\)}{Undesignate}}\label{sec:undesignate}
+\subsection{\texorpdfstring{\(\Undesignate(\tau)\)}{Undesignate}}\label{sec:undesignate}
 
 
 \(\tau : \mathit{path}\) targets the \(\Strictstar\) node to unwrap.
@@ -2224,7 +2250,7 @@ The remaining three are the ones with an argument to make, and the rest of this 
 \label{fig:per-form-checks}
 \end{figure*}
 
-\subsubsection{Characterization for \texorpdfstring{\Add}{Add}}\label{sec:add-char}
+\subsection{Characterization for \texorpdfstring{\Add}{Add}}\label{sec:add-char}
 
 Both recursions descend \(\pi\) in the same shape, so we induct on \(\pi\).
 At the base (\(\pi = []\)), \(\psem{\cdot}\) appends the annotated arm \(m{:}\,\mathit{arm}\), while \(\csem{\Add}\) appends \(\lceil \mathit{arm} \rceil\) at slot \(k\) and sets \(\mathit{z}.\mathit{meta}(k)\) to \(m\).
@@ -2235,7 +2261,7 @@ The ancestor itself adds nothing to reconcile.
 \(\csem{\Add}\) leaves its \stt and \pifo unchanged, and its \zz-extension is confined to the classifier of an internal node, which \(\lfloor \cdot \rfloor\) does not read.
 So the two sides agree all the way down the spine and can differ only inside \(\lceil \mathit{arm} \rceil\), where sibling order is free; that is exactly the \(\eqR\)-slack the claim allows, giving \(p' \eqR \psem{\Add(\pi, D, \mathit{arm}, m)}(p)\).
 
-\subsubsection{Non-disruption for \texorpdfstring{\Designate{} and \Undesignate}{Designate and Undesignate}}\label{sec:wrap-nondisruption}
+\subsection{Non-disruption for \texorpdfstring{\Designate{} and \Undesignate}{Designate and Undesignate}}\label{sec:wrap-nondisruption}
 
 These are the two forms \cref{lem:nondisruption} does not reach.
 \(\mathtt{wrap}\) inserts the live node \(N\) with a non-empty \pifo, and \(\mathtt{unwrap}\) drops one, so each needs a direct argument that the \pop{} sequence is unchanged.
