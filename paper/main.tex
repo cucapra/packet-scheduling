@@ -1156,7 +1156,7 @@ The parent spends an index on that slot and queries \texttt{v}.
 While \texttt{v} holds packets, it returns packets.
 Once \texttt{v} is empty it defers to its designated survivor, and the query passes to \texttt{surv} rather than underflowing.
 
-The parent therefore holds one index per packet in \emph{either} subtree, and spends them on \texttt{v} until \texttt{v} is dry and on \texttt{surv} thereafter, which is the arm-0-before-arm-1 order \cref{sec:wrap-nondisruption} proves non-disruptive.
+The parent therefore holds one index per packet in \emph{either} subtree, and spends them on \texttt{v} until \texttt{v} is dry and on \texttt{surv} thereafter, which is the arm-0-before-arm-1 order \cref{sec:check-designate} proves non-disruptive.
 The elision does change what \cref{sec:controls}'s well-formedness ranges over.
 That invariant counts, at each node, one \pifo entry per packet in the subtree under the corresponding child, and here the parent holds entries for packets in a subtree that is not its child at all.
 This count is still correct once ``the subtree under index \(i\)'' is read as the subtree at \(i\) together with its designated survivor's, and an index that leads to \texttt{v} when \texttt{v} is empty does not actually reach a leaf with nothing to emit, since it reaches \texttt{surv}.
@@ -1845,7 +1845,7 @@ That arm is \(\lfloor B \rfloor\).
 The wrapper's own annotations go with it, and the surviving arm inherits the annotation the wrapper held at its parent.
 The empty-arm-0 precondition is operational and leaves no trace at \pol-level.
 
-\section{A Gallery of the Three Equivalences}
+\section{A Gallery of the Three Equivalences}\label{app:gallery}
 
 \Cref{sec:equivalences} defines \(\sim\) on controls and \(\eqR\) on policies.
 A third relation is convenient here: we write \(C \simR C'\) for the equivalence obtained by closing \(\sim\) under sibling permutations.
@@ -1897,9 +1897,10 @@ All three relations are shown by example in \cref{fig:equiv-gallery}, over a nod
 
 
 \section{Proofs}\label{sec:per-form}
-\xxx[as]{I think it is a little weird, but maybe possible, that we have a single section for proving two different theorems. The usual way to see this go would be to have one section for proving theorem 1 and one section for proving theorem 2. They are both simple proofs by cases (because $\delta$ is not recursive), so they have the same set of cases. If you want to keep them together, that's fine---just noting that it's somewhat surprising.}
 
 This appendix argues the validity of the theorems in \cref{sec:correctness}.
+It proves both in one section rather than one section each.
+Neither \(\delta\) nor \(\csem{\delta}\) is recursive, so each theorem is a case analysis over the same six forms, and giving each theorem its own section would run that split twice and separate the checks that a single form owes.
 
 Each form owes three checks, and together the six sets of three prove the two theorems above.
 Two of the checks feed \cref{thm:interplay}, and the third feeds \cref{thm:nondisruption}.
@@ -1917,66 +1918,17 @@ We call the nodes and fields that a form touches its \emph{footprint}, and the c
 Where a form's footprint does hold one, we argue directly that the \pop{} sequence is unchanged.
 \end{itemize}
 
-\cref{fig:per-form-checks} discharges all eighteen checks.
-\xxx[as]{The paragraphs in the table are short enough that I'm not sure people will agree that they count as a complete, rigorous proof That is potentially OK, but we should be up front about how much detail we're going into. Now that this stuff is in the appendix, we could liberate the arguments from their table cells and give them more space.}
-Fifteen of them are immediate from the rules of \cref{sec:edit-semantics} and are given in the table itself.
-The remaining three are the ones with an argument to make, and the rest of this section gives those: \Add's Characterization, and non-disruption for \Designate{} and \Undesignate.
+Fifteen of the eighteen checks are immediate from the rules of \cref{sec:edit-semantics}, and run to a sentence or two each: they name the fields that a rule writes and observe that the property at issue does not depend on them.
+The other three take an argument of their own: \Add's Characterization, and Non-disruption for \Designate{} and \Undesignate.
+The six subsections below give all eighteen, in the order \cref{fig:delta-grammar} lists the forms.
 
-\begin{figure*}
-\small
-\begin{tabular}{@{}l >{\raggedright\arraybackslash}p{0.265\textwidth} >{\raggedright\arraybackslash}p{0.245\textwidth} >{\raggedright\arraybackslash}p{0.265\textwidth}@{}}
-\toprule
-& \emph{Preservation of \(\vdash\)} & \emph{Characterization} & \emph{Non-disruption} \\
-\midrule
+\subsection{\texorpdfstring{\Add}{Add}}\label{sec:check-add}
 
-\Add
-& No pre-existing entry can name the new slot \(k\), and \(\lceil \mathit{arm} \rceil\) compiles empty, so slot \(k\) counts \(0 = 0\).
-  Every other slot inherits its count.
-& \cref{sec:add-char}.
-& The footprint is the empty slot \(k\), its metadatum, the empty \(\lceil \mathit{arm} \rceil\), and the on-path \zz-extensions.
-  A \zz-edit changes no \pifo, so none of these is a live entry. \\
-\addlinespace
+\paragraph{Preservation of \(\vdash\)}
+No pre-existing entry can name the new slot \(k\), and \(\lceil \mathit{arm} \rceil\) compiles empty, so slot \(k\) counts \(0 = 0\).
+Every other slot inherits its count.
 
-\ChangeMeta
-& The footprint is one \(\mathit{z}.\mathit{meta}\) entry, so no child, no \pifo, and no count moves.
-& No arm changes position, so the two sides agree exactly rather than up to \(\eqR\): \(p' = \psem{\ChangeMeta(\tau, D, m)}(p)\).
-& An entry's rank was fixed when it was \push{}ed, so the new metadatum governs future pushes only. \\
-\addlinespace
-
-\Quiesce
-& Only the admitted sets across \(V_\tau\) narrow.
-  Every \pifo, child, and \stt is untouched.
-& \(\lfloor \cdot \rfloor\) does not read \(\mathit{z}.\mathit{admit}\), and \(\mathit{z}.\mathit{serves}\) is left in place, so a silenced leaf keeps its identity and \(\psem{\Quiesce(\tau)}\) is the identity.
-& Packets already buffered under \(C@\tau\) keep their entries and still drain.
-  Only future \push{}es are refused. \\
-\addlinespace
-
-\Remove
-& Emptiness and \(\vdash C\) leave \(C@\pi.\mathit{pifo}\) with no entry equal to \(k\), so \(\mathtt{drop}_k\) deletes none, and every surviving child keeps its entries under \(\sigma_k\).
-& The parent keeps its ranker, so it reads as the same \disc with slot \(k\) gone.
-& The ancestor retractions delete nothing, since they narrow admission for future pushes only. \\
-\addlinespace
-
-\Designate
-& At \(N\), the \(P_0\) slot-\(0\) entries match the packet count under arm 0, and arm 1 holds neither a packet nor an entry.
-  At \(C@\pi\), slot \(k\)'s count is the \(P_0\) that \(C@\tau\) carried.
-& Outside \(N\) every node is structurally intact, and \(N\) reads as a \(\Strictstar\), its arms annotated out of \(\mathit{z}_N.\mathit{meta}\).
-& \cref{sec:wrap-nondisruption}. \\
-\addlinespace
-
-\Undesignate
-& \(N.\mathit{pifo}\) carried \(|B|\) slot-\(1\) entries and \(C@\pi.\mathit{pifo}\) the same count one level up, so after the unwrap \(C@\pi\) reads \(|B| = |B|\).
-& Nothing structural outside \(N\) moves and the wrapper is dropped, so \(\lfloor \cdot \rfloor\) returns \(\lfloor B \rfloor\) in its place.
-& \cref{sec:wrap-nondisruption}. \\
-
-\bottomrule
-\end{tabular}
-\caption{The eighteen per-form checks. A cross-reference marks the three that take an argument of their own.}
-\label{fig:per-form-checks}
-\end{figure*}
-
-\subsection{Characterization for \texorpdfstring{\Add}{Add}}\label{sec:add-char}
-
+\paragraph{Characterization}
 Both recursions descend \(\pi\) in the same shape, so we induct on \(\pi\).
 At the base (\(\pi = []\)), \(\psem{\cdot}\) appends the annotated arm \(m{:}\,\mathit{arm}\), while \(\csem{\Add}\) appends \(\lceil \mathit{arm} \rceil\) at slot \(k\) and sets \(\mathit{z}.\mathit{meta}(k)\) to \(m\).
 We have \(\lfloor \lceil \mathit{arm} \rceil \rfloor \eqR \mathit{arm}\), and \(\lfloor \cdot \rfloor\) reads the annotation back off \(\mathit{z}.\mathit{meta}\).
@@ -1986,24 +1938,82 @@ The ancestor itself adds nothing to reconcile.
 \(\csem{\Add}\) leaves its \stt and \pifo unchanged, and its \zz-extension is confined to the classifier of an internal node, which \(\lfloor \cdot \rfloor\) does not read.
 So the two sides agree all the way down the spine and can differ only inside \(\lceil \mathit{arm} \rceil\), where sibling order is free; that is exactly the \(\eqR\)-slack the claim allows, giving \(p' \eqR \psem{\Add(\pi, D, \mathit{arm}, m)}(p)\).
 
-\subsection{Non-disruption for \texorpdfstring{\Designate{} and \Undesignate}{Designate and Undesignate}}\label{sec:wrap-nondisruption}
+\paragraph{Non-disruption}
+The footprint is the empty slot \(k\), its metadatum, the empty \(\lceil \mathit{arm} \rceil\), and the on-path \zz-extensions.
+A \zz-edit changes no \pifo, so none of these is a live entry.
 
-These are the two forms the footprint check does not reach.
-\(\mathtt{wrap}\) inserts the live node \(N\) with a non-empty \pifo, and \(\mathtt{unwrap}\) drops one, so each needs a direct argument that the \pop{} sequence is unchanged.
-As in \cref{sec:undesignate}, \(N\) is the wrapper and \(B\) the control under its arm 1.
+\subsection{\texorpdfstring{\ChangeMeta}{ChangeMeta}}\label{sec:check-changemeta}
 
-For \Designate, every in-flight packet lies under arm 0, which is \(C@\tau\) carried over unchanged, so its own entries are untouched.
+\paragraph{Preservation of \(\vdash\)}
+The footprint is one \(\mathit{z}.\mathit{meta}\) entry, so no child, no \pifo, and no count moves.
+
+\paragraph{Characterization}
+No arm changes position, so the two sides agree exactly rather than up to \(\eqR\): \(p' = \psem{\ChangeMeta(\tau, D, m)}(p)\).
+
+\paragraph{Non-disruption}
+An entry's rank was fixed when it was \push{}ed, so the new metadatum governs future pushes only.
+
+\subsection{\texorpdfstring{\Quiesce}{Quiesce}}\label{sec:check-quiesce}
+
+\paragraph{Preservation of \(\vdash\)}
+Only the admitted sets across \(V_\tau\) narrow.
+Every \pifo, child, and \stt is untouched.
+
+\paragraph{Characterization}
+\(\lfloor \cdot \rfloor\) does not read \(\mathit{z}.\mathit{admit}\), and \(\mathit{z}.\mathit{serves}\) is left in place, so a silenced leaf keeps its identity and \(\psem{\Quiesce(\tau)}\) is the identity.
+
+\paragraph{Non-disruption}
+Packets already buffered under \(C@\tau\) keep their entries and still drain.
+Only future \push{}es are refused.
+
+\subsection{\texorpdfstring{\Remove}{Remove}}\label{sec:check-remove}
+
+\paragraph{Preservation of \(\vdash\)}
+Emptiness and \(\vdash C\) leave \(C@\pi.\mathit{pifo}\) with no entry equal to \(k\), so \(\mathtt{drop}_k\) deletes none, and every surviving child keeps its entries under \(\sigma_k\).
+
+\paragraph{Characterization}
+The parent keeps its ranker, so it reads as the same \disc with slot \(k\) gone.
+
+\paragraph{Non-disruption}
+The ancestor retractions delete nothing, since they narrow admission for future pushes only.
+
+\subsection{\texorpdfstring{\Designate}{Designate}}\label{sec:check-designate}
+
+Throughout this subsection and the next, \(N\) is the wrapper node and \(B\) the control under its arm 1, as in \cref{sec:designate}.
+We write \(P_0\) for the number of packets buffered under arm 0.
+
+\paragraph{Preservation of \(\vdash\)}
+At \(N\), the \(P_0\) slot-\(0\) entries match the packet count under arm 0, and arm 1 holds neither a packet nor an entry.
+At \(C@\pi\), slot \(k\)'s count is the \(P_0\) that \(C@\tau\) carried.
+
+\paragraph{Characterization}
+Outside \(N\) every node is structurally intact, and \(N\) reads as a \(\Strictstar\), its arms annotated out of \(\mathit{z}_N.\mathit{meta}\).
+
+\paragraph{Non-disruption}
+This is one of the two forms the footprint check does not reach, since \(\mathtt{wrap}\) inserts the live node \(N\) with a non-empty \pifo.
+We argue directly that the \pop{} sequence is unchanged.
+Every in-flight packet lies under arm 0, which is \(C@\tau\) carried over unchanged, so its own entries are untouched.
 If \(P_0 > 0\), every entry in \(N.\mathit{pifo}\) is slot \(0\), so any \pop{} reaching \(N\) descends into arm 0 and returns exactly what it would have returned before.
 If \(P_0 = 0\), then \(\vdash C\) means no \pop{} ever reaches \(N\).
 Arm 1 sees traffic only on a future \push{}, so no buffered packet is dropped, reordered, or re-ranked.
 
-For \Undesignate, the only entries dropped are \(N\)'s slot-\(1\) entries, and with arm 0 empty every \pop{} reaching \(N\) was already forced to slot \(1\) and on to \(B\).
+\subsection{\texorpdfstring{\Undesignate}{Undesignate}}\label{sec:check-undesignate}
+
+\paragraph{Preservation of \(\vdash\)}
+\(N.\mathit{pifo}\) carried \(|B|\) slot-\(1\) entries and \(C@\pi.\mathit{pifo}\) the same count one level up, so after the unwrap \(C@\pi\) reads \(|B| = |B|\).
+
+\paragraph{Characterization}
+Nothing structural outside \(N\) moves and the wrapper is dropped, so \(\lfloor \cdot \rfloor\) returns \(\lfloor B \rfloor\) in its place.
+
+\paragraph{Non-disruption}
+This is the other form the footprint check does not reach, since \(\mathtt{unwrap}\) drops a live node.
+The only entries dropped are \(N\)'s slot-\(1\) entries, and with arm 0 empty every \pop{} reaching \(N\) was already forced to slot \(1\) and on to \(B\).
 Eliding \(N\) removes that redundant hop and returns the same packet, and no entry inside \(B\) moves.
 
 
 \paragraph{Taking stock}
 
-With \cref{fig:per-form-checks}, that is all six forms, and together they discharge \cref{thm:interplay} and \cref{thm:nondisruption}.
+That is all six forms, and together they discharge \cref{thm:interplay} and \cref{thm:nondisruption}.
 The Characterizations have content because each was proved against a \(\lfloor \cdot \rfloor\) fixed in advance, so they are six separate claims rather than six readings of one definition.
 
 \paragraph{Note: The check that is deliberately absent}
