@@ -348,9 +348,8 @@ At this point, a second atomic step runs, collapsing the $\Strictstar$ policy an
 
 % Although an atomic transition from $p_1$ to $p_2$ is not possible,
 Rio can implement atomic transitions from $p_1$ to $p_\text{temp}$ and from $p_\text{temp}$ to $p_2$.
-The key mechanism is the $\Strictstar$ policy node, which reflects a special mechanism we add to PIFO tree hardware to enable efficient policy changes.
+The key mechanism in this example is the $\Strictstar$ policy node, which reflects a special mechanism we add to PIFO tree hardware to enable efficient policy changes.
 \Cref{sec:hw-survivor} details $\Strictstar$ and the atomic edits that add and remove it.
-\xxx[am]{Maybe this is just in my head, but I worry that the reader will see the above and think ``Oh great, all they have is Strict* and they just spam it everywhere.'' But the truth is that we often get away with simple atomic changes like Add, ChangeMeta, etc, or via simpler idioms like Retire. Thoughts? Worth a sentence to explain this?}
 
 \new{Every policy in \cref{fig:tour}, $p_\text{temp}$ included, is read off the control the hardware is actually running.
 Rio can therefore name the policy in force at every instant, in the operator's own language, including throughout the interval in which the scheduler runs a policy that \emph{no operator requested}.}
