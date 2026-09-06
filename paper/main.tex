@@ -1215,10 +1215,10 @@ Even when the presently running \pol is just an intermediate policy that the run
 
 \subsection{Agreement}\label{sec:interplay}
 
-The situation we care about is a single \(\delta\) firing on a running control.
-Consider the following commuting square, which we will read with an eye to the operator's experience.
-Our final goal will be to correctly relate \(C_2'\) and \(C_2\).
+We want to prove that every edit, $\delta$, has consistent effects on the low-level PIFO tree state and the high-level policy tree that describes it.
+\cref{fig:interplay} illustrates the goal.
 
+\begin{figure}
 \begin{center}
 \begin{tikzpicture}[
   >={Stealth[length=4pt]},
@@ -1247,32 +1247,26 @@ Our final goal will be to correctly relate \(C_2'\) and \(C_2\).
 \draw[->] (c1p) -- node[above]{$\csem{\delta}$} (c2p);
 \end{tikzpicture}
 \end{center}
+\caption{Commutative diagram illustrating \cref{thm:interplay}.}
+\label{fig:interplay}
+\end{figure}
 
-The operator writes \(p_1\), which is compiled into control \(C_1 := \lceil p_1 \rceil\).
-Recall that \(\lfloor C_1 \rfloor \eqR p_1\) by compiler correctness (\cref{sec:equivalences}).
-We echo \(p_1' := \lfloor C_1 \rfloor\) back to the operator.
-\(p_1'\) matters because it faithfully reports the arm ordering that the compiler chose.
-Push and pop operations then carry \(C_1\) to \(C_1'\).
-We know that \(C_1 \sim C_1'\), since \push{} and \pop{} changed only live contents, and \(\lfloor C_1' \rfloor = \lfloor C_1 \rfloor\) by \(\lfloor \cdot \rfloor\)'s insensitivity to live contents, so the live \(C_1'\) still realizes both \(p_1\) and \(p_1'\).
+The initial policy tree is $p_1$,
+which compiles to the PIFO tree state $C_1$.
+After handling some traffic, the PIFO tree becomes $C_1'$.
+The operator requests an edit $\delta$ in order to request
+a new policy tree $\psem{p_1}$.
+Applying this edit to the running scheduler state yields the PIFO tree
+$\csem{C_1'}$.
+We want to show that the new policy tree accurately describes the new PIFO tree state:
+in other words, that
+$\psem{p_1} =_R \lfloor\csem{C_1'}\rfloor$.
+\xxx[as]{Please check that I've summarized this correctly. I'm aiming for a an extremely succinct overview of the theorem that can now be understood because we have given enough definitions.}
 
-The operator next writes \(p_2\), and the \emph{transition planner} (\cref{sec:planner}), the tool that infers atomic edits between two \pol{}s, produces a \(\delta\) such that \(\psem{\delta}(p_1') \eqR p_2\).
-Applying \(\csem{\delta}\) to \(C_1'\) brings us to control \(C_2'\).
-By closure under \(\delta\) (\cref{thm:interplay} below) we have \(\lfloor C_2' \rfloor \eqR \psem{\delta}(p_1')\).
-Chaining this with the previously established \(\psem{\delta}(p_1') \eqR p_2\) gives \(\lfloor C_2' \rfloor \eqR p_2\).
-We again echo \(p_2' := \lfloor C_2' \rfloor\) to the operator.
-
-The transformation is complete at this point, but it still needs a reference point.
-\(C_2 := \lceil p_2 \rceil\) is the control that the state of the art would have built, since all it can do is compile a new control from scratch.
-\emph{We} do not actually construct \(C_2\), but it is still valuable to relate \(C_2'\), which we have just produced, to \(C_2\).
-
-By compiler correctness, \(\lfloor C_2 \rfloor \eqR p_2\), hence \(\lfloor C_2' \rfloor \eqR \lfloor C_2 \rfloor\).
-However, we would like to relate the \emph{controls} directly, not just relate their \pol-level projections via \(\lfloor \cdot \rfloor\).
-The control-level relation we can write is \(C_2' \simR C_2\), which absorbs two gaps at once.
-\(C_2'\) carries the live \pifo and \stt accumulated since \(C_1\), while \(C_2\) is freshly compiled and bare; the \(\sim\) component covers that.
-\(\csem{\delta}\) and \(\lceil \cdot \rceil\) are also free to pick different sibling orders at internal nodes, so the two may differ in child arrangements; the R-closure covers that.
-
-\begin{theorem}[Interplay of \(\psem{\delta}\) and \(\csem{\delta}\)]\label{thm:interplay}
-Let \(C\) be a well-formed control, and let \(\csem{\delta}(C)\) be defined for some form \(\delta\) of the grammar (\cref{sec:delta-grammar}).
+We prove this correctness theorem, which suffices to show agreement in the above scenario:
+%
+\begin{theorem}[Edit Agreement]\label{thm:interplay}
+Let \(C\) be a well-formed control, and let \(\csem{\delta}(C)\) be defined for some \(\delta\).
 Then:
 \begin{enumerate}
 \item \(\csem{\delta}(C)\) is well-formed.
@@ -1280,42 +1274,11 @@ Then:
 \end{enumerate}
 \end{theorem}
 
+\xxx[as]{integrate proof!}
 \begin{proof}[Proof sketch]
 Each clause aggregates one of the per-form checks of \cref{sec:per-form}.
 Clause 1 is exactly \emph{Preservation of \(\vdash\)}, and clause 2 is exactly \emph{Characterization}.
 \end{proof}
-
-\paragraph{Note: Why clause 2 is not vacuous}
-
-Clause 2 can look true by construction, as though \(\lfloor \cdot \rfloor\) were being defined to make it hold.
-It is not.
-\(\lfloor \cdot \rfloor\) is fixed in advance, by structural recursion on the control (\cref{sec:equivalences}), rather than extended along \(\delta\).
-So each form's Characterization has to show that this fixed recursion, rerun on the edited control, lands where \(\psem{\delta}\) independently says it should.
-
-The diagram above is the unit cell of a fuller picture: a real reconfiguration is a \emph{sequence} of edits, not one \(\delta\), and \cref{sec:idioms} lines up copies of this cell end to end, each intermediate control carrying its own \(\lfloor \cdot \rfloor\) meaning.
-
-\paragraph{A worked example}
-
-The operator requests \(p_1 = \Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\textsf{gmail})\).
-The compiler uses its degree of freedom to yield control \(C_1\) such that \(\lfloor C_1 \rfloor = \Strict(\mathtt{lo}{:}\,\textsf{gmail},\allowbreak\ \mathtt{hi}{:}\,\textsf{zoom})\); the children have been reordered for some compiler-internal reason.
-We echo back
-\[
-p_1' := \lfloor C_1 \rfloor = \Strict(\mathtt{lo}{:}\,\textsf{gmail},\allowbreak\ \mathtt{hi}{:}\,\textsf{zoom}).
-\]
-We know that \(p_1 \eqR p_1'\), so the scheduler that the operator gets is still the one they asked for.
-As the control serves pushes and pops, \(C_1\) transforms into \(C_1'\): the same tree with its \pifo{}s and \stt{}s advanced, so it is still the case that \(C_1 \sim C_1'\) and \(\lfloor C_1' \rfloor = p_1'\).
-
-Later, the operator requests \(p_2 = \Strict(\mathtt{lo}{:}\,\textsf{gmail},\allowbreak\ \mathtt{mid}{:}\,\textsf{spotify},\allowbreak\ \mathtt{hi}{:}\,\textsf{zoom})\).
-The runtime can again use its freedom: instead of literally splicing \textsf{spotify} in between running arms \textsf{gmail} and \textsf{zoom}, it chooses to append \textsf{spotify} to the end.
-This converts the running control \(C_1'\) into control \(C_2'\) such that
-\[
-\lfloor C_2' \rfloor = \Strict(\mathtt{lo}{:}\,\textsf{gmail},\allowbreak\ \mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{mid}{:}\,\textsf{spotify}),
-\]
-and we echo \(p_2' := \lfloor C_2' \rfloor\) back to the operator.
-
-This is \cref{thm:interplay} on a small scale.
-The operator wrote \(p_1\) then \(p_2\), the runtime exercised its arm-order freedom to produce \(C_1'\) then \(C_2'\), and at each step we read off and echoed the running representative, \(p_1'\) and then \(p_2'\).
-Since \(\lfloor C_2' \rfloor \eqR p_2\), the operator's request is faithfully realized despite the different slot order.
 
 \subsection{Non-disruption}\label{sec:nondisruption}
 
