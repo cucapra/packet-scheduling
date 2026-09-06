@@ -496,6 +496,7 @@ We choose the set of edits to meet the following criteria:
 \begin{enumerate}
 \item They are \emph{atomic}. PIFO tree hardware can commit each edit such that packets are processed either by the original policy or the edited one (\Cref{sec:hardware}).
 \xxx[as]{Do we need more intuition here to suggest why the reader should believe that all of these are atomic?}
+\xxx[AM to AS]{So far I have essentially just said that the six forms have been \emph{chosen} with care, and I have asserted that they are atomic: here, and again below the informal list of the forms, where \cref{sec:hardware} is where the assertion is discharged. If we want to give the reader a reason rather than an assertion, let's discuss some more.}
 \item They are \emph{explainable}. Each edit transforms a policy $p$ in our policy DSL into a new policy $p'$. Later, we also show how each edit applies to live PIFO tree state to reflect these changes (\cref{sec:edit-semantics}).
 \item They are \emph{complete}. For any pair of policies $p_1$ and $p_2$, a sequence of edits suffices to transform $p_1$ into $p_2$. \cref{sec:sequences} gives a ``fallback'' path that always works.
 \item They are \emph{non-destructive}, i.e., edits do not drop in-flight packets. Edits that delete subtrees, such as $\Remove$, have preconditions that require those subtrees to be empty.
