@@ -271,7 +271,7 @@ Two practical goals guide the search for better ways to transition from a given 
 We would like to shorten the transition period, and we would like to avoid dropping or delaying packets.
 \xxx[AM]{more to come here; the cost model is a legit open question!}
 \xxx[AM]{Proposal: name \emph{non-disruption} here as one of the improvements over the state of the art.
-Right now \cref{sec:per-form} introduces it out of nowhere, and says ``the stop-the-world reset is the baseline we wish to beat''. 
+Right now \cref{sec:nondisruption} introduces it out of nowhere, and says ``the stop-the-world reset is the baseline we wish to beat''. 
 The reader mayyy look back at the promises above, which are only shorter transitions and fewer drops.
 I like the idea of promoting nondisturbance: the \emph{act} of reconfiguring never reorders, re-ranks, or drops a packet that is already buffered, so any disturbance a reader observes is the new policy correctly governing new arrivals.}
 We contribute a tool that achieves this and shows [improvements].
@@ -468,7 +468,7 @@ The family of disciplines is open.
 Our implementation instantiates \Strict, \RR, and \WFQ because they aid our exposition.
 
 We also have the discipline \(\Strictstar\), which behaves semantically identically to binary \Strict{}.
-It exists to support policy edits (see the next section).
+It exists to support policy edits (\cref{sec:delta-grammar}).
 
 A \pol is written against a fixed \emph{flow universe} \(F\): a finite set of pairwise disjoint flow predicates declared by the operator before constructing the \pol.
 A \pol is \emph{valid} when (a) every discipline is applied at the proper arity, (b) every arm's metadatum is drawn from its parent discipline's set \(M_{D}\), and (c) the leaves form a partition of a subset of \(F\): each leaf carries a flow drawn from \(F\), and no two leaves carry the same flow.
