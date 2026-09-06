@@ -285,7 +285,7 @@ This section walks through the example to provide an overview of the Rio system 
 
 Imagine a programmable switch that needs to prioritize traffic from two flows, labeled \textsf{zoom} and \textsf{gmail}.
 This switch uses a reconfigurable packet scheduler based on PIFO trees~\cite{Sivaraman16}.
-An operator opts to configure the switch to always prioritize \textsf{zoom} packets over \textsf{gmail} packets.
+An operator configures the switch to always prioritize \textsf{zoom} packets over \textsf{gmail} packets.
 
 Instead of directly configuring the PIFO-based hardware's scheduling transactions, the operator specifies the policy using a simple hierarchical policy language.
 The policy for this strict prioritization is:
@@ -345,7 +345,7 @@ The idea is to insert a new, empty $\RR$ subtree
 without deleting the old \textsf{gmail} queue and its in-flight packets.
 The $\Strictstar$ policy prioritizes the old packets over new packets.
 The two leaves that \cref{fig:tour} tags \textsf{gmail}\textsubscript{old} and \textsf{gmail}\textsubscript{new} carry the same flow, split by arrival time: all new traffic (that is, traffic arriving after the first atomic edit has run) goes to the new subtree, while the previously buffered packets in \textsf{gmail}\textsubscript{old} drain.
-When the old \textsf{gmail} queue becomes empty, $p_\text{temp}$ behaves identically to $p_2$.
+When \textsf{gmail}\textsubscript{old} becomes empty, $p_\text{temp}$ behaves identically to $p_2$.
 At this point, a second atomic edit runs, collapsing the $\Strictstar$ policy and transitioning to $p_2$, as desired.
 
 % Although an atomic transition from $p_1$ to $p_2$ is not possible,
@@ -372,7 +372,7 @@ We also implement a simple automatic \emph{transition planner} that suffices in 
 
 Any reconfiguration that cannot be installed in a single atomic edit has an interval in which the scheduler is running neither the initial policy nor the final one.
 What varies is how that interval is governed.
-The usual answers are to drop packets, to recirculate traffic, or to accept a period of chaos during which the hardware uses no clearly defined scheduling policy.
+The usual answers are to drop packets, to recirculate traffic, or to tolerate a period of chaos during which the hardware uses no clearly defined scheduling policy.
 Rio's interval is governed by a policy tree that the operator can read, and every transition into and out of it is atomic.
 The backlog drains and new arrivals are queued throughout.
 
@@ -388,8 +388,7 @@ A compiler translates a policy tree $p$ into a control $C$.
 
 \Cref{sec:grammar} formalizes the semantics of policy edits, $\delta$.
 We describe how each edit affects both high-level policies $p$ and low-level controls $C$.
-Our central guarantee is that these edits agree.
-\Cref{sec:correctness} states and proves this theorem.
+Our central guarantee is that these edits agree; \cref{sec:correctness} states and proves this theorem.
 
 \paragraph{Hardware implementation}
 \Cref{sec:hardware} shows how to augment PIFO tree hardware with support for Rio's policy edits.
