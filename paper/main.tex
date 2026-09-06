@@ -351,8 +351,10 @@ Rio can implement atomic transitions from $p_1$ to $p_\text{temp}$ and from $p_\
 The key mechanism in this example is the $\Strictstar$ policy node, which reflects a special mechanism we add to PIFO tree hardware to enable efficient policy changes.
 \Cref{sec:hw-survivor} details $\Strictstar$ and the atomic edits that add and remove it.
 
-\new{Every policy in \cref{fig:tour}, $p_\text{temp}$ included, is read off the control the hardware is actually running.
-Rio can therefore name the policy in force at every instant, in the operator's own language, including throughout the interval in which the scheduler runs a policy that \emph{no operator requested}.}
+Every policy in \cref{fig:tour}, $p_\text{temp}$ included, is read off the control the hardware is actually running.
+Rio can therefore name the policy in force at every instant, in the operator's own language, including throughout the interval in which the scheduler runs a policy that \emph{no operator requested}.
+\xxx[am]{Keeping this paragraph, with a marker that both it and \cref{fig:tour} may want refining in a next step.
+Two things a reader may stumble on here: we have not yet said what a \emph{control} is, and it is not obvious why we would care about reading a policy back off a control when the policy is the thing we edit.}
 
 \paragraph{Planning policy transitions}
 
