@@ -777,12 +777,11 @@ An internal node is named by the discipline its ranker names, and its arms are a
 The recursion runs on a finite tree and consults neither \stt nor \pifo nor \(\mathit{z}.\mathit{admit}\), so it returns a single value.
 \xxx[AM to AS]{You suggested defining \(\lfloor \cdot \rfloor\) as the inverse of \(\lceil \cdot \rceil\), and then worried that \(\lceil \cdot \rceil\) is not invertible if one is strict about sibling order.
 \(\lfloor \cdot \rfloor\) is now a structural recursion on \(C\), so it is total and single-valued by construction, and no inverse has to be argued for.
-The three items below are then consequences rather than defining rules, and the third of them is a theorem.}
+The two items below are then consequences rather than defining rules, and the agreement of \cref{sec:interplay} is a third.}
 \xxx[as]{OK, I see that this is true. But I am not sure what this separate definition (instead of defining it as an inverse) has bought us. It seems to create a new proof obligation, i.e., to prove that the two things happen to be inverses. Let's discuss this.}
 Every well-formed control therefore determines one \pol, independently of how that control was reached, and we may write \(\lfloor C \rfloor\) and use it as a function.
 
-Three facts follow.
-\xxx[as]{Let's think about how many of these facts we can delete or convert into a single sentence without further elaboration. Let's only keep things that are material for stating our theorem(s).}
+Two facts follow.
 
 \begin{enumerate}
 \item \emph{Compiler correctness.} Compiling a \(p\) to a control and reading it straight back recovers \(p\) itself, up to the sibling-order freedom the compiler enjoyed in laying it out: \(\lfloor \lceil p \rceil \rfloor \eqR p\).
@@ -792,15 +791,11 @@ The relation is \(\eqR\) rather than \(=\) precisely because the compiler can ch
 It never reads \stt, \pifo, or \(\mathit{z}.\mathit{admit}\).
 So \(\sim\)-related controls, which share shape and \zz outright, are equal when read off using \(\lfloor \cdot \rfloor\). 
 Thus, if \(C \sim C'\), then \(\lfloor C \rfloor = \lfloor C' \rfloor\).
-\item \emph{Closure under \(\delta\).} A form's two readings (\cref{sec:delta-grammar}) agree.
-Editing the control and reading it off gives the same \pol, up to sibling order, as applying the \pol-level effect to the read-off, so \(\lfloor \csem{\delta}(C) \rfloor \eqR \psem{\delta}(\lfloor C \rfloor)\).
-This theorem is proved one form at a time in \cref{sec:per-form} and collected as \cref{thm:interplay}.
-The relation is again \(\eqR\), not \(=\), because \(\csem{\delta}\) may lay the edited node's children out in any sibling order.
 \end{enumerate}
 
 This is how we give the transitionary policy the semantics that \cref{sec:intro} promises.
 Even when the presently running \pol is just an intermediate policy that the runtime crafted on the way from the running policy to the operator's true request, we can still read off and report to the operator exactly what is running.
-\cref{sec:interplay} takes up the third fact and proves it, as the ``commuting square'' these pieces trace out.
+\cref{sec:interplay} adds the fact that makes this hold across an edit, that a form's two readings agree, and proves it as the ``commuting square'' these pieces trace out.
 
 \subsection{Agreement}\label{sec:interplay}
 
