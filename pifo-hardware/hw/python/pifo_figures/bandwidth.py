@@ -14,6 +14,7 @@ from pifo_figures.common import (
     COMMIT_COLOR,
     DRAIN_COLOR,
     FINISH_COLOR,
+    RESUME_COLOR,
     START_COLOR,
     BandwidthLike,
     FigureInputs,
@@ -75,6 +76,8 @@ def build_samples(
     timing_cycles = [event.commit_cycle]
     if event.drain_cycle is not None:
         timing_cycles.append(event.drain_cycle)
+    if event.resume_cycle is not None:
+        timing_cycles.append(event.resume_cycle)
     first_unaligned = min(
         event.start_cycle,
         *(packet.input_cycle for packet in packets),
@@ -191,6 +194,11 @@ def render_matplotlib(
         if event.drain_cycle is not None
         else None
     )
+    transition_resume = (
+        event.resume_cycle - event.start_cycle
+        if event.resume_cycle is not None
+        else None
+    )
     visible_min = min(x_values)
     visible_max = max(x_values)
 
@@ -251,6 +259,13 @@ def render_matplotlib(
                 linewidth=1.3,
                 linestyle=":",
             )
+        if transition_resume is not None:
+            axis.axvline(
+                transition_resume,
+                color="tab:red",
+                linewidth=1.3,
+                linestyle=(0, (2, 4)),
+            )
         axis.grid(True, color="0.9", linewidth=0.8)
         axis.set_ylim(bottom=0)
 
@@ -291,6 +306,15 @@ def _annotate_matplotlib(axis, event: PolicyEvent, low: float, high: float) -> N
                 event.drain_cycle - event.start_cycle,
                 "tab:purple",
                 -59,
+            )
+        )
+    if event.resume_cycle is not None:
+        markers.append(
+            (
+                "traffic resumed",
+                event.resume_cycle - event.start_cycle,
+                "tab:red",
+                -76,
             )
         )
     for label, value, color, offset in markers:
@@ -475,6 +499,10 @@ def _svg_marker_labels(
     if event.drain_cycle is not None:
         markers.append(
             ("old tree drained", event.drain_cycle - event.start_cycle, DRAIN_COLOR)
+        )
+    if event.resume_cycle is not None:
+        markers.append(
+            ("traffic resumed", event.resume_cycle - event.start_cycle, RESUME_COLOR)
         )
     for index, (label, value, color) in enumerate(markers):
         x = area.sx(value)

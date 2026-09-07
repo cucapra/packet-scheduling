@@ -1,0 +1,39 @@
+Validation for the multi-edit experiment
+
+PASS: python3 -m unittest discover -s hw/python/tests -q (35 tests)
+PASS: sbt compile
+PASS: rio.sim.ControlIngressRateSim (IVerilog; one accepted instruction/cycle)
+PASS: rio.sim.TransactionalConfigSim (IVerilog)
+PASS: rio.sim.FrontUnderflowRewriteSim (IVerilog)
+PASS: rio.sim.StopTheWorldPopSim (IVerilog; hardware stop and N-token prefill)
+PASS: rio.sim.PifoCopySim (IVerilog; rank/order preservation, source clear,
+      explicit root probe, detached-token reclamation, no ordinary copy pops)
+PASS: rio.sim.WeightedRankerSim (IVerilog; grouped finish, commit-only reweight,
+      consecutive admissions without stale rank state)
+PASS: rio.sim.ConcurrentPifoRegressionSim (Verilator; 2000 randomized cycles
+      checked against a reference sorted queue, including concurrent push/pop)
+PASS: generated seven-PE mesh Verilator lint with -DSYNTHESIS
+
+PASS: control, rio, prefill, relocate, reset use identical 10005-packet traces.
+      All 10005 packets complete in each transitioning run, with no drops and
+      no per-flow reorderings. Control serves 7871 packets; its 2134 arrivals
+      without a p1 arm are explicitly unserved, not dropped.
+PASS: per-packet delay starts at generation, not admission.
+PASS: t1 backlogs are identical across runs, with no packets waiting at ingress.
+PASS: relocation transfers 325 entries on each of three PEs (975 PIFO tokens).
+PASS: all four figures render to PNG/SVG with separate source data CSVs.
+
+Limits: lint/elaboration are not gate-level synthesis, timing closure, or a
+physical 1 GHz result. An additional large randomized IVerilog diagnostic was
+terminated after exceeding seven minutes; it is not counted as a passing test.
+The large-tree experiments and large randomized queue regression use Verilator.
+
+Experimental claims that are NOT supported by these data:
+- No initial backlog on work/web (13 packets each are measured).
+- All unchanged-path flow delays are indistinguishable from control.
+- Instantaneous first service within one or two cycles of the request.
+- A saturated realtime allocation of 6/17 can be measured after its queue drains
+  with only 0.20 offered load.
+
+See README.md and measurements.json for measured timings, instruction counts,
+peak buffers, first services, flow differences and recovery metrics.

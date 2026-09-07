@@ -1,0 +1,199 @@
+{
+  "schema": "pifo-multi-edit-v1",
+  "cycle": 2000,
+  "hardware": {
+    "num_engines": 7,
+    "num_vpifos": 16,
+    "max_packet_priority": 16777216,
+    "fifo_depth": 32,
+    "prefetch_buffer_depth": 16
+  },
+  "before": [
+    {
+      "name": "realtime",
+      "slot": 1,
+      "weight": 3,
+      "policy": "SP",
+      "flows": [
+        {
+          "id": 1,
+          "name": "Zoom"
+        },
+        {
+          "id": 2,
+          "name": "Voip"
+        }
+      ]
+    },
+    {
+      "name": "bulk",
+      "slot": 2,
+      "weight": 2,
+      "policy": "RR",
+      "flows": [
+        {
+          "id": 9,
+          "name": "Backup"
+        },
+        {
+          "id": 10,
+          "name": "Sync"
+        }
+      ]
+    },
+    {
+      "name": "work",
+      "slot": 3,
+      "weight": 3,
+      "policy": "RR",
+      "flows": [
+        {
+          "id": 5,
+          "name": "Gmail"
+        },
+        {
+          "id": 6,
+          "name": "Ssh"
+        }
+      ]
+    },
+    {
+      "name": "legacy",
+      "slot": 4,
+      "weight": 4,
+      "policy": "RR",
+      "flows": [
+        {
+          "id": 3,
+          "name": "Legacy1"
+        },
+        {
+          "id": 4,
+          "name": "Legacy2"
+        }
+      ]
+    },
+    {
+      "name": "web",
+      "slot": 5,
+      "weight": 3,
+      "policy": "WFQ",
+      "flows": [
+        {
+          "id": 7,
+          "name": "Http",
+          "weight": 1
+        },
+        {
+          "id": 8,
+          "name": "Https",
+          "weight": 2
+        }
+      ]
+    }
+  ],
+  "after": [
+    {
+      "name": "realtime",
+      "slot": 1,
+      "weight": 6,
+      "policy": "SP",
+      "flows": [
+        {
+          "id": 1,
+          "name": "Zoom"
+        },
+        {
+          "id": 2,
+          "name": "Voip"
+        }
+      ]
+    },
+    {
+      "name": "bulk",
+      "slot": 2,
+      "weight": 1,
+      "policy": "RR",
+      "flows": [
+        {
+          "id": 9,
+          "name": "Backup"
+        },
+        {
+          "id": 10,
+          "name": "Sync"
+        }
+      ]
+    },
+    {
+      "name": "work",
+      "slot": 3,
+      "weight": 3,
+      "policy": "RR",
+      "flows": [
+        {
+          "id": 5,
+          "name": "Gmail"
+        },
+        {
+          "id": 6,
+          "name": "Ssh"
+        }
+      ]
+    },
+    {
+      "name": "web",
+      "slot": 5,
+      "weight": 3,
+      "policy": "WFQ",
+      "flows": [
+        {
+          "id": 7,
+          "name": "Http",
+          "weight": 1
+        },
+        {
+          "id": 8,
+          "name": "Https",
+          "weight": 2
+        }
+      ]
+    },
+    {
+      "name": "media",
+      "slot": 6,
+      "weight": 2,
+      "policy": "SP",
+      "flows": [
+        {
+          "id": 11,
+          "name": "Video"
+        },
+        {
+          "id": 12,
+          "name": "Chat"
+        }
+      ]
+    },
+    {
+      "name": "gaming",
+      "slot": 7,
+      "weight": 2,
+      "policy": "RR",
+      "flows": [
+        {
+          "id": 13,
+          "name": "Game"
+        },
+        {
+          "id": 14,
+          "name": "Vr"
+        }
+      ]
+    }
+  ],
+  "reset_cost": {
+    "teardown_cycles": 512,
+    "install_cycles": 513
+  }
+}

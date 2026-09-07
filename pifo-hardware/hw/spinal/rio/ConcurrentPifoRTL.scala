@@ -13,9 +13,19 @@ class ConcurrentPifoRTL(config: PifoConfig) extends Component {
   val io = new Bundle {
     val push1 = slave(Flow(PifoEntry(config)))
     val push2 = slave(Flow(PifoEntry(config)))
+    val push2Ready = out Bool ()
     val popRequest = slave(Flow(PifoPopInterface(config)))
     val popResponse = master(Flow(PifoPopResponse(config)))
     val popPortEmpty = out Bool ()
+    val inspectPort = in UInt (config.bitPort bits)
+    val inspectCount = out UInt ((config.bitPifo + 1) bits)
+    val probePort = in UInt (config.bitPort bits) default(0)
+    val probeCount = out UInt ((config.bitPifo + 1) bits)
+    val copyIndex = in UInt (config.bitPifo bits) default(0)
+    val copyEntry = master Flow (PifoEntry(config))
+    val copyInsert = slave Stream (PifoEntry(config))
+    val copyClear = in Bool () default(False)
+    val copyEmpty = out Bool ()
     // Pulses when a successful pop leaves its virtual PIFO with no entries.
     val portDrained = master(Flow(UInt(config.bitPort bits)))
   }
@@ -23,6 +33,13 @@ class ConcurrentPifoRTL(config: PifoConfig) extends Component {
   private val countWidth = config.bitPifo + 1
   private val pifoArray = Vec(Reg(PifoEntry(config)), config.numPifo)
   private val pifoCount = Reg(UInt(countWidth bits)) init (0)
+  private val portCounts = Vec.fill(1 << config.bitPort)(Reg(UInt(countWidth bits)) init (0))
+  io.inspectCount := portCounts(io.inspectPort)
+  io.probeCount := portCounts(io.probePort)
+  io.copyEntry.valid := io.copyIndex.resize(countWidth) < pifoCount
+  io.copyEntry.payload := pifoArray(io.copyIndex)
+  io.copyInsert.ready := pifoCount < config.numPifo
+  io.copyEmpty := pifoCount === 0
 
   private def firstPosition(entries: Vec[PifoEntry], count: UInt)(matches: PifoEntry => Bool): (Bool, UInt) = {
     val matchBits = Vec(Bool(), config.numPifo)
@@ -47,14 +64,7 @@ class ConcurrentPifoRTL(config: PifoConfig) extends Component {
   val (popExists, popPosition) = firstPosition(pifoArray, pifoCount)(_.port === io.popRequest.port)
   io.popPortEmpty := !popExists
   val popFire = io.popRequest.valid && popExists
-  val otherPortMatches = Vec(Bool(), config.numPifo)
-  pifoArray.zip(otherPortMatches).zipWithIndex.foreach { case ((entry, matches), index) =>
-    matches :=
-      U(index, countWidth bits) < pifoCount &&
-        entry.port === io.popRequest.port &&
-        U(index, config.bitPifo bits) =/= popPosition
-  }
-  val popWasLastForPort = popExists && !otherPortMatches.asBits.orR
+  val popWasLastForPort = popExists && portCounts(io.popRequest.port) === 1
 
   val countAfterPop = UInt(countWidth bits)
   countAfterPop := pifoCount
@@ -97,7 +107,8 @@ class ConcurrentPifoRTL(config: PifoConfig) extends Component {
   }
 
   val push2Position = insertionPosition(afterPush1, countAfterPush1, io.push2.priority)
-  val push2Fire = io.push2.valid && countAfterPush1 < config.numPifo
+  io.push2Ready := countAfterPush1 < config.numPifo
+  val push2Fire = io.push2.valid && io.push2Ready
   val countAfterPush2 = UInt(countWidth bits)
   countAfterPush2 := countAfterPush1
   when(push2Fire) {
@@ -119,6 +130,28 @@ class ConcurrentPifoRTL(config: PifoConfig) extends Component {
   }
   pifoCount := countAfterPush2
 
+  // Per-port occupancy is the PIFO token-count invariant used by the hardware
+  // stop-the-world prefill. Handle the two insertion ports and one pop as a
+  // single net update so coincident operations cannot overwrite each other.
+  for (index <- 0 until (1 << config.bitPort)) {
+    val push1Here = push1Fire && io.push1.port === index
+    val push2Here = push2Fire && io.push2.port === index
+    val popHere = popFire && io.popRequest.port === index
+    when(popHere) {
+      when(push1Here && push2Here) {
+        portCounts(index) := portCounts(index) + 1
+      } elsewhen (!push1Here && !push2Here) {
+        portCounts(index) := portCounts(index) - 1
+      }
+    } otherwise {
+      when(push1Here && push2Here) {
+        portCounts(index) := portCounts(index) + 2
+      } elsewhen (push1Here || push2Here) {
+        portCounts(index) := portCounts(index) + 1
+      }
+    }
+  }
+
   // A simultaneous accepted push to the same port keeps that port non-empty,
   // so it must not activate a drain rewrite.
   val samePortPush =
@@ -133,4 +166,18 @@ class ConcurrentPifoRTL(config: PifoConfig) extends Component {
   io.popResponse.exist := RegNext(popExists)
   io.popResponse.data := RegNext(pifoArray(popPosition).data)
   io.popResponse.priority := RegNext(pifoArray(popPosition).priority)
+
+  // Separate maintenance datapath: direct indexed read/append, no pop, rank
+  // recomputation or insertion sorter. Its caller must quiesce normal traffic.
+  when(io.copyInsert.fire) {
+    assert(!io.push1.valid && !io.push2.valid && !io.popRequest.valid, "copy overlaps datapath")
+    pifoArray(pifoCount.resize(config.bitPifo)) := io.copyInsert.payload
+    pifoCount := pifoCount + 1
+    portCounts(io.copyInsert.port) := portCounts(io.copyInsert.port) + 1
+  }
+  when(io.copyClear) {
+    assert(!io.push1.valid && !io.push2.valid && !io.popRequest.valid, "clear overlaps datapath")
+    pifoCount := 0
+    portCounts.foreach(_ := 0)
+  }
 }

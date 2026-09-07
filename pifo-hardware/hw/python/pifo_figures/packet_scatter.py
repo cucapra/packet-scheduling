@@ -12,6 +12,7 @@ from pifo_figures.common import (
     COMMIT_COLOR,
     DRAIN_COLOR,
     FINISH_COLOR,
+    RESUME_COLOR,
     START_COLOR,
     FigureInputs,
     FigurePaths,
@@ -82,6 +83,11 @@ def render_matplotlib(
         if event.drain_cycle is not None
         else None
     )
+    transition_resume = (
+        event.resume_cycle - event.start_cycle
+        if event.resume_cycle is not None
+        else None
+    )
 
     figure, axis = plt.subplots(figsize=(8, 8), constrained_layout=True)
     all_values: list[int] = []
@@ -106,6 +112,8 @@ def render_matplotlib(
     marker_values = [0, transition_commit]
     if transition_drain is not None:
         marker_values.append(transition_drain)
+    if transition_resume is not None:
+        marker_values.append(transition_resume)
     common_min = min(*all_values, *marker_values)
     common_max = max(*all_values, *marker_values)
     common_padding = max(1.0, (common_max - common_min) * 0.04)
@@ -169,6 +177,19 @@ def render_matplotlib(
             linewidth=1.3,
             linestyle=":",
         )
+    if transition_resume is not None:
+        axis.axvline(
+            transition_resume,
+            color="tab:red",
+            linewidth=1.3,
+            linestyle=(0, (2, 4)),
+        )
+        axis.axhline(
+            transition_resume,
+            color="tab:red",
+            linewidth=1.3,
+            linestyle=(0, (2, 4)),
+        )
     axis.grid(True, color="0.92", linewidth=0.8)
     axis.set_title(f"Packet input–output scatter: {event.label} ({event.mode})")
     axis.set_xlabel("Packet input time relative to reconfiguration start (cycles)")
@@ -208,6 +229,17 @@ def _add_matplotlib_legend(axis, line_type, event: PolicyEvent, show_finish: boo
             line_type([0], [0], color="tab:purple", linewidth=1.3, linestyle=":")
         )
         labels.append("old tree drained")
+    if event.resume_cycle is not None:
+        handles.append(
+            line_type(
+                [0],
+                [0],
+                color="tab:red",
+                linewidth=1.3,
+                linestyle=(0, (2, 4)),
+            )
+        )
+        labels.append("traffic resumed")
     axis.legend(handles, labels, loc="best")
 
 
@@ -229,6 +261,8 @@ def render_svg(
     marker_values = [0, event.commit_cycle - event.start_cycle]
     if event.drain_cycle is not None:
         marker_values.append(event.drain_cycle - event.start_cycle)
+    if event.resume_cycle is not None:
+        marker_values.append(event.resume_cycle - event.start_cycle)
     common_min = min(*x_values, *y_values, *marker_values)
     common_max = max(*x_values, *y_values, *marker_values)
     padding = max(1.0, (common_max - common_min) * 0.04)
@@ -323,6 +357,8 @@ def render_svg(
         entries.append(("finish", FINISH_COLOR, None))
     if event.drain_cycle is not None:
         entries.append(("old tree drained", DRAIN_COLOR, "3,5"))
+    if event.resume_cycle is not None:
+        entries.append(("traffic resumed", RESUME_COLOR, "2,4"))
     legend(
         svg,
         area.x + 18 * scale,

@@ -62,6 +62,13 @@ python3 hw/python/pifo_experiment_figures.py validate experiments/rr-to-sp.json
 python3 hw/python/pifo_experiment_figures.py run --config experiments/rr-to-sp.json
 ```
 
+The evaluation-only stop-the-world comparison uses the same interface:
+
+```bash
+python3 hw/python/pifo_experiment_figures.py validate experiments/rr-to-sp-stop-the-world-pop.json
+python3 hw/python/pifo_experiment_figures.py run --config experiments/rr-to-sp-stop-the-world-pop.json
+```
+
 The output directory exposes every boundary: `tree-move.json`, `traffic.json`, compiled `transactions.txt`, request and
 completion CSVs, and `reconfiguration-events.csv`. Each figure owns a separate artifact directory:
 
@@ -69,8 +76,8 @@ completion CSVs, and `reconfiguration-events.csv`. Each figure owns a separate a
 - `figures/packet-scatter/{data.csv,figure.svg,figure.png}`
 
 Matplotlib is preferred; SVG plus FFmpeg is used automatically when Matplotlib is unavailable. The scatter uses one
-shared 1:1 range for its input/output axes, keeps `y = x` at 45 degrees, and draws start, commit, and old-tree-drain
-lines on both axes.
+shared 1:1 range for its input/output axes, keeps `y = x` at 45 degrees, and draws start, commit, old-tree-drain, and
+stop-the-world resume lines on both axes.
 
 Install the plotting dependency for the motivating-example delay plots in an isolated environment:
 
@@ -337,6 +344,12 @@ vPIFO `data`, and runtime enable false. Source and target must reside on the sam
 written front entries but does not bank or copy them; the successful pop of the source's final entry sets runtime enable. Brain
 commands use `engineId`/`vPifoId` as their target and `flowId` where required. Brain writes are immediate, so a direct
 package owns their ordering and does not gain brain atomicity from `CommitMapper`.
+
+`StopWorld` uses `engineId`/`vPifoId` to identify the old root and gates hardware ready signals until commit.
+`PrefillPifo` uses `engineId`/`vPifoId` as its destination and `flowId` as the synthetic token. With `data=0`, hardware
+uses the stopped root occupancy; a non-zero `data` is an explicit low-level count. Prefill always uses priority 1 and
+commit backpressures until its autonomous one-token-per-cycle fill completes. `UpdateRoot` stages its
+`engineId`/`vPifoId` for commit publication.
 
 An enabled front entry substitutes the target vPIFO before the engine performs its PIFO lookup. On the activation
 cycle, the engine backpressures its input once so the waiting request observes the registered enable on the next cycle.

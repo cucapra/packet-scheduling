@@ -50,7 +50,8 @@ case class ScheduledRequestActionContext(
     markCommitAccepted: () => Unit,
     markCommitApplied: () => Unit,
     beginStopTheWorld: Long => StopTheWorldCapture,
-    finishStopTheWorld: () => StopTheWorldFinish
+    finishStopTheWorld: () => StopTheWorldFinish,
+    beginStopWorldPop: () => Long
 )
 
 /** One deterministic control action to run at a workload-relative cycle. */
@@ -78,7 +79,9 @@ case class CompletedRequestAction(
     drainCycle: Option[Long] = None,
     droppedPackets: Long = 0L,
     retainedPackets: Long = 0L,
-    peakBufferOccupancyPackets: Long = 0L
+    peakBufferOccupancyPackets: Long = 0L,
+    prefilledTokens: Option[Long] = None,
+    resumeCycle: Option[Long] = None
 ) {
   require(startCycle >= scheduledCycle, "a scheduled action cannot start before its scheduled cycle")
   require(
@@ -113,8 +116,12 @@ case class RequestSimulationSummary(
     droppedBytes: Long,
     completions: Vector[CompletedRequest],
     drops: Vector[DroppedRequest],
-    completedActions: Vector[CompletedRequestAction]
+    completedActions: Vector[CompletedRequestAction],
+    controlObservations: Vector[ControlObservation] = Vector.empty
 )
+
+case class ControlObservation(cycle: Long, phase: String, command: String,
+    engineId: Int, vPifoId: Int, flowId: Int, data: Long, copiedEntries: Option[Int] = None)
 
 /** Request-level harness around PifoMesh.
   *
@@ -159,6 +166,7 @@ final class PifoRequestSimulator(
   private val submittedIds = mutable.Set.empty[Long]
   private val remainingActions = mutable.Queue.from(scheduledActions.sortBy(_.scheduledCycle))
   private val completedActions = mutable.ArrayBuffer.empty[CompletedRequestAction]
+  private val controlObservations = mutable.ArrayBuffer.empty[ControlObservation]
   private val recentPifoPops = mutable.Queue.empty[String]
   private case class FlowGate(scheduledCycle: Long, flowIds: Set[Int], var released: Boolean)
   private val flowGates = mutable.Map.from(
@@ -277,6 +285,7 @@ final class PifoRequestSimulator(
       droppedBytes = snapshot.droppedBytes,
       completions = requestQueues.completions,
       drops = requestQueues.drops,
+      controlObservations = controlObservations.toVector,
       completedActions = completedActions.toVector.map { action =>
         action.copy(
           drainCycle = action.drainCycle.orElse(
@@ -305,6 +314,7 @@ final class PifoRequestSimulator(
             releaseLinkPrefetch()
             observePifoResponses()
             observeTreeDrains()
+            observeControl()
             if (dut.io.pop.valid.toBoolean && dut.io.pop.ready.toBoolean) completePoppedRequest()
             observeStopWorldBufferOccupancy()
           }
@@ -381,6 +391,8 @@ final class PifoRequestSimulator(
                 var droppedPackets = 0L
                 var retainedPackets = 0L
                 var peakBufferOccupancyPackets = 0L
+                var prefilledTokens = Option.empty[Long]
+                var resumeCycle = Option.empty[Long]
                 action.run(
                   ScheduledRequestActionContext(
                     beforeCommit = () => {
@@ -397,6 +409,12 @@ final class PifoRequestSimulator(
                         directDrainCycle = Some(currentCycle)
                       }
                       if (action.mode != "stop_the_world") endCommitAdmissionBarrier()
+                      if (action.mode == "stop_the_world_pop") {
+                        resumeCycle = Some(currentCycle)
+                        observeStopWorldBufferOccupancy()
+                        peakBufferOccupancyPackets = stopWorldPeakBufferOccupancy.getOrElse(0L)
+                        stopWorldPeakBufferOccupancy = None
+                      }
                     },
                     beginStopTheWorld = minimumStopCycles => {
                       require(
@@ -407,6 +425,12 @@ final class PifoRequestSimulator(
                       directDrainCycle = Some(result.captureCycle)
                       retainedPackets = result.retainedPackets
                       result
+                    },
+                    beginStopWorldPop = () => {
+                      val count = beginStopWorldPop()
+                      prefilledTokens = Some(count)
+                      retainedPackets = count
+                      count
                     },
                     finishStopTheWorld = () => {
                       require(
@@ -428,7 +452,9 @@ final class PifoRequestSimulator(
                   drainCycle = directDrainCycle,
                   droppedPackets = droppedPackets,
                   retainedPackets = retainedPackets,
-                  peakBufferOccupancyPackets = peakBufferOccupancyPackets
+                  peakBufferOccupancyPackets = peakBufferOccupancyPackets,
+                  prefilledTokens = prefilledTokens,
+                  resumeCycle = resumeCycle
                 )
                 actionInFlight = false
               case _ => dut.clockDomain.waitRisingEdge()
@@ -594,6 +620,17 @@ final class PifoRequestSimulator(
     )
   }
 
+  private def beginStopWorldPop(): Long = {
+    require(!commitAdmissionBarrier, "an admission barrier is already active")
+    require(!dequeuePaused, "root dequeue is already paused")
+    commitAdmissionBarrier = true
+    dequeuePaused = true
+    stopWorldPeakBufferOccupancy = Some(currentBufferedPacketOccupancy)
+    while (admissionInFlight || dequeuesInFlight > 0 || currentCycle < lastTokenReadyCycle)
+      dut.clockDomain.waitRisingEdge()
+    requestQueues.totalQueued
+  }
+
   private def endCommitAdmissionBarrier(): Unit = {
     require(commitAdmissionBarrier, "no commit admission barrier is active")
     commitAdmissionBarrier = false
@@ -613,8 +650,7 @@ final class PifoRequestSimulator(
     }
   }
 
-  private def rootPortEmpty: Boolean =
-    dut.pifoEngines(settings.rootEngineId - 1).pifos.io.popPortEmpty.toBoolean
+  private def rootPortEmpty: Boolean = dut.io.rootEmpty.toBoolean
 
   private def observePifoResponses(): Unit = {
     dut.pifoEngines.zipWithIndex.foreach { case (engine, index) =>
@@ -641,6 +677,30 @@ final class PifoRequestSimulator(
 
   private def releaseFlowGate(actionName: String): Unit = {
     flowGates.get(actionName).foreach(_.released = true)
+  }
+
+  private def observeControl(): Unit = {
+    def record(phase: String, message: spinal.lib.Stream[ControlMessage]): Unit = {
+      if (message.valid.toBoolean && message.ready.toBoolean) {
+        controlObservations += ControlObservation(currentCycle, phase, message.command.toEnum.toString,
+          message.engineId.toInt, message.vPifoId.toInt, message.flowId.toInt, message.data.toLong)
+      }
+    }
+    record("accepted", dut.io.controlRequest)
+    record("dispatched", dut.routedControl)
+    record("committed", dut.commitControl)
+    if (dut.copyController.io.done.toBoolean) {
+      controlObservations += ControlObservation(currentCycle, "copy_finished", "CopyPifoEngine",
+        dut.copyController.source.toInt + 1, 0, 0, dut.copyController.target.toInt + 1,
+        Some(dut.copyController.io.copied.toInt))
+    }
+  }
+
+  private def endStopTheWorld(): Unit = {
+    require(commitAdmissionBarrier, "no stop-the-world admission barrier is active")
+    require(dequeuePaused, "root dequeue is not paused")
+    dequeuePaused = false
+    commitAdmissionBarrier = false
   }
 
   private def armTreeDrain(actionName: String): Unit = {
@@ -738,7 +798,15 @@ object RequestSimulationConfiguration {
     "CommitMapper" -> ControlCommand.CommitMapper,
     "UpdateBrainEngine" -> ControlCommand.UpdateBrainEngine,
     "UpdateBrainState" -> ControlCommand.UpdateBrainState,
-    "UpdateBrainFlowState" -> ControlCommand.UpdateBrainFlowState
+    "UpdateBrainFlowState" -> ControlCommand.UpdateBrainFlowState,
+    "StopWorld" -> ControlCommand.StopWorld,
+    "PrefillPifo" -> ControlCommand.PrefillPifo,
+    "UpdateRoot" -> ControlCommand.UpdateRoot,
+    "CopyPifoEngine" -> ControlCommand.CopyPifoEngine,
+    "UpdateRankGroup" -> ControlCommand.UpdateRankGroup,
+    "UpdateRankQuantum" -> ControlCommand.UpdateRankQuantum,
+    "WaitPifoEmpty" -> ControlCommand.WaitPifoEmpty,
+    "ClearPifoEngine" -> ControlCommand.ClearPifoEngine
   )
   private val commandFields = Set("command", "engineId", "vPifoId", "flowId", "data")
 

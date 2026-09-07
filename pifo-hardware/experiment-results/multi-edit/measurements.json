@@ -1,0 +1,1046 @@
+{
+  "trace_sha256": "ffdb7128d85b70df2263d78f4ab4688212e69691f593dbb1e54dafb25b409c70",
+  "runs": {
+    "control": {
+      "mechanism": "control",
+      "unguarded_edits": [],
+      "guarded_edits": [],
+      "copy_list": [],
+      "modelled_teardown_cycles": 0,
+      "modelled_install_cycles": 0,
+      "unadmitted_flows": [
+        11,
+        12,
+        13,
+        14
+      ],
+      "instruction_counts": {},
+      "eligible_at_t1_instructions": 0,
+      "guarded_instructions": 0,
+      "events": [],
+      "drops": 0,
+      "reorders": 0,
+      "t1_backlog_packets": {
+        "Zoom": 1,
+        "Voip": 45,
+        "Legacy1": 86,
+        "Legacy2": 53,
+        "Gmail": 12,
+        "Ssh": 1,
+        "Http": 12,
+        "Https": 1,
+        "Backup": 79,
+        "Sync": 40,
+        "Video": 0,
+        "Chat": 0,
+        "Game": 0,
+        "Vr": 0
+      },
+      "first_service_cycles_from_t1": {
+        "Video": null,
+        "Chat": null,
+        "Game": null,
+        "Vr": null
+      },
+      "control_differences": {
+        "Zoom": {
+          "paired_packets": 641,
+          "mean_delay_delta_cycles": 0,
+          "p95_absolute_delay_delta_cycles": 0,
+          "max_absolute_delay_delta_cycles": 0,
+          "changed": false
+        },
+        "Voip": {
+          "paired_packets": 472,
+          "mean_delay_delta_cycles": 0,
+          "p95_absolute_delay_delta_cycles": 0,
+          "max_absolute_delay_delta_cycles": 0,
+          "changed": false
+        },
+        "Legacy1": {
+          "paired_packets": 86,
+          "mean_delay_delta_cycles": 0,
+          "p95_absolute_delay_delta_cycles": 0,
+          "max_absolute_delay_delta_cycles": 0,
+          "changed": false
+        },
+        "Legacy2": {
+          "paired_packets": 53,
+          "mean_delay_delta_cycles": 0,
+          "p95_absolute_delay_delta_cycles": 0,
+          "max_absolute_delay_delta_cycles": 0,
+          "changed": false
+        },
+        "Gmail": {
+          "paired_packets": 492,
+          "mean_delay_delta_cycles": 0,
+          "p95_absolute_delay_delta_cycles": 0,
+          "max_absolute_delay_delta_cycles": 0,
+          "changed": false
+        },
+        "Ssh": {
+          "paired_packets": 321,
+          "mean_delay_delta_cycles": 0,
+          "p95_absolute_delay_delta_cycles": 0,
+          "max_absolute_delay_delta_cycles": 0,
+          "changed": false
+        },
+        "Http": {
+          "paired_packets": 439,
+          "mean_delay_delta_cycles": 0,
+          "p95_absolute_delay_delta_cycles": 0,
+          "max_absolute_delay_delta_cycles": 0,
+          "changed": false
+        },
+        "Https": {
+          "paired_packets": 375,
+          "mean_delay_delta_cycles": 0,
+          "p95_absolute_delay_delta_cycles": 0,
+          "max_absolute_delay_delta_cycles": 0,
+          "changed": false
+        },
+        "Backup": {
+          "paired_packets": 559,
+          "mean_delay_delta_cycles": 0,
+          "p95_absolute_delay_delta_cycles": 0,
+          "max_absolute_delay_delta_cycles": 0,
+          "changed": false
+        },
+        "Sync": {
+          "paired_packets": 360,
+          "mean_delay_delta_cycles": 0,
+          "p95_absolute_delay_delta_cycles": 0,
+          "max_absolute_delay_delta_cycles": 0,
+          "changed": false
+        },
+        "Video": {
+          "paired_packets": 0,
+          "mean_delay_delta_cycles": null,
+          "p95_absolute_delay_delta_cycles": null,
+          "max_absolute_delay_delta_cycles": null,
+          "changed": false
+        },
+        "Chat": {
+          "paired_packets": 0,
+          "mean_delay_delta_cycles": null,
+          "p95_absolute_delay_delta_cycles": null,
+          "max_absolute_delay_delta_cycles": null,
+          "changed": false
+        },
+        "Game": {
+          "paired_packets": 0,
+          "mean_delay_delta_cycles": null,
+          "p95_absolute_delay_delta_cycles": null,
+          "max_absolute_delay_delta_cycles": null,
+          "changed": false
+        },
+        "Vr": {
+          "paired_packets": 0,
+          "mean_delay_delta_cycles": null,
+          "p95_absolute_delay_delta_cycles": null,
+          "max_absolute_delay_delta_cycles": null,
+          "changed": false
+        }
+      },
+      "pre_t1_link_utilization": 0.909,
+      "instructions_accepted_at_t1": 0,
+      "instructions_dispatched_at_t1": 0,
+      "commit_applied_cycles": [],
+      "copy_completions": [],
+      "copied_entries": 0,
+      "t1_waiting_at_input_packets": 0,
+      "changed_flows": 0,
+      "pre_t1_realtime_last_pop": 3503,
+      "realtime_steady_cycle": 4403
+    },
+    "rio": {
+      "mechanism": "rio",
+      "unguarded_edits": [
+        "ChangeMeta realtime -> 6",
+        "ChangeMeta bulk -> 1",
+        "Add media",
+        "Add gaming",
+        "Quiesce legacy"
+      ],
+      "guarded_edits": [
+        "Empty legacy -> Remove"
+      ],
+      "copy_list": [],
+      "modelled_teardown_cycles": 0,
+      "modelled_install_cycles": 0,
+      "instruction_counts": {
+        "request": 51,
+        "retire": 11
+      },
+      "eligible_at_t1_instructions": 51,
+      "guarded_instructions": 11,
+      "events": [
+        {
+          "event": "reconfiguration",
+          "name": "request",
+          "mode": "direct",
+          "from_policy": "",
+          "to_policy": "",
+          "instruction_count": "51",
+          "scheduled_cycle": "2000",
+          "start_cycle": "2001",
+          "commit_cycle": "2060",
+          "finish_cycle": "4112",
+          "drain_cycle": "4111",
+          "drain_duration_cycles": "2051",
+          "dropped_packets": "0",
+          "retained_packets": "0",
+          "peak_buffer_occupancy_packets": "0",
+          "minimum_stop_cycles": "0",
+          "stop_duration_cycles": "",
+          "prefilled_tokens": "",
+          "resume_cycle": ""
+        },
+        {
+          "event": "reconfiguration",
+          "name": "retire",
+          "mode": "direct",
+          "from_policy": "",
+          "to_policy": "",
+          "instruction_count": "11",
+          "scheduled_cycle": "2000",
+          "start_cycle": "4112",
+          "commit_cycle": "4123",
+          "finish_cycle": "6175",
+          "drain_cycle": "",
+          "drain_duration_cycles": "",
+          "dropped_packets": "0",
+          "retained_packets": "0",
+          "peak_buffer_occupancy_packets": "0",
+          "minimum_stop_cycles": "0",
+          "stop_duration_cycles": "",
+          "prefilled_tokens": "",
+          "resume_cycle": ""
+        }
+      ],
+      "drops": 0,
+      "reorders": 0,
+      "t1_backlog_packets": {
+        "Zoom": 1,
+        "Voip": 45,
+        "Legacy1": 86,
+        "Legacy2": 53,
+        "Gmail": 12,
+        "Ssh": 1,
+        "Http": 12,
+        "Https": 1,
+        "Backup": 79,
+        "Sync": 40,
+        "Video": 0,
+        "Chat": 0,
+        "Game": 0,
+        "Vr": 0
+      },
+      "first_service_cycles_from_t1": {
+        "Video": 96,
+        "Chat": 210,
+        "Game": 111,
+        "Vr": 135
+      },
+      "control_differences": {
+        "Zoom": {
+          "paired_packets": 641,
+          "mean_delay_delta_cycles": -3.157566302652106,
+          "p95_absolute_delay_delta_cycles": 11,
+          "max_absolute_delay_delta_cycles": 19,
+          "changed": true
+        },
+        "Voip": {
+          "paired_packets": 472,
+          "mean_delay_delta_cycles": 58.57627118644068,
+          "p95_absolute_delay_delta_cycles": 376,
+          "max_absolute_delay_delta_cycles": 464,
+          "changed": true
+        },
+        "Legacy1": {
+          "paired_packets": 86,
+          "mean_delay_delta_cycles": 295.01162790697674,
+          "p95_absolute_delay_delta_cycles": 604,
+          "max_absolute_delay_delta_cycles": 630,
+          "changed": true
+        },
+        "Legacy2": {
+          "paired_packets": 53,
+          "mean_delay_delta_cycles": 154.71698113207546,
+          "p95_absolute_delay_delta_cycles": 371,
+          "max_absolute_delay_delta_cycles": 409,
+          "changed": true
+        },
+        "Gmail": {
+          "paired_packets": 492,
+          "mean_delay_delta_cycles": 65.96138211382114,
+          "p95_absolute_delay_delta_cycles": 426,
+          "max_absolute_delay_delta_cycles": 483,
+          "changed": true
+        },
+        "Ssh": {
+          "paired_packets": 321,
+          "mean_delay_delta_cycles": 3.750778816199377,
+          "p95_absolute_delay_delta_cycles": 15,
+          "max_absolute_delay_delta_cycles": 31,
+          "changed": true
+        },
+        "Http": {
+          "paired_packets": 439,
+          "mean_delay_delta_cycles": 74.28473804100227,
+          "p95_absolute_delay_delta_cycles": 487,
+          "max_absolute_delay_delta_cycles": 553,
+          "changed": true
+        },
+        "Https": {
+          "paired_packets": 375,
+          "mean_delay_delta_cycles": -2.3866666666666667,
+          "p95_absolute_delay_delta_cycles": 12,
+          "max_absolute_delay_delta_cycles": 20,
+          "changed": true
+        },
+        "Backup": {
+          "paired_packets": 559,
+          "mean_delay_delta_cycles": 895.3703041144902,
+          "p95_absolute_delay_delta_cycles": 2702,
+          "max_absolute_delay_delta_cycles": 2870,
+          "changed": true
+        },
+        "Sync": {
+          "paired_packets": 360,
+          "mean_delay_delta_cycles": 383.5861111111111,
+          "p95_absolute_delay_delta_cycles": 1590,
+          "max_absolute_delay_delta_cycles": 1730,
+          "changed": true
+        },
+        "Video": {
+          "paired_packets": 0,
+          "mean_delay_delta_cycles": null,
+          "p95_absolute_delay_delta_cycles": null,
+          "max_absolute_delay_delta_cycles": null,
+          "changed": true
+        },
+        "Chat": {
+          "paired_packets": 0,
+          "mean_delay_delta_cycles": null,
+          "p95_absolute_delay_delta_cycles": null,
+          "max_absolute_delay_delta_cycles": null,
+          "changed": true
+        },
+        "Game": {
+          "paired_packets": 0,
+          "mean_delay_delta_cycles": null,
+          "p95_absolute_delay_delta_cycles": null,
+          "max_absolute_delay_delta_cycles": null,
+          "changed": true
+        },
+        "Vr": {
+          "paired_packets": 0,
+          "mean_delay_delta_cycles": null,
+          "p95_absolute_delay_delta_cycles": null,
+          "max_absolute_delay_delta_cycles": null,
+          "changed": true
+        }
+      },
+      "pre_t1_link_utilization": 0.909,
+      "instructions_accepted_at_t1": 0,
+      "instructions_dispatched_at_t1": 0,
+      "commit_applied_cycles": [
+        2063,
+        4126
+      ],
+      "copy_completions": [],
+      "copied_entries": 0,
+      "t1_waiting_at_input_packets": 0,
+      "changed_flows": 14,
+      "buffer_occupancy_at_resume_packets": 235,
+      "pre_t1_realtime_last_pop": 3575,
+      "realtime_steady_cycle": 5125
+    },
+    "prefill": {
+      "mechanism": "prefill",
+      "unguarded_edits": [],
+      "guarded_edits": [],
+      "copy_list": [],
+      "modelled_teardown_cycles": 0,
+      "modelled_install_cycles": 0,
+      "instruction_counts": {
+        "request": 201,
+        "collapse": 15,
+        "reclaim": 2
+      },
+      "eligible_at_t1_instructions": 201,
+      "guarded_instructions": 17,
+      "events": [
+        {
+          "event": "reconfiguration",
+          "name": "request",
+          "mode": "stop_the_world_pop",
+          "from_policy": "",
+          "to_policy": "",
+          "instruction_count": "201",
+          "scheduled_cycle": "2000",
+          "start_cycle": "2001",
+          "commit_cycle": "2247",
+          "finish_cycle": "4624",
+          "drain_cycle": "3556",
+          "drain_duration_cycles": "1309",
+          "dropped_packets": "0",
+          "retained_packets": "325",
+          "peak_buffer_occupancy_packets": "495",
+          "minimum_stop_cycles": "0",
+          "stop_duration_cycles": "",
+          "prefilled_tokens": "325",
+          "resume_cycle": "2575"
+        },
+        {
+          "event": "reconfiguration",
+          "name": "collapse",
+          "mode": "direct",
+          "from_policy": "",
+          "to_policy": "",
+          "instruction_count": "15",
+          "scheduled_cycle": "2000",
+          "start_cycle": "4624",
+          "commit_cycle": "4644",
+          "finish_cycle": "6695",
+          "drain_cycle": "",
+          "drain_duration_cycles": "",
+          "dropped_packets": "0",
+          "retained_packets": "0",
+          "peak_buffer_occupancy_packets": "0",
+          "minimum_stop_cycles": "0",
+          "stop_duration_cycles": "",
+          "prefilled_tokens": "",
+          "resume_cycle": ""
+        },
+        {
+          "event": "reconfiguration",
+          "name": "reclaim",
+          "mode": "direct",
+          "from_policy": "",
+          "to_policy": "",
+          "instruction_count": "2",
+          "scheduled_cycle": "2000",
+          "start_cycle": "6695",
+          "commit_cycle": "6699",
+          "finish_cycle": "8751",
+          "drain_cycle": "",
+          "drain_duration_cycles": "",
+          "dropped_packets": "0",
+          "retained_packets": "0",
+          "peak_buffer_occupancy_packets": "0",
+          "minimum_stop_cycles": "0",
+          "stop_duration_cycles": "",
+          "prefilled_tokens": "",
+          "resume_cycle": ""
+        }
+      ],
+      "drops": 0,
+      "reorders": 0,
+      "t1_backlog_packets": {
+        "Zoom": 1,
+        "Voip": 45,
+        "Legacy1": 86,
+        "Legacy2": 53,
+        "Gmail": 12,
+        "Ssh": 1,
+        "Http": 12,
+        "Https": 1,
+        "Backup": 79,
+        "Sync": 40,
+        "Video": 0,
+        "Chat": 0,
+        "Game": 0,
+        "Vr": 0
+      },
+      "first_service_cycles_from_t1": {
+        "Video": 1582,
+        "Chat": 3290,
+        "Game": 1585,
+        "Vr": 1609
+      },
+      "control_differences": {
+        "Zoom": {
+          "paired_packets": 641,
+          "mean_delay_delta_cycles": 112.06864274570982,
+          "p95_absolute_delay_delta_cycles": 1029,
+          "max_absolute_delay_delta_cycles": 1548,
+          "changed": true
+        },
+        "Voip": {
+          "paired_packets": 472,
+          "mean_delay_delta_cycles": 153.7415254237288,
+          "p95_absolute_delay_delta_cycles": 954,
+          "max_absolute_delay_delta_cycles": 1033,
+          "changed": true
+        },
+        "Legacy1": {
+          "paired_packets": 86,
+          "mean_delay_delta_cycles": 237.37209302325581,
+          "p95_absolute_delay_delta_cycles": 574,
+          "max_absolute_delay_delta_cycles": 575,
+          "changed": true
+        },
+        "Legacy2": {
+          "paired_packets": 53,
+          "mean_delay_delta_cycles": 382.54716981132077,
+          "p95_absolute_delay_delta_cycles": 575,
+          "max_absolute_delay_delta_cycles": 577,
+          "changed": true
+        },
+        "Gmail": {
+          "paired_packets": 492,
+          "mean_delay_delta_cycles": 474.7662601626016,
+          "p95_absolute_delay_delta_cycles": 1600,
+          "max_absolute_delay_delta_cycles": 1636,
+          "changed": true
+        },
+        "Ssh": {
+          "paired_packets": 321,
+          "mean_delay_delta_cycles": 240.797507788162,
+          "p95_absolute_delay_delta_cycles": 1300,
+          "max_absolute_delay_delta_cycles": 1544,
+          "changed": true
+        },
+        "Http": {
+          "paired_packets": 439,
+          "mean_delay_delta_cycles": 543.8906605922551,
+          "p95_absolute_delay_delta_cycles": 2016,
+          "max_absolute_delay_delta_cycles": 2185,
+          "changed": true
+        },
+        "Https": {
+          "paired_packets": 375,
+          "mean_delay_delta_cycles": 188.512,
+          "p95_absolute_delay_delta_cycles": 1223,
+          "max_absolute_delay_delta_cycles": 1559,
+          "changed": true
+        },
+        "Backup": {
+          "paired_packets": 559,
+          "mean_delay_delta_cycles": 1868.1109123434705,
+          "p95_absolute_delay_delta_cycles": 4503,
+          "max_absolute_delay_delta_cycles": 4668,
+          "changed": true
+        },
+        "Sync": {
+          "paired_packets": 360,
+          "mean_delay_delta_cycles": 1233.9333333333334,
+          "p95_absolute_delay_delta_cycles": 3769,
+          "max_absolute_delay_delta_cycles": 4048,
+          "changed": true
+        },
+        "Video": {
+          "paired_packets": 0,
+          "mean_delay_delta_cycles": null,
+          "p95_absolute_delay_delta_cycles": null,
+          "max_absolute_delay_delta_cycles": null,
+          "changed": true
+        },
+        "Chat": {
+          "paired_packets": 0,
+          "mean_delay_delta_cycles": null,
+          "p95_absolute_delay_delta_cycles": null,
+          "max_absolute_delay_delta_cycles": null,
+          "changed": true
+        },
+        "Game": {
+          "paired_packets": 0,
+          "mean_delay_delta_cycles": null,
+          "p95_absolute_delay_delta_cycles": null,
+          "max_absolute_delay_delta_cycles": null,
+          "changed": true
+        },
+        "Vr": {
+          "paired_packets": 0,
+          "mean_delay_delta_cycles": null,
+          "p95_absolute_delay_delta_cycles": null,
+          "max_absolute_delay_delta_cycles": null,
+          "changed": true
+        }
+      },
+      "pre_t1_link_utilization": 0.909,
+      "instructions_accepted_at_t1": 0,
+      "instructions_dispatched_at_t1": 0,
+      "commit_applied_cycles": [
+        2575,
+        4646,
+        6702
+      ],
+      "copy_completions": [],
+      "copied_entries": 0,
+      "t1_waiting_at_input_packets": 0,
+      "changed_flows": 14,
+      "buffer_occupancy_at_resume_packets": 495,
+      "peak_stop_buffer_packets_from_csv": 495,
+      "pre_t1_realtime_last_pop": 3063,
+      "realtime_steady_cycle": 5963
+    },
+    "relocate": {
+      "mechanism": "relocate",
+      "unguarded_edits": [],
+      "guarded_edits": [],
+      "copy_list": [
+        [
+          3,
+          6
+        ],
+        [
+          2,
+          5
+        ],
+        [
+          1,
+          4
+        ]
+      ],
+      "modelled_teardown_cycles": 0,
+      "modelled_install_cycles": 0,
+      "instruction_counts": {
+        "request": 234,
+        "collapse": 15,
+        "reclaim": 2
+      },
+      "eligible_at_t1_instructions": 234,
+      "guarded_instructions": 17,
+      "events": [
+        {
+          "event": "reconfiguration",
+          "name": "request",
+          "mode": "stop_the_world_pop",
+          "from_policy": "",
+          "to_policy": "",
+          "instruction_count": "234",
+          "scheduled_cycle": "2000",
+          "start_cycle": "2001",
+          "commit_cycle": "3258",
+          "finish_cycle": "5635",
+          "drain_cycle": "4567",
+          "drain_duration_cycles": "1309",
+          "dropped_packets": "0",
+          "retained_packets": "325",
+          "peak_buffer_occupancy_packets": "781",
+          "minimum_stop_cycles": "0",
+          "stop_duration_cycles": "",
+          "prefilled_tokens": "325",
+          "resume_cycle": "3586"
+        },
+        {
+          "event": "reconfiguration",
+          "name": "collapse",
+          "mode": "direct",
+          "from_policy": "",
+          "to_policy": "",
+          "instruction_count": "15",
+          "scheduled_cycle": "2000",
+          "start_cycle": "5635",
+          "commit_cycle": "5659",
+          "finish_cycle": "7710",
+          "drain_cycle": "",
+          "drain_duration_cycles": "",
+          "dropped_packets": "0",
+          "retained_packets": "0",
+          "peak_buffer_occupancy_packets": "0",
+          "minimum_stop_cycles": "0",
+          "stop_duration_cycles": "",
+          "prefilled_tokens": "",
+          "resume_cycle": ""
+        },
+        {
+          "event": "reconfiguration",
+          "name": "reclaim",
+          "mode": "direct",
+          "from_policy": "",
+          "to_policy": "",
+          "instruction_count": "2",
+          "scheduled_cycle": "2000",
+          "start_cycle": "7710",
+          "commit_cycle": "7721",
+          "finish_cycle": "9772",
+          "drain_cycle": "",
+          "drain_duration_cycles": "",
+          "dropped_packets": "0",
+          "retained_packets": "0",
+          "peak_buffer_occupancy_packets": "0",
+          "minimum_stop_cycles": "0",
+          "stop_duration_cycles": "",
+          "prefilled_tokens": "",
+          "resume_cycle": ""
+        }
+      ],
+      "drops": 0,
+      "reorders": 0,
+      "t1_backlog_packets": {
+        "Zoom": 1,
+        "Voip": 45,
+        "Legacy1": 86,
+        "Legacy2": 53,
+        "Gmail": 12,
+        "Ssh": 1,
+        "Http": 12,
+        "Https": 1,
+        "Backup": 79,
+        "Sync": 40,
+        "Video": 0,
+        "Chat": 0,
+        "Game": 0,
+        "Vr": 0
+      },
+      "first_service_cycles_from_t1": {
+        "Video": 2593,
+        "Chat": 4889,
+        "Game": 2596,
+        "Vr": 2620
+      },
+      "control_differences": {
+        "Zoom": {
+          "paired_packets": 641,
+          "mean_delay_delta_cycles": 370.10140405616227,
+          "p95_absolute_delay_delta_cycles": 2040,
+          "max_absolute_delay_delta_cycles": 2559,
+          "changed": true
+        },
+        "Voip": {
+          "paired_packets": 472,
+          "mean_delay_delta_cycles": 598.0847457627119,
+          "p95_absolute_delay_delta_cycles": 2211,
+          "max_absolute_delay_delta_cycles": 2288,
+          "changed": true
+        },
+        "Legacy1": {
+          "paired_packets": 86,
+          "mean_delay_delta_cycles": 1236.6162790697674,
+          "p95_absolute_delay_delta_cycles": 1585,
+          "max_absolute_delay_delta_cycles": 1586,
+          "changed": true
+        },
+        "Legacy2": {
+          "paired_packets": 53,
+          "mean_delay_delta_cycles": 1393.5471698113208,
+          "p95_absolute_delay_delta_cycles": 1586,
+          "max_absolute_delay_delta_cycles": 1588,
+          "changed": true
+        },
+        "Gmail": {
+          "paired_packets": 492,
+          "mean_delay_delta_cycles": 1213.7865853658536,
+          "p95_absolute_delay_delta_cycles": 2612,
+          "max_absolute_delay_delta_cycles": 2633,
+          "changed": true
+        },
+        "Ssh": {
+          "paired_packets": 321,
+          "mean_delay_delta_cycles": 621.8722741433022,
+          "p95_absolute_delay_delta_cycles": 2311,
+          "max_absolute_delay_delta_cycles": 2555,
+          "changed": true
+        },
+        "Http": {
+          "paired_packets": 439,
+          "mean_delay_delta_cycles": 1377.5808656036447,
+          "p95_absolute_delay_delta_cycles": 3295,
+          "max_absolute_delay_delta_cycles": 3417,
+          "changed": true
+        },
+        "Https": {
+          "paired_packets": 375,
+          "mean_delay_delta_cycles": 510.93333333333334,
+          "p95_absolute_delay_delta_cycles": 2234,
+          "max_absolute_delay_delta_cycles": 2570,
+          "changed": true
+        },
+        "Backup": {
+          "paired_packets": 559,
+          "mean_delay_delta_cycles": 4726.871198568873,
+          "p95_absolute_delay_delta_cycles": 7613,
+          "max_absolute_delay_delta_cycles": 7868,
+          "changed": true
+        },
+        "Sync": {
+          "paired_packets": 360,
+          "mean_delay_delta_cycles": 3281.141666666667,
+          "p95_absolute_delay_delta_cycles": 6073,
+          "max_absolute_delay_delta_cycles": 6370,
+          "changed": true
+        },
+        "Video": {
+          "paired_packets": 0,
+          "mean_delay_delta_cycles": null,
+          "p95_absolute_delay_delta_cycles": null,
+          "max_absolute_delay_delta_cycles": null,
+          "changed": true
+        },
+        "Chat": {
+          "paired_packets": 0,
+          "mean_delay_delta_cycles": null,
+          "p95_absolute_delay_delta_cycles": null,
+          "max_absolute_delay_delta_cycles": null,
+          "changed": true
+        },
+        "Game": {
+          "paired_packets": 0,
+          "mean_delay_delta_cycles": null,
+          "p95_absolute_delay_delta_cycles": null,
+          "max_absolute_delay_delta_cycles": null,
+          "changed": true
+        },
+        "Vr": {
+          "paired_packets": 0,
+          "mean_delay_delta_cycles": null,
+          "p95_absolute_delay_delta_cycles": null,
+          "max_absolute_delay_delta_cycles": null,
+          "changed": true
+        }
+      },
+      "pre_t1_link_utilization": 0.909,
+      "instructions_accepted_at_t1": 0,
+      "instructions_dispatched_at_t1": 0,
+      "commit_applied_cycles": [
+        3586,
+        5661,
+        7723
+      ],
+      "copy_completions": [
+        {
+          "cycle": "2408",
+          "phase": "copy_finished",
+          "command": "CopyPifoEngine",
+          "engine_id": "3",
+          "vpifo_id": "0",
+          "flow_id": "0",
+          "data": "6",
+          "copied_entries": "325"
+        },
+        {
+          "cycle": "2735",
+          "phase": "copy_finished",
+          "command": "CopyPifoEngine",
+          "engine_id": "2",
+          "vpifo_id": "0",
+          "flow_id": "0",
+          "data": "5",
+          "copied_entries": "325"
+        },
+        {
+          "cycle": "3062",
+          "phase": "copy_finished",
+          "command": "CopyPifoEngine",
+          "engine_id": "1",
+          "vpifo_id": "0",
+          "flow_id": "0",
+          "data": "4",
+          "copied_entries": "325"
+        }
+      ],
+      "copied_entries": 975,
+      "t1_waiting_at_input_packets": 0,
+      "changed_flows": 14,
+      "buffer_occupancy_at_resume_packets": 781,
+      "peak_stop_buffer_packets_from_csv": 781,
+      "pre_t1_realtime_last_pop": 4074,
+      "realtime_steady_cycle": 9224
+    },
+    "reset": {
+      "mechanism": "reset",
+      "unguarded_edits": [],
+      "guarded_edits": [],
+      "copy_list": [],
+      "modelled_teardown_cycles": 512,
+      "modelled_install_cycles": 513,
+      "instruction_counts": {
+        "request": 152,
+        "retire": 11
+      },
+      "eligible_at_t1_instructions": 152,
+      "guarded_instructions": 11,
+      "events": [
+        {
+          "event": "reconfiguration",
+          "name": "request",
+          "mode": "stop_the_world",
+          "from_policy": "",
+          "to_policy": "",
+          "instruction_count": "152",
+          "scheduled_cycle": "2000",
+          "start_cycle": "2001",
+          "commit_cycle": "2173",
+          "finish_cycle": "4559",
+          "drain_cycle": "2019",
+          "drain_duration_cycles": "",
+          "dropped_packets": "0",
+          "retained_packets": "325",
+          "peak_buffer_occupancy_packets": "1058",
+          "minimum_stop_cycles": "1025",
+          "stop_duration_cycles": "2540",
+          "prefilled_tokens": "",
+          "resume_cycle": ""
+        },
+        {
+          "event": "reconfiguration",
+          "name": "retire",
+          "mode": "direct",
+          "from_policy": "",
+          "to_policy": "",
+          "instruction_count": "11",
+          "scheduled_cycle": "2000",
+          "start_cycle": "4559",
+          "commit_cycle": "7994",
+          "finish_cycle": "10046",
+          "drain_cycle": "",
+          "drain_duration_cycles": "",
+          "dropped_packets": "0",
+          "retained_packets": "0",
+          "peak_buffer_occupancy_packets": "0",
+          "minimum_stop_cycles": "0",
+          "stop_duration_cycles": "",
+          "prefilled_tokens": "",
+          "resume_cycle": ""
+        }
+      ],
+      "drops": 0,
+      "reorders": 0,
+      "t1_backlog_packets": {
+        "Zoom": 1,
+        "Voip": 45,
+        "Legacy1": 86,
+        "Legacy2": 53,
+        "Gmail": 12,
+        "Ssh": 1,
+        "Http": 12,
+        "Https": 1,
+        "Backup": 79,
+        "Sync": 40,
+        "Video": 0,
+        "Chat": 0,
+        "Game": 0,
+        "Vr": 0
+      },
+      "first_service_cycles_from_t1": {
+        "Video": 2591,
+        "Chat": 2948,
+        "Game": 2603,
+        "Vr": 2627
+      },
+      "control_differences": {
+        "Zoom": {
+          "paired_packets": 641,
+          "mean_delay_delta_cycles": 946.8751950078004,
+          "p95_absolute_delay_delta_cycles": 2401,
+          "max_absolute_delay_delta_cycles": 2935,
+          "changed": true
+        },
+        "Voip": {
+          "paired_packets": 472,
+          "mean_delay_delta_cycles": 1340.334745762712,
+          "p95_absolute_delay_delta_cycles": 3037,
+          "max_absolute_delay_delta_cycles": 3441,
+          "changed": true
+        },
+        "Legacy1": {
+          "paired_packets": 86,
+          "mean_delay_delta_cycles": 4356.662790697675,
+          "p95_absolute_delay_delta_cycles": 4492,
+          "max_absolute_delay_delta_cycles": 4510,
+          "changed": true
+        },
+        "Legacy2": {
+          "paired_packets": 53,
+          "mean_delay_delta_cycles": 3742.3584905660377,
+          "p95_absolute_delay_delta_cycles": 3855,
+          "max_absolute_delay_delta_cycles": 3884,
+          "changed": true
+        },
+        "Gmail": {
+          "paired_packets": 492,
+          "mean_delay_delta_cycles": 1429.020325203252,
+          "p95_absolute_delay_delta_cycles": 2851,
+          "max_absolute_delay_delta_cycles": 2926,
+          "changed": true
+        },
+        "Ssh": {
+          "paired_packets": 321,
+          "mean_delay_delta_cycles": 929.5981308411215,
+          "p95_absolute_delay_delta_cycles": 2065,
+          "max_absolute_delay_delta_cycles": 2553,
+          "changed": true
+        },
+        "Http": {
+          "paired_packets": 439,
+          "mean_delay_delta_cycles": 1497.111617312073,
+          "p95_absolute_delay_delta_cycles": 3050,
+          "max_absolute_delay_delta_cycles": 3125,
+          "changed": true
+        },
+        "Https": {
+          "paired_packets": 375,
+          "mean_delay_delta_cycles": 920.296,
+          "p95_absolute_delay_delta_cycles": 1986,
+          "max_absolute_delay_delta_cycles": 2545,
+          "changed": true
+        },
+        "Backup": {
+          "paired_packets": 559,
+          "mean_delay_delta_cycles": 9574.51878354204,
+          "p95_absolute_delay_delta_cycles": 11544,
+          "max_absolute_delay_delta_cycles": 11705,
+          "changed": true
+        },
+        "Sync": {
+          "paired_packets": 360,
+          "mean_delay_delta_cycles": 5877.586111111111,
+          "p95_absolute_delay_delta_cycles": 8391,
+          "max_absolute_delay_delta_cycles": 8551,
+          "changed": true
+        },
+        "Video": {
+          "paired_packets": 0,
+          "mean_delay_delta_cycles": null,
+          "p95_absolute_delay_delta_cycles": null,
+          "max_absolute_delay_delta_cycles": null,
+          "changed": true
+        },
+        "Chat": {
+          "paired_packets": 0,
+          "mean_delay_delta_cycles": null,
+          "p95_absolute_delay_delta_cycles": null,
+          "max_absolute_delay_delta_cycles": null,
+          "changed": true
+        },
+        "Game": {
+          "paired_packets": 0,
+          "mean_delay_delta_cycles": null,
+          "p95_absolute_delay_delta_cycles": null,
+          "max_absolute_delay_delta_cycles": null,
+          "changed": true
+        },
+        "Vr": {
+          "paired_packets": 0,
+          "mean_delay_delta_cycles": null,
+          "p95_absolute_delay_delta_cycles": null,
+          "max_absolute_delay_delta_cycles": null,
+          "changed": true
+        }
+      },
+      "pre_t1_link_utilization": 0.909,
+      "instructions_accepted_at_t1": 0,
+      "instructions_dispatched_at_t1": 0,
+      "commit_applied_cycles": [
+        2176,
+        7997
+      ],
+      "copy_completions": [],
+      "copied_entries": 0,
+      "t1_waiting_at_input_packets": 0,
+      "changed_flows": 14,
+      "buffer_occupancy_at_resume_packets": 1058,
+      "peak_stop_buffer_packets_from_csv": 1058,
+      "pre_t1_realtime_last_pop": 6112,
+      "realtime_steady_cycle": 16012
+    }
+  },
+  "difference_test": "paired p95 absolute delay difference > 10 cycles, packets outstanding/generated from t1 through 18000; new flows count as changed",
+  "realtime_steady_metric": "first 300-cycle trailing window within 10% of 0.20, sustained 300 cycles, after pre-t1 realtime packets leave",
+  "realtime_weight_share": 0.35294117647058826,
+  "realtime_offered_steady_rate": 0.2
+}

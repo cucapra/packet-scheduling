@@ -260,7 +260,8 @@ object RequestTrace {
   def writePacketOutcomes(
       path: Path,
       completed: Iterable[CompletedRequest],
-      dropped: Iterable[DroppedRequest]
+      dropped: Iterable[DroppedRequest],
+      unadmitted: Iterable[SimRequest] = Vector.empty
   ): Unit = {
     Option(path.getParent).foreach(Files.createDirectories(_))
     val rows =
@@ -282,6 +283,8 @@ object RequestTrace {
           "",
           true
         )
+      } ++ unadmitted.map { request =>
+        (request.requestId, request.globalFlowId, request.sizeBytes, request.cycle, "", false)
       }
     val writer = Files.newBufferedWriter(path, StandardCharsets.UTF_8)
     try {

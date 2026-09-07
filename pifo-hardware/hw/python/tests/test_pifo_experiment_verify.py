@@ -22,6 +22,7 @@ from pifo_experiment_verify import (  # noqa: E402
 
 HARDWARE_ROOT = Path(__file__).resolve().parents[3]
 LARGE_CONFIG = HARDWARE_ROOT / "experiments" / "large-tree-rr-to-sp.json"
+STOP_CONFIG = HARDWARE_ROOT / "experiments" / "rr-to-sp-stop-the-world-pop.json"
 
 
 class PifoExperimentVerifyTest(unittest.TestCase):
@@ -31,6 +32,7 @@ class PifoExperimentVerifyTest(unittest.TestCase):
             config.initial_tree,
             config.reconfiguration,
             config.simulation.num_vpifos,
+            config.simulation.num_engines,
         )
 
         self.assertEqual(len(config.initial_tree.nodes), 7)
@@ -121,6 +123,38 @@ class PifoExperimentVerifyTest(unittest.TestCase):
         self.assertEqual(
             report["packet_counts"]["admitted_on_commit_edge_as_old"], 1
         )
+
+    def test_stop_the_world_prefill_matches_old_backlog(self) -> None:
+        config = replace(
+            load_experiment_config(STOP_CONFIG),
+            verification=PhaseVerificationConfig(
+                minimum_staging_cycles=2,
+                minimum_old_backlog_packets=2,
+                minimum_drain_cycles=2,
+                minimum_packets_per_phase=2,
+            ),
+        )
+        report = verify_rr_to_sp_phases(
+            config,
+            self._passing_packets(),
+            TransactionTiming(
+                mode="stop_the_world_pop",
+                start_cycle=7,
+                commit_cycle=10,
+                finish_cycle=40,
+                drain_cycle=20,
+                prefilled_tokens=2,
+                resume_cycle=11,
+            ),
+        )
+
+        self.assertTrue(report["passed"])
+        checks = {
+            check["id"]: check
+            for check in report["facts"][0]["checks"]
+        }
+        self.assertTrue(checks["prefill_matches_old_backlog"]["passed"])
+        self.assertTrue(checks["admissions_while_hardware_stopped"]["passed"])
 
     def _small_threshold_config(self):
         return replace(

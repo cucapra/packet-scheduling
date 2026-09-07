@@ -157,6 +157,7 @@ def validate_experiment_config(args: argparse.Namespace) -> None:
         config.initial_tree,
         config.reconfiguration,
         config.simulation.num_vpifos,
+        config.simulation.num_engines,
     )
     cycles = [request.cycle for request in requests]
     sizes = [request.size_bytes for request in requests]

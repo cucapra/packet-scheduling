@@ -34,15 +34,23 @@ case class PifoMeshSimController(
     "CommitMapper" -> ControlCommand.CommitMapper,
     "UpdateBrainEngine" -> ControlCommand.UpdateBrainEngine,
     "UpdateBrainState" -> ControlCommand.UpdateBrainState,
-    "UpdateBrainFlowState" -> ControlCommand.UpdateBrainFlowState
+    "UpdateBrainFlowState" -> ControlCommand.UpdateBrainFlowState,
+    "StopWorld" -> ControlCommand.StopWorld,
+    "PrefillPifo" -> ControlCommand.PrefillPifo,
+    "UpdateRoot" -> ControlCommand.UpdateRoot,
+    "CopyPifoEngine" -> ControlCommand.CopyPifoEngine,
+    "UpdateRankGroup" -> ControlCommand.UpdateRankGroup,
+    "UpdateRankQuantum" -> ControlCommand.UpdateRankQuantum,
+    "WaitPifoEmpty" -> ControlCommand.WaitPifoEmpty,
+    "ClearPifoEngine" -> ControlCommand.ClearPifoEngine
   )
   private val controlSocketFields = Set("command", "engineId", "vPifoId", "flowId", "data")
 
   // compound functions
   def enque(vPifoId: Int) = {
-    for (i <- 0 until config.numEngines) {
-      enqueueToEngine(i + 1, vPifoId)
-    }
+    // Independent physical enqueue ports receive one packet's path tokens in
+    // parallel; adding spare PEs must not reduce the traffic generator's rate.
+    (0 until config.numEngines).map(i => fork { enqueueToEngine(i + 1, vPifoId) }).foreach(_.join())
   }
 
   // primitive functions
@@ -63,6 +71,7 @@ case class PifoMeshSimController(
       onAccepted: () => Unit = () => ()
   ): Unit = {
     require(engineId >= 1 && engineId <= config.numEngines, s"Invalid control engineId: $engineId")
+    val commitEpochBefore = dut.io.commitEpoch.toBoolean
     dut.io.controlRequest.valid #= true
     dut.io.controlRequest.payload.command #= cmd
     dut.io.controlRequest.payload.engineId #= engineId
@@ -81,7 +90,7 @@ case class PifoMeshSimController(
     // apply it and finish restoring the backup banks before returning, so callers
     // can safely begin another transaction.
     if (cmd == ControlCommand.CommitMapper) {
-      dut.clockDomain.waitSamplingWhere(!dut.io.commitReady.toBoolean)
+      dut.clockDomain.waitSamplingWhere(dut.io.commitEpoch.toBoolean != commitEpochBefore)
       onCommitApplied()
       dut.clockDomain.waitSamplingWhere(dut.io.commitReady.toBoolean)
     }
@@ -189,6 +198,9 @@ case class PifoMeshSimController(
    *     UpdateBrainEngine     writes brain engine type: inputId=vPifoId, outputId=data
    *     UpdateBrainState      writes brain state: inputId=vPifoId, outputId=data
    *     UpdateBrainFlowState  writes flow state: inputId=vPifoId @@ flowId, outputId=data
+   *     StopWorld            backpressures packet inserts and root-pop requests until commit
+   *     PrefillPifo          inserts data synthetic tokens at priority 1: port=vPifoId, token=flowId, count=data
+   *     UpdateRoot           stages engineId/vPifoId as the root selected by commit
    *
    *   Example:
    *     command=UpdateBrainFlowState engineId=1 vPifoId=10 flowId=3 data=20

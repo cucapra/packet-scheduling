@@ -36,7 +36,7 @@ case class ScheduledControlTransaction(
   require(scheduledCycle >= 0, "transaction cycle must be non-negative")
   require(name.nonEmpty, "transaction name must not be empty")
   require(
-    Set("direct", "in_place", "stop_the_world", "full_transitive", "confined_transitive").contains(mode),
+    Set("direct", "in_place", "stop_the_world", "stop_the_world_pop", "full_transitive", "confined_transitive").contains(mode),
     "invalid transaction mode"
   )
   require(
@@ -153,7 +153,7 @@ object RequestTransactionProgram {
       cycle.foreach(value => require(value >= 0, s"$path:$lineNumber: transaction cycle must be non-negative"))
       val mode = fields("mode")
       require(
-        Set("direct", "in_place", "stop_the_world", "full_transitive", "confined_transitive").contains(mode),
+        Set("direct", "in_place", "stop_the_world", "stop_the_world_pop", "full_transitive", "confined_transitive").contains(mode),
         s"$path:$lineNumber: unsupported transaction mode '$mode'"
       )
       val drainTarget = fields.get("drainRoot").map(value => parseDrainTarget(value, path, lineNumber))

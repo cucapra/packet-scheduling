@@ -35,6 +35,9 @@ class TransactionPlan:
     drain_vpifo_id: int | None
     gated_flow_ids: tuple[int, ...]
     minimum_stop_cycles: int
+    barrier_engine_id: int | None = None
+    barrier_vpifo_id: int | None = None
+    preload_flow_id: int | None = None
 
 
 def pack_flow_id(engine_id: int, vpifo_or_flow_id: int, num_vpifos: int) -> int:
@@ -46,6 +49,7 @@ def build_transaction_plan(
     initial_tree: InitialTreeConfig,
     reconfiguration: PolicyChangeConfig,
     num_vpifos: int,
+    num_engines: int = 2,
 ) -> TransactionPlan:
     initial_commands = tuple(_configure_tree(initial_tree, num_vpifos))
     old_root = initial_tree.nodes[initial_tree.root]
@@ -53,6 +57,8 @@ def build_transaction_plan(
         initial_tree, reconfiguration
     )
     drain: tuple[int, int] | None = None
+    barrier = None
+    preload_flow_id = None
 
     if reconfiguration.mode == "full_transitive":
         physical_target = _allocate_fresh_tree(
@@ -65,6 +71,14 @@ def build_transaction_plan(
                 num_vpifos=num_vpifos,
             )
         )
+        drain = (old_root.engine_id, old_root.vpifo_id)
+    elif reconfiguration.mode == "stop_the_world_pop":
+        physical_target = _allocate_fresh_tree(target_tree, initial_tree, num_vpifos)
+        barrier = _allocate_barrier(initial_tree, num_engines, num_vpifos)
+        preload_flow_id = num_vpifos - 1
+        transaction_commands = tuple(_configure_stop_the_world_pop(
+            initial_tree, physical_target, *barrier, preload_flow_id, num_vpifos
+        ))
         drain = (old_root.engine_id, old_root.vpifo_id)
     elif reconfiguration.mode == "confined_transitive":
         transaction_commands, drain = _configure_confined_transitive(
@@ -103,6 +117,9 @@ def build_transaction_plan(
         drain_vpifo_id=drain[1] if drain is not None else None,
         gated_flow_ids=gated_flows,
         minimum_stop_cycles=reconfiguration.minimum_stop_cycles,
+        barrier_engine_id=barrier[0] if barrier else None,
+        barrier_vpifo_id=barrier[1] if barrier else None,
+        preload_flow_id=preload_flow_id,
     )
 
 
@@ -167,6 +184,28 @@ def _allocate_fresh_tree(
     )
 
 
+def _allocate_barrier(
+    tree: InitialTreeConfig, num_engines: int, num_vpifos: int
+) -> tuple[int, int]:
+    used_engines = {node.engine_id for node in tree.nodes.values()}
+    try:
+        engine_id = next(
+            candidate
+            for candidate in range(1, num_engines + 1)
+            if candidate not in used_engines
+        )
+    except StopIteration as error:
+        raise ValueError(
+            "stop_the_world_pop requires one engine unused by the old tree"
+        ) from error
+    preferred = tuple(range(10, num_vpifos - 1)) + tuple(
+        range(0, min(10, num_vpifos - 1))
+    )
+    if not preferred:
+        raise ValueError("stop_the_world_pop has no usable barrier vPifo ID")
+    return engine_id, preferred[0]
+
+
 def _configure_tree(
     tree: InitialTreeConfig, num_vpifos: int
 ) -> list[ControllerCommand]:
@@ -200,6 +239,104 @@ def _configure_full_transitive(
             vpifo_id=old_root.vpifo_id,
             flow_id=0,
             data=new_root.vpifo_id,
+        )
+    )
+    commands.append(_commit_command())
+    return commands
+
+
+def _configure_stop_the_world_pop(
+    old_tree: InitialTreeConfig,
+    new_tree: InitialTreeConfig,
+    barrier_engine_id: int,
+    barrier_vpifo_id: int,
+    preload_flow_id: int,
+    num_vpifos: int,
+) -> list[ControllerCommand]:
+    old_root = old_tree.nodes[old_tree.root]
+    new_root = new_tree.nodes[new_tree.root]
+    commands = [
+        ControllerCommand(
+            command="StopWorld",
+            engine_id=old_root.engine_id,
+            vpifo_id=old_root.vpifo_id,
+            flow_id=0,
+            data=0,
+        )
+    ]
+    commands.extend(_configure_brains(new_tree, num_vpifos))
+    commands.extend(_configure_flow_mappings(new_tree, num_vpifos, include_pre=True))
+
+    # The real SP node has one low-priority input for every new-tree flow. The
+    # synthetic prefill entries bypass the brain and use fixed priority 1.
+    commands.append(
+        ControllerCommand(
+            command="UpdateBrainEngine",
+            engine_id=barrier_engine_id,
+            vpifo_id=barrier_vpifo_id,
+            flow_id=0,
+            data=POLICY_TO_BRAIN["SP"],
+        )
+    )
+    for flow_id in sorted(new_tree.flow_paths):
+        packed_flow = pack_flow_id(barrier_engine_id, flow_id, num_vpifos)
+        commands.extend(
+            (
+                ControllerCommand(
+                    command="UpdateBrainFlowState",
+                    engine_id=barrier_engine_id,
+                    vpifo_id=barrier_vpifo_id,
+                    flow_id=packed_flow,
+                    data=2,
+                ),
+                ControllerCommand(
+                    command="UpdateMapperPre",
+                    engine_id=barrier_engine_id,
+                    vpifo_id=flow_id,
+                    flow_id=0,
+                    data=barrier_vpifo_id,
+                ),
+                ControllerCommand(
+                    command="UpdateMapperPost",
+                    engine_id=barrier_engine_id,
+                    vpifo_id=barrier_vpifo_id,
+                    flow_id=packed_flow,
+                    data=pack_flow_id(
+                        new_root.engine_id, new_root.vpifo_id, num_vpifos
+                    ),
+                ),
+            )
+        )
+
+    packed_preload_flow = pack_flow_id(
+        barrier_engine_id, preload_flow_id, num_vpifos
+    )
+    commands.extend(
+        (
+            ControllerCommand(
+                command="UpdateMapperPost",
+                engine_id=barrier_engine_id,
+                vpifo_id=barrier_vpifo_id,
+                flow_id=packed_preload_flow,
+                data=pack_flow_id(
+                    old_root.engine_id, old_root.vpifo_id, num_vpifos
+                ),
+            ),
+            # data=0 asks hardware to use the stopped old root's token count N.
+            ControllerCommand(
+                command="PrefillPifo",
+                engine_id=barrier_engine_id,
+                vpifo_id=barrier_vpifo_id,
+                flow_id=packed_preload_flow,
+                data=0,
+            ),
+            ControllerCommand(
+                command="UpdateRoot",
+                engine_id=barrier_engine_id,
+                vpifo_id=barrier_vpifo_id,
+                flow_id=0,
+                data=0,
+            ),
         )
     )
     commands.append(_commit_command())

@@ -16,5 +16,5 @@ object Config {
 }
 
 object BrainType extends SpinalEnum(binarySequential) {
-  val NOP, WFQ, SP, FIFO = newElement()
+  val NOP, WFQ, SP, FIFO, HWFQ = newElement()
 }

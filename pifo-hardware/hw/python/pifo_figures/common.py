@@ -46,6 +46,7 @@ START_COLOR = "#1f77b4"
 COMMIT_COLOR = "#ff7f0e"
 FINISH_COLOR = "#2ca02c"
 DRAIN_COLOR = "#9467bd"
+RESUME_COLOR = "#d62728"
 
 
 @dataclass(frozen=True)
@@ -74,6 +75,8 @@ class PolicyEvent:
     peak_buffer_occupancy_packets: int = 0
     minimum_stop_cycles: int = 0
     stop_duration_cycles: int | None = None
+    prefilled_tokens: int | None = None
+    resume_cycle: int | None = None
 
     @property
     def label(self) -> str:
@@ -108,6 +111,8 @@ class EventLike(Protocol):
     finish_cycle: int
     drain_cycle: int | None
     instruction_count: int | None
+    prefilled_tokens: int | None
+    resume_cycle: int | None
 
 
 class PacketLike(Protocol):
@@ -293,6 +298,8 @@ def read_policy_event(path: Path) -> PolicyEvent:
             if (row.get("stop_duration_cycles") or "").strip()
             else None
         ),
+        prefilled_tokens=int(row["prefilled_tokens"]) if row.get("prefilled_tokens") else None,
+        resume_cycle=int(row["resume_cycle"]) if row.get("resume_cycle") else None,
     )
     _validate_event(path, row, event)
     return event
@@ -640,6 +647,10 @@ def transition_markers(
         markers.append(
             (float(event.drain_cycle - event.start_cycle), DRAIN_COLOR, "3,5")
         )
+    if event.resume_cycle is not None:
+        markers.append(
+            (float(event.resume_cycle - event.start_cycle), RESUME_COLOR, "2,4")
+        )
     for value, color, dash in markers:
         if area.x_min <= value <= area.x_max:
             svg.line(
@@ -662,6 +673,10 @@ def scatter_output_markers(svg: Svg, area: PlotArea, event: EventLike) -> None:
     if event.drain_cycle is not None:
         markers.append(
             (float(event.drain_cycle - event.start_cycle), DRAIN_COLOR, "3,5")
+        )
+    if event.resume_cycle is not None:
+        markers.append(
+            (float(event.resume_cycle - event.start_cycle), RESUME_COLOR, "2,4")
         )
     for value, color, dash in markers:
         if area.y_min <= value <= area.y_max:

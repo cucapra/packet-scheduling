@@ -15,8 +15,17 @@ SUPPORTED_CONTROL_COMMANDS = {
     "UpdateBrainEngine",
     "UpdateBrainState",
     "UpdateBrainFlowState",
+    "StopWorld",
+    "PrefillPifo",
+    "UpdateRoot",
+    "CopyPifoEngine",
+    "UpdateRankGroup",
+    "UpdateRankQuantum",
+    "WaitPifoEmpty",
+    "ClearPifoEngine",
 }
 SUPPORTED_TRANSACTION_MODES = {
+    "stop_the_world_pop",
     "direct",
     "in_place",
     "stop_the_world",
@@ -145,6 +154,33 @@ class TimedTransaction:
             raise ValueError(
                 f"transaction {self.name!r} must end with exactly one CommitMapper"
             )
+        if self.mode == "stop_the_world_pop":
+            command_names = [command.command for command in self.commands]
+            if not command_names or command_names[0] != "StopWorld":
+                raise ValueError(
+                    "stop_the_world_pop transaction must begin with StopWorld"
+                )
+            if command_names.count("PrefillPifo") != 1:
+                raise ValueError(
+                    "stop_the_world_pop transaction requires exactly one PrefillPifo"
+                )
+            if command_names.count("UpdateRoot") != 1:
+                raise ValueError(
+                    "stop_the_world_pop transaction requires exactly one UpdateRoot"
+                )
+            prefill = self.commands[command_names.index("PrefillPifo")]
+            root = self.commands[command_names.index("UpdateRoot")]
+            if (prefill.engine_id, prefill.vpifo_id) != (
+                root.engine_id,
+                root.vpifo_id,
+            ):
+                raise ValueError(
+                    "PrefillPifo and UpdateRoot must target the same SP node"
+                )
+            if prefill.data != 0:
+                raise ValueError(
+                    "stop_the_world_pop PrefillPifo data must request hardware root occupancy with 0"
+                )
 
 
 @dataclass(frozen=True)

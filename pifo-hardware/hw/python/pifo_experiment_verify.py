@@ -1,4 +1,4 @@
-"""Verify the observable phases of a full-transitive RR-to-SP change."""
+"""Verify the observable phases of an RR-to-SP tree transition."""
 
 from __future__ import annotations
 
@@ -50,6 +50,8 @@ class TransactionTiming:
     finish_cycle: int
     drain_cycle: int
     instruction_count: int | None = None
+    prefilled_tokens: int | None = None
+    resume_cycle: int | None = None
 
     @property
     def staging_cycles(self) -> int:
@@ -136,7 +138,7 @@ def read_transaction_timing(path: Path) -> TransactionTiming:
         raise ValueError(f"{path}: expected exactly one reconfiguration event")
     row = rows[0]
     if not row["drain_cycle"].strip():
-        raise ValueError(f"{path}: full-transitive event has no drain cycle")
+        raise ValueError(f"{path}: reconfiguration event has no drain cycle")
     timing = TransactionTiming(
         mode=row["mode"].strip(),
         start_cycle=_integer(row["start_cycle"]),
@@ -148,9 +150,19 @@ def read_transaction_timing(path: Path) -> TransactionTiming:
             if (row.get("instruction_count") or "").strip()
             else None
         ),
+        prefilled_tokens=(
+            _integer(row["prefilled_tokens"])
+            if (row.get("prefilled_tokens") or "").strip()
+            else None
+        ),
+        resume_cycle=(
+            _integer(row["resume_cycle"])
+            if (row.get("resume_cycle") or "").strip()
+            else None
+        ),
     )
-    if timing.mode != "full_transitive":
-        raise ValueError(f"{path}: phase verification requires full_transitive mode")
+    if timing.mode not in {"full_transitive", "stop_the_world_pop"}:
+        raise ValueError(f"{path}: unsupported phase-verification mode {timing.mode!r}")
     if not (
         0 <= timing.start_cycle <= timing.commit_cycle <= timing.finish_cycle
         and timing.commit_cycle <= timing.drain_cycle
@@ -158,6 +170,15 @@ def read_transaction_timing(path: Path) -> TransactionTiming:
         raise ValueError(f"{path}: invalid transaction timestamp order")
     if timing.instruction_count is not None and timing.instruction_count <= 0:
         raise ValueError(f"{path}: instruction count must be positive")
+    if timing.mode == "stop_the_world_pop":
+        if timing.prefilled_tokens is None or timing.resume_cycle is None:
+            raise ValueError(
+                f"{path}: stop_the_world_pop requires prefilled_tokens and resume_cycle"
+            )
+        if timing.prefilled_tokens < 0:
+            raise ValueError(f"{path}: prefilled token count must be non-negative")
+        if not timing.commit_cycle <= timing.resume_cycle <= timing.finish_cycle:
+            raise ValueError(f"{path}: resume cycle must be between commit and finish")
     return timing
 
 
@@ -228,6 +249,27 @@ def verify_rr_to_sp_phases(
         for packet in old_packets
         if packet.completed_cycle >= timing.commit_cycle
     ]
+    stop_mode_checks: list[VerificationCheck] = []
+    if timing.mode == "stop_the_world_pop":
+        assert timing.prefilled_tokens is not None
+        assert timing.resume_cycle is not None
+        stop_mode_checks = [
+            _equals(
+                "prefill_matches_old_backlog",
+                "hardware SP-barrier tokens equal old packets pending at commit",
+                len(old_backlog),
+                timing.prefilled_tokens,
+            ),
+            _equals(
+                "admissions_while_hardware_stopped",
+                "packets admitted after commit acceptance and before hardware resume",
+                0,
+                sum(
+                    timing.commit_cycle < packet.admitted_cycle < timing.resume_cycle
+                    for packet in packets
+                ),
+            ),
+        ]
 
     checks_by_fact: list[tuple[str, str, list[VerificationCheck]]] = [
         (
@@ -264,6 +306,7 @@ def verify_rr_to_sp_phases(
                     thresholds.minimum_drain_cycles,
                     timing.drain_cycles,
                 ),
+                *stop_mode_checks,
             ],
         ),
         (
@@ -371,6 +414,8 @@ def verify_rr_to_sp_phases(
             "drain_cycles": timing.drain_cycles,
             "synchronization_cycles": timing.synchronization_cycles,
             "instruction_count": timing.instruction_count,
+            "prefilled_tokens": timing.prefilled_tokens,
+            "resume_cycle": timing.resume_cycle,
         },
         "packet_counts": {
             "total": len(packets),

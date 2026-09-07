@@ -166,6 +166,10 @@ case class FrontRewriteTable(pifoIdWidth: Int) extends Component {
     val lookupTarget = out UInt (pifoIdWidth bits)
     val lookupEnabled = out Bool ()
     val lookupCanEnable = out Bool ()
+    val probeSource = in UInt (pifoIdWidth bits) default(0)
+    val probeTarget = out UInt (pifoIdWidth bits)
+    val probeEnabled = out Bool ()
+    val probeCanEnable = out Bool ()
 
     val drained = slave Flow (UInt(pifoIdWidth bits))
     val drainEnablesRewrite = out Bool ()
@@ -189,6 +193,9 @@ case class FrontRewriteTable(pifoIdWidth: Int) extends Component {
 
   io.lookupTarget := targets(io.lookupSource)
   io.lookupEnabled := enabled(io.lookupSource)
+  io.probeTarget := targets(io.probeSource)
+  io.probeEnabled := enabled(io.probeSource)
+  io.probeCanEnable := configured(io.probeSource) && armed(io.probeSource) && !enabled(io.probeSource)
   io.lookupCanEnable :=
     configured(io.lookupSource) && !enabled(io.lookupSource) && (
       armed(io.lookupSource) || (io.commit && pending(io.lookupSource))
@@ -248,6 +255,7 @@ case class PIFOBrain(config: EngineConfig) extends Component {
 
     val control = slave Stream (ControlMessage(config))
     val poped = slave Flow (PifoPopResponse(config))
+    val commit = in Bool () default(False)
   }
 
   val inHeads = StreamFork(io.request, 5)
@@ -337,6 +345,15 @@ case class PIFOBrain(config: EngineConfig) extends Component {
     anno
   }
 
+  val weighted = WeightedRanker(config)
+  weighted.io.port := engineStream.pifoId
+  weighted.io.flow := engineStream.flowId.resized
+  weighted.io.accept := engineStream.fire && engineStream.engineId === BrainType.HWFQ.position
+  weighted.io.pop << io.poped
+  weighted.io.control.valid := io.control.fire
+  weighted.io.control.payload := io.control.payload
+  weighted.io.commit := io.commit
+
   // TODO(zhiyaung): add update logic for different brain types
   // Engine Logic
   val outStream = engineStream.map { data =>
@@ -367,6 +384,9 @@ case class PIFOBrain(config: EngineConfig) extends Component {
     brainType.assignFromBits(data.engineId.asBits.resized)
 
     switch(brainType) {
+      is(BrainType.HWFQ) {
+        res.entry.priority := weighted.io.rank
+      }
       // strict priority
       is(BrainType.SP) {
         res.entry.priority := data.flowState.resized
@@ -431,6 +451,12 @@ case class PifoMessage(config: EngineConfig) extends Bundle {
   }
 }
 
+case class PifoPrefillRequest(config: EngineConfig) extends Bundle {
+  val port = UInt(config.vpifoIdWidth bits)
+  val token = UInt(config.flowIdWidth bits)
+  val count = UInt(config.flowStateWidth bits)
+}
+
 object PifoMessage {
   def fromData(config: EngineConfig, data: UInt, exist: Bool): PifoMessage = {
     val msg = PifoMessage(config)
@@ -448,6 +474,16 @@ case class PifoEngine(config: EngineConfig) extends Component {
 
     val dequeueResponse = master Stream (PifoMessage(config))
 
+    val inspectPifo = in UInt (config.vpifoIdWidth bits)
+    val inspectCount = out UInt ((config.bitPifo + 1) bits)
+    val probePifo = in UInt (config.vpifoIdWidth bits) default(0)
+    val probeEmpty = out Bool ()
+    val copyIndex = in UInt (config.bitPifo bits) default(0)
+    val copyEntry = master Flow (PifoEntry(config))
+    val copyInsert = slave Stream (PifoEntry(config))
+    val copyClear = in Bool () default(False)
+    val copyEmpty = out Bool ()
+
     // control signals
     val control = slave Stream (ControlMessage(config))
     val commitReady = out Bool ()
@@ -455,6 +491,13 @@ case class PifoEngine(config: EngineConfig) extends Component {
 
   // PIFO
   val pifos = new ConcurrentPifoRTL(config)
+  pifos.io.inspectPort := io.inspectPifo
+  io.inspectCount := pifos.io.inspectCount
+  pifos.io.copyIndex := io.copyIndex
+  io.copyEntry << pifos.io.copyEntry
+  pifos.io.copyInsert << io.copyInsert
+  pifos.io.copyClear := io.copyClear
+  io.copyEmpty := pifos.io.copyEmpty
 
   // enque logic
   // enqueMapper maps flowIds to VPIFO ids
@@ -478,9 +521,32 @@ case class PifoEngine(config: EngineConfig) extends Component {
 
     // flow PIFO will give the result
     pifos.io.push1 << brain.io.response.toFlow
-    // currently we do not use push2
-    pifos.io.push2.valid := False
-    pifos.io.push2.payload.assignDontCare()
+  }
+
+  // Stop-the-world prefill entries are scheduler tokens, not packet
+  // admissions. One control instruction starts an autonomous one-token-per-
+  // cycle fill through the PIFO's second insertion port.
+  val prefill = new Area {
+    val request = Stream(PifoPrefillRequest(config))
+    val port = Reg(UInt(config.vpifoIdWidth bits)) init (0)
+    val token = Reg(UInt(config.flowIdWidth bits)) init (0)
+    val remaining = Reg(UInt(config.flowStateWidth bits)) init (0)
+    val busy = remaining =/= 0
+
+    request.ready := !busy
+    pifos.io.push2.valid := busy
+    pifos.io.push2.port := port
+    pifos.io.push2.priority := U(1, config.bitPrio bits)
+    pifos.io.push2.data := token
+
+    when(request.fire) {
+      port := request.port
+      token := request.token
+      remaining := request.count
+    }
+    when(busy && pifos.io.push2Ready) {
+      remaining := remaining - 1
+    }
   }
 
   val deque = new Area {
@@ -560,9 +626,19 @@ case class PifoEngine(config: EngineConfig) extends Component {
     to.outputId := from.data(config.vpifoIdWidth - 1 downto 0)
   }
 
+  controller.dispatchStream(
+    ControlCommand.PrefillPifo,
+    prefill.request
+  ) { (to, from) =>
+    to.port := from.vPifoId
+    to.token := from.flowId
+    to.count := from.data
+  }
+
   val mapperCommitReady =
     enque.enqueMapper.io.commitReady &&
-      deque.dequeMapper.io.commitReady
+      deque.dequeMapper.io.commitReady &&
+      !prefill.busy
   io.commitReady := mapperCommitReady
 
   val (control, brainControl, commitControl) = StreamFork3(io.control)
@@ -576,4 +652,10 @@ case class PifoEngine(config: EngineConfig) extends Component {
   enque.enqueMapper.io.commit := commitPulse
   deque.dequeMapper.io.commit := commitPulse
   deque.frontRewrite.io.commit := commitPulse
+  enque.brain.io.commit := commitPulse
+  deque.frontRewrite.io.probeSource := io.probePifo
+  pifos.io.probePort := Mux(deque.frontRewrite.io.probeEnabled,
+    deque.frontRewrite.io.probeTarget, io.probePifo)
+  io.probeEmpty := pifos.io.probeCount === 0 &&
+    !deque.frontRewrite.io.probeCanEnable
 }

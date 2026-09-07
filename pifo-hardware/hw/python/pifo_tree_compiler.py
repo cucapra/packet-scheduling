@@ -113,7 +113,10 @@ def load_tree_move_program(path: Path) -> TreeMoveProgram:
 
 def compile_tree_move(program: TreeMoveProgram) -> TransactionProgram:
     plan = build_transaction_plan(
-        program.old_tree, program.move, program.hardware.num_vpifos
+        program.old_tree,
+        program.move,
+        program.hardware.num_vpifos,
+        program.hardware.num_engines,
     )
     drain_root = (
         (plan.drain_engine_id, plan.drain_vpifo_id)

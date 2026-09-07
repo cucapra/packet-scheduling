@@ -15,6 +15,7 @@ from request_trace import Request
 PACKET_RATE_UNIT = "packets_per_cycle_per_flow"
 SUPPORTED_POLICIES = {"RR", "WFQ", "SP", "FIFO"}
 SUPPORTED_RECONFIGURATION_MODES = {
+    "stop_the_world_pop",
     "in_place",
     "stop_the_world",
     "full_transitive",
@@ -257,7 +258,7 @@ def validate_tree_move(
                 raise ValueError(
                     "stop_the_world must reuse the old physical root"
                 )
-    elif change.mode != "full_transitive":
+    elif change.mode not in {"full_transitive", "stop_the_world_pop"}:
         raise ValueError(f"{change.mode} requires an explicit target_tree")
 
     unknown_changes = set(change.changes).difference(tree.nodes)
@@ -272,6 +273,16 @@ def validate_tree_move(
         _validate_node_state(
             tree, name, node_change.policy, merged_state, max_packet_priority
         )
+    if change.mode == "stop_the_world_pop":
+        used_engines = {node.engine_id for node in tree.nodes.values()}
+        if len(used_engines) >= num_engines:
+            raise ValueError(
+                "stop_the_world_pop requires one engine unused by the old tree"
+            )
+        if max_packet_priority <= 2:
+            raise ValueError(
+                "stop_the_world_pop requires at least two non-zero priorities"
+            )
 
 
 def _validate_tree_shape(

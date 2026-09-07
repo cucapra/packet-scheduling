@@ -72,6 +72,10 @@ This contains a PifoMesh Implementation. Current implementation assumes the inse
 
 ## Transactional configuration
 
+The [large-tree multi-edit experiment](experiments/multi-edit/README.md) compares
+localized edits, hardware SP prefill, whole-PE copy plus prefill, and a lossless
+reset baseline, with a shared unchanged-policy control trace.
+
 The packet-visible mapping commands are transactional:
 
 - Every command uses the mesh's single ready/valid control ingress. It accepts at most one instruction per clock;
@@ -86,6 +90,10 @@ The packet-visible mapping commands are transactional:
 - A packet request accepted on the commit edge uses the old mappings; requests accepted after that edge use the new mappings.
 - `io.commitReady` is low while the newly active banks are copied back into the backup banks. Another mapper update or commit waits until it returns high. Packet traffic continues during this synchronization.
 - Brain policy and brain-state commands remain immediate and are intentionally outside the mapper transaction.
+- `StopWorld` backpressures all hardware insert ports and the root-pop input. `PrefillPifo data=0` uses the stopped old
+  root's per-vPIFO occupancy as `N` and autonomously inserts `N` priority-1 scheduler tokens through the second PIFO
+  push port. `UpdateRoot` stages a new physical root. Commit waits for prefill completion, publishes that root, and
+  releases traffic.
 
 The experiment tools use explicit compiler and simulator boundaries:
 
@@ -123,6 +131,9 @@ The checked `experiments/large-tree-rr-to-sp.json` regression uses a seven-node 
 the observable RR-before-commit, old-tree-drain-first, and SP-after-drain phases. A `verification` block makes these
 checks automatic and produces machine-readable and Markdown reports beside the experiment figures; see
 `REQUEST_SIMULATOR.md` for the commands and reference measurements.
+
+`experiments/rr-to-sp-stop-the-world-pop.json` runs the same RR-to-SP workload through the SP-barrier protocol for
+direct comparison with the front-rewrite mode.
 
 `PifoMeshSimController.transaction` stages a configuration, commits it, and returns a thread that completes after
 `commitReady` rises again. The older `config` helper is retained as an alias. Control-socket users must include a

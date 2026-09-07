@@ -97,6 +97,47 @@ class PifoCliProgramsTest(unittest.TestCase):
         self.assertEqual(loaded.transactions[0].mode, "full_transitive")
         self.assertEqual(loaded.transactions[0].drain_root, (1, 10))
 
+    def test_tree_compiler_emits_stop_the_world_token_prefill(self) -> None:
+        config = load_experiment_config(
+            HARDWARE_ROOT / "experiments/rr-to-sp-stop-the-world-pop.json"
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            tree_move = root / "tree-move.json"
+            transactions = root / "transactions.txt"
+            write_tree_move_program(tree_move, config)
+            compiled = compile_tree_move(load_tree_move_program(tree_move))
+            write_transaction_program(transactions, compiled)
+            loaded = load_transaction_program(transactions)
+
+        transaction = loaded.transactions[0]
+        self.assertEqual(transaction.mode, "stop_the_world_pop")
+        self.assertEqual(transaction.commands[0].command, "StopWorld")
+        self.assertFalse(
+            any(
+                command.command == "UpdateMapperNonExist"
+                for command in transaction.commands
+            )
+        )
+        prefill = next(
+            command
+            for command in transaction.commands
+            if command.command == "PrefillPifo"
+        )
+        root_update = next(
+            command
+            for command in transaction.commands
+            if command.command == "UpdateRoot"
+        )
+        self.assertEqual((prefill.engine_id, prefill.vpifo_id), (2, 10))
+        self.assertEqual(prefill.flow_id, 95)
+        self.assertEqual(prefill.data, 0)
+        self.assertEqual(
+            (root_update.engine_id, root_update.vpifo_id),
+            (prefill.engine_id, prefill.vpifo_id),
+        )
+        self.assertEqual(transaction.commands[-1].command, "CommitMapper")
+
     def test_transaction_program_supports_multiple_timed_packages(self) -> None:
         config = load_experiment_config(HARDWARE_ROOT / "experiments/rr-to-sp.json")
         with tempfile.TemporaryDirectory() as directory:
