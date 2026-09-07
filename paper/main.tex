@@ -447,7 +447,7 @@ We choose the set of edits to meet the following criteria:
 \xxx[AM to AS]{So far I have essentially just said that the six forms have been \emph{chosen} with care, and I have asserted that they are atomic: here, and again below the informal list of the forms, where \cref{sec:hardware} is where the assertion is discharged. If we want to give the reader a reason rather than an assertion, let's discuss some more.}
 \item They are \emph{explainable}. Each edit transforms a policy $p$ in our policy DSL into a new policy $p'$. Later, we also show how each edit applies to live PIFO tree state to reflect these changes (\cref{sec:edit-semantics}).
 \item They are \emph{complete}. For any pair of policies $p_1$ and $p_2$, a sequence of edits suffices to transform $p_1$ into $p_2$. \cref{sec:sequences} gives a ``fallback'' path that always works.
-\item They are \emph{non-destructive}, i.e., edits do not drop in-flight packets. Edits that delete subtrees, such as $\Remove$, have preconditions that require those subtrees to be empty.
+\item They are \emph{non-disruptive}. Installing an edit never drops, reorders, or re-ranks a packet that is already buffered (\cref{sec:nondisruption}). Edits that delete a subtree, such as $\Remove$, have a precondition that requires the doomed subtree to be empty.
 \end{enumerate}
 %
 An edit describes where in the tree the change lands and what the change is.
@@ -805,7 +805,7 @@ Then:
 \subsection{Non-Disruption}\label{sec:nondisruption}
 
 \xxx[as]{Anshuman, your argument below about why to keep this theorem is good. Let's keep it. However: (1) I think we can delete the framing paragraphs below, in favor of a simple statement that says: we have chosen our set of edits to prevent disruption. (2) I think we probably need to preview that this is an advantage somewhat earlier, such as in the section when we introduce the edit grammar. (3) IIUC, we do not have an actual proof of this theorem. That is fine; it would be long, probably. But let's explicitly acknowledge that we are stating it without proof and simply sketching an argument. (4) Please introduce some notation for ``the sequence of packets you get out of a $C$ if you were to fully drain it.''}
-\xxx[am]{Point (4) is done: \flush{} is now defined in \cref{sec:controls} and \cref{thm:nondisruption} is stated on it. Points (1) to (3) are still open, and on (3) note that we do have a proof (see \cref{sec:per-form}) but we can discuss whether to emphasize it.}
+\xxx[am]{Points (2) and (4) are done. For (4), \flush{} is now defined in \cref{sec:controls} and \cref{thm:nondisruption} is stated on it. For (2), \cref{sec:intro} now names non-disruption as one of the ways we beat the stop-the-world baseline, and the fourth criterion in \cref{sec:delta-grammar} previews it where the grammar is introduced. Points (1) and (3) are still open, and on (3) note that we do have a proof (see \cref{sec:per-form}) but we can discuss whether to emphasize it.}
 
 Agreement on its own is not enough.
 The stop-the-world reset of \cref{sec:intro} is realizable and explainable too, and it is the baseline we wish to beat.
