@@ -144,6 +144,15 @@ def render(output, rows, statuses):
               "comparison.", ""]
     for note in journal_notes(output, statuses):
         lines += [note, '']
+    if (output / 'journal-m20k/full-validation.json').exists():
+        placement = json.loads((output / 'journal-m20k/full-validation.json').read_text())
+        if placement['status'] == 'passed':
+            lines += ['The completed [journal-only M20K control](journal-m20k/report.md) '
+                      f"preserves all {placement['other_ram_instances_unchanged']} other RAM instances "
+                      f"and adds {placement['added_journal_ram']['Implementation Bits']} journal RAM bits. "
+                      f"Its total is {placement['m20k_resources']['block_memory_bits']:,} RAM bits. "
+                      'The table above retains original '
+                      'automatic placement.', '']
     missing = [s for s in statuses if s["status"] != "synthesis_complete"]
     if missing:
         lines += ["Incomplete measurements:", ""]

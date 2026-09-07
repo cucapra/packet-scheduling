@@ -29,3 +29,5 @@ A zero block-memory count does not mean a component is absent: any logic or regi
 The replay log is included in the totals. Rebuilt hierarchy can assign shared logic to the FIFO that drives it, so hierarchical LUT counts are not used here as standalone controller costs. Whole-design LUT differences remain the logic comparison.
 
 Quartus, 1,024 IDs: the 655,360-bit journal maps to logic and registers. Its hierarchy reports 655,446 registers and zero RAM bits. This cost is included in the whole-design logic/register totals; the two post-mapper banks per PE remain simple dual-port RAMs.
+
+The completed [journal-only M20K control](journal-m20k/report.md) preserves all 22 other RAM instances and adds 655360 journal RAM bits. Its total is 1,426,719,512 RAM bits. The table above retains original automatic placement.

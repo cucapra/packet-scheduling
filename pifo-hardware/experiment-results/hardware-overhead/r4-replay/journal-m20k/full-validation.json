@@ -1,0 +1,67 @@
+{
+  "status": "passed",
+  "other_ram_instances_unchanged": 22,
+  "added_journal_ram": {
+    "Name": "streamFifo_53|logic_ram_rtl_0|auto_generated|altera_syncram_impl1|ALTERA_SYNCRAM",
+    "Type": "M20K block",
+    "Mode": "Simple Dual Port",
+    "Port A Depth": "16384",
+    "Port A Width": "40",
+    "Port B Depth": "16384",
+    "Port B Width": "40",
+    "Logical Size": "655360",
+    "Implementation Port A Depth": "2048",
+    "Implementation Port A Width": "320",
+    "Implementation Port B Depth": "2048",
+    "Implementation Port B Width": "320",
+    "Implementation Bits": "655360",
+    "MIF": "None"
+  },
+  "canonical_rtl_and_mifs_unchanged": true,
+  "qsf_setting_difference": [
+    "set_instance_assignment -name RAMSTYLE_ATTRIBUTE M20K -entity StreamFifo_52 -to logic_ram"
+  ],
+  "project_creation_timestamps_differ": true,
+  "matching_manifest_fields": [
+    "hardware",
+    "part",
+    "tool_version",
+    "threads",
+    "clock_target_mhz",
+    "source_sha256",
+    "rtl_sha256",
+    "quartus_initialization"
+  ],
+  "reference_resources": {
+    "logic_alms": 479742,
+    "logic_aluts": 681729,
+    "registers": 923812,
+    "block_memory_bits": 1426064152,
+    "mlab_memory_bits": 0,
+    "dsp_blocks": 0
+  },
+  "m20k_resources": {
+    "logic_alms": 355832,
+    "logic_aluts": 446357,
+    "registers": 268415,
+    "block_memory_bits": 1426719512,
+    "mlab_memory_bits": 0,
+    "dsp_blocks": 0
+  },
+  "drc_rule_summary_unchanged": true,
+  "drc_rule_summary": [
+    "; RES-30134 - Registers Not Reachable from Reset Release IP                                                           ; Medium   ; 5,000+     ; 0      ; reset-usage, reset-reachability ;",
+    "; LNT-30011 - Design Contains Combinational Loops                                                                     ; High     ; 0          ; 0      ; nonstandard-timing              ;",
+    "; LNT-30017 - Register Output Driving Its Own Asynchronous Control Signal Directly or Through Combinational Logic     ; Medium   ; 0          ; 0      ; nonstandard-timing              ;",
+    "; LNT-30023 - Reset Nets with Polarity Conflict                                                                       ; Medium   ; 0          ; 0      ; reset-usage                     ;",
+    "; RES-30132 - Registers May Not Be Properly Reset                                                                     ; Medium   ; 0          ; 0      ; reset-usage, reset-reachability ;",
+    "; RES-30133 - Embedded Memory Blocks with Initialized Content That Might be Modified Before the FPGA Enters User Mode ; Medium   ; 0          ; 0      ; ram, reset-usage                ;",
+    "; TMC-20052 - Paths with Post Synthesis Inferred Latches                                                              ; Medium   ; 0          ; 0      ; nonstandard-timing, latch       ;",
+    "; FLP-10500 - Non Driving Top Level Inputs Found                                                                      ; Low      ; 0          ; 0      ; system                          ;",
+    "; LNT-30010 - Nets Driving both Reset and Clock Enable Signals                                                        ; Low      ; 0          ; 0      ; reset-usage                     ;",
+    "; LNT-50006 - DSP Control Signal Registers Reset Mode Mismatch                                                        ; Low      ; 0          ; 0      ; dsp, reset-usage                ;",
+    "; TMC-20053 - DSP Inputs Driven by High Fan-Out Net                                                                   ; Low      ; 0          ; 0      ; dsp                             ;",
+    "; TMC-20500 - Hierarchical Tree Duplication was Shallower than Possible                                               ; Low      ; 0          ; 0      ; register-duplication, synthesis ;",
+    "; TMC-20501 - Hierarchical Tree Duplication was Shallower than Requested                                              ; Low      ; 0          ; 0      ; register-duplication, synthesis ;"
+  ]
+}

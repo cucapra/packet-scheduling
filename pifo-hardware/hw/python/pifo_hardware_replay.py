@@ -111,6 +111,18 @@ def render(output,config):
            'The log reserves space at ingress, records only pre/post mapper updates, and replays them in order after an atomic global swap.',
            'Configuration ingress and subsequent commits wait during replay; packet lookups continue. Batches must fit the advertised log credits.',
            'Synthesis only. Large estimates exceed device memory capacities; no implementation or timing-closure claim.','']
+    placement = output / 'journal-m20k/run-status.json'
+    if placement.exists():
+        controls = json.loads(placement.read_text())
+        mapped = next((r for r in controls if r.get('case') == 'full-m20k'
+                       and r['status'] == 'synthesis_complete'), None)
+        if mapped:
+            values = mapped['resources']
+            lines += [f"A completed [Quartus journal-placement control](journal-m20k/report.md) "
+                      f"uses the same core RTL with only the journal assigned to M20K: "
+                      f"{values['logic_alms']:,} ALMs, {values['registers']:,} registers, and "
+                      f"{values['block_memory_bits']:,} RAM bits at 1,024 IDs. "
+                      "The tables and plots below retain the original automatic-placement runs.", '']
     fixed=max(h['vflows'])
     fixed_pairs=[r for r in comparisons if int(r['vflows'])==fixed and r['baseline']=='dynamic']
     if fixed_pairs:

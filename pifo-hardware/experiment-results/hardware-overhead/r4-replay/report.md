@@ -6,6 +6,8 @@ The log reserves space at ingress, records only pre/post mapper updates, and rep
 Configuration ingress and subsequent commits wait during replay; packet lookups continue. Batches must fit the advertised log credits.
 Synthesis only. Large estimates exceed device memory capacities; no implementation or timing-closure claim.
 
+A completed [Quartus journal-placement control](journal-m20k/report.md) uses the same core RTL with only the journal assigned to M20K: 355,832 ALMs, 268,415 registers, and 1,426,719,512 RAM bits at 1,024 IDs. The tables and plots below retain the original automatic-placement runs.
+
 ## Fixed 1,024-ID comparison
 
 Changes below compare replay with read/copy; the full table also reports changes from ordinary tables.

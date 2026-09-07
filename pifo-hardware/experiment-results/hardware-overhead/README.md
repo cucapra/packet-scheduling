@@ -25,6 +25,11 @@ All original R4 runs completed. At 1,024 IDs Quartus maps the journal to
 registers, despite retaining the two simple-dual-port post-mapper banks; that
 cost is included in the reported totals. The smaller Quartus journals and all
 Vivado journals use block RAM.
+The completed [journal-only M20K control](r4-replay/journal-m20k/report.md)
+removes the large Quartus journal's register implementation: 355,832 ALMs,
+268,415 registers, and 1,426,719,512 RAM bits at 1,024 IDs. All other RAM
+instances remain unchanged; the main R4 tables retain the original automatic
+placement results.
 
 Both vendors use the installed tools and board definitions recorded in each
 manifest: Quartus Pro 25.3.1 / Agilex 7 AGFB014R24B2E2V and Vivado 2025.2 /

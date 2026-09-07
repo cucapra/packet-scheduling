@@ -57,6 +57,14 @@ resource counts. Both mapper banks remain allocated, and dense table depth is
 unchanged. This removes the copy read ports; it does not remove the second bank
 or solve the quadratic address-space growth.
 
+For this five-PE sweep the instruction width is `10 + 3 * log2(vflows)`:
+25, 31, and 40 bits at 32, 128, and 1,024 IDs. A fixed-capacity journal therefore
+grows only with the encoded ID width, while each post-mapper bank grows as
+`8 * vflows^2 * (log2(vflows) + 3)` bits. This is a declared-storage model,
+not an ALM/LUT prediction. Replay removes read-port replication from the
+double-buffer implementation, but atomic publication still needs two banks
+instead of the ordinary implementation's one.
+
 Synchronization work scales with the number of staged instructions, rather than
 the full table depth. The controller issues at most one replayed instruction per
 cycle globally. An empty commit needs no replay. Actual busy time also depends
@@ -120,9 +128,22 @@ read/copy, RAM decreases 43.33% and ALMs decrease 8.92%, while registers increas
 not mean zero journal storage. The smaller Quartus journals and all Vivado
 journals map to block RAM.
 The [journal placement control](../../experiment-results/hardware-overhead/r4-replay/journal-m20k/README.md)
-tests an explicit journal-only M20K assignment while preserving all RTL and
-initialization files; its separate report distinguishes isolated controls from
-the full-core rerun.
+completed a full-core rerun with an explicit journal-only M20K assignment.
+It preserves all RTL and initialization files. The other 22 RAM instances are
+identical, and the journal now adds one 655,360-bit simple-dual-port RAM.
+The resulting totals are **355,832 ALMs, 446,357 ALUTs, 268,415 registers, and
+1,426,719,512 RAM bits**. This removes 655,397 registers compared with automatic
+journal placement, including storage and surrounding register mapping changes.
+
+Compared with read/copy, this replay implementation saves 170,906 ALMs
+(32.45%), 218,646 ALUTs (32.88%), 545 registers (0.20%), and 1,089,863,680 RAM
+bits (43.31%). Compared with ordinary tables, it still costs 42.81% more ALMs,
+84.74% more registers, and 61.98% more RAM bits. Together with Vivado's 40.93%
+LUT and 42.90% BRAM increases over ordinary tables, this demonstrates reduced
+synchronization overhead. The remaining atomic-configuration cost is substantial.
+The [placement report](../../experiment-results/hardware-overhead/r4-replay/journal-m20k/report.md)
+includes absolute and percentage changes for every resource. Original automatic
+placement measurements remain in the main R4 tables and plots.
 
 R4 uses the same two target parts, eight-thread settings, 100 MHz constraint,
 external PIFO interface, and Vivado RuntimeOptimized directive as R1/R2. Large

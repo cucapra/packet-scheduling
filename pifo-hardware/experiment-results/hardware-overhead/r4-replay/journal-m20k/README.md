@@ -9,6 +9,16 @@ See [measured counts and completion status](report.md). The original R4 values
 remain in the main experiment tables. The isolated counts are never substituted
 for a complete-core measurement.
 
+All four cases completed. The full-core M20K result is **355,832 ALMs,
+446,357 ALUTs, 268,415 registers, and 1,426,719,512 RAM bits**. The
+[full validation](full-validation.json) confirms that all other 22 RAM instances
+are unchanged. The journal becomes a 655,360-bit simple-dual-port memory using M20Ks;
+the canonical RTL/MIF inputs are identical, and the only QSF setting change
+apart from project creation timestamps is the journal assignment below.
+The [baseline comparison](baseline-comparison.csv) reports changes against
+ordinary and read/copy tables. The new result uses 43.31% fewer RAM bits and
+32.45% fewer ALMs than read/copy, while still exceeding the ordinary baseline.
+
 The full-core QSF adds:
 
 ```tcl
