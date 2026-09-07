@@ -191,13 +191,13 @@ A hierarchical policy runs on a tree of PIFOs, one queue per node~\cite{Sivarama
 % It needs to be inputted here so it lands on the top of page 2
 \input{fig-tour}
 
-The policy on a switch cannot be fixed.
-Traffic patterns shift, tenants arrive and leave, and telemetry from downstream tells the network operator that the running policy is no longer apt.
-But the scheduler is compiled expressly for the policy it runs: its tree shape, per-node disciplines, and table contents are all selected to realize \emph{a fresh policy}, not \emph{a change to the running policy}~\cite{Sivaraman16,Gao22,vPIFO}.
-When the operator requests a new policy, the freshly compiled scheduler knows nothing about the running policy or the backlog of buffered packets~\cite{vPIFO,Alcoz23}.
+The policy on a switch must not be fixed.
+Traffic patterns shift, tenants arrive and leave, and telemetry downstream tells the network operator that the policy is no longer apt.
+But the scheduler is compiled expressly for the policy it runs: its tree shape, per-node disciplines, and table contents are selected to realize \emph{a fresh policy}, not \emph{a change to the running policy}~\cite{Sivaraman16,Gao22,vPIFO}.
+When the operator requests a new policy, the freshly compiled scheduler is agnostic to the running policy and the backlog of buffered packets~\cite{vPIFO,Alcoz23}.
 The whole tree is rebuilt, including the nodes that could have been carried over unchanged.
-What becomes of the backlog is left to the implementation: it can be dropped, recirculated, or left to be scheduled through a chaotic period in which the hardware follows no clearly defined policy.
-Each of those is itself tacitly a \emph{scheduling decision}, and the network operator is unable to specify which one they want.
+What becomes of the backlog is up to the implementation: it can be dropped, recirculated, or left to be scheduled through a chaotic period in which the hardware follows no clearly defined policy.
+Each of those is itself tacitly a \emph{scheduling decision}, and the operator is unable to specify which one they want.
 
 This paper writes that decision down.
 Some changes can be installed as a single atomic step, and others cannot, leaving the scheduler to run for a while under a policy that no operator requested.
