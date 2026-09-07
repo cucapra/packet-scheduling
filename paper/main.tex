@@ -1063,14 +1063,10 @@ The \ChangeMeta{} sentence is the one case your two-way split does not cover, si
 Please confirm that a lone metadata write needs nothing from the transactional path.}
 \xxx[as]{Does this mean that every transaction can include at most one \texttt{set\_arm\_meta} instruction? If so, let's say that in the ISA section.}
 
-
-
-\xxx[as]{say this shorter: the interface accepts transactions, and can pause before applying them to wait for something to empty}
-Some transitions are guarded by predicates such as the emptiness of a subtree (\cref{sec:sequences}).
+The Rio configuration controller also implements guards (\cref{sec:sequences}), which can wait on the emptiness of a subtree.
 Rio lowers such guards to blocking commands in the controller queue.
 A blocking command remains at the head of the queue until its predicate becomes true.
-%
-Rio cannot guarantee progress towards the completion of a request, since a guard on an emptiness predicate becomes true only once the traffic under that subtree drains, and a persistent flow can hold a subtree open indefinitely.
+Rio does not guarantee progress; it is the control plane's responsibility to ensure that it only waits on the emptiness of subtrees that will eventually become empty.
 
 \subsection{Designated Survivors}\label{sec:hw-survivor}
 
