@@ -15,6 +15,25 @@ Agilex 7, a 20.65% reduction. The stock core fails a consecutive-pop ordering
 check, so this remains an experimental backend; `house` is the default.
 The [milestone evidence index](results/README.md) links both tool setups,
 completed results, functional validation, and separate diagnostic attempts.
+The [hardware-overhead experiments](../experiments/hardware-overhead/README.md)
+use `--configuration static` to replace atomic mapper banks with ordinary tables
+and ignore commits, then compare that baseline with `--configuration dynamic`.
+`--build-root` places the large synthesis sweep on a chosen work filesystem.
+
+Use `--pifo-backend external` to measure RIO without PIFO cores. All PIFO request,
+response, empty, and drain signals are exposed at the top level; surrounding
+RIO logic remains connected to runtime ports. This scope excludes sorter,
+entry storage, occupancy, and drain detection and requires a separate PIFO
+budget for any combined estimate. The hardware-overhead experiments now use
+this boundary, with earlier whole-mesh evidence retained separately.
+
+`--configuration replay --replay-log-depth 16384` selects controller instruction
+replay for bank synchronization. Each mapper bank retains one read and one write
+port; the controller records pre/post updates, swaps all banks on commit, and
+replays into the shadow bank before the next commit. The replay log and its
+capacity/status logic are included in synthesis. See the
+[replay experiment](../experiments/hardware-overhead/REPLAY.md) for credit rules
+and measurements. The existing `dynamic` read/copy option remains available.
 
 ## Reproduce the baseline
 
@@ -78,6 +97,20 @@ as virtual pins and reads the encoder as SystemVerilog despite its `.v`
 extension. The board definition supplies the FPGA part; the board test system,
 physical packet interfaces, and board I/O timing are outside this core estimate.
 
+`--quartus-compact-init` creates a `quartus-rtl/` view containing equivalent
+`ram_init_file` attributes and zero-filled MIF ranges, avoiding long frontend
+processing of millions of literal initialization words. The converter verifies
+the entire binary contents and dimensions, rejects unsupported/nonzero files,
+and leaves canonical `rtl/` unchanged. `quartus-initialization.json` records
+input and derived hashes. The hardware-overhead control experiment produced
+identical resource counts with and without this option.
+
+`probe_shared_init.py SOURCE_BUILD NEW_BUILD` optionally reuses identical
+zero-filled MIF files across equal RAM geometries in a separate Quartus build.
+The [three 128-ID controls](../experiment-results/hardware-overhead/diagnostics/shared-initialization/README.md)
+retained identical resources and had shorter synthesis times. The main
+experiments keep their original initialization workflow.
+
 ## Vivado environment
 
 Vivado is found through `--vivado-root`, `XILINX_VIVADO`, `PATH`, or versioned
@@ -122,6 +155,17 @@ the manifest. See [AMD UG901, synthesis settings](https://docs.amd.com/r/2025.2-
 The measured RuntimeOptimized pass completed in about 7.5 minutes. The default
 pass was still in timing optimization when stopped after 28.5 minutes; it has
 no completed resource report.
+
+`--vivado-allow-over-capacity` is an explicit estimation-only option for designs
+that exceed the selected device. It replaces the process-local
+`rt::check_resource` pre-mapping gate through `synth.elaboration.rodinMoreOptions`;
+the hook is idempotent because Vivado can evaluate it more than once. It changes
+no installed files, RTL, optimization passes, device capacities, or licensing.
+This version-specific workaround was checked on Vivado 2025.2: a smaller RAM
+control had identical utilization tables with and without it, while an oversized
+RAM completed at 7,424 BRAM36 tiles against the target's 480 available tiles.
+See `experiment-results/hardware-overhead/diagnostics/vivado-resource-limit-probes/`.
+Oversized results cannot establish fit or timing, and no implementation follows.
 
 ```bash
 python3 synthesis/run.py --tool vivado --name baseline-vivado-runtime \

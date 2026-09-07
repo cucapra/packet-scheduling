@@ -1,0 +1,175 @@
+Info (22747): Value AUTO_DISCOVERY for QSF Assignment PWRMGT_VOLTAGE_OUTPUT_FORMAT is not supported. Hence changing the value to LINEAR_FORMAT
+Info: *******************************************************************
+Info: Running Quartus Prime Synthesis
+    Info: Version 25.3.1 Build 100 12/19/2025 SC Pro Edition
+    Info: Copyright (C) 2025  Altera Corporation. All rights reserved.
+    Info: Your use of Altera Corporation's design tools, logic functions 
+    Info: and other software and tools, and any partner logic 
+    Info: functions, and any output files from any of the foregoing 
+    Info: (including device programming or simulation files), and any 
+    Info: associated documentation or information are expressly subject 
+    Info: to the terms and conditions of the Altera Program License 
+    Info: Subscription Agreement, the Altera Quartus Prime License Agreement,
+    Info: the Altera IP License Agreement, or other applicable license
+    Info: agreement, including, without limitation, that your use is for
+    Info: the sole purpose of programming logic devices manufactured by
+    Info: Altera and sold by Altera or its authorized distributors.  Please
+    Info: refer to the Altera Software License Subscription Agreements 
+    Info: on the Quartus Prime software download page.
+    Info: Processing started: Sun Sep  6 22:52:46 2026
+    Info: System process ID: 290717
+Info: Command: quartus_syn pifo
+Info: qis_default_flow_script.tcl version: #2
+Info: Initializing Synthesis...
+Info: Project = "pifo"
+Info: Revision = "pifo"
+Info (21958): Initialized Quartus Message Database
+Info: Analyzing source files
+Critical Warning (20759): Use the Reset Release IP in Agilex 7 designs to ensure a successful configuration. For more information about the Reset Release IP, refer to the Configuration User Guide.
+Info: Elaborating from top-level entity "PifoMesh"
+Info (22567): Verilog HDL info at PifoMesh.v(5173): extracting RAM for identifier 'logic_ram' File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-mif-smoke/quartus-rtl/PifoMesh.v Line: 5173
+Info (22567): Verilog HDL info at PifoMesh.v(3602): extracting RAM for identifier 'ram' File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-mif-smoke/quartus-rtl/PifoMesh.v Line: 3602
+Info (22567): Verilog HDL info at PifoMesh.v(5026): extracting RAM for identifier 'logic_ram' File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-mif-smoke/quartus-rtl/PifoMesh.v Line: 5026
+Info (22567): Verilog HDL info at PifoMesh.v(4819): extracting RAM for identifier 'ram' File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-mif-smoke/quartus-rtl/PifoMesh.v Line: 4819
+Info (22567): Verilog HDL info at PifoMesh.v(4763): extracting RAM for identifier 'ram' File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-mif-smoke/quartus-rtl/PifoMesh.v Line: 4763
+Info (22567): Verilog HDL info at PifoMesh.v(4707): extracting RAM for identifier 'ram' File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-mif-smoke/quartus-rtl/PifoMesh.v Line: 4707
+Info (22567): Verilog HDL info at PifoMesh.v(5968): extracting RAM for identifier 'logic_ram' File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-mif-smoke/quartus-rtl/PifoMesh.v Line: 5968
+Info (22567): Verilog HDL info at PifoMesh.v(4533): extracting RAM for identifier 'ram' File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-mif-smoke/quartus-rtl/PifoMesh.v Line: 4533
+Info (22567): Verilog HDL info at PifoMesh.v(5823): extracting RAM for identifier 'logic_ram' File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-mif-smoke/quartus-rtl/PifoMesh.v Line: 5823
+Info (22567): Verilog HDL info at PifoMesh.v(5689): extracting RAM for identifier 'logic_ram' File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-mif-smoke/quartus-rtl/PifoMesh.v Line: 5689
+Info (22567): Verilog HDL info at PifoMesh.v(5561): extracting RAM for identifier 'logic_ram' File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-mif-smoke/quartus-rtl/PifoMesh.v Line: 5561
+Info (22567): Verilog HDL info at PifoMesh.v(5431): extracting RAM for identifier 'logic_ram' File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-mif-smoke/quartus-rtl/PifoMesh.v Line: 5431
+Info (22567): Verilog HDL info at PifoMesh.v(5292): extracting RAM for identifier 'logic_ram' File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-mif-smoke/quartus-rtl/PifoMesh.v Line: 5292
+Info (22567): Verilog HDL info at PifoMesh.v(2434): extracting RAM for identifier 'ram' File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-mif-smoke/quartus-rtl/PifoMesh.v Line: 2434
+Info (22567): Verilog HDL info at PifoMesh.v(3933): extracting RAM for identifier 'logic_ram' File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-mif-smoke/quartus-rtl/PifoMesh.v Line: 3933
+Info (22567): Verilog HDL info at PifoMesh.v(453): extracting RAM for identifier 'logic_ram' File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-mif-smoke/quartus-rtl/PifoMesh.v Line: 453
+Info: Found 40 design entities
+Info: There are 46 partitions after elaboration.
+Info: DA report generation in native DNI mode
+Info (21615): Running Design Assistant Rules for snapshot 'partitioned'
+Info: No waiver waived any violations
+Info (22360): Design Assistant Results: 8 of 10 enabled rules passed, and 1 rules was disabled, in snapshot 'partitioned'
+Warning (21620): Design Assistant Results: 1 of 1 High severity rules issued violations in snapshot 'partitioned'. Please refer to DRC report '/home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-mif-smoke/output_files/pifo.drc.partitioned.rpt' for more information
+Info (21621): Design Assistant Results: 1 of 1 Medium severity rules issued violations in snapshot 'partitioned'. Please refer to DRC report '/home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-mif-smoke/output_files/pifo.drc.partitioned.rpt' for more information
+Info (21622): Design Assistant Results: 0 of 8 Low severity rules issued violations in snapshot 'partitioned'
+Warning (23762): Hierarchies were optimized away during sweep. For details, refer to " Hierarchies Optimized Away During Sweep " report.
+Info: Synthesizing partition "root_partition"
+Info (276014): Found 4 instances of uninferred RAM logic
+    Info (276004): RAM logic "pifoEngines_0|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram" is uninferred due to inappropriate RAM size File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-mif-smoke/quartus-rtl/PifoMesh.v Line: 5968
+    Info (276004): RAM logic "pifoEngines_0|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram" is uninferred due to inappropriate RAM size File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-mif-smoke/quartus-rtl/PifoMesh.v Line: 5823
+    Info (276004): RAM logic "pifoEngines_0|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram" is uninferred due to inappropriate RAM size File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-mif-smoke/quartus-rtl/PifoMesh.v Line: 5561
+    Info (276004): RAM logic "pifoEngines_0|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram" is uninferred due to inappropriate RAM size File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-mif-smoke/quartus-rtl/PifoMesh.v Line: 5561
+Info (19000): Inferred 5 megafunctions from design logic
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "io_controlRequest_fifo|logic_ram_rtl_0"  File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-mif-smoke/quartus-rtl/PifoMesh.v Line: 453
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 42
+        Info (286033): Parameter WIDTHAD_A set to 2
+        Info (286033): Parameter NUMWORDS_A set to 4
+        Info (286033): Parameter WIDTH_B set to 42
+        Info (286033): Parameter WIDTHAD_B set to 2
+        Info (286033): Parameter NUMWORDS_B set to 4
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to NONE
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+        Info (286033): Parameter READ_DURING_WRITE_MODE_MIXED_PORTS set to OLD_DATA
+        Info (286033): Parameter RDCONTROL_REG_B set to CLOCK0
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "pifoEngines_0|deque_dequeMapper|ram_rtl_0"  File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-mif-smoke/quartus-rtl/PifoMesh.v Line: 2434
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 4
+        Info (286033): Parameter WIDTHAD_A set to 7
+        Info (286033): Parameter NUMWORDS_A set to 128
+        Info (286033): Parameter WIDTH_B set to 4
+        Info (286033): Parameter WIDTHAD_B set to 7
+        Info (286033): Parameter NUMWORDS_B set to 128
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to NONE
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+        Info (286033): Parameter INIT_FILE set to /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-mif-smoke/quartus-rtl/PifoMesh.v_toplevel_pifoEngines_0_deque_dequeMapper_ram.bin.mif
+        Info (286033): Parameter READ_DURING_WRITE_MODE_MIXED_PORTS set to OLD_DATA
+        Info (286033): Parameter RDCONTROL_REG_B set to CLOCK0
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "pifoEngines_0|enque_brain|lastVirtualMapper|ram_rtl_0"  File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-mif-smoke/quartus-rtl/PifoMesh.v Line: 4763
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 8
+        Info (286033): Parameter WIDTHAD_A set to 3
+        Info (286033): Parameter NUMWORDS_A set to 8
+        Info (286033): Parameter WIDTH_B set to 8
+        Info (286033): Parameter WIDTHAD_B set to 3
+        Info (286033): Parameter NUMWORDS_B set to 8
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to NONE
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+        Info (286033): Parameter INIT_FILE set to /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-mif-smoke/quartus-rtl/PifoMesh.v_toplevel_pifoEngines_0_enque_brain_lastVirtualMapper_ram.bin.mif
+        Info (286033): Parameter READ_DURING_WRITE_MODE_MIXED_PORTS set to OLD_DATA
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "pifoEngines_0|enque_brain|engineCAM|ram_rtl_0"  File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-mif-smoke/quartus-rtl/PifoMesh.v Line: 4707
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 32
+        Info (286033): Parameter WIDTHAD_A set to 7
+        Info (286033): Parameter NUMWORDS_A set to 128
+        Info (286033): Parameter WIDTH_B set to 32
+        Info (286033): Parameter WIDTHAD_B set to 7
+        Info (286033): Parameter NUMWORDS_B set to 128
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to NONE
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+        Info (286033): Parameter INIT_FILE set to /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-mif-smoke/quartus-rtl/PifoMesh.v_toplevel_pifoEngines_0_enque_brain_engineCAM_ram.bin.mif
+        Info (286033): Parameter READ_DURING_WRITE_MODE_MIXED_PORTS set to OLD_DATA
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "pifoEngines_0|enque_brain|brainStateMem|ram_rtl_0"  File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-mif-smoke/quartus-rtl/PifoMesh.v Line: 4533
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 32
+        Info (286033): Parameter WIDTHAD_A set to 3
+        Info (286033): Parameter NUMWORDS_A set to 8
+        Info (286033): Parameter WIDTH_B set to 32
+        Info (286033): Parameter WIDTHAD_B set to 3
+        Info (286033): Parameter NUMWORDS_B set to 8
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to NONE
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+        Info (286033): Parameter INIT_FILE set to /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-mif-smoke/quartus-rtl/PifoMesh.v_toplevel_pifoEngines_0_enque_brain_brainStateMem_ram.bin.mif
+        Info (286033): Parameter READ_DURING_WRITE_MODE_MIXED_PORTS set to OLD_DATA
+Warning (14284): Synthesized away the following node(s):
+    Warning (25637): Synthesized away 72 node(s) of type RAM. See "Registers Removed during Synthesis" report for more details.
+Warning (13024): Output pins are stuck at VCC or GND
+    Warning (13410): Pin "io_commitReady" is stuck at VCC File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-mif-smoke/quartus-rtl/PifoMesh.v Line: 27
+    Warning (13410): Pin "io_pifo_0_push2_payload_data[0..3]" is stuck at GND File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-mif-smoke/quartus-rtl/PifoMesh.v Line: 34
+    Warning (13410): Pin "io_pifo_0_push2_payload_port[0..2]" is stuck at GND File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-mif-smoke/quartus-rtl/PifoMesh.v Line: 35
+    Warning (13410): Pin "io_pifo_0_push2_payload_priority[0..7]" is stuck at GND File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-mif-smoke/quartus-rtl/PifoMesh.v Line: 33
+    Warning (13410): Pin "io_pifo_0_push2_valid" is stuck at GND File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-mif-smoke/quartus-rtl/PifoMesh.v Line: 32
+Info (17049): 158 registers lost all their fanouts during netlist optimizations.
+Info (21057): Implemented 782 device resources after synthesis - the final resource count might be different
+    Info (21058): Implemented 79 input pins
+    Info (21059): Implemented 45 output pins
+    Info (21061): Implemented 612 logic cells
+    Info (21064): Implemented 46 RAM segments
+Info: Successfully synthesized partition
+Info: Saving post-synthesis snapshots for 1 partition(s)
+Info (21615): Running Design Assistant Rules for snapshot 'synthesized'
+Info: No waiver waived any violations
+Info (22360): Design Assistant Results: 12 of 13 enabled rules passed, and 7 rules was disabled, in snapshot 'synthesized'
+Info (21661): Design Assistant Results: 0 of 1 High severity rules issued violations in snapshot 'synthesized'
+Info (21621): Design Assistant Results: 1 of 6 Medium severity rules issued violations in snapshot 'synthesized'. Please refer to DRC report '/home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-mif-smoke/output_files/pifo.drc.synthesized.rpt' for more information
+Info (21622): Design Assistant Results: 0 of 6 Low severity rules issued violations in snapshot 'synthesized'
+Info: Quartus Prime Synthesis was successful. 0 errors, 9 warnings
+    Info: Peak virtual memory: 2812 megabytes
+    Info: Processing ended: Sun Sep  6 22:52:54 2026
+    Info: Elapsed time: 00:00:08
+    Info: System process ID: 290717

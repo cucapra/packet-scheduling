@@ -1,0 +1,1352 @@
+Synthesis report
+Sun Sep  6 22:52:58 2026
+Quartus Prime Version 25.3.1 Build 100 12/19/2025 SC Pro Edition
+
+
+---------------------
+; Table of Contents ;
+---------------------
+  1. Legal Notice
+  2. Synthesis Summary
+  3. Synthesis Settings
+  4. Synthesis Source Files Read
+  5. Synthesis Partition Summary
+---- Analysis & Elaboration Stage Reports ----
+       6. Ignored Source Level Assignments for User Entity StreamFifo Instance: xbar|io_inputs_1_fifo|fifo
+       7. Ignored Source Level Assignments for User Entity StreamFifo_2 Instance: pifoEngines_0|enque_flowIdStream_fifo|fifo
+       8. Ignored Source Level Assignments for User Entity StreamFifo_10 Instance: pifoEngines_0|io_outputs_2_fifo|fifo
+       9. Ignored Source Level Assignments for User Entity StreamFifo_3 Instance: pifoEngines_0|enque_brain|flowStateUpdate_toStream_fifo|fifo
+      10. Ignored Source Level Assignments for User Entity StreamFifo_4 Instance: pifoEngines_0|enque_brain|brainStateUpdate_toStream_fifo|fifo
+      11. Ignored Source Level Assignments for User Entity StreamFifo_5 Instance: pifoEngines_0|enque_brain|engineMapper_io_readRes_toStream_fifo|fifo
+      12. Ignored Source Level Assignments for User Entity StreamFifo_6 Instance: pifoEngines_0|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo
+      13. Ignored Source Level Assignments for User Entity StreamFifo_8 Instance: pifoEngines_0|enque_brain|lastVirtualMapper_io_readRes_toStream_fifo|fifo
+      14. Ignored Source Level Assignments for User Entity StreamFifo_9 Instance: pifoEngines_0|enque_brain|io_outputs_4_fifo|fifo
+      15. Verilog Macro Usage
+      16. Hierarchies Optimized Away During Sweep
+      17. Top Causes of Logic Optimized Away During Sweep
+---- Logic Synthesis Stage Reports ----
+      18. Partition "root_partition" Resource Utilization by Entity
+      19. Registers Removed During Synthesis
+      20. Removed Registers Triggering Further Register Optimizations
+      21. General Register Statistics for Partition "root_partition"
+      22. Inverted Register Statistics
+      23. Multiplexer Restructuring Statistics (Restructuring Performed)
+      24. Registers Packed Into Inferred Megafunctions
+      25. Source Assignments for io_controlRequest_fifo|logic_ram_rtl_0|auto_generated|altera_syncram_impl1
+      26. Source Assignments for pifoEngines_0|deque_dequeMapper|ram_rtl_0|auto_generated|altera_syncram_impl1
+      27. Source Assignments for pifoEngines_0|enque_brain|lastVirtualMapper|ram_rtl_0|auto_generated|altera_syncram_impl1
+      28. Source Assignments for pifoEngines_0|enque_brain|engineCAM|ram_rtl_0|auto_generated|altera_syncram_impl1
+      29. Source Assignments for pifoEngines_0|enque_brain|brainStateMem|ram_rtl_0|auto_generated|altera_syncram_impl1
+      30. Parameter Settings for Inferred Entity Instance: io_controlRequest_fifo|logic_ram_rtl_0
+      31. Parameter Settings for Inferred Entity Instance: pifoEngines_0|deque_dequeMapper|ram_rtl_0
+      32. Parameter Settings for Inferred Entity Instance: pifoEngines_0|enque_brain|lastVirtualMapper|ram_rtl_0
+      33. Parameter Settings for Inferred Entity Instance: pifoEngines_0|enque_brain|engineCAM|ram_rtl_0
+      34. Parameter Settings for Inferred Entity Instance: pifoEngines_0|enque_brain|brainStateMem|ram_rtl_0
+      35. Post-Synthesis Netlist Statistics for Partition "root_partition"
+      36. Synthesis Resource Usage Summary for Partition "root_partition"
+      37. Synthesis RAM Summary for Partition "root_partition"
+ 38. Warnings for rtl/PifoMesh.v
+ 39. General Warnings
+ 40. Synthesis Messages
+
+
+
+----------------
+; Legal Notice ;
+----------------
+Copyright (C) 2025  Altera Corporation. All rights reserved.
+Your use of Altera Corporation's design tools, logic functions 
+and other software and tools, and any partner logic 
+functions, and any output files from any of the foregoing 
+(including device programming or simulation files), and any 
+associated documentation or information are expressly subject 
+to the terms and conditions of the Altera Program License 
+Subscription Agreement, the Altera Quartus Prime License Agreement,
+the Altera IP License Agreement, or other applicable license
+agreement, including, without limitation, that your use is for
+the sole purpose of programming logic devices manufactured by
+Altera and sold by Altera or its authorized distributors.  Please
+refer to the Altera Software License Subscription Agreements 
+on the Quartus Prime software download page.
+
+
+
++-----------------------------------------------------------------------------------+
+; Synthesis Summary                                                                 ;
++--------------------------------------+--------------------------------------------+
+; Synthesis Status                     ; Successful - Sun Sep  6 22:52:57 2026      ;
+; Revision Name                        ; pifo                                       ;
+; Top-level Entity Name                ; PifoMesh                                   ;
+; Family                               ; Agilex 7                                   ;
+; Quartus Prime Version                ; 25.3.1 Build 100 12/19/2025 SC Pro Edition ;
+; Device                               ; AGFB014R24B2E2V                            ;
+; Logic utilization estimate (in ALMs) ; 191 / 487,200 ( < 1 % )                    ;
+; Total dedicated logic registers      ; 318                                        ;
+; Estimated DSP Blocks Post-Merging    ; 0                                          ;
++--------------------------------------+--------------------------------------------+
+
+
++--------------------------------------------------------------------------------------------------------------------------------------------------+
+; Synthesis Settings                                                                                                                               ;
++----------------------------------------------------------------------------------------------+-------------------------+-------------------------+
+; Option                                                                                       ; Setting                 ; Default Value           ;
++----------------------------------------------------------------------------------------------+-------------------------+-------------------------+
+; Device                                                                                       ; AGFB014R24B2E2V         ;                         ;
+; Top-level entity name                                                                        ; PifoMesh                ; pifo                    ;
+; Family name                                                                                  ; Agilex 7                ; Cyclone 10 GX           ;
+; Maximum processors allowed for parallel compilation                                          ; 8                       ;                         ;
+; Enable parallel Assembler and Timing Analyzer during compilation                             ; On                      ; On                      ;
+; Enable compact report table                                                                  ; Off                     ; Off                     ;
+; Enable Design Assistant in the compilation flow                                              ; On                      ; On                      ;
+; Design Assistant include IP blocks                                                           ; Off                     ; Off                     ;
+; High fanout net threshold for RAM inference                                                  ; 15                      ; 15                      ;
+; Design Assistant limit on reported violations per rule                                       ; 5000                    ; 5000                    ;
+; Optimization Mode                                                                            ; Balanced                ; Balanced                ;
+; Allow Register Retiming                                                                      ; On                      ; On                      ;
+; Allow RAM Retiming                                                                           ; On                      ; On                      ;
+; Allow DSP Retiming                                                                           ; On                      ; On                      ;
+; Restructure Multiplexers                                                                     ; Auto                    ; Auto                    ;
+; Waive gated clock synchronizer check                                                         ; On                      ; On                      ;
+; (DEPRECATED) MLAB Add Timing Constraints For Mixed-Port Feed-Through Mode Setting Don't Care ; Off                     ; Off                     ;
+; Preserve fewer node names                                                                    ; On                      ; On                      ;
+; Altera FPGA IP Evaluation Mode                                                               ; Enable                  ; Enable                  ;
+; Verilog Version                                                                              ; Verilog_2001            ; Verilog_2001            ;
+; VHDL Version                                                                                 ; VHDL_1993               ; VHDL_1993               ;
+; State Machine Processing                                                                     ; Auto                    ; Auto                    ;
+; Safe State Machine                                                                           ; Auto                    ; Auto                    ;
+; Iteration limit for constant Verilog loops                                                   ; 5000                    ; 5000                    ;
+; Iteration limit for non-constant Verilog loops                                               ; 250                     ; 250                     ;
+; Infer RAMs from Raw Logic                                                                    ; On                      ; On                      ;
+; DSP Action on miss                                                                           ; Ignore                  ; Ignore                  ;
+; DSP Block Balancing                                                                          ; Auto                    ; Auto                    ;
+; NOT Gate Push-Back                                                                           ; On                      ; On                      ;
+; Power-Up Don't Care                                                                          ; On                      ; On                      ;
+; Remove Redundant Logic Cells                                                                 ; Off                     ; Off                     ;
+; Remove Duplicate Registers                                                                   ; On                      ; On                      ;
+; Ignore GLOBAL Buffers                                                                        ; Off                     ; Off                     ;
+; Ignore LCELL Buffers                                                                         ; Off                     ; Off                     ;
+; Ignore SOFT Buffers                                                                          ; On                      ; On                      ;
+; Optimization Technique                                                                       ; Balanced                ; Balanced                ;
+; Auto Open-Drain Pins                                                                         ; On                      ; On                      ;
+; Perform WYSIWYG Primitive Resynthesis                                                        ; Off                     ; Off                     ;
+; Auto ROM Replacement                                                                         ; On                      ; On                      ;
+; Auto RAM Replacement                                                                         ; On                      ; On                      ;
+; Auto DSP Block Replacement                                                                   ; On                      ; On                      ;
+; Auto Shift Register Replacement                                                              ; Auto                    ; Auto                    ;
+; Allow Shift Register Merging across Hierarchies                                              ; Auto                    ; Auto                    ;
+; Physical Shift Register Inference                                                            ; On                      ; On                      ;
+; Auto Clock Enable Replacement                                                                ; On                      ; On                      ;
+; Strict RAM Replacement                                                                       ; Off                     ; Off                     ;
+; Allow Synchronous Control Signals                                                            ; On                      ; On                      ;
+; Force Use of Synchronous Clear Signals                                                       ; Off                     ; Off                     ;
+; Auto Resource Sharing                                                                        ; Off                     ; Off                     ;
+; Allow Any RAM Size For Recognition                                                           ; Off                     ; Off                     ;
+; Allow Any Shift Register Size For Recognition                                                ; Off                     ; Off                     ;
+; Ignore translate_off and synthesis_off directives                                            ; Off                     ; Off                     ;
+; Report Propagation of Constraints                                                            ; On                      ; On                      ;
+; Ignore Maximum Fan-Out Assignments                                                           ; Off                     ; Off                     ;
+; Maximum Synchronizer Length Protected during Optimization                                    ; 3                       ; 3                       ;
+; Power Optimization During Synthesis                                                          ; Normal compilation      ; Normal compilation      ;
+; HDL message level                                                                            ; Level2                  ; Level2                  ;
+; Number of Protected Registers Reported in Synthesis Report                                   ; 100                     ; 100                     ;
+; Number of Removed Registers Reported in Synthesis Report                                     ; 5000                    ; 5000                    ;
+; Number of Optimized Away Hierarchies Reported in Synthesis Report                            ; 100                     ; 100                     ;
+; Number of Top Root Causes Reported in Synthesis Report                                       ; 10                      ; 10                      ;
+; Group Identical Hierarchies in Optimized Away Hierarchies Report                             ; On                      ; On                      ;
+; Number of Swept Nodes Reported in Synthesis Report                                           ; 5000                    ; 5000                    ;
+; Number of Inverted Registers Reported in Synthesis Report                                    ; 100                     ; 100                     ;
+; Clock MUX Protection                                                                         ; On                      ; On                      ;
+; Auto Gated Clock Conversion                                                                  ; Off                     ; Off                     ;
+; Block Design Naming                                                                          ; Auto                    ; Auto                    ;
+; SDC constraint protection                                                                    ; Off                     ; Off                     ;
+; Optimization and Constraint Precedence                                                       ; Prioritize Optimization ; Prioritize Optimization ;
+; Synthesis Effort                                                                             ; Auto                    ; Auto                    ;
+; Shift Register Replacement - Allow Asynchronous Clear Signal                                 ; On                      ; On                      ;
+; Analysis & Synthesis Message Level                                                           ; Medium                  ; Medium                  ;
+; Disable Register Merging Across Hierarchies                                                  ; Auto                    ; Auto                    ;
+; Resource Aware Inference For Block RAM                                                       ; On                      ; On                      ;
+; Automatic Parallel Synthesis                                                                 ; On                      ; On                      ;
+; Partial Reconfiguration Bitstream ID                                                         ; Off                     ; Off                     ;
+; Disable DSP Negate Inferencing                                                               ; Off                     ; Off                     ;
+; Report Parameter Settings                                                                    ; On                      ; On                      ;
+; Report Parameter Settings to ASCII                                                           ; On                      ; On                      ;
+; Report Source Assignments                                                                    ; On                      ; On                      ;
+; Report Source Assignments to ASCII                                                           ; On                      ; On                      ;
+; Report Resource Utilization by Entity to ASCII                                               ; On                      ; On                      ;
+; Size of the Latch Report                                                                     ; 100                     ; 100                     ;
+; Enable VHDL static assertion support                                                         ; Off                     ; Off                     ;
+; Enable SystemVerilog static assertion support                                                ; Off                     ; Off                     ;
+; Enable State Machines Inference                                                              ; On                      ; On                      ;
+; Allow RAMs Inferred In Generate-For Loop For Verilog                                         ; Off                     ; Off                     ;
+; Enable formal verification support during compilation                                        ; Off                     ; Off                     ;
+; Size of the PR Initial Conditions Report                                                     ; 100                     ; 100                     ;
+; Number of Registers with Ignored Power-Up Settings Reported in Synthesis Report              ; 500                     ; 500                     ;
+; Report PR Initial Values as Errors                                                           ; Off                     ; Off                     ;
+; Fractal Synthesis                                                                            ; Off                     ; Off                     ;
+; Aggressive Multiplexer Area Optimization                                                     ; Auto                    ; Auto                    ;
+; 6LUT to Extended Mode Conversion                                                             ; Auto                    ; Auto                    ;
+; Synthesis Available Resource Multiplier                                                      ; 1                       ; 1                       ;
+; Message Level for Unconnected Output Ports                                                   ; Warning                 ; Warning                 ;
+; Pack Barrelshifters into Carry Chains for Better Area                                        ; Auto                    ; Auto                    ;
+; Initialize Verilog enums to X                                                                ; Off                     ; Off                     ;
+; Enable dynamic report                                                                        ; Off                     ; Off                     ;
+; Show Collapsible Rows in Ascii Report for Warning Summary Reports                            ; On                      ; On                      ;
+; Enable RTL Analysis Debug Mode                                                               ; Off                     ; Off                     ;
+; Enable preserve for debug assignments                                                        ; Off                     ; Off                     ;
++----------------------------------------------------------------------------------------------+-------------------------+-------------------------+
+
+
++----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+; Synthesis Source Files Read                                                                                                                                                                                                                                                                                                                                                                                                                                                            ;
++----------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+---------+-----------+---------------+----------------------------------+
+; File Name with User-Entered Path                                                                                                             ; File Type                                                                   ; File Name with Absolute Path                                                                                                                                                     ; Library ; IP Source ; Include Files ; MD5                              ;
++----------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+---------+-----------+---------------+----------------------------------+
+; rtl/PifoMesh.v                                                                                                                               ; User-Specified SystemVerilog HDL File                                       ; /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/rtl/PifoMesh.v                                                                             ;         ;           ;               ; 7326ddc0097cc88d85e7c61a8772faec ;
+; rtl/priority_encode_log.v                                                                                                                    ; User-Specified SystemVerilog HDL File                                       ; /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/rtl/priority_encode_log.v                                                                  ;         ;           ;               ; 4755583db2ba0b584d7a92305d168170 ;
+; pifo.sdc                                                                                                                                     ; User-Specified SDC File (Read by the Timing Analyzer at each fitter stage)  ; /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/pifo.sdc                                                                                   ;         ;           ;               ; 9979d8df10e10e52fc063d4869724b0e ;
+; rtl/PifoMesh.v_toplevel_pifoEngines_0_enque_enqueMapper_ram.bin                                                                              ; Auto-Found Hexadecimal (Intel-Format) File                                  ; /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/rtl/PifoMesh.v_toplevel_pifoEngines_0_enque_enqueMapper_ram.bin                            ;         ;           ;               ; 546a9fb8efc3d2410d2b2c29eb636397 ;
+; rtl/PifoMesh.v_toplevel_pifoEngines_0_enque_brain_engineMapper_ram.bin                                                                       ; Auto-Found Hexadecimal (Intel-Format) File                                  ; /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/rtl/PifoMesh.v_toplevel_pifoEngines_0_enque_brain_engineMapper_ram.bin                     ;         ;           ;               ; 267f3bb7a622a89342e8163501297847 ;
+; rtl/PifoMesh.v_toplevel_pifoEngines_0_enque_brain_lastVirtualMapper_ram.bin                                                                  ; Auto-Found Hexadecimal (Intel-Format) File                                  ; /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/rtl/PifoMesh.v_toplevel_pifoEngines_0_enque_brain_lastVirtualMapper_ram.bin                ;         ;           ;               ; bcbd98d87d323f675756ba58cf87ac29 ;
+; rtl/PifoMesh.v_toplevel_pifoEngines_0_enque_brain_engineCAM_ram.bin                                                                          ; Auto-Found Hexadecimal (Intel-Format) File                                  ; /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/rtl/PifoMesh.v_toplevel_pifoEngines_0_enque_brain_engineCAM_ram.bin                        ;         ;           ;               ; 293ce740cedf9ce39d323b4cea8a1377 ;
+; rtl/PifoMesh.v_toplevel_pifoEngines_0_enque_brain_brainStateMem_ram.bin                                                                      ; Auto-Found Hexadecimal (Intel-Format) File                                  ; /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/rtl/PifoMesh.v_toplevel_pifoEngines_0_enque_brain_brainStateMem_ram.bin                    ;         ;           ;               ; 8f6e1b78eba1af2a812fdb9153de0276 ;
+; rtl/PifoMesh.v_toplevel_pifoEngines_0_deque_dequeMapper_ram.bin                                                                              ; Auto-Found Hexadecimal (Intel-Format) File                                  ; /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/rtl/PifoMesh.v_toplevel_pifoEngines_0_deque_dequeMapper_ram.bin                            ;         ;           ;               ; cf4086eb87543c6627a9a306a3ad193c ;
+; /data/work/quartus/quartus/libraries/megafunctions/altera_syncram.tdf                                                                        ; Megafunction                                                                ; /data/work/quartus/quartus/libraries/megafunctions/altera_syncram.tdf                                                                                                            ; work    ;           ;               ;                                  ;
+; cbx.lst                                                                                                                                      ; Auto-Found Unspecified File                                                 ; /data/work/quartus/quartus/libraries/megafunctions/cbx.lst                                                                                                                       ;         ;           ;               ;                                  ;
+; /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/tmp-clearbox/pifo/290739/altera_syncram_mu6r.tdf       ; Auto-Generated Megafunction                                                 ; /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/tmp-clearbox/pifo/290739/altera_syncram_mu6r.tdf                                           ;         ;           ;               ;                                  ;
+; /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/tmp-clearbox/pifo/290739/altera_syncram_impl_4gl5.tdf  ; Auto-Generated Megafunction                                                 ; /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/tmp-clearbox/pifo/290739/altera_syncram_impl_4gl5.tdf                                      ;         ;           ;               ;                                  ;
+; /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/tmp-clearbox/pifo/290739/altera_syncram_o9a12.tdf      ; Auto-Generated Megafunction                                                 ; /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/tmp-clearbox/pifo/290739/altera_syncram_o9a12.tdf                                          ;         ;           ;               ;                                  ;
+; /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/tmp-clearbox/pifo/290739/altera_syncram_impl_4o991.tdf ; Auto-Generated Megafunction                                                 ; /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/tmp-clearbox/pifo/290739/altera_syncram_impl_4o991.tdf                                     ;         ;           ;               ;                                  ;
+; qdb/_compiler/pifo/root_partition/25.3.1/partitioned/1/mifs/ram0_PifoMesh_a88d83e7.hdl.mif                                                   ; Auto-Found Memory Initialization File                                       ; /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/qdb/_compiler/pifo/root_partition/25.3.1/partitioned/1/mifs/ram0_PifoMesh_a88d83e7.hdl.mif ;         ;           ;               ;                                  ;
+; /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/tmp-clearbox/pifo/290739/altera_syncram_62af1.tdf      ; Auto-Generated Megafunction                                                 ; /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/tmp-clearbox/pifo/290739/altera_syncram_62af1.tdf                                          ;         ;           ;               ;                                  ;
+; /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/tmp-clearbox/pifo/290739/altera_syncram_impl_iuv32.tdf ; Auto-Generated Megafunction                                                 ; /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/tmp-clearbox/pifo/290739/altera_syncram_impl_iuv32.tdf                                     ;         ;           ;               ;                                  ;
+; qdb/_compiler/pifo/root_partition/25.3.1/partitioned/1/mifs/ram1_PifoMesh_a88d83e7.hdl.mif                                                   ; Auto-Found Memory Initialization File                                       ; /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/qdb/_compiler/pifo/root_partition/25.3.1/partitioned/1/mifs/ram1_PifoMesh_a88d83e7.hdl.mif ;         ;           ;               ;                                  ;
+; /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/tmp-clearbox/pifo/290739/altera_syncram_dtnv.tdf       ; Auto-Generated Megafunction                                                 ; /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/tmp-clearbox/pifo/290739/altera_syncram_dtnv.tdf                                           ;         ;           ;               ;                                  ;
+; /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/tmp-clearbox/pifo/290739/altera_syncram_impl_q4061.tdf ; Auto-Generated Megafunction                                                 ; /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/tmp-clearbox/pifo/290739/altera_syncram_impl_q4061.tdf                                     ;         ;           ;               ;                                  ;
+; qdb/_compiler/pifo/root_partition/25.3.1/partitioned/1/mifs/ram2_PifoMesh_a88d83e7.hdl.mif                                                   ; Auto-Found Memory Initialization File                                       ; /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/qdb/_compiler/pifo/root_partition/25.3.1/partitioned/1/mifs/ram2_PifoMesh_a88d83e7.hdl.mif ;         ;           ;               ;                                  ;
+; /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/tmp-clearbox/pifo/290739/altera_syncram_4kje1.tdf      ; Auto-Generated Megafunction                                                 ; /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/tmp-clearbox/pifo/290739/altera_syncram_4kje1.tdf                                          ;         ;           ;               ;                                  ;
+; /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/tmp-clearbox/pifo/290739/altera_syncram_impl_22121.tdf ; Auto-Generated Megafunction                                                 ; /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/tmp-clearbox/pifo/290739/altera_syncram_impl_22121.tdf                                     ;         ;           ;               ;                                  ;
+; qdb/_compiler/pifo/root_partition/25.3.1/partitioned/1/mifs/ram3_PifoMesh_a88d83e7.hdl.mif                                                   ; Auto-Found Memory Initialization File                                       ; /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/qdb/_compiler/pifo/root_partition/25.3.1/partitioned/1/mifs/ram3_PifoMesh_a88d83e7.hdl.mif ;         ;           ;               ;                                  ;
++----------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+---------+-----------+---------------+----------------------------------+
+
+
++--------------------------------------------------------------------------------------------+
+; Synthesis Partition Summary                                                                ;
++----------------+----------------+---------+--------------+-------+-------------------------+
+; Partition Name ; Hierarchy Path ; Type    ; Preservation ; Empty ; Partition Database File ;
++----------------+----------------+---------+--------------+-------+-------------------------+
+; root_partition ; |              ; Default ;              ;       ;                         ;
++----------------+----------------+---------+--------------+-------+-------------------------+
+
+
++--------------------------------------------------------------------------------------------------+
+; Ignored Source Level Assignments for User Entity StreamFifo Instance: xbar|io_inputs_1_fifo|fifo ;
++------------+---------------+-----------+-------------------------+-------------------------------+
+; Assignment ; Value         ; To        ; Reason                  ; Source Location               ;
++------------+---------------+-----------+-------------------------+-------------------------------+
+; ram_style  ; "distributed" ; logic_ram ; Invalid assignment name ; rtl/PifoMesh.v:5155           ;
++------------+---------------+-----------+-------------------------+-------------------------------+
+All Instances:
+xbar|io_inputs_0_fifo|fifo
+xbar|io_inputs_1_fifo|fifo
+
+
+
++--------------------------------------------------------------------------------------------------------------------+
+; Ignored Source Level Assignments for User Entity StreamFifo_2 Instance: pifoEngines_0|enque_flowIdStream_fifo|fifo ;
++------------+---------------+-----------+-------------------------+-------------------------------------------------+
+; Assignment ; Value         ; To        ; Reason                  ; Source Location                                 ;
++------------+---------------+-----------+-------------------------+-------------------------------------------------+
+; ram_style  ; "distributed" ; logic_ram ; Invalid assignment name ; rtl/PifoMesh.v:5008                             ;
++------------+---------------+-----------+-------------------------+-------------------------------------------------+
+All Instances:
+pifoEngines_0|enque_flowIdStream_fifo|fifo
+
+
+
++---------------------------------------------------------------------------------------------------------------+
+; Ignored Source Level Assignments for User Entity StreamFifo_10 Instance: pifoEngines_0|io_outputs_2_fifo|fifo ;
++------------+---------------+-----------+-------------------------+--------------------------------------------+
+; Assignment ; Value         ; To        ; Reason                  ; Source Location                            ;
++------------+---------------+-----------+-------------------------+--------------------------------------------+
+; ram_style  ; "distributed" ; logic_ram ; Invalid assignment name ; rtl/PifoMesh.v:3927                        ;
++------------+---------------+-----------+-------------------------+--------------------------------------------+
+All Instances:
+pifoEngines_0|io_outputs_2_fifo|fifo
+
+
+
++--------------------------------------------------------------------------------------------------------------------------------------+
+; Ignored Source Level Assignments for User Entity StreamFifo_3 Instance: pifoEngines_0|enque_brain|flowStateUpdate_toStream_fifo|fifo ;
++------------+---------------+-----------+-------------------------+-------------------------------------------------------------------+
+; Assignment ; Value         ; To        ; Reason                  ; Source Location                                                   ;
++------------+---------------+-----------+-------------------------+-------------------------------------------------------------------+
+; ram_style  ; "distributed" ; logic_ram ; Invalid assignment name ; rtl/PifoMesh.v:5950                                               ;
++------------+---------------+-----------+-------------------------+-------------------------------------------------------------------+
+All Instances:
+pifoEngines_0|enque_brain|flowStateUpdate_toStream_fifo|fifo
+
+
+
++---------------------------------------------------------------------------------------------------------------------------------------+
+; Ignored Source Level Assignments for User Entity StreamFifo_4 Instance: pifoEngines_0|enque_brain|brainStateUpdate_toStream_fifo|fifo ;
++------------+---------------+-----------+-------------------------+--------------------------------------------------------------------+
+; Assignment ; Value         ; To        ; Reason                  ; Source Location                                                    ;
++------------+---------------+-----------+-------------------------+--------------------------------------------------------------------+
+; ram_style  ; "distributed" ; logic_ram ; Invalid assignment name ; rtl/PifoMesh.v:5805                                                ;
++------------+---------------+-----------+-------------------------+--------------------------------------------------------------------+
+All Instances:
+pifoEngines_0|enque_brain|brainStateUpdate_toStream_fifo|fifo
+
+
+
++----------------------------------------------------------------------------------------------------------------------------------------------+
+; Ignored Source Level Assignments for User Entity StreamFifo_5 Instance: pifoEngines_0|enque_brain|engineMapper_io_readRes_toStream_fifo|fifo ;
++------------+---------------+-----------+-------------------------+---------------------------------------------------------------------------+
+; Assignment ; Value         ; To        ; Reason                  ; Source Location                                                           ;
++------------+---------------+-----------+-------------------------+---------------------------------------------------------------------------+
+; ram_style  ; "distributed" ; logic_ram ; Invalid assignment name ; rtl/PifoMesh.v:5671                                                       ;
++------------+---------------+-----------+-------------------------+---------------------------------------------------------------------------+
+All Instances:
+pifoEngines_0|enque_brain|engineMapper_io_readRes_toStream_fifo|fifo
+
+
+
++-------------------------------------------------------------------------------------------------------------------------------------------+
+; Ignored Source Level Assignments for User Entity StreamFifo_6 Instance: pifoEngines_0|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo ;
++------------+---------------+-----------+-------------------------+------------------------------------------------------------------------+
+; Assignment ; Value         ; To        ; Reason                  ; Source Location                                                        ;
++------------+---------------+-----------+-------------------------+------------------------------------------------------------------------+
+; ram_style  ; "distributed" ; logic_ram ; Invalid assignment name ; rtl/PifoMesh.v:5543                                                    ;
++------------+---------------+-----------+-------------------------+------------------------------------------------------------------------+
+All Instances:
+pifoEngines_0|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo
+pifoEngines_0|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo
+
+
+
++---------------------------------------------------------------------------------------------------------------------------------------------------+
+; Ignored Source Level Assignments for User Entity StreamFifo_8 Instance: pifoEngines_0|enque_brain|lastVirtualMapper_io_readRes_toStream_fifo|fifo ;
++------------+---------------+-----------+-------------------------+--------------------------------------------------------------------------------+
+; Assignment ; Value         ; To        ; Reason                  ; Source Location                                                                ;
++------------+---------------+-----------+-------------------------+--------------------------------------------------------------------------------+
+; ram_style  ; "distributed" ; logic_ram ; Invalid assignment name ; rtl/PifoMesh.v:5413                                                            ;
++------------+---------------+-----------+-------------------------+--------------------------------------------------------------------------------+
+All Instances:
+pifoEngines_0|enque_brain|lastVirtualMapper_io_readRes_toStream_fifo|fifo
+
+
+
++--------------------------------------------------------------------------------------------------------------------------+
+; Ignored Source Level Assignments for User Entity StreamFifo_9 Instance: pifoEngines_0|enque_brain|io_outputs_4_fifo|fifo ;
++------------+---------------+-----------+-------------------------+-------------------------------------------------------+
+; Assignment ; Value         ; To        ; Reason                  ; Source Location                                       ;
++------------+---------------+-----------+-------------------------+-------------------------------------------------------+
+; ram_style  ; "distributed" ; logic_ram ; Invalid assignment name ; rtl/PifoMesh.v:5274                                   ;
++------------+---------------+-----------+-------------------------+-------------------------------------------------------+
+All Instances:
+pifoEngines_0|enque_brain|io_outputs_4_fifo|fifo
+
+
+
++------------------------------------------------------+
+; Verilog Macro Usage                                  ;
++----------------+----------+------+-------+-----------+
+; Name           ; Location ; From ; Value ; Arguments ;
++----------------+----------+------+-------+-----------+
+; rtl/PifoMesh.v ;          ;      ;       ;           ;
+;     SYNTHESIS  ;          ;      ;       ;           ;
+;         Refer  ; 107      ; None ;       ;           ;
+;         Refer  ; 212      ; None ;       ;           ;
+;         Refer  ; 305      ; None ;       ;           ;
+;         Refer  ; 311      ; None ;       ;           ;
+;         Refer  ; 443      ; None ;       ;           ;
+;         Refer  ; 468      ; None ;       ;           ;
+;         Refer  ; 940      ; None ;       ;           ;
+;         Refer  ; 1156     ; None ;       ;           ;
+;         Refer  ; 2823     ; None ;       ;           ;
+;         Refer  ; 3071     ; None ;       ;           ;
+;         Refer  ; 4268     ; None ;       ;           ;
+;         Refer  ; 4276     ; None ;       ;           ;
++----------------+----------+------+-------+-----------+
+&lt;same as above&gt; indicates that the value matches the previous occurence of the macro.
+
+
+Hierarchies have been optimized away during sweep. For more details and filtering options, ensure that you have compiled with the "Enable RTL Analysis Debug Mode " setting turned on under Assignments->Settings->Compiler Settings, then use the " Sweep Hints Viewer " tool in the " RTL Analyzer ".
++-------------------------------------------------------------------------------------------+
+; Hierarchies Optimized Away During Sweep                                                   ;
++---------------+--------------------+------------------------------+-----------------------+
+; Entity Name   ; Number of Instance ; Number of Gates before Sweep ; Sample Hierarchy Name ;
++---------------+--------------------+------------------------------+-----------------------+
+; StreamDemux_2 ; 1                  ; 2                            ; streamDemux_3         ;
++---------------+--------------------+------------------------------+-----------------------+
+
+
+Top root causes of logic optimization that have been identified during sweep. For more details and filtering options, ensure that you have compiled with the "Enable RTL Analysis Debug Mode " setting turned on under Assignments->Settings->Compiler Settings, then go to the " Root Causes Tab " in the " Sweep Hints Viewer " tool in the " RTL Analyzer ".
++-------------------------------------------------------------------------------------------------------------------------------------------------+
+; Top Causes of Logic Optimized Away During Sweep                                                                                                 ;
++--------------------------------------------------------------+------------------+-----------------------------------------+---------------------+
+; Root Object Path                                             ; Root Object Type ; Root Reason                             ; Swept Objects Count ;
++--------------------------------------------------------------+------------------+-----------------------------------------+---------------------+
+; pifoEngines_0|deque_frontRewrite|io_commit                   ; INPUT_INST_PORT  ; stuck at 0                              ; 39                  ;
+; pifoEngines_0|enque_enqueMapper|io_writeReq_ready            ; OUTPUT_PORT      ; stuck at 1                              ; 29                  ;
+; pifoEngines_0|deque_dequeMapper|io_writeReq_ready            ; OUTPUT_PORT      ; stuck at 1                              ; 29                  ;
+; pifoEngines_0|deque_frontRewrite|io_writeReq_ready           ; OUTPUT_PORT      ; stuck at 1                              ; 27                  ;
+; pifoEngines_0|enque_brain|io_control_fork_io_outputs_0_ready ; MUX21            ; stuck at 1 due to stuck ports d0 and d1 ; 13                  ;
+; pifoEngines_0|enque_brain|io_control_fork_io_outputs_1_ready ; MUX21            ; stuck at 1 due to stuck ports d0 and d1 ; 13                  ;
+; pifoEngines_0|enque_brain|io_control_fork_io_outputs_2_ready ; MUX21            ; stuck at 1 due to stuck ports d0 and d1 ; 12                  ;
+; pifoEngines_0|enque_brain|io_response_ready                  ; INPUT_INST_PORT  ; stuck at 1                              ; 11                  ;
+; pifoEngines_0|enque_brain|flowUpdates_ready                  ; MUX21            ; stuck at 1 due to stuck ports d0 and d1 ; 9                   ;
+; pifoEngines_0|enque_brain|brainUpdates_ready                 ; MUX21            ; stuck at 1 due to stuck ports d0 and d1 ; 8                   ;
++--------------------------------------------------------------+------------------+-----------------------------------------+---------------------+
+Table limited at 10 items. To change the number of top root causes reported, set the "Number of Top Root Causes Reported in Synthesis Report " option under Assignments->Settings->Compiler Settings->Advanced Settings (Synthesis)
+
+
++----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+; Partition "root_partition" Resource Utilization by Entity                                                                                                                                                                                                                                          ;
++-------------------------------------------------------+---------------------+---------------------------+-------------------+------------+------+-----------+-------------------------------------------------------------------------------------------+---------------------------+--------------+
+; Compilation Hierarchy Node                            ; Combinational ALUTs ; Dedicated Logic Registers ; Block Memory Bits ; DSP Blocks ; Pins ; Max Depth ; Full Hierarchy Name                                                                       ; Entity Name               ; Library Name ;
++-------------------------------------------------------+---------------------+---------------------------+-------------------+------------+------+-----------+-------------------------------------------------------------------------------------------+---------------------------+--------------+
+; |                                                     ; 375 (2)             ; 318 (0)                   ; 1736              ; 0          ; 124  ; 6.8 (2.0) ; |                                                                                         ; PifoMesh                  ; altera_work  ;
+;    |io_controlRequest_fifo|                           ; 9 (9)               ; 10 (10)                   ; 72                ; 0          ; 0    ; 3.0 (3.0) ; io_controlRequest_fifo                                                                    ; StreamFifo_11             ; altera_work  ;
+;       |logic_ram_rtl_0|                               ; 0 (0)               ; 0 (0)                     ; 72                ; 0          ; 0    ; 3.0 (0.0) ; io_controlRequest_fifo|logic_ram_rtl_0                                                    ; altera_syncram            ; work         ;
+;          |auto_generated|                             ; 0 (0)               ; 0 (0)                     ; 72                ; 0          ; 0    ; 3.0 (0.0) ; io_controlRequest_fifo|logic_ram_rtl_0|auto_generated                                     ; altera_syncram_mu6r       ; altera_work  ;
+;             |altera_syncram_impl1|                    ; 0 (0)               ; 0 (0)                     ; 72                ; 0          ; 0    ; 3.0 (3.0) ; io_controlRequest_fifo|logic_ram_rtl_0|auto_generated|altera_syncram_impl1                ; altera_syncram_impl_4gl5  ; altera_work  ;
+;    |pifoEngines_0|                                    ; 282 (8)             ; 216 (1)                   ; 1664              ; 0          ; 0    ; 6.8 (3.0) ; pifoEngines_0                                                                             ; PifoEngine                ; altera_work  ;
+;       |deque_dequeMapper|                             ; 0 (0)               ; 1 (1)                     ; 512               ; 0          ; 0    ; 2.0 (2.0) ; pifoEngines_0|deque_dequeMapper                                                           ; DirectMapper_1            ; altera_work  ;
+;          |ram_rtl_0|                                  ; 0 (0)               ; 0 (0)                     ; 512               ; 0          ; 0    ; 0.0 (0.0) ; pifoEngines_0|deque_dequeMapper|ram_rtl_0                                                 ; altera_syncram            ; work         ;
+;             |auto_generated|                          ; 0 (0)               ; 0 (0)                     ; 512               ; 0          ; 0    ; 0.0 (0.0) ; pifoEngines_0|deque_dequeMapper|ram_rtl_0|auto_generated                                  ; altera_syncram_o9a12      ; altera_work  ;
+;                |altera_syncram_impl1|                 ; 0 (0)               ; 0 (0)                     ; 512               ; 0          ; 0    ; 0.0 (0.0) ; pifoEngines_0|deque_dequeMapper|ram_rtl_0|auto_generated|altera_syncram_impl1             ; altera_syncram_impl_4o991 ; altera_work  ;
+;       |deque_existingPop_fork|                        ; 3 (3)               ; 1 (1)                     ; 0                 ; 0          ; 0    ; 2.0 (2.0) ; pifoEngines_0|deque_existingPop_fork                                                      ; StreamFork_2              ; altera_work  ;
+;       |enque_brain|                                   ; 234 (54)            ; 169 (0)                   ; 1152              ; 0          ; 0    ; 6.8 (6.8) ; pifoEngines_0|enque_brain                                                                 ; PIFOBrain                 ; altera_work  ;
+;          |brainStateMem_io_readRes_toStream_fifo|     ; 22 (0)              ; 20 (0)                    ; 0                 ; 0          ; 0    ; 5.0 (0.0) ; pifoEngines_0|enque_brain|brainStateMem_io_readRes_toStream_fifo                          ; StreamFifoLowLatency_5    ; altera_work  ;
+;             |fifo|                                    ; 22 (22)             ; 20 (20)                   ; 0                 ; 0          ; 0    ; 5.0 (5.0) ; pifoEngines_0|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo                     ; StreamFifo_6              ; altera_work  ;
+;          |brainStateMem|                              ; 0 (0)               ; 1 (1)                     ; 64                ; 0          ; 0    ; 4.0 (3.0) ; pifoEngines_0|enque_brain|brainStateMem                                                   ; Mapper_3                  ; altera_work  ;
+;             |ram_rtl_0|                               ; 0 (0)               ; 0 (0)                     ; 64                ; 0          ; 0    ; 4.0 (0.0) ; pifoEngines_0|enque_brain|brainStateMem|ram_rtl_0                                         ; altera_syncram            ; work         ;
+;                |auto_generated|                       ; 0 (0)               ; 0 (0)                     ; 64                ; 0          ; 0    ; 4.0 (0.0) ; pifoEngines_0|enque_brain|brainStateMem|ram_rtl_0|auto_generated                          ; altera_syncram_4kje1      ; altera_work  ;
+;                   |altera_syncram_impl1|              ; 0 (0)               ; 0 (0)                     ; 64                ; 0          ; 0    ; 4.0 (4.0) ; pifoEngines_0|enque_brain|brainStateMem|ram_rtl_0|auto_generated|altera_syncram_impl1     ; altera_syncram_impl_22121 ; altera_work  ;
+;          |brainStateUpdate_toStream_fifo|             ; 12 (0)              ; 26 (0)                    ; 0                 ; 0          ; 0    ; 3.0 (0.0) ; pifoEngines_0|enque_brain|brainStateUpdate_toStream_fifo                                  ; StreamFifoLowLatency_3    ; altera_work  ;
+;             |fifo|                                    ; 12 (12)             ; 26 (26)                   ; 0                 ; 0          ; 0    ; 3.0 (3.0) ; pifoEngines_0|enque_brain|brainStateUpdate_toStream_fifo|fifo                             ; StreamFifo_4              ; altera_work  ;
+;          |engineCAM_io_readRes_toStream_fifo|         ; 17 (0)              ; 20 (0)                    ; 0                 ; 0          ; 0    ; 6.8 (0.0) ; pifoEngines_0|enque_brain|engineCAM_io_readRes_toStream_fifo                              ; StreamFifoLowLatency_5    ; altera_work  ;
+;             |fifo|                                    ; 17 (17)             ; 20 (20)                   ; 0                 ; 0          ; 0    ; 6.8 (6.8) ; pifoEngines_0|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo                         ; StreamFifo_6              ; altera_work  ;
+;          |engineCAM|                                  ; 0 (0)               ; 1 (1)                     ; 1024              ; 0          ; 0    ; 5.8 (3.0) ; pifoEngines_0|enque_brain|engineCAM                                                       ; Mapper_2                  ; altera_work  ;
+;             |ram_rtl_0|                               ; 0 (0)               ; 0 (0)                     ; 1024              ; 0          ; 0    ; 5.8 (0.0) ; pifoEngines_0|enque_brain|engineCAM|ram_rtl_0                                             ; altera_syncram            ; work         ;
+;                |auto_generated|                       ; 0 (0)               ; 0 (0)                     ; 1024              ; 0          ; 0    ; 5.8 (0.0) ; pifoEngines_0|enque_brain|engineCAM|ram_rtl_0|auto_generated                              ; altera_syncram_dtnv       ; altera_work  ;
+;                   |altera_syncram_impl1|              ; 0 (0)               ; 0 (0)                     ; 1024              ; 0          ; 0    ; 5.8 (5.8) ; pifoEngines_0|enque_brain|engineCAM|ram_rtl_0|auto_generated|altera_syncram_impl1         ; altera_syncram_impl_q4061 ; altera_work  ;
+;          |engineMapper_io_readRes_toStream_fifo|      ; 14 (0)              ; 8 (0)                     ; 0                 ; 0          ; 0    ; 5.0 (0.0) ; pifoEngines_0|enque_brain|engineMapper_io_readRes_toStream_fifo                           ; StreamFifoLowLatency_4    ; altera_work  ;
+;             |fifo|                                    ; 14 (14)             ; 8 (8)                     ; 0                 ; 0          ; 0    ; 5.0 (5.0) ; pifoEngines_0|enque_brain|engineMapper_io_readRes_toStream_fifo|fifo                      ; StreamFifo_5              ; altera_work  ;
+;          |engineMapper|                               ; 16 (16)             ; 19 (19)                   ; 0                 ; 0          ; 0    ; 5.0 (5.0) ; pifoEngines_0|enque_brain|engineMapper                                                    ; Mapper                    ; altera_work  ;
+;          |flowStateUpdate_toStream_fifo|              ; 12 (0)              ; 34 (0)                    ; 0                 ; 0          ; 0    ; 5.8 (0.0) ; pifoEngines_0|enque_brain|flowStateUpdate_toStream_fifo                                   ; StreamFifoLowLatency_2    ; altera_work  ;
+;             |fifo|                                    ; 12 (12)             ; 34 (34)                   ; 0                 ; 0          ; 0    ; 5.8 (5.8) ; pifoEngines_0|enque_brain|flowStateUpdate_toStream_fifo|fifo                              ; StreamFifo_3              ; altera_work  ;
+;          |io_outputs_4_fifo|                          ; 20 (0)              ; 18 (0)                    ; 0                 ; 0          ; 0    ; 3.0 (0.0) ; pifoEngines_0|enque_brain|io_outputs_4_fifo                                               ; StreamFifoLowLatency_8    ; altera_work  ;
+;             |fifo|                                    ; 20 (20)             ; 18 (18)                   ; 0                 ; 0          ; 0    ; 3.0 (3.0) ; pifoEngines_0|enque_brain|io_outputs_4_fifo|fifo                                          ; StreamFifo_9              ; altera_work  ;
+;          |io_request_fork|                            ; 2 (2)               ; 1 (1)                     ; 0                 ; 0          ; 0    ; 2.0 (2.0) ; pifoEngines_0|enque_brain|io_request_fork                                                 ; StreamFork                ; altera_work  ;
+;          |lastVirtualMapper_io_readRes_toStream_fifo| ; 18 (0)              ; 20 (0)                    ; 0                 ; 0          ; 0    ; 6.8 (0.0) ; pifoEngines_0|enque_brain|lastVirtualMapper_io_readRes_toStream_fifo                      ; StreamFifoLowLatency_7    ; altera_work  ;
+;             |fifo|                                    ; 18 (18)             ; 20 (20)                   ; 0                 ; 0          ; 0    ; 6.8 (6.8) ; pifoEngines_0|enque_brain|lastVirtualMapper_io_readRes_toStream_fifo|fifo                 ; StreamFifo_8              ; altera_work  ;
+;          |lastVirtualMapper|                          ; 0 (0)               ; 1 (1)                     ; 64                ; 0          ; 0    ; 5.8 (4.0) ; pifoEngines_0|enque_brain|lastVirtualMapper                                               ; Mapper_1                  ; altera_work  ;
+;             |ram_rtl_0|                               ; 0 (0)               ; 0 (0)                     ; 64                ; 0          ; 0    ; 5.8 (0.0) ; pifoEngines_0|enque_brain|lastVirtualMapper|ram_rtl_0                                     ; altera_syncram            ; work         ;
+;                |auto_generated|                       ; 0 (0)               ; 0 (0)                     ; 64                ; 0          ; 0    ; 5.8 (0.0) ; pifoEngines_0|enque_brain|lastVirtualMapper|ram_rtl_0|auto_generated                      ; altera_syncram_62af1      ; altera_work  ;
+;                   |altera_syncram_impl1|              ; 0 (0)               ; 0 (0)                     ; 64                ; 0          ; 0    ; 5.8 (5.8) ; pifoEngines_0|enque_brain|lastVirtualMapper|ram_rtl_0|auto_generated|altera_syncram_impl1 ; altera_syncram_impl_iuv32 ; altera_work  ;
+;          |streamArbiter_4|                            ; 32 (32)             ; 0 (0)                     ; 0                 ; 0          ; 0    ; 5.8 (5.8) ; pifoEngines_0|enque_brain|streamArbiter_4                                                 ; StreamArbiter_2           ; altera_work  ;
+;          |streamArbiter_5|                            ; 15 (15)             ; 0 (0)                     ; 0                 ; 0          ; 0    ; 4.0 (4.0) ; pifoEngines_0|enque_brain|streamArbiter_5                                                 ; StreamArbiter_3           ; altera_work  ;
+;       |enque_enqueMapper|                             ; 14 (14)             ; 28 (28)                   ; 0                 ; 0          ; 0    ; 2.0 (2.0) ; pifoEngines_0|enque_enqueMapper                                                           ; DirectMapper              ; altera_work  ;
+;       |enque_flowIdStream_fifo|                       ; 17 (0)              ; 12 (0)                    ; 0                 ; 0          ; 0    ; 3.0 (0.0) ; pifoEngines_0|enque_flowIdStream_fifo                                                     ; StreamFifoLowLatency_9    ; altera_work  ;
+;          |fifo|                                       ; 17 (17)             ; 12 (12)                   ; 0                 ; 0          ; 0    ; 3.0 (3.0) ; pifoEngines_0|enque_flowIdStream_fifo|fifo                                                ; StreamFifo_2              ; altera_work  ;
+;       |io_outputs_2_fifo|                             ; 6 (0)               ; 4 (0)                     ; 0                 ; 0          ; 0    ; 3.0 (0.0) ; pifoEngines_0|io_outputs_2_fifo                                                           ; StreamFifoLowLatency_10   ; altera_work  ;
+;          |fifo|                                       ; 6 (6)               ; 4 (4)                     ; 0                 ; 0          ; 0    ; 3.0 (3.0) ; pifoEngines_0|io_outputs_2_fifo|fifo                                                      ; StreamFifo_10             ; altera_work  ;
+;    |xbar|                                             ; 82 (1)              ; 92 (9)                    ; 0                 ; 0          ; 0    ; 5.0 (2.0) ; xbar                                                                                      ; MessageCrossBar           ; altera_work  ;
+;       |io_inputs_0_fifo|                              ; 31 (0)              ; 40 (0)                    ; 0                 ; 0          ; 0    ; 5.0 (0.0) ; xbar|io_inputs_0_fifo                                                                     ; StreamFifoLowLatency      ; altera_work  ;
+;          |fifo|                                       ; 31 (31)             ; 40 (40)                   ; 0                 ; 0          ; 0    ; 5.0 (5.0) ; xbar|io_inputs_0_fifo|fifo                                                                ; StreamFifo                ; altera_work  ;
+;       |io_inputs_1_fifo|                              ; 34 (0)              ; 40 (0)                    ; 0                 ; 0          ; 0    ; 5.0 (0.0) ; xbar|io_inputs_1_fifo                                                                     ; StreamFifoLowLatency      ; altera_work  ;
+;          |fifo|                                       ; 34 (34)             ; 40 (40)                   ; 0                 ; 0          ; 0    ; 5.0 (5.0) ; xbar|io_inputs_1_fifo|fifo                                                                ; StreamFifo                ; altera_work  ;
+;       |streamArbiter_4|                               ; 11 (11)             ; 3 (3)                     ; 0                 ; 0          ; 0    ; 5.0 (5.0) ; xbar|streamArbiter_4                                                                      ; StreamArbiter             ; altera_work  ;
+;       |streamArbiter_5|                               ; 4 (4)               ; 0 (0)                     ; 0                 ; 0          ; 0    ; 3.0 (3.0) ; xbar|streamArbiter_5                                                                      ; StreamArbiter             ; altera_work  ;
+;       |streamDemux_3|                                 ; 1 (1)               ; 0 (0)                     ; 0                 ; 0          ; 0    ; 4.0 (4.0) ; xbar|streamDemux_3                                                                        ; StreamDemux               ; altera_work  ;
++-------------------------------------------------------+---------------------+---------------------------+-------------------+------------+------+-----------+-------------------------------------------------------------------------------------------+---------------------------+--------------+
+Note: For table entries with two numbers listed, the numbers in parentheses indicate the number of resources of the given type used by the specific entity alone. The numbers listed outside of parentheses indicate the total resources of the given type used by the specific entity and all of its sub-entities in the hierarchy.
+
+
++-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+; Registers Removed During Synthesis                                                                                                                                                              ;
++----------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------------+-----------+
+; Node name                                                                                                ; Reason for Removal                                                       ; Node Type ;
++----------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------------+-----------+
+; pifoEngines_0|io_control_fork3_logic_linkEnable_0                                                        ; Stuck at VCC due to stuck port data_in                                   ; Register  ;
+; pifoEngines_0|io_control_fork3_logic_linkEnable_1                                                        ; Stuck at VCC due to stuck port data_in                                   ; Register  ;
+; pifoEngines_0|enque_brain|outStream_fork3_logic_linkEnable_1                                             ; Stuck at VCC due to stuck port data_in                                   ; Register  ;
+; pifoEngines_0|enque_brain|outStream_fork3_logic_linkEnable_2                                             ; Stuck at VCC due to stuck port data_in                                   ; Register  ;
+; pifoEngines_0|enque_brain|outStream_fork3_logic_linkEnable_0                                             ; Stuck at VCC due to stuck port data_in                                   ; Register  ;
+; pifoEngines_0|control_fork|logic_linkEnable_1                                                            ; Stuck at VCC due to stuck port data_in                                   ; Register  ;
+; pifoEngines_0|control_fork|logic_linkEnable_2                                                            ; Stuck at VCC due to stuck port data_in                                   ; Register  ;
+; pifoEngines_0|control_fork|logic_linkEnable_0                                                            ; Stuck at VCC due to stuck port data_in                                   ; Register  ;
+; pifoEngines_0|enque_brain|io_control_fork|logic_linkEnable_1                                             ; Stuck at VCC due to stuck port data_in                                   ; Register  ;
+; pifoEngines_0|enque_brain|io_control_fork|logic_linkEnable_2                                             ; Stuck at VCC due to stuck port data_in                                   ; Register  ;
+; pifoEngines_0|enque_brain|io_control_fork|logic_linkEnable_0                                             ; Stuck at VCC due to stuck port data_in                                   ; Register  ;
+; pifoEngines_0|enque_brain|engineCAM|ram_spinal_port0[8..31]                                              ; Lost fanout                                                              ; Register  ;
+; pifoEngines_0|enque_brain|brainStateMem|ram_spinal_port0[8..31]                                          ; Lost fanout                                                              ; Register  ;
+; pifoEngines_0|deque_frontRewrite|armed_0                                                                 ; Stuck at GND due to stuck port data_in                                   ; Register  ;
+; pifoEngines_0|deque_frontRewrite|armed_1                                                                 ; Stuck at GND due to stuck port data_in                                   ; Register  ;
+; pifoEngines_0|deque_frontRewrite|armed_2                                                                 ; Stuck at GND due to stuck port data_in                                   ; Register  ;
+; pifoEngines_0|deque_frontRewrite|armed_3                                                                 ; Stuck at GND due to stuck port data_in                                   ; Register  ;
+; pifoEngines_0|deque_frontRewrite|armed_4                                                                 ; Stuck at GND due to stuck port data_in                                   ; Register  ;
+; pifoEngines_0|deque_frontRewrite|armed_5                                                                 ; Stuck at GND due to stuck port data_in                                   ; Register  ;
+; pifoEngines_0|deque_frontRewrite|armed_6                                                                 ; Stuck at GND due to stuck port data_in                                   ; Register  ;
+; pifoEngines_0|deque_frontRewrite|armed_7                                                                 ; Stuck at GND due to stuck port data_in                                   ; Register  ;
+; pifoEngines_0|enque_brain|streamArbiter_4|locked                                                         ; Stuck at GND due to stuck port data_in                                   ; Register  ;
+; pifoEngines_0|enque_brain|streamArbiter_5|locked                                                         ; Stuck at GND due to stuck port data_in                                   ; Register  ;
+; pifoEngines_0|enque_brain|streamArbiter_4|maskLocked_0                                                   ; Lost fanout                                                              ; Register  ;
+; pifoEngines_0|enque_brain|streamArbiter_4|maskLocked_1                                                   ; Lost fanout                                                              ; Register  ;
+; pifoEngines_0|enque_brain|streamArbiter_5|maskLocked_0                                                   ; Lost fanout                                                              ; Register  ;
+; pifoEngines_0|enque_brain|streamArbiter_5|maskLocked_1                                                   ; Lost fanout                                                              ; Register  ;
+; pifoEngines_0|enque_brain|io_request_fork|logic_linkEnable_1                                             ; Merged with pifoEngines_0|enque_brain|io_request_fork|logic_linkEnable_0 ; Register  ;
+; pifoEngines_0|enque_brain|io_request_fork|logic_linkEnable_2                                             ; Merged with pifoEngines_0|enque_brain|io_request_fork|logic_linkEnable_0 ; Register  ;
+; pifoEngines_0|enque_brain|io_request_fork|logic_linkEnable_3                                             ; Merged with pifoEngines_0|enque_brain|io_request_fork|logic_linkEnable_0 ; Register  ;
+; pifoEngines_0|deque_existingPop_fork|logic_linkEnable_1                                                  ; Merged with pifoEngines_0|deque_existingPop_fork|logic_linkEnable_0      ; Register  ;
+; pifoEngines_0|deque_frontRewrite|configured_0                                                            ; Lost fanout                                                              ; Register  ;
+; pifoEngines_0|deque_frontRewrite|configured_1                                                            ; Lost fanout                                                              ; Register  ;
+; pifoEngines_0|deque_frontRewrite|configured_2                                                            ; Lost fanout                                                              ; Register  ;
+; pifoEngines_0|deque_frontRewrite|configured_3                                                            ; Lost fanout                                                              ; Register  ;
+; pifoEngines_0|deque_frontRewrite|configured_4                                                            ; Lost fanout                                                              ; Register  ;
+; pifoEngines_0|deque_frontRewrite|configured_5                                                            ; Lost fanout                                                              ; Register  ;
+; pifoEngines_0|deque_frontRewrite|configured_6                                                            ; Lost fanout                                                              ; Register  ;
+; pifoEngines_0|deque_frontRewrite|configured_7                                                            ; Lost fanout                                                              ; Register  ;
+; pifoEngines_0|deque_frontRewrite|enabled_0                                                               ; Stuck at GND due to stuck port data_in                                   ; Register  ;
+; pifoEngines_0|deque_frontRewrite|enabled_1                                                               ; Stuck at GND due to stuck port data_in                                   ; Register  ;
+; pifoEngines_0|deque_frontRewrite|enabled_2                                                               ; Stuck at GND due to stuck port data_in                                   ; Register  ;
+; pifoEngines_0|deque_frontRewrite|enabled_3                                                               ; Stuck at GND due to stuck port data_in                                   ; Register  ;
+; pifoEngines_0|deque_frontRewrite|enabled_4                                                               ; Stuck at GND due to stuck port data_in                                   ; Register  ;
+; pifoEngines_0|deque_frontRewrite|enabled_5                                                               ; Stuck at GND due to stuck port data_in                                   ; Register  ;
+; pifoEngines_0|deque_frontRewrite|enabled_6                                                               ; Stuck at GND due to stuck port data_in                                   ; Register  ;
+; pifoEngines_0|deque_frontRewrite|enabled_7                                                               ; Stuck at GND due to stuck port data_in                                   ; Register  ;
+; pifoEngines_0|deque_frontRewrite|targets_0[0..2]                                                         ; Lost fanout                                                              ; Register  ;
+; pifoEngines_0|deque_frontRewrite|targets_1[0..2]                                                         ; Lost fanout                                                              ; Register  ;
+; pifoEngines_0|deque_frontRewrite|targets_2[0..2]                                                         ; Lost fanout                                                              ; Register  ;
+; pifoEngines_0|deque_frontRewrite|targets_3[0..2]                                                         ; Lost fanout                                                              ; Register  ;
+; pifoEngines_0|deque_frontRewrite|targets_4[0..2]                                                         ; Lost fanout                                                              ; Register  ;
+; pifoEngines_0|deque_frontRewrite|targets_5[0..2]                                                         ; Lost fanout                                                              ; Register  ;
+; pifoEngines_0|deque_frontRewrite|targets_6[0..2]                                                         ; Lost fanout                                                              ; Register  ;
+; pifoEngines_0|deque_frontRewrite|targets_7[0..2]                                                         ; Lost fanout                                                              ; Register  ;
+; xbar|streamArbiter_5|locked                                                                              ; Stuck at GND due to stuck port data_in                                   ; Register  ;
+; xbar|streamArbiter_5|maskLocked_0                                                                        ; Lost fanout                                                              ; Register  ;
+; xbar|streamArbiter_5|maskLocked_1                                                                        ; Lost fanout                                                              ; Register  ;
+; pifoEngines_0|io_enqueRequest_fork2_logic_linkEnable_1                                                   ; Stuck at VCC due to stuck port data_in                                   ; Register  ;
+; pifoEngines_0|enque_brain|io_request_fork|logic_linkEnable_4                                             ; Stuck at VCC due to stuck port data_in                                   ; Register  ;
+; pifoEngines_0|deque_existingPop_fork|logic_linkEnable_2                                                  ; Stuck at VCC due to stuck port data_in                                   ; Register  ;
+; pifoEngines_0|enque_brain|engineCAM|ram_rtl_0|auto_generated|altera_syncram_impl1|ram_block2a{8..31}     ; Lost fanout                                                              ; Block RAM ;
+; pifoEngines_0|enque_brain|brainStateMem|ram_rtl_0|auto_generated|altera_syncram_impl1|ram_block2a{8..31} ; Lost fanout                                                              ; Block RAM ;
+; io_controlRequest_fifo|logic_ram_rtl_0|auto_generated|altera_syncram_impl1|ram_block2a{18..41}           ; Lost fanout                                                              ; Block RAM ;
+; Total Number of Removed Nodes = 195                                                                      ;                                                                          ;           ;
++----------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------------+-----------+
+
+
++-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+; Removed Registers Triggering Further Register Optimizations                                                                                                                                                                                     ;
++-------------------------------------------------------------------------------------------------+----------------------------------------+-----------+------------------------------------------------------------------------------------------+
+; Node name                                                                                       ; Reason for Removal                     ; Node Type ; Nodes Removed due to This Node                                                           ;
++-------------------------------------------------------------------------------------------------+----------------------------------------+-----------+------------------------------------------------------------------------------------------+
+; pifoEngines_0|io_control_fork3_logic_linkEnable_0                                               ; Stuck at VCC due to stuck port data_in ; Register  ; pifoEngines_0|deque_frontRewrite|armed_0, pifoEngines_0|deque_frontRewrite|armed_1,      ;
+;                                                                                                 ;                                        ;           ; pifoEngines_0|deque_frontRewrite|armed_2, pifoEngines_0|deque_frontRewrite|armed_3,      ;
+;                                                                                                 ;                                        ;           ; pifoEngines_0|deque_frontRewrite|armed_4, pifoEngines_0|deque_frontRewrite|armed_5,      ;
+;                                                                                                 ;                                        ;           ; pifoEngines_0|deque_frontRewrite|armed_6, pifoEngines_0|deque_frontRewrite|armed_7,      ;
+;                                                                                                 ;                                        ;           ; pifoEngines_0|deque_frontRewrite|configured_0,                                           ;
+;                                                                                                 ;                                        ;           ; pifoEngines_0|deque_frontRewrite|configured_1,                                           ;
+;                                                                                                 ;                                        ;           ; pifoEngines_0|deque_frontRewrite|configured_2,                                           ;
+;                                                                                                 ;                                        ;           ; pifoEngines_0|deque_frontRewrite|configured_3,                                           ;
+;                                                                                                 ;                                        ;           ; pifoEngines_0|deque_frontRewrite|enabled_0,                                              ;
+;                                                                                                 ;                                        ;           ; pifoEngines_0|deque_frontRewrite|enabled_1,                                              ;
+;                                                                                                 ;                                        ;           ; pifoEngines_0|deque_frontRewrite|enabled_2,                                              ;
+;                                                                                                 ;                                        ;           ; pifoEngines_0|deque_frontRewrite|enabled_3,                                              ;
+;                                                                                                 ;                                        ;           ; pifoEngines_0|deque_frontRewrite|enabled_4,                                              ;
+;                                                                                                 ;                                        ;           ; pifoEngines_0|deque_frontRewrite|enabled_5,                                              ;
+;                                                                                                 ;                                        ;           ; pifoEngines_0|deque_frontRewrite|enabled_6,                                              ;
+;                                                                                                 ;                                        ;           ; pifoEngines_0|deque_frontRewrite|enabled_7,                                              ;
+;                                                                                                 ;                                        ;           ; pifoEngines_0|deque_frontRewrite|targets_0[0],                                           ;
+;                                                                                                 ;                                        ;           ; pifoEngines_0|deque_frontRewrite|targets_1[0],                                           ;
+;                                                                                                 ;                                        ;           ; pifoEngines_0|deque_frontRewrite|targets_2[0],                                           ;
+;                                                                                                 ;                                        ;           ; pifoEngines_0|deque_frontRewrite|targets_0[1],                                           ;
+;                                                                                                 ;                                        ;           ; pifoEngines_0|deque_frontRewrite|targets_1[1],                                           ;
+;                                                                                                 ;                                        ;           ; pifoEngines_0|deque_frontRewrite|targets_2[1],                                           ;
+;                                                                                                 ;                                        ;           ; pifoEngines_0|deque_frontRewrite|targets_0[2],                                           ;
+;                                                                                                 ;                                        ;           ; pifoEngines_0|deque_frontRewrite|targets_1[2],                                           ;
+;                                                                                                 ;                                        ;           ; pifoEngines_0|deque_frontRewrite|targets_2[2]                                            ;
+; pifoEngines_0|enque_brain|outStream_fork3_logic_linkEnable_1                                    ; Stuck at VCC due to stuck port data_in ; Register  ; pifoEngines_0|enque_brain|streamArbiter_4|locked,                                        ;
+;                                                                                                 ;                                        ;           ; pifoEngines_0|enque_brain|streamArbiter_4|maskLocked_1                                   ;
+; pifoEngines_0|enque_brain|outStream_fork3_logic_linkEnable_2                                    ; Stuck at VCC due to stuck port data_in ; Register  ; pifoEngines_0|enque_brain|streamArbiter_5|locked,                                        ;
+;                                                                                                 ;                                        ;           ; pifoEngines_0|enque_brain|streamArbiter_5|maskLocked_1                                   ;
+; pifoEngines_0|enque_brain|engineCAM|ram_rtl_0|auto_generated|altera_syncram_impl1|ram_block2a31 ; Lost fanout                            ; Block RAM ; io_controlRequest_fifo|logic_ram_rtl_0|auto_generated|altera_syncram_impl1|ram_block2a41 ;
+; pifoEngines_0|enque_brain|engineCAM|ram_rtl_0|auto_generated|altera_syncram_impl1|ram_block2a30 ; Lost fanout                            ; Block RAM ; io_controlRequest_fifo|logic_ram_rtl_0|auto_generated|altera_syncram_impl1|ram_block2a40 ;
+; pifoEngines_0|enque_brain|engineCAM|ram_rtl_0|auto_generated|altera_syncram_impl1|ram_block2a29 ; Lost fanout                            ; Block RAM ; io_controlRequest_fifo|logic_ram_rtl_0|auto_generated|altera_syncram_impl1|ram_block2a39 ;
+; pifoEngines_0|enque_brain|engineCAM|ram_rtl_0|auto_generated|altera_syncram_impl1|ram_block2a28 ; Lost fanout                            ; Block RAM ; io_controlRequest_fifo|logic_ram_rtl_0|auto_generated|altera_syncram_impl1|ram_block2a38 ;
+; pifoEngines_0|enque_brain|engineCAM|ram_rtl_0|auto_generated|altera_syncram_impl1|ram_block2a27 ; Lost fanout                            ; Block RAM ; io_controlRequest_fifo|logic_ram_rtl_0|auto_generated|altera_syncram_impl1|ram_block2a37 ;
+; pifoEngines_0|enque_brain|engineCAM|ram_rtl_0|auto_generated|altera_syncram_impl1|ram_block2a26 ; Lost fanout                            ; Block RAM ; io_controlRequest_fifo|logic_ram_rtl_0|auto_generated|altera_syncram_impl1|ram_block2a36 ;
+; pifoEngines_0|enque_brain|engineCAM|ram_rtl_0|auto_generated|altera_syncram_impl1|ram_block2a25 ; Lost fanout                            ; Block RAM ; io_controlRequest_fifo|logic_ram_rtl_0|auto_generated|altera_syncram_impl1|ram_block2a35 ;
+; pifoEngines_0|enque_brain|engineCAM|ram_rtl_0|auto_generated|altera_syncram_impl1|ram_block2a24 ; Lost fanout                            ; Block RAM ; io_controlRequest_fifo|logic_ram_rtl_0|auto_generated|altera_syncram_impl1|ram_block2a34 ;
+; pifoEngines_0|enque_brain|engineCAM|ram_rtl_0|auto_generated|altera_syncram_impl1|ram_block2a23 ; Lost fanout                            ; Block RAM ; io_controlRequest_fifo|logic_ram_rtl_0|auto_generated|altera_syncram_impl1|ram_block2a33 ;
+; pifoEngines_0|enque_brain|engineCAM|ram_rtl_0|auto_generated|altera_syncram_impl1|ram_block2a22 ; Lost fanout                            ; Block RAM ; io_controlRequest_fifo|logic_ram_rtl_0|auto_generated|altera_syncram_impl1|ram_block2a32 ;
+; pifoEngines_0|enque_brain|engineCAM|ram_rtl_0|auto_generated|altera_syncram_impl1|ram_block2a21 ; Lost fanout                            ; Block RAM ; io_controlRequest_fifo|logic_ram_rtl_0|auto_generated|altera_syncram_impl1|ram_block2a31 ;
+; pifoEngines_0|enque_brain|engineCAM|ram_rtl_0|auto_generated|altera_syncram_impl1|ram_block2a20 ; Lost fanout                            ; Block RAM ; io_controlRequest_fifo|logic_ram_rtl_0|auto_generated|altera_syncram_impl1|ram_block2a30 ;
+; pifoEngines_0|enque_brain|engineCAM|ram_rtl_0|auto_generated|altera_syncram_impl1|ram_block2a19 ; Lost fanout                            ; Block RAM ; io_controlRequest_fifo|logic_ram_rtl_0|auto_generated|altera_syncram_impl1|ram_block2a29 ;
+; pifoEngines_0|enque_brain|engineCAM|ram_rtl_0|auto_generated|altera_syncram_impl1|ram_block2a18 ; Lost fanout                            ; Block RAM ; io_controlRequest_fifo|logic_ram_rtl_0|auto_generated|altera_syncram_impl1|ram_block2a28 ;
+; pifoEngines_0|enque_brain|engineCAM|ram_rtl_0|auto_generated|altera_syncram_impl1|ram_block2a17 ; Lost fanout                            ; Block RAM ; io_controlRequest_fifo|logic_ram_rtl_0|auto_generated|altera_syncram_impl1|ram_block2a27 ;
+; pifoEngines_0|enque_brain|engineCAM|ram_rtl_0|auto_generated|altera_syncram_impl1|ram_block2a16 ; Lost fanout                            ; Block RAM ; io_controlRequest_fifo|logic_ram_rtl_0|auto_generated|altera_syncram_impl1|ram_block2a26 ;
+; pifoEngines_0|enque_brain|engineCAM|ram_rtl_0|auto_generated|altera_syncram_impl1|ram_block2a15 ; Lost fanout                            ; Block RAM ; io_controlRequest_fifo|logic_ram_rtl_0|auto_generated|altera_syncram_impl1|ram_block2a25 ;
+; pifoEngines_0|enque_brain|engineCAM|ram_rtl_0|auto_generated|altera_syncram_impl1|ram_block2a14 ; Lost fanout                            ; Block RAM ; io_controlRequest_fifo|logic_ram_rtl_0|auto_generated|altera_syncram_impl1|ram_block2a24 ;
+; pifoEngines_0|enque_brain|engineCAM|ram_rtl_0|auto_generated|altera_syncram_impl1|ram_block2a13 ; Lost fanout                            ; Block RAM ; io_controlRequest_fifo|logic_ram_rtl_0|auto_generated|altera_syncram_impl1|ram_block2a23 ;
+; pifoEngines_0|enque_brain|engineCAM|ram_rtl_0|auto_generated|altera_syncram_impl1|ram_block2a12 ; Lost fanout                            ; Block RAM ; io_controlRequest_fifo|logic_ram_rtl_0|auto_generated|altera_syncram_impl1|ram_block2a22 ;
+; pifoEngines_0|enque_brain|engineCAM|ram_rtl_0|auto_generated|altera_syncram_impl1|ram_block2a11 ; Lost fanout                            ; Block RAM ; io_controlRequest_fifo|logic_ram_rtl_0|auto_generated|altera_syncram_impl1|ram_block2a21 ;
+; pifoEngines_0|enque_brain|engineCAM|ram_rtl_0|auto_generated|altera_syncram_impl1|ram_block2a10 ; Lost fanout                            ; Block RAM ; io_controlRequest_fifo|logic_ram_rtl_0|auto_generated|altera_syncram_impl1|ram_block2a20 ;
+; pifoEngines_0|enque_brain|engineCAM|ram_rtl_0|auto_generated|altera_syncram_impl1|ram_block2a9  ; Lost fanout                            ; Block RAM ; io_controlRequest_fifo|logic_ram_rtl_0|auto_generated|altera_syncram_impl1|ram_block2a19 ;
+; pifoEngines_0|enque_brain|engineCAM|ram_rtl_0|auto_generated|altera_syncram_impl1|ram_block2a8  ; Lost fanout                            ; Block RAM ; io_controlRequest_fifo|logic_ram_rtl_0|auto_generated|altera_syncram_impl1|ram_block2a18 ;
+; pifoEngines_0|enque_brain|brainStateMem|ram_spinal_port0[30]                                    ; Lost fanout                            ; Register  ; pifoEngines_0|enque_brain|streamArbiter_5|maskLocked_0                                   ;
+; pifoEngines_0|enque_brain|engineCAM|ram_spinal_port0[30]                                        ; Lost fanout                            ; Register  ; pifoEngines_0|enque_brain|streamArbiter_4|maskLocked_0                                   ;
++-------------------------------------------------------------------------------------------------+----------------------------------------+-----------+------------------------------------------------------------------------------------------+
+
+
++------------------------------------------------------------+
+; General Register Statistics for Partition "root_partition" ;
++----------------------------------------------+-------------+
+; Statistic                                    ; Value       ;
++----------------------------------------------+-------------+
+; Total registers                              ; 318         ;
+; Number of registers using Synchronous Clear  ; 0           ;
+; Number of registers using Synchronous Load   ; 0           ;
+; Number of registers using Asynchronous Clear ; 70          ;
+; Number of registers using Asynchronous Load  ; 0           ;
+; Number of registers using Clock Enable       ; 249         ;
+; Number of registers using Preset             ; 0           ;
++----------------------------------------------+-------------+
+
+
++------------------------------------------------------------------------+
+; Inverted Register Statistics                                           ;
++--------------------------------------------------------------+---------+
+; Inverted Register                                            ; Fan out ;
++--------------------------------------------------------------+---------+
+; pifoEngines_0|io_enqueRequest_fork2_logic_linkEnable_0       ; 2       ;
+; pifoEngines_0|enque_brain|io_request_fork|logic_linkEnable_0 ; 2       ;
+; pifoEngines_0|deque_existingPop_fork|logic_linkEnable_0      ; 2       ;
+; Total number of inverted registers = 3                       ;         ;
++--------------------------------------------------------------+---------+
+
+
++-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+; Multiplexer Restructuring Statistics (Restructuring Performed)                                                                                                                                                                      ;
++--------------------+-----------+---------------+----------------------+------------------------+------------+---------------------------------------------------------------------------------------------+-------------------------+
+; Multiplexer Inputs ; Bus Width ; Baseline Area ; Area if Restructured ; Saving if Restructured ; Registered ; Example Multiplexer Output                                                                  ; Restructuring Performed ;
++--------------------+-----------+---------------+----------------------+------------------------+------------+---------------------------------------------------------------------------------------------+-------------------------+
+; 8:1                ; 3 bits    ; 15 LEs        ; 15 LEs               ; 0 LEs                  ; Yes        ; pifoEngines_0|enque_enqueMapper|ram_spinal_port0[2]                                         ; Yes                     ;
+; 8:1                ; 2 bits    ; 10 LEs        ; 10 LEs               ; 0 LEs                  ; Yes        ; pifoEngines_0|enque_brain|engineMapper|ram_spinal_port0[0]                                  ; Yes                     ;
+; 3:1                ; 4 bits    ; 8 LEs         ; 8 LEs                ; 0 LEs                  ; No         ; pifoEngines_0|enque_flowIdStream_fifo|fifo|io_pop_payload_engineId[0]                       ; Yes                     ;
+; 3:1                ; 2 bits    ; 4 LEs         ; 4 LEs                ; 0 LEs                  ; No         ; pifoEngines_0|enque_brain|engineMapper_io_readRes_toStream_fifo|fifo|io_pop_payload[0]      ; Yes                     ;
+; 3:1                ; 8 bits    ; 16 LEs        ; 16 LEs               ; 0 LEs                  ; No         ; pifoEngines_0|enque_brain|lastVirtualMapper_io_readRes_toStream_fifo|fifo|io_pop_payload[0] ; Yes                     ;
+; 3:1                ; 7 bits    ; 14 LEs        ; 14 LEs               ; 0 LEs                  ; No         ; pifoEngines_0|enque_brain|io_outputs_4_fifo|fifo|io_pop_payload_vpifoId[0]                  ; Yes                     ;
+; 4:1                ; 8 bits    ; 16 LEs        ; 16 LEs               ; 0 LEs                  ; No         ; pifoEngines_0|enque_brain|Mux_463                                                           ; Yes                     ;
+; 3:1                ; 15 bits   ; 30 LEs        ; 30 LEs               ; 0 LEs                  ; No         ; pifoEngines_0|enque_brain|streamArbiter_4|io_output_payload_inputId[4]                      ; Yes                     ;
+; 3:1                ; 11 bits   ; 22 LEs        ; 22 LEs               ; 0 LEs                  ; No         ; pifoEngines_0|enque_brain|streamArbiter_5|io_output_payload_inputId[0]                      ; Yes                     ;
+; 8:1                ; 4 bits    ; 20 LEs        ; 20 LEs               ; 0 LEs                  ; No         ; xbar|io_inputs_0_fifo|fifo|Mux_3                                                            ; Yes                     ;
+; 8:1                ; 4 bits    ; 20 LEs        ; 20 LEs               ; 0 LEs                  ; No         ; xbar|io_inputs_1_fifo|fifo|Mux_3                                                            ; Yes                     ;
++--------------------+-----------+---------------+----------------------+------------------------+------------+---------------------------------------------------------------------------------------------+-------------------------+
+
+
++-----------------------------------------------------------------------------------------------------------------------------------+
+; Registers Packed Into Inferred Megafunctions                                                                                      ;
++--------------------------------------------------------------------+-------------------------------------------------------+------+
+; Register Name                                                      ; Megafunction                                          ; Type ;
++--------------------------------------------------------------------+-------------------------------------------------------+------+
+; io_controlRequest_fifo|logic_ram_spinal_port1[0..2,4..42]          ; io_controlRequest_fifo|logic_ram_rtl_0                ; RAM  ;
+; pifoEngines_0|deque_dequeMapper|ram_spinal_port0[0..3]             ; pifoEngines_0|deque_dequeMapper|ram_rtl_0             ; RAM  ;
+; pifoEngines_0|enque_brain|lastVirtualMapper|ram_spinal_port0[0..7] ; pifoEngines_0|enque_brain|lastVirtualMapper|ram_rtl_0 ; RAM  ;
+; pifoEngines_0|enque_brain|engineCAM|ram_spinal_port0[0..7]         ; pifoEngines_0|enque_brain|engineCAM|ram_rtl_0         ; RAM  ;
+; pifoEngines_0|enque_brain|brainStateMem|ram_spinal_port0[0..7]     ; pifoEngines_0|enque_brain|brainStateMem|ram_rtl_0     ; RAM  ;
++--------------------------------------------------------------------+-------------------------------------------------------+------+
+
+
++----------------------------------------------------------------------------------------------------------------------------+
+; Source Assignments for io_controlRequest_fifo|logic_ram_rtl_0|auto_generated|altera_syncram_impl1                          ;
++---------------------------------+--------------------+------+----+---------------------------------------------------------+
+; Assignment                      ; Value              ; From ; To ; Source Location                                         ;
++---------------------------------+--------------------+------+----+---------------------------------------------------------+
+; OPTIMIZE_POWER_DURING_SYNTHESIS ; NORMAL_COMPILATION ; -    ; -  ; tmp-clearbox/pifo/290739/altera_syncram_impl_4gl5.tdf:0 ;
++---------------------------------+--------------------+------+----+---------------------------------------------------------+
+
+
++-----------------------------------------------------------------------------------------------------------------------------+
+; Source Assignments for pifoEngines_0|deque_dequeMapper|ram_rtl_0|auto_generated|altera_syncram_impl1                        ;
++---------------------------------+--------------------+------+----+----------------------------------------------------------+
+; Assignment                      ; Value              ; From ; To ; Source Location                                          ;
++---------------------------------+--------------------+------+----+----------------------------------------------------------+
+; OPTIMIZE_POWER_DURING_SYNTHESIS ; NORMAL_COMPILATION ; -    ; -  ; tmp-clearbox/pifo/290739/altera_syncram_impl_4o991.tdf:0 ;
++---------------------------------+--------------------+------+----+----------------------------------------------------------+
+
+
++-----------------------------------------------------------------------------------------------------------------------------+
+; Source Assignments for pifoEngines_0|enque_brain|lastVirtualMapper|ram_rtl_0|auto_generated|altera_syncram_impl1            ;
++---------------------------------+--------------------+------+----+----------------------------------------------------------+
+; Assignment                      ; Value              ; From ; To ; Source Location                                          ;
++---------------------------------+--------------------+------+----+----------------------------------------------------------+
+; OPTIMIZE_POWER_DURING_SYNTHESIS ; NORMAL_COMPILATION ; -    ; -  ; tmp-clearbox/pifo/290739/altera_syncram_impl_iuv32.tdf:0 ;
++---------------------------------+--------------------+------+----+----------------------------------------------------------+
+
+
++-----------------------------------------------------------------------------------------------------------------------------+
+; Source Assignments for pifoEngines_0|enque_brain|engineCAM|ram_rtl_0|auto_generated|altera_syncram_impl1                    ;
++---------------------------------+--------------------+------+----+----------------------------------------------------------+
+; Assignment                      ; Value              ; From ; To ; Source Location                                          ;
++---------------------------------+--------------------+------+----+----------------------------------------------------------+
+; OPTIMIZE_POWER_DURING_SYNTHESIS ; NORMAL_COMPILATION ; -    ; -  ; tmp-clearbox/pifo/290739/altera_syncram_impl_q4061.tdf:0 ;
++---------------------------------+--------------------+------+----+----------------------------------------------------------+
+
+
++-----------------------------------------------------------------------------------------------------------------------------+
+; Source Assignments for pifoEngines_0|enque_brain|brainStateMem|ram_rtl_0|auto_generated|altera_syncram_impl1                ;
++---------------------------------+--------------------+------+----+----------------------------------------------------------+
+; Assignment                      ; Value              ; From ; To ; Source Location                                          ;
++---------------------------------+--------------------+------+----+----------------------------------------------------------+
+; OPTIMIZE_POWER_DURING_SYNTHESIS ; NORMAL_COMPILATION ; -    ; -  ; tmp-clearbox/pifo/290739/altera_syncram_impl_22121.tdf:0 ;
++---------------------------------+--------------------+------+----+----------------------------------------------------------+
+
+
++---------------------------------------------------------------------------------------------+
+; Parameter Settings for Inferred Entity Instance: io_controlRequest_fifo|logic_ram_rtl_0     ;
++------------------------------------------------------------+----------------------+---------+
+; Parameter Name                                             ; Value                ; Type    ;
++------------------------------------------------------------+----------------------+---------+
+; ACF_BLOCK_RAM_AND_MLAB_EQUIVALENT_PAUSED_READ_CAPABILITIES ; DONT CARE            ; Untyped ;
+; ACF_BLOCK_RAM_AND_MLAB_EQUIVALENT_POWER_UP_CONDITIONS      ; AUTO                 ; Untyped ;
+; ACF_DISABLE_MLAB_RAM_USE                                   ; FALSE                ; Untyped ;
+; ACF_IMPLEMENT_MLAB_IN_16_BIT_DEEP_MODE                     ; FALSE                ; Untyped ;
+; ADDRESS_ACLR_A                                             ; NONE                 ; Untyped ;
+; ADDRESS_ACLR_B                                             ; NONE                 ; Untyped ;
+; ADDRESS_REG_B                                              ; CLOCK0               ; Untyped ;
+; BYTE_SIZE                                                  ; 8                    ; Untyped ;
+; BYTEENA_REG_B                                              ; CLOCK1               ; Untyped ;
+; CLKEN_POWER_OPTIMIZATION                                   ; OFF                  ; Untyped ;
+; CLOCK_DUTY_CYCLE_DEPENDENCE                                ; AUTO                 ; Untyped ;
+; CLOCK_ENABLE_CORE_A                                        ; USE_INPUT_CLKEN      ; Untyped ;
+; CLOCK_ENABLE_CORE_B                                        ; USE_INPUT_CLKEN      ; Untyped ;
+; CLOCK_ENABLE_INPUT_A                                       ; NORMAL               ; Untyped ;
+; CLOCK_ENABLE_INPUT_B                                       ; NORMAL               ; Untyped ;
+; CLOCK_ENABLE_OUTPUT_A                                      ; NORMAL               ; Untyped ;
+; CLOCK_ENABLE_OUTPUT_B                                      ; NORMAL               ; Untyped ;
+; ECC_PIPELINE_STAGE_ENABLED                                 ; FALSE                ; Untyped ;
+; ENABLE_COHERENT_READ                                       ; FALSE                ; Untyped ;
+; ENABLE_ECC                                                 ; FALSE                ; Untyped ;
+; ENABLE_ECC_ENCODER_BYPASS                                  ; FALSE                ; Untyped ;
+; ENABLE_FORCE_TO_ZERO                                       ; FALSE                ; Untyped ;
+; ENABLE_RUNTIME_MOD                                         ; NO                   ; Untyped ;
+; IMPLEMENT_IN_LES                                           ; OFF                  ; Untyped ;
+; INDATA_REG_B                                               ; CLOCK1               ; Untyped ;
+; INIT_FILE                                                  ; UNUSED               ; Untyped ;
+; INIT_FILE_LAYOUT                                           ; PORT_A               ; Untyped ;
+; init_file_restructured                                     ; UNUSED               ; Untyped ;
+; INSTANCE_NAME                                              ; UNUSED               ; Untyped ;
+; LOW_POWER_MODE                                             ; AUTO                 ; Untyped ;
+; MAXIMUM_DEPTH                                              ; 0                    ; Untyped ;
+; NUMWORDS_A                                                 ; 4                    ; Untyped ;
+; NUMWORDS_B                                                 ; 4                    ; Untyped ;
+; OPERATION_MODE                                             ; DUAL_PORT            ; Untyped ;
+; OPTIMIZATION_OPTION                                        ; AUTO                 ; Untyped ;
+; OUTDATA_ACLR_A                                             ; NONE                 ; Untyped ;
+; OUTDATA_ACLR_B                                             ; NONE                 ; Untyped ;
+; OUTDATA_REG_A                                              ; UNREGISTERED         ; Untyped ;
+; OUTDATA_REG_B                                              ; UNREGISTERED         ; Untyped ;
+; OUTDATA_SCLR_A                                             ; NONE                 ; Untyped ;
+; OUTDATA_SCLR_B                                             ; NONE                 ; Untyped ;
+; POWER_UP_UNINITIALIZED                                     ; FALSE                ; Untyped ;
+; RAM_BLOCK_TYPE                                             ; AUTO                 ; Untyped ;
+; RDCONTROL_REG_B                                            ; CLOCK0               ; Untyped ;
+; RDEN_POWER_OPTIMIZATION                                    ; OFF                  ; Untyped ;
+; READ_DURING_WRITE_MODE_MIXED_PORTS                         ; OLD_DATA             ; Untyped ;
+; READ_DURING_WRITE_MODE_PORT_A                              ; NEW_DATA_NO_NBE_READ ; Untyped ;
+; READ_DURING_WRITE_MODE_PORT_B                              ; NEW_DATA_NO_NBE_READ ; Untyped ;
+; WIDTH_A                                                    ; 42                   ; Untyped ;
+; WIDTH_B                                                    ; 42                   ; Untyped ;
+; WIDTH_BYTEENA_A                                            ; 1                    ; Untyped ;
+; WIDTH_BYTEENA_B                                            ; 1                    ; Untyped ;
+; WIDTH_ECCENCPARITY                                         ; 8                    ; Untyped ;
+; WIDTH_ECCSTATUS                                            ; 3                    ; Untyped ;
+; WIDTHAD2_A                                                 ; 1                    ; Untyped ;
+; WIDTHAD2_B                                                 ; 1                    ; Untyped ;
+; WIDTHAD_A                                                  ; 2                    ; Untyped ;
+; WIDTHAD_B                                                  ; 2                    ; Untyped ;
+; WREN_POWER_OPTIMIZATION                                    ; OFF                  ; Untyped ;
+; CBXI_PARAMETER                                             ; altera_syncram_mu6r  ; Untyped ;
+; INDATA_ACLR_A                                              ; NONE                 ; Untyped ;
+; WRCONTROL_ACLR_A                                           ; NONE                 ; Untyped ;
++------------------------------------------------------------+----------------------+---------+
+
+
++-------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+; Parameter Settings for Inferred Entity Instance: pifoEngines_0|deque_dequeMapper|ram_rtl_0                                                                        ;
++------------------------------------------------------------+--------------------------------------------------------------------------------------------+---------+
+; Parameter Name                                             ; Value                                                                                      ; Type    ;
++------------------------------------------------------------+--------------------------------------------------------------------------------------------+---------+
+; ACF_BLOCK_RAM_AND_MLAB_EQUIVALENT_PAUSED_READ_CAPABILITIES ; DONT CARE                                                                                  ; Untyped ;
+; ACF_BLOCK_RAM_AND_MLAB_EQUIVALENT_POWER_UP_CONDITIONS      ; AUTO                                                                                       ; Untyped ;
+; ACF_DISABLE_MLAB_RAM_USE                                   ; FALSE                                                                                      ; Untyped ;
+; ACF_IMPLEMENT_MLAB_IN_16_BIT_DEEP_MODE                     ; FALSE                                                                                      ; Untyped ;
+; ADDRESS_ACLR_A                                             ; NONE                                                                                       ; Untyped ;
+; ADDRESS_ACLR_B                                             ; NONE                                                                                       ; Untyped ;
+; ADDRESS_REG_B                                              ; CLOCK0                                                                                     ; Untyped ;
+; BYTE_SIZE                                                  ; 8                                                                                          ; Untyped ;
+; BYTEENA_REG_B                                              ; CLOCK1                                                                                     ; Untyped ;
+; CLKEN_POWER_OPTIMIZATION                                   ; OFF                                                                                        ; Untyped ;
+; CLOCK_DUTY_CYCLE_DEPENDENCE                                ; AUTO                                                                                       ; Untyped ;
+; CLOCK_ENABLE_CORE_A                                        ; USE_INPUT_CLKEN                                                                            ; Untyped ;
+; CLOCK_ENABLE_CORE_B                                        ; USE_INPUT_CLKEN                                                                            ; Untyped ;
+; CLOCK_ENABLE_INPUT_A                                       ; NORMAL                                                                                     ; Untyped ;
+; CLOCK_ENABLE_INPUT_B                                       ; NORMAL                                                                                     ; Untyped ;
+; CLOCK_ENABLE_OUTPUT_A                                      ; NORMAL                                                                                     ; Untyped ;
+; CLOCK_ENABLE_OUTPUT_B                                      ; NORMAL                                                                                     ; Untyped ;
+; ECC_PIPELINE_STAGE_ENABLED                                 ; FALSE                                                                                      ; Untyped ;
+; ENABLE_COHERENT_READ                                       ; FALSE                                                                                      ; Untyped ;
+; ENABLE_ECC                                                 ; FALSE                                                                                      ; Untyped ;
+; ENABLE_ECC_ENCODER_BYPASS                                  ; FALSE                                                                                      ; Untyped ;
+; ENABLE_FORCE_TO_ZERO                                       ; FALSE                                                                                      ; Untyped ;
+; ENABLE_RUNTIME_MOD                                         ; NO                                                                                         ; Untyped ;
+; IMPLEMENT_IN_LES                                           ; OFF                                                                                        ; Untyped ;
+; INDATA_REG_B                                               ; CLOCK1                                                                                     ; Untyped ;
+; INIT_FILE                                                  ; qdb/_compiler/pifo/root_partition/25.3.1/partitioned/1/mifs/ram0_PifoMesh_a88d83e7.hdl.mif ; Untyped ;
+; INIT_FILE_LAYOUT                                           ; PORT_A                                                                                     ; Untyped ;
+; init_file_restructured                                     ; UNUSED                                                                                     ; Untyped ;
+; INSTANCE_NAME                                              ; UNUSED                                                                                     ; Untyped ;
+; LOW_POWER_MODE                                             ; AUTO                                                                                       ; Untyped ;
+; MAXIMUM_DEPTH                                              ; 0                                                                                          ; Untyped ;
+; NUMWORDS_A                                                 ; 128                                                                                        ; Untyped ;
+; NUMWORDS_B                                                 ; 128                                                                                        ; Untyped ;
+; OPERATION_MODE                                             ; DUAL_PORT                                                                                  ; Untyped ;
+; OPTIMIZATION_OPTION                                        ; AUTO                                                                                       ; Untyped ;
+; OUTDATA_ACLR_A                                             ; NONE                                                                                       ; Untyped ;
+; OUTDATA_ACLR_B                                             ; NONE                                                                                       ; Untyped ;
+; OUTDATA_REG_A                                              ; UNREGISTERED                                                                               ; Untyped ;
+; OUTDATA_REG_B                                              ; UNREGISTERED                                                                               ; Untyped ;
+; OUTDATA_SCLR_A                                             ; NONE                                                                                       ; Untyped ;
+; OUTDATA_SCLR_B                                             ; NONE                                                                                       ; Untyped ;
+; POWER_UP_UNINITIALIZED                                     ; FALSE                                                                                      ; Untyped ;
+; RAM_BLOCK_TYPE                                             ; AUTO                                                                                       ; Untyped ;
+; RDCONTROL_REG_B                                            ; CLOCK0                                                                                     ; Untyped ;
+; RDEN_POWER_OPTIMIZATION                                    ; OFF                                                                                        ; Untyped ;
+; READ_DURING_WRITE_MODE_MIXED_PORTS                         ; OLD_DATA                                                                                   ; Untyped ;
+; READ_DURING_WRITE_MODE_PORT_A                              ; NEW_DATA_NO_NBE_READ                                                                       ; Untyped ;
+; READ_DURING_WRITE_MODE_PORT_B                              ; NEW_DATA_NO_NBE_READ                                                                       ; Untyped ;
+; WIDTH_A                                                    ; 4                                                                                          ; Untyped ;
+; WIDTH_B                                                    ; 4                                                                                          ; Untyped ;
+; WIDTH_BYTEENA_A                                            ; 1                                                                                          ; Untyped ;
+; WIDTH_BYTEENA_B                                            ; 1                                                                                          ; Untyped ;
+; WIDTH_ECCENCPARITY                                         ; 8                                                                                          ; Untyped ;
+; WIDTH_ECCSTATUS                                            ; 3                                                                                          ; Untyped ;
+; WIDTHAD2_A                                                 ; 1                                                                                          ; Untyped ;
+; WIDTHAD2_B                                                 ; 1                                                                                          ; Untyped ;
+; WIDTHAD_A                                                  ; 7                                                                                          ; Untyped ;
+; WIDTHAD_B                                                  ; 7                                                                                          ; Untyped ;
+; WREN_POWER_OPTIMIZATION                                    ; OFF                                                                                        ; Untyped ;
+; CBXI_PARAMETER                                             ; altera_syncram_o9a12                                                                       ; Untyped ;
+; INDATA_ACLR_A                                              ; NONE                                                                                       ; Untyped ;
+; WRCONTROL_ACLR_A                                           ; NONE                                                                                       ; Untyped ;
++------------------------------------------------------------+--------------------------------------------------------------------------------------------+---------+
+
+
++-------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+; Parameter Settings for Inferred Entity Instance: pifoEngines_0|enque_brain|lastVirtualMapper|ram_rtl_0                                                            ;
++------------------------------------------------------------+--------------------------------------------------------------------------------------------+---------+
+; Parameter Name                                             ; Value                                                                                      ; Type    ;
++------------------------------------------------------------+--------------------------------------------------------------------------------------------+---------+
+; ACF_BLOCK_RAM_AND_MLAB_EQUIVALENT_PAUSED_READ_CAPABILITIES ; DONT CARE                                                                                  ; Untyped ;
+; ACF_BLOCK_RAM_AND_MLAB_EQUIVALENT_POWER_UP_CONDITIONS      ; AUTO                                                                                       ; Untyped ;
+; ACF_DISABLE_MLAB_RAM_USE                                   ; FALSE                                                                                      ; Untyped ;
+; ACF_IMPLEMENT_MLAB_IN_16_BIT_DEEP_MODE                     ; FALSE                                                                                      ; Untyped ;
+; ADDRESS_ACLR_A                                             ; NONE                                                                                       ; Untyped ;
+; ADDRESS_ACLR_B                                             ; NONE                                                                                       ; Untyped ;
+; ADDRESS_REG_B                                              ; CLOCK0                                                                                     ; Untyped ;
+; BYTE_SIZE                                                  ; 8                                                                                          ; Untyped ;
+; BYTEENA_REG_B                                              ; CLOCK1                                                                                     ; Untyped ;
+; CLKEN_POWER_OPTIMIZATION                                   ; OFF                                                                                        ; Untyped ;
+; CLOCK_DUTY_CYCLE_DEPENDENCE                                ; AUTO                                                                                       ; Untyped ;
+; CLOCK_ENABLE_CORE_A                                        ; USE_INPUT_CLKEN                                                                            ; Untyped ;
+; CLOCK_ENABLE_CORE_B                                        ; USE_INPUT_CLKEN                                                                            ; Untyped ;
+; CLOCK_ENABLE_INPUT_A                                       ; NORMAL                                                                                     ; Untyped ;
+; CLOCK_ENABLE_INPUT_B                                       ; NORMAL                                                                                     ; Untyped ;
+; CLOCK_ENABLE_OUTPUT_A                                      ; NORMAL                                                                                     ; Untyped ;
+; CLOCK_ENABLE_OUTPUT_B                                      ; NORMAL                                                                                     ; Untyped ;
+; ECC_PIPELINE_STAGE_ENABLED                                 ; FALSE                                                                                      ; Untyped ;
+; ENABLE_COHERENT_READ                                       ; FALSE                                                                                      ; Untyped ;
+; ENABLE_ECC                                                 ; FALSE                                                                                      ; Untyped ;
+; ENABLE_ECC_ENCODER_BYPASS                                  ; FALSE                                                                                      ; Untyped ;
+; ENABLE_FORCE_TO_ZERO                                       ; FALSE                                                                                      ; Untyped ;
+; ENABLE_RUNTIME_MOD                                         ; NO                                                                                         ; Untyped ;
+; IMPLEMENT_IN_LES                                           ; OFF                                                                                        ; Untyped ;
+; INDATA_REG_B                                               ; CLOCK1                                                                                     ; Untyped ;
+; INIT_FILE                                                  ; qdb/_compiler/pifo/root_partition/25.3.1/partitioned/1/mifs/ram1_PifoMesh_a88d83e7.hdl.mif ; Untyped ;
+; INIT_FILE_LAYOUT                                           ; PORT_A                                                                                     ; Untyped ;
+; init_file_restructured                                     ; UNUSED                                                                                     ; Untyped ;
+; INSTANCE_NAME                                              ; UNUSED                                                                                     ; Untyped ;
+; LOW_POWER_MODE                                             ; AUTO                                                                                       ; Untyped ;
+; MAXIMUM_DEPTH                                              ; 0                                                                                          ; Untyped ;
+; NUMWORDS_A                                                 ; 8                                                                                          ; Untyped ;
+; NUMWORDS_B                                                 ; 8                                                                                          ; Untyped ;
+; OPERATION_MODE                                             ; DUAL_PORT                                                                                  ; Untyped ;
+; OPTIMIZATION_OPTION                                        ; AUTO                                                                                       ; Untyped ;
+; OUTDATA_ACLR_A                                             ; NONE                                                                                       ; Untyped ;
+; OUTDATA_ACLR_B                                             ; NONE                                                                                       ; Untyped ;
+; OUTDATA_REG_A                                              ; UNREGISTERED                                                                               ; Untyped ;
+; OUTDATA_REG_B                                              ; UNREGISTERED                                                                               ; Untyped ;
+; OUTDATA_SCLR_A                                             ; NONE                                                                                       ; Untyped ;
+; OUTDATA_SCLR_B                                             ; NONE                                                                                       ; Untyped ;
+; POWER_UP_UNINITIALIZED                                     ; FALSE                                                                                      ; Untyped ;
+; RAM_BLOCK_TYPE                                             ; AUTO                                                                                       ; Untyped ;
+; RDCONTROL_REG_B                                            ; CLOCK1                                                                                     ; Untyped ;
+; RDEN_POWER_OPTIMIZATION                                    ; OFF                                                                                        ; Untyped ;
+; READ_DURING_WRITE_MODE_MIXED_PORTS                         ; OLD_DATA                                                                                   ; Untyped ;
+; READ_DURING_WRITE_MODE_PORT_A                              ; NEW_DATA_NO_NBE_READ                                                                       ; Untyped ;
+; READ_DURING_WRITE_MODE_PORT_B                              ; NEW_DATA_NO_NBE_READ                                                                       ; Untyped ;
+; WIDTH_A                                                    ; 8                                                                                          ; Untyped ;
+; WIDTH_B                                                    ; 8                                                                                          ; Untyped ;
+; WIDTH_BYTEENA_A                                            ; 1                                                                                          ; Untyped ;
+; WIDTH_BYTEENA_B                                            ; 1                                                                                          ; Untyped ;
+; WIDTH_ECCENCPARITY                                         ; 8                                                                                          ; Untyped ;
+; WIDTH_ECCSTATUS                                            ; 3                                                                                          ; Untyped ;
+; WIDTHAD2_A                                                 ; 1                                                                                          ; Untyped ;
+; WIDTHAD2_B                                                 ; 1                                                                                          ; Untyped ;
+; WIDTHAD_A                                                  ; 3                                                                                          ; Untyped ;
+; WIDTHAD_B                                                  ; 3                                                                                          ; Untyped ;
+; WREN_POWER_OPTIMIZATION                                    ; OFF                                                                                        ; Untyped ;
+; CBXI_PARAMETER                                             ; altera_syncram_62af1                                                                       ; Untyped ;
+; INDATA_ACLR_A                                              ; NONE                                                                                       ; Untyped ;
+; WRCONTROL_ACLR_A                                           ; NONE                                                                                       ; Untyped ;
++------------------------------------------------------------+--------------------------------------------------------------------------------------------+---------+
+
+
++-------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+; Parameter Settings for Inferred Entity Instance: pifoEngines_0|enque_brain|engineCAM|ram_rtl_0                                                                    ;
++------------------------------------------------------------+--------------------------------------------------------------------------------------------+---------+
+; Parameter Name                                             ; Value                                                                                      ; Type    ;
++------------------------------------------------------------+--------------------------------------------------------------------------------------------+---------+
+; ACF_BLOCK_RAM_AND_MLAB_EQUIVALENT_PAUSED_READ_CAPABILITIES ; DONT CARE                                                                                  ; Untyped ;
+; ACF_BLOCK_RAM_AND_MLAB_EQUIVALENT_POWER_UP_CONDITIONS      ; AUTO                                                                                       ; Untyped ;
+; ACF_DISABLE_MLAB_RAM_USE                                   ; FALSE                                                                                      ; Untyped ;
+; ACF_IMPLEMENT_MLAB_IN_16_BIT_DEEP_MODE                     ; FALSE                                                                                      ; Untyped ;
+; ADDRESS_ACLR_A                                             ; NONE                                                                                       ; Untyped ;
+; ADDRESS_ACLR_B                                             ; NONE                                                                                       ; Untyped ;
+; ADDRESS_REG_B                                              ; CLOCK0                                                                                     ; Untyped ;
+; BYTE_SIZE                                                  ; 8                                                                                          ; Untyped ;
+; BYTEENA_REG_B                                              ; CLOCK1                                                                                     ; Untyped ;
+; CLKEN_POWER_OPTIMIZATION                                   ; OFF                                                                                        ; Untyped ;
+; CLOCK_DUTY_CYCLE_DEPENDENCE                                ; AUTO                                                                                       ; Untyped ;
+; CLOCK_ENABLE_CORE_A                                        ; USE_INPUT_CLKEN                                                                            ; Untyped ;
+; CLOCK_ENABLE_CORE_B                                        ; USE_INPUT_CLKEN                                                                            ; Untyped ;
+; CLOCK_ENABLE_INPUT_A                                       ; NORMAL                                                                                     ; Untyped ;
+; CLOCK_ENABLE_INPUT_B                                       ; NORMAL                                                                                     ; Untyped ;
+; CLOCK_ENABLE_OUTPUT_A                                      ; NORMAL                                                                                     ; Untyped ;
+; CLOCK_ENABLE_OUTPUT_B                                      ; NORMAL                                                                                     ; Untyped ;
+; ECC_PIPELINE_STAGE_ENABLED                                 ; FALSE                                                                                      ; Untyped ;
+; ENABLE_COHERENT_READ                                       ; FALSE                                                                                      ; Untyped ;
+; ENABLE_ECC                                                 ; FALSE                                                                                      ; Untyped ;
+; ENABLE_ECC_ENCODER_BYPASS                                  ; FALSE                                                                                      ; Untyped ;
+; ENABLE_FORCE_TO_ZERO                                       ; FALSE                                                                                      ; Untyped ;
+; ENABLE_RUNTIME_MOD                                         ; NO                                                                                         ; Untyped ;
+; IMPLEMENT_IN_LES                                           ; OFF                                                                                        ; Untyped ;
+; INDATA_REG_B                                               ; CLOCK1                                                                                     ; Untyped ;
+; INIT_FILE                                                  ; qdb/_compiler/pifo/root_partition/25.3.1/partitioned/1/mifs/ram2_PifoMesh_a88d83e7.hdl.mif ; Untyped ;
+; INIT_FILE_LAYOUT                                           ; PORT_A                                                                                     ; Untyped ;
+; init_file_restructured                                     ; UNUSED                                                                                     ; Untyped ;
+; INSTANCE_NAME                                              ; UNUSED                                                                                     ; Untyped ;
+; LOW_POWER_MODE                                             ; AUTO                                                                                       ; Untyped ;
+; MAXIMUM_DEPTH                                              ; 0                                                                                          ; Untyped ;
+; NUMWORDS_A                                                 ; 128                                                                                        ; Untyped ;
+; NUMWORDS_B                                                 ; 128                                                                                        ; Untyped ;
+; OPERATION_MODE                                             ; DUAL_PORT                                                                                  ; Untyped ;
+; OPTIMIZATION_OPTION                                        ; AUTO                                                                                       ; Untyped ;
+; OUTDATA_ACLR_A                                             ; NONE                                                                                       ; Untyped ;
+; OUTDATA_ACLR_B                                             ; NONE                                                                                       ; Untyped ;
+; OUTDATA_REG_A                                              ; UNREGISTERED                                                                               ; Untyped ;
+; OUTDATA_REG_B                                              ; UNREGISTERED                                                                               ; Untyped ;
+; OUTDATA_SCLR_A                                             ; NONE                                                                                       ; Untyped ;
+; OUTDATA_SCLR_B                                             ; NONE                                                                                       ; Untyped ;
+; POWER_UP_UNINITIALIZED                                     ; FALSE                                                                                      ; Untyped ;
+; RAM_BLOCK_TYPE                                             ; AUTO                                                                                       ; Untyped ;
+; RDCONTROL_REG_B                                            ; CLOCK1                                                                                     ; Untyped ;
+; RDEN_POWER_OPTIMIZATION                                    ; OFF                                                                                        ; Untyped ;
+; READ_DURING_WRITE_MODE_MIXED_PORTS                         ; OLD_DATA                                                                                   ; Untyped ;
+; READ_DURING_WRITE_MODE_PORT_A                              ; NEW_DATA_NO_NBE_READ                                                                       ; Untyped ;
+; READ_DURING_WRITE_MODE_PORT_B                              ; NEW_DATA_NO_NBE_READ                                                                       ; Untyped ;
+; WIDTH_A                                                    ; 32                                                                                         ; Untyped ;
+; WIDTH_B                                                    ; 32                                                                                         ; Untyped ;
+; WIDTH_BYTEENA_A                                            ; 1                                                                                          ; Untyped ;
+; WIDTH_BYTEENA_B                                            ; 1                                                                                          ; Untyped ;
+; WIDTH_ECCENCPARITY                                         ; 8                                                                                          ; Untyped ;
+; WIDTH_ECCSTATUS                                            ; 3                                                                                          ; Untyped ;
+; WIDTHAD2_A                                                 ; 1                                                                                          ; Untyped ;
+; WIDTHAD2_B                                                 ; 1                                                                                          ; Untyped ;
+; WIDTHAD_A                                                  ; 7                                                                                          ; Untyped ;
+; WIDTHAD_B                                                  ; 7                                                                                          ; Untyped ;
+; WREN_POWER_OPTIMIZATION                                    ; OFF                                                                                        ; Untyped ;
+; CBXI_PARAMETER                                             ; altera_syncram_dtnv                                                                        ; Untyped ;
+; INDATA_ACLR_A                                              ; NONE                                                                                       ; Untyped ;
+; WRCONTROL_ACLR_A                                           ; NONE                                                                                       ; Untyped ;
++------------------------------------------------------------+--------------------------------------------------------------------------------------------+---------+
+
+
++-------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+; Parameter Settings for Inferred Entity Instance: pifoEngines_0|enque_brain|brainStateMem|ram_rtl_0                                                                ;
++------------------------------------------------------------+--------------------------------------------------------------------------------------------+---------+
+; Parameter Name                                             ; Value                                                                                      ; Type    ;
++------------------------------------------------------------+--------------------------------------------------------------------------------------------+---------+
+; ACF_BLOCK_RAM_AND_MLAB_EQUIVALENT_PAUSED_READ_CAPABILITIES ; DONT CARE                                                                                  ; Untyped ;
+; ACF_BLOCK_RAM_AND_MLAB_EQUIVALENT_POWER_UP_CONDITIONS      ; AUTO                                                                                       ; Untyped ;
+; ACF_DISABLE_MLAB_RAM_USE                                   ; FALSE                                                                                      ; Untyped ;
+; ACF_IMPLEMENT_MLAB_IN_16_BIT_DEEP_MODE                     ; FALSE                                                                                      ; Untyped ;
+; ADDRESS_ACLR_A                                             ; NONE                                                                                       ; Untyped ;
+; ADDRESS_ACLR_B                                             ; NONE                                                                                       ; Untyped ;
+; ADDRESS_REG_B                                              ; CLOCK0                                                                                     ; Untyped ;
+; BYTE_SIZE                                                  ; 8                                                                                          ; Untyped ;
+; BYTEENA_REG_B                                              ; CLOCK1                                                                                     ; Untyped ;
+; CLKEN_POWER_OPTIMIZATION                                   ; OFF                                                                                        ; Untyped ;
+; CLOCK_DUTY_CYCLE_DEPENDENCE                                ; AUTO                                                                                       ; Untyped ;
+; CLOCK_ENABLE_CORE_A                                        ; USE_INPUT_CLKEN                                                                            ; Untyped ;
+; CLOCK_ENABLE_CORE_B                                        ; USE_INPUT_CLKEN                                                                            ; Untyped ;
+; CLOCK_ENABLE_INPUT_A                                       ; NORMAL                                                                                     ; Untyped ;
+; CLOCK_ENABLE_INPUT_B                                       ; NORMAL                                                                                     ; Untyped ;
+; CLOCK_ENABLE_OUTPUT_A                                      ; NORMAL                                                                                     ; Untyped ;
+; CLOCK_ENABLE_OUTPUT_B                                      ; NORMAL                                                                                     ; Untyped ;
+; ECC_PIPELINE_STAGE_ENABLED                                 ; FALSE                                                                                      ; Untyped ;
+; ENABLE_COHERENT_READ                                       ; FALSE                                                                                      ; Untyped ;
+; ENABLE_ECC                                                 ; FALSE                                                                                      ; Untyped ;
+; ENABLE_ECC_ENCODER_BYPASS                                  ; FALSE                                                                                      ; Untyped ;
+; ENABLE_FORCE_TO_ZERO                                       ; FALSE                                                                                      ; Untyped ;
+; ENABLE_RUNTIME_MOD                                         ; NO                                                                                         ; Untyped ;
+; IMPLEMENT_IN_LES                                           ; OFF                                                                                        ; Untyped ;
+; INDATA_REG_B                                               ; CLOCK1                                                                                     ; Untyped ;
+; INIT_FILE                                                  ; qdb/_compiler/pifo/root_partition/25.3.1/partitioned/1/mifs/ram3_PifoMesh_a88d83e7.hdl.mif ; Untyped ;
+; INIT_FILE_LAYOUT                                           ; PORT_A                                                                                     ; Untyped ;
+; init_file_restructured                                     ; UNUSED                                                                                     ; Untyped ;
+; INSTANCE_NAME                                              ; UNUSED                                                                                     ; Untyped ;
+; LOW_POWER_MODE                                             ; AUTO                                                                                       ; Untyped ;
+; MAXIMUM_DEPTH                                              ; 0                                                                                          ; Untyped ;
+; NUMWORDS_A                                                 ; 8                                                                                          ; Untyped ;
+; NUMWORDS_B                                                 ; 8                                                                                          ; Untyped ;
+; OPERATION_MODE                                             ; DUAL_PORT                                                                                  ; Untyped ;
+; OPTIMIZATION_OPTION                                        ; AUTO                                                                                       ; Untyped ;
+; OUTDATA_ACLR_A                                             ; NONE                                                                                       ; Untyped ;
+; OUTDATA_ACLR_B                                             ; NONE                                                                                       ; Untyped ;
+; OUTDATA_REG_A                                              ; UNREGISTERED                                                                               ; Untyped ;
+; OUTDATA_REG_B                                              ; UNREGISTERED                                                                               ; Untyped ;
+; OUTDATA_SCLR_A                                             ; NONE                                                                                       ; Untyped ;
+; OUTDATA_SCLR_B                                             ; NONE                                                                                       ; Untyped ;
+; POWER_UP_UNINITIALIZED                                     ; FALSE                                                                                      ; Untyped ;
+; RAM_BLOCK_TYPE                                             ; AUTO                                                                                       ; Untyped ;
+; RDCONTROL_REG_B                                            ; CLOCK1                                                                                     ; Untyped ;
+; RDEN_POWER_OPTIMIZATION                                    ; OFF                                                                                        ; Untyped ;
+; READ_DURING_WRITE_MODE_MIXED_PORTS                         ; OLD_DATA                                                                                   ; Untyped ;
+; READ_DURING_WRITE_MODE_PORT_A                              ; NEW_DATA_NO_NBE_READ                                                                       ; Untyped ;
+; READ_DURING_WRITE_MODE_PORT_B                              ; NEW_DATA_NO_NBE_READ                                                                       ; Untyped ;
+; WIDTH_A                                                    ; 32                                                                                         ; Untyped ;
+; WIDTH_B                                                    ; 32                                                                                         ; Untyped ;
+; WIDTH_BYTEENA_A                                            ; 1                                                                                          ; Untyped ;
+; WIDTH_BYTEENA_B                                            ; 1                                                                                          ; Untyped ;
+; WIDTH_ECCENCPARITY                                         ; 8                                                                                          ; Untyped ;
+; WIDTH_ECCSTATUS                                            ; 3                                                                                          ; Untyped ;
+; WIDTHAD2_A                                                 ; 1                                                                                          ; Untyped ;
+; WIDTHAD2_B                                                 ; 1                                                                                          ; Untyped ;
+; WIDTHAD_A                                                  ; 3                                                                                          ; Untyped ;
+; WIDTHAD_B                                                  ; 3                                                                                          ; Untyped ;
+; WREN_POWER_OPTIMIZATION                                    ; OFF                                                                                        ; Untyped ;
+; CBXI_PARAMETER                                             ; altera_syncram_4kje1                                                                       ; Untyped ;
+; INDATA_ACLR_A                                              ; NONE                                                                                       ; Untyped ;
+; WRCONTROL_ACLR_A                                           ; NONE                                                                                       ; Untyped ;
++------------------------------------------------------------+--------------------------------------------------------------------------------------------+---------+
+
+
++------------------------------------------------------------------+
+; Post-Synthesis Netlist Statistics for Partition "root_partition" ;
++------------------------+-----------------------------------------+
+; Type                   ; Count                                   ;
++------------------------+-----------------------------------------+
+; boundary_port          ; 124                                     ;
+; tennm_ff               ; 318                                     ;
+;     CLR                ; 58                                      ;
+;     ENA                ; 237                                     ;
+;     ENA CLR            ; 12                                      ;
+;     plain              ; 11                                      ;
+; tennm_lcell_comb       ; 375                                     ;
+;     arith              ; 9                                       ;
+;         0 data inputs  ; 1                                       ;
+;         2 data inputs  ; 4                                       ;
+;         4 data inputs  ; 4                                       ;
+;     extend             ; 44                                      ;
+;         7 data inputs  ; 13                                      ;
+;         8 data inputs  ; 31                                      ;
+;     normal             ; 322                                     ;
+;         0 data inputs  ; 2                                       ;
+;         1 data inputs  ; 12                                      ;
+;         2 data inputs  ; 23                                      ;
+;         3 data inputs  ; 51                                      ;
+;         4 data inputs  ; 49                                      ;
+;         5 data inputs  ; 87                                      ;
+;         6 data inputs  ; 98                                      ;
+; tennm_ram_block        ; 46                                      ;
+;                        ;                                         ;
+; Number of carry chains ; 1                                       ;
+; Max carry chain length ; 9                                       ;
+;                        ;                                         ;
+; Max LUT depth          ; 6.80                                    ;
+; Average LUT depth      ; 3.05                                    ;
++------------------------+-----------------------------------------+
+
+
++-----------------------------------------------------------------+
+; Synthesis Resource Usage Summary for Partition "root_partition" ;
++---------------------------------------------+-------------------+
+; Resource                                    ; Usage             ;
++---------------------------------------------+-------------------+
+; Estimate of Logic utilization (ALMs needed) ; 191               ;
+;                                             ;                   ;
+; Combinational ALUT usage for logic          ; 375               ;
+;     -- 8 input functions                    ; 31                ;
+;     -- 7 input functions                    ; 13                ;
+;     -- 6 input functions                    ; 98                ;
+;     -- 5 input functions                    ; 87                ;
+;     -- 4 input functions                    ; 53                ;
+;     -- <=3 input functions                  ; 93                ;
+;                                             ;                   ;
+; Dedicated logic registers                   ; 318               ;
+;                                             ;                   ;
+; I/O pins                                    ; 124               ;
+; Total MLAB memory bits                      ; 0                 ;
+; Total block memory bits                     ; 1736              ;
+;                                             ;                   ;
+; Total DSP Blocks                            ; 0                 ;
+;     -- [A] Total Fixed Point DSP Blocks     ; 0                 ;
+;     -- [B] Total Floating Point DSP Blocks  ; 0                 ;
+;                                             ;                   ;
+; Maximum fan-out node                        ; clk               ;
+; Maximum fan-out                             ; 364               ;
+; Total fan-out                               ; 3283              ;
+; Average fan-out                             ; 3.80              ;
++---------------------------------------------+-------------------+
+
+
++----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+; Synthesis RAM Summary for Partition "root_partition"                                                                                                                                                                                                                                                                                                                                                                                                     ;
++----------------------------------------------------------------------------------------------------------+------+------------------+--------------+--------------+--------------+--------------+--------------+-----------------------------+-----------------------------+-----------------------------+-----------------------------+---------------------+--------------------------------------------------------------------------------------------+
+; Name                                                                                                     ; Type ; Mode             ; Port A Depth ; Port A Width ; Port B Depth ; Port B Width ; Logical Size ; Implementation Port A Depth ; Implementation Port A Width ; Implementation Port B Depth ; Implementation Port B Width ; Implementation Bits ; MIF                                                                                        ;
++----------------------------------------------------------------------------------------------------------+------+------------------+--------------+--------------+--------------+--------------+--------------+-----------------------------+-----------------------------+-----------------------------+-----------------------------+---------------------+--------------------------------------------------------------------------------------------+
+; io_controlRequest_fifo|logic_ram_rtl_0|auto_generated|altera_syncram_impl1|ALTERA_SYNCRAM                ; AUTO ; Simple Dual Port ; 4            ; 42           ; 4            ; 42           ; 168          ; 4                           ; 18                          ; 4                           ; 18                          ; 72                  ; None                                                                                       ;
+; pifoEngines_0|deque_dequeMapper|ram_rtl_0|auto_generated|altera_syncram_impl1|ALTERA_SYNCRAM             ; AUTO ; Simple Dual Port ; 128          ; 4            ; 128          ; 4            ; 512          ; 128                         ; 4                           ; 128                         ; 4                           ; 512                 ; qdb/_compiler/pifo/root_partition/25.3.1/partitioned/1/mifs/ram0_PifoMesh_a88d83e7.hdl.mif ;
+; pifoEngines_0|enque_brain|brainStateMem|ram_rtl_0|auto_generated|altera_syncram_impl1|ALTERA_SYNCRAM     ; AUTO ; Simple Dual Port ; 8            ; 32           ; 8            ; 32           ; 256          ; 8                           ; 8                           ; 8                           ; 8                           ; 64                  ; qdb/_compiler/pifo/root_partition/25.3.1/partitioned/1/mifs/ram3_PifoMesh_a88d83e7.hdl.mif ;
+; pifoEngines_0|enque_brain|engineCAM|ram_rtl_0|auto_generated|altera_syncram_impl1|ALTERA_SYNCRAM         ; AUTO ; Simple Dual Port ; 128          ; 32           ; 128          ; 32           ; 4096         ; 128                         ; 8                           ; 128                         ; 8                           ; 1024                ; qdb/_compiler/pifo/root_partition/25.3.1/partitioned/1/mifs/ram2_PifoMesh_a88d83e7.hdl.mif ;
+; pifoEngines_0|enque_brain|lastVirtualMapper|ram_rtl_0|auto_generated|altera_syncram_impl1|ALTERA_SYNCRAM ; AUTO ; Simple Dual Port ; 8            ; 8            ; 8            ; 8            ; 64           ; 8                           ; 8                           ; 8                           ; 8                           ; 64                  ; qdb/_compiler/pifo/root_partition/25.3.1/partitioned/1/mifs/ram1_PifoMesh_a88d83e7.hdl.mif ;
++----------------------------------------------------------------------------------------------------------+------+------------------+--------------+--------------+--------------+--------------+--------------+-----------------------------+-----------------------------+-----------------------------+-----------------------------+---------------------+--------------------------------------------------------------------------------------------+
+Note: Logical size represents the size at the time of creation, implementation bits is the size at the end of synthesis. If the number of implementation bits is smaller, some slices have optimized away because they have become redundant.
+
+
++-----------------------------------------------------------------------------------------------------------------------------------------+
+; Warnings for rtl/PifoMesh.v                                                                                                             ;
++-----------------+----------+-------+----------------------------------------------------------------------------------------------------+
+; Message ID      ; Severity ; Count ; Sample Warning                                                                                     ;
++-----------------+----------+-------+----------------------------------------------------------------------------------------------------+
+; 13024:13410     ; Warning  ; 5     ; Output pins are stuck at VCC or GND : Pin "io_commitReady" is stuck at VCC                         ;
+;     13024:13410 ;          ;       ; Output pins are stuck at VCC or GND : Pin "io_commitReady" is stuck at VCC                         ;
+;     13024:13410 ;          ;       ; Output pins are stuck at VCC or GND : Pin "io_pifo_0_push2_payload_data[0..3]" is stuck at GND     ;
+;     13024:13410 ;          ;       ; Output pins are stuck at VCC or GND : Pin "io_pifo_0_push2_payload_port[0..2]" is stuck at GND     ;
+;     13024:13410 ;          ;       ; Output pins are stuck at VCC or GND : Pin "io_pifo_0_push2_payload_priority[0..7]" is stuck at GND ;
+;     13024:13410 ;          ;       ; Output pins are stuck at VCC or GND : Pin "io_pifo_0_push2_valid" is stuck at GND                  ;
++-----------------+----------+-------+----------------------------------------------------------------------------------------------------+
+
+
++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+; General Warnings                                                                                                                                                                                                                                                                                                         ;
++-------------+------------------+-------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+; Message ID  ; Severity         ; Count ; Sample Warning                                                                                                                                                                                                                                                                  ;
++-------------+------------------+-------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+; 20759       ; Critical Warning ; 1     ; Use the Reset Release IP in Agilex 7 designs to ensure a successful configuration. For more information about the Reset Release IP, refer to the Configuration User Guide.                                                                                                      ;
+; 14284:25637 ; Warning          ; 1     ; Synthesized away the following node(s): : Synthesized away 72 node(s) of type RAM. See "Registers Removed during Synthesis" report for more details.                                                                                                                            ;
+; 21620       ; Warning          ; 1     ; Design Assistant Results: 1 of 1 High severity rules issued violations in snapshot 'partitioned'. Please refer to DRC report '/home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/output_files/pifo.drc.partitioned.rpt' for more information ;
+; 23762       ; Warning          ; 1     ; Hierarchies were optimized away during sweep. For details, refer to " Hierarchies Optimized Away During Sweep " report.                                                                                                                                                         ;
++-------------+------------------+-------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+
++--------------------+
+; Synthesis Messages ;
++--------------------+
+Info (22747): Value AUTO_DISCOVERY for QSF Assignment PWRMGT_VOLTAGE_OUTPUT_FORMAT is not supported. Hence changing the value to LINEAR_FORMAT
+Info: *******************************************************************
+Info: Running Quartus Prime Synthesis
+    Info: Version 25.3.1 Build 100 12/19/2025 SC Pro Edition
+    Info: Copyright (C) 2025  Altera Corporation. All rights reserved.
+    Info: Your use of Altera Corporation's design tools, logic functions 
+    Info: and other software and tools, and any partner logic 
+    Info: functions, and any output files from any of the foregoing 
+    Info: (including device programming or simulation files), and any 
+    Info: associated documentation or information are expressly subject 
+    Info: to the terms and conditions of the Altera Program License 
+    Info: Subscription Agreement, the Altera Quartus Prime License Agreement,
+    Info: the Altera IP License Agreement, or other applicable license
+    Info: agreement, including, without limitation, that your use is for
+    Info: the sole purpose of programming logic devices manufactured by
+    Info: Altera and sold by Altera or its authorized distributors.  Please
+    Info: refer to the Altera Software License Subscription Agreements 
+    Info: on the Quartus Prime software download page.
+    Info: Processing started: Sun Sep  6 22:52:47 2026
+    Info: System process ID: 290739
+Info: Command: quartus_syn pifo
+Info: qis_default_flow_script.tcl version: #2
+Info: Initializing Synthesis...
+Info: Project = "pifo"
+Info: Revision = "pifo"
+Info (21958): Initialized Quartus Message Database
+Info: Analyzing source files
+Critical Warning (20759): Use the Reset Release IP in Agilex 7 designs to ensure a successful configuration. For more information about the Reset Release IP, refer to the Configuration User Guide.
+Info: Elaborating from top-level entity "PifoMesh"
+Info (22567): Verilog HDL info at PifoMesh.v(5155): extracting RAM for identifier 'logic_ram' File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/rtl/PifoMesh.v Line: 5155
+Info (22567): Verilog HDL info at PifoMesh.v(3598): extracting RAM for identifier 'ram' File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/rtl/PifoMesh.v Line: 3598
+Info (25395): Verilog HDL info at PifoMesh.v(3602): readmemb: reading from file 'PifoMesh.v_toplevel_pifoEngines_0_enque_enqueMapper_ram.bin' File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/rtl/PifoMesh.v Line: 3602
+Info (22567): Verilog HDL info at PifoMesh.v(5008): extracting RAM for identifier 'logic_ram' File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/rtl/PifoMesh.v Line: 5008
+Info (22567): Verilog HDL info at PifoMesh.v(4803): extracting RAM for identifier 'ram' File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/rtl/PifoMesh.v Line: 4803
+Info (25395): Verilog HDL info at PifoMesh.v(4808): readmemb: reading from file 'PifoMesh.v_toplevel_pifoEngines_0_enque_brain_engineMapper_ram.bin' File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/rtl/PifoMesh.v Line: 4808
+Info (22567): Verilog HDL info at PifoMesh.v(4750): extracting RAM for identifier 'ram' File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/rtl/PifoMesh.v Line: 4750
+Info (25395): Verilog HDL info at PifoMesh.v(4755): readmemb: reading from file 'PifoMesh.v_toplevel_pifoEngines_0_enque_brain_lastVirtualMapper_ram.bin' File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/rtl/PifoMesh.v Line: 4755
+Info (22567): Verilog HDL info at PifoMesh.v(4697): extracting RAM for identifier 'ram' File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/rtl/PifoMesh.v Line: 4697
+Info (25395): Verilog HDL info at PifoMesh.v(4702): readmemb: reading from file 'PifoMesh.v_toplevel_pifoEngines_0_enque_brain_engineCAM_ram.bin' File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/rtl/PifoMesh.v Line: 4702
+Info (22567): Verilog HDL info at PifoMesh.v(5950): extracting RAM for identifier 'logic_ram' File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/rtl/PifoMesh.v Line: 5950
+Info (22567): Verilog HDL info at PifoMesh.v(4526): extracting RAM for identifier 'ram' File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/rtl/PifoMesh.v Line: 4526
+Info (25395): Verilog HDL info at PifoMesh.v(4531): readmemb: reading from file 'PifoMesh.v_toplevel_pifoEngines_0_enque_brain_brainStateMem_ram.bin' File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/rtl/PifoMesh.v Line: 4531
+Info (22567): Verilog HDL info at PifoMesh.v(5805): extracting RAM for identifier 'logic_ram' File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/rtl/PifoMesh.v Line: 5805
+Info (22567): Verilog HDL info at PifoMesh.v(5671): extracting RAM for identifier 'logic_ram' File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/rtl/PifoMesh.v Line: 5671
+Info (22567): Verilog HDL info at PifoMesh.v(5543): extracting RAM for identifier 'logic_ram' File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/rtl/PifoMesh.v Line: 5543
+Info (22567): Verilog HDL info at PifoMesh.v(5413): extracting RAM for identifier 'logic_ram' File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/rtl/PifoMesh.v Line: 5413
+Info (22567): Verilog HDL info at PifoMesh.v(5274): extracting RAM for identifier 'logic_ram' File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/rtl/PifoMesh.v Line: 5274
+Info (22567): Verilog HDL info at PifoMesh.v(2433): extracting RAM for identifier 'ram' File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/rtl/PifoMesh.v Line: 2433
+Info (25395): Verilog HDL info at PifoMesh.v(2437): readmemb: reading from file 'PifoMesh.v_toplevel_pifoEngines_0_deque_dequeMapper_ram.bin' File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/rtl/PifoMesh.v Line: 2437
+Info (22567): Verilog HDL info at PifoMesh.v(3927): extracting RAM for identifier 'logic_ram' File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/rtl/PifoMesh.v Line: 3927
+Info (22567): Verilog HDL info at PifoMesh.v(453): extracting RAM for identifier 'logic_ram' File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/rtl/PifoMesh.v Line: 453
+Info: Found 40 design entities
+Info: There are 46 partitions after elaboration.
+Info: DA report generation in native DNI mode
+Info (21615): Running Design Assistant Rules for snapshot 'partitioned'
+Info: No waiver waived any violations
+Info (22360): Design Assistant Results: 8 of 10 enabled rules passed, and 1 rules was disabled, in snapshot 'partitioned'
+Warning (21620): Design Assistant Results: 1 of 1 High severity rules issued violations in snapshot 'partitioned'. Please refer to DRC report '/home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/output_files/pifo.drc.partitioned.rpt' for more information
+Info (21621): Design Assistant Results: 1 of 1 Medium severity rules issued violations in snapshot 'partitioned'. Please refer to DRC report '/home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/output_files/pifo.drc.partitioned.rpt' for more information
+Info (21622): Design Assistant Results: 0 of 8 Low severity rules issued violations in snapshot 'partitioned'
+Warning (23762): Hierarchies were optimized away during sweep. For details, refer to " Hierarchies Optimized Away During Sweep " report.
+Info: Synthesizing partition "root_partition"
+Info (276014): Found 4 instances of uninferred RAM logic
+    Info (276004): RAM logic "pifoEngines_0|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram" is uninferred due to inappropriate RAM size File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/rtl/PifoMesh.v Line: 5950
+    Info (276004): RAM logic "pifoEngines_0|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram" is uninferred due to inappropriate RAM size File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/rtl/PifoMesh.v Line: 5805
+    Info (276004): RAM logic "pifoEngines_0|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram" is uninferred due to inappropriate RAM size File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/rtl/PifoMesh.v Line: 5543
+    Info (276004): RAM logic "pifoEngines_0|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram" is uninferred due to inappropriate RAM size File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/rtl/PifoMesh.v Line: 5543
+Info (19000): Inferred 5 megafunctions from design logic
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "io_controlRequest_fifo|logic_ram_rtl_0"  File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/rtl/PifoMesh.v Line: 453
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 42
+        Info (286033): Parameter WIDTHAD_A set to 2
+        Info (286033): Parameter NUMWORDS_A set to 4
+        Info (286033): Parameter WIDTH_B set to 42
+        Info (286033): Parameter WIDTHAD_B set to 2
+        Info (286033): Parameter NUMWORDS_B set to 4
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to NONE
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+        Info (286033): Parameter READ_DURING_WRITE_MODE_MIXED_PORTS set to OLD_DATA
+        Info (286033): Parameter RDCONTROL_REG_B set to CLOCK0
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "pifoEngines_0|deque_dequeMapper|ram_rtl_0"  File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/rtl/PifoMesh.v Line: 2433
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 4
+        Info (286033): Parameter WIDTHAD_A set to 7
+        Info (286033): Parameter NUMWORDS_A set to 128
+        Info (286033): Parameter WIDTH_B set to 4
+        Info (286033): Parameter WIDTHAD_B set to 7
+        Info (286033): Parameter NUMWORDS_B set to 128
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to NONE
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+        Info (286033): Parameter INIT_FILE set to qdb/_compiler/pifo/root_partition/25.3.1/partitioned/1/mifs/ram0_PifoMesh_a88d83e7.hdl.mif
+        Info (286033): Parameter READ_DURING_WRITE_MODE_MIXED_PORTS set to OLD_DATA
+        Info (286033): Parameter RDCONTROL_REG_B set to CLOCK0
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "pifoEngines_0|enque_brain|lastVirtualMapper|ram_rtl_0"  File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/rtl/PifoMesh.v Line: 4750
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 8
+        Info (286033): Parameter WIDTHAD_A set to 3
+        Info (286033): Parameter NUMWORDS_A set to 8
+        Info (286033): Parameter WIDTH_B set to 8
+        Info (286033): Parameter WIDTHAD_B set to 3
+        Info (286033): Parameter NUMWORDS_B set to 8
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to NONE
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+        Info (286033): Parameter INIT_FILE set to qdb/_compiler/pifo/root_partition/25.3.1/partitioned/1/mifs/ram1_PifoMesh_a88d83e7.hdl.mif
+        Info (286033): Parameter READ_DURING_WRITE_MODE_MIXED_PORTS set to OLD_DATA
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "pifoEngines_0|enque_brain|engineCAM|ram_rtl_0"  File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/rtl/PifoMesh.v Line: 4697
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 32
+        Info (286033): Parameter WIDTHAD_A set to 7
+        Info (286033): Parameter NUMWORDS_A set to 128
+        Info (286033): Parameter WIDTH_B set to 32
+        Info (286033): Parameter WIDTHAD_B set to 7
+        Info (286033): Parameter NUMWORDS_B set to 128
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to NONE
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+        Info (286033): Parameter INIT_FILE set to qdb/_compiler/pifo/root_partition/25.3.1/partitioned/1/mifs/ram2_PifoMesh_a88d83e7.hdl.mif
+        Info (286033): Parameter READ_DURING_WRITE_MODE_MIXED_PORTS set to OLD_DATA
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "pifoEngines_0|enque_brain|brainStateMem|ram_rtl_0"  File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/rtl/PifoMesh.v Line: 4526
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 32
+        Info (286033): Parameter WIDTHAD_A set to 3
+        Info (286033): Parameter NUMWORDS_A set to 8
+        Info (286033): Parameter WIDTH_B set to 32
+        Info (286033): Parameter WIDTHAD_B set to 3
+        Info (286033): Parameter NUMWORDS_B set to 8
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to NONE
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+        Info (286033): Parameter INIT_FILE set to qdb/_compiler/pifo/root_partition/25.3.1/partitioned/1/mifs/ram3_PifoMesh_a88d83e7.hdl.mif
+        Info (286033): Parameter READ_DURING_WRITE_MODE_MIXED_PORTS set to OLD_DATA
+Warning (14284): Synthesized away the following node(s):
+    Warning (25637): Synthesized away 72 node(s) of type RAM. See "Registers Removed during Synthesis" report for more details.
+Warning (13024): Output pins are stuck at VCC or GND
+    Warning (13410): Pin "io_commitReady" is stuck at VCC File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/rtl/PifoMesh.v Line: 27
+    Warning (13410): Pin "io_pifo_0_push2_payload_data[0..3]" is stuck at GND File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/rtl/PifoMesh.v Line: 34
+    Warning (13410): Pin "io_pifo_0_push2_payload_port[0..2]" is stuck at GND File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/rtl/PifoMesh.v Line: 35
+    Warning (13410): Pin "io_pifo_0_push2_payload_priority[0..7]" is stuck at GND File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/rtl/PifoMesh.v Line: 33
+    Warning (13410): Pin "io_pifo_0_push2_valid" is stuck at GND File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/rtl/PifoMesh.v Line: 32
+Info (17049): 158 registers lost all their fanouts during netlist optimizations.
+Info (21057): Implemented 782 device resources after synthesis - the final resource count might be different
+    Info (21058): Implemented 79 input pins
+    Info (21059): Implemented 45 output pins
+    Info (21061): Implemented 612 logic cells
+    Info (21064): Implemented 46 RAM segments
+Info: Successfully synthesized partition
+Info: Saving post-synthesis snapshots for 1 partition(s)
+Info (21615): Running Design Assistant Rules for snapshot 'synthesized'
+Info: No waiver waived any violations
+Info (22360): Design Assistant Results: 12 of 13 enabled rules passed, and 7 rules was disabled, in snapshot 'synthesized'
+Info (21661): Design Assistant Results: 0 of 1 High severity rules issued violations in snapshot 'synthesized'
+Info (21621): Design Assistant Results: 1 of 6 Medium severity rules issued violations in snapshot 'synthesized'. Please refer to DRC report '/home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-boundary-static-smoke/output_files/pifo.drc.synthesized.rpt' for more information
+Info (21622): Design Assistant Results: 0 of 6 Low severity rules issued violations in snapshot 'synthesized'
+Info: Quartus Prime Synthesis was successful. 0 errors, 9 warnings
+    Info: Peak virtual memory: 2813 megabytes
+    Info: Processing ended: Sun Sep  6 22:52:58 2026
+    Info: Elapsed time: 00:00:11
+    Info: System process ID: 290739
+
+

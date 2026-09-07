@@ -1,0 +1,23 @@
+{
+  "build_root": "/data/work/rio-synthesis/hardware-overhead",
+  "jobs": 8,
+  "selected_vflows": [
+    32,
+    64,
+    128,
+    256,
+    512
+  ],
+  "adopt_running": true,
+  "started_at_utc": "2026-09-07T02:34:14Z",
+  "argv": [
+    "hw/python/pifo_hardware_overhead_r2.py",
+    "--build-root",
+    "/data/work/rio-synthesis/hardware-overhead",
+    "--only-vflows",
+    "32,64,128,256,512",
+    "--jobs",
+    "8",
+    "--adopt-running"
+  ]
+}

@@ -1,0 +1,25 @@
+Running /data/work/vivado/2025.2/Vivado/bin/vivado -version
+  log: /data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-static-vivado/vivado-version.txt
+Running /data/work/vivado/2025.2/Vivado/bin/vivado -mode batch -nojournal -log /data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-static-vivado/vivado.log -source /home/zg366/packet-scheduling/pifo-hardware/synthesis/vivado_synth.tcl -tclargs /data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-static-vivado xcku5p-ffvb676-2-e 8 10.0 0 RuntimeOptimized 1
+  log: /data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-static-vivado/synthesis.log
+Processing XDC Constraints
+Initializing timing engine
+Parsing XDC File [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-static-vivado/pifo.xdc]
+Finished Parsing XDC File [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-static-vivado/pifo.xdc]
+Completed Processing XDC Constraints
+
+Netlist sorting complete. Time (s): cpu = 00:00:00.01 ; elapsed = 00:00:00.01 . Memory (MB): peak = 3088.641 ; gain = 0.000 ; free physical = 184526 ; free virtual = 205536
+INFO: [Project 1-111] Unisim Transformation Summary:
+No Unisim elements were transformed.
+
+Constraint Validation Runtime : Time (s): cpu = 00:00:00.22 ; elapsed = 00:00:00.11 . Memory (MB): peak = 3088.676 ; gain = 0.000 ; free physical = 184514 ; free virtual = 205524
+can't rename to "rt::pifo_device_capacity_check": command already exists
+INFO: [Common 17-83] Releasing license: Synthesis
+180 Infos, 97 Warnings, 0 Critical Warnings and 1 Errors encountered.
+synth_design failed
+synth_design: Time (s): cpu = 00:00:28 ; elapsed = 00:00:29 . Memory (MB): peak = 3088.676 ; gain = 1505.352 ; free physical = 184065 ; free virtual = 205090
+INFO: [Common 17-2834] synth_design peak Physical Memory [PSS] (MB): overall = 2449.627; main = 2165.177; forked = 293.608
+INFO: [Common 17-2834] synth_design peak Virtual Memory [VSS] (MB): overall = 4075.301; main = 3088.645; forked = 986.656
+ERROR: [Common 17-69] Command failed: Vivado Synthesis failed
+INFO: [Common 17-206] Exiting Vivado at Sun Sep  6 22:54:13 2026...
+Command '[PosixPath('/data/work/vivado/2025.2/Vivado/bin/vivado'), '-mode', 'batch', '-nojournal', '-log', PosixPath('/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-static-vivado/vivado.log'), '-source', PosixPath('/home/zg366/packet-scheduling/pifo-hardware/synthesis/vivado_synth.tcl'), '-tclargs', PosixPath('/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-static-vivado'), 'xcku5p-ffvb676-2-e', '8', '10.0', '0', 'RuntimeOptimized', '1']' returned non-zero exit status 1.

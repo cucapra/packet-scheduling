@@ -1,0 +1,104 @@
+
+****** Vivado v2025.2 (64-bit)
+  **** SW Build 6299465 on Fri Nov 14 12:34:56 MST 2025
+  **** IP Build 6300035 on Fri Nov 14 10:48:45 MST 2025
+  **** SharedData Build 6298862 on Thu Nov 13 04:50:51 MST 2025
+  **** Start of session at: Sun Sep  6 22:32:35 2026
+    ** Copyright 1986-2022 Xilinx, Inc. All Rights Reserved.
+    ** Copyright 2022-2025 Advanced Micro Devices, Inc. All Rights Reserved.
+
+source probe-estimate.tcl
+# set root [file dirname [file normalize [info script]]]
+# lassign $argv mode
+# set_param general.maxThreads 2
+# if {$mode eq "estimate-only"} {
+#   set_param synth.elaboration.rodinMoreOptions {rename rt::check_resource rt::check_resource_device; proc rt::check_resource {args} {puts "RIO_ESTIMATION_ONLY_RESOURCE_CHECK_SKIPPED"; return}}
+# }
+# create_project -in_memory -part xcku5p-ffvb676-2-e
+# if {$mode eq "forced-block"} {
+#   read_verilog -sv [file join $root memory_probe_block.sv]
+# } else {
+#   read_verilog -sv [file join $root memory_probe.sv]
+# }
+# if {$mode eq "downgrade"} { set_msg_config -id {Synth 8-5834} -new_severity WARNING }
+# if {$mode eq "raised-limit"} {
+#   synth_design -top memory_probe -mode out_of_context -directive RuntimeOptimized -max_bram 200000
+# } else {
+#   synth_design -top memory_probe -mode out_of_context -directive RuntimeOptimized
+# }
+Command: synth_design -top memory_probe -mode out_of_context -directive RuntimeOptimized
+Starting synth_design
+Using part: xcku5p-ffvb676-2-e
+Attempting to get a license for feature 'Synthesis' and/or device 'xcku5p'
+INFO: [Common 17-349] Got license for feature 'Synthesis' and/or device 'xcku5p'
+INFO: [Synth 8-7079] Multithreading enabled for synth_design using a maximum of 2 processes.
+INFO: [Synth 8-7078] Launching helper process for spawning children vivado processes
+INFO: [Synth 8-7075] Helper process launched with PID 282733
+---------------------------------------------------------------------------------
+Starting Synthesize : Time (s): cpu = 00:00:05 ; elapsed = 00:00:05 . Memory (MB): peak = 2026.098 ; gain = 443.652 ; free physical = 150529 ; free virtual = 170187
+---------------------------------------------------------------------------------
+INFO: [Synth 8-6157] synthesizing module 'memory_probe' [/home/zg366/packet-scheduling/pifo-hardware/synthesis/build/vivado-resource-limit-probe/large-over-capacity/memory_probe.sv:1]
+INFO: [Synth 8-6155] done synthesizing module 'memory_probe' (0#1) [/home/zg366/packet-scheduling/pifo-hardware/synthesis/build/vivado-resource-limit-probe/large-over-capacity/memory_probe.sv:1]
+---------------------------------------------------------------------------------
+Finished Synthesize : Time (s): cpu = 00:01:14 ; elapsed = 00:01:15 . Memory (MB): peak = 3868.473 ; gain = 2286.027 ; free physical = 145776 ; free virtual = 165545
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Constraint Validation : Time (s): cpu = 00:01:15 ; elapsed = 00:01:16 . Memory (MB): peak = 3868.473 ; gain = 2286.027 ; free physical = 145777 ; free virtual = 165547
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Loading Part and Timing Information
+---------------------------------------------------------------------------------
+Loading part: xcku5p-ffvb676-2-e
+INFO: [Synth 8-6742] Reading net delay rules and data
+INFO: [Device 21-403] Loading part xcku5p-ffvb676-2-e
+---------------------------------------------------------------------------------
+Finished Loading Part and Timing Information : Time (s): cpu = 00:01:15 ; elapsed = 00:01:16 . Memory (MB): peak = 3868.473 ; gain = 2286.027 ; free physical = 145777 ; free virtual = 165546
+---------------------------------------------------------------------------------
+INFO: [Synth 8-6792] Large memory block ("memory_probe/mem_reg") is implemented using BRAM instead of URAM due to insufficient pipeline registers. Use of ram_style="ultra" and/or providing sufficient pipeline registers is recommended
+INFO: [Synth 8-6793] RAM ("memory_probe/mem_reg") is implemented using BRAM instead of URAM due to insufficient pipeline registers. Available pipeline stages = 0, Minimum required pipeline stages = 104 
+INFO: [Synth 8-6792] Large memory block ("memory_probe/mem_reg") is implemented using BRAM instead of URAM due to insufficient pipeline registers. Use of ram_style="ultra" and/or providing sufficient pipeline registers is recommended
+INFO: [Synth 8-6793] RAM ("memory_probe/mem_reg") is implemented using BRAM instead of URAM due to insufficient pipeline registers. Available pipeline stages = 0, Minimum required pipeline stages = 104 
+---------------------------------------------------------------------------------
+Finished RTL Optimization Phase 2 : Time (s): cpu = 00:01:21 ; elapsed = 00:01:19 . Memory (MB): peak = 3868.473 ; gain = 2286.027 ; free physical = 145720 ; free virtual = 165490
+---------------------------------------------------------------------------------
+No constraint files found.
+---------------------------------------------------------------------------------
+Start RTL Component Statistics 
+---------------------------------------------------------------------------------
+Detailed RTL Component Info : 
++---Registers : 
+	               32 Bit    Registers := 1     
++---RAMs : 
+	           262144K Bit	(8388608 X 32 bit)          RAMs := 1     
+---------------------------------------------------------------------------------
+Finished RTL Component Statistics 
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Part Resource Summary
+---------------------------------------------------------------------------------
+Part Resources:
+DSPs: 1824 (col length:96)
+BRAMs: 960 (col length: RAMB18 96 RAMB36 48)
+---------------------------------------------------------------------------------
+Finished Part Resource Summary
+---------------------------------------------------------------------------------
+No constraint files found.
+---------------------------------------------------------------------------------
+Start Cross Boundary and Area Optimization
+---------------------------------------------------------------------------------
+INFO: [Synth 8-6792] Large memory block ("memory_probe/mem_reg") is implemented using BRAM instead of URAM due to insufficient pipeline registers. Use of ram_style="ultra" and/or providing sufficient pipeline registers is recommended
+INFO: [Synth 8-6793] RAM ("memory_probe/mem_reg") is implemented using BRAM instead of URAM due to insufficient pipeline registers. Available pipeline stages = 0, Minimum required pipeline stages = 104 
+---------------------------------------------------------------------------------
+Finished Cross Boundary and Area Optimization : Time (s): cpu = 00:01:48 ; elapsed = 00:01:46 . Memory (MB): peak = 3922.473 ; gain = 2340.027 ; free physical = 140452 ; free virtual = 160125
+---------------------------------------------------------------------------------
+RIO_ESTIMATION_ONLY_RESOURCE_CHECK_SKIPPED
+can't use empty string as operand of "!"
+Synthesis Optimization Runtime : Time (s): cpu = 00:01:48 ; elapsed = 00:01:46 . Memory (MB): peak = 3922.473 ; gain = 2340.027 ; free physical = 140452 ; free virtual = 160125
+INFO: [Common 17-83] Releasing license: Synthesis
+15 Infos, 0 Warnings, 0 Critical Warnings and 1 Errors encountered.
+synth_design failed
+synth_design: Time (s): cpu = 00:01:49 ; elapsed = 00:01:47 . Memory (MB): peak = 3922.480 ; gain = 2340.070 ; free physical = 140453 ; free virtual = 160126
+INFO: [Common 17-2834] synth_design peak Physical Memory [PSS] (MB): overall = 3113.489; main = 2904.043; forked = 209.446
+INFO: [Common 17-2834] synth_design peak Virtual Memory [VSS] (MB): overall = 4909.133; main = 3922.477; forked = 986.656
+ERROR: [Common 17-69] Command failed: Vivado Synthesis failed
+INFO: [Common 17-206] Exiting Vivado at Sun Sep  6 22:34:30 2026...

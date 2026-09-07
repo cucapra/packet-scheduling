@@ -1,0 +1,35 @@
+{
+  "status": "synthesis_failed",
+  "tool": "vivado",
+  "part": "xcku5p-ffvb676-2-e",
+  "board_reference": {
+    "definition": "/data/work/vivado/2025.2/Vivado/data/xhub/boards/XilinxBoardStore/boards/Xilinx/kcu116/1.5/board.xml",
+    "name": "Kintex UltraScale+ KCU116 Evaluation Platform",
+    "board_name": "kcu116",
+    "version": "1.5",
+    "part": "xcku5p-ffvb676-2-e"
+  },
+  "scope": "One ordinary lookup bank; geometry matches one post-mapper bank at 5 PEs / 128 vFlows. Not an integrated RIO result.",
+  "clock_target_mhz": 100,
+  "threads": 8,
+  "synthesis_mode": "out_of_context",
+  "implementation_run": false,
+  "vivado_directive": "RuntimeOptimized",
+  "vivado_capacity_check": "enforced",
+  "source_sha256": {
+    "hw/python/pifo_lookup_pipeline.py": "cca699979ecf4cf4fe62a170f9ac413a62bb25c7812689fba81dda1a10e54ee2"
+  },
+  "hardware": {
+    "component": "ordinary_lookup",
+    "address_bits": 17,
+    "data_bits": 10,
+    "read_latency_cycles": 8,
+    "initiation_interval_cycles": 1
+  },
+  "rtl_sha256": {
+    "PifoMesh.v": "2253955a2731dc66f6aa2125c71a186bbbaa5fba427d36341016f7da6bbd6397",
+    "lookup-zero.bin": "dd680c722f86829098b874ba7a71c3240998a521988b691ac68d2d4479403b78"
+  },
+  "tool_version": "vivado v2025.2 (64-bit)\nTool Version Limit: 2025.11\nSW Build 6299465 on Fri Nov 14 12:34:56 MST 2025\nIP Build 6300035 on Fri Nov 14 10:48:45 MST 2025\nSharedData Build 6298862 on Thu Nov 13 04:50:51 MST 2025\nCopyright 1986-2022 Xilinx, Inc. All Rights Reserved.\nCopyright 2022-2025 Advanced Micro Devices, Inc. All Rights Reserved.",
+  "error": "Not a completed Vivado synthesis: synthesis_running"
+}

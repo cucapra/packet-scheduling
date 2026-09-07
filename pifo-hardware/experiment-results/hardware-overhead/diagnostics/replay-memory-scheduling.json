@@ -1,0 +1,100 @@
+{
+  "time": "2026-09-07T00:16:26.532351-04:00",
+  "reason": "Pause concurrent vendor processes at host RAM limit while completed Vivado read-copy reference writes reports. Resume with SIGCONT; no build discarded.",
+  "paused": [
+    {
+      "root_pid": 307150,
+      "build": "rio-only-pe5-v1024-c1024-static-quartus",
+      "pids": [
+        307150
+      ]
+    },
+    {
+      "root_pid": 310977,
+      "build": "rio-only-pe5-v1024-c1024-dynamic-quartus",
+      "pids": [
+        310977
+      ]
+    },
+    {
+      "root_pid": 322516,
+      "build": "rio-replay-pe5-v1024-c1024-j16384-quartus",
+      "pids": [
+        322516
+      ]
+    },
+    {
+      "root_pid": 323617,
+      "build": "rio-replay-pe5-v1024-c1024-j16384-vivado",
+      "pids": [
+        323617,
+        323649,
+        323665,
+        323736,
+        326701,
+        326718,
+        326789,
+        326594,
+        326611,
+        326682,
+        326486,
+        326502,
+        326574,
+        326381,
+        326397,
+        326468,
+        326258,
+        326274,
+        326345,
+        326152,
+        326168,
+        326239,
+        326046,
+        326063,
+        326134
+      ]
+    }
+  ],
+  "events": [
+    {
+      "time": "2026-09-07T00:29:54.840872-04:00",
+      "action": "resume_replay_vivado_after_reference_reports_completed",
+      "pids": [
+        326134,
+        326063,
+        326046,
+        326239,
+        326168,
+        326152,
+        326345,
+        326274,
+        326258,
+        326468,
+        326397,
+        326381,
+        326574,
+        326502,
+        326486,
+        326682,
+        326611,
+        326594,
+        326789,
+        326718,
+        326701,
+        323736,
+        323665,
+        323649,
+        323617
+      ],
+      "quartus_static_guard": "quartus-static-memory-guard.jsonl"
+    },
+    {
+      "time": "2026-09-07T00:31:41.934205-04:00",
+      "action": "all_remaining_vendor_jobs_resumed_with_quartus_memory_guards",
+      "guard_logs": [
+        "quartus-static-memory-guard.jsonl",
+        "quartus-memory-guards.jsonl"
+      ]
+    }
+  ]
+}

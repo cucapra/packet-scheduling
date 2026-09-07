@@ -1,0 +1,496 @@
+{
+  "reason": "User requested RIO synthesis excluding PIFO; preserve full-mesh reference runs and free resources for isolated RIO experiments.",
+  "time": "2026-09-06T22:50:23-0400",
+  "managers": [
+    {
+      "pid": 283012,
+      "ppid": 283004,
+      "args": ".venv/bin/python hw/python/pifo_hardware_overhead_r2.py --build-root /data/work/rio-synthesis/hardware-overhead --only-vflows 32,64,128,256,512 --jobs 8 --adopt-running ",
+      "start": "30227178"
+    }
+  ],
+  "wrappers": [
+    {
+      "pid": 256288,
+      "ppid": 256262,
+      "args": "python3 synthesis/run.py --tool quartus --build-root /data/work/rio-synthesis/hardware-overhead --name pe5-v1024-c1024-static-quartus --engines 5 --vpifos 1024 --entries-per-pe 1024 --configuration static --license /data/work/quartus/licenses/LR-187458_License.dat ",
+      "start": "29962710"
+    },
+    {
+      "pid": 257034,
+      "ppid": 257002,
+      "args": "python3 synthesis/run.py --tool quartus --build-root /data/work/rio-synthesis/hardware-overhead --name pe5-v1024-c1024-dynamic-quartus --engines 5 --vpifos 1024 --entries-per-pe 1024 --configuration dynamic --license /data/work/quartus/licenses/LR-187458_License.dat ",
+      "start": "29974329"
+    },
+    {
+      "pid": 280685,
+      "ppid": 1,
+      "args": "/home/zg366/packet-scheduling/pifo-hardware/.venv/bin/python /home/zg366/packet-scheduling/pifo-hardware/synthesis/run.py --tool quartus --build-root /data/work/rio-synthesis/hardware-overhead --name pe5-v64-c1024-static-quartus --engines 5 --vpifos 64 --entries-per-pe 1024 --priority-bits 8 --pifo-backend house --configuration static --clock-mhz 100 --threads 8 --vivado-directive RuntimeOptimized --license /data/work/quartus/licenses/LR-187458_License.dat --reuse-rtl ",
+      "start": "30185134"
+    },
+    {
+      "pid": 283018,
+      "ppid": 283012,
+      "args": "/home/zg366/packet-scheduling/pifo-hardware/.venv/bin/python /home/zg366/packet-scheduling/pifo-hardware/synthesis/run.py --tool quartus --build-root /data/work/rio-synthesis/hardware-overhead --name pe5-v64-c1024-dynamic-quartus --engines 5 --vpifos 64 --entries-per-pe 1024 --priority-bits 8 --pifo-backend house --configuration dynamic --clock-mhz 100 --threads 8 --vivado-directive RuntimeOptimized --license /data/work/quartus/licenses/LR-187458_License.dat --reuse-rtl ",
+      "start": "30227236"
+    },
+    {
+      "pid": 283021,
+      "ppid": 283012,
+      "args": "/home/zg366/packet-scheduling/pifo-hardware/.venv/bin/python /home/zg366/packet-scheduling/pifo-hardware/synthesis/run.py --tool quartus --build-root /data/work/rio-synthesis/hardware-overhead --name pe5-v128-c1024-static-quartus --engines 5 --vpifos 128 --entries-per-pe 1024 --priority-bits 8 --pifo-backend house --configuration static --clock-mhz 100 --threads 8 --vivado-directive RuntimeOptimized --license /data/work/quartus/licenses/LR-187458_License.dat --reuse-rtl ",
+      "start": "30227250"
+    },
+    {
+      "pid": 283022,
+      "ppid": 283012,
+      "args": "/home/zg366/packet-scheduling/pifo-hardware/.venv/bin/python /home/zg366/packet-scheduling/pifo-hardware/synthesis/run.py --tool vivado --build-root /data/work/rio-synthesis/hardware-overhead --name pe5-v128-c1024-static-vivado --engines 5 --vpifos 128 --entries-per-pe 1024 --priority-bits 8 --pifo-backend house --configuration static --clock-mhz 100 --threads 8 --vivado-directive RuntimeOptimized --reuse-rtl ",
+      "start": "30227250"
+    },
+    {
+      "pid": 283044,
+      "ppid": 283012,
+      "args": "/home/zg366/packet-scheduling/pifo-hardware/.venv/bin/python /home/zg366/packet-scheduling/pifo-hardware/synthesis/run.py --tool vivado --build-root /data/work/rio-synthesis/hardware-overhead --name pe5-v128-c1024-dynamic-vivado --engines 5 --vpifos 128 --entries-per-pe 1024 --priority-bits 8 --pifo-backend house --configuration dynamic --clock-mhz 100 --threads 8 --vivado-directive RuntimeOptimized --reuse-rtl ",
+      "start": "30227265"
+    },
+    {
+      "pid": 284541,
+      "ppid": 283012,
+      "args": "/home/zg366/packet-scheduling/pifo-hardware/.venv/bin/python /home/zg366/packet-scheduling/pifo-hardware/synthesis/run.py --tool vivado --build-root /data/work/rio-synthesis/hardware-overhead --name pe5-v256-c1024-static-vivado --engines 5 --vpifos 256 --entries-per-pe 1024 --priority-bits 8 --pifo-backend house --configuration static --clock-mhz 100 --threads 8 --vivado-directive RuntimeOptimized --reuse-rtl ",
+      "start": "30243228"
+    },
+    {
+      "pid": 287936,
+      "ppid": 283012,
+      "args": "/home/zg366/packet-scheduling/pifo-hardware/.venv/bin/python /home/zg366/packet-scheduling/pifo-hardware/synthesis/run.py --tool vivado --build-root /data/work/rio-synthesis/hardware-overhead --name pe5-v256-c1024-dynamic-vivado --engines 5 --vpifos 256 --entries-per-pe 1024 --priority-bits 8 --pifo-backend house --configuration dynamic --clock-mhz 100 --threads 8 --vivado-directive RuntimeOptimized --reuse-rtl ",
+      "start": "30282745"
+    },
+    {
+      "pid": 288592,
+      "ppid": 283012,
+      "args": "/home/zg366/packet-scheduling/pifo-hardware/.venv/bin/python /home/zg366/packet-scheduling/pifo-hardware/synthesis/run.py --tool quartus --build-root /data/work/rio-synthesis/hardware-overhead --name pe5-v128-c1024-dynamic-quartus --engines 5 --vpifos 128 --entries-per-pe 1024 --priority-bits 8 --pifo-backend house --configuration dynamic --clock-mhz 100 --threads 8 --vivado-directive RuntimeOptimized --license /data/work/quartus/licenses/LR-187458_License.dat --reuse-rtl ",
+      "start": "30305735"
+    }
+  ],
+  "terminated_descendants": [
+    {
+      "pid": 256810,
+      "ppid": 256288,
+      "args": "quartus_syn pifo ",
+      "start": "29969746"
+    },
+    {
+      "pid": 257770,
+      "ppid": 257034,
+      "args": "quartus_syn pifo ",
+      "start": "29981131"
+    },
+    {
+      "pid": 284448,
+      "ppid": 280733,
+      "args": "quartus_syn --ipc_mode --disable_all_banners --parallel_synthesis --parallel=1 --parallel_stage=mls --process_id=0 --partition=root_partition --dl_named_pipe=dl_pipe_mls_0_1YYtWU --ul_named_pipe=ul_pipe_mls_0_cFx4Wz pifo -c pifo ",
+      "start": "30241113"
+    },
+    {
+      "pid": 284454,
+      "ppid": 280733,
+      "args": "quartus_syn --ipc_mode --disable_all_banners --parallel_synthesis --parallel=1 --parallel_stage=mls --process_id=7 --partition=root_partition --dl_named_pipe=dl_pipe_mls_7_JzPEi4 --ul_named_pipe=ul_pipe_mls_7_A4cu44 pifo -c pifo ",
+      "start": "30241116"
+    },
+    {
+      "pid": 284455,
+      "ppid": 280733,
+      "args": "",
+      "start": "30241121"
+    },
+    {
+      "pid": 284456,
+      "ppid": 280733,
+      "args": "",
+      "start": "30241128"
+    },
+    {
+      "pid": 284457,
+      "ppid": 280733,
+      "args": "",
+      "start": "30241133"
+    },
+    {
+      "pid": 284458,
+      "ppid": 280733,
+      "args": "",
+      "start": "30241137"
+    },
+    {
+      "pid": 284459,
+      "ppid": 280733,
+      "args": "",
+      "start": "30241143"
+    },
+    {
+      "pid": 284460,
+      "ppid": 280733,
+      "args": "",
+      "start": "30241149"
+    },
+    {
+      "pid": 280733,
+      "ppid": 280685,
+      "args": "quartus_syn pifo ",
+      "start": "30185457"
+    },
+    {
+      "pid": 286784,
+      "ppid": 283484,
+      "args": "quartus_syn --ipc_mode --disable_all_banners --parallel_synthesis --parallel=1 --parallel_stage=mls --process_id=6 --partition=root_partition --dl_named_pipe=dl_pipe_mls_6_Uq84WB --ul_named_pipe=ul_pipe_mls_6_9wSqGn pifo -c pifo ",
+      "start": "30257606"
+    },
+    {
+      "pid": 286785,
+      "ppid": 283484,
+      "args": "",
+      "start": "30257611"
+    },
+    {
+      "pid": 286786,
+      "ppid": 283484,
+      "args": "",
+      "start": "30257620"
+    },
+    {
+      "pid": 286787,
+      "ppid": 283484,
+      "args": "",
+      "start": "30257627"
+    },
+    {
+      "pid": 286776,
+      "ppid": 283484,
+      "args": "quartus_syn --ipc_mode --disable_all_banners --parallel_synthesis --parallel=1 --parallel_stage=mls --process_id=0 --partition=root_partition --dl_named_pipe=dl_pipe_mls_0_Qn759S --ul_named_pipe=ul_pipe_mls_0_0HbzUu pifo -c pifo ",
+      "start": "30257584"
+    },
+    {
+      "pid": 283484,
+      "ppid": 283018,
+      "args": "quartus_syn pifo ",
+      "start": "30227579"
+    },
+    {
+      "pid": 283491,
+      "ppid": 283021,
+      "args": "quartus_syn pifo ",
+      "start": "30227581"
+    },
+    {
+      "pid": 288401,
+      "ppid": 283491,
+      "args": "quartus_syn --ipc_mode --disable_all_banners --parallel_synthesis --parallel=1 --parallel_stage=mls --process_id=4 --partition=root_partition --dl_named_pipe=dl_pipe_mls_4_8IcwFv --ul_named_pipe=ul_pipe_mls_4_ozclps pifo -c pifo ",
+      "start": "30302260"
+    },
+    {
+      "pid": 288406,
+      "ppid": 283491,
+      "args": "quartus_syn --ipc_mode --disable_all_banners --parallel_synthesis --parallel=1 --parallel_stage=mls --process_id=1 --partition=root_partition --dl_named_pipe=dl_pipe_mls_1_JZ9Vcf --ul_named_pipe=ul_pipe_mls_1_JsbVRA pifo -c pifo ",
+      "start": "30302268"
+    },
+    {
+      "pid": 288407,
+      "ppid": 283491,
+      "args": "quartus_syn --ipc_mode --disable_all_banners --parallel_synthesis --parallel=1 --parallel_stage=mls --process_id=0 --partition=root_partition --dl_named_pipe=dl_pipe_mls_0_SX2TLU --ul_named_pipe=ul_pipe_mls_0_X7uZkU pifo -c pifo ",
+      "start": "30302276"
+    },
+    {
+      "pid": 288408,
+      "ppid": 283491,
+      "args": "quartus_syn --ipc_mode --disable_all_banners --parallel_synthesis --parallel=1 --parallel_stage=mls --process_id=3 --partition=root_partition --dl_named_pipe=dl_pipe_mls_3_AabfaW --ul_named_pipe=ul_pipe_mls_3_OL7Xf3 pifo -c pifo ",
+      "start": "30302285"
+    },
+    {
+      "pid": 288409,
+      "ppid": 283491,
+      "args": "quartus_syn --ipc_mode --disable_all_banners --parallel_synthesis --parallel=1 --parallel_stage=mls --process_id=6 --partition=root_partition --dl_named_pipe=dl_pipe_mls_6_yiIgml --ul_named_pipe=ul_pipe_mls_6_9Cubgq pifo -c pifo ",
+      "start": "30302293"
+    },
+    {
+      "pid": 288410,
+      "ppid": 283491,
+      "args": "quartus_syn --ipc_mode --disable_all_banners --parallel_synthesis --parallel=1 --parallel_stage=mls --process_id=7 --partition=root_partition --dl_named_pipe=dl_pipe_mls_7_LFqAg9 --ul_named_pipe=ul_pipe_mls_7_1l0G6b pifo -c pifo ",
+      "start": "30302299"
+    },
+    {
+      "pid": 288411,
+      "ppid": 283491,
+      "args": "quartus_syn --ipc_mode --disable_all_banners --parallel_synthesis --parallel=1 --parallel_stage=mls --process_id=5 --partition=root_partition --dl_named_pipe=dl_pipe_mls_5_jjhPta --ul_named_pipe=ul_pipe_mls_5_yS4wdk pifo -c pifo ",
+      "start": "30302311"
+    },
+    {
+      "pid": 288412,
+      "ppid": 283491,
+      "args": "quartus_syn --ipc_mode --disable_all_banners --parallel_synthesis --parallel=1 --parallel_stage=mls --process_id=2 --partition=root_partition --dl_named_pipe=dl_pipe_mls_2_jt7Igr --ul_named_pipe=ul_pipe_mls_2_6FCtkp pifo -c pifo ",
+      "start": "30302318"
+    },
+    {
+      "pid": 283478,
+      "ppid": 283346,
+      "args": "/data/work/vivado/2025.2/Vivado/bin/unwrapped/lnx64.o/vivado -mode batch -nojournal -log /data/work/rio-synthesis/hardware-overhead/pe5-v128-c1024-static-vivado/vivado.log -source /home/zg366/packet-scheduling/pifo-hardware/synthesis/vivado_synth.tcl -tclargs /data/work/rio-synthesis/hardware-overhead/pe5-v128-c1024-static-vivado xcku5p-ffvb676-2-e 8 10.0 0 RuntimeOptimized ",
+      "start": "30227479"
+    },
+    {
+      "pid": 283346,
+      "ppid": 283309,
+      "args": "/bin/bash /data/work/vivado/2025.2/Vivado/bin/loader -exec vivado -mode batch -nojournal -log /data/work/rio-synthesis/hardware-overhead/pe5-v128-c1024-static-vivado/vivado.log -source /home/zg366/packet-scheduling/pifo-hardware/synthesis/vivado_synth.tcl -tclargs /data/work/rio-synthesis/hardware-overhead/pe5-v128-c1024-static-vivado xcku5p-ffvb676-2-e 8 10.0 0 RuntimeOptimized ",
+      "start": "30227459"
+    },
+    {
+      "pid": 283309,
+      "ppid": 283022,
+      "args": "/bin/bash /data/work/vivado/2025.2/Vivado/bin/vivado -mode batch -nojournal -log /data/work/rio-synthesis/hardware-overhead/pe5-v128-c1024-static-vivado/vivado.log -source /home/zg366/packet-scheduling/pifo-hardware/synthesis/vivado_synth.tcl -tclargs /data/work/rio-synthesis/hardware-overhead/pe5-v128-c1024-static-vivado xcku5p-ffvb676-2-e 8 10.0 0 RuntimeOptimized ",
+      "start": "30227453"
+    },
+    {
+      "pid": 283297,
+      "ppid": 283044,
+      "args": "/bin/bash /data/work/vivado/2025.2/Vivado/bin/vivado -mode batch -nojournal -log /data/work/rio-synthesis/hardware-overhead/pe5-v128-c1024-dynamic-vivado/vivado.log -source /home/zg366/packet-scheduling/pifo-hardware/synthesis/vivado_synth.tcl -tclargs /data/work/rio-synthesis/hardware-overhead/pe5-v128-c1024-dynamic-vivado xcku5p-ffvb676-2-e 8 10.0 0 RuntimeOptimized ",
+      "start": "30227449"
+    },
+    {
+      "pid": 283324,
+      "ppid": 283297,
+      "args": "/bin/bash /data/work/vivado/2025.2/Vivado/bin/loader -exec vivado -mode batch -nojournal -log /data/work/rio-synthesis/hardware-overhead/pe5-v128-c1024-dynamic-vivado/vivado.log -source /home/zg366/packet-scheduling/pifo-hardware/synthesis/vivado_synth.tcl -tclargs /data/work/rio-synthesis/hardware-overhead/pe5-v128-c1024-dynamic-vivado xcku5p-ffvb676-2-e 8 10.0 0 RuntimeOptimized ",
+      "start": "30227455"
+    },
+    {
+      "pid": 283449,
+      "ppid": 283324,
+      "args": "/data/work/vivado/2025.2/Vivado/bin/unwrapped/lnx64.o/vivado -mode batch -nojournal -log /data/work/rio-synthesis/hardware-overhead/pe5-v128-c1024-dynamic-vivado/vivado.log -source /home/zg366/packet-scheduling/pifo-hardware/synthesis/vivado_synth.tcl -tclargs /data/work/rio-synthesis/hardware-overhead/pe5-v128-c1024-dynamic-vivado xcku5p-ffvb676-2-e 8 10.0 0 RuntimeOptimized ",
+      "start": "30227471"
+    },
+    {
+      "pid": 284653,
+      "ppid": 284634,
+      "args": "/bin/bash /data/work/vivado/2025.2/Vivado/bin/loader -exec vivado -mode batch -nojournal -log /data/work/rio-synthesis/hardware-overhead/pe5-v256-c1024-static-vivado/vivado.log -source /home/zg366/packet-scheduling/pifo-hardware/synthesis/vivado_synth.tcl -tclargs /data/work/rio-synthesis/hardware-overhead/pe5-v256-c1024-static-vivado xcku5p-ffvb676-2-e 8 10.0 0 RuntimeOptimized ",
+      "start": "30243437"
+    },
+    {
+      "pid": 284634,
+      "ppid": 284541,
+      "args": "/bin/bash /data/work/vivado/2025.2/Vivado/bin/vivado -mode batch -nojournal -log /data/work/rio-synthesis/hardware-overhead/pe5-v256-c1024-static-vivado/vivado.log -source /home/zg366/packet-scheduling/pifo-hardware/synthesis/vivado_synth.tcl -tclargs /data/work/rio-synthesis/hardware-overhead/pe5-v256-c1024-static-vivado xcku5p-ffvb676-2-e 8 10.0 0 RuntimeOptimized ",
+      "start": "30243435"
+    },
+    {
+      "pid": 284724,
+      "ppid": 284653,
+      "args": "/data/work/vivado/2025.2/Vivado/bin/unwrapped/lnx64.o/vivado -mode batch -nojournal -log /data/work/rio-synthesis/hardware-overhead/pe5-v256-c1024-static-vivado/vivado.log -source /home/zg366/packet-scheduling/pifo-hardware/synthesis/vivado_synth.tcl -tclargs /data/work/rio-synthesis/hardware-overhead/pe5-v256-c1024-static-vivado xcku5p-ffvb676-2-e 8 10.0 0 RuntimeOptimized ",
+      "start": "30243443"
+    },
+    {
+      "pid": 289283,
+      "ppid": 289211,
+      "args": "/data/work/vivado/2025.2/Vivado/bin/unwrapped/lnx64.o/vivado -notrace -mode batch -source /data/work/vivado/2025.2/Vivado/scripts/rt/data/task_worker.tcl -nolog -nojournal -tclargs SYNTH_DESIGN_PARENT288136_4_1788749336_cfg SYNTH_DESIGN_PARENT288136_4_1788749336_buf SYNTH_DESIGN_PARENT288136_1788749328 xcku5p-ffvb676-2-e ",
+      "start": "30315480"
+    },
+    {
+      "pid": 288136,
+      "ppid": 288061,
+      "args": "/data/work/vivado/2025.2/Vivado/bin/unwrapped/lnx64.o/vivado -mode batch -nojournal -log /data/work/rio-synthesis/hardware-overhead/pe5-v256-c1024-dynamic-vivado/vivado.log -source /home/zg366/packet-scheduling/pifo-hardware/synthesis/vivado_synth.tcl -tclargs /data/work/rio-synthesis/hardware-overhead/pe5-v256-c1024-dynamic-vivado xcku5p-ffvb676-2-e 8 10.0 0 RuntimeOptimized 0 ",
+      "start": "30283005"
+    },
+    {
+      "pid": 288906,
+      "ppid": 288890,
+      "args": "/bin/bash /data/work/vivado/2025.2/Vivado/bin/loader -exec vivado -notrace -mode batch -source /data/work/vivado/2025.2/Vivado/scripts/rt/data/task_worker.tcl -nolog -nojournal -tclargs SYNTH_DESIGN_PARENT288136_1_1788749330_cfg SYNTH_DESIGN_PARENT288136_1_1788749330_buf SYNTH_DESIGN_PARENT288136_1788749328 xcku5p-ffvb676-2-e ",
+      "start": "30314871"
+    },
+    {
+      "pid": 288783,
+      "ppid": 288253,
+      "args": "/bin/bash /data/work/vivado/2025.2/Vivado/bin/vivado -notrace -mode batch -source /data/work/vivado/2025.2/Vivado/scripts/rt/data/task_worker.tcl -nolog -nojournal -tclargs SYNTH_DESIGN_PARENT288136_0_1788749328_cfg SYNTH_DESIGN_PARENT288136_0_1788749328_buf SYNTH_DESIGN_PARENT288136_1788749328 xcku5p-ffvb676-2-e ",
+      "start": "30314663"
+    },
+    {
+      "pid": 289424,
+      "ppid": 288253,
+      "args": "/bin/bash /data/work/vivado/2025.2/Vivado/bin/vivado -notrace -mode batch -source /data/work/vivado/2025.2/Vivado/scripts/rt/data/task_worker.tcl -nolog -nojournal -tclargs SYNTH_DESIGN_PARENT288136_6_1788749340_cfg SYNTH_DESIGN_PARENT288136_6_1788749340_buf SYNTH_DESIGN_PARENT288136_1788749328 xcku5p-ffvb676-2-e ",
+      "start": "30315865"
+    },
+    {
+      "pid": 288032,
+      "ppid": 287936,
+      "args": "/bin/bash /data/work/vivado/2025.2/Vivado/bin/vivado -mode batch -nojournal -log /data/work/rio-synthesis/hardware-overhead/pe5-v256-c1024-dynamic-vivado/vivado.log -source /home/zg366/packet-scheduling/pifo-hardware/synthesis/vivado_synth.tcl -tclargs /data/work/rio-synthesis/hardware-overhead/pe5-v256-c1024-dynamic-vivado xcku5p-ffvb676-2-e 8 10.0 0 RuntimeOptimized 0 ",
+      "start": "30282982"
+    },
+    {
+      "pid": 288800,
+      "ppid": 288783,
+      "args": "/bin/bash /data/work/vivado/2025.2/Vivado/bin/loader -exec vivado -notrace -mode batch -source /data/work/vivado/2025.2/Vivado/scripts/rt/data/task_worker.tcl -nolog -nojournal -tclargs SYNTH_DESIGN_PARENT288136_0_1788749328_cfg SYNTH_DESIGN_PARENT288136_0_1788749328_buf SYNTH_DESIGN_PARENT288136_1788749328 xcku5p-ffvb676-2-e ",
+      "start": "30314674"
+    },
+    {
+      "pid": 289440,
+      "ppid": 289424,
+      "args": "/bin/bash /data/work/vivado/2025.2/Vivado/bin/loader -exec vivado -notrace -mode batch -source /data/work/vivado/2025.2/Vivado/scripts/rt/data/task_worker.tcl -nolog -nojournal -tclargs SYNTH_DESIGN_PARENT288136_6_1788749340_cfg SYNTH_DESIGN_PARENT288136_6_1788749340_buf SYNTH_DESIGN_PARENT288136_1788749328 xcku5p-ffvb676-2-e ",
+      "start": "30315871"
+    },
+    {
+      "pid": 289316,
+      "ppid": 288253,
+      "args": "/bin/bash /data/work/vivado/2025.2/Vivado/bin/vivado -notrace -mode batch -source /data/work/vivado/2025.2/Vivado/scripts/rt/data/task_worker.tcl -nolog -nojournal -tclargs SYNTH_DESIGN_PARENT288136_5_1788749338_cfg SYNTH_DESIGN_PARENT288136_5_1788749338_buf SYNTH_DESIGN_PARENT288136_1788749328 xcku5p-ffvb676-2-e ",
+      "start": "30315667"
+    },
+    {
+      "pid": 288166,
+      "ppid": 288136,
+      "args": "/bin/bash /data/work/vivado/2025.2/Vivado/bin/vivado -exec parallel_synth_helper --key LaunchHelperProcessKey_288136_1788749027 --partid xcku5p-ffvb676-2-e --parent_pid 288136 --parent_exe vivado ",
+      "start": "30284543"
+    },
+    {
+      "pid": 289192,
+      "ppid": 289121,
+      "args": "/data/work/vivado/2025.2/Vivado/bin/unwrapped/lnx64.o/vivado -notrace -mode batch -source /data/work/vivado/2025.2/Vivado/scripts/rt/data/task_worker.tcl -nolog -nojournal -tclargs SYNTH_DESIGN_PARENT288136_3_1788749334_cfg SYNTH_DESIGN_PARENT288136_3_1788749334_buf SYNTH_DESIGN_PARENT288136_1788749328 xcku5p-ffvb676-2-e ",
+      "start": "30315333"
+    },
+    {
+      "pid": 289193,
+      "ppid": 288253,
+      "args": "/bin/bash /data/work/vivado/2025.2/Vivado/bin/vivado -notrace -mode batch -source /data/work/vivado/2025.2/Vivado/scripts/rt/data/task_worker.tcl -nolog -nojournal -tclargs SYNTH_DESIGN_PARENT288136_4_1788749336_cfg SYNTH_DESIGN_PARENT288136_4_1788749336_buf SYNTH_DESIGN_PARENT288136_1788749328 xcku5p-ffvb676-2-e ",
+      "start": "30315464"
+    },
+    {
+      "pid": 289332,
+      "ppid": 289316,
+      "args": "/bin/bash /data/work/vivado/2025.2/Vivado/bin/loader -exec vivado -notrace -mode batch -source /data/work/vivado/2025.2/Vivado/scripts/rt/data/task_worker.tcl -nolog -nojournal -tclargs SYNTH_DESIGN_PARENT288136_5_1788749338_cfg SYNTH_DESIGN_PARENT288136_5_1788749338_buf SYNTH_DESIGN_PARENT288136_1788749328 xcku5p-ffvb676-2-e ",
+      "start": "30315672"
+    },
+    {
+      "pid": 288182,
+      "ppid": 288166,
+      "args": "/bin/bash /data/work/vivado/2025.2/Vivado/bin/loader -exec vivado -exec parallel_synth_helper --key LaunchHelperProcessKey_288136_1788749027 --partid xcku5p-ffvb676-2-e --parent_pid 288136 --parent_exe vivado ",
+      "start": "30284548"
+    },
+    {
+      "pid": 289211,
+      "ppid": 289193,
+      "args": "/bin/bash /data/work/vivado/2025.2/Vivado/bin/loader -exec vivado -notrace -mode batch -source /data/work/vivado/2025.2/Vivado/scripts/rt/data/task_worker.tcl -nolog -nojournal -tclargs SYNTH_DESIGN_PARENT288136_4_1788749336_cfg SYNTH_DESIGN_PARENT288136_4_1788749336_buf SYNTH_DESIGN_PARENT288136_1788749328 xcku5p-ffvb676-2-e ",
+      "start": "30315470"
+    },
+    {
+      "pid": 288061,
+      "ppid": 288032,
+      "args": "/bin/bash /data/work/vivado/2025.2/Vivado/bin/loader -exec vivado -mode batch -nojournal -log /data/work/rio-synthesis/hardware-overhead/pe5-v256-c1024-dynamic-vivado/vivado.log -source /home/zg366/packet-scheduling/pifo-hardware/synthesis/vivado_synth.tcl -tclargs /data/work/rio-synthesis/hardware-overhead/pe5-v256-c1024-dynamic-vivado xcku5p-ffvb676-2-e 8 10.0 0 RuntimeOptimized 0 ",
+      "start": "30282988"
+    },
+    {
+      "pid": 289086,
+      "ppid": 289015,
+      "args": "/data/work/vivado/2025.2/Vivado/bin/unwrapped/lnx64.o/vivado -notrace -mode batch -source /data/work/vivado/2025.2/Vivado/scripts/rt/data/task_worker.tcl -nolog -nojournal -tclargs SYNTH_DESIGN_PARENT288136_2_1788749332_cfg SYNTH_DESIGN_PARENT288136_2_1788749332_buf SYNTH_DESIGN_PARENT288136_1788749328 xcku5p-ffvb676-2-e ",
+      "start": "30315085"
+    },
+    {
+      "pid": 289104,
+      "ppid": 288253,
+      "args": "/bin/bash /data/work/vivado/2025.2/Vivado/bin/vivado -notrace -mode batch -source /data/work/vivado/2025.2/Vivado/scripts/rt/data/task_worker.tcl -nolog -nojournal -tclargs SYNTH_DESIGN_PARENT288136_3_1788749334_cfg SYNTH_DESIGN_PARENT288136_3_1788749334_buf SYNTH_DESIGN_PARENT288136_1788749328 xcku5p-ffvb676-2-e ",
+      "start": "30315264"
+    },
+    {
+      "pid": 288977,
+      "ppid": 288906,
+      "args": "/data/work/vivado/2025.2/Vivado/bin/unwrapped/lnx64.o/vivado -notrace -mode batch -source /data/work/vivado/2025.2/Vivado/scripts/rt/data/task_worker.tcl -nolog -nojournal -tclargs SYNTH_DESIGN_PARENT288136_1_1788749330_cfg SYNTH_DESIGN_PARENT288136_1_1788749330_buf SYNTH_DESIGN_PARENT288136_1788749328 xcku5p-ffvb676-2-e ",
+      "start": "30314888"
+    },
+    {
+      "pid": 289121,
+      "ppid": 289104,
+      "args": "/bin/bash /data/work/vivado/2025.2/Vivado/bin/loader -exec vivado -notrace -mode batch -source /data/work/vivado/2025.2/Vivado/scripts/rt/data/task_worker.tcl -nolog -nojournal -tclargs SYNTH_DESIGN_PARENT288136_3_1788749334_cfg SYNTH_DESIGN_PARENT288136_3_1788749334_buf SYNTH_DESIGN_PARENT288136_1788749328 xcku5p-ffvb676-2-e ",
+      "start": "30315290"
+    },
+    {
+      "pid": 288871,
+      "ppid": 288800,
+      "args": "/data/work/vivado/2025.2/Vivado/bin/unwrapped/lnx64.o/vivado -notrace -mode batch -source /data/work/vivado/2025.2/Vivado/scripts/rt/data/task_worker.tcl -nolog -nojournal -tclargs SYNTH_DESIGN_PARENT288136_0_1788749328_cfg SYNTH_DESIGN_PARENT288136_0_1788749328_buf SYNTH_DESIGN_PARENT288136_1788749328 xcku5p-ffvb676-2-e ",
+      "start": "30314706"
+    },
+    {
+      "pid": 288999,
+      "ppid": 288253,
+      "args": "/bin/bash /data/work/vivado/2025.2/Vivado/bin/vivado -notrace -mode batch -source /data/work/vivado/2025.2/Vivado/scripts/rt/data/task_worker.tcl -nolog -nojournal -tclargs SYNTH_DESIGN_PARENT288136_2_1788749332_cfg SYNTH_DESIGN_PARENT288136_2_1788749332_buf SYNTH_DESIGN_PARENT288136_1788749328 xcku5p-ffvb676-2-e ",
+      "start": "30315063"
+    },
+    {
+      "pid": 289512,
+      "ppid": 289440,
+      "args": "/data/work/vivado/2025.2/Vivado/bin/unwrapped/lnx64.o/vivado -notrace -mode batch -source /data/work/vivado/2025.2/Vivado/scripts/rt/data/task_worker.tcl -nolog -nojournal -tclargs SYNTH_DESIGN_PARENT288136_6_1788749340_cfg SYNTH_DESIGN_PARENT288136_6_1788749340_buf SYNTH_DESIGN_PARENT288136_1788749328 xcku5p-ffvb676-2-e ",
+      "start": "30315884"
+    },
+    {
+      "pid": 289015,
+      "ppid": 288999,
+      "args": "/bin/bash /data/work/vivado/2025.2/Vivado/bin/loader -exec vivado -notrace -mode batch -source /data/work/vivado/2025.2/Vivado/scripts/rt/data/task_worker.tcl -nolog -nojournal -tclargs SYNTH_DESIGN_PARENT288136_2_1788749332_cfg SYNTH_DESIGN_PARENT288136_2_1788749332_buf SYNTH_DESIGN_PARENT288136_1788749328 xcku5p-ffvb676-2-e ",
+      "start": "30315070"
+    },
+    {
+      "pid": 288890,
+      "ppid": 288253,
+      "args": "/bin/bash /data/work/vivado/2025.2/Vivado/bin/vivado -notrace -mode batch -source /data/work/vivado/2025.2/Vivado/scripts/rt/data/task_worker.tcl -nolog -nojournal -tclargs SYNTH_DESIGN_PARENT288136_1_1788749330_cfg SYNTH_DESIGN_PARENT288136_1_1788749330_buf SYNTH_DESIGN_PARENT288136_1788749328 xcku5p-ffvb676-2-e ",
+      "start": "30314863"
+    },
+    {
+      "pid": 289403,
+      "ppid": 289332,
+      "args": "/data/work/vivado/2025.2/Vivado/bin/unwrapped/lnx64.o/vivado -notrace -mode batch -source /data/work/vivado/2025.2/Vivado/scripts/rt/data/task_worker.tcl -nolog -nojournal -tclargs SYNTH_DESIGN_PARENT288136_5_1788749338_cfg SYNTH_DESIGN_PARENT288136_5_1788749338_buf SYNTH_DESIGN_PARENT288136_1788749328 xcku5p-ffvb676-2-e ",
+      "start": "30315681"
+    },
+    {
+      "pid": 288253,
+      "ppid": 288182,
+      "args": "/data/work/vivado/2025.2/Vivado/bin/unwrapped/lnx64.o/parallel_synth_helper --key LaunchHelperProcessKey_288136_1788749027 --partid xcku5p-ffvb676-2-e --parent_pid 288136 --parent_exe vivado ",
+      "start": "30284559"
+    },
+    {
+      "pid": 288763,
+      "ppid": 288635,
+      "args": "",
+      "start": "30313450"
+    },
+    {
+      "pid": 288760,
+      "ppid": 288635,
+      "args": "quartus_syn --ipc_mode --disable_all_banners --parallel_synthesis --parallel=1 --parallel_stage=rtl --process_id=6 --partition=root_partition --dl_named_pipe=dl_pipe_rtl_6_UH7SbL --ul_named_pipe=ul_pipe_rtl_6_pDes87 pifo -c pifo ",
+      "start": "30313426"
+    },
+    {
+      "pid": 288761,
+      "ppid": 288635,
+      "args": "quartus_syn --ipc_mode --disable_all_banners --parallel_synthesis --parallel=1 --parallel_stage=rtl --process_id=0 --partition=root_partition --dl_named_pipe=dl_pipe_rtl_0_Xb77tH --ul_named_pipe=ul_pipe_rtl_0_hsaJzl pifo -c pifo ",
+      "start": "30313438"
+    },
+    {
+      "pid": 288762,
+      "ppid": 288635,
+      "args": "",
+      "start": "30313444"
+    },
+    {
+      "pid": 288635,
+      "ppid": 288592,
+      "args": "quartus_syn pifo ",
+      "start": "30306091"
+    },
+    {
+      "pid": 288764,
+      "ppid": 288635,
+      "args": "quartus_syn --ipc_mode --disable_all_banners --parallel_synthesis --parallel=1 --parallel_stage=rtl --process_id=2 --partition=root_partition --dl_named_pipe=dl_pipe_rtl_2_z86neT --ul_named_pipe=ul_pipe_rtl_2_yxRbPo pifo -c pifo ",
+      "start": "30313460"
+    },
+    {
+      "pid": 288765,
+      "ppid": 288635,
+      "args": "quartus_syn --ipc_mode --disable_all_banners --parallel_synthesis --parallel=1 --parallel_stage=rtl --process_id=7 --partition=root_partition --dl_named_pipe=dl_pipe_rtl_7_DXZsmI --ul_named_pipe=ul_pipe_rtl_7_sg46KZ pifo -c pifo ",
+      "start": "30313467"
+    },
+    {
+      "pid": 288766,
+      "ppid": 288635,
+      "args": "quartus_syn --ipc_mode --disable_all_banners --parallel_synthesis --parallel=1 --parallel_stage=rtl --process_id=3 --partition=root_partition --dl_named_pipe=dl_pipe_rtl_3_mHrskB --ul_named_pipe=ul_pipe_rtl_3_VyEI2Z pifo -c pifo ",
+      "start": "30313477"
+    }
+  ]
+}

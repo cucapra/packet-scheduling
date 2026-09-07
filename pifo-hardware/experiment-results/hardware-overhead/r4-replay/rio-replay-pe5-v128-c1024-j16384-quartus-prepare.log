@@ -1,0 +1,7 @@
+Running /data/work/quartus/quartus/bin/quartus_sh --version
+  log: /data/work/rio-synthesis/hardware-replay/rio-replay-pe5-v128-c1024-j16384-quartus/quartus-version.txt
+Running java -XX:ActiveProcessorCount=8 -Xmx4G -Dsbt.repository.config=/home/zg366/packet-scheduling/pifo-hardware/synthesis/repositories -Dsbt.override.build.repos=true -Dsbt.supershell=false -Dsbt.log.noformat=true -jar /home/zg366/packet-scheduling/pifo-hardware/synthesis/.tools/sbt-launch-1.10.2.jar 'runMain rio.GeneratePifoMesh "/data/work/rio-synthesis/hardware-replay/rio-replay-pe5-v128-c1024-j16384-quartus/rtl" 5 128 8 8 external replay 16384'
+  log: /data/work/rio-synthesis/hardware-replay/rio-replay-pe5-v128-c1024-j16384-quartus/generate.log
+Running /data/work/quartus/quartus/bin/quartus_sh -t /home/zg366/packet-scheduling/pifo-hardware/synthesis/create_project.tcl /data/work/rio-synthesis/hardware-replay/rio-replay-pe5-v128-c1024-j16384-quartus AGFB014R24B2E2V 8 10.0 /data/work/rio-synthesis/hardware-replay/rio-replay-pe5-v128-c1024-j16384-quartus/quartus-rtl
+  log: /data/work/rio-synthesis/hardware-replay/rio-replay-pe5-v128-c1024-j16384-quartus/project.log
+prepared: /data/work/rio-synthesis/hardware-replay/rio-replay-pe5-v128-c1024-j16384-quartus/manifest.json

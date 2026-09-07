@@ -1,0 +1,18 @@
+
+****** xsim v2025.2 (64-bit)
+  **** SW Build 6299465 on Fri Nov 14 12:34:56 MST 2025
+  **** IP Build 6300035 on Fri Nov 14 10:48:45 MST 2025
+  **** SharedData Build 6298862 on Thu Nov 13 04:50:51 MST 2025
+  **** Start of session at: Sun Sep  6 23:31:14 2026
+    ** Copyright 1986-2022 Xilinx, Inc. All Rights Reserved.
+    ** Copyright 2022-2025 Advanced Micro Devices, Inc. All Rights Reserved.
+
+source xsim.dir/replay_controller/xsim_script.tcl
+# xsim {replay_controller} -autoloadwcfg -runall
+Time resolution is 1 ps
+run -all
+REPLAY_CONTROLLER_PASS cycles=260 commits=27 mapper_updates=50 busy_cycles=50 lookups=85 lookups_during_replay=24 lookups_on_swap=1
+$finish called at time : 2757 ns : File "/home/zg366/packet-scheduling/pifo-hardware/synthesis/build/rio-replay-controller-smoke/replay-validation/replay_controller_tb.sv" Line 137
+exit
+INFO: xsimkernel Simulation Memory Usage: 274044 KB (Peak: 335220 KB), Simulation CPU Usage: 1300 ms
+INFO: [Common 17-206] Exiting xsim at Sun Sep  6 23:31:17 2026...

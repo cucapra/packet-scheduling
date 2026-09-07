@@ -1,0 +1,20 @@
+{
+  "schema": "rio-hardware-replay-v1",
+  "name": "r4-replay",
+  "title": "Controller instruction replay versus full-table synchronization",
+  "output_dir": "experiment-results/hardware-overhead/r4-replay",
+  "hardware": {
+    "num_engines": 5,
+    "vflows": [32, 128, 1024],
+    "entries_per_pe": 1024,
+    "priority_bits": 8,
+    "pifo_backend": "external",
+    "replay_log_depth": 16384
+  },
+  "clock_mhz": 100,
+  "threads": 8,
+  "vivado_directive": "RuntimeOptimized",
+  "reference_source_snapshot": "experiment-results/hardware-overhead/diagnostics/read-copy-source-snapshot/sha256.json",
+  "large_run_min_available_gib": 120,
+  "platforms": ["quartus", "vivado"]
+}

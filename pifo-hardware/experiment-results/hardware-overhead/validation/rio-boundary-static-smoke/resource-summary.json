@@ -1,0 +1,919 @@
+{
+  "source_report": "synthesis/build/rio-boundary-static-smoke/output_files/pifo.syn.rpt",
+  "status": "Successful - Sun Sep  6 22:52:57 2026",
+  "scope": "Quartus synthesis estimates; no placement or routing",
+  "tables": {
+    "Synthesis Summary": [
+      [
+        "Synthesis Status",
+        "Successful - Sun Sep  6 22:52:57 2026"
+      ],
+      [
+        "Revision Name",
+        "pifo"
+      ],
+      [
+        "Top-level Entity Name",
+        "PifoMesh"
+      ],
+      [
+        "Family",
+        "Agilex 7"
+      ],
+      [
+        "Quartus Prime Version",
+        "25.3.1 Build 100 12/19/2025 SC Pro Edition"
+      ],
+      [
+        "Device",
+        "AGFB014R24B2E2V"
+      ],
+      [
+        "Logic utilization estimate (in ALMs)",
+        "191 / 487,200 ( < 1 % )"
+      ],
+      [
+        "Total dedicated logic registers",
+        "318"
+      ],
+      [
+        "Estimated DSP Blocks Post-Merging",
+        "0"
+      ]
+    ],
+    "Partition \"root_partition\" Resource Utilization by Entity": [
+      [
+        "Compilation Hierarchy Node",
+        "Combinational ALUTs",
+        "Dedicated Logic Registers",
+        "Block Memory Bits",
+        "DSP Blocks",
+        "Pins",
+        "Max Depth",
+        "Full Hierarchy Name",
+        "Entity Name",
+        "Library Name"
+      ],
+      [
+        "|",
+        "375 (2)",
+        "318 (0)",
+        "1736",
+        "0",
+        "124",
+        "6.8 (2.0)",
+        "|",
+        "PifoMesh",
+        "altera_work"
+      ],
+      [
+        "|io_controlRequest_fifo|",
+        "9 (9)",
+        "10 (10)",
+        "72",
+        "0",
+        "0",
+        "3.0 (3.0)",
+        "io_controlRequest_fifo",
+        "StreamFifo_11",
+        "altera_work"
+      ],
+      [
+        "|logic_ram_rtl_0|",
+        "0 (0)",
+        "0 (0)",
+        "72",
+        "0",
+        "0",
+        "3.0 (0.0)",
+        "io_controlRequest_fifo|logic_ram_rtl_0",
+        "altera_syncram",
+        "work"
+      ],
+      [
+        "|auto_generated|",
+        "0 (0)",
+        "0 (0)",
+        "72",
+        "0",
+        "0",
+        "3.0 (0.0)",
+        "io_controlRequest_fifo|logic_ram_rtl_0|auto_generated",
+        "altera_syncram_mu6r",
+        "altera_work"
+      ],
+      [
+        "|altera_syncram_impl1|",
+        "0 (0)",
+        "0 (0)",
+        "72",
+        "0",
+        "0",
+        "3.0 (3.0)",
+        "io_controlRequest_fifo|logic_ram_rtl_0|auto_generated|altera_syncram_impl1",
+        "altera_syncram_impl_4gl5",
+        "altera_work"
+      ],
+      [
+        "|pifoEngines_0|",
+        "282 (8)",
+        "216 (1)",
+        "1664",
+        "0",
+        "0",
+        "6.8 (3.0)",
+        "pifoEngines_0",
+        "PifoEngine",
+        "altera_work"
+      ],
+      [
+        "|deque_dequeMapper|",
+        "0 (0)",
+        "1 (1)",
+        "512",
+        "0",
+        "0",
+        "2.0 (2.0)",
+        "pifoEngines_0|deque_dequeMapper",
+        "DirectMapper_1",
+        "altera_work"
+      ],
+      [
+        "|ram_rtl_0|",
+        "0 (0)",
+        "0 (0)",
+        "512",
+        "0",
+        "0",
+        "0.0 (0.0)",
+        "pifoEngines_0|deque_dequeMapper|ram_rtl_0",
+        "altera_syncram",
+        "work"
+      ],
+      [
+        "|auto_generated|",
+        "0 (0)",
+        "0 (0)",
+        "512",
+        "0",
+        "0",
+        "0.0 (0.0)",
+        "pifoEngines_0|deque_dequeMapper|ram_rtl_0|auto_generated",
+        "altera_syncram_o9a12",
+        "altera_work"
+      ],
+      [
+        "|altera_syncram_impl1|",
+        "0 (0)",
+        "0 (0)",
+        "512",
+        "0",
+        "0",
+        "0.0 (0.0)",
+        "pifoEngines_0|deque_dequeMapper|ram_rtl_0|auto_generated|altera_syncram_impl1",
+        "altera_syncram_impl_4o991",
+        "altera_work"
+      ],
+      [
+        "|deque_existingPop_fork|",
+        "3 (3)",
+        "1 (1)",
+        "0",
+        "0",
+        "0",
+        "2.0 (2.0)",
+        "pifoEngines_0|deque_existingPop_fork",
+        "StreamFork_2",
+        "altera_work"
+      ],
+      [
+        "|enque_brain|",
+        "234 (54)",
+        "169 (0)",
+        "1152",
+        "0",
+        "0",
+        "6.8 (6.8)",
+        "pifoEngines_0|enque_brain",
+        "PIFOBrain",
+        "altera_work"
+      ],
+      [
+        "|brainStateMem_io_readRes_toStream_fifo|",
+        "22 (0)",
+        "20 (0)",
+        "0",
+        "0",
+        "0",
+        "5.0 (0.0)",
+        "pifoEngines_0|enque_brain|brainStateMem_io_readRes_toStream_fifo",
+        "StreamFifoLowLatency_5",
+        "altera_work"
+      ],
+      [
+        "|fifo|",
+        "22 (22)",
+        "20 (20)",
+        "0",
+        "0",
+        "0",
+        "5.0 (5.0)",
+        "pifoEngines_0|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo",
+        "StreamFifo_6",
+        "altera_work"
+      ],
+      [
+        "|brainStateMem|",
+        "0 (0)",
+        "1 (1)",
+        "64",
+        "0",
+        "0",
+        "4.0 (3.0)",
+        "pifoEngines_0|enque_brain|brainStateMem",
+        "Mapper_3",
+        "altera_work"
+      ],
+      [
+        "|ram_rtl_0|",
+        "0 (0)",
+        "0 (0)",
+        "64",
+        "0",
+        "0",
+        "4.0 (0.0)",
+        "pifoEngines_0|enque_brain|brainStateMem|ram_rtl_0",
+        "altera_syncram",
+        "work"
+      ],
+      [
+        "|auto_generated|",
+        "0 (0)",
+        "0 (0)",
+        "64",
+        "0",
+        "0",
+        "4.0 (0.0)",
+        "pifoEngines_0|enque_brain|brainStateMem|ram_rtl_0|auto_generated",
+        "altera_syncram_4kje1",
+        "altera_work"
+      ],
+      [
+        "|altera_syncram_impl1|",
+        "0 (0)",
+        "0 (0)",
+        "64",
+        "0",
+        "0",
+        "4.0 (4.0)",
+        "pifoEngines_0|enque_brain|brainStateMem|ram_rtl_0|auto_generated|altera_syncram_impl1",
+        "altera_syncram_impl_22121",
+        "altera_work"
+      ],
+      [
+        "|brainStateUpdate_toStream_fifo|",
+        "12 (0)",
+        "26 (0)",
+        "0",
+        "0",
+        "0",
+        "3.0 (0.0)",
+        "pifoEngines_0|enque_brain|brainStateUpdate_toStream_fifo",
+        "StreamFifoLowLatency_3",
+        "altera_work"
+      ],
+      [
+        "|fifo|",
+        "12 (12)",
+        "26 (26)",
+        "0",
+        "0",
+        "0",
+        "3.0 (3.0)",
+        "pifoEngines_0|enque_brain|brainStateUpdate_toStream_fifo|fifo",
+        "StreamFifo_4",
+        "altera_work"
+      ],
+      [
+        "|engineCAM_io_readRes_toStream_fifo|",
+        "17 (0)",
+        "20 (0)",
+        "0",
+        "0",
+        "0",
+        "6.8 (0.0)",
+        "pifoEngines_0|enque_brain|engineCAM_io_readRes_toStream_fifo",
+        "StreamFifoLowLatency_5",
+        "altera_work"
+      ],
+      [
+        "|fifo|",
+        "17 (17)",
+        "20 (20)",
+        "0",
+        "0",
+        "0",
+        "6.8 (6.8)",
+        "pifoEngines_0|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo",
+        "StreamFifo_6",
+        "altera_work"
+      ],
+      [
+        "|engineCAM|",
+        "0 (0)",
+        "1 (1)",
+        "1024",
+        "0",
+        "0",
+        "5.8 (3.0)",
+        "pifoEngines_0|enque_brain|engineCAM",
+        "Mapper_2",
+        "altera_work"
+      ],
+      [
+        "|ram_rtl_0|",
+        "0 (0)",
+        "0 (0)",
+        "1024",
+        "0",
+        "0",
+        "5.8 (0.0)",
+        "pifoEngines_0|enque_brain|engineCAM|ram_rtl_0",
+        "altera_syncram",
+        "work"
+      ],
+      [
+        "|auto_generated|",
+        "0 (0)",
+        "0 (0)",
+        "1024",
+        "0",
+        "0",
+        "5.8 (0.0)",
+        "pifoEngines_0|enque_brain|engineCAM|ram_rtl_0|auto_generated",
+        "altera_syncram_dtnv",
+        "altera_work"
+      ],
+      [
+        "|altera_syncram_impl1|",
+        "0 (0)",
+        "0 (0)",
+        "1024",
+        "0",
+        "0",
+        "5.8 (5.8)",
+        "pifoEngines_0|enque_brain|engineCAM|ram_rtl_0|auto_generated|altera_syncram_impl1",
+        "altera_syncram_impl_q4061",
+        "altera_work"
+      ],
+      [
+        "|engineMapper_io_readRes_toStream_fifo|",
+        "14 (0)",
+        "8 (0)",
+        "0",
+        "0",
+        "0",
+        "5.0 (0.0)",
+        "pifoEngines_0|enque_brain|engineMapper_io_readRes_toStream_fifo",
+        "StreamFifoLowLatency_4",
+        "altera_work"
+      ],
+      [
+        "|fifo|",
+        "14 (14)",
+        "8 (8)",
+        "0",
+        "0",
+        "0",
+        "5.0 (5.0)",
+        "pifoEngines_0|enque_brain|engineMapper_io_readRes_toStream_fifo|fifo",
+        "StreamFifo_5",
+        "altera_work"
+      ],
+      [
+        "|engineMapper|",
+        "16 (16)",
+        "19 (19)",
+        "0",
+        "0",
+        "0",
+        "5.0 (5.0)",
+        "pifoEngines_0|enque_brain|engineMapper",
+        "Mapper",
+        "altera_work"
+      ],
+      [
+        "|flowStateUpdate_toStream_fifo|",
+        "12 (0)",
+        "34 (0)",
+        "0",
+        "0",
+        "0",
+        "5.8 (0.0)",
+        "pifoEngines_0|enque_brain|flowStateUpdate_toStream_fifo",
+        "StreamFifoLowLatency_2",
+        "altera_work"
+      ],
+      [
+        "|fifo|",
+        "12 (12)",
+        "34 (34)",
+        "0",
+        "0",
+        "0",
+        "5.8 (5.8)",
+        "pifoEngines_0|enque_brain|flowStateUpdate_toStream_fifo|fifo",
+        "StreamFifo_3",
+        "altera_work"
+      ],
+      [
+        "|io_outputs_4_fifo|",
+        "20 (0)",
+        "18 (0)",
+        "0",
+        "0",
+        "0",
+        "3.0 (0.0)",
+        "pifoEngines_0|enque_brain|io_outputs_4_fifo",
+        "StreamFifoLowLatency_8",
+        "altera_work"
+      ],
+      [
+        "|fifo|",
+        "20 (20)",
+        "18 (18)",
+        "0",
+        "0",
+        "0",
+        "3.0 (3.0)",
+        "pifoEngines_0|enque_brain|io_outputs_4_fifo|fifo",
+        "StreamFifo_9",
+        "altera_work"
+      ],
+      [
+        "|io_request_fork|",
+        "2 (2)",
+        "1 (1)",
+        "0",
+        "0",
+        "0",
+        "2.0 (2.0)",
+        "pifoEngines_0|enque_brain|io_request_fork",
+        "StreamFork",
+        "altera_work"
+      ],
+      [
+        "|lastVirtualMapper_io_readRes_toStream_fifo|",
+        "18 (0)",
+        "20 (0)",
+        "0",
+        "0",
+        "0",
+        "6.8 (0.0)",
+        "pifoEngines_0|enque_brain|lastVirtualMapper_io_readRes_toStream_fifo",
+        "StreamFifoLowLatency_7",
+        "altera_work"
+      ],
+      [
+        "|fifo|",
+        "18 (18)",
+        "20 (20)",
+        "0",
+        "0",
+        "0",
+        "6.8 (6.8)",
+        "pifoEngines_0|enque_brain|lastVirtualMapper_io_readRes_toStream_fifo|fifo",
+        "StreamFifo_8",
+        "altera_work"
+      ],
+      [
+        "|lastVirtualMapper|",
+        "0 (0)",
+        "1 (1)",
+        "64",
+        "0",
+        "0",
+        "5.8 (4.0)",
+        "pifoEngines_0|enque_brain|lastVirtualMapper",
+        "Mapper_1",
+        "altera_work"
+      ],
+      [
+        "|ram_rtl_0|",
+        "0 (0)",
+        "0 (0)",
+        "64",
+        "0",
+        "0",
+        "5.8 (0.0)",
+        "pifoEngines_0|enque_brain|lastVirtualMapper|ram_rtl_0",
+        "altera_syncram",
+        "work"
+      ],
+      [
+        "|auto_generated|",
+        "0 (0)",
+        "0 (0)",
+        "64",
+        "0",
+        "0",
+        "5.8 (0.0)",
+        "pifoEngines_0|enque_brain|lastVirtualMapper|ram_rtl_0|auto_generated",
+        "altera_syncram_62af1",
+        "altera_work"
+      ],
+      [
+        "|altera_syncram_impl1|",
+        "0 (0)",
+        "0 (0)",
+        "64",
+        "0",
+        "0",
+        "5.8 (5.8)",
+        "pifoEngines_0|enque_brain|lastVirtualMapper|ram_rtl_0|auto_generated|altera_syncram_impl1",
+        "altera_syncram_impl_iuv32",
+        "altera_work"
+      ],
+      [
+        "|streamArbiter_4|",
+        "32 (32)",
+        "0 (0)",
+        "0",
+        "0",
+        "0",
+        "5.8 (5.8)",
+        "pifoEngines_0|enque_brain|streamArbiter_4",
+        "StreamArbiter_2",
+        "altera_work"
+      ],
+      [
+        "|streamArbiter_5|",
+        "15 (15)",
+        "0 (0)",
+        "0",
+        "0",
+        "0",
+        "4.0 (4.0)",
+        "pifoEngines_0|enque_brain|streamArbiter_5",
+        "StreamArbiter_3",
+        "altera_work"
+      ],
+      [
+        "|enque_enqueMapper|",
+        "14 (14)",
+        "28 (28)",
+        "0",
+        "0",
+        "0",
+        "2.0 (2.0)",
+        "pifoEngines_0|enque_enqueMapper",
+        "DirectMapper",
+        "altera_work"
+      ],
+      [
+        "|enque_flowIdStream_fifo|",
+        "17 (0)",
+        "12 (0)",
+        "0",
+        "0",
+        "0",
+        "3.0 (0.0)",
+        "pifoEngines_0|enque_flowIdStream_fifo",
+        "StreamFifoLowLatency_9",
+        "altera_work"
+      ],
+      [
+        "|fifo|",
+        "17 (17)",
+        "12 (12)",
+        "0",
+        "0",
+        "0",
+        "3.0 (3.0)",
+        "pifoEngines_0|enque_flowIdStream_fifo|fifo",
+        "StreamFifo_2",
+        "altera_work"
+      ],
+      [
+        "|io_outputs_2_fifo|",
+        "6 (0)",
+        "4 (0)",
+        "0",
+        "0",
+        "0",
+        "3.0 (0.0)",
+        "pifoEngines_0|io_outputs_2_fifo",
+        "StreamFifoLowLatency_10",
+        "altera_work"
+      ],
+      [
+        "|fifo|",
+        "6 (6)",
+        "4 (4)",
+        "0",
+        "0",
+        "0",
+        "3.0 (3.0)",
+        "pifoEngines_0|io_outputs_2_fifo|fifo",
+        "StreamFifo_10",
+        "altera_work"
+      ],
+      [
+        "|xbar|",
+        "82 (1)",
+        "92 (9)",
+        "0",
+        "0",
+        "0",
+        "5.0 (2.0)",
+        "xbar",
+        "MessageCrossBar",
+        "altera_work"
+      ],
+      [
+        "|io_inputs_0_fifo|",
+        "31 (0)",
+        "40 (0)",
+        "0",
+        "0",
+        "0",
+        "5.0 (0.0)",
+        "xbar|io_inputs_0_fifo",
+        "StreamFifoLowLatency",
+        "altera_work"
+      ],
+      [
+        "|fifo|",
+        "31 (31)",
+        "40 (40)",
+        "0",
+        "0",
+        "0",
+        "5.0 (5.0)",
+        "xbar|io_inputs_0_fifo|fifo",
+        "StreamFifo",
+        "altera_work"
+      ],
+      [
+        "|io_inputs_1_fifo|",
+        "34 (0)",
+        "40 (0)",
+        "0",
+        "0",
+        "0",
+        "5.0 (0.0)",
+        "xbar|io_inputs_1_fifo",
+        "StreamFifoLowLatency",
+        "altera_work"
+      ],
+      [
+        "|fifo|",
+        "34 (34)",
+        "40 (40)",
+        "0",
+        "0",
+        "0",
+        "5.0 (5.0)",
+        "xbar|io_inputs_1_fifo|fifo",
+        "StreamFifo",
+        "altera_work"
+      ],
+      [
+        "|streamArbiter_4|",
+        "11 (11)",
+        "3 (3)",
+        "0",
+        "0",
+        "0",
+        "5.0 (5.0)",
+        "xbar|streamArbiter_4",
+        "StreamArbiter",
+        "altera_work"
+      ],
+      [
+        "|streamArbiter_5|",
+        "4 (4)",
+        "0 (0)",
+        "0",
+        "0",
+        "0",
+        "3.0 (3.0)",
+        "xbar|streamArbiter_5",
+        "StreamArbiter",
+        "altera_work"
+      ],
+      [
+        "|streamDemux_3|",
+        "1 (1)",
+        "0 (0)",
+        "0",
+        "0",
+        "0",
+        "4.0 (4.0)",
+        "xbar|streamDemux_3",
+        "StreamDemux",
+        "altera_work"
+      ]
+    ],
+    "Synthesis Resource Usage Summary for Partition \"root_partition\"": [
+      [
+        "Resource",
+        "Usage"
+      ],
+      [
+        "Estimate of Logic utilization (ALMs needed)",
+        "191"
+      ],
+      [
+        "",
+        ""
+      ],
+      [
+        "Combinational ALUT usage for logic",
+        "375"
+      ],
+      [
+        "-- 8 input functions",
+        "31"
+      ],
+      [
+        "-- 7 input functions",
+        "13"
+      ],
+      [
+        "-- 6 input functions",
+        "98"
+      ],
+      [
+        "-- 5 input functions",
+        "87"
+      ],
+      [
+        "-- 4 input functions",
+        "53"
+      ],
+      [
+        "-- <=3 input functions",
+        "93"
+      ],
+      [
+        "",
+        ""
+      ],
+      [
+        "Dedicated logic registers",
+        "318"
+      ],
+      [
+        "",
+        ""
+      ],
+      [
+        "I/O pins",
+        "124"
+      ],
+      [
+        "Total MLAB memory bits",
+        "0"
+      ],
+      [
+        "Total block memory bits",
+        "1736"
+      ],
+      [
+        "",
+        ""
+      ],
+      [
+        "Total DSP Blocks",
+        "0"
+      ],
+      [
+        "-- [A] Total Fixed Point DSP Blocks",
+        "0"
+      ],
+      [
+        "-- [B] Total Floating Point DSP Blocks",
+        "0"
+      ],
+      [
+        "",
+        ""
+      ],
+      [
+        "Maximum fan-out node",
+        "clk"
+      ],
+      [
+        "Maximum fan-out",
+        "364"
+      ],
+      [
+        "Total fan-out",
+        "3283"
+      ],
+      [
+        "Average fan-out",
+        "3.80"
+      ]
+    ],
+    "Synthesis RAM Summary for Partition \"root_partition\"": [
+      [
+        "Name",
+        "Type",
+        "Mode",
+        "Port A Depth",
+        "Port A Width",
+        "Port B Depth",
+        "Port B Width",
+        "Logical Size",
+        "Implementation Port A Depth",
+        "Implementation Port A Width",
+        "Implementation Port B Depth",
+        "Implementation Port B Width",
+        "Implementation Bits",
+        "MIF"
+      ],
+      [
+        "io_controlRequest_fifo|logic_ram_rtl_0|auto_generated|altera_syncram_impl1|ALTERA_SYNCRAM",
+        "AUTO",
+        "Simple Dual Port",
+        "4",
+        "42",
+        "4",
+        "42",
+        "168",
+        "4",
+        "18",
+        "4",
+        "18",
+        "72",
+        "None"
+      ],
+      [
+        "pifoEngines_0|deque_dequeMapper|ram_rtl_0|auto_generated|altera_syncram_impl1|ALTERA_SYNCRAM",
+        "AUTO",
+        "Simple Dual Port",
+        "128",
+        "4",
+        "128",
+        "4",
+        "512",
+        "128",
+        "4",
+        "128",
+        "4",
+        "512",
+        "qdb/_compiler/pifo/root_partition/25.3.1/partitioned/1/mifs/ram0_PifoMesh_a88d83e7.hdl.mif"
+      ],
+      [
+        "pifoEngines_0|enque_brain|brainStateMem|ram_rtl_0|auto_generated|altera_syncram_impl1|ALTERA_SYNCRAM",
+        "AUTO",
+        "Simple Dual Port",
+        "8",
+        "32",
+        "8",
+        "32",
+        "256",
+        "8",
+        "8",
+        "8",
+        "8",
+        "64",
+        "qdb/_compiler/pifo/root_partition/25.3.1/partitioned/1/mifs/ram3_PifoMesh_a88d83e7.hdl.mif"
+      ],
+      [
+        "pifoEngines_0|enque_brain|engineCAM|ram_rtl_0|auto_generated|altera_syncram_impl1|ALTERA_SYNCRAM",
+        "AUTO",
+        "Simple Dual Port",
+        "128",
+        "32",
+        "128",
+        "32",
+        "4096",
+        "128",
+        "8",
+        "128",
+        "8",
+        "1024",
+        "qdb/_compiler/pifo/root_partition/25.3.1/partitioned/1/mifs/ram2_PifoMesh_a88d83e7.hdl.mif"
+      ],
+      [
+        "pifoEngines_0|enque_brain|lastVirtualMapper|ram_rtl_0|auto_generated|altera_syncram_impl1|ALTERA_SYNCRAM",
+        "AUTO",
+        "Simple Dual Port",
+        "8",
+        "8",
+        "8",
+        "8",
+        "64",
+        "8",
+        "8",
+        "8",
+        "8",
+        "64",
+        "qdb/_compiler/pifo/root_partition/25.3.1/partitioned/1/mifs/ram1_PifoMesh_a88d83e7.hdl.mif"
+      ]
+    ]
+  }
+}

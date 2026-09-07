@@ -1,0 +1,58 @@
+Info (22747): Value AUTO_DISCOVERY for QSF Assignment PWRMGT_VOLTAGE_OUTPUT_FORMAT is not supported. Hence changing the value to LINEAR_FORMAT
+Info: *******************************************************************
+Info: Running Quartus Prime Synthesis
+    Info: Version 25.3.1 Build 100 12/19/2025 SC Pro Edition
+    Info: Copyright (C) 2025  Altera Corporation. All rights reserved.
+    Info: Your use of Altera Corporation's design tools, logic functions 
+    Info: and other software and tools, and any partner logic 
+    Info: functions, and any output files from any of the foregoing 
+    Info: (including device programming or simulation files), and any 
+    Info: associated documentation or information are expressly subject 
+    Info: to the terms and conditions of the Altera Program License 
+    Info: Subscription Agreement, the Altera Quartus Prime License Agreement,
+    Info: the Altera IP License Agreement, or other applicable license
+    Info: agreement, including, without limitation, that your use is for
+    Info: the sole purpose of programming logic devices manufactured by
+    Info: Altera and sold by Altera or its authorized distributors.  Please
+    Info: refer to the Altera Software License Subscription Agreements 
+    Info: on the Quartus Prime software download page.
+    Info: Processing started: Sun Sep  6 21:51:20 2026
+    Info: System process ID: 256810
+Info: Command: quartus_syn pifo
+Info: qis_default_flow_script.tcl version: #2
+Info: Initializing Synthesis...
+Info: Project = "pifo"
+Info: Revision = "pifo"
+Info (21958): Initialized Quartus Message Database
+Info: Analyzing source files
+Critical Warning (20759): Use the Reset Release IP in Agilex 7 designs to ensure a successful configuration. For more information about the Reset Release IP, refer to the Configuration User Guide.
+Info: Elaborating from top-level entity "PifoMesh"
+Info (22567): Verilog HDL info at PifoMesh.v(195937): extracting RAM for identifier 'logic_ram' File: /data/work/rio-synthesis/hardware-overhead/pe5-v1024-c1024-static-quartus/rtl/PifoMesh.v Line: 195937
+Info (22567): Verilog HDL info at PifoMesh.v(65356): extracting RAM for identifier 'ram' File: /data/work/rio-synthesis/hardware-overhead/pe5-v1024-c1024-static-quartus/rtl/PifoMesh.v Line: 65356
+Info (25395): Verilog HDL info at PifoMesh.v(65360): readmemb: reading from file 'PifoMesh.v_toplevel_pifoEngines_0_enque_enqueMapper_ram.bin' File: /data/work/rio-synthesis/hardware-overhead/pe5-v1024-c1024-static-quartus/rtl/PifoMesh.v Line: 65360
+Info (22567): Verilog HDL info at PifoMesh.v(195782): extracting RAM for identifier 'logic_ram' File: /data/work/rio-synthesis/hardware-overhead/pe5-v1024-c1024-static-quartus/rtl/PifoMesh.v Line: 195782
+Info (22567): Verilog HDL info at PifoMesh.v(195577): extracting RAM for identifier 'ram' File: /data/work/rio-synthesis/hardware-overhead/pe5-v1024-c1024-static-quartus/rtl/PifoMesh.v Line: 195577
+Info (25395): Verilog HDL info at PifoMesh.v(195582): readmemb: reading from file 'PifoMesh.v_toplevel_pifoEngines_0_enque_brain_engineMapper_ram.bin' File: /data/work/rio-synthesis/hardware-overhead/pe5-v1024-c1024-static-quartus/rtl/PifoMesh.v Line: 195582
+Info (22567): Verilog HDL info at PifoMesh.v(195524): extracting RAM for identifier 'ram' File: /data/work/rio-synthesis/hardware-overhead/pe5-v1024-c1024-static-quartus/rtl/PifoMesh.v Line: 195524
+Info (25395): Verilog HDL info at PifoMesh.v(195529): readmemb: reading from file 'PifoMesh.v_toplevel_pifoEngines_0_enque_brain_lastVirtualMapper_ram.bin' File: /data/work/rio-synthesis/hardware-overhead/pe5-v1024-c1024-static-quartus/rtl/PifoMesh.v Line: 195529
+Info (22567): Verilog HDL info at PifoMesh.v(195471): extracting RAM for identifier 'ram' File: /data/work/rio-synthesis/hardware-overhead/pe5-v1024-c1024-static-quartus/rtl/PifoMesh.v Line: 195471
+Info (25395): Verilog HDL info at PifoMesh.v(195476): readmemb: reading from file 'PifoMesh.v_toplevel_pifoEngines_0_enque_brain_engineCAM_ram.bin' File: /data/work/rio-synthesis/hardware-overhead/pe5-v1024-c1024-static-quartus/rtl/PifoMesh.v Line: 195476
+Info (22567): Verilog HDL info at PifoMesh.v(196788): extracting RAM for identifier 'logic_ram' File: /data/work/rio-synthesis/hardware-overhead/pe5-v1024-c1024-static-quartus/rtl/PifoMesh.v Line: 196788
+Info (22567): Verilog HDL info at PifoMesh.v(195300): extracting RAM for identifier 'ram' File: /data/work/rio-synthesis/hardware-overhead/pe5-v1024-c1024-static-quartus/rtl/PifoMesh.v Line: 195300
+Info (25395): Verilog HDL info at PifoMesh.v(195305): readmemb: reading from file 'PifoMesh.v_toplevel_pifoEngines_0_enque_brain_brainStateMem_ram.bin' File: /data/work/rio-synthesis/hardware-overhead/pe5-v1024-c1024-static-quartus/rtl/PifoMesh.v Line: 195305
+Info (22567): Verilog HDL info at PifoMesh.v(196643): extracting RAM for identifier 'logic_ram' File: /data/work/rio-synthesis/hardware-overhead/pe5-v1024-c1024-static-quartus/rtl/PifoMesh.v Line: 196643
+Info (22567): Verilog HDL info at PifoMesh.v(196509): extracting RAM for identifier 'logic_ram' File: /data/work/rio-synthesis/hardware-overhead/pe5-v1024-c1024-static-quartus/rtl/PifoMesh.v Line: 196509
+Info (22567): Verilog HDL info at PifoMesh.v(196381): extracting RAM for identifier 'logic_ram' File: /data/work/rio-synthesis/hardware-overhead/pe5-v1024-c1024-static-quartus/rtl/PifoMesh.v Line: 196381
+Info (22567): Verilog HDL info at PifoMesh.v(196251): extracting RAM for identifier 'logic_ram' File: /data/work/rio-synthesis/hardware-overhead/pe5-v1024-c1024-static-quartus/rtl/PifoMesh.v Line: 196251
+Info (22567): Verilog HDL info at PifoMesh.v(196112): extracting RAM for identifier 'logic_ram' File: /data/work/rio-synthesis/hardware-overhead/pe5-v1024-c1024-static-quartus/rtl/PifoMesh.v Line: 196112
+Info (22567): Verilog HDL info at PifoMesh.v(64191): extracting RAM for identifier 'ram' File: /data/work/rio-synthesis/hardware-overhead/pe5-v1024-c1024-static-quartus/rtl/PifoMesh.v Line: 64191
+Info (25395): Verilog HDL info at PifoMesh.v(64195): readmemb: reading from file 'PifoMesh.v_toplevel_pifoEngines_0_deque_dequeMapper_ram.bin' File: /data/work/rio-synthesis/hardware-overhead/pe5-v1024-c1024-static-quartus/rtl/PifoMesh.v Line: 64195
+Info (22567): Verilog HDL info at PifoMesh.v(194701): extracting RAM for identifier 'logic_ram' File: /data/work/rio-synthesis/hardware-overhead/pe5-v1024-c1024-static-quartus/rtl/PifoMesh.v Line: 194701
+Info (22567): Verilog HDL info at PifoMesh.v(10634): extracting RAM for identifier 'ram' File: /data/work/rio-synthesis/hardware-overhead/pe5-v1024-c1024-static-quartus/rtl/PifoMesh.v Line: 10634
+Info (25395): Verilog HDL info at PifoMesh.v(10638): readmemb: reading from file 'PifoMesh.v_toplevel_pifoEngines_1_enque_enqueMapper_ram.bin' File: /data/work/rio-synthesis/hardware-overhead/pe5-v1024-c1024-static-quartus/rtl/PifoMesh.v Line: 10638
+Info (22567): Verilog HDL info at PifoMesh.v(194607): extracting RAM for identifier 'ram' File: /data/work/rio-synthesis/hardware-overhead/pe5-v1024-c1024-static-quartus/rtl/PifoMesh.v Line: 194607
+Info (25395): Verilog HDL info at PifoMesh.v(194612): readmemb: reading from file 'PifoMesh.v_toplevel_pifoEngines_1_enque_brain_engineMapper_ram.bin' File: /data/work/rio-synthesis/hardware-overhead/pe5-v1024-c1024-static-quartus/rtl/PifoMesh.v Line: 194612
+Info (22567): Verilog HDL info at PifoMesh.v(194554): extracting RAM for identifier 'ram' File: /data/work/rio-synthesis/hardware-overhead/pe5-v1024-c1024-static-quartus/rtl/PifoMesh.v Line: 194554
+Info (25395): Verilog HDL info at PifoMesh.v(194559): readmemb: reading from file 'PifoMesh.v_toplevel_pifoEngines_1_enque_brain_lastVirtualMapper_ram.bin' File: /data/work/rio-synthesis/hardware-overhead/pe5-v1024-c1024-static-quartus/rtl/PifoMesh.v Line: 194559
+Info (22567): Verilog HDL info at PifoMesh.v(194501): extracting RAM for identifier 'ram' File: /data/work/rio-synthesis/hardware-overhead/pe5-v1024-c1024-static-quartus/rtl/PifoMesh.v Line: 194501
+Info (25395): Verilog HDL info at PifoMesh.v(194506): readmemb: reading from file 'PifoMesh.v_toplevel_pifoEngines_1_enque_brain_engineCAM_ram.bin' File: /data/work/rio-synthesis/hardware-ove

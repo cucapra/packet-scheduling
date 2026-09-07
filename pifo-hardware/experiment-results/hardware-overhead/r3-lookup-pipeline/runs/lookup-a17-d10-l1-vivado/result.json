@@ -1,0 +1,69 @@
+{
+  "status": "synthesis_complete",
+  "build": "/data/work/rio-synthesis/lookup-pipeline/lookup-a17-d10-l1-vivado",
+  "platform": "vivado",
+  "resources": {
+    "logic_luts": 102,
+    "registers": 3,
+    "bram36_tiles": 36.0,
+    "uram288_blocks": 0,
+    "bram_uram_allocated_bits": 1327104,
+    "lutram_luts": 0,
+    "dsp_blocks": 0
+  },
+  "part": "xcku5p-ffvb676-2-e",
+  "hardware": {
+    "component": "ordinary_lookup",
+    "address_bits": 17,
+    "data_bits": 10,
+    "read_latency_cycles": 1,
+    "initiation_interval_cycles": 1
+  },
+  "source_sha256": {
+    "hw/python/pifo_lookup_pipeline.py": "56e67cac58d4845bac034a43c5e8f6da8f68087a0c2aebc7fbc94fe199f179bb"
+  },
+  "rtl_sha256": {
+    "PifoMesh.v": "8294377d808fa9fbb2fafadb9b02064f8399511199157707d0bc11f0d050814a",
+    "lookup-zero.bin": "dd680c722f86829098b874ba7a71c3240998a521988b691ac68d2d4479403b78"
+  },
+  "tool_version": "vivado v2025.2 (64-bit)\nTool Version Limit: 2025.11\nSW Build 6299465 on Fri Nov 14 12:34:56 MST 2025\nIP Build 6300035 on Fri Nov 14 10:48:45 MST 2025\nSharedData Build 6298862 on Thu Nov 13 04:50:51 MST 2025\nCopyright 1986-2022 Xilinx, Inc. All Rights Reserved.\nCopyright 2022-2025 Advanced Micro Devices, Inc. All Rights Reserved.",
+  "clock_target_mhz": 100,
+  "device_capacity_check": "enforced",
+  "capacity_checks": [
+    {
+      "resource": "logic_luts",
+      "used": 102,
+      "available": 216960,
+      "utilization_percent": 0.04701327433628318,
+      "exceeds_capacity": false
+    },
+    {
+      "resource": "registers",
+      "used": 3,
+      "available": 433920,
+      "utilization_percent": 0.0006913716814159292,
+      "exceeds_capacity": false
+    },
+    {
+      "resource": "bram36_tiles",
+      "used": 36,
+      "available": 480,
+      "utilization_percent": 7.5,
+      "exceeds_capacity": false
+    },
+    {
+      "resource": "uram288_blocks",
+      "used": 0,
+      "available": 64,
+      "utilization_percent": 0.0,
+      "exceeds_capacity": false
+    },
+    {
+      "resource": "dsp_blocks",
+      "used": 0,
+      "available": 1824,
+      "utilization_percent": 0.0,
+      "exceeds_capacity": false
+    }
+  ]
+}

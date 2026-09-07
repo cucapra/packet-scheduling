@@ -1,0 +1,19 @@
+{
+  "schema": "rio-lookup-pipeline-v1",
+  "name": "r3-lookup-pipeline",
+  "title": "Isolated large lookup: pipeline mapping exploration",
+  "output_dir": "experiment-results/hardware-overhead/r3-lookup-pipeline",
+  "address_bits": 17,
+  "data_bits": 10,
+  "read_latencies": [
+    1,
+    8
+  ],
+  "clock_mhz": 100,
+  "threads": 8,
+  "platforms": [
+    "quartus",
+    "vivado"
+  ],
+  "scope": "One ordinary lookup bank; geometry matches one post-mapper bank at 5 PEs / 128 vFlows. Not an integrated RIO result."
+}

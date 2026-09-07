@@ -1,0 +1,25 @@
+Running /data/work/vivado/2025.2/Vivado/bin/vivado -version
+  log: /data/work/rio-synthesis/hardware-overhead/pe5-v128-c1024-static-vivado/vivado-version.txt
+Running /data/work/vivado/2025.2/Vivado/bin/vivado -mode batch -nojournal -log /data/work/rio-synthesis/hardware-overhead/pe5-v128-c1024-static-vivado/vivado.log -source /home/zg366/packet-scheduling/pifo-hardware/synthesis/vivado_synth.tcl -tclargs /data/work/rio-synthesis/hardware-overhead/pe5-v128-c1024-static-vivado xcku5p-ffvb676-2-e 8 10.0 0 RuntimeOptimized
+  log: /data/work/rio-synthesis/hardware-overhead/pe5-v128-c1024-static-vivado/synthesis.log
+  A total of 134 instances were transformed.
+  RAM128X1D => RAM128X1D (MUXF7(x2), RAMD64E(x4)): 10 instances
+  RAM16X1D => RAM32X1D (RAMD32(x2)): 10 instances
+  RAM32M => RAM32M (RAMD32(x6), RAMS32(x2)): 5 instances
+  RAM32M16 => RAM32M16 (RAMD32(x14), RAMS32(x2)): 49 instances
+  RAM32X1D => RAM32X1D (RAMD32(x2)): 10 instances
+  RAM64M8 => RAM64M8 (RAMD64E(x8)): 40 instances
+  RAM64X1D => RAM64X1D (RAMD64E(x2)): 10 instances
+
+Synth Design complete | Checksum: fed6d725
+INFO: [Common 17-83] Releasing license: Synthesis
+331 Infos, 119 Warnings, 1 Critical Warnings and 0 Errors encountered.
+synth_design completed successfully
+synth_design: Time (s): cpu = 00:17:20 ; elapsed = 00:15:24 . Memory (MB): peak = 7269.668 ; gain = 5689.285 ; free physical = 115851 ; free virtual = 136550
+INFO: [Common 17-2834] synth_design peak Physical Memory [PSS] (MB): overall = 14234.496; main = 6024.133; forked = 8250.431
+INFO: [Common 17-2834] synth_design peak Virtual Memory [VSS] (MB): overall = 23600.551; main = 7265.754; forked = 16434.355
+# write_checkpoint -force [file join $build_dir pifo_synth.dcp]
+INFO: [Timing 38-35] Done setting XDC timing constraints.
+INFO: [Timing 38-480] Writing timing data to binary archive.
+Write ShapeDB Complete: Time (s): cpu = 00:00:03 ; elapsed = 00:00:00.79 . Memory (MB): peak = 7345.785 ; gain = 0.000 ; free physical = 115228 ; free virtual = 136182
+Command '[PosixPath('/data/work/vivado/2025.2/Vivado/bin/vivado'), '-mode', 'batch', '-nojournal', '-log', PosixPath('/data/work/rio-synthesis/hardware-overhead/pe5-v128-c1024-static-vivado/vivado.log'), '-source', PosixPath('/home/zg366/packet-scheduling/pifo-hardware/synthesis/vivado_synth.tcl'), '-tclargs', PosixPath('/data/work/rio-synthesis/hardware-overhead/pe5-v128-c1024-static-vivado'), 'xcku5p-ffvb676-2-e', '8', '10.0', '0', 'RuntimeOptimized']' died with <Signals.SIGTERM: 15>.

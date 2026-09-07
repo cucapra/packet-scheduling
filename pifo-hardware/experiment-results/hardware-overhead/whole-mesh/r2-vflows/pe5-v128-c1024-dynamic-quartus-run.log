@@ -1,0 +1,27 @@
+Running /data/work/quartus/quartus/bin/quartus_sh --version
+  log: /data/work/rio-synthesis/hardware-overhead/pe5-v128-c1024-dynamic-quartus/quartus-version.txt
+Running /data/work/quartus/quartus/bin/quartus_sh -t /home/zg366/packet-scheduling/pifo-hardware/synthesis/create_project.tcl /data/work/rio-synthesis/hardware-overhead/pe5-v128-c1024-dynamic-quartus AGFB014R24B2E2V 8 10.0
+  log: /data/work/rio-synthesis/hardware-overhead/pe5-v128-c1024-dynamic-quartus/project.log
+Running /data/work/quartus/quartus/bin/quartus_syn pifo
+  log: /data/work/rio-synthesis/hardware-overhead/pe5-v128-c1024-dynamic-quartus/synthesis.log
+        Info (286033): Parameter READ_DURING_WRITE_MODE_MIXED_PORTS set to OLD_DATA
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "pifoEngines_4|enque_brain|brainStateMem|ram_rtl_0"  File: /data/work/rio-synthesis/hardware-overhead/pe5-v128-c1024-dynamic-quartus/rtl/PifoMesh.v Line: 149084
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 32
+        Info (286033): Parameter WIDTHAD_A set to 7
+        Info (286033): Parameter NUMWORDS_A set to 128
+        Info (286033): Parameter WIDTH_B set to 32
+        Info (286033): Parameter WIDTHAD_B set to 7
+        Info (286033): Parameter NUMWORDS_B set to 128
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to NONE
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+        Info (286033): Parameter INIT_FILE set to qdb/_compiler/pifo/root_partition/25.3.1/partitioned/1/mifs/ram29_PifoMesh_a88d83e7.hdl.mif
+        Info (286033): Parameter READ_DURING_WRITE_MODE_MIXED_PORTS set to OLD_DATA
+Terminating backend processes...
+Exiting (pid==288635)...
+Command '[PosixPath('/data/work/quartus/quartus/bin/quartus_syn'), 'pifo']' returned non-zero exit status 1.

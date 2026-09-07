@@ -1,0 +1,20 @@
+{
+  "timestamp": "2026-09-06T22:34:13.774247-04:00",
+  "action": "increase_sweep_concurrency_after_large_vivado_jobs_finished",
+  "pid": 271125,
+  "old_args": [
+    ".venv/bin/python",
+    "hw/python/pifo_hardware_overhead_r2.py",
+    "--build-root",
+    "/data/work/rio-synthesis/hardware-overhead",
+    "--only-vflows",
+    "32,64,128,256,512",
+    "--jobs",
+    "4",
+    "--adopt-running",
+    ""
+  ],
+  "new_jobs": 8,
+  "reason": "About 157 GiB host memory is available; run four jobs per vendor and retain all active synthesis wrappers.",
+  "signal": "SIGTERM to orchestrator PID only"
+}

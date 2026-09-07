@@ -1,0 +1,370 @@
+
+****** Vivado v2025.2 (64-bit)
+  **** SW Build 6299465 on Fri Nov 14 12:34:56 MST 2025
+  **** IP Build 6300035 on Fri Nov 14 10:48:45 MST 2025
+  **** SharedData Build 6298862 on Thu Nov 13 04:50:51 MST 2025
+  **** Start of session at: Sun Sep  6 22:54:03 2026
+    ** Copyright 1986-2022 Xilinx, Inc. All Rights Reserved.
+    ** Copyright 2022-2025 Advanced Micro Devices, Inc. All Rights Reserved.
+
+source /home/zg366/packet-scheduling/pifo-hardware/synthesis/vivado_synth.tcl
+# if {$argc < 5 || $argc > 7} {
+#     error {Expected BUILD_DIR PART THREADS CLOCK_PERIOD_NS PREPARE_ONLY [DIRECTIVE] [ALLOW_OVER_CAPACITY]}
+# }
+# lassign $argv build_dir part threads period prepare_only directive allow_over_capacity
+# if {$directive eq ""} { set directive default }
+# if {$allow_over_capacity eq ""} { set allow_over_capacity 0 }
+# set build_dir [file normalize $build_dir]
+# set rtl_dir [file join $build_dir rtl]
+# set report_dir [file join $build_dir reports]
+# file mkdir $report_dir
+# if {[llength [get_parts -quiet $part]] != 1} {
+#     error "Target part is not installed: $part"
+# }
+# puts "PIFO_VIVADO_VERSION: [version -short]"
+PIFO_VIVADO_VERSION: 2025.2
+# puts "PIFO_VIVADO_PART: $part"
+PIFO_VIVADO_PART: xcku5p-ffvb676-2-e
+# set_param general.maxThreads $threads
+# create_project -in_memory -part $part
+# cd $rtl_dir
+# read_verilog -sv [glob -directory $rtl_dir *.v *.sv]
+# set xdc [file join $build_dir pifo.xdc]
+# set constraints [open $xdc w]
+# puts $constraints "create_clock -name clk -period $period \[get_ports clk\]"
+# puts $constraints {set_false_path -from [get_ports reset]}
+# close $constraints
+# read_xdc $xdc
+# if {$prepare_only} {
+#     puts "PIFO_PREPARED: $build_dir"
+#     exit 0
+# }
+# if {$allow_over_capacity} {
+#     # This version-specific Tcl hook skips only the pre-mapping device-capacity
+#     # gate. The RTL, target, optimization passes, and reported device capacities
+#     # remain unchanged. The resulting netlist can exceed the physical device.
+#     # Verified on Vivado 2025.2 with an oversized RAM and an unchanged smaller
+#     # control design; see experiment-results/hardware-overhead/diagnostics.
+#     puts "PIFO_ESTIMATION_ONLY: device-capacity check disabled; no implementation or fit claim"
+#     set_param synth.elaboration.rodinMoreOptions {rename rt::check_resource rt::pifo_device_capacity_check; proc rt::check_resource {args} {puts "PIFO_DEVICE_CAPACITY_CHECK_SKIPPED: $args"; return 1}}
+# }
+PIFO_ESTIMATION_ONLY: device-capacity check disabled; no implementation or fit claim
+# synth_design -top PifoMesh -part $part -mode out_of_context -flatten_hierarchy rebuilt -directive $directive
+Command: synth_design -top PifoMesh -part xcku5p-ffvb676-2-e -mode out_of_context -flatten_hierarchy rebuilt -directive RuntimeOptimized
+Starting synth_design
+Attempting to get a license for feature 'Synthesis' and/or device 'xcku5p'
+INFO: [Common 17-349] Got license for feature 'Synthesis' and/or device 'xcku5p'
+INFO: [Device 21-403] Loading part xcku5p-ffvb676-2-e
+INFO: [Synth 8-7079] Multithreading enabled for synth_design using a maximum of 7 processes.
+INFO: [Synth 8-7078] Launching helper process for spawning children vivado processes
+INFO: [Synth 8-7075] Helper process launched with PID 294096
+---------------------------------------------------------------------------------
+Starting RTL Elaboration : Time (s): cpu = 00:00:05 ; elapsed = 00:00:05 . Memory (MB): peak = 2833.965 ; gain = 181.688 ; free physical = 184770 ; free virtual = 205804
+---------------------------------------------------------------------------------
+INFO: [Synth 8-6157] synthesizing module 'PifoMesh' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:7]
+INFO: [Synth 8-6157] synthesizing module 'MessageCrossBar' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:6553]
+INFO: [Synth 8-6157] synthesizing module 'StreamFifoLowLatency' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:16686]
+INFO: [Synth 8-6157] synthesizing module 'StreamFifo' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:18931]
+INFO: [Synth 8-6155] done synthesizing module 'StreamFifo' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:18931]
+INFO: [Synth 8-6155] done synthesizing module 'StreamFifoLowLatency' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:16686]
+INFO: [Synth 8-6157] synthesizing module 'StreamDemux' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:16556]
+INFO: [Synth 8-6155] done synthesizing module 'StreamDemux' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:16556]
+INFO: [Synth 8-6157] synthesizing module 'StreamArbiter' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:16374]
+INFO: [Synth 8-6155] done synthesizing module 'StreamArbiter' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:16374]
+INFO: [Synth 8-6155] done synthesizing module 'MessageCrossBar' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:6553]
+INFO: [Synth 8-6157] synthesizing module 'PifoEngine' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:5700]
+INFO: [Synth 8-6157] synthesizing module 'ExternalPifoCore' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:16303]
+INFO: [Synth 8-6155] done synthesizing module 'ExternalPifoCore' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:16303]
+INFO: [Synth 8-6157] synthesizing module 'TransactionalMapper' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:16153]
+INFO: [Synth 8-3876] $readmem data file 'PifoMesh.v_toplevel_pifoEngines_0_enque_enqueMapper_banks_0.bin' is read successfully [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:16207]
+INFO: [Synth 8-3876] $readmem data file 'PifoMesh.v_toplevel_pifoEngines_0_enque_enqueMapper_banks_1.bin' is read successfully [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:16228]
+INFO: [Synth 8-6155] done synthesizing module 'TransactionalMapper' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:16153]
+INFO: [Synth 8-6157] synthesizing module 'StreamFifoLowLatency_13' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:16106]
+INFO: [Synth 8-6157] synthesizing module 'StreamFifo_6' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:18776]
+INFO: [Synth 8-6155] done synthesizing module 'StreamFifo_6' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:18776]
+INFO: [Synth 8-6155] done synthesizing module 'StreamFifoLowLatency_13' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:16106]
+INFO: [Synth 8-6157] synthesizing module 'PIFOBrain' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:15043]
+INFO: [Synth 8-6157] synthesizing module 'StreamFork' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:18651]
+INFO: [Synth 8-6155] done synthesizing module 'StreamFork' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:18651]
+INFO: [Synth 8-6157] synthesizing module 'Mapper' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:18598]
+INFO: [Synth 8-3876] $readmem data file 'PifoMesh.v_toplevel_pifoEngines_0_enque_brain_engineMapper_ram.bin' is read successfully [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:18621]
+INFO: [Synth 8-6155] done synthesizing module 'Mapper' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:18598]
+INFO: [Synth 8-6157] synthesizing module 'Mapper_1' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:18545]
+INFO: [Synth 8-3876] $readmem data file 'PifoMesh.v_toplevel_pifoEngines_0_enque_brain_lastVirtualMapper_ram.bin' is read successfully [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:18568]
+INFO: [Synth 8-6155] done synthesizing module 'Mapper_1' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:18545]
+INFO: [Synth 8-6157] synthesizing module 'Mapper_2' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:18492]
+INFO: [Synth 8-3876] $readmem data file 'PifoMesh.v_toplevel_pifoEngines_0_enque_brain_engineCAM_ram.bin' is read successfully [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:18515]
+INFO: [Synth 8-6155] done synthesizing module 'Mapper_2' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:18492]
+INFO: [Synth 8-6157] synthesizing module 'StreamFifoLowLatency_6' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:18445]
+INFO: [Synth 8-6157] synthesizing module 'StreamFifo_7' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:19782]
+INFO: [Synth 8-6155] done synthesizing module 'StreamFifo_7' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:19782]
+INFO: [Synth 8-6155] done synthesizing module 'StreamFifoLowLatency_6' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:18445]
+INFO: [Synth 8-6157] synthesizing module 'StreamArbiter_6' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:18374]
+INFO: [Synth 8-6155] done synthesizing module 'StreamArbiter_6' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:18374]
+INFO: [Synth 8-6157] synthesizing module 'Mapper_3' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:18321]
+INFO: [Synth 8-3876] $readmem data file 'PifoMesh.v_toplevel_pifoEngines_0_enque_brain_brainStateMem_ram.bin' is read successfully [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:18344]
+INFO: [Synth 8-6155] done synthesizing module 'Mapper_3' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:18321]
+INFO: [Synth 8-6157] synthesizing module 'StreamFifoLowLatency_7' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:18274]
+INFO: [Synth 8-6157] synthesizing module 'StreamFifo_8' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:19637]
+INFO: [Synth 8-6155] done synthesizing module 'StreamFifo_8' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:19637]
+INFO: [Synth 8-6155] done synthesizing module 'StreamFifoLowLatency_7' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:18274]
+INFO: [Synth 8-6157] synthesizing module 'StreamArbiter_7' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:18203]
+INFO: [Synth 8-6155] done synthesizing module 'StreamArbiter_7' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:18203]
+INFO: [Synth 8-6157] synthesizing module 'StreamFork_1' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:18032]
+INFO: [Synth 8-6155] done synthesizing module 'StreamFork_1' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:18032]
+INFO: [Synth 8-6157] synthesizing module 'StreamFifoLowLatency_8' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:17991]
+INFO: [Synth 8-6157] synthesizing module 'StreamFifo_9' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:19509]
+INFO: [Synth 8-6155] done synthesizing module 'StreamFifo_9' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:19509]
+INFO: [Synth 8-6155] done synthesizing module 'StreamFifoLowLatency_8' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:17991]
+INFO: [Synth 8-6157] synthesizing module 'StreamFifoLowLatency_9' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:17950]
+INFO: [Synth 8-6157] synthesizing module 'StreamFifo_10' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:19381]
+INFO: [Synth 8-6155] done synthesizing module 'StreamFifo_10' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:19381]
+INFO: [Synth 8-6155] done synthesizing module 'StreamFifoLowLatency_9' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:17950]
+INFO: [Synth 8-6157] synthesizing module 'StreamFifoLowLatency_11' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:17907]
+INFO: [Synth 8-6157] synthesizing module 'StreamFifo_12' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:19251]
+INFO: [Synth 8-6155] done synthesizing module 'StreamFifo_12' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:19251]
+INFO: [Synth 8-6155] done synthesizing module 'StreamFifoLowLatency_11' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:17907]
+INFO: [Synth 8-6157] synthesizing module 'StreamFifoLowLatency_12' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:17860]
+INFO: [Synth 8-6157] synthesizing module 'StreamFifo_13' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:19106]
+INFO: [Synth 8-6155] done synthesizing module 'StreamFifo_13' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:19106]
+INFO: [Synth 8-6155] done synthesizing module 'StreamFifoLowLatency_12' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:17860]
+INFO: [Synth 8-6155] done synthesizing module 'PIFOBrain' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:15043]
+INFO: [Synth 8-6157] synthesizing module 'TransactionalMapper_1' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:14893]
+INFO: [Synth 8-3876] $readmem data file 'PifoMesh.v_toplevel_pifoEngines_0_deque_dequeMapper_banks_0.bin' is read successfully [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:14947]
+INFO: [Synth 8-3876] $readmem data file 'PifoMesh.v_toplevel_pifoEngines_0_deque_dequeMapper_banks_1.bin' is read successfully [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:14968]
+INFO: [Synth 8-6155] done synthesizing module 'TransactionalMapper_1' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:14893]
+INFO: [Synth 8-6157] synthesizing module 'FrontRewriteTable' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:13137]
+INFO: [Synth 8-6155] done synthesizing module 'FrontRewriteTable' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:13137]
+INFO: [Synth 8-6157] synthesizing module 'StreamFork_2' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:13038]
+INFO: [Synth 8-6155] done synthesizing module 'StreamFork_2' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:13038]
+INFO: [Synth 8-6157] synthesizing module 'StreamFifoLowLatency_14' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:12979]
+INFO: [Synth 8-6157] synthesizing module 'StreamFifo_14' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:17685]
+INFO: [Synth 8-6155] done synthesizing module 'StreamFifo_14' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:17685]
+INFO: [Synth 8-6155] done synthesizing module 'StreamFifoLowLatency_14' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:12979]
+INFO: [Synth 8-6155] done synthesizing module 'PifoEngine' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:5700]
+INFO: [Synth 8-6157] synthesizing module 'PifoEngine_1' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:4847]
+INFO: [Synth 8-6157] synthesizing module 'TransactionalMapper_2' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:12825]
+INFO: [Synth 8-3876] $readmem data file 'PifoMesh.v_toplevel_pifoEngines_1_enque_enqueMapper_banks_0.bin' is read successfully [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:12879]
+INFO: [Synth 8-3876] $readmem data file 'PifoMesh.v_toplevel_pifoEngines_1_enque_enqueMapper_banks_1.bin' is read successfully [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:12900]
+INFO: [Synth 8-6155] done synthesizing module 'TransactionalMapper_2' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:12825]
+INFO: [Synth 8-6157] synthesizing module 'PIFOBrain_1' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:11760]
+INFO: [Synth 8-6157] synthesizing module 'Mapper_4' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:17628]
+INFO: [Synth 8-3876] $readmem data file 'PifoMesh.v_toplevel_pifoEngines_1_enque_brain_engineMapper_ram.bin' is read successfully [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:17651]
+INFO: [Synth 8-6155] done synthesizing module 'Mapper_4' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:17628]
+INFO: [Synth 8-6157] synthesizing module 'Mapper_5' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:17575]
+INFO: [Synth 8-3876] $readmem data file 'PifoMesh.v_toplevel_pifoEngines_1_enque_brain_lastVirtualMapper_ram.bin' is read successfully [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:17598]
+INFO: [Synth 8-6155] done synthesizing module 'Mapper_5' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:17575]
+INFO: [Synth 8-6157] synthesizing module 'Mapper_6' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:17522]
+INFO: [Synth 8-3876] $readmem data file 'PifoMesh.v_toplevel_pifoEngines_1_enque_brain_engineCAM_ram.bin' is read successfully [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:17545]
+INFO: [Synth 8-6155] done synthesizing module 'Mapper_6' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:17522]
+INFO: [Synth 8-6157] synthesizing module 'Mapper_7' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:17465]
+INFO: [Synth 8-3876] $readmem data file 'PifoMesh.v_toplevel_pifoEngines_1_enque_brain_brainStateMem_ram.bin' is read successfully [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:17488]
+INFO: [Synth 8-6155] done synthesizing module 'Mapper_7' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:17465]
+INFO: [Synth 8-6155] done synthesizing module 'PIFOBrain_1' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:11760]
+INFO: [Synth 8-6157] synthesizing module 'TransactionalMapper_3' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:11610]
+INFO: [Synth 8-3876] $readmem data file 'PifoMesh.v_toplevel_pifoEngines_1_deque_dequeMapper_banks_0.bin' is read successfully [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:11664]
+INFO: [Synth 8-3876] $readmem data file 'PifoMesh.v_toplevel_pifoEngines_1_deque_dequeMapper_banks_1.bin' is read successfully [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:11685]
+INFO: [Synth 8-6155] done synthesizing module 'TransactionalMapper_3' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:11610]
+INFO: [Synth 8-6155] done synthesizing module 'PifoEngine_1' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:4847]
+INFO: [Synth 8-6157] synthesizing module 'PifoEngine_2' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:3994]
+INFO: [Synth 8-6157] synthesizing module 'TransactionalMapper_4' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:11450]
+INFO: [Synth 8-3876] $readmem data file 'PifoMesh.v_toplevel_pifoEngines_2_enque_enqueMapper_banks_0.bin' is read successfully [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:11504]
+INFO: [Synth 8-3876] $readmem data file 'PifoMesh.v_toplevel_pifoEngines_2_enque_enqueMapper_banks_1.bin' is read successfully [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:11525]
+INFO: [Synth 8-6155] done synthesizing module 'TransactionalMapper_4' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:11450]
+INFO: [Synth 8-6157] synthesizing module 'PIFOBrain_2' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:10385]
+INFO: [Synth 8-6157] synthesizing module 'Mapper_8' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:17390]
+INFO: [Synth 8-3876] $readmem data file 'PifoMesh.v_toplevel_pifoEngines_2_enque_brain_engineMapper_ram.bin' is read successfully [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:17413]
+INFO: [Synth 8-6155] done synthesizing module 'Mapper_8' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:17390]
+INFO: [Synth 8-6157] synthesizing module 'Mapper_9' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:17337]
+INFO: [Synth 8-3876] $readmem data file 'PifoMesh.v_toplevel_pifoEngines_2_enque_brain_lastVirtualMapper_ram.bin' is read successfully [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:17360]
+INFO: [Synth 8-6155] done synthesizing module 'Mapper_9' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:17337]
+INFO: [Synth 8-6157] synthesizing module 'Mapper_10' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:17284]
+INFO: [Synth 8-3876] $readmem data file 'PifoMesh.v_toplevel_pifoEngines_2_enque_brain_engineCAM_ram.bin' is read successfully [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:17307]
+INFO: [Synth 8-6155] done synthesizing module 'Mapper_10' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:17284]
+INFO: [Synth 8-6157] synthesizing module 'Mapper_11' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:17227]
+INFO: [Synth 8-3876] $readmem data file 'PifoMesh.v_toplevel_pifoEngines_2_enque_brain_brainStateMem_ram.bin' is read successfully [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:17250]
+INFO: [Synth 8-6155] done synthesizing module 'Mapper_11' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:17227]
+INFO: [Synth 8-6155] done synthesizing module 'PIFOBrain_2' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:10385]
+INFO: [Synth 8-6157] synthesizing module 'TransactionalMapper_5' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:10235]
+INFO: [Synth 8-3876] $readmem data file 'PifoMesh.v_toplevel_pifoEngines_2_deque_dequeMapper_banks_0.bin' is read successfully [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:10289]
+INFO: [Synth 8-3876] $readmem data file 'PifoMesh.v_toplevel_pifoEngines_2_deque_dequeMapper_banks_1.bin' is read successfully [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:10310]
+INFO: [Synth 8-6155] done synthesizing module 'TransactionalMapper_5' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:10235]
+INFO: [Synth 8-6155] done synthesizing module 'PifoEngine_2' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:3994]
+INFO: [Synth 8-6157] synthesizing module 'PifoEngine_3' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:3141]
+INFO: [Synth 8-6157] synthesizing module 'TransactionalMapper_6' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:10075]
+INFO: [Synth 8-3876] $readmem data file 'PifoMesh.v_toplevel_pifoEngines_3_enque_enqueMapper_banks_0.bin' is read successfully [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:10129]
+INFO: [Synth 8-3876] $readmem data file 'PifoMesh.v_toplevel_pifoEngines_3_enque_enqueMapper_banks_1.bin' is read successfully [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:10150]
+INFO: [Synth 8-6155] done synthesizing module 'TransactionalMapper_6' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:10075]
+INFO: [Synth 8-6157] synthesizing module 'PIFOBrain_3' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:9010]
+INFO: [Synth 8-6157] synthesizing module 'Mapper_12' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:17152]
+INFO: [Synth 8-3876] $readmem data file 'PifoMesh.v_toplevel_pifoEngines_3_enque_brain_engineMapper_ram.bin' is read successfully [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:17175]
+INFO: [Synth 8-6155] done synthesizing module 'Mapper_12' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:17152]
+INFO: [Synth 8-6157] synthesizing module 'Mapper_13' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:17099]
+INFO: [Synth 8-3876] $readmem data file 'PifoMesh.v_toplevel_pifoEngines_3_enque_brain_lastVirtualMapper_ram.bin' is read successfully [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:17122]
+INFO: [Synth 8-6155] done synthesizing module 'Mapper_13' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:17099]
+INFO: [Synth 8-6157] synthesizing module 'Mapper_14' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:17046]
+INFO: [Synth 8-3876] $readmem data file 'PifoMesh.v_toplevel_pifoEngines_3_enque_brain_engineCAM_ram.bin' is read successfully [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:17069]
+INFO: [Synth 8-6155] done synthesizing module 'Mapper_14' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:17046]
+INFO: [Synth 8-6157] synthesizing module 'Mapper_15' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:16989]
+INFO: [Synth 8-3876] $readmem data file 'PifoMesh.v_toplevel_pifoEngines_3_enque_brain_brainStateMem_ram.bin' is read successfully [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:17012]
+INFO: [Synth 8-6155] done synthesizing module 'Mapper_15' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:16989]
+INFO: [Synth 8-6155] done synthesizing module 'PIFOBrain_3' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:9010]
+INFO: [Synth 8-6157] synthesizing module 'TransactionalMapper_7' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:8860]
+INFO: [Synth 8-3876] $readmem data file 'PifoMesh.v_toplevel_pifoEngines_3_deque_dequeMapper_banks_0.bin' is read successfully [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:8914]
+INFO: [Synth 8-3876] $readmem data file 'PifoMesh.v_toplevel_pifoEngines_3_deque_dequeMapper_banks_1.bin' is read successfully [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:8935]
+INFO: [Synth 8-6155] done synthesizing module 'TransactionalMapper_7' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:8860]
+INFO: [Synth 8-6155] done synthesizing module 'PifoEngine_3' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:3141]
+INFO: [Synth 8-6157] synthesizing module 'PifoEngine_4' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:2288]
+INFO: [Synth 8-6157] synthesizing module 'TransactionalMapper_8' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:8700]
+INFO: [Synth 8-3876] $readmem data file 'PifoMesh.v_toplevel_pifoEngines_4_enque_enqueMapper_banks_0.bin' is read successfully [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:8754]
+INFO: [Synth 8-3876] $readmem data file 'PifoMesh.v_toplevel_pifoEngines_4_enque_enqueMapper_banks_1.bin' is read successfully [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:8775]
+INFO: [Synth 8-6155] done synthesizing module 'TransactionalMapper_8' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:8700]
+INFO: [Synth 8-6157] synthesizing module 'PIFOBrain_4' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:7635]
+INFO: [Synth 8-6157] synthesizing module 'Mapper_16' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:16914]
+INFO: [Synth 8-3876] $readmem data file 'PifoMesh.v_toplevel_pifoEngines_4_enque_brain_engineMapper_ram.bin' is read successfully [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:16937]
+INFO: [Synth 8-6155] done synthesizing module 'Mapper_16' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:16914]
+INFO: [Synth 8-6157] synthesizing module 'Mapper_17' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:16861]
+INFO: [Synth 8-3876] $readmem data file 'PifoMesh.v_toplevel_pifoEngines_4_enque_brain_lastVirtualMapper_ram.bin' is read successfully [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:16884]
+INFO: [Synth 8-6155] done synthesizing module 'Mapper_17' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:16861]
+INFO: [Synth 8-6157] synthesizing module 'Mapper_18' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:16808]
+INFO: [Synth 8-3876] $readmem data file 'PifoMesh.v_toplevel_pifoEngines_4_enque_brain_engineCAM_ram.bin' is read successfully [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:16831]
+INFO: [Synth 8-6155] done synthesizing module 'Mapper_18' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:16808]
+INFO: [Synth 8-6157] synthesizing module 'Mapper_19' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:16751]
+INFO: [Synth 8-3876] $readmem data file 'PifoMesh.v_toplevel_pifoEngines_4_enque_brain_brainStateMem_ram.bin' is read successfully [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:16774]
+INFO: [Synth 8-6155] done synthesizing module 'Mapper_19' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:16751]
+INFO: [Synth 8-6155] done synthesizing module 'PIFOBrain_4' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:7635]
+INFO: [Synth 8-6157] synthesizing module 'TransactionalMapper_9' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:7485]
+INFO: [Synth 8-3876] $readmem data file 'PifoMesh.v_toplevel_pifoEngines_4_deque_dequeMapper_banks_0.bin' is read successfully [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:7539]
+INFO: [Synth 8-3876] $readmem data file 'PifoMesh.v_toplevel_pifoEngines_4_deque_dequeMapper_banks_1.bin' is read successfully [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:7560]
+INFO: [Synth 8-6155] done synthesizing module 'TransactionalMapper_9' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:7485]
+INFO: [Synth 8-6155] done synthesizing module 'PifoEngine_4' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:2288]
+INFO: [Synth 8-6157] synthesizing module 'StreamFifo_51' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:1982]
+INFO: [Synth 8-6155] done synthesizing module 'StreamFifo_51' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:1982]
+INFO: [Synth 8-6157] synthesizing module 'StreamDemux_6' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:1747]
+INFO: [Synth 8-6155] done synthesizing module 'StreamDemux_6' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:1747]
+INFO: [Synth 8-6157] synthesizing module 'StreamFork_20' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:1498]
+INFO: [Synth 8-6155] done synthesizing module 'StreamFork_20' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:1498]
+INFO: [Synth 8-6157] synthesizing module 'StreamArbiter_16' [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:1348]
+INFO: [Synth 8-6155] done synthesizing module 'StreamArbiter_16' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:1348]
+INFO: [Synth 8-6155] done synthesizing module 'PifoMesh' (0#1) [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:7]
+WARNING: [Synth 8-6014] Unused sequential element logic_ptr_wentUp_reg was removed.  [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:19026]
+WARNING: [Synth 8-6014] Unused sequential element logic_ptr_wentUp_reg was removed.  [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:18897]
+WARNING: [Synth 8-6014] Unused sequential element logic_ptr_wentUp_reg was removed.  [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:19903]
+WARNING: [Synth 8-6014] Unused sequential element logic_ptr_wentUp_reg was removed.  [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:19758]
+WARNING: [Synth 8-6014] Unused sequential element logic_ptr_wentUp_reg was removed.  [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:19613]
+WARNING: [Synth 8-6014] Unused sequential element logic_ptr_wentUp_reg was removed.  [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:19485]
+WARNING: [Synth 8-6014] Unused sequential element logic_ptr_wentUp_reg was removed.  [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:19355]
+WARNING: [Synth 8-6014] Unused sequential element logic_ptr_wentUp_reg was removed.  [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:19227]
+WARNING: [Synth 8-6014] Unused sequential element logic_ptr_wentUp_reg was removed.  [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:17836]
+WARNING: [Synth 8-6014] Unused sequential element logic_ptr_wentUp_reg was removed.  [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:2244]
+WARNING: [Synth 8-6014] Unused sequential element logic_pop_addressGen_rData_reg was removed.  [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/rtl/PifoMesh.v:2209]
+WARNING: [Synth 8-7129] Port reset in module Mapper_19 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port reset in module Mapper_18 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port reset in module Mapper_17 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port reset in module Mapper_16 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[7] in module PIFOBrain_4 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[6] in module PIFOBrain_4 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[5] in module PIFOBrain_4 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[4] in module PIFOBrain_4 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[3] in module PIFOBrain_4 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[2] in module PIFOBrain_4 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[1] in module PIFOBrain_4 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[0] in module PIFOBrain_4 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_dequeueRequest_payload_engineId[2] in module PifoEngine_4 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_dequeueRequest_payload_engineId[1] in module PifoEngine_4 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_dequeueRequest_payload_engineId[0] in module PifoEngine_4 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port reset in module Mapper_15 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port reset in module Mapper_14 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port reset in module Mapper_13 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port reset in module Mapper_12 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[7] in module PIFOBrain_3 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[6] in module PIFOBrain_3 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[5] in module PIFOBrain_3 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[4] in module PIFOBrain_3 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[3] in module PIFOBrain_3 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[2] in module PIFOBrain_3 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[1] in module PIFOBrain_3 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[0] in module PIFOBrain_3 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_dequeueRequest_payload_engineId[2] in module PifoEngine_3 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_dequeueRequest_payload_engineId[1] in module PifoEngine_3 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_dequeueRequest_payload_engineId[0] in module PifoEngine_3 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port reset in module Mapper_11 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port reset in module Mapper_10 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port reset in module Mapper_9 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port reset in module Mapper_8 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[7] in module PIFOBrain_2 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[6] in module PIFOBrain_2 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[5] in module PIFOBrain_2 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[4] in module PIFOBrain_2 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[3] in module PIFOBrain_2 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[2] in module PIFOBrain_2 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[1] in module PIFOBrain_2 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[0] in module PIFOBrain_2 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_dequeueRequest_payload_engineId[2] in module PifoEngine_2 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_dequeueRequest_payload_engineId[1] in module PifoEngine_2 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_dequeueRequest_payload_engineId[0] in module PifoEngine_2 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port reset in module Mapper_7 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port reset in module Mapper_6 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port reset in module Mapper_5 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port reset in module Mapper_4 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[7] in module PIFOBrain_1 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[6] in module PIFOBrain_1 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[5] in module PIFOBrain_1 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[4] in module PIFOBrain_1 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[3] in module PIFOBrain_1 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[2] in module PIFOBrain_1 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[1] in module PIFOBrain_1 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[0] in module PIFOBrain_1 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_dequeueRequest_payload_engineId[2] in module PifoEngine_1 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_dequeueRequest_payload_engineId[1] in module PifoEngine_1 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_dequeueRequest_payload_engineId[0] in module PifoEngine_1 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port reset in module Mapper_3 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port reset in module Mapper_2 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port reset in module Mapper_1 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port reset in module Mapper is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[7] in module PIFOBrain is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[6] in module PIFOBrain is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[5] in module PIFOBrain is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[4] in module PIFOBrain is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[3] in module PIFOBrain is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[2] in module PIFOBrain is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[1] in module PIFOBrain is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[0] in module PIFOBrain is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_dequeueRequest_payload_engineId[2] in module PifoEngine is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_dequeueRequest_payload_engineId[1] in module PifoEngine is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_dequeueRequest_payload_engineId[0] in module PifoEngine is either unconnected or has no load
+---------------------------------------------------------------------------------
+Finished RTL Elaboration : Time (s): cpu = 00:00:08 ; elapsed = 00:00:09 . Memory (MB): peak = 3018.902 ; gain = 366.625 ; free physical = 185397 ; free virtual = 206438
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Handling Custom Attributes
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Handling Custom Attributes : Time (s): cpu = 00:00:08 ; elapsed = 00:00:09 . Memory (MB): peak = 3018.902 ; gain = 366.625 ; free physical = 185724 ; free virtual = 206765
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished RTL Optimization Phase 1 : Time (s): cpu = 00:00:08 ; elapsed = 00:00:09 . Memory (MB): peak = 3018.902 ; gain = 366.625 ; free physical = 185724 ; free virtual = 206765
+---------------------------------------------------------------------------------
+Netlist sorting complete. Time (s): cpu = 00:00:00.09 ; elapsed = 00:00:00.09 . Memory (MB): peak = 3018.902 ; gain = 0.000 ; free physical = 185555 ; free virtual = 206596
+INFO: [Project 1-570] Preparing netlist for logic optimization
+
+Processing XDC Constraints
+Initializing timing engine
+Parsing XDC File [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/pifo.xdc]
+Finished Parsing XDC File [/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-vivado/pifo.xdc]
+Completed Processing XDC Constraints
+
+Netlist sorting complete. Time (s): cpu = 00:00:00 ; elapsed = 00:00:00 . Memory (MB): peak = 3104.938 ; gain = 0.000 ; free physical = 184548 ; free virtual = 205589
+INFO: [Project 1-111] Unisim Transformation Summary:
+No Unisim elements were transformed.
+
+Constraint Validation Runtime : Time (s): cpu = 00:00:00.18 ; elapsed = 00:00:00.1 . Memory (MB): peak = 3104.973 ; gain = 0.000 ; free physical = 184437 ; free virtual = 205477
+can't rename to "rt::pifo_device_capacity_check": command already exists
+INFO: [Common 17-83] Releasing license: Synthesis
+194 Infos, 86 Warnings, 0 Critical Warnings and 1 Errors encountered.
+synth_design failed
+synth_design: Time (s): cpu = 00:00:28 ; elapsed = 00:00:29 . Memory (MB): peak = 3104.973 ; gain = 1518.711 ; free physical = 183885 ; free virtual = 204952
+INFO: [Common 17-2834] synth_design peak Physical Memory [PSS] (MB): overall = 2576.069; main = 2261.779; forked = 314.290
+INFO: [Common 17-2834] synth_design peak Virtual Memory [VSS] (MB): overall = 4091.598; main = 3104.941; forked = 986.656
+ERROR: [Common 17-69] Command failed: Vivado Synthesis failed
+INFO: [Common 17-206] Exiting Vivado at Sun Sep  6 22:54:38 2026...

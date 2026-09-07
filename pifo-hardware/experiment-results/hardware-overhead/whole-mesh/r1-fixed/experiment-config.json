@@ -1,0 +1,31 @@
+{
+  "schema": "rio-hardware-overhead-v1",
+  "name": "whole-mesh-r1-fixed",
+  "title": "RIO dynamic configuration overhead: fixed hardware (whole-mesh reference)",
+  "output_dir": "experiment-results/hardware-overhead/whole-mesh/r1-fixed",
+  "hardware": {
+    "num_engines": 5,
+    "vflows": [
+      1024
+    ],
+    "entries_per_pe": 1024,
+    "priority_bits": 8,
+    "pifo_backend": "house",
+    "flow_namespace": "coupled-to-vpifo-ids"
+  },
+  "configurations": [
+    "static",
+    "dynamic"
+  ],
+  "platforms": [
+    "quartus",
+    "vivado"
+  ],
+  "clock_mhz": 100,
+  "threads": 8,
+  "vivado_directive": "RuntimeOptimized",
+  "plot": {
+    "dpi": 180
+  },
+  "vivado_capacity_policy": "allow_oversized_estimates"
+}

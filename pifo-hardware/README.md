@@ -12,6 +12,8 @@ For fixed-size Quartus and Vivado synthesis of the complete existing hardware, s
 and [Vivado/Kintex UltraScale+ results](synthesis/VIVADO_RESULTS.md).
 The [stock-PIFO Quartus comparison](synthesis/STOCK_PIFO_RESULTS.md) includes
 the resource reduction, adapter cost, and the stock core's functional limitation.
+The [configuration-overhead experiments](experiments/hardware-overhead/README.md)
+compare RIO against ordinary single-bank tables at fixed size and across vFlow capacities.
 
 This contains a PifoMesh Implementation. Current implementation assumes the insert input to be a `PacketToken = engineId ## flowId`. The `PacketToken` will be processed in PifoEngine in the following process:
 

@@ -1,0 +1,102 @@
+Copyright 1986-2022 Xilinx, Inc. All Rights Reserved. Copyright 2022-2025 Advanced Micro Devices, Inc. All Rights Reserved.
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+| Tool Version : Vivado v.2025.2 (lin64) Build 6299465 Fri Nov 14 12:34:56 MST 2025
+| Date         : Sun Sep  6 22:42:48 2026
+| Host         : netarch-cxl.ece.cornell.edu running 64-bit Ubuntu 24.04.4 LTS
+| Command      : report_utilization -hierarchical -hierarchical_depth 5 -file /data/work/rio-synthesis/hardware-overhead/pe5-v64-c1024-dynamic-vivado/reports/utilization-hierarchy.rpt
+| Design       : PifoMesh
+| Device       : xcku5p-ffvb676-2-e
+| Speed File   : -2
+| Design State : Synthesized
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Utilization Design Information
+
+Table of Contents
+-----------------
+1. Utilization by Hierarchy
+
+1. Utilization by Hierarchy
+---------------------------
+
++--------------------------------------------------+-----------------------------+------------+------------+---------+------+--------+--------+--------+------+------------+
+|                     Instance                     |            Module           | Total LUTs | Logic LUTs | LUTRAMs | SRLs |   FFs  | RAMB36 | RAMB18 | URAM | DSP Blocks |
++--------------------------------------------------+-----------------------------+------------+------------+---------+------+--------+--------+--------+------+------------+
+| PifoMesh                                         |                       (top) |     517460 |     516728 |     732 |    0 | 122385 |    240 |      0 |    0 |          0 |
+|   (PifoMesh)                                     |                       (top) |          0 |          0 |       0 |    0 |      2 |      0 |      0 |    0 |          0 |
+|   io_controlRequest_fifo                         |               StreamFifo_51 |        945 |        921 |      24 |    0 |     95 |      0 |      0 |    0 |          0 |
+|   pifoEngines_0                                  |                  PifoEngine |     102937 |     102805 |     132 |    0 |  24426 |     48 |      0 |    0 |          0 |
+|     pifos                                        |        ConcurrentPifoRTL_99 |     101631 |     101631 |       0 |    0 |  23629 |      0 |      0 |    0 |          0 |
+|     deque_dequeMapper                            |       TransactionalMapper_1 |        109 |        109 |       0 |    0 |     35 |     32 |      0 |    0 |          0 |
+|     deque_frontRewrite                           |        FrontRewriteTable_96 |        418 |        418 |       0 |    0 |    640 |      0 |      0 |    0 |          0 |
+|     enque_brain                                  |                   PIFOBrain |        824 |        732 |      92 |    0 |     62 |     16 |      0 |    0 |          0 |
+|       lastVirtualMapper_io_readRes_toStream_fifo | StreamFifoLowLatency_11_109 |         72 |         64 |       8 |    0 |      4 |      0 |      0 |    0 |          0 |
+|         fifo                                     |           StreamFifo_12_110 |         72 |         64 |       8 |    0 |      4 |      0 |      0 |    0 |          0 |
+|       engineMapper_io_readRes_toStream_fifo      |  StreamFifoLowLatency_8_105 |        400 |        396 |       4 |    0 |      4 |      0 |      0 |    0 |          0 |
+|         fifo                                     |            StreamFifo_9_113 |        400 |        396 |       4 |    0 |      4 |      0 |      0 |    0 |          0 |
+|       flowStateUpdate_toStream_fifo              |  StreamFifoLowLatency_6_106 |         61 |         45 |      16 |    0 |      4 |      0 |      0 |    0 |          0 |
+|         fifo                                     |            StreamFifo_7_112 |         61 |         45 |      16 |    0 |      4 |      0 |      0 |    0 |          0 |
+|       io_outputs_4_fifo                          | StreamFifoLowLatency_12_107 |        173 |        163 |      10 |    0 |      4 |      0 |      0 |    0 |          0 |
+|         fifo                                     |           StreamFifo_13_111 |        173 |        163 |      10 |    0 |      4 |      0 |      0 |    0 |          0 |
+|     enque_enqueMapper                            |         TransactionalMapper |         87 |         55 |      32 |    0 |     41 |      0 |      0 |    0 |          0 |
+|   pifoEngines_1                                  |                PifoEngine_1 |     102941 |     102809 |     132 |    0 |  24428 |     48 |      0 |    0 |          0 |
+|     pifos                                        |        ConcurrentPifoRTL_76 |     101634 |     101634 |       0 |    0 |  23631 |      0 |      0 |    0 |          0 |
+|     deque_dequeMapper                            |       TransactionalMapper_3 |        109 |        109 |       0 |    0 |     35 |     32 |      0 |    0 |          0 |
+|     deque_frontRewrite                           |        FrontRewriteTable_73 |        418 |        418 |       0 |    0 |    640 |      0 |      0 |    0 |          0 |
+|     enque_brain                                  |                 PIFOBrain_1 |        824 |        732 |      92 |    0 |     62 |     16 |      0 |    0 |          0 |
+|       lastVirtualMapper_io_readRes_toStream_fifo |  StreamFifoLowLatency_11_86 |         72 |         64 |       8 |    0 |      4 |      0 |      0 |    0 |          0 |
+|         fifo                                     |            StreamFifo_12_87 |         72 |         64 |       8 |    0 |      4 |      0 |      0 |    0 |          0 |
+|       engineMapper_io_readRes_toStream_fifo      |   StreamFifoLowLatency_8_82 |        400 |        396 |       4 |    0 |      4 |      0 |      0 |    0 |          0 |
+|         fifo                                     |             StreamFifo_9_90 |        400 |        396 |       4 |    0 |      4 |      0 |      0 |    0 |          0 |
+|       flowStateUpdate_toStream_fifo              |   StreamFifoLowLatency_6_83 |         61 |         45 |      16 |    0 |      4 |      0 |      0 |    0 |          0 |
+|         fifo                                     |             StreamFifo_7_89 |         61 |         45 |      16 |    0 |      4 |      0 |      0 |    0 |          0 |
+|       io_outputs_4_fifo                          |  StreamFifoLowLatency_12_84 |        173 |        163 |      10 |    0 |      4 |      0 |      0 |    0 |          0 |
+|         fifo                                     |            StreamFifo_13_88 |        173 |        163 |      10 |    0 |      4 |      0 |      0 |    0 |          0 |
+|     enque_enqueMapper                            |       TransactionalMapper_2 |         87 |         55 |      32 |    0 |     41 |      0 |      0 |    0 |          0 |
+|   pifoEngines_2                                  |                PifoEngine_2 |     102943 |     102811 |     132 |    0 |  24431 |     48 |      0 |    0 |          0 |
+|     pifos                                        |        ConcurrentPifoRTL_53 |     101637 |     101637 |       0 |    0 |  23634 |      0 |      0 |    0 |          0 |
+|     deque_dequeMapper                            |       TransactionalMapper_5 |        109 |        109 |       0 |    0 |     35 |     32 |      0 |    0 |          0 |
+|     deque_frontRewrite                           |        FrontRewriteTable_50 |        418 |        418 |       0 |    0 |    640 |      0 |      0 |    0 |          0 |
+|     enque_brain                                  |                 PIFOBrain_2 |        824 |        732 |      92 |    0 |     62 |     16 |      0 |    0 |          0 |
+|       lastVirtualMapper_io_readRes_toStream_fifo |  StreamFifoLowLatency_11_63 |         72 |         64 |       8 |    0 |      4 |      0 |      0 |    0 |          0 |
+|         fifo                                     |            StreamFifo_12_64 |         72 |         64 |       8 |    0 |      4 |      0 |      0 |    0 |          0 |
+|       engineMapper_io_readRes_toStream_fifo      |   StreamFifoLowLatency_8_59 |        400 |        396 |       4 |    0 |      4 |      0 |      0 |    0 |          0 |
+|         fifo                                     |             StreamFifo_9_67 |        400 |        396 |       4 |    0 |      4 |      0 |      0 |    0 |          0 |
+|       flowStateUpdate_toStream_fifo              |   StreamFifoLowLatency_6_60 |         61 |         45 |      16 |    0 |      4 |      0 |      0 |    0 |          0 |
+|         fifo                                     |             StreamFifo_7_66 |         61 |         45 |      16 |    0 |      4 |      0 |      0 |    0 |          0 |
+|       io_outputs_4_fifo                          |  StreamFifoLowLatency_12_61 |        173 |        163 |      10 |    0 |      4 |      0 |      0 |    0 |          0 |
+|         fifo                                     |            StreamFifo_13_65 |        173 |        163 |      10 |    0 |      4 |      0 |      0 |    0 |          0 |
+|     enque_enqueMapper                            |       TransactionalMapper_4 |         87 |         55 |      32 |    0 |     41 |      0 |      0 |    0 |          0 |
+|   pifoEngines_3                                  |                PifoEngine_3 |     102938 |     102806 |     132 |    0 |  24425 |     48 |      0 |    0 |          0 |
+|     pifos                                        |        ConcurrentPifoRTL_30 |     101631 |     101631 |       0 |    0 |  23628 |      0 |      0 |    0 |          0 |
+|     deque_dequeMapper                            |       TransactionalMapper_7 |        109 |        109 |       0 |    0 |     35 |     32 |      0 |    0 |          0 |
+|     deque_frontRewrite                           |        FrontRewriteTable_27 |        418 |        418 |       0 |    0 |    640 |      0 |      0 |    0 |          0 |
+|     enque_brain                                  |                 PIFOBrain_3 |        824 |        732 |      92 |    0 |     62 |     16 |      0 |    0 |          0 |
+|       lastVirtualMapper_io_readRes_toStream_fifo |  StreamFifoLowLatency_11_40 |         72 |         64 |       8 |    0 |      4 |      0 |      0 |    0 |          0 |
+|         fifo                                     |            StreamFifo_12_41 |         72 |         64 |       8 |    0 |      4 |      0 |      0 |    0 |          0 |
+|       engineMapper_io_readRes_toStream_fifo      |   StreamFifoLowLatency_8_36 |        400 |        396 |       4 |    0 |      4 |      0 |      0 |    0 |          0 |
+|         fifo                                     |             StreamFifo_9_44 |        400 |        396 |       4 |    0 |      4 |      0 |      0 |    0 |          0 |
+|       flowStateUpdate_toStream_fifo              |   StreamFifoLowLatency_6_37 |         61 |         45 |      16 |    0 |      4 |      0 |      0 |    0 |          0 |
+|         fifo                                     |             StreamFifo_7_43 |         61 |         45 |      16 |    0 |      4 |      0 |      0 |    0 |          0 |
+|       io_outputs_4_fifo                          |  StreamFifoLowLatency_12_38 |        173 |        163 |      10 |    0 |      4 |      0 |      0 |    0 |          0 |
+|         fifo                                     |            StreamFifo_13_42 |        173 |        163 |      10 |    0 |      4 |      0 |      0 |    0 |          0 |
+|     enque_enqueMapper                            |       TransactionalMapper_6 |         88 |         56 |      32 |    0 |     41 |      0 |      0 |    0 |          0 |
+|   pifoEngines_4                                  |                PifoEngine_4 |     102934 |     102802 |     132 |    0 |  24423 |     48 |      0 |    0 |          0 |
+|     pifos                                        |           ConcurrentPifoRTL |     101628 |     101628 |       0 |    0 |  23626 |      0 |      0 |    0 |          0 |
+|     deque_dequeMapper                            |       TransactionalMapper_9 |        109 |        109 |       0 |    0 |     35 |     32 |      0 |    0 |          0 |
+|     deque_frontRewrite                           |           FrontRewriteTable |        418 |        418 |       0 |    0 |    640 |      0 |      0 |    0 |          0 |
+|     enque_brain                                  |                 PIFOBrain_4 |        824 |        732 |      92 |    0 |     62 |     16 |      0 |    0 |          0 |
+|       lastVirtualMapper_io_readRes_toStream_fifo |     StreamFifoLowLatency_11 |         72 |         64 |       8 |    0 |      4 |      0 |      0 |    0 |          0 |
+|         fifo                                     |               StreamFifo_12 |         72 |         64 |       8 |    0 |      4 |      0 |      0 |    0 |          0 |
+|       engineMapper_io_readRes_toStream_fifo      |   StreamFifoLowLatency_8_22 |        400 |        396 |       4 |    0 |      4 |      0 |      0 |    0 |          0 |
+|         fifo                                     |                StreamFifo_9 |        400 |        396 |       4 |    0 |      4 |      0 |      0 |    0 |          0 |
+|       flowStateUpdate_toStream_fifo              |   StreamFifoLowLatency_6_23 |         61 |         45 |      16 |    0 |      4 |      0 |      0 |    0 |          0 |
+|         fifo                                     |                StreamFifo_7 |         61 |         45 |      16 |    0 |      4 |      0 |      0 |    0 |          0 |
+|       io_outputs_4_fifo                          |     StreamFifoLowLatency_12 |        173 |        163 |      10 |    0 |      4 |      0 |      0 |    0 |          0 |
+|         fifo                                     |               StreamFifo_13 |        173 |        163 |      10 |    0 |      4 |      0 |      0 |    0 |          0 |
+|     enque_enqueMapper                            |       TransactionalMapper_8 |         87 |         55 |      32 |    0 |     41 |      0 |      0 |    0 |          0 |
+|   xbar                                           |             MessageCrossBar |       1791 |       1743 |      48 |    0 |    135 |      0 |      0 |    0 |          0 |
+|     (xbar)                                       |             MessageCrossBar |       1396 |       1396 |       0 |    0 |     45 |      0 |      0 |    0 |          0 |
++--------------------------------------------------+-----------------------------+------------+------------+---------+------+--------+--------+--------+------+------------+
+
+

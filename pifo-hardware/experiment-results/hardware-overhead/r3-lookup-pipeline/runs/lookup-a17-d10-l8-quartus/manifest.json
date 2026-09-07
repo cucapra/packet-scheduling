@@ -1,0 +1,52 @@
+{
+  "status": "synthesis_complete",
+  "tool": "quartus",
+  "part": "AGFB014R24B2E2V",
+  "board_reference": {
+    "definition": "/data/work/quartus/quartus/common/devkits/agilex_f_series_development_kit/agilex_f_series_development_kit.devkit_info",
+    "name": "Agilex F-Series FPGA Development Kit",
+    "version": "1.0",
+    "part": "AGFB014R24B2E2V",
+    "design": "agilex_f_series_bts_config"
+  },
+  "scope": "One ordinary lookup bank; geometry matches one post-mapper bank at 5 PEs / 128 vFlows. Not an integrated RIO result.",
+  "clock_target_mhz": 100,
+  "threads": 8,
+  "synthesis_mode": "virtual data pins",
+  "implementation_run": false,
+  "vivado_directive": "RuntimeOptimized",
+  "vivado_capacity_check": "enforced",
+  "source_sha256": {
+    "hw/python/pifo_lookup_pipeline.py": "56e67cac58d4845bac034a43c5e8f6da8f68087a0c2aebc7fbc94fe199f179bb"
+  },
+  "hardware": {
+    "component": "ordinary_lookup",
+    "address_bits": 17,
+    "data_bits": 10,
+    "read_latency_cycles": 8,
+    "initiation_interval_cycles": 1
+  },
+  "rtl_sha256": {
+    "PifoMesh.v": "a4cc1da5fba0b6960443d20761bbd5f62acea35b649add725ecbd6b1cbf978f6",
+    "lookup-zero.bin": "dd680c722f86829098b874ba7a71c3240998a521988b691ac68d2d4479403b78"
+  },
+  "tool_version": "Quartus Prime Shell\nVersion 25.3.1 Build 100 12/19/2025 SC Pro Edition\nCopyright (C) 2025  Altera Corporation. All rights reserved.",
+  "quartus_initialization": {
+    "format": "quartus-compact-zero-mif-v1",
+    "canonical_rtl_unchanged": true,
+    "memories": [
+      {
+        "binary": "lookup-zero.bin",
+        "binary_sha256": "dd680c722f86829098b874ba7a71c3240998a521988b691ac68d2d4479403b78",
+        "width": 10,
+        "depth": 131072,
+        "contents": "all_zero",
+        "mif": "lookup-zero.bin.mif"
+      }
+    ],
+    "derived_sha256": {
+      "PifoMesh.v": "16754c3ac1f4094049d5a979f1dfb5a03b8d6562913e96ea9c5a6ed4e48c6d23",
+      "lookup-zero.bin.mif": "9a80e2ccda01e51b93712edc1a845e9e76d8eada58783b53c99ea02b0d01ad02"
+    }
+  }
+}

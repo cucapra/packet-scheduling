@@ -1,0 +1,62 @@
+Copyright 1986-2022 Xilinx, Inc. All Rights Reserved. Copyright 2022-2025 Advanced Micro Devices, Inc. All Rights Reserved.
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+| Tool Version : Vivado v.2025.2 (lin64) Build 6299465 Fri Nov 14 12:34:56 MST 2025
+| Date         : Sun Sep  6 22:59:01 2026
+| Host         : netarch-cxl.ece.cornell.edu running 64-bit Ubuntu 24.04.4 LTS
+| Command      : report_utilization -hierarchical -hierarchical_depth 5 -file /data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v128-c1024-dynamic-vivado/reports/utilization-hierarchy.rpt
+| Design       : PifoMesh
+| Device       : xcku5p-ffvb676-2-e
+| Speed File   : -2
+| Design State : Synthesized
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Utilization Design Information
+
+Table of Contents
+-----------------
+1. Utilization by Hierarchy
+
+1. Utilization by Hierarchy
+---------------------------
+
++----------------------------+-----------------------+------------+------------+---------+------+------+--------+--------+------+------------+
+|          Instance          |         Module        | Total LUTs | Logic LUTs | LUTRAMs | SRLs |  FFs | RAMB36 | RAMB18 | URAM | DSP Blocks |
++----------------------------+-----------------------+------------+------------+---------+------+------+--------+--------+------+------------+
+| PifoMesh                   |                 (top) |      14035 |      12963 |    1072 |    0 | 8707 |   1040 |      0 |    0 |          0 |
+|   (PifoMesh)               |                 (top) |        380 |          0 |     380 |    0 |    2 |      0 |      0 |    0 |          0 |
+|   io_controlRequest_fifo   |         StreamFifo_51 |       3488 |       3464 |      24 |    0 |  177 |      0 |      0 |    0 |          0 |
+|   pifoEngines_0            |            PifoEngine |       1554 |       1430 |     124 |    0 | 1660 |    208 |      0 |    0 |          0 |
+|     enque_enqueMapper      |   TransactionalMapper |        217 |        153 |      64 |    0 |   47 |      0 |      0 |    0 |          0 |
+|     deque_dequeMapper      | TransactionalMapper_1 |        466 |        466 |       0 |    0 |  125 |    144 |      0 |    0 |          0 |
+|     deque_existingPop_fork |       StreamFork_2_92 |         70 |         70 |       0 |    0 |    2 |      0 |      0 |    0 |          0 |
+|     deque_frontRewrite     |  FrontRewriteTable_93 |        500 |        500 |       0 |    0 | 1408 |      0 |      0 |    0 |          0 |
+|     enque_brain            |             PIFOBrain |        238 |        178 |      60 |    0 |   63 |     64 |      0 |    0 |          0 |
+|   pifoEngines_1            |          PifoEngine_1 |       1551 |       1427 |     124 |    0 | 1666 |    208 |      0 |    0 |          0 |
+|     enque_enqueMapper      | TransactionalMapper_2 |        217 |        153 |      64 |    0 |   47 |      0 |      0 |    0 |          0 |
+|     deque_dequeMapper      | TransactionalMapper_3 |        463 |        463 |       0 |    0 |  131 |    144 |      0 |    0 |          0 |
+|     deque_existingPop_fork |       StreamFork_2_70 |         70 |         70 |       0 |    0 |    2 |      0 |      0 |    0 |          0 |
+|     deque_frontRewrite     |  FrontRewriteTable_71 |        500 |        500 |       0 |    0 | 1408 |      0 |      0 |    0 |          0 |
+|     enque_brain            |           PIFOBrain_1 |        238 |        178 |      60 |    0 |   63 |     64 |      0 |    0 |          0 |
+|   pifoEngines_2            |          PifoEngine_2 |       1546 |       1422 |     124 |    0 | 1672 |    208 |      0 |    0 |          0 |
+|     enque_enqueMapper      | TransactionalMapper_4 |        217 |        153 |      64 |    0 |   47 |      0 |      0 |    0 |          0 |
+|     deque_dequeMapper      | TransactionalMapper_5 |        461 |        461 |       0 |    0 |  137 |    144 |      0 |    0 |          0 |
+|     deque_existingPop_fork |       StreamFork_2_48 |         70 |         70 |       0 |    0 |    2 |      0 |      0 |    0 |          0 |
+|     deque_frontRewrite     |  FrontRewriteTable_49 |        497 |        497 |       0 |    0 | 1408 |      0 |      0 |    0 |          0 |
+|     enque_brain            |           PIFOBrain_2 |        238 |        178 |      60 |    0 |   63 |     64 |      0 |    0 |          0 |
+|   pifoEngines_3            |          PifoEngine_3 |       1550 |       1426 |     124 |    0 | 1667 |    208 |      0 |    0 |          0 |
+|     enque_enqueMapper      | TransactionalMapper_6 |        217 |        153 |      64 |    0 |   47 |      0 |      0 |    0 |          0 |
+|     deque_dequeMapper      | TransactionalMapper_7 |        461 |        461 |       0 |    0 |  131 |    144 |      0 |    0 |          0 |
+|     deque_existingPop_fork |       StreamFork_2_26 |         72 |         72 |       0 |    0 |    3 |      0 |      0 |    0 |          0 |
+|     deque_frontRewrite     |  FrontRewriteTable_27 |        499 |        499 |       0 |    0 | 1408 |      0 |      0 |    0 |          0 |
+|     enque_brain            |           PIFOBrain_3 |        238 |        178 |      60 |    0 |   63 |     64 |      0 |    0 |          0 |
+|   pifoEngines_4            |          PifoEngine_4 |       1548 |       1424 |     124 |    0 | 1672 |    208 |      0 |    0 |          0 |
+|     enque_enqueMapper      | TransactionalMapper_8 |        217 |        153 |      64 |    0 |   47 |      0 |      0 |    0 |          0 |
+|     deque_dequeMapper      | TransactionalMapper_9 |        460 |        460 |       0 |    0 |  137 |    144 |      0 |    0 |          0 |
+|     deque_existingPop_fork |          StreamFork_2 |         70 |         70 |       0 |    0 |    2 |      0 |      0 |    0 |          0 |
+|     deque_frontRewrite     |     FrontRewriteTable |        500 |        500 |       0 |    0 | 1408 |      0 |      0 |    0 |          0 |
+|     enque_brain            |           PIFOBrain_4 |        238 |        178 |      60 |    0 |   63 |     64 |      0 |    0 |          0 |
+|   xbar                     |       MessageCrossBar |       2404 |       2356 |      48 |    0 |  171 |      0 |      0 |    0 |          0 |
+|     (xbar)                 |       MessageCrossBar |       2001 |       2001 |       0 |    0 |   81 |      0 |      0 |    0 |          0 |
++----------------------------+-----------------------+------------+------------+---------+------+------+--------+--------+------+------------+
+
+

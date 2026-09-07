@@ -1,0 +1,18 @@
+{
+  "timestamp": "2026-09-06T22:18:48.038083-04:00",
+  "action": "replace_sweep_orchestrator_only",
+  "pid": 257956,
+  "old_args": [
+    ".venv/bin/python",
+    "hw/python/pifo_hardware_overhead_r2.py",
+    "--build-root",
+    "/data/work/rio-synthesis/hardware-overhead",
+    "--only-vflows",
+    "32,64,128,256,512",
+    "--jobs",
+    "2",
+    ""
+  ],
+  "reason": "Separate vendor queues and use two synthesis slots per vendor; active synthesis wrappers and vendor processes continue and will be adopted.",
+  "signal": "SIGTERM to orchestrator PID only"
+}

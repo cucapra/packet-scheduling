@@ -1,0 +1,221 @@
+Copyright 1986-2022 Xilinx, Inc. All Rights Reserved. Copyright 2022-2025 Advanced Micro Devices, Inc. All Rights Reserved.
+---------------------------------------------------------------------------------------------------------------------------------------------
+| Tool Version : Vivado v.2025.2 (lin64) Build 6299465 Fri Nov 14 12:34:56 MST 2025
+| Date         : Sun Sep  6 23:06:23 2026
+| Host         : netarch-cxl.ece.cornell.edu running 64-bit Ubuntu 24.04.4 LTS
+| Command      : report_ram_utilization -file /data/work/rio-synthesis/lookup-pipeline/lookup-a17-d10-l8-vivado/reports/ram-utilization.rpt
+| Design       : PifoMesh
+| Device       : xcku5p-ffvb676-2-e
+| Speed File   : -2
+---------------------------------------------------------------------------------------------------------------------------------------------
+
+RAM Usage Information
+
+Table of Contents
+-----------------
+1. Summary
+2. Memory Description
+3. Memory Utilization - Inferred
+4. Memory Performance - Inferred
+5. Block Ram / URAM Memory Power - Inferred
+
+1. Summary
+----------
+
++--------------------------+------------+-----------+-------+-----------+
+| Memory Type              | Total Used | Available | Util% | Inferred% |
++--------------------------+------------+-----------+-------+-----------+
+| URAM                     |          0 |        64 |  0.00 |      0.00 |
+| BlockRAM                 |         36 |       480 |  7.50 |    100.00 |
+|  RAMB36E2                |         36 |           |       |    100.00 |
+| LUTMs as Distributed RAM |          0 |     99840 |  0.00 |      0.00 |
++--------------------------+------------+-----------+-------+-----------+
+*  Each RAMB18 is calculated as 0.5 BlockRAM
+**  Tables 2, 3, 4 and 5 cover RAMs inferred by Vivado Synthesis using XPMs or RTL inference
+***  XRAMs are not reported for detailed tables
+
+
+2. Memory Description
+---------------------
+
++------------------+------------+-----------+-------------+------------------------+------------------------+
+| Memory Name      | Array Size | RAM_STYLE | Memory Type | Port 1 Dimension / Map | Port 2 Dimension / Map |
++------------------+------------+-----------+-------------+------------------------+------------------------+
+| ram              |    1310720 |           | RAM_SDP     | 131072x10              | 131072x10              |
+|  ram_reg_bram_0  |      36864 |      AUTO |             |  A:A:4096x8            |  B:B:4096x9            |
+|  ram_reg_bram_1  |      36864 |      AUTO |             |  A:A:4096x8            |  B:B:4096x9            |
+|  ram_reg_bram_2  |      36864 |      AUTO |             |  A:A:4096x8            |  B:B:4096x9            |
+|  ram_reg_bram_3  |      36864 |      AUTO |             |  A:A:4096x8            |  B:B:4096x9            |
+|  ram_reg_bram_4  |      36864 |      AUTO |             |  A:A:4096x8            |  B:B:4096x9            |
+|  ram_reg_bram_5  |      36864 |      AUTO |             |  A:A:4096x8            |  B:B:4096x9            |
+|  ram_reg_bram_6  |      36864 |      AUTO |             |  A:A:4096x8            |  B:B:4096x9            |
+|  ram_reg_bram_7  |      36864 |      AUTO |             |  A:A:4096x8            |  B:B:4096x9            |
+|  ram_reg_bram_8  |      36864 |      AUTO |             |  A:A:4096x8            |  B:B:4096x9            |
+|  ram_reg_bram_9  |      36864 |      AUTO |             |  A:A:4096x8            |  B:B:4096x9            |
+|  ram_reg_bram_10 |      36864 |      AUTO |             |  A:A:4096x8            |  B:B:4096x9            |
+|  ram_reg_bram_11 |      36864 |      AUTO |             |  A:A:4096x8            |  B:B:4096x9            |
+|  ram_reg_bram_12 |      36864 |      AUTO |             |  A:A:4096x8            |  B:B:4096x9            |
+|  ram_reg_bram_13 |      36864 |      AUTO |             |  A:A:4096x8            |  B:B:4096x9            |
+|  ram_reg_bram_14 |      36864 |      AUTO |             |  A:A:4096x8            |  B:B:4096x9            |
+|  ram_reg_bram_15 |      36864 |      AUTO |             |  A:A:4096x8            |  B:B:4096x9            |
+|  ram_reg_bram_16 |      36864 |      AUTO |             |  A:A:4096x8            |  B:B:4096x9            |
+|  ram_reg_bram_17 |      36864 |      AUTO |             |  A:A:4096x8            |  B:B:4096x9            |
+|  ram_reg_bram_18 |      36864 |      AUTO |             |  A:A:4096x8            |  B:B:4096x9            |
+|  ram_reg_bram_19 |      36864 |      AUTO |             |  A:A:4096x8            |  B:B:4096x9            |
+|  ram_reg_bram_20 |      36864 |      AUTO |             |  A:A:4096x8            |  B:B:4096x9            |
+|  ram_reg_bram_21 |      36864 |      AUTO |             |  A:A:4096x8            |  B:B:4096x9            |
+|  ram_reg_bram_22 |      36864 |      AUTO |             |  A:A:4096x8            |  B:B:4096x9            |
+|  ram_reg_bram_23 |      36864 |      AUTO |             |  A:A:4096x8            |  B:B:4096x9            |
+|  ram_reg_bram_24 |      36864 |      AUTO |             |  A:A:4096x8            |  B:B:4096x9            |
+|  ram_reg_bram_25 |      36864 |      AUTO |             |  A:A:4096x8            |  B:B:4096x9            |
+|  ram_reg_bram_26 |      36864 |      AUTO |             |  A:A:4096x8            |  B:B:4096x9            |
+|  ram_reg_bram_27 |      36864 |      AUTO |             |  A:A:4096x8            |  B:B:4096x9            |
+|  ram_reg_bram_28 |      36864 |      AUTO |             |  A:A:4096x8            |  B:B:4096x9            |
+|  ram_reg_bram_29 |      36864 |      AUTO |             |  A:A:4096x8            |  B:B:4096x9            |
+|  ram_reg_bram_30 |      36864 |      AUTO |             |  A:A:4096x8            |  B:B:4096x9            |
+|  ram_reg_bram_31 |      36864 |      AUTO |             |  A:A:4096x8            |  B:B:4096x9            |
+|  ram_reg_bram_32 |      32768 |      AUTO |             |  A:A:32768x1           |  B:B:32768x1           |
+|  ram_reg_bram_33 |      32768 |      AUTO |             |  A:A:32768x1           |  B:B:32768x1           |
+|  ram_reg_bram_34 |      32768 |      AUTO |             |  A:A:32768x1           |  B:B:32768x1           |
+|  ram_reg_bram_35 |      32768 |      AUTO |             |  A:A:32768x1           |  B:B:32768x1           |
++------------------+------------+-----------+-------------+------------------------+------------------------+
+
+
+3. Memory Utilization - Inferred
+--------------------------------
+
++------------------+-----------+-----------+----------------+-----------+-----------+---------+---------------+---------------+---------+---------------+---------------+---------+---------------+---------------+---------+---------------+---------------+
+| Memory Name      | Primitive | RAM STYLE | Available Bits | Used Bits | Bit Util% | A Depth | A Depth Avail | A Depth Util% | A Width | A Width Avail | A Width Util% | B Depth | B Depth Avail | B Depth Util% | B Width | B Width Avail | B Width Util% |
++------------------+-----------+-----------+----------------+-----------+-----------+---------+---------------+---------------+---------+---------------+---------------+---------+---------------+---------------+---------+---------------+---------------+
+| ram              |           |           |                |           |           |         |               |               |         |               |               |         |               |               |         |               |               |
+|  ram_reg_bram_0  | RAMB36E2  |      AUTO |          36864 |     36864 |    100.00 |    4096 |          4096 |        100.00 |       8 |             9 |         88.89 |    4096 |          4096 |        100.00 |       9 |             9 |        100.00 |
+|  ram_reg_bram_1  | RAMB36E2  |      AUTO |          36864 |     36864 |    100.00 |    4096 |          4096 |        100.00 |       8 |             9 |         88.89 |    4096 |          4096 |        100.00 |       9 |             9 |        100.00 |
+|  ram_reg_bram_2  | RAMB36E2  |      AUTO |          36864 |     36864 |    100.00 |    4096 |          4096 |        100.00 |       8 |             9 |         88.89 |    4096 |          4096 |        100.00 |       9 |             9 |        100.00 |
+|  ram_reg_bram_3  | RAMB36E2  |      AUTO |          36864 |     36864 |    100.00 |    4096 |          4096 |        100.00 |       8 |             9 |         88.89 |    4096 |          4096 |        100.00 |       9 |             9 |        100.00 |
+|  ram_reg_bram_4  | RAMB36E2  |      AUTO |          36864 |     36864 |    100.00 |    4096 |          4096 |        100.00 |       8 |             9 |         88.89 |    4096 |          4096 |        100.00 |       9 |             9 |        100.00 |
+|  ram_reg_bram_5  | RAMB36E2  |      AUTO |          36864 |     36864 |    100.00 |    4096 |          4096 |        100.00 |       8 |             9 |         88.89 |    4096 |          4096 |        100.00 |       9 |             9 |        100.00 |
+|  ram_reg_bram_6  | RAMB36E2  |      AUTO |          36864 |     36864 |    100.00 |    4096 |          4096 |        100.00 |       8 |             9 |         88.89 |    4096 |          4096 |        100.00 |       9 |             9 |        100.00 |
+|  ram_reg_bram_7  | RAMB36E2  |      AUTO |          36864 |     36864 |    100.00 |    4096 |          4096 |        100.00 |       8 |             9 |         88.89 |    4096 |          4096 |        100.00 |       9 |             9 |        100.00 |
+|  ram_reg_bram_8  | RAMB36E2  |      AUTO |          36864 |     36864 |    100.00 |    4096 |          4096 |        100.00 |       8 |             9 |         88.89 |    4096 |          4096 |        100.00 |       9 |             9 |        100.00 |
+|  ram_reg_bram_9  | RAMB36E2  |      AUTO |          36864 |     36864 |    100.00 |    4096 |          4096 |        100.00 |       8 |             9 |         88.89 |    4096 |          4096 |        100.00 |       9 |             9 |        100.00 |
+|  ram_reg_bram_10 | RAMB36E2  |      AUTO |          36864 |     36864 |    100.00 |    4096 |          4096 |        100.00 |       8 |             9 |         88.89 |    4096 |          4096 |        100.00 |       9 |             9 |        100.00 |
+|  ram_reg_bram_11 | RAMB36E2  |      AUTO |          36864 |     36864 |    100.00 |    4096 |          4096 |        100.00 |       8 |             9 |         88.89 |    4096 |          4096 |        100.00 |       9 |             9 |        100.00 |
+|  ram_reg_bram_12 | RAMB36E2  |      AUTO |          36864 |     36864 |    100.00 |    4096 |          4096 |        100.00 |       8 |             9 |         88.89 |    4096 |          4096 |        100.00 |       9 |             9 |        100.00 |
+|  ram_reg_bram_13 | RAMB36E2  |      AUTO |          36864 |     36864 |    100.00 |    4096 |          4096 |        100.00 |       8 |             9 |         88.89 |    4096 |          4096 |        100.00 |       9 |             9 |        100.00 |
+|  ram_reg_bram_14 | RAMB36E2  |      AUTO |          36864 |     36864 |    100.00 |    4096 |          4096 |        100.00 |       8 |             9 |         88.89 |    4096 |          4096 |        100.00 |       9 |             9 |        100.00 |
+|  ram_reg_bram_15 | RAMB36E2  |      AUTO |          36864 |     36864 |    100.00 |    4096 |          4096 |        100.00 |       8 |             9 |         88.89 |    4096 |          4096 |        100.00 |       9 |             9 |        100.00 |
+|  ram_reg_bram_16 | RAMB36E2  |      AUTO |          36864 |     36864 |    100.00 |    4096 |          4096 |        100.00 |       8 |             9 |         88.89 |    4096 |          4096 |        100.00 |       9 |             9 |        100.00 |
+|  ram_reg_bram_17 | RAMB36E2  |      AUTO |          36864 |     36864 |    100.00 |    4096 |          4096 |        100.00 |       8 |             9 |         88.89 |    4096 |          4096 |        100.00 |       9 |             9 |        100.00 |
+|  ram_reg_bram_18 | RAMB36E2  |      AUTO |          36864 |     36864 |    100.00 |    4096 |          4096 |        100.00 |       8 |             9 |         88.89 |    4096 |          4096 |        100.00 |       9 |             9 |        100.00 |
+|  ram_reg_bram_19 | RAMB36E2  |      AUTO |          36864 |     36864 |    100.00 |    4096 |          4096 |        100.00 |       8 |             9 |         88.89 |    4096 |          4096 |        100.00 |       9 |             9 |        100.00 |
+|  ram_reg_bram_20 | RAMB36E2  |      AUTO |          36864 |     36864 |    100.00 |    4096 |          4096 |        100.00 |       8 |             9 |         88.89 |    4096 |          4096 |        100.00 |       9 |             9 |        100.00 |
+|  ram_reg_bram_21 | RAMB36E2  |      AUTO |          36864 |     36864 |    100.00 |    4096 |          4096 |        100.00 |       8 |             9 |         88.89 |    4096 |          4096 |        100.00 |       9 |             9 |        100.00 |
+|  ram_reg_bram_22 | RAMB36E2  |      AUTO |          36864 |     36864 |    100.00 |    4096 |          4096 |        100.00 |       8 |             9 |         88.89 |    4096 |          4096 |        100.00 |       9 |             9 |        100.00 |
+|  ram_reg_bram_23 | RAMB36E2  |      AUTO |          36864 |     36864 |    100.00 |    4096 |          4096 |        100.00 |       8 |             9 |         88.89 |    4096 |          4096 |        100.00 |       9 |             9 |        100.00 |
+|  ram_reg_bram_24 | RAMB36E2  |      AUTO |          36864 |     36864 |    100.00 |    4096 |          4096 |        100.00 |       8 |             9 |         88.89 |    4096 |          4096 |        100.00 |       9 |             9 |        100.00 |
+|  ram_reg_bram_25 | RAMB36E2  |      AUTO |          36864 |     36864 |    100.00 |    4096 |          4096 |        100.00 |       8 |             9 |         88.89 |    4096 |          4096 |        100.00 |       9 |             9 |        100.00 |
+|  ram_reg_bram_26 | RAMB36E2  |      AUTO |          36864 |     36864 |    100.00 |    4096 |          4096 |        100.00 |       8 |             9 |         88.89 |    4096 |          4096 |        100.00 |       9 |             9 |        100.00 |
+|  ram_reg_bram_27 | RAMB36E2  |      AUTO |          36864 |     36864 |    100.00 |    4096 |          4096 |        100.00 |       8 |             9 |         88.89 |    4096 |          4096 |        100.00 |       9 |             9 |        100.00 |
+|  ram_reg_bram_28 | RAMB36E2  |      AUTO |          36864 |     36864 |    100.00 |    4096 |          4096 |        100.00 |       8 |             9 |         88.89 |    4096 |          4096 |        100.00 |       9 |             9 |        100.00 |
+|  ram_reg_bram_29 | RAMB36E2  |      AUTO |          36864 |     36864 |    100.00 |    4096 |          4096 |        100.00 |       8 |             9 |         88.89 |    4096 |          4096 |        100.00 |       9 |             9 |        100.00 |
+|  ram_reg_bram_30 | RAMB36E2  |      AUTO |          36864 |     36864 |    100.00 |    4096 |          4096 |        100.00 |       8 |             9 |         88.89 |    4096 |          4096 |        100.00 |       9 |             9 |        100.00 |
+|  ram_reg_bram_31 | RAMB36E2  |      AUTO |          36864 |     36864 |    100.00 |    4096 |          4096 |        100.00 |       8 |             9 |         88.89 |    4096 |          4096 |        100.00 |       9 |             9 |        100.00 |
+|  ram_reg_bram_32 | RAMB36E2  |      AUTO |          36864 |     32768 |     88.89 |   32768 |         32768 |        100.00 |       1 |             1 |        100.00 |   32768 |         32768 |        100.00 |       1 |             1 |        100.00 |
+|  ram_reg_bram_33 | RAMB36E2  |      AUTO |          36864 |     32768 |     88.89 |   32768 |         32768 |        100.00 |       1 |             1 |        100.00 |   32768 |         32768 |        100.00 |       1 |             1 |        100.00 |
+|  ram_reg_bram_34 | RAMB36E2  |      AUTO |          36864 |     32768 |     88.89 |   32768 |         32768 |        100.00 |       1 |             1 |        100.00 |   32768 |         32768 |        100.00 |       1 |             1 |        100.00 |
+|  ram_reg_bram_35 | RAMB36E2  |      AUTO |          36864 |     32768 |     88.89 |   32768 |         32768 |        100.00 |       1 |             1 |        100.00 |   32768 |         32768 |        100.00 |       1 |             1 |        100.00 |
++------------------+-----------+-----------+----------------+-----------+-----------+---------+---------------+---------------+---------+---------------+---------------+---------+---------------+---------------+---------+---------------+---------------+
+
+
+4. Memory Performance - Inferred
+--------------------------------
+
++------------------+-----------+------------------------+------------------------+-------------+-------------------------+-------------+-------------------------+-----------+--------+--------+---------+-----------+--------+--------+---------+
+| Memory Name      | Primitive | Port 1 Dimension / Map | Port 2 Dimension / Map | Port A Type | Port A Requirement (ns) | Port B Type | Port B Requirement (ns) | A Cascade | IREG_A | OREG_A | DOA_REG | B Cascade | IREG_B | OREG_B | DOB_REG |
++------------------+-----------+------------------------+------------------------+-------------+-------------------------+-------------+-------------------------+-----------+--------+--------+---------+-----------+--------+--------+---------+
+| ram              |           | 131072x10              | 131072x10              |             |                         |             |                         |           |        |        |         |           |        |        |         |
+|  ram_reg_bram_0  | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |       Write |                    10.0 |        Read |                    10.0 |      NONE |        |        |       0 |     FIRST |        |        |       0 |
+|  ram_reg_bram_1  | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |       Write |                    10.0 |        Read |                    10.0 |      NONE |        |        |       0 |    MIDDLE |        |        |       0 |
+|  ram_reg_bram_2  | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |       Write |                    10.0 |        Read |                    10.0 |      NONE |        |        |       0 |    MIDDLE |        |        |       0 |
+|  ram_reg_bram_3  | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |       Write |                    10.0 |        Read |                    10.0 |      NONE |        |        |       0 |    MIDDLE |        |        |       0 |
+|  ram_reg_bram_4  | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |       Write |                    10.0 |        Read |                    10.0 |      NONE |        |        |       0 |    MIDDLE |        |        |       0 |
+|  ram_reg_bram_5  | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |       Write |                    10.0 |        Read |                    10.0 |      NONE |        |        |       0 |    MIDDLE |        |        |       0 |
+|  ram_reg_bram_6  | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |       Write |                    10.0 |        Read |                    10.0 |      NONE |        |        |       0 |    MIDDLE |        |        |       0 |
+|  ram_reg_bram_7  | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |       Write |                    10.0 |        Read |                    10.0 |      NONE |        |        |       0 |      LAST |        |        |       0 |
+|  ram_reg_bram_8  | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |       Write |                    10.0 |        Read |                    10.0 |      NONE |        |        |       0 |     FIRST |        |        |       0 |
+|  ram_reg_bram_9  | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |       Write |                    10.0 |        Read |                    10.0 |      NONE |        |        |       0 |    MIDDLE |        |        |       0 |
+|  ram_reg_bram_10 | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |       Write |                    10.0 |        Read |                    10.0 |      NONE |        |        |       0 |    MIDDLE |        |        |       0 |
+|  ram_reg_bram_11 | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |       Write |                    10.0 |        Read |                    10.0 |      NONE |        |        |       0 |    MIDDLE |        |        |       0 |
+|  ram_reg_bram_12 | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |       Write |                    10.0 |        Read |                    10.0 |      NONE |        |        |       0 |    MIDDLE |        |        |       0 |
+|  ram_reg_bram_13 | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |       Write |                    10.0 |        Read |                    10.0 |      NONE |        |        |       0 |    MIDDLE |        |        |       0 |
+|  ram_reg_bram_14 | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |       Write |                    10.0 |        Read |                    10.0 |      NONE |        |        |       0 |    MIDDLE |        |        |       0 |
+|  ram_reg_bram_15 | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |       Write |                    10.0 |        Read |                    10.0 |      NONE |        |        |       0 |      LAST |        |        |       0 |
+|  ram_reg_bram_16 | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |       Write |                    10.0 |        Read |                    10.0 |      NONE |        |        |       0 |     FIRST |        |        |       0 |
+|  ram_reg_bram_17 | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |       Write |                    10.0 |        Read |                    10.0 |      NONE |        |        |       0 |    MIDDLE |        |        |       0 |
+|  ram_reg_bram_18 | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |       Write |                    10.0 |        Read |                    10.0 |      NONE |        |        |       0 |    MIDDLE |        |        |       0 |
+|  ram_reg_bram_19 | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |       Write |                    10.0 |        Read |                    10.0 |      NONE |        |        |       0 |    MIDDLE |        |        |       0 |
+|  ram_reg_bram_20 | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |       Write |                    10.0 |        Read |                    10.0 |      NONE |        |        |       0 |    MIDDLE |        |        |       0 |
+|  ram_reg_bram_21 | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |       Write |                    10.0 |        Read |                    10.0 |      NONE |        |        |       0 |    MIDDLE |        |        |       0 |
+|  ram_reg_bram_22 | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |       Write |                    10.0 |        Read |                    10.0 |      NONE |        |        |       0 |    MIDDLE |        |        |       0 |
+|  ram_reg_bram_23 | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |       Write |                    10.0 |        Read |                    10.0 |      NONE |        |        |       0 |      LAST |        |        |       0 |
+|  ram_reg_bram_24 | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |       Write |                    10.0 |        Read |                    10.0 |      NONE |        |        |       0 |     FIRST |        |        |       0 |
+|  ram_reg_bram_25 | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |       Write |                    10.0 |        Read |                    10.0 |      NONE |        |        |       0 |    MIDDLE |        |        |       0 |
+|  ram_reg_bram_26 | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |       Write |                    10.0 |        Read |                    10.0 |      NONE |        |        |       0 |    MIDDLE |        |        |       0 |
+|  ram_reg_bram_27 | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |       Write |                    10.0 |        Read |                    10.0 |      NONE |        |        |       0 |    MIDDLE |        |        |       0 |
+|  ram_reg_bram_28 | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |       Write |                    10.0 |        Read |                    10.0 |      NONE |        |        |       0 |    MIDDLE |        |        |       0 |
+|  ram_reg_bram_29 | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |       Write |                    10.0 |        Read |                    10.0 |      NONE |        |        |       0 |    MIDDLE |        |        |       0 |
+|  ram_reg_bram_30 | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |       Write |                    10.0 |        Read |                    10.0 |      NONE |        |        |       0 |    MIDDLE |        |        |       0 |
+|  ram_reg_bram_31 | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |       Write |                    10.0 |        Read |                    10.0 |      NONE |        |        |       0 |      LAST |        |        |       0 |
+|  ram_reg_bram_32 | RAMB36E2  |  A:A:32768x1           |  B:B:32768x1           |       Write |                    10.0 |        Read |                    10.0 |      NONE |        |        |       0 |     FIRST |        |        |       0 |
+|  ram_reg_bram_33 | RAMB36E2  |  A:A:32768x1           |  B:B:32768x1           |       Write |                    10.0 |        Read |                    10.0 |      NONE |        |        |       0 |    MIDDLE |        |        |       0 |
+|  ram_reg_bram_34 | RAMB36E2  |  A:A:32768x1           |  B:B:32768x1           |       Write |                    10.0 |        Read |                    10.0 |      NONE |        |        |       0 |    MIDDLE |        |        |       0 |
+|  ram_reg_bram_35 | RAMB36E2  |  A:A:32768x1           |  B:B:32768x1           |       Write |                    10.0 |        Read |                    10.0 |      NONE |        |        |       0 |      LAST |        |        |       1 |
++------------------+-----------+------------------------+------------------------+-------------+-------------------------+-------------+-------------------------+-----------+--------+--------+---------+-----------+--------+--------+---------+
+
+
+5. Block Ram / URAM Memory Power - Inferred
+-------------------------------------------
+
++------------------+-----------+------------------------+------------------------+--------------------+---------------+-------------------+-----------+--------------------+---------------+-------------------+-----------+
+| Memory Name      | Primitive | Port 1 Dimension / Map | Port 2 Dimension / Map | Port A Power Gated | Port A Enable | Port A WRITE_MODE | A Cascade | Port B Power Gated | Port B Enable | Port B WRITE_MODE | B Cascade |
++------------------+-----------+------------------------+------------------------+--------------------+---------------+-------------------+-----------+--------------------+---------------+-------------------+-----------+
+| ram              |           | 131072x10              | 131072x10              |                    |               |                   |           |                    |               |                   |           |
+|  ram_reg_bram_0  | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |                    |        SIGNAL |        READ_FIRST |      NONE |                    |        SIGNAL |       WRITE_FIRST |     FIRST |
+|  ram_reg_bram_1  | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |                    |        SIGNAL |        READ_FIRST |      NONE |                    |        SIGNAL |       WRITE_FIRST |    MIDDLE |
+|  ram_reg_bram_2  | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |                    |        SIGNAL |        READ_FIRST |      NONE |                    |        SIGNAL |       WRITE_FIRST |    MIDDLE |
+|  ram_reg_bram_3  | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |                    |        SIGNAL |        READ_FIRST |      NONE |                    |        SIGNAL |       WRITE_FIRST |    MIDDLE |
+|  ram_reg_bram_4  | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |                    |        SIGNAL |        READ_FIRST |      NONE |                    |        SIGNAL |       WRITE_FIRST |    MIDDLE |
+|  ram_reg_bram_5  | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |                    |        SIGNAL |        READ_FIRST |      NONE |                    |        SIGNAL |       WRITE_FIRST |    MIDDLE |
+|  ram_reg_bram_6  | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |                    |        SIGNAL |        READ_FIRST |      NONE |                    |        SIGNAL |       WRITE_FIRST |    MIDDLE |
+|  ram_reg_bram_7  | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |                    |        SIGNAL |        READ_FIRST |      NONE |                    |        SIGNAL |       WRITE_FIRST |      LAST |
+|  ram_reg_bram_8  | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |                    |        SIGNAL |        READ_FIRST |      NONE |                    |        SIGNAL |       WRITE_FIRST |     FIRST |
+|  ram_reg_bram_9  | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |                    |        SIGNAL |        READ_FIRST |      NONE |                    |        SIGNAL |       WRITE_FIRST |    MIDDLE |
+|  ram_reg_bram_10 | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |                    |        SIGNAL |        READ_FIRST |      NONE |                    |        SIGNAL |       WRITE_FIRST |    MIDDLE |
+|  ram_reg_bram_11 | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |                    |        SIGNAL |        READ_FIRST |      NONE |                    |        SIGNAL |       WRITE_FIRST |    MIDDLE |
+|  ram_reg_bram_12 | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |                    |        SIGNAL |        READ_FIRST |      NONE |                    |        SIGNAL |       WRITE_FIRST |    MIDDLE |
+|  ram_reg_bram_13 | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |                    |        SIGNAL |        READ_FIRST |      NONE |                    |        SIGNAL |       WRITE_FIRST |    MIDDLE |
+|  ram_reg_bram_14 | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |                    |        SIGNAL |        READ_FIRST |      NONE |                    |        SIGNAL |       WRITE_FIRST |    MIDDLE |
+|  ram_reg_bram_15 | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |                    |        SIGNAL |        READ_FIRST |      NONE |                    |        SIGNAL |       WRITE_FIRST |      LAST |
+|  ram_reg_bram_16 | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |                    |        SIGNAL |        READ_FIRST |      NONE |                    |        SIGNAL |       WRITE_FIRST |     FIRST |
+|  ram_reg_bram_17 | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |                    |        SIGNAL |        READ_FIRST |      NONE |                    |        SIGNAL |       WRITE_FIRST |    MIDDLE |
+|  ram_reg_bram_18 | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |                    |        SIGNAL |        READ_FIRST |      NONE |                    |        SIGNAL |       WRITE_FIRST |    MIDDLE |
+|  ram_reg_bram_19 | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |                    |        SIGNAL |        READ_FIRST |      NONE |                    |        SIGNAL |       WRITE_FIRST |    MIDDLE |
+|  ram_reg_bram_20 | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |                    |        SIGNAL |        READ_FIRST |      NONE |                    |        SIGNAL |       WRITE_FIRST |    MIDDLE |
+|  ram_reg_bram_21 | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |                    |        SIGNAL |        READ_FIRST |      NONE |                    |        SIGNAL |       WRITE_FIRST |    MIDDLE |
+|  ram_reg_bram_22 | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |                    |        SIGNAL |        READ_FIRST |      NONE |                    |        SIGNAL |       WRITE_FIRST |    MIDDLE |
+|  ram_reg_bram_23 | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |                    |        SIGNAL |        READ_FIRST |      NONE |                    |        SIGNAL |       WRITE_FIRST |      LAST |
+|  ram_reg_bram_24 | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |                    |        SIGNAL |        READ_FIRST |      NONE |                    |        SIGNAL |       WRITE_FIRST |     FIRST |
+|  ram_reg_bram_25 | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |                    |        SIGNAL |        READ_FIRST |      NONE |                    |        SIGNAL |       WRITE_FIRST |    MIDDLE |
+|  ram_reg_bram_26 | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |                    |        SIGNAL |        READ_FIRST |      NONE |                    |        SIGNAL |       WRITE_FIRST |    MIDDLE |
+|  ram_reg_bram_27 | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |                    |        SIGNAL |        READ_FIRST |      NONE |                    |        SIGNAL |       WRITE_FIRST |    MIDDLE |
+|  ram_reg_bram_28 | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |                    |        SIGNAL |        READ_FIRST |      NONE |                    |        SIGNAL |       WRITE_FIRST |    MIDDLE |
+|  ram_reg_bram_29 | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |                    |        SIGNAL |        READ_FIRST |      NONE |                    |        SIGNAL |       WRITE_FIRST |    MIDDLE |
+|  ram_reg_bram_30 | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |                    |        SIGNAL |        READ_FIRST |      NONE |                    |        SIGNAL |       WRITE_FIRST |    MIDDLE |
+|  ram_reg_bram_31 | RAMB36E2  |  A:A:4096x8            |  B:B:4096x9            |                    |        SIGNAL |        READ_FIRST |      NONE |                    |        SIGNAL |       WRITE_FIRST |      LAST |
+|  ram_reg_bram_32 | RAMB36E2  |  A:A:32768x1           |  B:B:32768x1           |                    |        SIGNAL |        READ_FIRST |      NONE |                    |        SIGNAL |       WRITE_FIRST |     FIRST |
+|  ram_reg_bram_33 | RAMB36E2  |  A:A:32768x1           |  B:B:32768x1           |                    |        SIGNAL |        READ_FIRST |      NONE |                    |        SIGNAL |       WRITE_FIRST |    MIDDLE |
+|  ram_reg_bram_34 | RAMB36E2  |  A:A:32768x1           |  B:B:32768x1           |                    |        SIGNAL |        READ_FIRST |      NONE |                    |        SIGNAL |       WRITE_FIRST |    MIDDLE |
+|  ram_reg_bram_35 | RAMB36E2  |  A:A:32768x1           |  B:B:32768x1           |                    |        SIGNAL |        READ_FIRST |      NONE |                    |        SIGNAL |       WRITE_FIRST |      LAST |
++------------------+-----------+------------------------+------------------------+--------------------+---------------+-------------------+-----------+--------------------+---------------+-------------------+-----------+
+
+
