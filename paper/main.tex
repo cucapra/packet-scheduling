@@ -182,19 +182,18 @@
 \section{Introduction}\label{sec:intro}
 
 A \emph{packet scheduler} decides which of the packets buffered at an output port leaves next.
-On a programmable switch, that decision belongs to the network operator rather than to the silicon.
-Operators use that freedom to isolate tenants from one another and to hold latency-sensitive traffic to its budget.
-The policies they write are usually hierarchical~\cite{Stephens19,Kumar19,Grant20,vPIFO}, and each level of that hierarchy is a scheduling decision in its own right.
-Whatever the policy, the scheduler has to reach its decision at line rate, since a scheduler that cannot keep up with the wire drops the very traffic it was meant to schedule.
-The abstraction that makes this affordable in hardware is the \emph{PIFO}, a priority queue that a switch can maintain at line rate~\cite{Sivaraman16}.
-A hierarchical policy runs on a tree of PIFOs, one queue per node.
+On programmable switches, network operators configure schedulers to isolate tenants from one another and to hold latency-sensitive traffic to its budget.
+The policies they write are usually hierarchical~\cite{Stephens19,Kumar19,Grant20,vPIFO}, each level running a scheduling discipline of its own.
+Whatever the policy, the scheduler must keep up with the wire.
+A \emph{PIFO}, a priority queue that a switch can maintain at line rate, makes this affordable in hardware.
+A hierarchical policy runs on a tree of PIFOs, one queue per node~\cite{Sivaraman16}.
 
 % It needs to be inputted here so it lands on the top of page 2
 \input{fig-tour}
 
 The policy on a switch cannot be fixed.
-Traffic patterns shift, tenants arrive and leave, and telemetry from downstream tells the network operator that the running policy in no longer apt.
-But the scheduler on a switch is compiled expressly for the policy it runs: its tree shape, per-node disciplines, and table contents are all selected to realize \emph{a fresh policy}, not \emph{a change to the running policy}~\cite{Sivaraman16,Gao22,vPIFO}.
+Traffic patterns shift, tenants arrive and leave, and telemetry from downstream tells the network operator that the running policy is no longer apt.
+But the scheduler is compiled expressly for the policy it runs: its tree shape, per-node disciplines, and table contents are all selected to realize \emph{a fresh policy}, not \emph{a change to the running policy}~\cite{Sivaraman16,Gao22,vPIFO}.
 When the operator requests a new policy, the freshly compiled scheduler knows nothing about the running policy or the backlog of buffered packets~\cite{vPIFO,Alcoz23}.
 The whole tree is rebuilt, including the nodes that could have been carried over unchanged.
 What becomes of the backlog is left to the implementation: it can be dropped, recirculated, or left to be scheduled through a chaotic period in which the hardware follows no clearly defined policy.
