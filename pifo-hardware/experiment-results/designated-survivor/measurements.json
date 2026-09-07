@@ -1,0 +1,2476 @@
+{
+  "cases": {
+    "pre-0": {
+      "trace_sha256": "e8de02d12f9031d59b0d53c74bec35835924adb575d0749e86775fb428dd764f",
+      "runs": {
+        "link": {
+          "mechanism": "link",
+          "t1": 0,
+          "topology": "per-flow-hardware-fifo-v1",
+          "compiled_flow_paths": {
+            "p1": {
+              "1": [
+                [
+                  1,
+                  1,
+                  "SP"
+                ],
+                [
+                  3,
+                  1,
+                  "FIFO"
+                ]
+              ],
+              "2": [
+                [
+                  1,
+                  1,
+                  "SP"
+                ],
+                [
+                  3,
+                  2,
+                  "FIFO"
+                ]
+              ]
+            },
+            "p2b": {
+              "1": [
+                [
+                  1,
+                  2,
+                  "SP"
+                ],
+                [
+                  3,
+                  3,
+                  "FIFO"
+                ]
+              ],
+              "2": [
+                [
+                  1,
+                  2,
+                  "SP"
+                ],
+                [
+                  2,
+                  1,
+                  "RR"
+                ],
+                [
+                  3,
+                  4,
+                  "FIFO"
+                ]
+              ],
+              "3": [
+                [
+                  1,
+                  2,
+                  "SP"
+                ],
+                [
+                  2,
+                  1,
+                  "RR"
+                ],
+                [
+                  3,
+                  5,
+                  "FIFO"
+                ]
+              ]
+            }
+          },
+          "creation_instruction_categories": {
+            "rest": 25,
+            "designate": 1
+          },
+          "instruction_counts": {
+            "replace": 26
+          },
+          "reserved_pes": 0,
+          "hardware_tokens_per_pe": 1024,
+          "wrapper": null,
+          "events": [
+            {
+              "event": "reconfiguration",
+              "name": "replace",
+              "mode": "full_transitive",
+              "from_policy": "p1",
+              "to_policy": "p2b",
+              "instruction_count": "26",
+              "scheduled_cycle": "0",
+              "start_cycle": "0",
+              "commit_cycle": "33",
+              "finish_cycle": "549",
+              "drain_cycle": "36",
+              "drain_duration_cycles": "3",
+              "dropped_packets": "0",
+              "retained_packets": "0",
+              "peak_buffer_occupancy_packets": "0",
+              "minimum_stop_cycles": "0",
+              "stop_duration_cycles": "",
+              "prefilled_tokens": "",
+              "resume_cycle": ""
+            }
+          ],
+          "commit_applied_cycles": [
+            36
+          ],
+          "packets": 2135,
+          "drops": 0,
+          "reorders": 0,
+          "t1_backlog_packets": 0,
+          "pre_t1_link_utilization": null,
+          "t1_backlog_by_flow": {
+            "zoom": 0,
+            "gmail": 0,
+            "spotify": 0
+          },
+          "last_packet_pop_cycle": 8026,
+          "configuration_finish_cycle": 549,
+          "old_root_drained_cycle": 36,
+          "post_commit_old_drain_cycles": 0,
+          "old_root_tokens_at_publication": 0,
+          "zoom_peak_delay_cycles": 28,
+          "global_stop_cycles": 0,
+          "hardware_stop_cycles": 0,
+          "prefill_entries": 0,
+          "prefill_write_cycles": 0,
+          "fixed_stop_overhead_cycles": 0,
+          "lifecycle": {
+            "drain_watch_armed": [
+              {
+                "cycle": 36,
+                "engine_id": 1,
+                "vpifo_id": 1,
+                "tokens": 0,
+                "buffered_packets": 8,
+                "ingress_packets": 5
+              }
+            ]
+          }
+        },
+        "reserved": {
+          "mechanism": "reserved",
+          "t1": 0,
+          "topology": "per-flow-hardware-fifo-v1",
+          "compiled_flow_paths": {
+            "p1": {
+              "1": [
+                [
+                  1,
+                  1,
+                  "SP"
+                ],
+                [
+                  3,
+                  1,
+                  "FIFO"
+                ]
+              ],
+              "2": [
+                [
+                  1,
+                  1,
+                  "SP"
+                ],
+                [
+                  3,
+                  2,
+                  "FIFO"
+                ]
+              ]
+            },
+            "p2b": {
+              "1": [
+                [
+                  1,
+                  2,
+                  "SP"
+                ],
+                [
+                  3,
+                  3,
+                  "FIFO"
+                ]
+              ],
+              "2": [
+                [
+                  1,
+                  2,
+                  "SP"
+                ],
+                [
+                  2,
+                  1,
+                  "RR"
+                ],
+                [
+                  3,
+                  4,
+                  "FIFO"
+                ]
+              ],
+              "3": [
+                [
+                  1,
+                  2,
+                  "SP"
+                ],
+                [
+                  2,
+                  1,
+                  "RR"
+                ],
+                [
+                  3,
+                  5,
+                  "FIFO"
+                ]
+              ]
+            }
+          },
+          "creation_instruction_categories": {
+            "rest": 27,
+            "wrapper_creation": 11,
+            "prefill": 1
+          },
+          "instruction_counts": {
+            "replace": 39,
+            "collapse": 6,
+            "reclaim": 2
+          },
+          "reserved_pes": 1,
+          "hardware_tokens_per_pe": 1024,
+          "wrapper": [
+            4,
+            1
+          ],
+          "events": [
+            {
+              "event": "reconfiguration",
+              "name": "replace",
+              "mode": "stop_the_world_pop",
+              "from_policy": "p1",
+              "to_policy": "p2b",
+              "instruction_count": "39",
+              "scheduled_cycle": "0",
+              "start_cycle": "0",
+              "commit_cycle": "79",
+              "finish_cycle": "596",
+              "drain_cycle": "92",
+              "drain_duration_cycles": "13",
+              "dropped_packets": "0",
+              "retained_packets": "1",
+              "peak_buffer_occupancy_packets": "24",
+              "minimum_stop_cycles": "0",
+              "stop_duration_cycles": "",
+              "prefilled_tokens": "1",
+              "resume_cycle": "83"
+            },
+            {
+              "event": "reconfiguration",
+              "name": "collapse",
+              "mode": "direct",
+              "from_policy": "",
+              "to_policy": "",
+              "instruction_count": "6",
+              "scheduled_cycle": "0",
+              "start_cycle": "596",
+              "commit_cycle": "611",
+              "finish_cycle": "1127",
+              "drain_cycle": "",
+              "drain_duration_cycles": "",
+              "dropped_packets": "0",
+              "retained_packets": "0",
+              "peak_buffer_occupancy_packets": "0",
+              "minimum_stop_cycles": "0",
+              "stop_duration_cycles": "",
+              "prefilled_tokens": "",
+              "resume_cycle": ""
+            },
+            {
+              "event": "reconfiguration",
+              "name": "reclaim",
+              "mode": "direct",
+              "from_policy": "",
+              "to_policy": "",
+              "instruction_count": "2",
+              "scheduled_cycle": "0",
+              "start_cycle": "1127",
+              "commit_cycle": "1137",
+              "finish_cycle": "1652",
+              "drain_cycle": "",
+              "drain_duration_cycles": "",
+              "dropped_packets": "0",
+              "retained_packets": "0",
+              "peak_buffer_occupancy_packets": "0",
+              "minimum_stop_cycles": "0",
+              "stop_duration_cycles": "",
+              "prefilled_tokens": "",
+              "resume_cycle": ""
+            }
+          ],
+          "commit_applied_cycles": [
+            83,
+            614,
+            1139
+          ],
+          "packets": 2135,
+          "drops": 0,
+          "reorders": 0,
+          "t1_backlog_packets": 0,
+          "pre_t1_link_utilization": null,
+          "t1_backlog_by_flow": {
+            "zoom": 0,
+            "gmail": 0,
+            "spotify": 0
+          },
+          "last_packet_pop_cycle": 8026,
+          "configuration_finish_cycle": 1652,
+          "old_root_drained_cycle": 92,
+          "post_commit_old_drain_cycles": 9,
+          "old_root_tokens_at_publication": 1,
+          "zoom_peak_delay_cycles": 100,
+          "global_stop_cycles": 83,
+          "hardware_stop_cycles": 71,
+          "prefill_entries": 1,
+          "prefill_write_cycles": 1,
+          "fixed_stop_overhead_cycles": 82,
+          "lifecycle": {
+            "driver_stop": [
+              {
+                "cycle": 0,
+                "engine_id": 1,
+                "vpifo_id": 1,
+                "tokens": 0,
+                "buffered_packets": 3,
+                "ingress_packets": 2
+              }
+            ],
+            "hardware_stop": [
+              {
+                "cycle": 13,
+                "engine_id": 1,
+                "vpifo_id": 1,
+                "tokens": 1,
+                "buffered_packets": 4,
+                "ingress_packets": 3
+              }
+            ],
+            "stop_snapshot": [
+              {
+                "cycle": 46,
+                "engine_id": 1,
+                "vpifo_id": 1,
+                "tokens": 1,
+                "buffered_packets": 15,
+                "ingress_packets": 14
+              }
+            ],
+            "prefill_started": [
+              {
+                "cycle": 81,
+                "engine_id": 4,
+                "vpifo_id": 1,
+                "tokens": 1,
+                "buffered_packets": 23,
+                "ingress_packets": 22
+              }
+            ],
+            "prefill_finished": [
+              {
+                "cycle": 83,
+                "engine_id": 4,
+                "vpifo_id": 1,
+                "tokens": 1,
+                "buffered_packets": 24,
+                "ingress_packets": 23
+              }
+            ],
+            "root_detached": [
+              {
+                "cycle": 83,
+                "engine_id": 1,
+                "vpifo_id": 1,
+                "tokens": 1,
+                "buffered_packets": 24,
+                "ingress_packets": 23
+              },
+              {
+                "cycle": 614,
+                "engine_id": 4,
+                "vpifo_id": 1,
+                "tokens": 1,
+                "buffered_packets": 6,
+                "ingress_packets": 3
+              }
+            ],
+            "root_published": [
+              {
+                "cycle": 83,
+                "engine_id": 4,
+                "vpifo_id": 1,
+                "tokens": 1,
+                "buffered_packets": 24,
+                "ingress_packets": 23
+              },
+              {
+                "cycle": 614,
+                "engine_id": 1,
+                "vpifo_id": 2,
+                "tokens": 1,
+                "buffered_packets": 6,
+                "ingress_packets": 3
+              }
+            ],
+            "drain_watch_armed": [
+              {
+                "cycle": 83,
+                "engine_id": 1,
+                "vpifo_id": 1,
+                "tokens": 1,
+                "buffered_packets": 24,
+                "ingress_packets": 23
+              }
+            ],
+            "driver_resume": [
+              {
+                "cycle": 83,
+                "engine_id": 1,
+                "vpifo_id": 1,
+                "tokens": 1,
+                "buffered_packets": 24,
+                "ingress_packets": 23
+              }
+            ],
+            "hardware_resume": [
+              {
+                "cycle": 84,
+                "engine_id": 1,
+                "vpifo_id": 1,
+                "tokens": 1,
+                "buffered_packets": 24,
+                "ingress_packets": 23
+              }
+            ],
+            "clear_engine": [
+              {
+                "cycle": 1131,
+                "engine_id": 4,
+                "vpifo_id": 0,
+                "tokens": 0,
+                "buffered_packets": 6,
+                "ingress_packets": 0
+              }
+            ]
+          },
+          "prefill_command_to_done_cycles": 2,
+          "stop_breakdown_cycles": {
+            "driver_to_observed_hardware_gate": 13,
+            "observed_gate_to_snapshot": 33,
+            "snapshot_to_prefill_command": 35,
+            "token_writes": 1,
+            "prefill_command_overhead_to_publication": 1
+          },
+          "peak_stop_buffer_packets": 24,
+          "teardown_ready_cycle": 596,
+          "teardown_root_change_cycles": 18,
+          "teardown_reclaim_cycles": 536,
+          "teardown_all_config_finished_cycles": 1056,
+          "wrapper_tokens_at_detachment": 1,
+          "wrapper_tokens_discarded": 0,
+          "packets_served_after_reclamation": 1838,
+          "stop_window_drops": 0,
+          "stop_window_reorders": 0,
+          "teardown_window_drops": 0,
+          "teardown_window_reorders": 0
+        }
+      }
+    },
+    "pre-1000": {
+      "trace_sha256": "03a6dbc6b1c2a8744151d2a6c8c85ac84f5ad6c4e4807650f330064348ba847b",
+      "runs": {
+        "link": {
+          "mechanism": "link",
+          "t1": 1000,
+          "topology": "per-flow-hardware-fifo-v1",
+          "compiled_flow_paths": {
+            "p1": {
+              "1": [
+                [
+                  1,
+                  1,
+                  "SP"
+                ],
+                [
+                  3,
+                  1,
+                  "FIFO"
+                ]
+              ],
+              "2": [
+                [
+                  1,
+                  1,
+                  "SP"
+                ],
+                [
+                  3,
+                  2,
+                  "FIFO"
+                ]
+              ]
+            },
+            "p2b": {
+              "1": [
+                [
+                  1,
+                  2,
+                  "SP"
+                ],
+                [
+                  3,
+                  3,
+                  "FIFO"
+                ]
+              ],
+              "2": [
+                [
+                  1,
+                  2,
+                  "SP"
+                ],
+                [
+                  2,
+                  1,
+                  "RR"
+                ],
+                [
+                  3,
+                  4,
+                  "FIFO"
+                ]
+              ],
+              "3": [
+                [
+                  1,
+                  2,
+                  "SP"
+                ],
+                [
+                  2,
+                  1,
+                  "RR"
+                ],
+                [
+                  3,
+                  5,
+                  "FIFO"
+                ]
+              ]
+            }
+          },
+          "creation_instruction_categories": {
+            "rest": 25,
+            "designate": 1
+          },
+          "instruction_counts": {
+            "replace": 26
+          },
+          "reserved_pes": 0,
+          "hardware_tokens_per_pe": 1024,
+          "wrapper": null,
+          "events": [
+            {
+              "event": "reconfiguration",
+              "name": "replace",
+              "mode": "full_transitive",
+              "from_policy": "p1",
+              "to_policy": "p2b",
+              "instruction_count": "26",
+              "scheduled_cycle": "1000",
+              "start_cycle": "1000",
+              "commit_cycle": "1031",
+              "finish_cycle": "1547",
+              "drain_cycle": "1333",
+              "drain_duration_cycles": "302",
+              "dropped_packets": "0",
+              "retained_packets": "0",
+              "peak_buffer_occupancy_packets": "0",
+              "minimum_stop_cycles": "0",
+              "stop_duration_cycles": "",
+              "prefilled_tokens": "",
+              "resume_cycle": ""
+            }
+          ],
+          "commit_applied_cycles": [
+            1034
+          ],
+          "packets": 2536,
+          "drops": 0,
+          "reorders": 0,
+          "t1_backlog_packets": 107,
+          "pre_t1_link_utilization": 0.882,
+          "t1_backlog_by_flow": {
+            "zoom": 2,
+            "gmail": 105,
+            "spotify": 0
+          },
+          "last_packet_pop_cycle": 9026,
+          "configuration_finish_cycle": 1547,
+          "old_root_drained_cycle": 1333,
+          "post_commit_old_drain_cycles": 299,
+          "old_root_tokens_at_publication": 100,
+          "zoom_peak_delay_cycles": 313,
+          "global_stop_cycles": 0,
+          "hardware_stop_cycles": 0,
+          "prefill_entries": 0,
+          "prefill_write_cycles": 0,
+          "fixed_stop_overhead_cycles": 0,
+          "lifecycle": {
+            "drain_watch_armed": [
+              {
+                "cycle": 1034,
+                "engine_id": 1,
+                "vpifo_id": 1,
+                "tokens": 100,
+                "buffered_packets": 107,
+                "ingress_packets": 5
+              }
+            ]
+          }
+        },
+        "reserved": {
+          "mechanism": "reserved",
+          "t1": 1000,
+          "topology": "per-flow-hardware-fifo-v1",
+          "compiled_flow_paths": {
+            "p1": {
+              "1": [
+                [
+                  1,
+                  1,
+                  "SP"
+                ],
+                [
+                  3,
+                  1,
+                  "FIFO"
+                ]
+              ],
+              "2": [
+                [
+                  1,
+                  1,
+                  "SP"
+                ],
+                [
+                  3,
+                  2,
+                  "FIFO"
+                ]
+              ]
+            },
+            "p2b": {
+              "1": [
+                [
+                  1,
+                  2,
+                  "SP"
+                ],
+                [
+                  3,
+                  3,
+                  "FIFO"
+                ]
+              ],
+              "2": [
+                [
+                  1,
+                  2,
+                  "SP"
+                ],
+                [
+                  2,
+                  1,
+                  "RR"
+                ],
+                [
+                  3,
+                  4,
+                  "FIFO"
+                ]
+              ],
+              "3": [
+                [
+                  1,
+                  2,
+                  "SP"
+                ],
+                [
+                  2,
+                  1,
+                  "RR"
+                ],
+                [
+                  3,
+                  5,
+                  "FIFO"
+                ]
+              ]
+            }
+          },
+          "creation_instruction_categories": {
+            "rest": 27,
+            "wrapper_creation": 11,
+            "prefill": 1
+          },
+          "instruction_counts": {
+            "replace": 39,
+            "collapse": 6,
+            "reclaim": 2
+          },
+          "reserved_pes": 1,
+          "hardware_tokens_per_pe": 1024,
+          "wrapper": [
+            4,
+            1
+          ],
+          "events": [
+            {
+              "event": "reconfiguration",
+              "name": "replace",
+              "mode": "stop_the_world_pop",
+              "from_policy": "p1",
+              "to_policy": "p2b",
+              "instruction_count": "39",
+              "scheduled_cycle": "1000",
+              "start_cycle": "1000",
+              "commit_cycle": "1079",
+              "finish_cycle": "1698",
+              "drain_cycle": "1500",
+              "drain_duration_cycles": "421",
+              "dropped_packets": "0",
+              "retained_packets": "103",
+              "peak_buffer_occupancy_packets": "155",
+              "minimum_stop_cycles": "0",
+              "stop_duration_cycles": "",
+              "prefilled_tokens": "103",
+              "resume_cycle": "1185"
+            },
+            {
+              "event": "reconfiguration",
+              "name": "collapse",
+              "mode": "direct",
+              "from_policy": "",
+              "to_policy": "",
+              "instruction_count": "6",
+              "scheduled_cycle": "1000",
+              "start_cycle": "1698",
+              "commit_cycle": "1708",
+              "finish_cycle": "2223",
+              "drain_cycle": "",
+              "drain_duration_cycles": "",
+              "dropped_packets": "0",
+              "retained_packets": "0",
+              "peak_buffer_occupancy_packets": "0",
+              "minimum_stop_cycles": "0",
+              "stop_duration_cycles": "",
+              "prefilled_tokens": "",
+              "resume_cycle": ""
+            },
+            {
+              "event": "reconfiguration",
+              "name": "reclaim",
+              "mode": "direct",
+              "from_policy": "",
+              "to_policy": "",
+              "instruction_count": "2",
+              "scheduled_cycle": "1000",
+              "start_cycle": "2223",
+              "commit_cycle": "2233",
+              "finish_cycle": "2749",
+              "drain_cycle": "",
+              "drain_duration_cycles": "",
+              "dropped_packets": "0",
+              "retained_packets": "0",
+              "peak_buffer_occupancy_packets": "0",
+              "minimum_stop_cycles": "0",
+              "stop_duration_cycles": "",
+              "prefilled_tokens": "",
+              "resume_cycle": ""
+            }
+          ],
+          "commit_applied_cycles": [
+            1185,
+            1710,
+            2236
+          ],
+          "packets": 2536,
+          "drops": 0,
+          "reorders": 0,
+          "t1_backlog_packets": 107,
+          "pre_t1_link_utilization": 0.882,
+          "t1_backlog_by_flow": {
+            "zoom": 2,
+            "gmail": 105,
+            "spotify": 0
+          },
+          "last_packet_pop_cycle": 9026,
+          "configuration_finish_cycle": 2749,
+          "old_root_drained_cycle": 1500,
+          "post_commit_old_drain_cycles": 315,
+          "old_root_tokens_at_publication": 103,
+          "zoom_peak_delay_cycles": 510,
+          "global_stop_cycles": 185,
+          "hardware_stop_cycles": 173,
+          "prefill_entries": 103,
+          "prefill_write_cycles": 103,
+          "fixed_stop_overhead_cycles": 82,
+          "lifecycle": {
+            "driver_stop": [
+              {
+                "cycle": 1000,
+                "engine_id": 1,
+                "vpifo_id": 1,
+                "tokens": 103,
+                "buffered_packets": 110,
+                "ingress_packets": 4
+              }
+            ],
+            "hardware_stop": [
+              {
+                "cycle": 1013,
+                "engine_id": 1,
+                "vpifo_id": 1,
+                "tokens": 103,
+                "buffered_packets": 108,
+                "ingress_packets": 5
+              }
+            ],
+            "stop_snapshot": [
+              {
+                "cycle": 1046,
+                "engine_id": 1,
+                "vpifo_id": 1,
+                "tokens": 103,
+                "buffered_packets": 119,
+                "ingress_packets": 16
+              }
+            ],
+            "prefill_started": [
+              {
+                "cycle": 1081,
+                "engine_id": 4,
+                "vpifo_id": 1,
+                "tokens": 103,
+                "buffered_packets": 127,
+                "ingress_packets": 24
+              }
+            ],
+            "prefill_finished": [
+              {
+                "cycle": 1185,
+                "engine_id": 4,
+                "vpifo_id": 1,
+                "tokens": 103,
+                "buffered_packets": 155,
+                "ingress_packets": 52
+              }
+            ],
+            "root_detached": [
+              {
+                "cycle": 1185,
+                "engine_id": 1,
+                "vpifo_id": 1,
+                "tokens": 103,
+                "buffered_packets": 155,
+                "ingress_packets": 52
+              },
+              {
+                "cycle": 1710,
+                "engine_id": 4,
+                "vpifo_id": 1,
+                "tokens": 118,
+                "buffered_packets": 125,
+                "ingress_packets": 3
+              }
+            ],
+            "root_published": [
+              {
+                "cycle": 1185,
+                "engine_id": 4,
+                "vpifo_id": 1,
+                "tokens": 103,
+                "buffered_packets": 155,
+                "ingress_packets": 52
+              },
+              {
+                "cycle": 1710,
+                "engine_id": 1,
+                "vpifo_id": 2,
+                "tokens": 120,
+                "buffered_packets": 125,
+                "ingress_packets": 3
+              }
+            ],
+            "drain_watch_armed": [
+              {
+                "cycle": 1185,
+                "engine_id": 1,
+                "vpifo_id": 1,
+                "tokens": 103,
+                "buffered_packets": 155,
+                "ingress_packets": 52
+              }
+            ],
+            "driver_resume": [
+              {
+                "cycle": 1185,
+                "engine_id": 1,
+                "vpifo_id": 1,
+                "tokens": 103,
+                "buffered_packets": 155,
+                "ingress_packets": 52
+              }
+            ],
+            "hardware_resume": [
+              {
+                "cycle": 1186,
+                "engine_id": 1,
+                "vpifo_id": 1,
+                "tokens": 103,
+                "buffered_packets": 155,
+                "ingress_packets": 51
+              }
+            ],
+            "clear_engine": [
+              {
+                "cycle": 2227,
+                "engine_id": 4,
+                "vpifo_id": 0,
+                "tokens": 117,
+                "buffered_packets": 91,
+                "ingress_packets": 0
+              }
+            ]
+          },
+          "prefill_command_to_done_cycles": 104,
+          "stop_breakdown_cycles": {
+            "driver_to_observed_hardware_gate": 13,
+            "observed_gate_to_snapshot": 33,
+            "snapshot_to_prefill_command": 35,
+            "token_writes": 103,
+            "prefill_command_overhead_to_publication": 1
+          },
+          "peak_stop_buffer_packets": 155,
+          "teardown_ready_cycle": 1698,
+          "teardown_root_change_cycles": 12,
+          "teardown_reclaim_cycles": 530,
+          "teardown_all_config_finished_cycles": 1051,
+          "wrapper_tokens_at_detachment": 118,
+          "wrapper_tokens_discarded": 117,
+          "packets_served_after_reclamation": 1897,
+          "stop_window_drops": 0,
+          "stop_window_reorders": 0,
+          "teardown_window_drops": 0,
+          "teardown_window_reorders": 0
+        }
+      }
+    },
+    "pre-2000": {
+      "trace_sha256": "ed3ae93f00f69e9ddbff1c37338c5de38d6eaa71d96b530902fd1d2b0f210cbc",
+      "runs": {
+        "link": {
+          "mechanism": "link",
+          "t1": 2000,
+          "topology": "per-flow-hardware-fifo-v1",
+          "compiled_flow_paths": {
+            "p1": {
+              "1": [
+                [
+                  1,
+                  1,
+                  "SP"
+                ],
+                [
+                  3,
+                  1,
+                  "FIFO"
+                ]
+              ],
+              "2": [
+                [
+                  1,
+                  1,
+                  "SP"
+                ],
+                [
+                  3,
+                  2,
+                  "FIFO"
+                ]
+              ]
+            },
+            "p2b": {
+              "1": [
+                [
+                  1,
+                  2,
+                  "SP"
+                ],
+                [
+                  3,
+                  3,
+                  "FIFO"
+                ]
+              ],
+              "2": [
+                [
+                  1,
+                  2,
+                  "SP"
+                ],
+                [
+                  2,
+                  1,
+                  "RR"
+                ],
+                [
+                  3,
+                  4,
+                  "FIFO"
+                ]
+              ],
+              "3": [
+                [
+                  1,
+                  2,
+                  "SP"
+                ],
+                [
+                  2,
+                  1,
+                  "RR"
+                ],
+                [
+                  3,
+                  5,
+                  "FIFO"
+                ]
+              ]
+            }
+          },
+          "creation_instruction_categories": {
+            "rest": 25,
+            "designate": 1
+          },
+          "instruction_counts": {
+            "replace": 26
+          },
+          "reserved_pes": 0,
+          "hardware_tokens_per_pe": 1024,
+          "wrapper": null,
+          "events": [
+            {
+              "event": "reconfiguration",
+              "name": "replace",
+              "mode": "full_transitive",
+              "from_policy": "p1",
+              "to_policy": "p2b",
+              "instruction_count": "26",
+              "scheduled_cycle": "2000",
+              "start_cycle": "2000",
+              "commit_cycle": "2031",
+              "finish_cycle": "2547",
+              "drain_cycle": "2634",
+              "drain_duration_cycles": "603",
+              "dropped_packets": "0",
+              "retained_packets": "0",
+              "peak_buffer_occupancy_packets": "0",
+              "minimum_stop_cycles": "0",
+              "stop_duration_cycles": "",
+              "prefilled_tokens": "",
+              "resume_cycle": ""
+            }
+          ],
+          "commit_applied_cycles": [
+            2034
+          ],
+          "packets": 2936,
+          "drops": 0,
+          "reorders": 0,
+          "t1_backlog_packets": 207,
+          "pre_t1_link_utilization": 0.891,
+          "t1_backlog_by_flow": {
+            "zoom": 2,
+            "gmail": 205,
+            "spotify": 0
+          },
+          "last_packet_pop_cycle": 10026,
+          "configuration_finish_cycle": 2547,
+          "old_root_drained_cycle": 2634,
+          "post_commit_old_drain_cycles": 600,
+          "old_root_tokens_at_publication": 200,
+          "zoom_peak_delay_cycles": 614,
+          "global_stop_cycles": 0,
+          "hardware_stop_cycles": 0,
+          "prefill_entries": 0,
+          "prefill_write_cycles": 0,
+          "fixed_stop_overhead_cycles": 0,
+          "lifecycle": {
+            "drain_watch_armed": [
+              {
+                "cycle": 2034,
+                "engine_id": 1,
+                "vpifo_id": 1,
+                "tokens": 200,
+                "buffered_packets": 207,
+                "ingress_packets": 5
+              }
+            ]
+          }
+        },
+        "reserved": {
+          "mechanism": "reserved",
+          "t1": 2000,
+          "topology": "per-flow-hardware-fifo-v1",
+          "compiled_flow_paths": {
+            "p1": {
+              "1": [
+                [
+                  1,
+                  1,
+                  "SP"
+                ],
+                [
+                  3,
+                  1,
+                  "FIFO"
+                ]
+              ],
+              "2": [
+                [
+                  1,
+                  1,
+                  "SP"
+                ],
+                [
+                  3,
+                  2,
+                  "FIFO"
+                ]
+              ]
+            },
+            "p2b": {
+              "1": [
+                [
+                  1,
+                  2,
+                  "SP"
+                ],
+                [
+                  3,
+                  3,
+                  "FIFO"
+                ]
+              ],
+              "2": [
+                [
+                  1,
+                  2,
+                  "SP"
+                ],
+                [
+                  2,
+                  1,
+                  "RR"
+                ],
+                [
+                  3,
+                  4,
+                  "FIFO"
+                ]
+              ],
+              "3": [
+                [
+                  1,
+                  2,
+                  "SP"
+                ],
+                [
+                  2,
+                  1,
+                  "RR"
+                ],
+                [
+                  3,
+                  5,
+                  "FIFO"
+                ]
+              ]
+            }
+          },
+          "creation_instruction_categories": {
+            "rest": 27,
+            "wrapper_creation": 11,
+            "prefill": 1
+          },
+          "instruction_counts": {
+            "replace": 39,
+            "collapse": 6,
+            "reclaim": 2
+          },
+          "reserved_pes": 1,
+          "hardware_tokens_per_pe": 1024,
+          "wrapper": [
+            4,
+            1
+          ],
+          "events": [
+            {
+              "event": "reconfiguration",
+              "name": "replace",
+              "mode": "stop_the_world_pop",
+              "from_policy": "p1",
+              "to_policy": "p2b",
+              "instruction_count": "39",
+              "scheduled_cycle": "2000",
+              "start_cycle": "2000",
+              "commit_cycle": "2078",
+              "finish_cycle": "2797",
+              "drain_cycle": "2900",
+              "drain_duration_cycles": "822",
+              "dropped_packets": "0",
+              "retained_packets": "203",
+              "peak_buffer_occupancy_packets": "280",
+              "minimum_stop_cycles": "0",
+              "stop_duration_cycles": "",
+              "prefilled_tokens": "203",
+              "resume_cycle": "2284"
+            },
+            {
+              "event": "reconfiguration",
+              "name": "collapse",
+              "mode": "direct",
+              "from_policy": "",
+              "to_policy": "",
+              "instruction_count": "6",
+              "scheduled_cycle": "2000",
+              "start_cycle": "2797",
+              "commit_cycle": "2910",
+              "finish_cycle": "3425",
+              "drain_cycle": "",
+              "drain_duration_cycles": "",
+              "dropped_packets": "0",
+              "retained_packets": "0",
+              "peak_buffer_occupancy_packets": "0",
+              "minimum_stop_cycles": "0",
+              "stop_duration_cycles": "",
+              "prefilled_tokens": "",
+              "resume_cycle": ""
+            },
+            {
+              "event": "reconfiguration",
+              "name": "reclaim",
+              "mode": "direct",
+              "from_policy": "",
+              "to_policy": "",
+              "instruction_count": "2",
+              "scheduled_cycle": "2000",
+              "start_cycle": "3425",
+              "commit_cycle": "3435",
+              "finish_cycle": "3951",
+              "drain_cycle": "",
+              "drain_duration_cycles": "",
+              "dropped_packets": "0",
+              "retained_packets": "0",
+              "peak_buffer_occupancy_packets": "0",
+              "minimum_stop_cycles": "0",
+              "stop_duration_cycles": "",
+              "prefilled_tokens": "",
+              "resume_cycle": ""
+            }
+          ],
+          "commit_applied_cycles": [
+            2284,
+            2912,
+            3438
+          ],
+          "packets": 2936,
+          "drops": 0,
+          "reorders": 0,
+          "t1_backlog_packets": 207,
+          "pre_t1_link_utilization": 0.891,
+          "t1_backlog_by_flow": {
+            "zoom": 2,
+            "gmail": 205,
+            "spotify": 0
+          },
+          "last_packet_pop_cycle": 10026,
+          "configuration_finish_cycle": 3951,
+          "old_root_drained_cycle": 2900,
+          "post_commit_old_drain_cycles": 616,
+          "old_root_tokens_at_publication": 203,
+          "zoom_peak_delay_cycles": 910,
+          "global_stop_cycles": 284,
+          "hardware_stop_cycles": 273,
+          "prefill_entries": 203,
+          "prefill_write_cycles": 203,
+          "fixed_stop_overhead_cycles": 81,
+          "lifecycle": {
+            "driver_stop": [
+              {
+                "cycle": 2000,
+                "engine_id": 1,
+                "vpifo_id": 1,
+                "tokens": 203,
+                "buffered_packets": 210,
+                "ingress_packets": 4
+              }
+            ],
+            "hardware_stop": [
+              {
+                "cycle": 2012,
+                "engine_id": 1,
+                "vpifo_id": 1,
+                "tokens": 203,
+                "buffered_packets": 208,
+                "ingress_packets": 5
+              }
+            ],
+            "stop_snapshot": [
+              {
+                "cycle": 2045,
+                "engine_id": 1,
+                "vpifo_id": 1,
+                "tokens": 203,
+                "buffered_packets": 219,
+                "ingress_packets": 16
+              }
+            ],
+            "prefill_started": [
+              {
+                "cycle": 2080,
+                "engine_id": 4,
+                "vpifo_id": 1,
+                "tokens": 203,
+                "buffered_packets": 227,
+                "ingress_packets": 24
+              }
+            ],
+            "prefill_finished": [
+              {
+                "cycle": 2284,
+                "engine_id": 4,
+                "vpifo_id": 1,
+                "tokens": 203,
+                "buffered_packets": 280,
+                "ingress_packets": 77
+              }
+            ],
+            "root_detached": [
+              {
+                "cycle": 2284,
+                "engine_id": 1,
+                "vpifo_id": 1,
+                "tokens": 203,
+                "buffered_packets": 280,
+                "ingress_packets": 77
+              },
+              {
+                "cycle": 2912,
+                "engine_id": 4,
+                "vpifo_id": 1,
+                "tokens": 237,
+                "buffered_packets": 244,
+                "ingress_packets": 3
+              }
+            ],
+            "root_published": [
+              {
+                "cycle": 2284,
+                "engine_id": 4,
+                "vpifo_id": 1,
+                "tokens": 203,
+                "buffered_packets": 280,
+                "ingress_packets": 77
+              },
+              {
+                "cycle": 2912,
+                "engine_id": 1,
+                "vpifo_id": 2,
+                "tokens": 239,
+                "buffered_packets": 244,
+                "ingress_packets": 3
+              }
+            ],
+            "drain_watch_armed": [
+              {
+                "cycle": 2284,
+                "engine_id": 1,
+                "vpifo_id": 1,
+                "tokens": 203,
+                "buffered_packets": 280,
+                "ingress_packets": 77
+              }
+            ],
+            "driver_resume": [
+              {
+                "cycle": 2284,
+                "engine_id": 1,
+                "vpifo_id": 1,
+                "tokens": 203,
+                "buffered_packets": 280,
+                "ingress_packets": 77
+              }
+            ],
+            "hardware_resume": [
+              {
+                "cycle": 2285,
+                "engine_id": 1,
+                "vpifo_id": 1,
+                "tokens": 203,
+                "buffered_packets": 283,
+                "ingress_packets": 80
+              }
+            ],
+            "clear_engine": [
+              {
+                "cycle": 3429,
+                "engine_id": 4,
+                "vpifo_id": 0,
+                "tokens": 236,
+                "buffered_packets": 211,
+                "ingress_packets": 1
+              }
+            ]
+          },
+          "prefill_command_to_done_cycles": 204,
+          "stop_breakdown_cycles": {
+            "driver_to_observed_hardware_gate": 12,
+            "observed_gate_to_snapshot": 33,
+            "snapshot_to_prefill_command": 35,
+            "token_writes": 203,
+            "prefill_command_overhead_to_publication": 1
+          },
+          "peak_stop_buffer_packets": 280,
+          "teardown_ready_cycle": 2900,
+          "teardown_root_change_cycles": 12,
+          "teardown_reclaim_cycles": 530,
+          "teardown_all_config_finished_cycles": 1051,
+          "wrapper_tokens_at_detachment": 237,
+          "wrapper_tokens_discarded": 236,
+          "packets_served_after_reclamation": 1963,
+          "stop_window_drops": 0,
+          "stop_window_reorders": 0,
+          "teardown_window_drops": 0,
+          "teardown_window_reorders": 0
+        }
+      }
+    },
+    "pre-2500": {
+      "trace_sha256": "1e215759c260aa6a736837a0832c3eddbb2cace1c2447611b982c2a235e2f463",
+      "runs": {
+        "link": {
+          "mechanism": "link",
+          "t1": 2500,
+          "topology": "per-flow-hardware-fifo-v1",
+          "compiled_flow_paths": {
+            "p1": {
+              "1": [
+                [
+                  1,
+                  1,
+                  "SP"
+                ],
+                [
+                  3,
+                  1,
+                  "FIFO"
+                ]
+              ],
+              "2": [
+                [
+                  1,
+                  1,
+                  "SP"
+                ],
+                [
+                  3,
+                  2,
+                  "FIFO"
+                ]
+              ]
+            },
+            "p2b": {
+              "1": [
+                [
+                  1,
+                  2,
+                  "SP"
+                ],
+                [
+                  3,
+                  3,
+                  "FIFO"
+                ]
+              ],
+              "2": [
+                [
+                  1,
+                  2,
+                  "SP"
+                ],
+                [
+                  2,
+                  1,
+                  "RR"
+                ],
+                [
+                  3,
+                  4,
+                  "FIFO"
+                ]
+              ],
+              "3": [
+                [
+                  1,
+                  2,
+                  "SP"
+                ],
+                [
+                  2,
+                  1,
+                  "RR"
+                ],
+                [
+                  3,
+                  5,
+                  "FIFO"
+                ]
+              ]
+            }
+          },
+          "creation_instruction_categories": {
+            "rest": 25,
+            "designate": 1
+          },
+          "instruction_counts": {
+            "replace": 26
+          },
+          "reserved_pes": 0,
+          "hardware_tokens_per_pe": 1024,
+          "wrapper": null,
+          "events": [
+            {
+              "event": "reconfiguration",
+              "name": "replace",
+              "mode": "full_transitive",
+              "from_policy": "p1",
+              "to_policy": "p2b",
+              "instruction_count": "26",
+              "scheduled_cycle": "2500",
+              "start_cycle": "2500",
+              "commit_cycle": "2531",
+              "finish_cycle": "3047",
+              "drain_cycle": "3284",
+              "drain_duration_cycles": "753",
+              "dropped_packets": "0",
+              "retained_packets": "0",
+              "peak_buffer_occupancy_packets": "0",
+              "minimum_stop_cycles": "0",
+              "stop_duration_cycles": "",
+              "prefilled_tokens": "",
+              "resume_cycle": ""
+            }
+          ],
+          "commit_applied_cycles": [
+            2534
+          ],
+          "packets": 3136,
+          "drops": 0,
+          "reorders": 0,
+          "t1_backlog_packets": 257,
+          "pre_t1_link_utilization": 0.8928,
+          "t1_backlog_by_flow": {
+            "zoom": 2,
+            "gmail": 255,
+            "spotify": 0
+          },
+          "last_packet_pop_cycle": 10526,
+          "configuration_finish_cycle": 3047,
+          "old_root_drained_cycle": 3284,
+          "post_commit_old_drain_cycles": 750,
+          "old_root_tokens_at_publication": 250,
+          "zoom_peak_delay_cycles": 764,
+          "global_stop_cycles": 0,
+          "hardware_stop_cycles": 0,
+          "prefill_entries": 0,
+          "prefill_write_cycles": 0,
+          "fixed_stop_overhead_cycles": 0,
+          "lifecycle": {
+            "drain_watch_armed": [
+              {
+                "cycle": 2534,
+                "engine_id": 1,
+                "vpifo_id": 1,
+                "tokens": 250,
+                "buffered_packets": 257,
+                "ingress_packets": 5
+              }
+            ]
+          }
+        },
+        "reserved": {
+          "mechanism": "reserved",
+          "t1": 2500,
+          "topology": "per-flow-hardware-fifo-v1",
+          "compiled_flow_paths": {
+            "p1": {
+              "1": [
+                [
+                  1,
+                  1,
+                  "SP"
+                ],
+                [
+                  3,
+                  1,
+                  "FIFO"
+                ]
+              ],
+              "2": [
+                [
+                  1,
+                  1,
+                  "SP"
+                ],
+                [
+                  3,
+                  2,
+                  "FIFO"
+                ]
+              ]
+            },
+            "p2b": {
+              "1": [
+                [
+                  1,
+                  2,
+                  "SP"
+                ],
+                [
+                  3,
+                  3,
+                  "FIFO"
+                ]
+              ],
+              "2": [
+                [
+                  1,
+                  2,
+                  "SP"
+                ],
+                [
+                  2,
+                  1,
+                  "RR"
+                ],
+                [
+                  3,
+                  4,
+                  "FIFO"
+                ]
+              ],
+              "3": [
+                [
+                  1,
+                  2,
+                  "SP"
+                ],
+                [
+                  2,
+                  1,
+                  "RR"
+                ],
+                [
+                  3,
+                  5,
+                  "FIFO"
+                ]
+              ]
+            }
+          },
+          "creation_instruction_categories": {
+            "rest": 27,
+            "wrapper_creation": 11,
+            "prefill": 1
+          },
+          "instruction_counts": {
+            "replace": 39,
+            "collapse": 6,
+            "reclaim": 2
+          },
+          "reserved_pes": 1,
+          "hardware_tokens_per_pe": 1024,
+          "wrapper": [
+            4,
+            1
+          ],
+          "events": [
+            {
+              "event": "reconfiguration",
+              "name": "replace",
+              "mode": "stop_the_world_pop",
+              "from_policy": "p1",
+              "to_policy": "p2b",
+              "instruction_count": "39",
+              "scheduled_cycle": "2500",
+              "start_cycle": "2500",
+              "commit_cycle": "2579",
+              "finish_cycle": "3348",
+              "drain_cycle": "3601",
+              "drain_duration_cycles": "1022",
+              "dropped_packets": "0",
+              "retained_packets": "253",
+              "peak_buffer_occupancy_packets": "345",
+              "minimum_stop_cycles": "0",
+              "stop_duration_cycles": "",
+              "prefilled_tokens": "253",
+              "resume_cycle": "2835"
+            },
+            {
+              "event": "reconfiguration",
+              "name": "collapse",
+              "mode": "direct",
+              "from_policy": "",
+              "to_policy": "",
+              "instruction_count": "6",
+              "scheduled_cycle": "2500",
+              "start_cycle": "3348",
+              "commit_cycle": "3607",
+              "finish_cycle": "4122",
+              "drain_cycle": "",
+              "drain_duration_cycles": "",
+              "dropped_packets": "0",
+              "retained_packets": "0",
+              "peak_buffer_occupancy_packets": "0",
+              "minimum_stop_cycles": "0",
+              "stop_duration_cycles": "",
+              "prefilled_tokens": "",
+              "resume_cycle": ""
+            },
+            {
+              "event": "reconfiguration",
+              "name": "reclaim",
+              "mode": "direct",
+              "from_policy": "",
+              "to_policy": "",
+              "instruction_count": "2",
+              "scheduled_cycle": "2500",
+              "start_cycle": "4122",
+              "commit_cycle": "4133",
+              "finish_cycle": "4649",
+              "drain_cycle": "",
+              "drain_duration_cycles": "",
+              "dropped_packets": "0",
+              "retained_packets": "0",
+              "peak_buffer_occupancy_packets": "0",
+              "minimum_stop_cycles": "0",
+              "stop_duration_cycles": "",
+              "prefilled_tokens": "",
+              "resume_cycle": ""
+            }
+          ],
+          "commit_applied_cycles": [
+            2835,
+            3609,
+            4136
+          ],
+          "packets": 3136,
+          "drops": 0,
+          "reorders": 0,
+          "t1_backlog_packets": 257,
+          "pre_t1_link_utilization": 0.8928,
+          "t1_backlog_by_flow": {
+            "zoom": 2,
+            "gmail": 255,
+            "spotify": 0
+          },
+          "last_packet_pop_cycle": 10526,
+          "configuration_finish_cycle": 4649,
+          "old_root_drained_cycle": 3601,
+          "post_commit_old_drain_cycles": 766,
+          "old_root_tokens_at_publication": 253,
+          "zoom_peak_delay_cycles": 1111,
+          "global_stop_cycles": 335,
+          "hardware_stop_cycles": 323,
+          "prefill_entries": 253,
+          "prefill_write_cycles": 253,
+          "fixed_stop_overhead_cycles": 82,
+          "lifecycle": {
+            "driver_stop": [
+              {
+                "cycle": 2500,
+                "engine_id": 1,
+                "vpifo_id": 1,
+                "tokens": 253,
+                "buffered_packets": 260,
+                "ingress_packets": 4
+              }
+            ],
+            "hardware_stop": [
+              {
+                "cycle": 2513,
+                "engine_id": 1,
+                "vpifo_id": 1,
+                "tokens": 253,
+                "buffered_packets": 258,
+                "ingress_packets": 5
+              }
+            ],
+            "stop_snapshot": [
+              {
+                "cycle": 2546,
+                "engine_id": 1,
+                "vpifo_id": 1,
+                "tokens": 253,
+                "buffered_packets": 269,
+                "ingress_packets": 16
+              }
+            ],
+            "prefill_started": [
+              {
+                "cycle": 2581,
+                "engine_id": 4,
+                "vpifo_id": 1,
+                "tokens": 253,
+                "buffered_packets": 277,
+                "ingress_packets": 24
+              }
+            ],
+            "prefill_finished": [
+              {
+                "cycle": 2835,
+                "engine_id": 4,
+                "vpifo_id": 1,
+                "tokens": 253,
+                "buffered_packets": 345,
+                "ingress_packets": 92
+              }
+            ],
+            "root_detached": [
+              {
+                "cycle": 2835,
+                "engine_id": 1,
+                "vpifo_id": 1,
+                "tokens": 253,
+                "buffered_packets": 345,
+                "ingress_packets": 92
+              },
+              {
+                "cycle": 3609,
+                "engine_id": 4,
+                "vpifo_id": 1,
+                "tokens": 293,
+                "buffered_packets": 297,
+                "ingress_packets": 1
+              }
+            ],
+            "root_published": [
+              {
+                "cycle": 2835,
+                "engine_id": 4,
+                "vpifo_id": 1,
+                "tokens": 253,
+                "buffered_packets": 345,
+                "ingress_packets": 92
+              },
+              {
+                "cycle": 3609,
+                "engine_id": 1,
+                "vpifo_id": 2,
+                "tokens": 294,
+                "buffered_packets": 297,
+                "ingress_packets": 1
+              }
+            ],
+            "drain_watch_armed": [
+              {
+                "cycle": 2835,
+                "engine_id": 1,
+                "vpifo_id": 1,
+                "tokens": 253,
+                "buffered_packets": 345,
+                "ingress_packets": 92
+              }
+            ],
+            "driver_resume": [
+              {
+                "cycle": 2835,
+                "engine_id": 1,
+                "vpifo_id": 1,
+                "tokens": 253,
+                "buffered_packets": 345,
+                "ingress_packets": 92
+              }
+            ],
+            "hardware_resume": [
+              {
+                "cycle": 2836,
+                "engine_id": 1,
+                "vpifo_id": 1,
+                "tokens": 253,
+                "buffered_packets": 345,
+                "ingress_packets": 91
+              }
+            ],
+            "clear_engine": [
+              {
+                "cycle": 4126,
+                "engine_id": 4,
+                "vpifo_id": 0,
+                "tokens": 292,
+                "buffered_packets": 264,
+                "ingress_packets": 0
+              }
+            ]
+          },
+          "prefill_command_to_done_cycles": 254,
+          "stop_breakdown_cycles": {
+            "driver_to_observed_hardware_gate": 13,
+            "observed_gate_to_snapshot": 33,
+            "snapshot_to_prefill_command": 35,
+            "token_writes": 253,
+            "prefill_command_overhead_to_publication": 1
+          },
+          "peak_stop_buffer_packets": 345,
+          "teardown_ready_cycle": 3601,
+          "teardown_root_change_cycles": 8,
+          "teardown_reclaim_cycles": 526,
+          "teardown_all_config_finished_cycles": 1048,
+          "wrapper_tokens_at_detachment": 293,
+          "wrapper_tokens_discarded": 292,
+          "packets_served_after_reclamation": 1964,
+          "stop_window_drops": 0,
+          "stop_window_reorders": 0,
+          "teardown_window_drops": 0,
+          "teardown_window_reorders": 0
+        }
+      }
+    },
+    "pre-5000": {
+      "trace_sha256": "4fae793083b8f8706e3ab6370aec38880ce5a9c33d3f287f81bc106e78a15912",
+      "runs": {
+        "link": {
+          "mechanism": "link",
+          "t1": 5000,
+          "topology": "per-flow-hardware-fifo-v1",
+          "compiled_flow_paths": {
+            "p1": {
+              "1": [
+                [
+                  1,
+                  1,
+                  "SP"
+                ],
+                [
+                  3,
+                  1,
+                  "FIFO"
+                ]
+              ],
+              "2": [
+                [
+                  1,
+                  1,
+                  "SP"
+                ],
+                [
+                  3,
+                  2,
+                  "FIFO"
+                ]
+              ]
+            },
+            "p2b": {
+              "1": [
+                [
+                  1,
+                  2,
+                  "SP"
+                ],
+                [
+                  3,
+                  3,
+                  "FIFO"
+                ]
+              ],
+              "2": [
+                [
+                  1,
+                  2,
+                  "SP"
+                ],
+                [
+                  2,
+                  1,
+                  "RR"
+                ],
+                [
+                  3,
+                  4,
+                  "FIFO"
+                ]
+              ],
+              "3": [
+                [
+                  1,
+                  2,
+                  "SP"
+                ],
+                [
+                  2,
+                  1,
+                  "RR"
+                ],
+                [
+                  3,
+                  5,
+                  "FIFO"
+                ]
+              ]
+            }
+          },
+          "creation_instruction_categories": {
+            "rest": 25,
+            "designate": 1
+          },
+          "instruction_counts": {
+            "replace": 26
+          },
+          "reserved_pes": 0,
+          "hardware_tokens_per_pe": 1024,
+          "wrapper": null,
+          "events": [
+            {
+              "event": "reconfiguration",
+              "name": "replace",
+              "mode": "full_transitive",
+              "from_policy": "p1",
+              "to_policy": "p2b",
+              "instruction_count": "26",
+              "scheduled_cycle": "5000",
+              "start_cycle": "5000",
+              "commit_cycle": "5031",
+              "finish_cycle": "5547",
+              "drain_cycle": "6534",
+              "drain_duration_cycles": "1503",
+              "dropped_packets": "0",
+              "retained_packets": "0",
+              "peak_buffer_occupancy_packets": "0",
+              "minimum_stop_cycles": "0",
+              "stop_duration_cycles": "",
+              "prefilled_tokens": "",
+              "resume_cycle": ""
+            }
+          ],
+          "commit_applied_cycles": [
+            5034
+          ],
+          "packets": 4401,
+          "drops": 0,
+          "reorders": 0,
+          "t1_backlog_packets": 507,
+          "pre_t1_link_utilization": 0.8964,
+          "t1_backlog_by_flow": {
+            "zoom": 2,
+            "gmail": 505,
+            "spotify": 0
+          },
+          "last_packet_pop_cycle": 14018,
+          "configuration_finish_cycle": 5547,
+          "old_root_drained_cycle": 6534,
+          "post_commit_old_drain_cycles": 1500,
+          "old_root_tokens_at_publication": 500,
+          "zoom_peak_delay_cycles": 1514,
+          "global_stop_cycles": 0,
+          "hardware_stop_cycles": 0,
+          "prefill_entries": 0,
+          "prefill_write_cycles": 0,
+          "fixed_stop_overhead_cycles": 0,
+          "lifecycle": {
+            "drain_watch_armed": [
+              {
+                "cycle": 5034,
+                "engine_id": 1,
+                "vpifo_id": 1,
+                "tokens": 500,
+                "buffered_packets": 507,
+                "ingress_packets": 5
+              }
+            ]
+          }
+        },
+        "reserved": {
+          "mechanism": "reserved",
+          "t1": 5000,
+          "topology": "per-flow-hardware-fifo-v1",
+          "compiled_flow_paths": {
+            "p1": {
+              "1": [
+                [
+                  1,
+                  1,
+                  "SP"
+                ],
+                [
+                  3,
+                  1,
+                  "FIFO"
+                ]
+              ],
+              "2": [
+                [
+                  1,
+                  1,
+                  "SP"
+                ],
+                [
+                  3,
+                  2,
+                  "FIFO"
+                ]
+              ]
+            },
+            "p2b": {
+              "1": [
+                [
+                  1,
+                  2,
+                  "SP"
+                ],
+                [
+                  3,
+                  3,
+                  "FIFO"
+                ]
+              ],
+              "2": [
+                [
+                  1,
+                  2,
+                  "SP"
+                ],
+                [
+                  2,
+                  1,
+                  "RR"
+                ],
+                [
+                  3,
+                  4,
+                  "FIFO"
+                ]
+              ],
+              "3": [
+                [
+                  1,
+                  2,
+                  "SP"
+                ],
+                [
+                  2,
+                  1,
+                  "RR"
+                ],
+                [
+                  3,
+                  5,
+                  "FIFO"
+                ]
+              ]
+            }
+          },
+          "creation_instruction_categories": {
+            "rest": 27,
+            "wrapper_creation": 11,
+            "prefill": 1
+          },
+          "instruction_counts": {
+            "replace": 39,
+            "collapse": 6,
+            "reclaim": 2
+          },
+          "reserved_pes": 1,
+          "hardware_tokens_per_pe": 1024,
+          "wrapper": [
+            4,
+            1
+          ],
+          "events": [
+            {
+              "event": "reconfiguration",
+              "name": "replace",
+              "mode": "stop_the_world_pop",
+              "from_policy": "p1",
+              "to_policy": "p2b",
+              "instruction_count": "39",
+              "scheduled_cycle": "5000",
+              "start_cycle": "5000",
+              "commit_cycle": "5078",
+              "finish_cycle": "6097",
+              "drain_cycle": "7100",
+              "drain_duration_cycles": "2022",
+              "dropped_packets": "0",
+              "retained_packets": "503",
+              "peak_buffer_occupancy_packets": "660",
+              "minimum_stop_cycles": "0",
+              "stop_duration_cycles": "",
+              "prefilled_tokens": "503",
+              "resume_cycle": "5584"
+            },
+            {
+              "event": "reconfiguration",
+              "name": "collapse",
+              "mode": "direct",
+              "from_policy": "",
+              "to_policy": "",
+              "instruction_count": "6",
+              "scheduled_cycle": "5000",
+              "start_cycle": "6097",
+              "commit_cycle": "7110",
+              "finish_cycle": "7625",
+              "drain_cycle": "",
+              "drain_duration_cycles": "",
+              "dropped_packets": "0",
+              "retained_packets": "0",
+              "peak_buffer_occupancy_packets": "0",
+              "minimum_stop_cycles": "0",
+              "stop_duration_cycles": "",
+              "prefilled_tokens": "",
+              "resume_cycle": ""
+            },
+            {
+              "event": "reconfiguration",
+              "name": "reclaim",
+              "mode": "direct",
+              "from_policy": "",
+              "to_policy": "",
+              "instruction_count": "2",
+              "scheduled_cycle": "5000",
+              "start_cycle": "7625",
+              "commit_cycle": "7635",
+              "finish_cycle": "8151",
+              "drain_cycle": "",
+              "drain_duration_cycles": "",
+              "dropped_packets": "0",
+              "retained_packets": "0",
+              "peak_buffer_occupancy_packets": "0",
+              "minimum_stop_cycles": "0",
+              "stop_duration_cycles": "",
+              "prefilled_tokens": "",
+              "resume_cycle": ""
+            }
+          ],
+          "commit_applied_cycles": [
+            5584,
+            7112,
+            7638
+          ],
+          "packets": 4401,
+          "drops": 0,
+          "reorders": 0,
+          "t1_backlog_packets": 507,
+          "pre_t1_link_utilization": 0.8964,
+          "t1_backlog_by_flow": {
+            "zoom": 2,
+            "gmail": 505,
+            "spotify": 0
+          },
+          "last_packet_pop_cycle": 14315,
+          "configuration_finish_cycle": 8151,
+          "old_root_drained_cycle": 7100,
+          "post_commit_old_drain_cycles": 1516,
+          "old_root_tokens_at_publication": 503,
+          "zoom_peak_delay_cycles": 2110,
+          "global_stop_cycles": 584,
+          "hardware_stop_cycles": 573,
+          "prefill_entries": 503,
+          "prefill_write_cycles": 503,
+          "fixed_stop_overhead_cycles": 81,
+          "lifecycle": {
+            "driver_stop": [
+              {
+                "cycle": 5000,
+                "engine_id": 1,
+                "vpifo_id": 1,
+                "tokens": 503,
+                "buffered_packets": 510,
+                "ingress_packets": 4
+              }
+            ],
+            "hardware_stop": [
+              {
+                "cycle": 5012,
+                "engine_id": 1,
+                "vpifo_id": 1,
+                "tokens": 503,
+                "buffered_packets": 508,
+                "ingress_packets": 5
+              }
+            ],
+            "stop_snapshot": [
+              {
+                "cycle": 5045,
+                "engine_id": 1,
+                "vpifo_id": 1,
+                "tokens": 503,
+                "buffered_packets": 519,
+                "ingress_packets": 16
+              }
+            ],
+            "prefill_started": [
+              {
+                "cycle": 5080,
+                "engine_id": 4,
+                "vpifo_id": 1,
+                "tokens": 503,
+                "buffered_packets": 527,
+                "ingress_packets": 24
+              }
+            ],
+            "prefill_finished": [
+              {
+                "cycle": 5584,
+                "engine_id": 4,
+                "vpifo_id": 1,
+                "tokens": 503,
+                "buffered_packets": 660,
+                "ingress_packets": 157
+              }
+            ],
+            "root_detached": [
+              {
+                "cycle": 5584,
+                "engine_id": 1,
+                "vpifo_id": 1,
+                "tokens": 503,
+                "buffered_packets": 660,
+                "ingress_packets": 157
+              },
+              {
+                "cycle": 7112,
+                "engine_id": 4,
+                "vpifo_id": 1,
+                "tokens": 557,
+                "buffered_packets": 564,
+                "ingress_packets": 3
+              }
+            ],
+            "root_published": [
+              {
+                "cycle": 5584,
+                "engine_id": 4,
+                "vpifo_id": 1,
+                "tokens": 503,
+                "buffered_packets": 660,
+                "ingress_packets": 157
+              },
+              {
+                "cycle": 7112,
+                "engine_id": 1,
+                "vpifo_id": 2,
+                "tokens": 559,
+                "buffered_packets": 564,
+                "ingress_packets": 3
+              }
+            ],
+            "drain_watch_armed": [
+              {
+                "cycle": 5584,
+                "engine_id": 1,
+                "vpifo_id": 1,
+                "tokens": 503,
+                "buffered_packets": 660,
+                "ingress_packets": 157
+              }
+            ],
+            "driver_resume": [
+              {
+                "cycle": 5584,
+                "engine_id": 1,
+                "vpifo_id": 1,
+                "tokens": 503,
+                "buffered_packets": 660,
+                "ingress_packets": 157
+              }
+            ],
+            "hardware_resume": [
+              {
+                "cycle": 5585,
+                "engine_id": 1,
+                "vpifo_id": 1,
+                "tokens": 503,
+                "buffered_packets": 663,
+                "ingress_packets": 160
+              }
+            ],
+            "clear_engine": [
+              {
+                "cycle": 7629,
+                "engine_id": 4,
+                "vpifo_id": 0,
+                "tokens": 556,
+                "buffered_packets": 531,
+                "ingress_packets": 1
+              }
+            ]
+          },
+          "prefill_command_to_done_cycles": 504,
+          "stop_breakdown_cycles": {
+            "driver_to_observed_hardware_gate": 12,
+            "observed_gate_to_snapshot": 33,
+            "snapshot_to_prefill_command": 35,
+            "token_writes": 503,
+            "prefill_command_overhead_to_publication": 1
+          },
+          "peak_stop_buffer_packets": 660,
+          "teardown_ready_cycle": 7100,
+          "teardown_root_change_cycles": 12,
+          "teardown_reclaim_cycles": 530,
+          "teardown_all_config_finished_cycles": 1051,
+          "wrapper_tokens_at_detachment": 557,
+          "wrapper_tokens_discarded": 556,
+          "packets_served_after_reclamation": 2228,
+          "stop_window_drops": 0,
+          "stop_window_reorders": 0,
+          "teardown_window_drops": 0,
+          "teardown_window_reorders": 0
+        }
+      }
+    }
+  },
+  "topology": "per-flow-hardware-fifo-v1",
+  "requested_sweep_pre_cycles": [
+    0,
+    1000,
+    2500,
+    5000
+  ],
+  "buffer_note": "4096 packet metadata FIFO entries per flow; each flow also has a real hardware FIFO PIFO on PE 3. The 1024 scheduler-token slots on each PE are shared across its virtual PIFOs, including old/new FIFO versions. The source gate queue is unbounded and measured, not claimed as hardware RAM.",
+  "copy_baseline": "Not run: the existing copy datapath supports frozen drain-only relocation, not a complete live-survivor ascent/brain-state migration protocol.",
+  "completed_pre_cycles": [
+    0,
+    1000,
+    2000,
+    2500,
+    5000
+  ],
+  "missing_sweep_pre_cycles": []
+}

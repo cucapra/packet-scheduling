@@ -117,11 +117,15 @@ case class RequestSimulationSummary(
     completions: Vector[CompletedRequest],
     drops: Vector[DroppedRequest],
     completedActions: Vector[CompletedRequestAction],
-    controlObservations: Vector[ControlObservation] = Vector.empty
+    controlObservations: Vector[ControlObservation] = Vector.empty,
+    maintenanceObservations: Vector[MaintenanceObservation] = Vector.empty
 )
 
 case class ControlObservation(cycle: Long, phase: String, command: String,
     engineId: Int, vPifoId: Int, flowId: Int, data: Long, copiedEntries: Option[Int] = None)
+
+case class MaintenanceObservation(cycle: Long, event: String, engineId: Int,
+    vPifoId: Int, tokens: Long, bufferedPackets: Long, ingressPackets: Long)
 
 /** Request-level harness around PifoMesh.
   *
@@ -167,6 +171,10 @@ final class PifoRequestSimulator(
   private val remainingActions = mutable.Queue.from(scheduledActions.sortBy(_.scheduledCycle))
   private val completedActions = mutable.ArrayBuffer.empty[CompletedRequestAction]
   private val controlObservations = mutable.ArrayBuffer.empty[ControlObservation]
+  private val maintenanceObservations = mutable.ArrayBuffer.empty[MaintenanceObservation]
+  private var observedHardwareStop = false
+  private var observedSnapshot = false
+  private val activePrefills = mutable.Map.empty[Int, (Int, Long)]
   private val recentPifoPops = mutable.Queue.empty[String]
   private case class FlowGate(scheduledCycle: Long, flowIds: Set[Int], var released: Boolean)
   private val flowGates = mutable.Map.from(
@@ -286,6 +294,7 @@ final class PifoRequestSimulator(
       completions = requestQueues.completions,
       drops = requestQueues.drops,
       controlObservations = controlObservations.toVector,
+      maintenanceObservations = maintenanceObservations.toVector,
       completedActions = completedActions.toVector.map { action =>
         action.copy(
           drainCycle = action.drainCycle.orElse(
@@ -411,6 +420,7 @@ final class PifoRequestSimulator(
                       if (action.mode != "stop_the_world") endCommitAdmissionBarrier()
                       if (action.mode == "stop_the_world_pop") {
                         resumeCycle = Some(currentCycle)
+                        recordMaintenance("driver_resume", settings.rootEngineId, settings.rootVPifoId)
                         observeStopWorldBufferOccupancy()
                         peakBufferOccupancyPackets = stopWorldPeakBufferOccupancy.getOrElse(0L)
                         stopWorldPeakBufferOccupancy = None
@@ -626,6 +636,7 @@ final class PifoRequestSimulator(
     commitAdmissionBarrier = true
     dequeuePaused = true
     stopWorldPeakBufferOccupancy = Some(currentBufferedPacketOccupancy)
+    recordMaintenance("driver_stop", settings.rootEngineId, settings.rootVPifoId)
     while (admissionInFlight || dequeuesInFlight > 0 || currentCycle < lastTokenReadyCycle)
       dut.clockDomain.waitRisingEdge()
     requestQueues.totalQueued
@@ -689,11 +700,60 @@ final class PifoRequestSimulator(
     record("accepted", dut.io.controlRequest)
     record("dispatched", dut.routedControl)
     record("committed", dut.commitControl)
+    val stopped = dut.trafficStopped.toBoolean
+    if (stopped != observedHardwareStop) {
+      recordMaintenance(if (stopped) "hardware_stop" else "hardware_resume",
+        dut.stoppedRootEngine.toInt, dut.stoppedRootPifo.toInt)
+      observedHardwareStop = stopped
+    }
+    val snapshot = dut.stopSnapshotValid.toBoolean
+    if (snapshot && !observedSnapshot) {
+      recordMaintenance("stop_snapshot", dut.stoppedRootEngine.toInt,
+        dut.stoppedRootPifo.toInt, Some(dut.stoppedTokenCount.toLong))
+    }
+    observedSnapshot = snapshot
+    dut.pifoEngines.zipWithIndex.foreach { case (engine, index) =>
+      val id = index + 1
+      activePrefills.get(id).foreach { case (port, count) =>
+        if (!engine.prefill.busy.toBoolean) {
+          recordMaintenance("prefill_finished", id, port, Some(count))
+          activePrefills.remove(id)
+        }
+      }
+      val request = engine.prefill.request
+      if (request.valid.toBoolean && request.ready.toBoolean) {
+        val port = request.port.toInt
+        activePrefills(id) = (port, 0L)
+        recordMaintenance("prefill_started", id, port, Some(request.count.toLong))
+      }
+      if (engine.pifos.io.push2.valid.toBoolean && engine.pifos.io.push2Ready.toBoolean) {
+        val (port, count) = activePrefills(id)
+        activePrefills(id) = (port, count + 1)
+      }
+    }
+    if (dut.routedControl.valid.toBoolean && dut.routedControl.ready.toBoolean &&
+        dut.routedControl.command.toEnum == ControlCommand.ClearPifoEngine) {
+      val id = dut.routedControl.engineId.toInt
+      recordMaintenance("clear_engine", id, 0, Some(dut.pifoEngines(id - 1).pifos.pifoCount.toLong))
+    }
+    if (dut.commitControl.valid.toBoolean && dut.commitControl.ready.toBoolean && dut.pendingRootValid.toBoolean) {
+      val oldId = if (dut.activeRootValid.toBoolean) dut.activeRootEngine.toInt else settings.rootEngineId
+      val oldPort = if (dut.activeRootValid.toBoolean) dut.activeRootPifo.toInt else settings.rootVPifoId
+      recordMaintenance("root_detached", oldId, oldPort)
+      recordMaintenance("root_published", dut.pendingRootEngine.toInt, dut.pendingRootPifo.toInt)
+    }
     if (dut.copyController.io.done.toBoolean) {
       controlObservations += ControlObservation(currentCycle, "copy_finished", "CopyPifoEngine",
         dut.copyController.source.toInt + 1, 0, 0, dut.copyController.target.toInt + 1,
         Some(dut.copyController.io.copied.toInt))
     }
+  }
+
+  private def recordMaintenance(event: String, engine: Int, port: Int,
+      tokens: Option[Long] = None): Unit = {
+    maintenanceObservations += MaintenanceObservation(currentCycle, event, engine, port,
+      tokens.getOrElse(dut.pifoEngines(engine - 1).pifos.portCounts(port).toLong),
+      currentBufferedPacketOccupancy, pending.iterator.count(_.request.cycle <= currentCycle).toLong)
   }
 
   private def endStopTheWorld(): Unit = {
@@ -706,7 +766,9 @@ final class PifoRequestSimulator(
   private def armTreeDrain(actionName: String): Unit = {
     drainWatches.get(actionName).foreach { watch =>
       watch.armed = true
-      if (requestQueues.isEmpty && dequeuesInFlight == 0) watch.cycle = Some(currentCycle)
+      recordMaintenance("drain_watch_armed", watch.target.engineId, watch.target.vPifoId)
+      if (dut.pifoEngines(watch.target.engineId - 1).pifos.portCounts(watch.target.vPifoId).toLong == 0)
+        watch.cycle = Some(currentCycle)
     }
   }
 

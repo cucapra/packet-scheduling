@@ -32,8 +32,10 @@ class ConcurrentPifoRTL(config: PifoConfig) extends Component {
 
   private val countWidth = config.bitPifo + 1
   private val pifoArray = Vec(Reg(PifoEntry(config)), config.numPifo)
-  private val pifoCount = Reg(UInt(countWidth bits)) init (0)
-  private val portCounts = Vec.fill(1 << config.bitPort)(Reg(UInt(countWidth bits)) init (0))
+  // Public names allow the RTL simulator to observe maintenance occupancy;
+  // they are the existing hardware counters, not a second software model.
+  val pifoCount = Reg(UInt(countWidth bits)) init (0)
+  val portCounts = Vec.fill(1 << config.bitPort)(Reg(UInt(countWidth bits)) init (0))
   io.inspectCount := portCounts(io.inspectPort)
   io.probeCount := portCounts(io.probePort)
   io.copyEntry.valid := io.copyIndex.resize(countWidth) < pifoCount

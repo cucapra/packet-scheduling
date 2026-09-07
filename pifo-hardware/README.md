@@ -76,6 +76,11 @@ The [large-tree multi-edit experiment](experiments/multi-edit/README.md) compare
 localized edits, hardware SP prefill, whole-PE copy plus prefill, and a lossless
 reset baseline, with a shared unchanged-policy control trace.
 
+The [designated-survivor experiment](experiments/designated-survivor/README.md)
+compares the Strict* link with a materialized wrapper on a reserved PE, including
+a backlog sweep, actual prefill writes, and occupied-wrapper teardown costs.
+Every flow uses an explicit hardware FIFO leaf on its push and pop paths.
+
 The packet-visible mapping commands are transactional:
 
 - Every command uses the mesh's single ready/valid control ingress. It accepts at most one instruction per clock;

@@ -1,0 +1,37 @@
+Designated-survivor experiment: explicit hardware FIFO-layer update
+
+PASS: .venv/bin/python -m unittest discover -s hw/python/tests -q (41 tests).
+PASS: compiler checks verify a distinct FIFO leaf per flow in both policies,
+      FIFO brain configuration, a push mapping into each leaf, a policy-to-FIFO
+      pop mapping, and a FIFO-to-output mapping. Old/new FIFO IDs are disjoint.
+PASS: wrapper allocation excludes all PEs used by either policy, including the
+      new RR node; the reserved wrapper is on PE 4, not PE 2 or FIFO PE 3.
+
+PASS: ten requested experiment simulations completed on Verilator, with
+      pre-phases 0, 1000, 2000, 2500 and 5000 cycles, for both mechanisms.
+PASS: all 30288 packets completed, with zero drops and zero per-flow reordering.
+PASS: every pair uses identical traffic; all ten requests.csv files are also
+      byte-identical to their pre-modification traces. Rates, packet sizes,
+      seeds and phase durations were not changed.
+PASS: config counts match compiled transactions and acceptance is at most one
+      instruction per cycle. Prefill writes match frozen old-root occupancy
+      and complete before publication. No teardown hardware stop is introduced.
+PASS: canonical occupied-wrapper reclamation discards 236 redundant tokens;
+      the survivor's hardware FIFO nodes are preserved and packets finish.
+PASS: figures A/B and their data CSVs were regenerated and visually inspected.
+
+Current results:
+- Hardware FIFO nodes are on PE 3; the reserved wrapper uses PE 4.
+- Measured sweep backlogs remain 0, 107, 257 and 507 packets.
+- Strict* global stop is zero. Wrapper stops are 83, 185, 335 and 584 cycles,
+  or one cycle per actual prefill token plus 81-82 cycles of overhead.
+- At pre=2000, zoom's peak delay is 614 versus 910 cycles. Wrapper stop is
+  284 cycles (203 writes + 81 overhead); post-commit drains are 600/616 cycles.
+- Main packages now contain 26 instructions (link) and 39 (wrapper), including
+  the new FIFO brain and enqueue/dequeue mappings. Wrapper cleanup is 6+2.
+- Four PEs widen the engine ID; post-mapper synchronization walks 512 entries,
+  not the previous 256. It affects configuration finish, not the global stop.
+
+No standalone RTL regression tests or separate RTL lint/synthesis checks were
+run for this modification. The existing RTL was exercised only through the
+requested experiment simulations. No hardware datapath code changed this turn.

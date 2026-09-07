@@ -185,6 +185,15 @@ object RequestSimulatorCli {
         val mesh = new PifoMesh(hardwareConfig)
         mesh.activeRootValid.simPublic()
         mesh.activeRootEngine.simPublic()
+        mesh.activeRootPifo.simPublic()
+        mesh.pendingRootValid.simPublic()
+        mesh.pendingRootEngine.simPublic()
+        mesh.pendingRootPifo.simPublic()
+        mesh.trafficStopped.simPublic()
+        mesh.stoppedRootEngine.simPublic()
+        mesh.stoppedRootPifo.simPublic()
+        mesh.stopSnapshotValid.simPublic()
+        mesh.stoppedTokenCount.simPublic()
         mesh.routedControl.simPublic()
         mesh.commitControl.simPublic()
         mesh.copyController.io.done.simPublic()
@@ -192,6 +201,12 @@ object RequestSimulatorCli {
         mesh.copyController.source.simPublic()
         mesh.copyController.target.simPublic()
         mesh.pifoEngines.foreach { engine =>
+          engine.pifos.pifoCount.simPublic()
+          engine.pifos.portCounts.foreach(_.simPublic())
+          engine.prefill.busy.simPublic()
+          engine.prefill.request.simPublic()
+          engine.pifos.io.push2.valid.simPublic()
+          engine.pifos.io.push2Ready.simPublic()
           engine.pifos.io.popResponse.valid.simPublic()
           engine.pifos.io.popResponse.port.simPublic()
           engine.pifos.io.popResponse.exist.simPublic()
@@ -330,6 +345,15 @@ object RequestSimulatorCli {
                 observation.copiedEntries.map(_.toString).getOrElse("")).mkString(",") + "\n")
             }
           } finally writer.close()
+          val maintenance = Files.newBufferedWriter(path.resolveSibling("maintenance-events.csv"), StandardCharsets.UTF_8)
+          try {
+            maintenance.write("cycle,event,engine_id,vpifo_id,tokens,buffered_packets,ingress_packets\n")
+            summary.maintenanceObservations.foreach { observation =>
+              maintenance.write(Seq(observation.cycle, observation.event, observation.engineId,
+                observation.vPifoId, observation.tokens, observation.bufferedPackets,
+                observation.ingressPackets).mkString(",") + "\n")
+            }
+          } finally maintenance.close()
         }
         println(
           s"[RequestSim] complete cycles=${summary.elapsedCycles} submitted=${summary.submittedRequests} " +

@@ -42,6 +42,7 @@ object StopTheWorldPopSim extends App {
       mesh.pifoEngines(barrierEngine - 1).pifos.io.push2.valid.simPublic()
       mesh.pifoEngines(barrierEngine - 1).pifos.io.push2Ready.simPublic()
       mesh.pifoEngines(barrierEngine - 1).pifos.io.push2.priority.simPublic()
+      mesh.pifoEngines.foreach(_.pifos.portCounts.foreach(_.simPublic()))
       mesh
     }
     .doSim { dut =>
@@ -110,6 +111,19 @@ object StopTheWorldPopSim extends App {
         vPifoId = barrierPifo,
         flowId = packedPreloadFlow
       )
+      // The survivor uses another root port on PE 1. Future arrivals create
+      // one token there and one low-priority token in the materialized wrapper.
+      val survivorPifo = 3
+      val packedSurvivorFlow = controller.mkFlowId(barrierEngine, terminalFlow)
+      controller.sendControl(ControlCommand.UpdateBrainEngine, oldRootEngine, 3, vPifoId = survivorPifo)
+      controller.sendControl(ControlCommand.UpdateMapperPre, oldRootEngine, survivorPifo, vPifoId = terminalFlow)
+      controller.sendControl(ControlCommand.UpdateMapperPost, oldRootEngine, terminalFlow,
+        vPifoId = survivorPifo, flowId = packedOldFlow)
+      controller.sendControl(ControlCommand.UpdateMapperPre, barrierEngine, barrierPifo, vPifoId = terminalFlow)
+      controller.sendControl(ControlCommand.UpdateBrainFlowState, barrierEngine, 2,
+        vPifoId = barrierPifo, flowId = packedSurvivorFlow)
+      controller.sendControl(ControlCommand.UpdateMapperPost, barrierEngine,
+        controller.mkFlowId(oldRootEngine, survivorPifo), vPifoId = barrierPifo, flowId = packedSurvivorFlow)
 
       var insertedTokens = 0
       var monitor = true
@@ -147,6 +161,10 @@ object StopTheWorldPopSim extends App {
       assert(dut.activeRootEngine.toInt == barrierEngine)
       assert(dut.activeRootPifo.toInt == barrierPifo)
 
+      controller.enque(terminalFlow)
+      controller.enque(terminalFlow)
+      dut.clockDomain.waitSampling(16)
+
       // Requests still naming the old root are selected through the committed
       // hardware root register. Every synthetic token is a scheduler entry and
       // therefore produces no simulator-side packet admission.
@@ -156,6 +174,25 @@ object StopTheWorldPopSim extends App {
         assert(dut.io.pop.payload.engineId.toInt == 0)
         assert(dut.io.pop.payload.vPifoId.toInt == terminalFlow)
       }
+
+      // Pain 4: collapse while the wrapper still holds two survivor tokens.
+      // Detaching and clearing the wrapper must not delete those packets from
+      // the survivor. Both remaining packets must still pop exactly once.
+      assert(dut.pifoEngines(barrierEngine - 1).pifos.portCounts(barrierPifo).toInt == 2)
+      assert(dut.pifoEngines(oldRootEngine - 1).pifos.portCounts(survivorPifo).toInt == 2)
+      controller.sendControl(ControlCommand.UpdateMapperPre, barrierEngine, 0, vPifoId = terminalFlow)
+      controller.sendControl(ControlCommand.UpdateRoot, oldRootEngine, 0, vPifoId = survivorPifo)
+      controller.sendControl(ControlCommand.CommitMapper, 1, 0)
+      controller.sendControl(ControlCommand.ClearPifoEngine, barrierEngine, 0)
+      controller.sendControl(ControlCommand.CommitMapper, 1, 0)
+      assert(dut.pifoEngines(barrierEngine - 1).pifos.portCounts(barrierPifo).toInt == 0)
+      assert(dut.pifoEngines(oldRootEngine - 1).pifos.portCounts(survivorPifo).toInt == 2)
+      (0 until 2).foreach { _ =>
+        controller.requestDequeue(oldRootEngine, oldRootPifo)
+        dut.clockDomain.waitSamplingWhere(dut.io.pop.valid.toBoolean)
+        assert(dut.io.pop.payload.vPifoId.toInt == terminalFlow)
+      }
+      assert(dut.pifoEngines(oldRootEngine - 1).pifos.portCounts(survivorPifo).toInt == 0)
 
       simSuccess()
     }

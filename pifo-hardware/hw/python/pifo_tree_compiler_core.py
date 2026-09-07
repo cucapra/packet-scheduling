@@ -74,7 +74,7 @@ def build_transaction_plan(
         drain = (old_root.engine_id, old_root.vpifo_id)
     elif reconfiguration.mode == "stop_the_world_pop":
         physical_target = _allocate_fresh_tree(target_tree, initial_tree, num_vpifos)
-        barrier = _allocate_barrier(initial_tree, num_engines, num_vpifos)
+        barrier = _allocate_barrier(initial_tree, physical_target, num_engines, num_vpifos)
         preload_flow_id = num_vpifos - 1
         transaction_commands = tuple(_configure_stop_the_world_pop(
             initial_tree, physical_target, *barrier, preload_flow_id, num_vpifos
@@ -185,9 +185,12 @@ def _allocate_fresh_tree(
 
 
 def _allocate_barrier(
-    tree: InitialTreeConfig, num_engines: int, num_vpifos: int
+    old_tree: InitialTreeConfig,
+    new_tree: InitialTreeConfig,
+    num_engines: int,
+    num_vpifos: int,
 ) -> tuple[int, int]:
-    used_engines = {node.engine_id for node in tree.nodes.values()}
+    used_engines = {node.engine_id for tree in (old_tree, new_tree) for node in tree.nodes.values()}
     try:
         engine_id = next(
             candidate
@@ -196,10 +199,10 @@ def _allocate_barrier(
         )
     except StopIteration as error:
         raise ValueError(
-            "stop_the_world_pop requires one engine unused by the old tree"
+            "stop_the_world_pop requires one engine unused by both old and new trees"
         ) from error
     preferred = tuple(range(10, num_vpifos - 1)) + tuple(
-        range(0, min(10, num_vpifos - 1))
+        range(1, min(10, num_vpifos - 1))
     )
     if not preferred:
         raise ValueError("stop_the_world_pop has no usable barrier vPifo ID")
