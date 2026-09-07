@@ -182,102 +182,36 @@
 \section{Introduction}\label{sec:intro}
 
 A \emph{packet scheduler} decides which of the packets buffered at an output port leaves next.
-On a programmable switch, that decision belongs to the network operator rather than to the silicon.
-Operators use that freedom to isolate tenants from one another and to hold latency-sensitive traffic to its budget.
-The policies they write are usually hierarchical~\cite{Stephens19,Kumar19,Grant20,vPIFO}, and each level of that hierarchy is a scheduling decision in its own right.
-Whatever the policy, the scheduler has to reach its decision at line rate, since a scheduler that cannot keep up with the wire drops the very traffic it was meant to schedule.
-The abstraction that makes this affordable in hardware is the \emph{PIFO}, a priority queue that a switch can maintain at line rate~\cite{Sivaraman16}.
-A hierarchical policy runs on a tree of PIFOs, one queue per node.
+On programmable switches, network operators configure schedulers to isolate tenants from one another and to hold latency-sensitive traffic to its budget.
+The policies they write are usually hierarchical~\cite{Stephens19,Kumar19,Grant20,vPIFO}, each level running a scheduling discipline of its own.
+Whatever the policy, the scheduler must keep up with the wire.
+A \emph{PIFO}, a priority queue that a switch can maintain at line rate, makes this affordable in hardware.
+A hierarchical policy runs on a tree of PIFOs, one queue per node~\cite{Sivaraman16}.
 
-A deployment's policy is not fixed for the life of the deployment.
-Traffic patterns shift, tenants arrive and leave, and telemetry from downstream tells the operator that the policy in force is no longer the right one.
-Such changes need to be rapid and seamless.
-The scheduler, however, was compiled for the policy it is running.
-Its tree shape, its per-node disciplines, and its table contents are all artifacts of a decision made before the switch was brought up, and the compilers that produce them accept \emph{a policy to run} rather than \emph{a change to the policy already running}.
-
-Consider a programmable switch running the policy \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\textsf{gmail})\), strictly prioritizing real-time \textsf{zoom} traffic over \textsf{gmail} traffic.
-The network operator wants to add a new \textsf{spotify} flow, and is considering two candidate policies:
-\(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{mid}{:}\,\textsf{spotify},\allowbreak\ \mathtt{lo}{:}\,\textsf{gmail})\), extending the strict-priority list with \textsf{spotify}; or
-\(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\RR(\textsf{gmail},\allowbreak\ \textsf{spotify}))\), keeping \textsf{zoom} at the higher tier but having \textsf{gmail} and \textsf{spotify} share the lower tier via round-robin.
-In either case, the state of the art~\cite{vPIFO} would stop the world: drop or recirculate the buffered packets, recompile, and reinstall.
-The costs are downtime, delay, and the rebuilding of nodes that did not need to be rebuilt.
-
-This paper refuses to stop the world.
-Our thesis is that the interval during which a scheduler is being reprogrammed is itself a scheduling policy.
-Stopping the world does not do away with that policy but only leaves it unstated and unchosen.
-Understanding this unstated policy is a language problem.
-A transitional policy needs a syntax that the operator can read, a semantics that says which packet leaves next, and a lowering onto hardware that was built for the policy it is already running.
-With those in hand, the question of whether a transition was carried out correctly becomes a theorem about the semantics rather than a measurement of the hardware.
-Rio supplies all three: a language of policy edits, a semantics for them, and a lowering of them onto a PIFO substrate.
-
-A transition from a running policy \(p_1\) to a requested policy \(p_2\) takes one of two shapes (\cref{fig:two-timelines}).
-Sometimes the requested policy can be installed immediately, as a single atomic transition (case~1).
-Sometimes it cannot, and the scheduler must first pass through a transitional policy (case~2).
-Our two candidates illustrate the two cases.
-
-\begin{figure}[t]
-\centering
-\begin{tikzpicture}[
-  x=0.95cm, y=1cm,
-  lbl/.style={font=\small\ttfamily, anchor=north},
-]
-% ---- Row (1): the easy, immediate transition ----
-\node at (-0.05,1.5) {(1)};
-\draw[->,thick] (0.4,1.5) -- (8.2,1.5);
-\draw[thick] (3,1.3) -- (3,1.7);
-\node[above] at (3,1.7) {$t_1$};
-\node[lbl] at (1.6,1.3) {p1};
-\node[lbl] at (5.6,1.3) {p2};
-% ---- Row (2): the hard transition, with a transitional period ----
-\node at (-0.05,0) {(2)};
-\draw[->,thick] (0.4,0) -- (8.2,0);
-\draw[thick] (3,-0.2) -- (3,0.2);
-\draw[thick] (5.5,-0.2) -- (5.5,0.2);
-\node[above] at (3,0.2) {$t_1$};
-\node[above] at (5.5,0.2) {$t_2$};
-\node[lbl] at (1.6,-0.2) {p1};
-\node[lbl, font=\small\itshape, align=center] at (4.25,-0.2) {transitional\\policy};
-\node[lbl] at (6.85,-0.2) {p2};
-\end{tikzpicture}
-\caption{The two shapes a transition from a running \(p_1\) to a requested \(p_2\) can take, immediate at \(t_1\) (case~1) or through a transitional policy until \(t_2\) (case~2).}
-\label{fig:two-timelines}
-\end{figure}
-
+% It needs to be inputted here so it lands on the top of page 2
 \input{fig-tour}
 
-Moving to \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{mid}{:}\,\textsf{spotify},\allowbreak\ \mathtt{lo}{:}\,\textsf{gmail})\) is a case~1 transition.
-Before time \(t_1\), \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\textsf{gmail})\) is running; at time \(t_1\) the request to transition is received, and we immediately satisfy it.
-The transition at \(t_1\) is \emph{atomic}, meaning that any interaction that the network had with the scheduler before \(t_1\) happened entirely in the old regime, and whatever interaction the network had with the scheduler after \(t_1\) happened entirely in the new regime.
-It is also \emph{immediate}, in that no period of preparation precedes the atomic jump into \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{mid}{:}\,\textsf{spotify},\allowbreak\ \mathtt{lo}{:}\,\textsf{gmail})\).
-The two concepts are distinct.
+The policy on a switch does not stay fixed.
+Traffic patterns shift, tenants arrive and leave, and telemetry downstream tells the network operator that the policy is no longer apt.
+But the scheduler is compiled expressly for the policy it runs: its tree shape, per-node disciplines, and table contents are selected to realize \emph{a fresh policy}, not \emph{a change to the running policy}~\cite{Sivaraman16,Gao22,vPIFO}.
+When the operator requests a new policy, the freshly compiled scheduler is agnostic to the running policy and the backlog of buffered packets~\cite{vPIFO,Alcoz23}.
+The whole tree is rebuilt, including the nodes that could have been carried over unchanged.
+What becomes of the backlog is up to the implementation: it can be dropped, recirculated, or left to be scheduled through a chaotic period in which the hardware follows no clearly defined policy.
+Each of those is itself tacitly a \emph{scheduling decision}, and the operator is unable to specify which one they want.
 
-Moving to \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\RR(\textsf{gmail},\allowbreak\ \textsf{spotify}))\) is a case~2 transition.
-As before, \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\textsf{gmail})\) runs before \(t_1\) and the operator's request arrives at \(t_1\), but we cannot move to \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\RR(\textsf{gmail},\allowbreak\ \textsf{spotify}))\) immediately since there are still \textsf{gmail} packets buffered in the scheduler.
-Transitioning immediately would mean moving those buffered \textsf{gmail} packets under the new round-robin node.
-A packet is ranked as it arrives and at no other time.
-These packets arrived before the round-robin node existed, so that node never ranked them and now cannot.
-We atomically step instead into a \emph{transitional policy} that is \emph{not} the one the operator asked for.
-After \(t_1\) but before \(t_2\), the scheduler still accepts and emits packets under it.
-At time \(t_2\), defined as the instant that a well-defined guard becomes true, we atomically step into \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\RR(\textsf{gmail},\allowbreak\ \textsf{spotify}))\).
+Our thesis is that the interval during which a scheduler is being reprogrammed is itself a scheduling policy, since packets keep arriving and leaving while it lasts. 
+Understanding it is a language problem.
+A transitional policy needs a syntax that the operator can read, a semantics that says which packet leaves next, and a compiler that accepts a change to the running policy.
+With those in hand, whether a transition was carried out correctly becomes a theorem about the semantics rather than a measurement taken after the fact.
+We present \emph{Rio}, which supplies all three.
 
-The operator never specified the semantics of the interval from \(t_1\) to \(t_2\), but that interval is a packet scheduling regime all the same.
-It is unavoidable, it persists for nonzero time, and throughout it the scheduler goes on accepting and emitting packets, so scheduling decisions are being made in it.
-Some of those decisions are better than others from the operator's point of view, and the state of the art has settled on a trivial one, discarding the backlog and starting over~\cite{vPIFO}.
-Our contributions are to say what the transitional policy is and to do better than that.
-
-Rio's language is a grammar of atomic policy edits, each one a change the hardware can install in a single instant (\cref{sec:delta-grammar}).
-Its semantics gives every edit a meaning in the operator's own policy language, so \emph{any transitional policy the grammar produces is ordinary scheduling}, readable exactly as \(p_1\) and \(p_2\) are (\cref{sec:edit-semantics}).
-A planner turns a requested \(p_2\) into a guarded sequence of those edits (\cref{sec:planner}), and a mechanical lowering carries each edit down to the instructions that a switch runs (\cref{sec:hw-compile}).
-A transition from any \(p_1\) to any \(p_2\) is always available, and many admit a realization confined to the part of the tree that actually changes.
-We will give the semantics of the stop-the-world transitional policy and use it as a baseline.
-Two practical goals guide the search for better ways to transition from a given \(p_1\) to a given \(p_2\).
-We would like to shorten the transition period, and we would like to avoid dropping or delaying packets.
-\xxx[AM]{more to come here; the cost model is a legit open question!}
-\xxx[AM]{Proposal: name \emph{non-disruption} here as one of the improvements over the state of the art.
-Right now \cref{sec:nondisruption} introduces it out of nowhere, and says ``the stop-the-world reset is the baseline we wish to beat''. 
-The reader mayyy look back at the promises above, which are only shorter transitions and fewer drops.
-I like the idea of promoting nondisturbance: the \emph{act} of reconfiguring never reorders, re-ranks, or drops a packet that is already buffered, so any disturbance a reader observes is the new policy correctly governing new arrivals.}
-We contribute a tool that achieves this and shows [improvements].
+Rio's language is a grammar of atomic policy edits, each one a change the hardware can install in a single instant.
+Its semantics gives every edit a meaning in the operator's own policy language, so the scheduler is always running a policy the operator can read, even mid-transition.
+A planner turns a requested policy into a sequence of those edits, and a mechanical lowering carries each edit down to the instructions that a switch runs.
+A transition from any running policy to any requested policy is always available, and many touch only the part of the tree that actually changes, carrying the rest over unchanged.
+What becomes of the backlog is no longer up to the implementation, and we call the property that settles it \emph{non-disruption}.
+Reconfiguring never drops, reorders, or re-ranks a packet that is already buffered, so any disruption the operator observes is the new policy correctly governing new arrivals.
+\xxx[AM]{Conclude here once the results are in. The cost model is still a legit open question, and this is where we say what we shorten and what we stop dropping.}
 
 \section{Rio by Example}\label{sec:tour}
 
@@ -503,7 +437,7 @@ We choose the set of edits to meet the following criteria:
 \xxx[AM to AS]{So far I have essentially just said that the six forms have been \emph{chosen} with care, and I have asserted that they are atomic: here, and again below the informal list of the forms, where \cref{sec:hardware} is where the assertion is discharged. If we want to give the reader a reason rather than an assertion, let's discuss some more.}
 \item They are \emph{explainable}. Each edit transforms a policy $p$ in our policy DSL into a new policy $p'$. Later, we also show how each edit applies to live PIFO tree state to reflect these changes (\cref{sec:edit-semantics}).
 \item They are \emph{complete}. For any pair of policies $p_1$ and $p_2$, a sequence of edits suffices to transform $p_1$ into $p_2$. \cref{sec:sequences} gives a ``fallback'' path that always works.
-\item They are \emph{non-destructive}, i.e., edits do not drop in-flight packets. Edits that delete subtrees, such as $\Remove$, have preconditions that require those subtrees to be empty.
+\item They are \emph{non-disruptive}. Installing an edit never drops, reorders, or re-ranks a packet that is already buffered (\cref{sec:nondisruption}). Edits that delete a subtree, such as $\Remove$, have a precondition that requires the doomed subtree to be empty.
 \end{enumerate}
 %
 An edit describes where in the tree the change lands and what the change is.
@@ -861,7 +795,7 @@ Then:
 \subsection{Non-Disruption}\label{sec:nondisruption}
 
 \xxx[as]{Anshuman, your argument below about why to keep this theorem is good. Let's keep it. However: (1) I think we can delete the framing paragraphs below, in favor of a simple statement that says: we have chosen our set of edits to prevent disruption. (2) I think we probably need to preview that this is an advantage somewhat earlier, such as in the section when we introduce the edit grammar. (3) IIUC, we do not have an actual proof of this theorem. That is fine; it would be long, probably. But let's explicitly acknowledge that we are stating it without proof and simply sketching an argument. (4) Please introduce some notation for ``the sequence of packets you get out of a $C$ if you were to fully drain it.''}
-\xxx[am]{Point (4) is done: \flush{} is now defined in \cref{sec:controls} and \cref{thm:nondisruption} is stated on it. Points (1) to (3) are still open, and on (3) note that we do have a proof (see \cref{sec:per-form}) but we can discuss whether to emphasize it.}
+\xxx[am]{Points (2) and (4) are done. For (4), \flush{} is now defined in \cref{sec:controls} and \cref{thm:nondisruption} is stated on it. For (2), \cref{sec:intro} now names non-disruption as one of the ways we beat the stop-the-world baseline, and the fourth criterion in \cref{sec:delta-grammar} previews it where the grammar is introduced. Points (1) and (3) are still open, and on (3) note that we do have a proof (see \cref{sec:per-form}) but we can discuss whether to emphasize it.}
 
 Agreement on its own is not enough.
 The stop-the-world reset of \cref{sec:intro} is realizable and explainable too, and it is the baseline we wish to beat.
