@@ -859,11 +859,11 @@ The root-level fallback shows what that is worth: it puts the entire running tre
 \section{Rio Hardware Design}\label{sec:hardware}
 
 We show how to extend a PIFO-tree-based packet scheduler with support for live policy reconfiguration.
-Our design starts with a standard PIFO tree architecture (\cref{sec:hw-substrate})
-and adds two key mechanisms:
+Our design starts with a standard PIFO tree architecture (\cref{sec:hw-substrate}).
+We define an ISA for this reconfiguration and implement a compiler that targets it (\cref{sec:hw-isa}).
+It rests on two key mechanisms:
 atomic state updates (\cref{sec:hw-commit})
 and support for $\Designate$ (\cref{sec:hw-survivor}).
-We define an ISA for this reconfiguration and implement a compiler that targets it (\cref{sec:hw-isa}).
 
 \subsection{The PIFO Tree Substrate}\label{sec:hw-substrate}
 
@@ -878,6 +878,8 @@ Every level therefore has the same total PIFO capacity, divided among the nodes 
 To enqueue a packet, the architecture must identify the set of PIFOs to insert into (the path from the root to the appropriate leaf) and compute the rank for each.
 The hardware broadcasts each packet to all PEs, and each PE determines which PIFO at that level should accept the packet.
 We assume the hardware comes with rank-assignment logic to support a set of policy disciplines, $D$.
+\xxx[am]{Notation collision. \(D\) is a single discipline everywhere else in the paper, as in \(M_{D}\), \(\mathit{rank}_{D}\), and \Add{}'s second argument.
+Here it names the whole menu.}
 %
 On dequeue, the scheduler starts from the output port's root PIFO, pops the best-ranked entry, and follows next-hop information from PIFO to PIFO until it reaches a packet to transmit.
 All steps use match--action tables~\cite{Bosshart14}, so installing a policy on such a substrate means writing entries into those tables.
@@ -946,7 +948,7 @@ On removing them from the system outright: yes \texttt{change\_arity} can go (si
 That last one is a design question for Zhiyuan.}
 The ISA is the compiler's interface, and not all of the state it names reaches the switch.
 Per-edge indices and arities are how the compiler addresses a tree position, and a PE stores neither.
-A PE stores its \texttt{Assoc} set, a \texttt{Map} naming the PIFO each admitted flow enters and the PE that holds it, and the designated-survivor link of \cref{sec:hw-survivor}.
+A PE stores its \texttt{Assoc} set, the flows it admits; a \texttt{Map} naming the PIFO each admitted flow enters and the PE that holds it; and the designated-survivor link of \cref{sec:hw-survivor}.
 An index is meaningful only against the tree the compiler holds, so an \texttt{adopt} reaches the switch only by changing which PIFO an index names, and a \texttt{map} reaches it as the id of the PIFO that index names.
 The classification and survivor opcodes are thus the ones that write a PE's tables.
 The lifecycle opcodes reach a PE too, since \texttt{spawn} and \texttt{gc} claim and release its PIFO storage.
@@ -992,10 +994,8 @@ although the update happens across several cycles, pipelined enqueues and dequeu
 \xxx[as]{I could use some help understanding this part. I think it's saying that the ``brain'' updates are non-transactional. If that's the case, we need a bit more of an argument for why this is OK. If a transaction includes both topology changes and discipline/metadata changes, how do we guarantee that the whole thing applies atomically? (``That's not allowed in the ISA'' is an acceptable answer.)}
 \xxx[am]{Yes, they are non-transactional, and we do not claim the whole transaction applies atomically. What we claim is that the non-atomic part cannot be observed. The rank-computing writes are applied as the controller reaches them, while the classification writes are held for the commit. In \Add{} and \Designate{} those writes land only on a node or a slot that no packet can reach until the classification flip, and \cref{sec:lower-add} does put the two walks last. \Quiesce{}, \Remove{} and \Undesignate{} issue no rank-computing write at all. \ChangeMeta{} is the only one that writes a live arm, and it is safe for a different reason: it is a single write, so a \push{} reads either the old value or the new one, and ranks are frozen at \push{} time (\cref{sec:nondisruption}) so the backlog is unaffected either way. My note below asks Zhiyuan to confirm the \ChangeMeta{} case.}
 Also, the rank computation must accept incremental updates rather than wholesale replacement of a live scheduling policy.
-Our controller accepts a commit's rank-computing writes along with the rest of its instructions, and applies them as it reaches them rather than holding them for the marker, which is what the narrow scope buys.
-\xxx[as]{Please correct me if I'm wrong, but I think the previous sentence is saying: instructions like \texttt{set\_policy} are applied immediately, instead of waiting for the transaction to commit.}
-\xxx[am]{Correct!}
-
+Our controller accepts a commit's rank-computing writes along with the rest of its instructions, and applies them as it reaches them rather than holding them until the commit installs.
+That is the payoff for a narrow transactional scope: only the state that routes a packet has to install in a single instant.
 
 \xxx[AM to Zhiyuan]{This paragraph is now the subsection's opening claim, per your ``we minimize the transactional scope''.
 The \ChangeMeta{} sentence is the one case your two-way split does not cover, since it re-tunes an arm that is live and backlogged, and the argument I give is that \ChangeMeta{} lowers to a transaction holding that one write and nothing else.
@@ -1050,7 +1050,7 @@ You said you would turn the elision off and rerun, and the same goes for the fou
 
 \xxx[AM to Zhiyuan]{Please report cycles rather than instructions, since some instructions take several.
 Keep the instruction counts beside them if that is cheap, because the two together say that the confined transition is both cheaper to install and quicker to take effect.
-Say also which of the six commands cost more than one cycle, and note that the counts include the Brain commands, which do not install atomically.}
+Say also which of your six control commands cost more than one cycle, and note that the counts include the Brain commands, which do not install atomically.}
 
 \xxx[AM to Zhiyuan]{The paper has to convert cycles to time exactly once, and here is where.
 You offered a 1\,GHz ASIC or a 250\,MHz FPGA and I would take the ASIC, which makes the 1024-cycle stop almost exactly a microsecond.
@@ -1061,6 +1061,9 @@ Confirm that, and tell me how many bytes the switch moves per cycle so I can nam
 So I plan to present the 1024 as a floor we grant the baseline rather than as a measurement: we stop the world for about a microsecond, which is faster than any reported reconfiguration of a running switch, and Rio beats it anyway.
 Say if you would rather the baseline had a different number.}
 \xxx[zg]{we should look for some reference on the reconfiguration time; but real time will be MUCH longer than 1us, we should explicitly say that. some quick cites: FlexCore NSDI 22, ~500ms}
+
+\xxx[AM to Zhiyuan]{You told me the guarded garbage collection already exists in hardware and that you would add its evaluation line.
+\cref{sec:hw-survivor} describes it as a second commit guarded on the same emptiness predicate, so the line belongs here.}
 
 \xxx[AM to Zhiyuan]{\texttt{settings.json} sets a queue depth of 256 while the stop-the-world run peaks at 417 buffered packets and drops nothing.
 Raise it or drop it, whichever is honest.
@@ -1314,7 +1317,7 @@ Carrying \disc on the form makes \(m \in M_{D}\) checkable from the form alone, 
 \paragraph{Definition}
 
 \ChangeMeta{} is defined when \(\tau\) resolves in \(C\) to an arm whose parent runs the \disc the form names, when \(m \in M_{D}\), and when that parent's ranker does not name \(\Strictstar\).
-Changing the metadata of a \(\Strictstar\) is illegal, because \cref{sec:hw-survivor} gives such a node no \pifo of its own, which is sound only while its two priorities stay fixed.
+Changing the metadata of a \(\Strictstar\) is illegal, and \cref{sec:hw-survivor} turns that to account: a node whose priorities cannot change needs no \pifo of its own.
 Its node transformer \(\mathtt{setmeta}_k\) rewrites the node's \zz and nothing else:
 {\small
 \[
