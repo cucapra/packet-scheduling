@@ -872,7 +872,6 @@ Several proposed architectures exist~\cite{Sivaraman16,Yao23,vPIFO},
 so this section outlines the assumptions we make about this substrate.
 
 The architecture consists of identical \emph{processing elements} (PEs) containing PIFO buffers, rank-assignment logic, and match--action tables.
-\xxx[as]{anything else?}
 Each level in the policy tree (i.e., the set of nodes at each tree depth) maps to a PE.
 Because each level must track ranks for all in-flight packets, all PEs use an equal amount of total PIFO capacity,
 divided among the nodes at that layer.
@@ -919,6 +918,8 @@ Opcode & Effect \\
 \cref{tab:isa-opcodes} lists an instruction set architecture (ISA) for configuring a packet scheduler.
 The control plane updates the scheduling policy by sending a \emph{transaction} consisting of a sequence of these instructions.
 \xxx[as]{I have changed the noun ``commit'' to ``transaction,'' which I think will be less surprising.}
+\xxx[am]{Eek, collision!
+\emph{Transaction} is already used for \zz: \cref{sec:controls} calls \zz the node's \emph{scheduling transaction}, and \cref{sec:tour} and \cref{sec:edit-semantics-full} use it that way throughout.}
 The hardware guarantees that the transaction applies atomically at some time $t$:
 the unmodified policy applies to all packets before $t$ and the updated policy applies to all packets after $t$.
 
@@ -927,36 +928,37 @@ and children using indices \texttt{i}.
 Instructions can change the PIFO tree topology (the \emph{lifecycle} instructions), set scheduling policies (\emph{discipline} and \emph{survivor}), and associate flows with PIFOs (\emph{classification}).
 Some instructions have preconditions: for example,
 \texttt{emancipate} requires that the subtree is empty.
-\xxx[as]{Is that true? I sorta just made this up... but we do need an example of the preconditions that we assume (if any exist).}
 It is the compiler's responsibility to enforce these preconditions.
 \xxx[as]{Just checking: are there any requirements on what can go in a single transaction? (Are there two things that you can do in separate transactions but not all together in one?) If so, this would be the place to bring it up.}
-
-\xxx[as]{I admit I don't understand this subtlety. It sounds like a straightforward description of what it does. What is subtle about this? (Perhaps we can just delete this paragraph?)}
-\texttt{change\_arity} carries the one subtlety in the table.
-It sets \texttt{v}'s live arm count, and growing the count creates the new slot, which the substrate seeds from \texttt{v}'s current node state by \(\mathit{init\_slot\_state}_{D}\) (\cref{sec:compilation}).
-The structural attaching and detaching happen separately, through \texttt{adopt} and \texttt{emancipate}, each keyed by the stable per-edge index the parent minted at adoption time.
+\xxx[am]{Maybe I'm stating the obvious here, but you can't merge when a guard separates them, since the later edit becomes legal only once that guard has become true (\cref{sec:sequences}).
+\Retire{} is the example: its \Remove{} cannot join its \Quiesce{} in one transaction, because the subtree has to drain in between.
+Beyond that we make no claim.
+Zhiyuan will need to back me up, but I believe that two edits with no guard between them (or with the \emph{same} guard) can share a transaction.}
 
 
 \xxx[as]{I am also a bit confused about this. For things like \texttt{adopt}, I'm not sure it matters that \texttt{i} ``chang[es] which PIFO an index names''; its semantics are still ``hey hardware, please associate a new child with this PIFO, which I will henceforth refer to child i.'' It doesn't seem to matter that the compiler thinks of i as an ``index'' while the hardware thinks of it as a key in a table. And also, if there are instructions that never affect the hardware, can we just remove them?}
+\xxx[am]{On \texttt{adopt}, your paraphrase is right, and nothing there depends on the word \emph{index}.
+The word becomes relevant only at \texttt{undesignate}, which retargets the parent's index \texttt{k} without telling the parent, and reusing \texttt{k} preserves the parent's per-arm metadata for that slot (\cref{sec:lower-undesignate}).
+On removing them from the system outright: yes \texttt{change\_arity} can go (since Zhiyuan has told us that a mapping table allocates no slot in advance).
+\texttt{adopt} and \texttt{emancipate} write no PE themselves, but they fix what a later \texttt{map} means, so dropping them means folding the parent--child relation into \texttt{map}'s arguments. Could do it! 
+That last one is a design question for Zhiyuan.}
 The ISA is the compiler's interface, and not all of the state it names reaches the switch.
 Per-edge indices and arities are how the compiler addresses a tree position, and a PE stores neither.
 A PE stores its \texttt{Assoc} set, a \texttt{Map} naming the PIFO each admitted flow enters and the PE that holds it, and the designated-survivor link of \cref{sec:hw-survivor}.
 An index is meaningful only against the tree the compiler holds, so an \texttt{adopt} reaches the switch only by changing which PIFO an index names, and a \texttt{map} reaches it as the id of the PIFO that index names.
-The classification and survivor opcodes are thus the ones that write a PE.
-The lifecycle and structure opcodes are the compiler's own bookkeeping, and \texttt{change\_arity} reaches no PE at all.
+The classification and survivor opcodes are thus the ones that write a PE's tables.
+The lifecycle opcodes reach a PE too, since \texttt{spawn} and \texttt{gc} claim and release its PIFO storage.
+The structure opcodes are the compiler's own bookkeeping, and \texttt{change\_arity} reaches no PE at all.
 
 % \xxx[AM to Zhiyuan]{You told me \texttt{change\_arity} never reaches hardware, and I have written that.
 % One thing I could not work out: a new arm carries per-arm scheduler state, such as \WFQ{}'s virtual finish time for that arm, and that state has to live where ranks are computed.
 % If the arity never reaches a PE, what creates and seeds that slot, and is it the \texttt{set\_arm\_meta} that follows?}
 % ZG: here's the point: for a mapping table, we do not need to allocate a slot; a insert(k,v) will "create slot for K" if it's not exist.
 
-Which PE holds a given PIFO is the substrate's choice, written \texttt{pe(path)} and fixed at compile time as a function of the PIFO's position in the tree.
-\xxx[as]{How can it be true that the PE choice is the hardware's, if \texttt{spawn(v, pe)} seems to direct the hardware which PE to choose?}
-A typical choice is the depth-by-PE layout of \cref{sec:background}, under which siblings share a PE.
-\xxx[as]{I think we should just assume this is always the case (in which we do not need the preceding sentence, and perhaps this whole paragraph).}
-The planner consults \texttt{pe(path)} for a \texttt{spawn}'s \texttt{pe} argument and cannot otherwise observe it.
-
 \xxx[as]{This is what remains of the old compiler section.}
+\xxx[am]{That's okay, but I kinda feel that some text matching \zz's parts to the ISA should come back. It was the only place \cref{sec:controls}'s model met this ISA, my note in \cref{sec:controls} still points here for it, and \texttt{Assoc} is otherwise never defined.
+Proposal: ``A node's \(\mathit{z}.\mathit{admit}\) is its \texttt{Assoc} set, its \(\mathit{z}.\mathit{serves}\) is its \texttt{Map} table, its \(\mathit{z}.\mathit{rank}\) is the ranker that \texttt{set\_policy} installs and \texttt{discipline(v)} reads back, and its \(\mathit{z}.\mathit{meta}\) is the metadata that \texttt{set\_arm\_meta} writes.
+Each of \zz's parts is thus an opcode's target, and none of them is state that \texttt{push} or \texttt{pop} advances.''}
 Each edit (\cref{sec:delta-grammar}) compiles to one transaction.
 \cref{app:lowering} details the translations.
 As one example, consider the edit $\Add(\mathit{path}, D, \mathit{pol}, m)$.
@@ -966,8 +968,7 @@ for each node,
 it \texttt{spawn}s a PIFO, uses \texttt{set\_policy}, and issues the \texttt{adopt}s to encode parent--child relationships.
 A \texttt{change\_arity} raising \texttt{v}'s count to \texttt{n+1} then creates the slot for the new subtree, \texttt{set\_arm\_meta} adds the relevant metadatum, and an \texttt{adopt} attaches the new subtree.
 %
-Traffic reaches the new arm last, by the lowering's counterpart of \(\mathtt{extend}\) in \cref{sec:edit-semantics}.
-\xxx[as]{I don't understand the previous sentence. What does it mean to reach an arm ``last?''}
+Finally, the lowering routes traffic into the new arm, which is its counterpart of \(\mathtt{extend}\) in \cref{sec:edit-semantics}.
 For each flow the new arm serves, an \texttt{assoc} at every PIFO from the port root down to the arm's leaf has that PIFO begin accepting the flow, and a \texttt{map} at each of those PIFOs but the leaf records the index that carries the flow onward.
 
 
@@ -987,15 +988,16 @@ although the update happens across several cycles, pipelined enqueues and dequeu
 % The double buffer and the wavefront both exist because dequeue is pipelined: a request travelling the chain of PEs must never observe state that a commit has left inconsistent.
 
 \xxx[as]{I could use some help understanding this part. I think it's saying that the ``brain'' updates are non-transactional. If that's the case, we need a bit more of an argument for why this is OK. If a transaction includes both topology changes and discipline/metadata changes, how do we guarantee that the whole thing applies atomically? (``That's not allowed in the ISA'' is an acceptable answer.)}
+\xxx[am]{Yes, they are non-transactional, and we do not claim the whole transaction applies atomically. What we claim is that the non-atomic part cannot be observed. The rank-computing writes are applied as the controller reaches them, while the classification writes are held for the commit. In \Add{} and \Designate{} those writes land only on a node or a slot that no packet can reach until the classification flip, and \cref{sec:lower-add} does put the two walks last. \Quiesce{}, \Remove{} and \Undesignate{} issue no rank-computing write at all. \ChangeMeta{} is the only one that writes a live arm, and it is safe for a different reason: it is a single write, so a \push{} reads either the old value or the new one, and ranks are frozen at \push{} time (\cref{sec:nondisruption}) so the backlog is unaffected either way. My note below asks Zhiyuan to confirm the \ChangeMeta{} case.}
 Also, the rank computation must accept incremental updates rather than wholesale replacement of a live scheduling policy.
 Our controller accepts a commit's rank-computing writes along with the rest of its instructions, and applies them as it reaches them rather than holding them for the marker, which is what the narrow scope buys.
 \xxx[as]{Please correct me if I'm wrong, but I think the previous sentence is saying: instructions like \texttt{set\_policy} are applied immediately, instead of waiting for the transaction to commit.}
+\xxx[am]{Correct!}
 
 
 \xxx[AM to Zhiyuan]{This paragraph is now the subsection's opening claim, per your ``we minimize the transactional scope''.
-The \ChangeMeta{} sentence is the one case your two-way split does not cover, since it re-tunes an arm that is live and backlogged, and the argument I give is that the write stands alone in its own commit.
+The \ChangeMeta{} sentence is the one case your two-way split does not cover, since it re-tunes an arm that is live and backlogged, and the argument I give is that \ChangeMeta{} lowers to a transaction holding that one write and nothing else.
 Please confirm that a lone metadata write needs nothing from the transactional path.}
-\xxx[as]{Does this mean that every transaction can include at most one \texttt{set\_arm\_meta} instruction? If so, let's say that in the ISA section.}
 
 The Rio configuration controller also implements guards (\cref{sec:sequences}), which can wait on the emptiness of a subtree.
 Rio lowers such guards to blocking commands in the controller queue.
@@ -1017,31 +1019,24 @@ to implement $\Strictstar(A, B)$,
 we do not need to allocate a separate PE for the $\Strictstar$ node itself.
 Instead, we add simple logic to the PE that houses nodes $A$ and $B$.
 Adding and deleting the $\Strictstar$ node therefore avoids shifting the tree levels of $A$ and $B$, which would require relocating their packets across physical PIFOs.
-\xxx{In other words, to calculate the level of a given node, ignore strictstar...}
+In other words, to compute a node's level, ignore the $\Strictstar$ nodes above it.
 
 Rio adds, to each PIFO, a \emph{designated-survivor link}.
 It is initially null.
 The \texttt{designate(v, surv)} instruction points the doomed node \texttt{v}'s link at the survivor's root \texttt{surv}.
 % The link is written through the transactional path of \cref{sec:hw-commit}, so it becomes visible in the same instant as the classification writes that hand the traffic over.
-The survivor is laid out beside \texttt{v} rather than beneath it, and \texttt{v}'s parent is not told.
-\xxx[as]{Would it be correct to just say (instead of the previous sentence): as a precondition to designate(v, surv), v and surv must already be in the same PE.}
+As a precondition, \texttt{v} and \texttt{surv} must already sit in the same PE.
+\texttt{v}'s parent is not told, and \texttt{v} keeps the one index it had, so \texttt{undesignate} is later a single retarget that preserves the parent's per-arm metadata for that slot.
 
 We modify the packet dequeue logic to follow designated-survivor links.
 Whenever a PE would dequeue from an empty PIFO, it checks for a link and dequeues from the survivor instead.
 The enqueue logic remains unmodified.
-\xxx[as]{Is that true? There was previously a longer description of what happens on enqueue, but the way I read it, it boiled down to ``nothing needs to change'': you just broadcast the packet to all the PEs as usual, and the PEs as usual know which PIFOs to push into. So I compressed to this one sentence...}
-
-\xxx[as]{Perhaps this paragraph is deletable as well?}
-In effect, the resulting $\Strictstar$ node is ``transparent'' to the rest of the tree above it.
-The parent PIFO contains one entry per packet in \emph{either} subtree.
-The elision also changes what \cref{sec:controls}'s well-formedness ranges over, and the same subsection re-reads the invariant to cover it.
+The $\Strictstar$ node is therefore transparent to the tree above it.
+The parent PIFO holds one entry per packet in \emph{either} subtree, and \cref{sec:check-designate} re-reads \cref{sec:controls}'s well-formedness invariant to cover that.
 
 As a precondition, the \texttt{undesignate} instruction requires the old subtree to be empty.
-\xxx[as]{I added the previous sentence, because I think it is a more direct summary of what we were saying. But if that's the case, readers will now wonder why we have to wait for a pop to happen later (why there are two steps:: ``arm'' and ``enable,'' per the next sentence). To keep things simple (even if it is an oversimplification of what the hardware implements), can we just say that the effect happens immediately, because the subtree is already empty? It would simplify the story a lot, i.e., this could just be one sentence.}
-The commit carrying the \Undesignate{} arms \texttt{v}'s slot, and the \pop{} that takes \texttt{v}'s last packet enables it.
-From that instant a request for the slot is rewritten to \texttt{surv} ahead of the lookup, so the parent's index reaches the survivor directly and no \pop{} ever queries a drained \texttt{v}.
-What the blocking command still serves is reclamation.
-\texttt{v}'s PIFOs, and those of everything beneath it, may be released only once the subtree is empty, and that is a second commit guarded on the same emptiness predicate (\cref{sec:hw-commit}).
+The guard of \cref{sec:sequences} supplies that, and it also gates reclamation.
+\texttt{v}'s PIFOs, and those of everything beneath it, may be released only once the subtree is empty, and a second commit is guarded on the same emptiness predicate (\cref{sec:hw-commit}).
 After it, nothing in the tree records that a transition happened.
 
 
@@ -2071,7 +2066,7 @@ This appendix lowers all six forms of \(\delta\) to the ISA of \cref{sec:hw-isa}
 
 A tree position and the PIFO sitting at it are different things, so each lowering binds a name to the PIFO that the form targets, and speaks of that PIFO thereafter.
 Queries against a PIFO \texttt{v}, its \texttt{arity(v)} and \texttt{discipline(v)}, are read off the planner's model of the tree as it stands at that point in the sequence, and a parameter an opcode leaves unmentioned is \texttt{v}'s value there.
-\texttt{spawn}'s elided \texttt{pe} argument is \texttt{pe(pos(v))}.
+\texttt{spawn}'s elided \texttt{pe} argument is the PE at \texttt{v}'s depth (\cref{sec:hw-substrate}).
 
 Two notations recur.
 \texttt{foreach x in S} emits its body once per \texttt{x}, and \texttt{walk(op, C, f)} emits \texttt{op(v, f, \ldots)} at each \(v \in C\), reading positional remainders such as \texttt{map}'s routing index off that same model.
@@ -2097,7 +2092,7 @@ foreach f in flows(arm):
     walk(map,   internals(f), f)
 \end{Verbatim}
 The new subtree occupies \texttt{v}'s rightmost slot (index \texttt{n}), so existing children's indices are undisturbed.
-\texttt{change\_arity} creates that slot, and the substrate seeds its bookkeeping from \texttt{v}'s node state (\cref{sec:hw-isa}), which is the lowering's counterpart of \(\mathit{init\_slot\_state}_{D}\) in \cref{sec:add}.
+\texttt{change\_arity} creates that slot, which is the lowering's counterpart of \(\mathit{init\_slot\_state}_{D}\) in \cref{sec:add}.
 The \texttt{assoc} walk has every PIFO from the port root down to the new leaf begin accepting \texttt{f}, and the \texttt{map} walk records at each interior PIFO of that chain the index carrying \texttt{f} onward.
 \Add's leaf-disjointness precondition (\cref{sec:add}) means that no PIFO on a chain already routes \texttt{f}, so neither walk overwrites a live entry.
 
