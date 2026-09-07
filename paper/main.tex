@@ -199,27 +199,18 @@ The whole tree is rebuilt, including the nodes that could have been carried over
 What becomes of the backlog is up to the implementation: it can be dropped, recirculated, or left to be scheduled through a chaotic period in which the hardware follows no clearly defined policy.
 Each of those is itself tacitly a \emph{scheduling decision}, and the operator is unable to specify which one they want.
 
-This paper writes that decision down.
-Some changes can be installed as a single atomic step, and others cannot, leaving the scheduler to run for a while under a policy that no operator requested.
-That interval is unavoidable and it persists for nonzero time.
-The scheduler goes on accepting and emitting packets throughout, so scheduling decisions are being made by it.
-Our thesis is that the interval during which a scheduler is being reprogrammed is itself a scheduling policy.
-Understanding this unstated policy is a language problem.
-A transitional policy needs a syntax that the operator can read, a semantics that says which packet leaves next, and a lowering onto hardware that was built for the policy it is already running.
-With those in hand, the question of whether a transition was carried out correctly becomes a theorem about the semantics rather than a measurement of the hardware.
-Rio supplies all three: a language of policy edits, a semantics for them, and a lowering of them onto a PIFO substrate.
+Our thesis is that the interval during which a scheduler is being reprogrammed is itself a scheduling policy, and that understanding it is a language problem.
+A transitional policy needs a syntax that the operator can read, a semantics that says which packet leaves next, and a compiler that accepts a change to the running policy.
+With those in hand, whether a transition was carried out correctly becomes a theorem about the semantics rather than a measurement taken after the fact.
+We present \emph{Rio}, which supplies all three.
 
-Rio's language is a grammar of atomic policy edits, each one a change the hardware can install in a single instant (\cref{sec:delta-grammar}).
-Its semantics gives every edit a meaning in the operator's own policy language, so \emph{any transitional policy the grammar produces is ordinary scheduling}, readable exactly as the operator's own policies are (\cref{sec:edit-semantics}).
-A planner turns a requested policy into a guarded sequence of those edits (\cref{sec:planner}), and a mechanical lowering carries each edit down to the instructions that a switch runs (\cref{sec:hw-compile}).
-A transition from any running policy to any requested policy is always available, and many admit a realization confined precisely to the part of the tree that actually changes.
-We give the semantics of the stop-the-world transitional policy and use it as a baseline.
-We beat it with a property we call \emph{non-disruption}.
-The act of reconfiguring never drops, reorders, or re-ranks a packet that is already buffered, so any disruption the operator observes is the new policy correctly governing new arrivals (\cref{sec:nondisruption}).
-Two practical goals guide the search for better ways to transition between policies.
-We would like to shorten the transition period, and we would like to avoid dropping or delaying packets.
-\xxx[AM]{more to come here; the cost model is a legit open question!}
-We contribute a tool that achieves this and shows [improvements].
+Rio's language is a grammar of atomic policy edits, where each production is a change the hardware can install in a single instant.
+Its semantics gives every edit a meaning in the operator's own policy language, so the scheduler is always running a policy the operator can read, even mid-transition.
+A planner turns a requested policy into a sequence of those edits, and a mechanical lowering carries each edit down to the instructions that a switch runs.
+A transition from any running policy to any requested policy is always available, and many touch only the part of the tree that actually changes, carrying the rest over unchanged.
+What becomes of the backlog is no longer up to the implementation, and we call the property that settles it \emph{non-disruption}.
+Reconfiguring never drops, reorders, or re-ranks a packet that is already buffered, so any disruption the operator observes is the new policy correctly governing new arrivals.
+\xxx[AM]{Conclude here once the results are in. The cost model is still a legit open question, and this is where we say what we shorten and what we stop dropping.}
 
 \section{Rio by Example}\label{sec:tour}
 
