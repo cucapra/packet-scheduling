@@ -929,8 +929,7 @@ Our design starts with a standard PIFO tree architecture (\cref{sec:hw-substrate
 and adds two key mechanisms:
 atomic state updates (\cref{sec:hw-commit})
 and support for $\Designate$ (\cref{sec:hw-survivor}).
-We define an ISA for this reconfiguration and demonstrate a compiler that targets it (\cref{sec:hw-isa,sec:hw-compile}).
-\xxx[as]{revisit: should ISA go first}
+We define an ISA for this reconfiguration and implement a compiler that targets it (\cref{sec:hw-isa}).
 
 \subsection{The PIFO Tree Substrate}\label{sec:hw-substrate}
 
@@ -988,7 +987,6 @@ The control plane updates the scheduling policy by sending a \emph{transaction} 
 \xxx[as]{I have changed the noun ``commit'' to ``transaction,'' which I think will be less surprising.}
 The hardware guarantees that the transaction applies atomically at some time $t$:
 the unmodified policy applies to all packets before $t$ and the updated policy applies to all packets after $t$.
-Therefore, each edit $\delta$ compiles to one transaction.
 
 The instructions address PIFOs using opaque ids \texttt{v}
 and children using indices \texttt{i}.
@@ -1023,6 +1021,20 @@ Which PE holds a given PIFO is the substrate's choice, written \texttt{pe(path)}
 A typical choice is the depth-by-PE layout of \cref{sec:background}, under which siblings share a PE.
 \xxx[as]{I think we should just assume this is always the case (in which we do not need the preceding sentence, and perhaps this whole paragraph).}
 The planner consults \texttt{pe(path)} for a \texttt{spawn}'s \texttt{pe} argument and cannot otherwise observe it.
+
+\xxx[as]{This is what remains of the old compiler section.}
+Each edit (\cref{sec:delta-grammar}) compiles to one transaction.
+\cref{app:lowering} details the translations.
+As one example, consider the edit $\Add(\mathit{path}, D, \mathit{pol}, m)$.
+Let \texttt{v} be the PIFO at $\mathit{path}$ and let \texttt{n} be its arity.
+The lowering builds the new subtree first:
+for each node,
+it \texttt{spawn}s a PIFO, uses \texttt{set\_policy}, and issues the \texttt{adopt}s to encode parent--child relationships.
+A \texttt{change\_arity} raising \texttt{v}'s count to \texttt{n+1} then creates the slot for the new subtree, \texttt{set\_arm\_meta} adds the relevant metadatum, and an \texttt{adopt} attaches the new subtree.
+%
+Traffic reaches the new arm last, by the lowering's counterpart of \(\mathtt{extend}\) in \cref{sec:edit-semantics}.
+\xxx[as]{I don't understand the previous sentence. What does it mean to reach an arm ``last?''}
+For each flow the new arm serves, an \texttt{assoc} at every PIFO from the port root down to the arm's leaf has that PIFO begin accepting the flow, and a \texttt{map} at each of those PIFOs but the leaf records the index that carries the flow onward.
 
 
 \subsection{Atomic Policy Updates}\label{sec:hw-commit}
@@ -1107,52 +1119,6 @@ From that instant a request for the slot is rewritten to \texttt{surv} ahead of 
 What the blocking command still serves is reclamation.
 \texttt{v}'s PIFOs, and those of everything beneath it, may be released only once the subtree is empty, and that is a second commit guarded on the same emptiness predicate (\cref{sec:hw-commit}).
 After it, nothing in the tree records that a transition happened.
-
-\subsection{Compiling Policy Edits}\label{sec:hw-compile}
-
-Each form of \(\delta\) (\cref{sec:delta-grammar}) lowers to a list of opcodes.
-The lowering \emph{schema} is mechanical.
-Each form names a fixed sequence of opcodes, and the planner fills in the schema's positional parameters, such as flow lists, chain shapes, and routing indices.
-
-The planner resolves those parameters when it plans the sequence, rather than when a commit reaches the substrate.
-It reads them off its own model of the tree, which is host-side state that no PE holds.
-Nothing that happens while the sequence runs can invalidate them.
-A lowering reads tree shape, flow sets and arities.
-Only traffic runs while a guard waits, and traffic changes none of those.
-The whole of a guarded sequence can therefore be dispatched at once, and \cref{sec:hw-commit}'s controller queue holds it as fully resolved commits.
-
-% \xxx[AM to Zhiyuan]{You said we could simply avoid saying when a later commit gets its parameters.
-% I have written this paragraph instead, because this subsection and \cref{sec:hw-commit} otherwise say different things about a sequence with a drain in the middle.
-% Please check. We can still cut it if you feel strongly.}
-% ZG: corrent, ideally we do not need any timely readback from hardware. read back is slow, and we always get staled data if there's packets going through while we are reading back and calculate on the host. I'll modify this part later and make it simple. 
-
-A switch with \(P\) output ports has \(P\) separate trees, each wrapped at the ISA in a reserved 1-arm PIFO \texttt{port\_root} whose sole child, reached through the index \texttt{port\_step}, is the actual tree root.
-The forwarding pipeline selects a packet's output port before the packet reaches the scheduler, so a \push{} enters that port's tree at its port root.
-Its \texttt{Assoc} and \texttt{Map} mirror the actual root's, since every walk below begins there.
-The port root makes the tree root an ordinary position.
-\texttt{undesignate} retargets a parent's index from a PIFO to that PIFO's designated survivor, and at the root there is no parent's index to retarget.
-That case is not hypothetical: the always-available plan of \cref{sec:sequences} is \(\Replace([], p_2)\), whose last step is \(\Undesignate([])\).
-
-\xxx[AM to Zhiyuan]{The port-selection sentence above is my best guess.
-I am assuming the output port is already fixed by the forwarding pipeline, so the scheduler never chooses among the \(P\) trees and needs no table to do it.
-Please confirm that is how your switch works, or tell me what does the selecting.}
-
-The three parts of \ensuremath{\mathit{z}} (\cref{sec:controls}) line up one to one with this vocabulary.
-A node's \(\mathit{z}.\mathit{admit}\) is its \texttt{Assoc} set, its \(\mathit{z}.\mathit{serves}\) is its \texttt{Map} table, its \(\mathit{z}.\mathit{rank}\) is what \texttt{set\_policy} installs and \texttt{discipline(v)} reads back, and its \(\mathit{z}.\mathit{meta}\) is what \texttt{set\_arm\_meta} writes.
-Each of \zz's parts is thus an opcode's target, and none of them is state that \texttt{push} or \texttt{pop} advances.
-
-\Add{} is representative, so we lower it here in prose, and \cref{app:lowering} lowers all six forms as opcode listings.
-Write \texttt{v} for the PIFO at \Add{}'s path and \texttt{n} for its arity.
-The lowering builds the new subtree first, \texttt{spawn}ing a PIFO for every node of \(\lceil \mathit{arm} \rceil\), giving each its \texttt{set\_policy}, and issuing the \texttt{adopt}s that link them to one another, with the new subtree's own root left unattached.
-A \texttt{change\_arity} raising \texttt{v}'s count to \texttt{n+1} then creates the slot that will hold it, a \texttt{set\_arm\_meta} annotates that slot with the metadatum the form carries, and an \texttt{adopt} attaches the new subtree at index \texttt{n}.
-Because the slot is \texttt{v}'s rightmost, the indices of \texttt{v}'s existing children are undisturbed.
-
-Traffic reaches the new arm last, by the lowering's counterpart of \(\mathtt{extend}\) in \cref{sec:edit-semantics}.
-For each flow the new arm serves, an \texttt{assoc} at every PIFO from the port root down to the arm's leaf has that PIFO begin accepting the flow, and a \texttt{map} at each of those PIFOs but the leaf records the index that carries the flow onward.
-
-Because of these two walks, admitting a flow writes an entry at every node on its path rather than one entry somewhere central.
-A switch could instead classify once at ingress, compute a packet's whole path there, and leave the interior nodes as pure rankers.
-We keep classification distributed, since it leaves each PE self-contained and matches the depth-by-PE layout, whereas a central classifier would have been one structure that every packet must visit before the tree.
 
 
 \section{Evaluation}\label{sec:eval}
