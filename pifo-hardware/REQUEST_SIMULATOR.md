@@ -441,9 +441,9 @@ timestamps and counts for single-event figure readers. Each package still ends i
 
 `install_finish_cycle` and `drain_cycle` are independent: the first bank copy may finish while the old tree is still
 draining. Guarded retirement and its commit follow; the final bank copy finishes at `finish_cycle`. For STW, capture
-precedes the install commit; resume and final configuration cleanup are separate milestones. Old checked-in results
-predate this schema (their STW finish means resume); readers preserve that legacy interpretation. No old CSVs or figures
-are retroactively claimed to have executed cleanup commits.
+precedes the install commit; resume and final configuration cleanup are separate milestones. The checked-in motivating
+example was rerun with cleanup commits and records both milestones. Older RR/SP archives predate this schema;
+readers preserve their legacy interpretation rather than retroactively claiming they executed cleanup commits.
 
 Outside stop-the-world, packet admission is paused only across the commit edge so one packet cannot be split between
 tree versions; existing PIFO traffic continues during staging, drain, and mapper synchronization. Stop-the-world gates

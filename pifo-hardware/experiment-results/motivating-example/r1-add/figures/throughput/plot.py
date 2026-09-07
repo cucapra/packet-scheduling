@@ -24,9 +24,12 @@ PANELS = [{'title': 'R1: add Spotify arm',
   'start': 2000,
   'markers': [(0, '#1f77b4', '-', 'start'), (13, '#ff7f0e', '--', 'commit accepted'),
               (15, '#9467bd', ':', 'no old-tree drain required'),
-              (272, '#2ca02c', '-.', 'finish: double-buffer cleanup done')],
-  'notes': 'start=2000  commit accepted=2013  drain=2015  finish=2272\n'
-           'config=4 inst / 13 cycles to acceptance; ≤1 instruction accepted/cycle'}]
+              (533, '#2ca02c', '-.', 'finish: double-buffer cleanup done')],
+  'notes': 'start=2000  commit accepted=2013  drain=2015  finish=2533\n'
+           'published: install=2015, cleanup=2276\n'
+           'config=4 inst / 15 cycles to publication\n'
+           'cleanup=1 inst / 4 cycles to publication (guard wait included)\n'
+           'bank cleanup: install=257, cleanup=257 cycles; ≤1 instruction accepted/cycle'}]
 
 with (HERE / 'data.csv').open(newline="", encoding="utf-8-sig") as stream:
     rows = list(csv.DictReader(stream))

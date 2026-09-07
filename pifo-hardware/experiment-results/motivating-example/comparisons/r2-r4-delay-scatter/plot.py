@@ -24,24 +24,34 @@ PANELS = [{'title': 'R2: stop the world',
   'start': 2000,
   'markers': [(0, '#1f77b4', '-', 'start'), (31, '#ff7f0e', '--', 'commit accepted'),
               (13, '#9467bd', ':', 'old tree captured'),
-              (1038, '#2ca02c', '-.', 'traffic resumed (legacy finish)')],
-  'notes': 'start=2000  commit accepted=2031  drain=2013  finish=3038\n'
-           'config=16 inst / 31 cycles to acceptance; ≤1 instruction accepted/cycle\n'
+              (1298, '#2ca02c', '-.', 'finish: double-buffer cleanup done'),
+              (1038, '0.4', '--', 'traffic resumed')],
+  'notes': 'start=2000  commit accepted=2031  drain=2013  finish=3298\n'
+           'published: install=2034, cleanup=3041\n'
+           'config=16 inst / 34 cycles to publication\n'
+           'cleanup=1 inst / 3 cycles to publication (guard wait included)\n'
+           'bank cleanup: install=257, cleanup=257 cycles; ≤1 instruction accepted/cycle\n'
            'resumed=3038  retained=137  peak buffer=417 packets  stop=1025 cycles'},
  {'title': 'R3: whole-tree replace',
   'start': 2000,
   'markers': [(0, '#1f77b4', '-', 'start'), (27, '#ff7f0e', '--', 'commit accepted'),
               (431, '#9467bd', ':', 'old tree drained'),
-              (287, '#2ca02c', '-.', 'finish: double-buffer cleanup done')],
-  'notes': 'start=2000  commit accepted=2027  drain=2431  finish=2287\n'
-           'config=17 inst / 27 cycles to acceptance; ≤1 instruction accepted/cycle'},
+              (704, '#2ca02c', '-.', 'finish: double-buffer cleanup done')],
+  'notes': 'start=2000  commit accepted=2027  drain=2431  finish=2704\n'
+           'published: install=2030, cleanup=2447\n'
+           'config=17 inst / 30 cycles to publication\n'
+           'cleanup=12 inst / 160 cycles to publication (guard wait included)\n'
+           'bank cleanup: install=257, cleanup=257 cycles; ≤1 instruction accepted/cycle'},
  {'title': 'R4: confined replace',
   'start': 2000,
   'markers': [(0, '#1f77b4', '-', 'start'), (18, '#ff7f0e', '--', 'commit accepted'),
               (705, '#9467bd', ':', 'old tree drained'),
-              (278, '#2ca02c', '-.', 'finish: double-buffer cleanup done')],
-  'notes': 'start=2000  commit accepted=2018  drain=2705  finish=2278\n'
-           'config=10 inst / 18 cycles to acceptance; ≤1 instruction accepted/cycle'}]
+              (968, '#2ca02c', '-.', 'finish: double-buffer cleanup done')],
+  'notes': 'start=2000  commit accepted=2018  drain=2705  finish=2968\n'
+           'published: install=2021, cleanup=2711\n'
+           'config=10 inst / 21 cycles to publication\n'
+           'cleanup=5 inst / 433 cycles to publication (guard wait included)\n'
+           'bank cleanup: install=257, cleanup=257 cycles; ≤1 instruction accepted/cycle'}]
 
 with (HERE / 'packets.csv').open(newline="", encoding="utf-8-sig") as stream:
     rows = list(csv.DictReader(stream))

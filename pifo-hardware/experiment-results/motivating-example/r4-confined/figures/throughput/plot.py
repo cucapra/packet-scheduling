@@ -24,9 +24,12 @@ PANELS = [{'title': 'R4: confined replace',
   'start': 2000,
   'markers': [(0, '#1f77b4', '-', 'start'), (18, '#ff7f0e', '--', 'commit accepted'),
               (705, '#9467bd', ':', 'old tree drained'),
-              (278, '#2ca02c', '-.', 'finish: double-buffer cleanup done')],
-  'notes': 'start=2000  commit accepted=2018  drain=2705  finish=2278\n'
-           'config=10 inst / 18 cycles to acceptance; ≤1 instruction accepted/cycle'}]
+              (968, '#2ca02c', '-.', 'finish: double-buffer cleanup done')],
+  'notes': 'start=2000  commit accepted=2018  drain=2705  finish=2968\n'
+           'published: install=2021, cleanup=2711\n'
+           'config=10 inst / 21 cycles to publication\n'
+           'cleanup=5 inst / 433 cycles to publication (guard wait included)\n'
+           'bank cleanup: install=257, cleanup=257 cycles; ≤1 instruction accepted/cycle'}]
 
 with (HERE / 'data.csv').open(newline="", encoding="utf-8-sig") as stream:
     rows = list(csv.DictReader(stream))
