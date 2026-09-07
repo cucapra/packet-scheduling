@@ -940,9 +940,6 @@ On enqueue, the switch must compute two pieces of information before issuing PE 
 Classification determines the first, by mapping a flow to a child.
 The PIFO's scheduling policy computes the second, from packet fields, flow state, and per-arm metadata.
 For example, a \WFQ{} PIFO uses the child weight to compute a virtual finish time, while a \Strict{} PIFO interprets the metadata as a priority rank.
-% \xxx[AM to Zhiyuan]{You asked me to cite the P4 reconfiguration papers here, to show that installing a policy this way is stop-the-world.
-% At present I only cite P4 itself, because FlexCore and P4runpro are the designs that make forwarding-pipeline reconfiguration \emph{not} stop-the-world, and \cref{sec:hw-commit} and \cref{sec:related} both already describe them as non-STW.
-% If you had other papers in mind, please add them here.}
 On dequeue, the switch starts from the output port's root PIFO, pops the best-ranked entry, and follows the stored next-hop information from PIFO to PIFO until it reaches a packet to transmit.
 All of this computation is done by match-action tables~\cite{Bosshart14}, so installing a policy on such a substrate means writing entries into those tables.
 
@@ -973,10 +970,15 @@ That is a local test at a single PIFO, since a node's \ensuremath{\mathit{pifo}}
 
 \subsection{Making a Commit Atomic}\label{sec:hw-commit}
 
-% Rio's change to the substrate is small, and it is small because the transactional scope is narrow.
-% The only state that has to install as one instant is the mapping from a flow to the PIFO that serves it, which is what admits a packet at all.
-% The rank computation need not be inside that scope.
-% The writing of metadata either installs metadata for a flow whose packets are not admitted until the commit finishes, or retires metadata for a flow that has already drained, so it never changes the interpretation of a packet already in flight.
+Rio's change to the substrate is small, and it is small because the transactional scope is narrow.
+The state that must install in a single instant is the state that routes a packet: the set of flows a node admits, and the child that serves each of them.
+The rank computation stays outside that scope.
+A commit that carries new metadata either annotates an arm whose packets are not admitted until the commit finishes, or retires one that has already drained, and a \ChangeMeta{} writes a single metadatum, so a \push{} reads either the old value or the new one.
+Ranks are frozen at \push{} time (\cref{sec:nondisruption}), so a packet already queued is unaffected either way.
+
+\xxx[AM to Zhiyuan]{This paragraph is now the subsection's opening claim, per your ``we minimize the transactional scope''.
+The \ChangeMeta{} sentence is the one case your two-way split does not cover, since it re-tunes an arm that is live and backlogged, and the argument I give is that the write stands alone in its own commit.
+Please confirm that a lone metadata write needs nothing from the transactional path.}
 
 Rio implements a transactional update controller, and every commit passes through it.
 A commit reaches the controller as a stream of update instructions terminated by a commit marker, and the controller executes that stream in order.
@@ -985,12 +987,6 @@ When the controller reaches the marker, it generates the hardware commit signals
 Two pieces of hardware need small changes.
 First, the tables that hold a node's classification must become transactional, so that a commit signal makes a whole list of writes visible at once.
 Second, the rank computation must accept incremental updates rather than wholesale replacement of a live scheduling policy.
-
-% \xxx[AM to Zhiyuan]{We used to claim ``small changes to three pieces of hardware: the virtual PIFOs, the rank computation, and the next-hop mapping'', and then described two, neither of which was the PIFOs.
-% I have written ``two'', since two is what this subsection actually talks about.
-% Is there also a change to the PIFOs themselves? If so, we need to add a paragraph describing that.
-% I have also split what the two changes are \emph{for}: the classification tables must become transactional, while the rank computation only has to take incremental writes. 
-% Please check for correctness.}
 
 Rio builds transactional tables for a node's classification.
 Each PE holds the set of flows each of its nodes admits, and the mapping from an admitted flow to the child that serves it, in a specialized structure that accepts a stream of update instructions followed by a commit marker.
@@ -1007,8 +1003,7 @@ The controller treats the commit boundary as a wavefront.
 The new configuration becomes visible at different PEs at carefully chosen times, so that any individual packet observes a consistent configuration along its entire path.
 The double buffer and the wavefront both exist because dequeue is pipelined: a request travelling the chain of PEs must never observe state that a commit has left inconsistent.
 
-Our controller stages and swaps the rank-computing writes along with every other instruction in their commit, so the metadata an \Add{} carries lands in the same atomic instant as the structural change it accompanies.
-That is more than Rio needs.
+Our controller accepts a commit's rank-computing writes along with the rest of its instructions, and applies them as it reaches them rather than holding them for the marker, which is what the narrow scope buys.
 The rank computation is a reference design, and a substrate may configure its own disciplines by whatever means it has.
 
 The controller also implements guarded transitions.
@@ -1054,10 +1049,16 @@ A literal \Strict-2 wrapper holds a \ensuremath{\mathit{pifo}} and so has to liv
 It takes level 5, pushing the doomed subtree to 6 and 7 and the survivor to 6 through 8, and retiring it afterwards pulls the survivor back up.
 Two subtrees are laid out twice over, for a node that exists only for the length of a drain.
 
+\xxx[AM to Zhiyuan]{Two numbers would let this paragraph make the sharper claim, which is that a literal wrapper has to be handled while it is occupied and \texttt{designate} never is.
+The wrapper is born holding one entry per buffered packet and dies still holding the survivor's.
+Is traffic halted for the \(\mathit{num\_entry}\) cycles the prefill takes, and how many cycles is the control-message overhead you called the larger cost?
+And what does the \texttt{change\_root} that tears down a non-empty wrapper cost?}
+
 \paragraph{The designated-survivor link}
 
 Every PIFO carries a \emph{designated-survivor link}, which is left null in an ordinary node.
 A \Designate{} points the doomed node \texttt{v}'s link at the survivor's root \texttt{surv}.
+The link is written through the transactional path of \cref{sec:hw-commit}, so it becomes visible in the same instant as the classification writes that hand the traffic over.
 The survivor is laid out beside \texttt{v} rather than beneath it, and \texttt{v}'s parent is not told.
 It keeps the one index it had.
 A designated survivor occupies its designator's physical position, so the two roots share a PE, and a model path reaches a physical level by discarding the \(\Strictstar\) nodes above it.
@@ -1078,12 +1079,16 @@ The elision also changes what \cref{sec:controls}'s well-formedness ranges over,
 
 \paragraph{Ending the transition}
 
-The indirection has a cost.
-Once \texttt{v} has drained, every \pop{} that reaches that slot queries \texttt{v}, gets nothing, and queries again, at the tree level where the two roots sit.
-So the transition has to end rather than merely settle.
-\cref{sec:sequences} pairs \Undesignate{} with a wait for the old subtree to drain empty, and \cref{sec:hw-commit} lowers such a wait to a blocking command in the controller queue.
-The commit sits at the head of that queue until the doomed subtree drains, and then fires atomically.
-After it the parent's index reaches the survivor directly, and nothing in the tree records that a transition happened.
+\cref{sec:sequences} pairs \Undesignate{} with a wait for the old subtree to drain empty.
+A substrate may meet that wait by arming rather than by blocking, and ours does.
+The commit carrying the \Undesignate{} arms \texttt{v}'s slot, and the \pop{} that takes \texttt{v}'s last packet enables it.
+From that instant a request for the slot is rewritten to \texttt{surv} ahead of the lookup, so the parent's index reaches the survivor directly and no \pop{} ever queries a drained \texttt{v}.
+What the blocking command still serves is reclamation.
+\texttt{v}'s PIFOs, and those of everything beneath it, may be released only once the subtree is empty, and that is a second commit guarded on the same emptiness predicate (\cref{sec:hw-commit}).
+After it, nothing in the tree records that a transition happened.
+
+\xxx[AM to Zhiyuan]{That second commit is the guarded GC you said you would add, so this paragraph describes hardware that does not exist yet.
+Tell me whether adding it moves any of the four timestamps in the confined run, and I will leave the paragraph as it stands if it does not.}
 
 An operator may also put a \(\Strictstar\) in a policy of their own (\cref{sec:policy-dsl}), and \(\lceil \cdot \rceil\) compiles it to what \Designate{} builds, laying out both arms and pointing the first arm's link at the second.
 
@@ -1109,6 +1114,10 @@ Any situation-dependent reasoning, such as ``the subtree we are about to collaps
 
 The ISA has thirteen opcodes, laid out in \cref{tab:isa-opcodes}.
 They address a PIFO by an opaque id \texttt{v}, one per tree node, and one of its arms by an \emph{index}, an opaque per-PIFO handle for a child.
+
+\xxx[AM to Zhiyuan]{Your switch takes six control commands, and the correspondence belongs beside this table, as a column or a sentence.
+My reading is that \texttt{UpdateMapperPre} and \texttt{UpdateMapperPost} are \texttt{assoc} and \texttt{map}, and are the ingress and next-hop mappings of your sketch; that \texttt{UpdateMapperNonExist} is \texttt{designate}; that the two Brain commands are \texttt{set\_policy} and \texttt{set\_arm\_meta}; and that \texttt{CommitMapper} is the marker.
+Correct whichever of those is wrong.}
 
 \begin{table}[t]
 \footnotesize
@@ -1141,7 +1150,7 @@ Opcode & Effect \\
 \end{table}
 
 \texttt{change\_arity} carries the one subtlety in the table.
-It tells the discipline-level logic at \texttt{v} how many arms are active, and growing the count creates the new slot, which the substrate seeds from \texttt{v}'s current node state by \(\mathit{init\_slot\_state}_{D}\) (\cref{sec:compilation}).
+It sets \texttt{v}'s live arm count, and growing the count creates the new slot, which the substrate seeds from \texttt{v}'s current node state by \(\mathit{init\_slot\_state}_{D}\) (\cref{sec:compilation}).
 The structural attaching and detaching happen separately, through \texttt{adopt} and \texttt{emancipate}, each keyed by the stable per-edge index the parent minted at adoption time.
 
 Our single-purpose opcodes also mean that the tree can become transiently malformed \emph{within} a commit, in ways that the commit's atomicity hides from any observer.
@@ -1151,7 +1160,13 @@ The atomic install means no \texttt{push} or \texttt{pop} ever sees this state, 
 The ISA is the compiler's interface, and not all of the state it names reaches the switch.
 Per-edge indices and arities are how the compiler addresses a tree position, and a PE stores neither.
 A PE stores its \texttt{Assoc} set, a \texttt{Map} naming the PIFO each admitted flow enters and the PE that holds it, and the designated-survivor link of \cref{sec:hw-survivor}.
-An index is meaningful only against the tree the compiler holds, so an \texttt{adopt} reaches the switch only by changing which PIFO an index names.
+An index is meaningful only against the tree the compiler holds, so an \texttt{adopt} reaches the switch only by changing which PIFO an index names, and a \texttt{map} reaches it as the id of the PIFO that index names.
+The classification and survivor opcodes are thus the ones that write a PE.
+The lifecycle and structure opcodes are the compiler's own bookkeeping, and \texttt{change\_arity} reaches no PE at all.
+
+\xxx[AM to Zhiyuan]{You told me \texttt{change\_arity} never reaches hardware, and I have written that.
+One thing I could not work out: a new arm carries per-arm scheduler state, such as \WFQ{}'s virtual finish time for that arm, and that state has to live where ranks are computed.
+If the arity never reaches a PE, what creates and seeds that slot, and is it the \texttt{set\_arm\_meta} that follows?}
 
 Which PE holds a given PIFO is the substrate's choice, written \texttt{pe(path)} and fixed at compile time as a function of the PIFO's position in the tree.
 A typical choice is the depth-by-PE layout of \cref{sec:background}, under which siblings share a PE.
@@ -1217,6 +1232,26 @@ The designated-survivor link of \cref{sec:hw-survivor} is an optimization rather
 The bar for hosting Rio is therefore atomic commits and a predicate the substrate can wait on, and we expect other PIFO substrates to clear both and to be able to adopt the link~\cite{Shrivastav19,Gao22,Yao23,vPIFO,Atre24,Alcoz25}.
 
 \section{Evaluation}\label{sec:eval}
+
+\xxx[AM to Zhiyuan]{The runs behind this section still drop a flow's leaf when the parent can rank it directly.
+Our compiler never does that, and the folded tree is not something our model can describe, so the two sides are not yet measuring the same policy.
+You said you would turn the elision off and rerun, and the same goes for the fourteen-flow mixed-change experiment, whose four runs include a no-transition control.}
+
+\xxx[AM to Zhiyuan]{Please report cycles rather than instructions, since some instructions take several.
+Keep the instruction counts beside them if that is cheap, because the two together say that the confined transition is both cheaper to install and quicker to take effect.
+Say also which of the six commands cost more than one cycle, and note that the counts include the Brain commands, which do not install atomically.}
+
+\xxx[AM to Zhiyuan]{The paper has to convert cycles to time exactly once, and here is where.
+You offered a 1\,GHz ASIC or a 250\,MHz FPGA and I would take the ASIC, which makes the 1024-cycle stop almost exactly a microsecond.
+Confirm that, and tell me how many bytes the switch moves per cycle so I can name a line rate.}
+
+\xxx[AM to Zhiyuan]{You have no citation for the reconfiguration figure and say a real P4 switch measures up to seconds.
+So I plan to present the 1024 as a floor we grant the baseline rather than as a measurement: we stop the world for about a microsecond, which is faster than any reported reconfiguration of a running switch, and Rio beats it anyway.
+Say if you would rather the baseline had a different number.}
+
+\xxx[AM to Zhiyuan]{\texttt{settings.json} sets a queue depth of 256 while the stop-the-world run peaks at 417 buffered packets and drops nothing.
+Raise it or drop it, whichever is honest.
+If 256 bounds something real elsewhere in the switch, then a switch configured this way would have dropped during the stop, and that is a stronger claim than the one we make now.}
 
 \section{Related Work}\label{sec:related}
 
