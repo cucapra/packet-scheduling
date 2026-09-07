@@ -194,19 +194,18 @@ A hierarchical policy runs on a tree of PIFOs, one queue per node.
 
 A deployment's policy is not fixed for the life of the deployment.
 Traffic patterns shift, tenants arrive and leave, and telemetry from downstream tells the operator that the policy in force is no longer the right one.
-Such changes need to be rapid and seamless.
-The scheduler, however, was compiled for the policy it is running.
-Its tree shape, its per-node disciplines, and its table contents are all artifacts of a decision made before the switch was brought up~\cite{Sivaraman16,Gao22,vPIFO}.
-The compilers that produce them accept \emph{a policy to run} rather than \emph{a change to the policy already running}~\cite{Sivaraman16,vPIFO}.
-So a PIFO tree that is already running has no way to reach a new policy but to stop the world: drop or recirculate the buffered packets, recompile, and reinstall~\cite{vPIFO,Alcoz23}.
-The costs are downtime, delay, and the rebuilding of nodes that did not need to be rebuilt.
+But the scheduler was compiled expressly for the policy it is running: its tree shape, per-node disciplines, and table contents are all artifacts of a decision made with \emph{a fresh policy} as the goal, not \emph{a change to the running policy}~\cite{Sivaraman16,Gao22,vPIFO}.
+Say the operator requests a new policy.
+% A compiler that produces such a scheduler accepts \emph{a policy to run} rather than \emph{a change to the policy already running}~\cite{Sivaraman16,vPIFO}.
+The freshly compiled scheduler knows nothing about the running policy or the backlog of buffered packets~\cite{vPIFO,Alcoz23}, and so the whole tree is rebuilt, including the nodes that could have been carried over unchanged.
+What becomes of the backlog is left to the deployment: it can be dropped, recirculated, or left to be scheduled through a chaotic period in which the hardware follows no clearly defined policy.
+Each of those is itself tacitly a \emph{scheduling decision}, and the network operator is unable to specify which one they want.
 
-This paper refuses to stop the world.
+This paper writes that decision down.
 Some changes can be installed as a single atomic step, and others cannot, leaving the scheduler to run for a while under a policy that no operator requested.
 That interval is unavoidable and it persists for nonzero time.
 The scheduler goes on accepting and emitting packets throughout, so scheduling decisions are being made by it.
 Our thesis is that the interval during which a scheduler is being reprogrammed is itself a scheduling policy.
-Stopping the world does not do away with that policy but only leaves it unstated and unchosen.
 Understanding this unstated policy is a language problem.
 A transitional policy needs a syntax that the operator can read, a semantics that says which packet leaves next, and a lowering onto hardware that was built for the policy it is already running.
 With those in hand, the question of whether a transition was carried out correctly becomes a theorem about the semantics rather than a measurement of the hardware.
