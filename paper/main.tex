@@ -1040,6 +1040,7 @@ For each flow the new arm serves, an \texttt{assoc} at every PIFO from the port 
 \subsection{Atomic Policy Updates}\label{sec:hw-commit}
 
 Rio implements atomic updates by double-buffering the match--action tables (MATs) that make up the policy configuration.
+Double buffering is a common technique for atomically updating packet-processing pipelines~\cite{Xing22,Yang24}.
 These MATs control the association between flows and PIFOs and the parent--child relationships among PIFOs.
 Configuration instructions affect the inactive MATs,
 and committing a transaction swaps the active and inactive MATs.
@@ -1051,18 +1052,11 @@ We \emph{delay-align} the transaction commits across PEs according to the PIFO t
 although the update happens across several cycles, pipelined enqueues and dequeues follow the updates so that each sees either the old or the new configuration.
 % The double buffer and the wavefront both exist because dequeue is pipelined: a request travelling the chain of PEs must never observe state that a commit has left inconsistent.
 
-
-\xxx[as]{I still don't get what we are saying about disciplines/rank assignment functions and metadata. are those double buffered}
-Two pieces of hardware need small changes.
-First, the tables that hold a node's classification must become transactional, so that a commit signal makes a whole list of writes visible at once.
-Second, the rank computation must accept incremental updates rather than wholesale replacement of a live scheduling policy.
-
-\xxx[as]{In other words: you are saying that instructions like \texttt{set\_policy} are applied immediately. I do not yet see a clear argument for why this is OK.}
+\xxx[as]{I could use some help understanding this part. I think it's saying that the ``brain'' updates are non-transactional. If that's the case, we need a bit more of an argument for why this is OK. If a transaction includes both topology changes and discipline/metadata changes, how do we guarantee that the whole thing applies atomically? (``That's not allowed in the ISA'' is an acceptable answer.)}
+Also, the rank computation must accept incremental updates rather than wholesale replacement of a live scheduling policy.
 Our controller accepts a commit's rank-computing writes along with the rest of its instructions, and applies them as it reaches them rather than holding them for the marker, which is what the narrow scope buys.
+\xxx[as]{Please correct me if I'm wrong, but I think the previous sentence is saying: instructions like \texttt{set\_policy} are applied immediately, instead of waiting for the transaction to commit.}
 
-
-\xxx[as]{seems like a nice comparison, but what is ``the forwarding pipeline''}
-Staging updates in a shadow copy and swapping them in is also how runtime reconfiguration is done for the forwarding pipeline~\cite{Xing22,Yang24}.
 
 \xxx[AM to Zhiyuan]{This paragraph is now the subsection's opening claim, per your ``we minimize the transactional scope''.
 The \ChangeMeta{} sentence is the one case your two-way split does not cover, since it re-tunes an arm that is live and backlogged, and the argument I give is that the write stands alone in its own commit.
