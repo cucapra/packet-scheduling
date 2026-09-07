@@ -244,6 +244,20 @@ Vivado reports LUTs, flip-flops, distributed RAM, RAMB18/RAMB36, and DSP
 primitives. These are synthesis mappings. LUT counts and Intel ALMs use
 different resource units, so do not compare them as interchangeable quantities.
 
+## Large Quartus memory totals
+
+The completed five-PE, 1,024-ID read/copy run omits the aggregate memory rows
+and reports `-2147483648` for the root hierarchy's block-memory total. Its
+individual RAM sizes remain positive. The report reader recovers
+**2,516,583,192 bits** by summing `Implementation Bits` and independently
+checking the sum of disjoint direct-child `Block Memory Bits` values. It keeps
+the raw report unchanged and records the recovery in `resource-summary.json`.
+The omitted MLAB count remains unreported; it is never replaced with zero.
+The [validation record](../experiment-results/hardware-overhead/diagnostics/quartus-memory-total-overflow/validation.json)
+checks all 14 Quartus cases completed when the issue was found and rejects
+inconsistent detailed totals. The original synthesis completed successfully;
+this is a report-accounting workaround and requires no synthesis rerun.
+
 ## Generic RTL audit
 
 When the Quartus license is unavailable, Yosys can independently check the

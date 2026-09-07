@@ -124,7 +124,10 @@ def resources(build: Path, platform: str) -> tuple[dict,dict]:
                  "logic_aluts":"Combinational ALUT usage for logic",
                  "registers":"Dedicated logic registers","block_memory_bits":"Total block memory bits",
                  "mlab_memory_bits":"Total MLAB memory bits","dsp_blocks":"Total DSP Blocks"}
-        return {k:int(values[v]) for k,v in mapping.items()},parsed
+        if "recovered_memory_total" in parsed:
+            values["Total block memory bits"]=parsed["recovered_memory_total"]["block_memory_bits"]
+        return {k:int(values[v]) for k,v in mapping.items()
+                if k not in parsed.get("unreported_resources",[])},parsed
     parsed=summarize_vivado(build)
     r=parsed["resources"]
     return {"logic_luts":r["CLB LUTs"]["Used"],"registers":parsed["flip_flop_primitives"],
@@ -245,6 +248,9 @@ def archive(build: Path, output: Path, platform: str) -> dict:
             (output/"resource-summary.json").write_text(json.dumps(parsed,indent=2)+"\n")
             result["resources"]=values
             result["capacity_checks"]=capacity_checks(platform,parsed)
+            if parsed.get("resource_notes"):
+                result["resource_notes"]=parsed["resource_notes"]
+                result["unreported_resources"]=parsed.get("unreported_resources",[])
         elif "failed" in m["status"]:
             log=build/"synthesis.log"
             if log.exists():
@@ -334,6 +340,11 @@ def collect(config: dict, root: Path, output: Path) -> None:
             detail=(" "+result["failure_messages"][0]) if result.get("failure_messages") else ""
             lines.append(f'- {result["platform"]}, {result["configuration"]}, {result["vflows"]} vFlows: '
                          f'`{result["status"]}`.{detail}')
+    notes=[(result,note) for result in statuses for note in result.get("resource_notes",[])]
+    if notes:
+        lines += ["", "Report accounting notes:", ""]
+        lines += [f'- {result["platform"]}, {result["configuration"]}, {result["vflows"]} IDs: {note}'
+                  for result,note in notes]
     if failure_pairs:
         lines += ["","RAM requirements reported by failed synthesis capacity checks:","",
                   '**These are diagnostic counts before successful synthesis completion, not final utilization reports.**',"",

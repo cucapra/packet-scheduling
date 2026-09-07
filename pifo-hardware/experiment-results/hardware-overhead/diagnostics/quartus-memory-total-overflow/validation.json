@@ -1,0 +1,99 @@
+{
+  "status": "passed",
+  "checks": [
+    {
+      "build": "/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v1024-c1024-dynamic-quartus",
+      "status": "passed",
+      "block_memory_bits": 2516583192,
+      "recovered": true
+    },
+    {
+      "build": "/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v1024-c1024-static-quartus",
+      "status": "passed",
+      "block_memory_bits": 880804632,
+      "recovered": false
+    },
+    {
+      "build": "/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v128-c1024-dynamic-quartus",
+      "status": "passed",
+      "block_memory_bits": 31487332,
+      "recovered": false
+    },
+    {
+      "build": "/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v128-c1024-static-quartus",
+      "status": "passed",
+      "block_memory_bits": 11813092,
+      "recovered": false
+    },
+    {
+      "build": "/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v256-c1024-dynamic-quartus",
+      "status": "passed",
+      "block_memory_bits": 136315552,
+      "recovered": false
+    },
+    {
+      "build": "/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v256-c1024-static-quartus",
+      "status": "passed",
+      "block_memory_bits": 49841312,
+      "recovered": false
+    },
+    {
+      "build": "/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-dynamic-quartus",
+      "status": "passed",
+      "block_memory_bits": 1644972,
+      "recovered": false
+    },
+    {
+      "build": "/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v32-c1024-static-quartus",
+      "status": "passed",
+      "block_memory_bits": 659532,
+      "recovered": false
+    },
+    {
+      "build": "/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v512-c1024-dynamic-quartus",
+      "status": "passed",
+      "block_memory_bits": 587203292,
+      "recovered": false
+    },
+    {
+      "build": "/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v512-c1024-static-quartus",
+      "status": "passed",
+      "block_memory_bits": 209715932,
+      "recovered": false
+    },
+    {
+      "build": "/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v64-c1024-dynamic-quartus",
+      "status": "passed",
+      "block_memory_bits": 7222952,
+      "recovered": false
+    },
+    {
+      "build": "/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v64-c1024-static-quartus",
+      "status": "passed",
+      "block_memory_bits": 2793512,
+      "recovered": false
+    },
+    {
+      "build": "/data/work/rio-synthesis/hardware-replay/rio-replay-pe5-v128-c1024-j16384-quartus",
+      "status": "passed",
+      "block_memory_bits": 18879076,
+      "recovered": false
+    },
+    {
+      "build": "/data/work/rio-synthesis/hardware-replay/rio-replay-pe5-v32-c1024-j16384-quartus",
+      "status": "passed",
+      "block_memory_bits": 1397612,
+      "recovered": false
+    }
+  ],
+  "recovery": {
+    "block_memory_bits": 2516583192,
+    "method": "Sum of per-RAM Implementation Bits, independently matched to disjoint direct-child Block Memory Bits",
+    "ram_instances": 32,
+    "direct_child_total": 2516583192,
+    "reported_root_total": -2147483648,
+    "note": "Quartus omits the aggregate memory rows and reports -2147483648 at the hierarchy root. The positive detailed counts reconcile exactly; raw tables are unchanged."
+  },
+  "unknown_mlab_not_zero": true,
+  "mismatched_independent_sum_rejected": true
+}

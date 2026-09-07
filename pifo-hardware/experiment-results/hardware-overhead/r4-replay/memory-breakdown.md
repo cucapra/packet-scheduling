@@ -6,11 +6,11 @@ All values come from completed synthesis reports with PIFO cores excluded. Compo
 
 | Component | Ordinary | Read/copy | Replay |
 |---|---:|---:|---:|
-| Post-mapper banks, all PEs | 545,259,520 | Incomplete | Incomplete |
-| Pre-mapper banks, all PEs | 0 | Incomplete | Incomplete |
-| Unbanked engineCAM tables, all PEs | 335,544,320 | Incomplete | Incomplete |
-| Shared instruction log | 0 | Incomplete | Incomplete |
-| Other inferred memories | 792 | Incomplete | Incomplete |
+| Post-mapper banks, all PEs | 545,259,520 | 2,181,038,080 | Incomplete |
+| Pre-mapper banks, all PEs | 0 | 0 | Incomplete |
+| Unbanked engineCAM tables, all PEs | 335,544,320 | 335,544,320 | Incomplete |
+| Shared instruction log | 0 | 0 | Incomplete |
+| Other inferred memories | 792 | 792 | Incomplete |
 
 ## Vivado: BRAM36 tile equivalents
 
@@ -30,5 +30,4 @@ The replay log is included in the totals. Rebuilt hierarchy can assign shared lo
 
 Incomplete measurements:
 
-- quartus, 1024 IDs, dynamic: `synthesis_running`.
 - quartus, 1024 IDs, replay: `synthesis_running`.

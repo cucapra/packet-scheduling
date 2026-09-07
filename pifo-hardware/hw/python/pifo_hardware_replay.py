@@ -85,6 +85,7 @@ def collect(config, root, references, output):
                 if not a['resources'] or not b['resources']:continue
                 for key in ['part','tool_version','clock_target_mhz']:assert a[key]==b[key],key
                 for resource,x in a['resources'].items():
+                    if resource not in b['resources']:continue
                     y=b['resources'][resource]
                     comparisons.append({'platform':platform,'vflows':flows,'baseline':baseline,'resource':resource,
                                         'baseline_value':x,'replay_value':y,'absolute_change':y-x,
@@ -139,6 +140,11 @@ def render(output,config):
     if missing:
         lines+=['','Incomplete measurements (never interpreted as zero):','']
         lines += [f'- {r["platform"]}, {r["vflows"]} IDs, {r["configuration"]}: `{r["status"]}`.' for r in missing]
+    notes=[(result,note) for result in statuses for note in result.get('resource_notes',[])]
+    if notes:
+        lines += ['', 'Report accounting notes:', '']
+        lines += [f'- {result["platform"]}, {result["configuration"]}, {result["vflows"]} IDs: {note}'
+                  for result,note in notes]
     lines+=['','Reference static/read-copy measurements retain their exact archived source snapshot. Replay has a separately hashed source snapshot; device, widths, PE count, external PIFO boundary, clock, and vendor directive match.',
             'The replay log is fixed at the same depth across this sweep. Its cost is therefore more prominent at small table sizes.', '']
     (output/'report.md').write_text('\n'.join(lines))

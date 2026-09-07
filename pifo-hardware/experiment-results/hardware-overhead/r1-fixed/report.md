@@ -9,6 +9,11 @@ Blank percentages mean a zero baseline. Only completed synthesis reports supply 
 
 | Platform | vFlows | Resource | Static | Dynamic | Absolute change | Change |
 |---|---:|---|---:|---:|---:|---:|
+| quartus | 1024 | Mapped block-memory bits | 880,804,632 | 2,516,583,192 | +1,635,778,560 | +185.71% |
+| quartus | 1024 | DSP blocks | 0 | 0 | +0 | N/A |
+| quartus | 1024 | Estimated ALMs | 249,166 | 526,738 | +277,572 | +111.40% |
+| quartus | 1024 | Combinational ALUTs | 257,723 | 665,003 | +407,280 | +158.03% |
+| quartus | 1024 | Registers / FFs | 145,293 | 268,960 | +123,667 | +85.12% |
 | vivado | 1024 | BRAM36 tile equivalents | 35,850 | 81,937.5 | +46,087.5 | +128.56% |
 | vivado | 1024 | Allocated BRAM + URAM bits | 1,321,574,400 | 3,020,544,000 | +1,698,969,600 | +128.56% |
 | vivado | 1024 | DSP blocks | 0 | 0 | +0 | N/A |
@@ -17,14 +22,16 @@ Blank percentages mean a zero baseline. Only completed synthesis reports supply 
 | vivado | 1024 | Registers / FFs | 84,909 | 76,037 | -8,872 | -10.45% |
 | vivado | 1024 | URAM288 blocks | 0 | 0 | +0 | N/A |
 
-Incomplete or failed points (not treated as zero resource usage):
+Report accounting notes:
 
-- quartus, dynamic, 1024 vFlows: `synthesis_running`.
+- quartus, dynamic, 1024 IDs: Quartus omits the aggregate memory rows and reports -2147483648 at the hierarchy root. The positive detailed counts reconcile exactly; raw tables are unchanged.
+- quartus, dynamic, 1024 IDs: MLAB memory usage is not reported for this run and is omitted, not treated as zero.
 
 Resource counts exceeding the target device's reported capacity:
 
 | Platform | vFlows | Configuration | Resource | Used | Available | Utilization |
 |---|---:|---|---|---:|---:|---:|
+| quartus | 1024 | dynamic | Estimated ALMs | 526,738 | 487,200 | 108.12% |
 | vivado | 1024 | static | CLB LUTs | 219,107 | 216,960 | 100.99% |
 | vivado | 1024 | static | BRAM36 tile equivalents | 35,850 | 480 | 7468.75% |
 | vivado | 1024 | dynamic | CLB LUTs | 345,710 | 216,960 | 159.34% |

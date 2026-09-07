@@ -1,0 +1,18 @@
+Waiting for existing vivado job: rio-only-pe5-v512-c1024-static-vivado (PID 304493)
+Waiting for existing quartus job: rio-only-pe5-v512-c1024-static-quartus (PID 301540)
+Waiting for existing vivado job: rio-only-pe5-v512-c1024-dynamic-vivado (PID 307272)
+Waiting for existing quartus job: rio-only-pe5-v512-c1024-dynamic-quartus (PID 303718)
+Waiting for existing vivado job: rio-only-pe5-v1024-c1024-static-vivado (PID 309840)
+Waiting for existing quartus job: rio-only-pe5-v1024-c1024-static-quartus (PID 307063)
+Running: /home/zg366/packet-scheduling/pifo-hardware/.venv/bin/python /home/zg366/packet-scheduling/pifo-hardware/synthesis/run.py --tool vivado --build-root /data/work/rio-synthesis/hardware-overhead --name rio-only-pe5-v1024-c1024-dynamic-vivado --engines 5 --vpifos 1024 --entries-per-pe 1024 --priority-bits 8 --pifo-backend external --configuration dynamic --clock-mhz 100 --threads 8 --vivado-directive RuntimeOptimized --vivado-allow-over-capacity --reuse-rtl
+Running: /home/zg366/packet-scheduling/pifo-hardware/.venv/bin/python /home/zg366/packet-scheduling/pifo-hardware/synthesis/run.py --tool quartus --build-root /data/work/rio-synthesis/hardware-overhead --name rio-only-pe5-v1024-c1024-dynamic-quartus --engines 5 --vpifos 1024 --entries-per-pe 1024 --priority-bits 8 --pifo-backend external --configuration dynamic --clock-mhz 100 --threads 8 --vivado-directive RuntimeOptimized --quartus-compact-init --license /data/work/quartus/licenses/LR-187458_License.dat --reuse-rtl
+Synthesis job finished: exit=0
+Synthesis job finished: exit=0
+Synthesis job finished: exit=0
+Synthesis job finished: exit=0
+Synthesis job finished: exit=0
+Synthesis job finished: exit=0
+Synthesis job finished: exit=0
+Synthesis job finished: exit=0
+Experiment artifacts: /home/zg366/packet-scheduling/pifo-hardware/experiment-results/hardware-overhead/r2-vflows
+Experiment has failed/incomplete runs; see run-status.json

@@ -160,6 +160,9 @@ mkdir "$REFERENCE_COPY"
 cp -a experiment-results/hardware-overhead/diagnostics/read-copy-source-snapshot/{hw,project,build.sbt} "$REFERENCE_COPY/"
 cp -a experiment-results/hardware-overhead/workflow/{hw,synthesis} "$REFERENCE_COPY/"
 cp -a experiments "$REFERENCE_COPY/"
+# Updated report readers handle Quartus's overflowing aggregate RAM total.
+cp hw/python/pifo_hardware_overhead.py "$REFERENCE_COPY/hw/python/"
+cp synthesis/summarize_quartus.py "$REFERENCE_COPY/synthesis/"
 .venv/bin/python "$REFERENCE_COPY/hw/python/pifo_hardware_overhead_r2.py" \
   --build-root "$REFERENCE_COPY/builds" --jobs 2
 

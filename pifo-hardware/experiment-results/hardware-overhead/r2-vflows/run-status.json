@@ -2439,10 +2439,16 @@
   {
     "vflows": 1024,
     "configuration": "dynamic",
-    "status": "synthesis_running",
+    "status": "synthesis_complete",
     "build": "/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v1024-c1024-dynamic-quartus",
     "platform": "quartus",
-    "resources": {},
+    "resources": {
+      "logic_alms": 526738,
+      "logic_aluts": 665003,
+      "registers": 268960,
+      "block_memory_bits": 2516583192,
+      "dsp_blocks": 0
+    },
     "part": "AGFB014R24B2E2V",
     "hardware": {
       "configuration": "dynamic",
@@ -2525,7 +2531,23 @@
       "priority_encode_log.v": "2a63070396dc60fd2106c5ef1d0719e027ff6bf797afbef166cf99c9b49537c2"
     },
     "tool_version": "Quartus Prime Shell\nVersion 25.3.1 Build 100 12/19/2025 SC Pro Edition\nCopyright (C) 2025  Altera Corporation. All rights reserved.",
-    "clock_target_mhz": 100.0
+    "clock_target_mhz": 100.0,
+    "capacity_checks": [
+      {
+        "resource": "logic_alms",
+        "used": 526738,
+        "available": 487200,
+        "utilization_percent": 108.11535303776684,
+        "exceeds_capacity": true
+      }
+    ],
+    "resource_notes": [
+      "Quartus omits the aggregate memory rows and reports -2147483648 at the hierarchy root. The positive detailed counts reconcile exactly; raw tables are unchanged.",
+      "MLAB memory usage is not reported for this run and is omitted, not treated as zero."
+    ],
+    "unreported_resources": [
+      "mlab_memory_bits"
+    ]
   },
   {
     "vflows": 1024,

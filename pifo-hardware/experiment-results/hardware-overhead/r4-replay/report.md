@@ -93,8 +93,12 @@ Changes below compare replay with read/copy; the full table also reports changes
 
 Incomplete measurements (never interpreted as zero):
 
-- quartus, 1024 IDs, dynamic: `synthesis_running`.
 - quartus, 1024 IDs, replay: `synthesis_running`.
+
+Report accounting notes:
+
+- quartus, dynamic, 1024 IDs: Quartus omits the aggregate memory rows and reports -2147483648 at the hierarchy root. The positive detailed counts reconcile exactly; raw tables are unchanged.
+- quartus, dynamic, 1024 IDs: MLAB memory usage is not reported for this run and is omitted, not treated as zero.
 
 Reference static/read-copy measurements retain their exact archived source snapshot. Replay has a separately hashed source snapshot; device, widths, PE count, external PIFO boundary, clock, and vendor directive match.
 The replay log is fixed at the same depth across this sweep. Its cost is therefore more prominent at small table sizes.
