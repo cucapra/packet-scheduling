@@ -138,6 +138,23 @@ python3 -m venv .venv
   --build-root /data/work/rio-synthesis/lookup-pipeline
 ```
 
+The [complete report](../../experiment-results/hardware-overhead/full-report/report.md)
+combines R1–R4 with the completed Quartus journal-only M20K control. To regenerate
+its PDF, self-contained HTML, Markdown, nine figures, CSVs, and ZIP bundle using
+only archived results:
+
+```bash
+.venv/bin/pip install -r requirements.txt
+.venv/bin/python hw/python/pifo_hardware_overhead_report.py
+```
+
+This command does not invoke synthesis or require an FPGA license. It validates
+completed run status, reused baseline values, resource rows, and RAM component
+totals before plotting. `full-report.json` records the evidence date and scope;
+the generated `validation.json` records input hashes. Original R1–R4 artifacts
+are preserved, including the automatic Quartus replay result whose journal
+spilled into registers. The M20K-forced point is shown as a separate measurement.
+
 The R1 and R2 runners share build names so the 1,024-ID results can be reused.
 RIO-only builds begin with `rio-only-`; whole-mesh build directories are separate.
 Reuse checks the hardware settings, source/RTL hashes, directive, and successful

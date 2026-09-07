@@ -1,5 +1,13 @@
 # Hardware overhead evidence
 
+The complete [report with all nine figures](full-report/report.md) is also
+available as a [PDF](full-report/report.pdf), a self-contained
+[HTML report](full-report/report.html), and a [report/figure/data bundle](full-report/rio-hardware-overhead-report.zip).
+It covers R1–R4 and includes the final Quartus journal-in-M20K measurement,
+with absolute and percentage comparisons against both ordinary and read/copy
+tables. The original automatic-mapping replay sweep remains visible as a
+separate control. Every figure includes PNG, SVG, PDF, and CSV exports.
+
 The primary experiments synthesize RIO with explicit external PIFO interfaces.
 They include all five PEs, mapper/brain logic, crossbar, and configuration
 controller; PIFO sorting, entry storage, occupancy, and drain detection are
