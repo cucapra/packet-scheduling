@@ -1142,12 +1142,12 @@ They address a PIFO by an opaque id \texttt{v}, one per tree node, and one of it
 
 \begin{table}[t]
 \footnotesize
-\caption{The thirteen substrate ISA opcodes, grouped by what they touch.}
+\caption{The scheduling policy configuration ISA.}
 \label{tab:isa-opcodes}
 \begin{tabular}{@{}l@{\hspace{6pt}}p{0.60\linewidth}@{}}
-\hline
+\toprule
 Opcode & Effect \\
-\hline
+\midrule
 \multicolumn{2}{@{}l}{\emph{Lifecycle}} \\
 \texttt{spawn(v, pe)} & Fresh empty PIFO \texttt{v} on PE \texttt{pe} \\
 \texttt{gc(v)} & Release \texttt{v}'s PE slot \\[3pt]
@@ -1166,7 +1166,7 @@ Opcode & Effect \\
 \multicolumn{2}{@{}l}{\emph{Survivor}} \\
 \texttt{designate(v, surv)} & Point \texttt{v}'s designated-survivor link at \texttt{surv} \\
 \texttt{undesignate(v)} & \texttt{v}'s parent's index now reaches that survivor \\
-\hline
+\bottomrule
 \end{tabular}
 \end{table}
 
