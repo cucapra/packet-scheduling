@@ -922,11 +922,15 @@ The root-level fallback shows what that is worth: it puts the entire running tre
 \cref{app:planner-emits} gives the case analysis in full.
 
 
-\section{Rio Hardware Implementation}\label{sec:hardware}
+\section{Rio Hardware Design}\label{sec:hardware}
 
-\cref{sec:hw-substrate} describes the substrate a PIFO tree runs on today, and states the one property Rio needs that such a substrate does not offer: a commit that installs a whole list of instructions atomically with respect to traffic.
-\cref{sec:hw-commit} is the change that supplies it, and \cref{sec:hw-survivor} adds the one piece of substrate machinery with no counterpart in the model, the designated-survivor link.
-\cref{sec:hw-isa} gives the instruction set a commit is drawn from, \cref{sec:hw-compile} lowers each form of \(\delta\) to one commit, and \cref{sec:substrate-portability} separates what Rio needs from what our own substrate happens to do.
+We show how to extend a PIFO-tree-based packet scheduler with support for live policy reconfiguration.
+Our design starts with a standard PIFO tree architecture (\cref{sec:hw-substrate})
+and adds two key mechanisms:
+atomic state updates (\cref{sec:hw-commit})
+and support for $\Designate$ (\cref{sec:hw-survivor}).
+We define an ISA for this reconfiguration and demonstrate a compiler that targets it (\cref{sec:hw-isa,sec:hw-compile}).
+\xxx[as]{revisit: should ISA go first? also, hopefully \cref{sec:substrate-portability} collapses}
 
 \subsection{The Substrate as it Stands}\label{sec:hw-substrate}
 
