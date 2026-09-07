@@ -359,7 +359,7 @@ A substrate is programmable, so an operator can install a new brain at any point
 To the best of our knowledge, no prior work on PIFO trees says how to move a running scheduler from one brain to another without disturbing the traffic that the old one has already buffered.
 
 Rio supplies the layer \emph{above} a substrate: the formal transition between two policies, the small patch that realizes it, and the transitional semantics.
-Any of the substrates surveyed in \cref{sec:related} is a plausible host, and \cref{sec:substrate-portability} sets out the minimal requirement Rio places on one.
+Any of the substrates surveyed in \cref{sec:related} is a plausible host, and \cref{sec:hw-commit} names what Rio asks of one.
 
 \section{Policies and Edits}\label{sec:model}
 
@@ -542,7 +542,7 @@ It is the configuration the operator chose, not bookkeeping that the traffic lef
 \xxx[AM to AS]{I want to flag a new thing. A node's \emph{ranker} now names the discipline D that the node runs, so the discipline is recoverable from the running control rather than lost at compile time.
 That lets \cref{sec:equivalences} define \(\lfloor \cdot \rfloor\) by structural recursion.
 And \emph{that} turns closure under \(\delta\) into a theorem rather than a definitional rule.
-It supersedes an earlier decision of ours saying that the discipline is ``compiled into \zz and never stored''; note that \cref{sec:hw-compile} already stores it (\texttt{set\_policy}) and reads it back (\texttt{discipline(v)}). So maybe our earlier resolution was always in vain.}
+It supersedes an earlier decision of ours saying that the discipline is ``compiled into \zz and never stored''; note that \cref{sec:hw-isa} already stores it (\texttt{set\_policy}) and reads it back (\texttt{discipline(v)}). So maybe our earlier resolution was always in vain.}
 
 \paragraph{\push{} and \pop{}}
 
@@ -2065,7 +2065,7 @@ The worst case is the root-level \(\Replace([], p_2)\) of \cref{sec:sequences}, 
 \section{Lowering Policy Edits}\label{app:lowering}
 
 This appendix lowers all six forms of \(\delta\) to the ISA of \cref{sec:hw-isa}, in the order \cref{fig:delta-grammar} lists them.
-\Add{} comes first, so that the six can be read together; \cref{sec:hw-compile} gives that same lowering in prose.
+\Add{} comes first, so that the six can be read together; \cref{sec:hw-isa} gives that same lowering in prose.
 
 \paragraph{Notation}
 
@@ -2079,7 +2079,8 @@ Of the queries, \texttt{flows(v)} is the set of flows admitted beneath \texttt{v
 For a compiled subtree \texttt{T}, \texttt{nodes(T)} is its PIFOs and \texttt{root(T)} its root, and \texttt{layout(T)} spawns and configures all of \texttt{T}, leaving the parent-side \texttt{adopt} of \(\mathtt{root(T)}\) to the caller.
 
 We write \pth for the form's path argument, \texttt{parent} for the PIFO at the position above it, and \texttt{k} for its index at that PIFO.
-For \(\mathit{path} = [\,]\), \texttt{parent} is \texttt{port\_root} and \texttt{k} is \texttt{port\_step}, the reserved wrapper of \cref{sec:hw-compile}.
+For \(\mathit{path} = [\,]\), \texttt{parent} is \texttt{port\_root} and \texttt{k} is \texttt{port\_step}.
+A switch with \(P\) output ports has \(P\) separate trees, and each is wrapped at the ISA in a reserved 1-arm PIFO \texttt{port\_root} whose sole child, reached through the index \texttt{port\_step}, is the actual tree root.
 Three of the forms below are written with their argument split as \(\pi \mathbin{+\!\!+} [k]\) rather than as \pth, because their lowerings address the parent's slot rather than the node itself, and so need \texttt{k} by name.
 
 \subsection{\texorpdfstring{\(\Add(\mathit{path}, D, \mathit{arm}, m)\)}{Add}}\label{sec:lower-add}
