@@ -1101,7 +1101,7 @@ The parent PIFO contains one entry per packet in \emph{either} subtree.
 The elision also changes what \cref{sec:controls}'s well-formedness ranges over, and the same subsection re-reads the invariant to cover it.
 
 As a precondition, the \texttt{undesignate} instruction requires the old subtree to be empty.
-\xxx[as]{wtf}
+\xxx[as]{I added the previous sentence, because I think it is a more direct summary of what we were saying. But if that's the case, readers will now wonder why we have to wait for a pop to happen later (why there are two steps:: ``arm'' and ``enable,'' per the next sentence). To keep things simple (even if it is an oversimplification of what the hardware implements), can we just say that the effect happens immediately, because the subtree is already empty? It would simplify the story a lot, i.e., this could just be one sentence.}
 The commit carrying the \Undesignate{} arms \texttt{v}'s slot, and the \pop{} that takes \texttt{v}'s last packet enables it.
 From that instant a request for the slot is rewritten to \texttt{surv} ahead of the lookup, so the parent's index reaches the survivor directly and no \pop{} ever queries a drained \texttt{v}.
 What the blocking command still serves is reclamation.
