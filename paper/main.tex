@@ -944,13 +944,89 @@ Each level in the policy tree (i.e., the set of nodes at each tree depth) maps t
 Because each level must track ranks for all in-flight packets, all PEs use an equal amount of total PIFO capacity,
 divided among the nodes at that layer.
 
-To enqueue a packet, the architecture finds the set of PIFOs to insert into (by classifying the packet) and computes the rank for each according to its policy.
+To enqueue a packet, the architecture must identify the set of PIFOs to insert into (the path from the root to the appropriate leaf) and compute the rank for each.
+The hardware broadcasts each packet to all PEs, and each PE determines which PIFO at that level should accept the packet.
 We assume the hardware comes with rank-assignment logic to support a set of policy disciplines, $D$.
+%
 On dequeue, the scheduler starts from the output port's root PIFO, pops the best-ranked entry, and follows next-hop information from PIFO to PIFO until it reaches a packet to transmit.
 All steps use match--action tables~\cite{Bosshart14}, so installing a policy on such a substrate means writing entries into those tables.
 
+\subsection{Policy Configuration ISA}\label{sec:hw-isa}
 
-\subsection{Making a Commit Atomic}\label{sec:hw-commit}
+\begin{table}[t]
+\footnotesize
+\caption{The scheduling policy configuration ISA.}
+\label{tab:isa-opcodes}
+\begin{tabular}{@{}l@{\hspace{6pt}}p{0.60\linewidth}@{}}
+\toprule
+Opcode & Effect \\
+\midrule
+\multicolumn{2}{@{}l}{\emph{Lifecycle}} \\
+\texttt{spawn(v, pe)} & Fresh empty PIFO \texttt{v} on PE \texttt{pe} \\
+\texttt{gc(v)} & Release \texttt{v}'s PE slot \\[3pt]
+\multicolumn{2}{@{}l}{\emph{Structure}} \\
+\texttt{adopt(i, p, c)} & \texttt{p} gains child \texttt{c}, reached via index \texttt{i} \\
+\texttt{emancipate(i, p)} & Detach \texttt{p}'s child at index \texttt{i} \\
+\texttt{change\_arity(v, n)} & Set \texttt{v}'s live arm count to \texttt{n}, leaving its policy type alone \\[3pt]
+\multicolumn{2}{@{}l}{\emph{Classification}} \\
+\texttt{assoc(v, f)} & \texttt{v} begins accepting flow \texttt{f} \\
+\texttt{deassoc(v, f)} & \texttt{v} stops accepting \texttt{f} \\
+\texttt{map(v, f, i)} & \texttt{v} routes \texttt{f} to index \texttt{i} \\
+\texttt{unmap(v, f)} & \texttt{v} forgets its mapping for \texttt{f} \\[3pt]
+\multicolumn{2}{@{}l}{\emph{Discipline}} \\
+\texttt{set\_policy(v, t, n)} & Give \texttt{v} policy type \texttt{t} and initial arity \texttt{n}; once, at spawn \\
+\texttt{set\_arm\_meta(v, i, m)} & Metadatum \texttt{m} on \texttt{v}'s arm \texttt{i}, read per \texttt{v}'s policy type \\[3pt]
+\multicolumn{2}{@{}l}{\emph{Survivor}} \\
+\texttt{designate(v, surv)} & Point \texttt{v}'s designated-survivor link at \texttt{surv} \\
+\texttt{undesignate(v)} & \texttt{v}'s parent's index now reaches that survivor \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\cref{tab:isa-opcodes} lists an instruction set architecture (ISA) for configuring a packet scheduler.
+The control plane updates the scheduling policy by sending a \emph{transaction} consisting of a sequence of these instructions.
+\xxx[as]{I have changed the noun ``commit'' to ``transaction,'' which I think will be less surprising.}
+The hardware guarantees that the transaction applies atomically at some time $t$:
+the unmodified policy applies to all packets before $t$ and the updated policy applies to all packets after $t$.
+Therefore, each edit $\delta$ compiles to one transaction.
+
+The instructions address PIFOs using opaque ids \texttt{v}
+and children using indices \texttt{i}.
+Instructions can change the PIFO tree topology (the \emph{lifecycle} instructions), set scheduling policies (\emph{discipline} and \emph{survivor}), and associate flows with PIFOs (\emph{classification}).
+Some instructions have preconditions: for example,
+\texttt{emancipate} requires that the subtree is empty.
+\xxx[as]{Is that true? I sorta just made this up... but we do need an example of the preconditions that we assume (if any exist).}
+It is the compiler's responsibility to enforce these preconditions.
+\xxx[as]{Just checking: are there any requirements on what can go in a single transaction? (Are there two things that you can do in separate transactions but not all together in one?) If so, this would be the place to bring it up.}
+
+\xxx[as]{I admit I don't understand this subtlety. It sounds like a straightforward description of what it does. What is subtle about this? (Perhaps we can just delete this paragraph?)}
+\texttt{change\_arity} carries the one subtlety in the table.
+It sets \texttt{v}'s live arm count, and growing the count creates the new slot, which the substrate seeds from \texttt{v}'s current node state by \(\mathit{init\_slot\_state}_{D}\) (\cref{sec:compilation}).
+The structural attaching and detaching happen separately, through \texttt{adopt} and \texttt{emancipate}, each keyed by the stable per-edge index the parent minted at adoption time.
+
+
+\xxx[as]{I am also a bit confused about this. For things like \texttt{adopt}, I'm not sure it matters that \texttt{i} ``chang[es] which PIFO an index names''; its semantics are still ``hey hardware, please associate a new child with this PIFO, which I will henceforth refer to child i.'' It doesn't seem to matter that the compiler thinks of i as an ``index'' while the hardware thinks of it as a key in a table. And also, if there are instructions that never affect the hardware, can we just remove them?}
+The ISA is the compiler's interface, and not all of the state it names reaches the switch.
+Per-edge indices and arities are how the compiler addresses a tree position, and a PE stores neither.
+A PE stores its \texttt{Assoc} set, a \texttt{Map} naming the PIFO each admitted flow enters and the PE that holds it, and the designated-survivor link of \cref{sec:hw-survivor}.
+An index is meaningful only against the tree the compiler holds, so an \texttt{adopt} reaches the switch only by changing which PIFO an index names, and a \texttt{map} reaches it as the id of the PIFO that index names.
+The classification and survivor opcodes are thus the ones that write a PE.
+The lifecycle and structure opcodes are the compiler's own bookkeeping, and \texttt{change\_arity} reaches no PE at all.
+
+% \xxx[AM to Zhiyuan]{You told me \texttt{change\_arity} never reaches hardware, and I have written that.
+% One thing I could not work out: a new arm carries per-arm scheduler state, such as \WFQ{}'s virtual finish time for that arm, and that state has to live where ranks are computed.
+% If the arity never reaches a PE, what creates and seeds that slot, and is it the \texttt{set\_arm\_meta} that follows?}
+% ZG: here's the point: for a mapping table, we do not need to allocate a slot; a insert(k,v) will "create slot for K" if it's not exist.
+
+Which PE holds a given PIFO is the substrate's choice, written \texttt{pe(path)} and fixed at compile time as a function of the PIFO's position in the tree.
+\xxx[as]{How can it be true that the PE choice is the hardware's, if \texttt{spawn(v, pe)} seems to direct the hardware which PE to choose?}
+A typical choice is the depth-by-PE layout of \cref{sec:background}, under which siblings share a PE.
+\xxx[as]{I think we should just assume this is always the case (in which we do not need the preceding sentence, and perhaps this whole paragraph).}
+The planner consults \texttt{pe(path)} for a \texttt{spawn}'s \texttt{pe} argument and cannot otherwise observe it.
+
+
+
+\subsection{Atomic Policy Updates}\label{sec:hw-commit}
 
 Rio's change to the substrate is small, and it is small because the transactional scope is narrow.
 The state that must install in a single instant is the state that routes a packet: the set of flows a node admits, and the child that serves each of them.
@@ -1074,89 +1150,6 @@ After it, nothing in the tree records that a transition happened.
 % ZG: the hardware exist, i'll add the evaluation line.
 
 An operator may also put a \(\Strictstar\) in a policy of their own (\cref{sec:policy-dsl}), and \(\lceil \cdot \rceil\) compiles it to what \Designate{} builds, laying out both arms and pointing the first arm's link at the second.
-
-\subsection{The Commit Interface and its ISA}\label{sec:hw-isa}
-
-Rio enables online policy update by packaging many hardware state updates into a single \emph{commit}, and the ISA the substrate exposes has exactly one unit.
-A \texttt{commit} is a list of instructions that the substrate installs \emph{atomically}.
-The substrate goes on serving enqueues and dequeues while it prepares the list, and the swap that installs it takes a single cycle at each PE (\cref{sec:hw-commit}).
-Every enqueue or dequeue therefore observes either the whole list applied, or none of it.
-This is the atomicity that \cref{sec:delta-grammar} demanded of every form it admits.
-A commit's \emph{length} may depend on live control state (how many flows are admitted, how many siblings need shifting), but its \emph{atomicity} does not.
-
-% \xxx[AM to Zhiyuan]{You wrote in Slack that the commit happens in one hardware cycle... did you mean a single cycle \emph{at each PE}? That is what I wrote.
-% The reason is that \cref{sec:hw-commit} delay-aligns the commit signals so the new configuration becomes visible at different PEs at different times.
-% If that is so then how do we do it in a flat one-cycle-across-the-tree way?
-% If the commit really is one cycle across the whole tree, say so.
-% The wavefront paragraph may be wrong.}
-% ZG: yes it's one cycle per-PE. 
-
-Each \(\delta\) (\cref{sec:delta-grammar}) lowers to one \texttt{commit}.
-The ISA itself is unconditional.
-The substrate trusts that its caller has issued a well-formed commit.
-Any situation-dependent reasoning, such as ``the subtree we are about to collapse is empty'', lives in \cref{sec:sequences}, in a guard \(\varphi\) that had to become true before the corresponding \(\delta\) fired.
-
-The ISA has thirteen opcodes, laid out in \cref{tab:isa-opcodes}.
-They address a PIFO by an opaque id \texttt{v}, one per tree node, and one of its arms by an \emph{index}, an opaque per-PIFO handle for a child.
-
-% \xxx[AM to Zhiyuan]{Your switch takes six control commands, and the correspondence belongs beside this table, as a column or a sentence.
-% My reading is that \texttt{UpdateMapperPre} and \texttt{UpdateMapperPost} are \texttt{assoc} and \texttt{map}, and are the ingress and next-hop mappings of your sketch; that \texttt{UpdateMapperNonExist} is \texttt{designate}; that the two Brain commands are \texttt{set\_policy} and \texttt{set\_arm\_meta}; and that \texttt{CommitMapper} is the marker.
-% Correct whichever of those is wrong.}
-% ZG: yes, you get the correct understanding
-
-\begin{table}[t]
-\footnotesize
-\caption{The scheduling policy configuration ISA.}
-\label{tab:isa-opcodes}
-\begin{tabular}{@{}l@{\hspace{6pt}}p{0.60\linewidth}@{}}
-\toprule
-Opcode & Effect \\
-\midrule
-\multicolumn{2}{@{}l}{\emph{Lifecycle}} \\
-\texttt{spawn(v, pe)} & Fresh empty PIFO \texttt{v} on PE \texttt{pe} \\
-\texttt{gc(v)} & Release \texttt{v}'s PE slot \\[3pt]
-\multicolumn{2}{@{}l}{\emph{Structure}} \\
-\texttt{adopt(i, p, c)} & \texttt{p} gains child \texttt{c}, reached via index \texttt{i} \\
-\texttt{emancipate(i, p)} & Detach \texttt{p}'s child at index \texttt{i} \\
-\texttt{change\_arity(v, n)} & Set \texttt{v}'s live arm count to \texttt{n}, leaving its policy type alone \\[3pt]
-\multicolumn{2}{@{}l}{\emph{Classification}} \\
-\texttt{assoc(v, f)} & \texttt{v} begins accepting flow \texttt{f} \\
-\texttt{deassoc(v, f)} & \texttt{v} stops accepting \texttt{f} \\
-\texttt{map(v, f, i)} & \texttt{v} routes \texttt{f} to index \texttt{i} \\
-\texttt{unmap(v, f)} & \texttt{v} forgets its mapping for \texttt{f} \\[3pt]
-\multicolumn{2}{@{}l}{\emph{Discipline}} \\
-\texttt{set\_policy(v, t, n)} & Give \texttt{v} policy type \texttt{t} and initial arity \texttt{n}; once, at spawn \\
-\texttt{set\_arm\_meta(v, i, m)} & Metadatum \texttt{m} on \texttt{v}'s arm \texttt{i}, read per \texttt{v}'s policy type \\[3pt]
-\multicolumn{2}{@{}l}{\emph{Survivor}} \\
-\texttt{designate(v, surv)} & Point \texttt{v}'s designated-survivor link at \texttt{surv} \\
-\texttt{undesignate(v)} & \texttt{v}'s parent's index now reaches that survivor \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\texttt{change\_arity} carries the one subtlety in the table.
-It sets \texttt{v}'s live arm count, and growing the count creates the new slot, which the substrate seeds from \texttt{v}'s current node state by \(\mathit{init\_slot\_state}_{D}\) (\cref{sec:compilation}).
-The structural attaching and detaching happen separately, through \texttt{adopt} and \texttt{emancipate}, each keyed by the stable per-edge index the parent minted at adoption time.
-
-Our single-purpose opcodes also mean that the tree can become transiently malformed \emph{within} a commit, in ways that the commit's atomicity hides from any observer.
-For an example from \cref{sec:hw-compile}, \Add{}'s commit raises the target's arity to \texttt{n+1} before the \texttt{adopt} that actually attaches a child.
-The atomic install means no \texttt{push} or \texttt{pop} ever sees this state, but the planner is free to issue commits whose intermediate states would not satisfy the well-formedness conditions of \cref{sec:controls}.
-
-The ISA is the compiler's interface, and not all of the state it names reaches the switch.
-Per-edge indices and arities are how the compiler addresses a tree position, and a PE stores neither.
-A PE stores its \texttt{Assoc} set, a \texttt{Map} naming the PIFO each admitted flow enters and the PE that holds it, and the designated-survivor link of \cref{sec:hw-survivor}.
-An index is meaningful only against the tree the compiler holds, so an \texttt{adopt} reaches the switch only by changing which PIFO an index names, and a \texttt{map} reaches it as the id of the PIFO that index names.
-The classification and survivor opcodes are thus the ones that write a PE.
-The lifecycle and structure opcodes are the compiler's own bookkeeping, and \texttt{change\_arity} reaches no PE at all.
-
-% \xxx[AM to Zhiyuan]{You told me \texttt{change\_arity} never reaches hardware, and I have written that.
-% One thing I could not work out: a new arm carries per-arm scheduler state, such as \WFQ{}'s virtual finish time for that arm, and that state has to live where ranks are computed.
-% If the arity never reaches a PE, what creates and seeds that slot, and is it the \texttt{set\_arm\_meta} that follows?}
-% ZG: here's the point: for a mapping table, we do not need to allocate a slot; a insert(k,v) will "create slot for K" if it's not exist.
-
-Which PE holds a given PIFO is the substrate's choice, written \texttt{pe(path)} and fixed at compile time as a function of the PIFO's position in the tree.
-A typical choice is the depth-by-PE layout of \cref{sec:background}, under which siblings share a PE.
-The planner consults \texttt{pe(path)} for a \texttt{spawn}'s \texttt{pe} argument and cannot otherwise observe it.
 
 \subsection{Compiling Policy Edits}\label{sec:hw-compile}
 
