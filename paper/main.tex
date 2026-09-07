@@ -930,7 +930,7 @@ and adds two key mechanisms:
 atomic state updates (\cref{sec:hw-commit})
 and support for $\Designate$ (\cref{sec:hw-survivor}).
 We define an ISA for this reconfiguration and demonstrate a compiler that targets it (\cref{sec:hw-isa,sec:hw-compile}).
-\xxx[as]{revisit: should ISA go first? also, hopefully \cref{sec:substrate-portability} collapses}
+\xxx[as]{revisit: should ISA go first}
 
 \subsection{The Substrate as it Stands}\label{sec:hw-substrate}
 
@@ -971,6 +971,20 @@ That is a local test at a single PIFO, since a node's \ensuremath{\mathit{pifo}}
 % \xxx[AM to Zhiyuan]{I decided to add this second requirement, and I think you'll see why. Is that okay?}
 
 % Our substrate is deliberately unambitious; we built it because the compiler needed something to run against and we wanted to understand precisely what features we needed from our substrate.
+
+\xxx[as]{Merge the below}
+
+The substrate also supplies the disciplines themselves.
+\(\mathit{init\_node\_state}_{D}\), \(\mathit{init\_slot\_state}_{D}\) and \(\mathit{rank}_{D}\) are the substrate's (\cref{sec:compilation}), and the menu it implements is the menu an operator may write from.
+That is a parameter, since a substrate with a shorter menu hosts Rio just as well over a smaller \pol.
+If the network operator wishes to install a discipline that the menu lacks, they need to supply the substrate with an \(\mathit{init\_node\_state}_{D}\), an \(\mathit{init\_slot\_state}_{D}\) and a \(\mathit{rank}_{D}\) of their own.
+A small programmable core beside the PIFO tree would be one way to supply this.
+
+The guard language is a parameter in the same way.
+Our substrate can test the guard of \cref{sec:sequences}, and a substrate that can test more predicates offers richer guards to the network operator or transition planner.
+
+The designated-survivor link of \cref{sec:hw-survivor} is an optimization rather than a requirement, since a substrate without one lowers \Designate{} to a literal \Strict-2 wrapper and accepts the cost of laying out some trees repeatedly.
+The bar for hosting Rio is therefore atomic commits and a predicate the substrate can wait on, and we expect other PIFO substrates to clear both and to be able to adopt the link~\cite{Shrivastav19,Gao22,Yao23,vPIFO,Atre24,Alcoz25}.
 
 \subsection{Making a Commit Atomic}\label{sec:hw-commit}
 
@@ -1226,19 +1240,6 @@ Because of these two walks, admitting a flow writes an entry at every node on it
 A switch could instead classify once at ingress, compute a packet's whole path there, and leave the interior nodes as pure rankers.
 We keep classification distributed, since it leaves each PE self-contained and matches the depth-by-PE layout, whereas a central classifier would have been one structure that every packet must visit before the tree.
 
-\subsection{Hosting Rio on Another Substrate}\label{sec:substrate-portability}
-
-The substrate also supplies the disciplines themselves.
-\(\mathit{init\_node\_state}_{D}\), \(\mathit{init\_slot\_state}_{D}\) and \(\mathit{rank}_{D}\) are the substrate's (\cref{sec:compilation}), and the menu it implements is the menu an operator may write from.
-That is a parameter, since a substrate with a shorter menu hosts Rio just as well over a smaller \pol.
-If the network operator wishes to install a discipline that the menu lacks, they need to supply the substrate with an \(\mathit{init\_node\_state}_{D}\), an \(\mathit{init\_slot\_state}_{D}\) and a \(\mathit{rank}_{D}\) of their own.
-A small programmable core beside the PIFO tree would be one way to supply this.
-
-The guard language is a parameter in the same way.
-Our substrate can test the guard of \cref{sec:sequences}, and a substrate that can test more predicates offers richer guards to the network operator or transition planner.
-
-The designated-survivor link of \cref{sec:hw-survivor} is an optimization rather than a requirement, since a substrate without one lowers \Designate{} to a literal \Strict-2 wrapper and accepts the cost of laying out some trees repeatedly.
-The bar for hosting Rio is therefore atomic commits and a predicate the substrate can wait on, and we expect other PIFO substrates to clear both and to be able to adopt the link~\cite{Shrivastav19,Gao22,Yao23,vPIFO,Atre24,Alcoz25}.
 
 \section{Evaluation}\label{sec:eval}
 
