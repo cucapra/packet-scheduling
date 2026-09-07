@@ -35,7 +35,7 @@ def main() -> None:
     render_delay_comparison(
         paths, runs, parse_flow_mapping(args.flow_labels), args.dpi
     )
-    print(f"Generated {paths.svg} and {paths.png}")
+    print(f"Generated {paths.svg}, {paths.png}, {paths.packets}, and {paths.data.parent / 'plot.py'}")
 
 
 if __name__ == "__main__":

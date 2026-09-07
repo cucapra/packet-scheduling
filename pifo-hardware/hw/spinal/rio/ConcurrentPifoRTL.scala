@@ -18,6 +18,8 @@ class ConcurrentPifoRTL(config: PifoConfig) extends Component {
     val popPortEmpty = out Bool ()
     // Pulses when a successful pop leaves its virtual PIFO with no entries.
     val portDrained = master(Flow(UInt(config.bitPort bits)))
+    // Accepted pushes invalidate remembered drain notifications on port reuse.
+    val portPushed = Vec(master(Flow(UInt(config.bitPort bits))), 2)
   }
 
   private val countWidth = config.bitPifo + 1
@@ -127,6 +129,10 @@ class ConcurrentPifoRTL(config: PifoConfig) extends Component {
   val portDrained = popFire && popWasLastForPort && !samePortPush
   io.portDrained.valid := RegNext(portDrained) init (False)
   io.portDrained.payload := RegNext(io.popRequest.port) init (0)
+  io.portPushed(0).valid := RegNext(push1Fire) init (False)
+  io.portPushed(0).payload := RegNext(io.push1.port) init (0)
+  io.portPushed(1).valid := RegNext(push2Fire) init (False)
+  io.portPushed(1).payload := RegNext(io.push2.port) init (0)
 
   io.popResponse.valid := RegNext(io.popRequest.valid)
   io.popResponse.port := RegNext(io.popRequest.port)

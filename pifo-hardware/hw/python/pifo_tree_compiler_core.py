@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from pifo_experiment_config import (
     InitialTreeConfig,
@@ -24,6 +24,7 @@ POLICY_TO_BRAIN = {
 class TransactionPlan:
     initial_commands: tuple[ControllerCommand, ...]
     transaction_commands: tuple[ControllerCommand, ...]
+    cleanup_commands: tuple[ControllerCommand, ...]
     name: str
     mode: str
     cycle: int
@@ -53,8 +54,10 @@ def build_transaction_plan(
         initial_tree, reconfiguration
     )
     drain: tuple[int, int] | None = None
+    retired_names: set[str] = set()
 
     if reconfiguration.mode == "full_transitive":
+        retired_names = set(initial_tree.nodes)
         physical_target = _allocate_fresh_tree(
             target_tree, initial_tree, num_vpifos
         )
@@ -67,6 +70,12 @@ def build_transaction_plan(
         )
         drain = (old_root.engine_id, old_root.vpifo_id)
     elif reconfiguration.mode == "confined_transitive":
+        _, _, prefix, affected = _confined_boundary(initial_tree, target_tree)
+        retired_names = {
+            name
+            for flow in affected.intersection(initial_tree.flow_paths)
+            for name in initial_tree.flow_paths[flow][len(prefix):]
+        }
         transaction_commands, drain = _configure_confined_transitive(
             old_tree=initial_tree,
             target_tree=target_tree,
@@ -86,12 +95,51 @@ def build_transaction_plan(
     else:  # Defensive: PolicyChangeConfig validates this first.
         raise ValueError(f"unsupported reconfiguration mode {reconfiguration.mode!r}")
 
+    # Quiesce every retired input at publication, including flows whose new
+    # path no longer uses that PE. A guard alone cannot stop new insertions.
+    retired = {
+        (initial_tree.nodes[name].engine_id, initial_tree.nodes[name].vpifo_id)
+        for name in retired_names
+    }
+    new_pre_slots = {
+        (command.engine_id, command.vpifo_id)
+        for command in transaction_commands if command.command == "UpdateMapperPre"
+    }
+    invalid_pre = tuple(
+        replace(command, data=0)
+        for command in initial_commands
+        if command.command == "UpdateMapperPre"
+        and (command.engine_id, command.data) in retired
+        and (command.engine_id, command.vpifo_id) not in new_pre_slots
+    )
+    transaction_commands = transaction_commands[:-1] + invalid_pre + transaction_commands[-1:]
+    cleanup = [
+        ControllerCommand("GuardDrain", engine, vpifo, 0, 0)
+        for engine, vpifo in sorted(retired)
+    ]
+    cleanup.extend(invalid_pre)
+    cleanup.extend(
+        replace(command, data=0)
+        for command in initial_commands
+        if command.command in {"UpdateMapperPost", "UpdateBrainEngine", "UpdateBrainFlowState"}
+        and (command.engine_id, command.vpifo_id) in retired
+    )
+    cleanup.extend(
+        ControllerCommand("UpdateBrainState", engine, vpifo, 0, 0)
+        for engine, vpifo in sorted(retired)
+    )
+    # Keep the live front-rewrite alias: output still addresses the old root.
+    # Additive/reset moves have no retired slots, but still get a cleanup commit
+    # so every compiled experiment has the same publication/cleanup lifecycle.
+    cleanup.append(_commit_command())
+
     gated_flows = tuple(
         sorted(set(target_tree.flow_paths).difference(initial_tree.flow_paths))
     )
     return TransactionPlan(
         initial_commands=initial_commands,
         transaction_commands=transaction_commands,
+        cleanup_commands=tuple(cleanup),
         name=reconfiguration.name,
         mode=reconfiguration.mode,
         cycle=reconfiguration.cycle,

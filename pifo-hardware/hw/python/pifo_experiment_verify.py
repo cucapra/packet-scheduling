@@ -50,6 +50,16 @@ class TransactionTiming:
     finish_cycle: int
     drain_cycle: int
     instruction_count: int | None = None
+    commit_applied_cycle: int | None = None
+    commit_cycles: int | None = None
+    bank_cleanup_cycles: int | None = None
+    cleanup_instruction_count: int | None = None
+    cleanup_commit_cycles: int | None = None
+    cleanup_bank_cleanup_cycles: int | None = None
+
+    @property
+    def publication_cycle(self) -> int:
+        return self.commit_applied_cycle if self.commit_applied_cycle is not None else self.commit_cycle
 
     @property
     def staging_cycles(self) -> int:
@@ -61,6 +71,8 @@ class TransactionTiming:
 
     @property
     def synchronization_cycles(self) -> int:
+        if self.bank_cleanup_cycles is not None:
+            return self.bank_cleanup_cycles
         return self.finish_cycle - self.commit_cycle
 
 
@@ -131,7 +143,7 @@ def read_transaction_timing(path: Path) -> TransactionTiming:
             raise ValueError(
                 f"{path}: missing event fields: {', '.join(sorted(missing))}"
             )
-        rows = list(reader)
+        rows = [row for row in reader if row.get("event") != "cleanup_commit"]
     if len(rows) != 1:
         raise ValueError(f"{path}: expected exactly one reconfiguration event")
     row = rows[0]
@@ -148,6 +160,13 @@ def read_transaction_timing(path: Path) -> TransactionTiming:
             if (row.get("instruction_count") or "").strip()
             else None
         ),
+        **{
+            name: _integer(row[name]) if (row.get(name) or "").strip() else None
+            for name in (
+                "commit_applied_cycle", "commit_cycles", "bank_cleanup_cycles",
+                "cleanup_instruction_count", "cleanup_commit_cycles", "cleanup_bank_cleanup_cycles",
+            )
+        },
     )
     if timing.mode != "full_transitive":
         raise ValueError(f"{path}: phase verification requires full_transitive mode")
@@ -195,21 +214,21 @@ def verify_rr_to_sp_phases(
     # request accepted on that edge to the old bank; only later admissions use
     # the newly active mappings.
     old_packets = [
-        packet for packet in packets if packet.admitted_cycle <= timing.commit_cycle
+        packet for packet in packets if packet.admitted_cycle <= timing.publication_cycle
     ]
     new_packets = [
-        packet for packet in packets if packet.admitted_cycle > timing.commit_cycle
+        packet for packet in packets if packet.admitted_cycle > timing.publication_cycle
     ]
     commit_edge_packets = [
-        packet for packet in packets if packet.admitted_cycle == timing.commit_cycle
+        packet for packet in packets if packet.admitted_cycle == timing.publication_cycle
     ]
     before_commit = [
-        packet for packet in packets if packet.completed_cycle < timing.commit_cycle
+        packet for packet in packets if packet.completed_cycle < timing.publication_cycle
     ]
     during_drain = [
         packet
         for packet in packets
-        if timing.commit_cycle <= packet.completed_cycle < timing.drain_cycle
+        if timing.publication_cycle <= packet.completed_cycle < timing.drain_cycle
     ]
     after_drain = [
         packet for packet in packets if packet.completed_cycle >= timing.drain_cycle
@@ -226,7 +245,7 @@ def verify_rr_to_sp_phases(
     old_backlog = [
         packet
         for packet in old_packets
-        if packet.completed_cycle >= timing.commit_cycle
+        if packet.completed_cycle >= timing.publication_cycle
     ]
 
     checks_by_fact: list[tuple[str, str, list[VerificationCheck]]] = [
@@ -371,6 +390,11 @@ def verify_rr_to_sp_phases(
             "drain_cycles": timing.drain_cycles,
             "synchronization_cycles": timing.synchronization_cycles,
             "instruction_count": timing.instruction_count,
+            "commit_applied_cycle": timing.commit_applied_cycle,
+            "commit_cycles": timing.commit_cycles,
+            "cleanup_instruction_count": timing.cleanup_instruction_count,
+            "cleanup_commit_cycles": timing.cleanup_commit_cycles,
+            "cleanup_bank_cleanup_cycles": timing.cleanup_bank_cleanup_cycles,
         },
         "packet_counts": {
             "total": len(packets),
@@ -474,7 +498,7 @@ def _report_markdown(report: Mapping[str, object]) -> str:
         "",
         (
             f"Start **{event['start_cycle']}**, commit **{event['commit_cycle']}**, "
-            f"drain **{event['drain_cycle']}**, finish **{event['finish_cycle']}**. "
+            f"drain **{event['drain_cycle']}**, finish (double-buffer cleanup done) **{event['finish_cycle']}**. "
             f"Staging took **{event['staging_cycles']} cycles**{instruction_text} and old-tree drain "
             f"took **{event['drain_cycles']} cycles**."
         ),
@@ -486,9 +510,15 @@ def _report_markdown(report: Mapping[str, object]) -> str:
             f"**{counts['old_backlog_at_commit']} old packets** were pending at commit."
         ),
         "",
-        "| Fact / check | Expected | Observed | Result |",
-        "| --- | ---: | ---: | :---: |",
     ]
+    if event.get("commit_cycles") is not None:
+        lines.extend((
+            "",
+            f"Install commit: {event['instruction_count']} instructions / {event['commit_cycles']} cycles to publication. "
+            f"Cleanup commit: {event['cleanup_instruction_count']} instructions / {event['cleanup_commit_cycles']} cycles "
+            f"to publication (including guard wait); final bank cleanup: {event['cleanup_bank_cleanup_cycles']} cycles.",
+        ))
+    lines.extend(("", "| Fact / check | Expected | Observed | Result |", "| --- | ---: | ---: | :---: |"))
     facts = report["facts"]
     assert isinstance(facts, Sequence)
     for fact in facts:

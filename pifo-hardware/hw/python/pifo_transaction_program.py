@@ -15,6 +15,7 @@ SUPPORTED_CONTROL_COMMANDS = {
     "UpdateBrainEngine",
     "UpdateBrainState",
     "UpdateBrainFlowState",
+    "GuardDrain",
 }
 SUPPORTED_TRANSACTION_MODES = {
     "direct",
@@ -42,6 +43,7 @@ TRANSACTION_FIELDS = {
     "drainRoot",
     "gateFlows",
     "minStopCycles",
+    "cleanupOf",
     "command",
     "engineId",
     "vPifoId",
@@ -110,11 +112,18 @@ class TimedTransaction:
     drain_root: tuple[int, int] | None = None
     gated_flow_ids: tuple[int, ...] = ()
     minimum_stop_cycles: int = 0
+    cleanup_of: str = ""
 
     def __post_init__(self) -> None:
         if self.at_cycle is not None and self.at_cycle < 0:
             raise ValueError("transaction cycle must be non-negative")
         _require_token(self.name, "transaction name")
+        if self.cleanup_of:
+            _require_token(self.cleanup_of, "cleanupOf")
+            if self.at_cycle is None or self.mode != "direct":
+                raise ValueError("cleanupOf requires a timed direct transaction")
+            if self.drain_root is not None or self.gated_flow_ids:
+                raise ValueError("cleanupOf cannot carry drainRoot or gateFlows; use GuardDrain commands")
         if self.mode not in SUPPORTED_TRANSACTION_MODES:
             raise ValueError(
                 "transaction mode must be direct, in_place, "
@@ -170,6 +179,15 @@ class TransactionProgram:
         cycles = [transaction.at_cycle for transaction in self.transactions]
         if cycles != sorted(cycles):
             raise ValueError("timed transactions must be ordered by cycle")
+        preceding: set[str] = set()
+        cleaned: set[str] = set()
+        for transaction in self.transactions:
+            if transaction.cleanup_of:
+                if transaction.cleanup_of not in preceding or transaction.cleanup_of in cleaned:
+                    raise ValueError("cleanupOf must identify an earlier, not-yet-cleaned transition")
+                cleaned.add(transaction.cleanup_of)
+            else:
+                preceding.add(transaction.name)
         max_flow_id = 1 << (
             self.hardware.num_engines.bit_length()
             + (self.hardware.num_vpifos - 1).bit_length()
@@ -251,6 +269,8 @@ def write_transaction_program(path: Path, program: TransactionProgram) -> None:
             )
         if transaction.minimum_stop_cycles:
             metadata.append(f"minStopCycles={transaction.minimum_stop_cycles}")
+        if transaction.cleanup_of:
+            metadata.append(f"cleanupOf={transaction.cleanup_of}")
         prefix = " ".join(metadata)
         lines.extend(
             f"{prefix} {controller_command_line(command)}"
@@ -332,6 +352,7 @@ def load_transaction_program(path: Path) -> TransactionProgram:
             drain_root,
             gated_flow_ids,
             minimum_stop_cycles,
+            fields.get("cleanupOf", ""),
         )
         group_key = (at_text, fields["name"])
         if not grouped or grouped[-1][0] != metadata:
@@ -361,6 +382,7 @@ def load_transaction_program(path: Path) -> TransactionProgram:
             drain_root=metadata[5],
             gated_flow_ids=metadata[6],
             minimum_stop_cycles=metadata[7],
+            cleanup_of=metadata[8],
             commands=tuple(commands),
         )
         for metadata, commands in grouped

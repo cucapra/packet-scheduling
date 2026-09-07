@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import csv
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Mapping, Sequence
 
@@ -11,81 +10,20 @@ from pifo_figures.bandwidth import BandwidthSample, build_samples, write_data
 from pifo_figures.common import (
     COLORS,
     FigurePaths,
-    PacketTiming,
+    PACKET_TRACE_FIELDS,
+    PacketOutcome,
     PolicyEvent,
     flow_name,
     load_pyplot,
+    commit_accounting,
+    drain_label,
+    finish_label,
+    completed_timings,
+    packet_outcome_row,
+    read_packet_outcomes,
+    write_packet_outcomes,
 )
-
-
-OUTCOME_FIELDS = {
-    "request_id",
-    "flow",
-    "size_bytes",
-    "push_cycle",
-    "pop_cycle",
-    "dropped",
-}
-
-
-@dataclass(frozen=True)
-class PacketOutcome:
-    request_id: int
-    flow_id: int
-    size_bytes: int
-    push_cycle: int
-    pop_cycle: int | None
-    dropped: bool
-
-    @property
-    def delay(self) -> int | None:
-        return None if self.pop_cycle is None else self.pop_cycle - self.push_cycle
-
-
-def read_packet_outcomes(path: Path) -> list[PacketOutcome]:
-    with path.open(newline="", encoding="utf-8-sig") as source:
-        reader = csv.DictReader(source)
-        missing = OUTCOME_FIELDS.difference(reader.fieldnames or ())
-        if missing:
-            raise ValueError(
-                f"{path}: missing packet outcome fields: {', '.join(sorted(missing))}"
-            )
-        outcomes: list[PacketOutcome] = []
-        seen: set[int] = set()
-        for line_number, row in enumerate(reader, start=2):
-            try:
-                dropped = _parse_bool(row["dropped"])
-                pop_text = row["pop_cycle"].strip()
-                outcome = PacketOutcome(
-                    request_id=int(row["request_id"], 0),
-                    flow_id=int(row["flow"], 0),
-                    size_bytes=int(row["size_bytes"], 0),
-                    push_cycle=int(row["push_cycle"], 0),
-                    pop_cycle=int(pop_text, 0) if pop_text else None,
-                    dropped=dropped,
-                )
-                _validate_outcome(outcome, seen)
-            except (KeyError, TypeError, ValueError) as error:
-                raise ValueError(f"{path}:{line_number}: {error}") from error
-            outcomes.append(outcome)
-            seen.add(outcome.request_id)
-    if not outcomes:
-        raise ValueError(f"{path}: no packet outcomes")
-    return outcomes
-
-
-def completed_timings(outcomes: Sequence[PacketOutcome]) -> list[PacketTiming]:
-    return [
-        PacketTiming(
-            request_id=outcome.request_id,
-            flow_id=outcome.flow_id,
-            size_bytes=outcome.size_bytes,
-            input_cycle=outcome.push_cycle,
-            output_cycle=outcome.pop_cycle,
-        )
-        for outcome in outcomes
-        if not outcome.dropped and outcome.pop_cycle is not None
-    ]
+from pifo_figures.standalone import write_plot_script
 
 
 def throughput_samples(
@@ -126,6 +64,11 @@ def render_throughput(
         link_bytes_per_cycle,
     )
     write_data(paths.data, flow_ids, samples)
+    write_packet_outcomes(paths.packets, outcomes, labels)
+    write_plot_script(
+        paths, "bandwidth", [(title, event)], labels, dpi,
+        f"{title}: Hann-smoothed output bandwidth ({event.mode}, {window_cycles}-cycle window)",
+    )
     render_matplotlib(paths, flow_ids, samples, event, labels, dpi, title)
 
 
@@ -138,7 +81,9 @@ def render_delay_scatter(
     title: str,
 ) -> None:
     paths.data.parent.mkdir(parents=True, exist_ok=True)
-    _write_delay_data(paths.data, outcomes, event)
+    write_packet_outcomes(paths.data, outcomes, labels)
+    write_packet_outcomes(paths.packets, outcomes, labels)
+    write_plot_script(paths, "delay", [(title, event)], labels, dpi, title)
     plt, line_type = load_pyplot()
     figure, axis = plt.subplots(figsize=(10, 6.5), constrained_layout=True)
     flow_ids = sorted({outcome.flow_id for outcome in outcomes})
@@ -157,6 +102,11 @@ def render_delay_comparison(
 ) -> None:
     paths.data.parent.mkdir(parents=True, exist_ok=True)
     _write_comparison_manifest(paths.data, runs)
+    write_comparison_packets(paths.packets, runs, labels)
+    write_plot_script(
+        paths, "delay", [(title, event) for title, _, event in runs], labels, dpi,
+        "R2–R4 packet-delay comparison (shared axes)", data_name="packets.csv",
+    )
     plt, line_type = load_pyplot()
     figure, axes = plt.subplots(
         1, len(runs), figsize=(18, 5.8), sharex=True, sharey=True, constrained_layout=True
@@ -188,6 +138,7 @@ def render_throughput_comparison(
     link_bytes_per_cycle: float,
 ) -> None:
     paths.data.parent.mkdir(parents=True, exist_ok=True)
+    write_comparison_packets(paths.packets, runs, labels)
     plt, line_type = load_pyplot()
     figure, axes = plt.subplots(
         1, len(runs), figsize=(15, 5.8), sharex=True, sharey=True, constrained_layout=True
@@ -232,6 +183,10 @@ def render_throughput_comparison(
         f"R3 whole-tree vs R4 confined throughput ({window_cycles}-cycle Hann window)"
     )
     _write_throughput_comparison(paths.data, all_rows, flow_ids)
+    write_plot_script(
+        paths, "throughput-comparison", [(title, event) for title, _, event in runs], labels, dpi,
+        f"R3 whole-tree vs R4 confined throughput ({window_cycles}-cycle Hann window)",
+    )
     figure.savefig(paths.svg, bbox_inches="tight")
     figure.savefig(paths.png, dpi=dpi, bbox_inches="tight")
     plt.close(figure)
@@ -298,15 +253,13 @@ def _draw_delay_panel(
 
 
 def _draw_event_lines(axis, event: PolicyEvent) -> None:
-    finish_label = "traffic resumed" if event.mode == "stop_the_world" else "config sync done"
-    drain_label = "old tree captured" if event.mode == "stop_the_world" else "old tree drained"
     markers = (
         (0, "tab:blue", "-", "start"),
         (event.commit_cycle - event.start_cycle, "tab:orange", "--", "commit accepted"),
-        (event.drain_cycle - event.start_cycle, "tab:purple", ":", drain_label)
+        (event.drain_cycle - event.start_cycle, "tab:purple", ":", drain_label(event))
         if event.drain_cycle is not None
         else None,
-        (event.finish_cycle - event.start_cycle, "tab:green", "-.", finish_label),
+        (event.finish_cycle - event.start_cycle, "tab:green", "-.", finish_label(event)),
     )
     for marker in markers:
         if marker is None:
@@ -320,27 +273,27 @@ def _draw_event_lines(axis, event: PolicyEvent) -> None:
             alpha=0.9,
             label=_label,
         )
+    if event.resume_cycle is not None:
+        axis.axvline(event.resume_cycle - event.start_cycle, color="0.4", linestyle="--", label="traffic resumed")
+    accounting = commit_accounting(event)
+    if accounting:
+        axis.text(0.01, 0.01, accounting.replace("; ", "\n"), transform=axis.transAxes,
+                  va="bottom", fontsize=7, color="0.35")
 
 
-def _write_delay_data(
-    path: Path, outcomes: Sequence[PacketOutcome], event: PolicyEvent
+def write_comparison_packets(
+    path: Path,
+    runs: Sequence[tuple[str, Sequence[PacketOutcome], PolicyEvent]],
+    labels: Mapping[int, str] | None = None,
 ) -> None:
+    """Include every run's raw packets, even for averaged throughput figures."""
+    path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", newline="", encoding="utf-8") as destination:
         writer = csv.writer(destination, lineterminator="\n")
-        writer.writerow(
-            ("request_id", "flow", "push_cycle", "pop_cycle", "delay_cycles", "dropped")
-        )
-        for outcome in outcomes:
-            writer.writerow(
-                (
-                    outcome.request_id,
-                    outcome.flow_id,
-                    outcome.push_cycle,
-                    outcome.pop_cycle if outcome.pop_cycle is not None else "",
-                    outcome.delay if outcome.delay is not None else "",
-                    str(outcome.dropped).lower(),
-                )
-            )
+        writer.writerow(("run", *PACKET_TRACE_FIELDS))
+        for title, outcomes, _ in runs:
+            for packet in sorted(outcomes, key=lambda packet: packet.request_id):
+                writer.writerow((title, *packet_outcome_row(packet, labels or {})))
 
 
 def _write_comparison_manifest(
@@ -349,7 +302,8 @@ def _write_comparison_manifest(
 ) -> None:
     with path.open("w", newline="", encoding="utf-8") as destination:
         writer = csv.writer(destination, lineterminator="\n")
-        writer.writerow(("run", "packets", "dropped", "start", "commit", "drain", "finish"))
+        writer.writerow(("run", "packets", "dropped", "start", "commit", "drain", "finish",
+                         "instruction_count", "commit_cycles", "cleanup_instruction_count", "cleanup_commit_cycles"))
         for title, outcomes, event in runs:
             writer.writerow(
                 (
@@ -360,6 +314,10 @@ def _write_comparison_manifest(
                     event.commit_cycle,
                     event.drain_cycle if event.drain_cycle is not None else "",
                     event.finish_cycle,
+                    event.instruction_count,
+                    event.commit_cycles,
+                    event.cleanup_instruction_count,
+                    event.cleanup_commit_cycles,
                 )
             )
 
@@ -384,23 +342,3 @@ def _write_throughput_comparison(
                     *(sample.flow_link_fraction.get(flow_id, 0.0) for flow_id in flow_ids),
                 )
             )
-
-
-def _validate_outcome(outcome: PacketOutcome, seen: set[int]) -> None:
-    if outcome.request_id in seen:
-        raise ValueError(f"duplicate request ID {outcome.request_id}")
-    if outcome.flow_id < 0 or outcome.size_bytes <= 0 or outcome.push_cycle < 0:
-        raise ValueError("flow/push must be non-negative and size must be positive")
-    if outcome.dropped != (outcome.pop_cycle is None):
-        raise ValueError("dropped must be true exactly when pop_cycle is blank")
-    if outcome.pop_cycle is not None and outcome.pop_cycle < outcome.push_cycle:
-        raise ValueError("pop_cycle precedes push_cycle")
-
-
-def _parse_bool(value: str) -> bool:
-    normalized = value.strip().lower()
-    if normalized == "true":
-        return True
-    if normalized == "false":
-        return False
-    raise ValueError(f"invalid boolean {value!r}")

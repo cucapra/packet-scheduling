@@ -388,7 +388,8 @@ class PifoExperimentFiguresTest(unittest.TestCase):
             self.assertIn("config=2 inst", bandwidth_text)
             scatter_text = scatter.read_text(encoding="utf-8")
             self.assertIn("Packet input", scatter_text)
-            for color in ("#1f77b4", "#ff7f0e", "#9467bd"):
+            self.assertIn("finish: double-buffer cleanup done", scatter_text)
+            for color in ("#1f77b4", "#ff7f0e", "#9467bd", "#2ca02c"):
                 # Each event color has an input-axis line, an output-axis line,
                 # and a legend sample.
                 self.assertGreaterEqual(

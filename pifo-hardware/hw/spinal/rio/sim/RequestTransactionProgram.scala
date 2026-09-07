@@ -31,7 +31,8 @@ case class ScheduledControlTransaction(
     drainTarget: Option[TreeDrainTarget],
     gatedFlowIds: Set[Int],
     minimumStopCycles: Long,
-    instructions: Vector[RequestControlInstruction]
+    instructions: Vector[RequestControlInstruction],
+    cleanupOf: Option[String] = None
 ) {
   require(scheduledCycle >= 0, "transaction cycle must be non-negative")
   require(name.nonEmpty, "transaction name must not be empty")
@@ -44,6 +45,9 @@ case class ScheduledControlTransaction(
     s"$mode requires drainRoot"
   )
   require(gatedFlowIds.forall(_ >= 0), "gateFlows IDs must be non-negative")
+  require(cleanupOf.isEmpty || mode == "direct", "cleanupOf requires a direct transaction")
+  require(cleanupOf.isEmpty || (drainTarget.isEmpty && gatedFlowIds.isEmpty),
+    "cleanupOf cannot carry drainRoot or gateFlows; use GuardDrain commands")
   require(minimumStopCycles >= 0, "minStopCycles must be non-negative")
   require(
     mode == "stop_the_world" || minimumStopCycles == 0,
@@ -73,6 +77,17 @@ case class RequestTransactionProgram(
     "gateFlows contains a reserved or out-of-range flow ID"
   )
   private val allInstructions = initialInstructions ++ transactions.flatMap(_.instructions)
+  private val preceding = mutable.Set.empty[String]
+  private val cleaned = mutable.Set.empty[String]
+  transactions.foreach { transaction =>
+    transaction.cleanupOf match {
+      case Some(name) =>
+        require(preceding.contains(name) && !cleaned.contains(name),
+          "cleanupOf must identify an earlier, not-yet-cleaned transition")
+        cleaned += name
+      case None => preceding += transaction.name
+    }
+  }
   require(
     allInstructions.forall(instruction => instruction.engineId >= 1 && instruction.engineId <= hardware.numEngines),
     "transaction command engineId is out of range"
@@ -96,7 +111,7 @@ object RequestTransactionProgram {
     "prefetchBufferDepth"
   )
   private val MetadataFields =
-    Set("at", "name", "mode", "before", "after", "drainRoot", "gateFlows", "minStopCycles")
+    Set("at", "name", "mode", "before", "after", "drainRoot", "gateFlows", "minStopCycles", "cleanupOf")
   private val CommandFields = Set("command", "engineId", "vPifoId", "flowId", "data")
   private val TransactionFields = MetadataFields ++ CommandFields
 
@@ -109,7 +124,8 @@ object RequestTransactionProgram {
       after: String,
       drainTarget: Option[TreeDrainTarget],
       gatedFlowIds: Set[Int],
-      minimumStopCycles: Long
+      minimumStopCycles: Long,
+      cleanupOf: Option[String]
   )
 
   def load(path: Path): RequestTransactionProgram = {
@@ -168,7 +184,8 @@ object RequestTransactionProgram {
         after = fields.getOrElse("after", ""),
         drainTarget = drainTarget,
         gatedFlowIds = gatedFlowIds,
-        minimumStopCycles = minimumStopCycles
+        minimumStopCycles = minimumStopCycles,
+        cleanupOf = fields.get("cleanupOf")
       )
       val key = atText -> metadata.name
       if (groups.isEmpty || groups.last._1 != metadata) {
@@ -197,6 +214,7 @@ object RequestTransactionProgram {
     initial.headOption.foreach { case (metadata, _) =>
       require(metadata.mode == "direct", s"$path: at=init package mode must be direct")
       require(metadata.drainTarget.isEmpty, s"$path: at=init package cannot have drainRoot")
+      require(metadata.cleanupOf.isEmpty, s"$path: at=init package cannot have cleanupOf")
       require(metadata.minimumStopCycles == 0, s"$path: at=init package cannot have minStopCycles")
     }
     val timed = parsed.collect { case (metadata, instructions) if metadata.cycle.nonEmpty =>
@@ -209,7 +227,8 @@ object RequestTransactionProgram {
         drainTarget = metadata.drainTarget,
         gatedFlowIds = metadata.gatedFlowIds,
         minimumStopCycles = metadata.minimumStopCycles,
-        instructions = instructions
+        instructions = instructions,
+        cleanupOf = metadata.cleanupOf
       )
     }
     RequestTransactionProgram(

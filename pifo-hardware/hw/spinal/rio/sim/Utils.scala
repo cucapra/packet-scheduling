@@ -32,6 +32,7 @@ case class PifoMeshSimController(
     "UpdateMapperPost" -> ControlCommand.UpdateMapperPost,
     "UpdateMapperNonExist" -> ControlCommand.UpdateMapperNonExist,
     "CommitMapper" -> ControlCommand.CommitMapper,
+    "GuardDrain" -> ControlCommand.GuardDrain,
     "UpdateBrainEngine" -> ControlCommand.UpdateBrainEngine,
     "UpdateBrainState" -> ControlCommand.UpdateBrainState,
     "UpdateBrainFlowState" -> ControlCommand.UpdateBrainFlowState
@@ -63,6 +64,7 @@ case class PifoMeshSimController(
       onAccepted: () => Unit = () => ()
   ): Unit = {
     require(engineId >= 1 && engineId <= config.numEngines, s"Invalid control engineId: $engineId")
+    val previousCommitEpoch = dut.io.commitEpoch.toBigInt
     dut.io.controlRequest.valid #= true
     dut.io.controlRequest.payload.command #= cmd
     dut.io.controlRequest.payload.engineId #= engineId
@@ -81,7 +83,9 @@ case class PifoMeshSimController(
     // apply it and finish restoring the backup banks before returning, so callers
     // can safely begin another transaction.
     if (cmd == ControlCommand.CommitMapper) {
-      dut.clockDomain.waitSamplingWhere(!dut.io.commitReady.toBoolean)
+      // A guarded commit can sit in the queue long after a preceding commit's
+      // bank copy. Observe its publication, not an unrelated busy interval.
+      dut.clockDomain.waitSamplingWhere(dut.io.commitEpoch.toBigInt != previousCommitEpoch)
       onCommitApplied()
       dut.clockDomain.waitSamplingWhere(dut.io.commitReady.toBoolean)
     }
@@ -186,6 +190,7 @@ case class PifoMeshSimController(
    *     UpdateMapperPost      writes deque mapper: inputId=vPifoId @@ flowId, outputId=data
    *     UpdateMapperNonExist  installs a local underflow rewrite: source=vPifoId, target=data
    *     CommitMapper          atomically publishes all pending mapper updates; payload fields are still required
+   *     GuardDrain            blocks all following commands until engineId:vPifoId has drained (flowId/data=0)
    *     UpdateBrainEngine     writes brain engine type: inputId=vPifoId, outputId=data
    *     UpdateBrainState      writes brain state: inputId=vPifoId, outputId=data
    *     UpdateBrainFlowState  writes flow state: inputId=vPifoId @@ flowId, outputId=data

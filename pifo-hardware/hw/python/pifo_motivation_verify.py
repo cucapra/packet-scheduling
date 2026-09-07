@@ -79,7 +79,7 @@ def validate_run(case: str, run_dir: Path) -> tuple[list[PacketOutcome], PolicyE
             for outcome in outcomes
             if outcome.pop_cycle is not None
             and event.drain_cycle is not None
-            and event.drain_cycle < outcome.pop_cycle < event.finish_cycle
+            and event.drain_cycle < outcome.pop_cycle < event.traffic_resume_cycle
         ]
         if completions_during_stop:
             raise ValueError("r2-stop-the-world: packets completed while traffic was stopped")
@@ -146,7 +146,10 @@ def validate_comparison(output_root: Path) -> str:
             f"{case}: packets={len(outcomes)} dropped={event.dropped_packets} "
             f"instructions={event.instruction_count} start={event.start_cycle} "
             f"commit={event.commit_cycle} drain={event.drain_cycle} "
-            f"finish={event.finish_cycle}"
+            f"finish={event.finish_cycle} (double-buffer cleanup done) "
+            f"commit_cycles={event.commit_cycles} "
+            f"cleanup_instructions={event.cleanup_instruction_count} "
+            f"cleanup_commit_cycles={event.cleanup_commit_cycles}"
         )
     lines.append(f"drain duration: R3={r3_drain} cycles, R4={r4_drain} cycles")
     r2_gap = _maximum_completion_gap(validated["r2-stop-the-world"][0])
@@ -223,7 +226,7 @@ def _peak_outstanding_packets(
             and (outcome.pop_cycle is None or outcome.pop_cycle > cycle)
             for outcome in outcomes
         )
-        for cycle in range(event.start_cycle, event.finish_cycle + 1)
+        for cycle in range(event.start_cycle, event.traffic_resume_cycle + 1)
     )
 
 

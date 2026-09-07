@@ -40,6 +40,7 @@ def run_experiment(args: argparse.Namespace) -> None:
     transactions = output_dir / "transactions.txt"
     requests = output_dir / "requests.csv"
     results = output_dir / "request-results.csv"
+    outcomes = output_dir / "packet-outcomes.csv"
     events = output_dir / "reconfiguration-events.csv"
     write_effective_config(effective_config, config)
     write_tree_move_program(tree_move, config)
@@ -83,6 +84,8 @@ def run_experiment(args: argparse.Namespace) -> None:
     common_figure_args = (
         "--results",
         results,
+        "--outcomes",
+        outcomes,
         "--events",
         events,
         "--flow-labels",
@@ -127,7 +130,7 @@ def run_experiment(args: argparse.Namespace) -> None:
     figure_paths = tuple(
         directory / filename
         for directory in (bandwidth_dir, scatter_dir)
-        for filename in ("data.csv", "figure.svg", "figure.png")
+        for filename in ("data.csv", "packets.csv", "figure.svg", "figure.png", "plot.py")
     )
     print("Generated:")
     for path in (
@@ -137,6 +140,7 @@ def run_experiment(args: argparse.Namespace) -> None:
         transactions,
         requests,
         results,
+        outcomes,
         events,
         *figure_paths,
         *verification_paths,
@@ -175,7 +179,8 @@ def validate_experiment_config(args: argparse.Namespace) -> None:
         f"  reconfiguration={transaction.mode} name={transaction.name} "
         f"labels={transaction.before_label}->{transaction.after_label} "
         f"scheduled_cycle={transaction.cycle} "
-        f"commands={len(transaction.transaction_commands)}"
+        f"commands={len(transaction.transaction_commands)} "
+        f"cleanup_commands={len(transaction.cleanup_commands)}"
     )
     print(
         f"  tree_nodes={len(config.initial_tree.nodes)} "

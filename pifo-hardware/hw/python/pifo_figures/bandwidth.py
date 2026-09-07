@@ -24,9 +24,11 @@ from pifo_figures.common import (
     Svg,
     add_common_arguments,
     draw_axes,
+    drain_label,
     event_label,
     figure_paths,
     flow_name,
+    finish_label,
     legend,
     line_path,
     load_figure_inputs,
@@ -35,7 +37,10 @@ from pifo_figures.common import (
     rasterize_svg,
     select_renderer,
     transition_markers,
+    timing_text,
+    write_packet_outcomes,
 )
+from pifo_figures.standalone import write_plot_script
 
 
 @dataclass(frozen=True)
@@ -191,8 +196,8 @@ def render_matplotlib(
         if event.drain_cycle is not None
         else None
     )
-    visible_min = min(x_values)
-    visible_max = max(x_values)
+    visible_min = min(*x_values, 0)
+    visible_max = max(*x_values, transition_finish, transition_commit, transition_drain or 0)
 
     figure, (total_axis, flow_axis) = plt.subplots(
         2, 1, figsize=(11, 8), sharex=True, constrained_layout=True
@@ -272,8 +277,6 @@ def render_matplotlib(
 
 
 def _annotate_matplotlib(axis, event: PolicyEvent, low: float, high: float) -> None:
-    finish_label = "traffic resumed" if event.mode == "stop_the_world" else "config sync done"
-    drain_label = "old tree captured" if event.mode == "stop_the_world" else "old tree drained"
     markers = [
         ("start", 0, "tab:blue", -8),
         (
@@ -282,12 +285,12 @@ def _annotate_matplotlib(axis, event: PolicyEvent, low: float, high: float) -> N
             "tab:orange",
             -25,
         ),
-        (finish_label, event.finish_cycle - event.start_cycle, "tab:green", -42),
+        (finish_label(event), event.finish_cycle - event.start_cycle, "tab:green", -42),
     ]
     if event.drain_cycle is not None:
         markers.append(
             (
-                drain_label,
+                drain_label(event),
                 event.drain_cycle - event.start_cycle,
                 "tab:purple",
                 -59,
@@ -295,13 +298,15 @@ def _annotate_matplotlib(axis, event: PolicyEvent, low: float, high: float) -> N
         )
     for label, value, color, offset in markers:
         if label in {"start", "commit accepted"} or low <= value <= high:
+            near_right = value > low + (high - low) * 0.67
             axis.annotate(
                 label,
                 xy=(value, 1),
                 xycoords=("data", "axes fraction"),
-                xytext=(5, offset),
+                xytext=(-5 if near_right else 5, offset),
                 textcoords="offset points",
                 va="top",
+                ha="right" if near_right else "left",
                 color=color,
             )
     axis.text(
@@ -330,8 +335,12 @@ def render_svg(
     font = max(15.0, 22 * scale)
     svg = Svg(width, height)
 
-    x_min = min(sample.time_relative_to_start for sample in samples)
-    x_max = max(sample.time_relative_to_start for sample in samples)
+    x_min = min(0, min(sample.time_relative_to_start for sample in samples))
+    x_max = max(
+        max(sample.time_relative_to_start for sample in samples),
+        event.finish_cycle - event.start_cycle,
+        (event.drain_cycle or event.start_cycle) - event.start_cycle,
+    )
     values = [sample.total_link_fraction for sample in samples]
     values.extend(
         sample.flow_link_fraction[flow_id]
@@ -341,7 +350,7 @@ def render_svg(
     y_max = max(1.05, max(values) * 1.08)
     left = 150 * scale
     right = 45 * scale
-    top = 105 * scale
+    top = 105 * scale + (len(_timing_text(event, False).splitlines()) - 1) * font * 0.9
     bottom = 110 * scale
     gap = 95 * scale
     panel_height = (height - top - bottom - gap) / 2
@@ -470,49 +479,29 @@ def _svg_marker_labels(
     markers: list[tuple[str, int, str]] = [
         ("start", 0, START_COLOR),
         ("commit accepted", event.commit_cycle - event.start_cycle, COMMIT_COLOR),
-        ("finish", event.finish_cycle - event.start_cycle, FINISH_COLOR),
+        (finish_label(event), event.finish_cycle - event.start_cycle, FINISH_COLOR),
     ]
     if event.drain_cycle is not None:
         markers.append(
-            ("old tree drained", event.drain_cycle - event.start_cycle, DRAIN_COLOR)
+            (drain_label(event), event.drain_cycle - event.start_cycle, DRAIN_COLOR)
         )
     for index, (label, value, color) in enumerate(markers):
         x = area.sx(value)
         if area.x <= x <= area.x + area.width:
+            near_right = x > area.x + area.width * 0.67
             svg.text(
-                x + 7 * scale,
+                x + (-7 if near_right else 7) * scale,
                 area.y + (22 + index * 25) * scale,
                 label,
                 font * 0.72,
                 color=color,
                 weight="bold",
+                anchor="end" if near_right else "start",
             )
 
 
 def _timing_text(event: PolicyEvent, unicode_limit: bool) -> str:
-    limit = "≤" if unicode_limit else "<="
-    instruction_text = (
-        f"  config={event.instruction_count} inst @ {limit}1 accepted/cycle"
-        if event.instruction_count is not None
-        else ""
-    )
-    drop_text = (
-        f"  dropped={event.dropped_packets}"
-        if event.dropped_packets
-        else ""
-    )
-    stop_text = (
-        f"  retained={event.retained_packets}  "
-        f"peak buffer={event.peak_buffer_occupancy_packets} packets  "
-        f"stop={event.stop_duration_cycles} cycles"
-        if event.stop_duration_cycles is not None
-        else ""
-    )
-    return (
-        f"start={event.start_cycle}  commit={event.commit_cycle}  "
-        f"drain={event.drain_cycle if event.drain_cycle is not None else '-'}  "
-        f"finish={event.finish_cycle}{instruction_text}{drop_text}{stop_text}"
-    )
+    return timing_text(event, unicode_limit)
 
 
 def generate(
@@ -532,6 +521,12 @@ def generate(
         link_bytes_per_cycle,
     )
     write_data(paths.data, flow_ids, samples)
+    write_packet_outcomes(paths.packets, inputs.packet_outcomes, inputs.labels)
+    write_plot_script(
+        paths, "bandwidth", [(inputs.event.label, inputs.event)], inputs.labels, inputs.dpi,
+        f"{inputs.event.label}: Hann-smoothed output bandwidth "
+        f"({inputs.event.mode}, {window_cycles}-cycle window)",
+    )
     if renderer == "matplotlib":
         render_matplotlib(
             paths, flow_ids, samples, inputs.event, inputs.labels, inputs.dpi
@@ -570,5 +565,5 @@ def main() -> None:
     except (OSError, RuntimeError, ValueError) as error:
         raise SystemExit(f"error: {error}") from error
     print("Generated bandwidth figure:")
-    for path in (paths.data, paths.svg, paths.png):
+    for path in (paths.data, paths.packets, paths.svg, paths.png, paths.data.parent / "plot.py"):
         print(f"  {path}")

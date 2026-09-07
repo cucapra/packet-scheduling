@@ -22,9 +22,11 @@ from pifo_figures.common import (
     Svg,
     add_common_arguments,
     draw_axes,
+    drain_label,
     event_label,
     figure_paths,
     flow_name,
+    finish_label,
     legend,
     load_figure_inputs,
     load_pyplot,
@@ -33,7 +35,10 @@ from pifo_figures.common import (
     scatter_output_markers,
     select_renderer,
     transition_markers,
+    timing_text,
+    write_packet_outcomes,
 )
+from pifo_figures.standalone import write_plot_script
 
 
 def write_data(
@@ -103,7 +108,7 @@ def render_matplotlib(
             label=flow_name(flow_id, labels),
         )
 
-    marker_values = [0, transition_commit]
+    marker_values = [0, transition_commit, transition_finish]
     if transition_drain is not None:
         marker_values.append(transition_drain)
     common_min = min(*all_values, *marker_values)
@@ -142,7 +147,7 @@ def render_matplotlib(
         linewidth=1.3,
         linestyle="--",
     )
-    visible_input = [*input_values, 0, transition_commit]
+    visible_input = [*input_values, *marker_values]
     if transition_drain is not None:
         visible_input.append(transition_drain)
     show_finish = min(visible_input) <= transition_finish <= max(visible_input)
@@ -150,6 +155,7 @@ def render_matplotlib(
     axis.set_ylim(plot_min, plot_max)
     axis.set_aspect("equal", adjustable="box")
     if show_finish:
+        axis.axhline(transition_finish, color="tab:green", linewidth=1.2, alpha=0.8)
         axis.axvline(
             transition_finish,
             color="tab:green",
@@ -202,12 +208,12 @@ def _add_matplotlib_legend(axis, line_type, event: PolicyEvent, show_finish: boo
         handles.append(
             line_type([0], [0], color="tab:green", linewidth=1.2, alpha=0.8)
         )
-        labels.append("finish")
+        labels.append(finish_label(event))
     if event.drain_cycle is not None:
         handles.append(
             line_type([0], [0], color="tab:purple", linewidth=1.3, linestyle=":")
         )
-        labels.append("old tree drained")
+        labels.append(drain_label(event))
     axis.legend(handles, labels, loc="best")
 
 
@@ -226,7 +232,7 @@ def render_svg(
     flow_ids = sorted({packet.flow_id for packet in packets})
     x_values = [packet.input_cycle - event.start_cycle for packet in packets]
     y_values = [packet.output_cycle - event.start_cycle for packet in packets]
-    marker_values = [0, event.commit_cycle - event.start_cycle]
+    marker_values = [0, event.commit_cycle - event.start_cycle, event.finish_cycle - event.start_cycle]
     if event.drain_cycle is not None:
         marker_values.append(event.drain_cycle - event.start_cycle)
     common_min = min(*x_values, *y_values, *marker_values)
@@ -235,7 +241,7 @@ def render_svg(
     common_min -= padding
     common_max += padding
     left = 145 * scale
-    top = 90 * scale
+    top = 90 * scale + (len(_timing_text(event, False).splitlines()) - 1) * font * 0.9
     right = 50 * scale
     bottom = 115 * scale
     plot_size = min(width - left - right, height - top - bottom)
@@ -320,9 +326,9 @@ def render_svg(
         )
     )
     if show_finish:
-        entries.append(("finish", FINISH_COLOR, None))
+        entries.append((finish_label(event), FINISH_COLOR, None))
     if event.drain_cycle is not None:
-        entries.append(("old tree drained", DRAIN_COLOR, "3,5"))
+        entries.append((drain_label(event), DRAIN_COLOR, "3,5"))
     legend(
         svg,
         area.x + 18 * scale,
@@ -334,23 +340,7 @@ def render_svg(
 
 
 def _timing_text(event: PolicyEvent, unicode_limit: bool) -> str:
-    limit = "≤" if unicode_limit else "<="
-    instruction_text = (
-        f"  config={event.instruction_count} inst @ {limit}1 accepted/cycle"
-        if event.instruction_count is not None
-        else ""
-    )
-    stop_text = (
-        f"  retained={event.retained_packets}  "
-        f"peak buffer={event.peak_buffer_occupancy_packets} packets"
-        if event.stop_duration_cycles is not None
-        else ""
-    )
-    return (
-        f"start={event.start_cycle}  commit={event.commit_cycle}  "
-        f"drain={event.drain_cycle if event.drain_cycle is not None else '-'}  "
-        f"finish={event.finish_cycle}{instruction_text}{stop_text}"
-    )
+    return timing_text(event, unicode_limit)
 
 
 def generate(inputs: FigureInputs) -> FigurePaths:
@@ -358,6 +348,11 @@ def generate(inputs: FigureInputs) -> FigurePaths:
     paths = figure_paths(inputs.output_dir)
     inputs.output_dir.mkdir(parents=True, exist_ok=True)
     write_data(paths.data, inputs.packets, inputs.event)
+    write_packet_outcomes(paths.packets, inputs.packet_outcomes, inputs.labels)
+    write_plot_script(
+        paths, "packet-scatter", [(inputs.event.label, inputs.event)], inputs.labels, inputs.dpi,
+        f"Packet input–output scatter: {inputs.event.label} ({inputs.event.mode})",
+    )
     if renderer == "matplotlib":
         render_matplotlib(
             paths,
@@ -393,5 +388,5 @@ def main() -> None:
     except (OSError, RuntimeError, ValueError) as error:
         raise SystemExit(f"error: {error}") from error
     print("Generated packet scatter figure:")
-    for path in (paths.data, paths.svg, paths.png):
+    for path in (paths.data, paths.packets, paths.svg, paths.png, paths.data.parent / "plot.py"):
         print(f"  {path}")

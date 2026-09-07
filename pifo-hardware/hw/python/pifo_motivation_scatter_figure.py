@@ -28,7 +28,7 @@ def main() -> None:
         args.dpi,
         args.title,
     )
-    print(f"Generated {paths.svg} and {paths.png}")
+    print(f"Generated {paths.svg}, {paths.png}, {paths.packets}, and {paths.data.parent / 'plot.py'}")
 
 
 if __name__ == "__main__":

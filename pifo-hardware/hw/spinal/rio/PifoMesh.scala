@@ -28,7 +28,8 @@ case class MessageCrossBar(config: EngineConfig) extends Component {
 object ControlCommand extends SpinalEnum {
   val UpdateMapperPre, UpdateMapperPost, UpdateMapperNonExist, CommitMapper,
   // brain operators
-  UpdateBrainEngine, UpdateBrainState, UpdateBrainFlowState = newElement()
+  UpdateBrainEngine, UpdateBrainState, UpdateBrainFlowState,
+  GuardDrain = newElement()
 }
 
 case class ControlMessage(config: EngineConfig) extends Bundle {
@@ -47,6 +48,7 @@ case class PifoMesh(config: EngineConfig) extends Component {
     val insert = Vec(slave(Stream(PifoMessage(config))), config.numEngines)
     val controlRequest = slave(Stream(ControlMessage(config)))
     val commitReady = out Bool ()
+    val commitEpoch = out UInt (32 bits)
   }
 
   // all datapath
@@ -77,7 +79,18 @@ case class PifoMesh(config: EngineConfig) extends Component {
   val mapperCommitReady = pifoEngines.map(_.io.commitReady).reduce(_ && _)
   io.commitReady := mapperCommitReady
 
-  val (routedHead, commitHead) = StreamFork2(controlQueue)
+  val guard = DrainGuard(config)
+  (pifoEngines zipWithIndex).foreach { case (engine, index) =>
+    guard.io.nearlyDrained(index) << engine.io.nearlyDrained
+    (guard.io.pushed(index) zip engine.io.pushed).foreach { case (in, out) => in << out }
+  }
+  guard.io.engineId := controlQueue.payload.engineId
+  guard.io.vPifoId := controlQueue.payload.vPifoId
+  val isGuard = controlQueue.payload.command === ControlCommand.GuardDrain
+  // Gate before the fork: no later command (including a commit or immediate
+  // brain write) may pass a blocked guard. Guards are consumed here, not at a PE.
+  val guardedHead = controlQueue.haltWhen(isGuard && !guard.io.satisfied).throwWhen(isGuard)
+  val (routedHead, commitHead) = StreamFork2(guardedHead)
 
   val withoutCommit = routedHead.throwWhen(
     routedHead.payload.command === ControlCommand.CommitMapper
@@ -97,6 +110,9 @@ case class PifoMesh(config: EngineConfig) extends Component {
   // first valid cycle. The default fork avoids a ready/valid combinational loop
   // through the per-engine arbiters while retaining same-cycle delivery.
   val commits = StreamFork(commitControl, config.numEngines)
+  val commitEpoch = Reg(UInt(32 bits)) init (0)
+  when(commitControl.fire) { commitEpoch := commitEpoch + 1 }
+  io.commitEpoch := commitEpoch
 
   (controlCommand zip commits zip pifoEngines).foreach { case ((cmdStream, commitStream), engine) =>
     engine.io.control << StreamArbiterFactory.lowerFirst.onArgs(cmdStream, commitStream)

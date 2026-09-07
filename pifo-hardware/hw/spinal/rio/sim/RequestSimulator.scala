@@ -49,6 +49,7 @@ case class ScheduledRequestActionContext(
     beforeCommit: () => Unit,
     markCommitAccepted: () => Unit,
     markCommitApplied: () => Unit,
+    markCommitFinished: () => Unit,
     beginStopTheWorld: Long => StopTheWorldCapture,
     finishStopTheWorld: () => StopTheWorldFinish
 )
@@ -61,6 +62,7 @@ case class ScheduledRequestAction(
     mode: String = "direct",
     gatedFlowIds: Set[Int] = Set.empty,
     minimumStopCycles: Long = 0L,
+    isCleanup: Boolean = false,
     run: ScheduledRequestActionContext => Unit
 ) {
   require(scheduledCycle >= 0, s"scheduled action cycle must be non-negative, got $scheduledCycle")
@@ -78,7 +80,9 @@ case class CompletedRequestAction(
     drainCycle: Option[Long] = None,
     droppedPackets: Long = 0L,
     retainedPackets: Long = 0L,
-    peakBufferOccupancyPackets: Long = 0L
+    peakBufferOccupancyPackets: Long = 0L,
+    commitAppliedCycle: Option[Long] = None,
+    resumeCycle: Option[Long] = None
 ) {
   require(startCycle >= scheduledCycle, "a scheduled action cannot start before its scheduled cycle")
   require(
@@ -377,6 +381,9 @@ final class PifoRequestSimulator(
                 actionInFlight = true
                 val startCycle = currentCycle
                 var commitCycle = Option.empty[Long]
+                var commitAppliedCycle = Option.empty[Long]
+                var bankCleanupFinish = Option.empty[Long]
+                var resumeCycle = Option.empty[Long]
                 var directDrainCycle = Option.empty[Long]
                 var droppedPackets = 0L
                 var retainedPackets = 0L
@@ -384,20 +391,24 @@ final class PifoRequestSimulator(
                 action.run(
                   ScheduledRequestActionContext(
                     beforeCommit = () => {
-                      if (!commitAdmissionBarrier) beginCommitAdmissionBarrier()
+                      if (!action.isCleanup && !commitAdmissionBarrier) beginCommitAdmissionBarrier()
                     },
                     markCommitAccepted = () => {
                       require(commitCycle.isEmpty, s"scheduled action '${action.name}' accepted more than one commit")
                       commitCycle = Some(currentCycle)
                     },
                     markCommitApplied = () => {
-                      armTreeDrain(action.name)
-                      releaseFlowGate(action.name)
+                      commitAppliedCycle = Some(currentCycle)
+                      if (!action.isCleanup) {
+                        armTreeDrain(action.name)
+                        releaseFlowGate(action.name)
+                      }
                       if (action.mode == "in_place") {
                         directDrainCycle = Some(currentCycle)
                       }
-                      if (action.mode != "stop_the_world") endCommitAdmissionBarrier()
+                      if (!action.isCleanup && action.mode != "stop_the_world") endCommitAdmissionBarrier()
                     },
+                    markCommitFinished = () => bankCleanupFinish = Some(currentCycle),
                     beginStopTheWorld = minimumStopCycles => {
                       require(
                         action.mode == "stop_the_world",
@@ -414,6 +425,7 @@ final class PifoRequestSimulator(
                         s"scheduled action '${action.name}' is not stop-the-world"
                       )
                       val result = finishStopTheWorld()
+                      resumeCycle = Some(result.resumeCycle)
                       peakBufferOccupancyPackets = result.peakBufferOccupancyPackets
                       result
                     }
@@ -424,11 +436,13 @@ final class PifoRequestSimulator(
                   scheduledCycle = action.scheduledCycle,
                   startCycle = startCycle,
                   commitCycle = commitCycle,
-                  finishCycle = currentCycle,
+                  finishCycle = bankCleanupFinish.getOrElse(currentCycle),
                   drainCycle = directDrainCycle,
                   droppedPackets = droppedPackets,
                   retainedPackets = retainedPackets,
-                  peakBufferOccupancyPackets = peakBufferOccupancyPackets
+                  peakBufferOccupancyPackets = peakBufferOccupancyPackets,
+                  commitAppliedCycle = commitAppliedCycle,
+                  resumeCycle = resumeCycle
                 )
                 actionInFlight = false
               case _ => dut.clockDomain.waitRisingEdge()
@@ -646,7 +660,11 @@ final class PifoRequestSimulator(
   private def armTreeDrain(actionName: String): Unit = {
     drainWatches.get(actionName).foreach { watch =>
       watch.armed = true
-      if (requestQueues.isEmpty && dequeuesInFlight == 0) watch.cycle = Some(currentCycle)
+      // A boundary can already be empty even while other/new subtrees contain
+      // packets. Use the hardware's remembered drain, not whole-run emptiness.
+      if (dut.guard.emptyPifos(watch.target.engineId - 1)(watch.target.vPifoId).toBoolean) {
+        watch.cycle = Some(currentCycle)
+      }
     }
   }
 
@@ -736,6 +754,7 @@ object RequestSimulationConfiguration {
     "UpdateMapperPost" -> ControlCommand.UpdateMapperPost,
     "UpdateMapperNonExist" -> ControlCommand.UpdateMapperNonExist,
     "CommitMapper" -> ControlCommand.CommitMapper,
+    "GuardDrain" -> ControlCommand.GuardDrain,
     "UpdateBrainEngine" -> ControlCommand.UpdateBrainEngine,
     "UpdateBrainState" -> ControlCommand.UpdateBrainState,
     "UpdateBrainFlowState" -> ControlCommand.UpdateBrainFlowState

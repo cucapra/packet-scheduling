@@ -451,10 +451,14 @@ case class PifoEngine(config: EngineConfig) extends Component {
     // control signals
     val control = slave Stream (ControlMessage(config))
     val commitReady = out Bool ()
+    val nearlyDrained = master Flow (UInt(config.vpifoIdWidth bits))
+    val pushed = Vec(master(Flow(UInt(config.vpifoIdWidth bits))), 2)
   }
 
   // PIFO
   val pifos = new ConcurrentPifoRTL(config)
+  io.nearlyDrained << pifos.io.portDrained
+  (io.pushed zip pifos.io.portPushed).foreach { case (out, in) => out << in }
 
   // enque logic
   // enqueMapper maps flowIds to VPIFO ids

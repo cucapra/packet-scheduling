@@ -142,6 +142,12 @@ def compile_tree_move(program: TreeMoveProgram) -> TransactionProgram:
                 minimum_stop_cycles=plan.minimum_stop_cycles,
                 commands=plan.transaction_commands,
             ),
+            TimedTransaction(
+                at_cycle=plan.cycle,
+                name=f"{plan.name}-cleanup",
+                cleanup_of=plan.name,
+                commands=plan.cleanup_commands,
+            ),
         ),
     )
 
@@ -166,7 +172,9 @@ def main() -> None:
     initial_count = len(compiled.initial.commands) if compiled.initial else 0
     print(
         f"Compiled {transaction.name}: initial={initial_count} "
-        f"timed={len(transaction.commands)} at={transaction.at_cycle} -> {args.output}"
+        f"install={len(transaction.commands)} inst "
+        f"cleanup={len(compiled.transactions[1].commands)} inst "
+        f"at={transaction.at_cycle} -> {args.output}"
     )
 
 

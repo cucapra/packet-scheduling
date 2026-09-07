@@ -178,6 +178,7 @@ object RequestSimulatorCli {
     selectedSimConfig
       .compile {
         val mesh = new PifoMesh(hardwareConfig)
+        mesh.guard.emptyPifos.foreach(_.foreach(_.simPublic()))
         mesh.pifoEngines.foreach { engine =>
           engine.pifos.io.popResponse.valid.simPublic()
           engine.pifos.io.popResponse.port.simPublic()
@@ -235,6 +236,7 @@ object RequestSimulatorCli {
             mode = transaction.mode,
             gatedFlowIds = transaction.gatedFlowIds,
             minimumStopCycles = transaction.minimumStopCycles,
+            isCleanup = transaction.cleanupOf.nonEmpty,
             run = context => {
               if (transaction.mode == "stop_the_world") {
                 context.beginStopTheWorld(transaction.minimumStopCycles)
@@ -246,6 +248,7 @@ object RequestSimulatorCli {
                 context.markCommitAccepted,
                 context.markCommitApplied
               )
+              context.markCommitFinished()
               if (transaction.mode == "stop_the_world") {
                 context.finishStopTheWorld()
               }
@@ -290,6 +293,9 @@ object RequestSimulatorCli {
             throw new IllegalStateException(s"transaction '${transaction.name}' did not accept CommitMapper")
           )
           val drainText = action.drainCycle.map(cycle => s" drain=$cycle").getOrElse("")
+          val cleanupAction = scheduledTransactions.find(_.cleanupOf.contains(transaction.name))
+            .flatMap(cleanup => summary.completedActions.find(_.name == cleanup.name))
+          val finish = cleanupAction.map(_.finishCycle).getOrElse(action.finishCycle)
           val dropText = if (action.droppedPackets > 0) s" dropped=${action.droppedPackets}" else ""
           val stopText = if (transaction.mode == "stop_the_world") {
             s" retained=${action.retainedPackets} peakBuffer=${action.peakBufferOccupancyPackets} " +
@@ -299,7 +305,11 @@ object RequestSimulatorCli {
             s"[RequestSim] transaction ${transaction.name} mode=${transaction.mode} " +
               s"scheduled=${action.scheduledCycle} start=${action.startCycle} " +
               s"instructions=${transaction.instructions.size} commit=$commitCycle " +
-              s"finish=${action.finishCycle}$drainText$dropText$stopText"
+              s"applied=${action.commitAppliedCycle.get} " +
+              s"commitCycles=${action.commitAppliedCycle.get - action.startCycle} " +
+              s"finish=$finish (double-buffer cleanup done) installFinish=${action.finishCycle} " +
+              s"bankCleanupCycles=${action.finishCycle - action.commitAppliedCycle.get}" +
+              s"$drainText$dropText$stopText" + action.resumeCycle.map(c => s" resumed=$c").getOrElse("")
           )
           (transaction, action)
         }
@@ -385,10 +395,14 @@ object RequestSimulatorCli {
       writer.write(
         "event,name,mode,from_policy,to_policy,instruction_count,scheduled_cycle,start_cycle,commit_cycle," +
           "finish_cycle,drain_cycle,drain_duration_cycles,dropped_packets,retained_packets," +
-          "peak_buffer_occupancy_packets,minimum_stop_cycles,stop_duration_cycles"
+          "peak_buffer_occupancy_packets,minimum_stop_cycles,stop_duration_cycles," +
+          "commit_applied_cycle,commit_cycles,bank_cleanup_cycles,install_finish_cycle,resume_cycle," +
+          "cleanup_start_cycle,cleanup_commit_cycle,cleanup_applied_cycle,cleanup_finish_cycle," +
+          "cleanup_instruction_count,cleanup_commit_cycles,cleanup_bank_cleanup_cycles,cleanup_of"
       )
       writer.newLine()
       completed.foreach { case (transaction, action) =>
+        val cleanup = completed.find(_._1.cleanupOf.contains(transaction.name))
         val commitCycle = action.commitCycle.getOrElse(
           throw new IllegalArgumentException(
             s"transaction '${transaction.name}' is missing its CommitMapper cycle"
@@ -399,11 +413,11 @@ object RequestSimulatorCli {
           if (transaction.mode == "stop_the_world") ""
           else action.drainCycle.map(_ - commitCycle).map(_.toString).getOrElse("")
         val stopDuration =
-          if (transaction.mode == "stop_the_world") action.drainCycle.map(action.finishCycle - _).map(_.toString)
+          if (transaction.mode == "stop_the_world") action.drainCycle.map(action.resumeCycle.get - _).map(_.toString)
           else None
         writer.write(
           Seq(
-            "reconfiguration",
+            if (transaction.cleanupOf.nonEmpty) "cleanup_commit" else "reconfiguration",
             transaction.name,
             transaction.mode,
             transaction.before,
@@ -412,14 +426,27 @@ object RequestSimulatorCli {
             action.scheduledCycle,
             action.startCycle,
             commitCycle,
-            action.finishCycle,
+            cleanup.map(_._2.finishCycle).getOrElse(action.finishCycle),
             drainCycle,
             drainDuration,
             action.droppedPackets,
             action.retainedPackets,
             action.peakBufferOccupancyPackets,
             transaction.minimumStopCycles,
-            stopDuration.getOrElse("")
+            stopDuration.getOrElse(""),
+            action.commitAppliedCycle.get,
+            action.commitAppliedCycle.get - action.startCycle,
+            action.finishCycle - action.commitAppliedCycle.get,
+            action.finishCycle,
+            action.resumeCycle.map(_.toString).getOrElse(""),
+            cleanup.map(_._2.startCycle.toString).getOrElse(""),
+            cleanup.flatMap(_._2.commitCycle).map(_.toString).getOrElse(""),
+            cleanup.flatMap(_._2.commitAppliedCycle).map(_.toString).getOrElse(""),
+            cleanup.map(_._2.finishCycle.toString).getOrElse(""),
+            cleanup.map(_._1.instructions.size.toString).getOrElse(""),
+            cleanup.map { case (_, a) => (a.commitAppliedCycle.get - a.startCycle).toString }.getOrElse(""),
+            cleanup.map { case (_, a) => (a.finishCycle - a.commitAppliedCycle.get).toString }.getOrElse(""),
+            transaction.cleanupOf.getOrElse("")
           ).map(csvCell).mkString(",")
         )
         writer.newLine()

@@ -11,7 +11,9 @@ import shutil
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Mapping, Protocol, Sequence
+from typing import Iterable, Mapping, Protocol, Sequence
+
+from request_trace import read_trace
 
 
 RESULT_FIELDS = {
@@ -21,6 +23,10 @@ RESULT_FIELDS = {
     "arrival_cycle",
     "completed_cycle",
 }
+OUTCOME_FIELDS = {"request_id", "flow", "size_bytes", "push_cycle", "pop_cycle", "dropped"}
+PACKET_TRACE_FIELDS = (
+    "request_id", "flow", "flow_name", "size_bytes", "push_cycle", "pop_cycle", "delay_cycles", "dropped",
+)
 EVENT_BASE_FIELDS = {
     "event",
     "from_policy",
@@ -46,6 +52,7 @@ START_COLOR = "#1f77b4"
 COMMIT_COLOR = "#ff7f0e"
 FINISH_COLOR = "#2ca02c"
 DRAIN_COLOR = "#9467bd"
+FINISH_LABEL = "finish: double-buffer cleanup done"
 
 
 @dataclass(frozen=True)
@@ -55,6 +62,106 @@ class PacketTiming:
     size_bytes: int
     input_cycle: int
     output_cycle: int
+
+
+@dataclass(frozen=True)
+class PacketOutcome:
+    request_id: int
+    flow_id: int
+    size_bytes: int
+    push_cycle: int
+    pop_cycle: int | None
+    dropped: bool
+
+    @property
+    def delay(self) -> int | None:
+        return None if self.pop_cycle is None else self.pop_cycle - self.push_cycle
+
+
+def read_packet_outcomes(path: Path) -> list[PacketOutcome]:
+    with path.open(newline="", encoding="utf-8-sig") as source:
+        reader = csv.DictReader(source)
+        missing = OUTCOME_FIELDS.difference(reader.fieldnames or ())
+        if missing:
+            raise ValueError(f"{path}: missing packet outcome fields: {', '.join(sorted(missing))}")
+        outcomes: list[PacketOutcome] = []
+        seen: set[int] = set()
+        for line_number, row in enumerate(reader, start=2):
+            try:
+                dropped = row["dropped"].strip().lower()
+                if dropped not in {"true", "false"}:
+                    raise ValueError(f"invalid boolean {row['dropped']!r}")
+                pop = row["pop_cycle"].strip()
+                outcome = PacketOutcome(
+                    int(row["request_id"], 0), int(row["flow"], 0), int(row["size_bytes"], 0),
+                    int(row["push_cycle"], 0), int(pop, 0) if pop else None, dropped == "true",
+                )
+                if outcome.request_id in seen:
+                    raise ValueError(f"duplicate request ID {outcome.request_id}")
+                if min(outcome.request_id, outcome.flow_id, outcome.push_cycle) < 0 or outcome.size_bytes <= 0:
+                    raise ValueError("ID/flow/push must be non-negative and size must be positive")
+                if outcome.dropped != (outcome.pop_cycle is None):
+                    raise ValueError("dropped must be true exactly when pop_cycle is blank")
+                if outcome.delay is not None and outcome.delay < 0:
+                    raise ValueError("pop_cycle precedes push_cycle")
+            except (KeyError, TypeError, ValueError) as error:
+                raise ValueError(f"{path}:{line_number}: {error}") from error
+            outcomes.append(outcome)
+            seen.add(outcome.request_id)
+    if not outcomes:
+        raise ValueError(f"{path}: no packet outcomes")
+    return outcomes
+
+
+def completed_timings(outcomes: Sequence[PacketOutcome]) -> list[PacketTiming]:
+    return [
+        PacketTiming(p.request_id, p.flow_id, p.size_bytes, p.push_cycle, p.pop_cycle)
+        for p in outcomes if not p.dropped and p.pop_cycle is not None
+    ]
+
+
+def outcomes_from_timings(packets: Sequence[PacketTiming]) -> tuple[PacketOutcome, ...]:
+    return tuple(PacketOutcome(p.request_id, p.flow_id, p.size_bytes, p.input_cycle, p.output_cycle, False)
+                 for p in packets)
+
+
+def packet_outcome_row(packet: PacketOutcome, labels: Mapping[int, str]) -> tuple:
+    return (packet.request_id, packet.flow_id, flow_name(packet.flow_id, labels), packet.size_bytes,
+            packet.push_cycle, packet.pop_cycle, packet.delay, str(packet.dropped).lower())
+
+
+def write_packet_outcomes(
+    path: Path, outcomes: Iterable[PacketOutcome], labels: Mapping[int, str] | None = None,
+) -> None:
+    """One row per generated packet; blank pop/delay for drops, never admission-time delay."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", newline="", encoding="utf-8") as destination:
+        writer = csv.writer(destination, lineterminator="\n")
+        writer.writerow(PACKET_TRACE_FIELDS)
+        writer.writerows(packet_outcome_row(p, labels or {}) for p in sorted(outcomes, key=lambda p: p.request_id))
+
+
+def read_run_packet_outcomes(results: Path, outcomes: Path | None = None) -> tuple[PacketOutcome, ...]:
+    """Prefer the complete simulator trace; only reconstruct provably lossless legacy runs."""
+    packets = read_packet_results(results)
+    outcome_path = outcomes if outcomes is not None else results.with_name("packet-outcomes.csv")
+    requests_path = results.with_name("requests.csv")
+    if outcomes is not None or outcome_path.exists():
+        trace = tuple(read_packet_outcomes(outcome_path))
+        completed = {p.request_id: p for p in completed_timings(trace)}
+        if completed != {p.request_id: p for p in packets}:
+            raise ValueError(f"{outcome_path}: completed outcomes disagree with {results}")
+    else:
+        if not requests_path.exists():
+            raise ValueError("provide --outcomes (or a matching requests.csv); completion results alone cannot account for drops")
+        trace = outcomes_from_timings(packets)
+    if requests_path.exists():
+        expected = {r.request_id: (r.global_flow_id, r.size_bytes, r.cycle) for r in read_trace(requests_path)}
+        actual = {p.request_id: (p.flow_id, p.size_bytes, p.push_cycle) for p in trace}
+        if actual != expected:
+            raise ValueError(f"{results}: packet outcomes must cover every generated request with its generation cycle; "
+                             "missing outcomes cannot be inferred as dropped")
+    return trace
 
 
 @dataclass(frozen=True)
@@ -74,12 +181,90 @@ class PolicyEvent:
     peak_buffer_occupancy_packets: int = 0
     minimum_stop_cycles: int = 0
     stop_duration_cycles: int | None = None
+    commit_applied_cycle: int | None = None
+    commit_cycles: int | None = None
+    bank_cleanup_cycles: int | None = None
+    install_finish_cycle: int | None = None
+    resume_cycle: int | None = None
+    cleanup_start_cycle: int | None = None
+    cleanup_commit_cycle: int | None = None
+    cleanup_applied_cycle: int | None = None
+    cleanup_finish_cycle: int | None = None
+    cleanup_instruction_count: int | None = None
+    cleanup_commit_cycles: int | None = None
+    cleanup_bank_cleanup_cycles: int | None = None
+
+    @property
+    def traffic_resume_cycle(self) -> int:
+        # Old CSVs used finish for STW resume. New ones record it separately.
+        return self.resume_cycle if self.resume_cycle is not None else self.finish_cycle
 
     @property
     def label(self) -> str:
         if self.before and self.after:
             return f"{self.before} → {self.after}"
         return self.name or self.mode
+
+
+def drain_label(event: PolicyEvent) -> str:
+    if event.mode == "stop_the_world":
+        return "old tree captured"
+    if event.mode == "in_place":
+        return "no old-tree drain required"
+    return "old tree drained"
+
+
+def finish_label(event: PolicyEvent) -> str:
+    if event.mode == "stop_the_world" and event.install_finish_cycle is None:
+        return "traffic resumed (legacy finish)"
+    return FINISH_LABEL
+
+
+def commit_accounting(event: PolicyEvent) -> str:
+    parts = []
+    if event.instruction_count is not None:
+        cycles = event.commit_cycles
+        endpoint = "publication" if cycles is not None else "acceptance"
+        if cycles is None:
+            cycles = event.commit_cycle - event.start_cycle
+        parts.append(f"config={event.instruction_count} inst / {cycles} cycles to {endpoint}")
+    if event.cleanup_instruction_count is not None:
+        parts.append(
+            f"cleanup={event.cleanup_instruction_count} inst / "
+            f"{event.cleanup_commit_cycles} cycles to publication (guard wait included)"
+        )
+    if event.bank_cleanup_cycles is not None:
+        banks = f"bank cleanup: install={event.bank_cleanup_cycles}"
+        if event.cleanup_bank_cleanup_cycles is not None:
+            banks += f", cleanup={event.cleanup_bank_cleanup_cycles}"
+        parts.append(banks + " cycles")
+    return "; ".join(parts)
+
+
+def timing_text(event: PolicyEvent, unicode_limit: bool = True) -> str:
+    text = (
+        f"start={event.start_cycle}  commit accepted={event.commit_cycle}  "
+        f"drain={event.drain_cycle if event.drain_cycle is not None else '-'}  "
+        f"finish={event.finish_cycle}"
+    )
+    if event.commit_applied_cycle is not None:
+        text += f"\npublished: install={event.commit_applied_cycle}"
+    if event.cleanup_applied_cycle is not None:
+        text += f", cleanup={event.cleanup_applied_cycle}"
+    accounting = commit_accounting(event)
+    if accounting:
+        limit = "≤" if unicode_limit else "<="
+        text += "\n" + accounting.replace("; ", "\n")
+        text += f"; {limit}1 instruction accepted/cycle"
+    if event.stop_duration_cycles is not None:
+        text += (
+            f"\nresumed={event.traffic_resume_cycle}  retained={event.retained_packets}  "
+            f"peak buffer={event.peak_buffer_occupancy_packets} packets  "
+            f"stop={event.stop_duration_cycles} cycles"
+        )
+    if event.dropped_packets:
+        text += f"  dropped={event.dropped_packets}"
+    return text
 
 
 @dataclass(frozen=True)
@@ -89,6 +274,11 @@ class FigureInputs:
     labels: Mapping[int, str]
     dpi: int
     output_dir: Path
+    outcomes: tuple[PacketOutcome, ...] | None = None
+
+    @property
+    def packet_outcomes(self) -> tuple[PacketOutcome, ...]:
+        return self.outcomes if self.outcomes is not None else outcomes_from_timings(self.packets)
 
 
 @dataclass(frozen=True)
@@ -96,6 +286,10 @@ class FigurePaths:
     data: Path
     svg: Path
     png: Path
+
+    @property
+    def packets(self) -> Path:
+        return self.data.parent / "packets.csv"
 
 
 class EventLike(Protocol):
@@ -126,6 +320,8 @@ class BandwidthLike(Protocol):
 
 def add_common_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--results", type=Path, required=True)
+    parser.add_argument("--outcomes", type=Path,
+                        help="Complete packet trace, including drops. Defaults to packet-outcomes.csv beside --results.")
     parser.add_argument("--events", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument(
@@ -138,12 +334,14 @@ def add_common_arguments(parser: argparse.ArgumentParser) -> None:
 def load_figure_inputs(args: argparse.Namespace) -> FigureInputs:
     if args.dpi <= 0:
         raise ValueError("--dpi must be positive")
+    outcomes = read_run_packet_outcomes(args.results, args.outcomes)
     return FigureInputs(
-        packets=tuple(read_packet_results(args.results)),
+        packets=tuple(completed_timings(outcomes)),
         event=read_policy_event(args.events),
         labels=parse_flow_mapping(args.flow_labels),
         dpi=args.dpi,
         output_dir=args.output_dir.resolve(),
+        outcomes=outcomes,
     )
 
 
@@ -293,6 +491,15 @@ def read_policy_event(path: Path) -> PolicyEvent:
             if (row.get("stop_duration_cycles") or "").strip()
             else None
         ),
+        **{
+            name: parse_int(row[name]) if (row.get(name) or "").strip() else None
+            for name in (
+                "commit_applied_cycle", "commit_cycles", "bank_cleanup_cycles",
+                "install_finish_cycle", "resume_cycle", "cleanup_start_cycle",
+                "cleanup_commit_cycle", "cleanup_applied_cycle", "cleanup_finish_cycle",
+                "cleanup_instruction_count", "cleanup_commit_cycles", "cleanup_bank_cleanup_cycles",
+            )
+        },
     )
     _validate_event(path, row, event)
     return event
@@ -338,8 +545,8 @@ def _validate_event(
     if event.stop_duration_cycles is not None:
         if event.mode != "stop_the_world" or event.drain_cycle is None:
             raise ValueError(f"{path}: stop duration requires a stop_the_world drain cycle")
-        if event.stop_duration_cycles != event.finish_cycle - event.drain_cycle:
-            raise ValueError(f"{path}: stop duration does not match finish and drain cycles")
+        if event.stop_duration_cycles != event.traffic_resume_cycle - event.drain_cycle:
+            raise ValueError(f"{path}: stop duration does not match resume and drain cycles")
         if event.stop_duration_cycles < event.minimum_stop_cycles:
             raise ValueError(f"{path}: stop duration is shorter than its configured minimum")
     duration_raw = (row.get("drain_duration_cycles") or "").strip()
@@ -350,6 +557,28 @@ def _validate_event(
             raise ValueError(
                 f"{path}: drain duration does not match drain and commit cycles"
             )
+    if event.commit_applied_cycle is not None:
+        if not event.commit_cycle <= event.commit_applied_cycle <= event.finish_cycle:
+            raise ValueError(f"{path}: commit publication must follow acceptance and precede finish")
+        if event.commit_cycles != event.commit_applied_cycle - event.start_cycle:
+            raise ValueError(f"{path}: commit cycles do not match start and publication")
+        if event.install_finish_cycle is None or event.bank_cleanup_cycles != (
+            event.install_finish_cycle - event.commit_applied_cycle
+        ) or event.bank_cleanup_cycles < 0:
+            raise ValueError(f"{path}: invalid install double-buffer cleanup timing")
+    if event.cleanup_finish_cycle is not None:
+        timing = (event.cleanup_start_cycle, event.cleanup_commit_cycle,
+                  event.cleanup_applied_cycle, event.cleanup_finish_cycle)
+        if any(value is None for value in timing) or list(timing) != sorted(timing):
+            raise ValueError(f"{path}: invalid cleanup commit ordering")
+        if event.finish_cycle != event.cleanup_finish_cycle:
+            raise ValueError(f"{path}: finish must mark final double-buffer cleanup")
+        if event.cleanup_commit_cycles != event.cleanup_applied_cycle - event.cleanup_start_cycle:
+            raise ValueError(f"{path}: invalid cleanup commit duration")
+        if event.cleanup_bank_cleanup_cycles != event.finish_cycle - event.cleanup_applied_cycle:
+            raise ValueError(f"{path}: invalid final double-buffer cleanup duration")
+        if event.cleanup_instruction_count is None or event.cleanup_instruction_count <= 0:
+            raise ValueError(f"{path}: cleanup instruction count must be positive")
 
 
 def parse_int(value: str) -> int:
@@ -498,11 +727,15 @@ class Svg:
             if rotate is not None
             else ""
         )
+        content = "".join(
+            f'<tspan x="{x:.2f}" dy="{0 if index == 0 else size * 1.25:.2f}">{html.escape(line)}</tspan>'
+            for index, line in enumerate(value.splitlines())
+        ) if "\n" in value else html.escape(value)
         self.add(
             f'<text x="{x:.2f}" y="{y:.2f}" '
             'font-family="DejaVu Sans, sans-serif" '
             f'font-size="{size:.2f}" text-anchor="{anchor}" fill="{color}" '
-            f'font-weight="{weight}"{transform}>{html.escape(value)}</text>'
+            f'font-weight="{weight}"{transform}>{content}</text>'
         )
 
     def path(
@@ -658,6 +891,7 @@ def scatter_output_markers(svg: Svg, area: PlotArea, event: EventLike) -> None:
     markers: list[tuple[float, str, str | None]] = [
         (0.0, START_COLOR, None),
         (float(event.commit_cycle - event.start_cycle), COMMIT_COLOR, "8,6"),
+        (float(event.finish_cycle - event.start_cycle), FINISH_COLOR, None),
     ]
     if event.drain_cycle is not None:
         markers.append(
