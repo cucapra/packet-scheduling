@@ -1110,35 +1110,35 @@ Any situation-dependent reasoning, such as ``the subtree we are about to collaps
 The ISA has thirteen opcodes, laid out in \cref{tab:isa-opcodes}.
 They address a PIFO by an opaque id \texttt{v}, one per tree node, and one of its arms by an \emph{index}, an opaque per-PIFO handle for a child.
 
-\begin{table*}[t]
-\small
+\begin{table}[t]
+\footnotesize
 \caption{The thirteen substrate ISA opcodes, grouped by what they touch.}
 \label{tab:isa-opcodes}
-\begin{tabular}{p{0.2\linewidth} p{0.74\linewidth}}
+\begin{tabular}{@{}l@{\hspace{6pt}}p{0.60\linewidth}@{}}
 \hline
 Opcode & Effect \\
 \hline
 \multicolumn{2}{@{}l}{\emph{Lifecycle}} \\
-\texttt{spawn(v, pe)} & Allocate an empty PIFO with fresh id \texttt{v} on PE \texttt{pe} \\
-\texttt{gc(v)} & Release PIFO \texttt{v}'s PE slot \\[3pt]
+\texttt{spawn(v, pe)} & Fresh empty PIFO \texttt{v} on PE \texttt{pe} \\
+\texttt{gc(v)} & Release \texttt{v}'s PE slot \\[3pt]
 \multicolumn{2}{@{}l}{\emph{Structure}} \\
-\texttt{adopt(i, p, c)} & Parent PIFO \texttt{p} gains child PIFO \texttt{c}, reachable via index \texttt{i} \\
-\texttt{emancipate(i, p)} & Inverse of \texttt{adopt}: detach parent \texttt{p}'s child at index \texttt{i} \\
-\texttt{change\_arity(v, n)} & Set the live PIFO \texttt{v}'s arity counter to \texttt{n}, leaving its policy type unchanged \\[3pt]
+\texttt{adopt(i, p, c)} & \texttt{p} gains child \texttt{c}, reached via index \texttt{i} \\
+\texttt{emancipate(i, p)} & Detach \texttt{p}'s child at index \texttt{i} \\
+\texttt{change\_arity(v, n)} & Set \texttt{v}'s live arm count to \texttt{n}, leaving its policy type alone \\[3pt]
 \multicolumn{2}{@{}l}{\emph{Classification}} \\
 \texttt{assoc(v, f)} & \texttt{v} begins accepting flow \texttt{f} \\
-\texttt{deassoc(v, f)} & \texttt{v} stops accepting flow \texttt{f} \\
-\texttt{map(v, f, i)} & \texttt{v} routes flow \texttt{f} to index \texttt{i} \\
+\texttt{deassoc(v, f)} & \texttt{v} stops accepting \texttt{f} \\
+\texttt{map(v, f, i)} & \texttt{v} routes \texttt{f} to index \texttt{i} \\
 \texttt{unmap(v, f)} & \texttt{v} forgets its mapping for \texttt{f} \\[3pt]
 \multicolumn{2}{@{}l}{\emph{Discipline}} \\
-\texttt{set\_policy(v, t, n)} & Set PIFO \texttt{v}'s policy type to \texttt{t} and its initial arity to \texttt{n}, once per PIFO at spawn time \\
-\texttt{set\_arm\_meta(v, i, m)} & Set per-arm metadata on PIFO \texttt{v}'s child reached via index \texttt{i} to \texttt{m}, interpreted per \texttt{v}'s policy type \\[3pt]
+\texttt{set\_policy(v, t, n)} & Give \texttt{v} policy type \texttt{t} and initial arity \texttt{n}; once, at spawn \\
+\texttt{set\_arm\_meta(v, i, m)} & Metadatum \texttt{m} on \texttt{v}'s arm \texttt{i}, read per \texttt{v}'s policy type \\[3pt]
 \multicolumn{2}{@{}l}{\emph{Survivor}} \\
-\texttt{designate(v, surv)} & Point \texttt{v}'s designated-survivor link at \texttt{surv} (\cref{sec:hw-survivor}) \\
-\texttt{undesignate(v)} & \texttt{v}'s parent's index now reaches \texttt{v}'s designated survivor, which inherits the slot's metadata \\
+\texttt{designate(v, surv)} & Point \texttt{v}'s designated-survivor link at \texttt{surv} \\
+\texttt{undesignate(v)} & \texttt{v}'s parent's index now reaches that survivor \\
 \hline
 \end{tabular}
-\end{table*}
+\end{table}
 
 \texttt{change\_arity} carries the one subtlety in the table.
 It tells the discipline-level logic at \texttt{v} how many arms are active, and growing the count creates the new slot, which the substrate seeds from \texttt{v}'s current node state by \(\mathit{init\_slot\_state}_{D}\) (\cref{sec:compilation}).
