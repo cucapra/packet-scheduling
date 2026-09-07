@@ -953,20 +953,7 @@ Second, conventional match-action table updates do not provide \emph{atomic visi
 When an update lands concurrently with an enqueue or a dequeue, a single packet operation can observe a mixture of old and new scheduler state.
 For example, an enqueue may choose its path using the old flow-to-child mapping but compute its rank using newly updated per-arm metadata, or a dequeue may pop from one version of the tree and then follow next-hop state from another.
 As a result, existing PIFO-based substrates support only stop-the-world policy update~\cite{vPIFO,Alcoz23}.
-
-Rio updates the policy of a running scheduler, and it needs only small changes to this substrate to do so, because it separates \emph{incremental installation} from \emph{atomic publication}.
-The mechanism is an indirection between packet classification and rank computation.
-The ingress pipeline first maps an incoming packet to an internal identifier,
-and subsequent stages compute its rank using the state associated with that identifier.
-During a policy transition, Rio does not destructively rewrite rank-computation state that packets
-already in flight may still reference.
-Instead, it installs the rank-computation state the new policy requires under fresh internal
-identifiers, leaving the state that is still live untouched.
-Once this state has been installed, Rio atomically redirects the relevant mappings to the new identifiers.
-Thus, the bulk of a policy transition remains \emph{incremental and non-destructive},
-while atomicity is required only at the indirection boundary.
-Rio implements this boundary using a double-buffered transactional lookup table,
-which prepares updates in a standby copy and makes them visible through an atomic swap.
+Rio needs only small changes to this substrate, because it separates incremental installation from atomic publication (\cref{sec:hw-commit}).
 
 A commit bridges the compiler and the hardware.
 It is a sequence of updates that becomes visible to packets all at once, and Rio asks two things of it.
@@ -1087,10 +1074,7 @@ While \texttt{v} holds packets, it returns packets.
 Once \texttt{v} is empty it defers to its designated survivor, and the query passes to \texttt{surv} rather than underflowing.
 
 The parent therefore holds one index per packet in \emph{either} subtree, and spends them on \texttt{v} until \texttt{v} is dry and on \texttt{surv} thereafter, which is the arm-0-before-arm-1 order \cref{sec:check-designate} proves non-disruptive.
-The elision does change what \cref{sec:controls}'s well-formedness ranges over.
-That invariant counts, at each node, one \ensuremath{\mathit{pifo}} entry per packet in the subtree under the corresponding child, and here the parent holds entries for packets in a subtree that is not its child at all.
-This count is still correct once ``the subtree under index \(i\)'' is read as the subtree at \(i\) together with its designated survivor's, and an index that leads to \texttt{v} when \texttt{v} is empty does not actually reach a leaf with nothing to emit, since it reaches \texttt{surv}.
-At the \ensuremath{\mathit{pol}} level no reading is needed, since \(\mathtt{wrap}\) (\cref{sec:designate}) builds a real \(\Strictstar\) node with two real children and a \ensuremath{\mathit{pifo}} of its own, and \cref{sec:controls} applies to it word for word.
+The elision also changes what \cref{sec:controls}'s well-formedness ranges over, and the same subsection re-reads the invariant to cover it.
 
 \paragraph{Ending the transition}
 
@@ -1126,35 +1110,35 @@ Any situation-dependent reasoning, such as ``the subtree we are about to collaps
 The ISA has thirteen opcodes, laid out in \cref{tab:isa-opcodes}.
 They address a PIFO by an opaque id \texttt{v}, one per tree node, and one of its arms by an \emph{index}, an opaque per-PIFO handle for a child.
 
-\begin{table*}[t]
-\small
+\begin{table}[t]
+\footnotesize
 \caption{The thirteen substrate ISA opcodes, grouped by what they touch.}
 \label{tab:isa-opcodes}
-\begin{tabular}{p{0.2\linewidth} p{0.74\linewidth}}
+\begin{tabular}{@{}l@{\hspace{6pt}}p{0.60\linewidth}@{}}
 \hline
 Opcode & Effect \\
 \hline
 \multicolumn{2}{@{}l}{\emph{Lifecycle}} \\
-\texttt{spawn(v, pe)} & Allocate an empty PIFO with fresh id \texttt{v} on PE \texttt{pe} \\
-\texttt{gc(v)} & Release PIFO \texttt{v}'s PE slot \\[3pt]
+\texttt{spawn(v, pe)} & Fresh empty PIFO \texttt{v} on PE \texttt{pe} \\
+\texttt{gc(v)} & Release \texttt{v}'s PE slot \\[3pt]
 \multicolumn{2}{@{}l}{\emph{Structure}} \\
-\texttt{adopt(i, p, c)} & Parent PIFO \texttt{p} gains child PIFO \texttt{c}, reachable via index \texttt{i} \\
-\texttt{emancipate(i, p)} & Inverse of \texttt{adopt}: detach parent \texttt{p}'s child at index \texttt{i} \\
-\texttt{change\_arity(v, n)} & Set the live PIFO \texttt{v}'s arity counter to \texttt{n}, leaving its policy type unchanged \\[3pt]
+\texttt{adopt(i, p, c)} & \texttt{p} gains child \texttt{c}, reached via index \texttt{i} \\
+\texttt{emancipate(i, p)} & Detach \texttt{p}'s child at index \texttt{i} \\
+\texttt{change\_arity(v, n)} & Set \texttt{v}'s live arm count to \texttt{n}, leaving its policy type alone \\[3pt]
 \multicolumn{2}{@{}l}{\emph{Classification}} \\
 \texttt{assoc(v, f)} & \texttt{v} begins accepting flow \texttt{f} \\
-\texttt{deassoc(v, f)} & \texttt{v} stops accepting flow \texttt{f} \\
-\texttt{map(v, f, i)} & \texttt{v} routes flow \texttt{f} to index \texttt{i} \\
+\texttt{deassoc(v, f)} & \texttt{v} stops accepting \texttt{f} \\
+\texttt{map(v, f, i)} & \texttt{v} routes \texttt{f} to index \texttt{i} \\
 \texttt{unmap(v, f)} & \texttt{v} forgets its mapping for \texttt{f} \\[3pt]
 \multicolumn{2}{@{}l}{\emph{Discipline}} \\
-\texttt{set\_policy(v, t, n)} & Set PIFO \texttt{v}'s policy type to \texttt{t} and its initial arity to \texttt{n}, once per PIFO at spawn time \\
-\texttt{set\_arm\_meta(v, i, m)} & Set per-arm metadata on PIFO \texttt{v}'s child reached via index \texttt{i} to \texttt{m}, interpreted per \texttt{v}'s policy type \\[3pt]
+\texttt{set\_policy(v, t, n)} & Give \texttt{v} policy type \texttt{t} and initial arity \texttt{n}; once, at spawn \\
+\texttt{set\_arm\_meta(v, i, m)} & Metadatum \texttt{m} on \texttt{v}'s arm \texttt{i}, read per \texttt{v}'s policy type \\[3pt]
 \multicolumn{2}{@{}l}{\emph{Survivor}} \\
-\texttt{designate(v, surv)} & Point \texttt{v}'s designated-survivor link at \texttt{surv} (\cref{sec:hw-survivor}) \\
-\texttt{undesignate(v)} & \texttt{v}'s parent's index now reaches \texttt{v}'s designated survivor, which inherits the slot's metadata \\
+\texttt{designate(v, surv)} & Point \texttt{v}'s designated-survivor link at \texttt{surv} \\
+\texttt{undesignate(v)} & \texttt{v}'s parent's index now reaches that survivor \\
 \hline
 \end{tabular}
-\end{table*}
+\end{table}
 
 \texttt{change\_arity} carries the one subtlety in the table.
 It tells the discipline-level logic at \texttt{v} how many arms are active, and growing the count creates the new slot, which the substrate seeds from \texttt{v}'s current node state by \(\mathit{init\_slot\_state}_{D}\) (\cref{sec:compilation}).
@@ -1196,9 +1180,6 @@ Its \texttt{Assoc} and \texttt{Map} mirror the actual root's, since every walk b
 The port root makes the tree root an ordinary position.
 \texttt{undesignate} retargets a parent's index from a PIFO to that PIFO's designated survivor, and at the root there is no parent's index to retarget.
 That case is not hypothetical: the always-available plan of \cref{sec:sequences} is \(\Replace([], p_2)\), whose last step is \(\Undesignate([])\).
-Without the port root the substrate could not execute the one transition the planner is guaranteed to be able to fall back on, and would need a second opcode meaning ``make this PIFO the tree root'', doing at one position what \texttt{undesignate} does everywhere else.
-\Designate{} itself needs no parent, since it only writes the doomed node's own link.
-It is \Undesignate{} rather than \Designate{} that wants a slot above.
 
 \xxx[AM to Zhiyuan]{The port-selection sentence above is my best guess.
 I am assuming the output port is already fixed by the forwarding pipeline, so the scheduler never chooses among the \(P\) trees and needs no table to do it.
@@ -1208,92 +1189,18 @@ The three parts of \ensuremath{\mathit{z}} (\cref{sec:controls}) line up one to 
 A node's \(\mathit{z}.\mathit{admit}\) is its \texttt{Assoc} set, its \(\mathit{z}.\mathit{serves}\) is its \texttt{Map} table, its \(\mathit{z}.\mathit{rank}\) is what \texttt{set\_policy} installs and \texttt{discipline(v)} reads back, and its \(\mathit{z}.\mathit{meta}\) is what \texttt{set\_arm\_meta} writes.
 Each of \zz's parts is thus an opcode's target, and none of them is state that \texttt{push} or \texttt{pop} advances.
 
-A tree position and the PIFO sitting at it are different things, so each lowering binds a name to the PIFO that the form targets, and speaks of that PIFO thereafter.
-Queries against a PIFO \texttt{v}, its \texttt{arity(v)} and \texttt{discipline(v)}, are read off the planner's model of the tree as it stands at that point in the sequence, and a parameter an opcode leaves unmentioned is \texttt{v}'s value there.
-\texttt{spawn}'s elided \texttt{pe} argument is \texttt{pe(pos(v))}.
+\Add{} is representative, so we lower it here in prose, and \cref{app:lowering} lowers all six forms as opcode listings.
+Write \texttt{v} for the PIFO at \Add{}'s path and \texttt{n} for its arity.
+The lowering builds the new subtree first, \texttt{spawn}ing a PIFO for every node of \(\lceil \mathit{arm} \rceil\), giving each its \texttt{set\_policy}, and issuing the \texttt{adopt}s that link them to one another, with the new subtree's own root left unattached.
+A \texttt{change\_arity} raising \texttt{v}'s count to \texttt{n+1} then creates the slot that will hold it, a \texttt{set\_arm\_meta} annotates that slot with the metadatum the form carries, and an \texttt{adopt} attaches the new subtree at index \texttt{n}.
+Because the slot is \texttt{v}'s rightmost, the indices of \texttt{v}'s existing children are undisturbed.
 
-Two notations recur.
-\texttt{foreach x in S} emits its body once per \texttt{x}, and \texttt{walk(op, C, f)} emits \texttt{op(v, f, \ldots)} at each \(v \in C\), reading positional remainders such as \texttt{map}'s routing index off that same model.
-Of the queries, \texttt{flows(v)} is the set of flows admitted beneath \texttt{v}, and \texttt{chain(f)} runs from \texttt{port\_root} to the leaf admitting \texttt{f}, with \texttt{internals(f)} that chain minus the leaf.
-For a compiled subtree \texttt{T}, \texttt{nodes(T)} is its PIFOs and \texttt{root(T)} its root, and \texttt{layout(T)} spawns and configures all of \texttt{T}, leaving the parent-side \texttt{adopt} of \(\mathtt{root(T)}\) to the caller.
-
-We write \pth for the form's path argument, \texttt{parent} for the PIFO at the position above it, and \texttt{k} for its index at that PIFO.
-For \(\mathit{path} = [\,]\), \texttt{parent} is \texttt{port\_root} and \texttt{k} is \texttt{port\_step}.
-Three of the forms are written below with their argument split as \(\pi \mathbin{+\!\!+} [k]\) rather than as \pth, because their lowerings address the parent's slot rather than the node itself, and so need \texttt{k} by name.
-
-\paragraph{\(\Add(\mathit{path}, D, \mathit{arm}, m)\)}
-\begin{Verbatim}
-v := PIFO at path
-n := arity(v)
-layout(arm)
-change_arity(v, n+1)
-set_arm_meta(v, n, m)
-adopt(n, v, root(arm))
-foreach f in flows(arm):
-    walk(assoc, chain(f), f)
-    walk(map,   internals(f), f)
-\end{Verbatim}
-The new subtree occupies \texttt{v}'s rightmost slot (index \texttt{n}), so existing children's indices are undisturbed.
+Traffic reaches the new arm last, by the lowering's counterpart of \(\mathtt{extend}\) in \cref{sec:edit-semantics}.
+For each flow the new arm serves, an \texttt{assoc} at every PIFO from the port root down to the arm's leaf has that PIFO begin accepting the flow, and a \texttt{map} at each of those PIFOs but the leaf records the index that carries the flow onward.
 
 Because of these two walks, admitting a flow writes an entry at every node on its path rather than one entry somewhere central.
 A switch could instead classify once at ingress, compute a packet's whole path there, and leave the interior nodes as pure rankers.
 We keep classification distributed, since it leaves each PE self-contained and matches the depth-by-PE layout, whereas a central classifier would have been one structure that every packet must visit before the tree.
-
-\paragraph{\(\ChangeMeta(\pi \mathbin{+\!\!+} [k], D, m)\)}
-\begin{Verbatim}
-set_arm_meta(parent, k, m)
-\end{Verbatim}
-
-\paragraph{\(\Quiesce(\mathit{path})\)}
-\begin{Verbatim}
-v := PIFO at path
-foreach f in flows(v):
-    walk(deassoc, chain(f), f)
-\end{Verbatim}
-
-\paragraph{\(\Remove(\pi \mathbin{+\!\!+} [k])\)}
-\Remove{} is \Add{} run backwards.
-A \texttt{change\_arity} that decrements \texttt{parent}'s count and an \texttt{emancipate(k, parent)} detach the arm, an \texttt{unmap} walk over \(\mathtt{internals(f)}\) for each \(f \in \mathtt{flows(v)}\) forgets its routing, and a \texttt{gc} at every PIFO of the departing subtree releases the PE slots.
-The \(\sigma_k\) renumbering of \cref{sec:remove} has no counterpart here, since a child is reached by an opaque per-edge index that \texttt{parent} minted when it adopted that child, so dropping one child leaves every sibling's index as it was.
-
-\paragraph{\(\Designate(\mathit{path}, \mathit{survivor})\)}
-\begin{Verbatim}
-loser := PIFO at path
-surv  := root(survivor)
-layout(survivor)
-designate(loser, surv)
-foreach f in flows(loser) & flows(surv):
-    walk(deassoc, chain(f) & nodes(loser), f)
-foreach f in flows(surv):
-    walk(assoc, chain(f), f)
-    walk(map,   internals(f), f)
-\end{Verbatim}
-This is \Add{}'s lowering, with \texttt{designate} in place of \texttt{change\_arity} and \texttt{adopt} and one walk in front.
-No PIFO is spawned for the \(\Strictstar\) node, and \texttt{loser}'s parent is not touched.
-\texttt{designate} points \texttt{loser}'s designated-survivor link at \texttt{surv} (\cref{sec:hw-survivor}).
-The two walks are the whole of the traffic handover.
-
-The deassoc walk hands the shared flows over to the survivor.
-Both subtrees can serve a shared flow, and the two roots occupy one position, so the losing arm must stop admitting it.
-The deassociation runs before the assoc walk because \(\mathtt{chain(f)}\) resolves through \texttt{loser} only while \texttt{loser} still admits \texttt{f}.
-
-The assoc and map walks are the same as for \Add{}.
-For a shared flow the chain above the two roots is already in place and the walks rewrite it to no effect.
-Flows in \(\mathtt{flows(loser)} \setminus \mathtt{flows(surv)}\) are left alone entirely, and go on reaching \texttt{loser}'s own subtree, matching \cref{sec:designate}'s rule that loser-only labels drain on arm 0.
-Silencing those, when the operator ultimately wants it, comes from the \Quiesce{} step of the surrounding \Replace{} idiom (\cref{sec:sequences}), not from \Designate.
-
-\paragraph{\(\Undesignate(\pi \mathbin{+\!\!+} [k])\)}
-\Undesignate{} is likewise \Designate{} run backwards.
-A single \texttt{undesignate(loser)} retargets \texttt{parent}'s index \texttt{k} from \texttt{loser} to \texttt{surv}, the flows in \(\mathtt{flows(loser)} \setminus \mathtt{flows(surv)}\) are unmapped along their internals, and \texttt{loser}'s PIFOs are released.
-Reusing \texttt{k} preserves \texttt{parent}'s per-arm metadata for that slot, so the survivor inherits the annotation that the doomed subtree held.
-The shared flows are deliberately not unmapped, since they serve \texttt{surv} now.
-
-\Quiesce{}'s wide reach, covering the root-to-\pth chain along with the whole subtree under \texttt{v}, is forced by \cref{sec:policy-dsl}'s parallel push.
-Every node on a packet's path mints its own routing index independently, so dropping \texttt{f} at only some of those nodes would leave the rest minting stray indices, and the tree malformed.
-\Quiesce{} does not issue \texttt{unmap}.
-A silenced flow's Map entries \emph{must outlive the silencing} so that buffered packets can be popped.
-\Remove{} pairs \texttt{emancipate} with \texttt{unmap} precisely because it fires after the drain, when there is no longer any in-flight traffic to preserve.
-A \Quiesce{} that fires in the middle of a \Replace, on the doomed arm of a \(\Strictstar\), restricts its deassoc walk to loser-only flows, since \Designate{} routed the shared flows to the survivor at commit time (\cref{sec:designate}), and de-associating them here would silence live traffic on the survivor.
 
 \subsection{Hosting Rio on Another Substrate}\label{sec:substrate-portability}
 
@@ -2062,6 +1969,11 @@ If \(P_0 > 0\), every entry in \(N.\mathit{pifo}\) is slot \(0\), so any \pop{} 
 If \(P_0 = 0\), then \(\vdash C\) means no \pop{} ever reaches \(N\).
 Arm 1 sees traffic only on a future \push{}, so no buffered packet is dropped, reordered, or re-ranked.
 
+\paragraph{The same checks under the survivor link}
+The checks above are about \(\mathtt{wrap}\)'s node (\cref{sec:designate}), a real \(\Strictstar\) with two real children and a \pifo of its own, so \cref{sec:controls} applies to it word for word.
+The substrate has no such node, since \cref{sec:hw-survivor} realizes it as a link, and the doomed node's parent then holds \pifo entries for packets in a subtree that is not its child at all.
+That count is still correct once ``the subtree under index \(i\)'' is read as the subtree at \(i\) together with its designated survivor's, and an index that leads to a node that has drained does not reach a leaf with nothing to emit, since it reaches the survivor.
+
 \subsection{\texorpdfstring{\Undesignate}{Undesignate}}\label{sec:check-undesignate}
 
 \paragraph{Preservation of \(\vdash\)}
@@ -2296,6 +2208,106 @@ So by the time the per-level comparator gives up and emits a \Replace{} at depth
 The \Replace{} lands at the deepest slot to which the planner could isolate the difference, leaving every ancestor's other subtrees running undisturbed.
 The slot-level \Replace{} is the idiom of \cref{sec:sequences} with a non-empty path: it wraps only the slot's subtree, quiesces only that subtree, and rewires only the parent edge into it.
 The worst case is the root-level \(\Replace([], p_2)\) of \cref{sec:sequences}, reached only when the per-level comparator gives up at the root with no recursive descent.
+
+
+
+\section{Lowering Policy Edits}\label{app:lowering}
+
+This appendix lowers all six forms of \(\delta\) to the ISA of \cref{sec:hw-isa}, in the order \cref{fig:delta-grammar} lists them.
+\Add{} comes first, so that the six can be read together; \cref{sec:hw-compile} gives that same lowering in prose.
+
+\paragraph{Notation}
+
+A tree position and the PIFO sitting at it are different things, so each lowering binds a name to the PIFO that the form targets, and speaks of that PIFO thereafter.
+Queries against a PIFO \texttt{v}, its \texttt{arity(v)} and \texttt{discipline(v)}, are read off the planner's model of the tree as it stands at that point in the sequence, and a parameter an opcode leaves unmentioned is \texttt{v}'s value there.
+\texttt{spawn}'s elided \texttt{pe} argument is \texttt{pe(pos(v))}.
+
+Two notations recur.
+\texttt{foreach x in S} emits its body once per \texttt{x}, and \texttt{walk(op, C, f)} emits \texttt{op(v, f, \ldots)} at each \(v \in C\), reading positional remainders such as \texttt{map}'s routing index off that same model.
+Of the queries, \texttt{flows(v)} is the set of flows admitted beneath \texttt{v}, and \texttt{chain(f)} runs from \texttt{port\_root} to the leaf admitting \texttt{f}, with \texttt{internals(f)} that chain minus the leaf.
+For a compiled subtree \texttt{T}, \texttt{nodes(T)} is its PIFOs and \texttt{root(T)} its root, and \texttt{layout(T)} spawns and configures all of \texttt{T}, leaving the parent-side \texttt{adopt} of \(\mathtt{root(T)}\) to the caller.
+
+We write \pth for the form's path argument, \texttt{parent} for the PIFO at the position above it, and \texttt{k} for its index at that PIFO.
+For \(\mathit{path} = [\,]\), \texttt{parent} is \texttt{port\_root} and \texttt{k} is \texttt{port\_step}, the reserved wrapper of \cref{sec:hw-compile}.
+Three of the forms below are written with their argument split as \(\pi \mathbin{+\!\!+} [k]\) rather than as \pth, because their lowerings address the parent's slot rather than the node itself, and so need \texttt{k} by name.
+
+\subsection{\texorpdfstring{\(\Add(\mathit{path}, D, \mathit{arm}, m)\)}{Add}}\label{sec:lower-add}
+
+\begin{Verbatim}
+v := PIFO at path
+n := arity(v)
+layout(arm)
+change_arity(v, n+1)
+set_arm_meta(v, n, m)
+adopt(n, v, root(arm))
+foreach f in flows(arm):
+    walk(assoc, chain(f), f)
+    walk(map,   internals(f), f)
+\end{Verbatim}
+The new subtree occupies \texttt{v}'s rightmost slot (index \texttt{n}), so existing children's indices are undisturbed.
+\texttt{change\_arity} creates that slot, and the substrate seeds its bookkeeping from \texttt{v}'s node state (\cref{sec:hw-isa}), which is the lowering's counterpart of \(\mathit{init\_slot\_state}_{D}\) in \cref{sec:add}.
+The \texttt{assoc} walk has every PIFO from the port root down to the new leaf begin accepting \texttt{f}, and the \texttt{map} walk records at each interior PIFO of that chain the index carrying \texttt{f} onward.
+\Add's leaf-disjointness precondition (\cref{sec:add}) means that no PIFO on a chain already routes \texttt{f}, so neither walk overwrites a live entry.
+
+\subsection{\texorpdfstring{\(\ChangeMeta(\pi \mathbin{+\!\!+} [k], D, m)\)}{ChangeMeta}}\label{sec:lower-changemeta}
+
+\begin{Verbatim}
+set_arm_meta(parent, k, m)
+\end{Verbatim}
+
+\subsection{\texorpdfstring{\(\Quiesce(\mathit{path})\)}{Quiesce}}\label{sec:lower-quiesce}
+
+\begin{Verbatim}
+v := PIFO at path
+foreach f in flows(v):
+    walk(deassoc, chain(f), f)
+\end{Verbatim}
+\Quiesce{}'s wide reach, covering the root-to-\pth chain along with the whole subtree under \texttt{v}, is forced by \cref{sec:policy-dsl}'s parallel push.
+Every node on a packet's path mints its own routing index independently, so dropping \texttt{f} at only some of those nodes would leave the rest minting stray indices, and the tree malformed.
+\Quiesce{} does not issue \texttt{unmap}.
+A silenced flow's Map entries \emph{must outlive the silencing} so that buffered packets can be popped.
+\Remove{} pairs \texttt{emancipate} with \texttt{unmap} precisely because it fires after the drain, when there is no longer any in-flight traffic to preserve.
+A \Quiesce{} that fires in the middle of a \Replace, on the doomed arm of a \(\Strictstar\), restricts its deassoc walk to loser-only flows, since \Designate{} routed the shared flows to the survivor at commit time (\cref{sec:designate}), and de-associating them here would silence live traffic on the survivor.
+
+\subsection{\texorpdfstring{\(\Remove(\pi \mathbin{+\!\!+} [k])\)}{Remove}}\label{sec:lower-remove}
+
+\Remove{} is \Add{} run backwards.
+A \texttt{change\_arity} that decrements \texttt{parent}'s count and an \texttt{emancipate(k, parent)} detach the arm, an \texttt{unmap} walk over \(\mathtt{internals(f)}\) for each \(f \in \mathtt{flows(v)}\) forgets its routing, and a \texttt{gc} at every PIFO of the departing subtree releases the PE slots.
+The \(\sigma_k\) renumbering of \cref{sec:remove} has no counterpart here, since a child is reached by an opaque per-edge index that \texttt{parent} minted when it adopted that child, so dropping one child leaves every sibling's index as it was.
+
+\subsection{\texorpdfstring{\(\Designate(\mathit{path}, \mathit{survivor})\)}{Designate}}\label{sec:lower-designate}
+
+\begin{Verbatim}
+loser := PIFO at path
+surv  := root(survivor)
+layout(survivor)
+designate(loser, surv)
+foreach f in flows(loser) & flows(surv):
+    walk(deassoc, chain(f) & nodes(loser), f)
+foreach f in flows(surv):
+    walk(assoc, chain(f), f)
+    walk(map,   internals(f), f)
+\end{Verbatim}
+This is \Add{}'s lowering, with \texttt{designate} in place of \texttt{change\_arity} and \texttt{adopt} and one walk in front.
+No PIFO is spawned for the \(\Strictstar\) node, and \texttt{loser}'s parent is not touched.
+\texttt{designate} points \texttt{loser}'s designated-survivor link at \texttt{surv} (\cref{sec:hw-survivor}).
+The two walks are the whole of the traffic handover.
+
+The deassoc walk hands the shared flows over to the survivor.
+Both subtrees can serve a shared flow, and the two roots occupy one position, so the losing arm must stop admitting it.
+The deassociation runs before the assoc walk because \(\mathtt{chain(f)}\) resolves through \texttt{loser} only while \texttt{loser} still admits \texttt{f}.
+
+The assoc and map walks are the same as for \Add{}.
+For a shared flow the chain above the two roots is already in place and the walks rewrite it to no effect.
+Flows in \(\mathtt{flows(loser)} \setminus \mathtt{flows(surv)}\) are left alone entirely, and go on reaching \texttt{loser}'s own subtree, matching \cref{sec:designate}'s rule that loser-only labels drain on arm 0.
+Silencing those, when the operator ultimately wants it, comes from the \Quiesce{} step of the surrounding \Replace{} idiom (\cref{sec:sequences}), not from \Designate.
+
+\subsection{\texorpdfstring{\(\Undesignate(\pi \mathbin{+\!\!+} [k])\)}{Undesignate}}\label{sec:lower-undesignate}
+
+\Undesignate{} is likewise \Designate{} run backwards.
+A single \texttt{undesignate(loser)} retargets \texttt{parent}'s index \texttt{k} from \texttt{loser} to \texttt{surv}, the flows in \(\mathtt{flows(loser)} \setminus \mathtt{flows(surv)}\) are unmapped along their internals, and \texttt{loser}'s PIFOs are released.
+Reusing \texttt{k} preserves \texttt{parent}'s per-arm metadata for that slot, so the survivor inherits the annotation that the doomed subtree held.
+The shared flows are deliberately not unmapped, since they serve \texttt{surv} now.
 
 
 \end{document}
