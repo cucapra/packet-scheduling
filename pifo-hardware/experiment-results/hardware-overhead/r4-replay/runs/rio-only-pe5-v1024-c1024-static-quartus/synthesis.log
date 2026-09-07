@@ -376,4 +376,66 @@ Info (19000): Inferred 17 megafunctions from design logic
         Info (286033): Parameter INIT_FILE set to /data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v1024-c1024-static-quartus/quartus-rtl/PifoMesh.v_toplevel_pifoEngines_3_enque_brain_engineCAM_ram.bin.mif
         Info (286033): Parameter READ_DURING_WRITE_MODE_MIXED_PORTS set to OLD_DATA
     Info (276029): Inferred altsyncram megafunction from the following design logic: "pifoEngines_4|enque_brain|engineCAM|ram_rtl_0"  File: /data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v1024-c1024-static-quartus/quartus-rtl/PifoMesh.v Line: 66498
-        Info (286033): Parameter OPERATION_MODE se
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 32
+        Info (286033): Parameter WIDTHAD_A set to 23
+        Info (286033): Parameter NUMWORDS_A set to 8388608
+        Info (286033): Parameter WIDTH_B set to 32
+        Info (286033): Parameter WIDTHAD_B set to 23
+        Info (286033): Parameter NUMWORDS_B set to 8388608
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to NONE
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+        Info (286033): Parameter INIT_FILE set to /data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v1024-c1024-static-quartus/quartus-rtl/PifoMesh.v_toplevel_pifoEngines_4_enque_brain_engineCAM_ram.bin.mif
+        Info (286033): Parameter READ_DURING_WRITE_MODE_MIXED_PORTS set to OLD_DATA
+Warning (14284): Synthesized away the following node(s):
+    Warning (25637): Synthesized away 491528 node(s) of type RAM. See "Registers Removed during Synthesis" report for more details.
+Warning (276002): Cannot convert all sets of registers into RAM megafunctions when creating nodes; therefore, the resulting number of registers remaining in design can cause longer compilation time or result in insufficient memory to complete Analysis and Synthesis
+Warning (276002): Cannot convert all sets of registers into RAM megafunctions when creating nodes; therefore, the resulting number of registers remaining in design can cause longer compilation time or result in insufficient memory to complete Analysis and Synthesis
+Warning (14284): Synthesized away the following node(s):
+    Warning (25637): Synthesized away 11 node(s) of type RAM. See "Registers Removed during Synthesis" report for more details.
+Warning (13024): Output pins are stuck at VCC or GND
+    Warning (13410): Pin "io_commitReady" is stuck at VCC File: /data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v1024-c1024-static-quartus/quartus-rtl/PifoMesh.v Line: 43
+    Warning (13410): Pin "io_pifo_0_push2_payload_data[0..12]" is stuck at GND File: /data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v1024-c1024-static-quartus/quartus-rtl/PifoMesh.v Line: 50
+    Warning (13410): Pin "io_pifo_0_push2_payload_port[0..9]" is stuck at GND File: /data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v1024-c1024-static-quartus/quartus-rtl/PifoMesh.v Line: 51
+    Warning (13410): Pin "io_pifo_0_push2_payload_priority[0..7]" is stuck at GND File: /data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v1024-c1024-static-quartus/quartus-rtl/PifoMesh.v Line: 49
+    Warning (13410): Pin "io_pifo_0_push2_valid" is stuck at GND File: /data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v1024-c1024-static-quartus/quartus-rtl/PifoMesh.v Line: 48
+    Warning (13410): Pin "io_pifo_1_push2_payload_data[0..12]" is stuck at GND File: /data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v1024-c1024-static-quartus/quartus-rtl/PifoMesh.v Line: 68
+    Warning (13410): Pin "io_pifo_1_push2_payload_port[0..9]" is stuck at GND File: /data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v1024-c1024-static-quartus/quartus-rtl/PifoMesh.v Line: 69
+    Warning (13410): Pin "io_pifo_1_push2_payload_priority[0..7]" is stuck at GND File: /data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v1024-c1024-static-quartus/quartus-rtl/PifoMesh.v Line: 67
+    Warning (13410): Pin "io_pifo_1_push2_valid" is stuck at GND File: /data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v1024-c1024-static-quartus/quartus-rtl/PifoMesh.v Line: 66
+    Warning (13410): Pin "io_pifo_2_push2_payload_data[0..12]" is stuck at GND File: /data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v1024-c1024-static-quartus/quartus-rtl/PifoMesh.v Line: 86
+    Warning (13410): Pin "io_pifo_2_push2_payload_port[0..9]" is stuck at GND File: /data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v1024-c1024-static-quartus/quartus-rtl/PifoMesh.v Line: 87
+    Warning (13410): Pin "io_pifo_2_push2_payload_priority[0..7]" is stuck at GND File: /data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v1024-c1024-static-quartus/quartus-rtl/PifoMesh.v Line: 85
+    Warning (13410): Pin "io_pifo_2_push2_valid" is stuck at GND File: /data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v1024-c1024-static-quartus/quartus-rtl/PifoMesh.v Line: 84
+    Warning (13410): Pin "io_pifo_3_push2_payload_data[0..12]" is stuck at GND File: /data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v1024-c1024-static-quartus/quartus-rtl/PifoMesh.v Line: 104
+    Warning (13410): Pin "io_pifo_3_push2_payload_port[0..9]" is stuck at GND File: /data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v1024-c1024-static-quartus/quartus-rtl/PifoMesh.v Line: 105
+    Warning (13410): Pin "io_pifo_3_push2_payload_priority[0..7]" is stuck at GND File: /data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v1024-c1024-static-quartus/quartus-rtl/PifoMesh.v Line: 103
+    Warning (13410): Pin "io_pifo_3_push2_valid" is stuck at GND File: /data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v1024-c1024-static-quartus/quartus-rtl/PifoMesh.v Line: 102
+    Warning (13410): Pin "io_pifo_4_push2_payload_data[0..12]" is stuck at GND File: /data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v1024-c1024-static-quartus/quartus-rtl/PifoMesh.v Line: 122
+    Warning (13410): Pin "io_pifo_4_push2_payload_port[0..9]" is stuck at GND File: /data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v1024-c1024-static-quartus/quartus-rtl/PifoMesh.v Line: 123
+    Warning (13410): Pin "io_pifo_4_push2_payload_priority[0..7]" is stuck at GND File: /data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v1024-c1024-static-quartus/quartus-rtl/PifoMesh.v Line: 121
+    Warning (13410): Pin "io_pifo_4_push2_valid" is stuck at GND File: /data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v1024-c1024-static-quartus/quartus-rtl/PifoMesh.v Line: 120
+Info (17049): 671029 registers lost all their fanouts during netlist optimizations.
+Info (21057): Implemented 833506 device resources after synthesis - the final resource count might be different
+    Info (21058): Implemented 374 input pins
+    Info (21059): Implemented 397 output pins
+    Info (21061): Implemented 402535 logic cells
+    Info (21064): Implemented 430200 RAM segments
+Info: Successfully synthesized partition
+Info: Saving post-synthesis snapshots for 1 partition(s)
+Info (21615): Running Design Assistant Rules for snapshot 'synthesized'
+Info: No waiver waived any violations
+Info (22360): Design Assistant Results: 12 of 13 enabled rules passed, and 7 rules was disabled, in snapshot 'synthesized'
+Info (21661): Design Assistant Results: 0 of 1 High severity rules issued violations in snapshot 'synthesized'
+Info (21621): Design Assistant Results: 1 of 6 Medium severity rules issued violations in snapshot 'synthesized'. Please refer to DRC report '/data/work/rio-synthesis/hardware-overhead/rio-only-pe5-v1024-c1024-static-quartus/output_files/pifo.drc.synthesized.rpt' for more information
+Info (21622): Design Assistant Results: 0 of 6 Low severity rules issued violations in snapshot 'synthesized'
+Info: Quartus Prime Synthesis was successful. 0 errors, 35 warnings
+    Info: Peak virtual memory: 32087 megabytes
+    Info: Processing ended: Mon Sep  7 02:27:52 2026
+    Info: Elapsed time: 03:26:46
+    Info: System process ID: 307150

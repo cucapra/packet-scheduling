@@ -93,7 +93,6 @@ Changes below compare replay with read/copy; the full table also reports changes
 
 Incomplete measurements (never interpreted as zero):
 
-- quartus, 1024 IDs, static: `synthesis_running`.
 - quartus, 1024 IDs, dynamic: `synthesis_running`.
 - quartus, 1024 IDs, replay: `synthesis_running`.
 

@@ -62,6 +62,15 @@ the full table depth. The controller issues at most one replayed instruction per
 cycle globally. An empty commit needs no replay. Actual busy time also depends
 on write-path readiness; it is not assumed to be constant for arbitrary traffic.
 
+The current read/copy RTL holds synchronization busy for `D + 1` cycles for a
+depth-`D` mapper: `D` pipelined copy reads followed by the final write. PEs copy
+in parallel. At 1,024 IDs the deepest mapper has 8,388,608 words, so this is
+8,388,609 busy cycles after each commit. Replay instead has `N` busy cycles
+when its log and destination accept one instruction per cycle, with `N` counting
+the staged mapper instructions across all PEs and bounded by 16,384 here.
+These are controller cycle counts derived from the RTL, not measured routed
+latencies. The focused test checks 52 busy cycles for 52 replayed instructions.
+
 The protocol starts from initialized, equal banks. It does not provide recovery
 of an interrupted transaction after a runtime reset clears the controller log.
 

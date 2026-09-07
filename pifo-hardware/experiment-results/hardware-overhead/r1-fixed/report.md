@@ -19,7 +19,6 @@ Blank percentages mean a zero baseline. Only completed synthesis reports supply 
 
 Incomplete or failed points (not treated as zero resource usage):
 
-- quartus, static, 1024 vFlows: `synthesis_running`.
 - quartus, dynamic, 1024 vFlows: `synthesis_running`.
 
 Resource counts exceeding the target device's reported capacity:
