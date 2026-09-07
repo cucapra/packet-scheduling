@@ -1073,14 +1073,14 @@ These edits introduce and delete a $\Strictstar$ policy node that behaves identi
 We show how to support $\Strictstar$ with a minimal hardware modification and without relocating packets across PEs.
 
 The Rio ISA's \texttt{designate} instruction creates a relationship between two PIFOs that resembles a $\Strict$ node created with \texttt{set\_policy}.
-However, the priorities for this special $\Strictstar*$ node can never change (\texttt{set\_arm\_meta} is disallowed),
+However, the priorities for this special $\Strictstar$ node can never change (\texttt{set\_arm\_meta} is disallowed),
 and only \texttt{undesignate} can delete the node.
 
 These restrictions admit a key optimization:
-to implement $\Strictstar*(A, B)$,
-we do not need to allocate a separate PE for the $\Strictstar*$ node itself.
+to implement $\Strictstar(A, B)$,
+we do not need to allocate a separate PE for the $\Strictstar$ node itself.
 Instead, we add simple logic to the PE that houses nodes $A$ and $B$.
-Adding and deleting the $\Strictstar*$ node therefore avoids shifting the tree levels of $A$ and $B$, which would require relocating their packets across physical PIFOs.
+Adding and deleting the $\Strictstar$ node therefore avoids shifting the tree levels of $A$ and $B$, which would require relocating their packets across physical PIFOs.
 \xxx{In other words, to calculate the level of a given node, ignore strictstar...}
 
 Rio adds, to each PIFO, a \emph{designated-survivor link}.
