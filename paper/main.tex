@@ -189,20 +189,21 @@ Whatever the policy, the scheduler has to reach its decision at line rate, since
 The abstraction that makes this affordable in hardware is the \emph{PIFO}, a priority queue that a switch can maintain at line rate~\cite{Sivaraman16}.
 A hierarchical policy runs on a tree of PIFOs, one queue per node.
 
+% It needs to be inputted here so it lands on the top of page 2
+\input{fig-tour}
+
 A deployment's policy is not fixed for the life of the deployment.
 Traffic patterns shift, tenants arrive and leave, and telemetry from downstream tells the operator that the policy in force is no longer the right one.
 Such changes need to be rapid and seamless.
 The scheduler, however, was compiled for the policy it is running.
 Its tree shape, its per-node disciplines, and its table contents are all artifacts of a decision made before the switch was brought up, and the compilers that produce them accept \emph{a policy to run} rather than \emph{a change to the policy already running}.
-
-Consider a programmable switch running the policy \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\textsf{gmail})\), strictly prioritizing real-time \textsf{zoom} traffic over \textsf{gmail} traffic.
-The network operator wants to add a new \textsf{spotify} flow, and is considering two candidate policies:
-\(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{mid}{:}\,\textsf{spotify},\allowbreak\ \mathtt{lo}{:}\,\textsf{gmail})\), extending the strict-priority list with \textsf{spotify}; or
-\(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\RR(\textsf{gmail},\allowbreak\ \textsf{spotify}))\), keeping \textsf{zoom} at the higher tier but having \textsf{gmail} and \textsf{spotify} share the lower tier via round-robin.
-In either case, the state of the art~\cite{vPIFO} would stop the world: drop or recirculate the buffered packets, recompile, and reinstall.
+So the state of the art~\cite{vPIFO} stops the world: it drops or recirculates the buffered packets, recompiles, and reinstalls.
 The costs are downtime, delay, and the rebuilding of nodes that did not need to be rebuilt.
 
 This paper refuses to stop the world.
+Some changes can be installed as a single atomic step, and others cannot, leaving the scheduler to run for a while under a policy that no operator requested.
+That interval is unavoidable and it persists for nonzero time.
+The scheduler goes on accepting and emitting packets throughout, so scheduling decisions are being made by it.
 Our thesis is that the interval during which a scheduler is being reprogrammed is itself a scheduling policy.
 Stopping the world does not do away with that policy but only leaves it unstated and unchosen.
 Understanding this unstated policy is a language problem.
@@ -210,73 +211,16 @@ A transitional policy needs a syntax that the operator can read, a semantics tha
 With those in hand, the question of whether a transition was carried out correctly becomes a theorem about the semantics rather than a measurement of the hardware.
 Rio supplies all three: a language of policy edits, a semantics for them, and a lowering of them onto a PIFO substrate.
 
-A transition from a running policy \(p_1\) to a requested policy \(p_2\) takes one of two shapes (\cref{fig:two-timelines}).
-Sometimes the requested policy can be installed immediately, as a single atomic transition (case~1).
-Sometimes it cannot, and the scheduler must first pass through a transitional policy (case~2).
-Our two candidates illustrate the two cases.
-
-\begin{figure}[t]
-\centering
-\begin{tikzpicture}[
-  x=0.95cm, y=1cm,
-  lbl/.style={font=\small\ttfamily, anchor=north},
-]
-% ---- Row (1): the easy, immediate transition ----
-\node at (-0.05,1.5) {(1)};
-\draw[->,thick] (0.4,1.5) -- (8.2,1.5);
-\draw[thick] (3,1.3) -- (3,1.7);
-\node[above] at (3,1.7) {$t_1$};
-\node[lbl] at (1.6,1.3) {p1};
-\node[lbl] at (5.6,1.3) {p2};
-% ---- Row (2): the hard transition, with a transitional period ----
-\node at (-0.05,0) {(2)};
-\draw[->,thick] (0.4,0) -- (8.2,0);
-\draw[thick] (3,-0.2) -- (3,0.2);
-\draw[thick] (5.5,-0.2) -- (5.5,0.2);
-\node[above] at (3,0.2) {$t_1$};
-\node[above] at (5.5,0.2) {$t_2$};
-\node[lbl] at (1.6,-0.2) {p1};
-\node[lbl, font=\small\itshape, align=center] at (4.25,-0.2) {transitional\\policy};
-\node[lbl] at (6.85,-0.2) {p2};
-\end{tikzpicture}
-\caption{The two shapes a transition from a running \(p_1\) to a requested \(p_2\) can take, immediate at \(t_1\) (case~1) or through a transitional policy until \(t_2\) (case~2).}
-\label{fig:two-timelines}
-\end{figure}
-
-\input{fig-tour}
-
-Moving to \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{mid}{:}\,\textsf{spotify},\allowbreak\ \mathtt{lo}{:}\,\textsf{gmail})\) is a case~1 transition.
-Before time \(t_1\), \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\textsf{gmail})\) is running; at time \(t_1\) the request to transition is received, and we immediately satisfy it.
-The transition at \(t_1\) is \emph{atomic}, meaning that any interaction that the network had with the scheduler before \(t_1\) happened entirely in the old regime, and whatever interaction the network had with the scheduler after \(t_1\) happened entirely in the new regime.
-It is also \emph{immediate}, in that no period of preparation precedes the atomic jump into \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{mid}{:}\,\textsf{spotify},\allowbreak\ \mathtt{lo}{:}\,\textsf{gmail})\).
-The two concepts are distinct.
-
-Moving to \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\RR(\textsf{gmail},\allowbreak\ \textsf{spotify}))\) is a case~2 transition.
-As before, \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\textsf{gmail})\) runs before \(t_1\) and the operator's request arrives at \(t_1\), but we cannot move to \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\RR(\textsf{gmail},\allowbreak\ \textsf{spotify}))\) immediately since there are still \textsf{gmail} packets buffered in the scheduler.
-Transitioning immediately would mean moving those buffered \textsf{gmail} packets under the new round-robin node.
-A packet is ranked as it arrives and at no other time.
-These packets arrived before the round-robin node existed, so that node never ranked them and now cannot.
-We atomically step instead into a \emph{transitional policy} that is \emph{not} the one the operator asked for.
-After \(t_1\) but before \(t_2\), the scheduler still accepts and emits packets under it.
-At time \(t_2\), defined as the instant that a well-defined guard becomes true, we atomically step into \(\Strict(\mathtt{hi}{:}\,\textsf{zoom},\allowbreak\ \mathtt{lo}{:}\,\RR(\textsf{gmail},\allowbreak\ \textsf{spotify}))\).
-
-The operator never specified the semantics of the interval from \(t_1\) to \(t_2\), but that interval is a packet scheduling regime all the same.
-It is unavoidable, it persists for nonzero time, and throughout it the scheduler goes on accepting and emitting packets, so scheduling decisions are being made in it.
-Some of those decisions are better than others from the operator's point of view, and the state of the art has settled on a trivial one, discarding the backlog and starting over~\cite{vPIFO}.
-Our contributions are to say what the transitional policy is and to do better than that.
-
 Rio's language is a grammar of atomic policy edits, each one a change the hardware can install in a single instant (\cref{sec:delta-grammar}).
-Its semantics gives every edit a meaning in the operator's own policy language, so \emph{any transitional policy the grammar produces is ordinary scheduling}, readable exactly as \(p_1\) and \(p_2\) are (\cref{sec:edit-semantics}).
-A planner turns a requested \(p_2\) into a guarded sequence of those edits (\cref{sec:planner}), and a mechanical lowering carries each edit down to the instructions that a switch runs (\cref{sec:hw-compile}).
-A transition from any \(p_1\) to any \(p_2\) is always available, and many admit a realization confined to the part of the tree that actually changes.
-We will give the semantics of the stop-the-world transitional policy and use it as a baseline.
-Two practical goals guide the search for better ways to transition from a given \(p_1\) to a given \(p_2\).
+Its semantics gives every edit a meaning in the operator's own policy language, so \emph{any transitional policy the grammar produces is ordinary scheduling}, readable exactly as the operator's own policies are (\cref{sec:edit-semantics}).
+A planner turns a requested policy into a guarded sequence of those edits (\cref{sec:planner}), and a mechanical lowering carries each edit down to the instructions that a switch runs (\cref{sec:hw-compile}).
+A transition from any running policy to any requested policy is always available, and many admit transitions a realization confined precisely to the part of the tree that actually changes.
+We give the semantics of the stop-the-world transitional policy and use it as a baseline.
+We beat it with a property we call \emph{non-disruption}.
+The act of reconfiguring never drops, reorders, or re-ranks a packet that is already buffered, so any disruption the operator observes is the new policy correctly governing new arrivals (\cref{sec:nondisruption}).
+Two practical goals guide the search for better ways to transition between policies.
 We would like to shorten the transition period, and we would like to avoid dropping or delaying packets.
 \xxx[AM]{more to come here; the cost model is a legit open question!}
-\xxx[AM]{Proposal: name \emph{non-disruption} here as one of the improvements over the state of the art.
-Right now \cref{sec:nondisruption} introduces it out of nowhere, and says ``the stop-the-world reset is the baseline we wish to beat''. 
-The reader mayyy look back at the promises above, which are only shorter transitions and fewer drops.
-I like the idea of promoting nondisturbance: the \emph{act} of reconfiguring never reorders, re-ranks, or drops a packet that is already buffered, so any disturbance a reader observes is the new policy correctly governing new arrivals.}
 We contribute a tool that achieves this and shows [improvements].
 
 \section{Rio by Example}\label{sec:tour}
