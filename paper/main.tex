@@ -1087,8 +1087,9 @@ What the blocking command still serves is reclamation.
 \texttt{v}'s PIFOs, and those of everything beneath it, may be released only once the subtree is empty, and that is a second commit guarded on the same emptiness predicate (\cref{sec:hw-commit}).
 After it, nothing in the tree records that a transition happened.
 
-\xxx[AM to Zhiyuan]{That second commit is the guarded GC you said you would add, so this paragraph describes hardware that does not exist yet.
-Tell me whether adding it moves any of the four timestamps in the confined run, and I will leave the paragraph as it stands if it does not.}
+% \xxx[AM to Zhiyuan]{That second commit is the guarded GC you said you would add, so this paragraph describes hardware that does not exist yet.
+% Tell me whether adding it moves any of the four timestamps in the confined run, and I will leave the paragraph as it stands if it does not.}
+% ZG: the hardware exist, i'll add the evaluation line.
 
 An operator may also put a \(\Strictstar\) in a policy of their own (\cref{sec:policy-dsl}), and \(\lceil \cdot \rceil\) compiles it to what \Designate{} builds, laying out both arms and pointing the first arm's link at the second.
 
@@ -1101,11 +1102,12 @@ Every enqueue or dequeue therefore observes either the whole list applied, or no
 This is the atomicity that \cref{sec:delta-grammar} demanded of every form it admits.
 A commit's \emph{length} may depend on live control state (how many flows are admitted, how many siblings need shifting), but its \emph{atomicity} does not.
 
-\xxx[AM to Zhiyuan]{You wrote in Slack that the commit happens in one hardware cycle... did you mean a single cycle \emph{at each PE}? That is what I wrote.
-The reason is that \cref{sec:hw-commit} delay-aligns the commit signals so the new configuration becomes visible at different PEs at different times.
-If that is so then how do we do it in a flat one-cycle-across-the-tree way?
-If the commit really is one cycle across the whole tree, say so.
-The wavefront paragraph may be wrong.}
+% \xxx[AM to Zhiyuan]{You wrote in Slack that the commit happens in one hardware cycle... did you mean a single cycle \emph{at each PE}? That is what I wrote.
+% The reason is that \cref{sec:hw-commit} delay-aligns the commit signals so the new configuration becomes visible at different PEs at different times.
+% If that is so then how do we do it in a flat one-cycle-across-the-tree way?
+% If the commit really is one cycle across the whole tree, say so.
+% The wavefront paragraph may be wrong.}
+% ZG: yes it's one cycle per-PE. 
 
 Each \(\delta\) (\cref{sec:delta-grammar}) lowers to one \texttt{commit}.
 The ISA itself is unconditional.
@@ -1115,9 +1117,10 @@ Any situation-dependent reasoning, such as ``the subtree we are about to collaps
 The ISA has thirteen opcodes, laid out in \cref{tab:isa-opcodes}.
 They address a PIFO by an opaque id \texttt{v}, one per tree node, and one of its arms by an \emph{index}, an opaque per-PIFO handle for a child.
 
-\xxx[AM to Zhiyuan]{Your switch takes six control commands, and the correspondence belongs beside this table, as a column or a sentence.
-My reading is that \texttt{UpdateMapperPre} and \texttt{UpdateMapperPost} are \texttt{assoc} and \texttt{map}, and are the ingress and next-hop mappings of your sketch; that \texttt{UpdateMapperNonExist} is \texttt{designate}; that the two Brain commands are \texttt{set\_policy} and \texttt{set\_arm\_meta}; and that \texttt{CommitMapper} is the marker.
-Correct whichever of those is wrong.}
+% \xxx[AM to Zhiyuan]{Your switch takes six control commands, and the correspondence belongs beside this table, as a column or a sentence.
+% My reading is that \texttt{UpdateMapperPre} and \texttt{UpdateMapperPost} are \texttt{assoc} and \texttt{map}, and are the ingress and next-hop mappings of your sketch; that \texttt{UpdateMapperNonExist} is \texttt{designate}; that the two Brain commands are \texttt{set\_policy} and \texttt{set\_arm\_meta}; and that \texttt{CommitMapper} is the marker.
+% Correct whichever of those is wrong.}
+% ZG: yes, you get the correct understanding
 
 \begin{table}[t]
 \footnotesize
@@ -1164,9 +1167,10 @@ An index is meaningful only against the tree the compiler holds, so an \texttt{a
 The classification and survivor opcodes are thus the ones that write a PE.
 The lifecycle and structure opcodes are the compiler's own bookkeeping, and \texttt{change\_arity} reaches no PE at all.
 
-\xxx[AM to Zhiyuan]{You told me \texttt{change\_arity} never reaches hardware, and I have written that.
-One thing I could not work out: a new arm carries per-arm scheduler state, such as \WFQ{}'s virtual finish time for that arm, and that state has to live where ranks are computed.
-If the arity never reaches a PE, what creates and seeds that slot, and is it the \texttt{set\_arm\_meta} that follows?}
+% \xxx[AM to Zhiyuan]{You told me \texttt{change\_arity} never reaches hardware, and I have written that.
+% One thing I could not work out: a new arm carries per-arm scheduler state, such as \WFQ{}'s virtual finish time for that arm, and that state has to live where ranks are computed.
+% If the arity never reaches a PE, what creates and seeds that slot, and is it the \texttt{set\_arm\_meta} that follows?}
+% ZG: here's the point: for a mapping table, we do not need to allocate a slot; a insert(k,v) will "create slot for K" if it's not exist.
 
 Which PE holds a given PIFO is the substrate's choice, written \texttt{pe(path)} and fixed at compile time as a function of the PIFO's position in the tree.
 A typical choice is the depth-by-PE layout of \cref{sec:background}, under which siblings share a PE.
@@ -1185,9 +1189,10 @@ A lowering reads tree shape, flow sets and arities.
 Only traffic runs while a guard waits, and traffic changes none of those.
 The whole of a guarded sequence can therefore be dispatched at once, and \cref{sec:hw-commit}'s controller queue holds it as fully resolved commits.
 
-\xxx[AM to Zhiyuan]{You said we could simply avoid saying when a later commit gets its parameters.
-I have written this paragraph instead, because this subsection and \cref{sec:hw-commit} otherwise say different things about a sequence with a drain in the middle.
-Please check. We can still cut it if you feel strongly.}
+% \xxx[AM to Zhiyuan]{You said we could simply avoid saying when a later commit gets its parameters.
+% I have written this paragraph instead, because this subsection and \cref{sec:hw-commit} otherwise say different things about a sequence with a drain in the middle.
+% Please check. We can still cut it if you feel strongly.}
+% ZG: corrent, ideally we do not need any timely readback from hardware. read back is slow, and we always get staled data if there's packets going through while we are reading back and calculate on the host. I'll modify this part later and make it simple. 
 
 A switch with \(P\) output ports has \(P\) separate trees, each wrapped at the ISA in a reserved 1-arm PIFO \texttt{port\_root} whose sole child, reached through the index \texttt{port\_step}, is the actual tree root.
 The forwarding pipeline selects a packet's output port before the packet reaches the scheduler, so a \push{} enters that port's tree at its port root.
@@ -1244,10 +1249,12 @@ Say also which of the six commands cost more than one cycle, and note that the c
 \xxx[AM to Zhiyuan]{The paper has to convert cycles to time exactly once, and here is where.
 You offered a 1\,GHz ASIC or a 250\,MHz FPGA and I would take the ASIC, which makes the 1024-cycle stop almost exactly a microsecond.
 Confirm that, and tell me how many bytes the switch moves per cycle so I can name a line rate.}
+ZG: we are taling about control plane, so our rate here is packets/s (PPS). our rate is ii=1 enque and ii=3 (cycles) deque, which regardless of packetsize, is a decent performance for PPS.
 
 \xxx[AM to Zhiyuan]{You have no citation for the reconfiguration figure and say a real P4 switch measures up to seconds.
 So I plan to present the 1024 as a floor we grant the baseline rather than as a measurement: we stop the world for about a microsecond, which is faster than any reported reconfiguration of a running switch, and Rio beats it anyway.
 Say if you would rather the baseline had a different number.}
+ZG: we should look for some reference on the reconfiguration time; but real time will be MUCH longer than 1us, we should explicitly say that. some quick cites: FlexCore NSDI 22, ~500ms
 
 \xxx[AM to Zhiyuan]{\texttt{settings.json} sets a queue depth of 256 while the stop-the-world run peaks at 417 buffered packets and drops nothing.
 Raise it or drop it, whichever is honest.
