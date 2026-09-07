@@ -953,20 +953,7 @@ Second, conventional match-action table updates do not provide \emph{atomic visi
 When an update lands concurrently with an enqueue or a dequeue, a single packet operation can observe a mixture of old and new scheduler state.
 For example, an enqueue may choose its path using the old flow-to-child mapping but compute its rank using newly updated per-arm metadata, or a dequeue may pop from one version of the tree and then follow next-hop state from another.
 As a result, existing PIFO-based substrates support only stop-the-world policy update~\cite{vPIFO,Alcoz23}.
-
-Rio updates the policy of a running scheduler, and it needs only small changes to this substrate to do so, because it separates \emph{incremental installation} from \emph{atomic publication}.
-The mechanism is an indirection between packet classification and rank computation.
-The ingress pipeline first maps an incoming packet to an internal identifier,
-and subsequent stages compute its rank using the state associated with that identifier.
-During a policy transition, Rio does not destructively rewrite rank-computation state that packets
-already in flight may still reference.
-Instead, it installs the rank-computation state the new policy requires under fresh internal
-identifiers, leaving the state that is still live untouched.
-Once this state has been installed, Rio atomically redirects the relevant mappings to the new identifiers.
-Thus, the bulk of a policy transition remains \emph{incremental and non-destructive},
-while atomicity is required only at the indirection boundary.
-Rio implements this boundary using a double-buffered transactional lookup table,
-which prepares updates in a standby copy and makes them visible through an atomic swap.
+Rio needs only small changes to this substrate, because it separates incremental installation from atomic publication (\cref{sec:hw-commit}).
 
 A commit bridges the compiler and the hardware.
 It is a sequence of updates that becomes visible to packets all at once, and Rio asks two things of it.
@@ -1087,10 +1074,7 @@ While \texttt{v} holds packets, it returns packets.
 Once \texttt{v} is empty it defers to its designated survivor, and the query passes to \texttt{surv} rather than underflowing.
 
 The parent therefore holds one index per packet in \emph{either} subtree, and spends them on \texttt{v} until \texttt{v} is dry and on \texttt{surv} thereafter, which is the arm-0-before-arm-1 order \cref{sec:check-designate} proves non-disruptive.
-The elision does change what \cref{sec:controls}'s well-formedness ranges over.
-That invariant counts, at each node, one \ensuremath{\mathit{pifo}} entry per packet in the subtree under the corresponding child, and here the parent holds entries for packets in a subtree that is not its child at all.
-This count is still correct once ``the subtree under index \(i\)'' is read as the subtree at \(i\) together with its designated survivor's, and an index that leads to \texttt{v} when \texttt{v} is empty does not actually reach a leaf with nothing to emit, since it reaches \texttt{surv}.
-At the \ensuremath{\mathit{pol}} level no reading is needed, since \(\mathtt{wrap}\) (\cref{sec:designate}) builds a real \(\Strictstar\) node with two real children and a \ensuremath{\mathit{pifo}} of its own, and \cref{sec:controls} applies to it word for word.
+The elision also changes what \cref{sec:controls}'s well-formedness ranges over, and the same subsection re-reads the invariant to cover it.
 
 \paragraph{Ending the transition}
 
@@ -1196,9 +1180,6 @@ Its \texttt{Assoc} and \texttt{Map} mirror the actual root's, since every walk b
 The port root makes the tree root an ordinary position.
 \texttt{undesignate} retargets a parent's index from a PIFO to that PIFO's designated survivor, and at the root there is no parent's index to retarget.
 That case is not hypothetical: the always-available plan of \cref{sec:sequences} is \(\Replace([], p_2)\), whose last step is \(\Undesignate([])\).
-Without the port root the substrate could not execute the one transition the planner is guaranteed to be able to fall back on, and would need a second opcode meaning ``make this PIFO the tree root'', doing at one position what \texttt{undesignate} does everywhere else.
-\Designate{} itself needs no parent, since it only writes the doomed node's own link.
-It is \Undesignate{} rather than \Designate{} that wants a slot above.
 
 \xxx[AM to Zhiyuan]{The port-selection sentence above is my best guess.
 I am assuming the output port is already fixed by the forwarding pipeline, so the scheduler never chooses among the \(P\) trees and needs no table to do it.
@@ -1987,6 +1968,11 @@ Every in-flight packet lies under arm 0, which is \(C@\tau\) carried over unchan
 If \(P_0 > 0\), every entry in \(N.\mathit{pifo}\) is slot \(0\), so any \pop{} reaching \(N\) descends into arm 0 and returns exactly what it would have returned before.
 If \(P_0 = 0\), then \(\vdash C\) means no \pop{} ever reaches \(N\).
 Arm 1 sees traffic only on a future \push{}, so no buffered packet is dropped, reordered, or re-ranked.
+
+\paragraph{The same checks under the survivor link}
+The checks above are about \(\mathtt{wrap}\)'s node (\cref{sec:designate}), a real \(\Strictstar\) with two real children and a \pifo of its own, so \cref{sec:controls} applies to it word for word.
+The substrate has no such node, since \cref{sec:hw-survivor} realizes it as a link, and the doomed node's parent then holds \pifo entries for packets in a subtree that is not its child at all.
+That count is still correct once ``the subtree under index \(i\)'' is read as the subtree at \(i\) together with its designated survivor's, and an index that leads to a node that has drained does not reach a leaf with nothing to emit, since it reaches the survivor.
 
 \subsection{\texorpdfstring{\Undesignate}{Undesignate}}\label{sec:check-undesignate}
 
