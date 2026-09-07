@@ -196,8 +196,9 @@ A deployment's policy is not fixed for the life of the deployment.
 Traffic patterns shift, tenants arrive and leave, and telemetry from downstream tells the operator that the policy in force is no longer the right one.
 Such changes need to be rapid and seamless.
 The scheduler, however, was compiled for the policy it is running.
-Its tree shape, its per-node disciplines, and its table contents are all artifacts of a decision made before the switch was brought up, and the compilers that produce them accept \emph{a policy to run} rather than \emph{a change to the policy already running}.
-So the state of the art~\cite{vPIFO} stops the world: it drops or recirculates the buffered packets, recompiles, and reinstalls.
+Its tree shape, its per-node disciplines, and its table contents are all artifacts of a decision made before the switch was brought up~\cite{Sivaraman16,Gao22,vPIFO}.
+The compilers that produce them accept \emph{a policy to run} rather than \emph{a change to the policy already running}~\cite{Sivaraman16,vPIFO}.
+So a PIFO tree that is already running has no way to reach a new policy but to stop the world: drop or recirculate the buffered packets, recompile, and reinstall~\cite{vPIFO,Alcoz23}.
 The costs are downtime, delay, and the rebuilding of nodes that did not need to be rebuilt.
 
 This paper refuses to stop the world.
