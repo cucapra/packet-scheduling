@@ -21,6 +21,10 @@ controller cost is included. See the
 The [RAM breakdown](r4-replay/memory-breakdown.md) isolates mapper banks,
 unbanked engineCAM tables, and the journal, and reconciles them with each
 completed synthesis total.
+All original R4 runs completed. At 1,024 IDs Quartus maps the journal to
+registers, despite retaining the two simple-dual-port post-mapper banks; that
+cost is included in the reported totals. The smaller Quartus journals and all
+Vivado journals use block RAM.
 
 Both vendors use the installed tools and board definitions recorded in each
 manifest: Quartus Pro 25.3.1 / Agilex 7 AGFB014R24B2E2V and Vivado 2025.2 /
@@ -37,8 +41,9 @@ gate, retaining the actual target capacities in their utilization reports.
   its four completed runs; shared vendor scripts are in `workflow/`.
 - `validation/` contains packet/configuration simulations, compact-MIF controls,
   PIFO boundary checks, and reference RTL equivalence evidence.
-- `r4-replay/validation/` checks Quartus's simple-dual-port mapper/log inference
-  and absence of the additional copy-read RAM replicas.
+- `r4-replay/validation/` checks Quartus's simple-dual-port mapper inference,
+  absence of additional copy-read RAM replicas, and actual journal placement
+  in RAM or registers.
 - The replay controller test exercises 29 commits and 52 staged/replayed
   updates, checking full bank contents after synchronized batches. It covers
   full-log credits, a queued next-epoch update, FIFO wraparound, and overlapping

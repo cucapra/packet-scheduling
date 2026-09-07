@@ -459,4 +459,80 @@ Info (19000): Inferred 22 megafunctions from design logic
         Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
         Info (286033): Parameter INIT_FILE set to /data/work/rio-synthesis/hardware-replay/rio-replay-pe5-v1024-c1024-j16384-quartus/quartus-rtl/PifoMesh.v_toplevel_pifoEngines_2_enque_brain_engineCAM_ram.bin.mif
         Info (286033): Parameter READ_DURING_WRITE_MODE_MIXED_PORTS set to OLD_DATA
-    Info (276029): Inferred altsyncram megafunction from the following design logic: "pifoEngines_3|enque_brain|engineCAM|ram_rtl_0"  File: /data/work/rio-synthesis/hardware-replay/rio-replay-pe5-v1024-c1024-j16384-quartus/quartus-
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "pifoEngines_3|enque_brain|engineCAM|ram_rtl_0"  File: /data/work/rio-synthesis/hardware-replay/rio-replay-pe5-v1024-c1024-j16384-quartus/quartus-rtl/PifoMesh.v Line: 68737
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 32
+        Info (286033): Parameter WIDTHAD_A set to 23
+        Info (286033): Parameter NUMWORDS_A set to 8388608
+        Info (286033): Parameter WIDTH_B set to 32
+        Info (286033): Parameter WIDTHAD_B set to 23
+        Info (286033): Parameter NUMWORDS_B set to 8388608
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to NONE
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+        Info (286033): Parameter INIT_FILE set to /data/work/rio-synthesis/hardware-replay/rio-replay-pe5-v1024-c1024-j16384-quartus/quartus-rtl/PifoMesh.v_toplevel_pifoEngines_3_enque_brain_engineCAM_ram.bin.mif
+        Info (286033): Parameter READ_DURING_WRITE_MODE_MIXED_PORTS set to OLD_DATA
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "pifoEngines_4|enque_brain|engineCAM|ram_rtl_0"  File: /data/work/rio-synthesis/hardware-replay/rio-replay-pe5-v1024-c1024-j16384-quartus/quartus-rtl/PifoMesh.v Line: 68487
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 32
+        Info (286033): Parameter WIDTHAD_A set to 23
+        Info (286033): Parameter NUMWORDS_A set to 8388608
+        Info (286033): Parameter WIDTH_B set to 32
+        Info (286033): Parameter WIDTHAD_B set to 23
+        Info (286033): Parameter NUMWORDS_B set to 8388608
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to NONE
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+        Info (286033): Parameter INIT_FILE set to /data/work/rio-synthesis/hardware-replay/rio-replay-pe5-v1024-c1024-j16384-quartus/quartus-rtl/PifoMesh.v_toplevel_pifoEngines_4_enque_brain_engineCAM_ram.bin.mif
+        Info (286033): Parameter READ_DURING_WRITE_MODE_MIXED_PORTS set to OLD_DATA
+Warning (14284): Synthesized away the following node(s):
+    Warning (25637): Synthesized away 491539 node(s) of type RAM. See "Registers Removed during Synthesis" report for more details.
+Warning (276002): Cannot convert all sets of registers into RAM megafunctions when creating nodes; therefore, the resulting number of registers remaining in design can cause longer compilation time or result in insufficient memory to complete Analysis and Synthesis
+Warning (13024): Output pins are stuck at VCC or GND
+    Warning (13410): Pin "io_pifo_0_push2_payload_data[0..12]" is stuck at GND File: /data/work/rio-synthesis/hardware-replay/rio-replay-pe5-v1024-c1024-j16384-quartus/quartus-rtl/PifoMesh.v Line: 50
+    Warning (13410): Pin "io_pifo_0_push2_payload_port[0..9]" is stuck at GND File: /data/work/rio-synthesis/hardware-replay/rio-replay-pe5-v1024-c1024-j16384-quartus/quartus-rtl/PifoMesh.v Line: 51
+    Warning (13410): Pin "io_pifo_0_push2_payload_priority[0..7]" is stuck at GND File: /data/work/rio-synthesis/hardware-replay/rio-replay-pe5-v1024-c1024-j16384-quartus/quartus-rtl/PifoMesh.v Line: 49
+    Warning (13410): Pin "io_pifo_0_push2_valid" is stuck at GND File: /data/work/rio-synthesis/hardware-replay/rio-replay-pe5-v1024-c1024-j16384-quartus/quartus-rtl/PifoMesh.v Line: 48
+    Warning (13410): Pin "io_pifo_1_push2_payload_data[0..12]" is stuck at GND File: /data/work/rio-synthesis/hardware-replay/rio-replay-pe5-v1024-c1024-j16384-quartus/quartus-rtl/PifoMesh.v Line: 68
+    Warning (13410): Pin "io_pifo_1_push2_payload_port[0..9]" is stuck at GND File: /data/work/rio-synthesis/hardware-replay/rio-replay-pe5-v1024-c1024-j16384-quartus/quartus-rtl/PifoMesh.v Line: 69
+    Warning (13410): Pin "io_pifo_1_push2_payload_priority[0..7]" is stuck at GND File: /data/work/rio-synthesis/hardware-replay/rio-replay-pe5-v1024-c1024-j16384-quartus/quartus-rtl/PifoMesh.v Line: 67
+    Warning (13410): Pin "io_pifo_1_push2_valid" is stuck at GND File: /data/work/rio-synthesis/hardware-replay/rio-replay-pe5-v1024-c1024-j16384-quartus/quartus-rtl/PifoMesh.v Line: 66
+    Warning (13410): Pin "io_pifo_2_push2_payload_data[0..12]" is stuck at GND File: /data/work/rio-synthesis/hardware-replay/rio-replay-pe5-v1024-c1024-j16384-quartus/quartus-rtl/PifoMesh.v Line: 86
+    Warning (13410): Pin "io_pifo_2_push2_payload_port[0..9]" is stuck at GND File: /data/work/rio-synthesis/hardware-replay/rio-replay-pe5-v1024-c1024-j16384-quartus/quartus-rtl/PifoMesh.v Line: 87
+    Warning (13410): Pin "io_pifo_2_push2_payload_priority[0..7]" is stuck at GND File: /data/work/rio-synthesis/hardware-replay/rio-replay-pe5-v1024-c1024-j16384-quartus/quartus-rtl/PifoMesh.v Line: 85
+    Warning (13410): Pin "io_pifo_2_push2_valid" is stuck at GND File: /data/work/rio-synthesis/hardware-replay/rio-replay-pe5-v1024-c1024-j16384-quartus/quartus-rtl/PifoMesh.v Line: 84
+    Warning (13410): Pin "io_pifo_3_push2_payload_data[0..12]" is stuck at GND File: /data/work/rio-synthesis/hardware-replay/rio-replay-pe5-v1024-c1024-j16384-quartus/quartus-rtl/PifoMesh.v Line: 104
+    Warning (13410): Pin "io_pifo_3_push2_payload_port[0..9]" is stuck at GND File: /data/work/rio-synthesis/hardware-replay/rio-replay-pe5-v1024-c1024-j16384-quartus/quartus-rtl/PifoMesh.v Line: 105
+    Warning (13410): Pin "io_pifo_3_push2_payload_priority[0..7]" is stuck at GND File: /data/work/rio-synthesis/hardware-replay/rio-replay-pe5-v1024-c1024-j16384-quartus/quartus-rtl/PifoMesh.v Line: 103
+    Warning (13410): Pin "io_pifo_3_push2_valid" is stuck at GND File: /data/work/rio-synthesis/hardware-replay/rio-replay-pe5-v1024-c1024-j16384-quartus/quartus-rtl/PifoMesh.v Line: 102
+    Warning (13410): Pin "io_pifo_4_push2_payload_data[0..12]" is stuck at GND File: /data/work/rio-synthesis/hardware-replay/rio-replay-pe5-v1024-c1024-j16384-quartus/quartus-rtl/PifoMesh.v Line: 122
+    Warning (13410): Pin "io_pifo_4_push2_payload_port[0..9]" is stuck at GND File: /data/work/rio-synthesis/hardware-replay/rio-replay-pe5-v1024-c1024-j16384-quartus/quartus-rtl/PifoMesh.v Line: 123
+    Warning (13410): Pin "io_pifo_4_push2_payload_priority[0..7]" is stuck at GND File: /data/work/rio-synthesis/hardware-replay/rio-replay-pe5-v1024-c1024-j16384-quartus/quartus-rtl/PifoMesh.v Line: 121
+    Warning (13410): Pin "io_pifo_4_push2_valid" is stuck at GND File: /data/work/rio-synthesis/hardware-replay/rio-replay-pe5-v1024-c1024-j16384-quartus/quartus-rtl/PifoMesh.v Line: 120
+Info (17049): 614689 registers lost all their fanouts during netlist optimizations.
+Info (21057): Implemented 2286735 device resources after synthesis - the final resource count might be different
+    Info (21058): Implemented 374 input pins
+    Info (21059): Implemented 413 output pins
+    Info (21061): Implemented 1589508 logic cells
+    Info (21064): Implemented 696440 RAM segments
+Info: Successfully synthesized partition
+Info: Saving post-synthesis snapshots for 1 partition(s)
+Info (21615): Running Design Assistant Rules for snapshot 'synthesized'
+Info: No waiver waived any violations
+Info (22360): Design Assistant Results: 12 of 13 enabled rules passed, and 7 rules was disabled, in snapshot 'synthesized'
+Info (21661): Design Assistant Results: 0 of 1 High severity rules issued violations in snapshot 'synthesized'
+Info (21621): Design Assistant Results: 1 of 6 Medium severity rules issued violations in snapshot 'synthesized'. Please refer to DRC report '/data/work/rio-synthesis/hardware-replay/rio-replay-pe5-v1024-c1024-j16384-quartus/output_files/pifo.drc.synthesized.rpt' for more information
+Info (21622): Design Assistant Results: 0 of 6 Low severity rules issued violations in snapshot 'synthesized'
+Info: Quartus Prime Synthesis was successful. 0 errors, 31 warnings
+    Info: Peak virtual memory: 42191 megabytes
+    Info: Processing ended: Mon Sep  7 04:17:39 2026
+    Info: Elapsed time: 04:43:57
+    Info: System process ID: 322516

@@ -109,14 +109,25 @@ more BRAM and 40.93% more LUTs than the ordinary-table baseline at this point.
 These results support reducing synchronization overhead, but do not establish
 negligible overhead or a physical fit for the current dense tables.
 
+The original 1,024-ID Quartus run also completed. Its post-mapper RAMs decrease
+from 2,181,038,080 to 1,090,519,040 implementation bits, with exactly two simple
+dual-port banks per PE and no copy-read replicas. However, automatic mapping
+implements the shared 655,360-bit journal in registers: that FIFO hierarchy
+reports 655,446 registers and zero RAM bits. Whole-design totals are 479,742 ALMs,
+681,729 ALUTs, 923,812 registers, and 1,426,064,152 RAM bits. Compared with
+read/copy, RAM decreases 43.33% and ALMs decrease 8.92%, while registers increase
+243.48%. This register cost is included in the comparison; zero journal RAM does
+not mean zero journal storage. The smaller Quartus journals and all Vivado
+journals map to block RAM.
+
 R4 uses the same two target parts, eight-thread settings, 100 MHz constraint,
 external PIFO interface, and Vivado RuntimeOptimized directive as R1/R2. Large
 Vivado cases use the explicit estimation-only capacity hook. Results remain
 synthesis estimates and cannot establish a physical fit or timing closure.
 The [R4 report](../../experiment-results/hardware-overhead/r4-replay/report.md)
 contains the actual counts, absolute changes, and percentages against both
-ordinary tables and the read/copy implementation, along with incomplete status
-for any running point.
+ordinary tables and the read/copy implementation. All original R4 measurements
+are complete.
 
 The old static/read-copy source is preserved in
 `diagnostics/read-copy-source-snapshot/` and the new source in `r4-replay/workflow/`

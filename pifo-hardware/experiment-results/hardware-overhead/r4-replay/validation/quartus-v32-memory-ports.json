@@ -347,20 +347,24 @@
     }
   ],
   "controller_log": {
-    "Name": "streamFifo_53|logic_ram_rtl_0|auto_generated|altera_syncram_impl1|ALTERA_SYNCRAM",
-    "Type": "AUTO",
-    "Mode": "Simple Dual Port",
-    "Port A Depth": "16384",
-    "Port A Width": "25",
-    "Port B Depth": "16384",
-    "Port B Width": "25",
-    "Logical Size": "409600",
-    "Implementation Port A Depth": "2048",
-    "Implementation Port A Width": "200",
-    "Implementation Port B Depth": "2048",
-    "Implementation Port B Width": "200",
-    "Implementation Bits": "409600",
-    "MIF": "None"
+    "implementation": "simple_dual_port_ram",
+    "declared_bits": 409600,
+    "ram_instance": {
+      "Name": "streamFifo_53|logic_ram_rtl_0|auto_generated|altera_syncram_impl1|ALTERA_SYNCRAM",
+      "Type": "AUTO",
+      "Mode": "Simple Dual Port",
+      "Port A Depth": "16384",
+      "Port A Width": "25",
+      "Port B Depth": "16384",
+      "Port B Width": "25",
+      "Logical Size": "409600",
+      "Implementation Port A Depth": "2048",
+      "Implementation Port A Width": "200",
+      "Implementation Port B Depth": "2048",
+      "Implementation Port B Width": "200",
+      "Implementation Bits": "409600",
+      "MIF": "None"
+    }
   },
   "post_mapper_banks_per_pe": 2,
   "copy_read_replicas": 0,

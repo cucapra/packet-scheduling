@@ -12,6 +12,11 @@ Changes below compare replay with read/copy; the full table also reports changes
 
 | Platform | Resource | Ordinary | Read/copy | Replay | Replay − read/copy | Change |
 |---|---|---:|---:|---:|---:|---:|
+| quartus | Estimated ALMs | 249,166 | 526,738 | 479,742 | -46,996 | -8.92% |
+| quartus | Combinational ALUTs | 257,723 | 665,003 | 681,729 | +16,726 | +2.52% |
+| quartus | Registers / FFs | 145,293 | 268,960 | 923,812 | +654,852 | +243.48% |
+| quartus | Mapped block-memory bits | 880,804,632 | 2,516,583,192 | 1,426,064,152 | -1,090,519,040 | -43.33% |
+| quartus | DSP blocks | 0 | 0 | 0 | +0 | N/A |
 | vivado | CLB LUTs | 219,107 | 345,710 | 308,796 | -36,914 | -10.68% |
 | vivado | Registers / FFs | 84,909 | 76,037 | 73,815 | -2,222 | -2.92% |
 | vivado | BRAM36 tile equivalents | 35,850 | 81,937.5 | 51,230.5 | -30,707 | -37.48% |
@@ -76,6 +81,17 @@ Changes below compare replay with read/copy; the full table also reports changes
 | vivado | 128 | dynamic | Allocated BRAM + URAM bits | 38,338,560 | 25,583,616 | -12,754,944 | -33.27% |
 | vivado | 128 | dynamic | LUTs used as RAM | 1,072 | 912 | -160 | -14.93% |
 | vivado | 128 | dynamic | DSP blocks | 0 | 0 | +0 | N/A |
+| quartus | 1024 | static | Estimated ALMs | 249,166 | 479,742 | +230,576 | +92.54% |
+| quartus | 1024 | static | Combinational ALUTs | 257,723 | 681,729 | +424,006 | +164.52% |
+| quartus | 1024 | static | Registers / FFs | 145,293 | 923,812 | +778,519 | +535.83% |
+| quartus | 1024 | static | Mapped block-memory bits | 880,804,632 | 1,426,064,152 | +545,259,520 | +61.90% |
+| quartus | 1024 | static | MLAB memory bits | 0 | 0 | +0 | N/A |
+| quartus | 1024 | static | DSP blocks | 0 | 0 | +0 | N/A |
+| quartus | 1024 | dynamic | Estimated ALMs | 526,738 | 479,742 | -46,996 | -8.92% |
+| quartus | 1024 | dynamic | Combinational ALUTs | 665,003 | 681,729 | +16,726 | +2.52% |
+| quartus | 1024 | dynamic | Registers / FFs | 268,960 | 923,812 | +654,852 | +243.48% |
+| quartus | 1024 | dynamic | Mapped block-memory bits | 2,516,583,192 | 1,426,064,152 | -1,090,519,040 | -43.33% |
+| quartus | 1024 | dynamic | DSP blocks | 0 | 0 | +0 | N/A |
 | vivado | 1024 | static | CLB LUTs | 219,107 | 308,796 | +89,689 | +40.93% |
 | vivado | 1024 | static | Registers / FFs | 84,909 | 73,815 | -11,094 | -13.07% |
 | vivado | 1024 | static | BRAM36 tile equivalents | 35,850 | 51,230.5 | +15,380.5 | +42.90% |
@@ -91,14 +107,12 @@ Changes below compare replay with read/copy; the full table also reports changes
 | vivado | 1024 | dynamic | LUTs used as RAM | 824 | 824 | +0 | +0.00% |
 | vivado | 1024 | dynamic | DSP blocks | 0 | 0 | +0 | N/A |
 
-Incomplete measurements (never interpreted as zero):
-
-- quartus, 1024 IDs, replay: `synthesis_running`.
-
 Report accounting notes:
 
 - quartus, dynamic, 1024 IDs: Quartus omits the aggregate memory rows and reports -2147483648 at the hierarchy root. The positive detailed counts reconcile exactly; raw tables are unchanged.
 - quartus, dynamic, 1024 IDs: MLAB memory usage is not reported for this run and is omitted, not treated as zero.
+
+Quartus, 1,024 IDs: the 655,360-bit journal maps to logic and registers. Its hierarchy reports 655,446 registers and zero RAM bits. This cost is included in the whole-design logic/register totals; the two post-mapper banks per PE remain simple dual-port RAMs.
 
 Reference static/read-copy measurements retain their exact archived source snapshot. Replay has a separately hashed source snapshot; device, widths, PE count, external PIFO boundary, clock, and vendor directive match.
 The replay log is fixed at the same depth across this sweep. Its cost is therefore more prominent at small table sizes.

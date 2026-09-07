@@ -5,8 +5,12 @@ import csv
 import json
 from pathlib import Path
 import re
+import sys
 
 from pifo_hardware_overhead import PROJECT, count_text, write_csv
+
+sys.path.insert(0, str(PROJECT / 'synthesis'))
+from check_replay_mapping import journal_mapping
 
 
 COMPONENTS = {
@@ -16,6 +20,25 @@ COMPONENTS = {
     "replay_log": "Shared instruction log",
     "other": "Other inferred memories",
 }
+
+
+def journal_notes(output, statuses):
+    notes = []
+    for status in statuses:
+        if (status['status'] != 'synthesis_complete' or status['platform'] != 'quartus'
+                or status['configuration'] != 'replay'):
+            continue
+        name = f"rio-replay-pe{status['hardware']['num_engines']}-v{status['vflows']}"
+        matches = [p for p in (output / 'runs').glob(name + '-*-quartus/resource-summary.json')]
+        assert len(matches) == 1, matches
+        mapping = journal_mapping(json.loads(matches[0].read_text()), status['hardware'])
+        if mapping['implementation'] == 'logic_and_registers':
+            registers = int(mapping['hierarchy']['Dedicated Logic Registers'].split()[0])
+            notes.append(f"Quartus, {status['vflows']:,} IDs: the {mapping['declared_bits']:,}-bit "
+                         f"journal maps to logic and registers. Its hierarchy reports {registers:,} "
+                         "registers and zero RAM bits. This cost is included in the whole-design "
+                         "logic/register totals; the two post-mapper banks per PE remain simple dual-port RAMs.")
+    return notes
 
 
 def component(name, configuration):
@@ -56,6 +79,12 @@ def collect(output):
                 ram = dict(zip(table[0], cells))
                 group = component(ram["Name"], variant)
                 metrics["block_memory_bits"][group] += int(ram["Implementation Bits"])
+            if variant == "replay":
+                # Large over-capacity designs can map the journal to registers.
+                # Require evidence for either implementation before accepting zero RAM.
+                mapping = journal_mapping(summary, status['hardware'])
+                assert (metrics['block_memory_bits']['replay_log'] > 0) == (
+                    mapping['implementation'] == 'simple_dual_port_ram')
         else:
             for ram in summary["ram_instances"]:
                 group = component(ram["Memory Name"], variant)
@@ -72,7 +101,7 @@ def collect(output):
         for metric, groups in metrics.items():
             expected = totals[platform, flows, variant, metric]
             assert sum(groups.values()) == expected, (source, metric, groups, expected)
-            if variant == "replay" and metric in ("block_memory_bits", "bram_uram_allocated_bits"):
+            if variant == "replay" and metric == "bram_uram_allocated_bits":
                 assert groups["replay_log"] > 0, (source, "Missing journal RAM")
             for group, value in groups.items():
                 rows.append(dict(platform=platform, vflows=flows, configuration=variant,
@@ -113,6 +142,8 @@ def render(output, rows, statuses):
               "logic to the FIFO that drives it, so hierarchical LUT counts are not used here "
               "as standalone controller costs. Whole-design LUT differences remain the logic "
               "comparison.", ""]
+    for note in journal_notes(output, statuses):
+        lines += [note, '']
     missing = [s for s in statuses if s["status"] != "synthesis_complete"]
     if missing:
         lines += ["Incomplete measurements:", ""]

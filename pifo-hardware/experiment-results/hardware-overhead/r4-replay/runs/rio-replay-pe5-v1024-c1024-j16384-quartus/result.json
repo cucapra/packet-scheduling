@@ -1,8 +1,15 @@
 {
-  "status": "synthesis_running",
+  "status": "synthesis_complete",
   "build": "/data/work/rio-synthesis/hardware-replay/rio-replay-pe5-v1024-c1024-j16384-quartus",
   "platform": "quartus",
-  "resources": {},
+  "resources": {
+    "logic_alms": 479742,
+    "logic_aluts": 681729,
+    "registers": 923812,
+    "block_memory_bits": 1426064152,
+    "mlab_memory_bits": 0,
+    "dsp_blocks": 0
+  },
   "part": "AGFB014R24B2E2V",
   "hardware": {
     "configuration": "replay",
@@ -88,5 +95,14 @@
     "priority_encode_log.v": "2a63070396dc60fd2106c5ef1d0719e027ff6bf797afbef166cf99c9b49537c2"
   },
   "tool_version": "Quartus Prime Shell\nVersion 25.3.1 Build 100 12/19/2025 SC Pro Edition\nCopyright (C) 2025  Altera Corporation. All rights reserved.",
-  "clock_target_mhz": 100.0
+  "clock_target_mhz": 100.0,
+  "capacity_checks": [
+    {
+      "resource": "logic_alms",
+      "used": 479742,
+      "available": 487200,
+      "utilization_percent": 98.4692118226601,
+      "exceeds_capacity": false
+    }
+  ]
 }

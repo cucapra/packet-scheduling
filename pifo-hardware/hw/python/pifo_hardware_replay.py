@@ -145,7 +145,10 @@ def render(output,config):
         lines += ['', 'Report accounting notes:', '']
         lines += [f'- {result["platform"]}, {result["configuration"]}, {result["vflows"]} IDs: {note}'
                   for result,note in notes]
-    lines+=['','Reference static/read-copy measurements retain their exact archived source snapshot. Replay has a separately hashed source snapshot; device, widths, PE count, external PIFO boundary, clock, and vendor directive match.',
+    from pifo_replay_memory_breakdown import journal_notes
+    for note in journal_notes(output, statuses):
+        lines += ['', note]
+    lines+=['', 'Reference static/read-copy measurements retain their exact archived source snapshot. Replay has a separately hashed source snapshot; device, widths, PE count, external PIFO boundary, clock, and vendor directive match.',
             'The replay log is fixed at the same depth across this sweep. Its cost is therefore more prominent at small table sizes.', '']
     (output/'report.md').write_text('\n'.join(lines))
     for group,metrics in [('logic',{'quartus':'logic_alms','vivado':'logic_luts'}),

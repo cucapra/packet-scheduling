@@ -8,7 +8,36 @@ import re
 from summarize_quartus import summarize
 
 
-def check(build):
+def journal_mapping(report, hardware):
+    """Report block RAM or an evidenced register implementation, never assume zero."""
+    table = next(rows for name, rows in report['tables'].items() if 'RAM Summary' in name)
+    rows = [dict(zip(table[0], row)) for row in table[1:]]
+    logs = [row for row in rows
+            if re.match(r'streamFifo_\d+\|logic_ram', row['Name'])
+            and int(row['Port A Depth']) == hardware['replay_log_depth']]
+    declared = hardware['replay_log_depth'] * hardware['replay_instruction_bits']
+    if logs:
+        assert len(logs) == 1, logs
+        assert logs[0]['Mode'] == 'Simple Dual Port', logs[0]
+        assert int(logs[0]['Implementation Bits']) == declared, logs[0]
+        return {'implementation': 'simple_dual_port_ram', 'declared_bits': declared,
+                'ram_instance': logs[0]}
+    hierarchy = next(rows for name, rows in report['tables'].items()
+                     if 'Resource Utilization by Entity' in name)
+    candidates = []
+    for cells in hierarchy[1:]:
+        row = dict(zip(hierarchy[0], cells))
+        if (re.fullmatch(r'streamFifo_\d+', row['Full Hierarchy Name'])
+                and int(row['Dedicated Logic Registers'].split()[0]) >= declared
+                and int(row['Block Memory Bits']) == 0):
+            candidates.append(row)
+    assert len(candidates) == 1, ('Journal has neither RAM nor register evidence', candidates)
+    return {'implementation': 'logic_and_registers', 'declared_bits': declared,
+            'hierarchy': candidates[0],
+            'note': 'Journal storage is included in top-level logic/register counts; it is not block RAM.'}
+
+
+def check(build, require_log_ram=False):
     manifest=json.loads((build/'manifest.json').read_text());h=manifest['hardware']
     assert manifest['status']=='synthesis_complete' and h['configuration']=='replay'
     report=summarize(build/'output_files/pifo.syn.rpt')
@@ -26,19 +55,20 @@ def check(build):
     for row in banks:
         assert row['Mode']=='Simple Dual Port',row
         assert '_rtl_0|' in row['Name'],row
-    logs=[r for r in rows if int(r['Port A Depth'])==h['replay_log_depth'] and
-          not r['Name'].startswith(('pifoEngines_','xbar|'))]
-    assert len(logs)==1,logs
-    assert logs[0]['Mode']=='Simple Dual Port',logs[0]
+    log=journal_mapping(report,h)
+    if require_log_ram:
+        assert log['implementation']=='simple_dual_port_ram',log
     return {'status':'passed','build':str(build),'hardware':h,'mapper_ram_banks':banks,
-            'controller_log':logs[0],'post_mapper_banks_per_pe':2,
+            'controller_log':log,'post_mapper_banks_per_pe':2,
             'copy_read_replicas':0,'evidence':'Quartus Synthesis RAM Summary; inferred simple dual-port memories, not a fitted block allocation'}
 
 
 if __name__=='__main__':
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('build',type=Path);parser.add_argument('output',type=Path)
-    args=parser.parse_args();result=check(args.build)
+    parser.add_argument('--require-log-ram',action='store_true')
+    args=parser.parse_args();result=check(args.build,args.require_log_ram)
     args.output.parent.mkdir(parents=True,exist_ok=True)
     args.output.write_text(json.dumps(result,indent=2)+'\n')
-    print('Verified two post-mapper banks per PE, no copy-read replicas, and a simple dual-port replay log.')
+    print('Verified two post-mapper banks per PE and no copy-read replicas; journal:',
+          result['controller_log']['implementation'])

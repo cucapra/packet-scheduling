@@ -6,11 +6,11 @@ All values come from completed synthesis reports with PIFO cores excluded. Compo
 
 | Component | Ordinary | Read/copy | Replay |
 |---|---:|---:|---:|
-| Post-mapper banks, all PEs | 545,259,520 | 2,181,038,080 | Incomplete |
-| Pre-mapper banks, all PEs | 0 | 0 | Incomplete |
-| Unbanked engineCAM tables, all PEs | 335,544,320 | 335,544,320 | Incomplete |
-| Shared instruction log | 0 | 0 | Incomplete |
-| Other inferred memories | 792 | 792 | Incomplete |
+| Post-mapper banks, all PEs | 545,259,520 | 2,181,038,080 | 1,090,519,040 |
+| Pre-mapper banks, all PEs | 0 | 0 | 0 |
+| Unbanked engineCAM tables, all PEs | 335,544,320 | 335,544,320 | 335,544,320 |
+| Shared instruction log | 0 | 0 | 0 |
+| Other inferred memories | 792 | 792 | 792 |
 
 ## Vivado: BRAM36 tile equivalents
 
@@ -28,6 +28,4 @@ A zero block-memory count does not mean a component is absent: any logic or regi
 
 The replay log is included in the totals. Rebuilt hierarchy can assign shared logic to the FIFO that drives it, so hierarchical LUT counts are not used here as standalone controller costs. Whole-design LUT differences remain the logic comparison.
 
-Incomplete measurements:
-
-- quartus, 1024 IDs, replay: `synthesis_running`.
+Quartus, 1,024 IDs: the 655,360-bit journal maps to logic and registers. Its hierarchy reports 655,446 registers and zero RAM bits. This cost is included in the whole-design logic/register totals; the two post-mapper banks per PE remain simple dual-port RAMs.
