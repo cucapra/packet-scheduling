@@ -215,7 +215,7 @@ Rio supplies all three: a language of policy edits, a semantics for them, and a 
 Rio's language is a grammar of atomic policy edits, each one a change the hardware can install in a single instant (\cref{sec:delta-grammar}).
 Its semantics gives every edit a meaning in the operator's own policy language, so \emph{any transitional policy the grammar produces is ordinary scheduling}, readable exactly as the operator's own policies are (\cref{sec:edit-semantics}).
 A planner turns a requested policy into a guarded sequence of those edits (\cref{sec:planner}), and a mechanical lowering carries each edit down to the instructions that a switch runs (\cref{sec:hw-compile}).
-A transition from any running policy to any requested policy is always available, and many admit transitions a realization confined precisely to the part of the tree that actually changes.
+A transition from any running policy to any requested policy is always available, and many admit a realization confined precisely to the part of the tree that actually changes.
 We give the semantics of the stop-the-world transitional policy and use it as a baseline.
 We beat it with a property we call \emph{non-disruption}.
 The act of reconfiguring never drops, reorders, or re-ranks a packet that is already buffered, so any disruption the operator observes is the new policy correctly governing new arrivals (\cref{sec:nondisruption}).
