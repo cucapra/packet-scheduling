@@ -1,2 +1,3 @@
-event,name,mode,from_policy,to_policy,instruction_count,scheduled_cycle,start_cycle,commit_cycle,finish_cycle,drain_cycle,drain_duration_cycles
-reconfiguration,large-tree-policy-change,full_transitive,RR,SP,28,240,240,268,8464,1475,1207
+event,name,mode,from_policy,to_policy,instruction_count,scheduled_cycle,start_cycle,commit_cycle,finish_cycle,drain_cycle,drain_duration_cycles,dropped_packets,retained_packets,peak_buffer_occupancy_packets,minimum_stop_cycles,stop_duration_cycles,commit_applied_cycle,commit_cycles,bank_cleanup_cycles,install_finish_cycle,resume_cycle,cleanup_start_cycle,cleanup_commit_cycle,cleanup_applied_cycle,cleanup_finish_cycle,cleanup_instruction_count,cleanup_commit_cycles,cleanup_bank_cleanup_cycles,cleanup_of
+reconfiguration,large-tree-policy-change,full_transitive,RR,SP,27,240,240,278,587,535,257,0,0,0,0,,281,41,17,298,,298,328,572,587,30,274,15,
+cleanup_commit,large-tree-policy-change-cleanup,direct,,,30,240,298,328,587,,,0,0,0,0,,572,274,15,587,,,,,,,,,large-tree-policy-change

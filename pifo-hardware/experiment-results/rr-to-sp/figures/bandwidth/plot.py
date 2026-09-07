@@ -21,12 +21,15 @@ FLOW_LABELS = {1: 'A', 2: 'B'}
 COLORS = ('#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22',
  '#17becf')
 PANELS = [{'title': 'RR → SP',
-  'start': 600,
-  'markers': [(0, '#1f77b4', '-', 'start'), (10, '#ff7f0e', '--', 'commit accepted'),
-              (1829, '#9467bd', ':', 'old tree drained'),
-              (4109, '#2ca02c', '-.', 'finish: double-buffer cleanup done')],
-  'notes': 'start=600  commit accepted=610  drain=2429  finish=4709\n'
-           'config=10 inst / 10 cycles to acceptance; ≤1 instruction accepted/cycle'}]
+  'start': 601,
+  'markers': [(0, '#1f77b4', '-', 'start'), (15, '#ff7f0e', '--', 'commit accepted'),
+              (312, '#9467bd', ':', 'old tree drained'),
+              (322, '#2ca02c', '-.', 'finish: double-buffer cleanup done')],
+  'notes': 'start=601  commit accepted=616  drain=913  finish=923\n'
+           'published: install=619, cleanup=920\n'
+           'config=9 inst / 18 cycles to publication\n'
+           'cleanup=6 inst / 296 cycles to publication (guard wait included)\n'
+           'bank cleanup: install=5, cleanup=3 cycles; ≤1 instruction accepted/cycle'}]
 
 with (HERE / 'data.csv').open(newline="", encoding="utf-8-sig") as stream:
     rows = list(csv.DictReader(stream))

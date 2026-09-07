@@ -1,25 +1,30 @@
 {
   "schema_version": 1,
-  "passed": true,
+  "passed": false,
   "event": {
     "start_cycle": 240,
-    "commit_cycle": 268,
-    "drain_cycle": 1475,
-    "finish_cycle": 8464,
-    "staging_cycles": 28,
-    "drain_cycles": 1207,
-    "synchronization_cycles": 8196,
-    "instruction_count": 28
+    "commit_cycle": 278,
+    "drain_cycle": 535,
+    "finish_cycle": 587,
+    "staging_cycles": 38,
+    "drain_cycles": 257,
+    "synchronization_cycles": 17,
+    "instruction_count": 27,
+    "commit_applied_cycle": 281,
+    "commit_cycles": 41,
+    "cleanup_instruction_count": 30,
+    "cleanup_commit_cycles": 274,
+    "cleanup_bank_cleanup_cycles": 15
   },
   "packet_counts": {
     "total": 120,
     "old_epoch": 54,
     "new_epoch": 66,
-    "old_backlog_at_commit": 45,
-    "admitted_on_commit_edge_as_old": 1,
-    "before_commit": 9,
-    "during_drain": 45,
-    "after_drain": 66
+    "old_backlog_at_commit": 28,
+    "admitted_on_commit_edge_as_old": 0,
+    "before_commit": 26,
+    "during_drain": 26,
+    "after_drain": 68
   },
   "sp_priorities": {
     "1": 1,
@@ -29,35 +34,35 @@
     {
       "id": "longer_queue_to_drain",
       "description": "A large transaction and old-tree backlog make staging and drain visible.",
-      "passed": true,
+      "passed": false,
       "checks": [
         {
           "id": "serialized_configuration_rate",
-          "description": "cycles from package start through commit acceptance at no more than one instruction per cycle",
-          "expected": ">= 28",
-          "observed": 28,
+          "description": "cycle span from first through final acceptance at no more than one instruction per cycle",
+          "expected": ">= 26",
+          "observed": 38,
           "passed": true
         },
         {
           "id": "staging_duration",
           "description": "cycles from package start to CommitMapper acceptance",
           "expected": ">= 20",
-          "observed": 28,
+          "observed": 38,
           "passed": true
         },
         {
           "id": "old_backlog_at_commit",
-          "description": "old-tree packets still pending when commit is emitted",
+          "description": "old-tree packets still pending when commit is accepted",
           "expected": ">= 32",
-          "observed": 45,
-          "passed": true
+          "observed": 28,
+          "passed": false
         },
         {
           "id": "drain_duration",
-          "description": "cycles from commit emission until the old root drains",
+          "description": "cycles from commit acceptance until the old root drains",
           "expected": ">= 800",
-          "observed": 1207,
-          "passed": true
+          "observed": 257,
+          "passed": false
         }
       ]
     },
@@ -70,7 +75,7 @@
           "id": "precommit_packet_count",
           "description": "packets completed before commit",
           "expected": ">= 6",
-          "observed": 9,
+          "observed": 26,
           "passed": true
         },
         {
@@ -98,7 +103,7 @@
           "id": "drain_phase_packet_count",
           "description": "packets completed from commit until drain",
           "expected": ">= 6",
-          "observed": 45,
+          "observed": 26,
           "passed": true
         },
         {
@@ -127,21 +132,21 @@
     {
       "id": "after_drain_new_policy",
       "description": "After drain, only the new SP tree runs and lower priorities finish first.",
-      "passed": true,
+      "passed": false,
       "checks": [
         {
           "id": "postdrain_packet_count",
           "description": "packets completed after drain",
           "expected": ">= 6",
-          "observed": 66,
+          "observed": 68,
           "passed": true
         },
         {
           "id": "old_packets_after_drain",
           "description": "old-tree packets completed after drain",
           "expected": 0,
-          "observed": 0,
-          "passed": true
+          "observed": 2,
+          "passed": false
         },
         {
           "id": "sp_priority_reversals",

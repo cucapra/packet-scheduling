@@ -4,7 +4,6 @@ at=init name=initial-tree mode=direct command=UpdateMapperPre engineId=1 vPifoId
 at=init name=initial-tree mode=direct command=UpdateMapperPost engineId=1 vPifoId=10 flowId=33 data=1
 at=init name=initial-tree mode=direct command=UpdateMapperPre engineId=1 vPifoId=2 flowId=0 data=10
 at=init name=initial-tree mode=direct command=UpdateMapperPost engineId=1 vPifoId=10 flowId=34 data=2
-at=init name=initial-tree mode=direct command=UpdateMapperNonExist engineId=1 vPifoId=10 flowId=0 data=31
 at=init name=initial-tree mode=direct command=CommitMapper engineId=1 vPifoId=0 flowId=0 data=0
 at=600 name=policy-change mode=full_transitive before=RR after=SP drainRoot=1:10 command=UpdateBrainEngine engineId=1 vPifoId=11 flowId=0 data=2
 at=600 name=policy-change mode=full_transitive before=RR after=SP drainRoot=1:10 command=UpdateBrainFlowState engineId=1 vPifoId=11 flowId=33 data=1
@@ -13,6 +12,11 @@ at=600 name=policy-change mode=full_transitive before=RR after=SP drainRoot=1:10
 at=600 name=policy-change mode=full_transitive before=RR after=SP drainRoot=1:10 command=UpdateMapperPost engineId=1 vPifoId=11 flowId=33 data=1
 at=600 name=policy-change mode=full_transitive before=RR after=SP drainRoot=1:10 command=UpdateMapperPre engineId=1 vPifoId=2 flowId=0 data=11
 at=600 name=policy-change mode=full_transitive before=RR after=SP drainRoot=1:10 command=UpdateMapperPost engineId=1 vPifoId=11 flowId=34 data=2
-at=600 name=policy-change mode=full_transitive before=RR after=SP drainRoot=1:10 command=UpdateMapperNonExist engineId=1 vPifoId=11 flowId=0 data=31
-at=600 name=policy-change mode=full_transitive before=RR after=SP drainRoot=1:10 command=UpdateMapperNonExist engineId=1 vPifoId=10 flowId=0 data=43
+at=600 name=policy-change mode=full_transitive before=RR after=SP drainRoot=1:10 command=UpdateMapperNonExist engineId=1 vPifoId=10 flowId=0 data=11
 at=600 name=policy-change mode=full_transitive before=RR after=SP drainRoot=1:10 command=CommitMapper engineId=1 vPifoId=0 flowId=0 data=0
+at=600 name=policy-change-cleanup mode=direct cleanupOf=policy-change command=GuardDrain engineId=1 vPifoId=10 flowId=0 data=0
+at=600 name=policy-change-cleanup mode=direct cleanupOf=policy-change command=UpdateBrainEngine engineId=1 vPifoId=10 flowId=0 data=0
+at=600 name=policy-change-cleanup mode=direct cleanupOf=policy-change command=UpdateMapperPost engineId=1 vPifoId=10 flowId=33 data=0
+at=600 name=policy-change-cleanup mode=direct cleanupOf=policy-change command=UpdateMapperPost engineId=1 vPifoId=10 flowId=34 data=0
+at=600 name=policy-change-cleanup mode=direct cleanupOf=policy-change command=UpdateBrainState engineId=1 vPifoId=10 flowId=0 data=0
+at=600 name=policy-change-cleanup mode=direct cleanupOf=policy-change command=CommitMapper engineId=1 vPifoId=0 flowId=0 data=0

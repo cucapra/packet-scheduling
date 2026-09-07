@@ -162,7 +162,7 @@ class StandalonePlotTest(unittest.TestCase):
     def test_saved_packet_traces_match_their_own_run_not_neighboring_archives(self):
         root = ROOT / "experiment-results"
         local_traces = sorted(root.glob("**/figures/*/packets.csv"))
-        self.assertEqual(len(local_traces), 10)
+        self.assertEqual(len(local_traces), 12)  # Two figures for each of the six runs.
         for trace in local_traces:
             with self.subTest(trace=trace):
                 self.assertEqual(read_packet_outcomes(trace),
@@ -189,7 +189,7 @@ class StandalonePlotTest(unittest.TestCase):
         self.assertTrue(all(row["size_bytes"] == "" for row in archive))
         current = read_packet_outcomes(root / "rr-to-sp/packet-outcomes.csv")
         self.assertEqual(len(current), 480)
-        self.assertEqual(current[1].pop_cycle, 19)
+        self.assertEqual(current[1].pop_cycle, 23)
         large = read_packet_outcomes(root / "large-tree-rr-to-sp/rr-to-sp-packets.csv")
         self.assertEqual(len(large), 120)
         self.assertEqual({p.size_bytes for p in large}, {512})

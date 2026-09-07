@@ -1,0 +1,24 @@
+{
+  "schema": "pifo-traffic-v1",
+  "seed": 17,
+  "patterns": [
+    {
+      "name": "default",
+      "flows": [
+        1,
+        2
+      ],
+      "packets_per_flow": 60,
+      "start_cycle": 0,
+      "packet_rate": {
+        "distribution": "constant",
+        "unit": "packets_per_cycle_per_flow",
+        "value": 0.1
+      },
+      "packet_size_bytes": {
+        "distribution": "constant",
+        "value": 512.0
+      }
+    }
+  ]
+}

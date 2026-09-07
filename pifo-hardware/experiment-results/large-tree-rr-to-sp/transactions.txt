@@ -1,0 +1,82 @@
+schema=pifo-transactions-v1 rootEngine=1 rootVPifoId=10 numEngines=4 numVPifos=32 maxPacketPriority=65536 fifoDepth=32 prefetchBufferDepth=2
+at=init name=initial-tree mode=direct command=UpdateBrainEngine engineId=1 vPifoId=10 flowId=0 data=1
+at=init name=initial-tree mode=direct command=UpdateBrainEngine engineId=2 vPifoId=12 flowId=0 data=3
+at=init name=initial-tree mode=direct command=UpdateBrainEngine engineId=2 vPifoId=13 flowId=0 data=3
+at=init name=initial-tree mode=direct command=UpdateBrainEngine engineId=3 vPifoId=14 flowId=0 data=3
+at=init name=initial-tree mode=direct command=UpdateBrainEngine engineId=3 vPifoId=15 flowId=0 data=3
+at=init name=initial-tree mode=direct command=UpdateBrainEngine engineId=4 vPifoId=16 flowId=0 data=3
+at=init name=initial-tree mode=direct command=UpdateBrainEngine engineId=4 vPifoId=17 flowId=0 data=3
+at=init name=initial-tree mode=direct command=UpdateMapperPre engineId=1 vPifoId=1 flowId=0 data=10
+at=init name=initial-tree mode=direct command=UpdateMapperPost engineId=1 vPifoId=10 flowId=33 data=76
+at=init name=initial-tree mode=direct command=UpdateMapperPre engineId=2 vPifoId=1 flowId=0 data=12
+at=init name=initial-tree mode=direct command=UpdateMapperPost engineId=2 vPifoId=12 flowId=65 data=110
+at=init name=initial-tree mode=direct command=UpdateMapperPre engineId=3 vPifoId=1 flowId=0 data=14
+at=init name=initial-tree mode=direct command=UpdateMapperPost engineId=3 vPifoId=14 flowId=97 data=144
+at=init name=initial-tree mode=direct command=UpdateMapperPre engineId=4 vPifoId=1 flowId=0 data=16
+at=init name=initial-tree mode=direct command=UpdateMapperPost engineId=4 vPifoId=16 flowId=129 data=1
+at=init name=initial-tree mode=direct command=UpdateMapperPre engineId=1 vPifoId=2 flowId=0 data=10
+at=init name=initial-tree mode=direct command=UpdateMapperPost engineId=1 vPifoId=10 flowId=34 data=77
+at=init name=initial-tree mode=direct command=UpdateMapperPre engineId=2 vPifoId=2 flowId=0 data=13
+at=init name=initial-tree mode=direct command=UpdateMapperPost engineId=2 vPifoId=13 flowId=66 data=111
+at=init name=initial-tree mode=direct command=UpdateMapperPre engineId=3 vPifoId=2 flowId=0 data=15
+at=init name=initial-tree mode=direct command=UpdateMapperPost engineId=3 vPifoId=15 flowId=98 data=145
+at=init name=initial-tree mode=direct command=UpdateMapperPre engineId=4 vPifoId=2 flowId=0 data=17
+at=init name=initial-tree mode=direct command=UpdateMapperPost engineId=4 vPifoId=17 flowId=130 data=2
+at=init name=initial-tree mode=direct command=CommitMapper engineId=1 vPifoId=0 flowId=0 data=0
+at=240 name=large-tree-policy-change mode=full_transitive before=RR after=SP drainRoot=1:10 command=UpdateBrainEngine engineId=1 vPifoId=11 flowId=0 data=2
+at=240 name=large-tree-policy-change mode=full_transitive before=RR after=SP drainRoot=1:10 command=UpdateBrainFlowState engineId=1 vPifoId=11 flowId=33 data=1
+at=240 name=large-tree-policy-change mode=full_transitive before=RR after=SP drainRoot=1:10 command=UpdateBrainFlowState engineId=1 vPifoId=11 flowId=34 data=32769
+at=240 name=large-tree-policy-change mode=full_transitive before=RR after=SP drainRoot=1:10 command=UpdateBrainEngine engineId=2 vPifoId=10 flowId=0 data=3
+at=240 name=large-tree-policy-change mode=full_transitive before=RR after=SP drainRoot=1:10 command=UpdateBrainEngine engineId=2 vPifoId=11 flowId=0 data=3
+at=240 name=large-tree-policy-change mode=full_transitive before=RR after=SP drainRoot=1:10 command=UpdateBrainEngine engineId=3 vPifoId=10 flowId=0 data=3
+at=240 name=large-tree-policy-change mode=full_transitive before=RR after=SP drainRoot=1:10 command=UpdateBrainEngine engineId=3 vPifoId=11 flowId=0 data=3
+at=240 name=large-tree-policy-change mode=full_transitive before=RR after=SP drainRoot=1:10 command=UpdateBrainEngine engineId=4 vPifoId=10 flowId=0 data=3
+at=240 name=large-tree-policy-change mode=full_transitive before=RR after=SP drainRoot=1:10 command=UpdateBrainEngine engineId=4 vPifoId=11 flowId=0 data=3
+at=240 name=large-tree-policy-change mode=full_transitive before=RR after=SP drainRoot=1:10 command=UpdateMapperPre engineId=1 vPifoId=1 flowId=0 data=11
+at=240 name=large-tree-policy-change mode=full_transitive before=RR after=SP drainRoot=1:10 command=UpdateMapperPost engineId=1 vPifoId=11 flowId=33 data=74
+at=240 name=large-tree-policy-change mode=full_transitive before=RR after=SP drainRoot=1:10 command=UpdateMapperPre engineId=2 vPifoId=1 flowId=0 data=10
+at=240 name=large-tree-policy-change mode=full_transitive before=RR after=SP drainRoot=1:10 command=UpdateMapperPost engineId=2 vPifoId=10 flowId=65 data=106
+at=240 name=large-tree-policy-change mode=full_transitive before=RR after=SP drainRoot=1:10 command=UpdateMapperPre engineId=3 vPifoId=1 flowId=0 data=10
+at=240 name=large-tree-policy-change mode=full_transitive before=RR after=SP drainRoot=1:10 command=UpdateMapperPost engineId=3 vPifoId=10 flowId=97 data=138
+at=240 name=large-tree-policy-change mode=full_transitive before=RR after=SP drainRoot=1:10 command=UpdateMapperPre engineId=4 vPifoId=1 flowId=0 data=10
+at=240 name=large-tree-policy-change mode=full_transitive before=RR after=SP drainRoot=1:10 command=UpdateMapperPost engineId=4 vPifoId=10 flowId=129 data=1
+at=240 name=large-tree-policy-change mode=full_transitive before=RR after=SP drainRoot=1:10 command=UpdateMapperPre engineId=1 vPifoId=2 flowId=0 data=11
+at=240 name=large-tree-policy-change mode=full_transitive before=RR after=SP drainRoot=1:10 command=UpdateMapperPost engineId=1 vPifoId=11 flowId=34 data=75
+at=240 name=large-tree-policy-change mode=full_transitive before=RR after=SP drainRoot=1:10 command=UpdateMapperPre engineId=2 vPifoId=2 flowId=0 data=11
+at=240 name=large-tree-policy-change mode=full_transitive before=RR after=SP drainRoot=1:10 command=UpdateMapperPost engineId=2 vPifoId=11 flowId=66 data=107
+at=240 name=large-tree-policy-change mode=full_transitive before=RR after=SP drainRoot=1:10 command=UpdateMapperPre engineId=3 vPifoId=2 flowId=0 data=11
+at=240 name=large-tree-policy-change mode=full_transitive before=RR after=SP drainRoot=1:10 command=UpdateMapperPost engineId=3 vPifoId=11 flowId=98 data=139
+at=240 name=large-tree-policy-change mode=full_transitive before=RR after=SP drainRoot=1:10 command=UpdateMapperPre engineId=4 vPifoId=2 flowId=0 data=11
+at=240 name=large-tree-policy-change mode=full_transitive before=RR after=SP drainRoot=1:10 command=UpdateMapperPost engineId=4 vPifoId=11 flowId=130 data=2
+at=240 name=large-tree-policy-change mode=full_transitive before=RR after=SP drainRoot=1:10 command=UpdateMapperNonExist engineId=1 vPifoId=10 flowId=0 data=11
+at=240 name=large-tree-policy-change mode=full_transitive before=RR after=SP drainRoot=1:10 command=CommitMapper engineId=1 vPifoId=0 flowId=0 data=0
+at=240 name=large-tree-policy-change-cleanup mode=direct cleanupOf=large-tree-policy-change command=GuardDrain engineId=1 vPifoId=10 flowId=0 data=0
+at=240 name=large-tree-policy-change-cleanup mode=direct cleanupOf=large-tree-policy-change command=GuardDrain engineId=2 vPifoId=12 flowId=0 data=0
+at=240 name=large-tree-policy-change-cleanup mode=direct cleanupOf=large-tree-policy-change command=GuardDrain engineId=2 vPifoId=13 flowId=0 data=0
+at=240 name=large-tree-policy-change-cleanup mode=direct cleanupOf=large-tree-policy-change command=GuardDrain engineId=3 vPifoId=14 flowId=0 data=0
+at=240 name=large-tree-policy-change-cleanup mode=direct cleanupOf=large-tree-policy-change command=GuardDrain engineId=3 vPifoId=15 flowId=0 data=0
+at=240 name=large-tree-policy-change-cleanup mode=direct cleanupOf=large-tree-policy-change command=GuardDrain engineId=4 vPifoId=16 flowId=0 data=0
+at=240 name=large-tree-policy-change-cleanup mode=direct cleanupOf=large-tree-policy-change command=GuardDrain engineId=4 vPifoId=17 flowId=0 data=0
+at=240 name=large-tree-policy-change-cleanup mode=direct cleanupOf=large-tree-policy-change command=UpdateBrainEngine engineId=1 vPifoId=10 flowId=0 data=0
+at=240 name=large-tree-policy-change-cleanup mode=direct cleanupOf=large-tree-policy-change command=UpdateBrainEngine engineId=2 vPifoId=12 flowId=0 data=0
+at=240 name=large-tree-policy-change-cleanup mode=direct cleanupOf=large-tree-policy-change command=UpdateBrainEngine engineId=2 vPifoId=13 flowId=0 data=0
+at=240 name=large-tree-policy-change-cleanup mode=direct cleanupOf=large-tree-policy-change command=UpdateBrainEngine engineId=3 vPifoId=14 flowId=0 data=0
+at=240 name=large-tree-policy-change-cleanup mode=direct cleanupOf=large-tree-policy-change command=UpdateBrainEngine engineId=3 vPifoId=15 flowId=0 data=0
+at=240 name=large-tree-policy-change-cleanup mode=direct cleanupOf=large-tree-policy-change command=UpdateBrainEngine engineId=4 vPifoId=16 flowId=0 data=0
+at=240 name=large-tree-policy-change-cleanup mode=direct cleanupOf=large-tree-policy-change command=UpdateBrainEngine engineId=4 vPifoId=17 flowId=0 data=0
+at=240 name=large-tree-policy-change-cleanup mode=direct cleanupOf=large-tree-policy-change command=UpdateMapperPost engineId=1 vPifoId=10 flowId=33 data=0
+at=240 name=large-tree-policy-change-cleanup mode=direct cleanupOf=large-tree-policy-change command=UpdateMapperPost engineId=2 vPifoId=12 flowId=65 data=0
+at=240 name=large-tree-policy-change-cleanup mode=direct cleanupOf=large-tree-policy-change command=UpdateMapperPost engineId=3 vPifoId=14 flowId=97 data=0
+at=240 name=large-tree-policy-change-cleanup mode=direct cleanupOf=large-tree-policy-change command=UpdateMapperPost engineId=4 vPifoId=16 flowId=129 data=0
+at=240 name=large-tree-policy-change-cleanup mode=direct cleanupOf=large-tree-policy-change command=UpdateMapperPost engineId=1 vPifoId=10 flowId=34 data=0
+at=240 name=large-tree-policy-change-cleanup mode=direct cleanupOf=large-tree-policy-change command=UpdateMapperPost engineId=2 vPifoId=13 flowId=66 data=0
+at=240 name=large-tree-policy-change-cleanup mode=direct cleanupOf=large-tree-policy-change command=UpdateMapperPost engineId=3 vPifoId=15 flowId=98 data=0
+at=240 name=large-tree-policy-change-cleanup mode=direct cleanupOf=large-tree-policy-change command=UpdateMapperPost engineId=4 vPifoId=17 flowId=130 data=0
+at=240 name=large-tree-policy-change-cleanup mode=direct cleanupOf=large-tree-policy-change command=UpdateBrainState engineId=1 vPifoId=10 flowId=0 data=0
+at=240 name=large-tree-policy-change-cleanup mode=direct cleanupOf=large-tree-policy-change command=UpdateBrainState engineId=2 vPifoId=12 flowId=0 data=0
+at=240 name=large-tree-policy-change-cleanup mode=direct cleanupOf=large-tree-policy-change command=UpdateBrainState engineId=2 vPifoId=13 flowId=0 data=0
+at=240 name=large-tree-policy-change-cleanup mode=direct cleanupOf=large-tree-policy-change command=UpdateBrainState engineId=3 vPifoId=14 flowId=0 data=0
+at=240 name=large-tree-policy-change-cleanup mode=direct cleanupOf=large-tree-policy-change command=UpdateBrainState engineId=3 vPifoId=15 flowId=0 data=0
+at=240 name=large-tree-policy-change-cleanup mode=direct cleanupOf=large-tree-policy-change command=UpdateBrainState engineId=4 vPifoId=16 flowId=0 data=0
+at=240 name=large-tree-policy-change-cleanup mode=direct cleanupOf=large-tree-policy-change command=UpdateBrainState engineId=4 vPifoId=17 flowId=0 data=0
+at=240 name=large-tree-policy-change-cleanup mode=direct cleanupOf=large-tree-policy-change command=CommitMapper engineId=1 vPifoId=0 flowId=0 data=0
