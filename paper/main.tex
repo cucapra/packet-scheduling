@@ -932,59 +932,23 @@ and support for $\Designate$ (\cref{sec:hw-survivor}).
 We define an ISA for this reconfiguration and demonstrate a compiler that targets it (\cref{sec:hw-isa,sec:hw-compile}).
 \xxx[as]{revisit: should ISA go first}
 
-\subsection{The Substrate as it Stands}\label{sec:hw-substrate}
+\subsection{The PIFO Tree Substrate}\label{sec:hw-substrate}
 
-A PIFO tree needs programmable hardware to run on.
-Existing designs~\cite{Sivaraman16,Yao23,vPIFO} build it out of the PEs of \cref{sec:background}.
-Each PE hosts a single physical PIFO, whose storage is shared by all the tree nodes at that PE's depth.
-Beyond that storage, a PE carries programmable hardware that assigns an arriving packet to one of the nodes it hosts and computes the packet's rank and next-hop destination.
+Our design extends any programmable packet scheduling pipeline based on PIFO trees.
+Several proposed architectures exist~\cite{Sivaraman16,Yao23,vPIFO},
+so this section outlines the assumptions we make about this substrate.
 
-% We call the hardware-level realizations of \push{} and \pop{} \emph{enqueue} and \emph{dequeue}, and on this substrate both are pipelined and non-atomic.
-On enqueue, the switch must compute two pieces of information before issuing PE pushes: which PIFOs the packet should enter, and what rank should be inserted at each of them.
-Classification determines the first, by mapping a flow to a child.
-The PIFO's scheduling policy computes the second, from packet fields, flow state, and per-arm metadata.
-For example, a \WFQ{} PIFO uses the child weight to compute a virtual finish time, while a \Strict{} PIFO interprets the metadata as a priority rank.
-On dequeue, the switch starts from the output port's root PIFO, pops the best-ranked entry, and follows the stored next-hop information from PIFO to PIFO until it reaches a packet to transmit.
-All of this computation is done by match-action tables~\cite{Bosshart14}, so installing a policy on such a substrate means writing entries into those tables.
+The architecture consists of identical \emph{processing elements} (PEs) containing PIFO buffers, rank-assignment logic, and match--action tables.
+\xxx[as]{anything else?}
+Each level in the policy tree (i.e., the set of nodes at each tree depth) maps to a PE.
+Because each level must track ranks for all in-flight packets, all PEs use an equal amount of total PIFO capacity,
+divided among the nodes at that layer.
 
-This substrate does not by itself support a change of policy, for two reasons.
-First, it cannot be reconfigured without being stopped.
-Packet assignment and rank computation are interleaved throughout the pipeline, so migrating to a new policy is destructive: it updates or removes table entries that packets already in flight still depend on, and it may even change the pipeline structure beneath them.
-Second, conventional match-action table updates do not provide \emph{atomic visibility} to packets already traversing the pipeline.
-When an update lands concurrently with an enqueue or a dequeue, a single packet operation can observe a mixture of old and new scheduler state.
-For example, an enqueue may choose its path using the old flow-to-child mapping but compute its rank using newly updated per-arm metadata, or a dequeue may pop from one version of the tree and then follow next-hop state from another.
-As a result, existing PIFO-based substrates support only stop-the-world policy update~\cite{vPIFO,Alcoz23}.
-Rio needs only small changes to this substrate, because it separates incremental installation from atomic publication (\cref{sec:hw-commit}).
+To enqueue a packet, the architecture finds the set of PIFOs to insert into (by classifying the packet) and computes the rank for each according to its policy.
+We assume the hardware comes with rank-assignment logic to support a set of policy disciplines, $D$.
+On dequeue, the scheduler starts from the output port's root PIFO, pops the best-ranked entry, and follows next-hop information from PIFO to PIFO until it reaches a packet to transmit.
+All steps use match--action tables~\cite{Bosshart14}, so installing a policy on such a substrate means writing entries into those tables.
 
-A commit bridges the compiler and the hardware.
-It is a sequence of updates that becomes visible to packets all at once, and Rio asks two things of it.
-The first is that a commit is atomic with respect to traffic.
-A \(\delta\) that lowers to many instructions has to install in a single instant.
-The tree may be transiently malformed partway through a commit, and no \push{} or \pop{} may observe it in that state.
-That is the whole of what \cref{sec:correctness}'s argument rests on.
-
-The second is that a commit can be held until a stated predicate becomes true.
-A guarded sequence (\cref{sec:sequences}) waits for its guard to become true before the \(\delta\) attached to it fires, and the substrate must do that waiting.
-Our grammar of guards is simple, and our substrate tests one predicate, the emptiness of a subtree.
-That is a local test at a single PIFO, since a node's \ensuremath{\mathit{pifo}} holds an entry for every packet in its subtree (\cref{sec:controls}).
-
-% \xxx[AM to Zhiyuan]{I decided to add this second requirement, and I think you'll see why. Is that okay?}
-
-% Our substrate is deliberately unambitious; we built it because the compiler needed something to run against and we wanted to understand precisely what features we needed from our substrate.
-
-\xxx[as]{Merge the below}
-
-The substrate also supplies the disciplines themselves.
-\(\mathit{init\_node\_state}_{D}\), \(\mathit{init\_slot\_state}_{D}\) and \(\mathit{rank}_{D}\) are the substrate's (\cref{sec:compilation}), and the menu it implements is the menu an operator may write from.
-That is a parameter, since a substrate with a shorter menu hosts Rio just as well over a smaller \pol.
-If the network operator wishes to install a discipline that the menu lacks, they need to supply the substrate with an \(\mathit{init\_node\_state}_{D}\), an \(\mathit{init\_slot\_state}_{D}\) and a \(\mathit{rank}_{D}\) of their own.
-A small programmable core beside the PIFO tree would be one way to supply this.
-
-The guard language is a parameter in the same way.
-Our substrate can test the guard of \cref{sec:sequences}, and a substrate that can test more predicates offers richer guards to the network operator or transition planner.
-
-The designated-survivor link of \cref{sec:hw-survivor} is an optimization rather than a requirement, since a substrate without one lowers \Designate{} to a literal \Strict-2 wrapper and accepts the cost of laying out some trees repeatedly.
-The bar for hosting Rio is therefore atomic commits and a predicate the substrate can wait on, and we expect other PIFO substrates to clear both and to be able to adopt the link~\cite{Shrivastav19,Gao22,Yao23,vPIFO,Atre24,Alcoz25}.
 
 \subsection{Making a Commit Atomic}\label{sec:hw-commit}
 
