@@ -1,0 +1,166 @@
+Synthesis report
+Sun Sep  6 18:17:51 2026
+Quartus Prime Version 25.3.1 Build 100 12/19/2025 SC Pro Edition
+
+
+---------------------
+; Table of Contents ;
+---------------------
+  1. Legal Notice
+  2. Synthesis Summary
+  3. Synthesis Settings
+---- Analysis & Elaboration Stage Reports ----
+  4. Synthesis Messages
+
+
+
+----------------
+; Legal Notice ;
+----------------
+Copyright (C) 2025  Altera Corporation. All rights reserved.
+Your use of Altera Corporation's design tools, logic functions 
+and other software and tools, and any partner logic 
+functions, and any output files from any of the foregoing 
+(including device programming or simulation files), and any 
+associated documentation or information are expressly subject 
+to the terms and conditions of the Altera Program License 
+Subscription Agreement, the Altera Quartus Prime License Agreement,
+the Altera IP License Agreement, or other applicable license
+agreement, including, without limitation, that your use is for
+the sole purpose of programming logic devices manufactured by
+Altera and sold by Altera or its authorized distributors.  Please
+refer to the Altera Software License Subscription Agreements 
+on the Quartus Prime software download page.
+
+
+
++-----------------------------------------------------------+
+; Synthesis Summary                                         ;
++-----------------------+-----------------------------------+
+; Synthesis Status      ; Failed - Sun Sep  6 18:17:51 2026 ;
+; Revision Name         ; pifo                              ;
+; Top-level Entity Name ; PifoMesh                          ;
++-----------------------+-----------------------------------+
+
+
++-------------------------------------------------------------------------------------------------------------------+
+; Synthesis Settings                                                                                                ;
++---------------------------------------------------------------------------------+-----------------+---------------+
+; Option                                                                          ; Setting         ; Default Value ;
++---------------------------------------------------------------------------------+-----------------+---------------+
+; Device                                                                          ; AGFB014R24B2E2V ;               ;
+; Top-level entity name                                                           ; PifoMesh        ; pifo          ;
+; Family name                                                                     ; Agilex 7        ; Cyclone 10 GX ;
+; Maximum number of parallel out-of-context synthesis jobs                        ; Auto            ; Auto          ;
+; Enable parallel Assembler and Timing Analyzer during compilation                ; On              ; On            ;
+; Enable compact report table                                                     ; Off             ; Off           ;
+; Design Assistant include IP blocks                                              ; Off             ; Off           ;
+; High fanout net threshold for RAM inference                                     ; 15              ; 15            ;
+; Design Assistant limit on reported violations per rule                          ; 5000            ; 5000          ;
+; Optimization Mode                                                               ; Balanced        ; Balanced      ;
+; rtm_high_performance_effort                                                     ; Off             ; Off           ;
+; physical_synthesis_high_effort                                                  ; Off             ; Off           ;
+; Allow Register Retiming                                                         ; On              ; On            ;
+; Create Debugging Nodes for IP Cores                                             ; Off             ; Off           ;
+; Preserve fewer node names                                                       ; On              ; On            ;
+; Altera FPGA IP Evaluation Mode                                                  ; Enable          ; Enable        ;
+; Verilog Version                                                                 ; Verilog_2001    ; Verilog_2001  ;
+; VHDL Version                                                                    ; VHDL_1993       ; VHDL_1993     ;
+; State Machine Processing                                                        ; Auto            ; Auto          ;
+; Safe State Machine                                                              ; Auto            ; Auto          ;
+; Iteration limit for constant Verilog loops                                      ; 5000            ; 5000          ;
+; Iteration limit for non-constant Verilog loops                                  ; 250             ; 250           ;
+; Add Pass-Through Logic to Inferred RAMs                                         ; On              ; On            ;
+; Infer RAMs from Raw Logic                                                       ; On              ; On            ;
+; DSP Action on miss                                                              ; Ignore          ; Ignore        ;
+; NOT Gate Push-Back                                                              ; On              ; On            ;
+; Power-Up Don't Care                                                             ; On              ; On            ;
+; Remove Duplicate Registers                                                      ; On              ; On            ;
+; Ignore CARRY Buffers                                                            ; Off             ; Off           ;
+; Ignore CASCADE Buffers                                                          ; Off             ; Off           ;
+; Ignore GLOBAL Buffers                                                           ; Off             ; Off           ;
+; Ignore ROW GLOBAL Buffers                                                       ; Off             ; Off           ;
+; Auto Resource Sharing                                                           ; Off             ; Off           ;
+; Ignore translate_off and synthesis_off directives                               ; Off             ; Off           ;
+; Report Propagation of Constraints                                               ; On              ; On            ;
+; HDL message level                                                               ; Level2          ; Level2        ;
+; Suppress Register Optimization Related Messages                                 ; Off             ; Off           ;
+; Number of Protected Registers Reported in Synthesis Report                      ; 100             ; 100           ;
+; Number of Removed Registers Reported in Synthesis Report                        ; 5000            ; 5000          ;
+; Number of Optimized Away Hierarchies Reported in Synthesis Report               ; 100             ; 100           ;
+; Number of Top Root Causes Reported in Synthesis Report                          ; 10              ; 10            ;
+; Group Identical Hierarchies in Optimized Away Hierarchies Report                ; On              ; On            ;
+; Number of Swept Nodes Reported in Synthesis Report                              ; 5000            ; 5000          ;
+; Number of Inverted Registers Reported in Synthesis Report                       ; 100             ; 100           ;
+; Block Design Naming                                                             ; Auto            ; Auto          ;
+; Synthesis Effort                                                                ; Auto            ; Auto          ;
+; Shift Register Replacement - Allow Asynchronous Clear Signal                    ; On              ; On            ;
+; Analysis & Synthesis Message Level                                              ; Medium          ; Medium        ;
+; Disable Register Merging Across Hierarchies                                     ; Auto            ; Auto          ;
+; Extract Redundant User Nets                                                     ; Off             ; Off           ;
+; Report Parameter Settings                                                       ; On              ; On            ;
+; Report Parameter Settings to ASCII                                              ; On              ; On            ;
+; Report Source Assignments                                                       ; On              ; On            ;
+; Report Source Assignments to ASCII                                              ; On              ; On            ;
+; Report Resource Utilization by Entity to ASCII                                  ; On              ; On            ;
+; Size of the Latch Report                                                        ; 100             ; 100           ;
+; Enable VHDL static assertion support                                            ; Off             ; Off           ;
+; Enable SystemVerilog static assertion support                                   ; Off             ; Off           ;
+; Enable State Machines Inference                                                 ; On              ; On            ;
+; Allow RAMs Inferred In Generate-For Loop For Verilog                            ; Off             ; Off           ;
+; Enable formal verification support during compilation                           ; Off             ; Off           ;
+; Enable hierarchical dumps for formal verification support during compilation    ; Off             ; Off           ;
+; Size of the PR Initial Conditions Report                                        ; 100             ; 100           ;
+; Number of Registers with Ignored Power-Up Settings Reported in Synthesis Report ; 500             ; 500           ;
+; Report PR Initial Values as Errors                                              ; Off             ; Off           ;
+; Synthesis Available Resource Multiplier                                         ; 1               ; 1             ;
+; Message Level for Unconnected Output Ports                                      ; Warning         ; Warning       ;
+; Pack Barrelshifters into Carry Chains for Better Area                           ; Auto            ; Auto          ;
+; Initialize Verilog enums to X                                                   ; Off             ; Off           ;
+; Enable dynamic report                                                           ; Off             ; Off           ;
+; Show Collapsible Rows in Ascii Report for Warning Summary Reports               ; On              ; On            ;
+; Enable RTL Analysis Debug Mode                                                  ; Off             ; Off           ;
+; Enable preserve for debug assignments                                           ; Off             ; Off           ;
++---------------------------------------------------------------------------------+-----------------+---------------+
+
+
++--------------------+
+; Synthesis Messages ;
++--------------------+
+Info (22747): Value AUTO_DISCOVERY for QSF Assignment PWRMGT_VOLTAGE_OUTPUT_FORMAT is not supported. Hence changing the value to LINEAR_FORMAT
+Info: *******************************************************************
+Info: Running Quartus Prime Synthesis
+    Info: Version 25.3.1 Build 100 12/19/2025 SC Pro Edition
+    Info: Copyright (C) 2025  Altera Corporation. All rights reserved.
+    Info: Your use of Altera Corporation's design tools, logic functions 
+    Info: and other software and tools, and any partner logic 
+    Info: functions, and any output files from any of the foregoing 
+    Info: (including device programming or simulation files), and any 
+    Info: associated documentation or information are expressly subject 
+    Info: to the terms and conditions of the Altera Program License 
+    Info: Subscription Agreement, the Altera Quartus Prime License Agreement,
+    Info: the Altera IP License Agreement, or other applicable license
+    Info: agreement, including, without limitation, that your use is for
+    Info: the sole purpose of programming logic devices manufactured by
+    Info: Altera and sold by Altera or its authorized distributors.  Please
+    Info: refer to the Altera Software License Subscription Agreements 
+    Info: on the Quartus Prime software download page.
+    Info: Processing started: Sun Sep  6 18:17:50 2026
+    Info: System process ID: 231057
+Info: Command: quartus_syn pifo
+Info: qis_default_flow_script.tcl version: #2
+Info: Initializing Synthesis...
+Info: Project = "pifo"
+Info: Revision = "pifo"
+Info (21958): Initialized Quartus Message Database
+Error (19286): No license for family Agilex 7, for self-service licensing visit the Altera Licensing Support Center at https://www.intel.com/content/www/us/en/support/programmable/licensing/support-center.html
+Error: Failed to elaborate design: Fail to setup design for synthesis elaboration
+
+Error: Flow failed: Errors generated during elaboration
+Error: Quartus Prime Synthesis was unsuccessful. 3 errors, 0 warnings
+    Error: Peak virtual memory: 1305 megabytes
+    Error: Processing ended: Sun Sep  6 18:17:51 2026
+    Error: Elapsed time: 00:00:01
+    Error: System process ID: 231057
+
+

@@ -14,8 +14,10 @@ case class EngineConfig(
     brainStateWidth: Int = 32,
     flowStateWidth: Int = 32,
     configDataWidth: Int = 32,
-    commitQueueLength: Int = 4
+    commitQueueLength: Int = 4,
+    pifoBackend: String = "house"
 ) {
+  require(Set("house", "stock").contains(pifoBackend), "pifoBackend must be house or stock")
   def vpifoIdWidth = log2Up(numVPIFOs)
   def numFlows = numVPIFOs * numEngines
   def engineIdWidth = log2Up(numEngines + 1) // +1 for control port
@@ -454,7 +456,10 @@ case class PifoEngine(config: EngineConfig) extends Component {
   }
 
   // PIFO
-  val pifos = new ConcurrentPifoRTL(config)
+  val pifos: PifoCore = config.pifoBackend match {
+    case "house" => new ConcurrentPifoRTL(config)
+    case "stock" => new StockPifoRTL(config)
+  }
 
   // enque logic
   // enqueMapper maps flowIds to VPIFO ids

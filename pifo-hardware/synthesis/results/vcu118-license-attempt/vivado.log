@@ -1,0 +1,63 @@
+#-----------------------------------------------------------
+# Vivado v2025.2 (64-bit)
+# SW Build 6299465 on Fri Nov 14 12:34:56 MST 2025
+# IP Build 6300035 on Fri Nov 14 10:48:45 MST 2025
+# SharedData Build 6298862 on Thu Nov 13 04:50:51 MST 2025
+# Start of session at: Sun Sep  6 19:03:44 2026
+# Process ID         : 235595
+# Current directory  : /home/zg366/packet-scheduling/pifo-hardware
+# Command line       : vivado -mode batch -nojournal -log synthesis/build/baseline-vivado/vivado.log -source synthesis/vivado_synth.tcl -tclargs synthesis/build/baseline-vivado xcvu9p-flga2104-2L-e 8 10.0
+# Log file           : /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/baseline-vivado/vivado.log
+# Journal file       : 
+# Running On         : netarch-cxl.ece.cornell.edu
+# Platform           : Ubuntu
+# Operating System   : Ubuntu 24.04.4 LTS
+# Processor Detail   : Intel(R) Xeon(R) 6710E
+# CPU Frequency      : 800.000 MHz
+# CPU Physical cores : 128
+# CPU Logical cores  : 128
+# Host memory        : 236228 MB
+# Swap memory        : 4294 MB
+# Total Virtual      : 240523 MB
+# Available Virtual  : 220377 MB
+#-----------------------------------------------------------
+source synthesis/vivado_synth.tcl
+# if {$argc != 4} {
+#     error {Expected BUILD_DIR PART THREADS CLOCK_PERIOD_NS}
+# }
+# lassign $argv build_dir part threads period
+# set build_dir [file normalize $build_dir]
+# set rtl_dir [file join $build_dir rtl]
+# set report_dir [file join $build_dir reports]
+# set encoder [file normalize [file join [file dirname [info script]] ../hw/verilog/priority_encode_log.v]]
+# file mkdir $report_dir
+# if {[llength [get_parts -quiet $part]] != 1} {
+#     error "Target part is not installed: $part"
+# }
+# puts "PIFO_VIVADO_VERSION: [version -short]"
+PIFO_VIVADO_VERSION: 2025.2
+# puts "PIFO_VIVADO_PART: $part"
+PIFO_VIVADO_PART: xcvu9p-flga2104-2L-e
+# set_param general.maxThreads $threads
+# create_project -in_memory -part $part
+# cd $rtl_dir
+# read_verilog -sv [glob -directory $rtl_dir *.v]
+# read_verilog -sv $encoder
+# set xdc [file join $build_dir pifo.xdc]
+# set constraints [open $xdc w]
+# puts $constraints "create_clock -name clk -period $period \[get_ports clk\]"
+# puts $constraints {set_false_path -from [get_ports reset]}
+# close $constraints
+# read_xdc $xdc
+# synth_design -top PifoMesh -part $part -mode out_of_context -flatten_hierarchy rebuilt
+Command: synth_design -top PifoMesh -part xcvu9p-flga2104-2L-e -mode out_of_context -flatten_hierarchy rebuilt
+Starting synth_design
+Attempting to get a license for feature 'Synthesis' and/or device 'xcvu9p'
+WARNING: [Common 17-348] Failed to get the license for feature 'Synthesis' and/or device 'xcvu9p'. Explanation: The license feature Synthesis could not be found.
+Resolution: Check the status of your licenses in the Vivado License Manager. For debug help search Xilinx Support for "Licensing FAQ". 
+0 Infos, 1 Warnings, 0 Critical Warnings and 1 Errors encountered.
+synth_design failed
+ERROR: [Common 17-345] A valid license was not found for feature 'Synthesis' and/or device 'xcvu9p'. Please run the Vivado License Manager for assistance in determining
+which features and devices are licensed for your system.
+Resolution: Check the status of your licenses in the Vivado License Manager. For debug help search Xilinx Support for "Licensing FAQ". If you are using a license server, verify that the license server is up and running a version of the xilinx daemon that is compatible with the version of Xilinx software that you are using. Note: Vivado 2021.1 and later versions require upgrading your license server tools to the Flex 11.17.2.0 versions. Please confirm with your license admin that the correct version of the license server tools are installed.
+INFO: [Common 17-206] Exiting Vivado at Sun Sep  6 19:03:50 2026...

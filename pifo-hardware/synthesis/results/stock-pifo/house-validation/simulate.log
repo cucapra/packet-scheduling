@@ -1,0 +1,24 @@
+
+****** xsim v2025.2 (64-bit)
+  **** SW Build 6299465 on Fri Nov 14 12:34:56 MST 2025
+  **** IP Build 6300035 on Fri Nov 14 10:48:45 MST 2025
+  **** SharedData Build 6298862 on Thu Nov 13 04:50:51 MST 2025
+  **** Start of session at: Sun Sep  6 20:02:34 2026
+    ** Copyright 1986-2022 Xilinx, Inc. All Rights Reserved.
+    ** Copyright 2022-2025 Advanced Micro Devices, Inc. All Rights Reserved.
+
+source xsim.dir/pifo_contract/xsim_script.tcl
+# xsim {pifo_contract} -autoloadwcfg -runall
+Time resolution is 1 ps
+run -all
+CONTRACT_PHASE_PASS empty and immediate forwarding
+CONTRACT_PHASE_PASS interleaved ports, consecutive pops
+CONTRACT_PHASE_PASS ties and simultaneous pop/two pushes
+CONTRACT_PHASE_PASS full capacity, overflow, full pop/push
+CONTRACT_PHASE_PASS deterministic random traffic
+PIFO_CONTRACT_PASS cycles=36873 capacity=1024
+$finish called at time : 368880 ns : File "/home/zg366/packet-scheduling/pifo-hardware/synthesis/build/house-backend-check/functional/pifo_contract_tb.sv" Line 155
+run: Time (s): cpu = 00:00:00.02 ; elapsed = 00:01:07 . Memory (MB): peak = 1435.441 ; gain = 0.000 ; free physical = 196458 ; free virtual = 208665
+exit
+INFO: xsimkernel Simulation Memory Usage: 296272 KB (Peak: 353364 KB), Simulation CPU Usage: 67940 ms
+INFO: [Common 17-206] Exiting xsim at Sun Sep  6 20:03:44 2026...

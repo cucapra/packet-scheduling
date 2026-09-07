@@ -9,16 +9,7 @@ import spinal.lib._
   * entry when push and pop target overlapping positions. This implementation applies operations in an explicit order:
   * pop, push1, then push2. Equal priorities remain stable because insertion occurs after existing equal-ranked entries.
   */
-class ConcurrentPifoRTL(config: PifoConfig) extends Component {
-  val io = new Bundle {
-    val push1 = slave(Flow(PifoEntry(config)))
-    val push2 = slave(Flow(PifoEntry(config)))
-    val popRequest = slave(Flow(PifoPopInterface(config)))
-    val popResponse = master(Flow(PifoPopResponse(config)))
-    val popPortEmpty = out Bool ()
-    // Pulses when a successful pop leaves its virtual PIFO with no entries.
-    val portDrained = master(Flow(UInt(config.bitPort bits)))
-  }
+class ConcurrentPifoRTL(config: PifoConfig) extends PifoCore(config) {
 
   private val countWidth = config.bitPifo + 1
   private val pifoArray = Vec(Reg(PifoEntry(config)), config.numPifo)

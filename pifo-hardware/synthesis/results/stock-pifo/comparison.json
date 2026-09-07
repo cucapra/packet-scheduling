@@ -1,0 +1,77 @@
+{
+  "tool": "Quartus Prime Pro 25.3.1 Build 100",
+  "part": "AGFB014R24B2E2V",
+  "scope": "full mesh, synthesis only",
+  "hardware": {
+    "pifo_backend": "stock",
+    "num_engines": 2,
+    "num_vpifos_per_pe": 32,
+    "global_flow_id_capacity": 32,
+    "fifo_depth_parameter": 32,
+    "shared_entries_per_pe": 1024,
+    "total_shared_entries": 2048,
+    "priority_bits": 8,
+    "vpifo_id_bits": 5,
+    "engine_id_bits": 2,
+    "token_bits": 7,
+    "brain_state_bits": 32,
+    "flow_state_bits": 32,
+    "commit_queue_depth": 4,
+    "flow_token_address_space": 128,
+    "vpifo_token_pairs_per_pe": 4096
+  },
+  "house": {
+    "estimated_alms": 90077,
+    "combinational_aluts": 141022,
+    "registers": 42356,
+    "block_memory_bits": 297440,
+    "mlab_memory_bits": 0,
+    "dsps": 0
+  },
+  "stock_with_adapter": {
+    "estimated_alms": 71478,
+    "combinational_aluts": 98332,
+    "registers": 43176,
+    "block_memory_bits": 297440,
+    "mlab_memory_bits": 0,
+    "dsps": 0
+  },
+  "absolute_change": {
+    "estimated_alms": -18599,
+    "combinational_aluts": -42690,
+    "registers": 820,
+    "block_memory_bits": 0,
+    "mlab_memory_bits": 0,
+    "dsps": 0
+  },
+  "percent_change": {
+    "estimated_alms": -20.64789,
+    "combinational_aluts": -30.271872,
+    "registers": 1.935971,
+    "block_memory_bits": 0.0,
+    "mlab_memory_bits": null,
+    "dsps": null
+  },
+  "functional_status": {
+    "house": "passed 36873 checked cycles",
+    "stock": "failed wrong-port consecutive pop"
+  },
+  "valid_equivalent_replacement": false,
+  "stock_disjoint_groups": {
+    "raw_pifo_cores": {
+      "aluts": 94857,
+      "registers": 41118,
+      "block_memory_bits": 0
+    },
+    "adapters": {
+      "aluts": 1902,
+      "registers": 740,
+      "block_memory_bits": 0
+    },
+    "other_mesh": {
+      "aluts": 1573,
+      "registers": 1318,
+      "block_memory_bits": 297440
+    }
+  }
+}

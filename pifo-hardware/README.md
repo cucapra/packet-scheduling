@@ -7,6 +7,12 @@ sbt "runMain rio.sim.PifoMeshSim"
 For request queues, trace-driven or live workloads, traffic generation, and formal-trace conversion, see the
 [request-level simulator guide](REQUEST_SIMULATOR.md).
 
+For fixed-size Quartus and Vivado synthesis of the complete existing hardware, see the
+[synthesis guide](synthesis/README.md), [Agilex 7 resource analysis](synthesis/RESULTS.md),
+and [Vivado/Kintex UltraScale+ results](synthesis/VIVADO_RESULTS.md).
+The [stock-PIFO Quartus comparison](synthesis/STOCK_PIFO_RESULTS.md) includes
+the resource reduction, adapter cost, and the stock core's functional limitation.
+
 This contains a PifoMesh Implementation. Current implementation assumes the insert input to be a `PacketToken = engineId ## flowId`. The `PacketToken` will be processed in PifoEngine in the following process:
 
 ### Enqueue Path

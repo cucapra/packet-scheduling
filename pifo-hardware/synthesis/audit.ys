@@ -1,0 +1,14 @@
+# Run from the generated rtl directory. This is generic RTL accounting, not
+# Agilex technology mapping or a substitute for Quartus resource reports.
+read_verilog -sv PifoMesh.v
+read_verilog -sv ../../../../hw/verilog/priority_encode_log.v
+hierarchy -check -top PifoMesh
+flatten
+proc
+opt
+wreduce
+memory -nomap
+opt
+check -assert
+tee -o ../generic-stat.json stat -json -width
+write_json ../generic-netlist.json

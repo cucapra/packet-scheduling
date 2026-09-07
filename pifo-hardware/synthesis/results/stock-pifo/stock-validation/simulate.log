@@ -1,0 +1,20 @@
+
+****** xsim v2025.2 (64-bit)
+  **** SW Build 6299465 on Fri Nov 14 12:34:56 MST 2025
+  **** IP Build 6300035 on Fri Nov 14 10:48:45 MST 2025
+  **** SharedData Build 6298862 on Thu Nov 13 04:50:51 MST 2025
+  **** Start of session at: Sun Sep  6 20:02:38 2026
+    ** Copyright 1986-2022 Xilinx, Inc. All Rights Reserved.
+    ** Copyright 2022-2025 Advanced Micro Devices, Inc. All Rights Reserved.
+
+source xsim.dir/pifo_contract/xsim_script.tcl
+# xsim {pifo_contract} -autoloadwcfg -runall
+Time resolution is 1 ps
+run -all
+CONTRACT_PHASE_PASS empty and immediate forwarding
+Fatal: CONTRACT_FAIL phase=interleaved ports, consecutive pops cycle=12 requested_port=1 expected_rank=3 expected_data=33 actual_rank=2 actual_data=22
+Time: 186 ns  Iteration: 0  Process: /pifo_contract_tb/step  Scope: pifo_contract_tb.step  File: /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/stock-pifo/functional/pifo_contract_tb.sv Line: 86
+$finish called at time : 186 ns
+exit
+INFO: xsimkernel Simulation Memory Usage: 289056 KB (Peak: 345824 KB), Simulation CPU Usage: 1410 ms
+INFO: [Common 17-206] Exiting xsim at Sun Sep  6 20:02:42 2026...

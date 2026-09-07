@@ -1,0 +1,36 @@
+{
+  "backend": "house",
+  "hardware": {
+    "pifo_backend": "house",
+    "num_engines": 2,
+    "num_vpifos_per_pe": 32,
+    "global_flow_id_capacity": 32,
+    "fifo_depth_parameter": 32,
+    "shared_entries_per_pe": 1024,
+    "total_shared_entries": 2048,
+    "priority_bits": 8,
+    "vpifo_id_bits": 5,
+    "engine_id_bits": 2,
+    "token_bits": 7,
+    "brain_state_bits": 32,
+    "flow_state_bits": 32,
+    "commit_queue_depth": 4,
+    "flow_token_address_space": 128,
+    "vpifo_token_pairs_per_pe": 4096
+  },
+  "simulator": "/data/work/vivado/2025.2/Vivado/bin/xsim",
+  "source_sha256": "2a63070396dc60fd2106c5ef1d0719e027ff6bf797afbef166cf99c9b49537c2",
+  "simulation_source_sha256": "2a63070396dc60fd2106c5ef1d0719e027ff6bf797afbef166cf99c9b49537c2",
+  "testbench_sha256": "8ece9d1134e212d0b689111b7c4e67fccb6450edca32af9ef4013be29219cc95",
+  "simulation_only_change": "No changes",
+  "status": "passed",
+  "stage": "simulate",
+  "evidence": [
+    "CONTRACT_PHASE_PASS empty and immediate forwarding",
+    "CONTRACT_PHASE_PASS interleaved ports, consecutive pops",
+    "CONTRACT_PHASE_PASS ties and simultaneous pop/two pushes",
+    "CONTRACT_PHASE_PASS full capacity, overflow, full pop/push",
+    "CONTRACT_PHASE_PASS deterministic random traffic",
+    "PIFO_CONTRACT_PASS cycles=36873 capacity=1024"
+  ]
+}

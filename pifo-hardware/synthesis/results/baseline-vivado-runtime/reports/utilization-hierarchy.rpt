@@ -1,0 +1,55 @@
+Copyright 1986-2022 Xilinx, Inc. All Rights Reserved. Copyright 2022-2025 Advanced Micro Devices, Inc. All Rights Reserved.
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+| Tool Version : Vivado v.2025.2 (lin64) Build 6299465 Fri Nov 14 12:34:56 MST 2025
+| Date         : Sun Sep  6 19:37:31 2026
+| Host         : netarch-cxl.ece.cornell.edu running 64-bit Ubuntu 24.04.4 LTS
+| Command      : report_utilization -hierarchical -hierarchical_depth 5 -file /home/zg366/packet-scheduling/pifo-hardware/synthesis/build/baseline-vivado-runtime/reports/utilization-hierarchy.rpt
+| Design       : PifoMesh
+| Device       : xcku5p-ffvb676-2-e
+| Speed File   : -2
+| Design State : Synthesized
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Utilization Design Information
+
+Table of Contents
+-----------------
+1. Utilization by Hierarchy
+
+1. Utilization by Hierarchy
+---------------------------
+
++--------------------------------------------------+---------------------------+------------+------------+---------+------+-------+--------+--------+------+------------+
+|                     Instance                     |           Module          | Total LUTs | Logic LUTs | LUTRAMs | SRLs |  FFs  | RAMB36 | RAMB18 | URAM | DSP Blocks |
++--------------------------------------------------+---------------------------+------------+------------+---------+------+-------+--------+--------+------+------------+
+| PifoMesh                                         |                     (top) |     198425 |     198169 |     256 |    0 | 42085 |      8 |      0 |    2 |          0 |
+|   (PifoMesh)                                     |                     (top) |          0 |          0 |       0 |    0 |     2 |      0 |      0 |    0 |          0 |
+|   io_controlRequest_fifo                         |             StreamFifo_21 |        293 |        261 |      32 |    0 |    58 |      0 |      0 |    0 |          0 |
+|   pifoEngines_0                                  |                PifoEngine |      99004 |      98904 |     100 |    0 | 20980 |      4 |      0 |    1 |          0 |
+|     pifos                                        |      ConcurrentPifoRTL_16 |      98061 |      98061 |       0 |    0 | 20548 |      0 |      0 |    0 |          0 |
+|     deque_frontRewrite                           |      FrontRewriteTable_13 |        252 |        252 |       0 |    0 |   288 |      0 |      0 |    0 |          0 |
+|     enque_brain                                  |                 PIFOBrain |        599 |        523 |      76 |    0 |    61 |      0 |      0 |    1 |          0 |
+|       lastVirtualMapper_io_readRes_toStream_fifo | StreamFifoLowLatency_8_26 |         77 |         69 |       8 |    0 |     4 |      0 |      0 |    0 |          0 |
+|         fifo                                     |           StreamFifo_9_27 |         77 |         69 |       8 |    0 |     4 |      0 |      0 |    0 |          0 |
+|       engineCAM_io_readRes_toStream_fifo         | StreamFifoLowLatency_6_21 |         57 |         49 |       8 |    0 |     4 |      0 |      0 |    0 |          0 |
+|         fifo                                     |           StreamFifo_7_31 |         57 |         49 |       8 |    0 |     4 |      0 |      0 |    0 |          0 |
+|       engineMapper_io_readRes_toStream_fifo      | StreamFifoLowLatency_5_22 |        217 |        213 |       4 |    0 |     4 |      0 |      0 |    0 |          0 |
+|         fifo                                     |           StreamFifo_6_30 |        217 |        213 |       4 |    0 |     4 |      0 |      0 |    0 |          0 |
+|       io_outputs_4_fifo                          | StreamFifoLowLatency_9_24 |        124 |        116 |       8 |    0 |     4 |      0 |      0 |    0 |          0 |
+|         fifo                                     |          StreamFifo_10_28 |        124 |        116 |       8 |    0 |     4 |      0 |      0 |    0 |          0 |
+|   pifoEngines_1                                  |              PifoEngine_1 |      98992 |      98892 |     100 |    0 | 20981 |      4 |      0 |    1 |          0 |
+|     pifos                                        |         ConcurrentPifoRTL |      98056 |      98056 |       0 |    0 | 20549 |      0 |      0 |    0 |          0 |
+|     deque_frontRewrite                           |         FrontRewriteTable |        253 |        253 |       0 |    0 |   288 |      0 |      0 |    0 |          0 |
+|     enque_brain                                  |               PIFOBrain_1 |        595 |        519 |      76 |    0 |    61 |      0 |      0 |    1 |          0 |
+|       lastVirtualMapper_io_readRes_toStream_fifo |    StreamFifoLowLatency_8 |         76 |         68 |       8 |    0 |     4 |      0 |      0 |    0 |          0 |
+|         fifo                                     |              StreamFifo_9 |         76 |         68 |       8 |    0 |     4 |      0 |      0 |    0 |          0 |
+|       engineCAM_io_readRes_toStream_fifo         |  StreamFifoLowLatency_6_7 |         57 |         49 |       8 |    0 |     4 |      0 |      0 |    0 |          0 |
+|         fifo                                     |              StreamFifo_7 |         57 |         49 |       8 |    0 |     4 |      0 |      0 |    0 |          0 |
+|       engineMapper_io_readRes_toStream_fifo      |    StreamFifoLowLatency_5 |        214 |        210 |       4 |    0 |     4 |      0 |      0 |    0 |          0 |
+|         fifo                                     |            StreamFifo_6_8 |        214 |        210 |       4 |    0 |     4 |      0 |      0 |    0 |          0 |
+|       io_outputs_4_fifo                          |    StreamFifoLowLatency_9 |        124 |        116 |       8 |    0 |     4 |      0 |      0 |    0 |          0 |
+|         fifo                                     |             StreamFifo_10 |        124 |        116 |       8 |    0 |     4 |      0 |      0 |    0 |          0 |
+|   xbar                                           |           MessageCrossBar |        122 |         98 |      24 |    0 |    56 |      0 |      0 |    0 |          0 |
++--------------------------------------------------+---------------------------+------------+------------+---------+------+-------+--------+--------+------+------------+
+
+

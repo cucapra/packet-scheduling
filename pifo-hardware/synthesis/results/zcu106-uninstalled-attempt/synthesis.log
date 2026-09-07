@@ -1,0 +1,31 @@
+
+****** Vivado v2025.2 (64-bit)
+  **** SW Build 6299465 on Fri Nov 14 12:34:56 MST 2025
+  **** IP Build 6300035 on Fri Nov 14 10:48:45 MST 2025
+  **** SharedData Build 6298862 on Thu Nov 13 04:50:51 MST 2025
+  **** Start of session at: Sun Sep  6 19:10:57 2026
+    ** Copyright 1986-2022 Xilinx, Inc. All Rights Reserved.
+    ** Copyright 2022-2025 Advanced Micro Devices, Inc. All Rights Reserved.
+
+source /home/zg366/packet-scheduling/pifo-hardware/synthesis/vivado_synth.tcl
+# if {$argc != 5} {
+#     error {Expected BUILD_DIR PART THREADS CLOCK_PERIOD_NS PREPARE_ONLY}
+# }
+# lassign $argv build_dir part threads period prepare_only
+# set build_dir [file normalize $build_dir]
+# set rtl_dir [file join $build_dir rtl]
+# set report_dir [file join $build_dir reports]
+# set encoder [file normalize [file join [file dirname [info script]] ../hw/verilog/priority_encode_log.v]]
+# file mkdir $report_dir
+# if {[llength [get_parts -quiet $part]] != 1} {
+#     error "Target part is not installed: $part"
+# }
+Target part is not installed: xczu7ev-ffvc1156-2-e
+    while executing
+"error "Target part is not installed: $part""
+    invoked from within
+"if {[llength [get_parts -quiet $part]] != 1} {
+    error "Target part is not installed: $part"
+}"
+    (file "/home/zg366/packet-scheduling/pifo-hardware/synthesis/vivado_synth.tcl" line 11)
+INFO: [Common 17-206] Exiting Vivado at Sun Sep  6 19:11:00 2026...

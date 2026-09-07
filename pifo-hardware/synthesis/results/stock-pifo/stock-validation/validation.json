@@ -1,0 +1,32 @@
+{
+  "backend": "stock",
+  "hardware": {
+    "pifo_backend": "stock",
+    "num_engines": 2,
+    "num_vpifos_per_pe": 32,
+    "global_flow_id_capacity": 32,
+    "fifo_depth_parameter": 32,
+    "shared_entries_per_pe": 1024,
+    "total_shared_entries": 2048,
+    "priority_bits": 8,
+    "vpifo_id_bits": 5,
+    "engine_id_bits": 2,
+    "token_bits": 7,
+    "brain_state_bits": 32,
+    "flow_state_bits": 32,
+    "commit_queue_depth": 4,
+    "flow_token_address_space": 128,
+    "vpifo_token_pairs_per_pe": 4096
+  },
+  "simulator": "/data/work/vivado/2025.2/Vivado/bin/xsim",
+  "source_sha256": "818055f3765dea66e7d33c2046d03d94b1ef0e51fc921391d627c6e416e66093",
+  "simulation_source_sha256": "96ca14e6a14b1b8d2f3fe29ce46df9f902f23f9343f294fae53cb0c6c87a353d",
+  "testbench_sha256": "8ece9d1134e212d0b689111b7c4e67fccb6450edca32af9ef4013be29219cc95",
+  "simulation_only_change": "Move pf_data_nxt/pf_prio_nxt/pf_port_nxt declarations before first use; no logic changes",
+  "status": "failed",
+  "stage": "simulate",
+  "evidence": [
+    "CONTRACT_PHASE_PASS empty and immediate forwarding",
+    "Fatal: CONTRACT_FAIL phase=interleaved ports, consecutive pops cycle=12 requested_port=1 expected_rank=3 expected_data=33 actual_rank=2 actual_data=22"
+  ]
+}

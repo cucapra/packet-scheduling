@@ -1,0 +1,332 @@
+{
+  "source": "Yosys 0.33 (git sha1 2584903a060)",
+  "scope": "Flattened optimized generic RTL; not Agilex technology mapping",
+  "explicit_flip_flop_bits": 41902,
+  "sorted_entry_flip_flop_bits": 40960,
+  "flip_flop_bits_by_cell_type": {
+    "$adff": 272,
+    "$adffe": 580,
+    "$dff": 40972,
+    "$dffe": 78
+  },
+  "memory_bits": 381220,
+  "memory_count": 36,
+  "memories": [
+    {
+      "name": "io_controlRequest_fifo.logic_ram",
+      "width": 49,
+      "size": 4,
+      "rd_ports": 1,
+      "wr_ports": 1,
+      "bits": 196
+    },
+    {
+      "name": "pifoEngines_0.deque_dequeMapper.banks_0",
+      "width": 7,
+      "size": 4096,
+      "rd_ports": 2,
+      "wr_ports": 1,
+      "bits": 28672
+    },
+    {
+      "name": "pifoEngines_0.deque_dequeMapper.banks_1",
+      "width": 7,
+      "size": 4096,
+      "rd_ports": 2,
+      "wr_ports": 1,
+      "bits": 28672
+    },
+    {
+      "name": "pifoEngines_0.enque_brain.brainStateMem.ram",
+      "width": 32,
+      "size": 32,
+      "rd_ports": 1,
+      "wr_ports": 1,
+      "bits": 1024
+    },
+    {
+      "name": "pifoEngines_0.enque_brain.brainStateMem_io_readRes_toStream_fifo.fifo.logic_ram",
+      "width": 32,
+      "size": 2,
+      "rd_ports": 1,
+      "wr_ports": 1,
+      "bits": 64
+    },
+    {
+      "name": "pifoEngines_0.enque_brain.brainStateUpdate_toStream_fifo.fifo.logic_ram",
+      "width": 37,
+      "size": 2,
+      "rd_ports": 1,
+      "wr_ports": 1,
+      "bits": 74
+    },
+    {
+      "name": "pifoEngines_0.enque_brain.engineCAM.ram",
+      "width": 32,
+      "size": 4096,
+      "rd_ports": 1,
+      "wr_ports": 1,
+      "bits": 131072
+    },
+    {
+      "name": "pifoEngines_0.enque_brain.engineCAM_io_readRes_toStream_fifo.fifo.logic_ram",
+      "width": 32,
+      "size": 2,
+      "rd_ports": 1,
+      "wr_ports": 1,
+      "bits": 64
+    },
+    {
+      "name": "pifoEngines_0.enque_brain.engineMapper.ram",
+      "width": 2,
+      "size": 32,
+      "rd_ports": 1,
+      "wr_ports": 1,
+      "bits": 64
+    },
+    {
+      "name": "pifoEngines_0.enque_brain.engineMapper_io_readRes_toStream_fifo.fifo.logic_ram",
+      "width": 2,
+      "size": 2,
+      "rd_ports": 1,
+      "wr_ports": 1,
+      "bits": 4
+    },
+    {
+      "name": "pifoEngines_0.enque_brain.flowStateUpdate_toStream_fifo.fifo.logic_ram",
+      "width": 44,
+      "size": 2,
+      "rd_ports": 1,
+      "wr_ports": 1,
+      "bits": 88
+    },
+    {
+      "name": "pifoEngines_0.enque_brain.io_outputs_4_fifo.fifo.logic_ram",
+      "width": 12,
+      "size": 2,
+      "rd_ports": 1,
+      "wr_ports": 1,
+      "bits": 24
+    },
+    {
+      "name": "pifoEngines_0.enque_brain.lastVirtualMapper.ram",
+      "width": 8,
+      "size": 32,
+      "rd_ports": 1,
+      "wr_ports": 1,
+      "bits": 256
+    },
+    {
+      "name": "pifoEngines_0.enque_brain.lastVirtualMapper_io_readRes_toStream_fifo.fifo.logic_ram",
+      "width": 8,
+      "size": 2,
+      "rd_ports": 1,
+      "wr_ports": 1,
+      "bits": 16
+    },
+    {
+      "name": "pifoEngines_0.enque_enqueMapper.banks_0",
+      "width": 5,
+      "size": 32,
+      "rd_ports": 2,
+      "wr_ports": 1,
+      "bits": 160
+    },
+    {
+      "name": "pifoEngines_0.enque_enqueMapper.banks_1",
+      "width": 5,
+      "size": 32,
+      "rd_ports": 2,
+      "wr_ports": 1,
+      "bits": 160
+    },
+    {
+      "name": "pifoEngines_0.enque_flowIdStream_fifo.fifo.logic_ram",
+      "width": 7,
+      "size": 2,
+      "rd_ports": 1,
+      "wr_ports": 1,
+      "bits": 14
+    },
+    {
+      "name": "pifoEngines_1.deque_dequeMapper.banks_0",
+      "width": 7,
+      "size": 4096,
+      "rd_ports": 2,
+      "wr_ports": 1,
+      "bits": 28672
+    },
+    {
+      "name": "pifoEngines_1.deque_dequeMapper.banks_1",
+      "width": 7,
+      "size": 4096,
+      "rd_ports": 2,
+      "wr_ports": 1,
+      "bits": 28672
+    },
+    {
+      "name": "pifoEngines_1.enque_brain.brainStateMem.ram",
+      "width": 32,
+      "size": 32,
+      "rd_ports": 1,
+      "wr_ports": 1,
+      "bits": 1024
+    },
+    {
+      "name": "pifoEngines_1.enque_brain.brainStateMem_io_readRes_toStream_fifo.fifo.logic_ram",
+      "width": 32,
+      "size": 2,
+      "rd_ports": 1,
+      "wr_ports": 1,
+      "bits": 64
+    },
+    {
+      "name": "pifoEngines_1.enque_brain.brainStateUpdate_toStream_fifo.fifo.logic_ram",
+      "width": 37,
+      "size": 2,
+      "rd_ports": 1,
+      "wr_ports": 1,
+      "bits": 74
+    },
+    {
+      "name": "pifoEngines_1.enque_brain.engineCAM.ram",
+      "width": 32,
+      "size": 4096,
+      "rd_ports": 1,
+      "wr_ports": 1,
+      "bits": 131072
+    },
+    {
+      "name": "pifoEngines_1.enque_brain.engineCAM_io_readRes_toStream_fifo.fifo.logic_ram",
+      "width": 32,
+      "size": 2,
+      "rd_ports": 1,
+      "wr_ports": 1,
+      "bits": 64
+    },
+    {
+      "name": "pifoEngines_1.enque_brain.engineMapper.ram",
+      "width": 2,
+      "size": 32,
+      "rd_ports": 1,
+      "wr_ports": 1,
+      "bits": 64
+    },
+    {
+      "name": "pifoEngines_1.enque_brain.engineMapper_io_readRes_toStream_fifo.fifo.logic_ram",
+      "width": 2,
+      "size": 2,
+      "rd_ports": 1,
+      "wr_ports": 1,
+      "bits": 4
+    },
+    {
+      "name": "pifoEngines_1.enque_brain.flowStateUpdate_toStream_fifo.fifo.logic_ram",
+      "width": 44,
+      "size": 2,
+      "rd_ports": 1,
+      "wr_ports": 1,
+      "bits": 88
+    },
+    {
+      "name": "pifoEngines_1.enque_brain.io_outputs_4_fifo.fifo.logic_ram",
+      "width": 12,
+      "size": 2,
+      "rd_ports": 1,
+      "wr_ports": 1,
+      "bits": 24
+    },
+    {
+      "name": "pifoEngines_1.enque_brain.lastVirtualMapper.ram",
+      "width": 8,
+      "size": 32,
+      "rd_ports": 1,
+      "wr_ports": 1,
+      "bits": 256
+    },
+    {
+      "name": "pifoEngines_1.enque_brain.lastVirtualMapper_io_readRes_toStream_fifo.fifo.logic_ram",
+      "width": 8,
+      "size": 2,
+      "rd_ports": 1,
+      "wr_ports": 1,
+      "bits": 16
+    },
+    {
+      "name": "pifoEngines_1.enque_enqueMapper.banks_0",
+      "width": 5,
+      "size": 32,
+      "rd_ports": 2,
+      "wr_ports": 1,
+      "bits": 160
+    },
+    {
+      "name": "pifoEngines_1.enque_enqueMapper.banks_1",
+      "width": 5,
+      "size": 32,
+      "rd_ports": 2,
+      "wr_ports": 1,
+      "bits": 160
+    },
+    {
+      "name": "pifoEngines_1.enque_flowIdStream_fifo.fifo.logic_ram",
+      "width": 7,
+      "size": 2,
+      "rd_ports": 1,
+      "wr_ports": 1,
+      "bits": 14
+    },
+    {
+      "name": "xbar.io_inputs_0_fifo.fifo.logic_ram",
+      "width": 7,
+      "size": 8,
+      "rd_ports": 1,
+      "wr_ports": 1,
+      "bits": 56
+    },
+    {
+      "name": "xbar.io_inputs_1_fifo.fifo.logic_ram",
+      "width": 7,
+      "size": 8,
+      "rd_ports": 1,
+      "wr_ports": 1,
+      "bits": 56
+    },
+    {
+      "name": "xbar.io_inputs_2_fifo.fifo.logic_ram",
+      "width": 7,
+      "size": 8,
+      "rd_ports": 1,
+      "wr_ports": 1,
+      "bits": 56
+    }
+  ],
+  "generic_cell_counts": {
+    "$add": 54,
+    "$adff": 214,
+    "$adffe": 234,
+    "$and": 9,
+    "$dff": 6156,
+    "$dffe": 31,
+    "$eq": 6301,
+    "$le": 2046,
+    "$logic_and": 12524,
+    "$logic_not": 4204,
+    "$logic_or": 4099,
+    "$lt": 8190,
+    "$mem_v2": 36,
+    "$mux": 25848,
+    "$ne": 2076,
+    "$not": 31,
+    "$pmux": 26,
+    "$reduce_and": 68,
+    "$reduce_bool": 32,
+    "$reduce_or": 2,
+    "$sshl": 5,
+    "$sub": 12,
+    "$xor": 22
+  },
+  "agilex_alms": null,
+  "agilex_m20ks": null,
+  "fmax_mhz": null
+}

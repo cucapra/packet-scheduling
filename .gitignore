@@ -45,3 +45,15 @@ _opam/
 *.csv
 !pifo-hardware/experiment-results/**/*.png
 !pifo-hardware/experiment-results/**/*.csv
+
+# Generated hardware, JVM build caches, and FPGA tool databases
+pifo-hardware/target/
+pifo-hardware/project/target/
+pifo-hardware/project/project/
+pifo-hardware/hw/gen/
+pifo-hardware/simWorkspace/
+pifo-hardware/tmp/
+pifo-hardware/synthesis/build/
+pifo-hardware/synthesis/.tools/
+pifo-hardware/synthesis/__pycache__/
+pifo-hardware/.Xil/
