@@ -1,0 +1,79 @@
+Starting PIFO component: pifo-house-1push-v32-c1024-t8-quartus
+Running /data/work/quartus/quartus/bin/quartus_sh --version
+  log: /data/work/rio-synthesis/pifo-component-single-push/pifo-house-1push-v32-c1024-t8-quartus/quartus-version.txt
+Starting PIFO component: pifo-house-1push-v128-c1024-t10-quartus
+Running /data/work/quartus/quartus/bin/quartus_sh --version
+  log: /data/work/rio-synthesis/pifo-component-single-push/pifo-house-1push-v128-c1024-t10-quartus/quartus-version.txt
+Starting PIFO component: pifo-house-1push-v1024-c1024-t13-quartus
+Running /data/work/quartus/quartus/bin/quartus_sh --version
+  log: /data/work/rio-synthesis/pifo-component-single-push/pifo-house-1push-v1024-c1024-t13-quartus/quartus-version.txt
+Starting PIFO component: pifo-house-1push-v32-c1024-t8-vivado
+Running /data/work/vivado/2025.2/Vivado/bin/vivado -version
+  log: /data/work/rio-synthesis/pifo-component-single-push/pifo-house-1push-v32-c1024-t8-vivado/vivado-version.txt
+Starting PIFO component: pifo-house-1push-v64-c1024-t9-quartus
+Running /data/work/quartus/quartus/bin/quartus_sh --version
+  log: /data/work/rio-synthesis/pifo-component-single-push/pifo-house-1push-v64-c1024-t9-quartus/quartus-version.txt
+Starting PIFO component: pifo-house-1push-v1024-c1024-t13-vivado
+Running /data/work/vivado/2025.2/Vivado/bin/vivado -version
+  log: /data/work/rio-synthesis/pifo-component-single-push/pifo-house-1push-v1024-c1024-t13-vivado/vivado-version.txt
+Running /data/work/quartus/quartus/bin/quartus_sh -t /home/zg366/packet-scheduling/pifo-hardware/synthesis/create_project.tcl /data/work/rio-synthesis/pifo-component-single-push/pifo-house-1push-v1024-c1024-t13-quartus AGFB014R24B2E2V 8 10.0
+  log: /data/work/rio-synthesis/pifo-component-single-push/pifo-house-1push-v1024-c1024-t13-quartus/project.log
+Running /data/work/quartus/quartus/bin/quartus_sh -t /home/zg366/packet-scheduling/pifo-hardware/synthesis/create_project.tcl /data/work/rio-synthesis/pifo-component-single-push/pifo-house-1push-v128-c1024-t10-quartus AGFB014R24B2E2V 8 10.0
+  log: /data/work/rio-synthesis/pifo-component-single-push/pifo-house-1push-v128-c1024-t10-quartus/project.log
+Running /data/work/quartus/quartus/bin/quartus_sh -t /home/zg366/packet-scheduling/pifo-hardware/synthesis/create_project.tcl /data/work/rio-synthesis/pifo-component-single-push/pifo-house-1push-v32-c1024-t8-quartus AGFB014R24B2E2V 8 10.0
+  log: /data/work/rio-synthesis/pifo-component-single-push/pifo-house-1push-v32-c1024-t8-quartus/project.log
+Running /data/work/vivado/2025.2/Vivado/bin/vivado -mode batch -nojournal -log /data/work/rio-synthesis/pifo-component-single-push/pifo-house-1push-v1024-c1024-t13-vivado/vivado.log -source /home/zg366/packet-scheduling/pifo-hardware/synthesis/vivado_synth.tcl -tclargs /data/work/rio-synthesis/pifo-component-single-push/pifo-house-1push-v1024-c1024-t13-vivado xcku5p-ffvb676-2-e 8 10.0 0 RuntimeOptimized 1
+  log: /data/work/rio-synthesis/pifo-component-single-push/pifo-house-1push-v1024-c1024-t13-vivado/synthesis.log
+Running /data/work/vivado/2025.2/Vivado/bin/vivado -mode batch -nojournal -log /data/work/rio-synthesis/pifo-component-single-push/pifo-house-1push-v32-c1024-t8-vivado/vivado.log -source /home/zg366/packet-scheduling/pifo-hardware/synthesis/vivado_synth.tcl -tclargs /data/work/rio-synthesis/pifo-component-single-push/pifo-house-1push-v32-c1024-t8-vivado xcku5p-ffvb676-2-e 8 10.0 0 RuntimeOptimized 1
+  log: /data/work/rio-synthesis/pifo-component-single-push/pifo-house-1push-v32-c1024-t8-vivado/synthesis.log
+Running /data/work/quartus/quartus/bin/quartus_sh -t /home/zg366/packet-scheduling/pifo-hardware/synthesis/create_project.tcl /data/work/rio-synthesis/pifo-component-single-push/pifo-house-1push-v64-c1024-t9-quartus AGFB014R24B2E2V 8 10.0
+  log: /data/work/rio-synthesis/pifo-component-single-push/pifo-house-1push-v64-c1024-t9-quartus/project.log
+Running /data/work/quartus/quartus/bin/quartus_syn pifo
+  log: /data/work/rio-synthesis/pifo-component-single-push/pifo-house-1push-v128-c1024-t10-quartus/synthesis.log
+Running /data/work/quartus/quartus/bin/quartus_syn pifo
+  log: /data/work/rio-synthesis/pifo-component-single-push/pifo-house-1push-v1024-c1024-t13-quartus/synthesis.log
+Running /data/work/quartus/quartus/bin/quartus_syn pifo
+  log: /data/work/rio-synthesis/pifo-component-single-push/pifo-house-1push-v32-c1024-t8-quartus/synthesis.log
+Running /data/work/quartus/quartus/bin/quartus_syn pifo
+  log: /data/work/rio-synthesis/pifo-component-single-push/pifo-house-1push-v64-c1024-t9-quartus/synthesis.log
+Completed pifo-house-1push-v32-c1024-t8-vivado: {'logic_luts': 101461, 'registers': 21591, 'bram36_tiles': 0.0, 'uram288_blocks': 0, 'bram_uram_allocated_bits': 0, 'lutram_luts': 0, 'dsp_blocks': 0}
+Starting PIFO component: pifo-house-1push-v64-c1024-t9-vivado
+Running /data/work/vivado/2025.2/Vivado/bin/vivado -version
+  log: /data/work/rio-synthesis/pifo-component-single-push/pifo-house-1push-v64-c1024-t9-vivado/vivado-version.txt
+Running /data/work/vivado/2025.2/Vivado/bin/vivado -mode batch -nojournal -log /data/work/rio-synthesis/pifo-component-single-push/pifo-house-1push-v64-c1024-t9-vivado/vivado.log -source /home/zg366/packet-scheduling/pifo-hardware/synthesis/vivado_synth.tcl -tclargs /data/work/rio-synthesis/pifo-component-single-push/pifo-house-1push-v64-c1024-t9-vivado xcku5p-ffvb676-2-e 8 10.0 0 RuntimeOptimized 1
+  log: /data/work/rio-synthesis/pifo-component-single-push/pifo-house-1push-v64-c1024-t9-vivado/synthesis.log
+Completed pifo-house-1push-v1024-c1024-t13-vivado: {'logic_luts': 121638, 'registers': 31846, 'bram36_tiles': 0.0, 'uram288_blocks': 0, 'bram_uram_allocated_bits': 0, 'lutram_luts': 0, 'dsp_blocks': 0}
+Starting PIFO component: pifo-house-1push-v128-c1024-t10-vivado
+Running /data/work/vivado/2025.2/Vivado/bin/vivado -version
+  log: /data/work/rio-synthesis/pifo-component-single-push/pifo-house-1push-v128-c1024-t10-vivado/vivado-version.txt
+Running /data/work/vivado/2025.2/Vivado/bin/vivado -mode batch -nojournal -log /data/work/rio-synthesis/pifo-component-single-push/pifo-house-1push-v128-c1024-t10-vivado/vivado.log -source /home/zg366/packet-scheduling/pifo-hardware/synthesis/vivado_synth.tcl -tclargs /data/work/rio-synthesis/pifo-component-single-push/pifo-house-1push-v128-c1024-t10-vivado xcku5p-ffvb676-2-e 8 10.0 0 RuntimeOptimized 1
+  log: /data/work/rio-synthesis/pifo-component-single-push/pifo-house-1push-v128-c1024-t10-vivado/synthesis.log
+Starting PIFO component: pifo-house-1push-v256-c1024-t11-quartus
+Running /data/work/quartus/quartus/bin/quartus_sh --version
+  log: /data/work/rio-synthesis/pifo-component-single-push/pifo-house-1push-v256-c1024-t11-quartus/quartus-version.txt
+Running /data/work/quartus/quartus/bin/quartus_sh -t /home/zg366/packet-scheduling/pifo-hardware/synthesis/create_project.tcl /data/work/rio-synthesis/pifo-component-single-push/pifo-house-1push-v256-c1024-t11-quartus AGFB014R24B2E2V 8 10.0
+  log: /data/work/rio-synthesis/pifo-component-single-push/pifo-house-1push-v256-c1024-t11-quartus/project.log
+Running /data/work/quartus/quartus/bin/quartus_syn pifo
+  log: /data/work/rio-synthesis/pifo-component-single-push/pifo-house-1push-v256-c1024-t11-quartus/synthesis.log
+Starting PIFO component: pifo-house-1push-v512-c1024-t12-quartus
+Running /data/work/quartus/quartus/bin/quartus_sh --version
+  log: /data/work/rio-synthesis/pifo-component-single-push/pifo-house-1push-v512-c1024-t12-quartus/quartus-version.txt
+Running /data/work/quartus/quartus/bin/quartus_sh -t /home/zg366/packet-scheduling/pifo-hardware/synthesis/create_project.tcl /data/work/rio-synthesis/pifo-component-single-push/pifo-house-1push-v512-c1024-t12-quartus AGFB014R24B2E2V 8 10.0
+  log: /data/work/rio-synthesis/pifo-component-single-push/pifo-house-1push-v512-c1024-t12-quartus/project.log
+Running /data/work/quartus/quartus/bin/quartus_syn pifo
+  log: /data/work/rio-synthesis/pifo-component-single-push/pifo-house-1push-v512-c1024-t12-quartus/synthesis.log
+Completed pifo-house-1push-v64-c1024-t9-vivado: {'logic_luts': 101751, 'registers': 23636, 'bram36_tiles': 0.0, 'uram288_blocks': 0, 'bram_uram_allocated_bits': 0, 'lutram_luts': 0, 'dsp_blocks': 0}
+Starting PIFO component: pifo-house-1push-v256-c1024-t11-vivado
+Running /data/work/vivado/2025.2/Vivado/bin/vivado -version
+  log: /data/work/rio-synthesis/pifo-component-single-push/pifo-house-1push-v256-c1024-t11-vivado/vivado-version.txt
+Running /data/work/vivado/2025.2/Vivado/bin/vivado -mode batch -nojournal -log /data/work/rio-synthesis/pifo-component-single-push/pifo-house-1push-v256-c1024-t11-vivado/vivado.log -source /home/zg366/packet-scheduling/pifo-hardware/synthesis/vivado_synth.tcl -tclargs /data/work/rio-synthesis/pifo-component-single-push/pifo-house-1push-v256-c1024-t11-vivado xcku5p-ffvb676-2-e 8 10.0 0 RuntimeOptimized 1
+  log: /data/work/rio-synthesis/pifo-component-single-push/pifo-house-1push-v256-c1024-t11-vivado/synthesis.log
+Completed pifo-house-1push-v128-c1024-t10-vivado: {'logic_luts': 104800, 'registers': 25676, 'bram36_tiles': 0.0, 'uram288_blocks': 0, 'bram_uram_allocated_bits': 0, 'lutram_luts': 0, 'dsp_blocks': 0}
+Starting PIFO component: pifo-house-1push-v512-c1024-t12-vivado
+Running /data/work/vivado/2025.2/Vivado/bin/vivado -version
+  log: /data/work/rio-synthesis/pifo-component-single-push/pifo-house-1push-v512-c1024-t12-vivado/vivado-version.txt
+Running /data/work/vivado/2025.2/Vivado/bin/vivado -mode batch -nojournal -log /data/work/rio-synthesis/pifo-component-single-push/pifo-house-1push-v512-c1024-t12-vivado/vivado.log -source /home/zg366/packet-scheduling/pifo-hardware/synthesis/vivado_synth.tcl -tclargs /data/work/rio-synthesis/pifo-component-single-push/pifo-house-1push-v512-c1024-t12-vivado xcku5p-ffvb676-2-e 8 10.0 0 RuntimeOptimized 1
+  log: /data/work/rio-synthesis/pifo-component-single-push/pifo-house-1push-v512-c1024-t12-vivado/synthesis.log
+Completed pifo-house-1push-v256-c1024-t11-vivado: {'logic_luts': 109618, 'registers': 27731, 'bram36_tiles': 0.0, 'uram288_blocks': 0, 'bram_uram_allocated_bits': 0, 'lutram_luts': 0, 'dsp_blocks': 0}
+Completed pifo-house-1push-v512-c1024-t12-vivado: {'logic_luts': 122391, 'registers': 29783, 'bram36_tiles': 0.0, 'uram288_blocks': 0, 'bram_uram_allocated_bits': 0, 'lutram_luts': 0, 'dsp_blocks': 0}
+Some PIFO component measurements failed; see run-status.json

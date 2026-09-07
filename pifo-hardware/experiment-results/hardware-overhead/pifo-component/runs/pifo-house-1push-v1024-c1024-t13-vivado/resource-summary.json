@@ -1,0 +1,426 @@
+{
+  "source_build": "/data/work/rio-synthesis/pifo-component-single-push/pifo-house-1push-v1024-c1024-t13-vivado",
+  "status": "synthesis_complete",
+  "part": "xcku5p-ffvb676-2-e",
+  "tool_version": "vivado v2025.2 (64-bit)\nTool Version Limit: 2025.11\nSW Build 6299465 on Fri Nov 14 12:34:56 MST 2025\nIP Build 6300035 on Fri Nov 14 10:48:45 MST 2025\nSharedData Build 6298862 on Thu Nov 13 04:50:51 MST 2025\nCopyright 1986-2022 Xilinx, Inc. All Rights Reserved.\nCopyright 2022-2025 Advanced Micro Devices, Inc. All Rights Reserved.",
+  "synthesis_directive": "RuntimeOptimized",
+  "device_capacity_check": "disabled_for_estimation",
+  "hardware": {
+    "component": "house_pifo",
+    "instances": 1,
+    "budget_instances": 5,
+    "global_flow_id_capacity": 1024,
+    "shared_entries_per_pe": 1024,
+    "priority_bits": 8,
+    "token_bits": 13,
+    "vpifo_id_bits": 10,
+    "enabled_push_ports": 1,
+    "push2_valid": 0
+  },
+  "completion": "Vivado 2025.2; xcku5p-ffvb676-2-e; PifoMesh; out_of_context; Mon Sep 07 11:53:54 EDT 2026",
+  "scope": "Vivado out-of-context synthesis; no implementation or timing-closure claim",
+  "resources": {
+    "CLB LUTs": {
+      "Used": 121638,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 216960,
+      "Util%": 56.06
+    },
+    "LUT as Logic": {
+      "Used": 121638,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 216960,
+      "Util%": 56.06
+    },
+    "LUT as Memory": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 99840,
+      "Util%": 0.0
+    },
+    "CLB Registers": {
+      "Used": 31846,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 433920,
+      "Util%": 7.34
+    },
+    "Register as Flip Flop": {
+      "Used": 31846,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 433920,
+      "Util%": 7.34
+    },
+    "Register as Latch": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 433920,
+      "Util%": 0.0
+    },
+    "CARRY8": {
+      "Used": 2048,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 27120,
+      "Util%": 7.55
+    },
+    "F7 Muxes": {
+      "Used": 3155,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 108480,
+      "Util%": 2.91
+    },
+    "F8 Muxes": {
+      "Used": 1478,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 54240,
+      "Util%": 2.72
+    },
+    "F9 Muxes": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 27120,
+      "Util%": 0.0
+    },
+    "Unique Control Sets": {
+      "Used": 219,
+      "Fixed": "",
+      "Prohibited": 0,
+      "Available": 54240,
+      "Util%": 0.4
+    },
+    "Block RAM Tile": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 480,
+      "Util%": 0.0
+    },
+    "RAMB36/FIFO": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 480,
+      "Util%": 0.0
+    },
+    "RAMB18": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 960,
+      "Util%": 0.0
+    },
+    "URAM": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 64,
+      "Util%": 0.0
+    },
+    "DSPs": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 1824,
+      "Util%": 0.0
+    },
+    "Bonded IOB": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 280,
+      "Util%": 0.0
+    },
+    "HPIOB_M": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 96,
+      "Util%": 0.0
+    },
+    "HPIOB_S": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 96,
+      "Util%": 0.0
+    },
+    "HDIOB_M": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 36,
+      "Util%": 0.0
+    },
+    "HDIOB_S": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 36,
+      "Util%": 0.0
+    },
+    "HPIOB_SNGL": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 16,
+      "Util%": 0.0
+    },
+    "HPIOBDIFFINBUF": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 96,
+      "Util%": 0.0
+    },
+    "HPIOBDIFFOUTBUF": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 96,
+      "Util%": 0.0
+    },
+    "HDIOBDIFFINBUF": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 48,
+      "Util%": 0.0
+    },
+    "BITSLICE_CONTROL": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 32,
+      "Util%": 0.0
+    },
+    "BITSLICE_RX_TX": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 1248,
+      "Util%": 0.0
+    },
+    "BITSLICE_TX": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 32,
+      "Util%": 0.0
+    },
+    "RIU_OR": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 16,
+      "Util%": 0.0
+    },
+    "BUFGCE": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 112,
+      "Util%": 0.0
+    },
+    "BUFGCE_DIV": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 16,
+      "Util%": 0.0
+    },
+    "BUFG_GT": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 96,
+      "Util%": 0.0
+    },
+    "BUFGCTRL": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 32,
+      "Util%": 0.0
+    },
+    "PLL": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 8,
+      "Util%": 0.0
+    },
+    "MMCM": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 4,
+      "Util%": 0.0
+    },
+    "CMACE4": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 1,
+      "Util%": 0.0
+    },
+    "GTYE4_CHANNEL": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 16,
+      "Util%": 0.0
+    },
+    "GTYE4_COMMON": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 4,
+      "Util%": 0.0
+    },
+    "OBUFDS_GTE4": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 8,
+      "Util%": 0.0
+    },
+    "OBUFDS_GTE4_ADV": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 8,
+      "Util%": 0.0
+    },
+    "PCIE40E4": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 1,
+      "Util%": 0.0
+    },
+    "SYSMONE4": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 1,
+      "Util%": 0.0
+    },
+    "BSCANE2": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 4,
+      "Util%": 0.0
+    },
+    "DNA_PORTE2": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 1,
+      "Util%": 0.0
+    },
+    "EFUSE_USR": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 1,
+      "Util%": 0.0
+    },
+    "FRAME_ECCE4": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 1,
+      "Util%": 0.0
+    },
+    "ICAPE3": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 2,
+      "Util%": 0.0
+    },
+    "MASTER_JTAG": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 1,
+      "Util%": 0.0
+    },
+    "STARTUPE3": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 1,
+      "Util%": 0.0
+    }
+  },
+  "hierarchy": [
+    {
+      "path": "PifoMesh",
+      "Instance": "PifoMesh",
+      "Module": "(top)",
+      "Total LUTs": 121638,
+      "Logic LUTs": 121638,
+      "LUTRAMs": 0,
+      "SRLs": 0,
+      "FFs": 31846,
+      "RAMB36": 0,
+      "RAMB18": 0,
+      "URAM": 0,
+      "DSP Blocks": 0
+    },
+    {
+      "path": "PifoMesh/core",
+      "Instance": "core",
+      "Module": "ConcurrentPifoRTL",
+      "Total LUTs": 121638,
+      "Logic LUTs": 121638,
+      "LUTRAMs": 0,
+      "SRLs": 0,
+      "FFs": 31846,
+      "RAMB36": 0,
+      "RAMB18": 0,
+      "URAM": 0,
+      "DSP Blocks": 0
+    }
+  ],
+  "primitive_counts": {
+    "CARRY8": 2048,
+    "FDCE": 69,
+    "FDRE": 31777,
+    "GND": 2,
+    "LUT1": 25,
+    "LUT2": 1234,
+    "LUT3": 29996,
+    "LUT4": 10462,
+    "LUT5": 52577,
+    "LUT6": 45433,
+    "MUXF7": 3155,
+    "MUXF8": 1478,
+    "VCC": 1
+  },
+  "ram_instances": [],
+  "mapped_memory": {
+    "ramb36_primitives": 0,
+    "ramb18_primitives": 0,
+    "bram36_tile_equivalents": 0.0,
+    "bram_allocated_capacity_bits_including_parity": 0,
+    "uram_primitives": 0,
+    "reported_bram_uram_used_bits_including_replicas": 0,
+    "reported_bram_uram_allocated_bits": 0
+  },
+  "flip_flop_primitives": 31846,
+  "latch_primitives": 0,
+  "dsp_primitives": 0,
+  "unresolved_blackboxes": 0
+}

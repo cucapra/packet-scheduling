@@ -1,6 +1,10 @@
 {
-  "build_root": "/data/work/rio-synthesis/hardware-overhead",
-  "jobs": 8,
+  "argv": [
+    "hw/python/pifo_hardware_overhead_r2.py",
+    "--collect-only"
+  ],
+  "build_root": "/data/work/rio-synthesis/hardware-replay-final",
+  "jobs_per_vendor": 1,
   "selected_vflows": [
     32,
     64,
@@ -9,14 +13,5 @@
     512,
     1024
   ],
-  "adopt_running": true,
-  "started_at_utc": "2026-09-07T03:04:44Z",
-  "argv": [
-    "hw/python/pifo_hardware_overhead_r2.py",
-    "--build-root",
-    "/data/work/rio-synthesis/hardware-overhead",
-    "--jobs",
-    "8",
-    "--adopt-running"
-  ]
+  "implementation": false
 }

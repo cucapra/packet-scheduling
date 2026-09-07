@@ -1,0 +1,14 @@
+{
+  "scope": "ordinary RIO versus controller replay; five measured house PIFO components added to both",
+  "absolute_change": "replay_RIO - ordinary_RIO",
+  "percent_change": "100 * (replay_RIO - ordinary_RIO) / (ordinary_RIO + 5 * one_PIFO)",
+  "component_sum_is_estimate": true,
+  "implementation_run": false,
+  "device_fit_established": false,
+  "quartus_memory": "inferred implementation bits, not fitted M20K allocation",
+  "vivado_memory": "mapped BRAM/URAM allocation",
+  "quartus_replay_journal": "M20K assignment on every plotted Quartus replay case",
+  "default_source_changes": "EngineConfig and CLI now default to replay; explicit static/replay RTL semantics unchanged",
+  "default_validation": "../validation/default-replay/default-equivalence.json",
+  "prior_validation": "../validation/replay-reference-equivalence.json"
+}

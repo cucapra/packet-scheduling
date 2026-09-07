@@ -1,7 +1,7 @@
 {
-  "schema": "rio-hardware-overhead-v1",
+  "schema": "rio-hardware-overhead-v2",
   "name": "r1-fixed",
-  "title": "RIO dynamic configuration overhead: fixed hardware (PIFO excluded)",
+  "title": "RIO replay resource difference including five measured PIFOs",
   "output_dir": "experiment-results/hardware-overhead/r1-fixed",
   "hardware": {
     "num_engines": 5,
@@ -11,11 +11,12 @@
     "entries_per_pe": 1024,
     "priority_bits": 8,
     "pifo_backend": "external",
-    "flow_namespace": "coupled-to-vpifo-ids"
+    "flow_namespace": "coupled-to-vpifo-ids",
+    "replay_log_depth": 16384
   },
   "configurations": [
     "static",
-    "dynamic"
+    "replay"
   ],
   "platforms": [
     "quartus",
@@ -28,6 +29,9 @@
     "dpi": 180
   },
   "vivado_capacity_policy": "allow_oversized_estimates",
-  "scope": "rio-without-pifo",
-  "quartus_initialization": "compact_mif"
+  "scope": "RIO synthesized without PIFOs; totals and percentage denominator include five measured PIFO components",
+  "quartus_initialization": "compact_mif",
+  "pifo_budget": "experiment-results/hardware-overhead/pifo-component/resources.csv",
+  "quartus_replay_journal_ramstyle": "M20K",
+  "percent_denominator": "ordinary_RIO_plus_five_PIFOs"
 }

@@ -1,0 +1,85 @@
+{
+  "status": "synthesis_complete",
+  "tool": "quartus",
+  "part": "AGFB014R24B2E2V",
+  "board_reference": {
+    "definition": "/data/work/quartus/quartus/common/devkits/agilex_f_series_development_kit/agilex_f_series_development_kit.devkit_info",
+    "name": "Agilex F-Series FPGA Development Kit",
+    "version": "1.0",
+    "part": "AGFB014R24B2E2V",
+    "design": "agilex_f_series_bts_config"
+  },
+  "scope": "one unchanged house PIFO with RIO push2 tie-off; empty/drain included",
+  "clock_target_mhz": 100,
+  "threads": 8,
+  "implementation_run": false,
+  "synthesis_mode": "virtual data pins",
+  "vivado_directive": "RuntimeOptimized",
+  "vivado_capacity_check": "disabled_for_estimation",
+  "hardware": {
+    "component": "house_pifo",
+    "instances": 1,
+    "budget_instances": 5,
+    "global_flow_id_capacity": 512,
+    "shared_entries_per_pe": 1024,
+    "priority_bits": 8,
+    "token_bits": 12,
+    "vpifo_id_bits": 9,
+    "enabled_push_ports": 1,
+    "push2_valid": 0
+  },
+  "source_sha256": {
+    "hw/spinal/rio/ConcurrentPifoRTL.scala": "a9423ad585ae27347d3dedb44596a352d14214e7d1a4559b103f83780c7e555f",
+    "hw/spinal/rio/Config.scala": "eb623e40ebce2bfe36151863b1764a1b3531cadfe8c4bd5ae2a97eebe71f5061",
+    "hw/spinal/rio/ConfigurableMapper.scala": "6af457299783c501149af256dbe08225296504ab9b070c1ab4080ea25002c352",
+    "hw/spinal/rio/ControllerFactory.scala": "30efd0c48e7fccc934720714d60677a2e96bcd82a42e872b85a606550f7d9908",
+    "hw/spinal/rio/GeneratePifoMesh.scala": "8f363923dceec4aa204a35a6fe9f728ec2b146b49bb9e6f56b6ed542ec943696",
+    "hw/spinal/rio/Pifo.scala": "1c97b917779af58a5faeacc9b5cee4437d8fb0c453bb1492ad583d422767459b",
+    "hw/spinal/rio/PifoCore.scala": "a3d6506c9d3e901b254b234ec60309d525da12d55c80c061fe19c44520261165",
+    "hw/spinal/rio/PifoEngine.scala": "17174dfc8f577bc72a4fd8b16d12e07c189deb49986d2e2cc787aea8205c3d10",
+    "hw/spinal/rio/PifoMesh.scala": "7fbd5da86c483e48642f47c7c6dbfa3124a7403e3b569fdb66f5c1f3905bea02",
+    "hw/spinal/rio/StockPifoRTL.scala": "bf53600f671a18e235a8f06f4ea5a7c1d1a59fdd7eb88ceb58d15bc0f88057a7",
+    "hw/verilog/priority_encode_log.v": "2a63070396dc60fd2106c5ef1d0719e027ff6bf797afbef166cf99c9b49537c2",
+    "build.sbt": "557f8381ce0cf9b0da205fdd6600ebbdda0477a87f71691ced7ed18643b7f72e",
+    "project/build.properties": "97e9b0adc044c92dbf8dc1e671a268242449320b6911d1623cc93427f0bb1b61",
+    "project/plugins.sbt": "e1da7997f71038c21e15631c0f062bdc5d6c6a103d73087e7e659f78b07b9b6f"
+  },
+  "rtl_reused_from": "/data/work/rio-synthesis/hardware-overhead/pe5-v512-c1024-static-quartus",
+  "component_extraction": {
+    "status": "passed",
+    "source_manifest_sha256": "5d77d3069f8d21782965532b94758c14337f1f6162979c161a54542ebd6f43af",
+    "source_rtl_sha256": "0598989b5fc09cf1414132fd10c3d07c9db7ee70964536449f00542425b308ff",
+    "module_sha256": "5c29918894e1d7f7f7ffea8f0b16755b56213aaaf2c82dc65f924dae0f5431e8",
+    "core_rtl_unchanged": true,
+    "wrapper": "PifoMesh; push2.valid tied low as in every RIO PE",
+    "push2_payload_tied_zero": "irrelevant while push2.valid is zero",
+    "runtime_ports": 16,
+    "source_mesh_push2_tieoffs": 5,
+    "storage_entries": 1024,
+    "empty_and_drain_logic_included": true,
+    "token_bits": 12,
+    "port_bits": 9,
+    "rank_bits": 8
+  },
+  "rtl_sha256": {
+    "PifoMesh.v": "626bc21dba06beb867afc68225861999926094d82bf154cbfc29bba265fdb6fe",
+    "priority_encode_log.v": "2a63070396dc60fd2106c5ef1d0719e027ff6bf797afbef166cf99c9b49537c2"
+  },
+  "workflow_sha256": {
+    "hw/python/pifo_resource_budget.py": "02214b7eb620f3b403df5e534ace81ce546da4bb46642959f39f1c25242e45be",
+    "synthesis/create_project.tcl": "fed69b3a0fe11d676f7969b2c6a7c7840639c317ceeaf10f4f27a42947f77551",
+    "synthesis/vivado_synth.tcl": "34b069c1ed93b46c91ada3db1874bf4f6f5a313050607f2051f819357f101121"
+  },
+  "timestamp_utc": "2026-09-07T15:55:21.831884+00:00",
+  "elapsed_seconds": 675.694,
+  "tool_version": "Quartus Prime Shell\nVersion 25.3.1 Build 100 12/19/2025 SC Pro Edition\nCopyright (C) 2025  Altera Corporation. All rights reserved.",
+  "completed_utc": "2026-09-07T16:06:37.525960+00:00",
+  "collection_recovery": {
+    "original_status": "synthesis_failed",
+    "original_error": "'Total block memory bits'",
+    "reason": "Vendor synthesis succeeded; the old reader did not recognize evidenced zero RAM.",
+    "reran_synthesis": false,
+    "resource_reader_sha256": "74a67303f96b946174ed054025e94e273ad7b2b5004b06f98ec9a3f24ac71f4f",
+    "native_report_sha256": "7ff1447e97d71653edc941f4aa9157af422b7835b5f95d958801fe9639c848c4"
+  }
+}

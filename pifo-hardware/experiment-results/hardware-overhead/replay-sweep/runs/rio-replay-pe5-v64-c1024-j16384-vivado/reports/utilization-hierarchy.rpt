@@ -1,0 +1,58 @@
+Copyright 1986-2022 Xilinx, Inc. All Rights Reserved. Copyright 2022-2025 Advanced Micro Devices, Inc. All Rights Reserved.
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+| Tool Version : Vivado v.2025.2 (lin64) Build 6299465 Fri Nov 14 12:34:56 MST 2025
+| Date         : Mon Sep  7 11:31:28 2026
+| Host         : netarch-cxl.ece.cornell.edu running 64-bit Ubuntu 24.04.4 LTS
+| Command      : report_utilization -hierarchical -hierarchical_depth 5 -file /data/work/rio-synthesis/hardware-replay-final/rio-replay-pe5-v64-c1024-j16384-vivado/reports/utilization-hierarchy.rpt
+| Design       : PifoMesh
+| Device       : xcku5p-ffvb676-2-e
+| Speed File   : -2
+| Design State : Synthesized
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Utilization Design Information
+
+Table of Contents
+-----------------
+1. Utilization by Hierarchy
+
+1. Utilization by Hierarchy
+---------------------------
+
++-------------------------+----------------------------+------------+------------+---------+------+------+--------+--------+------+------------+
+|         Instance        |           Module           | Total LUTs | Logic LUTs | LUTRAMs | SRLs |  FFs | RAMB36 | RAMB18 | URAM | DSP Blocks |
++-------------------------+----------------------------+------------+------------+---------+------+------+--------+--------+------+------------+
+| PifoMesh                |                      (top) |       5739 |       5087 |     652 |    0 | 3918 |    172 |      1 |    0 |          0 |
+|   (PifoMesh)            |                      (top) |        415 |         17 |     398 |    0 |   20 |      0 |      0 |    0 |          0 |
+|   ingress_fifo          |              StreamFifo_51 |        246 |        222 |      24 |    0 |   49 |      0 |      0 |    0 |          0 |
+|   pifoEngines_0         |                 PifoEngine |        698 |        652 |      46 |    0 |  730 |     32 |      0 |    0 |          0 |
+|     enque_brain         |                  PIFOBrain |        234 |        204 |      30 |    0 |   61 |     16 |      0 |    0 |          0 |
+|       io_outputs_4_fifo | StreamFifoLowLatency_12_95 |         73 |         73 |       0 |    0 |    4 |      0 |      0 |    0 |          0 |
+|         fifo            |           StreamFifo_13_99 |         73 |         73 |       0 |    0 |    4 |      0 |      0 |    0 |          0 |
+|     deque_frontRewrite  |       FrontRewriteTable_85 |        365 |        365 |       0 |    0 |  640 |      0 |      0 |    0 |          0 |
+|   pifoEngines_1         |               PifoEngine_1 |        701 |        655 |      46 |    0 |  730 |     32 |      0 |    0 |          0 |
+|     enque_brain         |                PIFOBrain_1 |        234 |        204 |      30 |    0 |   61 |     16 |      0 |    0 |          0 |
+|       io_outputs_4_fifo | StreamFifoLowLatency_12_74 |         73 |         73 |       0 |    0 |    4 |      0 |      0 |    0 |          0 |
+|         fifo            |           StreamFifo_13_78 |         73 |         73 |       0 |    0 |    4 |      0 |      0 |    0 |          0 |
+|     deque_frontRewrite  |       FrontRewriteTable_64 |        368 |        368 |       0 |    0 |  640 |      0 |      0 |    0 |          0 |
+|   pifoEngines_2         |               PifoEngine_2 |        698 |        652 |      46 |    0 |  730 |     32 |      0 |    0 |          0 |
+|     enque_brain         |                PIFOBrain_2 |        234 |        204 |      30 |    0 |   61 |     16 |      0 |    0 |          0 |
+|       io_outputs_4_fifo | StreamFifoLowLatency_12_53 |         73 |         73 |       0 |    0 |    4 |      0 |      0 |    0 |          0 |
+|         fifo            |           StreamFifo_13_57 |         73 |         73 |       0 |    0 |    4 |      0 |      0 |    0 |          0 |
+|     deque_frontRewrite  |       FrontRewriteTable_43 |        365 |        365 |       0 |    0 |  640 |      0 |      0 |    0 |          0 |
+|   pifoEngines_3         |               PifoEngine_3 |        698 |        652 |      46 |    0 |  730 |     32 |      0 |    0 |          0 |
+|     enque_brain         |                PIFOBrain_3 |        234 |        204 |      30 |    0 |   61 |     16 |      0 |    0 |          0 |
+|       io_outputs_4_fifo | StreamFifoLowLatency_12_32 |         73 |         73 |       0 |    0 |    4 |      0 |      0 |    0 |          0 |
+|         fifo            |           StreamFifo_13_36 |         73 |         73 |       0 |    0 |    4 |      0 |      0 |    0 |          0 |
+|     deque_frontRewrite  |       FrontRewriteTable_22 |        365 |        365 |       0 |    0 |  640 |      0 |      0 |    0 |          0 |
+|   pifoEngines_4         |               PifoEngine_4 |        691 |        645 |      46 |    0 |  730 |     32 |      0 |    0 |          0 |
+|     enque_brain         |                PIFOBrain_4 |        226 |        196 |      30 |    0 |   61 |     16 |      0 |    0 |          0 |
+|       io_outputs_4_fifo |    StreamFifoLowLatency_12 |         65 |         65 |       0 |    0 |    4 |      0 |      0 |    0 |          0 |
+|         fifo            |           StreamFifo_13_18 |         65 |         65 |       0 |    0 |    4 |      0 |      0 |    0 |          0 |
+|     deque_frontRewrite  |          FrontRewriteTable |        366 |        366 |       0 |    0 |  640 |      0 |      0 |    0 |          0 |
+|   streamFifo_53         |              StreamFifo_52 |       1059 |       1059 |       0 |    0 |   46 |     12 |      1 |    0 |          0 |
+|   xbar                  |            MessageCrossBar |        515 |        515 |       0 |    0 |  145 |      0 |      0 |    0 |          0 |
+|     (xbar)              |            MessageCrossBar |        236 |        236 |       0 |    0 |   55 |      0 |      0 |    0 |          0 |
++-------------------------+----------------------------+------------+------------+---------+------+------+--------+--------+------+------------+
+
+

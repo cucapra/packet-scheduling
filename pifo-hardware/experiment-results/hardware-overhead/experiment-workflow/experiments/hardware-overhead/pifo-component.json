@@ -1,0 +1,31 @@
+{
+  "schema": "rio-pifo-component-v1",
+  "output_dir": "experiment-results/hardware-overhead/pifo-component",
+  "num_engines": 5,
+  "entries_per_pe": 1024,
+  "priority_bits": 8,
+  "vflows": [
+    1024,
+    32,
+    64,
+    128,
+    256,
+    512
+  ],
+  "platforms": [
+    "quartus",
+    "vivado"
+  ],
+  "clock_mhz": 100,
+  "threads": 8,
+  "pifo_backend": "house",
+  "budget_method": "five copies of one measured unchanged PIFO with the actual RIO push2 tie-off, including empty/drain logic",
+  "vivado_directive": "RuntimeOptimized",
+  "vivado_allow_over_capacity": true,
+  "enabled_push_ports": 1,
+  "push2_valid": 0,
+  "jobs_per_vendor": {
+    "quartus": 4,
+    "vivado": 2
+  }
+}

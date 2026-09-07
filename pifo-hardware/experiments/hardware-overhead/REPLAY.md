@@ -1,9 +1,9 @@
 # Controller instruction replay
 
-R4 implements the proposed alternative double buffer and measures it with the
-PIFO cores excluded. The existing `dynamic` configuration remains the full-table
-read/copy reference. Select `--configuration replay` for controller replay, or
-`--configuration static` for the ordinary single-bank baseline.
+Replay is the default RTL and synthesis configuration. The ordinary comparison
+uses `--configuration static`, retaining the controller and ignoring commits.
+R1/R2 compare these two designs; both totals and percentage denominators include
+five measured PIFOs. See [the experiment definitions](README.md).
 
 ## Transaction protocol
 
@@ -34,10 +34,10 @@ the next epoch until that replay finishes. Duplicate writes need no special
 handling because replay preserves their order. Entries absent from the log
 retain their previous values in both banks.
 
-## Log capacity and resource accounting
+## Journal and storage
 
 `--replay-log-depth` is a power of two, defaulting to **16,384 instructions across
-the mesh**. R4 keeps this depth fixed at 32, 128, and 1,024 vFlows. At five PEs it
+the mesh**. R1/R2 keep this depth fixed throughout the 32–1,024 vFlow sweep. At five PEs it
 covers one pre- and one post-mapper update per vFlow per PE at the 1,024-ID point
 (10,240 updates). Programs with more updates require a larger log or batches
 that may be published as separate commits.
@@ -52,13 +52,13 @@ An instruction stores a pre/post selector, PE ID, vPIFO ID, flow token, and the
 low data bits used by the mapper. Its width is
 `1 + engine_id_bits + vpifo_id_bits + 2 * token_bits`: **40 bits at 1,024 IDs**,
 or 655,360 declared bits for the 16,384-entry log before FPGA mapping. The
-controller log, counters, routing, and exported status are included in all R4
+controller log, counters, routing, and exported status are included in all replay
 resource counts. Both mapper banks remain allocated, and dense table depth is
 unchanged. This removes the copy read ports; it does not remove the second bank
 or solve the quadratic address-space growth.
 
 For this five-PE sweep the instruction width is `10 + 3 * log2(vflows)`:
-25, 31, and 40 bits at 32, 128, and 1,024 IDs. A fixed-capacity journal therefore
+25, 28, 31, 34, 37, and 40 bits at 32, 64, 128, 256, 512, and 1,024 IDs. A fixed-capacity journal therefore
 grows only with the encoded ID width, while each post-mapper bank grows as
 `8 * vflows^2 * (log2(vflows) + 3)` bits. This is a declared-storage model,
 not an ALM/LUT prediction. Replay removes read-port replication from the
@@ -70,19 +70,13 @@ the full table depth. The controller issues at most one replayed instruction per
 cycle globally. An empty commit needs no replay. Actual busy time also depends
 on write-path readiness; it is not assumed to be constant for arbitrary traffic.
 
-The current read/copy RTL holds synchronization busy for `D + 1` cycles for a
-depth-`D` mapper: `D` pipelined copy reads followed by the final write. PEs copy
-in parallel. At 1,024 IDs the deepest mapper has 8,388,608 words, so this is
-8,388,609 busy cycles after each commit. Replay instead has `N` busy cycles
-when its log and destination accept one instruction per cycle, with `N` counting
-the staged mapper instructions across all PEs and bounded by 16,384 here.
-These are controller cycle counts derived from the RTL, not measured routed
-latencies. The focused test checks 52 busy cycles for 52 replayed instructions.
+The protocol starts from initialized, equal banks. Runtime reset clears the
+journal; it does not recover an interrupted configuration transaction.
+Quartus assigns the journal array to M20K by default. Mapper banks each retain
+one synchronous read port and one write port; their mapping is checked from
+the synthesis memory-instance records.
 
-The protocol starts from initialized, equal banks. It does not provide recovery
-of an interrupted transaction after a runtime reset clears the controller log.
-
-## Validation and measurements
+## Validation
 
 The full small-mesh packet test passed with seven packets and 633 cycles,
 preserving staged mapping visibility, repeated commits, and the highest encoded
@@ -96,123 +90,27 @@ lookups, including 15 during replay and 22 on a swap cycle. A prior phase of the
 test checked another lookup alignment and is retained in the validation archive.
 No commit executed while replay was active.
 
-At 128 IDs, Quartus maps a post-mapper to two 1,310,720-bit RAM instances, one per
-bank. The read/copy reference uses four such instances. Including the controller
-log, total mapped memory decreases from 31,487,332 to 18,879,076 bits (40.04%).
-Logic and register counts are measured independently; reduced RAM replication
-does not guarantee a lower logic count at every point.
-At the same point Vivado decreases from 1,040 to 694 BRAM36 tile equivalents
-(33.27%) and from 14,035 to 13,567 LUTs (3.33%). Quartus estimates 10,251 ALMs
-versus 9,593 for read/copy (6.86% higher). The comparison includes the shared
-log and controller as well as the mapper RAMs.
-
-At 1,024 IDs, Vivado decreases from 81,937.5 to 51,230.5 BRAM36 tile
-equivalents (37.48%) and from 345,710 to 308,796 LUTs (10.68%). The
-post-mapper banks account for 30,720 BRAM36 tiles, half the read/copy count;
-the shared log adds 18 tiles. Unbanked `engineCAM` tables still account for
-20,480 tiles in all three designs. The
-[RAM breakdown](../../experiment-results/hardware-overhead/r4-replay/memory-breakdown.md)
-reconciles each component with the reported total. Replay still uses 42.90%
-more BRAM and 40.93% more LUTs than the ordinary-table baseline at this point.
-These results support reducing synchronization overhead, but do not establish
-negligible overhead or a physical fit for the current dense tables.
-
-The original 1,024-ID Quartus run also completed. Its post-mapper RAMs decrease
-from 2,181,038,080 to 1,090,519,040 implementation bits, with exactly two simple
-dual-port banks per PE and no copy-read replicas. However, automatic mapping
-implements the shared 655,360-bit journal in registers: that FIFO hierarchy
-reports 655,446 registers and zero RAM bits. Whole-design totals are 479,742 ALMs,
-681,729 ALUTs, 923,812 registers, and 1,426,064,152 RAM bits. Compared with
-read/copy, RAM decreases 43.33% and ALMs decrease 8.92%, while registers increase
-243.48%. This register cost is included in the comparison; zero journal RAM does
-not mean zero journal storage. The smaller Quartus journals and all Vivado
-journals map to block RAM.
-The [journal placement control](../../experiment-results/hardware-overhead/r4-replay/journal-m20k/README.md)
-completed a full-core rerun with an explicit journal-only M20K assignment.
-It preserves all RTL and initialization files. The other 22 RAM instances are
-identical, and the journal now adds one 655,360-bit simple-dual-port RAM.
-The resulting totals are **355,832 ALMs, 446,357 ALUTs, 268,415 registers, and
-1,426,719,512 RAM bits**. This removes 655,397 registers compared with automatic
-journal placement, including storage and surrounding register mapping changes.
-
-Compared with read/copy, this replay implementation saves 170,906 ALMs
-(32.45%), 218,646 ALUTs (32.88%), 545 registers (0.20%), and 1,089,863,680 RAM
-bits (43.31%). Compared with ordinary tables, it still costs 42.81% more ALMs,
-84.74% more registers, and 61.98% more RAM bits. Together with Vivado's 40.93%
-LUT and 42.90% BRAM increases over ordinary tables, this demonstrates reduced
-synchronization overhead. The remaining atomic-configuration cost is substantial.
-The [placement report](../../experiment-results/hardware-overhead/r4-replay/journal-m20k/report.md)
-includes absolute and percentage changes for every resource. Original automatic
-placement measurements remain in the main R4 tables and plots.
-
-R4 uses the same two target parts, eight-thread settings, 100 MHz constraint,
-external PIFO interface, and Vivado RuntimeOptimized directive as R1/R2. Large
-Vivado cases use the explicit estimation-only capacity hook. Results remain
-synthesis estimates and cannot establish a physical fit or timing closure.
-The [R4 report](../../experiment-results/hardware-overhead/r4-replay/report.md)
-contains the actual counts, absolute changes, and percentages against both
-ordinary tables and the read/copy implementation. All original R4 measurements
-are complete.
-
-The old static/read-copy source is preserved in
-`diagnostics/read-copy-source-snapshot/` and the new source in `r4-replay/workflow/`
-under `experiment-results/hardware-overhead/`. At 32 IDs, regenerated static and
-read/copy RTL matched their reference RTL after bijective renaming of generated
-source-line identifiers; every initialization file also matched exactly.
+The default-configuration check repeats the focused test without specifying
+`--configuration`. Its [saved validation](../../experiment-results/hardware-overhead/validation/default-replay/validation.json)
+and [RTL equivalence checks](../../experiment-results/hardware-overhead/validation/default-replay/default-equivalence.json)
+confirm that the default selects replay and agrees with the completed explicit
+replay reference measurements.
 
 ## Reproduce
 
 From `pifo-hardware`:
 
 ```bash
-.venv/bin/python hw/python/pifo_hardware_replay.py
-.venv/bin/python hw/python/pifo_hardware_replay.py --collect-only
-.venv/bin/python hw/python/pifo_hardware_replay.py --render-only
-# Reconcile RAM components directly from the archived reports.
-.venv/bin/python hw/python/pifo_replay_memory_breakdown.py
+# Both-vendor experiment grid and fixed setup, including measured PIFOs.
+.venv/bin/python hw/python/pifo_hardware_overhead_r2.py
+.venv/bin/python hw/python/pifo_hardware_overhead_r1.py --collect-only
 
-# Small protocol validation (generate before running the test).
+# Focused protocol validation using the default replay configuration.
 python3 synthesis/run.py --name replay-check --engines 2 --vpifos 8 \
-  --entries-per-pe 32 --pifo-backend external --configuration replay \
-  --replay-log-depth 4 --prepare-only
+  --entries-per-pe 32 --pifo-backend external --replay-log-depth 4 --prepare-only
 python3 synthesis/validate_replay.py synthesis/build/replay-check
 ```
 
-To compare a new replay synthesis with the committed reference measurements,
-without depending on this machine's original build directory:
-
-```bash
-.venv/bin/python hw/python/pifo_hardware_replay.py \
-  --reference-root experiment-results/hardware-overhead/r2-vflows/runs
-```
-
-To regenerate the exact old static/read-copy sources, restore them into a fresh
-directory. This keeps the recorded reference hashes valid and avoids replacing
-the original builds with the later source revision:
-
-```bash
-REFERENCE_COPY=/data/work/rio-synthesis/read-copy-reproduction
-mkdir "$REFERENCE_COPY"
-cp -a experiment-results/hardware-overhead/diagnostics/read-copy-source-snapshot/{hw,project,build.sbt} "$REFERENCE_COPY/"
-cp -a experiment-results/hardware-overhead/workflow/{hw,synthesis} "$REFERENCE_COPY/"
-cp -a experiments "$REFERENCE_COPY/"
-# Updated report readers handle Quartus's overflowing aggregate RAM total.
-cp hw/python/pifo_hardware_overhead.py "$REFERENCE_COPY/hw/python/"
-cp synthesis/summarize_quartus.py "$REFERENCE_COPY/synthesis/"
-.venv/bin/python "$REFERENCE_COPY/hw/python/pifo_hardware_overhead_r2.py" \
-  --build-root "$REFERENCE_COPY/builds" --jobs 2
-
-# Use those newly synthesized references in R4.
-.venv/bin/python hw/python/pifo_hardware_replay.py \
-  --reference-root "$REFERENCE_COPY/builds"
-```
-
-The runner adopts compatible live builds, uses distinct replay build names,
-and preserves the references. It copies RTL for Vivado before launching Quartus
-on that build, and waits for 120 GiB of available host RAM and other large
-Vivado synthesis wrappers to finish before starting a large replay case.
-The measured run initially used an 80 GiB threshold; a later host-memory peak
-required pausing concurrent jobs with SIGSTOP and resuming with SIGCONT. That
-scheduling event and the original threshold are preserved in `diagnostics/`.
-It did not change RTL or synthesis settings. The log capacity is an explicit
-experiment parameter.
+The [results index](../../experiment-results/hardware-overhead/README.md) links
+the requested tables, figures, and source data. Historical raw vendor reports,
+source snapshots, and protocol validation are retained as reproduction evidence.

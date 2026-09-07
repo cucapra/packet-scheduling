@@ -120,13 +120,13 @@ def sbt_launcher():
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--tool", choices=("quartus", "vivado"), default="quartus")
-    parser.add_argument("--configuration", choices=("dynamic", "static", "replay"), default="dynamic",
-                        help="Atomic RIO configuration or ordinary single-bank tables with ignored commits")
+    parser.add_argument("--configuration", choices=("replay", "static", "dynamic"), default="replay",
+                        help="replay (default), ordinary tables with ignored commits (static), or legacy read/copy (dynamic)")
     parser.add_argument("--replay-log-depth", type=int, default=16384,
                         help="Maximum reserved mapper updates in the global replay log (power of two)")
     parser.add_argument("--pifo-backend", choices=("house", "stock", "external"), default="house",
                         help="house/stock implementation, or external to expose PIFO ports and measure RIO alone")
-    parser.add_argument("--name", help="Build name; default baseline (Quartus) or baseline-vivado")
+    parser.add_argument("--name", help="Build name; replay defaults use baseline-replay or baseline-replay-vivado")
     parser.add_argument("--build-root", type=Path, default=HERE / "build",
                         help="Parent of build directories; override for large synthesis sweeps")
     parser.add_argument("--engines", type=int, default=2)
@@ -141,6 +141,8 @@ def main():
     parser.add_argument("--quartus-root", help="Directory containing bin/quartus_sh")
     parser.add_argument("--quartus-compact-init", action="store_true",
                         help="Use a verified equivalent zero-filled MIF view for Quartus RAM initialization")
+    parser.add_argument("--quartus-replay-journal-ramstyle", choices=("M20K", "auto"), default="M20K",
+                        help="Replay journal placement only; defaults to M20K to avoid register spill")
     parser.add_argument("--vivado-root", help="Directory containing bin/vivado")
     parser.add_argument("--vivado-directive", default="default",
                         choices=("default", "RuntimeOptimized", "AreaOptimized_high", "AreaOptimized_medium"),
@@ -156,9 +158,14 @@ def main():
     args = parser.parse_args()
     if args.replay_log_depth < 2 or args.replay_log_depth & (args.replay_log_depth - 1):
         parser.error("--replay-log-depth must be a power of two >= 2")
-    args.name = args.name or ("baseline" if args.tool == "quartus" else "baseline-vivado")
-    if args.pifo_backend == "stock" and args.name in ("baseline", "baseline-vivado"):
-        args.name = "stock-pifo" if args.tool == "quartus" else "stock-pifo-vivado"
+    args.name = args.name or (("baseline-replay" if args.tool == "quartus" else "baseline-replay-vivado")
+                              if args.configuration == "replay" else
+                              ("baseline" if args.tool == "quartus" else "baseline-vivado"))
+    if args.pifo_backend == "stock" and args.name in (
+            "baseline", "baseline-vivado", "baseline-replay", "baseline-replay-vivado"):
+        args.name = "stock-pifo-replay" if args.configuration == "replay" else "stock-pifo"
+        if args.tool == "vivado":
+            args.name += "-vivado"
     if not re.fullmatch(r"[A-Za-z0-9_-]+", args.name):
         parser.error("--name may contain only letters, digits, underscores, and hyphens")
     if args.engines < 1 or args.vpifos < 2 or args.vpifos & (args.vpifos - 1):
@@ -270,6 +277,8 @@ def main():
     }
     if args.configuration == "replay":
         metadata["logical_storage_bits"]["replay_log"] = args.replay_log_depth * hardware["replay_instruction_bits"]
+        if args.tool == "quartus":
+            metadata["quartus_replay_journal_ramstyle"] = args.quartus_replay_journal_ramstyle
     if reuse_build is not None:
         metadata["rtl_reused_from"] = str(reuse_build)
         metadata["rtl_source_manifest_sha256"] = hashlib.sha256(reuse_manifest.read_bytes()).hexdigest()
@@ -278,6 +287,9 @@ def main():
         for path in (Path(__file__), HERE / ("create_project.tcl" if args.tool == "quartus"
                                             else "vivado_synth.tcl"))
     }
+    if args.tool == "quartus" and args.configuration == "replay":
+        metadata["workflow_sha256"]["assign_replay_journal.py"] = hashlib.sha256(
+            (HERE / "assign_replay_journal.py").read_bytes()).hexdigest()
     started = time.monotonic()
     def save():
         metadata["elapsed_seconds"] = round(time.monotonic() - started, 3)
@@ -332,6 +344,12 @@ def main():
                 quartus_rtl = build / "quartus-rtl"
             run([root / "bin/quartus_sh", "-t", HERE / "create_project.tcl", build, part,
                  str(args.threads), str(1000 / args.clock_mhz), quartus_rtl], build, build / "project.log", env)
+            if args.configuration == "replay" and args.quartus_replay_journal_ramstyle == "M20K":
+                from assign_replay_journal import assignment
+                directive = assignment((build / "rtl/PifoMesh.v").read_text(), args.replay_log_depth)
+                with (build / "pifo.qsf").open("a") as stream:
+                    stream.write(directive + "\n")
+                metadata["quartus_replay_journal_assignment"] = directive
             metadata["status"] = "prepared"
             save()
             if not args.prepare_only:

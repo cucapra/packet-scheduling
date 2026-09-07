@@ -1,0 +1,161 @@
+Design Assistant report for pifo
+Mon Sep  7 11:55:44 2026
+Quartus Prime Version 25.3.1 Build 100 12/19/2025 SC Pro Edition
+
+
+---------------------
+; Table of Contents ;
+---------------------
+  1. Legal Notice
+  2. Design Assistant (Elaborated) Results - 1 of 10 Rules Failed
+  3. RES-10204 - Reset Release Instance Count Check
+  4. RES-50005 - RAM Control Signals Driven by Flip-Flops with Asynchronous Clears
+  5. FLP-10100 - Large Multipliers are Decomposed
+  6. LNT-30020 - Same Signal Source Drives Synchronous and Asynchronous Ports of the Same Register
+  7. LNT-30021 - Same Signal Source Drives More Than One Asynchronous Port of a Register
+  8. LNT-30022 - Same Signal Source Drives Clock Port and Another Port of a Register
+  9. RES-10201 - Power Up Don't Care Setting May Prevent Retiming
+ 10. TMC-10115 - High Fan-out Signal
+ 11. TMC-20050 - RAM Control Signals Driven by LUTs or ALMs instead of DFFs
+ 12. TMC-20051 - RAM Control Signals Driven by High Fan-Out Net
+
+
+
+----------------
+; Legal Notice ;
+----------------
+Copyright (C) 2025  Altera Corporation. All rights reserved.
+Your use of Altera Corporation's design tools, logic functions 
+and other software and tools, and any partner logic 
+functions, and any output files from any of the foregoing 
+(including device programming or simulation files), and any 
+associated documentation or information are expressly subject 
+to the terms and conditions of the Altera Program License 
+Subscription Agreement, the Altera Quartus Prime License Agreement,
+the Altera IP License Agreement, or other applicable license
+agreement, including, without limitation, that your use is for
+the sole purpose of programming logic devices manufactured by
+Altera and sold by Altera or its authorized distributors.  Please
+refer to the Altera Software License Subscription Agreements 
+on the Quartus Prime software download page.
+
+
+
++-------------------------------------------------------------------------------------------------------------------------------------------------------+
+; Design Assistant (Elaborated) Results - 1 of 10 Rules Failed                                                                                          ;
++-----------------------------------------------------------------------------------------------+----------+------------+--------+----------------------+
+; Rule                                                                                          ; Severity ; Violations ; Waived ; Tags                 ;
++-----------------------------------------------------------------------------------------------+----------+------------+--------+----------------------+
+; RES-10204 - Reset Release Instance Count Check                                                ; High     ; 1          ; 0      ; system               ;
+; RES-50005 - RAM Control Signals Driven by Flip-Flops with Asynchronous Clears                 ; Medium   ; 0          ; 0      ; ram, reset-usage     ;
+; FLP-10100 - Large Multipliers are Decomposed                                                  ; Low      ; 0          ; 0      ; dsp, synthesis       ;
+; LNT-30020 - Same Signal Source Drives Synchronous and Asynchronous Ports of the Same Register ; Low      ; 0          ; 0      ; nonstandard-timing   ;
+; LNT-30021 - Same Signal Source Drives More Than One Asynchronous Port of a Register           ; Low      ; 0          ; 0      ; nonstandard-timing   ;
+; LNT-30022 - Same Signal Source Drives Clock Port and Another Port of a Register               ; Low      ; 0          ; 0      ; nonstandard-timing   ;
+; RES-10201 - Power Up Don't Care Setting May Prevent Retiming                                  ; Low      ; 0          ; 0      ; reset-usage, retime  ;
+; TMC-10115 - High Fan-out Signal                                                               ; Low      ; 0          ; 0      ; register-duplication ;
+; TMC-20050 - RAM Control Signals Driven by LUTs or ALMs instead of DFFs                        ; Low      ; 0          ; 0      ; ram                  ;
+; TMC-20051 - RAM Control Signals Driven by High Fan-Out Net                                    ; Low      ; 0          ; 0      ; ram                  ;
++-----------------------------------------------------------------------------------------------+----------+------------+--------+----------------------+
+
+
+Status:		FAIL
+Severity:		High
+Number of violations: 	1
+Rule Parameters:      	max_violations = 5000
++-------------------------------------------------------------------------------+
+; RES-10204 - Reset Release Instance Count Check                                ;
++-------+--------------------------------------------------------------+--------+
+; Count ; Path                                                         ; Waived ;
++-------+--------------------------------------------------------------+--------+
+; 0     ; No reset release IP detected in project, exactly 1 required. ;        ;
++-------+--------------------------------------------------------------+--------+
+
+
+Status:		PASS
+Severity:		Medium
+Number of violations: 	0
+Rule Parameters:      	max_violations = 5000
++-------------------------------------------------------------------------------+
+; RES-50005 - RAM Control Signals Driven by Flip-Flops with Asynchronous Clears ;
++-------------------------------------------------------------------------------+
+
+
+Status:		PASS
+Severity:		Low
+Number of violations: 	0
+Rule Parameters:      	max_violations = 5000
++----------------------------------------------+
+; FLP-10100 - Large Multipliers are Decomposed ;
++----------------------------------------------+
+
+
+Status:		PASS
+Severity:		Low
+Number of violations: 	0
+Rule Parameters:      	max_violations = 5000
++-----------------------------------------------------------------------------------------------+
+; LNT-30020 - Same Signal Source Drives Synchronous and Asynchronous Ports of the Same Register ;
++-----------------------------------------------------------------------------------------------+
+
+
+Status:		PASS
+Severity:		Low
+Number of violations: 	0
+Rule Parameters:      	max_violations = 5000
++-------------------------------------------------------------------------------------+
+; LNT-30021 - Same Signal Source Drives More Than One Asynchronous Port of a Register ;
++-------------------------------------------------------------------------------------+
+
+
+Status:		PASS
+Severity:		Low
+Number of violations: 	0
+Rule Parameters:      	max_violations = 5000
++---------------------------------------------------------------------------------+
+; LNT-30022 - Same Signal Source Drives Clock Port and Another Port of a Register ;
++---------------------------------------------------------------------------------+
+
+
+Status:		PASS
+Severity:		Low
+Number of violations: 	0
+Rule Parameters:      	max_violations = 5000
++--------------------------------------------------------------+
+; RES-10201 - Power Up Don't Care Setting May Prevent Retiming ;
++--------------------------------------------------------------+
+
+
+Status:		PASS
+Severity:		Low
+Number of violations: 	0
+Rule Parameters:      	
+		max_violations = 5000
+		fanout = 50000
++---------------------------------+
+; TMC-10115 - High Fan-out Signal ;
++---------------------------------+
+
+
+Status:		PASS
+Severity:		Low
+Number of violations: 	0
+Rule Parameters:      	
+		max_violations = 5000
+		RAM_Inference_Logic_Threshold = 100
++------------------------------------------------------------------------+
+; TMC-20050 - RAM Control Signals Driven by LUTs or ALMs instead of DFFs ;
++------------------------------------------------------------------------+
+
+
+Status:		PASS
+Severity:		Low
+Number of violations: 	0
+Rule Parameters:      	
+		max_violations = 5000
+		RAM_Inference_High_Fanout_Net_Threshold = 2000
++------------------------------------------------------------+
+; TMC-20051 - RAM Control Signals Driven by High Fan-Out Net ;
++------------------------------------------------------------+
+
+

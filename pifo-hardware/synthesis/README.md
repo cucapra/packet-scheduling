@@ -5,7 +5,7 @@
 The result includes every PE, sorted PIFO, brain, mapper, front rewrite table,
 crossbar, and the existing configuration/commit controller.
 
-The [baseline report](RESULTS.md) records a successful Agilex 7 synthesis:
+The archived read/copy [baseline report](RESULTS.md) records a successful Agilex 7 synthesis:
 90,077 estimated ALMs, 42,356 registers, and 297,440 block-memory bits. It also
 explains the component breakdown and the limits of synthesis-only estimates.
 The [Vivado report](VIVADO_RESULTS.md) records the same RTL on KCU116:
@@ -17,7 +17,7 @@ The [milestone evidence index](results/README.md) links both tool setups,
 completed results, functional validation, and separate diagnostic attempts.
 The [hardware-overhead experiments](../experiments/hardware-overhead/README.md)
 use `--configuration static` to replace atomic mapper banks with ordinary tables
-and ignore commits, then compare that baseline with `--configuration dynamic`.
+and ignore commits, then compare that baseline with controller replay (`--configuration replay`, now the default).
 `--build-root` places the large synthesis sweep on a chosen work filesystem.
 
 Use `--pifo-backend external` to measure RIO without PIFO cores. All PIFO request,
@@ -25,17 +25,17 @@ response, empty, and drain signals are exposed at the top level; surrounding
 RIO logic remains connected to runtime ports. This scope excludes sorter,
 entry storage, occupancy, and drain detection and requires a separate PIFO
 budget for any combined estimate. The hardware-overhead experiments now use
-this boundary, with earlier whole-mesh evidence retained separately.
+this boundary, with earlier whole-mesh evidence retained separately. The primary resource totals and percentage denominator add five separately measured matching house PIFOs back to the RIO-only counts.
 
-`--configuration replay --replay-log-depth 16384` selects controller instruction
+`--configuration replay --replay-log-depth 16384` is the default and selects controller instruction
 replay for bank synchronization. Each mapper bank retains one read and one write
 port; the controller records pre/post updates, swaps all banks on commit, and
 replays into the shadow bank before the next commit. The replay log and its
 capacity/status logic are included in synthesis. See the
 [replay experiment](../experiments/hardware-overhead/REPLAY.md) for credit rules
-and measurements. The existing `dynamic` read/copy option remains available.
+and measurements. The `dynamic` read/copy option is retained for reproducing historical measurements; primary experiments compare only ordinary tables and replay. Quartus defaults the journal alone to M20K; `--quartus-replay-journal-ramstyle auto` restores automatic placement.
 
-## Reproduce the baseline
+## Run the default replay design
 
 From `pifo-hardware`:
 
@@ -44,12 +44,12 @@ From `pifo-hardware`:
 python3 synthesis/run.py --tool quartus \
   --license /data/work/quartus/licenses/LR-187458_License.dat
 
-# Reproduce the measured Kintex UltraScale+ pass using the identical RTL.
-python3 synthesis/run.py --tool vivado --name baseline-vivado-runtime \
-  --rtl-from synthesis/build/baseline --vivado-directive RuntimeOptimized
+# Synthesize the same replay RTL on Kintex UltraScale+.
+python3 synthesis/run.py --tool vivado --name baseline-replay-vivado-runtime \
+  --rtl-from synthesis/build/baseline-replay --vivado-directive RuntimeOptimized
 
 # Or generate and synthesize directly in Vivado without requiring Quartus.
-python3 synthesis/run.py --tool vivado --name baseline-vivado-runtime \
+python3 synthesis/run.py --tool vivado --name baseline-replay-vivado-runtime \
   --vivado-directive RuntimeOptimized
 ```
 
@@ -57,14 +57,14 @@ Defaults are 2 PEs, 32 vPIFO IDs per PE, 1,024 shared sorted entries per PE,
 32 global flow IDs, 8-bit ranks, and a 100 MHz synthesis constraint. The clock
 constraint is a target; this flow makes no timing-closure claim.
 
-The default build names are `baseline` for Quartus and `baseline-vivado` for
+The default replay build names are `baseline-replay` for Quartus and `baseline-replay-vivado` for
 Vivado. Use a new `--name` to retain an earlier working build. An invocation
 updates that build's generated files and reports; preserved snapshots are in
 `results/`.
 
 Use `--pifo-backend stock --name stock-pifo` for the repository's original
 `hw/verilog/pifo.sv` plus the PE empty/drain adapter. With `stock`, the default
-names become `stock-pifo` and `stock-pifo-vivado`. This option does not change
+replay names become `stock-pifo-replay` and `stock-pifo-replay-vivado`. This option does not change
 the number of PEs, entries, virtual PIFOs, or flow IDs. See the experiment report
 before interpreting these counts as equivalent hardware.
 
@@ -168,8 +168,8 @@ See `experiment-results/hardware-overhead/diagnostics/vivado-resource-limit-prob
 Oversized results cannot establish fit or timing, and no implementation follows.
 
 ```bash
-python3 synthesis/run.py --tool vivado --name baseline-vivado-runtime \
-  --rtl-from synthesis/build/baseline --vivado-directive RuntimeOptimized
+python3 synthesis/run.py --tool vivado --name baseline-replay-vivado-runtime \
+  --rtl-from synthesis/build/baseline-replay --vivado-directive RuntimeOptimized
 ```
 
 To inventory the installed parts independently, run from a temporary/build
@@ -199,7 +199,7 @@ python3 synthesis/run.py --name pe4-v32-c1024 --engines 4 \
 
 # Prepare Vivado RTL and XDC, validating the installed part without synthesis.
 python3 synthesis/run.py --tool vivado --name prepare-vivado \
-  --rtl-from synthesis/build/baseline --prepare-only
+  --rtl-from synthesis/build/baseline-replay --prepare-only
 ```
 
 `--entries-per-pe` must be a power of two and divisible by `--vpifos`: the existing RTL derives
@@ -228,17 +228,21 @@ Extract resource and hierarchy tables as JSON:
 
 ```bash
 python3 synthesis/summarize_quartus.py \
-  synthesis/build/baseline/output_files/pifo.syn.rpt \
-  synthesis/build/baseline/quartus-summary.json
+  synthesis/build/baseline-replay/output_files/pifo.syn.rpt \
+  synthesis/build/baseline-replay/quartus-summary.json
 
 python3 synthesis/summarize_vivado.py \
-  synthesis/build/baseline-vivado-runtime \
-  synthesis/build/baseline-vivado-runtime/vivado-summary.json
+  synthesis/build/baseline-replay-vivado-runtime \
+  synthesis/build/baseline-replay-vivado-runtime/vivado-summary.json
 ```
 
 The extractors reject failed/incomplete synthesis. Quartus's per-entity report uses
 ALUTs and registers; ALMs are estimated for the complete design. RAMs may still
 have type `AUTO`, so block-memory bits are not a final physical M20K count.
+For a RAM-free PIFO, Quartus omits the memory summary rows. The reader records
+zero only after verifying zero memory in every hierarchy entity and no inferred
+RAM instances. `python3 synthesis/test_summarize_quartus.py` checks this case,
+unknown memory, the historical overflow case, and ordinary reported RAM totals.
 
 Vivado reports LUTs, flip-flops, distributed RAM, RAMB18/RAMB36, and DSP
 primitives. These are synthesis mappings. LUT counts and Intel ALMs use
@@ -291,12 +295,12 @@ port propagate through the PE hierarchy. Memories remain unmapped.
 With Yosys on `PATH`, after generating the baseline:
 
 ```bash
-cd synthesis/build/baseline/rtl
+cd synthesis/build/baseline-replay/rtl
 yosys -Q -T -s ../../../audit.ys > ../generic-audit.log 2>&1
 cd ../../../..
 python3 synthesis/summarize_audit.py \
-  synthesis/build/baseline/generic-netlist.json \
-  synthesis/build/baseline/generic-summary.json
+  synthesis/build/baseline-replay/generic-netlist.json \
+  synthesis/build/baseline-replay/generic-summary.json
 ```
 
 On this machine Yosys 0.33 was extracted locally from Ubuntu's `yosys` package,

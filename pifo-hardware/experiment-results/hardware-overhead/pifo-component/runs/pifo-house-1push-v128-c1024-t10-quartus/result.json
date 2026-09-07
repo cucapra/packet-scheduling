@@ -1,0 +1,61 @@
+{
+  "status": "synthesis_complete",
+  "build": "/data/work/rio-synthesis/pifo-component-single-push/pifo-house-1push-v128-c1024-t10-quartus",
+  "platform": "quartus",
+  "resources": {
+    "logic_alms": 53095,
+    "logic_aluts": 74764,
+    "registers": 25646,
+    "block_memory_bits": 0,
+    "mlab_memory_bits": 0,
+    "dsp_blocks": 0
+  },
+  "part": "AGFB014R24B2E2V",
+  "hardware": {
+    "component": "house_pifo",
+    "instances": 1,
+    "budget_instances": 5,
+    "global_flow_id_capacity": 128,
+    "shared_entries_per_pe": 1024,
+    "priority_bits": 8,
+    "token_bits": 10,
+    "vpifo_id_bits": 7,
+    "enabled_push_ports": 1,
+    "push2_valid": 0
+  },
+  "source_sha256": {
+    "hw/spinal/rio/ConcurrentPifoRTL.scala": "a9423ad585ae27347d3dedb44596a352d14214e7d1a4559b103f83780c7e555f",
+    "hw/spinal/rio/Config.scala": "eb623e40ebce2bfe36151863b1764a1b3531cadfe8c4bd5ae2a97eebe71f5061",
+    "hw/spinal/rio/ConfigurableMapper.scala": "6af457299783c501149af256dbe08225296504ab9b070c1ab4080ea25002c352",
+    "hw/spinal/rio/ControllerFactory.scala": "30efd0c48e7fccc934720714d60677a2e96bcd82a42e872b85a606550f7d9908",
+    "hw/spinal/rio/GeneratePifoMesh.scala": "8f363923dceec4aa204a35a6fe9f728ec2b146b49bb9e6f56b6ed542ec943696",
+    "hw/spinal/rio/Pifo.scala": "1c97b917779af58a5faeacc9b5cee4437d8fb0c453bb1492ad583d422767459b",
+    "hw/spinal/rio/PifoCore.scala": "a3d6506c9d3e901b254b234ec60309d525da12d55c80c061fe19c44520261165",
+    "hw/spinal/rio/PifoEngine.scala": "17174dfc8f577bc72a4fd8b16d12e07c189deb49986d2e2cc787aea8205c3d10",
+    "hw/spinal/rio/PifoMesh.scala": "7fbd5da86c483e48642f47c7c6dbfa3124a7403e3b569fdb66f5c1f3905bea02",
+    "hw/spinal/rio/StockPifoRTL.scala": "bf53600f671a18e235a8f06f4ea5a7c1d1a59fdd7eb88ceb58d15bc0f88057a7",
+    "hw/verilog/priority_encode_log.v": "2a63070396dc60fd2106c5ef1d0719e027ff6bf797afbef166cf99c9b49537c2",
+    "build.sbt": "557f8381ce0cf9b0da205fdd6600ebbdda0477a87f71691ced7ed18643b7f72e",
+    "project/build.properties": "97e9b0adc044c92dbf8dc1e671a268242449320b6911d1623cc93427f0bb1b61",
+    "project/plugins.sbt": "e1da7997f71038c21e15631c0f062bdc5d6c6a103d73087e7e659f78b07b9b6f"
+  },
+  "rtl_sha256": {
+    "PifoMesh.v": "0c188b9b9b4eb9755da2bd6173a86de420af1d240e01bbcb93ee6b6d09e147cf",
+    "priority_encode_log.v": "2a63070396dc60fd2106c5ef1d0719e027ff6bf797afbef166cf99c9b49537c2"
+  },
+  "tool_version": "Quartus Prime Shell\nVersion 25.3.1 Build 100 12/19/2025 SC Pro Edition\nCopyright (C) 2025  Altera Corporation. All rights reserved.",
+  "clock_target_mhz": 100,
+  "capacity_checks": [
+    {
+      "resource": "logic_alms",
+      "used": 53095,
+      "available": 487200,
+      "utilization_percent": 10.897988505747126,
+      "exceeds_capacity": false
+    }
+  ],
+  "resource_notes": [
+    "Quartus omits the memory summary for this RAM-free design. Every hierarchy entity explicitly reports zero Block Memory Bits and there are no inferred RAM instances."
+  ],
+  "unreported_resources": []
+}

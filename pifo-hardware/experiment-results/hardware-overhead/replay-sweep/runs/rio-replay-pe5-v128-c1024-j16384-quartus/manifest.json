@@ -1,0 +1,506 @@
+{
+  "timestamp_utc": "2026-09-07T15:29:29.278130+00:00",
+  "tool": "quartus",
+  "quartus_root": "/data/work/quartus/quartus",
+  "part": "AGFB014R24B2E2V",
+  "board_reference": {
+    "definition": "/data/work/quartus/quartus/common/devkits/agilex_f_series_development_kit/agilex_f_series_development_kit.devkit_info",
+    "name": "Agilex F-Series FPGA Development Kit",
+    "version": "1.0",
+    "part": "AGFB014R24B2E2V",
+    "design": "agilex_f_series_bts_config"
+  },
+  "board_part_matches_target": true,
+  "license_source": "/data/work/quartus/licenses/LR-187458_License.dat",
+  "hardware": {
+    "configuration": "replay",
+    "mapper_banks": 2,
+    "pifo_backend": "external",
+    "num_engines": 5,
+    "num_vpifos_per_pe": 128,
+    "global_flow_id_capacity": 128,
+    "fifo_depth_parameter": 8,
+    "shared_entries_per_pe": 1024,
+    "total_shared_entries": 5120,
+    "priority_bits": 8,
+    "vpifo_id_bits": 7,
+    "engine_id_bits": 3,
+    "token_bits": 10,
+    "brain_state_bits": 32,
+    "flow_state_bits": 32,
+    "commit_queue_depth": 4,
+    "flow_token_address_space": 1024,
+    "vpifo_token_pairs_per_pe": 131072,
+    "mapper_sync": "controller_instruction_replay",
+    "replay_log_depth": 16384,
+    "replay_instruction_bits": 31
+  },
+  "source_sha256": {
+    "hw/spinal/rio/ConcurrentPifoRTL.scala": "a9423ad585ae27347d3dedb44596a352d14214e7d1a4559b103f83780c7e555f",
+    "hw/spinal/rio/Config.scala": "eb623e40ebce2bfe36151863b1764a1b3531cadfe8c4bd5ae2a97eebe71f5061",
+    "hw/spinal/rio/ConfigurableMapper.scala": "336ebfe7aa5ecbbb7757ac550a590c1f18f5a7a1f22c0733d24570a965fa1b5f",
+    "hw/spinal/rio/ControllerFactory.scala": "30efd0c48e7fccc934720714d60677a2e96bcd82a42e872b85a606550f7d9908",
+    "hw/spinal/rio/GeneratePifoMesh.scala": "58d3355c430efcd1166f0304bbbe2332b56edd0e7e7a52625dd0587ee53569a0",
+    "hw/spinal/rio/Pifo.scala": "1c97b917779af58a5faeacc9b5cee4437d8fb0c453bb1492ad583d422767459b",
+    "hw/spinal/rio/PifoCore.scala": "65c8a4895025507cde01103965a38feb5f56e07d9357f44a01983bb3235f98ee",
+    "hw/spinal/rio/PifoEngine.scala": "debe75f23f332a455b1a249bed06fe0684e131e12d2f2887d5a02edd325f0639",
+    "hw/spinal/rio/PifoMesh.scala": "48665197e903db02bc0b84e2637d02e113f6024fe8cd6c20c81903ee82b7ccc5",
+    "hw/spinal/rio/StockPifoRTL.scala": "bf53600f671a18e235a8f06f4ea5a7c1d1a59fdd7eb88ceb58d15bc0f88057a7",
+    "hw/verilog/priority_encode_log.v": "2a63070396dc60fd2106c5ef1d0719e027ff6bf797afbef166cf99c9b49537c2",
+    "build.sbt": "557f8381ce0cf9b0da205fdd6600ebbdda0477a87f71691ced7ed18643b7f72e",
+    "project/build.properties": "97e9b0adc044c92dbf8dc1e671a268242449320b6911d1623cc93427f0bb1b61",
+    "project/plugins.sbt": "e1da7997f71038c21e15631c0f062bdc5d6c6a103d73087e7e659f78b07b9b6f"
+  },
+  "rtl_complete": true,
+  "clock_target_mhz": 100.0,
+  "threads": 8,
+  "scope": "RIO only: all PEs, crossbar and configuration/commit controller; explicit external PIFO interfaces",
+  "synthesis_mode": "virtual data pins",
+  "implementation_run": false,
+  "excluded": [
+    "simulation request controller",
+    "packet payload/per-flow packet queues",
+    "MAC/PCIe/DDR and board test system",
+    "PIFO cores: storage, sorter, occupancy and drain detection"
+  ],
+  "logical_storage_bits": {
+    "sorted_entry_registers": 0,
+    "flow_state_tables": 20971520,
+    "post_mapper_banks": 13107200,
+    "pre_mapper_banks": 8960,
+    "brain_policy_tables": 1280,
+    "last_virtual_time_tables": 5120,
+    "brain_state_tables": 20480,
+    "front_rewrite_registers": 7040,
+    "control_queue_payload": 220,
+    "crossbar_fifo_payload": 480,
+    "replay_log": 507904
+  },
+  "status": "synthesis_complete",
+  "quartus_replay_journal_ramstyle": "M20K",
+  "rtl_reused_from": "/data/work/rio-synthesis/hardware-replay-final/rio-replay-pe5-v128-c1024-j16384-quartus",
+  "rtl_source_manifest_sha256": "f0df6e9ae93fc32ba86fbe8e4585961cbd20f0c3e0c0f9074271104a7ab8fb5b",
+  "workflow_sha256": {
+    "run.py": "91267a29b9f4871c35e3144563020875e9313a74ab663a06c09a6ed19bb1be99",
+    "create_project.tcl": "fed69b3a0fe11d676f7969b2c6a7c7840639c317ceeaf10f4f27a42947f77551",
+    "assign_replay_journal.py": "288864a9b858cd663f5df03cab0dc254566519ffb8ac5483ef4465b85e4ca002"
+  },
+  "elapsed_seconds": 59.002,
+  "tool_version": "Quartus Prime Shell\nVersion 25.3.1 Build 100 12/19/2025 SC Pro Edition\nCopyright (C) 2025  Altera Corporation. All rights reserved.",
+  "rtl_sha256": {
+    "PifoMesh.v": "e4ab8c6f06e873f280947b9ad48817db8dd9344bef6738c550f90f8db9aed4d0",
+    "PifoMesh.v_toplevel_pifoEngines_0_deque_dequeMapper_banks_0.bin": "dd680c722f86829098b874ba7a71c3240998a521988b691ac68d2d4479403b78",
+    "PifoMesh.v_toplevel_pifoEngines_0_deque_dequeMapper_banks_1.bin": "dd680c722f86829098b874ba7a71c3240998a521988b691ac68d2d4479403b78",
+    "PifoMesh.v_toplevel_pifoEngines_0_enque_brain_brainStateMem_ram.bin": "549e882dcb4d31598233830c836bdbf05e712cbc2b9185b7c16f9646466977b4",
+    "PifoMesh.v_toplevel_pifoEngines_0_enque_brain_engineCAM_ram.bin": "9ee7d116e2383c88e417a6d87ec8d711b7c6f3e5e7f6fa539f943ec003aed1a3",
+    "PifoMesh.v_toplevel_pifoEngines_0_enque_brain_engineMapper_ram.bin": "5573394c856830106db81e2b2878412d831e418c189ca3edbc1d5cc6e9526076",
+    "PifoMesh.v_toplevel_pifoEngines_0_enque_brain_lastVirtualMapper_ram.bin": "f01263677c351344e28615e73f27588ec648ea2ac3e4829886456e5b09eb7777",
+    "PifoMesh.v_toplevel_pifoEngines_0_enque_enqueMapper_banks_0.bin": "5d90d39ed40aaec980e866907cd428c0fd3166531d05481480e3bc38507d66a7",
+    "PifoMesh.v_toplevel_pifoEngines_0_enque_enqueMapper_banks_1.bin": "5d90d39ed40aaec980e866907cd428c0fd3166531d05481480e3bc38507d66a7",
+    "PifoMesh.v_toplevel_pifoEngines_1_deque_dequeMapper_banks_0.bin": "dd680c722f86829098b874ba7a71c3240998a521988b691ac68d2d4479403b78",
+    "PifoMesh.v_toplevel_pifoEngines_1_deque_dequeMapper_banks_1.bin": "dd680c722f86829098b874ba7a71c3240998a521988b691ac68d2d4479403b78",
+    "PifoMesh.v_toplevel_pifoEngines_1_enque_brain_brainStateMem_ram.bin": "549e882dcb4d31598233830c836bdbf05e712cbc2b9185b7c16f9646466977b4",
+    "PifoMesh.v_toplevel_pifoEngines_1_enque_brain_engineCAM_ram.bin": "9ee7d116e2383c88e417a6d87ec8d711b7c6f3e5e7f6fa539f943ec003aed1a3",
+    "PifoMesh.v_toplevel_pifoEngines_1_enque_brain_engineMapper_ram.bin": "5573394c856830106db81e2b2878412d831e418c189ca3edbc1d5cc6e9526076",
+    "PifoMesh.v_toplevel_pifoEngines_1_enque_brain_lastVirtualMapper_ram.bin": "f01263677c351344e28615e73f27588ec648ea2ac3e4829886456e5b09eb7777",
+    "PifoMesh.v_toplevel_pifoEngines_1_enque_enqueMapper_banks_0.bin": "5d90d39ed40aaec980e866907cd428c0fd3166531d05481480e3bc38507d66a7",
+    "PifoMesh.v_toplevel_pifoEngines_1_enque_enqueMapper_banks_1.bin": "5d90d39ed40aaec980e866907cd428c0fd3166531d05481480e3bc38507d66a7",
+    "PifoMesh.v_toplevel_pifoEngines_2_deque_dequeMapper_banks_0.bin": "dd680c722f86829098b874ba7a71c3240998a521988b691ac68d2d4479403b78",
+    "PifoMesh.v_toplevel_pifoEngines_2_deque_dequeMapper_banks_1.bin": "dd680c722f86829098b874ba7a71c3240998a521988b691ac68d2d4479403b78",
+    "PifoMesh.v_toplevel_pifoEngines_2_enque_brain_brainStateMem_ram.bin": "549e882dcb4d31598233830c836bdbf05e712cbc2b9185b7c16f9646466977b4",
+    "PifoMesh.v_toplevel_pifoEngines_2_enque_brain_engineCAM_ram.bin": "9ee7d116e2383c88e417a6d87ec8d711b7c6f3e5e7f6fa539f943ec003aed1a3",
+    "PifoMesh.v_toplevel_pifoEngines_2_enque_brain_engineMapper_ram.bin": "5573394c856830106db81e2b2878412d831e418c189ca3edbc1d5cc6e9526076",
+    "PifoMesh.v_toplevel_pifoEngines_2_enque_brain_lastVirtualMapper_ram.bin": "f01263677c351344e28615e73f27588ec648ea2ac3e4829886456e5b09eb7777",
+    "PifoMesh.v_toplevel_pifoEngines_2_enque_enqueMapper_banks_0.bin": "5d90d39ed40aaec980e866907cd428c0fd3166531d05481480e3bc38507d66a7",
+    "PifoMesh.v_toplevel_pifoEngines_2_enque_enqueMapper_banks_1.bin": "5d90d39ed40aaec980e866907cd428c0fd3166531d05481480e3bc38507d66a7",
+    "PifoMesh.v_toplevel_pifoEngines_3_deque_dequeMapper_banks_0.bin": "dd680c722f86829098b874ba7a71c3240998a521988b691ac68d2d4479403b78",
+    "PifoMesh.v_toplevel_pifoEngines_3_deque_dequeMapper_banks_1.bin": "dd680c722f86829098b874ba7a71c3240998a521988b691ac68d2d4479403b78",
+    "PifoMesh.v_toplevel_pifoEngines_3_enque_brain_brainStateMem_ram.bin": "549e882dcb4d31598233830c836bdbf05e712cbc2b9185b7c16f9646466977b4",
+    "PifoMesh.v_toplevel_pifoEngines_3_enque_brain_engineCAM_ram.bin": "9ee7d116e2383c88e417a6d87ec8d711b7c6f3e5e7f6fa539f943ec003aed1a3",
+    "PifoMesh.v_toplevel_pifoEngines_3_enque_brain_engineMapper_ram.bin": "5573394c856830106db81e2b2878412d831e418c189ca3edbc1d5cc6e9526076",
+    "PifoMesh.v_toplevel_pifoEngines_3_enque_brain_lastVirtualMapper_ram.bin": "f01263677c351344e28615e73f27588ec648ea2ac3e4829886456e5b09eb7777",
+    "PifoMesh.v_toplevel_pifoEngines_3_enque_enqueMapper_banks_0.bin": "5d90d39ed40aaec980e866907cd428c0fd3166531d05481480e3bc38507d66a7",
+    "PifoMesh.v_toplevel_pifoEngines_3_enque_enqueMapper_banks_1.bin": "5d90d39ed40aaec980e866907cd428c0fd3166531d05481480e3bc38507d66a7",
+    "PifoMesh.v_toplevel_pifoEngines_4_deque_dequeMapper_banks_0.bin": "dd680c722f86829098b874ba7a71c3240998a521988b691ac68d2d4479403b78",
+    "PifoMesh.v_toplevel_pifoEngines_4_deque_dequeMapper_banks_1.bin": "dd680c722f86829098b874ba7a71c3240998a521988b691ac68d2d4479403b78",
+    "PifoMesh.v_toplevel_pifoEngines_4_enque_brain_brainStateMem_ram.bin": "549e882dcb4d31598233830c836bdbf05e712cbc2b9185b7c16f9646466977b4",
+    "PifoMesh.v_toplevel_pifoEngines_4_enque_brain_engineCAM_ram.bin": "9ee7d116e2383c88e417a6d87ec8d711b7c6f3e5e7f6fa539f943ec003aed1a3",
+    "PifoMesh.v_toplevel_pifoEngines_4_enque_brain_engineMapper_ram.bin": "5573394c856830106db81e2b2878412d831e418c189ca3edbc1d5cc6e9526076",
+    "PifoMesh.v_toplevel_pifoEngines_4_enque_brain_lastVirtualMapper_ram.bin": "f01263677c351344e28615e73f27588ec648ea2ac3e4829886456e5b09eb7777",
+    "PifoMesh.v_toplevel_pifoEngines_4_enque_enqueMapper_banks_0.bin": "5d90d39ed40aaec980e866907cd428c0fd3166531d05481480e3bc38507d66a7",
+    "PifoMesh.v_toplevel_pifoEngines_4_enque_enqueMapper_banks_1.bin": "5d90d39ed40aaec980e866907cd428c0fd3166531d05481480e3bc38507d66a7",
+    "priority_encode_log.v": "2a63070396dc60fd2106c5ef1d0719e027ff6bf797afbef166cf99c9b49537c2"
+  },
+  "quartus_initialization": {
+    "format": "quartus-compact-zero-mif-v1",
+    "canonical_rtl_unchanged": true,
+    "memories": [
+      {
+        "binary": "PifoMesh.v_toplevel_pifoEngines_4_deque_dequeMapper_banks_0.bin",
+        "binary_sha256": "dd680c722f86829098b874ba7a71c3240998a521988b691ac68d2d4479403b78",
+        "width": 10,
+        "depth": 131072,
+        "contents": "all_zero",
+        "mif": "PifoMesh.v_toplevel_pifoEngines_4_deque_dequeMapper_banks_0.bin.mif"
+      },
+      {
+        "binary": "PifoMesh.v_toplevel_pifoEngines_4_deque_dequeMapper_banks_1.bin",
+        "binary_sha256": "dd680c722f86829098b874ba7a71c3240998a521988b691ac68d2d4479403b78",
+        "width": 10,
+        "depth": 131072,
+        "contents": "all_zero",
+        "mif": "PifoMesh.v_toplevel_pifoEngines_4_deque_dequeMapper_banks_1.bin.mif"
+      },
+      {
+        "binary": "PifoMesh.v_toplevel_pifoEngines_4_enque_enqueMapper_banks_0.bin",
+        "binary_sha256": "5d90d39ed40aaec980e866907cd428c0fd3166531d05481480e3bc38507d66a7",
+        "width": 7,
+        "depth": 128,
+        "contents": "all_zero",
+        "mif": "PifoMesh.v_toplevel_pifoEngines_4_enque_enqueMapper_banks_0.bin.mif"
+      },
+      {
+        "binary": "PifoMesh.v_toplevel_pifoEngines_4_enque_enqueMapper_banks_1.bin",
+        "binary_sha256": "5d90d39ed40aaec980e866907cd428c0fd3166531d05481480e3bc38507d66a7",
+        "width": 7,
+        "depth": 128,
+        "contents": "all_zero",
+        "mif": "PifoMesh.v_toplevel_pifoEngines_4_enque_enqueMapper_banks_1.bin.mif"
+      },
+      {
+        "binary": "PifoMesh.v_toplevel_pifoEngines_3_deque_dequeMapper_banks_0.bin",
+        "binary_sha256": "dd680c722f86829098b874ba7a71c3240998a521988b691ac68d2d4479403b78",
+        "width": 10,
+        "depth": 131072,
+        "contents": "all_zero",
+        "mif": "PifoMesh.v_toplevel_pifoEngines_3_deque_dequeMapper_banks_0.bin.mif"
+      },
+      {
+        "binary": "PifoMesh.v_toplevel_pifoEngines_3_deque_dequeMapper_banks_1.bin",
+        "binary_sha256": "dd680c722f86829098b874ba7a71c3240998a521988b691ac68d2d4479403b78",
+        "width": 10,
+        "depth": 131072,
+        "contents": "all_zero",
+        "mif": "PifoMesh.v_toplevel_pifoEngines_3_deque_dequeMapper_banks_1.bin.mif"
+      },
+      {
+        "binary": "PifoMesh.v_toplevel_pifoEngines_3_enque_enqueMapper_banks_0.bin",
+        "binary_sha256": "5d90d39ed40aaec980e866907cd428c0fd3166531d05481480e3bc38507d66a7",
+        "width": 7,
+        "depth": 128,
+        "contents": "all_zero",
+        "mif": "PifoMesh.v_toplevel_pifoEngines_3_enque_enqueMapper_banks_0.bin.mif"
+      },
+      {
+        "binary": "PifoMesh.v_toplevel_pifoEngines_3_enque_enqueMapper_banks_1.bin",
+        "binary_sha256": "5d90d39ed40aaec980e866907cd428c0fd3166531d05481480e3bc38507d66a7",
+        "width": 7,
+        "depth": 128,
+        "contents": "all_zero",
+        "mif": "PifoMesh.v_toplevel_pifoEngines_3_enque_enqueMapper_banks_1.bin.mif"
+      },
+      {
+        "binary": "PifoMesh.v_toplevel_pifoEngines_2_deque_dequeMapper_banks_0.bin",
+        "binary_sha256": "dd680c722f86829098b874ba7a71c3240998a521988b691ac68d2d4479403b78",
+        "width": 10,
+        "depth": 131072,
+        "contents": "all_zero",
+        "mif": "PifoMesh.v_toplevel_pifoEngines_2_deque_dequeMapper_banks_0.bin.mif"
+      },
+      {
+        "binary": "PifoMesh.v_toplevel_pifoEngines_2_deque_dequeMapper_banks_1.bin",
+        "binary_sha256": "dd680c722f86829098b874ba7a71c3240998a521988b691ac68d2d4479403b78",
+        "width": 10,
+        "depth": 131072,
+        "contents": "all_zero",
+        "mif": "PifoMesh.v_toplevel_pifoEngines_2_deque_dequeMapper_banks_1.bin.mif"
+      },
+      {
+        "binary": "PifoMesh.v_toplevel_pifoEngines_2_enque_enqueMapper_banks_0.bin",
+        "binary_sha256": "5d90d39ed40aaec980e866907cd428c0fd3166531d05481480e3bc38507d66a7",
+        "width": 7,
+        "depth": 128,
+        "contents": "all_zero",
+        "mif": "PifoMesh.v_toplevel_pifoEngines_2_enque_enqueMapper_banks_0.bin.mif"
+      },
+      {
+        "binary": "PifoMesh.v_toplevel_pifoEngines_2_enque_enqueMapper_banks_1.bin",
+        "binary_sha256": "5d90d39ed40aaec980e866907cd428c0fd3166531d05481480e3bc38507d66a7",
+        "width": 7,
+        "depth": 128,
+        "contents": "all_zero",
+        "mif": "PifoMesh.v_toplevel_pifoEngines_2_enque_enqueMapper_banks_1.bin.mif"
+      },
+      {
+        "binary": "PifoMesh.v_toplevel_pifoEngines_1_deque_dequeMapper_banks_0.bin",
+        "binary_sha256": "dd680c722f86829098b874ba7a71c3240998a521988b691ac68d2d4479403b78",
+        "width": 10,
+        "depth": 131072,
+        "contents": "all_zero",
+        "mif": "PifoMesh.v_toplevel_pifoEngines_1_deque_dequeMapper_banks_0.bin.mif"
+      },
+      {
+        "binary": "PifoMesh.v_toplevel_pifoEngines_1_deque_dequeMapper_banks_1.bin",
+        "binary_sha256": "dd680c722f86829098b874ba7a71c3240998a521988b691ac68d2d4479403b78",
+        "width": 10,
+        "depth": 131072,
+        "contents": "all_zero",
+        "mif": "PifoMesh.v_toplevel_pifoEngines_1_deque_dequeMapper_banks_1.bin.mif"
+      },
+      {
+        "binary": "PifoMesh.v_toplevel_pifoEngines_1_enque_enqueMapper_banks_0.bin",
+        "binary_sha256": "5d90d39ed40aaec980e866907cd428c0fd3166531d05481480e3bc38507d66a7",
+        "width": 7,
+        "depth": 128,
+        "contents": "all_zero",
+        "mif": "PifoMesh.v_toplevel_pifoEngines_1_enque_enqueMapper_banks_0.bin.mif"
+      },
+      {
+        "binary": "PifoMesh.v_toplevel_pifoEngines_1_enque_enqueMapper_banks_1.bin",
+        "binary_sha256": "5d90d39ed40aaec980e866907cd428c0fd3166531d05481480e3bc38507d66a7",
+        "width": 7,
+        "depth": 128,
+        "contents": "all_zero",
+        "mif": "PifoMesh.v_toplevel_pifoEngines_1_enque_enqueMapper_banks_1.bin.mif"
+      },
+      {
+        "binary": "PifoMesh.v_toplevel_pifoEngines_0_deque_dequeMapper_banks_0.bin",
+        "binary_sha256": "dd680c722f86829098b874ba7a71c3240998a521988b691ac68d2d4479403b78",
+        "width": 10,
+        "depth": 131072,
+        "contents": "all_zero",
+        "mif": "PifoMesh.v_toplevel_pifoEngines_0_deque_dequeMapper_banks_0.bin.mif"
+      },
+      {
+        "binary": "PifoMesh.v_toplevel_pifoEngines_0_deque_dequeMapper_banks_1.bin",
+        "binary_sha256": "dd680c722f86829098b874ba7a71c3240998a521988b691ac68d2d4479403b78",
+        "width": 10,
+        "depth": 131072,
+        "contents": "all_zero",
+        "mif": "PifoMesh.v_toplevel_pifoEngines_0_deque_dequeMapper_banks_1.bin.mif"
+      },
+      {
+        "binary": "PifoMesh.v_toplevel_pifoEngines_0_enque_enqueMapper_banks_0.bin",
+        "binary_sha256": "5d90d39ed40aaec980e866907cd428c0fd3166531d05481480e3bc38507d66a7",
+        "width": 7,
+        "depth": 128,
+        "contents": "all_zero",
+        "mif": "PifoMesh.v_toplevel_pifoEngines_0_enque_enqueMapper_banks_0.bin.mif"
+      },
+      {
+        "binary": "PifoMesh.v_toplevel_pifoEngines_0_enque_enqueMapper_banks_1.bin",
+        "binary_sha256": "5d90d39ed40aaec980e866907cd428c0fd3166531d05481480e3bc38507d66a7",
+        "width": 7,
+        "depth": 128,
+        "contents": "all_zero",
+        "mif": "PifoMesh.v_toplevel_pifoEngines_0_enque_enqueMapper_banks_1.bin.mif"
+      },
+      {
+        "binary": "PifoMesh.v_toplevel_pifoEngines_4_enque_brain_brainStateMem_ram.bin",
+        "binary_sha256": "549e882dcb4d31598233830c836bdbf05e712cbc2b9185b7c16f9646466977b4",
+        "width": 32,
+        "depth": 128,
+        "contents": "all_zero",
+        "mif": "PifoMesh.v_toplevel_pifoEngines_4_enque_brain_brainStateMem_ram.bin.mif"
+      },
+      {
+        "binary": "PifoMesh.v_toplevel_pifoEngines_4_enque_brain_engineCAM_ram.bin",
+        "binary_sha256": "9ee7d116e2383c88e417a6d87ec8d711b7c6f3e5e7f6fa539f943ec003aed1a3",
+        "width": 32,
+        "depth": 131072,
+        "contents": "all_zero",
+        "mif": "PifoMesh.v_toplevel_pifoEngines_4_enque_brain_engineCAM_ram.bin.mif"
+      },
+      {
+        "binary": "PifoMesh.v_toplevel_pifoEngines_4_enque_brain_lastVirtualMapper_ram.bin",
+        "binary_sha256": "f01263677c351344e28615e73f27588ec648ea2ac3e4829886456e5b09eb7777",
+        "width": 8,
+        "depth": 128,
+        "contents": "all_zero",
+        "mif": "PifoMesh.v_toplevel_pifoEngines_4_enque_brain_lastVirtualMapper_ram.bin.mif"
+      },
+      {
+        "binary": "PifoMesh.v_toplevel_pifoEngines_4_enque_brain_engineMapper_ram.bin",
+        "binary_sha256": "5573394c856830106db81e2b2878412d831e418c189ca3edbc1d5cc6e9526076",
+        "width": 2,
+        "depth": 128,
+        "contents": "all_zero",
+        "mif": "PifoMesh.v_toplevel_pifoEngines_4_enque_brain_engineMapper_ram.bin.mif"
+      },
+      {
+        "binary": "PifoMesh.v_toplevel_pifoEngines_3_enque_brain_brainStateMem_ram.bin",
+        "binary_sha256": "549e882dcb4d31598233830c836bdbf05e712cbc2b9185b7c16f9646466977b4",
+        "width": 32,
+        "depth": 128,
+        "contents": "all_zero",
+        "mif": "PifoMesh.v_toplevel_pifoEngines_3_enque_brain_brainStateMem_ram.bin.mif"
+      },
+      {
+        "binary": "PifoMesh.v_toplevel_pifoEngines_3_enque_brain_engineCAM_ram.bin",
+        "binary_sha256": "9ee7d116e2383c88e417a6d87ec8d711b7c6f3e5e7f6fa539f943ec003aed1a3",
+        "width": 32,
+        "depth": 131072,
+        "contents": "all_zero",
+        "mif": "PifoMesh.v_toplevel_pifoEngines_3_enque_brain_engineCAM_ram.bin.mif"
+      },
+      {
+        "binary": "PifoMesh.v_toplevel_pifoEngines_3_enque_brain_lastVirtualMapper_ram.bin",
+        "binary_sha256": "f01263677c351344e28615e73f27588ec648ea2ac3e4829886456e5b09eb7777",
+        "width": 8,
+        "depth": 128,
+        "contents": "all_zero",
+        "mif": "PifoMesh.v_toplevel_pifoEngines_3_enque_brain_lastVirtualMapper_ram.bin.mif"
+      },
+      {
+        "binary": "PifoMesh.v_toplevel_pifoEngines_3_enque_brain_engineMapper_ram.bin",
+        "binary_sha256": "5573394c856830106db81e2b2878412d831e418c189ca3edbc1d5cc6e9526076",
+        "width": 2,
+        "depth": 128,
+        "contents": "all_zero",
+        "mif": "PifoMesh.v_toplevel_pifoEngines_3_enque_brain_engineMapper_ram.bin.mif"
+      },
+      {
+        "binary": "PifoMesh.v_toplevel_pifoEngines_2_enque_brain_brainStateMem_ram.bin",
+        "binary_sha256": "549e882dcb4d31598233830c836bdbf05e712cbc2b9185b7c16f9646466977b4",
+        "width": 32,
+        "depth": 128,
+        "contents": "all_zero",
+        "mif": "PifoMesh.v_toplevel_pifoEngines_2_enque_brain_brainStateMem_ram.bin.mif"
+      },
+      {
+        "binary": "PifoMesh.v_toplevel_pifoEngines_2_enque_brain_engineCAM_ram.bin",
+        "binary_sha256": "9ee7d116e2383c88e417a6d87ec8d711b7c6f3e5e7f6fa539f943ec003aed1a3",
+        "width": 32,
+        "depth": 131072,
+        "contents": "all_zero",
+        "mif": "PifoMesh.v_toplevel_pifoEngines_2_enque_brain_engineCAM_ram.bin.mif"
+      },
+      {
+        "binary": "PifoMesh.v_toplevel_pifoEngines_2_enque_brain_lastVirtualMapper_ram.bin",
+        "binary_sha256": "f01263677c351344e28615e73f27588ec648ea2ac3e4829886456e5b09eb7777",
+        "width": 8,
+        "depth": 128,
+        "contents": "all_zero",
+        "mif": "PifoMesh.v_toplevel_pifoEngines_2_enque_brain_lastVirtualMapper_ram.bin.mif"
+      },
+      {
+        "binary": "PifoMesh.v_toplevel_pifoEngines_2_enque_brain_engineMapper_ram.bin",
+        "binary_sha256": "5573394c856830106db81e2b2878412d831e418c189ca3edbc1d5cc6e9526076",
+        "width": 2,
+        "depth": 128,
+        "contents": "all_zero",
+        "mif": "PifoMesh.v_toplevel_pifoEngines_2_enque_brain_engineMapper_ram.bin.mif"
+      },
+      {
+        "binary": "PifoMesh.v_toplevel_pifoEngines_1_enque_brain_brainStateMem_ram.bin",
+        "binary_sha256": "549e882dcb4d31598233830c836bdbf05e712cbc2b9185b7c16f9646466977b4",
+        "width": 32,
+        "depth": 128,
+        "contents": "all_zero",
+        "mif": "PifoMesh.v_toplevel_pifoEngines_1_enque_brain_brainStateMem_ram.bin.mif"
+      },
+      {
+        "binary": "PifoMesh.v_toplevel_pifoEngines_1_enque_brain_engineCAM_ram.bin",
+        "binary_sha256": "9ee7d116e2383c88e417a6d87ec8d711b7c6f3e5e7f6fa539f943ec003aed1a3",
+        "width": 32,
+        "depth": 131072,
+        "contents": "all_zero",
+        "mif": "PifoMesh.v_toplevel_pifoEngines_1_enque_brain_engineCAM_ram.bin.mif"
+      },
+      {
+        "binary": "PifoMesh.v_toplevel_pifoEngines_1_enque_brain_lastVirtualMapper_ram.bin",
+        "binary_sha256": "f01263677c351344e28615e73f27588ec648ea2ac3e4829886456e5b09eb7777",
+        "width": 8,
+        "depth": 128,
+        "contents": "all_zero",
+        "mif": "PifoMesh.v_toplevel_pifoEngines_1_enque_brain_lastVirtualMapper_ram.bin.mif"
+      },
+      {
+        "binary": "PifoMesh.v_toplevel_pifoEngines_1_enque_brain_engineMapper_ram.bin",
+        "binary_sha256": "5573394c856830106db81e2b2878412d831e418c189ca3edbc1d5cc6e9526076",
+        "width": 2,
+        "depth": 128,
+        "contents": "all_zero",
+        "mif": "PifoMesh.v_toplevel_pifoEngines_1_enque_brain_engineMapper_ram.bin.mif"
+      },
+      {
+        "binary": "PifoMesh.v_toplevel_pifoEngines_0_enque_brain_brainStateMem_ram.bin",
+        "binary_sha256": "549e882dcb4d31598233830c836bdbf05e712cbc2b9185b7c16f9646466977b4",
+        "width": 32,
+        "depth": 128,
+        "contents": "all_zero",
+        "mif": "PifoMesh.v_toplevel_pifoEngines_0_enque_brain_brainStateMem_ram.bin.mif"
+      },
+      {
+        "binary": "PifoMesh.v_toplevel_pifoEngines_0_enque_brain_engineCAM_ram.bin",
+        "binary_sha256": "9ee7d116e2383c88e417a6d87ec8d711b7c6f3e5e7f6fa539f943ec003aed1a3",
+        "width": 32,
+        "depth": 131072,
+        "contents": "all_zero",
+        "mif": "PifoMesh.v_toplevel_pifoEngines_0_enque_brain_engineCAM_ram.bin.mif"
+      },
+      {
+        "binary": "PifoMesh.v_toplevel_pifoEngines_0_enque_brain_lastVirtualMapper_ram.bin",
+        "binary_sha256": "f01263677c351344e28615e73f27588ec648ea2ac3e4829886456e5b09eb7777",
+        "width": 8,
+        "depth": 128,
+        "contents": "all_zero",
+        "mif": "PifoMesh.v_toplevel_pifoEngines_0_enque_brain_lastVirtualMapper_ram.bin.mif"
+      },
+      {
+        "binary": "PifoMesh.v_toplevel_pifoEngines_0_enque_brain_engineMapper_ram.bin",
+        "binary_sha256": "5573394c856830106db81e2b2878412d831e418c189ca3edbc1d5cc6e9526076",
+        "width": 2,
+        "depth": 128,
+        "contents": "all_zero",
+        "mif": "PifoMesh.v_toplevel_pifoEngines_0_enque_brain_engineMapper_ram.bin.mif"
+      }
+    ],
+    "derived_sha256": {
+      "PifoMesh.v": "13207808fd8a5f3550bd648840ff440b1fa57279bd5c1340c7bbc03507fcff45",
+      "PifoMesh.v_toplevel_pifoEngines_0_deque_dequeMapper_banks_0.bin.mif": "9a80e2ccda01e51b93712edc1a845e9e76d8eada58783b53c99ea02b0d01ad02",
+      "PifoMesh.v_toplevel_pifoEngines_0_deque_dequeMapper_banks_1.bin.mif": "9a80e2ccda01e51b93712edc1a845e9e76d8eada58783b53c99ea02b0d01ad02",
+      "PifoMesh.v_toplevel_pifoEngines_0_enque_brain_brainStateMem_ram.bin.mif": "227c46604b9fc51769277725f37e9fee033ed225028f453e77e97b341e422b78",
+      "PifoMesh.v_toplevel_pifoEngines_0_enque_brain_engineCAM_ram.bin.mif": "e62e5ea36acbafd637f33122a6bced0cac9d3f8cf47ad6e96dd226f7aadcf89c",
+      "PifoMesh.v_toplevel_pifoEngines_0_enque_brain_engineMapper_ram.bin.mif": "4574fbead78936490d17317d78a6656c8c24541c57a12d993b2134b3aee05d3f",
+      "PifoMesh.v_toplevel_pifoEngines_0_enque_brain_lastVirtualMapper_ram.bin.mif": "6f07b70e823bb6c30b583b3d20ad1b2127e7ca7b6712d4cc3621f6ae6de3ef89",
+      "PifoMesh.v_toplevel_pifoEngines_0_enque_enqueMapper_banks_0.bin.mif": "d49de69a14842bc9778b3d4b948b9455547a75b3993d81cafe7f3f283b67cbf1",
+      "PifoMesh.v_toplevel_pifoEngines_0_enque_enqueMapper_banks_1.bin.mif": "d49de69a14842bc9778b3d4b948b9455547a75b3993d81cafe7f3f283b67cbf1",
+      "PifoMesh.v_toplevel_pifoEngines_1_deque_dequeMapper_banks_0.bin.mif": "9a80e2ccda01e51b93712edc1a845e9e76d8eada58783b53c99ea02b0d01ad02",
+      "PifoMesh.v_toplevel_pifoEngines_1_deque_dequeMapper_banks_1.bin.mif": "9a80e2ccda01e51b93712edc1a845e9e76d8eada58783b53c99ea02b0d01ad02",
+      "PifoMesh.v_toplevel_pifoEngines_1_enque_brain_brainStateMem_ram.bin.mif": "227c46604b9fc51769277725f37e9fee033ed225028f453e77e97b341e422b78",
+      "PifoMesh.v_toplevel_pifoEngines_1_enque_brain_engineCAM_ram.bin.mif": "e62e5ea36acbafd637f33122a6bced0cac9d3f8cf47ad6e96dd226f7aadcf89c",
+      "PifoMesh.v_toplevel_pifoEngines_1_enque_brain_engineMapper_ram.bin.mif": "4574fbead78936490d17317d78a6656c8c24541c57a12d993b2134b3aee05d3f",
+      "PifoMesh.v_toplevel_pifoEngines_1_enque_brain_lastVirtualMapper_ram.bin.mif": "6f07b70e823bb6c30b583b3d20ad1b2127e7ca7b6712d4cc3621f6ae6de3ef89",
+      "PifoMesh.v_toplevel_pifoEngines_1_enque_enqueMapper_banks_0.bin.mif": "d49de69a14842bc9778b3d4b948b9455547a75b3993d81cafe7f3f283b67cbf1",
+      "PifoMesh.v_toplevel_pifoEngines_1_enque_enqueMapper_banks_1.bin.mif": "d49de69a14842bc9778b3d4b948b9455547a75b3993d81cafe7f3f283b67cbf1",
+      "PifoMesh.v_toplevel_pifoEngines_2_deque_dequeMapper_banks_0.bin.mif": "9a80e2ccda01e51b93712edc1a845e9e76d8eada58783b53c99ea02b0d01ad02",
+      "PifoMesh.v_toplevel_pifoEngines_2_deque_dequeMapper_banks_1.bin.mif": "9a80e2ccda01e51b93712edc1a845e9e76d8eada58783b53c99ea02b0d01ad02",
+      "PifoMesh.v_toplevel_pifoEngines_2_enque_brain_brainStateMem_ram.bin.mif": "227c46604b9fc51769277725f37e9fee033ed225028f453e77e97b341e422b78",
+      "PifoMesh.v_toplevel_pifoEngines_2_enque_brain_engineCAM_ram.bin.mif": "e62e5ea36acbafd637f33122a6bced0cac9d3f8cf47ad6e96dd226f7aadcf89c",
+      "PifoMesh.v_toplevel_pifoEngines_2_enque_brain_engineMapper_ram.bin.mif": "4574fbead78936490d17317d78a6656c8c24541c57a12d993b2134b3aee05d3f",
+      "PifoMesh.v_toplevel_pifoEngines_2_enque_brain_lastVirtualMapper_ram.bin.mif": "6f07b70e823bb6c30b583b3d20ad1b2127e7ca7b6712d4cc3621f6ae6de3ef89",
+      "PifoMesh.v_toplevel_pifoEngines_2_enque_enqueMapper_banks_0.bin.mif": "d49de69a14842bc9778b3d4b948b9455547a75b3993d81cafe7f3f283b67cbf1",
+      "PifoMesh.v_toplevel_pifoEngines_2_enque_enqueMapper_banks_1.bin.mif": "d49de69a14842bc9778b3d4b948b9455547a75b3993d81cafe7f3f283b67cbf1",
+      "PifoMesh.v_toplevel_pifoEngines_3_deque_dequeMapper_banks_0.bin.mif": "9a80e2ccda01e51b93712edc1a845e9e76d8eada58783b53c99ea02b0d01ad02",
+      "PifoMesh.v_toplevel_pifoEngines_3_deque_dequeMapper_banks_1.bin.mif": "9a80e2ccda01e51b93712edc1a845e9e76d8eada58783b53c99ea02b0d01ad02",
+      "PifoMesh.v_toplevel_pifoEngines_3_enque_brain_brainStateMem_ram.bin.mif": "227c46604b9fc51769277725f37e9fee033ed225028f453e77e97b341e422b78",
+      "PifoMesh.v_toplevel_pifoEngines_3_enque_brain_engineCAM_ram.bin.mif": "e62e5ea36acbafd637f33122a6bced0cac9d3f8cf47ad6e96dd226f7aadcf89c",
+      "PifoMesh.v_toplevel_pifoEngines_3_enque_brain_engineMapper_ram.bin.mif": "4574fbead78936490d17317d78a6656c8c24541c57a12d993b2134b3aee05d3f",
+      "PifoMesh.v_toplevel_pifoEngines_3_enque_brain_lastVirtualMapper_ram.bin.mif": "6f07b70e823bb6c30b583b3d20ad1b2127e7ca7b6712d4cc3621f6ae6de3ef89",
+      "PifoMesh.v_toplevel_pifoEngines_3_enque_enqueMapper_banks_0.bin.mif": "d49de69a14842bc9778b3d4b948b9455547a75b3993d81cafe7f3f283b67cbf1",
+      "PifoMesh.v_toplevel_pifoEngines_3_enque_enqueMapper_banks_1.bin.mif": "d49de69a14842bc9778b3d4b948b9455547a75b3993d81cafe7f3f283b67cbf1",
+      "PifoMesh.v_toplevel_pifoEngines_4_deque_dequeMapper_banks_0.bin.mif": "9a80e2ccda01e51b93712edc1a845e9e76d8eada58783b53c99ea02b0d01ad02",
+      "PifoMesh.v_toplevel_pifoEngines_4_deque_dequeMapper_banks_1.bin.mif": "9a80e2ccda01e51b93712edc1a845e9e76d8eada58783b53c99ea02b0d01ad02",
+      "PifoMesh.v_toplevel_pifoEngines_4_enque_brain_brainStateMem_ram.bin.mif": "227c46604b9fc51769277725f37e9fee033ed225028f453e77e97b341e422b78",
+      "PifoMesh.v_toplevel_pifoEngines_4_enque_brain_engineCAM_ram.bin.mif": "e62e5ea36acbafd637f33122a6bced0cac9d3f8cf47ad6e96dd226f7aadcf89c",
+      "PifoMesh.v_toplevel_pifoEngines_4_enque_brain_engineMapper_ram.bin.mif": "4574fbead78936490d17317d78a6656c8c24541c57a12d993b2134b3aee05d3f",
+      "PifoMesh.v_toplevel_pifoEngines_4_enque_brain_lastVirtualMapper_ram.bin.mif": "6f07b70e823bb6c30b583b3d20ad1b2127e7ca7b6712d4cc3621f6ae6de3ef89",
+      "PifoMesh.v_toplevel_pifoEngines_4_enque_enqueMapper_banks_0.bin.mif": "d49de69a14842bc9778b3d4b948b9455547a75b3993d81cafe7f3f283b67cbf1",
+      "PifoMesh.v_toplevel_pifoEngines_4_enque_enqueMapper_banks_1.bin.mif": "d49de69a14842bc9778b3d4b948b9455547a75b3993d81cafe7f3f283b67cbf1",
+      "priority_encode_log.v": "2a63070396dc60fd2106c5ef1d0719e027ff6bf797afbef166cf99c9b49537c2"
+    }
+  },
+  "quartus_replay_journal_assignment": "set_instance_assignment -name RAMSTYLE_ATTRIBUTE M20K -entity StreamFifo_52 -to logic_ram",
+  "completed_utc": "2026-09-07T15:30:28.279869+00:00"
+}
