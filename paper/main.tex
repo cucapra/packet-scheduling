@@ -1249,12 +1249,12 @@ Say also which of the six commands cost more than one cycle, and note that the c
 \xxx[AM to Zhiyuan]{The paper has to convert cycles to time exactly once, and here is where.
 You offered a 1\,GHz ASIC or a 250\,MHz FPGA and I would take the ASIC, which makes the 1024-cycle stop almost exactly a microsecond.
 Confirm that, and tell me how many bytes the switch moves per cycle so I can name a line rate.}
-ZG: we are taling about control plane, so our rate here is packets/s (PPS). our rate is ii=1 enque and ii=3 (cycles) deque, which regardless of packetsize, is a decent performance for PPS.
+\xxx[zg]{we are taling about control plane, so our rate here is packets/s (PPS). our rate is ii=1 enque and ii=3 (cycles) deque, which regardless of packetsize, is a decent performance for PPS.}
 
 \xxx[AM to Zhiyuan]{You have no citation for the reconfiguration figure and say a real P4 switch measures up to seconds.
 So I plan to present the 1024 as a floor we grant the baseline rather than as a measurement: we stop the world for about a microsecond, which is faster than any reported reconfiguration of a running switch, and Rio beats it anyway.
 Say if you would rather the baseline had a different number.}
-ZG: we should look for some reference on the reconfiguration time; but real time will be MUCH longer than 1us, we should explicitly say that. some quick cites: FlexCore NSDI 22, ~500ms
+\xxx[zg]{we should look for some reference on the reconfiguration time; but real time will be MUCH longer than 1us, we should explicitly say that. some quick cites: FlexCore NSDI 22, ~500ms}
 
 \xxx[AM to Zhiyuan]{\texttt{settings.json} sets a queue depth of 256 while the stop-the-world run peaks at 417 buffered packets and drops nothing.
 Raise it or drop it, whichever is honest.
