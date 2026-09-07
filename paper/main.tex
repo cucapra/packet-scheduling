@@ -192,13 +192,12 @@ A hierarchical policy runs on a tree of PIFOs, one queue per node.
 % It needs to be inputted here so it lands on the top of page 2
 \input{fig-tour}
 
-A deployment's policy is not fixed for the life of the deployment.
-Traffic patterns shift, tenants arrive and leave, and telemetry from downstream tells the operator that the policy in force is no longer the right one.
-But the scheduler was compiled expressly for the policy it is running: its tree shape, per-node disciplines, and table contents are all artifacts of a decision made with \emph{a fresh policy} as the goal, not \emph{a change to the running policy}~\cite{Sivaraman16,Gao22,vPIFO}.
-Say the operator requests a new policy.
-% A compiler that produces such a scheduler accepts \emph{a policy to run} rather than \emph{a change to the policy already running}~\cite{Sivaraman16,vPIFO}.
-The freshly compiled scheduler knows nothing about the running policy or the backlog of buffered packets~\cite{vPIFO,Alcoz23}, and so the whole tree is rebuilt, including the nodes that could have been carried over unchanged.
-What becomes of the backlog is left to the deployment: it can be dropped, recirculated, or left to be scheduled through a chaotic period in which the hardware follows no clearly defined policy.
+The policy on a switch cannot be fixed.
+Traffic patterns shift, tenants arrive and leave, and telemetry from downstream tells the network operator that the running policy in no longer apt.
+But the scheduler on a switch is compiled expressly for the policy it runs: its tree shape, per-node disciplines, and table contents are all selected to realize \emph{a fresh policy}, not \emph{a change to the running policy}~\cite{Sivaraman16,Gao22,vPIFO}.
+When the operator requests a new policy, the freshly compiled scheduler knows nothing about the running policy or the backlog of buffered packets~\cite{vPIFO,Alcoz23}.
+The whole tree is rebuilt, including the nodes that could have been carried over unchanged.
+What becomes of the backlog is left to the implementation: it can be dropped, recirculated, or left to be scheduled through a chaotic period in which the hardware follows no clearly defined policy.
 Each of those is itself tacitly a \emph{scheduling decision}, and the network operator is unable to specify which one they want.
 
 This paper writes that decision down.
