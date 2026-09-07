@@ -1025,64 +1025,46 @@ A typical choice is the depth-by-PE layout of \cref{sec:background}, under which
 The planner consults \texttt{pe(path)} for a \texttt{spawn}'s \texttt{pe} argument and cannot otherwise observe it.
 
 
-
 \subsection{Atomic Policy Updates}\label{sec:hw-commit}
 
-Rio's change to the substrate is small, and it is small because the transactional scope is narrow.
-The state that must install in a single instant is the state that routes a packet: the set of flows a node admits, and the child that serves each of them.
-The rank computation stays outside that scope.
-A commit that carries new metadata either annotates an arm whose packets are not admitted until the commit finishes, or retires one that has already drained, and a \ChangeMeta{} writes a single metadatum, so a \push{} reads either the old value or the new one.
-Ranks are frozen at \push{} time (\cref{sec:nondisruption}), so a packet already queued is unaffected either way.
+Rio implements atomic updates by double-buffering the match--action tables (MATs) that make up the policy configuration.
+These MATs control the association between flows and PIFOs and the parent--child relationships among PIFOs.
+Configuration instructions affect the inactive MATs,
+and committing a transaction swaps the active and inactive MATs.
 
-\xxx[AM to Zhiyuan]{This paragraph is now the subsection's opening claim, per your ``we minimize the transactional scope''.
-The \ChangeMeta{} sentence is the one case your two-way split does not cover, since it re-tunes an arm that is live and backlogged, and the argument I give is that the write stands alone in its own commit.
-Please confirm that a lone metadata write needs nothing from the transactional path.}
+It is straightforward to make these swaps atomic within a PE,
+but transactions can affect multiple PEs.
+We \emph{delay-align} the transaction commits across PEs according to the PIFO tree topology:
+% The new configuration becomes visible at different PEs at carefully chosen times, so that
+although the update happens across several cycles, pipelined enqueues and dequeues follow the updates so that each sees either the old or the new configuration.
+% The double buffer and the wavefront both exist because dequeue is pipelined: a request travelling the chain of PEs must never observe state that a commit has left inconsistent.
 
-Rio implements a transactional update controller, and every commit passes through it.
-A commit reaches the controller as a stream of update instructions terminated by a commit marker, and the controller executes that stream in order.
-Ordinary update instructions are routed to the PEs they target and staged locally, where they remain invisible to packet processing.
-When the controller reaches the marker, it generates the hardware commit signals that make the staged updates visible.
+
+\xxx[as]{I still don't get what we are saying about disciplines/rank assignment functions and metadata. are those double buffered}
 Two pieces of hardware need small changes.
 First, the tables that hold a node's classification must become transactional, so that a commit signal makes a whole list of writes visible at once.
 Second, the rank computation must accept incremental updates rather than wholesale replacement of a live scheduling policy.
 
-Rio builds transactional tables for a node's classification.
-Each PE holds the set of flows each of its nodes admits, and the mapping from an admitted flow to the child that serves it, in a specialized structure that accepts a stream of update instructions followed by a commit marker.
-Only when the marker is applied does the new version become active.
-We implement this using double buffering.
-An update instruction modifies a shadow copy of the table, which packet processing does not read, and the commit signal atomically swaps the active and shadow copies.
-After the swap, the inactive copy is synchronized in the background to serve as the shadow for the next commit.
-Staging updates in a shadow copy and swapping them in is also how runtime reconfiguration is done for the forwarding pipeline~\cite{Xing22,Yang24}.
-Rio therefore asks its substrate for no primitive that runtime-programmable switch designs do not already provide.
-
-A swap is atomic within one PE, but a commit generally spans several, and a packet in flight visits them in sequence.
-The commit signals are therefore delay-aligned across PEs according to the PIFO tree topology, so that no enqueue or dequeue operation can traverse a partially updated tree.
-The controller treats the commit boundary as a wavefront.
-The new configuration becomes visible at different PEs at carefully chosen times, so that any individual packet observes a consistent configuration along its entire path.
-The double buffer and the wavefront both exist because dequeue is pipelined: a request travelling the chain of PEs must never observe state that a commit has left inconsistent.
-
+\xxx[as]{In other words: you are saying that instructions like \texttt{set\_policy} are applied immediately. I do not yet see a clear argument for why this is OK.}
 Our controller accepts a commit's rank-computing writes along with the rest of its instructions, and applies them as it reaches them rather than holding them for the marker, which is what the narrow scope buys.
-The rank computation is a reference design, and a substrate may configure its own disciplines by whatever means it has.
 
-The controller also implements guarded transitions.
+
+\xxx[as]{seems like a nice comparison, but what is ``the forwarding pipeline''}
+Staging updates in a shadow copy and swapping them in is also how runtime reconfiguration is done for the forwarding pipeline~\cite{Xing22,Yang24}.
+
+\xxx[AM to Zhiyuan]{This paragraph is now the subsection's opening claim, per your ``we minimize the transactional scope''.
+The \ChangeMeta{} sentence is the one case your two-way split does not cover, since it re-tunes an arm that is live and backlogged, and the argument I give is that the write stands alone in its own commit.
+Please confirm that a lone metadata write needs nothing from the transactional path.}
+\xxx[as]{Does this mean that every transaction can include at most one \texttt{set\_arm\_meta} instruction? If so, let's say that in the ISA section.}
+
+
+
+\xxx[as]{say this shorter: the interface accepts transactions, and can pause before applying them to wait for something to empty}
 Some transitions are guarded by predicates such as the emptiness of a subtree (\cref{sec:sequences}).
 Rio lowers such guards to blocking commands in the controller queue.
 A blocking command remains at the head of the queue until its predicate becomes true.
-Only then can the subsequent update instructions execute.
-In-order execution therefore ensures that instructions depending on the guard are not issued prematurely.
-
-This fixes the shape of the control plane's side of the interface.
-The controller runs one transition at a time, and an operator's next request waits for the one in flight to finish.
-A request that arrives mid-transition is queued, and the planner then starts it from the policy the finished transition left running.
+%
 Rio cannot guarantee progress towards the completion of a request, since a guard on an emptiness predicate becomes true only once the traffic under that subtree drains, and a persistent flow can hold a subtree open indefinitely.
-The only way to hurry a drain is to drop what is buffered.
-The forms of \cref{sec:delta-grammar} are chosen to avoid this, so a stalled transition stays safe and stays where it is until the traffic allows.
-
-Our current implementation uses a single controller queue, which provides a simple global serialization point for updates.
-This design is sufficient for correctness and avoids subtle ordering bugs between overlapping commits.
-It can, however, introduce head-of-line blocking when a guarded transition waits for a long-running drain.
-Supporting multiple independent queues for disjoint subtrees is a natural optimization, and it changes neither Rio's ISA nor its correctness argument.
-We leave that extension to future work.
 
 \subsection{Designated Survivors}\label{sec:hw-survivor}
 
