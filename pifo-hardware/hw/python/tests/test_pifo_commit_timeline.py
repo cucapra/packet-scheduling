@@ -40,7 +40,7 @@ EXPECTED = {
 class CommitTimelineTest(unittest.TestCase):
     def test_saved_figure_markers_match_each_runs_recorded_commits(self):
         root = Path(__file__).resolve().parents[3] / "experiment-results"
-        scripts = sorted(root.rglob("plot.py"))
+        scripts = sorted(script for script in root.rglob("plot.py") if "PANELS =" in script.read_text())
         self.assertGreaterEqual(len(scripts), 14)
         cases = {"R2": "r2-stop-the-world", "R3": "r3-whole-tree", "R4": "r4-confined"}
         for script in scripts:

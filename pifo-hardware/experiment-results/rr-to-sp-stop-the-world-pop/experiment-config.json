@@ -1,0 +1,100 @@
+{
+  "output_dir": "/home/depctg/data/projects/packet-scheduling/pifo-hardware/experiment-results/rr-to-sp-stop-the-world-pop",
+  "seed": 7,
+  "traffic": {
+    "flows": [
+      1,
+      2
+    ],
+    "packets_per_flow": 240,
+    "start_cycle": 0,
+    "packet_rate": {
+      "distribution": "uniform",
+      "unit": "packets_per_cycle_per_flow",
+      "min": 0.18,
+      "max": 0.24
+    },
+    "packet_size_bytes": {
+      "distribution": "normal",
+      "mean": 128.0,
+      "stddev": 24.0,
+      "min": 64.0,
+      "max": 192.0
+    }
+  },
+  "initial_tree": {
+    "root": "root",
+    "nodes": {
+      "root": {
+        "engine_id": 1,
+        "vpifo_id": 10,
+        "policy": "RR",
+        "flow_state": {}
+      },
+      "flow_a": {
+        "engine_id": 2,
+        "vpifo_id": 12,
+        "policy": "FIFO",
+        "flow_state": {}
+      },
+      "flow_b": {
+        "engine_id": 2,
+        "vpifo_id": 13,
+        "policy": "FIFO",
+        "flow_state": {}
+      }
+    },
+    "flow_paths": {
+      "1": [
+        "root",
+        "flow_a"
+      ],
+      "2": [
+        "root",
+        "flow_b"
+      ]
+    }
+  },
+  "reconfiguration": {
+    "type": "policy_change",
+    "mode": "stop_the_world_pop",
+    "cycle": 600,
+    "name": "policy-change",
+    "before_label": "RR",
+    "after_label": "SP",
+    "changes": {
+      "root": {
+        "policy": "SP",
+        "flow_state": {
+          "1": 1,
+          "2": 32769
+        }
+      }
+    }
+  },
+  "simulation": {
+    "link_bytes_per_cycle": 64.0,
+    "queue_depth": 128,
+    "max_cycles": 100000,
+    "max_packet_priority": 65536,
+    "num_engines": 3,
+    "num_vpifos": 32,
+    "fifo_depth": 32,
+    "prefetch_buffer_depth": 2
+  },
+  "plot": {
+    "bandwidth_window_cycles": 320,
+    "bandwidth_sample_cycles": 8,
+    "flow_labels": {
+      "1": "A",
+      "2": "B"
+    },
+    "dpi": 180
+  },
+  "verification": {
+    "minimum_staging_cycles": 10,
+    "minimum_old_backlog_packets": 64,
+    "minimum_drain_cycles": 1000,
+    "minimum_packets_per_phase": 6
+  }
+}

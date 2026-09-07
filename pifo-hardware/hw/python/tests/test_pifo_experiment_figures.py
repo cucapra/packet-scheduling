@@ -269,6 +269,7 @@ class PifoExperimentFiguresTest(unittest.TestCase):
             config.initial_tree,
             config.reconfiguration,
             config.simulation.num_vpifos,
+            config.simulation.num_engines,
         )
         self.assertEqual(plan.mode, "full_transitive")
         self.assertEqual((plan.drain_engine_id, plan.drain_vpifo_id), (1, 10))
@@ -312,6 +313,7 @@ class PifoExperimentFiguresTest(unittest.TestCase):
                 config.initial_tree,
                 config.reconfiguration,
                 config.simulation.num_vpifos,
+                config.simulation.num_engines,
             )
         brain_targets = {
             (command.engine_id, command.vpifo_id)

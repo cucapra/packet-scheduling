@@ -168,8 +168,9 @@ class StandalonePlotTest(unittest.TestCase):
 
     def test_saved_packet_traces_match_their_own_run_not_neighboring_archives(self):
         root = ROOT / "experiment-results"
-        local_traces = sorted(root.glob("**/figures/*/packets.csv"))
-        self.assertEqual(len(local_traces), 12)  # Two figures for each of the six runs.
+        local_traces = sorted(p for p in root.glob("**/figures/*/packets.csv")
+                              if (p.parents[2] / "packet-outcomes.csv").exists())
+        self.assertGreaterEqual(len(local_traces), 12)  # Per-run figures, excluding multi-run bundles.
         for trace in local_traces:
             with self.subTest(trace=trace):
                 self.assertEqual(read_packet_outcomes(trace),

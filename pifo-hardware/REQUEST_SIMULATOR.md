@@ -71,6 +71,13 @@ python3 hw/python/pifo_experiment_figures.py validate experiments/rr-to-sp.json
 python3 hw/python/pifo_experiment_figures.py run --config experiments/rr-to-sp.json
 ```
 
+The evaluation-only stop-the-world comparison uses the same interface:
+
+```bash
+python3 hw/python/pifo_experiment_figures.py validate experiments/rr-to-sp-stop-the-world-pop.json
+python3 hw/python/pifo_experiment_figures.py run --config experiments/rr-to-sp-stop-the-world-pop.json
+```
+
 The output directory exposes every boundary: `tree-move.json`, `traffic.json`, compiled `transactions.txt`, request and
 completion CSVs, the complete `packet-outcomes.csv`, and `reconfiguration-events.csv`. Each figure owns a separate artifact directory:
 
@@ -78,8 +85,8 @@ completion CSVs, the complete `packet-outcomes.csv`, and `reconfiguration-events
 - `figures/packet-scatter/{data.csv,packets.csv,plot.py,figure.svg,figure.png}`
 
 Matplotlib is preferred; SVG plus FFmpeg is used automatically when Matplotlib is unavailable. The scatter uses one
-shared 1:1 range for its input/output axes, keeps `y = x` at 45 degrees, and draws start, commit, and old-tree-drain
-lines on both axes.
+shared 1:1 range for its input/output axes, keeps `y = x` at 45 degrees, and draws start, commit, old-tree-drain, and
+stop-the-world resume lines on both axes.
 
 Install the plotting dependency for the motivating-example delay plots in an isolated environment:
 
@@ -374,6 +381,32 @@ This is a schematic one-FIFO cleanup, after a preceding `name=move` transaction 
 header; real trees require one guard per retired FIFO and invalidation of every retired populated slot. Packages
 remain FIFO ordered, so both may use the same `at` cycle. The cleanup does not gate packet admission while its guard
 waits. Raw direct packages are never expanded automatically because the simulator cannot infer which entries are dead.
+
+### Evaluation-only hardware commands
+
+These require the separate `rio.sim.EvaluationRequestSimulatorCli` top level, selected by
+`pifo_simulator.py --evaluation-hardware`. They are not present as hardware features in the production image.
+Normal-image experiments keep the known-good Icarus backend; the evaluation runners explicitly use Verilator.
+
+`StopWorld` uses `engineId`/`vPifoId` to identify the old root and gates hardware ready signals until commit.
+`PrefillPifo` uses `engineId`/`vPifoId` as its destination and `flowId` as the synthetic token. With `data=0`, hardware
+uses the stopped root occupancy; a non-zero `data` is an explicit low-level count. Prefill always uses priority 1 and
+commit backpressures until its autonomous one-token-per-cycle fill completes. `UpdateRoot` stages its
+`engineId`/`vPifoId` for commit publication.
+
+`CopyPifoEngine engineId=source data=target` moves a frozen PE's entries, preserving token IDs, virtual PIFO IDs,
+ranks and equal-rank order. Hardware gates traffic, snapshots occupancy, then uses a separate indexed read/inject
+datapath; it clears the source only when copying is complete. The destination must be empty. This does not migrate
+live brain state. `ClearPifoEngine` logically invalidates all entries on an unreachable PE; it waits for pending
+root visits and PE work before clearing counters. Normal mapper/brain invalidation commands still perform config
+cleanup. `WaitPifoEmpty` is accepted for old evaluation command files; new compilers use `GuardDrain`.
+
+The materialized-wrapper lifecycle is install → guarded old-tree cleanup/root collapse → detached-wrapper
+reclamation. `cleanupOf` may chain those packages; each package still ends with one ordinary `CommitMapper`.
+`install_finish_cycle` always gives the row's own ready-for-next-commit time, while `finish_cycle` includes its
+linked cleanup. The last reclamation row gives final configuration readiness. Plots show every commit separately.
+`controller-instructions.csv` distinguishes accepted, dispatched, replayed and published commands;
+`maintenance-events.csv` includes counted prefill writes, copy-source occupancies and discarded wrapper tokens.
 
 An enabled front entry substitutes the target vPIFO before the engine performs its PIFO lookup. On the activation
 cycle, the engine backpressures its input once so the waiting request observes the registered enable on the next cycle.

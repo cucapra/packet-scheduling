@@ -1,0 +1,209 @@
+{
+  "schema_version": 1,
+  "passed": false,
+  "event": {
+    "start_cycle": 600,
+    "commit_cycle": 633,
+    "drain_cycle": 1924,
+    "finish_cycle": 1972,
+    "staging_cycles": 33,
+    "drain_cycles": 1291,
+    "synchronization_cycles": 18,
+    "instruction_count": 25,
+    "commit_applied_cycle": 816,
+    "commit_cycles": 216,
+    "cleanup_instruction_count": 17,
+    "cleanup_commit_cycles": 1111,
+    "cleanup_bank_cleanup_cycles": 10,
+    "prefilled_tokens": 148,
+    "resume_cycle": 816,
+    "commits": [
+      {
+        "name": "policy-change",
+        "start_cycle": 600,
+        "commit_cycle": 633,
+        "commit_applied_cycle": 816,
+        "install_finish_cycle": 834,
+        "instruction_count": 25,
+        "commit_cycles": 216,
+        "bank_cleanup_cycles": 18
+      },
+      {
+        "name": "policy-change-cleanup",
+        "start_cycle": 834,
+        "commit_cycle": 852,
+        "commit_applied_cycle": 1945,
+        "install_finish_cycle": 1955,
+        "instruction_count": 17,
+        "commit_cycles": 1111,
+        "bank_cleanup_cycles": 10
+      },
+      {
+        "name": "policy-change-reclaim",
+        "start_cycle": 1955,
+        "commit_cycle": 1964,
+        "commit_applied_cycle": 1967,
+        "install_finish_cycle": 1972,
+        "instruction_count": 9,
+        "commit_cycles": 12,
+        "bank_cleanup_cycles": 5
+      }
+    ]
+  },
+  "packet_counts": {
+    "total": 480,
+    "old_epoch": 249,
+    "new_epoch": 231,
+    "old_backlog_at_commit": 148,
+    "admitted_on_commit_edge_as_old": 0,
+    "before_commit": 101,
+    "during_drain": 146,
+    "after_drain": 233
+  },
+  "sp_priorities": {
+    "1": 1,
+    "2": 32769
+  },
+  "facts": [
+    {
+      "id": "longer_queue_to_drain",
+      "description": "A large transaction and old-tree backlog make staging and drain visible.",
+      "passed": true,
+      "checks": [
+        {
+          "id": "serialized_configuration_rate",
+          "description": "cycle span from first through final acceptance at no more than one instruction per cycle",
+          "expected": ">= 24",
+          "observed": 33,
+          "passed": true
+        },
+        {
+          "id": "staging_duration",
+          "description": "cycles from package start to CommitMapper acceptance",
+          "expected": ">= 10",
+          "observed": 33,
+          "passed": true
+        },
+        {
+          "id": "old_backlog_at_commit",
+          "description": "old-tree packets still pending when commit is accepted",
+          "expected": ">= 64",
+          "observed": 148,
+          "passed": true
+        },
+        {
+          "id": "drain_duration",
+          "description": "cycles from commit acceptance until the old root drains",
+          "expected": ">= 1000",
+          "observed": 1291,
+          "passed": true
+        },
+        {
+          "id": "prefill_matches_old_backlog",
+          "description": "hardware SP-barrier tokens equal old packets pending at commit",
+          "expected": 148,
+          "observed": 148,
+          "passed": true
+        },
+        {
+          "id": "admissions_while_hardware_stopped",
+          "description": "packets admitted after commit acceptance and before hardware resume",
+          "expected": 0,
+          "observed": 0,
+          "passed": true
+        }
+      ]
+    },
+    {
+      "id": "before_commit_old_policy",
+      "description": "Before commit, completed packets come from the old RR tree.",
+      "passed": true,
+      "checks": [
+        {
+          "id": "precommit_packet_count",
+          "description": "packets completed before commit",
+          "expected": ">= 6",
+          "observed": 101,
+          "passed": true
+        },
+        {
+          "id": "new_packets_before_commit",
+          "description": "new-tree packets completed before commit",
+          "expected": 0,
+          "observed": 0,
+          "passed": true
+        },
+        {
+          "id": "rr_repetitions_before_commit",
+          "description": "adjacent same-flow completions under balanced RR traffic",
+          "expected": 0,
+          "observed": 0,
+          "passed": true
+        }
+      ]
+    },
+    {
+      "id": "after_commit_drain_old_first",
+      "description": "After commit, the old RR tree drains before any new-tree output.",
+      "passed": true,
+      "checks": [
+        {
+          "id": "drain_phase_packet_count",
+          "description": "packets completed from commit until drain",
+          "expected": ">= 6",
+          "observed": 146,
+          "passed": true
+        },
+        {
+          "id": "new_packets_during_drain",
+          "description": "new-tree packets completed before the old root drained",
+          "expected": 0,
+          "observed": 0,
+          "passed": true
+        },
+        {
+          "id": "rr_repetitions_during_drain",
+          "description": "adjacent same-flow old completions while draining",
+          "expected": 0,
+          "observed": 0,
+          "passed": true
+        },
+        {
+          "id": "rr_repetitions_all_old",
+          "description": "adjacent same-flow completions across the complete old epoch",
+          "expected": 0,
+          "observed": 0,
+          "passed": true
+        }
+      ]
+    },
+    {
+      "id": "after_drain_new_policy",
+      "description": "After drain, only the new SP tree runs and lower priorities finish first.",
+      "passed": false,
+      "checks": [
+        {
+          "id": "postdrain_packet_count",
+          "description": "packets completed after drain",
+          "expected": ">= 6",
+          "observed": 233,
+          "passed": true
+        },
+        {
+          "id": "old_packets_after_drain",
+          "description": "old-tree packets completed after drain",
+          "expected": 0,
+          "observed": 2,
+          "passed": false
+        },
+        {
+          "id": "sp_priority_reversals",
+          "description": "higher numeric SP priority followed by a lower one",
+          "expected": 0,
+          "observed": 0,
+          "passed": true
+        }
+      ]
+    }
+  ]
+}

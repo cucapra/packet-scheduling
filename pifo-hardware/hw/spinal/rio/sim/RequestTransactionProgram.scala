@@ -37,7 +37,7 @@ case class ScheduledControlTransaction(
   require(scheduledCycle >= 0, "transaction cycle must be non-negative")
   require(name.nonEmpty, "transaction name must not be empty")
   require(
-    Set("direct", "in_place", "stop_the_world", "full_transitive", "confined_transitive").contains(mode),
+    Set("direct", "in_place", "stop_the_world", "stop_the_world_pop", "full_transitive", "confined_transitive").contains(mode),
     "invalid transaction mode"
   )
   require(
@@ -85,8 +85,9 @@ case class RequestTransactionProgram(
         require(preceding.contains(name) && !cleaned.contains(name),
           "cleanupOf must identify an earlier, not-yet-cleaned transition")
         cleaned += name
-      case None => preceding += transaction.name
+      case None =>
     }
+    preceding += transaction.name
   }
   require(
     allInstructions.forall(instruction => instruction.engineId >= 1 && instruction.engineId <= hardware.numEngines),
@@ -169,7 +170,7 @@ object RequestTransactionProgram {
       cycle.foreach(value => require(value >= 0, s"$path:$lineNumber: transaction cycle must be non-negative"))
       val mode = fields("mode")
       require(
-        Set("direct", "in_place", "stop_the_world", "full_transitive", "confined_transitive").contains(mode),
+        Set("direct", "in_place", "stop_the_world", "stop_the_world_pop", "full_transitive", "confined_transitive").contains(mode),
         s"$path:$lineNumber: unsupported transaction mode '$mode'"
       )
       val drainTarget = fields.get("drainRoot").map(value => parseDrainTarget(value, path, lineNumber))

@@ -72,6 +72,15 @@ This contains a PifoMesh Implementation. Current implementation assumes the inse
 
 ## Transactional configuration
 
+The [large-tree multi-edit experiment](experiments/multi-edit/README.md) compares
+localized edits, hardware SP prefill, whole-PE copy plus prefill, and a lossless
+reset baseline, with a shared unchanged-policy control trace.
+
+The [designated-survivor experiment](experiments/designated-survivor/README.md)
+compares the Strict* link with a materialized wrapper on a reserved PE, including
+a backlog sweep, actual prefill writes, and occupied-wrapper teardown costs.
+Every flow uses an explicit hardware FIFO leaf on its push and pop paths.
+
 The packet-visible mapping commands are transactional:
 
 - Every command uses the mesh's single ready/valid control ingress. It accepts at most one instruction per clock;
@@ -99,6 +108,10 @@ The packet-visible mapping commands are transactional:
   The guard only blocks: subsequent ordinary mapper/brain writes and `CommitMapper` perform cleanup.
   Guards execute on the first pass and are skipped during mapper replay.
 - Brain policy and brain-state commands remain immediate and are intentionally outside the mapper transaction.
+- `StopWorld` backpressures all hardware insert ports and the root-pop input. `PrefillPifo data=0` uses the stopped old
+  root's per-vPIFO occupancy as `N` and autonomously inserts `N` priority-1 scheduler tokens through the second PIFO
+  push port. `UpdateRoot` stages a new physical root. Commit waits for prefill completion, publishes that root, and
+  releases traffic.
 
 The experiment tools use explicit compiler and simulator boundaries:
 
@@ -173,6 +186,39 @@ The checked `experiments/large-tree-rr-to-sp.json` regression uses a seven-node 
 the observable RR-before-commit, old-tree-drain-first, and SP-after-drain phases. A `verification` block makes these
 checks automatic and produces machine-readable and Markdown reports beside the experiment figures; see
 `REQUEST_SIMULATOR.md` for the commands and reference measurements.
+
+`experiments/rr-to-sp-stop-the-world-pop.json` runs the same RR-to-SP workload through the SP-barrier protocol for
+comparison with the front-rewrite mode, with an explicit per-flow FIFO layer and a separately reserved wrapper PE.
+
+### Evaluation image: hardware stop, prefill and copy
+
+The normal `PifoMesh` / `RequestSimulatorCli` build is the production image. It does not elaborate the stop gate,
+prefill controller, occupied-PIFO copy/inject ports, maintenance occupancy probes or hierarchical evaluation ranker.
+The separate top levels under `hw/spinal/rio/evaluation/` are `EvaluationPifoRTL`, `EvaluationPifoEngine`,
+`EvaluationPifoMesh`, and `rio.sim.EvaluationRequestSimulatorCli`. Both images use the same shared-FIFO mapper replay
+and drain guards. Maintenance programs must explicitly select `pifo_simulator.py --evaluation-hardware`;
+the experiment runners do this automatically. The default simulator rejects evaluation-only commands.
+The normal build also retains its existing priority encoder. The alternate encoder used by the evaluation
+branch is isolated under `hw/verilog/evaluation/`, so it cannot change the normal image or its Icarus behavior.
+
+With JDK 17 or newer and Verilator available, run from this folder:
+
+```sh
+sbt 'runMain rio.EvaluationBuildCheck'  # Elaboration-only production/evaluation isolation check.
+.venv/bin/python hw/python/pifo_survivor_all.py
+.venv/bin/python hw/python/pifo_multiedit_all.py
+.venv/bin/python hw/python/pifo_experiment_figures.py run --config experiments/rr-to-sp-stop-the-world-pop.json
+```
+
+Resources live in `experiments/designated-survivor/`, `experiments/multi-edit/` and the RR/SP JSON above; raw results
+and figures live in matching `experiment-results/` folders. Each flow traverses a hardware FIFO leaf. Sources keep
+running through stops; packet delay starts at generation and peak stop occupancy includes the source-side queue.
+Each figure folder contains its own `plot.py`, plot CSV and complete packet-level CSV; comparison figures also carry
+`commits.csv`. No shared styles or repository imports are needed to replot those folders elsewhere.
+
+Every compiled transition has guarded invalidation plus a cleanup commit. Materialized wrappers additionally use
+a third commit to reclaim the detached wrapper, after checking outstanding root visits and PE work. All three
+commits have their own start/acceptance/replay-ready markers; the old-tree drain is shared, not repeated work.
 
 `PifoMeshSimController.transaction` stages a configuration, commits it, and returns a thread that completes after
 the FIFO finishes replay (or consumes an empty commit). The older `config` helper is retained as an alias. Control-socket users must include a

@@ -34,7 +34,9 @@ case class RequestSimulatorOptions(
     waveEnabled: Boolean = true,
     verbose: Boolean = true,
     transactionProgramFile: Option[Path] = None,
-    transactionEventFile: Option[Path] = None
+    transactionEventFile: Option[Path] = None,
+    unadmittedFlows: Set[Int] = Set.empty,
+    verilator: Boolean = false
 )
 
 /** Full request-level PIFO mesh simulation CLI. */
@@ -50,6 +52,7 @@ object RequestSimulatorCli {
       |  --request-socket PATH        Request socket (default /tmp/rio-request.sock).
       |  --output FILE                Completion CSV (default request-results.csv).
       |  --packet-outcomes FILE       Per-packet push/pop/drop CSV.
+      |  --unadmitted-flows IDS       Control-only flows with no policy arm; log as unserved, not dropped.
       |  --no-output                  Do not write a completion CSV.
       |
       |Scheduler configuration:
@@ -79,6 +82,7 @@ object RequestSimulatorCli {
       |  --control-queue-depth N       Shared command/replay FIFO, power of two (default 256).
       |  --no-wave                     Disable FST waveform generation.
       |  --quiet                       Suppress request admission/completion logs.
+      |  --verilator                   Use Verilator (faster for large register trees).
       |  --help                        Show this help.
       |
       |Canonical trace header:
@@ -92,8 +96,10 @@ object RequestSimulatorCli {
       |For --live without an input trace, all usable global flow IDs are configured unless --flat-fifo-flows is given.
       |""".stripMargin
 
-  def main(args: Array[String]): Unit = {
-    try run(parse(args))
+  def main(args: Array[String]): Unit = run(args, evaluation = false)
+
+  def run(args: Array[String], evaluation: Boolean): Unit = {
+    try run(parse(args), evaluation)
     catch {
       case HelpRequested => println(Usage)
       case error: IllegalArgumentException =>
@@ -103,7 +109,7 @@ object RequestSimulatorCli {
     }
   }
 
-  private def run(requestedOptions: RequestSimulatorOptions): Unit = {
+  private def run(requestedOptions: RequestSimulatorOptions, evaluation: Boolean): Unit = {
     val transactionProgram = requestedOptions.transactionProgramFile.map(RequestTransactionProgram.load)
     require(
       transactionProgram.isEmpty || requestedOptions.controlFile.isEmpty,
@@ -176,25 +182,58 @@ object RequestSimulatorCli {
     )
 
     transactionProgram.foreach { program =>
+      val instructions = program.initialInstructions ++ program.transactions.flatMap(_.instructions)
+      instructions.foreach(i => SimUtils.requireSupportedCommand(i.command, i.data, evaluation))
       ReplayEpochCapacity.validate(hardwareConfig, program.initialInstructions.map(_.command))
       program.transactions.foreach(t => ReplayEpochCapacity.validate(hardwareConfig, t.instructions.map(_.command)))
     }
     options.controlFile.foreach { path =>
-      ReplayEpochCapacity.validate(hardwareConfig, RequestSimulationConfiguration.loadControlInstructions(path).map(_.command))
+      val instructions = RequestSimulationConfiguration.loadControlInstructions(path)
+      instructions.foreach(i => SimUtils.requireSupportedCommand(i.command, i.data, evaluation))
+      ReplayEpochCapacity.validate(hardwareConfig, instructions.map(_.command))
     }
     val hasInitialPackage = transactionProgram.exists(_.initialInstructions.nonEmpty)
     val useFlatFifo = options.flatFifo.getOrElse(options.controlFile.isEmpty && !hasInitialPackage)
     if (useFlatFifo)
       ReplayEpochCapacity.validate(hardwareConfig, Seq.fill(configuredFlows.size * 2)(ControlCommand.UpdateMapperPre))
 
-    val baseSimConfig = SimConfig.withIVerilog.addSimulatorFlag("-g2012")
+    val baseSimConfig = if (options.verilator) SimConfig.withVerilator.workspaceName("PifoMeshVerilator")
+      else SimConfig.withIVerilog.addSimulatorFlag("-g2012")
     val selectedSimConfig = if (options.waveEnabled) baseSimConfig.withFstWave else baseSimConfig
 
     selectedSimConfig
       .compile {
-        val mesh = new PifoMesh(hardwareConfig)
+        val mesh = if (evaluation) new EvaluationPifoMesh(hardwareConfig) else new PifoMesh(hardwareConfig)
         mesh.guard.emptyPifos.foreach(_.foreach(_.simPublic()))
+        mesh.routedControl.simPublic()
+        mesh.controlQueue.simPublic()
+        mesh.commitControl.simPublic()
+        if (evaluation) {
+        mesh.maintenance.activeRootValid.simPublic()
+        mesh.maintenance.activeRootEngine.simPublic()
+        mesh.maintenance.activeRootPifo.simPublic()
+        mesh.maintenance.pendingRootValid.simPublic()
+        mesh.maintenance.pendingRootEngine.simPublic()
+        mesh.maintenance.pendingRootPifo.simPublic()
+        mesh.maintenance.trafficStopped.simPublic()
+        mesh.maintenance.stoppedRootEngine.simPublic()
+        mesh.maintenance.stoppedRootPifo.simPublic()
+        mesh.maintenance.stopSnapshotValid.simPublic()
+        mesh.maintenance.stoppedTokenCount.simPublic()
+        mesh.maintenance.copyController.io.done.simPublic()
+        mesh.maintenance.copyController.io.copied.simPublic()
+        mesh.maintenance.copyController.source.simPublic()
+        mesh.maintenance.copyController.target.simPublic()
+        }
         mesh.pifoEngines.foreach { engine =>
+          engine.pifos.pifoCount.simPublic()
+          if (evaluation) {
+          engine.pifos.portCounts.foreach(_.simPublic())
+          engine.prefill.busy.simPublic()
+          engine.prefill.request.simPublic()
+          engine.pifos.io.push2.valid.simPublic()
+          engine.pifos.io.push2Ready.simPublic()
+          }
           engine.pifos.io.popResponse.valid.simPublic()
           engine.pifos.io.popResponse.port.simPublic()
           engine.pifos.io.popResponse.exist.simPublic()
@@ -242,6 +281,7 @@ object RequestSimulatorCli {
         if (options.warmupCycles > 0) dut.clockDomain.waitRisingEdge(options.warmupCycles)
 
         val scheduledActions = scheduledTransactions.map { transaction =>
+          val stopTheWorld = transaction.mode == "stop_the_world_pop"
           ScheduledRequestAction(
             scheduledCycle = transaction.scheduledCycle,
             name = transaction.name,
@@ -251,6 +291,7 @@ object RequestSimulatorCli {
             minimumStopCycles = transaction.minimumStopCycles,
             isCleanup = transaction.cleanupOf.nonEmpty,
             run = context => {
+              if (stopTheWorld) context.beginStopWorldPop()
               if (transaction.mode == "stop_the_world") {
                 context.beginStopTheWorld(transaction.minimumStopCycles)
               }
@@ -284,7 +325,8 @@ object RequestSimulatorCli {
           scheduledActions
         )
 
-        requestSimulator.submitAll(trace)
+        val (unadmitted, admittedTrace) = trace.partition(r => options.unadmittedFlows.contains(r.globalFlowId))
+        requestSimulator.submitAll(admittedTrace)
         if (options.liveRequests) {
           requestSimulator.startRequestSocket(options.requestSocketPath)
         } else {
@@ -294,7 +336,7 @@ object RequestSimulatorCli {
         val summary = requestSimulator.run()
         options.resultFile.foreach(path => RequestTrace.writeResults(path, summary.completions))
         options.packetOutcomeFile.foreach(path =>
-          RequestTrace.writePacketOutcomes(path, summary.completions, summary.drops)
+          RequestTrace.writePacketOutcomes(path, summary.completions, summary.drops, unadmitted)
         )
         val completedTransactions = scheduledTransactions.map { transaction =>
           val action = summary.completedActions
@@ -327,6 +369,26 @@ object RequestSimulatorCli {
           (transaction, action)
         }
         options.transactionEventFile.foreach(path => writeTransactionEvents(path, completedTransactions))
+        options.resultFile.foreach { path =>
+          val writer = Files.newBufferedWriter(path.resolveSibling("controller-instructions.csv"), StandardCharsets.UTF_8)
+          try {
+            writer.write("cycle,phase,command,engine_id,vpifo_id,flow_id,data,copied_entries\n")
+            summary.controlObservations.foreach { observation =>
+              writer.write(Seq(observation.cycle, observation.phase, observation.command, observation.engineId,
+                observation.vPifoId, observation.flowId, observation.data,
+                observation.copiedEntries.map(_.toString).getOrElse("")).mkString(",") + "\n")
+            }
+          } finally writer.close()
+          val maintenance = Files.newBufferedWriter(path.resolveSibling("maintenance-events.csv"), StandardCharsets.UTF_8)
+          try {
+            maintenance.write("cycle,event,engine_id,vpifo_id,tokens,buffered_packets,ingress_packets\n")
+            summary.maintenanceObservations.foreach { observation =>
+              maintenance.write(Seq(observation.cycle, observation.event, observation.engineId,
+                observation.vPifoId, observation.tokens, observation.bufferedPackets,
+                observation.ingressPackets).mkString(",") + "\n")
+            }
+          } finally maintenance.close()
+        }
         println(
           s"[RequestSim] complete cycles=${summary.elapsedCycles} submitted=${summary.submittedRequests} " +
             s"admitted=${summary.admittedRequests} completed=${summary.completedRequests} " +
@@ -362,6 +424,9 @@ object RequestSimulatorCli {
         case "--output"            => options = options.copy(resultFile = Some(Paths.get(nextValue("--output"))))
         case "--packet-outcomes" =>
           options = options.copy(packetOutcomeFile = Some(Paths.get(nextValue("--packet-outcomes"))))
+        case "--unadmitted-flows" =>
+          options = options.copy(unadmittedFlows = parseIntSet(nextValue("--unadmitted-flows")))
+        case "--verilator" => options = options.copy(verilator = true)
         case "--no-output"         => options = options.copy(resultFile = None)
         case "--flat-fifo"         => options = options.copy(flatFifo = Some(true))
         case "--no-flat-fifo"      => options = options.copy(flatFifo = Some(false))
@@ -413,7 +478,7 @@ object RequestSimulatorCli {
           "peak_buffer_occupancy_packets,minimum_stop_cycles,stop_duration_cycles," +
           "commit_applied_cycle,commit_cycles,bank_cleanup_cycles,install_finish_cycle,resume_cycle," +
           "cleanup_start_cycle,cleanup_commit_cycle,cleanup_applied_cycle,cleanup_finish_cycle," +
-          "cleanup_instruction_count,cleanup_commit_cycles,cleanup_bank_cleanup_cycles,cleanup_of"
+          "cleanup_instruction_count,cleanup_commit_cycles,cleanup_bank_cleanup_cycles,cleanup_of,prefilled_tokens"
       )
       writer.newLine()
       completed.foreach { case (transaction, action) =>
@@ -461,7 +526,8 @@ object RequestSimulatorCli {
             cleanup.map(_._1.instructions.size.toString).getOrElse(""),
             cleanup.map { case (_, a) => (a.commitAppliedCycle.get - a.startCycle).toString }.getOrElse(""),
             cleanup.map { case (_, a) => (a.finishCycle - a.commitAppliedCycle.get).toString }.getOrElse(""),
-            transaction.cleanupOf.getOrElse("")
+            transaction.cleanupOf.getOrElse(""),
+            action.prefilledTokens.map(_.toString).getOrElse("")
           ).map(csvCell).mkString(",")
         )
         writer.newLine()

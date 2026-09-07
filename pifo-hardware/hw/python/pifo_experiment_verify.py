@@ -1,4 +1,4 @@
-"""Verify the observable phases of a full-transitive RR-to-SP change."""
+"""Verify the observable phases of an RR-to-SP tree transition."""
 
 from __future__ import annotations
 
@@ -50,12 +50,15 @@ class TransactionTiming:
     finish_cycle: int
     drain_cycle: int
     instruction_count: int | None = None
+    prefilled_tokens: int | None = None
+    resume_cycle: int | None = None
     commit_applied_cycle: int | None = None
     commit_cycles: int | None = None
     bank_cleanup_cycles: int | None = None
     cleanup_instruction_count: int | None = None
     cleanup_commit_cycles: int | None = None
     cleanup_bank_cleanup_cycles: int | None = None
+    commits: tuple[Mapping[str, object], ...] = ()
 
     @property
     def publication_cycle(self) -> int:
@@ -143,17 +146,20 @@ def read_transaction_timing(path: Path) -> TransactionTiming:
             raise ValueError(
                 f"{path}: missing event fields: {', '.join(sorted(missing))}"
             )
-        rows = [row for row in reader if row.get("event") != "cleanup_commit"]
+        all_rows = list(reader)
+        rows = [row for row in all_rows if row.get("event") != "cleanup_commit"]
     if len(rows) != 1:
         raise ValueError(f"{path}: expected exactly one reconfiguration event")
     row = rows[0]
     if not row["drain_cycle"].strip():
-        raise ValueError(f"{path}: full-transitive event has no drain cycle")
+        raise ValueError(f"{path}: reconfiguration event has no drain cycle")
     timing = TransactionTiming(
         mode=row["mode"].strip(),
         start_cycle=_integer(row["start_cycle"]),
         commit_cycle=_integer(row["commit_cycle"]),
-        finish_cycle=_integer(row["finish_cycle"]),
+        # A materialized wrapper also has a reclamation commit after collapse.
+        finish_cycle=max(_integer(r.get("install_finish_cycle") or r["finish_cycle"])
+                         for r in all_rows),
         drain_cycle=_integer(row["drain_cycle"]),
         instruction_count=(
             _integer(row["instruction_count"])
@@ -167,9 +173,25 @@ def read_transaction_timing(path: Path) -> TransactionTiming:
                 "cleanup_instruction_count", "cleanup_commit_cycles", "cleanup_bank_cleanup_cycles",
             )
         },
+        prefilled_tokens=(
+            _integer(row["prefilled_tokens"])
+            if (row.get("prefilled_tokens") or "").strip()
+            else None
+        ),
+        resume_cycle=(
+            _integer(row["resume_cycle"])
+            if (row.get("resume_cycle") or "").strip()
+            else None
+        ),
+        commits=tuple({"name": r.get("name", ""), **{
+            field: _integer(r[field]) for field in (
+                "start_cycle", "commit_cycle", "commit_applied_cycle",
+                "install_finish_cycle", "instruction_count", "commit_cycles", "bank_cleanup_cycles",
+            )
+        }} for r in all_rows if r.get("install_finish_cycle")),
     )
-    if timing.mode != "full_transitive":
-        raise ValueError(f"{path}: phase verification requires full_transitive mode")
+    if timing.mode not in {"full_transitive", "stop_the_world_pop"}:
+        raise ValueError(f"{path}: unsupported phase-verification mode {timing.mode!r}")
     if not (
         0 <= timing.start_cycle <= timing.commit_cycle <= timing.finish_cycle
         and timing.commit_cycle <= timing.drain_cycle
@@ -177,6 +199,15 @@ def read_transaction_timing(path: Path) -> TransactionTiming:
         raise ValueError(f"{path}: invalid transaction timestamp order")
     if timing.instruction_count is not None and timing.instruction_count <= 0:
         raise ValueError(f"{path}: instruction count must be positive")
+    if timing.mode == "stop_the_world_pop":
+        if timing.prefilled_tokens is None or timing.resume_cycle is None:
+            raise ValueError(
+                f"{path}: stop_the_world_pop requires prefilled_tokens and resume_cycle"
+            )
+        if timing.prefilled_tokens < 0:
+            raise ValueError(f"{path}: prefilled token count must be non-negative")
+        if not timing.commit_cycle <= timing.resume_cycle <= timing.finish_cycle:
+            raise ValueError(f"{path}: resume cycle must be between commit and finish")
     return timing
 
 
@@ -247,6 +278,27 @@ def verify_rr_to_sp_phases(
         for packet in old_packets
         if packet.completed_cycle >= timing.publication_cycle
     ]
+    stop_mode_checks: list[VerificationCheck] = []
+    if timing.mode == "stop_the_world_pop":
+        assert timing.prefilled_tokens is not None
+        assert timing.resume_cycle is not None
+        stop_mode_checks = [
+            _equals(
+                "prefill_matches_old_backlog",
+                "hardware SP-barrier tokens equal old packets pending at commit",
+                len(old_backlog),
+                timing.prefilled_tokens,
+            ),
+            _equals(
+                "admissions_while_hardware_stopped",
+                "packets admitted after commit acceptance and before hardware resume",
+                0,
+                sum(
+                    timing.commit_cycle < packet.admitted_cycle < timing.resume_cycle
+                    for packet in packets
+                ),
+            ),
+        ]
 
     checks_by_fact: list[tuple[str, str, list[VerificationCheck]]] = [
         (
@@ -283,6 +335,7 @@ def verify_rr_to_sp_phases(
                     thresholds.minimum_drain_cycles,
                     timing.drain_cycles,
                 ),
+                *stop_mode_checks,
             ],
         ),
         (
@@ -395,6 +448,9 @@ def verify_rr_to_sp_phases(
             "cleanup_instruction_count": timing.cleanup_instruction_count,
             "cleanup_commit_cycles": timing.cleanup_commit_cycles,
             "cleanup_bank_cleanup_cycles": timing.cleanup_bank_cleanup_cycles,
+            "prefilled_tokens": timing.prefilled_tokens,
+            "resume_cycle": timing.resume_cycle,
+            "commits": list(timing.commits),
         },
         "packet_counts": {
             "total": len(packets),
@@ -511,7 +567,18 @@ def _report_markdown(report: Mapping[str, object]) -> str:
         ),
         "",
     ]
-    if event.get("commit_cycles") is not None:
+    if event.get("commits"):
+        lines.extend((
+            "| Commit | Start | Accepted | Published | Ready for next commit | Instructions | Cycles to publish | Bank replay cycles |",
+            "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
+        ))
+        for index, commit in enumerate(event["commits"], 1):
+            lines.append(
+                f"| C{index}: {commit['name']} | {commit['start_cycle']} | {commit['commit_cycle']} | "
+                f"{commit['commit_applied_cycle']} | {commit['install_finish_cycle']} | "
+                f"{commit['instruction_count']} | {commit['commit_cycles']} | {commit['bank_cleanup_cycles']} |"
+            )
+    elif event.get("commit_cycles") is not None:
         lines.extend((
             "",
             f"Install commit: {event['instruction_count']} instructions / {event['commit_cycles']} cycles to publication. "

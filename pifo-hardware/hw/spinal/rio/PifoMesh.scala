@@ -29,7 +29,10 @@ object ControlCommand extends SpinalEnum {
   val UpdateMapperPre, UpdateMapperPost, UpdateMapperNonExist, CommitMapper,
   // brain operators
   UpdateBrainEngine, UpdateBrainState, UpdateBrainFlowState,
-  GuardDrain = newElement()
+  GuardDrain,
+  // Evaluation-only opcodes. Production has no decoder/datapath for these.
+  StopWorld, PrefillPifo, UpdateRoot, CopyPifoEngine,
+  UpdateRankGroup, UpdateRankQuantum, WaitPifoEmpty, ClearPifoEngine = newElement()
 }
 
 case class ControlMessage(config: EngineConfig) extends Bundle {
@@ -40,7 +43,8 @@ case class ControlMessage(config: EngineConfig) extends Bundle {
   val data = UInt(config.flowStateWidth bits)
 }
 
-case class PifoMesh(config: EngineConfig) extends Component {
+class PifoMesh private[rio](config: EngineConfig, val evaluation: Boolean) extends Component {
+  def this(config: EngineConfig) = this(config, false)
   val io = new Bundle {
     val dataRequest = slave(Stream(PifoMessage(config)))
     val pop = master(Stream(PifoMessage(config)))
@@ -52,11 +56,15 @@ case class PifoMesh(config: EngineConfig) extends Component {
     val replayBusy = out Bool()
     // Free non-commit slots in the shared command FIFO; excludes commit reserve.
     val replayLogAvailable = out UInt(log2Up(config.commitQueueLength + 1) bits)
+    val rootEmpty = evaluation generate (out Bool())
   }
 
   // all datapath
   val xbar = MessageCrossBar(config)
-  val pifoEngines = Seq.fill(config.numEngines)(PifoEngine(config))
+  val pifoEngines = Seq.fill(config.numEngines)(
+    if (evaluation) new EvaluationPifoEngine(config) else PifoEngine(config)
+  )
+  val maintenance = evaluation generate new EvaluationMeshControl(this, config)
 
   (pifoEngines zip xbar.io.outputs.tail).foreach { case (engine, out) =>
     engine.io.dequeueRequest << out
@@ -65,11 +73,11 @@ case class PifoMesh(config: EngineConfig) extends Component {
     engine.io.dequeueResponse >> in
   }
 
-  io.dataRequest >> xbar.io.inputs(0)
+  if (!evaluation) io.dataRequest >> xbar.io.inputs(0)
   xbar.io.outputs(0) >> io.pop
 
   // insert path
-  (io.insert zip pifoEngines).foreach { case (in, engine) =>
+  if (!evaluation) (io.insert zip pifoEngines).foreach { case (in, engine) =>
     engine.io.enqueRequest << in
   }
 
@@ -83,7 +91,8 @@ case class PifoMesh(config: EngineConfig) extends Component {
   val controlQueue = replayControl.io.pop
   io.replayBusy := replayControl.io.replaying
   io.replayLogAvailable := replayControl.io.available
-  val mapperCommitReady = pifoEngines.map(_.io.commitReady).reduce(_ && _)
+  val mapperCommitReady = pifoEngines.map(_.io.commitReady).reduce(_ && _) &&
+    (if (evaluation) maintenance.commitReady else True)
   io.commitReady := !replayControl.io.replaying && mapperCommitReady
 
   val guard = DrainGuard(config)
@@ -97,7 +106,11 @@ case class PifoMesh(config: EngineConfig) extends Component {
   // Gate before the fork: no later command (including a commit or immediate
   // brain write) may pass a blocked guard. Guards are consumed here, not at a PE.
   val guardedHead = controlQueue.haltWhen(isGuard && !guard.io.satisfied).throwWhen(isGuard)
-  val (routedHead, commitHead) = StreamFork2(guardedHead)
+  val controlledHead = if (evaluation) {
+    maintenance.control << guardedHead
+    maintenance.forwarded
+  } else guardedHead
+  val (routedHead, commitHead) = StreamFork2(controlledHead)
 
   val withoutCommit = routedHead.throwWhen(
     routedHead.payload.command === ControlCommand.CommitMapper
@@ -106,6 +119,8 @@ case class PifoMesh(config: EngineConfig) extends Component {
   val commitControl = commitHead
     .takeWhen(commitHead.payload.command === ControlCommand.CommitMapper)
     .haltWhen(!mapperCommitReady)
+  if (evaluation) maintenance.commit := commitControl.fire
+  val routedControl = if (evaluation) maintenance.routedControl else withoutCommit
 
   val translatedEngineId = (withoutCommit.payload.engineId - 1).resized
   val controlCommand = StreamDemux(withoutCommit, translatedEngineId, config.numEngines)
@@ -120,4 +135,8 @@ case class PifoMesh(config: EngineConfig) extends Component {
   (controlCommand zip commits zip pifoEngines).foreach { case ((cmdStream, commitStream), engine) =>
     engine.io.control << StreamArbiterFactory.lowerFirst.onArgs(cmdStream, commitStream)
   }
+}
+
+object PifoMesh {
+  def apply(config: EngineConfig): PifoMesh = new PifoMesh(config)
 }

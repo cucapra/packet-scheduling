@@ -107,7 +107,8 @@ def event_legend(axis, panel):
     resumes = {label: cycle + panel["start"] for cycle, _, _, label in panel["markers"]
                if label == "traffic resumed"}
     data = [(handle, f"{label} = {resumes[label]}" if label in resumes else label)
-            for handle, label in zip(handles, labels) if not label.startswith(("C1", "C2"))]
+            for handle, label in zip(handles, labels)
+            if not label.startswith(tuple(title.split(":")[0] for _, _, _, title in panel["spans"]))]
     if data:
         data_legend = axis.legend(*zip(*data), loc="upper right", fontsize=8)
         axis.add_artist(data_legend)

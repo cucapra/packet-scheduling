@@ -1,0 +1,380 @@
+{
+  "schema": "pifo-traffic-v1",
+  "seed": 20260907,
+  "patterns": [
+    {
+      "name": "Zoom-before",
+      "flows": [
+        1
+      ],
+      "packets_per_flow": 100,
+      "start_cycle": 0,
+      "packet_rate": {
+        "distribution": "constant",
+        "unit": "packets_per_cycle_per_flow",
+        "value": 0.049999999999999996
+      },
+      "packet_size_bytes": {
+        "distribution": "constant",
+        "value": 48
+      }
+    },
+    {
+      "name": "Zoom-after",
+      "flows": [
+        1
+      ],
+      "packets_per_flow": 1280,
+      "start_cycle": 2000,
+      "packet_rate": {
+        "distribution": "constant",
+        "unit": "packets_per_cycle_per_flow",
+        "value": 0.04
+      },
+      "packet_size_bytes": {
+        "distribution": "constant",
+        "value": 48
+      }
+    },
+    {
+      "name": "Voip-before",
+      "flows": [
+        2
+      ],
+      "packets_per_flow": 67,
+      "start_cycle": 0,
+      "packet_rate": {
+        "distribution": "constant",
+        "unit": "packets_per_cycle_per_flow",
+        "value": 0.03333333333333333
+      },
+      "packet_size_bytes": {
+        "distribution": "constant",
+        "value": 48
+      }
+    },
+    {
+      "name": "Voip-after",
+      "flows": [
+        2
+      ],
+      "packets_per_flow": 854,
+      "start_cycle": 2000,
+      "packet_rate": {
+        "distribution": "constant",
+        "unit": "packets_per_cycle_per_flow",
+        "value": 0.02666666666666667
+      },
+      "packet_size_bytes": {
+        "distribution": "constant",
+        "value": 48
+      }
+    },
+    {
+      "name": "Legacy1-before",
+      "flows": [
+        3
+      ],
+      "packets_per_flow": 167,
+      "start_cycle": 0,
+      "packet_rate": {
+        "distribution": "constant",
+        "unit": "packets_per_cycle_per_flow",
+        "value": 0.08333333333333333
+      },
+      "packet_size_bytes": {
+        "distribution": "constant",
+        "value": 48
+      }
+    },
+    {
+      "name": "Legacy2-before",
+      "flows": [
+        4
+      ],
+      "packets_per_flow": 134,
+      "start_cycle": 0,
+      "packet_rate": {
+        "distribution": "constant",
+        "unit": "packets_per_cycle_per_flow",
+        "value": 0.06666666666666667
+      },
+      "packet_size_bytes": {
+        "distribution": "constant",
+        "value": 48
+      }
+    },
+    {
+      "name": "Gmail-before",
+      "flows": [
+        5
+      ],
+      "packets_per_flow": 80,
+      "start_cycle": 0,
+      "packet_rate": {
+        "distribution": "constant",
+        "unit": "packets_per_cycle_per_flow",
+        "value": 0.04
+      },
+      "packet_size_bytes": {
+        "distribution": "constant",
+        "value": 48
+      }
+    },
+    {
+      "name": "Gmail-after",
+      "flows": [
+        5
+      ],
+      "packets_per_flow": 960,
+      "start_cycle": 2000,
+      "packet_rate": {
+        "distribution": "constant",
+        "unit": "packets_per_cycle_per_flow",
+        "value": 0.03
+      },
+      "packet_size_bytes": {
+        "distribution": "constant",
+        "value": 48
+      }
+    },
+    {
+      "name": "Ssh-before",
+      "flows": [
+        6
+      ],
+      "packets_per_flow": 54,
+      "start_cycle": 0,
+      "packet_rate": {
+        "distribution": "constant",
+        "unit": "packets_per_cycle_per_flow",
+        "value": 0.02666666666666667
+      },
+      "packet_size_bytes": {
+        "distribution": "constant",
+        "value": 48
+      }
+    },
+    {
+      "name": "Ssh-after",
+      "flows": [
+        6
+      ],
+      "packets_per_flow": 640,
+      "start_cycle": 2000,
+      "packet_rate": {
+        "distribution": "constant",
+        "unit": "packets_per_cycle_per_flow",
+        "value": 0.02
+      },
+      "packet_size_bytes": {
+        "distribution": "constant",
+        "value": 48
+      }
+    },
+    {
+      "name": "Http-before",
+      "flows": [
+        7
+      ],
+      "packets_per_flow": 67,
+      "start_cycle": 0,
+      "packet_rate": {
+        "distribution": "constant",
+        "unit": "packets_per_cycle_per_flow",
+        "value": 0.03333333333333333
+      },
+      "packet_size_bytes": {
+        "distribution": "constant",
+        "value": 48
+      }
+    },
+    {
+      "name": "Http-after",
+      "flows": [
+        7
+      ],
+      "packets_per_flow": 854,
+      "start_cycle": 2000,
+      "packet_rate": {
+        "distribution": "constant",
+        "unit": "packets_per_cycle_per_flow",
+        "value": 0.02666666666666667
+      },
+      "packet_size_bytes": {
+        "distribution": "constant",
+        "value": 48
+      }
+    },
+    {
+      "name": "Https-before",
+      "flows": [
+        8
+      ],
+      "packets_per_flow": 67,
+      "start_cycle": 0,
+      "packet_rate": {
+        "distribution": "constant",
+        "unit": "packets_per_cycle_per_flow",
+        "value": 0.03333333333333333
+      },
+      "packet_size_bytes": {
+        "distribution": "constant",
+        "value": 48
+      }
+    },
+    {
+      "name": "Https-after",
+      "flows": [
+        8
+      ],
+      "packets_per_flow": 747,
+      "start_cycle": 2000,
+      "packet_rate": {
+        "distribution": "constant",
+        "unit": "packets_per_cycle_per_flow",
+        "value": 0.023333333333333334
+      },
+      "packet_size_bytes": {
+        "distribution": "constant",
+        "value": 48
+      }
+    },
+    {
+      "name": "Backup-before",
+      "flows": [
+        9
+      ],
+      "packets_per_flow": 120,
+      "start_cycle": 0,
+      "packet_rate": {
+        "distribution": "constant",
+        "unit": "packets_per_cycle_per_flow",
+        "value": 0.06
+      },
+      "packet_size_bytes": {
+        "distribution": "constant",
+        "value": 48
+      }
+    },
+    {
+      "name": "Backup-after",
+      "flows": [
+        9
+      ],
+      "packets_per_flow": 960,
+      "start_cycle": 2000,
+      "packet_rate": {
+        "distribution": "constant",
+        "unit": "packets_per_cycle_per_flow",
+        "value": 0.03
+      },
+      "packet_size_bytes": {
+        "distribution": "constant",
+        "value": 48
+      }
+    },
+    {
+      "name": "Sync-before",
+      "flows": [
+        10
+      ],
+      "packets_per_flow": 80,
+      "start_cycle": 0,
+      "packet_rate": {
+        "distribution": "constant",
+        "unit": "packets_per_cycle_per_flow",
+        "value": 0.04
+      },
+      "packet_size_bytes": {
+        "distribution": "constant",
+        "value": 48
+      }
+    },
+    {
+      "name": "Sync-after",
+      "flows": [
+        10
+      ],
+      "packets_per_flow": 640,
+      "start_cycle": 2000,
+      "packet_rate": {
+        "distribution": "constant",
+        "unit": "packets_per_cycle_per_flow",
+        "value": 0.02
+      },
+      "packet_size_bytes": {
+        "distribution": "constant",
+        "value": 48
+      }
+    },
+    {
+      "name": "Video-after",
+      "flows": [
+        11
+      ],
+      "packets_per_flow": 640,
+      "start_cycle": 2000,
+      "packet_rate": {
+        "distribution": "constant",
+        "unit": "packets_per_cycle_per_flow",
+        "value": 0.02
+      },
+      "packet_size_bytes": {
+        "distribution": "constant",
+        "value": 48
+      }
+    },
+    {
+      "name": "Chat-after",
+      "flows": [
+        12
+      ],
+      "packets_per_flow": 427,
+      "start_cycle": 2000,
+      "packet_rate": {
+        "distribution": "constant",
+        "unit": "packets_per_cycle_per_flow",
+        "value": 0.013333333333333334
+      },
+      "packet_size_bytes": {
+        "distribution": "constant",
+        "value": 48
+      }
+    },
+    {
+      "name": "Game-after",
+      "flows": [
+        13
+      ],
+      "packets_per_flow": 640,
+      "start_cycle": 2000,
+      "packet_rate": {
+        "distribution": "constant",
+        "unit": "packets_per_cycle_per_flow",
+        "value": 0.02
+      },
+      "packet_size_bytes": {
+        "distribution": "constant",
+        "value": 48
+      }
+    },
+    {
+      "name": "Vr-after",
+      "flows": [
+        14
+      ],
+      "packets_per_flow": 427,
+      "start_cycle": 2000,
+      "packet_rate": {
+        "distribution": "constant",
+        "unit": "packets_per_cycle_per_flow",
+        "value": 0.013333333333333334
+      },
+      "packet_size_bytes": {
+        "distribution": "constant",
+        "value": 48
+      }
+    }
+  ]
+}

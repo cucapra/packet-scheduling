@@ -1,0 +1,93 @@
+{
+  "mechanism": "link",
+  "t1": 2000,
+  "topology": "per-flow-hardware-fifo-v1",
+  "experiment_rules": "shared-replay-guarded-cleanup-v1",
+  "compiled_flow_paths": {
+    "p1": {
+      "1": [
+        [
+          1,
+          1,
+          "SP"
+        ],
+        [
+          3,
+          1,
+          "FIFO"
+        ]
+      ],
+      "2": [
+        [
+          1,
+          1,
+          "SP"
+        ],
+        [
+          3,
+          2,
+          "FIFO"
+        ]
+      ]
+    },
+    "p2b": {
+      "1": [
+        [
+          1,
+          2,
+          "SP"
+        ],
+        [
+          3,
+          3,
+          "FIFO"
+        ]
+      ],
+      "2": [
+        [
+          1,
+          2,
+          "SP"
+        ],
+        [
+          2,
+          1,
+          "RR"
+        ],
+        [
+          3,
+          4,
+          "FIFO"
+        ]
+      ],
+      "3": [
+        [
+          1,
+          2,
+          "SP"
+        ],
+        [
+          2,
+          1,
+          "RR"
+        ],
+        [
+          3,
+          5,
+          "FIFO"
+        ]
+      ]
+    }
+  },
+  "creation_instruction_categories": {
+    "rest": 25,
+    "designate": 1
+  },
+  "instruction_counts": {
+    "replace": 26,
+    "replace-cleanup": 16
+  },
+  "reserved_pes": 0,
+  "hardware_tokens_per_pe": 1024,
+  "wrapper": null
+}

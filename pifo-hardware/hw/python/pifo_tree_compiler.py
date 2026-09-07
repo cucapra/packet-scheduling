@@ -113,7 +113,10 @@ def load_tree_move_program(path: Path) -> TreeMoveProgram:
 
 def compile_tree_move(program: TreeMoveProgram) -> TransactionProgram:
     plan = build_transaction_plan(
-        program.old_tree, program.move, program.hardware.num_vpifos
+        program.old_tree,
+        program.move,
+        program.hardware.num_vpifos,
+        program.hardware.num_engines,
     )
     drain_root = (
         (plan.drain_engine_id, plan.drain_vpifo_id)
@@ -148,7 +151,12 @@ def compile_tree_move(program: TreeMoveProgram) -> TransactionProgram:
                 cleanup_of=plan.name,
                 commands=plan.cleanup_commands,
             ),
-        ),
+        ) + ((TimedTransaction(
+            at_cycle=plan.cycle,
+            name=f"{plan.name}-reclaim",
+            cleanup_of=f"{plan.name}-cleanup",
+            commands=plan.reclaim_commands,
+        ),) if plan.reclaim_commands else ()),
     )
 
 

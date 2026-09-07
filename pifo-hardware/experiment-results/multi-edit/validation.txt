@@ -1,0 +1,37 @@
+Multi-edit rerun after merging into pifo-hardware (2026-09-07)
+
+PASS: control, rio, prefill, relocate and reset replay the same 10005-packet
+      source trace. Each transitioning run completes all 10005 packets with
+      zero drops and zero per-flow reorderings. Control serves 7871 packets;
+      its 2134 arrivals without a p1 arm remain explicitly unadmitted, not
+      dropped. Per-packet delay is measured from source generation.
+PASS: t1 backlogs match across all runs, with no packets waiting at ingress.
+PASS: shared 256-entry replay FIFO; unbanked setup is hoisted before retained
+      mapper writes. All compiled retained epochs fit the default capacity.
+PASS: normal GuardDrain + invalidations + cleanup commits. Every retired
+      leaf FIFO is guarded, not only its parent. Materialized wrappers have
+      separate install, collapse and reclamation commits.
+PASS: relocation transfers 325 entries on each of three PEs: 975 tokens in
+      14 occupied virtual PIFOs, representing 325 buffered packets. Source
+      occupancy and completed copies are separately logged and cross-checked.
+PASS: four PNG/SVG figures regenerated with full packets.csv, commits.csv,
+      plotted data.csv and standalone plot.py in every figure folder.
+PASS: each commit records start, acceptance, publication, replay readiness,
+      instruction count and publication cycles. Timeline panels include all
+      four requested markers and separate commit-background colors.
+
+Claims NOT supported by these measurements:
+- Work/web have no backlog: 13 packets per tenant are measured at t1.
+- Untouched-path delays are indistinguishable from control: all four witness
+  flows exceed the stated paired p95 absolute delay difference of 10 cycles.
+- New tenants receive their first service within one or two request cycles.
+- The saturated 6/17 realtime share is measurable after its queue drains:
+  only 0.20 is offered, so the report measures settling to that offered load.
+
+The 512-cycle teardown and 513-cycle install reset budgets are model costs,
+reported separately from hardware instruction counts. The source-side queue
+is unbounded but measured. Frozen-subtree copy is supported; full live-survivor
+ascent and brain-state migration are not claimed.
+
+No standalone RTL regression suite was run. See ../evaluation-merge-rerun.md
+for production/evaluation isolation, Python tests and known-good comparison.

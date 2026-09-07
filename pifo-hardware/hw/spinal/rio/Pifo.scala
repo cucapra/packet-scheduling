@@ -241,7 +241,7 @@ class PifoRTL(config: PifoConfig) extends Component {
 }
 
 // SpinalHDL blackbox wrapper for priority_encode_log.v
-case class PriorityEncoderLogBlackbox(width: Int) extends BlackBox {
+case class PriorityEncoderLogBlackbox(width: Int, evaluation: Boolean = false) extends BlackBox {
   assert(isPow2(width), "Width must be a power of 2")
   val logWidth = log2Up(width)
 
@@ -262,9 +262,9 @@ case class PriorityEncoderLogBlackbox(width: Int) extends BlackBox {
   mapCurrentClockDomain(io.clk, io.rst)
   
   // Set the Verilog module name
-  setDefinitionName("priority_encode_log")
+  setDefinitionName(if (evaluation) "priority_encode_log_evaluation" else "priority_encode_log")
   
   // Add the Verilog file path
-  addRTLPath("hw/verilog/priority_encode_log.v")
+  addRTLPath(if (evaluation) "hw/verilog/evaluation/priority_encode_log_evaluation.v"
+    else "hw/verilog/priority_encode_log.v")
 }
-

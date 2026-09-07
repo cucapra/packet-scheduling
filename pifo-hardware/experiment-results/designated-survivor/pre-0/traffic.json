@@ -1,0 +1,57 @@
+{
+  "schema": "pifo-traffic-v1",
+  "seed": 20260907,
+  "patterns": [
+    {
+      "name": "zoom-after",
+      "flows": [
+        1
+      ],
+      "packets_per_flow": 1067,
+      "start_cycle": 0,
+      "packet_rate": {
+        "distribution": "constant",
+        "unit": "packets_per_cycle_per_flow",
+        "value": 0.13333333333333333
+      },
+      "packet_size_bytes": {
+        "distribution": "constant",
+        "value": 48
+      }
+    },
+    {
+      "name": "gmail-after",
+      "flows": [
+        2
+      ],
+      "packets_per_flow": 534,
+      "start_cycle": 0,
+      "packet_rate": {
+        "distribution": "constant",
+        "unit": "packets_per_cycle_per_flow",
+        "value": 0.06666666666666667
+      },
+      "packet_size_bytes": {
+        "distribution": "constant",
+        "value": 48
+      }
+    },
+    {
+      "name": "spotify-after",
+      "flows": [
+        3
+      ],
+      "packets_per_flow": 534,
+      "start_cycle": 0,
+      "packet_rate": {
+        "distribution": "constant",
+        "unit": "packets_per_cycle_per_flow",
+        "value": 0.06666666666666667
+      },
+      "packet_size_bytes": {
+        "distribution": "constant",
+        "value": 48
+      }
+    }
+  ]
+}

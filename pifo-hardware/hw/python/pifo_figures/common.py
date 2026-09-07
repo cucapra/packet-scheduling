@@ -166,6 +166,15 @@ def read_run_packet_outcomes(results: Path, outcomes: Path | None = None) -> tup
 
 
 @dataclass(frozen=True)
+class AdditionalCommit:
+    start: int
+    accepted: int
+    published: int
+    ready: int
+    instructions: int
+
+
+@dataclass(frozen=True)
 class PolicyEvent:
     before: str
     after: str
@@ -194,6 +203,8 @@ class PolicyEvent:
     cleanup_instruction_count: int | None = None
     cleanup_commit_cycles: int | None = None
     cleanup_bank_cleanup_cycles: int | None = None
+    prefilled_tokens: int | None = None
+    additional_commits: tuple[AdditionalCommit, ...] = ()
 
     @property
     def traffic_resume_cycle(self) -> int:
@@ -233,6 +244,8 @@ def commit_windows(event: PolicyEvent) -> list[tuple[str, int, int, int]]:
     cleanup_start = getattr(event, "cleanup_start_cycle", None)
     if cleanup_start is not None:
         windows.append(("C2", cleanup_start, event.cleanup_commit_cycle, event.cleanup_finish_cycle))
+    windows.extend((f"C{index}", c.start, c.accepted, c.ready)
+                   for index, c in enumerate(getattr(event, "additional_commits", ()), 3))
     return windows
 
 
@@ -257,7 +270,7 @@ def timeline_markers(event: PolicyEvent) -> list[tuple[int, str, str, str]]:
 
 
 def timeline_spans(event: PolicyEvent) -> list[tuple[int, int, str, str]]:
-    return [(start - event.start_cycle, ready - event.start_cycle, COMMIT_BACKGROUNDS[index],
+    return [(start - event.start_cycle, ready - event.start_cycle, (COMMIT_BACKGROUNDS + ("#dcfce7",))[index % 3],
              f"{name}: {'install' if index == 0 else 'cleanup'} commit")
             for index, (name, start, _, ready) in enumerate(commit_windows(event))]
 
@@ -286,7 +299,8 @@ def timeline_legend(axis, event: PolicyEvent) -> None:
         entries.extend((indexed[label], f"{label} = {cycle + event.start_cycle}")
                        for cycle, _, _, label in timeline_markers(event) if label.startswith(name + " "))
     data = [(handle, f"traffic resumed = {event.resume_cycle}" if label == "traffic resumed" else label)
-            for handle, label in zip(handles, labels) if not label.startswith(("C1", "C2"))]
+            for handle, label in zip(handles, labels)
+            if not label.startswith(tuple(name for name, *_ in commit_windows(event)))]
     if data:
         data_legend = axis.legend(*zip(*data), loc="upper right", fontsize=8)
         axis.add_artist(data_legend)
@@ -315,6 +329,9 @@ def commit_accounting(event: PolicyEvent) -> str:
         if event.cleanup_bank_cleanup_cycles is not None:
             banks += f", cleanup={event.cleanup_bank_cleanup_cycles}"
         parts.append(banks + " cycles")
+    for index, c in enumerate(event.additional_commits, 3):
+        parts.append(f"C{index} cleanup={c.instructions} inst / {c.published - c.start} cycles to publication; "
+                     f"bank replay={c.ready - c.published} cycles")
     return "; ".join(parts)
 
 
@@ -333,7 +350,7 @@ def timing_text(event: PolicyEvent, unicode_limit: bool = True) -> str:
     )
     text += f"\n{drain_label(event)}={event.drain_cycle if event.drain_cycle is not None else '-'}"
     if len(commit_windows(event)) > 1:
-        text += " (shared by C1/C2)"
+        text += " (shared by " + "/".join(name for name, *_ in commit_windows(event)) + ")"
     if event.commit_applied_cycle is not None:
         text += f"\npublished: install={event.commit_applied_cycle}"
     if event.cleanup_applied_cycle is not None:
@@ -515,9 +532,10 @@ def read_policy_event(path: Path) -> PolicyEvent:
                 f"{path}: missing event timing fields: "
                 + ", ".join(sorted(EVENT_TIMING_FIELDS))
             )
+        all_rows = list(reader)
         rows = [
             row
-            for row in reader
+            for row in all_rows
             if row.get("event")
             in {"policy_switch", "reconfiguration", "transaction_package"}
         ]
@@ -585,8 +603,14 @@ def read_policy_event(path: Path) -> PolicyEvent:
                 "install_finish_cycle", "resume_cycle", "cleanup_start_cycle",
                 "cleanup_commit_cycle", "cleanup_applied_cycle", "cleanup_finish_cycle",
                 "cleanup_instruction_count", "cleanup_commit_cycles", "cleanup_bank_cleanup_cycles",
+                "prefilled_tokens",
             )
         },
+        additional_commits=tuple(AdditionalCommit(
+            parse_int(e["start_cycle"]), parse_int(e["commit_cycle"]),
+            parse_int(e["commit_applied_cycle"]), parse_int(e["install_finish_cycle"]),
+            parse_int(e["instruction_count"])) for e in all_rows
+            if e.get("event") == "cleanup_commit" and e.get("cleanup_of") != row.get("name")),
     )
     _validate_event(path, row, event)
     return event

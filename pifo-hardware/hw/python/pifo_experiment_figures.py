@@ -75,6 +75,7 @@ def run_experiment(args: argparse.Namespace) -> None:
         config.simulation.max_cycles,
         "--sbt",
         args.sbt,
+        *(("--evaluation-hardware", "--verilator") if config.reconfiguration.mode == "stop_the_world_pop" else ()),
     )
 
     labels = _flow_labels(config.plot.flow_labels or {})
@@ -161,6 +162,7 @@ def validate_experiment_config(args: argparse.Namespace) -> None:
         config.initial_tree,
         config.reconfiguration,
         config.simulation.num_vpifos,
+        config.simulation.num_engines,
     )
     cycles = [request.cycle for request in requests]
     sizes = [request.size_bytes for request in requests]

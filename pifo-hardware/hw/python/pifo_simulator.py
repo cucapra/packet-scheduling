@@ -33,8 +33,6 @@ def run_simulator(args: argparse.Namespace) -> tuple[Path, Path, Path, Path]:
     traffic = load_traffic_program(args.traffic)
     if transactions.initial is None:
         raise ValueError("transaction timeline must contain one at=init package")
-    if not transactions.transactions:
-        raise ValueError("transaction timeline must contain at least one timed package")
     requests = generate_traffic(traffic)
     max_flow_id = transactions.hardware.num_vpifos - 1
     invalid_flows = sorted(
@@ -80,8 +78,6 @@ def run_simulator(args: argparse.Namespace) -> tuple[Path, Path, Path, Path]:
         str(results_path),
         "--packet-outcomes",
         str(outcomes_path),
-        "--transaction-event-output",
-        str(events_path),
         "--queue-depth",
         str(args.queue_depth),
         "--control-queue-depth",
@@ -95,11 +91,18 @@ def run_simulator(args: argparse.Namespace) -> tuple[Path, Path, Path, Path]:
         "--no-control-socket",
         "--no-flat-fifo",
     ]
+    if transactions.transactions:
+        simulator_args += ["--transaction-event-output", str(events_path)]
+    if getattr(args, "unadmitted_flows", None):
+        simulator_args += ["--unadmitted-flows", args.unadmitted_flows]
     if not args.wave:
         simulator_args.append("--no-wave")
     if not args.verbose:
         simulator_args.append("--quiet")
-    sbt_command = "runMain rio.sim.RequestSimulatorCli " + " ".join(
+    if getattr(args, "verilator", False):
+        simulator_args.append("--verilator")
+    top_level = "EvaluationRequestSimulatorCli" if getattr(args, "evaluation_hardware", False) else "RequestSimulatorCli"
+    sbt_command = f"runMain rio.sim.{top_level} " + " ".join(
         _quote_sbt(value) for value in simulator_args
     )
     print(
@@ -135,6 +138,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--sbt", default="sbt")
     parser.add_argument("--wave", action="store_true")
     parser.add_argument("--verbose", action="store_true")
+    parser.add_argument("--verilator", action="store_true")
+    parser.add_argument("--evaluation-hardware", action="store_true",
+                        help="Build the separate evaluation top level with hardware stop/prefill/copy support.")
+    parser.add_argument("--unadmitted-flows", help="Control-only flows without an arm; log unserved, not dropped.")
     return parser
 
 

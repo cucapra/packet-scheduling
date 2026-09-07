@@ -1,0 +1,8 @@
+run,commit,name,start_cycle,commit_cycle,ready_for_next_commit,old_tree_drained_cycle,drain_label,commit_applied_cycle,instruction_count,commit_cycles,bank_replay_cycles
+rio,C1,request,2001,2060,2093,4111,old-tree-drained,2063,51,62,30
+rio,C2,retire,2093,2114,4143,4111,old-tree-drained,4135,20,2042,8
+prefill,C1,request,2001,2215,2704,3557,old-tree-drained,2575,201,574,129
+prefill,C2,collapse,2704,2797,3695,3557,old-tree-drained,3652,92,948,43
+prefill,C3,reclaim,3695,3724,3739,3557,old-tree-drained,3726,28,31,13
+reset,C1,request,2001,2173,2260,2019,old-tree captured (not drained),2176,152,175,84
+reset,C2,retire,3044,3064,6433,2019,old-tree captured (not drained),6425,20,3381,8

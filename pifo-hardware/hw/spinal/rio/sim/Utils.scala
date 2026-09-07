@@ -7,6 +7,15 @@ import spinal.sim._
 import rio._
 
 object SimUtils {
+  private val productionCommands = Set(ControlCommand.UpdateMapperPre, ControlCommand.UpdateMapperPost,
+    ControlCommand.UpdateMapperNonExist, ControlCommand.CommitMapper, ControlCommand.GuardDrain,
+    ControlCommand.UpdateBrainEngine, ControlCommand.UpdateBrainState, ControlCommand.UpdateBrainFlowState)
+
+  def requireSupportedCommand(command: ControlCommand.E, data: Int, evaluation: Boolean): Unit =
+    require(evaluation || (productionCommands(command) &&
+      !(command == ControlCommand.UpdateBrainEngine && data == 4)),
+      "maintenance/weighted evaluation commands require EvaluationRequestSimulatorCli (--evaluation-hardware)")
+
   def RioSimConfig = SimConfig.withIVerilog
     .addSimulatorFlag("-g2012")
     .withFstWave
@@ -35,16 +44,27 @@ case class PifoMeshSimController(
     "GuardDrain" -> ControlCommand.GuardDrain,
     "UpdateBrainEngine" -> ControlCommand.UpdateBrainEngine,
     "UpdateBrainState" -> ControlCommand.UpdateBrainState,
-    "UpdateBrainFlowState" -> ControlCommand.UpdateBrainFlowState
+    "UpdateBrainFlowState" -> ControlCommand.UpdateBrainFlowState,
+    "StopWorld" -> ControlCommand.StopWorld,
+    "PrefillPifo" -> ControlCommand.PrefillPifo,
+    "UpdateRoot" -> ControlCommand.UpdateRoot,
+    "CopyPifoEngine" -> ControlCommand.CopyPifoEngine,
+    "UpdateRankGroup" -> ControlCommand.UpdateRankGroup,
+    "UpdateRankQuantum" -> ControlCommand.UpdateRankQuantum,
+    "WaitPifoEmpty" -> ControlCommand.WaitPifoEmpty,
+    "ClearPifoEngine" -> ControlCommand.ClearPifoEngine
   )
   private val controlSocketFields = Set("command", "engineId", "vPifoId", "flowId", "data")
   private var retainedCommands = 0
 
   // compound functions
   def enque(vPifoId: Int) = {
-    for (i <- 0 until config.numEngines) {
-      enqueueToEngine(i + 1, vPifoId)
-    }
+    // Independent physical enqueue ports receive one packet's path tokens in
+    // parallel; adding spare PEs must not reduce the traffic generator's rate.
+    if (dut.evaluation)
+      (0 until config.numEngines).map(i => fork { enqueueToEngine(i + 1, vPifoId) }).foreach(_.join())
+    else
+      for (i <- 0 until config.numEngines) enqueueToEngine(i + 1, vPifoId)
   }
 
   // primitive functions
@@ -65,6 +85,7 @@ case class PifoMeshSimController(
       onAccepted: () => Unit = () => ()
   ): Unit = {
     require(engineId >= 1 && engineId <= config.numEngines, s"Invalid control engineId: $engineId")
+    SimUtils.requireSupportedCommand(cmd, data, dut.evaluation)
     val previousCommitEpoch = dut.io.commitEpoch.toBigInt
     val nextRetained = ReplayEpochCapacity.advance(config, retainedCommands, cmd)
     dut.io.controlRequest.valid #= true
@@ -199,6 +220,9 @@ case class PifoMeshSimController(
    *     UpdateBrainEngine     writes brain engine type: inputId=vPifoId, outputId=data
    *     UpdateBrainState      writes brain state: inputId=vPifoId, outputId=data
    *     UpdateBrainFlowState  writes flow state: inputId=vPifoId @@ flowId, outputId=data
+   *     StopWorld            backpressures packet inserts and root-pop requests until commit
+   *     PrefillPifo          inserts data synthetic tokens at priority 1: port=vPifoId, token=flowId, count=data
+   *     UpdateRoot           stages engineId/vPifoId as the root selected by commit
    *
    *   Example:
    *     command=UpdateBrainFlowState engineId=1 vPifoId=10 flowId=3 data=20
