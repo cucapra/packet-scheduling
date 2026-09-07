@@ -191,7 +191,7 @@ A hierarchical policy runs on a tree of PIFOs, one queue per node~\cite{Sivarama
 % It needs to be inputted here so it lands on the top of page 2
 \input{fig-tour}
 
-The policy on a switch must not be fixed.
+The policy on a switch does not stay fixed.
 Traffic patterns shift, tenants arrive and leave, and telemetry downstream tells the network operator that the policy is no longer apt.
 But the scheduler is compiled expressly for the policy it runs: its tree shape, per-node disciplines, and table contents are selected to realize \emph{a fresh policy}, not \emph{a change to the running policy}~\cite{Sivaraman16,Gao22,vPIFO}.
 When the operator requests a new policy, the freshly compiled scheduler is agnostic to the running policy and the backlog of buffered packets~\cite{vPIFO,Alcoz23}.
@@ -199,12 +199,13 @@ The whole tree is rebuilt, including the nodes that could have been carried over
 What becomes of the backlog is up to the implementation: it can be dropped, recirculated, or left to be scheduled through a chaotic period in which the hardware follows no clearly defined policy.
 Each of those is itself tacitly a \emph{scheduling decision}, and the operator is unable to specify which one they want.
 
-Our thesis is that the interval during which a scheduler is being reprogrammed is itself a scheduling policy, and that understanding it is a language problem.
+Our thesis is that the interval during which a scheduler is being reprogrammed is itself a scheduling policy, since packets keep arriving and leaving while it lasts. 
+Understanding it is a language problem.
 A transitional policy needs a syntax that the operator can read, a semantics that says which packet leaves next, and a compiler that accepts a change to the running policy.
 With those in hand, whether a transition was carried out correctly becomes a theorem about the semantics rather than a measurement taken after the fact.
 We present \emph{Rio}, which supplies all three.
 
-Rio's language is a grammar of atomic policy edits, where each production is a change the hardware can install in a single instant.
+Rio's language is a grammar of atomic policy edits, each one a change the hardware can install in a single instant.
 Its semantics gives every edit a meaning in the operator's own policy language, so the scheduler is always running a policy the operator can read, even mid-transition.
 A planner turns a requested policy into a sequence of those edits, and a mechanical lowering carries each edit down to the instructions that a switch runs.
 A transition from any running policy to any requested policy is always available, and many touch only the part of the tree that actually changes, carrying the rest over unchanged.
