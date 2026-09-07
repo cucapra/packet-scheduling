@@ -982,7 +982,7 @@ These MATs control the association between flows and PIFOs and the parent--child
 Configuration instructions affect the inactive MATs,
 and committing a transaction swaps the active and inactive MATs.
 
-It is straightforward to make these swaps atomic within a PE,
+A swap takes a single cycle, so it is straightforward to make it atomic within a PE,
 but transactions can affect multiple PEs.
 We \emph{delay-align} the transaction commits across PEs according to the PIFO tree topology:
 % The new configuration becomes visible at different PEs at carefully chosen times, so that
@@ -1075,7 +1075,7 @@ An operator who changes the forwarding rules across a set of devices cannot inst
 \citet{Reitblatt12} observe that such an update passes through intermediate configurations, and that those configurations can behave in ways that neither the old configuration nor the new one would.
 Our work makes that same observation about scheduling.
 Their answer is a versioning discipline, which yields two consistency levels, per-packet and per-flow: a packet is stamped on entry and handled under the stamped version at every device, so one configuration handles it from end to end.
-Rio reaches per-packet consistency by another means: a commit installs in a single cycle at each PE, so a packet meets one configuration or the other (\cref{sec:hw-isa}).
+Rio reaches per-packet consistency by another means: a commit installs in a single cycle at each PE, so a packet meets one configuration or the other (\cref{sec:hw-commit}).
 
 The two settings differ in what the old configuration holds.
 In forwarding, a forwarding rule holds no traffic, so the old configuration can be retired once the packets stamped with it have left the network.
@@ -1142,7 +1142,7 @@ Its Scheduling Description Language compiler generates that wiring offline, so t
 Our policy language is a formal core of that one (\cref{sec:policy-dsl}).
 
 All of these substrates fix the tree's shape and the discipline at each node when the scheduler is configured.
-Rio runs above any of them and asks for one property: commits that are atomic with respect to traffic (\cref{sec:hw-substrate}).
+Rio runs above any of them and asks for one property: commits that are atomic with respect to traffic (\cref{sec:hw-commit}).
 Each is therefore a plausible host, and what it would have to add is a transactional path to the tables that our opcodes write.
 
 One recent substrate offers more than Rio assumes.
