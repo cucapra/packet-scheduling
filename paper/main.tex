@@ -1049,6 +1049,11 @@ A literal \Strict-2 wrapper holds a \ensuremath{\mathit{pifo}} and so has to liv
 It takes level 5, pushing the doomed subtree to 6 and 7 and the survivor to 6 through 8, and retiring it afterwards pulls the survivor back up.
 Two subtrees are laid out twice over, for a node that exists only for the length of a drain.
 
+\xxx[AM to Zhiyuan]{Two numbers would let this paragraph make the sharper claim, which is that a literal wrapper has to be handled while it is occupied and \texttt{designate} never is.
+The wrapper is born holding one entry per buffered packet and dies still holding the survivor's.
+Is traffic halted for the \(\mathit{num\_entry}\) cycles the prefill takes, and how many cycles is the control-message overhead you called the larger cost?
+And what does the \texttt{change\_root} that tears down a non-empty wrapper cost?}
+
 \paragraph{The designated-survivor link}
 
 Every PIFO carries a \emph{designated-survivor link}, which is left null in an ordinary node.
@@ -1082,6 +1087,9 @@ What the blocking command still serves is reclamation.
 \texttt{v}'s PIFOs, and those of everything beneath it, may be released only once the subtree is empty, and that is a second commit guarded on the same emptiness predicate (\cref{sec:hw-commit}).
 After it, nothing in the tree records that a transition happened.
 
+\xxx[AM to Zhiyuan]{That second commit is the guarded GC you said you would add, so this paragraph describes hardware that does not exist yet.
+Tell me whether adding it moves any of the four timestamps in the confined run, and I will leave the paragraph as it stands if it does not.}
+
 An operator may also put a \(\Strictstar\) in a policy of their own (\cref{sec:policy-dsl}), and \(\lceil \cdot \rceil\) compiles it to what \Designate{} builds, laying out both arms and pointing the first arm's link at the second.
 
 \subsection{The Commit Interface and its ISA}\label{sec:hw-isa}
@@ -1106,6 +1114,10 @@ Any situation-dependent reasoning, such as ``the subtree we are about to collaps
 
 The ISA has thirteen opcodes, laid out in \cref{tab:isa-opcodes}.
 They address a PIFO by an opaque id \texttt{v}, one per tree node, and one of its arms by an \emph{index}, an opaque per-PIFO handle for a child.
+
+\xxx[AM to Zhiyuan]{Your switch takes six control commands, and the correspondence belongs beside this table, as a column or a sentence.
+My reading is that \texttt{UpdateMapperPre} and \texttt{UpdateMapperPost} are \texttt{assoc} and \texttt{map}, and are the ingress and next-hop mappings of your sketch; that \texttt{UpdateMapperNonExist} is \texttt{designate}; that the two Brain commands are \texttt{set\_policy} and \texttt{set\_arm\_meta}; and that \texttt{CommitMapper} is the marker.
+Correct whichever of those is wrong.}
 
 \begin{table}[t]
 \footnotesize
@@ -1220,6 +1232,26 @@ The designated-survivor link of \cref{sec:hw-survivor} is an optimization rather
 The bar for hosting Rio is therefore atomic commits and a predicate the substrate can wait on, and we expect other PIFO substrates to clear both and to be able to adopt the link~\cite{Shrivastav19,Gao22,Yao23,vPIFO,Atre24,Alcoz25}.
 
 \section{Evaluation}\label{sec:eval}
+
+\xxx[AM to Zhiyuan]{The runs behind this section still drop a flow's leaf when the parent can rank it directly.
+Our compiler never does that, and the folded tree is not something our model can describe, so the two sides are not yet measuring the same policy.
+You said you would turn the elision off and rerun, and the same goes for the fourteen-flow mixed-change experiment, whose four runs include a no-transition control.}
+
+\xxx[AM to Zhiyuan]{Please report cycles rather than instructions, since some instructions take several.
+Keep the instruction counts beside them if that is cheap, because the two together say that the confined transition is both cheaper to install and quicker to take effect.
+Say also which of the six commands cost more than one cycle, and note that the counts include the Brain commands, which do not install atomically.}
+
+\xxx[AM to Zhiyuan]{The paper has to convert cycles to time exactly once, and here is where.
+You offered a 1\,GHz ASIC or a 250\,MHz FPGA and I would take the ASIC, which makes the 1024-cycle stop almost exactly a microsecond.
+Confirm that, and tell me how many bytes the switch moves per cycle so I can name a line rate.}
+
+\xxx[AM to Zhiyuan]{You have no citation for the reconfiguration figure and say a real P4 switch measures up to seconds.
+So I plan to present the 1024 as a floor we grant the baseline rather than as a measurement: we stop the world for about a microsecond, which is faster than any reported reconfiguration of a running switch, and Rio beats it anyway.
+Say if you would rather the baseline had a different number.}
+
+\xxx[AM to Zhiyuan]{\texttt{settings.json} sets a queue depth of 256 while the stop-the-world run peaks at 417 buffered packets and drops nothing.
+Raise it or drop it, whichever is honest.
+If 256 bounds something real elsewhere in the switch, then a switch configured this way would have dropped during the stop, and that is a stronger claim than the one we make now.}
 
 \section{Related Work}\label{sec:related}
 
