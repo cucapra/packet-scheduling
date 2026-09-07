@@ -42,6 +42,15 @@ sbt 'runMain rio.sim.RequestSimulatorCli \
 
 The result CSV contains arrival, admission, completion, admission-delay, and total-sojourn cycles for each request.
 
+The default mapper implementation replays updates from the shared controller
+FIFO after commit. `--control-queue-depth` defaults to **256** in both the Scala
+CLI and `pifo_simulator.py`; one slot is reserved for commit. Size it above the
+largest retained command span in a package, counting every command from its
+first pre/post-mapper update through the command before commit. Flat FIFO
+initialization needs two mapper updates per configured flow. Oversized packages
+fail with a capacity error before they can block their own commit. See the
+[transaction protocol](README.md#transactional-configuration).
+
 ## Reconfiguration workflow
 
 The scripts have four narrow layers:

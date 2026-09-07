@@ -38,6 +38,7 @@ case class PifoMeshSimController(
     "UpdateBrainFlowState" -> ControlCommand.UpdateBrainFlowState
   )
   private val controlSocketFields = Set("command", "engineId", "vPifoId", "flowId", "data")
+  private var retainedCommands = 0
 
   // compound functions
   def enque(vPifoId: Int) = {
@@ -65,6 +66,7 @@ case class PifoMeshSimController(
   ): Unit = {
     require(engineId >= 1 && engineId <= config.numEngines, s"Invalid control engineId: $engineId")
     val previousCommitEpoch = dut.io.commitEpoch.toBigInt
+    val nextRetained = ReplayEpochCapacity.advance(config, retainedCommands, cmd)
     dut.io.controlRequest.valid #= true
     dut.io.controlRequest.payload.command #= cmd
     dut.io.controlRequest.payload.engineId #= engineId
@@ -72,6 +74,7 @@ case class PifoMeshSimController(
     dut.io.controlRequest.payload.flowId #= flowId
     dut.io.controlRequest.payload.data #= data
     dut.clockDomain.waitSamplingWhere(dut.io.controlRequest.ready.toBoolean)
+    retainedCommands = nextRetained
     onAccepted()
     dut.io.controlRequest.valid #= false
     // Leave the sampling phase before a caller can present the next command.
@@ -84,10 +87,12 @@ case class PifoMeshSimController(
     // can safely begin another transaction.
     if (cmd == ControlCommand.CommitMapper) {
       // A guarded commit can sit in the queue long after a preceding commit's
-      // bank copy. Observe its publication, not an unrelated busy interval.
+      // replay. Observe its publication, including commits needing no replay.
       dut.clockDomain.waitSamplingWhere(dut.io.commitEpoch.toBigInt != previousCommitEpoch)
       onCommitApplied()
-      dut.clockDomain.waitSamplingWhere(dut.io.commitReady.toBoolean)
+      dut.clockDomain.waitSamplingWhere(
+        dut.io.commitReady.toBoolean && dut.io.replayLogAvailable.toInt == config.commitQueueLength - 1
+      )
     }
   }
 

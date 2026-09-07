@@ -14,8 +14,10 @@ case class EngineConfig(
     brainStateWidth: Int = 32,
     flowStateWidth: Int = 32,
     configDataWidth: Int = 32,
-    commitQueueLength: Int = 4
+    commitQueueLength: Int = EngineConfig.DefaultCommitQueueLength
 ) {
+  require(commitQueueLength >= 2 && (commitQueueLength & (commitQueueLength - 1)) == 0,
+    "commitQueueLength must be a power of two >= 2")
   def vpifoIdWidth = log2Up(numVPIFOs)
   def numFlows = numVPIFOs * numEngines
   def engineIdWidth = log2Up(numEngines + 1) // +1 for control port
@@ -31,6 +33,8 @@ case class EngineConfig(
 }
 
 object EngineConfig {
+  val DefaultCommitQueueLength = 256
+
   implicit def toFlowPifoConfig(pifoConfig: EngineConfig): PifoConfig =
     PifoConfig(
       numPifo = pifoConfig.numVPIFOs * pifoConfig.fifoDepth,
@@ -465,7 +469,7 @@ case class PifoEngine(config: EngineConfig) extends Component {
   val enque = new Area {
     val (mapperRead, flowIdStream) = StreamFork2(io.enqueRequest)
 
-    val enqueMapper = TransactionalMapper(config.vpifoIdWidth, config.vpifoIdWidth)
+    val enqueMapper = ReplayMapper(config.vpifoIdWidth, config.vpifoIdWidth)
     enqueMapper.io.readReq << mapperRead.map(_.vPifoId).toFlow
 
     val brainInput = Stream(BrainInput(config))
@@ -491,7 +495,7 @@ case class PifoEngine(config: EngineConfig) extends Component {
     // Qualify a dequeue rewrite with the PIFO port. This lets old and new
     // copies of a tree carry the same flow IDs while retaining distinct next
     // hops during a full-transitive reconfiguration.
-    val dequeMapper = TransactionalMapper(
+    val dequeMapper = ReplayMapper(
       config.vpifoIdWidth + config.flowIdWidth,
       config.flowIdWidth
     )

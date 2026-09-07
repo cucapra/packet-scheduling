@@ -84,11 +84,20 @@ The packet-visible mapping commands are transactional:
 - `UpdateMapperPost` is keyed by `(vPifoId, flowId)`, so multiple tree versions can retain different next hops for the same flow.
 - `CommitMapper` publishes every pending mapper update across every engine on one clock edge. Its payload and `engineId` are ignored.
 - A packet request accepted on the commit edge uses the old mappings; requests accepted after that edge use the new mappings.
-- `io.commitReady` is low while the newly active banks are copied back into the backup banks. Another mapper update or commit waits until it returns high. Packet traffic continues during this synchronization.
+- Replay is the default mapper synchronization: the controller retains commands in its existing FIFO, swaps banks,
+  then rereads the same entries and reissues only pre/post-mapper writes into the shadow bank. There is no separate
+  journal. Each mapper bank retains one packet-read port and one configuration-write port.
+- `io.commitReady` is low and `io.replayBusy` is high during replay. Ingress and later queued commands wait until
+  replay finishes; packet traffic continues. Empty commits need no replay-busy interval.
+- The controller FIFO defaults to **256 entries**, with one reserved for commit. An epoch can retain at most 255
+  commands from its first mapper update to the command preceding commit, including intervening unbanked commands.
+  `io.replayLogAvailable` reports free non-commit slots in this same FIFO. Set `EngineConfig.commitQueueLength`
+  or the simulator's `--control-queue-depth` to a power of two at least two for a different batch capacity.
 - `GuardDrain` blocks the entire command queue until the specified `engineId:vPifoId` is drained. It uses the PEs'
   last-successful-pop (nearly-drained) notifications, remembers early notifications, and clears that state on FIFO
   refill. An already-empty FIFO passes. The producer must quiesce the old FIFO before reclamation.
   The guard only blocks: subsequent ordinary mapper/brain writes and `CommitMapper` perform cleanup.
+  Guards execute on the first pass and are skipped during mapper replay.
 - Brain policy and brain-state commands remain immediate and are intentionally outside the mapper transaction.
 
 The experiment tools use explicit compiler and simulator boundaries:
@@ -161,8 +170,23 @@ checks automatic and produces machine-readable and Markdown reports beside the e
 `REQUEST_SIMULATOR.md` for the commands and reference measurements.
 
 `PifoMeshSimController.transaction` stages a configuration, commits it, and returns a thread that completes after
-`commitReady` rises again. The older `config` helper is retained as an alias. Control-socket users must include a
+the FIFO finishes replay (or consumes an empty commit). The older `config` helper is retained as an alias. Control-socket users must include a
 `CommitMapper` line; `hw/python/config_to_socket_commands.py` emits one for each transaction.
+
+Replay correctness checks (simulation only, with Icarus Verilog on `PATH`):
+
+```bash
+sbt 'runMain rio.sim.ReplayControlFifoSim' 'runMain rio.sim.ReplayMapperSim' \
+    'runMain rio.sim.SharedReplayDriverSim' 'runMain rio.sim.TransactionalConfigSim' \
+    'runMain rio.sim.ControlIngressRateSim' 'runMain rio.sim.FrontUnderflowRewriteSim'
+```
+
+The FIFO test covers depths 2, 4, 8, and the default 256 under backpressure,
+wraparound, empty/full epochs, and reset. A standalone `PifoEngine` or `ReplayMapper`
+must receive replay from its caller; `PifoMesh` supplies it automatically. The
+older standalone `TransactionalMapper` component remains available for existing
+direct users and is no longer instantiated by the mesh. Reset flushes controller
+commands; it does not recover a mapper transaction interrupted during replay.
 
 ## TODO List
 

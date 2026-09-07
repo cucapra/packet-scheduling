@@ -49,6 +49,9 @@ case class PifoMesh(config: EngineConfig) extends Component {
     val controlRequest = slave(Stream(ControlMessage(config)))
     val commitReady = out Bool ()
     val commitEpoch = out UInt (32 bits)
+    val replayBusy = out Bool()
+    // Free non-commit slots in the shared command FIFO; excludes commit reserve.
+    val replayLogAvailable = out UInt(log2Up(config.commitQueueLength + 1) bits)
   }
 
   // all datapath
@@ -73,11 +76,15 @@ case class PifoMesh(config: EngineConfig) extends Component {
   // All control-plane commands are ordered through one hardware queue. The pre
   // and post mapper updates target backup banks; a commit is broadcast
   // synchronously so every engine changes those packet-visible mappings on the
-  // same cycle. Underflow-rewrite entries are single-bank and never wait for
-  // mapper bank synchronization.
-  val controlQueue = io.controlRequest.queue(config.commitQueueLength)
+  // same cycle. Underflow-rewrite entries remain single-bank and execute only
+  // on the first pass through the command FIFO.
+  val replayControl = ReplayControlFifo(config)
+  replayControl.io.push << io.controlRequest
+  val controlQueue = replayControl.io.pop
+  io.replayBusy := replayControl.io.replaying
+  io.replayLogAvailable := replayControl.io.available
   val mapperCommitReady = pifoEngines.map(_.io.commitReady).reduce(_ && _)
-  io.commitReady := mapperCommitReady
+  io.commitReady := !replayControl.io.replaying && mapperCommitReady
 
   val guard = DrainGuard(config)
   (pifoEngines zipWithIndex).foreach { case (engine, index) =>
@@ -95,17 +102,13 @@ case class PifoMesh(config: EngineConfig) extends Component {
   val withoutCommit = routedHead.throwWhen(
     routedHead.payload.command === ControlCommand.CommitMapper
   )
-  val isMapperUpdate =
-    withoutCommit.payload.command === ControlCommand.UpdateMapperPre ||
-      withoutCommit.payload.command === ControlCommand.UpdateMapperPost
-  val routedControl = withoutCommit.haltWhen(isMapperUpdate && !mapperCommitReady)
 
   val commitControl = commitHead
     .takeWhen(commitHead.payload.command === ControlCommand.CommitMapper)
     .haltWhen(!mapperCommitReady)
 
-  val translatedEngineId = (routedControl.payload.engineId - 1).resized
-  val controlCommand = StreamDemux(routedControl, translatedEngineId, config.numEngines)
+  val translatedEngineId = (withoutCommit.payload.engineId - 1).resized
+  val controlCommand = StreamDemux(withoutCommit, translatedEngineId, config.numEngines)
   // mapperCommitReady guarantees every destination can accept this item on its
   // first valid cycle. The default fork avoids a ready/valid combinational loop
   // through the per-engine arbiters while retaining same-cycle delivery.

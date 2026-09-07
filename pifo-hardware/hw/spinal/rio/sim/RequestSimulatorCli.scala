@@ -30,6 +30,7 @@ case class RequestSimulatorOptions(
     maxPacketPriority: Int = 256,
     fifoDepth: Int = 32,
     prefetchBufferDepth: Int = 2,
+    controlQueueDepth: Int = EngineConfig.DefaultCommitQueueLength,
     waveEnabled: Boolean = true,
     verbose: Boolean = true,
     transactionProgramFile: Option[Path] = None,
@@ -75,6 +76,7 @@ object RequestSimulatorCli {
       |  --max-packet-priority N       Default 256.
       |  --fifo-depth N                Default 32.
       |  --prefetch-buffer-depth N     Default 2.
+      |  --control-queue-depth N       Shared command/replay FIFO, power of two (default 256).
       |  --no-wave                     Disable FST waveform generation.
       |  --quiet                       Suppress request admission/completion logs.
       |  --help                        Show this help.
@@ -169,8 +171,21 @@ object RequestSimulatorCli {
       numVPIFOs = options.numVPIFOs,
       maxPacketPriority = options.maxPacketPriority,
       fifoDepth = options.fifoDepth,
-      prefetchBufferDepth = options.prefetchBufferDepth
+      prefetchBufferDepth = options.prefetchBufferDepth,
+      commitQueueLength = options.controlQueueDepth
     )
+
+    transactionProgram.foreach { program =>
+      ReplayEpochCapacity.validate(hardwareConfig, program.initialInstructions.map(_.command))
+      program.transactions.foreach(t => ReplayEpochCapacity.validate(hardwareConfig, t.instructions.map(_.command)))
+    }
+    options.controlFile.foreach { path =>
+      ReplayEpochCapacity.validate(hardwareConfig, RequestSimulationConfiguration.loadControlInstructions(path).map(_.command))
+    }
+    val hasInitialPackage = transactionProgram.exists(_.initialInstructions.nonEmpty)
+    val useFlatFifo = options.flatFifo.getOrElse(options.controlFile.isEmpty && !hasInitialPackage)
+    if (useFlatFifo)
+      ReplayEpochCapacity.validate(hardwareConfig, Seq.fill(configuredFlows.size * 2)(ControlCommand.UpdateMapperPre))
 
     val baseSimConfig = SimConfig.withIVerilog.addSimulatorFlag("-g2012")
     val selectedSimConfig = if (options.waveEnabled) baseSimConfig.withFstWave else baseSimConfig
@@ -210,8 +225,6 @@ object RequestSimulatorCli {
           )
         }
 
-        val hasInitialPackage = transactionProgram.exists(_.initialInstructions.nonEmpty)
-        val useFlatFifo = options.flatFifo.getOrElse(options.controlFile.isEmpty && !hasInitialPackage)
         if (useFlatFifo) {
           println(
             s"[RequestSim] configuring flat FIFO at engine=${options.rootEngineId} vPifo=${options.rootVPifoId} " +
@@ -369,6 +382,8 @@ object RequestSimulatorCli {
         case "--fifo-depth" => options = options.copy(fifoDepth = decodeInt(nextValue("--fifo-depth")))
         case "--prefetch-buffer-depth" =>
           options = options.copy(prefetchBufferDepth = decodeInt(nextValue("--prefetch-buffer-depth")))
+        case "--control-queue-depth" =>
+          options = options.copy(controlQueueDepth = decodeInt(nextValue("--control-queue-depth")))
         case "--no-wave"     => options = options.copy(waveEnabled = false)
         case "--quiet"       => options = options.copy(verbose = false)
         case "--help" | "-h" => throw HelpRequested

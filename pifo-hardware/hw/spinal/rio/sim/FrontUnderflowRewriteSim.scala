@@ -71,11 +71,11 @@ object FrontUnderflowRewriteSim extends App {
         }
       }
 
-      def sendControl(
+      def rawControl(
           command: ControlCommand.E,
-          vPifoId: Int = 0,
-          flowId: Int = 0,
-          data: Int = 0
+          vPifoId: Int,
+          flowId: Int,
+          data: Int
       ): Unit = {
         dut.io.control.valid #= true
         dut.io.control.payload.command #= command
@@ -85,6 +85,20 @@ object FrontUnderflowRewriteSim extends App {
         dut.io.control.payload.data #= data
         dut.clockDomain.waitSamplingWhere(dut.io.control.ready.toBoolean)
         dut.io.control.valid #= false
+        dut.clockDomain.waitFallingEdge()
+      }
+
+      // This bench instantiates a PE without PifoMesh. Supply the mesh's replay
+      // protocol so subsequent commits preserve untouched mapper entries.
+      val staged = ArrayBuffer.empty[(ControlCommand.E, Int, Int, Int)]
+      def sendControl(command: ControlCommand.E, vPifoId: Int = 0, flowId: Int = 0, data: Int = 0): Unit = {
+        rawControl(command, vPifoId, flowId, data)
+        if (command == ControlCommand.UpdateMapperPre || command == ControlCommand.UpdateMapperPost)
+          staged += ((command, vPifoId, flowId, data))
+        if (command == ControlCommand.CommitMapper) {
+          staged.foreach { case (op, port, flow, value) => rawControl(op, port, flow, value) }
+          staged.clear()
+        }
       }
 
       def enqueue(): Unit = {
