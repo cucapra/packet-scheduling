@@ -15,9 +15,8 @@ from pifo_figures.common import (
     PolicyEvent,
     flow_name,
     load_pyplot,
-    commit_accounting,
-    drain_label,
-    finish_label,
+    draw_timeline,
+    timeline_legend,
     completed_timings,
     packet_outcome_row,
     read_packet_outcomes,
@@ -173,12 +172,12 @@ def render_throughput_comparison(
                 label=flow_name(flow_id, labels),
             )
         _draw_event_lines(axis, event)
+        timeline_legend(axis, event)
         axis.axhline(1.0, color="0.55", linewidth=1, linestyle=":")
         axis.grid(True, color="0.9", linewidth=0.8)
         axis.set_title(title)
         axis.set_xlabel("Cycle relative to reconfiguration start")
     axes[0].set_ylabel("Output throughput / link capacity")
-    axes[-1].legend(loc="best")
     figure.suptitle(
         f"R3 whole-tree vs R4 confined throughput ({window_cycles}-cycle Hann window)"
     )
@@ -227,16 +226,13 @@ def _draw_delay_panel(
                 marker="x",
                 linewidths=0.8,
                 color=COLORS[index % len(COLORS)],
+                label="dropped (shown at y=0)",
             )
     _draw_event_lines(axis, event)
     axis.axhline(0, color="0.45", linewidth=1, linestyle=":")
     axis.grid(True, color="0.92", linewidth=0.8)
     axis.margins(x=0.02, y=0.05)
-    handles, legend_labels = axis.get_legend_handles_labels()
-    if any(outcome.dropped for outcome in outcomes):
-        handles.append(line_type([0], [0], color="0.25", marker="x", linestyle="None"))
-        legend_labels.append("dropped (shown at y=0)")
-    axis.legend(handles, legend_labels, loc="best", markerscale=1.5)
+    timeline_legend(axis, event)
     if event.mode == "stop_the_world":
         axis.text(
             0.02,
@@ -253,32 +249,7 @@ def _draw_delay_panel(
 
 
 def _draw_event_lines(axis, event: PolicyEvent) -> None:
-    markers = (
-        (0, "tab:blue", "-", "start"),
-        (event.commit_cycle - event.start_cycle, "tab:orange", "--", "commit accepted"),
-        (event.drain_cycle - event.start_cycle, "tab:purple", ":", drain_label(event))
-        if event.drain_cycle is not None
-        else None,
-        (event.finish_cycle - event.start_cycle, "tab:green", "-.", finish_label(event)),
-    )
-    for marker in markers:
-        if marker is None:
-            continue
-        value, color, style, _label = marker
-        axis.axvline(
-            value,
-            color=color,
-            linewidth=1.15,
-            linestyle=style,
-            alpha=0.9,
-            label=_label,
-        )
-    if event.resume_cycle is not None:
-        axis.axvline(event.resume_cycle - event.start_cycle, color="0.4", linestyle="--", label="traffic resumed")
-    accounting = commit_accounting(event)
-    if accounting:
-        axis.text(0.01, 0.01, accounting.replace("; ", "\n"), transform=axis.transAxes,
-                  va="bottom", fontsize=7, color="0.35")
+    draw_timeline(axis, event)
 
 
 def write_comparison_packets(

@@ -132,10 +132,15 @@ stop-the-world additionally freezes admission and dequeue, captures the buffered
 the target, replays exactly one scheduler token per retained packet, and then resumes after `minStopCycles`. Traffic
 sources continue generating while the gate is closed. Packet delay is measured from source generation, and the stop
 event reports both the capture-time retained count and the peak number of outstanding buffered packets.
-The figure's **finish** line means the cleanup commit's double-buffer synchronization has finished, ready for the next
-commit; it is not the old-tree drain or STW resume. `install_finish_cycle` records the first commit's bank cleanup,
-and `resume_cycle` records STW resume separately. Both commits report cycles to publication and instruction counts
-(including guards and commit), with bank-copy cycles separate. Raw direct programs are not rewritten; author their
+Figures show **both commits**: C1 installs the transition and C2 reclaims the retired configurations. Each has
+`start`, `commit accepted`, `ready_for_next_commit`, and `old-tree-drained` markers. Pale blue (C1) and pale amber
+(C2) backgrounds run from that commit's start to its readiness; C2's interval includes drain-guard waiting.
+C1 readiness uses `install_finish_cycle`, while C2 readiness uses `cleanup_finish_cycle` (the raw CSV's
+`finish_cycle`). Both commits share the same retired-root drain measurement, so those two lines coincide.
+Additive changes label drain as not required; STW labels the capture event instead of pretending it is a drain,
+and shows `resume_cycle` separately. Input/output scatter marks both axes at equal scale; delay plots mark only x.
+Legends list the exact absolute cycle for each marker, including coincident events. Both commits report cycles to
+publication and instruction counts (including guards and commit), with bank-replay cycles separate. Raw direct programs are not rewritten; author their
 guard/write/commit packages explicitly and use `cleanupOf=<transition-name>` to associate the cleanup in reports.
 
 Focused checks (no experiment sweep):

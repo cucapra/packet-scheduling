@@ -109,7 +109,8 @@ class StandalonePlotTest(unittest.TestCase):
                                    cwd=moved, check=True, capture_output=True, text=True, timeout=30)
                     svg = (target / "figure.svg").read_text()
                     self.assertIn("zoom", svg)
-                    self.assertIn("finish: double-buffer cleanup done", svg)
+                    self.assertIn("C1 ready_for_next_commit", svg)
+                    self.assertIn("C2 ready_for_next_commit", svg)
                     self.assertIn("cleanup=6 inst / 52 cycles", svg)
                     self.assertGreater((target / "figure.png").stat().st_size, 0)
 
@@ -154,6 +155,12 @@ class StandalonePlotTest(unittest.TestCase):
             for script in scripts:
                 self.assertIn("'start': 320", script.read_text())
                 self.assertIn("commit accepted=330", script.read_text())
+                settings = next(node.value for node in ast.parse(script.read_text()).body
+                                if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name)
+                                and node.targets[0].id == "PANELS")
+                panel = ast.literal_eval(settings)[0]
+                self.assertEqual(len(panel["spans"]), 1)
+                self.assertTrue(all(not label.startswith("C2") for _, _, _, label in panel["markers"]))
             with (target / "rr-to-sp-packets.csv").open() as stream:
                 rows = list(csv.DictReader(stream))
             self.assertEqual(len(rows), 160)

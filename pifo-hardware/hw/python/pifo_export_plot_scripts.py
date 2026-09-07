@@ -7,11 +7,10 @@ import argparse
 import csv
 import json
 import re
-from dataclasses import replace
 from pathlib import Path
 
 from pifo_figures.common import (
-    PACKET_TRACE_FIELDS, FigurePaths, figure_paths, flow_name, read_policy_event,
+    PACKET_TRACE_FIELDS, FigurePaths, PolicyEvent, figure_paths, flow_name, read_policy_event,
     read_run_packet_outcomes, write_packet_outcomes,
 )
 from pifo_figures.standalone import write_plot_script
@@ -119,10 +118,13 @@ def export_saved_figures(results_root: Path) -> list[Path]:
             if match is None:
                 raise ValueError(f"{paths.svg}: cannot recover archived figure timestamps")
             start, commit, drain, finish, count = match.groups()
-            event = replace(read_policy_event(root / "reconfiguration-events.csv"),
-                            scheduled_cycle=int(start), start_cycle=int(start), commit_cycle=int(commit),
-                            drain_cycle=None if drain == "-" else int(drain), finish_cycle=int(finish),
-                            instruction_count=int(count) if count else None)
+            current = read_policy_event(root / "reconfiguration-events.csv")
+            # An archive has no second-commit timestamps. Do not accidentally
+            # attach cleanup metadata from the newer run beside it.
+            event = PolicyEvent(current.before, current.after, int(start), int(start), int(commit), int(finish),
+                                name=current.name, mode=current.mode,
+                                drain_cycle=None if drain == "-" else int(drain),
+                                instruction_count=int(count) if count else None)
             title = f"{event.label}: saved bandwidth samples" if kind == "bandwidth" else f"Packet input–output scatter: {event.label}"
             scripts.append(write_plot_script(paths, kind, [(event.label, event)], labels, plot["dpi"], title,
                                              packet_trace_name="rr-to-sp-packets.csv"))

@@ -63,6 +63,13 @@ records three failed checks, with all thresholds left unchanged:
 
 ## Outputs and reproduction
 
+The current figures have been replotted from these same CSVs with two commit timelines:
+pale blue is C1 (install), pale amber is C2 (cleanup), each shaded from start to
+`ready_for_next_commit`. Both list start, commit acceptance, readiness, and the
+shared old-tree drain/capture event. The former single finish line is now C2
+readiness; C1 readiness explicitly marks the earlier install replay completion.
+This presentation update changes no packet data, timing measurements, or hardware.
+
 Current figures, raw per-packet CSVs, and self-contained `plot.py` scripts:
 
 - [RR to SP](rr-to-sp/figures/)

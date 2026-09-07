@@ -11,10 +11,6 @@ from typing import Iterable, Mapping, Sequence
 
 from pifo_figures.common import (
     COLORS,
-    COMMIT_COLOR,
-    DRAIN_COLOR,
-    FINISH_COLOR,
-    START_COLOR,
     BandwidthLike,
     FigureInputs,
     FigurePaths,
@@ -24,11 +20,10 @@ from pifo_figures.common import (
     Svg,
     add_common_arguments,
     draw_axes,
-    drain_label,
+    draw_timeline,
     event_label,
     figure_paths,
     flow_name,
-    finish_label,
     legend,
     line_path,
     load_figure_inputs,
@@ -38,6 +33,9 @@ from pifo_figures.common import (
     select_renderer,
     transition_markers,
     timing_text,
+    timeline_legend,
+    timeline_markers,
+    timeline_spans,
     write_packet_outcomes,
 )
 from pifo_figures.standalone import write_plot_script
@@ -189,16 +187,6 @@ def render_matplotlib(
     plt, _ = load_pyplot()
     colors = plt.get_cmap("tab10")
     x_values = [sample.time_relative_to_start for sample in samples]
-    transition_commit = event.commit_cycle - event.start_cycle
-    transition_finish = event.finish_cycle - event.start_cycle
-    transition_drain = (
-        event.drain_cycle - event.start_cycle
-        if event.drain_cycle is not None
-        else None
-    )
-    visible_min = min(*x_values, 0)
-    visible_max = max(*x_values, transition_finish, transition_commit, transition_drain or 0)
-
     figure, (total_axis, flow_axis) = plt.subplots(
         2, 1, figsize=(11, 8), sharex=True, constrained_layout=True
     )
@@ -225,37 +213,9 @@ def render_matplotlib(
             label=flow_name(flow_id, labels),
         )
 
+    total_axis.legend(loc="upper right")
     for axis in (total_axis, flow_axis):
-        if transition_commit > 0:
-            axis.axvspan(0, transition_commit, color="tab:blue", alpha=0.08)
-        if transition_drain is not None and transition_drain > transition_commit:
-            axis.axvspan(
-                transition_commit,
-                transition_drain,
-                color="tab:purple",
-                alpha=0.05,
-            )
-        axis.axvline(0, color="tab:blue", linewidth=1.5)
-        axis.axvline(
-            transition_commit,
-            color="tab:orange",
-            linewidth=1.3,
-            linestyle="--",
-        )
-        if visible_min <= transition_finish <= visible_max:
-            axis.axvline(
-                transition_finish,
-                color="tab:green",
-                linewidth=1.2,
-                alpha=0.8,
-            )
-        if transition_drain is not None:
-            axis.axvline(
-                transition_drain,
-                color="tab:purple",
-                linewidth=1.3,
-                linestyle=":",
-            )
+        draw_timeline(axis, event)
         axis.grid(True, color="0.9", linewidth=0.8)
         axis.set_ylim(bottom=0)
 
@@ -266,59 +226,12 @@ def render_matplotlib(
         f"({event.mode}, {window_cycles}-cycle window)"
     )
     total_axis.set_ylabel("Aggregate bandwidth / link capacity")
-    total_axis.legend(loc="best")
     flow_axis.set_ylabel("Per-flow bandwidth / link capacity")
     flow_axis.set_xlabel("Time relative to reconfiguration start (cycles)")
-    flow_axis.legend(loc="best", ncol=min(4, len(flow_ids)))
-    _annotate_matplotlib(total_axis, event, visible_min, visible_max)
+    timeline_legend(flow_axis, event)
     figure.savefig(paths.svg, bbox_inches="tight")
     figure.savefig(paths.png, dpi=dpi, bbox_inches="tight")
     plt.close(figure)
-
-
-def _annotate_matplotlib(axis, event: PolicyEvent, low: float, high: float) -> None:
-    markers = [
-        ("start", 0, "tab:blue", -8),
-        (
-            "commit accepted",
-            event.commit_cycle - event.start_cycle,
-            "tab:orange",
-            -25,
-        ),
-        (finish_label(event), event.finish_cycle - event.start_cycle, "tab:green", -42),
-    ]
-    if event.drain_cycle is not None:
-        markers.append(
-            (
-                drain_label(event),
-                event.drain_cycle - event.start_cycle,
-                "tab:purple",
-                -59,
-            )
-        )
-    for label, value, color, offset in markers:
-        if label in {"start", "commit accepted"} or low <= value <= high:
-            near_right = value > low + (high - low) * 0.67
-            axis.annotate(
-                label,
-                xy=(value, 1),
-                xycoords=("data", "axes fraction"),
-                xytext=(-5 if near_right else 5, offset),
-                textcoords="offset points",
-                va="top",
-                ha="right" if near_right else "left",
-                color=color,
-            )
-    axis.text(
-        0.99,
-        0.03,
-        _timing_text(event, unicode_limit=True),
-        transform=axis.transAxes,
-        ha="right",
-        va="bottom",
-        fontsize="small",
-        color="0.35",
-    )
 
 
 def render_svg(
@@ -449,9 +362,10 @@ def render_svg(
     )
     legend(
         svg,
-        total_area.x + total_area.width - 270 * scale,
+        total_area.x + total_area.width - 500 * scale,
         total_area.y + 18 * scale,
-        (("Total bandwidth", COLORS[0], None), ("Link capacity", "#666666", "3,5")),
+        (("Total bandwidth", COLORS[0], None), ("Link capacity", "#666666", "3,5"),
+         *((label + " (background)", color, None) for _, _, color, label in timeline_spans(event))),
         font * 0.78,
     )
     flow_entries = tuple(
@@ -476,16 +390,7 @@ def _svg_marker_labels(
     font: float,
     scale: float,
 ) -> None:
-    markers: list[tuple[str, int, str]] = [
-        ("start", 0, START_COLOR),
-        ("commit accepted", event.commit_cycle - event.start_cycle, COMMIT_COLOR),
-        (finish_label(event), event.finish_cycle - event.start_cycle, FINISH_COLOR),
-    ]
-    if event.drain_cycle is not None:
-        markers.append(
-            (drain_label(event), event.drain_cycle - event.start_cycle, DRAIN_COLOR)
-        )
-    for index, (label, value, color) in enumerate(markers):
+    for index, (value, color, _, label) in enumerate(timeline_markers(event)):
         x = area.sx(value)
         if area.x <= x <= area.x + area.width:
             near_right = x > area.x + area.width * 0.67

@@ -154,7 +154,7 @@ class CleanupTest(unittest.TestCase):
             self.assertEqual(event.traffic_resume_cycle, 112)
             self.assertIn("config=9 inst / 17 cycles", commit_accounting(event))
             self.assertIn("cleanup=4 inst / 24 cycles", commit_accounting(event))
-            self.assertIn("double-buffer cleanup", FINISH_LABEL)
+            self.assertEqual(FINISH_LABEL, "ready_for_next_commit")
 
     def test_rr_verifier_ignores_cleanup_event_row(self):
         row = dict(event="reconfiguration", mode="full_transitive", start_cycle=10,

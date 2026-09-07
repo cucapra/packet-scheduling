@@ -52,7 +52,8 @@ START_COLOR = "#1f77b4"
 COMMIT_COLOR = "#ff7f0e"
 FINISH_COLOR = "#2ca02c"
 DRAIN_COLOR = "#9467bd"
-FINISH_LABEL = "finish: double-buffer cleanup done"
+FINISH_LABEL = "ready_for_next_commit"
+COMMIT_BACKGROUNDS = ("#dbeafe", "#ffedd5")
 
 
 @dataclass(frozen=True)
@@ -220,6 +221,82 @@ def finish_label(event: PolicyEvent) -> str:
     return FINISH_LABEL
 
 
+def commit_windows(event: PolicyEvent) -> list[tuple[str, int, int, int]]:
+    """Separate bank readiness after installation from guarded reclamation.
+
+    Old traces contain one commit only. A cleanup commit shares the retired
+    tree's drain event; it does not create a second tree to drain.
+    """
+    ready = getattr(event, "install_finish_cycle", None)
+    windows = [("C1", event.start_cycle, event.commit_cycle,
+                event.finish_cycle if ready is None else ready)]
+    cleanup_start = getattr(event, "cleanup_start_cycle", None)
+    if cleanup_start is not None:
+        windows.append(("C2", cleanup_start, event.cleanup_commit_cycle, event.cleanup_finish_cycle))
+    return windows
+
+
+def timeline_markers(event: PolicyEvent) -> list[tuple[int, str, str, str]]:
+    markers = []
+    for name, start, accepted, ready in commit_windows(event):
+        markers.extend((
+            (start - event.start_cycle, START_COLOR, "-", f"{name} start"),
+            (accepted - event.start_cycle, COMMIT_COLOR, "--", f"{name} commit accepted"),
+            (ready - event.start_cycle, FINISH_COLOR, "-.", f"{name} {finish_label(event)}"),
+        ))
+        if event.drain_cycle is not None:
+            label = "old-tree-drained"
+            if event.mode == "in_place":
+                label += " (not required)"
+            elif event.mode == "stop_the_world":
+                label = "old-tree captured (not drained)"
+            markers.append((event.drain_cycle - event.start_cycle, DRAIN_COLOR, ":", f"{name} {label}"))
+    if getattr(event, "resume_cycle", None) is not None:
+        markers.append((event.resume_cycle - event.start_cycle, "0.4", "--", "traffic resumed"))
+    return markers
+
+
+def timeline_spans(event: PolicyEvent) -> list[tuple[int, int, str, str]]:
+    return [(start - event.start_cycle, ready - event.start_cycle, COMMIT_BACKGROUNDS[index],
+             f"{name}: {'install' if index == 0 else 'cleanup'} commit")
+            for index, (name, start, _, ready) in enumerate(commit_windows(event))]
+
+
+def draw_timeline(axis, event: PolicyEvent, horizontal: bool = False) -> None:
+    """Time markers on x (and on y only when y is absolute output time)."""
+    for start, ready, color, label in timeline_spans(event):
+        axis.axvspan(start, ready, color=color, alpha=0.65, linewidth=0, zorder=0, label=label)
+        if horizontal:
+            axis.axhspan(start, ready, color=color, alpha=0.35, linewidth=0, zorder=0)
+    for cycle, color, style, label in timeline_markers(event):
+        width = 2.3 if FINISH_LABEL in label else 1.15
+        axis.axvline(cycle, color=color, linestyle=style, linewidth=width, label=label)
+        if horizontal:
+            axis.axhline(cycle, color=color, linestyle=style, linewidth=width, gid="commit-time-y")
+
+
+def timeline_legend(axis, event: PolicyEvent) -> None:
+    """Keep the two commit legends out of the packet data; label exact cycles."""
+    handles, labels = axis.get_legend_handles_labels()
+    indexed = dict(zip(labels, handles))
+    entries = []
+    for span in timeline_spans(event):
+        name = span[3].split(":")[0]
+        entries.append((indexed[span[3]], span[3]))
+        entries.extend((indexed[label], f"{label} = {cycle + event.start_cycle}")
+                       for cycle, _, _, label in timeline_markers(event) if label.startswith(name + " "))
+    data = [(handle, f"traffic resumed = {event.resume_cycle}" if label == "traffic resumed" else label)
+            for handle, label in zip(handles, labels) if not label.startswith(("C1", "C2"))]
+    if data:
+        data_legend = axis.legend(*zip(*data), loc="upper right", fontsize=8)
+        axis.add_artist(data_legend)
+    key = axis.legend(*zip(*entries), loc="upper center", bbox_to_anchor=(0.5, -0.16),
+                      ncol=len(commit_windows(event)), fontsize=7.5)
+    axis.annotate(timeline_notes(event), xy=(0.5, 0), xycoords=key, xytext=(0, -6),
+                  textcoords="offset points", ha="center", va="top", fontsize=7,
+                  color="0.35", annotation_clip=False)
+
+
 def commit_accounting(event: PolicyEvent) -> str:
     parts = []
     if event.instruction_count is not None:
@@ -234,19 +311,29 @@ def commit_accounting(event: PolicyEvent) -> str:
             f"{event.cleanup_commit_cycles} cycles to publication (guard wait included)"
         )
     if event.bank_cleanup_cycles is not None:
-        banks = f"bank cleanup: install={event.bank_cleanup_cycles}"
+        banks = f"bank replay: install={event.bank_cleanup_cycles}"
         if event.cleanup_bank_cleanup_cycles is not None:
             banks += f", cleanup={event.cleanup_bank_cleanup_cycles}"
         parts.append(banks + " cycles")
     return "; ".join(parts)
 
 
+def timeline_notes(event: PolicyEvent) -> str:
+    notes = commit_accounting(event).replace("; ", "\n")
+    if event.stop_duration_cycles is not None:
+        notes += (f"\nSTW stop={event.stop_duration_cycles} cycles; retained={event.retained_packets}; "
+                  f"peak buffer={event.peak_buffer_occupancy_packets} packets")
+    return notes
+
+
 def timing_text(event: PolicyEvent, unicode_limit: bool = True) -> str:
-    text = (
-        f"start={event.start_cycle}  commit accepted={event.commit_cycle}  "
-        f"drain={event.drain_cycle if event.drain_cycle is not None else '-'}  "
-        f"finish={event.finish_cycle}"
+    text = "\n".join(
+        f"{name}: start={start}  commit accepted={accepted}  ready_for_next_commit={ready}"
+        for name, start, accepted, ready in commit_windows(event)
     )
+    text += f"\n{drain_label(event)}={event.drain_cycle if event.drain_cycle is not None else '-'}"
+    if len(commit_windows(event)) > 1:
+        text += " (shared by C1/C2)"
     if event.commit_applied_cycle is not None:
         text += f"\npublished: install={event.commit_applied_cycle}"
     if event.cleanup_applied_cycle is not None:
@@ -837,43 +924,15 @@ def transition_markers(
     event: EventLike,
     include_finish: bool = True,
 ) -> None:
-    commit = event.commit_cycle - event.start_cycle
-    finish = event.finish_cycle - event.start_cycle
-    shade_start = max(0.0, area.x_min)
-    shade_finish = min(float(commit), area.x_max)
-    if shade_finish > shade_start:
-        svg.rect(
-            area.sx(shade_start),
-            area.y,
-            area.sx(shade_finish) - area.sx(shade_start),
-            area.height,
-            START_COLOR,
-            opacity=0.08,
-        )
-    if event.drain_cycle is not None:
-        drain = event.drain_cycle - event.start_cycle
-        coexist_start = max(float(commit), area.x_min)
-        coexist_finish = min(float(drain), area.x_max)
-        if coexist_finish > coexist_start:
+    for start, ready, color, _ in timeline_spans(event):
+        left, right = max(start, area.x_min), min(ready, area.x_max)
+        if right > left:
             svg.rect(
-                area.sx(coexist_start),
-                area.y,
-                area.sx(coexist_finish) - area.sx(coexist_start),
-                area.height,
-                DRAIN_COLOR,
-                opacity=0.05,
+                area.sx(left), area.y, area.sx(right) - area.sx(left), area.height, color, opacity=0.65,
             )
-    markers: list[tuple[float, str, str | None]] = [
-        (0.0, START_COLOR, None),
-        (float(commit), COMMIT_COLOR, "8,6"),
-    ]
-    if include_finish:
-        markers.append((float(finish), FINISH_COLOR, None))
-    if event.drain_cycle is not None:
-        markers.append(
-            (float(event.drain_cycle - event.start_cycle), DRAIN_COLOR, "3,5")
-        )
-    for value, color, dash in markers:
+    for value, color, style, label in timeline_markers(event):
+        if not include_finish and FINISH_LABEL in label:
+            continue
         if area.x_min <= value <= area.x_max:
             svg.line(
                 area.sx(value),
@@ -882,22 +941,17 @@ def transition_markers(
                 area.y + area.height,
                 color,
                 2,
-                dash=dash,
+                dash={"-": None, "--": "8,6", "-.": "8,4,2,4", ":": "3,5"}[style],
                 opacity=0.9,
             )
 
 
 def scatter_output_markers(svg: Svg, area: PlotArea, event: EventLike) -> None:
-    markers: list[tuple[float, str, str | None]] = [
-        (0.0, START_COLOR, None),
-        (float(event.commit_cycle - event.start_cycle), COMMIT_COLOR, "8,6"),
-        (float(event.finish_cycle - event.start_cycle), FINISH_COLOR, None),
-    ]
-    if event.drain_cycle is not None:
-        markers.append(
-            (float(event.drain_cycle - event.start_cycle), DRAIN_COLOR, "3,5")
-        )
-    for value, color, dash in markers:
+    for start, ready, color, _ in timeline_spans(event):
+        bottom, top = max(start, area.y_min), min(ready, area.y_max)
+        if top > bottom:
+            svg.rect(area.x, area.sy(top), area.width, area.sy(bottom) - area.sy(top), color, opacity=0.35)
+    for value, color, style, _ in timeline_markers(event):
         if area.y_min <= value <= area.y_max:
             svg.line(
                 area.x,
@@ -906,7 +960,7 @@ def scatter_output_markers(svg: Svg, area: PlotArea, event: EventLike) -> None:
                 area.sy(value),
                 color,
                 2,
-                dash=dash,
+                dash={"-": None, "--": "8,6", "-.": "8,4,2,4", ":": "3,5"}[style],
                 opacity=0.9,
             )
 

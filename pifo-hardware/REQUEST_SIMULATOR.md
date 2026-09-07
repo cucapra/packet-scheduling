@@ -436,7 +436,7 @@ timestamps and counts for single-event figure readers. Each package still ends i
   `finish_cycle = cleanup_finish_cycle`.
 - `cleanup_instruction_count` includes its `GuardDrain`, invalidation/reset writes and final `CommitMapper`.
   `cleanup_commit_cycles = cleanup_applied_cycle - cleanup_start_cycle` includes waiting behind guards;
-  `cleanup_bank_cleanup_cycles = cleanup_finish_cycle - cleanup_applied_cycle` reports the final bank copy separately.
+  `cleanup_bank_cleanup_cycles = cleanup_finish_cycle - cleanup_applied_cycle` reports the final bank replay separately.
 - `resume_cycle`: STW-only, when retained tokens have been replayed, the minimum stop has elapsed, and traffic resumes.
 - `drain_duration_cycles`: `drain_cycle - commit_cycle` for transitive drain modes; blank for stop-the-world because
   capture precedes commit.
@@ -448,11 +448,28 @@ timestamps and counts for single-event figure readers. Each package still ends i
 - `minimum_stop_cycles` and `stop_duration_cycles` describe the configured and observed stop; the latter is
   `resume_cycle - drain_cycle`.
 
-`install_finish_cycle` and `drain_cycle` are independent: the first bank copy may finish while the old tree is still
-draining. Guarded retirement and its commit follow; the final bank copy finishes at `finish_cycle`. For STW, capture
+`install_finish_cycle` and `drain_cycle` are independent: the first bank replay may finish while the old tree is still
+draining. Guarded retirement and its commit follow; the final bank replay finishes at `finish_cycle`. For STW, capture
 precedes the install commit; resume and final configuration cleanup are separate milestones. The checked-in motivating
 example was rerun with cleanup commits and records both milestones. Older RR/SP archives predate this schema;
 readers preserve their legacy interpretation rather than retroactively claiming they executed cleanup commits.
+
+Figures display both commits instead of one ambiguous finish line:
+
+| Marker | C1: install | C2: cleanup |
+| --- | --- | --- |
+| start | `start_cycle` | `cleanup_start_cycle` |
+| commit accepted | `commit_cycle` | `cleanup_commit_cycle` |
+| ready_for_next_commit | `install_finish_cycle` | `cleanup_finish_cycle` |
+| old-tree-drained | `drain_cycle` | the same `drain_cycle` |
+
+The pale-blue C1 and pale-amber C2 backgrounds each span start to readiness. This is not a start-to-drain interval:
+C1 is normally ready before drain, and C2's background includes its guard wait. Both refer to the same retired tree,
+so their drain lines coincide. Additive changes label the drain as not required; STW shows old-tree capture, not a
+fictional drain, and separately marks traffic resume. Exact absolute cycles appear in the legends, including
+coincident C1 readiness/C2 start. Packet input/output scatter has matching x/y markers and equal scales; packet-delay
+scatter has only vertical time markers because its y-axis is a duration. Historical single-commit archives retain
+only C1, with no inferred C2 timestamps from neighboring newer runs.
 
 Outside stop-the-world, packet admission is paused only across the commit edge so one packet cannot be split between
 tree versions; existing PIFO traffic continues during staging, drain, and mapper synchronization. Stop-the-world gates

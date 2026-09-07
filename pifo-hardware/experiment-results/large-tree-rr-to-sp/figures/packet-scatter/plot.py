@@ -22,14 +22,23 @@ COLORS = ('#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e3
  '#17becf')
 PANELS = [{'title': 'RR → SP',
   'start': 240,
-  'markers': [(0, '#1f77b4', '-', 'start'), (38, '#ff7f0e', '--', 'commit accepted'),
-              (295, '#9467bd', ':', 'old tree drained'),
-              (347, '#2ca02c', '-.', 'finish: double-buffer cleanup done')],
-  'notes': 'start=240  commit accepted=278  drain=535  finish=587\n'
+  'markers': [(0, '#1f77b4', '-', 'C1 start'), (38, '#ff7f0e', '--', 'C1 commit accepted'),
+              (58, '#2ca02c', '-.', 'C1 ready_for_next_commit'),
+              (295, '#9467bd', ':', 'C1 old-tree-drained'), (58, '#1f77b4', '-', 'C2 start'),
+              (88, '#ff7f0e', '--', 'C2 commit accepted'),
+              (347, '#2ca02c', '-.', 'C2 ready_for_next_commit'),
+              (295, '#9467bd', ':', 'C2 old-tree-drained')],
+  'spans': [(0, 58, '#dbeafe', 'C1: install commit'), (58, 347, '#ffedd5', 'C2: cleanup commit')],
+  'notes': 'C1: start=240  commit accepted=278  ready_for_next_commit=298\n'
+           'C2: start=298  commit accepted=328  ready_for_next_commit=587\n'
+           'old tree drained=535 (shared by C1/C2)\n'
            'published: install=281, cleanup=572\n'
            'config=27 inst / 41 cycles to publication\n'
            'cleanup=30 inst / 274 cycles to publication (guard wait included)\n'
-           'bank cleanup: install=17, cleanup=15 cycles; ≤1 instruction accepted/cycle'}]
+           'bank replay: install=17, cleanup=15 cycles; ≤1 instruction accepted/cycle',
+  'accounting': 'config=27 inst / 41 cycles to publication\n'
+                'cleanup=30 inst / 274 cycles to publication (guard wait included)\n'
+                'bank replay: install=17, cleanup=15 cycles'}]
 
 with (HERE / 'data.csv').open(newline="", encoding="utf-8-sig") as stream:
     rows = list(csv.DictReader(stream))
@@ -38,11 +47,39 @@ if not rows:
 
 
 def event_lines(axis, panel, horizontal=False):
-    for cycle, color, style, label in panel["markers"]:
-        axis.axvline(cycle, color=color, linestyle=style, linewidth=1.15, label=label)
+    for start, ready, color, label in panel["spans"]:
+        axis.axvspan(start, ready, color=color, alpha=0.65, linewidth=0, zorder=0, label=label)
         if horizontal:
-            axis.axhline(cycle, color=color, linestyle=style, linewidth=1.15)
+            axis.axhspan(start, ready, color=color, alpha=0.35, linewidth=0, zorder=0)
+    for cycle, color, style, label in panel["markers"]:
+        width = 2.3 if "ready_for_next_commit" in label else 1.15
+        axis.axvline(cycle, color=color, linestyle=style, linewidth=width, label=label)
+        if horizontal:
+            axis.axhline(cycle, color=color, linestyle=style, linewidth=width, gid="commit-time-y")
     axis.grid(True, color="0.92", linewidth=0.8)
+
+
+def event_legend(axis, panel):
+    handles, labels = axis.get_legend_handles_labels()
+    indexed = dict(zip(labels, handles))
+    entries = []
+    for _, _, _, title in panel["spans"]:
+        name = title.split(":")[0]
+        entries.append((indexed[title], title))
+        entries.extend((indexed[label], f"{label} = {cycle + panel['start']}")
+                       for cycle, _, _, label in panel["markers"] if label.startswith(name + " "))
+    resumes = {label: cycle + panel["start"] for cycle, _, _, label in panel["markers"]
+               if label == "traffic resumed"}
+    data = [(handle, f"{label} = {resumes[label]}" if label in resumes else label)
+            for handle, label in zip(handles, labels) if not label.startswith(("C1", "C2"))]
+    if data:
+        data_legend = axis.legend(*zip(*data), loc="upper right", fontsize=8)
+        axis.add_artist(data_legend)
+    key = axis.legend(*zip(*entries), loc="upper center", bbox_to_anchor=(0.5, -0.16),
+                      ncol=len(panel["spans"]), fontsize=7.5)
+    axis.annotate(panel["accounting"], xy=(0.5, 0), xycoords=key, xytext=(0, -6),
+                  textcoords="offset points", ha="center", va="top", fontsize=7,
+                  color="0.35", annotation_clip=False)
 
 flows = sorted({int(row["flow_id"]) for row in rows})
 fig, axis = plt.subplots(figsize=(8, 8), constrained_layout=True)
@@ -62,9 +99,7 @@ axis.set(xlim=limits, ylim=limits, title=TITLE,
          xlabel="Packet input time relative to reconfiguration start (cycles)",
          ylabel="Packet output time relative to reconfiguration start (cycles)")
 axis.set_aspect("equal", adjustable="box")
-axis.legend(loc="best", fontsize=8)
-axis.text(0.99, 0.03, PANELS[0]["notes"], transform=axis.transAxes,
-          ha="right", va="bottom", fontsize=8, color="0.35")
+event_legend(axis, PANELS[0])
 
 fig.savefig(HERE / 'figure.svg', bbox_inches="tight")
 fig.savefig(HERE / 'figure.png', dpi=DPI, bbox_inches="tight")

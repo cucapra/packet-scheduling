@@ -11,7 +11,7 @@ from pprint import pformat
 from typing import Mapping, Sequence
 
 from pifo_figures.common import (
-    COLORS, FigurePaths, PolicyEvent, drain_label, finish_label, timing_text,
+    COLORS, FigurePaths, PolicyEvent, timeline_markers, timeline_spans, timeline_notes, timing_text,
 )
 
 
@@ -29,17 +29,9 @@ def write_plot_script(
     """Write plot.py; do not run it or modify any existing figure/CSV."""
     panel_settings = []
     for panel_title, event in panels:
-        markers = [
-            (0, "#1f77b4", "-", "start"),
-            (event.commit_cycle - event.start_cycle, "#ff7f0e", "--", "commit accepted"),
-        ]
-        if event.drain_cycle is not None:
-            markers.append((event.drain_cycle - event.start_cycle, "#9467bd", ":", drain_label(event)))
-        markers.append((event.finish_cycle - event.start_cycle, "#2ca02c", "-.", finish_label(event)))
-        if event.resume_cycle is not None:
-            markers.append((event.resume_cycle - event.start_cycle, "0.4", "--", "traffic resumed"))
         panel_settings.append(dict(title=panel_title, start=event.start_cycle,
-                                   markers=markers, notes=timing_text(event)))
+                                   markers=timeline_markers(event), spans=timeline_spans(event),
+                                   notes=timing_text(event), accounting=timeline_notes(event)))
 
     settings = {
         "DPI": dpi,
@@ -91,11 +83,39 @@ plt.close(fig)
 _MARKERS = '''
 
 def event_lines(axis, panel, horizontal=False):
-    for cycle, color, style, label in panel["markers"]:
-        axis.axvline(cycle, color=color, linestyle=style, linewidth=1.15, label=label)
+    for start, ready, color, label in panel["spans"]:
+        axis.axvspan(start, ready, color=color, alpha=0.65, linewidth=0, zorder=0, label=label)
         if horizontal:
-            axis.axhline(cycle, color=color, linestyle=style, linewidth=1.15)
+            axis.axhspan(start, ready, color=color, alpha=0.35, linewidth=0, zorder=0)
+    for cycle, color, style, label in panel["markers"]:
+        width = 2.3 if "ready_for_next_commit" in label else 1.15
+        axis.axvline(cycle, color=color, linestyle=style, linewidth=width, label=label)
+        if horizontal:
+            axis.axhline(cycle, color=color, linestyle=style, linewidth=width, gid="commit-time-y")
     axis.grid(True, color="0.92", linewidth=0.8)
+
+
+def event_legend(axis, panel):
+    handles, labels = axis.get_legend_handles_labels()
+    indexed = dict(zip(labels, handles))
+    entries = []
+    for _, _, _, title in panel["spans"]:
+        name = title.split(":")[0]
+        entries.append((indexed[title], title))
+        entries.extend((indexed[label], f"{label} = {cycle + panel['start']}")
+                       for cycle, _, _, label in panel["markers"] if label.startswith(name + " "))
+    resumes = {label: cycle + panel["start"] for cycle, _, _, label in panel["markers"]
+               if label == "traffic resumed"}
+    data = [(handle, f"{label} = {resumes[label]}" if label in resumes else label)
+            for handle, label in zip(handles, labels) if not label.startswith(("C1", "C2"))]
+    if data:
+        data_legend = axis.legend(*zip(*data), loc="upper right", fontsize=8)
+        axis.add_artist(data_legend)
+    key = axis.legend(*zip(*entries), loc="upper center", bbox_to_anchor=(0.5, -0.16),
+                      ncol=len(panel["spans"]), fontsize=7.5)
+    axis.annotate(panel["accounting"], xy=(0.5, 0), xycoords=key, xytext=(0, -6),
+                  textcoords="offset points", ha="center", va="top", fontsize=7,
+                  color="0.35", annotation_clip=False)
 
 '''
 
@@ -111,16 +131,15 @@ for index, flow in enumerate(flows):
     axes[1].plot(x, [float(row[f"flow_{flow}_link_fraction"]) for row in rows],
                  color=COLORS[index % len(COLORS)], linewidth=2,
                  label=FLOW_LABELS.get(flow, f"Flow {flow}"))
+axes[0].legend(loc="upper right", fontsize=8)
 for axis in axes:
     event_lines(axis, PANELS[0])
     axis.set_ylim(bottom=0)
-    axis.legend(loc="best", fontsize=8)
+event_legend(axes[1], PANELS[0])
 axes[0].set_title(TITLE)
 axes[0].set_ylabel("Aggregate bandwidth / link capacity")
 axes[1].set_ylabel("Per-flow bandwidth / link capacity")
 axes[1].set_xlabel("Time relative to reconfiguration start (cycles)")
-axes[0].text(0.99, 0.03, PANELS[0]["notes"], transform=axes[0].transAxes,
-             ha="right", va="bottom", fontsize=8, color="0.35")
 '''
 
 _SCATTER = '''flows = sorted({int(row["flow_id"]) for row in rows})
@@ -141,9 +160,7 @@ axis.set(xlim=limits, ylim=limits, title=TITLE,
          xlabel="Packet input time relative to reconfiguration start (cycles)",
          ylabel="Packet output time relative to reconfiguration start (cycles)")
 axis.set_aspect("equal", adjustable="box")
-axis.legend(loc="best", fontsize=8)
-axis.text(0.99, 0.03, PANELS[0]["notes"], transform=axis.transAxes,
-          ha="right", va="bottom", fontsize=8, color="0.35")
+event_legend(axis, PANELS[0])
 '''
 
 _DELAY = '''flows = sorted({int(row["flow"]) for row in rows})
@@ -168,9 +185,7 @@ for axis, panel in zip(axes[0], PANELS):
     axis.margins(x=0.02, y=0.05)
     axis.set_title(panel["title"])
     axis.set_xlabel("Generation cycle relative to reconfiguration start")
-    axis.legend(loc="best", markerscale=1.5, fontsize=8)
-    axis.text(0.01, 0.01, panel["notes"], transform=axis.transAxes,
-              va="bottom", fontsize=7, color="0.35")
+    event_legend(axis, panel)
 axes[0][0].set_ylabel("Per-packet delay (pop − generation cycles)")
 if len(PANELS) > 1:
     fig.suptitle(TITLE)
@@ -190,13 +205,11 @@ for axis, panel in zip(axes[0], PANELS):
                   color=COLORS[index % len(COLORS)], linewidth=1.8,
                   label=FLOW_LABELS.get(flow, f"Flow {flow}"))
     event_lines(axis, panel)
+    event_legend(axis, panel)
     axis.axhline(1, color="0.55", linewidth=1, linestyle=":")
     axis.set_title(panel["title"])
     axis.set_xlabel("Cycle relative to reconfiguration start")
-    axis.text(0.01, 0.01, panel["notes"], transform=axis.transAxes,
-              va="bottom", fontsize=7, color="0.35")
 axes[0][0].set_ylabel("Output throughput / link capacity")
-axes[0][-1].legend(loc="best", fontsize=8)
 fig.suptitle(TITLE)
 '''
 
