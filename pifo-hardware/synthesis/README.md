@@ -258,6 +258,28 @@ checks all 14 Quartus cases completed when the issue was found and rejects
 inconsistent detailed totals. The original synthesis completed successfully;
 this is a report-accounting workaround and requires no synthesis rerun.
 
+## Replay journal placement
+
+The replay configuration uses two simple-dual-port mapper banks and records
+configuration writes in a shared controller FIFO. In the original 1,024-ID
+Quartus run, the mapper banks infer correctly but the journal maps to 655,360
+storage registers. The equivalent isolated journal infers block RAM, so the
+full-design result must be checked rather than inferred from an isolated test.
+
+`probe_replay_journal.py SOURCE_BUILD FRESH_BUILD --force-m20k` resynthesizes
+the unchanged core with `RAMSTYLE_ATTRIBUTE M20K` scoped to the journal array.
+It reuses verified RTL/MIF inputs and preserves the source result. Add
+`--isolated` for the extracted-journal control. The
+[experiment setup and evidence](../experiment-results/hardware-overhead/r4-replay/journal-m20k/README.md)
+record both automatic and explicit placement. This is a Quartus project
+assignment; the canonical RTL and Vivado setup remain the original R4 inputs.
+
+Use `check_replay_mapping.py BUILD OUTPUT_JSON --require-log-ram` to require
+two post-mapper banks per PE, no copy-read replicas, and a simple-dual-port RAM
+journal in a completed Quartus report. Without the final flag, the checker
+also accepts an explicitly evidenced logic/register journal and records that
+implementation instead of interpreting its zero block-memory count as absence.
+
 ## Generic RTL audit
 
 When the Quartus license is unavailable, Yosys can independently check the

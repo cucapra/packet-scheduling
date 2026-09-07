@@ -119,6 +119,10 @@ read/copy, RAM decreases 43.33% and ALMs decrease 8.92%, while registers increas
 243.48%. This register cost is included in the comparison; zero journal RAM does
 not mean zero journal storage. The smaller Quartus journals and all Vivado
 journals map to block RAM.
+The [journal placement control](../../experiment-results/hardware-overhead/r4-replay/journal-m20k/README.md)
+tests an explicit journal-only M20K assignment while preserving all RTL and
+initialization files; its separate report distinguishes isolated controls from
+the full-core rerun.
 
 R4 uses the same two target parts, eight-thread settings, 100 MHz constraint,
 external PIFO interface, and Vivado RuntimeOptimized directive as R1/R2. Large

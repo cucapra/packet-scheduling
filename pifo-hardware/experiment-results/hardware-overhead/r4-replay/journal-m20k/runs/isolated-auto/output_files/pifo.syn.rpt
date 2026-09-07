@@ -1,0 +1,505 @@
+Synthesis report
+Mon Sep  7 04:29:34 2026
+Quartus Prime Version 25.3.1 Build 100 12/19/2025 SC Pro Edition
+
+
+---------------------
+; Table of Contents ;
+---------------------
+  1. Legal Notice
+  2. Synthesis Summary
+  3. Synthesis Settings
+  4. Synthesis Source Files Read
+  5. Synthesis Partition Summary
+---- Analysis & Elaboration Stage Reports ----
+       6. Top Causes of Logic Optimized Away During Sweep
+---- Logic Synthesis Stage Reports ----
+       7. Partition "root_partition" Resource Utilization by Entity
+       8. General Register Statistics for Partition "root_partition"
+       9. Multiplexer Restructuring Statistics (Restructuring Performed)
+      10. Registers Packed Into Inferred Megafunctions
+      11. Source Assignments for logic_ram_rtl_0|auto_generated|altera_syncram_impl1
+      12. Parameter Settings for Inferred Entity Instance: logic_ram_rtl_0
+      13. Post-Synthesis Netlist Statistics for Partition "root_partition"
+      14. Synthesis Resource Usage Summary for Partition "root_partition"
+      15. Synthesis RAM Summary for Partition "root_partition"
+ 16. General Warnings
+ 17. Synthesis Messages
+
+
+
+----------------
+; Legal Notice ;
+----------------
+Copyright (C) 2025  Altera Corporation. All rights reserved.
+Your use of Altera Corporation's design tools, logic functions 
+and other software and tools, and any partner logic 
+functions, and any output files from any of the foregoing 
+(including device programming or simulation files), and any 
+associated documentation or information are expressly subject 
+to the terms and conditions of the Altera Program License 
+Subscription Agreement, the Altera Quartus Prime License Agreement,
+the Altera IP License Agreement, or other applicable license
+agreement, including, without limitation, that your use is for
+the sole purpose of programming logic devices manufactured by
+Altera and sold by Altera or its authorized distributors.  Please
+refer to the Altera Software License Subscription Agreements 
+on the Quartus Prime software download page.
+
+
+
++-----------------------------------------------------------------------------------+
+; Synthesis Summary                                                                 ;
++--------------------------------------+--------------------------------------------+
+; Synthesis Status                     ; Successful - Mon Sep  7 04:29:34 2026      ;
+; Revision Name                        ; pifo                                       ;
+; Top-level Entity Name                ; PifoMesh                                   ;
+; Family                               ; Agilex 7                                   ;
+; Quartus Prime Version                ; 25.3.1 Build 100 12/19/2025 SC Pro Edition ;
+; Device                               ; AGFB014R24B2E2V                            ;
+; Logic utilization estimate (in ALMs) ; 490 / 487,200 ( < 1 % )                    ;
+; Total dedicated logic registers      ; 49                                         ;
+; Estimated DSP Blocks Post-Merging    ; 0                                          ;
++--------------------------------------+--------------------------------------------+
+
+
++--------------------------------------------------------------------------------------------------------------------------------------------------+
+; Synthesis Settings                                                                                                                               ;
++----------------------------------------------------------------------------------------------+-------------------------+-------------------------+
+; Option                                                                                       ; Setting                 ; Default Value           ;
++----------------------------------------------------------------------------------------------+-------------------------+-------------------------+
+; Device                                                                                       ; AGFB014R24B2E2V         ;                         ;
+; Top-level entity name                                                                        ; PifoMesh                ; pifo                    ;
+; Family name                                                                                  ; Agilex 7                ; Cyclone 10 GX           ;
+; Maximum processors allowed for parallel compilation                                          ; 8                       ;                         ;
+; Enable parallel Assembler and Timing Analyzer during compilation                             ; On                      ; On                      ;
+; Enable compact report table                                                                  ; Off                     ; Off                     ;
+; Enable Design Assistant in the compilation flow                                              ; On                      ; On                      ;
+; Design Assistant include IP blocks                                                           ; Off                     ; Off                     ;
+; High fanout net threshold for RAM inference                                                  ; 15                      ; 15                      ;
+; Design Assistant limit on reported violations per rule                                       ; 5000                    ; 5000                    ;
+; Optimization Mode                                                                            ; Balanced                ; Balanced                ;
+; Allow Register Retiming                                                                      ; On                      ; On                      ;
+; Allow RAM Retiming                                                                           ; On                      ; On                      ;
+; Allow DSP Retiming                                                                           ; On                      ; On                      ;
+; Restructure Multiplexers                                                                     ; Auto                    ; Auto                    ;
+; Waive gated clock synchronizer check                                                         ; On                      ; On                      ;
+; (DEPRECATED) MLAB Add Timing Constraints For Mixed-Port Feed-Through Mode Setting Don't Care ; Off                     ; Off                     ;
+; Preserve fewer node names                                                                    ; On                      ; On                      ;
+; Altera FPGA IP Evaluation Mode                                                               ; Enable                  ; Enable                  ;
+; Verilog Version                                                                              ; Verilog_2001            ; Verilog_2001            ;
+; VHDL Version                                                                                 ; VHDL_1993               ; VHDL_1993               ;
+; State Machine Processing                                                                     ; Auto                    ; Auto                    ;
+; Safe State Machine                                                                           ; Auto                    ; Auto                    ;
+; Iteration limit for constant Verilog loops                                                   ; 5000                    ; 5000                    ;
+; Iteration limit for non-constant Verilog loops                                               ; 250                     ; 250                     ;
+; Infer RAMs from Raw Logic                                                                    ; On                      ; On                      ;
+; DSP Action on miss                                                                           ; Ignore                  ; Ignore                  ;
+; DSP Block Balancing                                                                          ; Auto                    ; Auto                    ;
+; NOT Gate Push-Back                                                                           ; On                      ; On                      ;
+; Power-Up Don't Care                                                                          ; On                      ; On                      ;
+; Remove Redundant Logic Cells                                                                 ; Off                     ; Off                     ;
+; Remove Duplicate Registers                                                                   ; On                      ; On                      ;
+; Ignore GLOBAL Buffers                                                                        ; Off                     ; Off                     ;
+; Ignore LCELL Buffers                                                                         ; Off                     ; Off                     ;
+; Ignore SOFT Buffers                                                                          ; On                      ; On                      ;
+; Optimization Technique                                                                       ; Balanced                ; Balanced                ;
+; Auto Open-Drain Pins                                                                         ; On                      ; On                      ;
+; Perform WYSIWYG Primitive Resynthesis                                                        ; Off                     ; Off                     ;
+; Auto ROM Replacement                                                                         ; On                      ; On                      ;
+; Auto RAM Replacement                                                                         ; On                      ; On                      ;
+; Auto DSP Block Replacement                                                                   ; On                      ; On                      ;
+; Auto Shift Register Replacement                                                              ; Auto                    ; Auto                    ;
+; Allow Shift Register Merging across Hierarchies                                              ; Auto                    ; Auto                    ;
+; Physical Shift Register Inference                                                            ; On                      ; On                      ;
+; Auto Clock Enable Replacement                                                                ; On                      ; On                      ;
+; Strict RAM Replacement                                                                       ; Off                     ; Off                     ;
+; Allow Synchronous Control Signals                                                            ; On                      ; On                      ;
+; Force Use of Synchronous Clear Signals                                                       ; Off                     ; Off                     ;
+; Auto Resource Sharing                                                                        ; Off                     ; Off                     ;
+; Allow Any RAM Size For Recognition                                                           ; Off                     ; Off                     ;
+; Allow Any Shift Register Size For Recognition                                                ; Off                     ; Off                     ;
+; Ignore translate_off and synthesis_off directives                                            ; Off                     ; Off                     ;
+; Report Propagation of Constraints                                                            ; On                      ; On                      ;
+; Ignore Maximum Fan-Out Assignments                                                           ; Off                     ; Off                     ;
+; Maximum Synchronizer Length Protected during Optimization                                    ; 3                       ; 3                       ;
+; Power Optimization During Synthesis                                                          ; Normal compilation      ; Normal compilation      ;
+; HDL message level                                                                            ; Level2                  ; Level2                  ;
+; Number of Protected Registers Reported in Synthesis Report                                   ; 100                     ; 100                     ;
+; Number of Removed Registers Reported in Synthesis Report                                     ; 5000                    ; 5000                    ;
+; Number of Optimized Away Hierarchies Reported in Synthesis Report                            ; 100                     ; 100                     ;
+; Number of Top Root Causes Reported in Synthesis Report                                       ; 10                      ; 10                      ;
+; Group Identical Hierarchies in Optimized Away Hierarchies Report                             ; On                      ; On                      ;
+; Number of Swept Nodes Reported in Synthesis Report                                           ; 5000                    ; 5000                    ;
+; Number of Inverted Registers Reported in Synthesis Report                                    ; 100                     ; 100                     ;
+; Clock MUX Protection                                                                         ; On                      ; On                      ;
+; Auto Gated Clock Conversion                                                                  ; Off                     ; Off                     ;
+; Block Design Naming                                                                          ; Auto                    ; Auto                    ;
+; SDC constraint protection                                                                    ; Off                     ; Off                     ;
+; Optimization and Constraint Precedence                                                       ; Prioritize Optimization ; Prioritize Optimization ;
+; Synthesis Effort                                                                             ; Auto                    ; Auto                    ;
+; Shift Register Replacement - Allow Asynchronous Clear Signal                                 ; On                      ; On                      ;
+; Analysis & Synthesis Message Level                                                           ; Medium                  ; Medium                  ;
+; Disable Register Merging Across Hierarchies                                                  ; Auto                    ; Auto                    ;
+; Resource Aware Inference For Block RAM                                                       ; On                      ; On                      ;
+; Automatic Parallel Synthesis                                                                 ; On                      ; On                      ;
+; Partial Reconfiguration Bitstream ID                                                         ; Off                     ; Off                     ;
+; Disable DSP Negate Inferencing                                                               ; Off                     ; Off                     ;
+; Report Parameter Settings                                                                    ; On                      ; On                      ;
+; Report Parameter Settings to ASCII                                                           ; On                      ; On                      ;
+; Report Source Assignments                                                                    ; On                      ; On                      ;
+; Report Source Assignments to ASCII                                                           ; On                      ; On                      ;
+; Report Resource Utilization by Entity to ASCII                                               ; On                      ; On                      ;
+; Size of the Latch Report                                                                     ; 100                     ; 100                     ;
+; Enable VHDL static assertion support                                                         ; Off                     ; Off                     ;
+; Enable SystemVerilog static assertion support                                                ; Off                     ; Off                     ;
+; Enable State Machines Inference                                                              ; On                      ; On                      ;
+; Allow RAMs Inferred In Generate-For Loop For Verilog                                         ; Off                     ; Off                     ;
+; Enable formal verification support during compilation                                        ; Off                     ; Off                     ;
+; Size of the PR Initial Conditions Report                                                     ; 100                     ; 100                     ;
+; Number of Registers with Ignored Power-Up Settings Reported in Synthesis Report              ; 500                     ; 500                     ;
+; Report PR Initial Values as Errors                                                           ; Off                     ; Off                     ;
+; Fractal Synthesis                                                                            ; Off                     ; Off                     ;
+; Aggressive Multiplexer Area Optimization                                                     ; Auto                    ; Auto                    ;
+; 6LUT to Extended Mode Conversion                                                             ; Auto                    ; Auto                    ;
+; Synthesis Available Resource Multiplier                                                      ; 1                       ; 1                       ;
+; Message Level for Unconnected Output Ports                                                   ; Warning                 ; Warning                 ;
+; Pack Barrelshifters into Carry Chains for Better Area                                        ; Auto                    ; Auto                    ;
+; Initialize Verilog enums to X                                                                ; Off                     ; Off                     ;
+; Enable dynamic report                                                                        ; Off                     ; Off                     ;
+; Show Collapsible Rows in Ascii Report for Warning Summary Reports                            ; On                      ; On                      ;
+; Enable RTL Analysis Debug Mode                                                               ; Off                     ; Off                     ;
+; Enable preserve for debug assignments                                                        ; Off                     ; Off                     ;
++----------------------------------------------------------------------------------------------+-------------------------+-------------------------+
+
+
++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+; Synthesis Source Files Read                                                                                                                                                                                                                                                                                                                                                    ;
++------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------+---------+-----------+---------------+----------------------------------+
+; File Name with User-Entered Path                                                                           ; File Type                                                                   ; File Name with Absolute Path                                                                               ; Library ; IP Source ; Include Files ; MD5                              ;
++------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------+---------+-----------+---------------+----------------------------------+
+; rtl/PifoMesh.v                                                                                             ; User-Specified SystemVerilog HDL File                                       ; /data/work/rio-synthesis/journal-m20k/isolated-auto/rtl/PifoMesh.v                                         ;         ;           ;               ; 5494ddfd113ddb63cde6ccc6bd3fb359 ;
+; pifo.sdc                                                                                                   ; User-Specified SDC File (Read by the Timing Analyzer at each fitter stage)  ; /data/work/rio-synthesis/journal-m20k/isolated-auto/pifo.sdc                                               ;         ;           ;               ; 9979d8df10e10e52fc063d4869724b0e ;
+; /data/work/quartus/quartus/libraries/megafunctions/altera_syncram.tdf                                      ; Megafunction                                                                ; /data/work/quartus/quartus/libraries/megafunctions/altera_syncram.tdf                                      ; work    ;           ;               ;                                  ;
+; cbx.lst                                                                                                    ; Auto-Found Unspecified File                                                 ; /data/work/quartus/quartus/libraries/megafunctions/cbx.lst                                                 ;         ;           ;               ;                                  ;
+; /data/work/rio-synthesis/journal-m20k/isolated-auto/tmp-clearbox/pifo/342656/altera_syncram_qdl91.tdf      ; Auto-Generated Megafunction                                                 ; /data/work/rio-synthesis/journal-m20k/isolated-auto/tmp-clearbox/pifo/342656/altera_syncram_qdl91.tdf      ;         ;           ;               ;                                  ;
+; /data/work/rio-synthesis/journal-m20k/isolated-auto/tmp-clearbox/pifo/342656/altera_syncram_impl_mh991.tdf ; Auto-Generated Megafunction                                                 ; /data/work/rio-synthesis/journal-m20k/isolated-auto/tmp-clearbox/pifo/342656/altera_syncram_impl_mh991.tdf ;         ;           ;               ;                                  ;
+; /data/work/rio-synthesis/journal-m20k/isolated-auto/tmp-clearbox/pifo/342656/decode_6otu.tdf               ; Auto-Generated Megafunction                                                 ; /data/work/rio-synthesis/journal-m20k/isolated-auto/tmp-clearbox/pifo/342656/decode_6otu.tdf               ;         ;           ;               ;                                  ;
+; /data/work/rio-synthesis/journal-m20k/isolated-auto/tmp-clearbox/pifo/342656/mux_lc3l1.tdf                 ; Auto-Generated Megafunction                                                 ; /data/work/rio-synthesis/journal-m20k/isolated-auto/tmp-clearbox/pifo/342656/mux_lc3l1.tdf                 ;         ;           ;               ;                                  ;
++------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------+---------+-----------+---------------+----------------------------------+
+
+
++--------------------------------------------------------------------------------------------+
+; Synthesis Partition Summary                                                                ;
++----------------+----------------+---------+--------------+-------+-------------------------+
+; Partition Name ; Hierarchy Path ; Type    ; Preservation ; Empty ; Partition Database File ;
++----------------+----------------+---------+--------------+-------+-------------------------+
+; root_partition ; |              ; Default ;              ;       ;                         ;
++----------------+----------------+---------+--------------+-------+-------------------------+
+
+
+Top root causes of logic optimization that have been identified during sweep. For more details and filtering options, ensure that you have compiled with the "Enable RTL Analysis Debug Mode " setting turned on under Assignments->Settings->Compiler Settings, then go to the " Root Causes Tab " in the " Sweep Hints Viewer " tool in the " RTL Analyzer ".
++-----------------------------------------------------------------------------------------------------------------+
+; Top Causes of Logic Optimized Away During Sweep                                                                 ;
++----------------------------+------------------+-------------------------------------------+---------------------+
+; Root Object Path           ; Root Object Type ; Root Reason                               ; Swept Objects Count ;
++----------------------------+------------------+-------------------------------------------+---------------------+
+; logic_pop_addressGen_valid ; COMB (NOT)       ; wired through input !a[0] due to inverter ; 0                   ;
++----------------------------+------------------+-------------------------------------------+---------------------+
+
+
++------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+; Partition "root_partition" Resource Utilization by Entity                                                                                                                                                                                      ;
++---------------------------------+---------------------+---------------------------+-------------------+------------+------+-----------+-------------------------------------------------------------+---------------------------+--------------+
+; Compilation Hierarchy Node      ; Combinational ALUTs ; Dedicated Logic Registers ; Block Memory Bits ; DSP Blocks ; Pins ; Max Depth ; Full Hierarchy Name                                         ; Entity Name               ; Library Name ;
++---------------------------------+---------------------+---------------------------+-------------------+------------+------+-----------+-------------------------------------------------------------+---------------------------+--------------+
+; |                               ; 172 (84)            ; 49 (46)                   ; 655360            ; 0          ; 117  ; 3.4 (3.4) ; |                                                           ; PifoMesh                  ; altera_work  ;
+;    |logic_ram_rtl_0|            ; 88 (0)              ; 3 (0)                     ; 655360            ; 0          ; 0    ; 3.0 (0.0) ; logic_ram_rtl_0                                             ; altera_syncram            ; work         ;
+;       |auto_generated|          ; 88 (0)              ; 3 (0)                     ; 655360            ; 0          ; 0    ; 3.0 (0.0) ; logic_ram_rtl_0|auto_generated                              ; altera_syncram_qdl91      ; altera_work  ;
+;          |altera_syncram_impl1| ; 88 (0)              ; 3 (3)                     ; 655360            ; 0          ; 0    ; 3.0 (2.0) ; logic_ram_rtl_0|auto_generated|altera_syncram_impl1         ; altera_syncram_impl_mh991 ; altera_work  ;
+;             |decode3|           ; 8 (8)               ; 0 (0)                     ; 0                 ; 0          ; 0    ; 3.0 (3.0) ; logic_ram_rtl_0|auto_generated|altera_syncram_impl1|decode3 ; decode_6otu               ; altera_work  ;
+;             |mux4|              ; 80 (80)             ; 0 (0)                     ; 0                 ; 0          ; 0    ; 2.0 (2.0) ; logic_ram_rtl_0|auto_generated|altera_syncram_impl1|mux4    ; mux_lc3l1                 ; altera_work  ;
++---------------------------------+---------------------+---------------------------+-------------------+------------+------+-----------+-------------------------------------------------------------+---------------------------+--------------+
+Note: For table entries with two numbers listed, the numbers in parentheses indicate the number of resources of the given type used by the specific entity alone. The numbers listed outside of parentheses indicate the total resources of the given type used by the specific entity and all of its sub-entities in the hierarchy.
+
+
++------------------------------------------------------------+
+; General Register Statistics for Partition "root_partition" ;
++----------------------------------------------+-------------+
+; Statistic                                    ; Value       ;
++----------------------------------------------+-------------+
+; Total registers                              ; 49          ;
+; Number of registers using Synchronous Clear  ; 46          ;
+; Number of registers using Synchronous Load   ; 0           ;
+; Number of registers using Asynchronous Clear ; 46          ;
+; Number of registers using Asynchronous Load  ; 0           ;
+; Number of registers using Clock Enable       ; 48          ;
+; Number of registers using Preset             ; 0           ;
++----------------------------------------------+-------------+
+
+
++--------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+; Multiplexer Restructuring Statistics (Restructuring Performed)                                                                                                     ;
++--------------------+-----------+---------------+----------------------+------------------------+------------+----------------------------+-------------------------+
+; Multiplexer Inputs ; Bus Width ; Baseline Area ; Area if Restructured ; Saving if Restructured ; Registered ; Example Multiplexer Output ; Restructuring Performed ;
++--------------------+-----------+---------------+----------------------+------------------------+------------+----------------------------+-------------------------+
+; 3:1                ; 15 bits   ; 30 LEs        ; 0 LEs                ; 30 LEs                 ; Yes        ; logic_ptr_push[0]          ; Yes                     ;
+; 3:1                ; 15 bits   ; 30 LEs        ; 0 LEs                ; 30 LEs                 ; Yes        ; logic_ptr_pop[5]           ; Yes                     ;
+; 3:1                ; 15 bits   ; 30 LEs        ; 0 LEs                ; 30 LEs                 ; Yes        ; logic_pop_sync_popReg[0]   ; Yes                     ;
++--------------------+-----------+---------------+----------------------+------------------------+------------+----------------------------+-------------------------+
+
+
++--------------------------------------------------------+
+; Registers Packed Into Inferred Megafunctions           ;
++-------------------------------+-----------------+------+
+; Register Name                 ; Megafunction    ; Type ;
++-------------------------------+-----------------+------+
+; logic_ram_spinal_port1[0..39] ; logic_ram_rtl_0 ; RAM  ;
++-------------------------------+-----------------+------+
+
+
++-----------------------------------------------------------------------------------------------------------------------------+
+; Source Assignments for logic_ram_rtl_0|auto_generated|altera_syncram_impl1                                                  ;
++---------------------------------+--------------------+------+----+----------------------------------------------------------+
+; Assignment                      ; Value              ; From ; To ; Source Location                                          ;
++---------------------------------+--------------------+------+----+----------------------------------------------------------+
+; OPTIMIZE_POWER_DURING_SYNTHESIS ; NORMAL_COMPILATION ; -    ; -  ; tmp-clearbox/pifo/342656/altera_syncram_impl_mh991.tdf:0 ;
++---------------------------------+--------------------+------+----+----------------------------------------------------------+
+
+
++---------------------------------------------------------------------------------------------+
+; Parameter Settings for Inferred Entity Instance: logic_ram_rtl_0                            ;
++------------------------------------------------------------+----------------------+---------+
+; Parameter Name                                             ; Value                ; Type    ;
++------------------------------------------------------------+----------------------+---------+
+; ACF_BLOCK_RAM_AND_MLAB_EQUIVALENT_PAUSED_READ_CAPABILITIES ; DONT CARE            ; Untyped ;
+; ACF_BLOCK_RAM_AND_MLAB_EQUIVALENT_POWER_UP_CONDITIONS      ; AUTO                 ; Untyped ;
+; ACF_DISABLE_MLAB_RAM_USE                                   ; FALSE                ; Untyped ;
+; ACF_IMPLEMENT_MLAB_IN_16_BIT_DEEP_MODE                     ; FALSE                ; Untyped ;
+; ADDRESS_ACLR_A                                             ; NONE                 ; Untyped ;
+; ADDRESS_ACLR_B                                             ; NONE                 ; Untyped ;
+; ADDRESS_REG_B                                              ; CLOCK0               ; Untyped ;
+; BYTE_SIZE                                                  ; 8                    ; Untyped ;
+; BYTEENA_REG_B                                              ; CLOCK1               ; Untyped ;
+; CLKEN_POWER_OPTIMIZATION                                   ; OFF                  ; Untyped ;
+; CLOCK_DUTY_CYCLE_DEPENDENCE                                ; AUTO                 ; Untyped ;
+; CLOCK_ENABLE_CORE_A                                        ; USE_INPUT_CLKEN      ; Untyped ;
+; CLOCK_ENABLE_CORE_B                                        ; USE_INPUT_CLKEN      ; Untyped ;
+; CLOCK_ENABLE_INPUT_A                                       ; NORMAL               ; Untyped ;
+; CLOCK_ENABLE_INPUT_B                                       ; NORMAL               ; Untyped ;
+; CLOCK_ENABLE_OUTPUT_A                                      ; NORMAL               ; Untyped ;
+; CLOCK_ENABLE_OUTPUT_B                                      ; NORMAL               ; Untyped ;
+; ECC_PIPELINE_STAGE_ENABLED                                 ; FALSE                ; Untyped ;
+; ENABLE_COHERENT_READ                                       ; FALSE                ; Untyped ;
+; ENABLE_ECC                                                 ; FALSE                ; Untyped ;
+; ENABLE_ECC_ENCODER_BYPASS                                  ; FALSE                ; Untyped ;
+; ENABLE_FORCE_TO_ZERO                                       ; FALSE                ; Untyped ;
+; ENABLE_RUNTIME_MOD                                         ; NO                   ; Untyped ;
+; IMPLEMENT_IN_LES                                           ; OFF                  ; Untyped ;
+; INDATA_REG_B                                               ; CLOCK1               ; Untyped ;
+; INIT_FILE                                                  ; UNUSED               ; Untyped ;
+; INIT_FILE_LAYOUT                                           ; PORT_A               ; Untyped ;
+; init_file_restructured                                     ; UNUSED               ; Untyped ;
+; INSTANCE_NAME                                              ; UNUSED               ; Untyped ;
+; LOW_POWER_MODE                                             ; AUTO                 ; Untyped ;
+; MAXIMUM_DEPTH                                              ; 0                    ; Untyped ;
+; NUMWORDS_A                                                 ; 16384                ; Untyped ;
+; NUMWORDS_B                                                 ; 16384                ; Untyped ;
+; OPERATION_MODE                                             ; DUAL_PORT            ; Untyped ;
+; OPTIMIZATION_OPTION                                        ; AUTO                 ; Untyped ;
+; OUTDATA_ACLR_A                                             ; NONE                 ; Untyped ;
+; OUTDATA_ACLR_B                                             ; NONE                 ; Untyped ;
+; OUTDATA_REG_A                                              ; UNREGISTERED         ; Untyped ;
+; OUTDATA_REG_B                                              ; UNREGISTERED         ; Untyped ;
+; OUTDATA_SCLR_A                                             ; NONE                 ; Untyped ;
+; OUTDATA_SCLR_B                                             ; NONE                 ; Untyped ;
+; POWER_UP_UNINITIALIZED                                     ; FALSE                ; Untyped ;
+; RAM_BLOCK_TYPE                                             ; AUTO                 ; Untyped ;
+; RDCONTROL_REG_B                                            ; CLOCK0               ; Untyped ;
+; RDEN_POWER_OPTIMIZATION                                    ; OFF                  ; Untyped ;
+; READ_DURING_WRITE_MODE_MIXED_PORTS                         ; OLD_DATA             ; Untyped ;
+; READ_DURING_WRITE_MODE_PORT_A                              ; NEW_DATA_NO_NBE_READ ; Untyped ;
+; READ_DURING_WRITE_MODE_PORT_B                              ; NEW_DATA_NO_NBE_READ ; Untyped ;
+; WIDTH_A                                                    ; 40                   ; Untyped ;
+; WIDTH_B                                                    ; 40                   ; Untyped ;
+; WIDTH_BYTEENA_A                                            ; 1                    ; Untyped ;
+; WIDTH_BYTEENA_B                                            ; 1                    ; Untyped ;
+; WIDTH_ECCENCPARITY                                         ; 8                    ; Untyped ;
+; WIDTH_ECCSTATUS                                            ; 3                    ; Untyped ;
+; WIDTHAD2_A                                                 ; 1                    ; Untyped ;
+; WIDTHAD2_B                                                 ; 1                    ; Untyped ;
+; WIDTHAD_A                                                  ; 14                   ; Untyped ;
+; WIDTHAD_B                                                  ; 14                   ; Untyped ;
+; WREN_POWER_OPTIMIZATION                                    ; OFF                  ; Untyped ;
+; CBXI_PARAMETER                                             ; altera_syncram_qdl91 ; Untyped ;
+; INDATA_ACLR_A                                              ; NONE                 ; Untyped ;
+; WRCONTROL_ACLR_A                                           ; NONE                 ; Untyped ;
++------------------------------------------------------------+----------------------+---------+
+
+
++------------------------------------------------------------------+
+; Post-Synthesis Netlist Statistics for Partition "root_partition" ;
++------------------------+-----------------------------------------+
+; Type                   ; Count                                   ;
++------------------------+-----------------------------------------+
+; boundary_port          ; 117                                     ;
+; tennm_ff               ; 49                                      ;
+;     CLR SCLR           ; 1                                       ;
+;     ENA                ; 3                                       ;
+;     ENA CLR SCLR       ; 45                                      ;
+; tennm_lcell_comb       ; 172                                     ;
+;     arith              ; 61                                      ;
+;         0 data inputs  ; 1                                       ;
+;         1 data inputs  ; 45                                      ;
+;         2 data inputs  ; 15                                      ;
+;     extend             ; 40                                      ;
+;         8 data inputs  ; 40                                      ;
+;     normal             ; 71                                      ;
+;         2 data inputs  ; 1                                       ;
+;         3 data inputs  ; 1                                       ;
+;         4 data inputs  ; 14                                      ;
+;         5 data inputs  ; 6                                       ;
+;         6 data inputs  ; 49                                      ;
+; tennm_ram_block        ; 320                                     ;
+;                        ;                                         ;
+; Number of carry chains ; 4                                       ;
+; Max carry chain length ; 16                                      ;
+;                        ;                                         ;
+; Max LUT depth          ; 3.40                                    ;
+; Average LUT depth      ; 1.83                                    ;
++------------------------+-----------------------------------------+
+
+
++-----------------------------------------------------------------+
+; Synthesis Resource Usage Summary for Partition "root_partition" ;
++---------------------------------------------+-------------------+
+; Resource                                    ; Usage             ;
++---------------------------------------------+-------------------+
+; Estimate of Logic utilization (ALMs needed) ; 490               ;
+;                                             ;                   ;
+; Combinational ALUT usage for logic          ; 172               ;
+;     -- 8 input functions                    ; 40                ;
+;     -- 7 input functions                    ; 0                 ;
+;     -- 6 input functions                    ; 49                ;
+;     -- 5 input functions                    ; 6                 ;
+;     -- 4 input functions                    ; 14                ;
+;     -- <=3 input functions                  ; 63                ;
+;                                             ;                   ;
+; Dedicated logic registers                   ; 49                ;
+;                                             ;                   ;
+; I/O pins                                    ; 117               ;
+; Total MLAB memory bits                      ; 0                 ;
+; Total block memory bits                     ; 655360            ;
+;                                             ;                   ;
+; Total DSP Blocks                            ; 0                 ;
+;     -- [A] Total Fixed Point DSP Blocks     ; 0                 ;
+;     -- [B] Total Floating Point DSP Blocks  ; 0                 ;
+;                                             ;                   ;
+; Maximum fan-out node                        ; clk               ;
+; Maximum fan-out                             ; 369               ;
+; Total fan-out                               ; 9467              ;
+; Average fan-out                             ; 14.39             ;
++---------------------------------------------+-------------------+
+
+
++------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+; Synthesis RAM Summary for Partition "root_partition"                                                                                                                                                                                                                                                                         ;
++--------------------------------------------------------------------+------+------------------+--------------+--------------+--------------+--------------+--------------+-----------------------------+-----------------------------+-----------------------------+-----------------------------+---------------------+------+
+; Name                                                               ; Type ; Mode             ; Port A Depth ; Port A Width ; Port B Depth ; Port B Width ; Logical Size ; Implementation Port A Depth ; Implementation Port A Width ; Implementation Port B Depth ; Implementation Port B Width ; Implementation Bits ; MIF  ;
++--------------------------------------------------------------------+------+------------------+--------------+--------------+--------------+--------------+--------------+-----------------------------+-----------------------------+-----------------------------+-----------------------------+---------------------+------+
+; logic_ram_rtl_0|auto_generated|altera_syncram_impl1|ALTERA_SYNCRAM ; AUTO ; Simple Dual Port ; 16384        ; 40           ; 16384        ; 40           ; 655360       ; 2048                        ; 320                         ; 2048                        ; 320                         ; 655360              ; None ;
++--------------------------------------------------------------------+------+------------------+--------------+--------------+--------------+--------------+--------------+-----------------------------+-----------------------------+-----------------------------+-----------------------------+---------------------+------+
+Note: Logical size represents the size at the time of creation, implementation bits is the size at the end of synthesis. If the number of implementation bits is smaller, some slices have optimized away because they have become redundant.
+
+
++---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+; General Warnings                                                                                                                                                                                                                                                                      ;
++------------+------------------+-------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+; Message ID ; Severity         ; Count ; Sample Warning                                                                                                                                                                                                                                ;
++------------+------------------+-------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+; 20759      ; Critical Warning ; 1     ; Use the Reset Release IP in Agilex 7 designs to ensure a successful configuration. For more information about the Reset Release IP, refer to the Configuration User Guide.                                                                    ;
+; 21620      ; Warning          ; 1     ; Design Assistant Results: 1 of 1 High severity rules issued violations in snapshot 'partitioned'. Please refer to DRC report '/data/work/rio-synthesis/journal-m20k/isolated-auto/output_files/pifo.drc.partitioned.rpt' for more information ;
++------------+------------------+-------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+
++--------------------+
+; Synthesis Messages ;
++--------------------+
+Info (22747): Value AUTO_DISCOVERY for QSF Assignment PWRMGT_VOLTAGE_OUTPUT_FORMAT is not supported. Hence changing the value to LINEAR_FORMAT
+Info: *******************************************************************
+Info: Running Quartus Prime Synthesis
+    Info: Version 25.3.1 Build 100 12/19/2025 SC Pro Edition
+    Info: Copyright (C) 2025  Altera Corporation. All rights reserved.
+    Info: Your use of Altera Corporation's design tools, logic functions 
+    Info: and other software and tools, and any partner logic 
+    Info: functions, and any output files from any of the foregoing 
+    Info: (including device programming or simulation files), and any 
+    Info: associated documentation or information are expressly subject 
+    Info: to the terms and conditions of the Altera Program License 
+    Info: Subscription Agreement, the Altera Quartus Prime License Agreement,
+    Info: the Altera IP License Agreement, or other applicable license
+    Info: agreement, including, without limitation, that your use is for
+    Info: the sole purpose of programming logic devices manufactured by
+    Info: Altera and sold by Altera or its authorized distributors.  Please
+    Info: refer to the Altera Software License Subscription Agreements 
+    Info: on the Quartus Prime software download page.
+    Info: Processing started: Mon Sep  7 04:29:28 2026
+    Info: System process ID: 342656
+Info: Command: quartus_syn pifo
+Info: qis_default_flow_script.tcl version: #2
+Info: Initializing Synthesis...
+Info: Project = "pifo"
+Info: Revision = "pifo"
+Info (21958): Initialized Quartus Message Database
+Info: Analyzing source files
+Critical Warning (20759): Use the Reset Release IP in Agilex 7 designs to ensure a successful configuration. For more information about the Reset Release IP, refer to the Configuration User Guide.
+Info: Elaborating from top-level entity "PifoMesh"
+Info (22567): Verilog HDL info at PifoMesh.v(73): extracting RAM for identifier 'logic_ram' File: /data/work/rio-synthesis/journal-m20k/isolated-auto/rtl/PifoMesh.v Line: 73
+Info: Found 1 design entities
+Info: There are 1 partitions after elaboration.
+Info: DA report generation in native DNI mode
+Info (21615): Running Design Assistant Rules for snapshot 'partitioned'
+Info: No waiver waived any violations
+Info (22360): Design Assistant Results: 8 of 10 enabled rules passed, and 1 rules was disabled, in snapshot 'partitioned'
+Warning (21620): Design Assistant Results: 1 of 1 High severity rules issued violations in snapshot 'partitioned'. Please refer to DRC report '/data/work/rio-synthesis/journal-m20k/isolated-auto/output_files/pifo.drc.partitioned.rpt' for more information
+Info (21621): Design Assistant Results: 1 of 1 Medium severity rules issued violations in snapshot 'partitioned'. Please refer to DRC report '/data/work/rio-synthesis/journal-m20k/isolated-auto/output_files/pifo.drc.partitioned.rpt' for more information
+Info (21622): Design Assistant Results: 0 of 8 Low severity rules issued violations in snapshot 'partitioned'
+Info: Synthesizing partition "root_partition"
+Info (19000): Inferred 1 megafunctions from design logic
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "logic_ram_rtl_0"  File: /data/work/rio-synthesis/journal-m20k/isolated-auto/rtl/PifoMesh.v Line: 73
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 40
+        Info (286033): Parameter WIDTHAD_A set to 14
+        Info (286033): Parameter NUMWORDS_A set to 16384
+        Info (286033): Parameter WIDTH_B set to 40
+        Info (286033): Parameter WIDTHAD_B set to 14
+        Info (286033): Parameter NUMWORDS_B set to 16384
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to NONE
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+        Info (286033): Parameter READ_DURING_WRITE_MODE_MIXED_PORTS set to OLD_DATA
+        Info (286033): Parameter RDCONTROL_REG_B set to CLOCK0
+Info (21057): Implemented 627 device resources after synthesis - the final resource count might be different
+    Info (21058): Implemented 45 input pins
+    Info (21059): Implemented 72 output pins
+    Info (21061): Implemented 190 logic cells
+    Info (21064): Implemented 320 RAM segments
+Info: Successfully synthesized partition
+Info: Saving post-synthesis snapshots for 1 partition(s)
+Info (21615): Running Design Assistant Rules for snapshot 'synthesized'
+Info: No waiver waived any violations
+Info (22360): Design Assistant Results: 12 of 13 enabled rules passed, and 7 rules was disabled, in snapshot 'synthesized'
+Info (21661): Design Assistant Results: 0 of 1 High severity rules issued violations in snapshot 'synthesized'
+Info (21621): Design Assistant Results: 1 of 6 Medium severity rules issued violations in snapshot 'synthesized'. Please refer to DRC report '/data/work/rio-synthesis/journal-m20k/isolated-auto/output_files/pifo.drc.synthesized.rpt' for more information
+Info (21622): Design Assistant Results: 0 of 6 Low severity rules issued violations in snapshot 'synthesized'
+Info: Quartus Prime Synthesis was successful. 0 errors, 1 warning
+    Info: Peak virtual memory: 2802 megabytes
+    Info: Processing ended: Mon Sep  7 04:29:34 2026
+    Info: Elapsed time: 00:00:06
+    Info: System process ID: 342656
+
+

@@ -1,0 +1,267 @@
+{
+  "source_report": "/data/work/rio-synthesis/journal-m20k/isolated-m20k/output_files/pifo.syn.rpt",
+  "status": "Successful - Mon Sep  7 04:29:35 2026",
+  "scope": "Quartus synthesis estimates; no placement or routing",
+  "tables": {
+    "Synthesis Summary": [
+      [
+        "Synthesis Status",
+        "Successful - Mon Sep  7 04:29:35 2026"
+      ],
+      [
+        "Revision Name",
+        "pifo"
+      ],
+      [
+        "Top-level Entity Name",
+        "PifoMesh"
+      ],
+      [
+        "Family",
+        "Agilex 7"
+      ],
+      [
+        "Quartus Prime Version",
+        "25.3.1 Build 100 12/19/2025 SC Pro Edition"
+      ],
+      [
+        "Device",
+        "AGFB014R24B2E2V"
+      ],
+      [
+        "Logic utilization estimate (in ALMs)",
+        "490 / 487,200 ( < 1 % )"
+      ],
+      [
+        "Total dedicated logic registers",
+        "49"
+      ],
+      [
+        "Estimated DSP Blocks Post-Merging",
+        "0"
+      ]
+    ],
+    "Partition \"root_partition\" Resource Utilization by Entity": [
+      [
+        "Compilation Hierarchy Node",
+        "Combinational ALUTs",
+        "Dedicated Logic Registers",
+        "Block Memory Bits",
+        "DSP Blocks",
+        "Pins",
+        "Max Depth",
+        "Full Hierarchy Name",
+        "Entity Name",
+        "Library Name"
+      ],
+      [
+        "|",
+        "172 (84)",
+        "49 (46)",
+        "655360",
+        "0",
+        "117",
+        "3.4 (3.4)",
+        "|",
+        "PifoMesh",
+        "altera_work"
+      ],
+      [
+        "|logic_ram_rtl_0|",
+        "88 (0)",
+        "3 (0)",
+        "655360",
+        "0",
+        "0",
+        "3.0 (0.0)",
+        "logic_ram_rtl_0",
+        "altera_syncram",
+        "work"
+      ],
+      [
+        "|auto_generated|",
+        "88 (0)",
+        "3 (0)",
+        "655360",
+        "0",
+        "0",
+        "3.0 (0.0)",
+        "logic_ram_rtl_0|auto_generated",
+        "altera_syncram_4ga61",
+        "altera_work"
+      ],
+      [
+        "|altera_syncram_impl1|",
+        "88 (0)",
+        "3 (3)",
+        "655360",
+        "0",
+        "0",
+        "3.0 (2.0)",
+        "logic_ram_rtl_0|auto_generated|altera_syncram_impl1",
+        "altera_syncram_impl_73062",
+        "altera_work"
+      ],
+      [
+        "|decode3|",
+        "8 (8)",
+        "0 (0)",
+        "0",
+        "0",
+        "0",
+        "3.0 (3.0)",
+        "logic_ram_rtl_0|auto_generated|altera_syncram_impl1|decode3",
+        "decode_6otu",
+        "altera_work"
+      ],
+      [
+        "|mux4|",
+        "80 (80)",
+        "0 (0)",
+        "0",
+        "0",
+        "0",
+        "2.0 (2.0)",
+        "logic_ram_rtl_0|auto_generated|altera_syncram_impl1|mux4",
+        "mux_lc3l1",
+        "altera_work"
+      ]
+    ],
+    "Synthesis Resource Usage Summary for Partition \"root_partition\"": [
+      [
+        "Resource",
+        "Usage"
+      ],
+      [
+        "Estimate of Logic utilization (ALMs needed)",
+        "490"
+      ],
+      [
+        "",
+        ""
+      ],
+      [
+        "Combinational ALUT usage for logic",
+        "172"
+      ],
+      [
+        "-- 8 input functions",
+        "40"
+      ],
+      [
+        "-- 7 input functions",
+        "0"
+      ],
+      [
+        "-- 6 input functions",
+        "49"
+      ],
+      [
+        "-- 5 input functions",
+        "6"
+      ],
+      [
+        "-- 4 input functions",
+        "14"
+      ],
+      [
+        "-- <=3 input functions",
+        "63"
+      ],
+      [
+        "",
+        ""
+      ],
+      [
+        "Dedicated logic registers",
+        "49"
+      ],
+      [
+        "",
+        ""
+      ],
+      [
+        "I/O pins",
+        "117"
+      ],
+      [
+        "Total MLAB memory bits",
+        "0"
+      ],
+      [
+        "Total block memory bits",
+        "655360"
+      ],
+      [
+        "",
+        ""
+      ],
+      [
+        "Total DSP Blocks",
+        "0"
+      ],
+      [
+        "-- [A] Total Fixed Point DSP Blocks",
+        "0"
+      ],
+      [
+        "-- [B] Total Floating Point DSP Blocks",
+        "0"
+      ],
+      [
+        "",
+        ""
+      ],
+      [
+        "Maximum fan-out node",
+        "clk"
+      ],
+      [
+        "Maximum fan-out",
+        "369"
+      ],
+      [
+        "Total fan-out",
+        "9467"
+      ],
+      [
+        "Average fan-out",
+        "14.39"
+      ]
+    ],
+    "Synthesis RAM Summary for Partition \"root_partition\"": [
+      [
+        "Name",
+        "Type",
+        "Mode",
+        "Port A Depth",
+        "Port A Width",
+        "Port B Depth",
+        "Port B Width",
+        "Logical Size",
+        "Implementation Port A Depth",
+        "Implementation Port A Width",
+        "Implementation Port B Depth",
+        "Implementation Port B Width",
+        "Implementation Bits",
+        "MIF"
+      ],
+      [
+        "logic_ram_rtl_0|auto_generated|altera_syncram_impl1|ALTERA_SYNCRAM",
+        "M20K block",
+        "Simple Dual Port",
+        "16384",
+        "40",
+        "16384",
+        "40",
+        "655360",
+        "2048",
+        "320",
+        "2048",
+        "320",
+        "655360",
+        "None"
+      ]
+    ]
+  }
+}

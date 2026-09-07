@@ -1,0 +1,35 @@
+{
+  "cwd": "/home/zg366/packet-scheduling/pifo-hardware",
+  "source": "/data/work/rio-synthesis/hardware-replay/rio-replay-pe5-v1024-c1024-j16384-quartus",
+  "build_root": "/data/work/rio-synthesis/journal-m20k",
+  "commands": [
+    [
+      "python3",
+      "synthesis/probe_replay_journal.py",
+      "/data/work/rio-synthesis/hardware-replay/rio-replay-pe5-v1024-c1024-j16384-quartus",
+      "/data/work/rio-synthesis/journal-m20k/isolated-auto",
+      "--isolated"
+    ],
+    [
+      "python3",
+      "synthesis/probe_replay_journal.py",
+      "/data/work/rio-synthesis/hardware-replay/rio-replay-pe5-v1024-c1024-j16384-quartus",
+      "/data/work/rio-synthesis/journal-m20k/isolated-m20k",
+      "--isolated",
+      "--force-m20k"
+    ],
+    [
+      "python3",
+      "synthesis/probe_replay_journal.py",
+      "/data/work/rio-synthesis/hardware-replay/rio-replay-pe5-v1024-c1024-j16384-quartus",
+      "/data/work/rio-synthesis/journal-m20k/rio-replay-pe5-v1024-c1024-j16384-m20k-quartus",
+      "--force-m20k"
+    ]
+  ],
+  "collection": [
+    "python3",
+    "synthesis/collect_replay_journal.py"
+  ],
+  "concurrency": "Two isolated controls, then one full-core synthesis; no other vendor synthesis jobs overlap the full-core rerun.",
+  "initialization": "Original individual compact MIF files, unchanged; shared-MIF option is not used."
+}
