@@ -832,9 +832,9 @@ We show how to extend a PIFO-tree-based packet scheduler with support for live p
 Our design starts with a standard PIFO tree architecture (\cref{sec:hw-substrate}).
 We define an ISA for this reconfiguration and implement a compiler that targets it (\cref{sec:hw-isa}).
 It rests on two key mechanisms:
-atomic state updates (\cref{sec:hw-commit})
+atomic configuration updates (\cref{sec:hw-commit})
 and support for $\Designate$ (\cref{sec:hw-survivor}).
-\Cref{fig:hardware} shows both mechanisms on top of a standard PIFO tree.
+\Cref{fig:hardware} shows both mechanisms and how they integrate with a standard PIFO substrate.
 
 
 \subsection{The PIFO Tree Substrate}\label{sec:hw-substrate}
@@ -846,12 +846,14 @@ so this section outlines the assumptions we make about this substrate.
 The architecture consists of identical \emph{processing elements} (PEs) containing PIFO buffers, rank-assignment logic, and match--action tables.
 Each level in the policy tree (i.e., the set of nodes at each tree depth) maps to a PE.
 Every level therefore has the same total PIFO capacity, divided among the nodes at that layer.
+\Cref{fig:hardware} lays a PE out from left to right, with a match--action table at either end, and stacks the levels top to bottom.
 
 To enqueue a packet, the architecture must identify the set of PIFOs to insert into (the path from the root to the appropriate leaf) and compute the rank for each.
 The hardware broadcasts each packet to all PEs, and each PE determines which PIFO at that level should accept the packet.
 We assume the hardware comes with rank-assignment logic to support policy disciplines $D$.
 %
 On dequeue, the scheduler starts from the output port's root PIFO, pops the best-ranked entry, and follows next-hop information from PIFO to PIFO until it reaches a packet to transmit.
+The figure traces both walks across one PE, where an enqueue classifies and then inserts, and a dequeue pops and then follows its next hop.
 All steps use match--action tables~\cite{Bosshart14}, so installing a policy on such a substrate means writing entries into those tables.
 
 \subsection{Policy Configuration ISA}\label{sec:hw-isa}
@@ -914,12 +916,10 @@ On removing them from the system outright: yes \texttt{change\_arity} can go (si
 That last one is a design question for Zhiyuan.}
 \xxx[zhiyuan to am]{we can use v (instead of parent v + i) to point to any PIFO. hardware only need to know next-hop. I think one reason for using i is internally parent PIFO stores index, not v. my point is compiler can take the responsibility to maintain structural info (covers \texttt{adopt} and \texttt{emancipate}) in it's internal and generate the valid sequence. overall, if all ISA insts changes the hardware state, I'd prefer removing this section.}
 The ISA is the compiler's interface, and not all of the state it names reaches the switch.
-Per-edge indices and arities are how the compiler addresses a tree position, and a PE stores neither.
-A PE stores its \texttt{Assoc} set, the flows it admits; a \texttt{Map} naming the PIFO each admitted flow enters and the PE that holds it; and the designated-survivor link of \cref{sec:hw-survivor}.
-An index is meaningful only against the tree the compiler holds, so an \texttt{adopt} reaches the switch only by changing which PIFO an index names, and a \texttt{map} reaches it as the id of the PIFO that index names.
-The classification and survivor opcodes are thus the ones that write a PE's tables.
+A PE stores four things: its \texttt{Assoc} set, the flows it admits; a \texttt{Map}, read on enqueue, naming the PIFO each admitted flow enters and the PE that holds it; a next-hop table, read on dequeue, naming the PIFO that each of its indices reaches; and the designated-survivor link of \cref{sec:hw-survivor}.
+An \texttt{assoc} writes the first, a \texttt{map} the second, an \texttt{adopt} the third, and a \texttt{designate} the fourth.
 The lifecycle opcodes reach a PE too, since \texttt{spawn} and \texttt{gc} claim and release its PIFO storage.
-The structure opcodes are the compiler's own bookkeeping, and \texttt{change\_arity} reaches no PE at all.
+Arities are how the compiler sizes a tree position and no PE stores one, so \texttt{change\_arity} reaches no PE at all.
 
 A node's \(\mathit{z}.\mathit{admit}\) is its \texttt{Assoc} set, its \(\mathit{z}.\mathit{serves}\) is its \texttt{Map} table, its \(\mathit{z}.\mathit{rank}\) is the ranker that \texttt{set\_policy} installs and \texttt{discipline(v)} reads back, and its \(\mathit{z}.\mathit{meta}\) is the metadata that \texttt{set\_arm\_meta} writes.
 Each of \zz's parts is thus the target of an opcode.
@@ -941,7 +941,7 @@ For each flow the new arm serves, an \texttt{assoc} at every PIFO from the port 
 \label{sec:hw-commit}
 
 Our hardware's goal is to apply any of the six Rio policy edits (\cref{sec:delta-grammar}) atomically
-at some time $t$:
+at some instant $t$:
 the unmodified policy applies to all packets before $t$ and the updated policy applies to all packets after $t$.
 This section describes our hardware's support for edit atomicity.
 
@@ -966,6 +966,7 @@ but transactions can affect multiple PEs.
 We \emph{delay-align} each transaction's commit across PEs according to the PIFO tree topology:
 % The new configuration becomes visible at different PEs at carefully chosen times, so that
 although the update happens across several cycles, pipelined enqueues and dequeues follow the updates so that each sees either the old or the new configuration.
+\Cref{fig:hardware} shows the commit signal reaching level $i$ at its own instant $t_i$.
 % The double buffer and the wavefront both exist because dequeue is pipelined: a request travelling the chain of PEs must never observe state that a commit has left inconsistent.
 
 \subsection{Designated Survivors}\label{sec:hw-survivor}
@@ -982,6 +983,8 @@ These restrictions admit a key optimization:
 to implement $\Strictstar(A, B)$,
 we do not need to allocate a separate PE for the $\Strictstar$ node itself.
 Instead, we add simple logic to the PE that houses nodes $A$ and $B$.
+\Cref{fig:hardware} draws that logic as the survivor-link cell sitting beside a PE's PIFOs rather than in the pipeline with them.
+\xxx[am to zg]{Is the previous sentence okay? If I understand correctly, it \emph{is} pipelined, right?}
 Adding and deleting the $\Strictstar$ node therefore avoids shifting the tree levels of $A$ and $B$, which would require relocating their packets across physical PIFOs.
 In other words, to compute a node's level, ignore the $\Strictstar$ nodes above it.
 
