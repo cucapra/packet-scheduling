@@ -540,11 +540,12 @@ It is the configuration the operator chose, not bookkeeping that the traffic lef
 
 \xxx[AM to AS]{This is a change. The per-arm metadata used to live in \slotstates, so \(\lfloor \cdot \rfloor\) could not read it. And then \(\psem{\ChangeMeta}\) ended up being the identity function: an operator who re-tuned a weight got back an echo saying nothing had changed. Moving the metadata into \zz makes \(\psem{\ChangeMeta}\) a real function, and it matches the ISA of \cref{sec:hardware}, where \texttt{set\_arm\_meta} is its own opcode rather than a state write.}
 
-\xxx[AM to AS]{I want to flag a new thing. A node's \emph{ranker} now names the discipline D that the node runs, so the discipline is recoverable from the running control rather than lost at compile time.
-That lets \cref{sec:equivalences} define \(\lfloor \cdot \rfloor\) by structural recursion.
-And \emph{that} turns closure under \(\delta\) into a theorem rather than a definitional rule.
-It supersedes an earlier decision of ours saying that the discipline is ``compiled into \zz and never stored''; note that \cref{sec:hw-isa} already stores it (\texttt{set\_policy}) and reads it back (\texttt{discipline(v)}). So maybe our earlier resolution was always in vain.}
-\xxx[as]{This seems fine, and at least consistent. I have to admit that I am not sure it is actually necessary, i.e., we \emph{could} instead decide that we never ``read'' policies back out of PIFO tree states at all. (This is not something that the real system seems to need to do, I think?) Anyway, I suggest we leave this how it is for now and consider simplifying after the ASPLOS deadline.}
+% \xxx[AM to AS]{I want to flag a new thing. A node's \emph{ranker} now names the discipline D that the node runs, so the discipline is recoverable from the running control rather than lost at compile time.
+% That lets \cref{sec:equivalences} define \(\lfloor \cdot \rfloor\) by structural recursion.
+% And \emph{that} turns closure under \(\delta\) into a theorem rather than a definitional rule.
+% It supersedes an earlier decision of ours saying that the discipline is ``compiled into \zz and never stored''; note that \cref{sec:hw-isa} already stores it (\texttt{set\_policy}) and reads it back (\texttt{discipline(v)}). So maybe our earlier resolution was always in vain.}
+% \xxx[as]{This seems fine, and at least consistent. I have to admit that I am not sure it is actually necessary, i.e., we \emph{could} instead decide that we never ``read'' policies back out of PIFO tree states at all. (This is not something that the real system seems to need to do, I think?) Anyway, I suggest we leave this how it is for now and consider simplifying after the ASPLOS deadline.}
+% Settled: leave it, and revisit the machinery after the deadline. --AM
 
 \paragraph{\push{} and \pop{}}
 
@@ -682,7 +683,7 @@ Second, installing an edit never disturbs the packets already buffered: none of 
 We begin with some definitions necessary for the theorems.
 
 \subsection{Equivalence Definitions}\label{sec:equivalences}
-\xxx[as]{I would like to make this section as brief as possible, so it serves as ``just'' a notation introduction so we can move on to stating the theorem(s).}
+% \xxx[as]{I would like to make this section as brief as possible, so it serves as ``just'' a notation introduction so we can move on to stating the theorem(s).}
 
 We write \(C \sim C'\) for the equivalence on well-formed controls that holds when the two are identical except in their live \pifo contents and \stt{}s.
 Two \(\sim\)-related controls thus have the same tree shape and the same \zz at every node.
@@ -693,50 +694,16 @@ We write \(p \eqR p'\) for the smallest congruence on \pol such that, at any int
 In other words, \(p \eqR p'\) iff the two policies are identical up to reordering.
 % Each arm's metadatum is tagged to the arm, so it travels with the arm under the permutation.
 % The metadata carries the scheduling-meaningful content, so such a permutation does not change the scheduler.
-
 Because \(\eqR\) only permutes sibling arms, each \(\eqR\)-class has a canonical representative under any fixed ordering of the arms at a node.
 
 We write \(\lfloor C \rfloor\) to mean ``the \pol that \(C\) realizes.''
 % Intuitively, \(\lfloor \cdot \rfloor\) reads the policy straight off the control.
-\xxx[as]{Regardless of how $\lfloor C \rfloor$ ends up getting defined (see below), I think we should: (1) state here that it is supposed to be the opposite of $\lceil p \rceil$, and (2) leave everything else in an appendix.
-What that concretely means is: we write a couple more sentences here, and then end the section. I suggest we either move to an appendix or delete everything below this point.}
-It walks the control's tree and recovers, node by node, the \pol term the control implements, discarding the live \pifo and \stt contents that traffic happens to have left behind.
-We define it by structural recursion on \(C\), with one clause for leaves and one for internal nodes.
-Both clauses read out of \zz (\cref{sec:controls}).
-A leaf is named by the flow its classifier serves.
-An internal node is named by the discipline its ranker names, and its arms are annotated out of its metadata.
-
-\[
-\begin{array}{@{}l@{}}
-\lfloor C \rfloor = f,\ \text{when \(C\) is a leaf and } \mathrm{dom}(\mathit{z}.\mathit{serves}) = \{f\};\\[4pt]
-\lfloor C \rfloor = D(m_1{:}\,\lfloor c_1 \rfloor, \ldots, m_n{:}\,\lfloor c_n \rfloor),\\
-\qquad \text{when \(C\) is internal with children } c_1 \ldots c_n,\\
-\qquad \mathit{z}.\mathit{rank} \text{ names } D, \text{ and } m_i = \mathit{z}.\mathit{meta}(i).
-\end{array}
-\]
-
-The recursion runs on a finite tree and consults neither \stt nor \pifo nor \(\mathit{z}.\mathit{admit}\), so it returns a single value.
-\xxx[AM to AS]{You suggested defining \(\lfloor \cdot \rfloor\) as the inverse of \(\lceil \cdot \rceil\), and then worried that \(\lceil \cdot \rceil\) is not invertible if one is strict about sibling order.
-\(\lfloor \cdot \rfloor\) is now a structural recursion on \(C\), so it is total and single-valued by construction, and no inverse has to be argued for.
-The two items below are then consequences rather than defining rules, and the agreement of \cref{sec:interplay} is a third.}
-\xxx[as]{OK, I see that this is true. But I am not sure what this separate definition (instead of defining it as an inverse) has bought us. It seems to create a new proof obligation, i.e., to prove that the two things happen to be inverses. Let's discuss this.}
-Every well-formed control therefore determines one \pol, independently of how that control was reached, and we may write \(\lfloor C \rfloor\) and use it as a function.
-
-Two facts follow.
-
-\begin{enumerate}
-\item \emph{Compiler correctness.} Compiling a \(p\) to a control and reading it straight back recovers \(p\) itself, up to the sibling-order freedom the compiler enjoyed in laying it out: \(\lfloor \lceil p \rceil \rfloor \eqR p\).
-This is immediate from the compilation of \cref{sec:compilation}, which installs \disc's ranker at each internal node, copies each arm's annotation into \(\mathit{z}.\mathit{meta}\), and has each leaf serve its own flow.
-The relation is \(\eqR\) rather than \(=\) precisely because the compiler can choose arm order when creating \(\lceil p \rceil\).
-\item \emph{Insensitivity to live contents.} \(\lfloor \cdot \rfloor\) reads only the tree shape, each leaf's served flow, and each internal node's ranker-discipline and per-arm metadata.
-It never reads \stt, \pifo, or \(\mathit{z}.\mathit{admit}\).
-So \(\sim\)-related controls, which share shape and \zz outright, are equal when read off using \(\lfloor \cdot \rfloor\). 
-Thus, if \(C \sim C'\), then \(\lfloor C \rfloor = \lfloor C' \rfloor\).
-\end{enumerate}
-
-This is how we give the transitional policy the semantics that \cref{sec:intro} promises.
-Even when the presently running \pol is just an intermediate policy that the runtime crafted on the way from the running policy to the operator's true request, we can still read off and report to the operator exactly what is running.
-\cref{sec:interplay} adds the fact that makes this hold across an edit, that a form's two readings agree, and proves it as the ``commuting square'' these pieces trace out.
+% \xxx[as]{Regardless of how $\lfloor C \rfloor$ ends up getting defined (see below), I think we should: (1) state here that it is supposed to be the opposite of $\lceil p \rceil$, and (2) leave everything else in an appendix.
+% What that concretely means is: we write a couple more sentences here, and then end the section. I suggest we either move to an appendix or delete everything below this point.}
+% Done: the definition, the recursion and both justifications are now in app:readback. --AM
+Compiling a policy and reading it straight back recovers the policy, up to the sibling order the compiler was free to choose when it laid the tree out: \(\lfloor \lceil p \rceil \rfloor \eqR p\).
+Further, \(\lfloor \cdot \rfloor\) reads only the tree shape and each node's \zz, never the live \pifo or \stt that traffic leaves behind, so \(\sim\)-related controls read back equal: if \(C \sim C'\) then \(\lfloor C \rfloor = \lfloor C' \rfloor\).
+\cref{app:readback} defines \(\lfloor \cdot \rfloor\) and proves these two facts.
 
 \subsection{Agreement}\label{sec:interplay}
 
@@ -794,6 +761,9 @@ Then:
 \item \(\lfloor \csem{\delta}(C) \rfloor \eqR \psem{\delta}(\lfloor C \rfloor)\).
 \end{enumerate}
 \end{theorem}
+
+Even when the presently running \pol is just an intermediate policy that the runtime crafted on the way from the running policy to the operator's true request, we can still read off and report to the operator exactly what is running.
+That is the semantics for the transitional period that \cref{sec:intro} promises.
 
 \subsection{Non-Disruption}\label{sec:nondisruption}
 
@@ -1671,7 +1641,44 @@ That arm is \(\lfloor B \rfloor\).
 The wrapper's own annotations go with it, and the surviving arm inherits the annotation the wrapper held at its parent.
 The empty-arm-0 precondition is operational and leaves no trace at \pol-level.
 
-\section{A Gallery of the Three Equivalences}\label{app:gallery}
+\section{Reading a Policy off a Control}\label{app:readback}
+
+We write \(\lfloor C \rfloor\) for the \pol that \(C\) realizes (\cref{sec:equivalences}).
+It walks the control's tree and recovers, node by node, the \pol term the control implements, discarding the live \pifo and \stt contents that traffic happens to have left behind.
+We define it by structural recursion on \(C\), with one clause for leaves and one for internal nodes.
+Both clauses read out of \zz (\cref{sec:controls}).
+A leaf is named by the flow its classifier serves.
+An internal node is named by the discipline its ranker names, and its arms are annotated out of its metadata.
+
+\[
+\begin{array}{@{}l@{}}
+\lfloor C \rfloor = f,\ \text{when \(C\) is a leaf and } \mathrm{dom}(\mathit{z}.\mathit{serves}) = \{f\};\\[4pt]
+\lfloor C \rfloor = D(m_1{:}\,\lfloor c_1 \rfloor, \ldots, m_n{:}\,\lfloor c_n \rfloor),\\
+\qquad \text{when \(C\) is internal with children } c_1 \ldots c_n,\\
+\qquad \mathit{z}.\mathit{rank} \text{ names } D, \text{ and } m_i = \mathit{z}.\mathit{meta}(i).
+\end{array}
+\]
+
+The recursion runs on a finite tree and consults neither \stt nor \pifo nor \(\mathit{z}.\mathit{admit}\), so it returns a single value.
+\xxx[AM to AS]{You suggested defining \(\lfloor \cdot \rfloor\) as the inverse of \(\lceil \cdot \rceil\), and then worried that \(\lceil \cdot \rceil\) is not invertible if one is strict about sibling order.
+\(\lfloor \cdot \rfloor\) is now a structural recursion on \(C\), so it is total and single-valued by construction, and no inverse has to be argued for.
+The two items below are then consequences rather than defining rules, and the agreement of \cref{sec:interplay} is a third.}
+\xxx[as]{OK, I see that this is true. But I am not sure what this separate definition (instead of defining it as an inverse) has bought us. It seems to create a new proof obligation, i.e., to prove that the two things happen to be inverses. Let's discuss this.}
+Every well-formed control therefore determines one \pol, independently of how that control was reached, and we may write \(\lfloor C \rfloor\) and use it as a function.
+
+Two facts follow.
+
+\begin{enumerate}
+\item \emph{Compiler correctness.} Compiling a \(p\) to a control and reading it straight back recovers \(p\) itself, up to the sibling-order freedom the compiler enjoyed in laying it out: \(\lfloor \lceil p \rceil \rfloor \eqR p\).
+This is immediate from the compilation of \cref{sec:compilation}, which installs \disc's ranker at each internal node, copies each arm's annotation into \(\mathit{z}.\mathit{meta}\), and has each leaf serve its own flow.
+The relation is \(\eqR\) rather than \(=\) precisely because the compiler can choose arm order when creating \(\lceil p \rceil\).
+\item \emph{Insensitivity to live contents.} \(\lfloor \cdot \rfloor\) reads only the tree shape, each leaf's served flow, and each internal node's ranker-discipline and per-arm metadata.
+It never reads \stt, \pifo, or \(\mathit{z}.\mathit{admit}\).
+So \(\sim\)-related controls, which share shape and \zz outright, are equal when read off using \(\lfloor \cdot \rfloor\). 
+Thus, if \(C \sim C'\), then \(\lfloor C \rfloor = \lfloor C' \rfloor\).
+\end{enumerate}
+
+\paragraph{A gallery of the three equivalences}
 
 \Cref{sec:equivalences} defines \(\sim\) on controls and \(\eqR\) on policies.
 A third relation is convenient here: we write \(C \simR C'\) for the equivalence obtained by closing \(\sim\) under sibling permutations.
