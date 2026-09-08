@@ -834,9 +834,17 @@ The root-level fallback shows what that is worth: it puts the entire running tre
 We show how to extend a PIFO-tree-based packet scheduler with support for live policy reconfiguration.
 Our design starts with a standard PIFO tree architecture (\cref{sec:hw-substrate}).
 We define an ISA for this reconfiguration and implement a compiler that targets it (\cref{sec:hw-isa}).
+\xxx[zhiyuan to am/as]{I'd like to insert have a hardware figure here; still WIP; let me know what you think we can include in the figure and I can make the edit.}
 It rests on two key mechanisms:
 atomic state updates (\cref{sec:hw-commit})
 and support for $\Designate$ (\cref{sec:hw-survivor}).
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.8\columnwidth]{pifo_hardware.pdf}
+  \caption{Rio PFIO Hardware. Adding transactional commit and support for $\Designate$ on top of PIFO implementations.}
+  \label{fig:hardware}
+\end{figure}
 
 \subsection{The PIFO Tree Substrate}\label{sec:hw-substrate}
 
@@ -901,6 +909,7 @@ the unmodified policy applies to all packets before $t$ and the updated policy a
 
 The instructions address PIFOs using opaque ids \texttt{v}
 and children using indices \texttt{i}.
+\xxx[ZG]{if removing the arity: we lways use v for all instructions}
 Instructions can change the PIFO tree topology (the \emph{lifecycle} instructions), set scheduling policies (\emph{discipline} and \emph{survivor}), and associate flows with PIFOs (\emph{classification}).
 Some instructions have preconditions: for example,
 \texttt{emancipate} requires that the subtree is empty.
@@ -914,6 +923,8 @@ Please chime in and say which it is on your side.}
 \Retire{} is the example: its \Remove{} cannot join its \Quiesce{} in one transaction, because the subtree has to drain in between.
 Beyond that we make no claim.
 Zhiyuan will need to back me up, but I believe that two edits with no guard between them (or with the \emph{same} guard) can share a transaction.}
+\xxx[zhiyuan]{Compiler's duty is to insert guard seems correct to me. yes, i'd see instruction sequence as the following structure: transaction1(add, policy-update, add, ...); guard;transaction2(...).
+To make the point general, I think generating the transactional sequence is compiler's duty.}
 
 
 \xxx[as]{I am also a bit confused about this. For things like \texttt{adopt}, I'm not sure it matters that \texttt{i} ``chang[es] which PIFO an index names''; its semantics are still ``hey hardware, please associate a new child with this PIFO, which I will henceforth refer to child i.'' It doesn't seem to matter that the compiler thinks of i as an ``index'' while the hardware thinks of it as a key in a table. And also, if there are instructions that never affect the hardware, can we just remove them?}
@@ -922,6 +933,7 @@ The word becomes relevant only at \texttt{undesignate}, which retargets the pare
 On removing them from the system outright: yes \texttt{change\_arity} can go (since Zhiyuan has told us that a mapping table allocates no slot in advance).
 \texttt{adopt} and \texttt{emancipate} write no PE themselves, but they fix what a later \texttt{map} means, so dropping them means folding the parent--child relation into \texttt{map}'s arguments. Could do it! 
 That last one is a design question for Zhiyuan.}
+\xxx[zhiyuan to am]{we can use v (instead of parent v + i) to point to any PIFO. hardware only need to know next-hop. I think one reason for using i is internally parent PIFO stores index, not v. my point is compiler can take the responsibility to maintain structural info (covers \texttt{adopt} and \texttt{emancipate}) in it's internal and generate the valid sequence. overall, if all ISA insts changes the hardware state, I'd prefer removing this section.}
 The ISA is the compiler's interface, and not all of the state it names reaches the switch.
 Per-edge indices and arities are how the compiler addresses a tree position, and a PE stores neither.
 A PE stores its \texttt{Assoc} set, the flows it admits; a \texttt{Map} naming the PIFO each admitted flow enters and the PE that holds it; and the designated-survivor link of \cref{sec:hw-survivor}.
@@ -930,16 +942,12 @@ The classification and survivor opcodes are thus the ones that write a PE's tabl
 The lifecycle opcodes reach a PE too, since \texttt{spawn} and \texttt{gc} claim and release its PIFO storage.
 The structure opcodes are the compiler's own bookkeeping, and \texttt{change\_arity} reaches no PE at all.
 
-% \xxx[AM to Zhiyuan]{You told me \texttt{change\_arity} never reaches hardware, and I have written that.
-% One thing I could not work out: a new arm carries per-arm scheduler state, such as \WFQ{}'s virtual finish time for that arm, and that state has to live where ranks are computed.
-% If the arity never reaches a PE, what creates and seeds that slot, and is it the \texttt{set\_arm\_meta} that follows?}
-% ZG: here's the point: for a mapping table, we do not need to allocate a slot; a insert(k,v) will "create slot for K" if it's not exist.
-
 \xxx[as]{This is what remains of the old compiler section.}
 \xxx[am]{That's okay, but I kinda feel that some text matching \zz's parts to the ISA should come back. It was the only place \cref{sec:controls}'s model met this ISA, my note in \cref{sec:controls} still points here for it, and \texttt{Assoc} is otherwise never defined.
 Proposal: ``A node's \(\mathit{z}.\mathit{admit}\) is its \texttt{Assoc} set, its \(\mathit{z}.\mathit{serves}\) is its \texttt{Map} table, its \(\mathit{z}.\mathit{rank}\) is the ranker that \texttt{set\_policy} installs and \texttt{discipline(v)} reads back, and its \(\mathit{z}.\mathit{meta}\) is the metadata that \texttt{set\_arm\_meta} writes.
 Each of \zz's parts is thus an opcode's target, and none of them is state that \texttt{push} or \texttt{pop} advances.''}
 \xxx[as]{OK, sounds good. I would remove the last clause (``none of them is state that push or pop advances'') because I think it sounds like a bit of a non sequitur.}
+\xxx[zhiyuan to as]{it's a good place to put "it's compiler's job to geneate valid sequence"?}
 Each edit (\cref{sec:delta-grammar}) compiles to one transaction.
 \cref{app:lowering} details the translations.
 As one example, consider the edit $\Add(\mathit{path}, D, \mathit{pol}, m)$.
@@ -955,11 +963,13 @@ For each flow the new arm serves, an \texttt{assoc} at every PIFO from the port 
 
 \subsection{Atomic Policy Updates}\label{sec:hw-commit}
 
+\xxx[zhiyuan]{Just need to update based on the discussion. if we want a separation between brain and mappers, we can refer to mappers as Lookup-Tables.}
 Rio implements atomic updates by double-buffering the match--action tables (MATs) that make up the policy configuration.
 Double buffering is a common technique for atomically updating packet-processing pipelines~\cite{Xing22,Yang24}.
 These MATs control the association between flows and PIFOs and the parent--child relationships among PIFOs.
 Configuration instructions affect the inactive MATs,
 and committing a transaction swaps the active and inactive MATs.
+\xxx[zhiyuan]{and update the previous active LUTs based by replay the commands for the commit in the background.}
 
 A swap takes a single cycle, so it is straightforward to make it atomic within a PE,
 but transactions can affect multiple PEs.
@@ -1013,6 +1023,7 @@ The enqueue logic remains unmodified.
 The $\Strictstar$ node is therefore transparent to the tree above it.
 The parent PIFO holds one entry per packet in \emph{either} subtree, and \cref{sec:check-designate} re-reads \cref{sec:controls}'s well-formedness invariant to cover that.
 
+\xxx[zg]{similarly, we can put all pre-conditions to be handled by compiler and introduce in ISA section.}
 As a precondition, the \texttt{undesignate} instruction requires the old subtree to be empty.
 The guard of \cref{sec:sequences} supplies that, and it also gates reclamation.
 \texttt{v}'s PIFOs, and those of everything beneath it, may be released only once the subtree is empty, and a second commit is guarded on the same emptiness predicate (\cref{sec:hw-commit}).
