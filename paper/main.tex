@@ -536,8 +536,6 @@ The node's behavior is therefore a function of its own arms alone, which is a wi
 That is why the per-arm metadata sits in \zz rather than in \slotstates.
 It is the configuration the operator chose, not bookkeeping that the traffic left behind.
 
-\xxx[AM to AS]{This is a change. The per-arm metadata used to live in \slotstates, so \(\lfloor \cdot \rfloor\) could not read it. And then \(\psem{\ChangeMeta}\) ended up being the identity function: an operator who re-tuned a weight got back an echo saying nothing had changed. Moving the metadata into \zz makes \(\psem{\ChangeMeta}\) a real function, and it matches the ISA of \cref{sec:hardware}, where \texttt{set\_arm\_meta} is its own opcode rather than a state write.}
-
 % \xxx[AM to AS]{I want to flag a new thing. A node's \emph{ranker} now names the discipline D that the node runs, so the discipline is recoverable from the running control rather than lost at compile time.
 % That lets \cref{sec:equivalences} define \(\lfloor \cdot \rfloor\) by structural recursion.
 % And \emph{that} turns closure under \(\delta\) into a theorem rather than a definitional rule.
@@ -948,13 +946,13 @@ For each flow the new arm serves, an \texttt{assoc} at every PIFO from the port 
 
 \subsection{Atomic Policy Updates}\label{sec:hw-commit}
 
-\xxx[zhiyuan]{Just need to update based on the discussion. if we want a separation between brain and mappers, we can refer to mappers as Lookup-Tables.}
 Rio implements atomic updates by double-buffering the match--action tables (MATs) that make up the policy configuration.
 Double buffering is a common technique for atomically updating packet-processing pipelines~\cite{Xing22,Yang24}.
 These MATs control the association between flows and PIFOs and the parent--child relationships among PIFOs.
 Configuration instructions affect the inactive MATs,
 and committing a transaction swaps the active and inactive MATs.
-\xxx[zhiyuan]{and update the previous active LUTs based by replay the commands for the commit in the background.}
+The swap leaves the newly inactive copy one transaction behind.
+The controller replays the committed instructions into it in the background, so the next transaction starts from a current copy.
 
 A swap takes a single cycle, so it is straightforward to make it atomic within a PE,
 but transactions can affect multiple PEs.
