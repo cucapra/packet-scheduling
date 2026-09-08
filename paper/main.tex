@@ -247,9 +247,7 @@ The operator wants to implement a new packet scheduling policy that incorporates
 p' = \Strict(\mathtt{hi}{:}\,\textsf{zoom},\ \mathtt{mid}{:}\,\textsf{spotify},\ \mathtt{lo}{:}\,\textsf{gmail})
 \]
 %
-This paper's purpose is to implement policy changes like this with low latency and without dropping packets.
-\xxx[am]{Minor: ``changes like this'' points at the single \Add{} the reader has just met, which is the easy case.
-The paper's purpose is the hard case, so this sentence may need to be widened once \cref{sec:tour} settles.}
+This paper's purpose is to implement policy changes with low latency and without dropping packets.
 
 Our key thesis is that PIFO-tree-based packet schedulers can efficiently support some kinds of policy changes but not others.
 We identify a set of \emph{policy edits} that this kind of hardware can implement \emph{atomically:}
