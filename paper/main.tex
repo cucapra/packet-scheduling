@@ -287,8 +287,8 @@ The key mechanism in this example is the $\Strictstar$ policy node, which reflec
 \Cref{sec:hw-survivor} details $\Strictstar$ and the atomic edits that add and remove it.
 
 Rio can name the policy in force at every instant, in the operator's own language, including throughout the interval in which the scheduler runs a policy that \emph{no operator requested}.
-\xxx[am]{Keeping this claim, with a marker that both it and \cref{fig:tour} may want refining in a next step.
-The mechanism behind it now lives in the caption, and that is where a reader may stumble: we have not yet said what a \emph{control} is, and it is not obvious why we would care about reading a policy back off a control when the policy is the thing we edit.}
+The switch holds a control, the hardware state that realizes a policy, and Rio reads the running policy back off it.
+Each edit compiles to an atomic update of that control rather than to a fresh control built from the requested policy.
 
 \paragraph{Planning policy transitions}
 
