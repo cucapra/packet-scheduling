@@ -899,6 +899,8 @@ Some instructions have preconditions: for example,
 \texttt{emancipate} requires that the subtree is empty.
 It is the compiler's responsibility to enforce these preconditions.
 It emits the whole sequence of transactions and guards, so an instruction that needs an empty subtree is preceded by a guard on that emptiness (\cref{sec:sequences}).
+Rio's configuration controller implements such a guard as a blocking command in its queue: a blocking command remains at the head of the queue until its predicate becomes true.
+Rio does not guarantee progress; it is the control plane's responsibility to ensure that it only waits on the emptiness of subtrees that will eventually become empty.
 % Guards also bound what may share a transaction.
 % Two edits with no guard between them may share one transaction, and two that a guard separates may not.
 % The \Retire{} idiom is an example: it waits for emptiness between its \Quiesce{} and its \Remove{}.
@@ -966,12 +968,6 @@ We \emph{delay-align} each transaction's commit across PEs according to the PIFO
 although the update happens across several cycles, pipelined enqueues and dequeues follow the updates so that each sees either the old or the new configuration.
 % The double buffer and the wavefront both exist because dequeue is pipelined: a request travelling the chain of PEs must never observe state that a commit has left inconsistent.
 
-\xxx[as]{The paragraph below perhaps belongs somewhere else now, because it is not about atomicity. Probably in the ISA section?}
-The Rio configuration controller also implements guards (\cref{sec:sequences}), which can wait on the emptiness of a subtree.
-Rio lowers such guards to blocking commands in the controller queue.
-A blocking command remains at the head of the queue until its predicate becomes true.
-Rio does not guarantee progress; it is the control plane's responsibility to ensure that it only waits on the emptiness of subtrees that will eventually become empty.
-
 \subsection{Designated Survivors}\label{sec:hw-survivor}
 
 Rio's second addition to the PIFO tree substrate supports the $\Designate$ and $\Undesignate$ policy edits (\cref{sec:delta-grammar}).
@@ -1005,7 +1001,7 @@ The parent PIFO holds one entry per packet in \emph{either} subtree, and \cref{s
 \xxx[zg]{similarly, we can put all pre-conditions to be handled by compiler and introduce in ISA section.}
 As a precondition, the \texttt{undesignate} instruction requires the old subtree to be empty.
 The guard of \cref{sec:sequences} supplies that, and it also gates reclamation.
-\texttt{v}'s PIFOs, and those of everything beneath it, may be released only once the subtree is empty, and a second transaction is guarded on the same emptiness predicate (\cref{sec:hw-commit}).
+\texttt{v}'s PIFOs, and those of everything beneath it, may be released only once the subtree is empty, and a second transaction is guarded on the same emptiness predicate (\cref{sec:hw-isa}).
 After it, nothing in the tree records that a transition happened.
 
 
