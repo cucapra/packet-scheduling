@@ -891,10 +891,6 @@ Opcode & Effect \\
 
 \cref{tab:isa-opcodes} lists an instruction set architecture (ISA) for configuring a packet scheduler.
 The control plane updates the scheduling policy by sending a \emph{transaction} consisting of a sequence of these instructions.
-\xxx[as]{I have changed the noun ``commit'' to ``transaction,'' which I think will be less surprising.}
-\xxx[am]{Eek, collision!
-\emph{Transaction} is already used for \zz: \cref{sec:controls} calls \zz the node's \emph{scheduling transaction}, and \cref{sec:tour} and \cref{sec:edit-semantics-full} use it that way throughout.}
-\xxx[as]{I think this is fine. ``Transaction'' is a common word; the reader will be able to understand the difference. I will argue for keeping this thing named ``transaction'' because any other name will sound weird to knowledgable readers.}
 The hardware guarantees that the transaction applies atomically at some time $t$:
 the unmodified policy applies to all packets before $t$ and the updated policy applies to all packets after $t$.
 
@@ -954,7 +950,7 @@ The controller replays the committed instructions into it in the background, so 
 
 A swap takes a single cycle, so it is straightforward to make it atomic within a PE,
 but transactions can affect multiple PEs.
-We \emph{delay-align} the transaction commits across PEs according to the PIFO tree topology:
+We \emph{delay-align} each transaction's commit across PEs according to the PIFO tree topology:
 % The new configuration becomes visible at different PEs at carefully chosen times, so that
 although the update happens across several cycles, pipelined enqueues and dequeues follow the updates so that each sees either the old or the new configuration.
 % The double buffer and the wavefront both exist because dequeue is pipelined: a request travelling the chain of PEs must never observe state that a commit has left inconsistent.
@@ -962,7 +958,7 @@ although the update happens across several cycles, pipelined enqueues and dequeu
 \xxx[as]{I could use some help understanding this part. I think it's saying that the ``brain'' updates are non-transactional. If that's the case, we need a bit more of an argument for why this is OK. If a transaction includes both topology changes and discipline/metadata changes, how do we guarantee that the whole thing applies atomically? (``That's not allowed in the ISA'' is an acceptable answer.)}
 \xxx[am]{Yes, they are non-transactional, and we do not claim the whole transaction applies atomically. What we claim is that the non-atomic part cannot be observed. The rank-computing writes are applied as the controller reaches them, while the classification writes are held for the commit. In \Add{} and \Designate{} those writes land only on a node or a slot that no packet can reach until the classification flip, and \cref{sec:lower-add} does put the two walks last. \Quiesce{}, \Remove{} and \Undesignate{} issue no rank-computing write at all. \ChangeMeta{} is the only one that writes a live arm, and it is safe for a different reason: it is a single write, so a \push{} reads either the old value or the new one, and ranks are frozen at \push{} time (\cref{sec:nondisruption}) so the backlog is unaffected either way. My note below asks Zhiyuan to confirm the \ChangeMeta{} case.}
 Also, the rank computation must accept incremental updates rather than wholesale replacement of a live scheduling policy.
-Our controller accepts a commit's rank-computing writes along with the rest of its instructions, and applies them as it reaches them rather than holding them until the commit installs.
+Our controller accepts a transaction's rank-computing writes along with the rest of its instructions, and applies them as it reaches them rather than holding them until the transaction installs.
 That is the payoff for a narrow transactional scope: only the state that routes a packet has to install in a single instant.
 
 \xxx[AM to Zhiyuan]{This paragraph is now the subsection's opening claim, per your ``we minimize the transactional scope''.
@@ -1007,7 +1003,7 @@ The parent PIFO holds one entry per packet in \emph{either} subtree, and \cref{s
 \xxx[zg]{similarly, we can put all pre-conditions to be handled by compiler and introduce in ISA section.}
 As a precondition, the \texttt{undesignate} instruction requires the old subtree to be empty.
 The guard of \cref{sec:sequences} supplies that, and it also gates reclamation.
-\texttt{v}'s PIFOs, and those of everything beneath it, may be released only once the subtree is empty, and a second commit is guarded on the same emptiness predicate (\cref{sec:hw-commit}).
+\texttt{v}'s PIFOs, and those of everything beneath it, may be released only once the subtree is empty, and a second transaction is guarded on the same emptiness predicate (\cref{sec:hw-commit}).
 After it, nothing in the tree records that a transition happened.
 
 
@@ -1047,7 +1043,7 @@ An operator who changes the forwarding rules across a set of devices cannot inst
 \citet{Reitblatt12} observe that such an update passes through intermediate configurations, and that those configurations can behave in ways that neither the old configuration nor the new one would.
 Our work makes that same observation about scheduling.
 Their answer is a versioning discipline, which yields two consistency levels, per-packet and per-flow: a packet is stamped on entry and handled under the stamped version at every device, so one configuration handles it from end to end.
-Rio reaches per-packet consistency by another means: a commit installs in a single cycle at each PE, so a packet meets one configuration or the other (\cref{sec:hw-commit}).
+Rio reaches per-packet consistency by another means: a transaction installs in a single cycle at each PE, so a packet meets one configuration or the other (\cref{sec:hw-commit}).
 
 The two settings differ in what the old configuration holds.
 In forwarding, a forwarding rule holds no traffic, so the old configuration can be retired once the packets stamped with it have left the network.
@@ -1064,7 +1060,7 @@ FlexCore~\cite{Xing22} reconfigures the \emph{program} those tables belong to: i
 It computes a reconfiguration script, which is a sequence of atomic graph edits that carries the old program to the new one, and defines three consistency guarantees over the intermediate states along the way.
 Our guarded sequences (\cref{sec:sequences}) have the same shape.
 This similarity is unsurprising: changing the structure that a packet passes through, without first stopping the traffic, calls for atomic steps and an account of what holds between them, in either their domain (forwarding) or ours (scheduling).
-The strongest of their guarantees, program consistency, lets no intermediate state reach a packet, and a Rio commit provides that for a single \(\delta\) (\cref{sec:delta-grammar}).
+The strongest of their guarantees, program consistency, lets no intermediate state reach a packet, and a Rio transaction provides that for a single \(\delta\) (\cref{sec:delta-grammar}).
 The two domains diverge over what is being changed.
 A match-action table holds no packet, and FlexCore does not handle stateful programs, leaving for future work how state should be ported to a new program.
 A packet scheduler is exactly such a stateful case, since its entire content is buffered packets whose ranks were fixed at \push{} time.
@@ -1074,7 +1070,7 @@ These updates run through the interface that P4 calls \emph{population}, the ins
 Population determines the policy applied to packets at any given instant.
 P4 anticipates reconfiguration that does not interrupt forwarding, and leaves the mechanism to implementations.
 \citet{Yang24} take that interface as far as it goes, compiling whole runtime programs down to table entries and installing them without disrupting traffic.
-Rio's commit is a group of such entry writes that installs together, so that the tables that a packet consults along its path never disagree about which policy is in force (\cref{sec:hw-commit}).
+A Rio transaction is a group of such entry writes that installs together, so that the tables that a packet consults along its path never disagree about which policy is in force (\cref{sec:hw-commit}).
 
 \paragraph{Reconfiguring a live scheduler}
 
@@ -1114,7 +1110,7 @@ Its Scheduling Description Language compiler generates that wiring offline, so t
 Our policy language is a formal core of that one (\cref{sec:policy-dsl}).
 
 All of these substrates fix the tree's shape and the discipline at each node when the scheduler is configured.
-Rio runs above any of them and asks for one property: commits that are atomic with respect to traffic (\cref{sec:hw-commit}).
+Rio runs above any of them and asks for one property: transactions that are atomic with respect to traffic (\cref{sec:hw-commit}).
 Each is therefore a plausible host, and what it would have to add is a transactional path to the tables that our opcodes write.
 
 One recent substrate offers more than Rio assumes.
