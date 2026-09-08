@@ -27,13 +27,23 @@ entry storage, occupancy, and drain detection and requires a separate PIFO
 budget for any combined estimate. The hardware-overhead experiments now use
 this boundary, with earlier whole-mesh evidence retained separately. The primary resource totals and percentage denominator add five separately measured matching house PIFOs back to the RIO-only counts.
 
-`--configuration replay --replay-log-depth 16384` is the default and selects controller instruction
-replay for bank synchronization. Each mapper bank retains one read and one write
-port; the controller records pre/post updates, swaps all banks on commit, and
-replays into the shadow bank before the next commit. The replay log and its
-capacity/status logic are included in synthesis. See the
-[replay experiment](../experiments/hardware-overhead/REPLAY.md) for credit rules
-and measurements. The `dynamic` read/copy option is retained for reproducing historical measurements; primary experiments compare only ordinary tables and replay. Quartus defaults the journal alone to M20K; `--quartus-replay-journal-ramstyle auto` restores automatic placement.
+`--configuration replay --control-queue-depth 4` is the default. Commands remain
+in the existing control FIFO and are read a second time after commit; there is
+no separate replay journal. Each mapper bank retains one read and one write
+port. The FIFO depth is shared with the ordinary baseline and reserves one
+entry for commit, limiting retained epochs to depth minus one commands. See
+the [replay protocol](../experiments/hardware-overhead/REPLAY.md) for credit and
+driver rules. The old `--replay-log-depth` and journal-placement options have
+been removed from this runner. The `dynamic` read/copy option remains for
+historical reproduction. Saved resource figures at `d5a10e8` measured the
+separate-journal replay implementation; shared FIFO replay has correctness
+validation only so far.
+
+Use `--generate-only` to elaborate RTL and save its manifest without creating
+a vendor project or running synthesis. Then `validate_replay.py BUILD` runs
+XSim and checks the generated RAM declarations/ports for a 2-PE, 8-ID external
+PIFO setup. The [protocol guide](../experiments/hardware-overhead/REPLAY.md#correctness-validation-without-synthesis)
+has complete commands, including the full packet and driver regressions.
 
 ## Run the default replay design
 
@@ -262,7 +272,10 @@ checks all 14 Quartus cases completed when the issue was found and rejects
 inconsistent detailed totals. The original synthesis completed successfully;
 this is a report-accounting workaround and requires no synthesis rerun.
 
-## Replay journal placement
+## Historical replay journal placement
+
+This section and its diagnostic scripts apply to the archived separate-journal
+RTL at `d5a10e8`. The current shared FIFO implementation has no journal to place.
 
 The replay configuration uses two simple-dual-port mapper banks and records
 configuration writes in a shared controller FIFO. In the original 1,024-ID

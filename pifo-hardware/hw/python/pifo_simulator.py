@@ -18,6 +18,9 @@ HARDWARE_ROOT = Path(__file__).resolve().parents[2]
 
 
 def run_simulator(args: argparse.Namespace) -> tuple[Path, Path, Path, Path]:
+    control_queue_depth = getattr(args, "control_queue_depth", 4)
+    if control_queue_depth < 2 or control_queue_depth & (control_queue_depth - 1):
+        raise ValueError("--control-queue-depth must be a power of two >= 2")
     if args.queue_depth <= 0:
         raise ValueError("--queue-depth must be positive")
     if not math.isfinite(args.link_bytes_per_cycle) or args.link_bytes_per_cycle <= 0:
@@ -81,6 +84,8 @@ def run_simulator(args: argparse.Namespace) -> tuple[Path, Path, Path, Path]:
         str(events_path),
         "--queue-depth",
         str(args.queue_depth),
+        "--control-queue-depth",
+        str(control_queue_depth),
         "--link-bytes-per-cycle",
         str(args.link_bytes_per_cycle),
         "--max-cycles",
@@ -122,6 +127,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--queue-depth", type=int, default=32)
+    parser.add_argument("--control-queue-depth", type=int, default=4,
+                        help="Shared command/replay FIFO entries; retain at most depth minus one commands per epoch.")
     parser.add_argument("--link-bytes-per-cycle", type=float, default=64.0)
     parser.add_argument("--max-cycles", type=int, default=100_000)
     parser.add_argument("--warmup-cycles", type=int, default=4)

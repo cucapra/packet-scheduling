@@ -1,0 +1,72 @@
+{
+  "hardware": {
+    "configuration": "replay",
+    "mapper_banks": 2,
+    "pifo_backend": "external",
+    "num_engines": 2,
+    "num_vpifos_per_pe": 8,
+    "global_flow_id_capacity": 8,
+    "fifo_depth_parameter": 4,
+    "shared_entries_per_pe": 32,
+    "total_shared_entries": 64,
+    "priority_bits": 8,
+    "vpifo_id_bits": 3,
+    "engine_id_bits": 2,
+    "token_bits": 5,
+    "brain_state_bits": 32,
+    "flow_state_bits": 32,
+    "commit_queue_depth": 4,
+    "flow_token_address_space": 32,
+    "vpifo_token_pairs_per_pe": 256,
+    "mapper_sync": "shared_control_fifo_replay",
+    "replay_storage": "control_queue",
+    "separate_replay_journal": false,
+    "replay_max_retained_commands": 3
+  },
+  "rtl_sha256": {
+    "PifoMesh.v": "a5c1a83ed471b14aecbc76ca86d0c4749d74e419d3c775885dbfe75d37df52e3",
+    "PifoMesh.v_toplevel_pifoEngines_0_deque_dequeMapper_banks_0.bin": "9f76dd5ed566e1314ebc5827adbed7ac8d96a0b37478d1e9f0f377b569abb628",
+    "PifoMesh.v_toplevel_pifoEngines_0_deque_dequeMapper_banks_1.bin": "9f76dd5ed566e1314ebc5827adbed7ac8d96a0b37478d1e9f0f377b569abb628",
+    "PifoMesh.v_toplevel_pifoEngines_0_enque_brain_brainStateMem_ram.bin": "aba47d92818d0e5979b2b8a8e9317c189b09491c6b74876b470ff53d6a525eb0",
+    "PifoMesh.v_toplevel_pifoEngines_0_enque_brain_engineCAM_ram.bin": "1dea72ca3b355389d1e0abc0a234565fc220a0b4a104eed5686fe57d375232b0",
+    "PifoMesh.v_toplevel_pifoEngines_0_enque_brain_engineMapper_ram.bin": "21bdd4f67b9f669a2999a9e79b6bdb4b707822f2f41a6901978cd165ac9992cf",
+    "PifoMesh.v_toplevel_pifoEngines_0_enque_brain_lastVirtualMapper_ram.bin": "475f1b81038cf309e71d951567d683b33b782414b0412be183f48a1c671bf5b8",
+    "PifoMesh.v_toplevel_pifoEngines_0_enque_enqueMapper_banks_0.bin": "1bc8b4d5c73096531e2ecb738bb214a1b4d8b3211a1ff7fd462887ac74f787e7",
+    "PifoMesh.v_toplevel_pifoEngines_0_enque_enqueMapper_banks_1.bin": "1bc8b4d5c73096531e2ecb738bb214a1b4d8b3211a1ff7fd462887ac74f787e7",
+    "PifoMesh.v_toplevel_pifoEngines_1_deque_dequeMapper_banks_0.bin": "9f76dd5ed566e1314ebc5827adbed7ac8d96a0b37478d1e9f0f377b569abb628",
+    "PifoMesh.v_toplevel_pifoEngines_1_deque_dequeMapper_banks_1.bin": "9f76dd5ed566e1314ebc5827adbed7ac8d96a0b37478d1e9f0f377b569abb628",
+    "PifoMesh.v_toplevel_pifoEngines_1_enque_brain_brainStateMem_ram.bin": "aba47d92818d0e5979b2b8a8e9317c189b09491c6b74876b470ff53d6a525eb0",
+    "PifoMesh.v_toplevel_pifoEngines_1_enque_brain_engineCAM_ram.bin": "1dea72ca3b355389d1e0abc0a234565fc220a0b4a104eed5686fe57d375232b0",
+    "PifoMesh.v_toplevel_pifoEngines_1_enque_brain_engineMapper_ram.bin": "21bdd4f67b9f669a2999a9e79b6bdb4b707822f2f41a6901978cd165ac9992cf",
+    "PifoMesh.v_toplevel_pifoEngines_1_enque_brain_lastVirtualMapper_ram.bin": "475f1b81038cf309e71d951567d683b33b782414b0412be183f48a1c671bf5b8",
+    "PifoMesh.v_toplevel_pifoEngines_1_enque_enqueMapper_banks_0.bin": "1bc8b4d5c73096531e2ecb738bb214a1b4d8b3211a1ff7fd462887ac74f787e7",
+    "PifoMesh.v_toplevel_pifoEngines_1_enque_enqueMapper_banks_1.bin": "1bc8b4d5c73096531e2ecb738bb214a1b4d8b3211a1ff7fd462887ac74f787e7",
+    "priority_encode_log.v": "2a63070396dc60fd2106c5ef1d0719e027ff6bf797afbef166cf99c9b49537c2"
+  },
+  "testbench_sha256": {
+    "shared_control_fifo_tb.sv": "7b3ac5c27b098cd3ee129f289cf52075ca57cdcc6bd81f261cfe5401560676cf",
+    "replay_controller_tb.sv": "44771903dd7989dee60b0478b741dc4c6d8e916d368409b08a407974162ce638"
+  },
+  "status": "passed",
+  "synthesis_run": false,
+  "implementation_run": false,
+  "evidence": [
+    "SHARED_FIFO_PASS depth=4 cycles=3668 accepted=1504 outputs=1913 replay_writes=409 commits=624 stalls=666 replay_stalls=141 simultaneous=662 seeds=3",
+    "REPLAY_CONTROLLER_PASS depth=4 cycles=261 commits=29 mapper_updates=29 busy_cycles=41 lookups=85 lookups_during_replay=15 lookups_on_swap=8 queued_epoch_updates=1 unbanked_once=24"
+  ],
+  "structure": {
+    "status": "passed",
+    "controller_arrays": 1,
+    "controller_words": 4,
+    "controller_word_bits": 45,
+    "controller_storage_bits": 180,
+    "controller_read_ports": 1,
+    "controller_write_ports": 1,
+    "separate_journal": false,
+    "mapper_definitions_checked": 4,
+    "mapper_instances": 4,
+    "mapper_read_ports_per_bank": 1,
+    "mapper_write_ports_per_bank": 1,
+    "evidence": "Generated RTL declarations and synchronous RAM accesses; not a synthesis mapping"
+  }
+}

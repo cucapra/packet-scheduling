@@ -12,7 +12,8 @@ object PifoMeshSim extends App {
     numVPIFOs = 32,
     maxPacketPriority = 256,
     fifoDepth = 32,
-    prefetchBufferDepth = 2
+    prefetchBufferDepth = 2,
+    commitQueueLength = 32 // The tree setup must fit in one retained epoch.
   )
 
   SimConfig.withIVerilog

@@ -770,7 +770,9 @@ object RequestSimulationConfiguration {
   }
 
   def loadControlFile(path: Path, controller: PifoMeshSimController): Unit = {
-    loadControlInstructions(path).foreach(instruction => sendInstruction(instruction, controller))
+    val instructions = loadControlInstructions(path)
+    ReplayEpochCapacity.validate(controller.config, instructions.map(_.command))
+    instructions.foreach(instruction => sendInstruction(instruction, controller))
   }
 
   def loadControlInstructions(path: Path): Vector[RequestControlInstruction] = {
@@ -800,6 +802,7 @@ object RequestSimulationConfiguration {
       onCommitApplied: () => Unit
   ): Unit = {
     validateTransactionPackage(instructions)
+    ReplayEpochCapacity.validate(controller.config, instructions.map(_.command))
     instructions.foreach { instruction =>
       val isCommit = instruction.command == ControlCommand.CommitMapper
       if (isCommit) beforeCommit()
@@ -848,10 +851,12 @@ object RequestSimulationConfiguration {
   ): Unit = {
     require(rootEngineId >= 1 && rootEngineId <= config.numEngines, s"invalid root engine $rootEngineId")
     require(rootVPifoId >= 0 && rootVPifoId < config.numVPIFOs, s"invalid root vPifo $rootVPifoId")
+    val flows = globalFlowIds.toSeq.distinct.sorted
+    ReplayEpochCapacity.validate(config, Seq.fill(flows.size * 2)(ControlCommand.UpdateMapperPre))
 
     // BrainType encodings are NOP=0, WFQ=1, SP=2, FIFO=3.
     controller.sendControl(ControlCommand.UpdateBrainEngine, rootEngineId, 3, vPifoId = rootVPifoId)
-    globalFlowIds.toSeq.distinct.sorted.foreach { globalFlowId =>
+    flows.foreach { globalFlowId =>
       require(
         globalFlowId >= 0 && globalFlowId < config.numVPIFOs - 1,
         s"global flow $globalFlowId collides with the reserved empty-flow token or exceeds the configured width"

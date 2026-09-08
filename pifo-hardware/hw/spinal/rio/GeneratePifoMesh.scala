@@ -8,7 +8,7 @@ import spinal.core._
 object GeneratePifoMesh {
   def main(args: Array[String]): Unit = {
     require(args.length >= 5 && args.length <= 8,
-      "Usage: GeneratePifoMesh OUTPUT_DIR NUM_ENGINES NUM_VPIFOS FIFO_DEPTH PRIORITY_BITS [house|stock|external] [dynamic|static|replay] [REPLAY_LOG_DEPTH]")
+      "Usage: GeneratePifoMesh OUTPUT_DIR NUM_ENGINES NUM_VPIFOS FIFO_DEPTH PRIORITY_BITS [house|stock|external] [replay|static|dynamic] [CONTROL_QUEUE_DEPTH]")
     val Array(output, enginesArg, vpifosArg, depthArg, priorityArg) = args.take(5)
     val backend = args.lift(5).getOrElse("house")
     val configuration = args.lift(6).getOrElse("replay")
@@ -32,7 +32,7 @@ object GeneratePifoMesh {
       pifoBackend = backend,
       dynamicConfig = configuration != "static",
       mapperSync = if (configuration == "replay") "replay" else "copy",
-      replayLogDepth = args.lift(7).map(_.toInt).getOrElse(16384)
+      commitQueueLength = args.lift(7).map(_.toInt).getOrElse(4)
     )
     Config.spinal.copy(targetDirectory = output).generateVerilog(PifoMesh(config))
     println(s"PifoMesh: $engines PEs, $vpifos vPIFO IDs/PE, " +

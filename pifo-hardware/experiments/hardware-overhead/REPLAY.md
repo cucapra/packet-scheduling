@@ -1,116 +1,100 @@
-# Controller instruction replay
+# Controller FIFO replay
 
-Replay is the default RTL and synthesis configuration. The ordinary comparison
-uses `--configuration static`, retaining the controller and ignoring commits.
-R1/R2 compare these two designs; both totals and percentage denominators include
-five measured PIFOs. See [the experiment definitions](README.md).
+Replay is the default RTL configuration. The controller executes and replays
+commands from the **same control FIFO RAM**; there is no separate journal.
+The ordinary comparison (`--configuration static`) uses the same configured
+FIFO depth, retains command routing, and ignores commits.
+
+The saved R1/R2 synthesis measurements are from the earlier separate-journal
+implementation at `d5a10e8`. They have not been regenerated for shared FIFO replay.
+Their totals and percentage denominators continue to include five measured PIFOs.
 
 ## Transaction protocol
 
-1. The controller reserves a replay-log entry when it accepts a pre/post-mapper
-   update at ingress, including commands waiting in the normal control FIFO.
-2. It records the update and routes it to the inactive bank. A stream fork holds
-   the command until both actions have accepted it. Repeated writes are recorded
-   in order; the last write to an address wins.
-3. A commit swaps all pre/post mapper banks in all PEs on the same cycle.
-4. The controller replays the recorded updates through the ordinary write path,
-   which now targets the old active bank. No table read is needed to synchronize.
-5. Configuration ingress and queued commands wait while replay is active. The
-   next commit cannot execute until the final replayed update has been accepted.
-   Packet lookup ports continue reading the active bank throughout replay.
+1. Each accepted command is written once into the controller FIFO. An execution
+   pointer reads commands in order. A release pointer frees unbanked commands
+   immediately until the first pre/post-mapper update starts a retained epoch.
+2. Mapper updates write the inactive bank. Their original FIFO entries, and all
+   subsequent commands through commit, remain allocated for the second pass.
+3. Commit swaps the selected mapper banks in every PE on the same cycle. The
+   controller saves the commit boundary and rewinds its read pointer to the
+   first retained command.
+4. The same RAM read port issues the retained pre/post updates again. Their
+   ordinary write path now targets the old active bank. Brain, state, and
+   front-rewrite commands are skipped on this pass, so they execute only once.
+5. Entries are reclaimed as replay advances; the commit marker is reclaimed at
+   the end. Ingress and later queued commands wait until replay finishes.
+   Commands already queued after that commit remain intact for the next epoch.
 
-Each mapper bank declares one synchronous packet-read port and one write port.
-The selected bank is captured with each accepted lookup, so a read issued on a
-swap cycle returns data from the bank selected for that request. The shared log
-uses one read and one write port. Commands for unbanked brain/state/front-rewrite
-tables execute once and are not replayed. Replaying those commands would repeat
-unrelated state changes, rather than synchronize the banked lookup tables.
+Repeated writes preserve their order, so the last write to an address wins.
+Untouched entries retain their values in both banks. An empty commit needs no
+replay. Packet lookups continue throughout synchronization; a lookup on the
+swap cycle returns the bank selected when that lookup was issued.
 
-The bank-equality invariant is simple: if both banks start an epoch in state
-`S`, applying the ordered update sequence `U` to the shadow produces `U(S)`.
-The swap publishes that state. Replaying the same sequence into the old active
-bank, which still contains `S`, leaves both banks at `U(S)`. The controller holds
-the next epoch until that replay finishes. Duplicate writes need no special
-handling because replay preserves their order. Entries absent from the log
-retain their previous values in both banks.
+## Capacity and memory ports
 
-## Journal and storage
+`--control-queue-depth D` (Scala `EngineConfig.commitQueueLength`) sets the only
+command RAM depth for either configuration. It must be a power of two at least
+two and defaults to **four entries**, unchanged from the ordinary controller.
+One entry is reserved for commit. Thus an epoch can retain at most **D − 1
+commands from its first mapper update to immediately before commit**, including
+any intervening unbanked commands. An unbanked-only prefix can stream without
+accumulating retained entries. Larger atomic batches require a larger FIFO;
+they are never silently split into multiple commits.
 
-`--replay-log-depth` is a power of two, defaulting to **16,384 instructions across
-the mesh**. R1/R2 keep this depth fixed throughout the 32–1,024 vFlow sweep. At five PEs it
-covers one pre- and one post-mapper update per vFlow per PE at the 1,024-ID point
-(10,240 updates). Programs with more updates require a larger log or batches
-that may be published as separate commits.
+`replayBusy` indicates the second pass. The legacy port `replayLogAvailable`
+now reports free non-commit FIFO slots, excluding the reserved slot; its width
+is `log2Up(D + 1)`. All command kinds consume shared capacity. A full retained
+epoch can still accept commit into its reserved slot. Once that slot also holds
+a queued command, the physically full FIFO stalls all ingress until space frees.
+During replay, ingress is stalled regardless of the number of reclaimed slots.
+Drivers must send commit before exhausting the retained-command limit. The
+request simulator accepts the same `--control-queue-depth` option and rejects
+oversized packages or streamed epochs with a capacity error.
 
-The top level exposes `replayBusy` and `replayLogAvailable`. Software must respect
-the advertised credits: a full log accepts commits and unbanked commands but
-backpressures further mapper updates. It must submit a commit before offering
-more mapper updates than available credits. Updates are never silently dropped
-or evicted. There is no unbounded transaction log or implicit partial commit.
+A FIFO word is the complete control message:
+`3 + engine_id_bits + vpifo_id_bits + token_bits + 32` bits. At five PEs and
+1,024 IDs, both ordinary and replay use `D × 61` payload bits (**244 bits at
+D = 4**). Replay adds pointer/phase control, not another payload array. This is
+a declaration-level storage calculation, not a mapped FPGA resource estimate.
 
-An instruction stores a pre/post selector, PE ID, vPIFO ID, flow token, and the
-low data bits used by the mapper. Its width is
-`1 + engine_id_bits + vpifo_id_bits + 2 * token_bits`: **40 bits at 1,024 IDs**,
-or 655,360 declared bits for the 16,384-entry log before FPGA mapping. The
-controller log, counters, routing, and exported status are included in all replay
-resource counts. Both mapper banks remain allocated, and dense table depth is
-unchanged. This removes the copy read ports; it does not remove the second bank
-or solve the quadratic address-space growth.
+The FIFO has one synchronous read port and one write port. The read output
+register holds a stalled command; no separate journal or payload cache is
+allocated. Both passes time-share that read port. Each selected mapper bank
+still has one synchronous packet-read port and one configuration-write port,
+with mutually exclusive write enables selecting the inactive bank. Other
+mapper memories and bank write logic are unchanged.
 
-For this five-PE sweep the instruction width is `10 + 3 * log2(vflows)`:
-25, 28, 31, 34, 37, and 40 bits at 32, 64, 128, 256, 512, and 1,024 IDs. A fixed-capacity journal therefore
-grows only with the encoded ID width, while each post-mapper bank grows as
-`8 * vflows^2 * (log2(vflows) + 3)` bits. This is a declared-storage model,
-not an ALM/LUT prediction. Replay removes read-port replication from the
-double-buffer implementation, but atomic publication still needs two banks
-instead of the ordinary implementation's one.
+Replay latency depends on the retained span and downstream readiness. Skipped
+unbanked commands still consume read cycles. Runtime reset flushes the FIFO;
+it does not recover a mapper transaction interrupted between staging and replay.
 
-Synchronization work scales with the number of staged instructions, rather than
-the full table depth. The controller issues at most one replayed instruction per
-cycle globally. An empty commit needs no replay. Actual busy time also depends
-on write-path readiness; it is not assumed to be constant for arbitrary traffic.
-
-The protocol starts from initialized, equal banks. Runtime reset clears the
-journal; it does not recover an interrupted configuration transaction.
-Quartus assigns the journal array to M20K by default. Mapper banks each retain
-one synchronous read port and one write port; their mapping is checked from
-the synthesis memory-instance records.
-
-## Validation
-
-The full small-mesh packet test passed with seven packets and 633 cycles,
-preserving staged mapping visibility, repeated commits, and the highest encoded
-flow ID. The focused two-PE test passed 29 commits and 52 updates in 270 cycles,
-with 52 replay-busy cycles. It checks the complete contents of both banks against
-the accepted update history after synchronized batches, including duplicates,
-partial epochs, FIFO wraparound, empty commits, a full log, and queued commits.
-It verifies that a next-epoch update accepted behind a commit retains its log
-reservation while the preceding epoch replays. It also checked 88 packet
-lookups, including 15 during replay and 22 on a swap cycle. A prior phase of the
-test checked another lookup alignment and is retained in the validation archive.
-No commit executed while replay was active.
-
-The default-configuration check repeats the focused test without specifying
-`--configuration`. Its [saved validation](../../experiment-results/hardware-overhead/validation/default-replay/validation.json)
-and [RTL equivalence checks](../../experiment-results/hardware-overhead/validation/default-replay/default-equivalence.json)
-confirm that the default selects replay and agrees with the completed explicit
-replay reference measurements.
-
-## Reproduce
+## Correctness validation without synthesis
 
 From `pifo-hardware`:
 
 ```bash
-# Both-vendor experiment grid and fixed setup, including measured PIFOs.
-.venv/bin/python hw/python/pifo_hardware_overhead_r2.py
-.venv/bin/python hw/python/pifo_hardware_overhead_r1.py --collect-only
+python3 synthesis/run.py --tool vivado --name shared-replay-d4 \
+  --engines 2 --vpifos 8 --entries-per-pe 32 --pifo-backend external \
+  --control-queue-depth 4 --generate-only
+python3 synthesis/validate_replay.py synthesis/build/shared-replay-d4
 
-# Focused protocol validation using the default replay configuration.
-python3 synthesis/run.py --name replay-check --engines 2 --vpifos 8 \
-  --entries-per-pe 32 --pifo-backend external --replay-log-depth 4 --prepare-only
-python3 synthesis/validate_replay.py synthesis/build/replay-check
+# Repeat with depths 2 and 8 and distinct build names.
+# Full packet regression with the unchanged house PIFO:
+python3 synthesis/run.py --tool vivado --name shared-replay-packet \
+  --engines 1 --vpifos 8 --entries-per-pe 32 --pifo-backend house \
+  --control-queue-depth 4 --generate-only
+python3 synthesis/validate_configuration.py synthesis/build/shared-replay-packet
+
+# Driver regression, with Icarus Verilog on PATH:
+sbt 'runMain rio.sim.SharedReplayDriverSim'
 ```
 
-The [results index](../../experiment-results/hardware-overhead/README.md) links
-the requested tables, figures, and source data. Historical raw vendor reports,
-source snapshots, and protocol validation are retained as reproduction evidence.
+The FIFO scoreboard checks every output against accepted commands and an
+independent expected replay sequence under backpressure. The two-PE bench checks
+both banks against per-commit histories, simultaneous swaps, duplicates, queued
+next epochs, and packet reads overlapping swaps/replay. The packet test checks
+staged visibility, repeated commits, and highest encoded flow IDs. Generated
+RTL is also checked for a single controller RAM and one read/write port per bank.
+[Saved validation](../../experiment-results/hardware-overhead/validation/shared-control-fifo/validation.json)
+records tool evidence and hashes. These checks do not run synthesis or implementation.

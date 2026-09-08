@@ -290,6 +290,9 @@ def main(default_case='r2-vflows'):
     parser.add_argument('--collect-only',action='store_true')
     parser.add_argument('--render-only',action='store_true')
     args=parser.parse_args();config=json.loads(args.config.read_text())
+    if not args.collect_only and not args.render_only and 'replay_log_depth' in config['hardware']:
+        parser.error('This separate-journal experiment requires the source/workflow at d5a10e8. '
+                     'Use --collect-only or --render-only for saved results; shared FIFO replay needs a new experiment definition.')
     assert config['schema']=='rio-hardware-overhead-v2'
     assert config['configurations']==['static','replay']
     h=config['hardware'];assert h['pifo_backend']=='external'

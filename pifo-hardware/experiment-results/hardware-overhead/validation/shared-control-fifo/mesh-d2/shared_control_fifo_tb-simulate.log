@@ -1,0 +1,18 @@
+
+****** xsim v2025.2 (64-bit)
+  **** SW Build 6299465 on Fri Nov 14 12:34:56 MST 2025
+  **** IP Build 6300035 on Fri Nov 14 10:48:45 MST 2025
+  **** SharedData Build 6298862 on Thu Nov 13 04:50:51 MST 2025
+  **** Start of session at: Mon Sep  7 12:56:23 2026
+    ** Copyright 1986-2022 Xilinx, Inc. All Rights Reserved.
+    ** Copyright 2022-2025 Advanced Micro Devices, Inc. All Rights Reserved.
+
+source xsim.dir/shared_control_fifo_tb/xsim_script.tcl
+# xsim {shared_control_fifo_tb} -autoloadwcfg -runall
+Time resolution is 1 ps
+run -all
+SHARED_FIFO_PASS depth=2 cycles=2913 accepted=962 outputs=1234 replay_writes=272 commits=624 stalls=407 replay_stalls=103 simultaneous=1 seeds=3
+$finish called at time : 29132 ns : File "/data/work/rio-synthesis/shared-control-replay-validation/mesh-d2/replay-validation/shared_control_fifo_tb.sv" Line 138
+exit
+INFO: xsimkernel Simulation Memory Usage: 272956 KB (Peak: 334132 KB), Simulation CPU Usage: 1510 ms
+INFO: [Common 17-206] Exiting xsim at Mon Sep  7 12:56:27 2026...

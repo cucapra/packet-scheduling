@@ -17,14 +17,13 @@ case class EngineConfig(
     commitQueueLength: Int = 4,
     pifoBackend: String = "house",
     dynamicConfig: Boolean = true,
-    mapperSync: String = "replay",
-    replayLogDepth: Int = 16384
+    mapperSync: String = "replay"
 ) {
   require(Set("house", "stock", "external").contains(pifoBackend),
     "pifoBackend must be house, stock, or external")
   require(Set("copy", "replay").contains(mapperSync))
-  require(replayLogDepth >= 2 && (replayLogDepth & (replayLogDepth - 1)) == 0,
-    "replayLogDepth must be a power of two >= 2")
+  require(commitQueueLength >= 2 && (commitQueueLength & (commitQueueLength - 1)) == 0,
+    "commitQueueLength must be a power of two >= 2")
   def vpifoIdWidth = log2Up(numVPIFOs)
   def numFlows = numVPIFOs * numEngines
   def engineIdWidth = log2Up(numEngines + 1) // +1 for control port

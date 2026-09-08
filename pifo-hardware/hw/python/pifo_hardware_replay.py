@@ -194,6 +194,9 @@ def main():
     parser.add_argument('--reference-root',type=Path,default=Path('/data/work/rio-synthesis/hardware-overhead'))
     parser.add_argument('--collect-only',action='store_true');parser.add_argument('--render-only',action='store_true')
     args=parser.parse_args();config=json.loads(args.config.read_text());assert config['schema']=='rio-hardware-replay-v1'
+    if not args.collect_only and not args.render_only:
+        parser.error('This historical separate-journal sweep requires the source/workflow at d5a10e8. '
+                     'Use --collect-only or --render-only for saved results.')
     root=args.build_root.resolve();output=PROJECT/config['output_dir'];output.mkdir(parents=True,exist_ok=True)
     if args.render_only:render(output,json.loads((output/'experiment-config.json').read_text()));return
     (output/'experiment-config.json').write_text(json.dumps(config,indent=2)+'\n')

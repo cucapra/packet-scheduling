@@ -1,11 +1,11 @@
 # RIO hardware overhead experiments
 
-The primary comparison is ordinary single-bank tables versus controller replay.
-Replay is the default RTL and synthesis configuration. Ordinary tables retain
-the command controller and consume commits as no-ops. Replay records mapper
-updates, swaps both banks, and replays into the shadow before the next commit.
-Its global journal holds 16,384 updates; drivers must respect available credits.
-Quartus assigns only the journal array to M20K in every replay measurement.
+The saved comparison is ordinary single-bank tables versus controller replay
+from `d5a10e8`, with a 16,384-entry separate journal placed in M20K on Quartus.
+Ordinary tables retain the command controller and consume commits as no-ops.
+Current replay RTL instead reuses the control FIFO RAM; see [REPLAY.md](REPLAY.md).
+It has correctness validation only. The saved tables/figures still describe
+the separate-journal implementation and must not be attributed to the new RTL.
 
 ## Experiments
 
@@ -66,7 +66,7 @@ reproduction; primary figures contain only ordinary and replay designs.
 From pifo-hardware:
 
 ```bash
-.venv/bin/python hw/python/pifo_hardware_overhead_r2.py
+.venv/bin/python hw/python/pifo_hardware_overhead_r2.py --collect-only
 .venv/bin/python hw/python/pifo_hardware_overhead_r1.py --collect-only
 .venv/bin/python hw/python/pifo_lookup_pipeline.py --render-only
 
@@ -78,8 +78,11 @@ From pifo-hardware:
 .venv/bin/python hw/python/pifo_hardware_overhead_r2.py --render-only
 ```
 
-The runners reuse verified archived ordinary measurements and completed replay
-references, synthesize missing replay sizes, and measure the PIFO component grid.
+Collection and rendering reuse verified archived ordinary and replay measurements.
+Fresh synthesis of these historical experiment definitions requires their
+matching source/workflow at `d5a10e8`; current runners reject this incompatible
+request before modifying results. Future shared FIFO measurements must specify
+the same control FIFO capacity for both designs in a new experiment definition.
 The PIFO extractor checks original RTL hashes, unchanged house-PIFO source,
 all used runtime ports, table capacity, exact widths, and the push2 tie-off in
 every source PE. The extracted core is unchanged; a wrapper reproduces its

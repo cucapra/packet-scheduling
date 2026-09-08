@@ -1,0 +1,18 @@
+
+****** xsim v2025.2 (64-bit)
+  **** SW Build 6299465 on Fri Nov 14 12:34:56 MST 2025
+  **** IP Build 6300035 on Fri Nov 14 10:48:45 MST 2025
+  **** SharedData Build 6298862 on Thu Nov 13 04:50:51 MST 2025
+  **** Start of session at: Mon Sep  7 12:55:10 2026
+    ** Copyright 1986-2022 Xilinx, Inc. All Rights Reserved.
+    ** Copyright 2022-2025 Advanced Micro Devices, Inc. All Rights Reserved.
+
+source xsim.dir/replay_controller_tb/xsim_script.tcl
+# xsim {replay_controller_tb} -autoloadwcfg -runall
+Time resolution is 1 ps
+run -all
+REPLAY_CONTROLLER_PASS depth=8 cycles=365 commits=29 mapper_updates=66 busy_cycles=93 lookups=120 lookups_during_replay=23 lookups_on_swap=7 queued_epoch_updates=1 unbanked_once=39
+$finish called at time : 3921 ns : File "/data/work/rio-synthesis/shared-control-replay-validation/mesh-d8/replay-validation/replay_controller_tb.sv" Line 181
+exit
+INFO: xsimkernel Simulation Memory Usage: 274608 KB (Peak: 335784 KB), Simulation CPU Usage: 1390 ms
+INFO: [Common 17-206] Exiting xsim at Mon Sep  7 12:55:14 2026...

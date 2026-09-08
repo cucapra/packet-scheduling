@@ -39,15 +39,6 @@ case class ControlMessage(config: EngineConfig) extends Bundle {
   val data = UInt(config.flowStateWidth bits)
 }
 
-/** Only banked mapper writes are replayed. Store the bits their decoders use. */
-case class MapperReplayInstruction(config: EngineConfig) extends Bundle {
-  val post = Bool()
-  val engineId = UInt(config.engineIdWidth bits)
-  val vPifoId = UInt(config.vpifoIdWidth bits)
-  val flowId = UInt(config.flowIdWidth bits)
-  val data = UInt(config.flowIdWidth bits)
-}
-
 case class PifoMesh(config: EngineConfig) extends Component {
   val useReplay = config.dynamicConfig && config.mapperSync == "replay"
   val io = new Bundle {
@@ -60,7 +51,8 @@ case class PifoMesh(config: EngineConfig) extends Component {
     val pifo = if (config.pifoBackend == "external")
       Vec(master(PifoBoundary(config)), config.numEngines) else null
     val replayBusy = if (useReplay) out Bool() else null
-    val replayLogAvailable = if (useReplay) out UInt(log2Up(config.replayLogDepth + 1) bits) else null
+    // Legacy port name: now reports shared FIFO slots, excluding commit reserve.
+    val replayLogAvailable = if (useReplay) out UInt(log2Up(config.commitQueueLength + 1) bits) else null
   }
 
   // all datapath
@@ -92,64 +84,25 @@ case class PifoMesh(config: EngineConfig) extends Component {
   // synchronously so every engine changes those packet-visible mappings on the
   // same cycle. Underflow-rewrite entries are single-bank and never wait for
   // mapper bank synchronization.
-  val replaying = if (useReplay) RegInit(False) else null
-  // Reserve log space at ingress, including mapper commands waiting in the
-  // ordinary control FIFO. This prevents accepted updates from overflowing it.
-  val reserved = if (useReplay) Reg(UInt(log2Up(config.replayLogDepth + 1) bits)) init(0) else null
-  val ingress = if (useReplay) {
-    val isMapper = io.controlRequest.command === ControlCommand.UpdateMapperPre ||
-      io.controlRequest.command === ControlCommand.UpdateMapperPost
-    io.controlRequest.haltWhen(replaying || (isMapper && reserved === config.replayLogDepth))
-  } else io.controlRequest
-  val controlQueue = ingress.queue(config.commitQueueLength)
+  val replayControl = if (useReplay) ReplayControlFifo(config) else null
+  val controlQueue = if (useReplay) {
+    replayControl.io.push << io.controlRequest
+    io.replayBusy := replayControl.io.replaying
+    io.replayLogAvailable := replayControl.io.available
+    replayControl.io.pop
+  } else io.controlRequest.queue(config.commitQueueLength)
   if (useReplay) {
-    val log = StreamFifo(MapperReplayInstruction(config), config.replayLogDepth)
-    io.replayBusy := replaying
-    io.replayLogAvailable := U(config.replayLogDepth) - reserved
     val mapperCommitReady = pifoEngines.map(_.io.commitReady).reduce(_ && _)
-    io.commitReady := !replaying && mapperCommitReady
-
-    val staged = controlQueue.haltWhen(replaying)
-    val (dispatchHead, recordHead) = StreamFork2(staged)
-    val record = recordHead.takeWhen(recordHead.command === ControlCommand.UpdateMapperPre ||
-      recordHead.command === ControlCommand.UpdateMapperPost)
-    log.io.push << record.translateWith {
-      val instruction = MapperReplayInstruction(config)
-      instruction.post := record.command === ControlCommand.UpdateMapperPost
-      instruction.engineId := record.engineId
-      instruction.vPifoId := record.vPifoId
-      instruction.flowId := record.flowId
-      instruction.data := record.data.resized
-      instruction
-    }
-    val (normalHead, commitHead) = StreamFork2(dispatchHead)
+    io.commitReady := !replayControl.io.replaying && mapperCommitReady
+    val (normalHead, commitHead) = StreamFork2(controlQueue)
     val normal = normalHead.throwWhen(normalHead.command === ControlCommand.CommitMapper)
     val commit = commitHead.takeWhen(commitHead.command === ControlCommand.CommitMapper)
       .haltWhen(!mapperCommitReady)
-    val replay = log.io.pop.haltWhen(!replaying).translateWith {
-      val command = ControlMessage(config)
-      command.command := Mux(log.io.pop.post, ControlCommand.UpdateMapperPost, ControlCommand.UpdateMapperPre)
-      command.engineId := log.io.pop.engineId
-      command.vPifoId := log.io.pop.vPifoId
-      command.flowId := log.io.pop.flowId
-      command.data := log.io.pop.data.resized
-      command
-    }
-    val routed = StreamArbiterFactory.lowerFirst.onArgs(replay, normal)
-    val commands = StreamDemux(routed, (routed.engineId - 1).resized, config.numEngines)
+    val commands = StreamDemux(normal, (normal.engineId - 1).resized, config.numEngines)
     val commits = StreamFork(commit, config.numEngines)
     (commands zip commits zip pifoEngines).foreach { case ((command, swap), engine) =>
       engine.io.control << StreamArbiterFactory.lowerFirst.onArgs(command, swap)
     }
-
-    val reserve = ingress.fire && (ingress.command === ControlCommand.UpdateMapperPre ||
-      ingress.command === ControlCommand.UpdateMapperPost)
-    val release = log.io.pop.fire
-    when(reserve =/= release) {
-      when(reserve) { reserved := reserved + 1 } otherwise { reserved := reserved - 1 }
-    }
-    when(commit.fire && log.io.occupancy =/= 0) { replaying := True }
-    when(release && log.io.occupancy === 1) { replaying := False }
   } else if (config.dynamicConfig) {
   val mapperCommitReady = pifoEngines.map(_.io.commitReady).reduce(_ && _)
   io.commitReady := mapperCommitReady

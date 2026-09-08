@@ -1,0 +1,203 @@
+{
+  "schema": "rio-shared-control-fifo-validation-v1",
+  "timestamp_utc": "2026-09-07T17:05:37.675392+00:00",
+  "status": "passed",
+  "base_revision": "d5a10e8",
+  "synthesis_run": false,
+  "implementation_run": false,
+  "build_root": "/data/work/rio-synthesis/shared-control-replay-validation",
+  "cases": [
+    {
+      "name": "mesh-d2",
+      "manifest": "mesh-d2/manifest.json",
+      "rtl_archive": "mesh-d2/rtl.tar.gz",
+      "evidence": [
+        "SHARED_FIFO_PASS depth=2 cycles=2913 accepted=962 outputs=1234 replay_writes=272 commits=624 stalls=407 replay_stalls=103 simultaneous=1 seeds=3"
+      ],
+      "validation": "mesh-d2/validation.json"
+    },
+    {
+      "name": "mesh-d4",
+      "manifest": "mesh-d4/manifest.json",
+      "rtl_archive": "mesh-d4/rtl.tar.gz",
+      "evidence": [
+        "SHARED_FIFO_PASS depth=4 cycles=3668 accepted=1504 outputs=1913 replay_writes=409 commits=624 stalls=666 replay_stalls=141 simultaneous=662 seeds=3",
+        "REPLAY_CONTROLLER_PASS depth=4 cycles=261 commits=29 mapper_updates=29 busy_cycles=41 lookups=85 lookups_during_replay=15 lookups_on_swap=8 queued_epoch_updates=1 unbanked_once=24"
+      ],
+      "validation": "mesh-d4/validation.json"
+    },
+    {
+      "name": "mesh-d8",
+      "manifest": "mesh-d8/manifest.json",
+      "rtl_archive": "mesh-d8/rtl.tar.gz",
+      "evidence": [
+        "SHARED_FIFO_PASS depth=8 cycles=5963 accepted=2564 outputs=3373 replay_writes=809 commits=624 stalls=1148 replay_stalls=270 simultaneous=1673 seeds=3",
+        "REPLAY_CONTROLLER_PASS depth=8 cycles=365 commits=29 mapper_updates=66 busy_cycles=93 lookups=120 lookups_during_replay=23 lookups_on_swap=7 queued_epoch_updates=1 unbanked_once=39"
+      ],
+      "validation": "mesh-d8/validation.json"
+    },
+    {
+      "name": "packet-d4",
+      "manifest": "packet-d4/manifest.json",
+      "rtl_archive": "packet-d4/rtl.tar.gz",
+      "evidence": [
+        "CONFIGURATION_CONTRACT_PASS dynamic=1 cycles=633 packets=7"
+      ],
+      "validation": "packet-d4/validation.json"
+    },
+    {
+      "name": "ordinary-d4",
+      "manifest": "ordinary-d4/manifest.json",
+      "rtl_archive": "ordinary-d4/rtl.tar.gz"
+    }
+  ],
+  "limits": [
+    "Generated RAM declarations/ports are checked; no FPGA mapping or resource estimate.",
+    "FIFO depths 2, 4, 8 use 2 PEs / 8 IDs / 32 PIFO entries per PE; the full packet case uses 1 PE.",
+    "Reset validation flushes controller commands; it does not recover interrupted mapper transactions.",
+    "Existing R1/R2 resource figures remain measurements of the separate-journal implementation."
+  ],
+  "controller_storage_comparison": {
+    "status": "passed",
+    "ordinary_words": 4,
+    "replay_words": 4,
+    "word_bits": 45,
+    "ordinary_payload_bits": 180,
+    "replay_payload_bits": 180,
+    "additional_payload_bits": 0,
+    "ordinary_ram_read_ports": 1,
+    "ordinary_ram_write_ports": 1,
+    "replay_ram_read_ports": 1,
+    "replay_ram_write_ports": 1,
+    "scope": "Generated controller RAM declarations for identical 2-PE / 8-ID hardware; includes no mapped LUT/ALM/FF claim."
+  },
+  "driver": {
+    "status": "passed",
+    "log": "driver.log",
+    "evidence": [
+      "[info] SHARED_REPLAY_DRIVER_PASS commits=11 empty_commits=3 rejected_epochs=9"
+    ]
+  },
+  "existing-regressions": {
+    "status": "passed",
+    "log": "existing-regressions.log",
+    "evidence": [
+      "[success] Total time: 5 s, completed Sep 7, 2026, 1:01:37\u202fPM",
+      "[info] [ControlIngressRateSim] accepted=6 acceptanceTimes=85,95,105,115,125,135 gaps=10,10,10,10,10",
+      "[success] Total time: 4 s, completed Sep 7, 2026, 1:01:41\u202fPM"
+    ]
+  },
+  "python-cli": {
+    "status": "passed",
+    "log": "python-cli.log",
+    "evidence": [
+      "Ran 5 tests in 0.008s",
+      "OK"
+    ]
+  },
+  "driver_environment": {
+    "simulator": "Icarus Verilog 12.0 (Ubuntu 12.0-2build2, extracted locally without a system install)",
+    "simulator_bin": "/home/zg366/packet-scheduling/pifo-hardware/synthesis/.tools/iverilog/bin",
+    "package_sha256": "f19394cee05ad526e0eb3873bc6c17a5828f56df17fbe2db40cb66513a2d4667",
+    "CPLUS_INCLUDE_PATH": "/data/work/vivado/2025.2/tps/lnx64/jre21.0.5_11/include:/data/work/vivado/2025.2/tps/lnx64/jre21.0.5_11/include/linux",
+    "sbt_launcher": "synthesis/.tools/sbt-launch-1.10.2.jar",
+    "runMain": [
+      "rio.sim.SharedReplayDriverSim",
+      "rio.sim.TransactionalConfigSim",
+      "rio.sim.ControlIngressRateSim"
+    ]
+  },
+  "source_sha256": {
+    "build.sbt": "557f8381ce0cf9b0da205fdd6600ebbdda0477a87f71691ced7ed18643b7f72e",
+    "hw/python/pifo_hardware_experiments.py": "3e96a7704ba7ca87cd7b62f2f3ea904ebe99bdb7c094e2ae1a8dad779a94209f",
+    "hw/python/pifo_hardware_replay.py": "f4f05f8ed390de8f13c1739289321193f678933e887008d7d0ba540174026dc3",
+    "hw/python/pifo_simulator.py": "9b69a84776dee29fb9a6b1db3743fca92a1df8fa90b65d91f00ba7a5d7b73e79",
+    "hw/spinal/rio/ConcurrentPifoRTL.scala": "a9423ad585ae27347d3dedb44596a352d14214e7d1a4559b103f83780c7e555f",
+    "hw/spinal/rio/Config.scala": "eb623e40ebce2bfe36151863b1764a1b3531cadfe8c4bd5ae2a97eebe71f5061",
+    "hw/spinal/rio/ConfigurableMapper.scala": "336ebfe7aa5ecbbb7757ac550a590c1f18f5a7a1f22c0733d24570a965fa1b5f",
+    "hw/spinal/rio/ControllerFactory.scala": "30efd0c48e7fccc934720714d60677a2e96bcd82a42e872b85a606550f7d9908",
+    "hw/spinal/rio/GeneratePifoMesh.scala": "cef73e4a49c1b8052e23aff4e60860b68ae301d1b1e1194081df154c3be5457c",
+    "hw/spinal/rio/Pifo.scala": "1c97b917779af58a5faeacc9b5cee4437d8fb0c453bb1492ad583d422767459b",
+    "hw/spinal/rio/PifoCore.scala": "65c8a4895025507cde01103965a38feb5f56e07d9357f44a01983bb3235f98ee",
+    "hw/spinal/rio/PifoEngine.scala": "59210e0ff39d025cb89d7c3a1e48efef9ced6f70d7c070cfcad37b906c184e54",
+    "hw/spinal/rio/PifoMesh.scala": "a8ddc424ba46779ddbb26f6334d9a0d5c328ea81679ef346ce6059d23629340f",
+    "hw/spinal/rio/ReplayControlFifo.scala": "55718bb9fa5b258c07b034cde17acd8e84edb236a0299651e96ebb10f9b846ec",
+    "hw/spinal/rio/StockPifoRTL.scala": "bf53600f671a18e235a8f06f4ea5a7c1d1a59fdd7eb88ceb58d15bc0f88057a7",
+    "hw/spinal/rio/sim/ControlIngressRateSim.scala": "bf34f01fbc1cffae02e7559a62d17283894dec562a3529f91c66183bbdd9f826",
+    "hw/spinal/rio/sim/FrontUnderflowRewriteSim.scala": "bab09aca6e8d67ddf0f25d07e3d62d25a23dbaed1fa12fee3a2cf71fc175f652",
+    "hw/spinal/rio/sim/MapperSim.scala": "6039023164884e982b5875f4d6458b0dfd7137719ae6ce09b21752eb4c0e50a7",
+    "hw/spinal/rio/sim/PifoBrainSim.scala": "a5f15bd660e5b35a10be2abfbcda76594126b9ea38ca0ad6043f6f355365fee5",
+    "hw/spinal/rio/sim/PifoEngineSim.scala": "aee328671d20a9c93f32210bc7686b64f3fbdbed1a60c32bff413e0ffb01f81d",
+    "hw/spinal/rio/sim/PifoMeshSim.scala": "ef3bd339ec40d62a5c27f9d5922899e95a4e73590e9c36b48dbcb31b742711e5",
+    "hw/spinal/rio/sim/PifoSim.scala": "d07ece4437075c5ecd72f94bd0be2f4927ae654b5174ef0ec136a2c045c28e5e",
+    "hw/spinal/rio/sim/ReplayEpochCapacity.scala": "b39369d24c1d548e5d1648706d5b5f1e9f9343b59f5a2ceb30c433e0d6814c86",
+    "hw/spinal/rio/sim/RequestSimulator.scala": "1e2b79ceeb20e829092c6d640a12b3d6877f5466e7ed0ff0cff1c816409479fb",
+    "hw/spinal/rio/sim/RequestSimulatorCli.scala": "1730aacb3638579c5f378c527b0070b8621db4ed6d9d899a92d352e228d28c1d",
+    "hw/spinal/rio/sim/RequestTrace.scala": "1d1368930e96c66062c04d3e2ce18446dea70ba55350f94e7e7a8f7617a08063",
+    "hw/spinal/rio/sim/RequestTransactionProgram.scala": "536ff6720561cdbf87787bc4ba5dbc2ff04e586e3c24865c9347bc479771459a",
+    "hw/spinal/rio/sim/SharedReplayDriverSim.scala": "307d03a1b41c6e0d44be184d35c82c592d037b5b07dc19090d8453c9006944e9",
+    "hw/spinal/rio/sim/TransactionalConfigSim.scala": "202b8ca76e418c08ed6237a75e7b1ba34645c4db96beefcea19bf73931438879",
+    "hw/spinal/rio/sim/TransactionalMapperSim.scala": "26a2ed83449c1bff8e150d8adb088580d402fe9f8a2a369097f35bb11e93d611",
+    "hw/spinal/rio/sim/UnixDomainSocketLineServer.scala": "9b2de607caadb034e9440d605b1e41f3c1a66451548ba40b003834d17823e56b",
+    "hw/spinal/rio/sim/Utils.scala": "4489b50dad69970aaf87c3314bc38bc0551b2d202f2e1969a46b88d88dd6fa6c",
+    "synthesis/configuration_contract_tb.sv": "8ad9add0dddd7d03db2fe7d2baa1f0c40b87d7aede235d48f78cfe3700f883b9",
+    "synthesis/replay_controller_tb.sv": "45cf4fd9a0a8bbdd2d0178142c02a8f7b3df26140896a28d54b36d411d9b343f",
+    "synthesis/run.py": "7891eabe8c3b4daa0168f40c4429c1dc8f0c83b251f1d910dd49d1a1e2548918",
+    "synthesis/shared_control_fifo_tb.sv": "d82f678f683c96de9dcc0f27920e3b51613dda95c905e187512649b2206ca1b1",
+    "synthesis/validate_configuration.py": "33e2332118aa77729960125c74a6e8f86f962bd70396ac96e8e26f48dd852a41",
+    "synthesis/validate_replay.py": "c068f213729fc2c44c579ba080e0960794962e6aea6f02eb820dc73711b8b528"
+  },
+  "evidence_sha256": {
+    "driver.log": "b6b945aa76e0bd3f74e4332e8ac5a26597f0f187ba3cc5a0f4b3ebec202fdfed",
+    "existing-regressions.log": "3f9dc050086e26920d81500085e07326c89e9f4cdff3c11ba6791a66ae5b242e",
+    "mesh-d2/generate.log": "d66905901760b850f6ef51c800b587c6d2458bb61ec219806db15f90df2dcb14",
+    "mesh-d2/manifest.json": "e5ce2ec5fc0e0e69c6ec4e6474ff07cc6fd1ed5b8b2602303680a1fa4970b958",
+    "mesh-d2/rtl.tar.gz": "7ca32a5ac8e062ddac6ebecf69dc245dc287f90d7cf289a778bfab4456fd36ac",
+    "mesh-d2/shared_control_fifo_tb-compile.log": "2a068bc87b17b6e0af8aabf7172882d0e8a29a3703341e8bea4e7ca01422b49e",
+    "mesh-d2/shared_control_fifo_tb-elaborate.log": "62be1f9588aa1bb88349f59804683aa796dd6f7e78fca59f233a3eb7b6924b8c",
+    "mesh-d2/shared_control_fifo_tb-simulate.log": "47a5e4edf27b46bb28269e3579e2833c555af964d3815999585f23c85703c921",
+    "mesh-d2/shared_control_fifo_tb.sv": "e7d92cc448ce5cf1382a01d4cacdd5a36bd92e25bd5217d69591f3fbbb772a42",
+    "mesh-d2/validation.json": "0fde780c4d06eb37e3168f038f2a1025a941695f729563089f8f4ca08e95737d",
+    "mesh-d2/vivado-version.txt": "2521e7d680ff26073152c1666270e075c62e9b4e09a3495bff76f6ef184ac269",
+    "mesh-d4/generate.log": "7b0c20f59acc0461dcbc8845bd4adecda4284d42a9a2190a4c7df040ad3fe6db",
+    "mesh-d4/manifest.json": "5dafb290c2c7064345f4912f3453b0aa708f9890d070a9824686fb3da279d2b3",
+    "mesh-d4/replay_controller_tb-compile.log": "646bbc6144f3f3723259525e49e41bce1a0ce882b7c7d2d8079a2d2b985a631d",
+    "mesh-d4/replay_controller_tb-elaborate.log": "9e7bdf0032e8c091c78f74468decdbf4112a654430cedab4cf6967cc5e11f2fc",
+    "mesh-d4/replay_controller_tb-simulate.log": "e77a5dc242e679c212f686d1609a654fccaedfceb725ce1bf7c48c612e1e0feb",
+    "mesh-d4/replay_controller_tb.sv": "44771903dd7989dee60b0478b741dc4c6d8e916d368409b08a407974162ce638",
+    "mesh-d4/rtl.tar.gz": "9e67373a4b1dd9a5ebc43278fbbacb753b6b61a65fa929c0f0fede6c5b5fb797",
+    "mesh-d4/shared_control_fifo_tb-compile.log": "60e8bcbd1ee9896ecf2ac1a1ed1a6dd87fd424679f456e318f3f9bd82b611171",
+    "mesh-d4/shared_control_fifo_tb-elaborate.log": "62be1f9588aa1bb88349f59804683aa796dd6f7e78fca59f233a3eb7b6924b8c",
+    "mesh-d4/shared_control_fifo_tb-simulate.log": "c736a01c384f431e58126a8a3e503f53d1c8ad2db3a77900f26876e8a1e01573",
+    "mesh-d4/shared_control_fifo_tb.sv": "7b3ac5c27b098cd3ee129f289cf52075ca57cdcc6bd81f261cfe5401560676cf",
+    "mesh-d4/validation.json": "b5939fbe09ee7545ee7b48a3316675637629406e69c2cd75f8396c5d94a51bc9",
+    "mesh-d4/vivado-version.txt": "2521e7d680ff26073152c1666270e075c62e9b4e09a3495bff76f6ef184ac269",
+    "mesh-d8/generate.log": "a4fc38b90bc5c64ba780df3284ef4ac26ab2b3c58167699f8b81813996f2fcd4",
+    "mesh-d8/manifest.json": "e974b971466c6cc3ef1779fff2d936843be024caf7907ba477e0bac21808d80f",
+    "mesh-d8/replay_controller_tb-compile.log": "d6eaac8ad25ef3ad6c2e6b5b9f4364745e3127f5e870e0de2dff208bcd21d4d6",
+    "mesh-d8/replay_controller_tb-elaborate.log": "d1ff8eba9c88c0987fcd66c6fb2562992306088bfce9ae75a1e57b505fe50f77",
+    "mesh-d8/replay_controller_tb-simulate.log": "6ac998e1d58a106436b293efbbff16cda54dc2a971a7324ce08264d812ed9ceb",
+    "mesh-d8/replay_controller_tb.sv": "369595bb1979a60777ef8b9b114a31565eec6df41f30d496d90032543b8a47d1",
+    "mesh-d8/rtl.tar.gz": "ce699359ab4ffbfa33e4abbc3fa88c19a9980a778a86a432de80b0cfb8b12a28",
+    "mesh-d8/shared_control_fifo_tb-compile.log": "e145968d53564a28777c47800f5142289d872a2948b6cfa7529881135b4d41a1",
+    "mesh-d8/shared_control_fifo_tb-elaborate.log": "62be1f9588aa1bb88349f59804683aa796dd6f7e78fca59f233a3eb7b6924b8c",
+    "mesh-d8/shared_control_fifo_tb-simulate.log": "f673325c709316970bec2c5fd83b45373a8dcdc929320745037748866d1a5c56",
+    "mesh-d8/shared_control_fifo_tb.sv": "6693359f8866d4b3644928645f2d7fa4e5cb475d5d958a1c8d92f105512d6001",
+    "mesh-d8/validation.json": "e5770ebe7d6e8f43d40cff4203608bc076208725daf4d0c15589261251694fd1",
+    "mesh-d8/vivado-version.txt": "2521e7d680ff26073152c1666270e075c62e9b4e09a3495bff76f6ef184ac269",
+    "ordinary-d4/generate.log": "28be6219183bd5eba38c1d90c6b0f73790831be355b89148072d89bc775c97ce",
+    "ordinary-d4/manifest.json": "2913c7a18b56d657c3bfa26491ccbbd52f098cc0f3b40f821e21fa1d92eba093",
+    "ordinary-d4/rtl.tar.gz": "db513ad53fbf0ba5c36d70b4a97d5814824de515f2403ea98e62f3b0b0b8cf3a",
+    "ordinary-d4/vivado-version.txt": "2521e7d680ff26073152c1666270e075c62e9b4e09a3495bff76f6ef184ac269",
+    "packet-d4/compile.log": "61e9690f3bf5a9c8d60affbed79e3ee28f0ed8ff9e617d9357f1a7ef3e60ea6e",
+    "packet-d4/configuration_contract_tb.sv": "1f647953a9aa626a901b73d3439c2208816443d76af6f65f687a06c24ae08282",
+    "packet-d4/elaborate.log": "eebb304003db8b8c94f7c5e881c1fd497020232a0a452d4bb69ac99aadf67a0e",
+    "packet-d4/generate.log": "e987759f1402ba18d8d5826f154e195e33f06ecd1d2c27577017582657af71a3",
+    "packet-d4/manifest.json": "062a9f5a571f18359f877a1f2275ca2f0304b864e52dc1a5b4164f0381fa9893",
+    "packet-d4/rtl.tar.gz": "8ef7e2797e5b0abddf442697ff93b3b31ac70bf5e3b34d08fa249d5fbd1a87e7",
+    "packet-d4/simulate.log": "7fef140168db7047da6a7919bd0bf8c1750b3a58691c7e11e0042f6ccd26dbcb",
+    "packet-d4/validation.json": "a799bfee0ee13f74f37564c1ecc9a1685598af7a5a8ec34e1e112e343ff7a978",
+    "packet-d4/vivado-version.txt": "2521e7d680ff26073152c1666270e075c62e9b4e09a3495bff76f6ef184ac269",
+    "python-cli.log": "9f169aa04896ef0203477ff61d8d57406ec0dab00b71ec15cf38cdae22509147"
+  }
+}

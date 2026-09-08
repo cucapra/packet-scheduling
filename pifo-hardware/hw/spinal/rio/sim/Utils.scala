@@ -37,6 +37,7 @@ case class PifoMeshSimController(
     "UpdateBrainFlowState" -> ControlCommand.UpdateBrainFlowState
   )
   private val controlSocketFields = Set("command", "engineId", "vPifoId", "flowId", "data")
+  private var retainedCommands = 0
 
   // compound functions
   def enque(vPifoId: Int) = {
@@ -63,6 +64,7 @@ case class PifoMeshSimController(
       onAccepted: () => Unit = () => ()
   ): Unit = {
     require(engineId >= 1 && engineId <= config.numEngines, s"Invalid control engineId: $engineId")
+    val nextRetained = ReplayEpochCapacity.advance(config, retainedCommands, cmd)
     dut.io.controlRequest.valid #= true
     dut.io.controlRequest.payload.command #= cmd
     dut.io.controlRequest.payload.engineId #= engineId
@@ -70,6 +72,7 @@ case class PifoMeshSimController(
     dut.io.controlRequest.payload.flowId #= flowId
     dut.io.controlRequest.payload.data #= data
     dut.clockDomain.waitSamplingWhere(dut.io.controlRequest.ready.toBoolean)
+    retainedCommands = nextRetained
     onAccepted()
     dut.io.controlRequest.valid #= false
     // Leave the sampling phase before a caller can present the next command.
@@ -80,7 +83,18 @@ case class PifoMeshSimController(
     // A commit can be buffered behind earlier updates. Wait for the hardware to
     // apply it and finish restoring the backup banks before returning, so callers
     // can safely begin another transaction.
-    if (cmd == ControlCommand.CommitMapper) {
+    if (cmd == ControlCommand.CommitMapper && config.dynamicConfig && config.mapperSync == "replay") {
+      // An empty commit has no replay-busy interval. The restored FIFO credits
+      // acknowledge it once its marker has been consumed. This driver waits
+      // here before sending any next-epoch commands.
+      dut.clockDomain.waitSamplingWhere(
+        !dut.io.commitReady.toBoolean || dut.io.replayLogAvailable.toInt == config.commitQueueLength - 1
+      )
+      onCommitApplied()
+      dut.clockDomain.waitSamplingWhere(
+        dut.io.commitReady.toBoolean && dut.io.replayLogAvailable.toInt == config.commitQueueLength - 1
+      )
+    } else if (cmd == ControlCommand.CommitMapper && config.dynamicConfig) {
       dut.clockDomain.waitSamplingWhere(!dut.io.commitReady.toBoolean)
       onCommitApplied()
       dut.clockDomain.waitSamplingWhere(dut.io.commitReady.toBoolean)

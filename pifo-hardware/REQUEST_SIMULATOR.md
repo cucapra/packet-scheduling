@@ -37,10 +37,19 @@ sbt 'runMain rio.sim.RequestSimulatorCli \
   --trace /tmp/requests.csv \
   --output /tmp/request-results.csv \
   --link-bytes-per-cycle 64 \
+  --control-queue-depth 8 \
   --no-control-socket --no-wave'
 ```
 
 The result CSV contains arrival, admission, completion, admission-delay, and total-sojourn cycles for each request.
+
+Replay now retains commands in the existing control FIFO instead of allocating
+a separate journal. `--control-queue-depth` defaults to four and reserves one
+slot for commit. Size it above the largest retained command span in any atomic
+package (from the first mapper update through the last command before commit).
+Flat FIFO initialization needs two mapper updates per configured flow, so the
+two-flow example uses depth eight. Oversized packages fail with a capacity
+error. See the [replay protocol](experiments/hardware-overhead/REPLAY.md).
 
 ## Reconfiguration workflow
 
@@ -435,7 +444,7 @@ Start the simulator in live mode:
 
 ```bash
 sbt 'runMain rio.sim.RequestSimulatorCli \
-  --live --flat-fifo-flows 1,2 --no-wave'
+  --live --flat-fifo-flows 1,2 --control-queue-depth 8 --no-wave'
 ```
 
 Then feed a trace from another terminal:
