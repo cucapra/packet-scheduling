@@ -1,0 +1,48 @@
+Copyright 1986-2022 Xilinx, Inc. All Rights Reserved. Copyright 2022-2025 Advanced Micro Devices, Inc. All Rights Reserved.
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+| Tool Version : Vivado v.2025.2 (lin64) Build 6299465 Fri Nov 14 12:34:56 MST 2025
+| Date         : Mon Sep  7 14:07:25 2026
+| Host         : netarch-cxl.ece.cornell.edu running 64-bit Ubuntu 24.04.4 LTS
+| Command      : report_utilization -hierarchical -hierarchical_depth 5 -file /data/work/rio-synthesis/shared-fifo-34e35d2/pe5-v64-c1024-q256-static-vivado/reports/utilization-hierarchy.rpt
+| Design       : PifoMesh
+| Device       : xcku5p-ffvb676-2-e
+| Speed File   : -2
+| Design State : Synthesized
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Utilization Design Information
+
+Table of Contents
+-----------------
+1. Utilization by Hierarchy
+
+1. Utilization by Hierarchy
+---------------------------
+
++--------------------------+----------------------+------------+------------+---------+------+------+--------+--------+------+------------+
+|         Instance         |        Module        | Total LUTs | Logic LUTs | LUTRAMs | SRLs |  FFs | RAMB36 | RAMB18 | URAM | DSP Blocks |
++--------------------------+----------------------+------------+------------+---------+------+------+--------+--------+------+------------+
+| PifoMesh                 |                (top) |       5074 |       4486 |     588 |    0 | 3443 |    121 |      0 |    0 |          0 |
+|   (PifoMesh)             |                (top) |        398 |          0 |     398 |    0 |    0 |      0 |      0 |    0 |          0 |
+|   guard                  |           DrainGuard |       1130 |       1130 |       0 |    0 |  640 |      0 |      0 |    0 |          0 |
+|   io_controlRequest_fifo |        StreamFifo_51 |       1223 |       1223 |       0 |    0 |   28 |      1 |      0 |    0 |          0 |
+|   pifoEngines_0          |           PifoEngine |        356 |        318 |      38 |    0 |  528 |     24 |      0 |    0 |          0 |
+|     enque_brain          |            PIFOBrain |        173 |        143 |      30 |    0 |   61 |     16 |      0 |    0 |          0 |
+|     deque_frontRewrite   | FrontRewriteTable_85 |        120 |        120 |       0 |    0 |  448 |      0 |      0 |    0 |          0 |
+|   pifoEngines_1          |         PifoEngine_1 |        356 |        318 |      38 |    0 |  528 |     24 |      0 |    0 |          0 |
+|     enque_brain          |          PIFOBrain_1 |        173 |        143 |      30 |    0 |   61 |     16 |      0 |    0 |          0 |
+|     deque_frontRewrite   | FrontRewriteTable_64 |        120 |        120 |       0 |    0 |  448 |      0 |      0 |    0 |          0 |
+|   pifoEngines_2          |         PifoEngine_2 |        356 |        318 |      38 |    0 |  528 |     24 |      0 |    0 |          0 |
+|     enque_brain          |          PIFOBrain_2 |        173 |        143 |      30 |    0 |   61 |     16 |      0 |    0 |          0 |
+|     deque_frontRewrite   | FrontRewriteTable_43 |        120 |        120 |       0 |    0 |  448 |      0 |      0 |    0 |          0 |
+|   pifoEngines_3          |         PifoEngine_3 |        356 |        318 |      38 |    0 |  528 |     24 |      0 |    0 |          0 |
+|     enque_brain          |          PIFOBrain_3 |        173 |        143 |      30 |    0 |   61 |     16 |      0 |    0 |          0 |
+|     deque_frontRewrite   | FrontRewriteTable_22 |        120 |        120 |       0 |    0 |  448 |      0 |      0 |    0 |          0 |
+|   pifoEngines_4          |         PifoEngine_4 |        356 |        318 |      38 |    0 |  528 |     24 |      0 |    0 |          0 |
+|     enque_brain          |          PIFOBrain_4 |        173 |        143 |      30 |    0 |   61 |     16 |      0 |    0 |          0 |
+|     deque_frontRewrite   |    FrontRewriteTable |        120 |        120 |       0 |    0 |  448 |      0 |      0 |    0 |          0 |
+|   xbar                   |      MessageCrossBar |        543 |        543 |       0 |    0 |  135 |      0 |      0 |    0 |          0 |
+|     (xbar)               |      MessageCrossBar |        276 |        276 |       0 |    0 |   45 |      0 |      0 |    0 |          0 |
++--------------------------+----------------------+------------+------------+---------+------+------+--------+--------+------+------------+
+
+

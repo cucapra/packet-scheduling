@@ -1,0 +1,87 @@
+{
+  "timestamp_utc": "2026-09-07T18:39:14.685711+00:00",
+  "tool": "vivado",
+  "vivado_root": "/data/work/vivado/2025.2/Vivado",
+  "part": "xcku5p-ffvb676-2-e",
+  "board_reference": {
+    "definition": "/data/work/vivado/2025.2/Vivado/data/xhub/boards/XilinxBoardStore/boards/Xilinx/kcu116/1.5/board.xml",
+    "name": "Kintex UltraScale+ KCU116 Evaluation Platform",
+    "board_name": "kcu116",
+    "version": "1.5",
+    "part": "xcku5p-ffvb676-2-e"
+  },
+  "board_part_matches_target": true,
+  "license_source": null,
+  "hardware": {
+    "component": "pifo",
+    "configuration": "static",
+    "mapper_banks": 1,
+    "pifo_backend": "house",
+    "num_engines": 5,
+    "num_vpifos_per_pe": 256,
+    "global_flow_id_capacity": 256,
+    "fifo_depth_parameter": 4,
+    "shared_entries_per_pe": 1024,
+    "total_shared_entries": 5120,
+    "priority_bits": 8,
+    "vpifo_id_bits": 8,
+    "engine_id_bits": 3,
+    "token_bits": 11,
+    "brain_state_bits": 32,
+    "flow_state_bits": 32,
+    "commit_queue_depth": 256,
+    "flow_token_address_space": 2048,
+    "vpifo_token_pairs_per_pe": 524288,
+    "instances": 1,
+    "budget_instances": 5,
+    "enabled_push_ports": 1,
+    "push2_valid": 0
+  },
+  "source_sha256": {
+    "hw/spinal/rio/ConcurrentPifoRTL.scala": "6418ce1f359296e2fcd80e4bf2f8dc96c51a79cfdce910a5d2916a6156c041a9",
+    "hw/spinal/rio/Config.scala": "eb623e40ebce2bfe36151863b1764a1b3531cadfe8c4bd5ae2a97eebe71f5061",
+    "hw/spinal/rio/ConfigurableMapper.scala": "89ef5c877bd498fbcdb66272b3298ef3b3c99248bd61d9e0de15f270b3dbe628",
+    "hw/spinal/rio/ControllerFactory.scala": "30efd0c48e7fccc934720714d60677a2e96bcd82a42e872b85a606550f7d9908",
+    "hw/spinal/rio/DrainGuard.scala": "f0ef785bf1b5d103e777636636dcad2d5dfc2f217bf9e5f2d6d4eaa50661f865",
+    "hw/spinal/rio/GeneratePifoMesh.scala": "4098604e01ad1272713a6d3331e28302596771ec6e70097003ce8b5c3f5dd4cd",
+    "hw/spinal/rio/Pifo.scala": "1c97b917779af58a5faeacc9b5cee4437d8fb0c453bb1492ad583d422767459b",
+    "hw/spinal/rio/PifoCore.scala": "860bafa66a50b828b539bf1389cb4916cac77eb9960c4cc63c5d61c9e63b351d",
+    "hw/spinal/rio/PifoEngine.scala": "d9b2d9f505498dcdae4927576c3ff9779fbae3530d0ed1d71eb84e461e34fc7e",
+    "hw/spinal/rio/PifoMesh.scala": "09b2e15eb1f22331f6191ebe89ba2359065af959ef1f5ad26f7a3f2730bc6df1",
+    "hw/spinal/rio/ReplayControlFifo.scala": "d43818d915394d3c9e7998e75a3184c191d718e02a522cf0f0b76fe257d3b3c4",
+    "hw/spinal/rio/ReplayMapper.scala": "04a4546158f7ae7d14495a63ad67df32aa533bb2793a876b6357d410cd065fd7",
+    "hw/verilog/priority_encode_log.v": "2a63070396dc60fd2106c5ef1d0719e027ff6bf797afbef166cf99c9b49537c2",
+    "build.sbt": "557f8381ce0cf9b0da205fdd6600ebbdda0477a87f71691ced7ed18643b7f72e",
+    "project/build.properties": "97e9b0adc044c92dbf8dc1e671a268242449320b6911d1623cc93427f0bb1b61",
+    "project/plugins.sbt": "e1da7997f71038c21e15631c0f062bdc5d6c6a103d73087e7e659f78b07b9b6f"
+  },
+  "rtl_complete": true,
+  "clock_target_mhz": 100.0,
+  "threads": 8,
+  "scope": "One house PIFO: sorter, storage, occupancy, empty/drain and accepted-push notifications",
+  "synthesis_mode": "out_of_context",
+  "implementation_run": false,
+  "excluded": [
+    "RIO PEs, mappers, brains, crossbar, and controller"
+  ],
+  "logical_storage_bits": {
+    "sorted_entry_registers": 27648
+  },
+  "status": "synthesis_complete",
+  "rtl_reused_from": "/data/work/rio-synthesis/shared-fifo-34e35d2/pifo-house-v256-c1024-vivado",
+  "rtl_source_manifest_sha256": "aa543f9395134998420c8c5c8d2a8fbdf080dc8a51e3cb751915190510f803ca",
+  "workflow_sha256": {
+    "run.py": "34ac70324f02d855f98f446896aba0035a49c87e47273e7ed3d38c4db8cc4cdd",
+    "vivado_synth.tcl": "34b069c1ed93b46c91ada3db1874bf4f6f5a313050607f2051f819357f101121"
+  },
+  "elapsed_seconds": 415.432,
+  "tool_version": "vivado v2025.2 (64-bit)\nTool Version Limit: 2025.11\nSW Build 6299465 on Fri Nov 14 12:34:56 MST 2025\nIP Build 6300035 on Fri Nov 14 10:48:45 MST 2025\nSharedData Build 6298862 on Thu Nov 13 04:50:51 MST 2025\nCopyright 1986-2022 Xilinx, Inc. All Rights Reserved.\nCopyright 2022-2025 Advanced Micro Devices, Inc. All Rights Reserved.",
+  "rtl_sha256": {
+    "PifoMesh.v": "aedf7dc142b69666f1be5f80d5b2c4cca79508de2d27a61edabf7f31545eeddf",
+    "priority_encode_log.v": "2a63070396dc60fd2106c5ef1d0719e027ff6bf797afbef166cf99c9b49537c2"
+  },
+  "vivado_max_threads": 8,
+  "vivado_directive": "RuntimeOptimized",
+  "vivado_capacity_check": "disabled_for_estimation",
+  "completed_utc": "2026-09-07T18:46:10.118248+00:00"
+}

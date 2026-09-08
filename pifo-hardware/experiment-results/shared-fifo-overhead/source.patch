@@ -1,0 +1,217 @@
+diff --git a/pifo-hardware/.gitignore b/pifo-hardware/.gitignore
+index 0321b1b..4a0ba55 100644
+--- a/pifo-hardware/.gitignore
++++ b/pifo-hardware/.gitignore
+@@ -44,6 +44,7 @@ bin/
+ !experiments/*.json
+ !experiments/**/*.json
+ !experiment-results/**/*.json
++!experiment-results/shared-fifo-overhead/**/*.log
+ *.vcd
+ !tester/src/test/resources/*.vhd
+ 
+diff --git a/pifo-hardware/hw/spinal/rio/ConcurrentPifoRTL.scala b/pifo-hardware/hw/spinal/rio/ConcurrentPifoRTL.scala
+index 6f7edac..fa5ef04 100644
+--- a/pifo-hardware/hw/spinal/rio/ConcurrentPifoRTL.scala
++++ b/pifo-hardware/hw/spinal/rio/ConcurrentPifoRTL.scala
+@@ -9,19 +9,7 @@ import spinal.lib._
+   * entry when push and pop target overlapping positions. This implementation applies operations in an explicit order:
+   * pop, push1, then push2. Equal priorities remain stable because insertion occurs after existing equal-ranked entries.
+   */
+-class ConcurrentPifoRTL(config: PifoConfig) extends Component {
+-  val io = new Bundle {
+-    val push1 = slave(Flow(PifoEntry(config)))
+-    val push2 = slave(Flow(PifoEntry(config)))
+-    val popRequest = slave(Flow(PifoPopInterface(config)))
+-    val popResponse = master(Flow(PifoPopResponse(config)))
+-    val popPortEmpty = out Bool ()
+-    // Pulses when a successful pop leaves its virtual PIFO with no entries.
+-    val portDrained = master(Flow(UInt(config.bitPort bits)))
+-    // Accepted pushes invalidate remembered drain notifications on port reuse.
+-    val portPushed = Vec(master(Flow(UInt(config.bitPort bits))), 2)
+-  }
+-
++class ConcurrentPifoRTL(config: PifoConfig) extends PifoCore(config) {
+   private val countWidth = config.bitPifo + 1
+   private val pifoArray = Vec(Reg(PifoEntry(config)), config.numPifo)
+   private val pifoCount = Reg(UInt(countWidth bits)) init (0)
+diff --git a/pifo-hardware/hw/spinal/rio/PifoEngine.scala b/pifo-hardware/hw/spinal/rio/PifoEngine.scala
+index 74f4e63..f0fd842 100644
+--- a/pifo-hardware/hw/spinal/rio/PifoEngine.scala
++++ b/pifo-hardware/hw/spinal/rio/PifoEngine.scala
+@@ -14,8 +14,11 @@ case class EngineConfig(
+     brainStateWidth: Int = 32,
+     flowStateWidth: Int = 32,
+     configDataWidth: Int = 32,
+-    commitQueueLength: Int = EngineConfig.DefaultCommitQueueLength
++    commitQueueLength: Int = EngineConfig.DefaultCommitQueueLength,
++    pifoBackend: String = "house",
++    dynamicConfig: Boolean = true
+ ) {
++  require(Set("house", "external").contains(pifoBackend))
+   require(commitQueueLength >= 2 && (commitQueueLength & (commitQueueLength - 1)) == 0,
+     "commitQueueLength must be a power of two >= 2")
+   def vpifoIdWidth = log2Up(numVPIFOs)
+@@ -61,7 +64,7 @@ case class Mapper(inputWidth: Int, outputWidth: Int) extends Component {
+     val writeReq = slave Flow (updater)
+   }
+ 
+-  val ram = Mem(UInt(outputWidth bits), numInputs) init (Seq.fill(numInputs)(0))
++  val ram = MapperMemory.zeroed(outputWidth, numInputs)
+ 
+   // read logic
+   ram.flowReadSync(io.readReq) >> io.readRes
+@@ -96,7 +99,7 @@ case class TransactionalMapper(inputWidth: Int, outputWidth: Int) extends Compon
+     val commitReady = out Bool ()
+   }
+ 
+-  val banks = Seq.fill(2)(Mem(UInt(outputWidth bits), numInputs) init (Seq.fill(numInputs)(0)))
++  val banks = Seq.fill(2)(MapperMemory.zeroed(outputWidth, numInputs))
+   val activeBank = RegInit(False)
+   val copying = RegInit(False)
+   val copyAddress = Reg(UInt(inputWidth bits)) init (0)
+@@ -455,12 +458,15 @@ case class PifoEngine(config: EngineConfig) extends Component {
+     // control signals
+     val control = slave Stream (ControlMessage(config))
+     val commitReady = out Bool ()
++    val pifo = if (config.pifoBackend == "external") master(PifoBoundary(config)) else null
+     val nearlyDrained = master Flow (UInt(config.vpifoIdWidth bits))
+     val pushed = Vec(master(Flow(UInt(config.vpifoIdWidth bits))), 2)
+   }
+ 
+   // PIFO
+-  val pifos = new ConcurrentPifoRTL(config)
++  val pifos: PifoCore = if (config.pifoBackend == "external") new ExternalPifoCore(config)
++                       else new ConcurrentPifoRTL(config)
++  if (config.pifoBackend == "external") io.pifo <> pifos.asInstanceOf[ExternalPifoCore].boundary
+   io.nearlyDrained << pifos.io.portDrained
+   (io.pushed zip pifos.io.portPushed).foreach { case (out, in) => out << in }
+ 
+@@ -469,7 +475,9 @@ case class PifoEngine(config: EngineConfig) extends Component {
+   val enque = new Area {
+     val (mapperRead, flowIdStream) = StreamFork2(io.enqueRequest)
+ 
+-    val enqueMapper = ReplayMapper(config.vpifoIdWidth, config.vpifoIdWidth)
++    val enqueMapper: ConfigurableMapper = if (config.dynamicConfig)
++      ReplayMapper(config.vpifoIdWidth, config.vpifoIdWidth)
++    else DirectMapper(config.vpifoIdWidth, config.vpifoIdWidth)
+     enqueMapper.io.readReq << mapperRead.map(_.vPifoId).toFlow
+ 
+     val brainInput = Stream(BrainInput(config))
+@@ -495,10 +503,10 @@ case class PifoEngine(config: EngineConfig) extends Component {
+     // Qualify a dequeue rewrite with the PIFO port. This lets old and new
+     // copies of a tree carry the same flow IDs while retaining distinct next
+     // hops during a full-transitive reconfiguration.
+-    val dequeMapper = ReplayMapper(
++    val dequeMapper: ConfigurableMapper = if (config.dynamicConfig) ReplayMapper(
+       config.vpifoIdWidth + config.flowIdWidth,
+       config.flowIdWidth
+-    )
++    ) else DirectMapper(config.vpifoIdWidth + config.flowIdWidth, config.flowIdWidth)
+     val frontRewrite = FrontRewriteTable(config.vpifoIdWidth)
+ 
+     // Rewrites happen before the PIFO lookup. The last successful source pop
+@@ -579,7 +587,7 @@ case class PifoEngine(config: EngineConfig) extends Component {
+ 
+   val commit = commitControl.takeWhen(commitControl.payload.command === ControlCommand.CommitMapper)
+   commit.ready := mapperCommitReady
+-  val commitPulse = commit.fire
++  val commitPulse = if (config.dynamicConfig) commit.fire else False
+ 
+   enque.enqueMapper.io.commit := commitPulse
+   deque.dequeMapper.io.commit := commitPulse
+diff --git a/pifo-hardware/hw/spinal/rio/PifoMesh.scala b/pifo-hardware/hw/spinal/rio/PifoMesh.scala
+index 3b21bc0..47704d3 100644
+--- a/pifo-hardware/hw/spinal/rio/PifoMesh.scala
++++ b/pifo-hardware/hw/spinal/rio/PifoMesh.scala
+@@ -47,6 +47,8 @@ case class PifoMesh(config: EngineConfig) extends Component {
+ 
+     val insert = Vec(slave(Stream(PifoMessage(config))), config.numEngines)
+     val controlRequest = slave(Stream(ControlMessage(config)))
++    val pifo = if (config.pifoBackend == "external")
++      Vec(master(PifoBoundary(config)), config.numEngines) else null
+     val commitReady = out Bool ()
+     val commitEpoch = out UInt (32 bits)
+     val replayBusy = out Bool()
+@@ -57,6 +59,9 @@ case class PifoMesh(config: EngineConfig) extends Component {
+   // all datapath
+   val xbar = MessageCrossBar(config)
+   val pifoEngines = Seq.fill(config.numEngines)(PifoEngine(config))
++  if (config.pifoBackend == "external") {
++    (io.pifo zip pifoEngines).foreach { case (boundary, engine) => boundary <> engine.io.pifo }
++  }
+ 
+   (pifoEngines zip xbar.io.outputs.tail).foreach { case (engine, out) =>
+     engine.io.dequeueRequest << out
+@@ -78,13 +83,19 @@ case class PifoMesh(config: EngineConfig) extends Component {
+   // synchronously so every engine changes those packet-visible mappings on the
+   // same cycle. Underflow-rewrite entries remain single-bank and execute only
+   // on the first pass through the command FIFO.
+-  val replayControl = ReplayControlFifo(config)
+-  replayControl.io.push << io.controlRequest
+-  val controlQueue = replayControl.io.pop
+-  io.replayBusy := replayControl.io.replaying
+-  io.replayLogAvailable := replayControl.io.available
++  val replayControl = if (config.dynamicConfig) ReplayControlFifo(config) else null
++  val controlQueue = if (config.dynamicConfig) {
++    replayControl.io.push << io.controlRequest
++    io.replayBusy := replayControl.io.replaying
++    io.replayLogAvailable := replayControl.io.available
++    replayControl.io.pop
++  } else {
++    io.replayBusy := False
++    io.replayLogAvailable := 0
++    io.controlRequest.queue(config.commitQueueLength)
++  }
+   val mapperCommitReady = pifoEngines.map(_.io.commitReady).reduce(_ && _)
+-  io.commitReady := !replayControl.io.replaying && mapperCommitReady
++  io.commitReady := (if (config.dynamicConfig) !replayControl.io.replaying && mapperCommitReady else True)
+ 
+   val guard = DrainGuard(config)
+   (pifoEngines zipWithIndex).foreach { case (engine, index) =>
+@@ -97,6 +108,7 @@ case class PifoMesh(config: EngineConfig) extends Component {
+   // Gate before the fork: no later command (including a commit or immediate
+   // brain write) may pass a blocked guard. Guards are consumed here, not at a PE.
+   val guardedHead = controlQueue.haltWhen(isGuard && !guard.io.satisfied).throwWhen(isGuard)
++  if (config.dynamicConfig) {
+   val (routedHead, commitHead) = StreamFork2(guardedHead)
+ 
+   val withoutCommit = routedHead.throwWhen(
+@@ -120,4 +132,11 @@ case class PifoMesh(config: EngineConfig) extends Component {
+   (controlCommand zip commits zip pifoEngines).foreach { case ((cmdStream, commitStream), engine) =>
+     engine.io.control << StreamArbiterFactory.lowerFirst.onArgs(cmdStream, commitStream)
+   }
++  } else {
++    // Keep the command FIFO, drain guard and routing; consume commits as no-ops.
++    io.commitEpoch := 0
++    val ordinary = guardedHead.throwWhen(guardedHead.command === ControlCommand.CommitMapper)
++    val commands = StreamDemux(ordinary, (ordinary.engineId - 1).resized, config.numEngines)
++    (commands zip pifoEngines).foreach { case (command, engine) => engine.io.control << command }
++  }
+ }
+diff --git a/pifo-hardware/hw/spinal/rio/ReplayMapper.scala b/pifo-hardware/hw/spinal/rio/ReplayMapper.scala
+index 5382ff2..b1acb0d 100644
+--- a/pifo-hardware/hw/spinal/rio/ReplayMapper.scala
++++ b/pifo-hardware/hw/spinal/rio/ReplayMapper.scala
+@@ -7,18 +7,10 @@ import spinal.lib._
+   * bank. The mesh controller replays those writes after commit before allowing
+   * another epoch. Standalone users must provide the same replay protocol.
+   */
+-case class ReplayMapper(inputWidth: Int, outputWidth: Int) extends Component {
+-  require(inputWidth > 0 && outputWidth > 0)
++case class ReplayMapper(inputWidth: Int, outputWidth: Int)
++    extends ConfigurableMapper(inputWidth, outputWidth) {
+   val numInputs = 1 << inputWidth
+-  val io = new Bundle {
+-    val readReq = slave Flow(UInt(inputWidth bits))
+-    val readRes = master Flow(UInt(outputWidth bits))
+-    val writeReq = slave Stream(MapperUpdater(inputWidth, outputWidth))
+-    val commit = in Bool()
+-    val commitReady = out Bool()
+-  }
+-
+-  val banks = Seq.fill(2)(Mem(UInt(outputWidth bits), numInputs) init(Seq.fill(numInputs)(0)))
++  val banks = Seq.fill(2)(MapperMemory.zeroed(outputWidth, numInputs))
+   val activeBank = RegInit(False)
+   val requestedBank = RegInit(False)
+   val bankRead = Seq(
