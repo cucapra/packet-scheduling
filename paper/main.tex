@@ -287,7 +287,7 @@ The key mechanism in this example is the $\Strictstar$ policy node, which reflec
 \Cref{sec:hw-survivor} details $\Strictstar$ and the atomic edits that add and remove it.
 
 Rio can name the policy in force at every instant, in the operator's own language, including throughout the interval in which the scheduler runs a policy that \emph{no operator requested}.
-Rio models the scheduler's state as a control, and reads the running policy back off it.
+Rio models the scheduler's state as a \emph{control} (\cref{sec:controls}), and reads the running policy back off it.
 Each edit compiles to an atomic update of that control rather than to a fresh control built from the requested policy.
 
 \paragraph{Planning policy transitions}
@@ -313,7 +313,7 @@ The backlog drains and new arrivals are queued throughout.
 We formalize the semantics of policy edits and their effects on PIFO tree operation.
 Our goal is to guarantee that policy edits correctly update PIFO tree state to achieve the desired change in the high-level policy.
 
-Specifically, \Cref{sec:controls} presents a formal description of a PIFO tree \emph{control}, $C$, representing the state of a packet scheduler.
+Specifically, \Cref{sec:controls} presents a formal description of a PIFO tree control, $C$, representing the state of a packet scheduler.
 The control includes the logic to implement a desired policy,
 the in-flight packets,
 and any necessary policy bookkeeping state.
