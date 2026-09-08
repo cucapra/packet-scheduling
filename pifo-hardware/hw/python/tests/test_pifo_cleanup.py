@@ -56,7 +56,7 @@ class CleanupTest(unittest.TestCase):
             self.assertGreaterEqual(event.cleanup_applied_cycle, event.drain_cycle)
             self.assertEqual(event.finish_cycle, event.cleanup_finish_cycle)
             self.assertGreater(event.finish_cycle, event.cleanup_applied_cycle)
-            self.assertEqual(event.instruction_count, 17)
+            self.assertEqual(event.instruction_count, 26)
             self.assertGreater(event.cleanup_instruction_count, 1)
             print(f"Cleanup smoke PASS: 56 packets, zero drops/reorders; "
                   f"start={event.start_cycle} accepted={event.commit_cycle} drain={event.drain_cycle} "
@@ -89,7 +89,7 @@ class CleanupTest(unittest.TestCase):
         ))
         install, cleanup = program.transactions
         retired = {(c.engine_id, c.vpifo_id) for c in cleanup.commands if c.command == "GuardDrain"}
-        self.assertEqual(retired, {(2, 2)})
+        self.assertEqual(retired, {(3, 2)})
         for command in cleanup.commands:
             if command.command != "CommitMapper":
                 self.assertIn((command.engine_id, command.vpifo_id), retired)
@@ -127,7 +127,7 @@ class CleanupTest(unittest.TestCase):
         install, cleanup = compile_tree_move(replace(source, move=replace(source.move, target_tree=target))).transactions
         for transaction in (install, cleanup):
             self.assertTrue(any(
-                c.command == "UpdateMapperPre" and (c.engine_id, c.vpifo_id, c.data) == (2, 2, 0)
+                c.command == "UpdateMapperPre" and (c.engine_id, c.vpifo_id, c.data) == (3, 2, 0)
                 for c in transaction.commands
             ))
 

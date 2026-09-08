@@ -1,11 +1,16 @@
 # Evaluation-branch merge and experiment validation
 
-Merge of `pifo-stop-the-world-pop` at `2212bf3` into `pifo-hardware`, based on
-`1e84360`, on 2026-09-07. The 16 imported evaluation cases were rerun and
+Merge commit `1cf88bd` imports `pifo-stop-the-world-pop` at `2212bf3` into
+`pifo-hardware`, based on `1e84360`, on 2026-09-07. The 16 imported evaluation cases were rerun and
 the normal RR/SP image was compared against the known-good commit at both
-reduced and full capacity. The final comparison passes. At the user's request
-to finish promptly, the other existing normal-image results are retained from
-the previous rerun; they are not claimed as newly rerun here.
+reduced and full capacity. The final comparison passes.
+
+On 2026-09-08, the motivating example was rebuilt with an explicit hardware
+FIFO leaf for every flow and all four cases were rerun together on the merged
+evaluation image. The multi-edit artifact set also gained a steady-p2 control
+using its existing traffic file. The motivating measurements quoted below all
+come from that single four-case invocation; none are carried over from its
+earlier folded-leaf run.
 
 ## Image separation
 
@@ -61,12 +66,13 @@ merged normal image stalled behind a guard. These failed attempts are not
 counted as successful experiment runs. The original normal-image backend
 has been preserved, and temporary diagnostic changes were removed.
 
-## Refreshed evaluation results
+## Recorded artifact totals
 
 | Family | Runs | Generated | Completed | Explicitly unadmitted control packets |
 | --- | ---: | ---: | ---: | ---: |
 | Designated survivor | 10 | 30288 | 30288 | 0 |
-| Multi-edit | 5 | 50025 | 47891 | 2134 |
+| Multi-edit | 6 | 60030 | 57595 | 2435 |
+| Motivating example, explicit FIFO leaves | 4 | 8544 | 8544 | 0 |
 | RR/SP hardware stop + prefill | 1 | 480 | 480 | 0 |
 | Normal RR/SP comparison | 1 | 480 | 480 | 0 |
 
@@ -92,16 +98,31 @@ The copy baseline moves 14 occupied virtual PIFOs across three PEs: 975
 scheduler tokens representing 325 buffered packets. It supports frozen,
 drain-only relocation, not a complete live-survivor ascent/state migration.
 
+The motivating rerun uses p1 = `SP(zoom FIFO, gmail FIFO)` and p2b =
+`SP(zoom FIFO, RR(gmail FIFO, spotify FIFO))`. R3's post-request zoom maximum
+is 613 cycles versus R4's 21 cycles: a 592-cycle gap, up from 399 cycles in the
+folded-leaf artifacts. R2 retains 203 admitted packets, reaches a measured
+483-packet peak during its 1024-cycle lossless stop, and completes all 2136
+packets. Its packet-metadata `queue_depth` is 4096; the lossless source gate is
+still modeled separately and is not presented as a finite global buffer.
+
+The added multi-edit `control-p2` run starts in p2 and never transitions. On
+the identical 10005-packet source trace it serves all 9704 packets whose flows
+exist in p2; the 301 legacy packets absent from p2 are explicitly unadmitted,
+not dropped. The untouched-flow panels now overlay both steady-p1 and
+steady-p2 controls.
+
 ## Checks and limits
 
-Python suite: **69 passed, 1 skipped** (the opt-in RTL smoke). All **26** saved
+Python suite: **74 passed, 1 skipped** (the opt-in RTL smoke). All **26** saved
 standalone plot scripts run in isolated folders with only their local CSVs.
 New figure folders include complete `packets.csv` and `commits.csv` in
 addition to plotted `data.csv`; scripts import only csv, pathlib and
 Matplotlib. Timeline backgrounds distinguish install, cleanup and, when
 present, reclamation. No standalone RTL regression suite was run.
-The full-size comparison was the final hardware run; the broader normal-image
-rerun was stopped before its next simulation to honor the request to finish.
+The 2026-09-08 motivating follow-up completed all four hardware runs in one
+invocation before validation and figure generation; its report does not mix in
+the previously carried-over motivating artifacts.
 
 The RR/SP hardware-stop phase verifier reports two old packet completions
 after the root-drain marker: requests 248/249 finish at 1927/1931 after root
@@ -123,6 +144,9 @@ unchanged delays for all four witness flows. The survivor sweep reaches a
 - [Multi-edit results](multi-edit/README.md),
   [first service](multi-edit/figures/first-service/figure.png),
   [untouched-flow delay](multi-edit/figures/untouched-delay/figure.png).
+- [Motivating-example results](motivating-example/README.md),
+  [R2--R4 delay](motivating-example/comparisons/r2-r4-delay-scatter/figure.png),
+  [R3/R4 throughput](motivating-example/comparisons/r3-r4-throughput/figure.png).
 - [RR/SP hardware-stop figures](rr-to-sp-stop-the-world-pop/figures/),
   [phase report](rr-to-sp-stop-the-world-pop/phase-verification.md).
 

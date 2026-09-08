@@ -16,9 +16,13 @@ ROOT = Path(__file__).resolve().parents[2]
 RESOURCES = ROOT / "experiments" / "multi-edit"
 RESULTS = ROOT / "experiment-results" / "multi-edit"
 TITLES = {"rio": "Rio: localized edits", "prefill": "Whole-tree: prefill SP",
-          "relocate": "Whole-tree: copy + prefill", "reset": "Stop-the-world reset", "control": "Control: p1"}
+          "relocate": "Whole-tree: copy + prefill", "reset": "Stop-the-world reset",
+          "control": "Control: p1", "control-p2": "Control: p2"}
+CONTROL_RUNS = ("control", "control-p2")
+TRANSITION_RUNS = ("rio", "prefill", "relocate", "reset")
 MAIN_RUNS = ("rio", "prefill", "reset")
 COPY_RUNS = ("prefill", "relocate")
+FIRST_SERVICE_RUNS = ("control-p2", *MAIN_RUNS)
 
 
 def settings():
@@ -69,13 +73,16 @@ def measure(root):
     traces = {run: (root / run / "requests.csv").read_bytes() for run in MECHANISMS}
     assert len(set(traces.values())) == 1, "runs did not replay the same trace"
     inputs = {int(r["request_id"]): r for r in read_csv(root / "control" / "requests.csv")}
-    control = {r["request_id"]: r for r in packets(root, "control")}
+    baselines = {baseline: {r["request_id"]: r for r in packets(root, baseline)}
+                 for baseline in CONTROL_RUNS}
     report = {"trace_sha256": hashlib.sha256(traces["control"]).hexdigest(), "runs": {},
-              "difference_test": f"paired p95 absolute delay difference > 10 cycles, packets outstanding/generated from t1 through {comparison_end}; new flows count as changed",
+              "difference_test": f"paired p95 absolute delay difference > 10 cycles, packets outstanding/generated from t1 through {comparison_end}; admission differences count as changed",
               "realtime_steady_metric": "first 300-cycle trailing window within 10% of 0.20, sustained 300 cycles, after pre-t1 realtime packets leave",
               "realtime_weight_share": 6 / 17, "realtime_offered_steady_rate": 0.20}
     for run in MECHANISMS:
         data = packets(root, run)
+        plan = json.loads((root / run / "transactions.plan.json").read_text())
+        unadmitted = set(plan.get("unadmitted_flows", ()))
         assert len(data) == len(inputs) and {r["request_id"] for r in data} == set(inputs), f"{run}: missing/duplicate packets"
         byflow = defaultdict(list)
         for r in data:
@@ -84,7 +91,7 @@ def measure(root):
                 int(original["global_flow_id"]), int(original["cycle"]), int(original["size_bytes"])), f"{run}: changed packet metadata"
             assert not r["dropped"], f"{run}: dropped packet"
             if r["pop_cycle"] is None:
-                assert run == "control" and r["flow"] in cfg["arriving_flows"], f"{run}: stranded packet"
+                assert r["flow"] in unadmitted, f"{run}: stranded packet"
             else:
                 assert r["pop_cycle"] >= r["push_cycle"], f"{run}: negative delay"
                 byflow[r["flow"]].append(r)
@@ -92,11 +99,11 @@ def measure(root):
             arrival_order = sorted(byflow[flow], key=lambda r: (r["push_cycle"], r["request_id"]))
             assert [r["pop_cycle"] for r in arrival_order] == sorted(r["pop_cycle"] for r in arrival_order), f"{run}: FIFO violation"
         ev = events(root, run)
-        plan = json.loads((root / run / "transactions.plan.json").read_text())
         assert plan.get("experiment_rules") == "shared-replay-guarded-cleanup-v1", f"{run}: stale pre-replay results"
         metrics = {**plan, "events": ev, "drops": 0, "reorders": 0,
                    "commits": commit_rows({run: root / run}),
-                   "t1_backlog_packets": {}, "first_service_cycles_from_t1": {}, "control_differences": {}}
+                   "t1_backlog_packets": {}, "first_service_cycles_from_t1": {},
+                   "control_differences": {}, "p2_control_differences": {}}
         metrics["pre_t1_link_utilization"] = sum(r["size_bytes"] for r in data
             if r["pop_cycle"] is not None and r["pop_cycle"] < t1) / (t1 * cfg["link_bytes_per_cycle"])
         control_events = read_csv(root / run / "controller-instructions.csv")
@@ -118,6 +125,34 @@ def measure(root):
         admitted = {int(r["request_id"]): int(r["admitted_cycle"])
                     for r in read_csv(root / run / "request-results.csv")}
         metrics["t1_waiting_at_input_packets"] = 0
+        current = {r["request_id"]: r for r in data}
+
+        def difference(flow, baseline):
+            reference = baselines[baseline]
+            pairs = [(r, reference[r["request_id"]]) for r in byflow[flow]
+                     if r["push_cycle"] < comparison_end
+                     and reference[r["request_id"]]["pop_cycle"] is not None
+                     and (r["pop_cycle"] >= t1 or reference[r["request_id"]]["pop_cycle"] >= t1)]
+            deltas = [a["pop_cycle"] - b["pop_cycle"] for a, b in pairs]
+            status_changed = any(
+                (r["pop_cycle"] is None) != (reference[r["request_id"]]["pop_cycle"] is None)
+                for r in current.values()
+                if r["flow"] == flow and r["push_cycle"] < comparison_end
+                and (r["pop_cycle"] is None
+                     or reference[r["request_id"]]["pop_cycle"] is None
+                     or r["pop_cycle"] >= t1
+                     or reference[r["request_id"]]["pop_cycle"] >= t1)
+            )
+            p95 = percentile([abs(delta) for delta in deltas], .95)
+            return {
+                "paired_packets": len(deltas),
+                "mean_delay_delta_cycles": statistics.mean(deltas) if deltas else None,
+                "p95_absolute_delay_delta_cycles": p95,
+                "max_absolute_delay_delta_cycles": max([abs(delta) for delta in deltas], default=None),
+                "admission_status_changed": status_changed,
+                "changed": status_changed or (p95 is not None and p95 > 10),
+            }
+
         for flow, name in labels.items():
             backlog = [r for r in data if r["flow"] == flow and r["push_cycle"] < t1
                        and (r["pop_cycle"] is None or r["pop_cycle"] >= t1)]
@@ -126,17 +161,12 @@ def measure(root):
             if flow in cfg["arriving_flows"]:
                 pops = [r["pop_cycle"] for r in byflow[flow] if r["push_cycle"] >= t1]
                 metrics["first_service_cycles_from_t1"][name] = min(pops) - t1 if pops else None
-            pairs = [(r, control[r["request_id"]]) for r in byflow[flow] if r["push_cycle"] < comparison_end
-                     and control[r["request_id"]]["pop_cycle"] is not None
-                     and (r["pop_cycle"] >= t1 or control[r["request_id"]]["pop_cycle"] >= t1)]
-            deltas = [a["pop_cycle"] - b["pop_cycle"] for a, b in pairs]
-            metrics["control_differences"][name] = {
-                "paired_packets": len(deltas), "mean_delay_delta_cycles": statistics.mean(deltas) if deltas else None,
-                "p95_absolute_delay_delta_cycles": percentile([abs(d) for d in deltas], .95),
-                "max_absolute_delay_delta_cycles": max([abs(d) for d in deltas], default=None),
-                "changed": percentile([abs(d) for d in deltas], .95) > 10 if deltas else flow in cfg["arriving_flows"] and run != "control"}
+            metrics["control_differences"][name] = difference(flow, "control")
+            metrics["p2_control_differences"][name] = difference(flow, "control-p2")
         metrics["changed_flows"] = sum(d["changed"] for d in metrics["control_differences"].values())
-        if run != "control":
+        metrics["changed_flows_vs_p1"] = metrics["changed_flows"]
+        metrics["changed_flows_vs_p2"] = sum(d["changed"] for d in metrics["p2_control_differences"].values())
+        if run not in CONTROL_RUNS:
             reference_backlog = report["runs"]["control"]["t1_backlog_packets"]
             assert metrics["t1_backlog_packets"] == reference_backlog, f"{run}: pre-request state differs from control"
         if ev:
@@ -178,12 +208,12 @@ def measure(root):
 
 def write_summary(root, report):
     lines = ["# Large-tree experiment results", "",
-             "All runs replay the identical source trace. All four transitioning runs finish with zero drops and zero per-flow reorderings.",
-             "Control keeps p1; its four unadmitted flows are recorded as unserved, not dropped.", "",
+             "All six runs replay the identical source trace. All four transitioning runs finish with zero drops and zero per-flow reorderings.",
+             "The p1 control leaves the four arriving flows unadmitted. The p2 control starts and stays in p2, so the two legacy flows absent from p2 are unadmitted. Both cases are recorded as unserved, not dropped.", "",
              "## First service after the request (cycles)", "",
              "| Mechanism | Video | Chat | Game | Vr | Peak stop buffer (packets) |",
              "| --- | ---: | ---: | ---: | ---: | ---: |"]
-    for run in MECHANISMS[1:]:
+    for run in ("control-p2", *TRANSITION_RUNS):
         m = report["runs"][run]
         values = m["first_service_cycles_from_t1"]
         cells = [TITLES[run]] + [str(values[f]) for f in ("Video", "Chat", "Game", "Vr")]
@@ -194,7 +224,7 @@ def write_summary(root, report):
               "`commit` is instruction acceptance, `applied` is hardware publication. `empty/captured` is old PIFO empty except for reset, where it is the retained-state snapshot. `install_finish_cycle` is each commit's own replay readiness; `finish_cycle` includes its linked cleanup. Final configuration readiness is the last cleanup/reclamation commit, not the end of packet traffic.", "",
               "| Run | Start | Commit | Applied | Empty/captured | Finish | Cleanup finished | Main / guarded instructions |",
               "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |"]
-    for run in MECHANISMS[1:]:
+    for run in TRANSITION_RUNS:
         m = report["runs"][run]
         event = m["events"][0]
         cells = [run, event["start_cycle"], event["commit_cycle"], str(m["commit_applied_cycles"][0]),
@@ -203,28 +233,32 @@ def write_summary(root, report):
         lines.append("| " + " | ".join(cells) + " |")
     lines += ["", "| Run | Commit | Start | Accepted | Published | Ready for next commit | Instructions | Cycles to publish | Bank replay cycles |",
               "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |"]
-    for run in MECHANISMS[1:]:
+    for run in TRANSITION_RUNS:
         for c in report["runs"][run]["commits"]:
             lines.append("| " + " | ".join(str(v) for v in (run, c["commit"], c["start_cycle"], c["commit_cycle"],
                 c["commit_applied_cycle"], c["ready_for_next_commit"], c["instruction_count"],
                 c["commit_cycles"], c["bank_replay_cycles"])) + " |")
     lines += ["", "There is one config ingress instruction per cycle, not five instantaneous hardware edits. Raw `controller-instructions.csv` distinguishes queue acceptance, dispatch, commit publication and copy completion.",
               "", "## Departing backlog and unchanged-path witnesses", "",
-              "Measured backlog at t1 is identical in every run; none of it is waiting at the input gate:", "",
-              "| Flow | Packets at t1 | Rio p95 absolute delay difference from control |",
-              "| --- | ---: | ---: |"]
+              "The four transitioning runs start from p1 and have the same measured backlog at t1 as the p1 control; none of it is waiting at the input gate. The steady-p2 control intentionally has a different pre-t1 policy state.", "",
+              "| Flow | Packets at t1 | Rio p95 difference vs p1 | Rio p95 difference vs p2 |",
+              "| --- | ---: | ---: | ---: |"]
     rio = report["runs"]["rio"]
     for flow, count in rio["t1_backlog_packets"].items():
         delta = rio["control_differences"][flow]["p95_absolute_delay_delta_cycles"]
-        lines.append(f"| {flow} | {count} | {delta if delta is not None else 'not served by control'} |")
+        p2_delta = rio["p2_control_differences"][flow]["p95_absolute_delay_delta_cycles"]
+        lines.append(f"| {flow} | {count} | {delta if delta is not None else 'not jointly served'} | {p2_delta if p2_delta is not None else 'not jointly served'} |")
     witness_names = [settings()["flow_labels"][str(f)] for f in settings()["untouched_flows"]]
-    changed_witnesses = [name for name in witness_names if rio["control_differences"][name]["changed"]]
-    lines += ["", "Untouched-path witnesses exceeding the stated paired-delay threshold: " +
-              (", ".join(changed_witnesses) if changed_witnesses else "none") + ". Identical internal paths do not by themselves guarantee identical service at a shared root whose sibling weights and load change. The table reports the measured backlogs and differences rather than assuming the ideal arithmetic.",
+    changed_p1 = [name for name in witness_names if rio["control_differences"][name]["changed"]]
+    changed_p2 = [name for name in witness_names if rio["p2_control_differences"][name]["changed"]]
+    lines += ["", "Untouched-path witnesses exceeding the stated paired-delay threshold versus p1: " +
+              (", ".join(changed_p1) if changed_p1 else "none") + "; versus steady p2: " +
+              (", ".join(changed_p2) if changed_p2 else "none") + ". Identical internal paths do not by themselves guarantee identical service at a shared root whose sibling weights and load change. The table reports both controls rather than assuming either is the sole counterfactual.",
               "Their absolute root weight stays 3, but total configured sibling weight changes from 15 to 21 including the retiring legacy arm, then 17. Nominal all-backlogged fractions therefore change from 3/15 to 3/21 to 3/17; actual service also depends on frozen ranks and empty queues.",
               f"The measured pre-t1 link utilization, including startup, is {rio['pre_t1_link_utilization']:.3f}, not the 1.00 assumed in the ideal backlog arithmetic.",
               "", "Difference test: " + report["difference_test"] + ".", "",
-              "Changed flow counts: " + ", ".join(f"{run}={report['runs'][run]['changed_flows']}/14" for run in MECHANISMS[1:]) + ".",
+              "Changed flow counts versus p1: " + ", ".join(f"{run}={report['runs'][run]['changed_flows_vs_p1']}/14" for run in TRANSITION_RUNS) + ".",
+              "Changed flow counts versus p2: " + ", ".join(f"{run}={report['runs'][run]['changed_flows_vs_p2']}/14" for run in TRANSITION_RUNS) + ".",
               "", f"Relocation moves {report['runs']['relocate']['copied_pifos']} occupied virtual PIFOs across three PEs, containing {report['runs']['relocate']['copied_entries']} scheduler tokens for {report['runs']['relocate']['copied_buffered_packets']} buffered packets. The dedicated brain-bypassing read/inject datapath exists only in the evaluation image; payload buffers are not copied.",
               "The lossless reset's 512-cycle teardown and 513-cycle install budgets are model parameters forming a minimum stop, not extra controller instructions. Actual bank synchronization and replay can make it longer.",
               "", "## Realtime recovery", "",

@@ -22,65 +22,65 @@ COLORS = ('#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e3
  '#17becf')
 PANELS = [{'title': 'R2: stop the world',
   'start': 2000,
-  'markers': [(0, '#1f77b4', '-', 'C1 start'), (31, '#ff7f0e', '--', 'C1 commit accepted'),
-              (44, '#2ca02c', '-.', 'C1 ready_for_next_commit'),
-              (13, '#9467bd', ':', 'C1 old-tree captured (not drained)'),
-              (1037, '#1f77b4', '-', 'C2 start'), (1038, '#ff7f0e', '--', 'C2 commit accepted'),
-              (1041, '#2ca02c', '-.', 'C2 ready_for_next_commit'),
-              (13, '#9467bd', ':', 'C2 old-tree captured (not drained)'),
-              (1037, '0.4', '--', 'traffic resumed')],
-  'spans': [(0, 44, '#dbeafe', 'C1: install commit'),
-            (1037, 1041, '#ffedd5', 'C2: cleanup commit')],
-  'notes': 'C1: start=2000  commit accepted=2031  ready_for_next_commit=2044\n'
-           'C2: start=3037  commit accepted=3038  ready_for_next_commit=3041\n'
-           'old tree captured=2013 (shared by C1/C2)\n'
-           'published: install=2034, cleanup=3040\n'
-           'config=16 inst / 34 cycles to publication\n'
+  'markers': [(0, '#1f77b4', '-', 'C1 start'), (39, '#ff7f0e', '--', 'C1 commit accepted'),
+              (58, '#2ca02c', '-.', 'C1 ready_for_next_commit'),
+              (12, '#9467bd', ':', 'C1 old-tree captured (not drained)'),
+              (1036, '#1f77b4', '-', 'C2 start'), (1036, '#ff7f0e', '--', 'C2 commit accepted'),
+              (1040, '#2ca02c', '-.', 'C2 ready_for_next_commit'),
+              (12, '#9467bd', ':', 'C2 old-tree captured (not drained)'),
+              (1036, '0.4', '--', 'traffic resumed')],
+  'spans': [(0, 58, '#dbeafe', 'C1: install commit'),
+            (1036, 1040, '#ffedd5', 'C2: cleanup commit')],
+  'notes': 'C1: start=2000  commit accepted=2039  ready_for_next_commit=2058\n'
+           'C2: start=3036  commit accepted=3036  ready_for_next_commit=3040\n'
+           'old tree captured=2012 (shared by C1/C2)\n'
+           'published: install=2042, cleanup=3039\n'
+           'config=25 inst / 42 cycles to publication\n'
            'cleanup=1 inst / 3 cycles to publication (guard wait included)\n'
-           'bank replay: install=10, cleanup=1 cycles; ≤1 instruction accepted/cycle\n'
-           'resumed=3037  retained=137  peak buffer=417 packets  stop=1024 cycles',
-  'accounting': 'config=16 inst / 34 cycles to publication\n'
+           'bank replay: install=16, cleanup=1 cycles; ≤1 instruction accepted/cycle\n'
+           'resumed=3036  retained=203  peak buffer=483 packets  stop=1024 cycles',
+  'accounting': 'config=25 inst / 42 cycles to publication\n'
                 'cleanup=1 inst / 3 cycles to publication (guard wait included)\n'
-                'bank replay: install=10, cleanup=1 cycles\n'
-                'STW stop=1024 cycles; retained=137; peak buffer=417 packets'},
+                'bank replay: install=16, cleanup=1 cycles\n'
+                'STW stop=1024 cycles; retained=203; peak buffer=483 packets'},
  {'title': 'R3: whole-tree replace',
   'start': 2000,
-  'markers': [(0, '#1f77b4', '-', 'C1 start'), (27, '#ff7f0e', '--', 'C1 commit accepted'),
-              (41, '#2ca02c', '-.', 'C1 ready_for_next_commit'),
-              (431, '#9467bd', ':', 'C1 old-tree-drained'), (41, '#1f77b4', '-', 'C2 start'),
-              (54, '#ff7f0e', '--', 'C2 commit accepted'),
-              (452, '#2ca02c', '-.', 'C2 ready_for_next_commit'),
-              (431, '#9467bd', ':', 'C2 old-tree-drained')],
-  'spans': [(0, 41, '#dbeafe', 'C1: install commit'), (41, 452, '#ffedd5', 'C2: cleanup commit')],
-  'notes': 'C1: start=2000  commit accepted=2027  ready_for_next_commit=2041\n'
-           'C2: start=2041  commit accepted=2054  ready_for_next_commit=2452\n'
-           'old tree drained=2431 (shared by C1/C2)\n'
-           'published: install=2030, cleanup=2447\n'
-           'config=17 inst / 30 cycles to publication\n'
-           'cleanup=12 inst / 406 cycles to publication (guard wait included)\n'
-           'bank replay: install=11, cleanup=5 cycles; ≤1 instruction accepted/cycle',
-  'accounting': 'config=17 inst / 30 cycles to publication\n'
-                'cleanup=12 inst / 406 cycles to publication (guard wait included)\n'
-                'bank replay: install=11, cleanup=5 cycles'},
+  'markers': [(0, '#1f77b4', '-', 'C1 start'), (31, '#ff7f0e', '--', 'C1 commit accepted'),
+              (51, '#2ca02c', '-.', 'C1 ready_for_next_commit'),
+              (633, '#9467bd', ':', 'C1 old-tree-drained'), (51, '#1f77b4', '-', 'C2 start'),
+              (68, '#ff7f0e', '--', 'C2 commit accepted'),
+              (659, '#2ca02c', '-.', 'C2 ready_for_next_commit'),
+              (633, '#9467bd', ':', 'C2 old-tree-drained')],
+  'spans': [(0, 51, '#dbeafe', 'C1: install commit'), (51, 659, '#ffedd5', 'C2: cleanup commit')],
+  'notes': 'C1: start=2000  commit accepted=2031  ready_for_next_commit=2051\n'
+           'C2: start=2051  commit accepted=2068  ready_for_next_commit=2659\n'
+           'old tree drained=2633 (shared by C1/C2)\n'
+           'published: install=2034, cleanup=2652\n'
+           'config=26 inst / 34 cycles to publication\n'
+           'cleanup=16 inst / 601 cycles to publication (guard wait included)\n'
+           'bank replay: install=17, cleanup=7 cycles; ≤1 instruction accepted/cycle',
+  'accounting': 'config=26 inst / 34 cycles to publication\n'
+                'cleanup=16 inst / 601 cycles to publication (guard wait included)\n'
+                'bank replay: install=17, cleanup=7 cycles'},
  {'title': 'R4: confined replace',
   'start': 2000,
   'markers': [(0, '#1f77b4', '-', 'C1 start'), (18, '#ff7f0e', '--', 'C1 commit accepted'),
-              (28, '#2ca02c', '-.', 'C1 ready_for_next_commit'),
-              (705, '#9467bd', ':', 'C1 old-tree-drained'), (28, '#1f77b4', '-', 'C2 start'),
-              (34, '#ff7f0e', '--', 'C2 commit accepted'),
-              (713, '#2ca02c', '-.', 'C2 ready_for_next_commit'),
-              (705, '#9467bd', ':', 'C2 old-tree-drained')],
-  'spans': [(0, 28, '#dbeafe', 'C1: install commit'), (28, 713, '#ffedd5', 'C2: cleanup commit')],
-  'notes': 'C1: start=2000  commit accepted=2018  ready_for_next_commit=2028\n'
-           'C2: start=2028  commit accepted=2034  ready_for_next_commit=2713\n'
-           'old tree drained=2705 (shared by C1/C2)\n'
-           'published: install=2021, cleanup=2711\n'
-           'config=10 inst / 21 cycles to publication\n'
-           'cleanup=5 inst / 683 cycles to publication (guard wait included)\n'
-           'bank replay: install=7, cleanup=2 cycles; ≤1 instruction accepted/cycle',
-  'accounting': 'config=10 inst / 21 cycles to publication\n'
-                'cleanup=5 inst / 683 cycles to publication (guard wait included)\n'
-                'bank replay: install=7, cleanup=2 cycles'}]
+              (32, '#2ca02c', '-.', 'C1 ready_for_next_commit'),
+              (1033, '#9467bd', ':', 'C1 old-tree-drained'), (32, '#1f77b4', '-', 'C2 start'),
+              (38, '#ff7f0e', '--', 'C2 commit accepted'),
+              (1041, '#2ca02c', '-.', 'C2 ready_for_next_commit'),
+              (1033, '#9467bd', ':', 'C2 old-tree-drained')],
+  'spans': [(0, 32, '#dbeafe', 'C1: install commit'), (32, 1041, '#ffedd5', 'C2: cleanup commit')],
+  'notes': 'C1: start=2000  commit accepted=2018  ready_for_next_commit=2032\n'
+           'C2: start=2032  commit accepted=2038  ready_for_next_commit=3041\n'
+           'old tree drained=3033 (shared by C1/C2)\n'
+           'published: install=2021, cleanup=3039\n'
+           'config=16 inst / 21 cycles to publication\n'
+           'cleanup=5 inst / 1007 cycles to publication (guard wait included)\n'
+           'bank replay: install=11, cleanup=2 cycles; ≤1 instruction accepted/cycle',
+  'accounting': 'config=16 inst / 21 cycles to publication\n'
+                'cleanup=5 inst / 1007 cycles to publication (guard wait included)\n'
+                'bank replay: install=11, cleanup=2 cycles'}]
 
 with (HERE / 'packets.csv').open(newline="", encoding="utf-8-sig") as stream:
     rows = list(csv.DictReader(stream))
@@ -113,7 +113,8 @@ def event_legend(axis, panel):
     resumes = {label: cycle + panel["start"] for cycle, _, _, label in panel["markers"]
                if label == "traffic resumed"}
     data = [(handle, f"{label} = {resumes[label]}" if label in resumes else label)
-            for handle, label in zip(handles, labels) if not label.startswith(("C1", "C2"))]
+            for handle, label in zip(handles, labels)
+            if not label.startswith(tuple(title.split(":")[0] for _, _, _, title in panel["spans"]))]
     if data:
         data_legend = axis.legend(*zip(*data), loc="upper right", fontsize=8)
         axis.add_artist(data_legend)

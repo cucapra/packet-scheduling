@@ -179,16 +179,15 @@ class PifoCliProgramsTest(unittest.TestCase):
     def test_motivating_example_compiles_all_four_modes(self) -> None:
         root = HARDWARE_ROOT / "experiments" / "motivating-example"
         expected = {
-            "r1-add": ("in_place", 4, None, 0),
-            "r2-stop-the-world": ("stop_the_world", 16, None, 1024),
-            "r3-whole-tree": ("full_transitive", 17, (1, 1), 0),
-            "r4-confined": ("confined_transitive", 10, (2, 2), 0),
+            "r1-add": ("in_place", 7, None, 0),
+            "r2-stop-the-world": ("stop_the_world", 25, None, 1024),
+            "r3-whole-tree": ("full_transitive", 26, (1, 1), 0),
+            "r4-confined": ("confined_transitive", 16, (3, 2), 0),
         }
         for case, (mode, command_count, drain_root, minimum_stop_cycles) in expected.items():
             with self.subTest(case=case):
-                program = compile_tree_move(
-                    load_tree_move_program(root / case / "tree-move.json")
-                )
+                program_source = load_tree_move_program(root / case / "tree-move.json")
+                program = compile_tree_move(program_source)
                 transaction = program.transactions[0]
                 self.assertEqual(transaction.mode, mode)
                 self.assertEqual(len(transaction.commands), command_count)
@@ -197,6 +196,11 @@ class PifoCliProgramsTest(unittest.TestCase):
                     transaction.minimum_stop_cycles, minimum_stop_cycles
                 )
                 self.assertEqual(transaction.gated_flow_ids, (3,))
+                for tree in (program_source.old_tree, program_source.move.target_tree):
+                    self.assertTrue(all(
+                        tree.nodes[path[-1]].policy == "FIFO"
+                        for path in tree.flow_paths.values()
+                    ))
                 self.assertTrue(
                     all(
                         command.vpifo_id != 0
@@ -235,7 +239,7 @@ class PifoCliProgramsTest(unittest.TestCase):
                 confined_rewrite.vpifo_id,
                 confined_rewrite.data,
             ),
-            (2, 2, 1),
+            (3, 2, 3),
         )
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "stop.transactions"
@@ -251,7 +255,7 @@ class PifoCliProgramsTest(unittest.TestCase):
             write_transaction_program(path, confined_program)
             reloaded = load_transaction_program(path).transactions[0]
         self.assertEqual(reloaded.mode, "confined_transitive")
-        self.assertEqual(reloaded.drain_root, (2, 2))
+        self.assertEqual(reloaded.drain_root, (3, 2))
         self.assertEqual(reloaded.gated_flow_ids, (3,))
 
     def test_traffic_program_merges_patterns_in_time_order(self) -> None:

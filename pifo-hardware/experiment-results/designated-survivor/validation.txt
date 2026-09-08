@@ -1,4 +1,51 @@
-Designated-survivor rerun after merging into pifo-hardware (2026-09-07)
+Designated-survivor copy-series extension (2026-09-07)
+
+PASS: five new copy/prefill Verilator experiment simulations at pre-phases
+      0, 1000, 2000, 2500 and 5000 cycles. All 15144 generated packets completed
+      with zero drops and zero per-flow reorderings. The ten existing
+      link/reserved simulations below were reused, not rerun: 45432 packets
+      across the fifteen measured cases, all completed without drops/reorders.
+PASS: all three mechanisms have identical initial configuration, four-PE
+      hardware shape, per-flow FIFO leaves, traffic trace and backlog at t1.
+PASS: copy moves the FIFO PE 3 -> 4, then root PE 1 -> 2. Copied post mappings
+      preserve original packed token IDs; old roots/FIFOs remain drain-only.
+      Hardware completion counts equal source occupancy and twice the root
+      snapshot (one root token and one FIFO token per buffered packet).
+PASS: both figures now include Copy + prefill. Raw per-packet traces and
+      each C1/C2/C3 timeline are bundled in each figure folder. Plotters remain
+      self-contained, with no shared style or repository imports.
+PASS: 14 focused Python tests, including both plotters executed in isolated
+      temporary folders containing only plot.py and CSV files. All fifteen
+      saved transaction programs match the current compiler exactly.
+
+pre-phase / measured backlog / link stop / reserved stop / copy stop:
+       0 /    0 / 0 /  83 /  106
+    1000 /  107 / 0 / 185 /  412
+    2000 /  207 / 0 / 284 /  711
+    2500 /  257 / 0 / 335 /  862
+    5000 /  507 / 0 / 584 / 1611
+
+Canonical copy stop: 711 = 203 prefill-write cycles + 408 copy-command cycles
+  + 100 other cycles. Two occupied PIFOs contain 406 tokens for 203 packets.
+  Copy peak source-generation-to-pop zoom delay: 1336 cycles.
+  Post-publication old-root drain: 615 cycles, versus reserved 616 / link 599.
+  Copy instructions: 58 install + 20 cleanup/collapse + 11 reclaim.
+  Copy C1/C2/C3 replay costs: 49 / 11 / 7 cycles.
+  Detached wrapper discards 351 redundant tokens without dropping packets.
+  Peak queued during stop: 395 packets; largest sweep point peaks at 935.
+
+Figure B fitted slopes against measured pre-request backlog:
+  reserved = 0.990 cycles/packet; copy + prefill = 2.975 cycles/packet.
+  Copy command cycles include per-command completion overhead; the separate
+  copied_entries field counts actual inserted tokens. Other overhead is
+  100-101 cycles across the copy sweep.
+
+Scope: this is frozen old-tree descent plus prefill, not a complete
+  descent/ascent design. Teardown uses root publication and wrapper reclaim;
+  live-survivor ascent / brain-state migration remain unsupported. No hardware
+  changes or standalone RTL regression suite were needed for this extension.
+
+Prior link/reserved validation after merging into pifo-hardware (2026-09-07)
 
 PASS: ten Verilator experiment simulations, with pre-phases 0, 1000, 2000,
       2500 and 5000 cycles for both mechanisms. All 30288 packets completed

@@ -419,8 +419,9 @@ def _configure_in_place(
 ) -> list[ControllerCommand]:
     """Compile an additive update that needs no draining guard."""
 
-    if set(old_tree.nodes) != set(target_tree.nodes):
-        raise ValueError("in_place cannot add or remove PIFO nodes")
+    removed_nodes = set(old_tree.nodes).difference(target_tree.nodes)
+    if removed_nodes:
+        raise ValueError("in_place cannot remove PIFO nodes")
     for name, old_node in old_tree.nodes.items():
         target_node = target_tree.nodes[name]
         if (
@@ -442,11 +443,23 @@ def _configure_in_place(
                 f"in_place cannot change the path of existing flow {flow_id}"
             )
 
+    added_nodes = set(target_tree.nodes).difference(old_tree.nodes)
     added_flows = sorted(
         set(target_tree.flow_paths).difference(old_tree.flow_paths)
     )
-    commands: list[ControllerCommand] = []
-    for name, target_node in target_tree.nodes.items():
+    nodes_used_by_added_flows = {
+        name for flow_id in added_flows for name in target_tree.flow_paths[flow_id]
+    }
+    if not added_nodes.issubset(nodes_used_by_added_flows):
+        unused = ", ".join(sorted(added_nodes.difference(nodes_used_by_added_flows)))
+        raise ValueError(f"in_place cannot add unreachable PIFO nodes: {unused}")
+
+    # New nodes are safe to configure immediately because no pre-mapper points
+    # at them until the staged mappings publish. Existing node policy and
+    # placement remain fixed; only their state for newly admitted flows changes.
+    commands = _configure_brains_for_nodes(target_tree, added_nodes, num_vpifos)
+    for name in old_tree.nodes:
+        target_node = target_tree.nodes[name]
         old_state = old_tree.nodes[name].flow_state
         for flow_id, state in sorted(target_node.flow_state.items()):
             if old_state.get(flow_id) != state:

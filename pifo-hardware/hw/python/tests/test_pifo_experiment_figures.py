@@ -38,7 +38,7 @@ from pifo_tree_compiler_core import (  # noqa: E402
     build_transaction_plan,
 )
 from pifo_transaction_program import controller_command_line  # noqa: E402
-from pifo_motivation_verify import validate_run  # noqa: E402
+from pifo_motivation_verify import validate_comparison, validate_run  # noqa: E402
 
 
 class PifoExperimentFiguresTest(unittest.TestCase):
@@ -193,9 +193,15 @@ class PifoExperimentFiguresTest(unittest.TestCase):
             if outcome.flow_id == 1 and outcome.push_cycle >= event.start_cycle
         )
 
-        self.assertEqual(event.retained_packets, 137)
-        self.assertEqual(event.peak_buffer_occupancy_packets, 417)
+        self.assertEqual(event.retained_packets, 203)
+        self.assertEqual(event.peak_buffer_occupancy_packets, 483)
         self.assertGreaterEqual(zoom_delay, event.minimum_stop_cycles)
+
+    def test_checked_in_explicit_leaf_rerun_widens_zoom_gap(self) -> None:
+        root = (Path(__file__).resolve().parents[3]
+                / "experiment-results" / "motivating-example")
+        report = validate_comparison(root)
+        self.assertIn("R3-R4 gap=592 cycles", report)
 
     def test_seeded_uniform_rate_and_normal_size_are_reproducible(self) -> None:
         traffic = TrafficConfig(

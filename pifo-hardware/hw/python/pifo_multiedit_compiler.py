@@ -16,7 +16,7 @@ from pifo_transaction_program import (
     write_transaction_program,
 )
 
-MECHANISMS = ("control", "rio", "prefill", "relocate", "reset")
+MECHANISMS = ("control", "control-p2", "rio", "prefill", "relocate", "reset")
 
 
 def compile_request(spec: dict, mechanism: str) -> tuple[TransactionProgram, dict]:
@@ -47,6 +47,7 @@ def compile_request(spec: dict, mechanism: str) -> tuple[TransactionProgram, dic
     pack = lambda engine, flow: (engine << width) | flow
     allflows = lambda tree: {f["id"] for t in tree for f in t["flows"]}
     arriving = tuple(sorted(allflows(new) - allflows(old)))
+    departing = tuple(sorted(allflows(old) - allflows(new)))
     removed = [t for t in old if t["name"] not in {n["name"] for n in new}]
     if len(removed) > 1:
         raise ValueError("this evaluation planner records one departing-tenant drain")
@@ -129,13 +130,16 @@ def compile_request(spec: dict, mechanism: str) -> tuple[TransactionProgram, dic
                      for kind in ("UpdateBrainEngine", "UpdateBrainState")]
         return commands
 
-    initial = TimedTransaction(None, "initial", tuple(configure(old, (1, 2, 3)) + [commit]))
+    initial_tree = new if mechanism == "control-p2" else old
+    initial = TimedTransaction(None, "initial", tuple(configure(initial_tree, (1, 2, 3)) + [commit]))
     transactions = []
     report = {"mechanism": mechanism, "experiment_rules": "shared-replay-guarded-cleanup-v1",
               "unguarded_edits": [], "guarded_edits": [],
               "copy_list": [], "modelled_teardown_cycles": 0, "modelled_install_cycles": 0}
     if mechanism == "control":
         report["unadmitted_flows"] = list(arriving)
+    elif mechanism == "control-p2":
+        report["unadmitted_flows"] = list(departing)
     elif mechanism == "rio":
         commands = []
         previous = {t["name"]: t for t in old}

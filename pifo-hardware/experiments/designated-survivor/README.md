@@ -13,7 +13,9 @@ The runner invokes two separate CLIs: `pifo_survivor_compiler.py` generates dire
 ```sh
 # The canonical 2000-cycle pre-phase only:
 .venv/bin/python hw/python/pifo_survivor_all.py --pre-cycles 2000
-# Replot/revalidate existing pairs without rerunning RTL:
+# Add only the copy series, reusing the existing link/reserved results:
+.venv/bin/python hw/python/pifo_survivor_all.py --runs copy
+# Replot/revalidate existing triples without rerunning RTL:
 .venv/bin/python hw/python/pifo_survivor_all.py --render-only
 # Independent, minimal per-figure scripts:
 .venv/bin/python hw/python/pifo_survivor_zoom_figure.py
@@ -28,9 +30,9 @@ The runner invokes two separate CLIs: `pifo_survivor_compiler.py` generates dire
 | p2b | zoom | root (PE 1) → dedicated FIFO (PE 3) → output |
 | p2b | gmail / spotify | root (PE 1) → RR (PE 2) → dedicated FIFO (PE 3) → output |
 
-Old and new FIFO versions use different vPIFO IDs. The reserved wrapper is on PE 4, above both trees, and is allocated outside the union of their occupied PEs. Strict* leaves PE 4 unused. Both mechanisms use the same four-PE shape and identical generated traffic for each point. `transactions.plan.json` records the actual compiled enqueue/pop paths. `settings.json` describes the shared CBR trace and sweep durations.
+Old and new FIFO versions use different vPIFO IDs. The reserved wrapper is on PE 4, above both trees, and is allocated outside the union of their occupied PEs. Strict* leaves PE 4 unused. The copy baseline stops the hardware, copies the old FIFO PE 3 → 4 and root PE 1 → 2, then prefills a wrapper at the original root on PE 1. Its new tree uses root PE 2, RR PE 3 and FIFO PE 4, with distinct old/new vPIFO IDs. All three mechanisms use the same four-PE shape, identical initial configuration and identical generated traffic for each point. `transactions.plan.json` records the actual compiled enqueue/pop paths and copy list. `settings.json` describes the shared CBR trace and sweep durations.
 
-The runner explicitly selects `--evaluation-hardware`, building `EvaluationPifoMesh` rather than the production image. Both mechanisms use the current 256-entry shared command FIFO and mapper-write replay immediately after commit. The fourth PE widens post-mapper addresses, but synchronization replays written slots; it does not scan the full 512-entry bank. The stop/prefill/copy datapaths are absent from the normal `PifoMesh` build.
+The runner explicitly selects `--evaluation-hardware`, building `EvaluationPifoMesh` rather than the production image. All three mechanisms use the current 256-entry shared command FIFO and mapper-write replay immediately after commit. The fourth PE widens post-mapper addresses, but synchronization replays written slots; it does not scan the full 512-entry bank. The stop/prefill/copy datapaths are absent from the normal `PifoMesh` build.
 
 The sources offer zoom 0.40 throughout, gmail 0.80 before t1 and 0.20 afterward, and spotify 0.20 after t1. Rates are fractions of a 16-byte/cycle link, with 48-byte packets. Sources keep generating throughout configuration and stops. `push_cycle` is generation time; `admitted_cycle` in request-results.csv records switch admission separately.
 
@@ -44,10 +46,12 @@ Each PE has 8 × 128 = 1024 shared physical token slots. Old/new per-flow FIFO n
 
 The materialized baseline uses StopWorld, an autonomous one-write-per-cycle PrefillPifo, and UpdateRoot/CommitMapper to publish the wrapper. The driver first waits for a partly admitted packet and outstanding traversals to finish; the RTL also gates insertion and root requests and snapshots the old root. Both intervals are logged, so software quiescence is not disguised as per-entry hardware work.
 
+Both figures contain Strict*, reserved-wrapper and copy/prefill series. Figure B measures the entire birth stop, including relocation in the copy case. Measurements split actual prefill writes, copy dispatch-to-completion cycles, and other overhead. Copy moves two scheduler tokens per retained packet (root plus FIFO); copied occupied PIFOs and token counts are checked against the hardware snapshot. Figure A measures zoom delay from generation, including all time held at the door.
+
 After GuardDrain on every old FIFO, a second package invalidates retired mappings/brains, stops creating wrapper entries and publishes the survivor as root. A third cleanup package uses ClearPifoEngine plus ordinary invalidation writes and a commit. Clear waits for queued root visits and active PE work before invalidating the detached wrapper's remaining tokens by clearing its counters; it does not rely on a slow bank-copy delay. This is logical reclamation, not a sequential token deletion. The packet FIFOs on PE 3 remain intact and surviving packets must still complete. Validation uses compiler/unit checks, elaboration-only image-isolation checks and the experiment runs themselves, not standalone RTL regression tests.
 
 All commits have separate start, commit accepted, ready-for-next-commit and shared old-tree-drained markers, with blue/amber/green backgrounds. Each figure folder includes a minimal standalone `plot.py`, its plot data, full `packets.csv` and `commits.csv`; copying that folder is sufficient to replot without repository code or shared styles.
 
 `maintenance-events.csv` records driver/hardware stops, the hardware count snapshot, prefill start/completion with actual accepted token writes, root detach/publication with live occupancy, and reclamation with discarded token count. `controller-instructions.csv` distinguishes queue acceptance from dispatch and commit publication. Raw per-packet CSVs and both figures' plotted data are retained.
 
-The optional full-copy design is not presented as complete: the branch has a dedicated brain-bypassing read/inject datapath for frozen drain-only tree relocation, but no complete live-survivor ascent and brain-state migration protocol. Reservation avoids both relocation steps; Strict* avoids the wrapper itself.
+The copy series measures frozen old-tree descent with the dedicated brain-bypassing read/inject datapath. It preserves old token IDs and ranks; new arrivals go only to the freshly configured survivor. Teardown changes the root and reclaims the wrapper, just as in the reserved baseline. It does **not** measure live-survivor ascent or brain-state migration, which remain unsupported. Reservation avoids relocation; Strict* avoids the wrapper itself.

@@ -101,7 +101,7 @@ def timeline(axis, runs):
         if row["run"] not in runs:
             continue
         name = row["commit"]
-        prefix = ("Strict*" if row["run"] == "link" else "Reserved") + " " + name if len(runs) > 1 else name
+        prefix = {"link": "Strict*", "reserved": "Reserved", "copy": "Copy"}.get(row["run"], row["run"]) + " " + name if len(runs) > 1 else name
         color = backgrounds[(int(name[1:]) - 1) % len(backgrounds)]
         shade = axis.axvspan(int(row["start_cycle"]), int(row["ready_for_next_commit"]),
                             color=color, alpha=.5, linewidth=0, zorder=0)
@@ -116,21 +116,21 @@ def timeline(axis, runs):
             line = axis.axvline(cycle, color=linecolor, linestyle=style,
                                linewidth=2 if field == "ready_for_next_commit" else 1, alpha=.8)
             handles.append(line)
-            labels.append(f"{name} {label} = {cycle}")
+            labels.append(f"{prefix} {label} = {cycle}")
         costs.append(f"{prefix}: {row['instruction_count']} inst / {row['commit_cycles']} cycles; "
                      f"bank replay {row['bank_replay_cycles']} cycles")
     series = axis.legend(loc="upper right", fontsize=8)
     axis.add_artist(series)
     if handles:
         key = axis.legend(handles, labels, loc="upper center", bbox_to_anchor=(.5, -.16),
-                          ncol=max(1, len(costs)), fontsize=6.5)
+                          ncol=max(1, min(4, len(costs))), fontsize=6.5)
         axis.annotate("\\n".join(costs), xy=(.5, 0), xycoords=key, xytext=(0, -6),
                       textcoords="offset points", ha="center", va="top", fontsize=7,
                       annotation_clip=False)
 '''
 
 _ZOOM = '''
-fig, ax = plt.subplots(figsize=(13, 5.8), constrained_layout=True)
+fig, ax = plt.subplots(figsize=(13, 7.6 if len(SETTINGS["runs"]) > 2 else 5.8), constrained_layout=True)
 for index, run in enumerate(SETTINGS["runs"]):
     data = [r for r in rows if r["run"] == run]
     ax.scatter([int(r["push_cycle"]) for r in data], [int(r["delay_cycles"]) for r in data],
@@ -149,13 +149,13 @@ for index, run in enumerate(SETTINGS["runs"]):
     x = [int(r["t1_backlog_packets"]) for r in data]
     y = [int(r["global_stop_cycles"]) for r in data]
     ax.plot(x, y, "o-", linewidth=1.8, color=COLORS[index], label=SETTINGS["titles"][run])
-    if run == "reserved" and len(set(x)) > 1:
+    if run in {"reserved", "copy"} and len(set(x)) > 1:
         mx, my = sum(x) / len(x), sum(y) / len(y)
         slope = sum((a - mx) * (b - my) for a, b in zip(x, y)) / sum((a - mx)**2 for a in x)
-        ax.text(.03, .95, f"Measured fit: {slope:.3f} cycles/packet + {my - slope * mx:.1f} cycles",
+        ax.text(.03, .95 - .065 * (index - 1), f"{run.capitalize()} fit: {slope:.3f} cycles/packet + {my - slope * mx:.1f} cycles",
                 transform=ax.transAxes, va="top", fontsize=9)
 ax.set(xlabel="Measured backlog at t₁ (packets)", ylabel="Global pop stop (cycles)",
-       title="Wrapper birth: one link versus N token writes")
+       title="Wrapper birth: link, prefill, and copy + prefill")
 ax.set_ylim(-15, max(int(r["global_stop_cycles"]) for r in rows) * 1.15 + 10)
 ax.legend(loc="center left", fontsize=9)
 ax.grid(alpha=.2)
@@ -185,14 +185,15 @@ fig, axes = plt.subplots(1, len(runs), figsize=(5.6 * len(runs), 5.5),
 maximum = 0
 for axis, run in zip(axes, runs):
     for index, flow in enumerate(SETTINGS["flows"]):
-        for source in ("control", run):
+        for source in (*SETTINGS["controls"], run):
             data = [r for r in rows if r["run"] == run and r["source"] == source and r["flow_name"] == flow]
             x = [int(r["push_cycle"]) for r in data]
             y = [int(r["delay_cycles"]) for r in data]
             maximum = max(maximum, max(y, default=0))
-            if source == "control":
-                axis.plot(x, y, color=COLORS[index], alpha=.65, linestyle="--", linewidth=.8,
-                          label=flow + " (p1 control)")
+            if source in SETTINGS["controls"]:
+                style = "--" if source == SETTINGS["controls"][0] else ":"
+                axis.plot(x, y, color=COLORS[index], alpha=.65, linestyle=style, linewidth=.9,
+                          label=flow + " (" + SETTINGS["titles"][source] + ")")
             else:
                 axis.scatter(x, y, color=COLORS[index], alpha=.65, s=7, linewidths=0, label=flow)
     timeline(axis, [run])

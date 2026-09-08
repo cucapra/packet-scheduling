@@ -1,11 +1,16 @@
-Multi-edit rerun after merging into pifo-hardware (2026-09-07)
+Multi-edit p2-control follow-up on merged pifo-hardware (2026-09-08)
 
-PASS: control, rio, prefill, relocate and reset replay the same 10005-packet
-      source trace. Each transitioning run completes all 10005 packets with
-      zero drops and zero per-flow reorderings. Control serves 7871 packets;
-      its 2134 arrivals without a p1 arm remain explicitly unadmitted, not
-      dropped. Per-packet delay is measured from source generation.
-PASS: t1 backlogs match across all runs, with no packets waiting at ingress.
+PASS: control, control-p2, rio, prefill, relocate and reset replay the same
+      10005-packet source trace (SHA-256
+      ffdb7128d85b70df2263d78f4ab4688212e69691f593dbb1e54dafb25b409c70).
+      Each transitioning run completes all 10005 packets with zero drops and
+      zero per-flow reorderings. The p1 control serves 7871 packets and records
+      2134 arriving packets without a p1 arm as unadmitted. The p2 control
+      serves 9704 packets and records the 301 legacy packets absent from p2 as
+      unadmitted. Neither control labels those packets as dropped.
+PASS: all four transitioning runs have the same t1 backlog as the p1 control,
+      with no packets waiting at ingress. The p2 control intentionally starts
+      in the target policy and therefore has a different pre-t1 backlog.
 PASS: shared 256-entry replay FIFO; unbanked setup is hoisted before retained
       mapper writes. All compiled retained epochs fit the default capacity.
 PASS: normal GuardDrain + invalidations + cleanup commits. Every retired
@@ -15,16 +20,22 @@ PASS: relocation transfers 325 entries on each of three PEs: 975 tokens in
       14 occupied virtual PIFOs, representing 325 buffered packets. Source
       occupancy and completed copies are separately logged and cross-checked.
 PASS: four PNG/SVG figures regenerated with full packets.csv, commits.csv,
-      plotted data.csv and standalone plot.py in every figure folder.
-PASS: each commit records start, acceptance, publication, replay readiness,
-      instruction count and publication cycles. Timeline panels include all
-      four requested markers and separate commit-background colors.
+      plotted data.csv and standalone plot.py in every figure folder. The main
+      first-service figure includes the steady-p2 control; both untouched-flow
+      figures overlay steady-p1 and steady-p2 controls.
+PASS: each transition commit records start, acceptance, publication, replay
+      readiness, instruction count and publication cycles. Timeline panels
+      include all four requested markers and separate commit-background colors.
 
 Claims NOT supported by these measurements:
-- Work/web have no backlog: 13 packets per tenant are measured at t1.
-- Untouched-path delays are indistinguishable from control: all four witness
-  flows exceed the stated paired p95 absolute delay difference of 10 cycles.
+- Work/web have no backlog: 13 packets per tenant are measured at t1 in the
+  p1-starting runs.
+- Untouched-path delays are indistinguishable from either control: Gmail, Ssh,
+  Http and Https all exceed the paired p95 absolute-delay threshold of 10
+  cycles versus both steady p1 and steady p2 in the Rio run.
 - New tenants receive their first service within one or two request cycles.
+  Even the already-configured p2 control first serves them 38--53 cycles after
+  t1; Rio measures 96--210 cycles.
 - The saturated 6/17 realtime share is measurable after its queue drains:
   only 0.20 is offered, so the report measures settling to that offered load.
 

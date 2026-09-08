@@ -19,8 +19,10 @@ rows = read("data.csv")
 commits = read("commits.csv")
 COLORS = ("#1f77b4", "#ff7f0e", "#2ca02c", "#d62728")
 
-SETTINGS = {'runs': ['link', 'reserved'],
- 'titles': {'link': 'Strict* link', 'reserved': 'Reserved-PE Strict wrapper'}}
+SETTINGS = {'runs': ['link', 'reserved', 'copy'],
+ 'titles': {'link': 'Strict* link',
+            'reserved': 'Reserved-PE Strict wrapper',
+            'copy': 'Copy + prefill Strict wrapper'}}
 
 fig, ax = plt.subplots(figsize=(7.2, 4.7), constrained_layout=True)
 for index, run in enumerate(SETTINGS["runs"]):
@@ -28,13 +30,13 @@ for index, run in enumerate(SETTINGS["runs"]):
     x = [int(r["t1_backlog_packets"]) for r in data]
     y = [int(r["global_stop_cycles"]) for r in data]
     ax.plot(x, y, "o-", linewidth=1.8, color=COLORS[index], label=SETTINGS["titles"][run])
-    if run == "reserved" and len(set(x)) > 1:
+    if run in {"reserved", "copy"} and len(set(x)) > 1:
         mx, my = sum(x) / len(x), sum(y) / len(y)
         slope = sum((a - mx) * (b - my) for a, b in zip(x, y)) / sum((a - mx)**2 for a in x)
-        ax.text(.03, .95, f"Measured fit: {slope:.3f} cycles/packet + {my - slope * mx:.1f} cycles",
+        ax.text(.03, .95 - .065 * (index - 1), f"{run.capitalize()} fit: {slope:.3f} cycles/packet + {my - slope * mx:.1f} cycles",
                 transform=ax.transAxes, va="top", fontsize=9)
 ax.set(xlabel="Measured backlog at t₁ (packets)", ylabel="Global pop stop (cycles)",
-       title="Wrapper birth: one link versus N token writes")
+       title="Wrapper birth: link, prefill, and copy + prefill")
 ax.set_ylim(-15, max(int(r["global_stop_cycles"]) for r in rows) * 1.15 + 10)
 ax.legend(loc="center left", fontsize=9)
 ax.grid(alpha=.2)

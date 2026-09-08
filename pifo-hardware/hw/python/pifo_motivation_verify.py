@@ -19,6 +19,7 @@ EXPECTED_MODES = {
     "r3-whole-tree": "full_transitive",
     "r4-confined": "confined_transitive",
 }
+FOLDED_LEAF_ZOOM_GAP_CYCLES = 399
 
 
 def validate_run(case: str, run_dir: Path) -> tuple[list[PacketOutcome], PolicyEvent]:
@@ -139,6 +140,12 @@ def validate_comparison(output_root: Path) -> str:
             "R4 perturbs zoom beyond the additive baseline: "
             f"R4 max={r4_zoom_max}, R1 max={r1_zoom_max}"
         )
+    zoom_gap = r3_zoom_max - r4_zoom_max
+    if zoom_gap <= FOLDED_LEAF_ZOOM_GAP_CYCLES:
+        raise ValueError(
+            "explicit FIFO leaves did not widen the archived whole-tree/confined gap: "
+            f"new={zoom_gap}, archived={FOLDED_LEAF_ZOOM_GAP_CYCLES} cycles"
+        )
 
     lines = ["motivating-example validation: PASS"]
     for case, (outcomes, event) in validated.items():
@@ -166,7 +173,7 @@ def validate_comparison(output_root: Path) -> str:
     )
     lines.append(
         f"post-start zoom max delay: R1={r1_zoom_max}, R2={r2_zoom_max}, "
-        f"R3={r3_zoom_max}, R4={r4_zoom_max} cycles"
+        f"R3={r3_zoom_max}, R4={r4_zoom_max} cycles; R3-R4 gap={zoom_gap} cycles"
     )
     report = "\n".join(lines) + "\n"
     (output_root / "validation.txt").write_text(report, encoding="utf-8")

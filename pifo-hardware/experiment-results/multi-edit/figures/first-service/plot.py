@@ -19,13 +19,14 @@ rows = read("data.csv")
 commits = read("commits.csv")
 COLORS = ("#1f77b4", "#ff7f0e", "#2ca02c", "#d62728")
 
-SETTINGS = {'runs': ('rio', 'prefill', 'reset'),
+SETTINGS = {'runs': ('control-p2', 'rio', 'prefill', 'reset'),
  'flows': ['Video', 'Chat', 'Game', 'Vr'],
  'titles': {'rio': 'Rio: localized edits',
             'prefill': 'Whole-tree: prefill SP',
             'relocate': 'Whole-tree: copy + prefill',
             'reset': 'Stop-the-world reset',
-            'control': 'Control: p1'}}
+            'control': 'Control: p1',
+            'control-p2': 'Control: p2'}}
 
 fig, ax = plt.subplots(figsize=(9, 4.8), constrained_layout=True)
 names, runs = SETTINGS["flows"], SETTINGS["runs"]

@@ -12,10 +12,11 @@ def main():
     cases = {name: c for name, c in report["cases"].items()
              if c["runs"]["link"]["t1"] in cfg["sweep_pre_cycles"]}
     if not cases:
-        print("Figure B awaits paired sweep runs")
+        print("Figure B awaits link/reserved/copy sweep runs")
         return
     fields = ("t1", "t1_backlog_packets", "global_stop_cycles", "hardware_stop_cycles",
-              "prefill_entries", "prefill_write_cycles", "fixed_stop_overhead_cycles")
+              "prefill_entries", "prefill_write_cycles", "copy_cycles", "copied_entries",
+              "copied_pifos", "fixed_stop_overhead_cycles")
     rows = [{"run": run, **{k: m[k] for k in fields}}
             for c in cases.values() for run, m in c["runs"].items()]
     paths = {f"{case}/{run}": args.results / case / run for case in cases for run in TITLES}

@@ -50,6 +50,7 @@
           "mean_delay_delta_cycles": 0,
           "p95_absolute_delay_delta_cycles": 0,
           "max_absolute_delay_delta_cycles": 0,
+          "admission_status_changed": false,
           "changed": false
         },
         "Voip": {
@@ -57,6 +58,7 @@
           "mean_delay_delta_cycles": 0,
           "p95_absolute_delay_delta_cycles": 0,
           "max_absolute_delay_delta_cycles": 0,
+          "admission_status_changed": false,
           "changed": false
         },
         "Legacy1": {
@@ -64,6 +66,7 @@
           "mean_delay_delta_cycles": 0,
           "p95_absolute_delay_delta_cycles": 0,
           "max_absolute_delay_delta_cycles": 0,
+          "admission_status_changed": false,
           "changed": false
         },
         "Legacy2": {
@@ -71,6 +74,7 @@
           "mean_delay_delta_cycles": 0,
           "p95_absolute_delay_delta_cycles": 0,
           "max_absolute_delay_delta_cycles": 0,
+          "admission_status_changed": false,
           "changed": false
         },
         "Gmail": {
@@ -78,6 +82,7 @@
           "mean_delay_delta_cycles": 0,
           "p95_absolute_delay_delta_cycles": 0,
           "max_absolute_delay_delta_cycles": 0,
+          "admission_status_changed": false,
           "changed": false
         },
         "Ssh": {
@@ -85,6 +90,7 @@
           "mean_delay_delta_cycles": 0,
           "p95_absolute_delay_delta_cycles": 0,
           "max_absolute_delay_delta_cycles": 0,
+          "admission_status_changed": false,
           "changed": false
         },
         "Http": {
@@ -92,6 +98,7 @@
           "mean_delay_delta_cycles": 0,
           "p95_absolute_delay_delta_cycles": 0,
           "max_absolute_delay_delta_cycles": 0,
+          "admission_status_changed": false,
           "changed": false
         },
         "Https": {
@@ -99,6 +106,7 @@
           "mean_delay_delta_cycles": 0,
           "p95_absolute_delay_delta_cycles": 0,
           "max_absolute_delay_delta_cycles": 0,
+          "admission_status_changed": false,
           "changed": false
         },
         "Backup": {
@@ -106,6 +114,7 @@
           "mean_delay_delta_cycles": 0,
           "p95_absolute_delay_delta_cycles": 0,
           "max_absolute_delay_delta_cycles": 0,
+          "admission_status_changed": false,
           "changed": false
         },
         "Sync": {
@@ -113,6 +122,7 @@
           "mean_delay_delta_cycles": 0,
           "p95_absolute_delay_delta_cycles": 0,
           "max_absolute_delay_delta_cycles": 0,
+          "admission_status_changed": false,
           "changed": false
         },
         "Video": {
@@ -120,6 +130,7 @@
           "mean_delay_delta_cycles": null,
           "p95_absolute_delay_delta_cycles": null,
           "max_absolute_delay_delta_cycles": null,
+          "admission_status_changed": false,
           "changed": false
         },
         "Chat": {
@@ -127,6 +138,7 @@
           "mean_delay_delta_cycles": null,
           "p95_absolute_delay_delta_cycles": null,
           "max_absolute_delay_delta_cycles": null,
+          "admission_status_changed": false,
           "changed": false
         },
         "Game": {
@@ -134,6 +146,7 @@
           "mean_delay_delta_cycles": null,
           "p95_absolute_delay_delta_cycles": null,
           "max_absolute_delay_delta_cycles": null,
+          "admission_status_changed": false,
           "changed": false
         },
         "Vr": {
@@ -141,7 +154,122 @@
           "mean_delay_delta_cycles": null,
           "p95_absolute_delay_delta_cycles": null,
           "max_absolute_delay_delta_cycles": null,
+          "admission_status_changed": false,
           "changed": false
+        }
+      },
+      "p2_control_differences": {
+        "Zoom": {
+          "paired_packets": 641,
+          "mean_delay_delta_cycles": 2.764430577223089,
+          "p95_absolute_delay_delta_cycles": 12,
+          "max_absolute_delay_delta_cycles": 12,
+          "admission_status_changed": false,
+          "changed": true
+        },
+        "Voip": {
+          "paired_packets": 472,
+          "mean_delay_delta_cycles": 236.46186440677965,
+          "p95_absolute_delay_delta_cycles": 1511,
+          "max_absolute_delay_delta_cycles": 1546,
+          "admission_status_changed": false,
+          "changed": true
+        },
+        "Legacy1": {
+          "paired_packets": 0,
+          "mean_delay_delta_cycles": null,
+          "p95_absolute_delay_delta_cycles": null,
+          "max_absolute_delay_delta_cycles": null,
+          "admission_status_changed": true,
+          "changed": true
+        },
+        "Legacy2": {
+          "paired_packets": 0,
+          "mean_delay_delta_cycles": null,
+          "p95_absolute_delay_delta_cycles": null,
+          "max_absolute_delay_delta_cycles": null,
+          "admission_status_changed": true,
+          "changed": true
+        },
+        "Gmail": {
+          "paired_packets": 492,
+          "mean_delay_delta_cycles": 12.731707317073171,
+          "p95_absolute_delay_delta_cycles": 120,
+          "max_absolute_delay_delta_cycles": 307,
+          "admission_status_changed": false,
+          "changed": true
+        },
+        "Ssh": {
+          "paired_packets": 321,
+          "mean_delay_delta_cycles": -2,
+          "p95_absolute_delay_delta_cycles": 13,
+          "max_absolute_delay_delta_cycles": 21,
+          "admission_status_changed": false,
+          "changed": true
+        },
+        "Http": {
+          "paired_packets": 439,
+          "mean_delay_delta_cycles": 15.533029612756264,
+          "p95_absolute_delay_delta_cycles": 154,
+          "max_absolute_delay_delta_cycles": 360,
+          "admission_status_changed": false,
+          "changed": true
+        },
+        "Https": {
+          "paired_packets": 375,
+          "mean_delay_delta_cycles": 2.0986666666666665,
+          "p95_absolute_delay_delta_cycles": 12,
+          "max_absolute_delay_delta_cycles": 17,
+          "admission_status_changed": false,
+          "changed": true
+        },
+        "Backup": {
+          "paired_packets": 559,
+          "mean_delay_delta_cycles": 452.05187835420395,
+          "p95_absolute_delay_delta_cycles": 2255,
+          "max_absolute_delay_delta_cycles": 2328,
+          "admission_status_changed": false,
+          "changed": true
+        },
+        "Sync": {
+          "paired_packets": 360,
+          "mean_delay_delta_cycles": 241.20833333333334,
+          "p95_absolute_delay_delta_cycles": 1462,
+          "max_absolute_delay_delta_cycles": 1598,
+          "admission_status_changed": false,
+          "changed": true
+        },
+        "Video": {
+          "paired_packets": 0,
+          "mean_delay_delta_cycles": null,
+          "p95_absolute_delay_delta_cycles": null,
+          "max_absolute_delay_delta_cycles": null,
+          "admission_status_changed": true,
+          "changed": true
+        },
+        "Chat": {
+          "paired_packets": 0,
+          "mean_delay_delta_cycles": null,
+          "p95_absolute_delay_delta_cycles": null,
+          "max_absolute_delay_delta_cycles": null,
+          "admission_status_changed": true,
+          "changed": true
+        },
+        "Game": {
+          "paired_packets": 0,
+          "mean_delay_delta_cycles": null,
+          "p95_absolute_delay_delta_cycles": null,
+          "max_absolute_delay_delta_cycles": null,
+          "admission_status_changed": true,
+          "changed": true
+        },
+        "Vr": {
+          "paired_packets": 0,
+          "mean_delay_delta_cycles": null,
+          "p95_absolute_delay_delta_cycles": null,
+          "max_absolute_delay_delta_cycles": null,
+          "admission_status_changed": true,
+          "changed": true
         }
       },
       "pre_t1_link_utilization": 0.909,
@@ -154,8 +282,294 @@
       "copy_source_pifos": [],
       "t1_waiting_at_input_packets": 0,
       "changed_flows": 0,
+      "changed_flows_vs_p1": 0,
+      "changed_flows_vs_p2": 14,
       "pre_t1_realtime_last_pop": 3503,
       "realtime_steady_cycle": 4403
+    },
+    "control-p2": {
+      "mechanism": "control-p2",
+      "experiment_rules": "shared-replay-guarded-cleanup-v1",
+      "unguarded_edits": [],
+      "guarded_edits": [],
+      "copy_list": [],
+      "modelled_teardown_cycles": 0,
+      "modelled_install_cycles": 0,
+      "unadmitted_flows": [
+        3,
+        4
+      ],
+      "instruction_counts": {},
+      "eligible_at_t1_instructions": 0,
+      "guarded_instructions": 0,
+      "events": [],
+      "drops": 0,
+      "reorders": 0,
+      "commits": [],
+      "t1_backlog_packets": {
+        "Zoom": 0,
+        "Voip": 1,
+        "Legacy1": 167,
+        "Legacy2": 134,
+        "Gmail": 0,
+        "Ssh": 1,
+        "Http": 1,
+        "Https": 1,
+        "Backup": 3,
+        "Sync": 1,
+        "Video": 0,
+        "Chat": 0,
+        "Game": 0,
+        "Vr": 0
+      },
+      "first_service_cycles_from_t1": {
+        "Video": 38,
+        "Chat": 50,
+        "Game": 41,
+        "Vr": 53
+      },
+      "control_differences": {
+        "Zoom": {
+          "paired_packets": 641,
+          "mean_delay_delta_cycles": -2.764430577223089,
+          "p95_absolute_delay_delta_cycles": 12,
+          "max_absolute_delay_delta_cycles": 12,
+          "admission_status_changed": false,
+          "changed": true
+        },
+        "Voip": {
+          "paired_packets": 472,
+          "mean_delay_delta_cycles": -236.46186440677965,
+          "p95_absolute_delay_delta_cycles": 1511,
+          "max_absolute_delay_delta_cycles": 1546,
+          "admission_status_changed": false,
+          "changed": true
+        },
+        "Legacy1": {
+          "paired_packets": 0,
+          "mean_delay_delta_cycles": null,
+          "p95_absolute_delay_delta_cycles": null,
+          "max_absolute_delay_delta_cycles": null,
+          "admission_status_changed": true,
+          "changed": true
+        },
+        "Legacy2": {
+          "paired_packets": 0,
+          "mean_delay_delta_cycles": null,
+          "p95_absolute_delay_delta_cycles": null,
+          "max_absolute_delay_delta_cycles": null,
+          "admission_status_changed": true,
+          "changed": true
+        },
+        "Gmail": {
+          "paired_packets": 492,
+          "mean_delay_delta_cycles": -12.731707317073171,
+          "p95_absolute_delay_delta_cycles": 120,
+          "max_absolute_delay_delta_cycles": 307,
+          "admission_status_changed": false,
+          "changed": true
+        },
+        "Ssh": {
+          "paired_packets": 321,
+          "mean_delay_delta_cycles": 2,
+          "p95_absolute_delay_delta_cycles": 13,
+          "max_absolute_delay_delta_cycles": 21,
+          "admission_status_changed": false,
+          "changed": true
+        },
+        "Http": {
+          "paired_packets": 439,
+          "mean_delay_delta_cycles": -15.533029612756264,
+          "p95_absolute_delay_delta_cycles": 154,
+          "max_absolute_delay_delta_cycles": 360,
+          "admission_status_changed": false,
+          "changed": true
+        },
+        "Https": {
+          "paired_packets": 375,
+          "mean_delay_delta_cycles": -2.0986666666666665,
+          "p95_absolute_delay_delta_cycles": 12,
+          "max_absolute_delay_delta_cycles": 17,
+          "admission_status_changed": false,
+          "changed": true
+        },
+        "Backup": {
+          "paired_packets": 559,
+          "mean_delay_delta_cycles": -452.05187835420395,
+          "p95_absolute_delay_delta_cycles": 2255,
+          "max_absolute_delay_delta_cycles": 2328,
+          "admission_status_changed": false,
+          "changed": true
+        },
+        "Sync": {
+          "paired_packets": 360,
+          "mean_delay_delta_cycles": -241.20833333333334,
+          "p95_absolute_delay_delta_cycles": 1462,
+          "max_absolute_delay_delta_cycles": 1598,
+          "admission_status_changed": false,
+          "changed": true
+        },
+        "Video": {
+          "paired_packets": 0,
+          "mean_delay_delta_cycles": null,
+          "p95_absolute_delay_delta_cycles": null,
+          "max_absolute_delay_delta_cycles": null,
+          "admission_status_changed": true,
+          "changed": true
+        },
+        "Chat": {
+          "paired_packets": 0,
+          "mean_delay_delta_cycles": null,
+          "p95_absolute_delay_delta_cycles": null,
+          "max_absolute_delay_delta_cycles": null,
+          "admission_status_changed": true,
+          "changed": true
+        },
+        "Game": {
+          "paired_packets": 0,
+          "mean_delay_delta_cycles": null,
+          "p95_absolute_delay_delta_cycles": null,
+          "max_absolute_delay_delta_cycles": null,
+          "admission_status_changed": true,
+          "changed": true
+        },
+        "Vr": {
+          "paired_packets": 0,
+          "mean_delay_delta_cycles": null,
+          "p95_absolute_delay_delta_cycles": null,
+          "max_absolute_delay_delta_cycles": null,
+          "admission_status_changed": true,
+          "changed": true
+        }
+      },
+      "p2_control_differences": {
+        "Zoom": {
+          "paired_packets": 640,
+          "mean_delay_delta_cycles": 0,
+          "p95_absolute_delay_delta_cycles": 0,
+          "max_absolute_delay_delta_cycles": 0,
+          "admission_status_changed": false,
+          "changed": false
+        },
+        "Voip": {
+          "paired_packets": 428,
+          "mean_delay_delta_cycles": 0,
+          "p95_absolute_delay_delta_cycles": 0,
+          "max_absolute_delay_delta_cycles": 0,
+          "admission_status_changed": false,
+          "changed": false
+        },
+        "Legacy1": {
+          "paired_packets": 0,
+          "mean_delay_delta_cycles": null,
+          "p95_absolute_delay_delta_cycles": null,
+          "max_absolute_delay_delta_cycles": null,
+          "admission_status_changed": false,
+          "changed": false
+        },
+        "Legacy2": {
+          "paired_packets": 0,
+          "mean_delay_delta_cycles": null,
+          "p95_absolute_delay_delta_cycles": null,
+          "max_absolute_delay_delta_cycles": null,
+          "admission_status_changed": false,
+          "changed": false
+        },
+        "Gmail": {
+          "paired_packets": 480,
+          "mean_delay_delta_cycles": 0,
+          "p95_absolute_delay_delta_cycles": 0,
+          "max_absolute_delay_delta_cycles": 0,
+          "admission_status_changed": false,
+          "changed": false
+        },
+        "Ssh": {
+          "paired_packets": 321,
+          "mean_delay_delta_cycles": 0,
+          "p95_absolute_delay_delta_cycles": 0,
+          "max_absolute_delay_delta_cycles": 0,
+          "admission_status_changed": false,
+          "changed": false
+        },
+        "Http": {
+          "paired_packets": 428,
+          "mean_delay_delta_cycles": 0,
+          "p95_absolute_delay_delta_cycles": 0,
+          "max_absolute_delay_delta_cycles": 0,
+          "admission_status_changed": false,
+          "changed": false
+        },
+        "Https": {
+          "paired_packets": 375,
+          "mean_delay_delta_cycles": 0,
+          "p95_absolute_delay_delta_cycles": 0,
+          "max_absolute_delay_delta_cycles": 0,
+          "admission_status_changed": false,
+          "changed": false
+        },
+        "Backup": {
+          "paired_packets": 483,
+          "mean_delay_delta_cycles": 0,
+          "p95_absolute_delay_delta_cycles": 0,
+          "max_absolute_delay_delta_cycles": 0,
+          "admission_status_changed": false,
+          "changed": false
+        },
+        "Sync": {
+          "paired_packets": 321,
+          "mean_delay_delta_cycles": 0,
+          "p95_absolute_delay_delta_cycles": 0,
+          "max_absolute_delay_delta_cycles": 0,
+          "admission_status_changed": false,
+          "changed": false
+        },
+        "Video": {
+          "paired_packets": 320,
+          "mean_delay_delta_cycles": 0,
+          "p95_absolute_delay_delta_cycles": 0,
+          "max_absolute_delay_delta_cycles": 0,
+          "admission_status_changed": false,
+          "changed": false
+        },
+        "Chat": {
+          "paired_packets": 214,
+          "mean_delay_delta_cycles": 0,
+          "p95_absolute_delay_delta_cycles": 0,
+          "max_absolute_delay_delta_cycles": 0,
+          "admission_status_changed": false,
+          "changed": false
+        },
+        "Game": {
+          "paired_packets": 320,
+          "mean_delay_delta_cycles": 0,
+          "p95_absolute_delay_delta_cycles": 0,
+          "max_absolute_delay_delta_cycles": 0,
+          "admission_status_changed": false,
+          "changed": false
+        },
+        "Vr": {
+          "paired_packets": 214,
+          "mean_delay_delta_cycles": 0,
+          "p95_absolute_delay_delta_cycles": 0,
+          "max_absolute_delay_delta_cycles": 0,
+          "admission_status_changed": false,
+          "changed": false
+        }
+      },
+      "pre_t1_link_utilization": 0.9405,
+      "instructions_accepted_at_t1": 0,
+      "instructions_dispatched_at_t1": 0,
+      "commit_applied_cycles": [],
+      "copy_completions": [],
+      "copied_entries": 0,
+      "copied_pifos": 0,
+      "copy_source_pifos": [],
+      "t1_waiting_at_input_packets": 301,
+      "changed_flows": 14,
+      "changed_flows_vs_p1": 14,
+      "changed_flows_vs_p2": 0,
+      "pre_t1_realtime_last_pop": 2002,
+      "realtime_steady_cycle": 2302
     },
     "rio": {
       "mechanism": "rio",
@@ -307,6 +721,7 @@
           "mean_delay_delta_cycles": -3.143525741029641,
           "p95_absolute_delay_delta_cycles": 11,
           "max_absolute_delay_delta_cycles": 19,
+          "admission_status_changed": false,
           "changed": true
         },
         "Voip": {
@@ -314,6 +729,7 @@
           "mean_delay_delta_cycles": 58.61228813559322,
           "p95_absolute_delay_delta_cycles": 377,
           "max_absolute_delay_delta_cycles": 464,
+          "admission_status_changed": false,
           "changed": true
         },
         "Legacy1": {
@@ -321,6 +737,7 @@
           "mean_delay_delta_cycles": 295.01162790697674,
           "p95_absolute_delay_delta_cycles": 604,
           "max_absolute_delay_delta_cycles": 630,
+          "admission_status_changed": false,
           "changed": true
         },
         "Legacy2": {
@@ -328,6 +745,7 @@
           "mean_delay_delta_cycles": 154.71698113207546,
           "p95_absolute_delay_delta_cycles": 371,
           "max_absolute_delay_delta_cycles": 409,
+          "admission_status_changed": false,
           "changed": true
         },
         "Gmail": {
@@ -335,6 +753,7 @@
           "mean_delay_delta_cycles": 65.97967479674797,
           "p95_absolute_delay_delta_cycles": 426,
           "max_absolute_delay_delta_cycles": 483,
+          "admission_status_changed": false,
           "changed": true
         },
         "Ssh": {
@@ -342,6 +761,7 @@
           "mean_delay_delta_cycles": 3.763239875389408,
           "p95_absolute_delay_delta_cycles": 15,
           "max_absolute_delay_delta_cycles": 31,
+          "admission_status_changed": false,
           "changed": true
         },
         "Http": {
@@ -349,6 +769,7 @@
           "mean_delay_delta_cycles": 74.2984054669704,
           "p95_absolute_delay_delta_cycles": 487,
           "max_absolute_delay_delta_cycles": 553,
+          "admission_status_changed": false,
           "changed": true
         },
         "Https": {
@@ -356,6 +777,7 @@
           "mean_delay_delta_cycles": -2.3706666666666667,
           "p95_absolute_delay_delta_cycles": 12,
           "max_absolute_delay_delta_cycles": 20,
+          "admission_status_changed": false,
           "changed": true
         },
         "Backup": {
@@ -363,6 +785,7 @@
           "mean_delay_delta_cycles": 895.3774597495528,
           "p95_absolute_delay_delta_cycles": 2702,
           "max_absolute_delay_delta_cycles": 2870,
+          "admission_status_changed": false,
           "changed": true
         },
         "Sync": {
@@ -370,6 +793,7 @@
           "mean_delay_delta_cycles": 383.6,
           "p95_absolute_delay_delta_cycles": 1590,
           "max_absolute_delay_delta_cycles": 1730,
+          "admission_status_changed": false,
           "changed": true
         },
         "Video": {
@@ -377,6 +801,7 @@
           "mean_delay_delta_cycles": null,
           "p95_absolute_delay_delta_cycles": null,
           "max_absolute_delay_delta_cycles": null,
+          "admission_status_changed": true,
           "changed": true
         },
         "Chat": {
@@ -384,6 +809,7 @@
           "mean_delay_delta_cycles": null,
           "p95_absolute_delay_delta_cycles": null,
           "max_absolute_delay_delta_cycles": null,
+          "admission_status_changed": true,
           "changed": true
         },
         "Game": {
@@ -391,6 +817,7 @@
           "mean_delay_delta_cycles": null,
           "p95_absolute_delay_delta_cycles": null,
           "max_absolute_delay_delta_cycles": null,
+          "admission_status_changed": true,
           "changed": true
         },
         "Vr": {
@@ -398,6 +825,121 @@
           "mean_delay_delta_cycles": null,
           "p95_absolute_delay_delta_cycles": null,
           "max_absolute_delay_delta_cycles": null,
+          "admission_status_changed": true,
+          "changed": true
+        }
+      },
+      "p2_control_differences": {
+        "Zoom": {
+          "paired_packets": 641,
+          "mean_delay_delta_cycles": -0.3790951638065523,
+          "p95_absolute_delay_delta_cycles": 7,
+          "max_absolute_delay_delta_cycles": 14,
+          "admission_status_changed": false,
+          "changed": false
+        },
+        "Voip": {
+          "paired_packets": 472,
+          "mean_delay_delta_cycles": 295.0741525423729,
+          "p95_absolute_delay_delta_cycles": 1692,
+          "max_absolute_delay_delta_cycles": 1896,
+          "admission_status_changed": false,
+          "changed": true
+        },
+        "Legacy1": {
+          "paired_packets": 0,
+          "mean_delay_delta_cycles": null,
+          "p95_absolute_delay_delta_cycles": null,
+          "max_absolute_delay_delta_cycles": null,
+          "admission_status_changed": true,
+          "changed": true
+        },
+        "Legacy2": {
+          "paired_packets": 0,
+          "mean_delay_delta_cycles": null,
+          "p95_absolute_delay_delta_cycles": null,
+          "max_absolute_delay_delta_cycles": null,
+          "admission_status_changed": true,
+          "changed": true
+        },
+        "Gmail": {
+          "paired_packets": 492,
+          "mean_delay_delta_cycles": 78.71138211382114,
+          "p95_absolute_delay_delta_cycles": 423,
+          "max_absolute_delay_delta_cycles": 482,
+          "admission_status_changed": false,
+          "changed": true
+        },
+        "Ssh": {
+          "paired_packets": 321,
+          "mean_delay_delta_cycles": 1.763239875389408,
+          "p95_absolute_delay_delta_cycles": 13,
+          "max_absolute_delay_delta_cycles": 34,
+          "admission_status_changed": false,
+          "changed": true
+        },
+        "Http": {
+          "paired_packets": 439,
+          "mean_delay_delta_cycles": 89.83143507972665,
+          "p95_absolute_delay_delta_cycles": 481,
+          "max_absolute_delay_delta_cycles": 553,
+          "admission_status_changed": false,
+          "changed": true
+        },
+        "Https": {
+          "paired_packets": 375,
+          "mean_delay_delta_cycles": -0.272,
+          "p95_absolute_delay_delta_cycles": 13,
+          "max_absolute_delay_delta_cycles": 21,
+          "admission_status_changed": false,
+          "changed": true
+        },
+        "Backup": {
+          "paired_packets": 559,
+          "mean_delay_delta_cycles": 1347.4293381037567,
+          "p95_absolute_delay_delta_cycles": 3780,
+          "max_absolute_delay_delta_cycles": 3894,
+          "admission_status_changed": false,
+          "changed": true
+        },
+        "Sync": {
+          "paired_packets": 360,
+          "mean_delay_delta_cycles": 624.8083333333333,
+          "p95_absolute_delay_delta_cycles": 2389,
+          "max_absolute_delay_delta_cycles": 2429,
+          "admission_status_changed": false,
+          "changed": true
+        },
+        "Video": {
+          "paired_packets": 320,
+          "mean_delay_delta_cycles": -1.765625,
+          "p95_absolute_delay_delta_cycles": 15,
+          "max_absolute_delay_delta_cycles": 58,
+          "admission_status_changed": false,
+          "changed": true
+        },
+        "Chat": {
+          "paired_packets": 214,
+          "mean_delay_delta_cycles": 36.33644859813084,
+          "p95_absolute_delay_delta_cycles": 260,
+          "max_absolute_delay_delta_cycles": 356,
+          "admission_status_changed": false,
+          "changed": true
+        },
+        "Game": {
+          "paired_packets": 320,
+          "mean_delay_delta_cycles": 24.29375,
+          "p95_absolute_delay_delta_cycles": 187,
+          "max_absolute_delay_delta_cycles": 250,
+          "admission_status_changed": false,
+          "changed": true
+        },
+        "Vr": {
+          "paired_packets": 214,
+          "mean_delay_delta_cycles": 0.7383177570093458,
+          "p95_absolute_delay_delta_cycles": 31,
+          "max_absolute_delay_delta_cycles": 95,
+          "admission_status_changed": false,
           "changed": true
         }
       },
@@ -414,6 +956,8 @@
       "copy_source_pifos": [],
       "t1_waiting_at_input_packets": 0,
       "changed_flows": 14,
+      "changed_flows_vs_p1": 14,
+      "changed_flows_vs_p2": 13,
       "buffer_occupancy_at_resume_packets": 230,
       "pre_t1_realtime_last_pop": 3575,
       "realtime_steady_cycle": 5125
@@ -608,6 +1152,7 @@
           "mean_delay_delta_cycles": 113.65834633385336,
           "p95_absolute_delay_delta_cycles": 1033,
           "max_absolute_delay_delta_cycles": 1549,
+          "admission_status_changed": false,
           "changed": true
         },
         "Voip": {
@@ -615,6 +1160,7 @@
           "mean_delay_delta_cycles": 165.55084745762713,
           "p95_absolute_delay_delta_cycles": 1016,
           "max_absolute_delay_delta_cycles": 1090,
+          "admission_status_changed": false,
           "changed": true
         },
         "Legacy1": {
@@ -622,6 +1168,7 @@
           "mean_delay_delta_cycles": 238.30232558139534,
           "p95_absolute_delay_delta_cycles": 575,
           "max_absolute_delay_delta_cycles": 575,
+          "admission_status_changed": false,
           "changed": true
         },
         "Legacy2": {
@@ -629,6 +1176,7 @@
           "mean_delay_delta_cycles": 383.4339622641509,
           "p95_absolute_delay_delta_cycles": 575,
           "max_absolute_delay_delta_cycles": 577,
+          "admission_status_changed": false,
           "changed": true
         },
         "Gmail": {
@@ -636,6 +1184,7 @@
           "mean_delay_delta_cycles": 496.7621951219512,
           "p95_absolute_delay_delta_cycles": 1642,
           "max_absolute_delay_delta_cycles": 1674,
+          "admission_status_changed": false,
           "changed": true
         },
         "Ssh": {
@@ -643,6 +1192,7 @@
           "mean_delay_delta_cycles": 250.41744548286604,
           "p95_absolute_delay_delta_cycles": 1317,
           "max_absolute_delay_delta_cycles": 1545,
+          "admission_status_changed": false,
           "changed": true
         },
         "Http": {
@@ -650,6 +1200,7 @@
           "mean_delay_delta_cycles": 569.749430523918,
           "p95_absolute_delay_delta_cycles": 2070,
           "max_absolute_delay_delta_cycles": 2239,
+          "admission_status_changed": false,
           "changed": true
         },
         "Https": {
@@ -657,6 +1208,7 @@
           "mean_delay_delta_cycles": 195.40533333333335,
           "p95_absolute_delay_delta_cycles": 1236,
           "max_absolute_delay_delta_cycles": 1560,
+          "admission_status_changed": false,
           "changed": true
         },
         "Backup": {
@@ -664,6 +1216,7 @@
           "mean_delay_delta_cycles": 1970.964221824687,
           "p95_absolute_delay_delta_cycles": 4644,
           "max_absolute_delay_delta_cycles": 4805,
+          "admission_status_changed": false,
           "changed": true
         },
         "Sync": {
@@ -671,6 +1224,7 @@
           "mean_delay_delta_cycles": 1298.8916666666667,
           "p95_absolute_delay_delta_cycles": 3873,
           "max_absolute_delay_delta_cycles": 4160,
+          "admission_status_changed": false,
           "changed": true
         },
         "Video": {
@@ -678,6 +1232,7 @@
           "mean_delay_delta_cycles": null,
           "p95_absolute_delay_delta_cycles": null,
           "max_absolute_delay_delta_cycles": null,
+          "admission_status_changed": true,
           "changed": true
         },
         "Chat": {
@@ -685,6 +1240,7 @@
           "mean_delay_delta_cycles": null,
           "p95_absolute_delay_delta_cycles": null,
           "max_absolute_delay_delta_cycles": null,
+          "admission_status_changed": true,
           "changed": true
         },
         "Game": {
@@ -692,6 +1248,7 @@
           "mean_delay_delta_cycles": null,
           "p95_absolute_delay_delta_cycles": null,
           "max_absolute_delay_delta_cycles": null,
+          "admission_status_changed": true,
           "changed": true
         },
         "Vr": {
@@ -699,6 +1256,121 @@
           "mean_delay_delta_cycles": null,
           "p95_absolute_delay_delta_cycles": null,
           "max_absolute_delay_delta_cycles": null,
+          "admission_status_changed": true,
+          "changed": true
+        }
+      },
+      "p2_control_differences": {
+        "Zoom": {
+          "paired_packets": 641,
+          "mean_delay_delta_cycles": 116.42277691107644,
+          "p95_absolute_delay_delta_cycles": 1031,
+          "max_absolute_delay_delta_cycles": 1554,
+          "admission_status_changed": false,
+          "changed": true
+        },
+        "Voip": {
+          "paired_packets": 472,
+          "mean_delay_delta_cycles": 402.01271186440675,
+          "p95_absolute_delay_delta_cycles": 1885,
+          "max_absolute_delay_delta_cycles": 2390,
+          "admission_status_changed": false,
+          "changed": true
+        },
+        "Legacy1": {
+          "paired_packets": 0,
+          "mean_delay_delta_cycles": null,
+          "p95_absolute_delay_delta_cycles": null,
+          "max_absolute_delay_delta_cycles": null,
+          "admission_status_changed": true,
+          "changed": true
+        },
+        "Legacy2": {
+          "paired_packets": 0,
+          "mean_delay_delta_cycles": null,
+          "p95_absolute_delay_delta_cycles": null,
+          "max_absolute_delay_delta_cycles": null,
+          "admission_status_changed": true,
+          "changed": true
+        },
+        "Gmail": {
+          "paired_packets": 492,
+          "mean_delay_delta_cycles": 509.4939024390244,
+          "p95_absolute_delay_delta_cycles": 1633,
+          "max_absolute_delay_delta_cycles": 1672,
+          "admission_status_changed": false,
+          "changed": true
+        },
+        "Ssh": {
+          "paired_packets": 321,
+          "mean_delay_delta_cycles": 248.41744548286604,
+          "p95_absolute_delay_delta_cycles": 1323,
+          "max_absolute_delay_delta_cycles": 1557,
+          "admission_status_changed": false,
+          "changed": true
+        },
+        "Http": {
+          "paired_packets": 439,
+          "mean_delay_delta_cycles": 585.2824601366742,
+          "p95_absolute_delay_delta_cycles": 2061,
+          "max_absolute_delay_delta_cycles": 2238,
+          "admission_status_changed": false,
+          "changed": true
+        },
+        "Https": {
+          "paired_packets": 375,
+          "mean_delay_delta_cycles": 197.504,
+          "p95_absolute_delay_delta_cycles": 1245,
+          "max_absolute_delay_delta_cycles": 1555,
+          "admission_status_changed": false,
+          "changed": true
+        },
+        "Backup": {
+          "paired_packets": 559,
+          "mean_delay_delta_cycles": 2423.016100178891,
+          "p95_absolute_delay_delta_cycles": 4844,
+          "max_absolute_delay_delta_cycles": 5092,
+          "admission_status_changed": false,
+          "changed": true
+        },
+        "Sync": {
+          "paired_packets": 360,
+          "mean_delay_delta_cycles": 1540.1,
+          "p95_absolute_delay_delta_cycles": 3857,
+          "max_absolute_delay_delta_cycles": 4129,
+          "admission_status_changed": false,
+          "changed": true
+        },
+        "Video": {
+          "paired_packets": 320,
+          "mean_delay_delta_cycles": 156.596875,
+          "p95_absolute_delay_delta_cycles": 1166,
+          "max_absolute_delay_delta_cycles": 1545,
+          "admission_status_changed": false,
+          "changed": true
+        },
+        "Chat": {
+          "paired_packets": 214,
+          "mean_delay_delta_cycles": 762.4345794392524,
+          "p95_absolute_delay_delta_cycles": 3052,
+          "max_absolute_delay_delta_cycles": 3306,
+          "admission_status_changed": false,
+          "changed": true
+        },
+        "Game": {
+          "paired_packets": 320,
+          "mean_delay_delta_cycles": 502.515625,
+          "p95_absolute_delay_delta_cycles": 1641,
+          "max_absolute_delay_delta_cycles": 1676,
+          "admission_status_changed": false,
+          "changed": true
+        },
+        "Vr": {
+          "paired_packets": 214,
+          "mean_delay_delta_cycles": 245.47196261682242,
+          "p95_absolute_delay_delta_cycles": 1328,
+          "max_absolute_delay_delta_cycles": 1564,
+          "admission_status_changed": false,
           "changed": true
         }
       },
@@ -716,6 +1388,8 @@
       "copy_source_pifos": [],
       "t1_waiting_at_input_packets": 0,
       "changed_flows": 14,
+      "changed_flows_vs_p1": 14,
+      "changed_flows_vs_p2": 14,
       "buffer_occupancy_at_resume_packets": 495,
       "peak_stop_buffer_packets_from_csv": 495,
       "pre_t1_realtime_last_pop": 3064,
@@ -924,6 +1598,7 @@
           "mean_delay_delta_cycles": 370.0670826833073,
           "p95_absolute_delay_delta_cycles": 2041,
           "max_absolute_delay_delta_cycles": 2560,
+          "admission_status_changed": false,
           "changed": true
         },
         "Voip": {
@@ -931,6 +1606,7 @@
           "mean_delay_delta_cycles": 598.4724576271186,
           "p95_absolute_delay_delta_cycles": 2211,
           "max_absolute_delay_delta_cycles": 2288,
+          "admission_status_changed": false,
           "changed": true
         },
         "Legacy1": {
@@ -938,6 +1614,7 @@
           "mean_delay_delta_cycles": 1237.5232558139535,
           "p95_absolute_delay_delta_cycles": 1585,
           "max_absolute_delay_delta_cycles": 1586,
+          "admission_status_changed": false,
           "changed": true
         },
         "Legacy2": {
@@ -945,6 +1622,7 @@
           "mean_delay_delta_cycles": 1394.4150943396226,
           "p95_absolute_delay_delta_cycles": 1586,
           "max_absolute_delay_delta_cycles": 1588,
+          "admission_status_changed": false,
           "changed": true
         },
         "Gmail": {
@@ -952,6 +1630,7 @@
           "mean_delay_delta_cycles": 1213.8536585365853,
           "p95_absolute_delay_delta_cycles": 2612,
           "max_absolute_delay_delta_cycles": 2633,
+          "admission_status_changed": false,
           "changed": true
         },
         "Ssh": {
@@ -959,6 +1638,7 @@
           "mean_delay_delta_cycles": 621.9688473520249,
           "p95_absolute_delay_delta_cycles": 2312,
           "max_absolute_delay_delta_cycles": 2556,
+          "admission_status_changed": false,
           "changed": true
         },
         "Http": {
@@ -966,6 +1646,7 @@
           "mean_delay_delta_cycles": 1378,
           "p95_absolute_delay_delta_cycles": 3295,
           "max_absolute_delay_delta_cycles": 3417,
+          "admission_status_changed": false,
           "changed": true
         },
         "Https": {
@@ -973,6 +1654,7 @@
           "mean_delay_delta_cycles": 510.61333333333334,
           "p95_absolute_delay_delta_cycles": 2235,
           "max_absolute_delay_delta_cycles": 2571,
+          "admission_status_changed": false,
           "changed": true
         },
         "Backup": {
@@ -980,6 +1662,7 @@
           "mean_delay_delta_cycles": 4727.026833631485,
           "p95_absolute_delay_delta_cycles": 7613,
           "max_absolute_delay_delta_cycles": 7868,
+          "admission_status_changed": false,
           "changed": true
         },
         "Sync": {
@@ -987,6 +1670,7 @@
           "mean_delay_delta_cycles": 3281.2694444444446,
           "p95_absolute_delay_delta_cycles": 6073,
           "max_absolute_delay_delta_cycles": 6370,
+          "admission_status_changed": false,
           "changed": true
         },
         "Video": {
@@ -994,6 +1678,7 @@
           "mean_delay_delta_cycles": null,
           "p95_absolute_delay_delta_cycles": null,
           "max_absolute_delay_delta_cycles": null,
+          "admission_status_changed": true,
           "changed": true
         },
         "Chat": {
@@ -1001,6 +1686,7 @@
           "mean_delay_delta_cycles": null,
           "p95_absolute_delay_delta_cycles": null,
           "max_absolute_delay_delta_cycles": null,
+          "admission_status_changed": true,
           "changed": true
         },
         "Game": {
@@ -1008,6 +1694,7 @@
           "mean_delay_delta_cycles": null,
           "p95_absolute_delay_delta_cycles": null,
           "max_absolute_delay_delta_cycles": null,
+          "admission_status_changed": true,
           "changed": true
         },
         "Vr": {
@@ -1015,6 +1702,121 @@
           "mean_delay_delta_cycles": null,
           "p95_absolute_delay_delta_cycles": null,
           "max_absolute_delay_delta_cycles": null,
+          "admission_status_changed": true,
+          "changed": true
+        }
+      },
+      "p2_control_differences": {
+        "Zoom": {
+          "paired_packets": 641,
+          "mean_delay_delta_cycles": 372.8315132605304,
+          "p95_absolute_delay_delta_cycles": 2039,
+          "max_absolute_delay_delta_cycles": 2565,
+          "admission_status_changed": false,
+          "changed": true
+        },
+        "Voip": {
+          "paired_packets": 472,
+          "mean_delay_delta_cycles": 834.9343220338983,
+          "p95_absolute_delay_delta_cycles": 3007,
+          "max_absolute_delay_delta_cycles": 3578,
+          "admission_status_changed": false,
+          "changed": true
+        },
+        "Legacy1": {
+          "paired_packets": 0,
+          "mean_delay_delta_cycles": null,
+          "p95_absolute_delay_delta_cycles": null,
+          "max_absolute_delay_delta_cycles": null,
+          "admission_status_changed": true,
+          "changed": true
+        },
+        "Legacy2": {
+          "paired_packets": 0,
+          "mean_delay_delta_cycles": null,
+          "p95_absolute_delay_delta_cycles": null,
+          "max_absolute_delay_delta_cycles": null,
+          "admission_status_changed": true,
+          "changed": true
+        },
+        "Gmail": {
+          "paired_packets": 492,
+          "mean_delay_delta_cycles": 1226.5853658536585,
+          "p95_absolute_delay_delta_cycles": 2605,
+          "max_absolute_delay_delta_cycles": 2631,
+          "admission_status_changed": false,
+          "changed": true
+        },
+        "Ssh": {
+          "paired_packets": 321,
+          "mean_delay_delta_cycles": 619.9688473520249,
+          "p95_absolute_delay_delta_cycles": 2319,
+          "max_absolute_delay_delta_cycles": 2568,
+          "admission_status_changed": false,
+          "changed": true
+        },
+        "Http": {
+          "paired_packets": 439,
+          "mean_delay_delta_cycles": 1393.5330296127563,
+          "p95_absolute_delay_delta_cycles": 3293,
+          "max_absolute_delay_delta_cycles": 3408,
+          "admission_status_changed": false,
+          "changed": true
+        },
+        "Https": {
+          "paired_packets": 375,
+          "mean_delay_delta_cycles": 512.712,
+          "p95_absolute_delay_delta_cycles": 2244,
+          "max_absolute_delay_delta_cycles": 2566,
+          "admission_status_changed": false,
+          "changed": true
+        },
+        "Backup": {
+          "paired_packets": 559,
+          "mean_delay_delta_cycles": 5179.078711985689,
+          "p95_absolute_delay_delta_cycles": 7588,
+          "max_absolute_delay_delta_cycles": 7841,
+          "admission_status_changed": false,
+          "changed": true
+        },
+        "Sync": {
+          "paired_packets": 360,
+          "mean_delay_delta_cycles": 3522.4777777777776,
+          "p95_absolute_delay_delta_cycles": 6049,
+          "max_absolute_delay_delta_cycles": 6337,
+          "admission_status_changed": false,
+          "changed": true
+        },
+        "Video": {
+          "paired_packets": 320,
+          "mean_delay_delta_cycles": 440.31875,
+          "p95_absolute_delay_delta_cycles": 2169,
+          "max_absolute_delay_delta_cycles": 2556,
+          "admission_status_changed": false,
+          "changed": true
+        },
+        "Chat": {
+          "paired_packets": 214,
+          "mean_delay_delta_cycles": 1775.1261682242991,
+          "p95_absolute_delay_delta_cycles": 4723,
+          "max_absolute_delay_delta_cycles": 4839,
+          "admission_status_changed": false,
+          "changed": true
+        },
+        "Game": {
+          "paired_packets": 320,
+          "mean_delay_delta_cycles": 1215.796875,
+          "p95_absolute_delay_delta_cycles": 2607,
+          "max_absolute_delay_delta_cycles": 2625,
+          "admission_status_changed": false,
+          "changed": true
+        },
+        "Vr": {
+          "paired_packets": 214,
+          "mean_delay_delta_cycles": 617.8551401869158,
+          "p95_absolute_delay_delta_cycles": 2324,
+          "max_absolute_delay_delta_cycles": 2575,
+          "admission_status_changed": false,
           "changed": true
         }
       },
@@ -1191,6 +1993,8 @@
       "copied_buffered_packets": 325,
       "t1_waiting_at_input_packets": 0,
       "changed_flows": 14,
+      "changed_flows_vs_p1": 14,
+      "changed_flows_vs_p2": 14,
       "buffer_occupancy_at_resume_packets": 781,
       "peak_stop_buffer_packets_from_csv": 781,
       "pre_t1_realtime_last_pop": 4075,
@@ -1338,6 +2142,7 @@
           "mean_delay_delta_cycles": 93.83619344773791,
           "p95_absolute_delay_delta_cycles": 822,
           "max_absolute_delay_delta_cycles": 1356,
+          "admission_status_changed": false,
           "changed": true
         },
         "Voip": {
@@ -1345,6 +2150,7 @@
           "mean_delay_delta_cycles": 388.04661016949154,
           "p95_absolute_delay_delta_cycles": 1449,
           "max_absolute_delay_delta_cycles": 1862,
+          "admission_status_changed": false,
           "changed": true
         },
         "Legacy1": {
@@ -1352,6 +2158,7 @@
           "mean_delay_delta_cycles": 2797.139534883721,
           "p95_absolute_delay_delta_cycles": 2916,
           "max_absolute_delay_delta_cycles": 2931,
+          "admission_status_changed": false,
           "changed": true
         },
         "Legacy2": {
@@ -1359,6 +2166,7 @@
           "mean_delay_delta_cycles": 2165.4528301886794,
           "p95_absolute_delay_delta_cycles": 2276,
           "max_absolute_delay_delta_cycles": 2308,
+          "admission_status_changed": false,
           "changed": true
         },
         "Gmail": {
@@ -1366,6 +2174,7 @@
           "mean_delay_delta_cycles": 377.0731707317073,
           "p95_absolute_delay_delta_cycles": 1195,
           "max_absolute_delay_delta_cycles": 1241,
+          "admission_status_changed": false,
           "changed": true
         },
         "Ssh": {
@@ -1373,6 +2182,7 @@
           "mean_delay_delta_cycles": 80.47352024922118,
           "p95_absolute_delay_delta_cycles": 543,
           "max_absolute_delay_delta_cycles": 1037,
+          "admission_status_changed": false,
           "changed": true
         },
         "Http": {
@@ -1380,6 +2190,7 @@
           "mean_delay_delta_cycles": 416.25284738041,
           "p95_absolute_delay_delta_cycles": 1360,
           "max_absolute_delay_delta_cycles": 1396,
+          "admission_status_changed": false,
           "changed": true
         },
         "Https": {
@@ -1387,6 +2198,7 @@
           "mean_delay_delta_cycles": 70.432,
           "p95_absolute_delay_delta_cycles": 497,
           "max_absolute_delay_delta_cycles": 1028,
+          "admission_status_changed": false,
           "changed": true
         },
         "Backup": {
@@ -1394,6 +2206,7 @@
           "mean_delay_delta_cycles": 4619.685152057245,
           "p95_absolute_delay_delta_cycles": 6943,
           "max_absolute_delay_delta_cycles": 7114,
+          "admission_status_changed": false,
           "changed": true
         },
         "Sync": {
@@ -1401,6 +2214,7 @@
           "mean_delay_delta_cycles": 2300.161111111111,
           "p95_absolute_delay_delta_cycles": 4777,
           "max_absolute_delay_delta_cycles": 4911,
+          "admission_status_changed": false,
           "changed": true
         },
         "Video": {
@@ -1408,6 +2222,7 @@
           "mean_delay_delta_cycles": null,
           "p95_absolute_delay_delta_cycles": null,
           "max_absolute_delay_delta_cycles": null,
+          "admission_status_changed": true,
           "changed": true
         },
         "Chat": {
@@ -1415,6 +2230,7 @@
           "mean_delay_delta_cycles": null,
           "p95_absolute_delay_delta_cycles": null,
           "max_absolute_delay_delta_cycles": null,
+          "admission_status_changed": true,
           "changed": true
         },
         "Game": {
@@ -1422,6 +2238,7 @@
           "mean_delay_delta_cycles": null,
           "p95_absolute_delay_delta_cycles": null,
           "max_absolute_delay_delta_cycles": null,
+          "admission_status_changed": true,
           "changed": true
         },
         "Vr": {
@@ -1429,6 +2246,121 @@
           "mean_delay_delta_cycles": null,
           "p95_absolute_delay_delta_cycles": null,
           "max_absolute_delay_delta_cycles": null,
+          "admission_status_changed": true,
+          "changed": true
+        }
+      },
+      "p2_control_differences": {
+        "Zoom": {
+          "paired_packets": 641,
+          "mean_delay_delta_cycles": 96.600624024961,
+          "p95_absolute_delay_delta_cycles": 820,
+          "max_absolute_delay_delta_cycles": 1361,
+          "admission_status_changed": false,
+          "changed": true
+        },
+        "Voip": {
+          "paired_packets": 472,
+          "mean_delay_delta_cycles": 624.5084745762712,
+          "p95_absolute_delay_delta_cycles": 2801,
+          "max_absolute_delay_delta_cycles": 3216,
+          "admission_status_changed": false,
+          "changed": true
+        },
+        "Legacy1": {
+          "paired_packets": 0,
+          "mean_delay_delta_cycles": null,
+          "p95_absolute_delay_delta_cycles": null,
+          "max_absolute_delay_delta_cycles": null,
+          "admission_status_changed": true,
+          "changed": true
+        },
+        "Legacy2": {
+          "paired_packets": 0,
+          "mean_delay_delta_cycles": null,
+          "p95_absolute_delay_delta_cycles": null,
+          "max_absolute_delay_delta_cycles": null,
+          "admission_status_changed": true,
+          "changed": true
+        },
+        "Gmail": {
+          "paired_packets": 492,
+          "mean_delay_delta_cycles": 389.8048780487805,
+          "p95_absolute_delay_delta_cycles": 1241,
+          "max_absolute_delay_delta_cycles": 1358,
+          "admission_status_changed": false,
+          "changed": true
+        },
+        "Ssh": {
+          "paired_packets": 321,
+          "mean_delay_delta_cycles": 78.47352024922118,
+          "p95_absolute_delay_delta_cycles": 550,
+          "max_absolute_delay_delta_cycles": 1058,
+          "admission_status_changed": false,
+          "changed": true
+        },
+        "Http": {
+          "paired_packets": 439,
+          "mean_delay_delta_cycles": 431.7858769931663,
+          "p95_absolute_delay_delta_cycles": 1377,
+          "max_absolute_delay_delta_cycles": 1436,
+          "admission_status_changed": false,
+          "changed": true
+        },
+        "Https": {
+          "paired_packets": 375,
+          "mean_delay_delta_cycles": 72.53066666666666,
+          "p95_absolute_delay_delta_cycles": 506,
+          "max_absolute_delay_delta_cycles": 1041,
+          "admission_status_changed": false,
+          "changed": true
+        },
+        "Backup": {
+          "paired_packets": 559,
+          "mean_delay_delta_cycles": 5071.737030411449,
+          "p95_absolute_delay_delta_cycles": 7886,
+          "max_absolute_delay_delta_cycles": 7992,
+          "admission_status_changed": false,
+          "changed": true
+        },
+        "Sync": {
+          "paired_packets": 360,
+          "mean_delay_delta_cycles": 2541.3694444444445,
+          "p95_absolute_delay_delta_cycles": 5704,
+          "max_absolute_delay_delta_cycles": 5960,
+          "admission_status_changed": false,
+          "changed": true
+        },
+        "Video": {
+          "paired_packets": 320,
+          "mean_delay_delta_cycles": 67.1,
+          "p95_absolute_delay_delta_cycles": 485,
+          "max_absolute_delay_delta_cycles": 1040,
+          "admission_status_changed": false,
+          "changed": true
+        },
+        "Chat": {
+          "paired_packets": 214,
+          "mean_delay_delta_cycles": 366.57943925233644,
+          "p95_absolute_delay_delta_cycles": 1341,
+          "max_absolute_delay_delta_cycles": 1392,
+          "admission_status_changed": false,
+          "changed": true
+        },
+        "Game": {
+          "paired_packets": 320,
+          "mean_delay_delta_cycles": 258.9375,
+          "p95_absolute_delay_delta_cycles": 883,
+          "max_absolute_delay_delta_cycles": 1040,
+          "admission_status_changed": false,
+          "changed": true
+        },
+        "Vr": {
+          "paired_packets": 214,
+          "mean_delay_delta_cycles": 78.51869158878505,
+          "p95_absolute_delay_delta_cycles": 604,
+          "max_absolute_delay_delta_cycles": 1046,
+          "admission_status_changed": false,
           "changed": true
         }
       },
@@ -1445,13 +2377,15 @@
       "copy_source_pifos": [],
       "t1_waiting_at_input_packets": 0,
       "changed_flows": 14,
+      "changed_flows_vs_p1": 14,
+      "changed_flows_vs_p2": 14,
       "buffer_occupancy_at_resume_packets": 624,
       "peak_stop_buffer_packets_from_csv": 624,
       "pre_t1_realtime_last_pop": 4536,
       "realtime_steady_cycle": 6986
     }
   },
-  "difference_test": "paired p95 absolute delay difference > 10 cycles, packets outstanding/generated from t1 through 18000; new flows count as changed",
+  "difference_test": "paired p95 absolute delay difference > 10 cycles, packets outstanding/generated from t1 through 18000; admission differences count as changed",
   "realtime_steady_metric": "first 300-cycle trailing window within 10% of 0.20, sustained 300 cycles, after pre-t1 realtime packets leave",
   "realtime_weight_share": 0.35294117647058826,
   "realtime_offered_steady_rate": 0.2

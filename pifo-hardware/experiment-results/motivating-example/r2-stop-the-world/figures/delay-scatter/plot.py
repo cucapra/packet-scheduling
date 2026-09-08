@@ -22,27 +22,27 @@ COLORS = ('#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e3
  '#17becf')
 PANELS = [{'title': 'R2: stop the world',
   'start': 2000,
-  'markers': [(0, '#1f77b4', '-', 'C1 start'), (31, '#ff7f0e', '--', 'C1 commit accepted'),
-              (44, '#2ca02c', '-.', 'C1 ready_for_next_commit'),
-              (13, '#9467bd', ':', 'C1 old-tree captured (not drained)'),
-              (1037, '#1f77b4', '-', 'C2 start'), (1038, '#ff7f0e', '--', 'C2 commit accepted'),
-              (1041, '#2ca02c', '-.', 'C2 ready_for_next_commit'),
-              (13, '#9467bd', ':', 'C2 old-tree captured (not drained)'),
-              (1037, '0.4', '--', 'traffic resumed')],
-  'spans': [(0, 44, '#dbeafe', 'C1: install commit'),
-            (1037, 1041, '#ffedd5', 'C2: cleanup commit')],
-  'notes': 'C1: start=2000  commit accepted=2031  ready_for_next_commit=2044\n'
-           'C2: start=3037  commit accepted=3038  ready_for_next_commit=3041\n'
-           'old tree captured=2013 (shared by C1/C2)\n'
-           'published: install=2034, cleanup=3040\n'
-           'config=16 inst / 34 cycles to publication\n'
+  'markers': [(0, '#1f77b4', '-', 'C1 start'), (39, '#ff7f0e', '--', 'C1 commit accepted'),
+              (58, '#2ca02c', '-.', 'C1 ready_for_next_commit'),
+              (12, '#9467bd', ':', 'C1 old-tree captured (not drained)'),
+              (1036, '#1f77b4', '-', 'C2 start'), (1036, '#ff7f0e', '--', 'C2 commit accepted'),
+              (1040, '#2ca02c', '-.', 'C2 ready_for_next_commit'),
+              (12, '#9467bd', ':', 'C2 old-tree captured (not drained)'),
+              (1036, '0.4', '--', 'traffic resumed')],
+  'spans': [(0, 58, '#dbeafe', 'C1: install commit'),
+            (1036, 1040, '#ffedd5', 'C2: cleanup commit')],
+  'notes': 'C1: start=2000  commit accepted=2039  ready_for_next_commit=2058\n'
+           'C2: start=3036  commit accepted=3036  ready_for_next_commit=3040\n'
+           'old tree captured=2012 (shared by C1/C2)\n'
+           'published: install=2042, cleanup=3039\n'
+           'config=25 inst / 42 cycles to publication\n'
            'cleanup=1 inst / 3 cycles to publication (guard wait included)\n'
-           'bank replay: install=10, cleanup=1 cycles; ≤1 instruction accepted/cycle\n'
-           'resumed=3037  retained=137  peak buffer=417 packets  stop=1024 cycles',
-  'accounting': 'config=16 inst / 34 cycles to publication\n'
+           'bank replay: install=16, cleanup=1 cycles; ≤1 instruction accepted/cycle\n'
+           'resumed=3036  retained=203  peak buffer=483 packets  stop=1024 cycles',
+  'accounting': 'config=25 inst / 42 cycles to publication\n'
                 'cleanup=1 inst / 3 cycles to publication (guard wait included)\n'
-                'bank replay: install=10, cleanup=1 cycles\n'
-                'STW stop=1024 cycles; retained=137; peak buffer=417 packets'}]
+                'bank replay: install=16, cleanup=1 cycles\n'
+                'STW stop=1024 cycles; retained=203; peak buffer=483 packets'}]
 
 with (HERE / 'data.csv').open(newline="", encoding="utf-8-sig") as stream:
     rows = list(csv.DictReader(stream))
@@ -75,7 +75,8 @@ def event_legend(axis, panel):
     resumes = {label: cycle + panel["start"] for cycle, _, _, label in panel["markers"]
                if label == "traffic resumed"}
     data = [(handle, f"{label} = {resumes[label]}" if label in resumes else label)
-            for handle, label in zip(handles, labels) if not label.startswith(("C1", "C2"))]
+            for handle, label in zip(handles, labels)
+            if not label.startswith(tuple(title.split(":")[0] for _, _, _, title in panel["spans"]))]
     if data:
         data_legend = axis.legend(*zip(*data), loc="upper right", fontsize=8)
         axis.add_artist(data_legend)

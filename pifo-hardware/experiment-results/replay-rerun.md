@@ -1,5 +1,10 @@
 # Shared-FIFO replay experiment rerun
 
+> Historical record: the motivating-example rows below use the former
+> root-terminated/folded-leaf topology. They are superseded by the complete
+> [explicit FIFO-leaf rerun](motivating-example/README.md) from 2026-09-08 and
+> should not be cited as current motivating-example results.
+
 Rerun on 2026-09-07 after fast-forwarding `pifo-hardware` to
 `34e35d235735314f87c06f6c7b0c3dce62ec97a6` (shared-FIFO mapper replay,
 256 controller entries). All six simulations completed and all 14 current

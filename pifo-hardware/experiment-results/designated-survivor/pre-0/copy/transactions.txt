@@ -1,0 +1,104 @@
+schema=pifo-transactions-v1 rootEngine=1 rootVPifoId=1 numEngines=4 numVPifos=8 maxPacketPriority=1048576 fifoDepth=128 prefetchBufferDepth=16
+at=init name=initial-tree mode=direct command=UpdateBrainEngine engineId=1 vPifoId=1 flowId=0 data=2
+at=init name=initial-tree mode=direct command=UpdateBrainFlowState engineId=1 vPifoId=1 flowId=9 data=1
+at=init name=initial-tree mode=direct command=UpdateBrainFlowState engineId=1 vPifoId=1 flowId=10 data=3
+at=init name=initial-tree mode=direct command=UpdateBrainEngine engineId=3 vPifoId=1 flowId=0 data=3
+at=init name=initial-tree mode=direct command=UpdateBrainEngine engineId=3 vPifoId=2 flowId=0 data=3
+at=init name=initial-tree mode=direct command=UpdateMapperPre engineId=1 vPifoId=1 flowId=0 data=1
+at=init name=initial-tree mode=direct command=UpdateMapperPost engineId=1 vPifoId=1 flowId=9 data=25
+at=init name=initial-tree mode=direct command=UpdateMapperPre engineId=3 vPifoId=1 flowId=0 data=1
+at=init name=initial-tree mode=direct command=UpdateMapperPost engineId=3 vPifoId=1 flowId=25 data=1
+at=init name=initial-tree mode=direct command=UpdateMapperPre engineId=1 vPifoId=2 flowId=0 data=1
+at=init name=initial-tree mode=direct command=UpdateMapperPost engineId=1 vPifoId=1 flowId=10 data=26
+at=init name=initial-tree mode=direct command=UpdateMapperPre engineId=3 vPifoId=2 flowId=0 data=2
+at=init name=initial-tree mode=direct command=UpdateMapperPost engineId=3 vPifoId=2 flowId=26 data=2
+at=init name=initial-tree mode=direct command=CommitMapper engineId=1 vPifoId=0 flowId=0 data=0
+at=0 name=replace mode=stop_the_world_pop before=p1 after=p2b drainRoot=2:1 gateFlows=3 command=StopWorld engineId=1 vPifoId=1 flowId=0 data=0
+at=0 name=replace mode=stop_the_world_pop before=p1 after=p2b drainRoot=2:1 gateFlows=3 command=CopyPifoEngine engineId=3 vPifoId=0 flowId=0 data=4
+at=0 name=replace mode=stop_the_world_pop before=p1 after=p2b drainRoot=2:1 gateFlows=3 command=CopyPifoEngine engineId=1 vPifoId=0 flowId=0 data=2
+at=0 name=replace mode=stop_the_world_pop before=p1 after=p2b drainRoot=2:1 gateFlows=3 command=UpdateBrainEngine engineId=1 vPifoId=1 flowId=0 data=0
+at=0 name=replace mode=stop_the_world_pop before=p1 after=p2b drainRoot=2:1 gateFlows=3 command=UpdateBrainFlowState engineId=1 vPifoId=1 flowId=9 data=0
+at=0 name=replace mode=stop_the_world_pop before=p1 after=p2b drainRoot=2:1 gateFlows=3 command=UpdateBrainFlowState engineId=1 vPifoId=1 flowId=10 data=0
+at=0 name=replace mode=stop_the_world_pop before=p1 after=p2b drainRoot=2:1 gateFlows=3 command=UpdateBrainEngine engineId=3 vPifoId=1 flowId=0 data=0
+at=0 name=replace mode=stop_the_world_pop before=p1 after=p2b drainRoot=2:1 gateFlows=3 command=UpdateBrainEngine engineId=3 vPifoId=2 flowId=0 data=0
+at=0 name=replace mode=stop_the_world_pop before=p1 after=p2b drainRoot=2:1 gateFlows=3 command=UpdateMapperPre engineId=1 vPifoId=1 flowId=0 data=0
+at=0 name=replace mode=stop_the_world_pop before=p1 after=p2b drainRoot=2:1 gateFlows=3 command=UpdateMapperPost engineId=1 vPifoId=1 flowId=9 data=0
+at=0 name=replace mode=stop_the_world_pop before=p1 after=p2b drainRoot=2:1 gateFlows=3 command=UpdateMapperPre engineId=3 vPifoId=1 flowId=0 data=0
+at=0 name=replace mode=stop_the_world_pop before=p1 after=p2b drainRoot=2:1 gateFlows=3 command=UpdateMapperPost engineId=3 vPifoId=1 flowId=25 data=0
+at=0 name=replace mode=stop_the_world_pop before=p1 after=p2b drainRoot=2:1 gateFlows=3 command=UpdateMapperPre engineId=1 vPifoId=2 flowId=0 data=0
+at=0 name=replace mode=stop_the_world_pop before=p1 after=p2b drainRoot=2:1 gateFlows=3 command=UpdateMapperPost engineId=1 vPifoId=1 flowId=10 data=0
+at=0 name=replace mode=stop_the_world_pop before=p1 after=p2b drainRoot=2:1 gateFlows=3 command=UpdateMapperPre engineId=3 vPifoId=2 flowId=0 data=0
+at=0 name=replace mode=stop_the_world_pop before=p1 after=p2b drainRoot=2:1 gateFlows=3 command=UpdateMapperPost engineId=3 vPifoId=2 flowId=26 data=0
+at=0 name=replace mode=stop_the_world_pop before=p1 after=p2b drainRoot=2:1 gateFlows=3 command=UpdateMapperPost engineId=2 vPifoId=1 flowId=9 data=33
+at=0 name=replace mode=stop_the_world_pop before=p1 after=p2b drainRoot=2:1 gateFlows=3 command=UpdateMapperPost engineId=4 vPifoId=1 flowId=25 data=1
+at=0 name=replace mode=stop_the_world_pop before=p1 after=p2b drainRoot=2:1 gateFlows=3 command=UpdateMapperPost engineId=2 vPifoId=1 flowId=10 data=34
+at=0 name=replace mode=stop_the_world_pop before=p1 after=p2b drainRoot=2:1 gateFlows=3 command=UpdateMapperPost engineId=4 vPifoId=2 flowId=26 data=2
+at=0 name=replace mode=stop_the_world_pop before=p1 after=p2b drainRoot=2:1 gateFlows=3 command=UpdateBrainEngine engineId=2 vPifoId=2 flowId=0 data=2
+at=0 name=replace mode=stop_the_world_pop before=p1 after=p2b drainRoot=2:1 gateFlows=3 command=UpdateBrainFlowState engineId=2 vPifoId=2 flowId=17 data=1
+at=0 name=replace mode=stop_the_world_pop before=p1 after=p2b drainRoot=2:1 gateFlows=3 command=UpdateBrainFlowState engineId=2 vPifoId=2 flowId=18 data=3
+at=0 name=replace mode=stop_the_world_pop before=p1 after=p2b drainRoot=2:1 gateFlows=3 command=UpdateBrainFlowState engineId=2 vPifoId=2 flowId=19 data=3
+at=0 name=replace mode=stop_the_world_pop before=p1 after=p2b drainRoot=2:1 gateFlows=3 command=UpdateBrainEngine engineId=3 vPifoId=1 flowId=0 data=1
+at=0 name=replace mode=stop_the_world_pop before=p1 after=p2b drainRoot=2:1 gateFlows=3 command=UpdateBrainEngine engineId=4 vPifoId=3 flowId=0 data=3
+at=0 name=replace mode=stop_the_world_pop before=p1 after=p2b drainRoot=2:1 gateFlows=3 command=UpdateBrainEngine engineId=4 vPifoId=4 flowId=0 data=3
+at=0 name=replace mode=stop_the_world_pop before=p1 after=p2b drainRoot=2:1 gateFlows=3 command=UpdateBrainEngine engineId=4 vPifoId=5 flowId=0 data=3
+at=0 name=replace mode=stop_the_world_pop before=p1 after=p2b drainRoot=2:1 gateFlows=3 command=UpdateMapperPre engineId=2 vPifoId=1 flowId=0 data=2
+at=0 name=replace mode=stop_the_world_pop before=p1 after=p2b drainRoot=2:1 gateFlows=3 command=UpdateMapperPost engineId=2 vPifoId=2 flowId=17 data=35
+at=0 name=replace mode=stop_the_world_pop before=p1 after=p2b drainRoot=2:1 gateFlows=3 command=UpdateMapperPre engineId=4 vPifoId=1 flowId=0 data=3
+at=0 name=replace mode=stop_the_world_pop before=p1 after=p2b drainRoot=2:1 gateFlows=3 command=UpdateMapperPost engineId=4 vPifoId=3 flowId=33 data=1
+at=0 name=replace mode=stop_the_world_pop before=p1 after=p2b drainRoot=2:1 gateFlows=3 command=UpdateMapperPre engineId=2 vPifoId=2 flowId=0 data=2
+at=0 name=replace mode=stop_the_world_pop before=p1 after=p2b drainRoot=2:1 gateFlows=3 command=UpdateMapperPost engineId=2 vPifoId=2 flowId=18 data=25
+at=0 name=replace mode=stop_the_world_pop before=p1 after=p2b drainRoot=2:1 gateFlows=3 command=UpdateMapperPre engineId=3 vPifoId=2 flowId=0 data=1
+at=0 name=replace mode=stop_the_world_pop before=p1 after=p2b drainRoot=2:1 gateFlows=3 command=UpdateMapperPost engineId=3 vPifoId=1 flowId=26 data=36
+at=0 name=replace mode=stop_the_world_pop before=p1 after=p2b drainRoot=2:1 gateFlows=3 command=UpdateMapperPre engineId=4 vPifoId=2 flowId=0 data=4
+at=0 name=replace mode=stop_the_world_pop before=p1 after=p2b drainRoot=2:1 gateFlows=3 command=UpdateMapperPost engineId=4 vPifoId=4 flowId=34 data=2
+at=0 name=replace mode=stop_the_world_pop before=p1 after=p2b drainRoot=2:1 gateFlows=3 command=UpdateMapperPre engineId=2 vPifoId=3 flowId=0 data=2
+at=0 name=replace mode=stop_the_world_pop before=p1 after=p2b drainRoot=2:1 gateFlows=3 command=UpdateMapperPost engineId=2 vPifoId=2 flowId=19 data=25
+at=0 name=replace mode=stop_the_world_pop before=p1 after=p2b drainRoot=2:1 gateFlows=3 command=UpdateMapperPre engineId=3 vPifoId=3 flowId=0 data=1
+at=0 name=replace mode=stop_the_world_pop before=p1 after=p2b drainRoot=2:1 gateFlows=3 command=UpdateMapperPost engineId=3 vPifoId=1 flowId=27 data=37
+at=0 name=replace mode=stop_the_world_pop before=p1 after=p2b drainRoot=2:1 gateFlows=3 command=UpdateMapperPre engineId=4 vPifoId=3 flowId=0 data=5
+at=0 name=replace mode=stop_the_world_pop before=p1 after=p2b drainRoot=2:1 gateFlows=3 command=UpdateMapperPost engineId=4 vPifoId=5 flowId=35 data=3
+at=0 name=replace mode=stop_the_world_pop before=p1 after=p2b drainRoot=2:1 gateFlows=3 command=UpdateBrainEngine engineId=1 vPifoId=1 flowId=0 data=2
+at=0 name=replace mode=stop_the_world_pop before=p1 after=p2b drainRoot=2:1 gateFlows=3 command=UpdateBrainFlowState engineId=1 vPifoId=1 flowId=9 data=2
+at=0 name=replace mode=stop_the_world_pop before=p1 after=p2b drainRoot=2:1 gateFlows=3 command=UpdateMapperPre engineId=1 vPifoId=1 flowId=0 data=1
+at=0 name=replace mode=stop_the_world_pop before=p1 after=p2b drainRoot=2:1 gateFlows=3 command=UpdateMapperPost engineId=1 vPifoId=1 flowId=9 data=18
+at=0 name=replace mode=stop_the_world_pop before=p1 after=p2b drainRoot=2:1 gateFlows=3 command=UpdateBrainFlowState engineId=1 vPifoId=1 flowId=10 data=2
+at=0 name=replace mode=stop_the_world_pop before=p1 after=p2b drainRoot=2:1 gateFlows=3 command=UpdateMapperPre engineId=1 vPifoId=2 flowId=0 data=1
+at=0 name=replace mode=stop_the_world_pop before=p1 after=p2b drainRoot=2:1 gateFlows=3 command=UpdateMapperPost engineId=1 vPifoId=1 flowId=10 data=18
+at=0 name=replace mode=stop_the_world_pop before=p1 after=p2b drainRoot=2:1 gateFlows=3 command=UpdateBrainFlowState engineId=1 vPifoId=1 flowId=11 data=2
+at=0 name=replace mode=stop_the_world_pop before=p1 after=p2b drainRoot=2:1 gateFlows=3 command=UpdateMapperPre engineId=1 vPifoId=3 flowId=0 data=1
+at=0 name=replace mode=stop_the_world_pop before=p1 after=p2b drainRoot=2:1 gateFlows=3 command=UpdateMapperPost engineId=1 vPifoId=1 flowId=11 data=18
+at=0 name=replace mode=stop_the_world_pop before=p1 after=p2b drainRoot=2:1 gateFlows=3 command=UpdateMapperPost engineId=1 vPifoId=1 flowId=15 data=17
+at=0 name=replace mode=stop_the_world_pop before=p1 after=p2b drainRoot=2:1 gateFlows=3 command=PrefillPifo engineId=1 vPifoId=1 flowId=15 data=0
+at=0 name=replace mode=stop_the_world_pop before=p1 after=p2b drainRoot=2:1 gateFlows=3 command=UpdateRoot engineId=1 vPifoId=1 flowId=0 data=0
+at=0 name=replace mode=stop_the_world_pop before=p1 after=p2b drainRoot=2:1 gateFlows=3 command=CommitMapper engineId=1 vPifoId=0 flowId=0 data=0
+at=0 name=replace-cleanup mode=direct cleanupOf=replace command=GuardDrain engineId=2 vPifoId=1 flowId=0 data=0
+at=0 name=replace-cleanup mode=direct cleanupOf=replace command=GuardDrain engineId=4 vPifoId=1 flowId=0 data=0
+at=0 name=replace-cleanup mode=direct cleanupOf=replace command=GuardDrain engineId=4 vPifoId=2 flowId=0 data=0
+at=0 name=replace-cleanup mode=direct cleanupOf=replace command=UpdateBrainEngine engineId=2 vPifoId=1 flowId=0 data=0
+at=0 name=replace-cleanup mode=direct cleanupOf=replace command=UpdateBrainFlowState engineId=2 vPifoId=1 flowId=9 data=0
+at=0 name=replace-cleanup mode=direct cleanupOf=replace command=UpdateBrainFlowState engineId=2 vPifoId=1 flowId=10 data=0
+at=0 name=replace-cleanup mode=direct cleanupOf=replace command=UpdateBrainEngine engineId=4 vPifoId=1 flowId=0 data=0
+at=0 name=replace-cleanup mode=direct cleanupOf=replace command=UpdateBrainEngine engineId=4 vPifoId=2 flowId=0 data=0
+at=0 name=replace-cleanup mode=direct cleanupOf=replace command=UpdateMapperPost engineId=2 vPifoId=1 flowId=9 data=0
+at=0 name=replace-cleanup mode=direct cleanupOf=replace command=UpdateMapperPost engineId=4 vPifoId=1 flowId=25 data=0
+at=0 name=replace-cleanup mode=direct cleanupOf=replace command=UpdateMapperPost engineId=2 vPifoId=1 flowId=10 data=0
+at=0 name=replace-cleanup mode=direct cleanupOf=replace command=UpdateMapperPost engineId=4 vPifoId=2 flowId=26 data=0
+at=0 name=replace-cleanup mode=direct cleanupOf=replace command=UpdateBrainState engineId=2 vPifoId=1 flowId=0 data=0
+at=0 name=replace-cleanup mode=direct cleanupOf=replace command=UpdateBrainState engineId=4 vPifoId=1 flowId=0 data=0
+at=0 name=replace-cleanup mode=direct cleanupOf=replace command=UpdateBrainState engineId=4 vPifoId=2 flowId=0 data=0
+at=0 name=replace-cleanup mode=direct cleanupOf=replace command=UpdateMapperPre engineId=1 vPifoId=1 flowId=0 data=0
+at=0 name=replace-cleanup mode=direct cleanupOf=replace command=UpdateMapperPre engineId=1 vPifoId=2 flowId=0 data=0
+at=0 name=replace-cleanup mode=direct cleanupOf=replace command=UpdateMapperPre engineId=1 vPifoId=3 flowId=0 data=0
+at=0 name=replace-cleanup mode=direct cleanupOf=replace command=UpdateRoot engineId=2 vPifoId=2 flowId=0 data=0
+at=0 name=replace-cleanup mode=direct cleanupOf=replace command=CommitMapper engineId=1 vPifoId=0 flowId=0 data=0
+at=0 name=replace-reclaim mode=direct cleanupOf=replace-cleanup command=ClearPifoEngine engineId=1 vPifoId=0 flowId=0 data=0
+at=0 name=replace-reclaim mode=direct cleanupOf=replace-cleanup command=UpdateBrainEngine engineId=1 vPifoId=1 flowId=0 data=0
+at=0 name=replace-reclaim mode=direct cleanupOf=replace-cleanup command=UpdateBrainFlowState engineId=1 vPifoId=1 flowId=9 data=0
+at=0 name=replace-reclaim mode=direct cleanupOf=replace-cleanup command=UpdateMapperPost engineId=1 vPifoId=1 flowId=9 data=0
+at=0 name=replace-reclaim mode=direct cleanupOf=replace-cleanup command=UpdateBrainFlowState engineId=1 vPifoId=1 flowId=10 data=0
+at=0 name=replace-reclaim mode=direct cleanupOf=replace-cleanup command=UpdateMapperPost engineId=1 vPifoId=1 flowId=10 data=0
+at=0 name=replace-reclaim mode=direct cleanupOf=replace-cleanup command=UpdateBrainFlowState engineId=1 vPifoId=1 flowId=11 data=0
+at=0 name=replace-reclaim mode=direct cleanupOf=replace-cleanup command=UpdateMapperPost engineId=1 vPifoId=1 flowId=11 data=0
+at=0 name=replace-reclaim mode=direct cleanupOf=replace-cleanup command=UpdateMapperPost engineId=1 vPifoId=1 flowId=15 data=0
+at=0 name=replace-reclaim mode=direct cleanupOf=replace-cleanup command=UpdateBrainState engineId=1 vPifoId=1 flowId=0 data=0
+at=0 name=replace-reclaim mode=direct cleanupOf=replace-cleanup command=CommitMapper engineId=1 vPifoId=0 flowId=0 data=0

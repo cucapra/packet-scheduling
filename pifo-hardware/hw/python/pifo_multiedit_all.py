@@ -21,7 +21,8 @@ def main():
             path = RESULTS / run
             cli("pifo_multiedit_compiler.py", RESOURCES / "request.json", "--mechanism", run,
                 "--output", path / "transactions.txt")
-            extra = ["--unadmitted-flows", "11,12,13,14"] if run == "control" else []
+            unadmitted = {"control": "11,12,13,14", "control-p2": "3,4"}.get(run)
+            extra = ["--unadmitted-flows", unadmitted] if unadmitted else []
             cli("pifo_simulator.py", "--transactions", path / "transactions.txt",
                 "--traffic", RESOURCES / "traffic.json", "--output-dir", path,
                 "--queue-depth", cfg["queue_depth"], "--link-bytes-per-cycle", cfg["link_bytes_per_cycle"],

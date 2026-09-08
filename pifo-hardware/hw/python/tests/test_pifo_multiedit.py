@@ -38,6 +38,17 @@ class MultiEditTest(unittest.TestCase):
                              for c in first.commands))
         self.assertFalse(any(c.engine_id == 3 and c.vpifo_id in {5, 6, 7, 8} for c in first.commands))
 
+    def test_p2_control_starts_in_p2_without_a_transition(self):
+        p1, _ = compile_request(self.spec, "control")
+        p2, report = compile_request(self.spec, "control-p2")
+        self.assertEqual(p2.transactions, ())
+        self.assertEqual(report["unadmitted_flows"], [3, 4])
+        self.assertNotEqual(p1.initial.commands, p2.initial.commands)
+        configured_leaves = {(c.engine_id, c.vpifo_id) for c in p2.initial.commands
+                             if c.command == "UpdateBrainEngine" and c.data == 3}
+        self.assertEqual(configured_leaves, {(3, flow) for flow in range(1, 3)} |
+                         {(3, flow) for flow in range(5, 15)})
+
     def test_copy_moves_all_three_levels_and_preserves_old_token_ids(self):
         program, report = compile_request(self.spec, "relocate")
         commands = program.transactions[0].commands

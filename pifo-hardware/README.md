@@ -74,7 +74,7 @@ This contains a PifoMesh Implementation. Current implementation assumes the inse
 
 The [large-tree multi-edit experiment](experiments/multi-edit/README.md) compares
 localized edits, hardware SP prefill, whole-PE copy plus prefill, and a lossless
-reset baseline, with a shared unchanged-policy control trace.
+reset baseline, with steady-p1 and steady-p2 controls replaying the same trace.
 
 The [designated-survivor experiment](experiments/designated-survivor/README.md)
 compares the Strict* link with a materialized wrapper on a reserved PE, including
@@ -164,8 +164,17 @@ sbt 'runMain rio.sim.DrainGuardSim' 'runMain rio.sim.ControlIngressRateSim'
 PIFO_RTL_SMOKE=1 .venv/bin/python -m unittest discover -s hw/python/tests -p test_pifo_cleanup.py
 ```
 
-The four motivating-example runs each generate an independent throughput and packet-delay scatter figure. R2–R4 also
-share one scatter figure, and R3/R4 share one throughput comparison:
+The four motivating-example runs model p1 as `SP → per-flow FIFO` and p2b as
+`SP → {zoom FIFO, RR → gmail/spotify FIFOs}`; no flow terminates at an internal
+scheduler. The canonical runner selects the merged evaluation top level and
+Verilator, matching the image used by the newer explicit-leaf experiments. Its
+4096-entry per-flow packet-metadata FIFOs are distinct from the unbounded
+lossless source gate; the validation reports the measured peak rather than
+treating either as a global hardware-buffer claim.
+
+Each run generates an independent throughput and packet-delay scatter figure. All
+four are rerun by one invocation; R2–R4 also share one scatter figure, and R3/R4
+share one throughput comparison:
 
 ```bash
 python3 -m venv .venv

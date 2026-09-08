@@ -22,23 +22,23 @@ COLORS = ('#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e3
  '#17becf')
 PANELS = [{'title': 'R1: add Spotify arm',
   'start': 2000,
-  'markers': [(0, '#1f77b4', '-', 'C1 start'), (13, '#ff7f0e', '--', 'C1 commit accepted'),
-              (17, '#2ca02c', '-.', 'C1 ready_for_next_commit'),
-              (15, '#9467bd', ':', 'C1 old-tree-drained (not required)'),
-              (17, '#1f77b4', '-', 'C2 start'), (18, '#ff7f0e', '--', 'C2 commit accepted'),
-              (22, '#2ca02c', '-.', 'C2 ready_for_next_commit'),
-              (15, '#9467bd', ':', 'C2 old-tree-drained (not required)')],
-  'spans': [(0, 17, '#dbeafe', 'C1: install commit'), (17, 22, '#ffedd5', 'C2: cleanup commit')],
-  'notes': 'C1: start=2000  commit accepted=2013  ready_for_next_commit=2017\n'
-           'C2: start=2017  commit accepted=2018  ready_for_next_commit=2022\n'
-           'no old-tree drain required=2015 (shared by C1/C2)\n'
-           'published: install=2015, cleanup=2021\n'
-           'config=4 inst / 15 cycles to publication\n'
+  'markers': [(0, '#1f77b4', '-', 'C1 start'), (12, '#ff7f0e', '--', 'C1 commit accepted'),
+              (18, '#2ca02c', '-.', 'C1 ready_for_next_commit'),
+              (14, '#9467bd', ':', 'C1 old-tree-drained (not required)'),
+              (18, '#1f77b4', '-', 'C2 start'), (19, '#ff7f0e', '--', 'C2 commit accepted'),
+              (23, '#2ca02c', '-.', 'C2 ready_for_next_commit'),
+              (14, '#9467bd', ':', 'C2 old-tree-drained (not required)')],
+  'spans': [(0, 18, '#dbeafe', 'C1: install commit'), (18, 23, '#ffedd5', 'C2: cleanup commit')],
+  'notes': 'C1: start=2000  commit accepted=2012  ready_for_next_commit=2018\n'
+           'C2: start=2018  commit accepted=2019  ready_for_next_commit=2023\n'
+           'no old-tree drain required=2014 (shared by C1/C2)\n'
+           'published: install=2014, cleanup=2022\n'
+           'config=7 inst / 14 cycles to publication\n'
            'cleanup=1 inst / 4 cycles to publication (guard wait included)\n'
-           'bank replay: install=2, cleanup=1 cycles; ≤1 instruction accepted/cycle',
-  'accounting': 'config=4 inst / 15 cycles to publication\n'
+           'bank replay: install=4, cleanup=1 cycles; ≤1 instruction accepted/cycle',
+  'accounting': 'config=7 inst / 14 cycles to publication\n'
                 'cleanup=1 inst / 4 cycles to publication (guard wait included)\n'
-                'bank replay: install=2, cleanup=1 cycles'}]
+                'bank replay: install=4, cleanup=1 cycles'}]
 
 with (HERE / 'data.csv').open(newline="", encoding="utf-8-sig") as stream:
     rows = list(csv.DictReader(stream))
@@ -71,7 +71,8 @@ def event_legend(axis, panel):
     resumes = {label: cycle + panel["start"] for cycle, _, _, label in panel["markers"]
                if label == "traffic resumed"}
     data = [(handle, f"{label} = {resumes[label]}" if label in resumes else label)
-            for handle, label in zip(handles, labels) if not label.startswith(("C1", "C2"))]
+            for handle, label in zip(handles, labels)
+            if not label.startswith(tuple(title.split(":")[0] for _, _, _, title in panel["spans"]))]
     if data:
         data_legend = axis.legend(*zip(*data), loc="upper right", fontsize=8)
         axis.add_artist(data_legend)

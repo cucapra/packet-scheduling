@@ -63,6 +63,8 @@ def run_case(
             settings["max_cycles"],
             "--warmup-cycles",
             settings["warmup_cycles"],
+            "--evaluation-hardware",
+            "--verilator",
             "--sbt",
             sbt,
         ]

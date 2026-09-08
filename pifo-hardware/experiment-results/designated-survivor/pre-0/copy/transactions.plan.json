@@ -1,0 +1,110 @@
+{
+  "mechanism": "copy",
+  "t1": 0,
+  "topology": "per-flow-hardware-fifo-v1",
+  "experiment_rules": "shared-replay-guarded-cleanup-v1",
+  "compiled_flow_paths": {
+    "p1": {
+      "1": [
+        [
+          1,
+          1,
+          "SP"
+        ],
+        [
+          3,
+          1,
+          "FIFO"
+        ]
+      ],
+      "2": [
+        [
+          1,
+          1,
+          "SP"
+        ],
+        [
+          3,
+          2,
+          "FIFO"
+        ]
+      ]
+    },
+    "p2b": {
+      "1": [
+        [
+          2,
+          2,
+          "SP"
+        ],
+        [
+          4,
+          3,
+          "FIFO"
+        ]
+      ],
+      "2": [
+        [
+          2,
+          2,
+          "SP"
+        ],
+        [
+          3,
+          1,
+          "RR"
+        ],
+        [
+          4,
+          4,
+          "FIFO"
+        ]
+      ],
+      "3": [
+        [
+          2,
+          2,
+          "SP"
+        ],
+        [
+          3,
+          1,
+          "RR"
+        ],
+        [
+          4,
+          5,
+          "FIFO"
+        ]
+      ]
+    }
+  },
+  "copy_list": [
+    [
+      3,
+      4
+    ],
+    [
+      1,
+      2
+    ]
+  ],
+  "copy_scope": "frozen old-tree descent only; root change at teardown, no survivor ascent",
+  "creation_instruction_categories": {
+    "rest": 44,
+    "copy": 2,
+    "wrapper_creation": 11,
+    "prefill": 1
+  },
+  "instruction_counts": {
+    "replace": 58,
+    "replace-cleanup": 20,
+    "replace-reclaim": 11
+  },
+  "reserved_pes": 0,
+  "hardware_tokens_per_pe": 1024,
+  "wrapper": [
+    1,
+    1
+  ]
+}

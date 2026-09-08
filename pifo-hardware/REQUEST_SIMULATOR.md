@@ -97,6 +97,12 @@ python3 -m venv .venv
 
 ### Four-run motivating example
 
+The checked-in p1 and p2 trees give every flow a distinct hardware FIFO leaf.
+The runner explicitly selects the merged evaluation top level and Verilator,
+matching the newer explicit-leaf evaluations, and uses a per-flow packet queue
+depth of 4096. Run all four cases in one invocation when quoting comparisons so
+the report cannot mix old and new topology artifacts.
+
 Each run has a minimal standalone script and always creates both formats requested from its own raw packet CSV:
 
 ```bash
@@ -288,7 +294,7 @@ The compact policy-change form is:
 `full_transitive` copies every target node, redirects new inputs to the copy, and front-rewrites the old physical root
 after it drains. `confined_transitive` finds the single changed subtree boundary, copies only that subtree, keeps all
 unchanged ancestors in place, and installs the rewrite at that boundary. `in_place` accepts additive flow/path state
-that leaves existing nodes and paths unchanged. `stop_the_world` pauses admission and root pops, lets prefetched output
+and newly reachable nodes while leaving all existing nodes and paths unchanged. `stop_the_world` pauses admission and root pops, lets prefetched output
 finish, retains the buffered request metadata, resets the mesh, installs the target on the original physical root, and
 replays one scheduler token for every retained request before resuming. Traffic sources continue generating at their
 configured rates during the stop; those arrivals wait at the closed admission gate without losing their original
@@ -484,7 +490,7 @@ timestamps and counts for single-event figure readers. Each package still ends i
 `install_finish_cycle` and `drain_cycle` are independent: the first bank replay may finish while the old tree is still
 draining. Guarded retirement and its commit follow; the final bank replay finishes at `finish_cycle`. For STW, capture
 precedes the install commit; resume and final configuration cleanup are separate milestones. The checked-in motivating
-example was rerun with cleanup commits and records both milestones. Older RR/SP archives predate this schema;
+example was rerun on its explicit FIFO-leaf topology with cleanup commits and records both milestones. Older RR/SP archives predate this schema;
 readers preserve their legacy interpretation rather than retroactively claiming they executed cleanup commits.
 
 Figures display both commits instead of one ambiguous finish line:

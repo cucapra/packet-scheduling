@@ -25,7 +25,8 @@ SETTINGS = {'runs': ('prefill', 'relocate'),
             'prefill': 'Whole-tree: prefill SP',
             'relocate': 'Whole-tree: copy + prefill',
             'reset': 'Stop-the-world reset',
-            'control': 'Control: p1'}}
+            'control': 'Control: p1',
+            'control-p2': 'Control: p2'}}
 
 fig, ax = plt.subplots(figsize=(9, 4.8), constrained_layout=True)
 names, runs = SETTINGS["flows"], SETTINGS["runs"]

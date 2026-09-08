@@ -4,6 +4,7 @@ Run from `pifo-hardware`:
 
 ```sh
 .venv/bin/python hw/python/pifo_multiedit_all.py
+.venv/bin/python hw/python/pifo_multiedit_all.py --runs control-p2
 .venv/bin/python hw/python/pifo_multiedit_all.py --render-only
 ```
 
@@ -34,6 +35,7 @@ The compiler and simulator remain separate CLIs:
 | Run | Implementation |
 | --- | --- |
 | control | p1 throughout; arriving tenants have no arm and are recorded unserved, not dropped. |
+| control-p2 | p2 throughout on the same traffic file; the legacy flows absent from p2 are recorded unserved, not dropped. |
 | rio | Reweight realtime/bulk, configure media/gaming, quiesce legacy, commit. Only removal is behind `GuardDrain` on the legacy tenant and FIFO leaves. |
 | prefill | Hardware stop; old tree remains on PEs 1/2/3, p2 on 4/5/6, real SP root on PE 7. Hardware prefill creates N high-priority old-side tokens. |
 | relocate | Hardware stop; whole-PE moves 3→6, 2→5, 1→4. SP root reuses PE 1; p2 uses 2/3/7. Same hardware N-token prefill. |
@@ -44,7 +46,7 @@ not the front-rewrite whole-tree implementation now also available on this branc
 is intentional: the requested evaluation compares placing a new SP above a tree
 against moving the tree away to reuse its original root. Rio does not issue StopWorld.
 
-All five runs explicitly use the separate evaluation top level, keeping stop/prefill/copy ports and the evaluation
+All six runs explicitly use the separate evaluation top level, keeping stop/prefill/copy ports and the evaluation
 ranker out of the production image. They share the current 256-entry command FIFO and immediate mapper replay.
 The compiler stages immediate configuration ahead of mapper writes so each retained epoch fits that FIFO; it does
 not increase queue capacity or hide extra commits. Every transition has a guarded cleanup commit. Retirement
@@ -82,8 +84,9 @@ request_id,flow,size_bytes,push_cycle,pop_cycle,dropped
 ```
 
 `push_cycle` means **generation**, including time waiting outside the hardware.
-In control, the four unadmitted flows have a blank pop time and `dropped=false`.
-The verifier demands complete, drop-free, per-flow FIFO output for all other runs.
+In the p1 control, the four arriving flows have a blank pop time and
+`dropped=false`; in the p2 control, the two legacy flows do. The verifier
+demands complete, drop-free, per-flow FIFO output for all transitioning runs.
 
 `reconfiguration-events.csv` distinguishes request/start, commit accepted, physical
 old-subtree/root drained, and command completion. `finish` includes backup-bank
@@ -97,14 +100,15 @@ application and copy completion. `transactions.plan.json` reports eligible versu
 guarded instruction counts; eligible does **not** mean all execute in one cycle.
 
 `measurements.json` reports the measured per-flow t1 backlogs, first services,
-paired delay differences from control, and stop-buffer occupancy. `retained_packets`
+paired delay differences from both steady-p1 and steady-p2 controls, and
+stop-buffer occupancy. `retained_packets`
 counts metadata already admitted when the stop quiesces; it is not peak occupancy.
 The peak includes those packets plus packets generated at the input during the
 stop. There is no claim that a finite buffer smaller than this peak is lossless.
 
-Figure A (`pifo_multiedit_first_service.py`) has Rio/prefill/reset grouped bars.
+Figure A (`pifo_multiedit_first_service.py`) has steady-p2/Rio/prefill/reset grouped bars.
 Figure B (`pifo_multiedit_untouched_delay.py`) has shared-axis panels for Gmail,
-Ssh, Http and Https, with the p1 control overlaid. Both have a separate
+Ssh, Http and Https, with both p1 and p2 controls overlaid. Both have a separate
 `--copy-comparison` variant comparing prefill and relocation. Each writes its own
 PNG, SVG, source data, complete packets.csv, commits.csv and a standalone plot.py under
 `experiment-results/multi-edit/figures/`. Replotting needs only Matplotlib and that folder's CSV files. Timeline
@@ -118,7 +122,9 @@ Important limits on the proposed interpretation:
 - A serialized control port and multi-PE traversal cannot make all new tenants
   receive their first packet one or two cycles after the operator request.
 - Unchanged paths do not imply identical schedules when their siblings change
-  weights or leave. The report quantifies differences rather than asserting zero.
+  weights or leave. The p1 control preserves the transition's pre-request state;
+  the p2 control supplies the requested steady-target counterfactual. The report
+  shows both rather than treating either one as the sole baseline.
 - Realtime offers only 0.20 after t1, below its nominal new 6/17 share. Once its
   backlog clears, throughput measures offered load, not its saturated allocation.
   The settling metric is explicitly the observed 0.20 steady rate.

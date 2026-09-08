@@ -15,7 +15,7 @@ from pifo_figures.evaluation import commit_rows
 ROOT = Path(__file__).resolve().parents[2]
 RESOURCES = ROOT / "experiments/designated-survivor"
 RESULTS = ROOT / "experiment-results/designated-survivor"
-TITLES = {"link": "Strict* link", "reserved": "Reserved-PE Strict wrapper"}
+TITLES = {"link": "Strict* link", "reserved": "Reserved-PE Strict wrapper", "copy": "Copy + prefill Strict wrapper"}
 
 
 def settings():
@@ -123,8 +123,22 @@ def measure_run(path):
         "zoom_peak_delay_cycles": max(r["pop_cycle"] - r["push_cycle"] for r in data if r["flow"] == 1),
         "global_stop_cycles": 0, "hardware_stop_cycles": 0, "prefill_entries": 0,
         "prefill_write_cycles": 0, "fixed_stop_overhead_cycles": 0,
+        "copy_cycles": 0, "copied_entries": 0, "copied_pifos": 0, "copied_buffered_packets": 0,
         "lifecycle": dict(lifecycle)}
-    if plan["mechanism"] == "reserved":
+    if plan["mechanism"] == "copy":
+        starts = [r for r in control if r["phase"] == "dispatched" and r["command"] == "CopyPifoEngine"]
+        finishes = [r for r in control if r["phase"] == "copy_finished"]
+        assert len(starts) == len(finishes) == len(plan["copy_list"]), "missing copy completion"
+        assert [(int(r["engine_id"]), int(r["data"])) for r in starts] == [tuple(pair) for pair in plan["copy_list"]]
+        assert all(int(a["cycle"]) < int(b["cycle"]) <= commits[0] for a, b in zip(starts, finishes))
+        entries = sum(int(r["copied_entries"]) for r in finishes)
+        assert entries == sum(r["tokens"] for r in lifecycle["copy_source"]), "copy lost scheduler tokens"
+        buffered = lifecycle["stop_snapshot"][0]["tokens"]
+        assert entries == 2 * buffered, "copy must move both the old root and per-flow FIFOs"
+        metrics.update({"copy_cycles": sum(int(b["cycle"]) - int(a["cycle"]) for a, b in zip(starts, finishes)),
+                        "copied_entries": entries, "copied_pifos": len(lifecycle["copy_source"]),
+                        "copied_buffered_packets": buffered, "copy_completions": finishes})
+    if plan["mechanism"] in {"reserved", "copy"}:
         one = lambda name: lifecycle[name][0]
         start, finish = one("driver_stop")["cycle"], one("driver_resume")["cycle"]
         fill, filled = one("prefill_started"), one("prefill_finished")
@@ -144,11 +158,12 @@ def measure_run(path):
             "hardware_stop_cycles": one("hardware_resume")["cycle"] - one("hardware_stop")["cycle"],
             "prefill_entries": count, "prefill_write_cycles": filled["tokens"],
             "prefill_command_to_done_cycles": filled["cycle"] - fill["cycle"],
-            "fixed_stop_overhead_cycles": finish - start - count,
+            "fixed_stop_overhead_cycles": finish - start - count - metrics["copy_cycles"],
             "stop_breakdown_cycles": {
                 "driver_to_observed_hardware_gate": one("hardware_stop")["cycle"] - start,
                 "observed_gate_to_snapshot": one("stop_snapshot")["cycle"] - one("hardware_stop")["cycle"],
-                "snapshot_to_prefill_command": fill["cycle"] - one("stop_snapshot")["cycle"],
+                "snapshot_to_prefill_command_excluding_copy": fill["cycle"] - one("stop_snapshot")["cycle"] - metrics["copy_cycles"],
+                "copy_commands": metrics["copy_cycles"],
                 "token_writes": count,
                 "prefill_command_overhead_to_publication": finish - fill["cycle"] - count},
             "peak_stop_buffer_packets": peak_buffer(data, start, finish),
@@ -169,8 +184,8 @@ def measure_run(path):
 
 def measure(root):
     report = {"cases": {}, "topology": TOPOLOGY, "requested_sweep_pre_cycles": settings()["sweep_pre_cycles"],
-              "buffer_note": "4096 packet metadata FIFO entries per flow; each flow also has a real hardware FIFO PIFO on PE 3. The 1024 scheduler-token slots on each PE are shared across its virtual PIFOs, including old/new FIFO versions. The source gate queue is unbounded and measured, not claimed as hardware RAM.",
-              "copy_baseline": "Not run: the existing copy datapath supports frozen drain-only relocation, not a complete live-survivor ascent/brain-state migration protocol."}
+              "buffer_note": "4096 packet metadata FIFO entries per flow; each flow also has a real hardware FIFO PIFO (PE 3 before transition; PE 4 after copy). The 1024 scheduler-token slots on each PE are shared across its virtual PIFOs, including old/new FIFO versions. The source gate queue is unbounded and measured, not claimed as hardware RAM.",
+              "copy_baseline": "Copy + prefill relocates the frozen old root PE 1 -> 2 and FIFO PE 3 -> 4, then creates the wrapper at the original root on PE 1. The new tree is freshly installed at PEs 2/3/4. Teardown publishes its root and reclaims the wrapper, as in the reserved baseline. This measures old-tree descent, not live-survivor ascent or brain-state migration; the latter protocol remains unsupported."}
     for case in sorted(root.glob("pre-*"), key=lambda p: int(p.name.split("-")[1])):
         if not all((case / run / "maintenance-events.csv").exists() for run in TITLES):
             continue
@@ -178,12 +193,12 @@ def measure(root):
                    for run in TITLES):
             continue
         traces = [(case / run / "requests.csv").read_bytes() for run in TITLES]
-        assert traces[0] == traces[1], f"{case}: source traces differ"
+        assert all(trace == traces[0] for trace in traces), f"{case}: source traces differ"
         runs = {run: measure_run(case / run) for run in TITLES}
-        assert runs["link"]["t1_backlog_packets"] == runs["reserved"]["t1_backlog_packets"], "different pre-request backlogs"
+        assert len({m["t1_backlog_packets"] for m in runs.values()}) == 1, "different pre-request backlogs"
         report["cases"][case.name] = {"trace_sha256": hashlib.sha256(traces[0]).hexdigest(), "runs": runs}
     if not report["cases"]:
-        raise ValueError("no complete paired runs to measure")
+        raise ValueError("no complete link/reserved/copy runs to measure")
     report["completed_pre_cycles"] = [c["runs"]["link"]["t1"] for c in report["cases"].values()]
     report["missing_sweep_pre_cycles"] = sorted(set(report["requested_sweep_pre_cycles"]) - set(report["completed_pre_cycles"]))
     (root / "measurements.json").write_text(json.dumps(report, indent=2) + "\n")
@@ -196,25 +211,28 @@ def write_summary(root, report):
         "Measured RTL runs, with identical CBR traffic offered during all stops. Packet delay starts at generation, including time waiting at the input gate. All completed runs have zero packet drops and zero per-flow reorderings.", "",
         "Every flow now terminates in its own hardware FIFO node. Push inserts a token into that FIFO as well as each policy node on the path. Pop traverses the policy nodes and performs a separate FIFO pop before packet completion; no policy node routes directly to a packet output.", "",
         "p1 paths are `root (PE 1) → per-flow FIFO (PE 3)`. Under p2b, zoom keeps that shape; gmail and spotify use `root (PE 1) → RR (PE 2) → per-flow FIFO (PE 3)`. Old/new FIFO versions have distinct vPIFO IDs. The reserved wrapper uses PE 4; Strict* leaves it unused. Compiled physical paths are recorded in each transactions.plan.json.", "",
+        report["copy_baseline"] + " All three runs have the same four-PE hardware shape and identical initial tree and traffic.", "",
         "Both hardware variants use the current shared command FIFO (256 entries) and immediate mapper-write replay. Four PEs widen post-mapper addresses, but replay does not scan the full 512-entry bank. Cleanup waits on GuardDrain for every retired FIFO and uses ordinary invalidation writes and commits. The evaluation-only prefill/copy hardware is absent from the production image.", "",
         "## Birth: measured stop cycles", "",
-        "| Pre-phase | Backlog at t1 | Strict* stop | Reserved stop | Actual prefill N | Entry writes | Fixed overhead | Hardware gate stop | Peak stop buffer |",
-        "| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |"]
+        "| Pre-phase | Backlog at t1 | Mechanism | Total stop | Actual prefill N | Entry writes | Copy cycles | Fixed overhead | Hardware gate stop | Peak stop buffer |",
+        "| ---: | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |"]
     for case in report["cases"].values():
-        a, b = case["runs"]["link"], case["runs"]["reserved"]
-        lines.append("| " + " | ".join(str(v) for v in (a["t1"], a["t1_backlog_packets"], a["global_stop_cycles"],
-            b["global_stop_cycles"], b["prefill_entries"], b["prefill_write_cycles"], b["fixed_stop_overhead_cycles"],
-            b["hardware_stop_cycles"], b["peak_stop_buffer_packets"])) + " |")
-    lines += ["", "The headline stop includes driver quiescence before the RTL StopWorld gate, configuration, prefill and commit publication. Hardware gate width is listed separately. Entry writes count actual ready/valid insertions, not an estimate. Fixed overhead is the measured total minus those write cycles.",
+        for name, b in case["runs"].items():
+            lines.append("| " + " | ".join(str(v) for v in (b["t1"], b["t1_backlog_packets"], TITLES[name],
+                b["global_stop_cycles"], b["prefill_entries"], b["prefill_write_cycles"], b["copy_cycles"],
+                b["fixed_stop_overhead_cycles"], b["hardware_stop_cycles"], b.get("peak_stop_buffer_packets", "—"))) + " |")
+    lines += ["", "The headline stop includes driver quiescence before the RTL StopWorld gate, configuration, copy where used, prefill and commit publication. Hardware gate width is listed separately. Entry writes count actual ready/valid insertions, not an estimate. Copy cycles sum dispatch-to-completion intervals. Fixed overhead is the measured total minus prefill write cycles and copy-command cycles.",
         "Strict* has no global pop stop and one designate instruction, but compiling/installing the new tree still costs instructions and a short input-only commit barrier. Zero is not a claim that the entire tree change is instantaneous.", "",
         "## Death: root change and nonempty wrapper reclamation", "",
         "Costs start when both the old root is empty and the creation package is ready for another transaction; the drain wait itself is excluded. `finish` includes mapper-bank synchronization, not a packet outage.", "",
-        "| Pre-phase | Root change | Reclaimed | All config finished | Tokens at detach | Tokens discarded | Packets served later |",
-        "| ---: | ---: | ---: | ---: | ---: | ---: | ---: |"]
+        "| Pre-phase | Mechanism | Root change | Reclaimed | All config finished | Tokens at detach | Tokens discarded | Packets served later |",
+        "| ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |"]
     for case in report["cases"].values():
-        b = case["runs"]["reserved"]
-        lines.append("| " + " | ".join(str(b[k]) for k in ("t1", "teardown_root_change_cycles", "teardown_reclaim_cycles",
-            "teardown_all_config_finished_cycles", "wrapper_tokens_at_detachment", "wrapper_tokens_discarded", "packets_served_after_reclamation")) + " |")
+        for name in ("reserved", "copy"):
+            b = case["runs"][name]
+            lines.append(f"| {b['t1']} | {TITLES[name]} | " + " | ".join(str(b[k]) for k in (
+                "teardown_root_change_cycles", "teardown_reclaim_cycles", "teardown_all_config_finished_cycles",
+                "wrapper_tokens_at_detachment", "wrapper_tokens_discarded", "packets_served_after_reclamation")) + " |")
     lines += ["", "UpdateRoot publishes the survivor as the port root. ClearPifoEngine then clears the detached wrapper's occupancy counters in one hardware cycle; its redundant tokens are discarded, not copied, and the survivor's packet queues remain intact. Old memory bits need not be individually erased. This substrate therefore supports nonempty death with constant-time logical reclamation; death is not an O(backlog) token-deletion loop. No additional global stop occurs at teardown.", "",
         "## Drain and instruction accounting", "",
         "| Pre-phase | Mechanism | Commit applied | Old root N at publication | Old root empty | Post-commit drain | Install / cleanup / reclaim inst | Categories |",
@@ -236,10 +254,18 @@ def write_summary(root, report):
     lines += [""]
     canonical = report["cases"].get(f"pre-{settings()['figure_a_pre_cycles']}")
     if canonical:
-        a, b = canonical["runs"]["link"], canonical["runs"]["reserved"]
+        a, b, c = (canonical["runs"][name] for name in TITLES)
         lines += [f"In Figure A, zoom's peak delay is {a['zoom_peak_delay_cycles']} versus {b['zoom_peak_delay_cycles']} cycles: +{b['zoom_peak_delay_cycles'] - a['zoom_peak_delay_cycles']}, compared with the {b['global_stop_cycles']}-cycle stop. The post-commit old-root drains are {a['post_commit_old_drain_cycles']} and {b['post_commit_old_drain_cycles']} cycles.",
             f"Those drains start with {a['old_root_tokens_at_publication']} and {b['old_root_tokens_at_publication']} tokens respectively: Strict* kept serving the old policy while its commands arrived. The difference in token counts and wrapper traversal latency explains why the drain widths need not be exactly equal.",
             f"At t1={a['t1']}, the measured backlog is {a['t1_backlog_packets']} packets and pre-transition link utilization is {a['pre_t1_link_utilization']:.3f}. These values are recomputed for the FIFO-layer topology, not carried forward from the direct-policy-leaf experiment.", ""]
+        lines += [f"Copy + prefill stops for {c['global_stop_cycles']} cycles: {c['prefill_write_cycles']} prefill writes + {c['copy_cycles']} copy cycles + {c['fixed_stop_overhead_cycles']} other cycles. It moves {c['copied_pifos']} occupied PIFOs containing {c['copied_entries']} scheduler tokens for {c['copied_buffered_packets']} buffered packets. Its zoom peak delay is {c['zoom_peak_delay_cycles']} cycles, with a {c['post_commit_old_drain_cycles']}-cycle post-publication old-root drain.", ""]
+    lines += ["| Pre-phase | Copied occupied PIFOs | Copied scheduler tokens | Buffered packets | Copy cycles |",
+              "| ---: | ---: | ---: | ---: | ---: |"]
+    for case in report["cases"].values():
+        c = case["runs"]["copy"]
+        lines.append("| " + " | ".join(str(c[k]) for k in (
+            "t1", "copied_pifos", "copied_entries", "copied_buffered_packets", "copy_cycles")) + " |")
+    lines += [""]
     lines += ["| Pre-phase | Mechanism | Last packet pop | All configuration finished |",
               "| ---: | --- | ---: | ---: |"]
     for case in report["cases"].values():
@@ -255,6 +281,6 @@ def write_summary(root, report):
         "- [Figure A: zoom delay](figures/zoom-delay/figure.png) ([SVG](figures/zoom-delay/figure.svg), [plotted CSV](figures/zoom-delay/data.csv), [standalone plotter](figures/zoom-delay/plot.py)).",
         "- [Figure B: stop versus backlog](figures/prefill-stop/figure.png) ([SVG](figures/prefill-stop/figure.svg), [plotted CSV](figures/prefill-stop/data.csv), [standalone plotter](figures/prefill-stop/plot.py)).", "",
         "Each figure folder also contains complete packets.csv and commits.csv. Copy that folder elsewhere and run `python plot.py`; only Matplotlib and the local CSVs are needed. Blue/amber/green backgrounds distinguish install, cleanup/collapse, and wrapper reclamation commits. Delay axes have vertical time markers only.", "",
-        "- [Measurements](measurements.json). Each pre-N directory contains its traffic input; link/ and reserved/ contain direct transactions, compiler accounting, requests.csv, packet-outcomes.csv, request-results.csv, reconfiguration-events.csv, controller-instructions.csv and maintenance-events.csv.", "",
+        "- [Measurements](measurements.json). Each pre-N directory contains its traffic input; link/, reserved/ and copy/ contain direct transactions, compiler accounting, requests.csv, packet-outcomes.csv, request-results.csv, reconfiguration-events.csv, controller-instructions.csv and maintenance-events.csv.", "",
         "Per-flow packet metadata FIFO order is checked end-to-end; the RTL tokens carry flow IDs, not unique packet IDs. These measurements are not a gate-level timing-closure result.", ""]
     (root / "README.md").write_text("\n".join(lines))

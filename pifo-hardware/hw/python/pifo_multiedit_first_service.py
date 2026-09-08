@@ -3,12 +3,12 @@
 import json
 
 from pifo_figures.evaluation import commit_rows, export, packet_rows
-from pifo_multiedit_common import COPY_RUNS, MAIN_RUNS, TITLES, figure_args, figure_dir, settings
+from pifo_multiedit_common import COPY_RUNS, FIRST_SERVICE_RUNS, TITLES, figure_args, figure_dir, settings
 
 
 def main():
     args, cfg = figure_args(__doc__), settings()
-    runs = COPY_RUNS if args.copy_comparison else MAIN_RUNS
+    runs = COPY_RUNS if args.copy_comparison else FIRST_SERVICE_RUNS
     report = json.loads((args.results / "measurements.json").read_text())
     names = [cfg["flow_labels"][str(flow)] for flow in cfg["arriving_flows"]]
     rows = [{"run": run, "flow": name,
