@@ -871,8 +871,7 @@ Opcode & Effect \\
 \texttt{gc(v)} & Release \texttt{v}'s PE slot \\[3pt]
 \multicolumn{2}{@{}l}{\emph{Structure}} \\
 \texttt{adopt(i, p, c)} & \texttt{p} gains child \texttt{c}, reached via index \texttt{i} \\
-\texttt{emancipate(i, p)} & Detach \texttt{p}'s child at index \texttt{i} \\
-\texttt{change\_arity(v, n)} & Set \texttt{v}'s live arm count to \texttt{n}, leaving its policy type alone \\[3pt]
+\texttt{emancipate(i, p)} & Detach \texttt{p}'s child at index \texttt{i} \\[3pt]
 \multicolumn{2}{@{}l}{\emph{Classification}} \\
 \texttt{assoc(v, f)} & \texttt{v} begins accepting flow \texttt{f} \\
 \texttt{deassoc(v, f)} & \texttt{v} stops accepting \texttt{f} \\
@@ -915,11 +914,10 @@ On removing them from the system outright: yes \texttt{change\_arity} can go (si
 \texttt{adopt} and \texttt{emancipate} write no PE themselves, but they fix what a later \texttt{map} means, so dropping them means folding the parent--child relation into \texttt{map}'s arguments. Could do it! 
 That last one is a design question for Zhiyuan.}
 \xxx[zhiyuan to am]{we can use v (instead of parent v + i) to point to any PIFO. hardware only need to know next-hop. I think one reason for using i is internally parent PIFO stores index, not v. my point is compiler can take the responsibility to maintain structural info (covers \texttt{adopt} and \texttt{emancipate}) in it's internal and generate the valid sequence. overall, if all ISA insts changes the hardware state, I'd prefer removing this section.}
-The ISA is the compiler's interface, and not all of the state it names reaches the switch.
+Every opcode reaches a PE.
 A PE stores four things: its \texttt{Assoc} set, the flows it admits; a \texttt{Map}, read on enqueue, naming the PIFO each admitted flow enters and the PE that holds it; a next-hop table, read on dequeue, naming the PIFO that each of its indices reaches; and the designated-survivor link of \cref{sec:hw-survivor}.
-An \texttt{assoc} writes the first, a \texttt{map} the second, an \texttt{adopt} the third, and a \texttt{designate} the fourth.
-The lifecycle opcodes reach a PE too, since \texttt{spawn} and \texttt{gc} claim and release its PIFO storage.
-Arities are how the compiler sizes a tree position and no PE stores one, so \texttt{change\_arity} reaches no PE at all.
+The classification opcodes write the first two, the structure opcodes the third, and the survivor opcodes the fourth.
+The discipline opcodes write the rank-assignment logic, and \texttt{spawn} and \texttt{gc} claim and release a PE's PIFO storage.
 
 A node's \(\mathit{z}.\mathit{admit}\) is its \texttt{Assoc} set, its \(\mathit{z}.\mathit{serves}\) is its \texttt{Map} table, its \(\mathit{z}.\mathit{rank}\) is the ranker that \texttt{set\_policy} installs and \texttt{discipline(v)} reads back, and its \(\mathit{z}.\mathit{meta}\) is the metadata that \texttt{set\_arm\_meta} writes.
 Each of \zz's parts is thus the target of an opcode.
@@ -931,7 +929,7 @@ Let \texttt{v} be the PIFO at $\mathit{path}$ and let \texttt{n} be its arity.
 The lowering builds the new subtree first:
 for each node,
 it \texttt{spawn}s a PIFO, uses \texttt{set\_policy}, and issues the \texttt{adopt}s to encode parent--child relationships.
-A \texttt{change\_arity} raising \texttt{v}'s count to \texttt{n+1} then creates the slot for the new subtree, \texttt{set\_arm\_meta} adds the relevant metadatum, and an \texttt{adopt} attaches the new subtree.
+An \texttt{adopt} then attaches the new subtree at the fresh index \texttt{n}, which creates the slot, and a \texttt{set\_arm\_meta} adds the relevant metadatum.
 %
 Finally, the lowering routes traffic into the new arm, which is its counterpart of \(\mathtt{extend}\) in \cref{sec:edit-semantics}.
 For each flow the new arm serves, an \texttt{assoc} at every PIFO from the port root down to the arm's leaf has that PIFO begin accepting the flow, and a \texttt{map} at each of those PIFOs but the leaf records the index that carries the flow onward.
@@ -2092,15 +2090,14 @@ Three of the forms below are written with their argument split as \(\pi \mathbin
 v := PIFO at path
 n := arity(v)
 layout(arm)
-change_arity(v, n+1)
-set_arm_meta(v, n, m)
 adopt(n, v, root(arm))
+set_arm_meta(v, n, m)
 foreach f in flows(arm):
     walk(assoc, chain(f), f)
     walk(map,   internals(f), f)
 \end{Verbatim}
 The new subtree occupies \texttt{v}'s rightmost slot (index \texttt{n}), so existing children's indices are undisturbed.
-\texttt{change\_arity} creates that slot, which is the lowering's counterpart of \(\mathit{init\_slot\_state}_{D}\) in \cref{sec:add}.
+The \texttt{adopt} creates that slot and the \texttt{set\_arm\_meta} initializes it, which together are the lowering's counterpart of \(\mathit{init\_slot\_state}_{D}\) in \cref{sec:add}.
 The \texttt{assoc} walk has every PIFO from the port root down to the new leaf begin accepting \texttt{f}, and the \texttt{map} walk records at each interior PIFO of that chain the index carrying \texttt{f} onward.
 \Add's leaf-disjointness precondition (\cref{sec:add}) means that no PIFO on a chain already routes \texttt{f}, so neither walk overwrites a live entry.
 
@@ -2127,7 +2124,7 @@ A \Quiesce{} that fires in the middle of a \Replace, on the doomed arm of a \(\S
 \subsection{\texorpdfstring{\(\Remove(\pi \mathbin{+\!\!+} [k])\)}{Remove}}\label{sec:lower-remove}
 
 \Remove{} is \Add{} run backwards.
-A \texttt{change\_arity} that decrements \texttt{parent}'s count and an \texttt{emancipate(k, parent)} detach the arm, an \texttt{unmap} walk over \(\mathtt{internals(f)}\) for each \(f \in \mathtt{flows(v)}\) forgets its routing, and a \texttt{gc} at every PIFO of the departing subtree releases the PE slots.
+An \texttt{emancipate} at \texttt{parent}'s index \texttt{k} detaches the arm, an \texttt{unmap} walk over \(\mathtt{internals(f)}\) for each \(f \in \mathtt{flows(v)}\) forgets its routing, and a \texttt{gc} at every PIFO of the departing subtree releases the PE slots.
 The \(\sigma_k\) renumbering of \cref{sec:remove} has no counterpart here, since a child is reached by an opaque per-edge index that \texttt{parent} minted when it adopted that child, so dropping one child leaves every sibling's index as it was.
 
 \subsection{\texorpdfstring{\(\Designate(\mathit{path}, \mathit{survivor})\)}{Designate}}\label{sec:lower-designate}
@@ -2143,7 +2140,7 @@ foreach f in flows(surv):
     walk(assoc, chain(f), f)
     walk(map,   internals(f), f)
 \end{Verbatim}
-This is \Add{}'s lowering, with \texttt{designate} in place of \texttt{change\_arity} and \texttt{adopt} and one walk in front.
+This is \Add{}'s lowering, with \texttt{designate} in place of \texttt{adopt} and one walk in front.
 No PIFO is spawned for the \(\Strictstar\) node, and \texttt{loser}'s parent is not touched.
 \texttt{designate} points \texttt{loser}'s designated-survivor link at \texttt{surv} (\cref{sec:hw-survivor}).
 The two walks are the whole of the traffic handover.
