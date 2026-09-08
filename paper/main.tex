@@ -909,7 +909,6 @@ It is the compiler's responsibility to enforce these preconditions.
 The emptiness preconditions cannot be checked statically, so I do not see how a compiler enforces them; I believe \cref{sec:sequences} discharges them at runtime, with a guard that the controller waits on.
 Please chime in and say which it is on your side.}
 \xxx[as]{Here is how the compiler checks this. It executes a guard saying to wait for subtree A to become empty, followed by a transaction to remove A. Therefore, the combination of the guard and the transaction serve to guarantee that \texttt{emancipate}'s precondition is satisfied.}
-\xxx[as]{Just checking: are there any requirements on what can go in a single transaction? (Are there two things that you can do in separate transactions but not all together in one?) If so, this would be the place to bring it up.}
 \xxx[am]{Maybe I'm stating the obvious here, but you can't merge when a guard separates them, since the later edit becomes legal only once that guard has become true (\cref{sec:sequences}).
 \Retire{} is the example: its \Remove{} cannot join its \Quiesce{} in one transaction, because the subtree has to drain in between.
 Beyond that we make no claim.
@@ -953,31 +952,36 @@ Finally, the lowering routes traffic into the new arm, which is its counterpart 
 For each flow the new arm serves, an \texttt{assoc} at every PIFO from the port root down to the arm's leaf has that PIFO begin accepting the flow, and a \texttt{map} at each of those PIFOs but the leaf records the index that carries the flow onward.
 
 
-\subsection{Atomic Policy Updates}\label{sec:hw-commit}
+\subsection{Atomic Configuration Updates}
+\label{sec:hw-commit}
 
-Rio implements atomic updates by double-buffering the match--action tables (MATs) that make up the policy configuration.
+Our hardware's goal is to apply any of the six Rio policy edits (\cref{sec:delta-grammar}) atomically
+at some time $t$:
+the unmodified policy applies to all packets before $t$ and the updated policy applies to all packets after $t$.
+This section describes our hardware's support for edit atomicity.
+
+Instructions can affect two kinds of state:
+match--action tables (e.g., \texttt{adopt} and \texttt{assoc})
+and ranking logic (e.g., \texttt{set\_policy}).
+Our key observation is that we need hardware support for atomic MAT updates but \emph{not} for ranking-logic modifications.
+This level of transactional semantics suffices to implement all six atomic edits that Rio requires because each edit affects at most one \emph{live} scheduling policy.
+For example, the $\Add$ edit uses two phases: it (1) configures the policies for the new subtree and then (2) activates it.
+To make this entire $\Add$ edit apply atomically, only the activation step needs a transactional update; non-transactional updates suffice in the first phase because the fresh subtree is not visible to live traffic.
+All six edits in \cref{fig:delta-grammar} follow this pattern.
+
+Rio implements atomic MAT updates by double-buffering these tables.
 Double buffering is a common technique for atomically updating packet-processing pipelines~\cite{Xing22,Yang24}.
-These MATs control the association between flows and PIFOs and the parent--child relationships among PIFOs.
 Configuration instructions affect the inactive MATs,
 and committing a transaction swaps the active and inactive MATs.
 
-A swap takes a single cycle, so it is straightforward to make it atomic within a PE,
+A swap takes a single cycle, so it is straightforward to make updates atomic within a PE,
 but transactions can affect multiple PEs.
 We \emph{delay-align} the transaction commits across PEs according to the PIFO tree topology:
 % The new configuration becomes visible at different PEs at carefully chosen times, so that
 although the update happens across several cycles, pipelined enqueues and dequeues follow the updates so that each sees either the old or the new configuration.
 % The double buffer and the wavefront both exist because dequeue is pipelined: a request travelling the chain of PEs must never observe state that a commit has left inconsistent.
 
-\xxx[as]{I could use some help understanding this part. I think it's saying that the ``brain'' updates are non-transactional. If that's the case, we need a bit more of an argument for why this is OK. If a transaction includes both topology changes and discipline/metadata changes, how do we guarantee that the whole thing applies atomically? (``That's not allowed in the ISA'' is an acceptable answer.)}
-\xxx[am]{Yes, they are non-transactional, and we do not claim the whole transaction applies atomically. What we claim is that the non-atomic part cannot be observed. The rank-computing writes are applied as the controller reaches them, while the classification writes are held for the commit. In \Add{} and \Designate{} those writes land only on a node or a slot that no packet can reach until the classification flip, and \cref{sec:lower-add} does put the two walks last. \Quiesce{}, \Remove{} and \Undesignate{} issue no rank-computing write at all. \ChangeMeta{} is the only one that writes a live arm, and it is safe for a different reason: it is a single write, so a \push{} reads either the old value or the new one, and ranks are frozen at \push{} time (\cref{sec:nondisruption}) so the backlog is unaffected either way. My note below asks Zhiyuan to confirm the \ChangeMeta{} case.}
-Also, the rank computation must accept incremental updates rather than wholesale replacement of a live scheduling policy.
-Our controller accepts a commit's rank-computing writes along with the rest of its instructions, and applies them as it reaches them rather than holding them until the commit installs.
-That is the payoff for a narrow transactional scope: only the state that routes a packet has to install in a single instant.
-
-\xxx[AM to Zhiyuan]{This paragraph is now the subsection's opening claim, per your ``we minimize the transactional scope''.
-The \ChangeMeta{} sentence is the one case your two-way split does not cover, since it re-tunes an arm that is live and backlogged, and the argument I give is that \ChangeMeta{} lowers to a transaction holding that one write and nothing else.
-Please confirm that a lone metadata write needs nothing from the transactional path.}
-
+\xxx[as]{The paragraph below perhaps belongs somewhere else now, because it is not about atomicity. Probably in the ISA section?}
 The Rio configuration controller also implements guards (\cref{sec:sequences}), which can wait on the emptiness of a subtree.
 Rio lowers such guards to blocking commands in the controller queue.
 A blocking command remains at the head of the queue until its predicate becomes true.
