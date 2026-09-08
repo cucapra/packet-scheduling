@@ -1,20 +1,30 @@
 % The hardware figure for \S7. Kept in its own file so it can be redrawn without
 % touching main.tex.
-% Encoding: shading marks state that a commit installs atomically, vermillion is the
-% control plane, blue is the enqueue walk and green the dequeue walk.
+% Encoding: vermillion is the control plane, green marks Rio's two additions (the dashed
+% second bank in each double-buffered table, and the survivor link), and the two packet
+% walks are black. The walks had a color each until the two additions needed one; they do
+% not cross, so one color carries both, and dropping the blue/green pair also drops the
+% figure's least separable hues.
 % The PE panels are stacked to match tree depth, so the commit's taps read top-down.
-% The survivor link sits outside the PIFOs, per Zhiyuan: the PIFO implementation itself
-% is unchanged, and the link only redirects a read. It is a block in the path's order
-% rather than an arrow, because he asked that no path fork or double back.
-% Each walk is one route shaped like an "n". Every block is tall enough to leave a clear
-% band across its bottom, and the routes are drawn last so they run *in front of* the
-% blocks, through that band, rather than showing only in the gaps between them.
-% Enqueue rises at classify's centre and drops a third of the way into the PIFOs;
-% dequeue rises two thirds of the way into them and drops at next hop's centre.
-% Straight arrows drawn under the row were tried first and read as unattached to it.
+% The survivor link is deliberately small and sits *below* the pipeline row rather than
+% in it, per Zhiyuan: Rio's PE is meant to look like a usual PIFO-tree PE, and a fifth
+% full-height block made the link look like a component on the scale of the rank logic.
+% It is a block in the dequeue path's order rather than an arrow, because he asked that
+% no path fork or double back; and the dequeue meets it *before* the PIFOs, since the
+% link is what decides which PIFO the pop reads.
+% Each walk is one route shaped like an "n", labelled at its tail, and the two labels
+% line up. Every block is tall enough to leave a clear band across its bottom, and the
+% routes are drawn last so they run *in front of* the blocks, through that band, rather
+% than showing only in the gaps between them.
+% Enqueue rises a quarter of the way into classify and drops a third of the way into
+% the PIFOs; dequeue rises two thirds of the way into them, which is where the survivor
+% link hangs, and drops three quarters of the way into next hop. The two outer turns are
+% off-centre so neither arrowhead lands on the survivor link's label.
+% Both descending stems run well past the block edge they cut, so the arrowhead is not
+% read as part of that edge.
+% The commit taps are drawn after the PE panels so nothing can clip their arrowheads.
 \definecolor{ctlcol}{HTML}{D55E00}
-\definecolor{enqcol}{HTML}{0072B2}
-\definecolor{deqcol}{HTML}{009E73}
+\definecolor{newcol}{HTML}{009E73}
 \begin{figure}[t]
 \centering
 \begin{tikzpicture}[
@@ -28,8 +38,8 @@
   plab/.style={font=\scriptsize\itshape, text=black!55, inner sep=1pt},
   tl/.style={font=\scriptsize, inner sep=1pt},
   ctl/.style={draw=ctlcol, line width=0.75pt},
-  enq/.style={draw=enqcol, line width=0.75pt},
-  deq/.style={draw=deqcol, line width=0.75pt},
+  new/.style={draw=newcol, line width=0.6pt},
+  walk/.style={draw=black!75, line width=0.8pt},
 ]
 
 % ===================== transaction controller =====================
@@ -49,78 +59,80 @@
 \node[tl, anchor=south] at (4.30,5.00) {one transaction};
 \draw[->, draw=black!55, line width=0.5pt] (7.70,4.70) -- (7.16,4.70);
 
-% ===================== the commit, delay-aligned =====================
+% ===================== the commit trunk, delay-aligned =====================
 % One trunk out of the queue's head, tapping each level at its own instant.
-\draw[ctl] (3.70,4.56) -- (3.70,4.10) -- (0.62,4.10) -- (0.62,0.39);
-\node[tl, text=ctlcol, rotate=90, anchor=center] at (0.32,2.02) {delay-aligned commit};
-\draw[ctl,->] (0.62,3.30) -- (1.24,3.30);
-\draw[ctl,->] (0.62,1.23) -- (1.05,1.23);
-\draw[ctl,->] (0.62,0.39) -- (1.05,0.39);
-\node[tl, text=ctlcol, anchor=south] at (0.90,3.37) {\(t_0\)};
-\node[tl, text=ctlcol, anchor=south] at (0.84,1.30) {\(t_1\)};
-\node[tl, text=ctlcol, anchor=south] at (0.84,0.46) {\(t_2\)};
+\draw[ctl] (3.70,4.56) -- (3.70,4.10) -- (0.62,4.10) -- (0.62,-0.07);
+\node[tl, text=ctlcol, rotate=90, anchor=center] at (0.32,1.90) {delay-aligned commit};
 
 % ===================== the processing elements =====================
-\draw[pebox] (1.05,1.82) rectangle (8.2,3.75);
-\draw[pebox] (1.05,1.00) rectangle (8.2,1.46);
-\draw[pebox] (1.05,0.16) rectangle (8.2,0.62);
+\draw[pebox] (1.05,1.36) rectangle (8.2,3.75);
+\draw[pebox] (1.05,0.54) rectangle (8.2,1.00);
+\draw[pebox] (1.05,-0.30) rectangle (8.2,0.16);
 \node[plab, anchor=south west] at (1.05,3.78) {PE, level 0};
-\node[plab, anchor=south west] at (1.05,1.49) {PE, level 1};
-\node[plab, anchor=south west] at (1.05,0.65) {PE, level 2};
+\node[plab, anchor=south west] at (1.05,1.03) {PE, level 1};
+\node[plab, anchor=south west] at (1.05,0.19) {PE, level 2};
 
-% The deeper levels repeat level 0's blocks, with their contents left out.
+% The deeper levels repeat level 0's pipeline row, with their contents left out.
 % Same styles as level 0: the gray is a legend color, so it cannot vary by level.
-\foreach \yb/\yt in {1.09/1.37, 0.25/0.53}{%
-  \draw[txn]  (1.18,\yb) rectangle (2.53,\yt);
-  \draw[unit] (2.73,\yb) rectangle (3.83,\yt);
-  \draw[unit] (4.03,\yb) rectangle (5.28,\yt);
-  \draw[unit] (5.48,\yb) rectangle (6.48,\yt);
-  \draw[txn]  (6.68,\yb) rectangle (8.08,\yt);}
+\foreach \yb/\yt in {0.63/0.91, -0.21/0.07}{%
+  \draw[txn]  (1.18,\yb) rectangle (2.80,\yt);
+  \draw[unit] (3.00,\yb) rectangle (4.50,\yt);
+  \draw[unit] (4.70,\yb) rectangle (6.24,\yt);
+  \draw[txn]  (6.44,\yb) rectangle (8.08,\yt);}
 
 % ===================== level 0, drawn out =====================
-\draw[txn]  (1.18,2.32) rectangle (2.53,3.66);
-\draw[unit] (2.73,2.32) rectangle (3.83,3.66);
-\draw[unit] (4.03,2.32) rectangle (5.28,3.66);
-\draw[unit] (5.48,2.32) rectangle (6.48,3.66);
-\draw[txn]  (6.68,2.32) rectangle (8.08,3.66);
-\node[ul] at (1.855,3.64) {classify};
-\node[ul] at (3.28,3.64) {rank\\logic};
-\node[ul] at (4.655,3.64) {PIFOs};
-\node[ul] at (5.98,3.64) {survivor\\link};
-\node[ul] at (7.38,3.64) {next hop};
+\draw[txn]  (1.18,2.44) rectangle (2.80,3.66);
+\draw[unit] (3.00,2.44) rectangle (4.50,3.66);
+\draw[unit] (4.70,2.44) rectangle (6.24,3.66);
+\draw[txn]  (6.44,2.44) rectangle (8.08,3.66);
+\node[ul] at (1.99,3.64) {classify};
+\node[ul] at (3.75,3.64) {rank logic};
+\node[ul] at (5.47,3.64) {PIFOs};
+\node[ul] at (7.26,3.64) {next hop};
 
-% double-buffered banks: solid is active, dashed is the copy the commit swaps in.
-% Both mappers take the transaction commit, which Zhiyuan confirmed.
-\draw[bar, draw=black!55, fill=black!16] (1.40,3.14) rectangle (2.45,3.34);
-\draw[bar, draw=black!40, dashed]        (1.40,2.84) rectangle (2.45,3.04);
-\draw[ctl,<->, line width=0.6pt] (1.28,2.80) -- (1.28,3.38);
-\draw[bar, draw=black!55, fill=black!16] (6.80,3.14) rectangle (7.96,3.34);
-\draw[bar, draw=black!40, dashed]        (6.80,2.84) rectangle (7.96,3.04);
+% Rio's first addition: a second bank for each match-action table, drawn dashed in
+% green under the active gray one. Both mappers take the commit, which Zhiyuan confirmed.
+\draw[bar, draw=black!55, fill=black!16] (1.30,3.14) rectangle (2.68,3.34);
+\draw[new, bar, dashed]                  (1.30,2.84) rectangle (2.68,3.04);
+\draw[bar, draw=black!55, fill=black!16] (6.56,3.14) rectangle (7.96,3.34);
+\draw[new, bar, dashed]                  (6.56,2.84) rectangle (7.96,3.04);
 
 % rank-assignment logic is not double-buffered: its writes apply as they arrive
 \draw[draw=black!50, fill=black!3, line width=0.5pt]
-  (3.06,3.12) -- (3.46,3.03) -- (3.46,2.95) -- (3.06,2.86) -- cycle;
+  (3.44,3.21) -- (4.06,3.06) -- (4.06,2.94) -- (3.44,2.79) -- cycle;
 
 % two logical PIFOs in one PE, which is what spares the survivor a level of its own
-\draw[bar, draw=black!55] (4.10,2.96) rectangle (4.60,3.22);
-\draw[bar, draw=black!55] (4.72,2.96) rectangle (5.22,3.22);
-\fill[black!70] (4.88,3.09) circle (1.3pt);
-\fill[black!70] (5.06,3.09) circle (1.3pt);
+\draw[bar, draw=black!55] (4.91,2.96) rectangle (5.41,3.22);
+\draw[bar, draw=black!55] (5.53,2.96) rectangle (6.03,3.22);
 
-% the link is a stored pointer the dequeue reads on its way past
-\fill[black!70] (5.68,2.99) circle (1.3pt);
-\draw[->, draw=black!70, line width=0.5pt] (5.74,2.99) -- (6.26,2.99);
+% ===== Rio's second addition: the survivor link =====
+% Small, below the row, on the dequeue's way in. A stored pointer the dequeue reads
+% before it picks a PIFO to pop. Labelled on its right, so the enqueue's descent does
+% not appear to run into the words.
+\draw[new, rounded corners=1.5pt] (5.53,1.96) rectangle (6.63,2.26);
+\fill[newcol] (5.93,2.11) circle (1.3pt);
+\draw[->, draw=newcol, line width=0.5pt] (5.99,2.11) -- (6.27,2.11);
+\node[tl, text=newcol, anchor=west, align=left] at (6.71,2.11) {survivor\\link};
+
+% ===================== the commit's taps, one per level =====================
+\draw[ctl,->] (0.62,3.30) -- (1.05,3.30);
+\draw[ctl,->] (0.62,0.77) -- (1.05,0.77);
+\draw[ctl,->] (0.62,-0.07) -- (1.05,-0.07);
+\node[tl, text=ctlcol, anchor=south] at (0.88,3.37) {\(t_0\)};
+\node[tl, text=ctlcol, anchor=south] at (0.84,0.84) {\(t_1\)};
+\node[tl, text=ctlcol, anchor=south] at (0.84,0.00) {\(t_2\)};
 
 % ===== the two walks, drawn last so they run in front of the blocks =====
-% Enqueue: up at classify's centre, right along the band, down a third into the PIFOs.
-\draw[enq,->] (1.855,2.14) -- (1.855,2.56) -- (4.447,2.56) -- (4.447,2.14);
-% Dequeue: up two thirds into the PIFOs, right along the band, down at next hop's centre.
-\draw[deq,->] (4.863,2.14) -- (4.863,2.56) -- (7.380,2.56) -- (7.380,2.14);
-\node[tl, text=enqcol, anchor=north] at (1.855,2.10) {enqueue};
-\node[tl, text=deqcol, anchor=north] at (7.380,2.10) {dequeue};
+% Enqueue: up a quarter into classify, right along the band, down a third into the PIFOs.
+\draw[walk,->] (1.585,1.74) -- (1.585,2.64) -- (5.213,2.64) -- (5.213,1.96);
+% Dequeue: in through the survivor link, up two thirds into the PIFOs, right along the
+% band, down three quarters into next hop.
+\draw[walk] (5.727,1.74) -- (5.727,1.96);
+\draw[walk,->] (5.727,2.26) -- (5.727,2.64) -- (7.67,2.64) -- (7.67,1.96);
+\node[tl, anchor=north] at (1.585,1.70) {enqueue};
+\node[tl, anchor=north] at (5.727,1.70) {dequeue};
 
 \end{tikzpicture}
-\caption{Rio's two additions to a PIFO tree substrate, which gives each tree level its own processing element.
-Double-buffered blocks are shown in gray, and a commit swaps the solid bank with the dashed one.}
+\caption{A PIFO tree substrate with Rio's two additions (green): a second bank for each match--action table, and a designated-survivor link. The gray blocks are double-buffered, and a commit swaps the banks when it reaches each level at some instant $t_i$.}
 \label{fig:hardware}
 \end{figure}
