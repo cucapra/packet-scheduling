@@ -433,8 +433,9 @@ We choose the set of edits to meet the following criteria:
 %
 \begin{enumerate}
 \item They are \emph{atomic}. PIFO tree hardware can commit each edit such that packets are processed either by the original policy or the edited one (\Cref{sec:hardware}).
-\xxx[as]{Do we need more intuition here to suggest why the reader should believe that all of these are atomic?}
-\xxx[AM to AS]{So far I have essentially just said that the six forms have been \emph{chosen} with care, and I have asserted that they are atomic: here, and again below the informal list of the forms, where \cref{sec:hardware} is where the assertion is discharged. If we want to give the reader a reason rather than an assertion, let's discuss some more.}
+% \xxx[as]{Do we need more intuition here to suggest why the reader should believe that all of these are atomic?}
+% \xxx[AM to AS]{So far I have essentially just said that the six forms have been \emph{chosen} with care, and I have asserted that they are atomic: here, and again below the informal list of the forms, where \cref{sec:hardware} is where the assertion is discharged. If we want to give the reader a reason rather than an assertion, let's discuss some more.}
+% Reading this again, I think it's better to keep it short (i.e., add nothing). The reasons for atomicity come elsewhere. --AS
 \item They are \emph{explainable}. Each edit transforms a policy $p$ in our policy DSL into a new policy $p'$. Later, we also show how each edit applies to live PIFO tree state to reflect these changes (\cref{sec:edit-semantics}).
 \item They are \emph{complete}. For any pair of policies $p_1$ and $p_2$, a sequence of edits suffices to transform $p_1$ into $p_2$. \cref{sec:sequences} gives a ``fallback'' path that always works.
 \item They are \emph{non-disruptive}. Installing an edit never drops, reorders, or re-ranks a packet that is already buffered (\cref{sec:nondisruption}). Edits that delete a subtree, such as $\Remove$, have a precondition that requires the doomed subtree to be empty.
@@ -543,6 +544,7 @@ It is the configuration the operator chose, not bookkeeping that the traffic lef
 That lets \cref{sec:equivalences} define \(\lfloor \cdot \rfloor\) by structural recursion.
 And \emph{that} turns closure under \(\delta\) into a theorem rather than a definitional rule.
 It supersedes an earlier decision of ours saying that the discipline is ``compiled into \zz and never stored''; note that \cref{sec:hw-compile} already stores it (\texttt{set\_policy}) and reads it back (\texttt{discipline(v)}). So maybe our earlier resolution was always in vain.}
+\xxx[as]{This seems fine, and at least consistent. I have to admit that I am not sure it is actually necessary, i.e., we \emph{could} instead decide that we never ``read'' policies back out of PIFO tree states at all. (This is not something that the real system seems to need to do, I think?) Anyway, I suggest we leave this how it is for now and consider simplifying after the ASPLOS deadline.}
 
 \paragraph{\push{} and \pop{}}
 
@@ -696,7 +698,8 @@ Because \(\eqR\) only permutes sibling arms, each \(\eqR\)-class has a canonical
 
 We write \(\lfloor C \rfloor\) to mean ``the \pol that \(C\) realizes.''
 % Intuitively, \(\lfloor \cdot \rfloor\) reads the policy straight off the control.
-\xxx[as]{Regardless of how $\lfloor C \rfloor$ ends up getting defined (see below), I think we should: (1) state here that it is supposed to be the opposite of $\lceil p \rceil$, and (2) leave everything else in an appendix.}
+\xxx[as]{Regardless of how $\lfloor C \rfloor$ ends up getting defined (see below), I think we should: (1) state here that it is supposed to be the opposite of $\lceil p \rceil$, and (2) leave everything else in an appendix.
+What that concretely means is: we write a couple more sentences here, and then end the section. I suggest we either move to an appendix or delete everything below this point.}
 It walks the control's tree and recovers, node by node, the \pol term the control implements, discarding the live \pifo and \stt contents that traffic happens to have left behind.
 We define it by structural recursion on \(C\), with one clause for leaves and one for internal nodes.
 Both clauses read out of \zz (\cref{sec:controls}).
