@@ -1,0 +1,16 @@
+{
+  "status": "passed",
+  "source_commit": "34e35d2",
+  "replay_fifo_unchanged": true,
+  "replay_fifo_sha256": "d43818d915394d3c9e7998e75a3184c191d718e02a522cf0f0b76fe257d3b3c4",
+  "tests": [
+    "[info] REPLAY_MAPPER_PASS epochs=96 commits=192 writes=240 overlap_reads=192",
+    "[info] SHARED_REPLAY_DRIVER_PASS commits=11 empty_commits=3 rejected_epochs=9",
+    "[info] [DrainGuardSim] PASS: tagged blocking, ordinary cleanup, final pop, both banks, early/empty/reused guards"
+  ],
+  "ordinary_table_contract": [
+    "CONFIGURATION_CONTRACT_PASS dynamic=0 cycles=633 packets=7"
+  ],
+  "memory_initialization": "same all-zero values with numeric Scala initialization",
+  "no_mapper_read_write_port_changes": true
+}

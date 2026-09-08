@@ -1,11 +1,23 @@
 # RIO hardware overhead experiments
 
+The current implementation defaults to **shared-FIFO replay with 256 controller
+entries**. Both platforms and all six flow counts have completed synthesis. See
+the [current results](../../experiment-results/shared-fifo-overhead/README.md),
+[synthesis workflow](../../synthesis/README.md), and [replay protocol](../../REPLAY.md).
+The fixed table and sweep include BRAM counts, target utilization, and five
+matching PIFOs in the overhead denominator.
+
+```bash
+python hw/python/pifo_shared_fifo_experiments.py --collect-only
+```
+
+## Historical separate-journal experiments
+
 The saved comparison is ordinary single-bank tables versus controller replay
 from `d5a10e8`, with a 16,384-entry separate journal placed in M20K on Quartus.
 Ordinary tables retain the command controller and consume commits as no-ops.
-Current replay RTL instead reuses the control FIFO RAM; see [REPLAY.md](REPLAY.md).
-It has correctness validation only. The saved tables/figures still describe
-the separate-journal implementation and must not be attributed to the new RTL.
+The definitions and results below describe that separate-journal implementation;
+the shared-FIFO measurements are stored in the current results linked above.
 
 ## Experiments
 
@@ -81,8 +93,8 @@ From pifo-hardware:
 Collection and rendering reuse verified archived ordinary and replay measurements.
 Fresh synthesis of these historical experiment definitions requires their
 matching source/workflow at `d5a10e8`; current runners reject this incompatible
-request before modifying results. Future shared FIFO measurements must specify
-the same control FIFO capacity for both designs in a new experiment definition.
+request before modifying results. The current shared-FIFO experiment uses the
+same 256-entry control FIFO capacity for both designs in its separate definition.
 The PIFO extractor checks original RTL hashes, unchanged house-PIFO source,
 all used runtime ports, table capacity, exact widths, and the push2 tie-off in
 every source PE. The extracted core is unchanged; a wrapper reproduces its

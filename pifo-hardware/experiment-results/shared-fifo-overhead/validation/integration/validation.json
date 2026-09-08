@@ -1,0 +1,53 @@
+{
+  "status": "passed",
+  "checked_utc": "2026-09-08T00:12:48.598964+00:00",
+  "target_branch": "hardware-synthesis",
+  "synthesis_commit": "9f34e38e4b3d9d87ffe52a59c857010870875825",
+  "preserved_development_commit": "baf2e40f36d3fb344342348d079ea4fb8db32cd4",
+  "synthesized_source_unchanged": true,
+  "synthesis_artifacts_unchanged": true,
+  "source_sha256": {
+    "hw/spinal/rio/ConcurrentPifoRTL.scala": "6418ce1f359296e2fcd80e4bf2f8dc96c51a79cfdce910a5d2916a6156c041a9",
+    "hw/spinal/rio/Config.scala": "eb623e40ebce2bfe36151863b1764a1b3531cadfe8c4bd5ae2a97eebe71f5061",
+    "hw/spinal/rio/ConfigurableMapper.scala": "89ef5c877bd498fbcdb66272b3298ef3b3c99248bd61d9e0de15f270b3dbe628",
+    "hw/spinal/rio/ControllerFactory.scala": "30efd0c48e7fccc934720714d60677a2e96bcd82a42e872b85a606550f7d9908",
+    "hw/spinal/rio/DrainGuard.scala": "f0ef785bf1b5d103e777636636dcad2d5dfc2f217bf9e5f2d6d4eaa50661f865",
+    "hw/spinal/rio/GeneratePifoMesh.scala": "4098604e01ad1272713a6d3331e28302596771ec6e70097003ce8b5c3f5dd4cd",
+    "hw/spinal/rio/Pifo.scala": "1c97b917779af58a5faeacc9b5cee4437d8fb0c453bb1492ad583d422767459b",
+    "hw/spinal/rio/PifoCore.scala": "860bafa66a50b828b539bf1389cb4916cac77eb9960c4cc63c5d61c9e63b351d",
+    "hw/spinal/rio/PifoEngine.scala": "d9b2d9f505498dcdae4927576c3ff9779fbae3530d0ed1d71eb84e461e34fc7e",
+    "hw/spinal/rio/PifoMesh.scala": "09b2e15eb1f22331f6191ebe89ba2359065af959ef1f5ad26f7a3f2730bc6df1",
+    "hw/spinal/rio/ReplayControlFifo.scala": "d43818d915394d3c9e7998e75a3184c191d718e02a522cf0f0b76fe257d3b3c4",
+    "hw/spinal/rio/ReplayMapper.scala": "04a4546158f7ae7d14495a63ad67df32aa533bb2793a876b6357d410cd065fd7",
+    "hw/verilog/priority_encode_log.v": "2a63070396dc60fd2106c5ef1d0719e027ff6bf797afbef166cf99c9b49537c2",
+    "build.sbt": "557f8381ce0cf9b0da205fdd6600ebbdda0477a87f71691ced7ed18643b7f72e",
+    "project/build.properties": "97e9b0adc044c92dbf8dc1e671a268242449320b6911d1623cc93427f0bb1b61",
+    "project/plugins.sbt": "e1da7997f71038c21e15631c0f062bdc5d6c6a103d73087e7e659f78b07b9b6f"
+  },
+  "default_configuration": "replay",
+  "default_control_fifo_depth": 256,
+  "compilation_passed": true,
+  "python_tests": {
+    "run": 49,
+    "passed": 48,
+    "skipped": 1
+  },
+  "simulations": [
+    "ReplayControlFifoSim",
+    "ReplayMapperSim",
+    "SharedReplayDriverSim",
+    "DrainGuardSim",
+    "TransactionalConfigSim",
+    "ControlIngressRateSim",
+    "FrontUnderflowRewriteSim"
+  ],
+  "fifo_depths_tested": [
+    2,
+    4,
+    8,
+    256
+  ],
+  "packet_plot_export_preserves_resource_figures": true,
+  "synthesis_rerun": false,
+  "implementation_run": false
+}

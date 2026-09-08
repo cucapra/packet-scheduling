@@ -14,3 +14,4 @@ at=2000 name=r1-add-spotify mode=in_place before=p1 after=p2a gateFlows=3 comman
 at=2000 name=r1-add-spotify mode=in_place before=p1 after=p2a gateFlows=3 command=UpdateMapperPre engineId=1 vPifoId=3 flowId=0 data=1
 at=2000 name=r1-add-spotify mode=in_place before=p1 after=p2a gateFlows=3 command=UpdateMapperPost engineId=1 vPifoId=1 flowId=11 data=3
 at=2000 name=r1-add-spotify mode=in_place before=p1 after=p2a gateFlows=3 command=CommitMapper engineId=1 vPifoId=0 flowId=0 data=0
+at=2000 name=r1-add-spotify-cleanup mode=direct cleanupOf=r1-add-spotify command=CommitMapper engineId=1 vPifoId=0 flowId=0 data=0

@@ -1,0 +1,272 @@
+{
+  "groups": {
+    "brain": {
+      "ram_bits": 755251200,
+      "logic_luts": 58550,
+      "registers": 445
+    },
+    "post_mapper": {
+      "ram_bits": 1132462080,
+      "logic_luts": 27940,
+      "registers": 470
+    },
+    "controller_fifo": {
+      "ram_bits": 36864,
+      "logic_luts": 94019,
+      "registers": 39
+    },
+    "pre_mapper": {
+      "ram_bits": 184320,
+      "logic_luts": 36137,
+      "registers": 15
+    },
+    "routing_and_other": {
+      "logic_luts": 18592,
+      "registers": 94
+    },
+    "drain_guard": {
+      "logic_luts": 18095,
+      "registers": 10240
+    },
+    "front_rewrite": {
+      "logic_luts": 27770,
+      "registers": 71680
+    },
+    "crossbar": {
+      "logic_luts": 11783,
+      "registers": 1004
+    }
+  },
+  "memories": [
+    {
+      "name": "pifoEngines_0/enque_brain/engineCAM/ram",
+      "mode": "RAM_SDP",
+      "port_a": "8388608x18",
+      "port_b": "8388608x18"
+    },
+    {
+      "name": "pifoEngines_1/enque_brain/engineCAM/ram",
+      "mode": "RAM_SDP",
+      "port_a": "8388608x18",
+      "port_b": "8388608x18"
+    },
+    {
+      "name": "pifoEngines_2/enque_brain/engineCAM/ram",
+      "mode": "RAM_SDP",
+      "port_a": "8388608x18",
+      "port_b": "8388608x18"
+    },
+    {
+      "name": "pifoEngines_3/enque_brain/engineCAM/ram",
+      "mode": "RAM_SDP",
+      "port_a": "8388608x18",
+      "port_b": "8388608x18"
+    },
+    {
+      "name": "pifoEngines_4/enque_brain/engineCAM/ram",
+      "mode": "RAM_SDP",
+      "port_a": "8388608x18",
+      "port_b": "8388608x18"
+    },
+    {
+      "name": "pifoEngines_0/deque_dequeMapper/banks_0",
+      "mode": "RAM_SDP",
+      "port_a": "8388608x13",
+      "port_b": "8388608x13"
+    },
+    {
+      "name": "pifoEngines_0/deque_dequeMapper/banks_1",
+      "mode": "RAM_SDP",
+      "port_a": "8388608x13",
+      "port_b": "8388608x13"
+    },
+    {
+      "name": "pifoEngines_1/deque_dequeMapper/banks_0",
+      "mode": "RAM_SDP",
+      "port_a": "8388608x13",
+      "port_b": "8388608x13"
+    },
+    {
+      "name": "pifoEngines_1/deque_dequeMapper/banks_1",
+      "mode": "RAM_SDP",
+      "port_a": "8388608x13",
+      "port_b": "8388608x13"
+    },
+    {
+      "name": "pifoEngines_2/deque_dequeMapper/banks_0",
+      "mode": "RAM_SDP",
+      "port_a": "8388608x13",
+      "port_b": "8388608x13"
+    },
+    {
+      "name": "pifoEngines_2/deque_dequeMapper/banks_1",
+      "mode": "RAM_SDP",
+      "port_a": "8388608x13",
+      "port_b": "8388608x13"
+    },
+    {
+      "name": "pifoEngines_3/deque_dequeMapper/banks_0",
+      "mode": "RAM_SDP",
+      "port_a": "8388608x13",
+      "port_b": "8388608x13"
+    },
+    {
+      "name": "pifoEngines_3/deque_dequeMapper/banks_1",
+      "mode": "RAM_SDP",
+      "port_a": "8388608x13",
+      "port_b": "8388608x13"
+    },
+    {
+      "name": "pifoEngines_4/deque_dequeMapper/banks_0",
+      "mode": "RAM_SDP",
+      "port_a": "8388608x13",
+      "port_b": "8388608x13"
+    },
+    {
+      "name": "pifoEngines_4/deque_dequeMapper/banks_1",
+      "mode": "RAM_SDP",
+      "port_a": "8388608x13",
+      "port_b": "8388608x13"
+    },
+    {
+      "name": "pifoEngines_0/enque_brain/brainStateMem/ram",
+      "mode": "RAM_SDP",
+      "port_a": "1024x32",
+      "port_b": "1024x32"
+    },
+    {
+      "name": "pifoEngines_1/enque_brain/brainStateMem/ram",
+      "mode": "RAM_SDP",
+      "port_a": "1024x32",
+      "port_b": "1024x32"
+    },
+    {
+      "name": "pifoEngines_2/enque_brain/brainStateMem/ram",
+      "mode": "RAM_SDP",
+      "port_a": "1024x32",
+      "port_b": "1024x32"
+    },
+    {
+      "name": "pifoEngines_3/enque_brain/brainStateMem/ram",
+      "mode": "RAM_SDP",
+      "port_a": "1024x32",
+      "port_b": "1024x32"
+    },
+    {
+      "name": "pifoEngines_4/enque_brain/brainStateMem/ram",
+      "mode": "RAM_SDP",
+      "port_a": "1024x32",
+      "port_b": "1024x32"
+    },
+    {
+      "name": "replayControl/storage",
+      "mode": "RAM_SDP",
+      "port_a": "512x61",
+      "port_b": "512x61"
+    },
+    {
+      "name": "pifoEngines_0/enque_enqueMapper/banks_0",
+      "mode": "RAM_SDP",
+      "port_a": "1024x10",
+      "port_b": "1024x10"
+    },
+    {
+      "name": "pifoEngines_0/enque_enqueMapper/banks_1",
+      "mode": "RAM_SDP",
+      "port_a": "1024x10",
+      "port_b": "1024x10"
+    },
+    {
+      "name": "pifoEngines_1/enque_enqueMapper/banks_0",
+      "mode": "RAM_SDP",
+      "port_a": "1024x10",
+      "port_b": "1024x10"
+    },
+    {
+      "name": "pifoEngines_1/enque_enqueMapper/banks_1",
+      "mode": "RAM_SDP",
+      "port_a": "1024x10",
+      "port_b": "1024x10"
+    },
+    {
+      "name": "pifoEngines_2/enque_enqueMapper/banks_0",
+      "mode": "RAM_SDP",
+      "port_a": "1024x10",
+      "port_b": "1024x10"
+    },
+    {
+      "name": "pifoEngines_2/enque_enqueMapper/banks_1",
+      "mode": "RAM_SDP",
+      "port_a": "1024x10",
+      "port_b": "1024x10"
+    },
+    {
+      "name": "pifoEngines_3/enque_enqueMapper/banks_0",
+      "mode": "RAM_SDP",
+      "port_a": "1024x10",
+      "port_b": "1024x10"
+    },
+    {
+      "name": "pifoEngines_3/enque_enqueMapper/banks_1",
+      "mode": "RAM_SDP",
+      "port_a": "1024x10",
+      "port_b": "1024x10"
+    },
+    {
+      "name": "pifoEngines_4/enque_enqueMapper/banks_0",
+      "mode": "RAM_SDP",
+      "port_a": "1024x10",
+      "port_b": "1024x10"
+    },
+    {
+      "name": "pifoEngines_4/enque_enqueMapper/banks_1",
+      "mode": "RAM_SDP",
+      "port_a": "1024x10",
+      "port_b": "1024x10"
+    },
+    {
+      "name": "pifoEngines_0/enque_brain/lastVirtualMapper/ram",
+      "mode": "RAM_SDP",
+      "port_a": "1024x8",
+      "port_b": "1024x8"
+    },
+    {
+      "name": "pifoEngines_1/enque_brain/lastVirtualMapper/ram",
+      "mode": "RAM_SDP",
+      "port_a": "1024x8",
+      "port_b": "1024x8"
+    },
+    {
+      "name": "pifoEngines_2/enque_brain/lastVirtualMapper/ram",
+      "mode": "RAM_SDP",
+      "port_a": "1024x8",
+      "port_b": "1024x8"
+    },
+    {
+      "name": "pifoEngines_3/enque_brain/lastVirtualMapper/ram",
+      "mode": "RAM_SDP",
+      "port_a": "1024x8",
+      "port_b": "1024x8"
+    },
+    {
+      "name": "pifoEngines_4/enque_brain/lastVirtualMapper/ram",
+      "mode": "RAM_SDP",
+      "port_a": "1024x8",
+      "port_b": "1024x8"
+    }
+  ],
+  "logical_storage_bits": {
+    "sorted_entry_registers": 0,
+    "flow_state_tables": 1342177280,
+    "post_mapper_banks": 1090519040,
+    "pre_mapper_banks": 102400,
+    "brain_policy_tables": 10240,
+    "last_virtual_time_tables": 40960,
+    "brain_state_tables": 163840,
+    "front_rewrite_registers": 71680,
+    "control_queue_payload": 15616,
+    "crossbar_fifo_payload": 624
+  },
+  "controller_uses_block_ram": true,
+  "pre_mapper_uses_block_ram": true
+}

@@ -1,0 +1,260 @@
+[info] welcome to sbt 1.10.2 (Ubuntu Java 21.0.10)
+[info] loading settings for project pifo-hardware-build from plugins.sbt ...
+[info] loading project definition from /home/zg366/packet-scheduling/pifo-hardware/project
+[info] loading settings for project rio from build.sbt ...
+[info] set current project to rio (in build file:/home/zg366/packet-scheduling/pifo-hardware/)
+[info] Executing in batch mode. For better performance use sbt's shell
+[info] compiling 33 Scala sources to /home/zg366/packet-scheduling/pifo-hardware/target/scala-2.13/classes ...
+[warn] 4 deprecations (since 2.13.3); re-run with -deprecation for details
+[warn] 123 feature warnings; re-run with -feature for details
+[warn] two warnings found
+[info] done compiling
+[success] Total time: 16 s, completed Sep 7, 2026, 8:07:00 PM
+[info] running (fork) rio.sim.ReplayControlFifoSim 
+[info] [Runtime] SpinalHDL v1.12.3    git head : 591e64062329e5e2e2b81f4d52422948053edb97
+[info] [Runtime] JVM max memory : 30208.0MiB
+[info] [Runtime] Current date : 2026.09.07 20:07:02
+[info] [Progress] at 0.000 : Elaborate components
+[info] [Progress] at 0.738 : Checks and transforms
+[info] [Progress] at 0.924 : Generate Verilog to /home/zg366/packet-scheduling/pifo-hardware/simWorkspace/ReplayControlFifo-2
+[info] [Done] at 1.088
+[info] SHARED_FIFO_PASS depth=2 cycles=2913 accepted=962 outputs=1234 replay_writes=272 commits=624 stalls=407 replay_stalls=103 simultaneous=1 seeds=3
+[info] hw/verilog/shared_control_fifo_tb.sv:137: $finish called at 29132000 (1ps)
+[info] [Runtime] SpinalHDL v1.12.3    git head : 591e64062329e5e2e2b81f4d52422948053edb97
+[info] [Runtime] JVM max memory : 30208.0MiB
+[info] [Runtime] Current date : 2026.09.07 20:07:03
+[info] [Progress] at 1.289 : Elaborate components
+[info] [Progress] at 1.312 : Checks and transforms
+[info] [Progress] at 1.375 : Generate Verilog to /home/zg366/packet-scheduling/pifo-hardware/simWorkspace/ReplayControlFifo-4
+[info] [Done] at 1.417
+[info] SHARED_FIFO_PASS depth=4 cycles=3668 accepted=1504 outputs=1913 replay_writes=409 commits=624 stalls=666 replay_stalls=141 simultaneous=662 seeds=3
+[info] hw/verilog/shared_control_fifo_tb.sv:137: $finish called at 36682000 (1ps)
+[info] [Runtime] SpinalHDL v1.12.3    git head : 591e64062329e5e2e2b81f4d52422948053edb97
+[info] [Runtime] JVM max memory : 30208.0MiB
+[info] [Runtime] Current date : 2026.09.07 20:07:03
+[info] [Progress] at 1.595 : Elaborate components
+[info] [Progress] at 1.620 : Checks and transforms
+[info] [Progress] at 1.670 : Generate Verilog to /home/zg366/packet-scheduling/pifo-hardware/simWorkspace/ReplayControlFifo-8
+[info] [Done] at 1.713
+[info] SHARED_FIFO_PASS depth=8 cycles=5963 accepted=2564 outputs=3373 replay_writes=809 commits=624 stalls=1148 replay_stalls=270 simultaneous=1673 seeds=3
+[info] hw/verilog/shared_control_fifo_tb.sv:137: $finish called at 59632000 (1ps)
+[info] [Runtime] SpinalHDL v1.12.3    git head : 591e64062329e5e2e2b81f4d52422948053edb97
+[info] [Runtime] JVM max memory : 30208.0MiB
+[info] [Runtime] Current date : 2026.09.07 20:07:04
+[info] [Progress] at 1.948 : Elaborate components
+[info] [Progress] at 1.963 : Checks and transforms
+[info] [Progress] at 2.000 : Generate Verilog to /home/zg366/packet-scheduling/pifo-hardware/simWorkspace/ReplayControlFifo-256
+[info] [Done] at 2.027
+[info] SHARED_FIFO_PASS depth=256 cycles=120391 accepted=49276 outputs=65822 replay_writes=16546 commits=624 stalls=22457 replay_stalls=5597 simultaneous=36740 seeds=3
+[info] hw/verilog/shared_control_fifo_tb.sv:137: $finish called at 1203912000 (1ps)
+[success] Total time: 5 s, completed Sep 7, 2026, 8:07:06 PM
+[info] running (fork) rio.sim.ReplayMapperSim 
+[info] [Runtime] SpinalHDL v1.12.3    git head : 591e64062329e5e2e2b81f4d52422948053edb97
+[info] [Runtime] JVM max memory : 30208.0MiB
+[info] [Runtime] Current date : 2026.09.07 20:07:06
+[info] [Progress] at 0.000 : Elaborate components
+[info] [Progress] at 0.686 : Checks and transforms
+[info] [Progress] at 0.797 : Generate Verilog to ./simWorkspace/tmp/job_1
+[info] [Done] at 0.944
+[info] [Progress] Simulation workspace in /home/zg366/packet-scheduling/pifo-hardware/./simWorkspace/ReplayMapper
+[info] [Progress] IVerilog compilation started
+[info] [Progress] IVerilog compilation done in 25.553 ms
+[info] [Progress] Start ReplayMapper test simulation with seed 639828153
+[info] REPLAY_MAPPER_PASS epochs=96 commits=192 writes=240 overlap_reads=192
+[info] Shared memory key : SpinalHDL_0_1_473524237_1672228466_1788826027920_-6524627106959534311
+[info] Start of simulation
+[info] FST info: dumpfile /home/zg366/packet-scheduling/pifo-hardware/simWorkspace/ReplayMapper/test/wave.fst opened for output.
+[info] End of simulation
+[info] [Done] Simulation done in 315.474 ms
+[success] Total time: 2 s, completed Sep 7, 2026, 8:07:08 PM
+[info] running (fork) rio.sim.SharedReplayDriverSim 
+[info] [Runtime] SpinalHDL v1.12.3    git head : 591e64062329e5e2e2b81f4d52422948053edb97
+[info] [Runtime] JVM max memory : 30208.0MiB
+[info] [Runtime] Current date : 2026.09.07 20:07:08
+[info] [Progress] at 0.000 : Elaborate components
+[info] [Progress] at 1.297 : Checks and transforms
+[info] [Progress] at 2.381 : Generate Verilog to ./simWorkspace/tmp/job_1
+[info] [Warning] toplevel/pifoEngines_0/enque_brain/flowStateUpdate_toStream_fifo/fifo/logic_ram : Mem[2*40 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/pifoEngines_0/enque_brain/brainStateUpdate_toStream_fifo/fifo/logic_ram : Mem[2*35 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/pifoEngines_0/enque_brain/engineMapper_io_readRes_toStream_fifo/fifo/logic_ram : Mem[2*2 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/pifoEngines_0/enque_brain/brainStateMem_io_readRes_toStream_fifo/fifo/logic_ram : Mem[2*32 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/pifoEngines_0/enque_brain/engineCAM_io_readRes_toStream_fifo/fifo/logic_ram : Mem[2*32 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/pifoEngines_0/enque_brain/lastVirtualMapper_io_readRes_toStream_fifo/fifo/logic_ram : Mem[2*8 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/pifoEngines_0/enque_brain/io_outputs_4_fifo/fifo/logic_ram : Mem[2*8 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/pifoEngines_1/enque_brain/flowStateUpdate_toStream_fifo/fifo/logic_ram : Mem[2*40 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/pifoEngines_1/enque_brain/brainStateUpdate_toStream_fifo/fifo/logic_ram : Mem[2*35 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/pifoEngines_1/enque_brain/engineMapper_io_readRes_toStream_fifo/fifo/logic_ram : Mem[2*2 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/pifoEngines_1/enque_brain/brainStateMem_io_readRes_toStream_fifo/fifo/logic_ram : Mem[2*32 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/pifoEngines_1/enque_brain/engineCAM_io_readRes_toStream_fifo/fifo/logic_ram : Mem[2*32 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/pifoEngines_1/enque_brain/lastVirtualMapper_io_readRes_toStream_fifo/fifo/logic_ram : Mem[2*8 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/pifoEngines_1/enque_brain/io_outputs_4_fifo/fifo/logic_ram : Mem[2*8 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/xbar/io_inputs_0_fifo/fifo/logic_ram : Mem[8*5 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/xbar/io_inputs_1_fifo/fifo/logic_ram : Mem[8*5 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/xbar/io_inputs_2_fifo/fifo/logic_ram : Mem[8*5 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/pifoEngines_0/enque_flowIdStream_fifo/fifo/logic_ram : Mem[2*5 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/pifoEngines_0/io_outputs_2_fifo/fifo/logic_ram : Mem[2*17 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/pifoEngines_1/enque_flowIdStream_fifo/fifo/logic_ram : Mem[2*5 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/pifoEngines_1/io_outputs_2_fifo/fifo/logic_ram : Mem[2*17 bits].readAsync can only be write first into Verilog
+[info] [Warning] 496 signals were pruned. You can call printPruned on the backend report to get more informations.
+[info] [Done] at 2.922
+[info] [Progress] Simulation workspace in /home/zg366/packet-scheduling/pifo-hardware/./simWorkspace/PifoMesh
+[info] [Progress] IVerilog compilation started
+[info] [Progress] IVerilog compilation done in 30.932 ms
+[info] [Progress] Start PifoMesh test simulation with seed 1897932309
+[info] SHARED_REPLAY_DRIVER_PASS commits=11 empty_commits=3 rejected_epochs=9
+[info] Shared memory key : SpinalHDL_0_1_61780583_1672228466_1788826032387_9157060359534975882
+[info] Start of simulation
+[info] Warning, value 'z' at position 0 is neither '0' or '1'. value set to '0'.
+[info] Warning, value 'z' at position 0 is neither '0' or '1'. value set to '0'.
+[info] Warning, value 'z' at position 0 is neither '0' or '1'. value set to '0'.
+[info] Warning, value 'z' at position 0 is neither '0' or '1'. value set to '0'.
+[info] Warning, value 'z' at position 0 is neither '0' or '1'. value set to '0'.
+[info] End of simulation
+[info] [Done] Simulation done in 142.611 ms
+[success] Total time: 4 s, completed Sep 7, 2026, 8:07:12 PM
+[info] running (fork) rio.sim.DrainGuardSim 
+[info] [Runtime] SpinalHDL v1.12.3    git head : 591e64062329e5e2e2b81f4d52422948053edb97
+[info] [Runtime] JVM max memory : 30208.0MiB
+[info] [Runtime] Current date : 2026.09.07 20:07:13
+[info] [Progress] at 0.000 : Elaborate components
+[info] [Progress] at 1.234 : Checks and transforms
+[info] [Progress] at 2.114 : Generate Verilog to ./simWorkspace/tmp/job_1
+[info] [Warning] toplevel/pifoEngines_0/enque_brain/flowStateUpdate_toStream_fifo/fifo/logic_ram : Mem[2*38 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/pifoEngines_0/enque_brain/brainStateUpdate_toStream_fifo/fifo/logic_ram : Mem[2*34 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/pifoEngines_0/enque_brain/engineMapper_io_readRes_toStream_fifo/fifo/logic_ram : Mem[2*2 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/pifoEngines_0/enque_brain/brainStateMem_io_readRes_toStream_fifo/fifo/logic_ram : Mem[2*32 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/pifoEngines_0/enque_brain/engineCAM_io_readRes_toStream_fifo/fifo/logic_ram : Mem[2*32 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/pifoEngines_0/enque_brain/lastVirtualMapper_io_readRes_toStream_fifo/fifo/logic_ram : Mem[2*8 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/pifoEngines_0/enque_brain/io_outputs_4_fifo/fifo/logic_ram : Mem[2*6 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/pifoEngines_1/enque_brain/flowStateUpdate_toStream_fifo/fifo/logic_ram : Mem[2*38 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/pifoEngines_1/enque_brain/brainStateUpdate_toStream_fifo/fifo/logic_ram : Mem[2*34 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/pifoEngines_1/enque_brain/engineMapper_io_readRes_toStream_fifo/fifo/logic_ram : Mem[2*2 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/pifoEngines_1/enque_brain/brainStateMem_io_readRes_toStream_fifo/fifo/logic_ram : Mem[2*32 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/pifoEngines_1/enque_brain/engineCAM_io_readRes_toStream_fifo/fifo/logic_ram : Mem[2*32 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/pifoEngines_1/enque_brain/lastVirtualMapper_io_readRes_toStream_fifo/fifo/logic_ram : Mem[2*8 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/pifoEngines_1/enque_brain/io_outputs_4_fifo/fifo/logic_ram : Mem[2*6 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/xbar/io_inputs_0_fifo/fifo/logic_ram : Mem[8*4 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/xbar/io_inputs_1_fifo/fifo/logic_ram : Mem[8*4 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/xbar/io_inputs_2_fifo/fifo/logic_ram : Mem[8*4 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/pifoEngines_0/enque_flowIdStream_fifo/fifo/logic_ram : Mem[2*4 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/pifoEngines_0/io_outputs_2_fifo/fifo/logic_ram : Mem[2*15 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/pifoEngines_1/enque_flowIdStream_fifo/fifo/logic_ram : Mem[2*4 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/pifoEngines_1/io_outputs_2_fifo/fifo/logic_ram : Mem[2*15 bits].readAsync can only be write first into Verilog
+[info] [Warning] 496 signals were pruned. You can call printPruned on the backend report to get more informations.
+[info] [Done] at 2.605
+[info] [Progress] Simulation workspace in /home/zg366/packet-scheduling/pifo-hardware/./simWorkspace/PifoMesh
+[info] [Progress] IVerilog compilation started
+[info] [Progress] IVerilog compilation done in 28.812 ms
+[info] [Progress] Start PifoMesh test simulation with seed 1020413188
+[info] [DrainGuardSim] PASS: tagged blocking, ordinary cleanup, final pop, both banks, early/empty/reused guards
+[info] Shared memory key : SpinalHDL_0_1_2137748518_1672228466_1788826036439_2222608049952248950
+[info] Start of simulation
+[info] Warning, value 'z' at position 0 is neither '0' or '1'. value set to '0'.
+[info] Warning, value 'z' at position 0 is neither '0' or '1'. value set to '0'.
+[info] Warning, value 'z' at position 0 is neither '0' or '1'. value set to '0'.
+[info] Warning, value 'z' at position 0 is neither '0' or '1'. value set to '0'.
+[info] Warning, value 'z' at position 0 is neither '0' or '1'. value set to '0'.
+[info] End of simulation
+[info] [Done] Simulation done in 159.058 ms
+[success] Total time: 4 s, completed Sep 7, 2026, 8:07:16 PM
+[info] running (fork) rio.sim.TransactionalConfigSim 
+[info] [Runtime] SpinalHDL v1.12.3    git head : 591e64062329e5e2e2b81f4d52422948053edb97
+[info] [Runtime] JVM max memory : 30208.0MiB
+[info] [Runtime] Current date : 2026.09.07 20:07:17
+[info] [Progress] at 0.000 : Elaborate components
+[info] [Progress] at 1.228 : Checks and transforms
+[info] [Progress] at 2.092 : Generate Verilog to ./simWorkspace/tmp/job_1
+[info] [Warning] toplevel/pifoEngines_0/enque_brain/flowStateUpdate_toStream_fifo/fifo/logic_ram : Mem[2*38 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/pifoEngines_0/enque_brain/brainStateUpdate_toStream_fifo/fifo/logic_ram : Mem[2*34 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/pifoEngines_0/enque_brain/engineMapper_io_readRes_toStream_fifo/fifo/logic_ram : Mem[2*2 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/pifoEngines_0/enque_brain/brainStateMem_io_readRes_toStream_fifo/fifo/logic_ram : Mem[2*32 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/pifoEngines_0/enque_brain/engineCAM_io_readRes_toStream_fifo/fifo/logic_ram : Mem[2*32 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/pifoEngines_0/enque_brain/lastVirtualMapper_io_readRes_toStream_fifo/fifo/logic_ram : Mem[2*5 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/pifoEngines_0/enque_brain/io_outputs_4_fifo/fifo/logic_ram : Mem[2*6 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/pifoEngines_1/enque_brain/flowStateUpdate_toStream_fifo/fifo/logic_ram : Mem[2*38 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/pifoEngines_1/enque_brain/brainStateUpdate_toStream_fifo/fifo/logic_ram : Mem[2*34 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/pifoEngines_1/enque_brain/engineMapper_io_readRes_toStream_fifo/fifo/logic_ram : Mem[2*2 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/pifoEngines_1/enque_brain/brainStateMem_io_readRes_toStream_fifo/fifo/logic_ram : Mem[2*32 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/pifoEngines_1/enque_brain/engineCAM_io_readRes_toStream_fifo/fifo/logic_ram : Mem[2*32 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/pifoEngines_1/enque_brain/lastVirtualMapper_io_readRes_toStream_fifo/fifo/logic_ram : Mem[2*5 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/pifoEngines_1/enque_brain/io_outputs_4_fifo/fifo/logic_ram : Mem[2*6 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/xbar/io_inputs_0_fifo/fifo/logic_ram : Mem[8*4 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/xbar/io_inputs_1_fifo/fifo/logic_ram : Mem[8*4 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/xbar/io_inputs_2_fifo/fifo/logic_ram : Mem[8*4 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/pifoEngines_0/enque_flowIdStream_fifo/fifo/logic_ram : Mem[2*4 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/pifoEngines_0/io_outputs_2_fifo/fifo/logic_ram : Mem[2*12 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/pifoEngines_1/enque_flowIdStream_fifo/fifo/logic_ram : Mem[2*4 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/pifoEngines_1/io_outputs_2_fifo/fifo/logic_ram : Mem[2*12 bits].readAsync can only be write first into Verilog
+[info] [Warning] 496 signals were pruned. You can call printPruned on the backend report to get more informations.
+[info] [Done] at 2.605
+[info] [Progress] Simulation workspace in /home/zg366/packet-scheduling/pifo-hardware/./simWorkspace/PifoMesh
+[info] [Progress] IVerilog compilation started
+[info] [Progress] IVerilog compilation done in 28.645 ms
+[info] [Progress] Start PifoMesh test simulation with seed 1129448974
+[info] Shared memory key : SpinalHDL_0_1_1753134165_1672228466_1788826040519_-8813711466854824284
+[info] Start of simulation
+[info] End of simulation
+[info] [Done] Simulation done in 100.512 ms
+[success] Total time: 4 s, completed Sep 7, 2026, 8:07:20 PM
+[info] running (fork) rio.sim.ControlIngressRateSim 
+[info] [Runtime] SpinalHDL v1.12.3    git head : 591e64062329e5e2e2b81f4d52422948053edb97
+[info] [Runtime] JVM max memory : 30208.0MiB
+[info] [Runtime] Current date : 2026.09.07 20:07:21
+[info] [Progress] at 0.000 : Elaborate components
+[info] [Progress] at 1.185 : Checks and transforms
+[info] [Progress] at 1.769 : Generate Verilog to ./simWorkspace/tmp/job_1
+[info] [Warning] toplevel/pifoEngines_0/enque_brain/flowStateUpdate_toStream_fifo/fifo/logic_ram : Mem[2*37 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/pifoEngines_0/enque_brain/brainStateUpdate_toStream_fifo/fifo/logic_ram : Mem[2*34 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/pifoEngines_0/enque_brain/engineMapper_io_readRes_toStream_fifo/fifo/logic_ram : Mem[2*2 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/pifoEngines_0/enque_brain/brainStateMem_io_readRes_toStream_fifo/fifo/logic_ram : Mem[2*32 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/pifoEngines_0/enque_brain/engineCAM_io_readRes_toStream_fifo/fifo/logic_ram : Mem[2*32 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/pifoEngines_0/enque_brain/lastVirtualMapper_io_readRes_toStream_fifo/fifo/logic_ram : Mem[2*5 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/pifoEngines_0/enque_brain/io_outputs_4_fifo/fifo/logic_ram : Mem[2*5 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/xbar/io_inputs_0_fifo/fifo/logic_ram : Mem[8*3 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/xbar/io_inputs_1_fifo/fifo/logic_ram : Mem[8*3 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/pifoEngines_0/enque_flowIdStream_fifo/fifo/logic_ram : Mem[2*3 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/pifoEngines_0/io_outputs_2_fifo/fifo/logic_ram : Mem[2*11 bits].readAsync can only be write first into Verilog
+[info] [Warning] 257 signals were pruned. You can call printPruned on the backend report to get more informations.
+[info] [Done] at 2.241
+[info] [Progress] Simulation workspace in /home/zg366/packet-scheduling/pifo-hardware/./simWorkspace/PifoMesh
+[info] [Progress] IVerilog compilation started
+[info] [Progress] IVerilog compilation done in 24.743 ms
+[info] [Progress] Start PifoMesh test simulation with seed 571775360
+[info] [ControlIngressRateSim] accepted=6 acceptanceTimes=85,95,105,115,125,135 gaps=10,10,10,10,10
+[info] Shared memory key : SpinalHDL_0_1_118492650_1672228466_1788826044080_544174838453261145
+[info] Start of simulation
+[info] Warning, value 'z' at position 0 is neither '0' or '1'. value set to '0'.
+[info] Warning, value 'z' at position 0 is neither '0' or '1'. value set to '0'.
+[info] Warning, value 'z' at position 0 is neither '0' or '1'. value set to '0'.
+[info] Warning, value 'z' at position 0 is neither '0' or '1'. value set to '0'.
+[info] Warning, value 'z' at position 0 is neither '0' or '1'. value set to '0'.
+[info] End of simulation
+[info] [Done] Simulation done in 42.381 ms
+[success] Total time: 3 s, completed Sep 7, 2026, 8:07:24 PM
+[info] running (fork) rio.sim.FrontUnderflowRewriteSim 
+[info] [Runtime] SpinalHDL v1.12.3    git head : 591e64062329e5e2e2b81f4d52422948053edb97
+[info] [Runtime] JVM max memory : 30208.0MiB
+[info] [Runtime] Current date : 2026.09.07 20:07:24
+[info] [Progress] at 0.000 : Elaborate components
+[info] [Progress] at 1.205 : Checks and transforms
+[info] [Progress] at 1.921 : Generate Verilog to ./simWorkspace/tmp/job_1
+[info] [Warning] toplevel/enque_brain/flowStateUpdate_toStream_fifo/fifo/logic_ram : Mem[2*39 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/enque_brain/brainStateUpdate_toStream_fifo/fifo/logic_ram : Mem[2*35 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/enque_brain/engineMapper_io_readRes_toStream_fifo/fifo/logic_ram : Mem[2*2 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/enque_brain/brainStateMem_io_readRes_toStream_fifo/fifo/logic_ram : Mem[2*32 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/enque_brain/engineCAM_io_readRes_toStream_fifo/fifo/logic_ram : Mem[2*32 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/enque_brain/lastVirtualMapper_io_readRes_toStream_fifo/fifo/logic_ram : Mem[2*6 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/enque_brain/io_outputs_4_fifo/fifo/logic_ram : Mem[2*7 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/enque_flowIdStream_fifo/fifo/logic_ram : Mem[2*4 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/io_outputs_2_fifo/fifo/logic_ram : Mem[2*14 bits].readAsync can only be write first into Verilog
+[info] [Warning] 214 signals were pruned. You can call printPruned on the backend report to get more informations.
+[info] [Done] at 2.367
+[info] [Progress] Simulation workspace in /home/zg366/packet-scheduling/pifo-hardware/./simWorkspace/PifoEngine
+[info] [Progress] IVerilog compilation started
+[info] [Progress] IVerilog compilation done in 28.967 ms
+[info] [Progress] Start PifoEngine test simulation with seed 1223031983
+[info] Shared memory key : SpinalHDL_0_1_1332104174_1672228466_1788826047759_35629777486910266
+[info] Start of simulation
+[info] End of simulation
+[info] [Done] Simulation done in 138.121 ms
+[success] Total time: 4 s, completed Sep 7, 2026, 8:07:28 PM

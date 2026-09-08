@@ -26,3 +26,4 @@ at=2000 name=r2-stop-the-world mode=stop_the_world before=p1 after=p2b gateFlows
 at=2000 name=r2-stop-the-world mode=stop_the_world before=p1 after=p2b gateFlows=3 minStopCycles=1024 command=UpdateMapperPre engineId=2 vPifoId=3 flowId=0 data=2
 at=2000 name=r2-stop-the-world mode=stop_the_world before=p1 after=p2b gateFlows=3 minStopCycles=1024 command=UpdateMapperPost engineId=2 vPifoId=2 flowId=19 data=3
 at=2000 name=r2-stop-the-world mode=stop_the_world before=p1 after=p2b gateFlows=3 minStopCycles=1024 command=CommitMapper engineId=1 vPifoId=0 flowId=0 data=0
+at=2000 name=r2-stop-the-world-cleanup mode=direct cleanupOf=r2-stop-the-world command=CommitMapper engineId=1 vPifoId=0 flowId=0 data=0

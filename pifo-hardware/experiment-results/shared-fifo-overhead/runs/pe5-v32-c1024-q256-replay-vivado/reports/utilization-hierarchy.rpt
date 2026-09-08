@@ -1,0 +1,48 @@
+Copyright 1986-2022 Xilinx, Inc. All Rights Reserved. Copyright 2022-2025 Advanced Micro Devices, Inc. All Rights Reserved.
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+| Tool Version : Vivado v.2025.2 (lin64) Build 6299465 Fri Nov 14 12:34:56 MST 2025
+| Date         : Mon Sep  7 13:46:00 2026
+| Host         : netarch-cxl.ece.cornell.edu running 64-bit Ubuntu 24.04.4 LTS
+| Command      : report_utilization -hierarchical -hierarchical_depth 5 -file /data/work/rio-synthesis/shared-fifo-34e35d2/pe5-v32-c1024-q256-replay-vivado/reports/utilization-hierarchy.rpt
+| Design       : PifoMesh
+| Device       : xcku5p-ffvb676-2-e
+| Speed File   : -2
+| Design State : Synthesized
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Utilization Design Information
+
+Table of Contents
+-----------------
+1. Utilization by Hierarchy
+
+1. Utilization by Hierarchy
+---------------------------
+
++------------------------+----------------------+------------+------------+---------+------+------+--------+--------+------+------------+
+|        Instance        |        Module        | Total LUTs | Logic LUTs | LUTRAMs | SRLs |  FFs | RAMB36 | RAMB18 | URAM | DSP Blocks |
++------------------------+----------------------+------------+------------+---------+------+------+--------+--------+------+------------+
+| PifoMesh               |                (top) |       4178 |       3650 |     528 |    0 | 2396 |     41 |      0 |    0 |          0 |
+|   (PifoMesh)           |                (top) |        341 |          1 |     340 |    0 |   33 |      0 |      0 |    0 |          0 |
+|   guard                |           DrainGuard |        472 |        472 |       0 |    0 |  320 |      0 |      0 |    0 |          0 |
+|   pifoEngines_0        |           PifoEngine |        419 |        391 |      28 |    0 |  375 |      8 |      0 |    0 |          0 |
+|     enque_brain        |            PIFOBrain |        180 |        160 |      20 |    0 |   60 |      4 |      0 |    0 |          0 |
+|     deque_frontRewrite | FrontRewriteTable_85 |        172 |        172 |       0 |    0 |  288 |      0 |      0 |    0 |          0 |
+|   pifoEngines_1        |         PifoEngine_1 |        419 |        391 |      28 |    0 |  375 |      8 |      0 |    0 |          0 |
+|     enque_brain        |          PIFOBrain_1 |        180 |        160 |      20 |    0 |   60 |      4 |      0 |    0 |          0 |
+|     deque_frontRewrite | FrontRewriteTable_64 |        172 |        172 |       0 |    0 |  288 |      0 |      0 |    0 |          0 |
+|   pifoEngines_2        |         PifoEngine_2 |        419 |        391 |      28 |    0 |  375 |      8 |      0 |    0 |          0 |
+|     enque_brain        |          PIFOBrain_2 |        180 |        160 |      20 |    0 |   60 |      4 |      0 |    0 |          0 |
+|     deque_frontRewrite | FrontRewriteTable_43 |        172 |        172 |       0 |    0 |  288 |      0 |      0 |    0 |          0 |
+|   pifoEngines_3        |         PifoEngine_3 |        419 |        391 |      28 |    0 |  375 |      8 |      0 |    0 |          0 |
+|     enque_brain        |          PIFOBrain_3 |        180 |        160 |      20 |    0 |   60 |      4 |      0 |    0 |          0 |
+|     deque_frontRewrite | FrontRewriteTable_22 |        172 |        172 |       0 |    0 |  288 |      0 |      0 |    0 |          0 |
+|   pifoEngines_4        |         PifoEngine_4 |        419 |        391 |      28 |    0 |  375 |      8 |      0 |    0 |          0 |
+|     enque_brain        |          PIFOBrain_4 |        180 |        160 |      20 |    0 |   60 |      4 |      0 |    0 |          0 |
+|     deque_frontRewrite |    FrontRewriteTable |        172 |        172 |       0 |    0 |  288 |      0 |      0 |    0 |          0 |
+|   replayControl        |    ReplayControlFifo |        794 |        794 |       0 |    0 |   39 |      1 |      0 |    0 |          0 |
+|   xbar                 |      MessageCrossBar |        476 |        428 |      48 |    0 |  129 |      0 |      0 |    0 |          0 |
+|     (xbar)             |      MessageCrossBar |        161 |        161 |       0 |    0 |   39 |      0 |      0 |    0 |          0 |
++------------------------+----------------------+------------+------------+---------+------+------+--------+--------+------+------------+
+
+

@@ -1,0 +1,15 @@
+..s......................................E......
+======================================================================
+ERROR: test_saved_result_scripts_run_in_isolated_folders (test_pifo_standalone_plots.StandalonePlotTest.test_saved_result_scripts_run_in_isolated_folders) (script=PosixPath('experiment-results/shared-fifo-overhead/workflow/hw/python/pifo_motivation_plot.py'))
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/zg366/packet-scheduling/pifo-hardware/hw/python/tests/test_pifo_standalone_plots.py", line 43, in test_saved_result_scripts_run_in_isolated_folders
+    subprocess.run([sys.executable, "-I", str(target / script.name)], cwd=directory,
+  File "/usr/lib/python3.12/subprocess.py", line 571, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['/home/zg366/packet-scheduling/pifo-hardware/.venv/bin/python', '-I', '/tmp/tmp7gwl50hb/16/pifo_motivation_plot.py']' returned non-zero exit status 1.
+
+----------------------------------------------------------------------
+Ran 48 tests in 36.017s
+
+FAILED (errors=1, skipped=1)

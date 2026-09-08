@@ -1,0 +1,28 @@
+{
+  "quartus": {
+    "part": "AGFB014R24B2E2V",
+    "label": "Agilex 7 AGFB014",
+    "resource": "m20k_equivalents",
+    "native_resource": "block_memory_bits",
+    "native_units_per_block": 20480,
+    "available": 7110,
+    "unit": "M20K equivalents",
+    "measurement_kind": "inferred_ram_bit_capacity_equivalent",
+    "count_definition": "inferred block RAM bits / 20480; packing is not modeled",
+    "capacity_source": "https://docs.altera.com/api/khub/documents/T99La5fz4bf~McCaFB0bPw/content",
+    "capacity_source_version": "2026.08.14, page 1, AGF 014 column",
+    "block_size_source": "https://docs.altera.com/r/docs/683241/25.1.1/agilextm-7-embedded-memory-user-guide/agilextm-7-embedded-memory-features"
+  },
+  "vivado": {
+    "part": "xcku5p-ffvb676-2-e",
+    "label": "KCU116 XCKU5P",
+    "resource": "bram36_tiles",
+    "native_resource": "bram36_tiles",
+    "native_units_per_block": 1,
+    "available": 480,
+    "unit": "BRAM36 equivalents",
+    "measurement_kind": "mapped_bram36_tile_equivalent",
+    "count_definition": "RAMB36 primitives + RAMB18 primitives / 2",
+    "capacity_source": "native reports/utilization.rpt: Block RAM Tile / Available"
+  }
+}

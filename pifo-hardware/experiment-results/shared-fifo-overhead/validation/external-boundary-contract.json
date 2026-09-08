@@ -1,0 +1,51 @@
+{
+  "hardware": {
+    "component": "rio",
+    "configuration": "replay",
+    "mapper_banks": 2,
+    "pifo_backend": "external",
+    "num_engines": 1,
+    "num_vpifos_per_pe": 8,
+    "global_flow_id_capacity": 8,
+    "fifo_depth_parameter": 4,
+    "shared_entries_per_pe": 32,
+    "total_shared_entries": 32,
+    "priority_bits": 8,
+    "vpifo_id_bits": 3,
+    "engine_id_bits": 1,
+    "token_bits": 4,
+    "brain_state_bits": 32,
+    "flow_state_bits": 32,
+    "commit_queue_depth": 256,
+    "flow_token_address_space": 16,
+    "vpifo_token_pairs_per_pe": 128,
+    "mapper_sync": "shared_control_fifo_replay",
+    "replay_storage": "control_queue",
+    "separate_replay_journal": false,
+    "replay_max_retained_commands": 255
+  },
+  "rtl_sha256": {
+    "PifoMesh.v": "92fa56a92538286c1e34d1f7a3fdc3ace935684e0d6934fd2fe0ccca4203058c",
+    "PifoMesh.v_toplevel_pifoEngines_0_deque_dequeMapper_banks_0.bin": "b42fbc5ea41d16a6a435ffc12848ab85d9e0a672dc3b06836567b9ecc7ed6d0e",
+    "PifoMesh.v_toplevel_pifoEngines_0_deque_dequeMapper_banks_1.bin": "b42fbc5ea41d16a6a435ffc12848ab85d9e0a672dc3b06836567b9ecc7ed6d0e",
+    "PifoMesh.v_toplevel_pifoEngines_0_enque_brain_brainStateMem_ram.bin": "aba47d92818d0e5979b2b8a8e9317c189b09491c6b74876b470ff53d6a525eb0",
+    "PifoMesh.v_toplevel_pifoEngines_0_enque_brain_engineCAM_ram.bin": "549e882dcb4d31598233830c836bdbf05e712cbc2b9185b7c16f9646466977b4",
+    "PifoMesh.v_toplevel_pifoEngines_0_enque_brain_engineMapper_ram.bin": "21bdd4f67b9f669a2999a9e79b6bdb4b707822f2f41a6901978cd165ac9992cf",
+    "PifoMesh.v_toplevel_pifoEngines_0_enque_brain_lastVirtualMapper_ram.bin": "475f1b81038cf309e71d951567d683b33b782414b0412be183f48a1c671bf5b8",
+    "PifoMesh.v_toplevel_pifoEngines_0_enque_enqueMapper_banks_0.bin": "1bc8b4d5c73096531e2ecb738bb214a1b4d8b3211a1ff7fd462887ac74f787e7",
+    "PifoMesh.v_toplevel_pifoEngines_0_enque_enqueMapper_banks_1.bin": "1bc8b4d5c73096531e2ecb738bb214a1b4d8b3211a1ff7fd462887ac74f787e7",
+    "priority_encode_log.v": "2a63070396dc60fd2106c5ef1d0719e027ff6bf797afbef166cf99c9b49537c2"
+  },
+  "testbench_sha256": "8ad9add0dddd7d03db2fe7d2baa1f0c40b87d7aede235d48f78cfe3700f883b9",
+  "status": "passed",
+  "pifo_binding": {
+    "reference_manifest": "/data/work/rio-synthesis/shared-fifo-34e35d2/validation-static/manifest.json",
+    "reference_rtl_sha256": "a979e115343bd5efd8b81d4376a488a464017b50c12c36eba0ab1bc10b247186",
+    "house_core_sha256": "fa6d6ab281e45be5a8bd76398b0b4fae3deff1d81d4b04f657f7825a32669cd9",
+    "bound_rtl_sha256": "1e3bd3372f9ec3a5fdd8f7b0fdfb7cb316ed68d543834e28795fe7127f466b60",
+    "boundary_signal_count": 22
+  },
+  "evidence": [
+    "CONFIGURATION_CONTRACT_PASS dynamic=1 cycles=633 packets=7"
+  ]
+}

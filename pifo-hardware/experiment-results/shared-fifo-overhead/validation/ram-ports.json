@@ -1,0 +1,1865 @@
+{
+  "status": "passed",
+  "cases": [
+    {
+      "status": "passed",
+      "configuration": "static",
+      "vflows": 32,
+      "separate_journal": false,
+      "mapper_bank_writes_mutually_exclusive": false,
+      "logical_controller_bits": 13056,
+      "logical_mapper_bits": 328480,
+      "arrays": [
+        {
+          "module": "StreamFifo_51",
+          "array": "logic_ram",
+          "width": 51,
+          "depth": 256,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "controller_fifo"
+        },
+        {
+          "module": "DirectMapper_9",
+          "array": "ram",
+          "width": 8,
+          "depth": 8192,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper_8",
+          "array": "ram",
+          "width": 5,
+          "depth": 32,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper_7",
+          "array": "ram",
+          "width": 8,
+          "depth": 8192,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper_6",
+          "array": "ram",
+          "width": 5,
+          "depth": 32,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper_5",
+          "array": "ram",
+          "width": 8,
+          "depth": 8192,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper_4",
+          "array": "ram",
+          "width": 5,
+          "depth": 32,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper_3",
+          "array": "ram",
+          "width": 8,
+          "depth": 8192,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper_2",
+          "array": "ram",
+          "width": 5,
+          "depth": 32,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper_1",
+          "array": "ram",
+          "width": 8,
+          "depth": 8192,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper",
+          "array": "ram",
+          "width": 5,
+          "depth": 32,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        }
+      ]
+    },
+    {
+      "status": "passed",
+      "configuration": "replay",
+      "vflows": 32,
+      "separate_journal": false,
+      "mapper_bank_writes_mutually_exclusive": true,
+      "logical_controller_bits": 13056,
+      "logical_mapper_bits": 656960,
+      "arrays": [
+        {
+          "module": "ReplayControlFifo",
+          "array": "storage",
+          "width": 51,
+          "depth": 256,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "controller_fifo"
+        },
+        {
+          "module": "ReplayMapper_9",
+          "array": "banks_0",
+          "width": 8,
+          "depth": 8192,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_9",
+          "array": "banks_1",
+          "width": 8,
+          "depth": 8192,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_8",
+          "array": "banks_0",
+          "width": 5,
+          "depth": 32,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_8",
+          "array": "banks_1",
+          "width": 5,
+          "depth": 32,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_7",
+          "array": "banks_0",
+          "width": 8,
+          "depth": 8192,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_7",
+          "array": "banks_1",
+          "width": 8,
+          "depth": 8192,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_6",
+          "array": "banks_0",
+          "width": 5,
+          "depth": 32,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_6",
+          "array": "banks_1",
+          "width": 5,
+          "depth": 32,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_5",
+          "array": "banks_0",
+          "width": 8,
+          "depth": 8192,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_5",
+          "array": "banks_1",
+          "width": 8,
+          "depth": 8192,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_4",
+          "array": "banks_0",
+          "width": 5,
+          "depth": 32,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_4",
+          "array": "banks_1",
+          "width": 5,
+          "depth": 32,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_3",
+          "array": "banks_0",
+          "width": 8,
+          "depth": 8192,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_3",
+          "array": "banks_1",
+          "width": 8,
+          "depth": 8192,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_2",
+          "array": "banks_0",
+          "width": 5,
+          "depth": 32,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_2",
+          "array": "banks_1",
+          "width": 5,
+          "depth": 32,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_1",
+          "array": "banks_0",
+          "width": 8,
+          "depth": 8192,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_1",
+          "array": "banks_1",
+          "width": 8,
+          "depth": 8192,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper",
+          "array": "banks_0",
+          "width": 5,
+          "depth": 32,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper",
+          "array": "banks_1",
+          "width": 5,
+          "depth": 32,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        }
+      ]
+    },
+    {
+      "status": "passed",
+      "configuration": "static",
+      "vflows": 64,
+      "separate_journal": false,
+      "mapper_bank_writes_mutually_exclusive": false,
+      "logical_controller_bits": 13568,
+      "logical_mapper_bits": 1476480,
+      "arrays": [
+        {
+          "module": "StreamFifo_51",
+          "array": "logic_ram",
+          "width": 53,
+          "depth": 256,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "controller_fifo"
+        },
+        {
+          "module": "DirectMapper_9",
+          "array": "ram",
+          "width": 9,
+          "depth": 32768,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper_8",
+          "array": "ram",
+          "width": 6,
+          "depth": 64,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper_7",
+          "array": "ram",
+          "width": 9,
+          "depth": 32768,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper_6",
+          "array": "ram",
+          "width": 6,
+          "depth": 64,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper_5",
+          "array": "ram",
+          "width": 9,
+          "depth": 32768,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper_4",
+          "array": "ram",
+          "width": 6,
+          "depth": 64,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper_3",
+          "array": "ram",
+          "width": 9,
+          "depth": 32768,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper_2",
+          "array": "ram",
+          "width": 6,
+          "depth": 64,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper_1",
+          "array": "ram",
+          "width": 9,
+          "depth": 32768,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper",
+          "array": "ram",
+          "width": 6,
+          "depth": 64,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        }
+      ]
+    },
+    {
+      "status": "passed",
+      "configuration": "replay",
+      "vflows": 64,
+      "separate_journal": false,
+      "mapper_bank_writes_mutually_exclusive": true,
+      "logical_controller_bits": 13568,
+      "logical_mapper_bits": 2952960,
+      "arrays": [
+        {
+          "module": "ReplayControlFifo",
+          "array": "storage",
+          "width": 53,
+          "depth": 256,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "controller_fifo"
+        },
+        {
+          "module": "ReplayMapper_9",
+          "array": "banks_0",
+          "width": 9,
+          "depth": 32768,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_9",
+          "array": "banks_1",
+          "width": 9,
+          "depth": 32768,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_8",
+          "array": "banks_0",
+          "width": 6,
+          "depth": 64,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_8",
+          "array": "banks_1",
+          "width": 6,
+          "depth": 64,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_7",
+          "array": "banks_0",
+          "width": 9,
+          "depth": 32768,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_7",
+          "array": "banks_1",
+          "width": 9,
+          "depth": 32768,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_6",
+          "array": "banks_0",
+          "width": 6,
+          "depth": 64,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_6",
+          "array": "banks_1",
+          "width": 6,
+          "depth": 64,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_5",
+          "array": "banks_0",
+          "width": 9,
+          "depth": 32768,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_5",
+          "array": "banks_1",
+          "width": 9,
+          "depth": 32768,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_4",
+          "array": "banks_0",
+          "width": 6,
+          "depth": 64,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_4",
+          "array": "banks_1",
+          "width": 6,
+          "depth": 64,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_3",
+          "array": "banks_0",
+          "width": 9,
+          "depth": 32768,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_3",
+          "array": "banks_1",
+          "width": 9,
+          "depth": 32768,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_2",
+          "array": "banks_0",
+          "width": 6,
+          "depth": 64,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_2",
+          "array": "banks_1",
+          "width": 6,
+          "depth": 64,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_1",
+          "array": "banks_0",
+          "width": 9,
+          "depth": 32768,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_1",
+          "array": "banks_1",
+          "width": 9,
+          "depth": 32768,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper",
+          "array": "banks_0",
+          "width": 6,
+          "depth": 64,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper",
+          "array": "banks_1",
+          "width": 6,
+          "depth": 64,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        }
+      ]
+    },
+    {
+      "status": "passed",
+      "configuration": "static",
+      "vflows": 128,
+      "separate_journal": false,
+      "mapper_bank_writes_mutually_exclusive": false,
+      "logical_controller_bits": 14080,
+      "logical_mapper_bits": 6558080,
+      "arrays": [
+        {
+          "module": "StreamFifo_51",
+          "array": "logic_ram",
+          "width": 55,
+          "depth": 256,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "controller_fifo"
+        },
+        {
+          "module": "DirectMapper_9",
+          "array": "ram",
+          "width": 10,
+          "depth": 131072,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper_8",
+          "array": "ram",
+          "width": 7,
+          "depth": 128,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper_7",
+          "array": "ram",
+          "width": 10,
+          "depth": 131072,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper_6",
+          "array": "ram",
+          "width": 7,
+          "depth": 128,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper_5",
+          "array": "ram",
+          "width": 10,
+          "depth": 131072,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper_4",
+          "array": "ram",
+          "width": 7,
+          "depth": 128,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper_3",
+          "array": "ram",
+          "width": 10,
+          "depth": 131072,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper_2",
+          "array": "ram",
+          "width": 7,
+          "depth": 128,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper_1",
+          "array": "ram",
+          "width": 10,
+          "depth": 131072,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper",
+          "array": "ram",
+          "width": 7,
+          "depth": 128,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        }
+      ]
+    },
+    {
+      "status": "passed",
+      "configuration": "replay",
+      "vflows": 128,
+      "separate_journal": false,
+      "mapper_bank_writes_mutually_exclusive": true,
+      "logical_controller_bits": 14080,
+      "logical_mapper_bits": 13116160,
+      "arrays": [
+        {
+          "module": "ReplayControlFifo",
+          "array": "storage",
+          "width": 55,
+          "depth": 256,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "controller_fifo"
+        },
+        {
+          "module": "ReplayMapper_9",
+          "array": "banks_0",
+          "width": 10,
+          "depth": 131072,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_9",
+          "array": "banks_1",
+          "width": 10,
+          "depth": 131072,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_8",
+          "array": "banks_0",
+          "width": 7,
+          "depth": 128,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_8",
+          "array": "banks_1",
+          "width": 7,
+          "depth": 128,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_7",
+          "array": "banks_0",
+          "width": 10,
+          "depth": 131072,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_7",
+          "array": "banks_1",
+          "width": 10,
+          "depth": 131072,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_6",
+          "array": "banks_0",
+          "width": 7,
+          "depth": 128,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_6",
+          "array": "banks_1",
+          "width": 7,
+          "depth": 128,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_5",
+          "array": "banks_0",
+          "width": 10,
+          "depth": 131072,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_5",
+          "array": "banks_1",
+          "width": 10,
+          "depth": 131072,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_4",
+          "array": "banks_0",
+          "width": 7,
+          "depth": 128,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_4",
+          "array": "banks_1",
+          "width": 7,
+          "depth": 128,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_3",
+          "array": "banks_0",
+          "width": 10,
+          "depth": 131072,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_3",
+          "array": "banks_1",
+          "width": 10,
+          "depth": 131072,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_2",
+          "array": "banks_0",
+          "width": 7,
+          "depth": 128,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_2",
+          "array": "banks_1",
+          "width": 7,
+          "depth": 128,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_1",
+          "array": "banks_0",
+          "width": 10,
+          "depth": 131072,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_1",
+          "array": "banks_1",
+          "width": 10,
+          "depth": 131072,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper",
+          "array": "banks_0",
+          "width": 7,
+          "depth": 128,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper",
+          "array": "banks_1",
+          "width": 7,
+          "depth": 128,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        }
+      ]
+    },
+    {
+      "status": "passed",
+      "configuration": "static",
+      "vflows": 256,
+      "separate_journal": false,
+      "mapper_bank_writes_mutually_exclusive": false,
+      "logical_controller_bits": 14592,
+      "logical_mapper_bits": 28846080,
+      "arrays": [
+        {
+          "module": "StreamFifo_51",
+          "array": "logic_ram",
+          "width": 57,
+          "depth": 256,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "controller_fifo"
+        },
+        {
+          "module": "DirectMapper_9",
+          "array": "ram",
+          "width": 11,
+          "depth": 524288,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper_8",
+          "array": "ram",
+          "width": 8,
+          "depth": 256,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper_7",
+          "array": "ram",
+          "width": 11,
+          "depth": 524288,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper_6",
+          "array": "ram",
+          "width": 8,
+          "depth": 256,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper_5",
+          "array": "ram",
+          "width": 11,
+          "depth": 524288,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper_4",
+          "array": "ram",
+          "width": 8,
+          "depth": 256,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper_3",
+          "array": "ram",
+          "width": 11,
+          "depth": 524288,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper_2",
+          "array": "ram",
+          "width": 8,
+          "depth": 256,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper_1",
+          "array": "ram",
+          "width": 11,
+          "depth": 524288,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper",
+          "array": "ram",
+          "width": 8,
+          "depth": 256,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        }
+      ]
+    },
+    {
+      "status": "passed",
+      "configuration": "replay",
+      "vflows": 256,
+      "separate_journal": false,
+      "mapper_bank_writes_mutually_exclusive": true,
+      "logical_controller_bits": 14592,
+      "logical_mapper_bits": 57692160,
+      "arrays": [
+        {
+          "module": "ReplayControlFifo",
+          "array": "storage",
+          "width": 57,
+          "depth": 256,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "controller_fifo"
+        },
+        {
+          "module": "ReplayMapper_9",
+          "array": "banks_0",
+          "width": 11,
+          "depth": 524288,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_9",
+          "array": "banks_1",
+          "width": 11,
+          "depth": 524288,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_8",
+          "array": "banks_0",
+          "width": 8,
+          "depth": 256,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_8",
+          "array": "banks_1",
+          "width": 8,
+          "depth": 256,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_7",
+          "array": "banks_0",
+          "width": 11,
+          "depth": 524288,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_7",
+          "array": "banks_1",
+          "width": 11,
+          "depth": 524288,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_6",
+          "array": "banks_0",
+          "width": 8,
+          "depth": 256,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_6",
+          "array": "banks_1",
+          "width": 8,
+          "depth": 256,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_5",
+          "array": "banks_0",
+          "width": 11,
+          "depth": 524288,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_5",
+          "array": "banks_1",
+          "width": 11,
+          "depth": 524288,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_4",
+          "array": "banks_0",
+          "width": 8,
+          "depth": 256,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_4",
+          "array": "banks_1",
+          "width": 8,
+          "depth": 256,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_3",
+          "array": "banks_0",
+          "width": 11,
+          "depth": 524288,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_3",
+          "array": "banks_1",
+          "width": 11,
+          "depth": 524288,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_2",
+          "array": "banks_0",
+          "width": 8,
+          "depth": 256,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_2",
+          "array": "banks_1",
+          "width": 8,
+          "depth": 256,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_1",
+          "array": "banks_0",
+          "width": 11,
+          "depth": 524288,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_1",
+          "array": "banks_1",
+          "width": 11,
+          "depth": 524288,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper",
+          "array": "banks_0",
+          "width": 8,
+          "depth": 256,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper",
+          "array": "banks_1",
+          "width": 8,
+          "depth": 256,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        }
+      ]
+    },
+    {
+      "status": "passed",
+      "configuration": "static",
+      "vflows": 512,
+      "separate_journal": false,
+      "mapper_bank_writes_mutually_exclusive": false,
+      "logical_controller_bits": 15104,
+      "logical_mapper_bits": 125852160,
+      "arrays": [
+        {
+          "module": "StreamFifo_51",
+          "array": "logic_ram",
+          "width": 59,
+          "depth": 256,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "controller_fifo"
+        },
+        {
+          "module": "DirectMapper_9",
+          "array": "ram",
+          "width": 12,
+          "depth": 2097152,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper_8",
+          "array": "ram",
+          "width": 9,
+          "depth": 512,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper_7",
+          "array": "ram",
+          "width": 12,
+          "depth": 2097152,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper_6",
+          "array": "ram",
+          "width": 9,
+          "depth": 512,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper_5",
+          "array": "ram",
+          "width": 12,
+          "depth": 2097152,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper_4",
+          "array": "ram",
+          "width": 9,
+          "depth": 512,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper_3",
+          "array": "ram",
+          "width": 12,
+          "depth": 2097152,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper_2",
+          "array": "ram",
+          "width": 9,
+          "depth": 512,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper_1",
+          "array": "ram",
+          "width": 12,
+          "depth": 2097152,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper",
+          "array": "ram",
+          "width": 9,
+          "depth": 512,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        }
+      ]
+    },
+    {
+      "status": "passed",
+      "configuration": "replay",
+      "vflows": 512,
+      "separate_journal": false,
+      "mapper_bank_writes_mutually_exclusive": true,
+      "logical_controller_bits": 15104,
+      "logical_mapper_bits": 251704320,
+      "arrays": [
+        {
+          "module": "ReplayControlFifo",
+          "array": "storage",
+          "width": 59,
+          "depth": 256,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "controller_fifo"
+        },
+        {
+          "module": "ReplayMapper_9",
+          "array": "banks_0",
+          "width": 12,
+          "depth": 2097152,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_9",
+          "array": "banks_1",
+          "width": 12,
+          "depth": 2097152,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_8",
+          "array": "banks_0",
+          "width": 9,
+          "depth": 512,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_8",
+          "array": "banks_1",
+          "width": 9,
+          "depth": 512,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_7",
+          "array": "banks_0",
+          "width": 12,
+          "depth": 2097152,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_7",
+          "array": "banks_1",
+          "width": 12,
+          "depth": 2097152,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_6",
+          "array": "banks_0",
+          "width": 9,
+          "depth": 512,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_6",
+          "array": "banks_1",
+          "width": 9,
+          "depth": 512,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_5",
+          "array": "banks_0",
+          "width": 12,
+          "depth": 2097152,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_5",
+          "array": "banks_1",
+          "width": 12,
+          "depth": 2097152,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_4",
+          "array": "banks_0",
+          "width": 9,
+          "depth": 512,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_4",
+          "array": "banks_1",
+          "width": 9,
+          "depth": 512,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_3",
+          "array": "banks_0",
+          "width": 12,
+          "depth": 2097152,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_3",
+          "array": "banks_1",
+          "width": 12,
+          "depth": 2097152,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_2",
+          "array": "banks_0",
+          "width": 9,
+          "depth": 512,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_2",
+          "array": "banks_1",
+          "width": 9,
+          "depth": 512,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_1",
+          "array": "banks_0",
+          "width": 12,
+          "depth": 2097152,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_1",
+          "array": "banks_1",
+          "width": 12,
+          "depth": 2097152,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper",
+          "array": "banks_0",
+          "width": 9,
+          "depth": 512,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper",
+          "array": "banks_1",
+          "width": 9,
+          "depth": 512,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        }
+      ]
+    },
+    {
+      "status": "passed",
+      "configuration": "static",
+      "vflows": 1024,
+      "separate_journal": false,
+      "mapper_bank_writes_mutually_exclusive": false,
+      "logical_controller_bits": 15616,
+      "logical_mapper_bits": 545310720,
+      "arrays": [
+        {
+          "module": "StreamFifo_51",
+          "array": "logic_ram",
+          "width": 61,
+          "depth": 256,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "controller_fifo"
+        },
+        {
+          "module": "DirectMapper_9",
+          "array": "ram",
+          "width": 13,
+          "depth": 8388608,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper_8",
+          "array": "ram",
+          "width": 10,
+          "depth": 1024,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper_7",
+          "array": "ram",
+          "width": 13,
+          "depth": 8388608,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper_6",
+          "array": "ram",
+          "width": 10,
+          "depth": 1024,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper_5",
+          "array": "ram",
+          "width": 13,
+          "depth": 8388608,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper_4",
+          "array": "ram",
+          "width": 10,
+          "depth": 1024,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper_3",
+          "array": "ram",
+          "width": 13,
+          "depth": 8388608,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper_2",
+          "array": "ram",
+          "width": 10,
+          "depth": 1024,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper_1",
+          "array": "ram",
+          "width": 13,
+          "depth": 8388608,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper",
+          "array": "ram",
+          "width": 10,
+          "depth": 1024,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        }
+      ]
+    },
+    {
+      "status": "passed",
+      "configuration": "replay",
+      "vflows": 1024,
+      "separate_journal": false,
+      "mapper_bank_writes_mutually_exclusive": true,
+      "logical_controller_bits": 15616,
+      "logical_mapper_bits": 1090621440,
+      "arrays": [
+        {
+          "module": "ReplayControlFifo",
+          "array": "storage",
+          "width": 61,
+          "depth": 256,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "controller_fifo"
+        },
+        {
+          "module": "ReplayMapper_9",
+          "array": "banks_0",
+          "width": 13,
+          "depth": 8388608,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_9",
+          "array": "banks_1",
+          "width": 13,
+          "depth": 8388608,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_8",
+          "array": "banks_0",
+          "width": 10,
+          "depth": 1024,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_8",
+          "array": "banks_1",
+          "width": 10,
+          "depth": 1024,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_7",
+          "array": "banks_0",
+          "width": 13,
+          "depth": 8388608,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_7",
+          "array": "banks_1",
+          "width": 13,
+          "depth": 8388608,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_6",
+          "array": "banks_0",
+          "width": 10,
+          "depth": 1024,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_6",
+          "array": "banks_1",
+          "width": 10,
+          "depth": 1024,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_5",
+          "array": "banks_0",
+          "width": 13,
+          "depth": 8388608,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_5",
+          "array": "banks_1",
+          "width": 13,
+          "depth": 8388608,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_4",
+          "array": "banks_0",
+          "width": 10,
+          "depth": 1024,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_4",
+          "array": "banks_1",
+          "width": 10,
+          "depth": 1024,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_3",
+          "array": "banks_0",
+          "width": 13,
+          "depth": 8388608,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_3",
+          "array": "banks_1",
+          "width": 13,
+          "depth": 8388608,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_2",
+          "array": "banks_0",
+          "width": 10,
+          "depth": 1024,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_2",
+          "array": "banks_1",
+          "width": 10,
+          "depth": 1024,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_1",
+          "array": "banks_0",
+          "width": 13,
+          "depth": 8388608,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_1",
+          "array": "banks_1",
+          "width": 13,
+          "depth": 8388608,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper",
+          "array": "banks_0",
+          "width": 10,
+          "depth": 1024,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper",
+          "array": "banks_1",
+          "width": 10,
+          "depth": 1024,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,1246 @@
+Design Assistant report for pifo
+Mon Sep  7 14:04:01 2026
+Quartus Prime Version 25.3.1 Build 100 12/19/2025 SC Pro Edition
+
+
+---------------------
+; Table of Contents ;
+---------------------
+  1. Legal Notice
+  2. Design Assistant (Synthesized) Results - 1 of 13 Rules Failed
+  3. RES-30134 - Registers Not Reachable from Reset Release IP
+  4. LNT-30011 - Design Contains Combinational Loops
+  5. LNT-30017 - Register Output Driving Its Own Asynchronous Control Signal Directly or Through Combinational Logic
+  6. LNT-30023 - Reset Nets with Polarity Conflict
+  7. RES-30132 - Registers May Not Be Properly Reset
+  8. RES-30133 - Embedded Memory Blocks with Initialized Content That Might be Modified Before the FPGA Enters User Mode
+  9. TMC-20052 - Paths with Post Synthesis Inferred Latches
+ 10. FLP-10500 - Non Driving Top Level Inputs Found
+ 11. LNT-30010 - Nets Driving both Reset and Clock Enable Signals
+ 12. LNT-50006 - DSP Control Signal Registers Reset Mode Mismatch
+ 13. TMC-20053 - DSP Inputs Driven by High Fan-Out Net
+ 14. TMC-20500 - Hierarchical Tree Duplication was Shallower than Possible
+ 15. TMC-20501 - Hierarchical Tree Duplication was Shallower than Requested
+
+
+
+----------------
+; Legal Notice ;
+----------------
+Copyright (C) 2025  Altera Corporation. All rights reserved.
+Your use of Altera Corporation's design tools, logic functions 
+and other software and tools, and any partner logic 
+functions, and any output files from any of the foregoing 
+(including device programming or simulation files), and any 
+associated documentation or information are expressly subject 
+to the terms and conditions of the Altera Program License 
+Subscription Agreement, the Altera Quartus Prime License Agreement,
+the Altera IP License Agreement, or other applicable license
+agreement, including, without limitation, that your use is for
+the sole purpose of programming logic devices manufactured by
+Altera and sold by Altera or its authorized distributors.  Please
+refer to the Altera Software License Subscription Agreements 
+on the Quartus Prime software download page.
+
+
+
++----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+; Design Assistant (Synthesized) Results - 1 of 13 Rules Failed                                                                                                                          ;
++---------------------------------------------------------------------------------------------------------------------+----------+------------+--------+---------------------------------+
+; Rule                                                                                                                ; Severity ; Violations ; Waived ; Tags                            ;
++---------------------------------------------------------------------------------------------------------------------+----------+------------+--------+---------------------------------+
+; RES-30134 - Registers Not Reachable from Reset Release IP                                                           ; Medium   ; 1,050      ; 0      ; reset-usage, reset-reachability ;
+; LNT-30011 - Design Contains Combinational Loops                                                                     ; High     ; 0          ; 0      ; nonstandard-timing              ;
+; LNT-30017 - Register Output Driving Its Own Asynchronous Control Signal Directly or Through Combinational Logic     ; Medium   ; 0          ; 0      ; nonstandard-timing              ;
+; LNT-30023 - Reset Nets with Polarity Conflict                                                                       ; Medium   ; 0          ; 0      ; reset-usage                     ;
+; RES-30132 - Registers May Not Be Properly Reset                                                                     ; Medium   ; 0          ; 0      ; reset-usage, reset-reachability ;
+; RES-30133 - Embedded Memory Blocks with Initialized Content That Might be Modified Before the FPGA Enters User Mode ; Medium   ; 0          ; 0      ; ram, reset-usage                ;
+; TMC-20052 - Paths with Post Synthesis Inferred Latches                                                              ; Medium   ; 0          ; 0      ; nonstandard-timing, latch       ;
+; FLP-10500 - Non Driving Top Level Inputs Found                                                                      ; Low      ; 0          ; 0      ; system                          ;
+; LNT-30010 - Nets Driving both Reset and Clock Enable Signals                                                        ; Low      ; 0          ; 0      ; reset-usage                     ;
+; LNT-50006 - DSP Control Signal Registers Reset Mode Mismatch                                                        ; Low      ; 0          ; 0      ; dsp, reset-usage                ;
+; TMC-20053 - DSP Inputs Driven by High Fan-Out Net                                                                   ; Low      ; 0          ; 0      ; dsp                             ;
+; TMC-20500 - Hierarchical Tree Duplication was Shallower than Possible                                               ; Low      ; 0          ; 0      ; register-duplication, synthesis ;
+; TMC-20501 - Hierarchical Tree Duplication was Shallower than Requested                                              ; Low      ; 0          ; 0      ; register-duplication, synthesis ;
++---------------------------------------------------------------------------------------------------------------------+----------+------------+--------+---------------------------------+
+
+
+Status:		FAIL
+Severity:		Medium
+Number of violations: 	1,050
+Rule Parameters:      	max_violations = 5000
++---------------------------------------------------------------------------------------------------------+
+; RES-30134 - Registers Not Reachable from Reset Release IP                                               ;
++------------------------------------------------------------------------------------------------+--------+
+; Register Node                                                                                  ; Waived ;
++------------------------------------------------------------------------------------------------+--------+
+; pifoEngines_0|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ptr_pop[1]             ;        ;
+; pifoEngines_0|enque_brain|engineMapper_io_readRes_toStream_fifo|fifo|logic_ptr_push[0]         ;        ;
+; guard|emptyPifos_1_3                                                                           ;        ;
+; pifoEngines_4|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~11                 ;        ;
+; pifoEngines_4|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~22                      ;        ;
+; pifoEngines_4|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~7                  ;        ;
+; pifoEngines_4|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~15                 ;        ;
+; pifoEngines_4|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~6                  ;        ;
+; pifoEngines_4|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~21                      ;        ;
+; pifoEngines_4|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~44                      ;        ;
+; pifoEngines_4|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~5                  ;        ;
+; pifoEngines_4|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~20                      ;        ;
+; pifoEngines_4|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~43                      ;        ;
+; guard|emptyPifos_1_12                                                                          ;        ;
+; pifoEngines_4|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~13                 ;        ;
+; pifoEngines_4|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~14                 ;        ;
+; pifoEngines_4|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~45                      ;        ;
+; pifoEngines_4|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~42                      ;        ;
+; pifoEngines_4|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~12                 ;        ;
+; pifoEngines_4|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ptr_pop[1]                 ;        ;
+; pifoEngines_4|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ptr_push[1]                ;        ;
+; pifoEngines_4|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ptr_pop[0]                 ;        ;
+; pifoEngines_4|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ptr_push[0]                ;        ;
+; pifoEngines_4|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~0              ;        ;
+; guard|emptyPifos_1_0                                                                           ;        ;
+; pifoEngines_4|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~8              ;        ;
+; pifoEngines_4|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~6                      ;        ;
+; pifoEngines_4|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~20                     ;        ;
+; pifoEngines_4|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~1              ;        ;
+; pifoEngines_4|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~9              ;        ;
+; pifoEngines_4|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~7                      ;        ;
+; pifoEngines_4|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~21                     ;        ;
+; pifoEngines_4|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~2              ;        ;
+; pifoEngines_4|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~10             ;        ;
+; pifoEngines_4|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~8                      ;        ;
+; guard|emptyPifos_1_4                                                                           ;        ;
+; pifoEngines_4|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~22                     ;        ;
+; pifoEngines_4|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~3              ;        ;
+; pifoEngines_4|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~11             ;        ;
+; pifoEngines_4|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~9                      ;        ;
+; pifoEngines_4|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~23                     ;        ;
+; pifoEngines_4|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~4              ;        ;
+; pifoEngines_4|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~12             ;        ;
+; pifoEngines_4|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~10                     ;        ;
+; pifoEngines_4|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~24                     ;        ;
+; pifoEngines_4|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~5              ;        ;
+; guard|emptyPifos_1_13                                                                          ;        ;
+; pifoEngines_4|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~13             ;        ;
+; pifoEngines_4|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~11                     ;        ;
+; pifoEngines_4|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~25                     ;        ;
+; pifoEngines_4|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~6              ;        ;
+; pifoEngines_4|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~14             ;        ;
+; pifoEngines_4|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~12                     ;        ;
+; pifoEngines_4|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~26                     ;        ;
+; pifoEngines_4|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~7              ;        ;
+; pifoEngines_4|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~15             ;        ;
+; pifoEngines_4|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~13                     ;        ;
+; guard|emptyPifos_1_5                                                                           ;        ;
+; pifoEngines_4|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~27                     ;        ;
+; guard|emptyPifos_1_8                                                                           ;        ;
+; guard|emptyPifos_1_9                                                                           ;        ;
+; guard|emptyPifos_1_1                                                                           ;        ;
+; guard|emptyPifos_1_30                                                                          ;        ;
+; pifoEngines_0|enque_brain|engineMapper|io_readReq_valid_regNext                                ;        ;
+; guard|emptyPifos_1_18                                                                          ;        ;
+; guard|emptyPifos_1_22                                                                          ;        ;
+; guard|emptyPifos_1_31                                                                          ;        ;
+; guard|emptyPifos_1_23                                                                          ;        ;
+; guard|emptyPifos_1_26                                                                          ;        ;
+; guard|emptyPifos_1_27                                                                          ;        ;
+; guard|emptyPifos_1_19                                                                          ;        ;
+; guard|emptyPifos_1_14                                                                          ;        ;
+; guard|emptyPifos_1_2                                                                           ;        ;
+; guard|emptyPifos_1_6                                                                           ;        ;
+; pifoEngines_0|enque_brain|lastVirtualMapper|io_readReq_valid_regNext                           ;        ;
+; guard|emptyPifos_1_28                                                                          ;        ;
+; guard|emptyPifos_1_16                                                                          ;        ;
+; guard|emptyPifos_1_20                                                                          ;        ;
+; guard|emptyPifos_1_29                                                                          ;        ;
+; guard|emptyPifos_1_21                                                                          ;        ;
+; guard|emptyPifos_1_24                                                                          ;        ;
+; guard|emptyPifos_1_25                                                                          ;        ;
+; guard|emptyPifos_1_17                                                                          ;        ;
+; guard|emptyPifos_1_46                                                                          ;        ;
+; guard|emptyPifos_1_34                                                                          ;        ;
+; pifoEngines_0|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ptr_pop[1]         ;        ;
+; guard|emptyPifos_1_38                                                                          ;        ;
+; guard|emptyPifos_1_47                                                                          ;        ;
+; guard|emptyPifos_1_39                                                                          ;        ;
+; guard|emptyPifos_1_42                                                                          ;        ;
+; guard|emptyPifos_1_43                                                                          ;        ;
+; guard|emptyPifos_1_35                                                                          ;        ;
+; guard|emptyPifos_1_51                                                                          ;        ;
+; guard|emptyPifos_1_48                                                                          ;        ;
+; guard|emptyPifos_1_49                                                                          ;        ;
+; guard|emptyPifos_1_55                                                                          ;        ;
+; pifoEngines_0|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ptr_push[1]        ;        ;
+; guard|emptyPifos_1_53                                                                          ;        ;
+; guard|emptyPifos_1_50                                                                          ;        ;
+; guard|emptyPifos_1_54                                                                          ;        ;
+; guard|emptyPifos_1_52                                                                          ;        ;
+; guard|emptyPifos_1_59                                                                          ;        ;
+; guard|emptyPifos_1_56                                                                          ;        ;
+; guard|emptyPifos_1_57                                                                          ;        ;
+; guard|emptyPifos_1_63                                                                          ;        ;
+; guard|emptyPifos_1_61                                                                          ;        ;
+; guard|emptyPifos_1_58                                                                          ;        ;
+; pifoEngines_0|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ptr_pop[0]         ;        ;
+; guard|emptyPifos_1_62                                                                          ;        ;
+; guard|emptyPifos_1_60                                                                          ;        ;
+; guard|emptyPifos_1_44                                                                          ;        ;
+; guard|emptyPifos_1_32                                                                          ;        ;
+; guard|emptyPifos_1_36                                                                          ;        ;
+; guard|emptyPifos_1_45                                                                          ;        ;
+; guard|emptyPifos_1_37                                                                          ;        ;
+; guard|emptyPifos_1_40                                                                          ;        ;
+; guard|emptyPifos_1_41                                                                          ;        ;
+; guard|emptyPifos_1_33                                                                          ;        ;
+; pifoEngines_0|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ptr_push[0]        ;        ;
+; guard|emptyPifos_3_15                                                                          ;        ;
+; guard|emptyPifos_3_7                                                                           ;        ;
+; guard|emptyPifos_3_10                                                                          ;        ;
+; guard|emptyPifos_3_11                                                                          ;        ;
+; guard|emptyPifos_3_3                                                                           ;        ;
+; guard|emptyPifos_3_12                                                                          ;        ;
+; guard|emptyPifos_3_0                                                                           ;        ;
+; guard|emptyPifos_3_4                                                                           ;        ;
+; guard|emptyPifos_3_13                                                                          ;        ;
+; guard|emptyPifos_3_5                                                                           ;        ;
+; pifoEngines_0|enque_brain|engineCAM|io_readReq_valid_regNext                                   ;        ;
+; guard|emptyPifos_3_8                                                                           ;        ;
+; guard|emptyPifos_3_9                                                                           ;        ;
+; guard|emptyPifos_3_1                                                                           ;        ;
+; guard|emptyPifos_3_30                                                                          ;        ;
+; guard|emptyPifos_3_18                                                                          ;        ;
+; guard|emptyPifos_3_22                                                                          ;        ;
+; guard|emptyPifos_3_31                                                                          ;        ;
+; guard|emptyPifos_3_23                                                                          ;        ;
+; guard|emptyPifos_3_26                                                                          ;        ;
+; guard|emptyPifos_3_27                                                                          ;        ;
+; pifoEngines_0|enque_brain|io_request_fork|logic_linkEnable_0                                   ;        ;
+; guard|emptyPifos_3_19                                                                          ;        ;
+; guard|emptyPifos_3_14                                                                          ;        ;
+; guard|emptyPifos_3_2                                                                           ;        ;
+; guard|emptyPifos_3_6                                                                           ;        ;
+; guard|emptyPifos_3_28                                                                          ;        ;
+; guard|emptyPifos_3_16                                                                          ;        ;
+; guard|emptyPifos_3_20                                                                          ;        ;
+; guard|emptyPifos_3_29                                                                          ;        ;
+; guard|emptyPifos_3_21                                                                          ;        ;
+; guard|emptyPifos_3_24                                                                          ;        ;
+; pifoEngines_0|enque_brain|brainStateMem|io_readReq_valid_regNext                               ;        ;
+; guard|emptyPifos_3_25                                                                          ;        ;
+; guard|emptyPifos_3_17                                                                          ;        ;
+; guard|emptyPifos_3_46                                                                          ;        ;
+; guard|emptyPifos_3_34                                                                          ;        ;
+; guard|emptyPifos_3_38                                                                          ;        ;
+; guard|emptyPifos_3_47                                                                          ;        ;
+; guard|emptyPifos_3_39                                                                          ;        ;
+; guard|emptyPifos_3_42                                                                          ;        ;
+; guard|emptyPifos_3_43                                                                          ;        ;
+; guard|emptyPifos_3_35                                                                          ;        ;
+; pifoEngines_0|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ptr_push[1]            ;        ;
+; pifoEngines_0|enque_flowIdStream_fifo|fifo|logic_ptr_pop[1]                                    ;        ;
+; guard|emptyPifos_3_51                                                                          ;        ;
+; guard|emptyPifos_3_48                                                                          ;        ;
+; guard|emptyPifos_3_49                                                                          ;        ;
+; guard|emptyPifos_3_55                                                                          ;        ;
+; guard|emptyPifos_3_53                                                                          ;        ;
+; guard|emptyPifos_3_50                                                                          ;        ;
+; guard|emptyPifos_3_54                                                                          ;        ;
+; guard|emptyPifos_3_52                                                                          ;        ;
+; guard|emptyPifos_3_59                                                                          ;        ;
+; guard|emptyPifos_3_56                                                                          ;        ;
+; pifoEngines_0|enque_flowIdStream_fifo|fifo|logic_ptr_push[1]                                   ;        ;
+; guard|emptyPifos_3_57                                                                          ;        ;
+; guard|emptyPifos_3_63                                                                          ;        ;
+; guard|emptyPifos_3_61                                                                          ;        ;
+; guard|emptyPifos_3_58                                                                          ;        ;
+; guard|emptyPifos_3_62                                                                          ;        ;
+; guard|emptyPifos_3_60                                                                          ;        ;
+; guard|emptyPifos_3_44                                                                          ;        ;
+; guard|emptyPifos_3_32                                                                          ;        ;
+; guard|emptyPifos_3_36                                                                          ;        ;
+; guard|emptyPifos_3_45                                                                          ;        ;
+; pifoEngines_0|enque_brain|io_outputs_4_fifo|fifo|logic_ptr_pop[1]                              ;        ;
+; guard|emptyPifos_3_37                                                                          ;        ;
+; guard|emptyPifos_3_40                                                                          ;        ;
+; guard|emptyPifos_3_41                                                                          ;        ;
+; guard|emptyPifos_3_33                                                                          ;        ;
+; guard|emptyPifos_4_51                                                                          ;        ;
+; guard|emptyPifos_4_49                                                                          ;        ;
+; guard|emptyPifos_4_34                                                                          ;        ;
+; guard|emptyPifos_4_50                                                                          ;        ;
+; guard|emptyPifos_4_48                                                                          ;        ;
+; guard|emptyPifos_4_3                                                                           ;        ;
+; pifoEngines_0|enque_brain|io_outputs_4_fifo|fifo|logic_ptr_push[1]                             ;        ;
+; guard|emptyPifos_4_0                                                                           ;        ;
+; guard|emptyPifos_4_1                                                                           ;        ;
+; guard|emptyPifos_4_19                                                                          ;        ;
+; guard|emptyPifos_4_17                                                                          ;        ;
+; guard|emptyPifos_4_2                                                                           ;        ;
+; guard|emptyPifos_4_18                                                                          ;        ;
+; guard|emptyPifos_4_16                                                                          ;        ;
+; guard|emptyPifos_4_39                                                                          ;        ;
+; guard|emptyPifos_4_36                                                                          ;        ;
+; guard|emptyPifos_4_37                                                                          ;        ;
+; pifoEngines_0|enque_brain|io_outputs_4_fifo|fifo|logic_ptr_pop[0]                              ;        ;
+; guard|emptyPifos_4_55                                                                          ;        ;
+; guard|emptyPifos_4_53                                                                          ;        ;
+; guard|emptyPifos_4_38                                                                          ;        ;
+; guard|emptyPifos_4_54                                                                          ;        ;
+; guard|emptyPifos_4_52                                                                          ;        ;
+; guard|emptyPifos_4_35                                                                          ;        ;
+; guard|emptyPifos_4_32                                                                          ;        ;
+; guard|emptyPifos_4_33                                                                          ;        ;
+; guard|emptyPifos_4_7                                                                           ;        ;
+; guard|emptyPifos_4_4                                                                           ;        ;
+; pifoEngines_0|enque_brain|io_outputs_4_fifo|fifo|logic_ptr_push[0]                             ;        ;
+; guard|emptyPifos_4_5                                                                           ;        ;
+; guard|emptyPifos_4_23                                                                          ;        ;
+; guard|emptyPifos_4_21                                                                          ;        ;
+; guard|emptyPifos_4_6                                                                           ;        ;
+; guard|emptyPifos_4_22                                                                          ;        ;
+; guard|emptyPifos_4_20                                                                          ;        ;
+; guard|emptyPifos_4_58                                                                          ;        ;
+; guard|emptyPifos_4_10                                                                          ;        ;
+; guard|emptyPifos_4_26                                                                          ;        ;
+; guard|emptyPifos_4_59                                                                          ;        ;
+; pifoEngines_0|enque_flowIdStream_fifo|fifo|logic_ptr_pop[0]                                    ;        ;
+; guard|emptyPifos_4_27                                                                          ;        ;
+; guard|emptyPifos_4_42                                                                          ;        ;
+; guard|emptyPifos_4_43                                                                          ;        ;
+; guard|emptyPifos_4_11                                                                          ;        ;
+; guard|emptyPifos_4_15                                                                          ;        ;
+; guard|emptyPifos_4_12                                                                          ;        ;
+; guard|emptyPifos_4_13                                                                          ;        ;
+; guard|emptyPifos_4_31                                                                          ;        ;
+; guard|emptyPifos_4_29                                                                          ;        ;
+; guard|emptyPifos_4_14                                                                          ;        ;
+; pifoEngines_0|enque_flowIdStream_fifo|fifo|logic_ptr_push[0]                                   ;        ;
+; guard|emptyPifos_4_30                                                                          ;        ;
+; guard|emptyPifos_4_28                                                                          ;        ;
+; guard|emptyPifos_4_47                                                                          ;        ;
+; guard|emptyPifos_4_44                                                                          ;        ;
+; guard|emptyPifos_4_45                                                                          ;        ;
+; guard|emptyPifos_4_63                                                                          ;        ;
+; guard|emptyPifos_4_61                                                                          ;        ;
+; guard|emptyPifos_4_46                                                                          ;        ;
+; guard|emptyPifos_4_62                                                                          ;        ;
+; guard|emptyPifos_4_60                                                                          ;        ;
+; pifoEngines_0|io_enqueRequest_fork2_logic_linkEnable_0                                         ;        ;
+; guard|emptyPifos_4_56                                                                          ;        ;
+; guard|emptyPifos_4_8                                                                           ;        ;
+; guard|emptyPifos_4_24                                                                          ;        ;
+; guard|emptyPifos_4_57                                                                          ;        ;
+; guard|emptyPifos_4_25                                                                          ;        ;
+; guard|emptyPifos_4_40                                                                          ;        ;
+; guard|emptyPifos_4_41                                                                          ;        ;
+; guard|emptyPifos_4_9                                                                           ;        ;
+; guard|emptyPifos_2_51                                                                          ;        ;
+; guard|emptyPifos_2_49                                                                          ;        ;
+; pifoEngines_0|enque_enqueMapper|io_readReq_valid_regNext                                       ;        ;
+; guard|emptyPifos_2_34                                                                          ;        ;
+; guard|emptyPifos_2_50                                                                          ;        ;
+; guard|emptyPifos_2_48                                                                          ;        ;
+; guard|emptyPifos_2_3                                                                           ;        ;
+; guard|emptyPifos_2_0                                                                           ;        ;
+; guard|emptyPifos_2_1                                                                           ;        ;
+; guard|emptyPifos_2_19                                                                          ;        ;
+; guard|emptyPifos_2_17                                                                          ;        ;
+; guard|emptyPifos_2_2                                                                           ;        ;
+; guard|emptyPifos_2_18                                                                          ;        ;
+; pifoEngines_0|enque_brain|lastVirtualMapper_io_readRes_toStream_fifo|fifo|logic_ptr_pop[1]     ;        ;
+; pifoEngines_0|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ptr_pop[0]             ;        ;
+; guard|emptyPifos_2_16                                                                          ;        ;
+; guard|emptyPifos_2_39                                                                          ;        ;
+; guard|emptyPifos_2_36                                                                          ;        ;
+; guard|emptyPifos_2_37                                                                          ;        ;
+; guard|emptyPifos_2_55                                                                          ;        ;
+; guard|emptyPifos_2_53                                                                          ;        ;
+; guard|emptyPifos_2_38                                                                          ;        ;
+; guard|emptyPifos_2_54                                                                          ;        ;
+; guard|emptyPifos_2_52                                                                          ;        ;
+; guard|emptyPifos_2_35                                                                          ;        ;
+; pifoEngines_0|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ptr_push[0]            ;        ;
+; guard|emptyPifos_2_32                                                                          ;        ;
+; guard|emptyPifos_2_33                                                                          ;        ;
+; guard|emptyPifos_2_7                                                                           ;        ;
+; guard|emptyPifos_2_4                                                                           ;        ;
+; guard|emptyPifos_2_5                                                                           ;        ;
+; guard|emptyPifos_2_23                                                                          ;        ;
+; guard|emptyPifos_2_21                                                                          ;        ;
+; guard|emptyPifos_2_6                                                                           ;        ;
+; guard|emptyPifos_2_22                                                                          ;        ;
+; guard|emptyPifos_2_20                                                                          ;        ;
+; guard|emptyPifos_0_15                                                                          ;        ;
+; guard|emptyPifos_2_58                                                                          ;        ;
+; guard|emptyPifos_2_10                                                                          ;        ;
+; guard|emptyPifos_2_26                                                                          ;        ;
+; guard|emptyPifos_2_59                                                                          ;        ;
+; guard|emptyPifos_2_27                                                                          ;        ;
+; guard|emptyPifos_2_42                                                                          ;        ;
+; guard|emptyPifos_2_43                                                                          ;        ;
+; guard|emptyPifos_2_11                                                                          ;        ;
+; guard|emptyPifos_2_15                                                                          ;        ;
+; guard|emptyPifos_2_12                                                                          ;        ;
+; guard|emptyPifos_0_13                                                                          ;        ;
+; guard|emptyPifos_2_13                                                                          ;        ;
+; guard|emptyPifos_2_31                                                                          ;        ;
+; guard|emptyPifos_2_29                                                                          ;        ;
+; guard|emptyPifos_2_14                                                                          ;        ;
+; guard|emptyPifos_2_30                                                                          ;        ;
+; guard|emptyPifos_2_28                                                                          ;        ;
+; guard|emptyPifos_2_47                                                                          ;        ;
+; guard|emptyPifos_2_44                                                                          ;        ;
+; guard|emptyPifos_2_45                                                                          ;        ;
+; guard|emptyPifos_2_63                                                                          ;        ;
+; guard|emptyPifos_0_10                                                                          ;        ;
+; guard|emptyPifos_2_61                                                                          ;        ;
+; guard|emptyPifos_2_46                                                                          ;        ;
+; guard|emptyPifos_2_62                                                                          ;        ;
+; guard|emptyPifos_2_60                                                                          ;        ;
+; guard|emptyPifos_2_56                                                                          ;        ;
+; guard|emptyPifos_2_8                                                                           ;        ;
+; guard|emptyPifos_2_24                                                                          ;        ;
+; guard|emptyPifos_2_57                                                                          ;        ;
+; guard|emptyPifos_2_25                                                                          ;        ;
+; guard|emptyPifos_2_40                                                                          ;        ;
+; guard|emptyPifos_0_14                                                                          ;        ;
+; guard|emptyPifos_2_41                                                                          ;        ;
+; guard|emptyPifos_2_9                                                                           ;        ;
+; io_controlRequest_fifo|logic_pop_sync_popReg[7]                                                ;        ;
+; io_controlRequest_fifo|logic_pop_sync_popReg[6]                                                ;        ;
+; io_controlRequest_fifo|logic_pop_sync_popReg[5]                                                ;        ;
+; io_controlRequest_fifo|logic_pop_sync_popReg[4]                                                ;        ;
+; io_controlRequest_fifo|logic_pop_sync_popReg[3]                                                ;        ;
+; io_controlRequest_fifo|logic_pop_sync_popReg[2]                                                ;        ;
+; io_controlRequest_fifo|logic_pop_sync_popReg[1]                                                ;        ;
+; io_controlRequest_fifo|logic_pop_sync_popReg[0]                                                ;        ;
+; guard|emptyPifos_0_12                                                                          ;        ;
+; io_controlRequest_fifo|logic_ptr_pop[6]                                                        ;        ;
+; io_controlRequest_fifo|logic_ptr_pop[5]                                                        ;        ;
+; io_controlRequest_fifo|logic_ptr_pop[4]                                                        ;        ;
+; io_controlRequest_fifo|logic_ptr_pop[3]                                                        ;        ;
+; io_controlRequest_fifo|logic_ptr_pop[2]                                                        ;        ;
+; io_controlRequest_fifo|logic_ptr_pop[1]                                                        ;        ;
+; io_controlRequest_fifo|logic_ptr_pop[0]                                                        ;        ;
+; io_controlRequest_fifo|logic_ptr_push[6]                                                       ;        ;
+; io_controlRequest_fifo|logic_ptr_push[5]                                                       ;        ;
+; io_controlRequest_fifo|logic_ptr_push[4]                                                       ;        ;
+; guard|emptyPifos_0_3                                                                           ;        ;
+; io_controlRequest_fifo|logic_ptr_push[3]                                                       ;        ;
+; io_controlRequest_fifo|logic_ptr_push[2]                                                       ;        ;
+; io_controlRequest_fifo|logic_ptr_push[1]                                                       ;        ;
+; io_controlRequest_fifo|logic_ptr_push[0]                                                       ;        ;
+; io_controlRequest_fifo|logic_ptr_pop[7]                                                        ;        ;
+; io_controlRequest_fifo|logic_ptr_pop[8]                                                        ;        ;
+; io_controlRequest_fifo|logic_pop_sync_popReg[8]                                                ;        ;
+; io_controlRequest_fifo|logic_ptr_push[7]                                                       ;        ;
+; io_controlRequest_fifo|logic_ptr_push[8]                                                       ;        ;
+; io_controlRequest_fifo|logic_pop_addressGen_rValid                                             ;        ;
+; guard|emptyPifos_0_0                                                                           ;        ;
+; pifoEngines_0|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ptr_pop[1]                  ;        ;
+; pifoEngines_0|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ptr_push[1]                 ;        ;
+; pifoEngines_0|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ptr_pop[0]                  ;        ;
+; pifoEngines_0|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ptr_push[0]                 ;        ;
+; xbar|io_inputs_1_fifo|fifo|logic_ram~12                                                        ;        ;
+; xbar|io_inputs_1_fifo|fifo|logic_ram_rtl_0_bypass[9]                                           ;        ;
+; xbar|io_inputs_1_fifo|fifo|logic_ram~10                                                        ;        ;
+; xbar|io_inputs_0_fifo|fifo|logic_ram~12                                                        ;        ;
+; xbar|streamArbiter_16|maskLocked_1                                                             ;        ;
+; xbar|io_inputs_5_fifo|fifo|logic_ram~12                                                        ;        ;
+; guard|emptyPifos_0_1                                                                           ;        ;
+; xbar|io_inputs_5_fifo|fifo|logic_ram_rtl_0_bypass[9]                                           ;        ;
+; xbar|io_inputs_5_fifo|fifo|logic_ram~11                                                        ;        ;
+; xbar|io_inputs_5_fifo|fifo|logic_ram_rtl_0_bypass[8]                                           ;        ;
+; xbar|io_inputs_5_fifo|fifo|logic_ram_rtl_0_bypass[6]                                           ;        ;
+; xbar|io_inputs_5_fifo|fifo|logic_ram_rtl_0_bypass[5]                                           ;        ;
+; xbar|io_inputs_5_fifo|fifo|logic_ram~9                                                         ;        ;
+; xbar|io_inputs_5_fifo|fifo|logic_ram~10                                                        ;        ;
+; xbar|io_inputs_5_fifo|fifo|logic_ptr_pop[2]                                                    ;        ;
+; xbar|io_inputs_5_fifo|fifo|logic_ptr_push[2]                                                   ;        ;
+; pifoEngines_4|deque_dequeMapper|ram_rtl_0|auto_generated|altera_syncram_impl1|address_reg_b[3] ;        ;
+; pifoEngines_0|enque_brain|lastVirtualMapper_io_readRes_toStream_fifo|fifo|logic_ptr_push[1]    ;        ;
+; guard|emptyPifos_0_7                                                                           ;        ;
+; pifoEngines_4|deque_dequeMapper|ram_rtl_0|auto_generated|altera_syncram_impl1|address_reg_b[2] ;        ;
+; pifoEngines_4|deque_dequeMapper|ram_rtl_0|auto_generated|altera_syncram_impl1|address_reg_b[1] ;        ;
+; pifoEngines_4|deque_dequeMapper|ram_rtl_0|auto_generated|altera_syncram_impl1|address_reg_b[0] ;        ;
+; xbar|io_inputs_5_fifo|fifo|logic_ram_rtl_0_bypass[7]                                           ;        ;
+; xbar|io_inputs_4_fifo|fifo|logic_ram~12                                                        ;        ;
+; xbar|io_inputs_4_fifo|fifo|logic_ram_rtl_0_bypass[9]                                           ;        ;
+; xbar|streamArbiter_16|maskLocked_4                                                             ;        ;
+; xbar|io_inputs_4_fifo|fifo|logic_ram~10                                                        ;        ;
+; xbar|io_inputs_4_fifo|fifo|logic_ram_rtl_0_bypass[6]                                           ;        ;
+; xbar|io_inputs_4_fifo|fifo|logic_ram_rtl_0_bypass[5]                                           ;        ;
+; guard|emptyPifos_0_5                                                                           ;        ;
+; xbar|io_inputs_4_fifo|fifo|logic_ram~9                                                         ;        ;
+; xbar|io_inputs_4_fifo|fifo|logic_ram~11                                                        ;        ;
+; xbar|io_inputs_4_fifo|fifo|logic_ram_rtl_0_bypass[0]                                           ;        ;
+; xbar|io_inputs_4_fifo|fifo|logic_ptr_pop[2]                                                    ;        ;
+; xbar|io_inputs_4_fifo|fifo|logic_ptr_push[2]                                                   ;        ;
+; xbar|io_inputs_4_fifo|fifo|logic_ram_rtl_0_bypass[8]                                           ;        ;
+; xbar|io_inputs_4_fifo|fifo|logic_ptr_pop[1]                                                    ;        ;
+; xbar|io_inputs_4_fifo|fifo|logic_ram_rtl_0_bypass[4]                                           ;        ;
+; xbar|io_inputs_4_fifo|fifo|logic_ptr_push[1]                                                   ;        ;
+; xbar|io_inputs_4_fifo|fifo|logic_ram_rtl_0_bypass[3]                                           ;        ;
+; guard|emptyPifos_0_2                                                                           ;        ;
+; pifoEngines_3|deque_dequeMapper|ram_rtl_0|auto_generated|altera_syncram_impl1|address_reg_b[3] ;        ;
+; pifoEngines_3|deque_dequeMapper|ram_rtl_0|auto_generated|altera_syncram_impl1|address_reg_b[2] ;        ;
+; pifoEngines_3|deque_dequeMapper|ram_rtl_0|auto_generated|altera_syncram_impl1|address_reg_b[1] ;        ;
+; pifoEngines_3|deque_dequeMapper|ram_rtl_0|auto_generated|altera_syncram_impl1|address_reg_b[0] ;        ;
+; xbar|io_inputs_4_fifo|fifo|logic_ram_rtl_0_bypass[7]                                           ;        ;
+; xbar|io_inputs_4_fifo|fifo|logic_ram_rtl_0_bypass[2]                                           ;        ;
+; xbar|io_inputs_4_fifo|fifo|logic_ram_rtl_0_bypass[1]                                           ;        ;
+; xbar|io_inputs_4_fifo|fifo|logic_ptr_pop[0]                                                    ;        ;
+; xbar|io_inputs_4_fifo|fifo|logic_ptr_pop[3]                                                    ;        ;
+; pifoEngines_3|io_outputs_2_fifo|fifo|logic_ptr_pop[1]                                          ;        ;
+; guard|emptyPifos_0_6                                                                           ;        ;
+; pifoEngines_3|io_outputs_2_fifo|fifo|logic_ptr_push[1]                                         ;        ;
+; pifoEngines_3|io_outputs_2_fifo|fifo|logic_ptr_pop[0]                                          ;        ;
+; pifoEngines_3|io_outputs_2_fifo|fifo|logic_ptr_push[0]                                         ;        ;
+; pifoEngines_3|deque_existingPop_fork|logic_linkEnable_0                                        ;        ;
+; pifoEngines_3|deque_dequeMapper|io_readReq_valid_regNext                                       ;        ;
+; xbar|io_inputs_4_fifo|fifo|logic_ptr_push[0]                                                   ;        ;
+; xbar|io_inputs_4_fifo|fifo|logic_ptr_push[3]                                                   ;        ;
+; xbar|io_inputs_3_fifo|fifo|logic_ram~12                                                        ;        ;
+; xbar|io_inputs_3_fifo|fifo|logic_ram_rtl_0_bypass[9]                                           ;        ;
+; xbar|io_inputs_3_fifo|fifo|logic_ram~10                                                        ;        ;
+; guard|emptyPifos_0_4                                                                           ;        ;
+; xbar|io_inputs_3_fifo|fifo|logic_ram_rtl_0_bypass[6]                                           ;        ;
+; xbar|io_inputs_3_fifo|fifo|logic_ram_rtl_0_bypass[5]                                           ;        ;
+; xbar|io_inputs_3_fifo|fifo|logic_ram~9                                                         ;        ;
+; xbar|io_inputs_3_fifo|fifo|logic_ram~11                                                        ;        ;
+; xbar|io_inputs_3_fifo|fifo|logic_ram_rtl_0_bypass[0]                                           ;        ;
+; xbar|io_inputs_3_fifo|fifo|logic_ptr_pop[2]                                                    ;        ;
+; xbar|io_inputs_3_fifo|fifo|logic_ptr_push[2]                                                   ;        ;
+; xbar|io_inputs_3_fifo|fifo|logic_ram_rtl_0_bypass[8]                                           ;        ;
+; xbar|io_inputs_3_fifo|fifo|logic_ptr_pop[1]                                                    ;        ;
+; xbar|io_inputs_3_fifo|fifo|logic_ram_rtl_0_bypass[4]                                           ;        ;
+; guard|emptyPifos_0_31                                                                          ;        ;
+; xbar|io_inputs_3_fifo|fifo|logic_ptr_push[1]                                                   ;        ;
+; xbar|io_inputs_3_fifo|fifo|logic_ram_rtl_0_bypass[3]                                           ;        ;
+; pifoEngines_2|deque_dequeMapper|ram_rtl_0|auto_generated|altera_syncram_impl1|address_reg_b[3] ;        ;
+; pifoEngines_2|deque_dequeMapper|ram_rtl_0|auto_generated|altera_syncram_impl1|address_reg_b[2] ;        ;
+; pifoEngines_2|deque_dequeMapper|ram_rtl_0|auto_generated|altera_syncram_impl1|address_reg_b[1] ;        ;
+; pifoEngines_2|deque_dequeMapper|ram_rtl_0|auto_generated|altera_syncram_impl1|address_reg_b[0] ;        ;
+; xbar|io_inputs_3_fifo|fifo|logic_ram_rtl_0_bypass[7]                                           ;        ;
+; xbar|streamArbiter_16|maskLocked_3                                                             ;        ;
+; xbar|io_inputs_3_fifo|fifo|logic_ram_rtl_0_bypass[2]                                           ;        ;
+; xbar|io_inputs_3_fifo|fifo|logic_ram_rtl_0_bypass[1]                                           ;        ;
+; guard|emptyPifos_0_23                                                                          ;        ;
+; xbar|io_inputs_3_fifo|fifo|logic_ptr_pop[0]                                                    ;        ;
+; xbar|io_inputs_3_fifo|fifo|logic_ptr_pop[3]                                                    ;        ;
+; pifoEngines_2|io_outputs_2_fifo|fifo|logic_ptr_pop[1]                                          ;        ;
+; pifoEngines_2|io_outputs_2_fifo|fifo|logic_ptr_push[1]                                         ;        ;
+; pifoEngines_2|io_outputs_2_fifo|fifo|logic_ptr_pop[0]                                          ;        ;
+; pifoEngines_2|io_outputs_2_fifo|fifo|logic_ptr_push[0]                                         ;        ;
+; pifoEngines_2|deque_existingPop_fork|logic_linkEnable_0                                        ;        ;
+; pifoEngines_2|deque_dequeMapper|io_readReq_valid_regNext                                       ;        ;
+; xbar|io_inputs_3_fifo|fifo|logic_ptr_push[0]                                                   ;        ;
+; xbar|io_inputs_3_fifo|fifo|logic_ptr_push[3]                                                   ;        ;
+; guard|emptyPifos_0_26                                                                          ;        ;
+; xbar|io_inputs_5_fifo|fifo|logic_ptr_pop[1]                                                    ;        ;
+; xbar|io_inputs_5_fifo|fifo|logic_ram_rtl_0_bypass[4]                                           ;        ;
+; xbar|io_inputs_5_fifo|fifo|logic_ptr_push[1]                                                   ;        ;
+; xbar|io_inputs_5_fifo|fifo|logic_ram_rtl_0_bypass[3]                                           ;        ;
+; xbar|io_inputs_5_fifo|fifo|logic_ram_rtl_0_bypass[0]                                           ;        ;
+; xbar|io_inputs_5_fifo|fifo|logic_ram_rtl_0_bypass[2]                                           ;        ;
+; xbar|io_inputs_5_fifo|fifo|logic_ram_rtl_0_bypass[1]                                           ;        ;
+; xbar|io_inputs_5_fifo|fifo|logic_ptr_pop[0]                                                    ;        ;
+; xbar|io_inputs_5_fifo|fifo|logic_ptr_pop[3]                                                    ;        ;
+; pifoEngines_4|io_outputs_2_fifo|fifo|logic_ptr_pop[1]                                          ;        ;
+; guard|emptyPifos_0_27                                                                          ;        ;
+; pifoEngines_4|io_outputs_2_fifo|fifo|logic_ptr_push[1]                                         ;        ;
+; pifoEngines_4|io_outputs_2_fifo|fifo|logic_ptr_pop[0]                                          ;        ;
+; pifoEngines_4|io_outputs_2_fifo|fifo|logic_ptr_push[0]                                         ;        ;
+; pifoEngines_4|deque_existingPop_fork|logic_linkEnable_0                                        ;        ;
+; pifoEngines_4|deque_dequeMapper|io_readReq_valid_regNext                                       ;        ;
+; xbar|io_inputs_5_fifo|fifo|logic_ptr_push[0]                                                   ;        ;
+; xbar|io_inputs_5_fifo|fifo|logic_ptr_push[3]                                                   ;        ;
+; xbar|io_inputs_2_fifo|fifo|logic_ram~12                                                        ;        ;
+; xbar|io_inputs_2_fifo|fifo|logic_ram_rtl_0_bypass[9]                                           ;        ;
+; xbar|streamArbiter_16|maskLocked_2                                                             ;        ;
+; guard|emptyPifos_0_19                                                                          ;        ;
+; xbar|io_inputs_2_fifo|fifo|logic_ram~11                                                        ;        ;
+; xbar|io_inputs_2_fifo|fifo|logic_ram_rtl_0_bypass[8]                                           ;        ;
+; xbar|io_inputs_2_fifo|fifo|logic_ram_rtl_0_bypass[6]                                           ;        ;
+; xbar|io_inputs_2_fifo|fifo|logic_ram_rtl_0_bypass[5]                                           ;        ;
+; xbar|io_inputs_2_fifo|fifo|logic_ram~9                                                         ;        ;
+; xbar|io_inputs_2_fifo|fifo|logic_ram~10                                                        ;        ;
+; xbar|io_inputs_2_fifo|fifo|logic_ptr_pop[2]                                                    ;        ;
+; xbar|io_inputs_2_fifo|fifo|logic_ptr_push[2]                                                   ;        ;
+; pifoEngines_1|deque_dequeMapper|ram_rtl_0|auto_generated|altera_syncram_impl1|address_reg_b[3] ;        ;
+; pifoEngines_1|deque_dequeMapper|ram_rtl_0|auto_generated|altera_syncram_impl1|address_reg_b[2] ;        ;
+; pifoEngines_0|enque_brain|lastVirtualMapper_io_readRes_toStream_fifo|fifo|logic_ptr_pop[0]     ;        ;
+; guard|emptyPifos_0_28                                                                          ;        ;
+; pifoEngines_1|deque_dequeMapper|ram_rtl_0|auto_generated|altera_syncram_impl1|address_reg_b[1] ;        ;
+; pifoEngines_1|deque_dequeMapper|ram_rtl_0|auto_generated|altera_syncram_impl1|address_reg_b[0] ;        ;
+; xbar|io_inputs_2_fifo|fifo|logic_ram_rtl_0_bypass[7]                                           ;        ;
+; xbar|io_inputs_0_fifo|fifo|logic_ram~10                                                        ;        ;
+; xbar|io_inputs_0_fifo|fifo|logic_ram_rtl_0_bypass[6]                                           ;        ;
+; xbar|io_inputs_0_fifo|fifo|logic_ram_rtl_0_bypass[5]                                           ;        ;
+; xbar|streamArbiter_16|maskLocked_0                                                             ;        ;
+; xbar|io_inputs_0_fifo|fifo|logic_ram~9                                                         ;        ;
+; xbar|io_inputs_0_fifo|fifo|logic_ram~11                                                        ;        ;
+; xbar|io_inputs_0_fifo|fifo|logic_ram_rtl_0_bypass[0]                                           ;        ;
+; guard|emptyPifos_0_16                                                                          ;        ;
+; xbar|io_inputs_0_fifo|fifo|logic_ptr_pop[2]                                                    ;        ;
+; xbar|io_inputs_0_fifo|fifo|logic_ptr_push[2]                                                   ;        ;
+; xbar|io_inputs_0_fifo|fifo|logic_ptr_pop[1]                                                    ;        ;
+; xbar|io_inputs_0_fifo|fifo|logic_ram_rtl_0_bypass[4]                                           ;        ;
+; xbar|io_inputs_0_fifo|fifo|logic_ptr_push[1]                                                   ;        ;
+; xbar|io_inputs_0_fifo|fifo|logic_ram_rtl_0_bypass[3]                                           ;        ;
+; xbar|io_inputs_2_fifo|fifo|logic_ptr_pop[1]                                                    ;        ;
+; xbar|io_inputs_2_fifo|fifo|logic_ram_rtl_0_bypass[4]                                           ;        ;
+; xbar|io_inputs_2_fifo|fifo|logic_ptr_push[1]                                                   ;        ;
+; xbar|io_inputs_2_fifo|fifo|logic_ram_rtl_0_bypass[3]                                           ;        ;
+; guard|emptyPifos_0_20                                                                          ;        ;
+; xbar|io_inputs_2_fifo|fifo|logic_ram_rtl_0_bypass[0]                                           ;        ;
+; xbar|io_inputs_2_fifo|fifo|logic_ram_rtl_0_bypass[2]                                           ;        ;
+; xbar|io_inputs_2_fifo|fifo|logic_ram_rtl_0_bypass[1]                                           ;        ;
+; xbar|io_inputs_2_fifo|fifo|logic_ptr_pop[0]                                                    ;        ;
+; xbar|io_inputs_2_fifo|fifo|logic_ptr_pop[3]                                                    ;        ;
+; pifoEngines_1|io_outputs_2_fifo|fifo|logic_ptr_pop[1]                                          ;        ;
+; pifoEngines_1|io_outputs_2_fifo|fifo|logic_ptr_push[1]                                         ;        ;
+; pifoEngines_1|io_outputs_2_fifo|fifo|logic_ptr_pop[0]                                          ;        ;
+; pifoEngines_1|io_outputs_2_fifo|fifo|logic_ptr_push[0]                                         ;        ;
+; pifoEngines_1|deque_existingPop_fork|logic_linkEnable_0                                        ;        ;
+; guard|emptyPifos_0_29                                                                          ;        ;
+; pifoEngines_1|deque_dequeMapper|io_readReq_valid_regNext                                       ;        ;
+; xbar|io_inputs_2_fifo|fifo|logic_ptr_push[0]                                                   ;        ;
+; xbar|io_inputs_2_fifo|fifo|logic_ptr_push[3]                                                   ;        ;
+; xbar|streamArbiter_16|maskLocked_5                                                             ;        ;
+; xbar|streamArbiter_16|locked                                                                   ;        ;
+; xbar|_zz_io_outputs_0_valid_1                                                                  ;        ;
+; xbar|io_inputs_0_fifo|fifo|logic_ram_rtl_0_bypass[2]                                           ;        ;
+; xbar|io_inputs_0_fifo|fifo|logic_ram_rtl_0_bypass[1]                                           ;        ;
+; xbar|io_inputs_0_fifo|fifo|logic_ptr_pop[0]                                                    ;        ;
+; xbar|io_inputs_0_fifo|fifo|logic_ptr_pop[3]                                                    ;        ;
+; guard|emptyPifos_0_21                                                                          ;        ;
+; xbar|io_inputs_0_fifo|fifo|logic_ptr_push[0]                                                   ;        ;
+; xbar|io_inputs_0_fifo|fifo|logic_ptr_push[3]                                                   ;        ;
+; xbar|io_inputs_1_fifo|fifo|logic_ram~9                                                         ;        ;
+; xbar|io_inputs_1_fifo|fifo|logic_ram~11                                                        ;        ;
+; xbar|io_inputs_1_fifo|fifo|logic_ram_rtl_0_bypass[8]                                           ;        ;
+; xbar|io_inputs_1_fifo|fifo|logic_ram_rtl_0_bypass[0]                                           ;        ;
+; xbar|io_inputs_1_fifo|fifo|logic_ptr_pop[2]                                                    ;        ;
+; xbar|io_inputs_1_fifo|fifo|logic_ram_rtl_0_bypass[6]                                           ;        ;
+; xbar|io_inputs_1_fifo|fifo|logic_ram_rtl_0_bypass[5]                                           ;        ;
+; xbar|io_inputs_1_fifo|fifo|logic_ram_rtl_0_bypass[4]                                           ;        ;
+; guard|emptyPifos_0_24                                                                          ;        ;
+; xbar|io_inputs_1_fifo|fifo|logic_ram_rtl_0_bypass[3]                                           ;        ;
+; pifoEngines_0|deque_dequeMapper|ram_rtl_0|auto_generated|altera_syncram_impl1|address_reg_b[3] ;        ;
+; pifoEngines_0|deque_dequeMapper|ram_rtl_0|auto_generated|altera_syncram_impl1|address_reg_b[2] ;        ;
+; pifoEngines_0|deque_dequeMapper|ram_rtl_0|auto_generated|altera_syncram_impl1|address_reg_b[1] ;        ;
+; pifoEngines_0|deque_dequeMapper|ram_rtl_0|auto_generated|altera_syncram_impl1|address_reg_b[0] ;        ;
+; xbar|io_inputs_1_fifo|fifo|logic_ram_rtl_0_bypass[7]                                           ;        ;
+; xbar|io_inputs_1_fifo|fifo|logic_ram_rtl_0_bypass[2]                                           ;        ;
+; xbar|io_inputs_1_fifo|fifo|logic_ram_rtl_0_bypass[1]                                           ;        ;
+; xbar|io_inputs_1_fifo|fifo|logic_ptr_pop[1]                                                    ;        ;
+; xbar|io_inputs_1_fifo|fifo|logic_ptr_pop[0]                                                    ;        ;
+; guard|emptyPifos_0_25                                                                          ;        ;
+; xbar|io_inputs_1_fifo|fifo|logic_ptr_pop[3]                                                    ;        ;
+; xbar|io_inputs_1_fifo|fifo|logic_ptr_push[2]                                                   ;        ;
+; xbar|io_inputs_1_fifo|fifo|logic_ptr_push[1]                                                   ;        ;
+; xbar|io_inputs_1_fifo|fifo|logic_ptr_push[0]                                                   ;        ;
+; xbar|io_inputs_1_fifo|fifo|logic_ptr_push[3]                                                   ;        ;
+; pifoEngines_0|deque_dequeMapper|io_readReq_valid_regNext                                       ;        ;
+; pifoEngines_0|io_outputs_2_fifo|fifo|logic_ptr_pop[1]                                          ;        ;
+; pifoEngines_0|io_outputs_2_fifo|fifo|logic_ptr_push[1]                                         ;        ;
+; pifoEngines_0|io_outputs_2_fifo|fifo|logic_ptr_pop[0]                                          ;        ;
+; pifoEngines_0|io_outputs_2_fifo|fifo|logic_ptr_push[0]                                         ;        ;
+; guard|emptyPifos_0_17                                                                          ;        ;
+; pifoEngines_0|deque_existingPop_fork|logic_linkEnable_0                                        ;        ;
+; pifoEngines_0|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~0                  ;        ;
+; pifoEngines_0|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~15                      ;        ;
+; pifoEngines_0|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~38                      ;        ;
+; pifoEngines_0|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~8                  ;        ;
+; pifoEngines_0|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~16                      ;        ;
+; pifoEngines_0|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~39                      ;        ;
+; pifoEngines_0|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~1                  ;        ;
+; pifoEngines_0|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~9                  ;        ;
+; pifoEngines_0|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~2                  ;        ;
+; guard|emptyPifos_0_43                                                                          ;        ;
+; pifoEngines_0|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~17                      ;        ;
+; pifoEngines_0|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~40                      ;        ;
+; pifoEngines_0|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~10                 ;        ;
+; pifoEngines_0|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~18                      ;        ;
+; pifoEngines_0|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~41                      ;        ;
+; pifoEngines_0|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~3                  ;        ;
+; pifoEngines_0|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~11                 ;        ;
+; pifoEngines_0|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~22                      ;        ;
+; pifoEngines_0|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~7                  ;        ;
+; pifoEngines_0|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~15                 ;        ;
+; guard|emptyPifos_0_40                                                                          ;        ;
+; pifoEngines_0|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~6                  ;        ;
+; pifoEngines_0|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~21                      ;        ;
+; pifoEngines_0|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~44                      ;        ;
+; pifoEngines_0|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~5                  ;        ;
+; pifoEngines_0|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~20                      ;        ;
+; pifoEngines_0|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~43                      ;        ;
+; pifoEngines_0|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~4                  ;        ;
+; pifoEngines_0|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~19                      ;        ;
+; pifoEngines_0|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~42                      ;        ;
+; pifoEngines_0|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~12                 ;        ;
+; pifoEngines_0|enque_brain|lastVirtualMapper_io_readRes_toStream_fifo|fifo|logic_ptr_push[0]    ;        ;
+; guard|emptyPifos_0_41                                                                          ;        ;
+; pifoEngines_0|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~13                 ;        ;
+; pifoEngines_0|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~14                 ;        ;
+; pifoEngines_0|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~45                      ;        ;
+; pifoEngines_0|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ptr_pop[1]                 ;        ;
+; pifoEngines_0|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ptr_push[1]                ;        ;
+; pifoEngines_0|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ptr_pop[0]                 ;        ;
+; pifoEngines_0|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ptr_push[0]                ;        ;
+; pifoEngines_0|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~0              ;        ;
+; pifoEngines_0|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~8              ;        ;
+; pifoEngines_0|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~6                      ;        ;
+; guard|emptyPifos_0_47                                                                          ;        ;
+; pifoEngines_0|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~20                     ;        ;
+; pifoEngines_0|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~1              ;        ;
+; pifoEngines_0|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~9              ;        ;
+; pifoEngines_0|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~7                      ;        ;
+; pifoEngines_0|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~21                     ;        ;
+; pifoEngines_0|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~8                      ;        ;
+; pifoEngines_0|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~22                     ;        ;
+; pifoEngines_0|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~2              ;        ;
+; pifoEngines_0|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~10             ;        ;
+; pifoEngines_0|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~9                      ;        ;
+; guard|emptyPifos_0_45                                                                          ;        ;
+; pifoEngines_0|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~23                     ;        ;
+; pifoEngines_0|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~3              ;        ;
+; pifoEngines_0|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~11             ;        ;
+; pifoEngines_0|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~4              ;        ;
+; pifoEngines_0|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~12             ;        ;
+; pifoEngines_0|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~10                     ;        ;
+; pifoEngines_0|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~24                     ;        ;
+; pifoEngines_0|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~5              ;        ;
+; pifoEngines_0|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~13             ;        ;
+; pifoEngines_0|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~11                     ;        ;
+; guard|emptyPifos_0_42                                                                          ;        ;
+; pifoEngines_0|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~25                     ;        ;
+; pifoEngines_0|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~6              ;        ;
+; pifoEngines_0|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~14             ;        ;
+; pifoEngines_0|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~12                     ;        ;
+; pifoEngines_0|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~26                     ;        ;
+; pifoEngines_0|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~7              ;        ;
+; pifoEngines_0|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~15             ;        ;
+; pifoEngines_0|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~13                     ;        ;
+; pifoEngines_0|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~27                     ;        ;
+; pifoEngines_1|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ptr_pop[1]             ;        ;
+; guard|emptyPifos_0_46                                                                          ;        ;
+; pifoEngines_1|enque_brain|lastVirtualMapper_io_readRes_toStream_fifo|fifo|logic_ptr_pop[1]     ;        ;
+; pifoEngines_1|enque_brain|lastVirtualMapper_io_readRes_toStream_fifo|fifo|logic_ptr_push[1]    ;        ;
+; pifoEngines_1|enque_brain|lastVirtualMapper_io_readRes_toStream_fifo|fifo|logic_ptr_pop[0]     ;        ;
+; pifoEngines_1|enque_brain|lastVirtualMapper_io_readRes_toStream_fifo|fifo|logic_ptr_push[0]    ;        ;
+; pifoEngines_1|enque_brain|engineMapper_io_readRes_toStream_fifo|fifo|logic_ptr_pop[1]          ;        ;
+; pifoEngines_1|enque_brain|engineMapper_io_readRes_toStream_fifo|fifo|logic_ptr_push[1]         ;        ;
+; pifoEngines_1|enque_brain|engineMapper_io_readRes_toStream_fifo|fifo|logic_ptr_pop[0]          ;        ;
+; pifoEngines_1|enque_brain|engineMapper_io_readRes_toStream_fifo|fifo|logic_ptr_push[0]         ;        ;
+; pifoEngines_1|enque_brain|engineMapper|io_readReq_valid_regNext                                ;        ;
+; pifoEngines_1|enque_brain|lastVirtualMapper|io_readReq_valid_regNext                           ;        ;
+; guard|emptyPifos_0_44                                                                          ;        ;
+; pifoEngines_1|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ptr_pop[1]         ;        ;
+; pifoEngines_1|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ptr_push[1]        ;        ;
+; pifoEngines_1|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ptr_pop[0]         ;        ;
+; pifoEngines_1|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ptr_push[0]        ;        ;
+; pifoEngines_1|enque_brain|engineCAM|io_readReq_valid_regNext                                   ;        ;
+; pifoEngines_1|enque_brain|io_request_fork|logic_linkEnable_0                                   ;        ;
+; pifoEngines_1|enque_brain|brainStateMem|io_readReq_valid_regNext                               ;        ;
+; pifoEngines_1|enque_flowIdStream_fifo|fifo|logic_ptr_pop[1]                                    ;        ;
+; pifoEngines_1|enque_flowIdStream_fifo|fifo|logic_ptr_push[1]                                   ;        ;
+; pifoEngines_1|enque_brain|io_outputs_4_fifo|fifo|logic_ptr_pop[1]                              ;        ;
+; guard|emptyPifos_0_11                                                                          ;        ;
+; pifoEngines_1|enque_brain|io_outputs_4_fifo|fifo|logic_ptr_push[1]                             ;        ;
+; pifoEngines_1|enque_brain|io_outputs_4_fifo|fifo|logic_ptr_pop[0]                              ;        ;
+; pifoEngines_1|enque_brain|io_outputs_4_fifo|fifo|logic_ptr_push[0]                             ;        ;
+; pifoEngines_1|enque_flowIdStream_fifo|fifo|logic_ptr_pop[0]                                    ;        ;
+; pifoEngines_1|enque_flowIdStream_fifo|fifo|logic_ptr_push[0]                                   ;        ;
+; pifoEngines_1|io_enqueRequest_fork2_logic_linkEnable_0                                         ;        ;
+; pifoEngines_1|enque_enqueMapper|io_readReq_valid_regNext                                       ;        ;
+; pifoEngines_1|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ptr_push[1]            ;        ;
+; pifoEngines_1|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ptr_push[0]            ;        ;
+; pifoEngines_1|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ptr_pop[0]             ;        ;
+; guard|emptyPifos_0_8                                                                           ;        ;
+; pifoEngines_1|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ptr_pop[1]                  ;        ;
+; pifoEngines_1|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ptr_push[1]                 ;        ;
+; pifoEngines_1|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ptr_pop[0]                  ;        ;
+; pifoEngines_1|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ptr_push[0]                 ;        ;
+; pifoEngines_1|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~4                  ;        ;
+; pifoEngines_1|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~19                      ;        ;
+; pifoEngines_1|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~0                  ;        ;
+; pifoEngines_1|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~15                      ;        ;
+; pifoEngines_1|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~38                      ;        ;
+; pifoEngines_1|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~8                  ;        ;
+; guard|emptyPifos_0_9                                                                           ;        ;
+; pifoEngines_1|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~16                      ;        ;
+; pifoEngines_1|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~39                      ;        ;
+; pifoEngines_1|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~1                  ;        ;
+; pifoEngines_1|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~9                  ;        ;
+; pifoEngines_1|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~2                  ;        ;
+; pifoEngines_1|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~17                      ;        ;
+; pifoEngines_1|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~40                      ;        ;
+; pifoEngines_1|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~10                 ;        ;
+; pifoEngines_1|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~18                      ;        ;
+; pifoEngines_1|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~41                      ;        ;
+; guard|emptyPifos_0_35                                                                          ;        ;
+; pifoEngines_1|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~3                  ;        ;
+; pifoEngines_1|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~11                 ;        ;
+; pifoEngines_1|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~22                      ;        ;
+; pifoEngines_1|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~7                  ;        ;
+; pifoEngines_1|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~15                 ;        ;
+; pifoEngines_1|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~6                  ;        ;
+; pifoEngines_1|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~21                      ;        ;
+; pifoEngines_1|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~44                      ;        ;
+; pifoEngines_1|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~5                  ;        ;
+; pifoEngines_1|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~20                      ;        ;
+; pifoEngines_0|enque_brain|engineMapper_io_readRes_toStream_fifo|fifo|logic_ptr_pop[1]          ;        ;
+; guard|emptyPifos_0_32                                                                          ;        ;
+; pifoEngines_1|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~43                      ;        ;
+; pifoEngines_1|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~13                 ;        ;
+; pifoEngines_1|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~14                 ;        ;
+; pifoEngines_1|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~45                      ;        ;
+; pifoEngines_1|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~42                      ;        ;
+; pifoEngines_1|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~12                 ;        ;
+; pifoEngines_1|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ptr_pop[1]                 ;        ;
+; pifoEngines_1|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ptr_push[1]                ;        ;
+; pifoEngines_1|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ptr_pop[0]                 ;        ;
+; pifoEngines_1|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ptr_push[0]                ;        ;
+; guard|emptyPifos_0_33                                                                          ;        ;
+; pifoEngines_1|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~0              ;        ;
+; pifoEngines_1|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~8              ;        ;
+; pifoEngines_1|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~6                      ;        ;
+; pifoEngines_1|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~20                     ;        ;
+; pifoEngines_1|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~1              ;        ;
+; pifoEngines_1|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~9              ;        ;
+; pifoEngines_1|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~7                      ;        ;
+; pifoEngines_1|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~21                     ;        ;
+; pifoEngines_1|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~2              ;        ;
+; pifoEngines_1|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~10             ;        ;
+; guard|emptyPifos_0_39                                                                          ;        ;
+; pifoEngines_1|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~8                      ;        ;
+; pifoEngines_1|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~22                     ;        ;
+; pifoEngines_1|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~3              ;        ;
+; pifoEngines_1|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~11             ;        ;
+; pifoEngines_1|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~9                      ;        ;
+; pifoEngines_1|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~23                     ;        ;
+; pifoEngines_1|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~4              ;        ;
+; pifoEngines_1|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~12             ;        ;
+; pifoEngines_1|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~10                     ;        ;
+; pifoEngines_1|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~24                     ;        ;
+; guard|emptyPifos_0_37                                                                          ;        ;
+; pifoEngines_1|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~5              ;        ;
+; pifoEngines_1|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~13             ;        ;
+; pifoEngines_1|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~11                     ;        ;
+; pifoEngines_1|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~25                     ;        ;
+; pifoEngines_1|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~6              ;        ;
+; pifoEngines_1|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~14             ;        ;
+; pifoEngines_1|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~12                     ;        ;
+; pifoEngines_1|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~26                     ;        ;
+; pifoEngines_1|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~7              ;        ;
+; pifoEngines_1|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~15             ;        ;
+; guard|emptyPifos_0_34                                                                          ;        ;
+; pifoEngines_1|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~13                     ;        ;
+; pifoEngines_1|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~27                     ;        ;
+; pifoEngines_2|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ptr_pop[1]             ;        ;
+; pifoEngines_2|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ptr_push[1]            ;        ;
+; pifoEngines_2|enque_brain|lastVirtualMapper_io_readRes_toStream_fifo|fifo|logic_ptr_pop[1]     ;        ;
+; pifoEngines_2|enque_brain|lastVirtualMapper_io_readRes_toStream_fifo|fifo|logic_ptr_push[1]    ;        ;
+; pifoEngines_2|enque_brain|lastVirtualMapper_io_readRes_toStream_fifo|fifo|logic_ptr_pop[0]     ;        ;
+; pifoEngines_2|enque_brain|lastVirtualMapper_io_readRes_toStream_fifo|fifo|logic_ptr_push[0]    ;        ;
+; pifoEngines_2|enque_brain|engineMapper_io_readRes_toStream_fifo|fifo|logic_ptr_pop[1]          ;        ;
+; pifoEngines_2|enque_brain|engineMapper_io_readRes_toStream_fifo|fifo|logic_ptr_push[1]         ;        ;
+; guard|emptyPifos_0_38                                                                          ;        ;
+; pifoEngines_2|enque_brain|engineMapper_io_readRes_toStream_fifo|fifo|logic_ptr_pop[0]          ;        ;
+; pifoEngines_2|enque_brain|engineMapper_io_readRes_toStream_fifo|fifo|logic_ptr_push[0]         ;        ;
+; pifoEngines_2|enque_brain|engineMapper|io_readReq_valid_regNext                                ;        ;
+; pifoEngines_2|enque_brain|lastVirtualMapper|io_readReq_valid_regNext                           ;        ;
+; pifoEngines_2|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ptr_pop[1]         ;        ;
+; pifoEngines_2|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ptr_push[1]        ;        ;
+; pifoEngines_2|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ptr_pop[0]         ;        ;
+; pifoEngines_2|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ptr_push[0]        ;        ;
+; pifoEngines_2|enque_brain|engineCAM|io_readReq_valid_regNext                                   ;        ;
+; pifoEngines_2|enque_brain|io_request_fork|logic_linkEnable_0                                   ;        ;
+; guard|emptyPifos_0_36                                                                          ;        ;
+; pifoEngines_2|enque_brain|brainStateMem|io_readReq_valid_regNext                               ;        ;
+; pifoEngines_2|enque_flowIdStream_fifo|fifo|logic_ptr_pop[1]                                    ;        ;
+; pifoEngines_2|enque_flowIdStream_fifo|fifo|logic_ptr_push[1]                                   ;        ;
+; pifoEngines_2|enque_brain|io_outputs_4_fifo|fifo|logic_ptr_pop[1]                              ;        ;
+; pifoEngines_2|enque_brain|io_outputs_4_fifo|fifo|logic_ptr_push[1]                             ;        ;
+; pifoEngines_2|enque_brain|io_outputs_4_fifo|fifo|logic_ptr_pop[0]                              ;        ;
+; pifoEngines_2|enque_brain|io_outputs_4_fifo|fifo|logic_ptr_push[0]                             ;        ;
+; pifoEngines_2|enque_flowIdStream_fifo|fifo|logic_ptr_pop[0]                                    ;        ;
+; pifoEngines_2|enque_flowIdStream_fifo|fifo|logic_ptr_push[0]                                   ;        ;
+; pifoEngines_2|io_enqueRequest_fork2_logic_linkEnable_0                                         ;        ;
+; guard|emptyPifos_0_62                                                                          ;        ;
+; pifoEngines_2|enque_enqueMapper|io_readReq_valid_regNext                                       ;        ;
+; pifoEngines_2|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ptr_pop[0]             ;        ;
+; pifoEngines_2|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ptr_push[0]            ;        ;
+; pifoEngines_2|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ptr_pop[1]                  ;        ;
+; pifoEngines_2|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ptr_push[1]                 ;        ;
+; pifoEngines_2|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ptr_pop[0]                  ;        ;
+; pifoEngines_2|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ptr_push[0]                 ;        ;
+; pifoEngines_2|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~0                  ;        ;
+; pifoEngines_2|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~15                      ;        ;
+; pifoEngines_2|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~38                      ;        ;
+; guard|emptyPifos_0_50                                                                          ;        ;
+; pifoEngines_2|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~8                  ;        ;
+; pifoEngines_2|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~16                      ;        ;
+; pifoEngines_2|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~39                      ;        ;
+; pifoEngines_2|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~1                  ;        ;
+; pifoEngines_2|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~9                  ;        ;
+; pifoEngines_2|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~2                  ;        ;
+; pifoEngines_2|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~17                      ;        ;
+; pifoEngines_2|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~40                      ;        ;
+; pifoEngines_2|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~10                 ;        ;
+; pifoEngines_2|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~18                      ;        ;
+; guard|emptyPifos_0_54                                                                          ;        ;
+; pifoEngines_2|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~41                      ;        ;
+; pifoEngines_2|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~3                  ;        ;
+; pifoEngines_2|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~11                 ;        ;
+; pifoEngines_2|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~22                      ;        ;
+; pifoEngines_2|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~7                  ;        ;
+; pifoEngines_2|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~15                 ;        ;
+; pifoEngines_2|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~6                  ;        ;
+; pifoEngines_2|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~21                      ;        ;
+; pifoEngines_2|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~44                      ;        ;
+; pifoEngines_2|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~5                  ;        ;
+; pifoEngines_0|enque_brain|engineMapper_io_readRes_toStream_fifo|fifo|logic_ptr_push[1]         ;        ;
+; guard|emptyPifos_0_63                                                                          ;        ;
+; pifoEngines_2|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~20                      ;        ;
+; pifoEngines_2|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~43                      ;        ;
+; pifoEngines_2|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~4                  ;        ;
+; pifoEngines_2|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~19                      ;        ;
+; pifoEngines_2|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~42                      ;        ;
+; pifoEngines_2|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~12                 ;        ;
+; pifoEngines_2|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~13                 ;        ;
+; pifoEngines_2|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~14                 ;        ;
+; pifoEngines_2|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~45                      ;        ;
+; pifoEngines_2|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ptr_pop[1]                 ;        ;
+; guard|emptyPifos_0_55                                                                          ;        ;
+; pifoEngines_2|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ptr_push[1]                ;        ;
+; pifoEngines_2|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ptr_pop[0]                 ;        ;
+; pifoEngines_2|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ptr_push[0]                ;        ;
+; pifoEngines_2|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~0              ;        ;
+; pifoEngines_2|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~8              ;        ;
+; pifoEngines_2|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~6                      ;        ;
+; pifoEngines_2|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~20                     ;        ;
+; pifoEngines_2|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~1              ;        ;
+; pifoEngines_2|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~9              ;        ;
+; pifoEngines_2|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~7                      ;        ;
+; guard|emptyPifos_0_58                                                                          ;        ;
+; pifoEngines_2|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~21                     ;        ;
+; pifoEngines_2|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~8                      ;        ;
+; pifoEngines_2|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~22                     ;        ;
+; pifoEngines_2|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~2              ;        ;
+; pifoEngines_2|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~10             ;        ;
+; pifoEngines_2|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~9                      ;        ;
+; pifoEngines_2|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~23                     ;        ;
+; pifoEngines_2|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~3              ;        ;
+; pifoEngines_2|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~11             ;        ;
+; pifoEngines_2|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~4              ;        ;
+; guard|emptyPifos_0_59                                                                          ;        ;
+; pifoEngines_2|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~12             ;        ;
+; pifoEngines_2|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~10                     ;        ;
+; pifoEngines_2|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~24                     ;        ;
+; pifoEngines_2|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~5              ;        ;
+; pifoEngines_2|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~13             ;        ;
+; pifoEngines_2|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~11                     ;        ;
+; pifoEngines_2|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~25                     ;        ;
+; pifoEngines_2|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~6              ;        ;
+; pifoEngines_2|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~14             ;        ;
+; pifoEngines_2|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~12                     ;        ;
+; guard|emptyPifos_0_51                                                                          ;        ;
+; pifoEngines_2|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~26                     ;        ;
+; pifoEngines_2|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~7              ;        ;
+; pifoEngines_2|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~15             ;        ;
+; pifoEngines_2|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~13                     ;        ;
+; pifoEngines_2|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~27                     ;        ;
+; pifoEngines_3|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ptr_pop[1]             ;        ;
+; pifoEngines_3|enque_brain|lastVirtualMapper_io_readRes_toStream_fifo|fifo|logic_ptr_pop[1]     ;        ;
+; pifoEngines_3|enque_brain|lastVirtualMapper_io_readRes_toStream_fifo|fifo|logic_ptr_push[1]    ;        ;
+; pifoEngines_3|enque_brain|lastVirtualMapper_io_readRes_toStream_fifo|fifo|logic_ptr_pop[0]     ;        ;
+; pifoEngines_3|enque_brain|lastVirtualMapper_io_readRes_toStream_fifo|fifo|logic_ptr_push[0]    ;        ;
+; guard|emptyPifos_0_30                                                                          ;        ;
+; pifoEngines_3|enque_brain|engineMapper_io_readRes_toStream_fifo|fifo|logic_ptr_pop[1]          ;        ;
+; pifoEngines_3|enque_brain|engineMapper_io_readRes_toStream_fifo|fifo|logic_ptr_push[1]         ;        ;
+; pifoEngines_3|enque_brain|engineMapper_io_readRes_toStream_fifo|fifo|logic_ptr_pop[0]          ;        ;
+; pifoEngines_3|enque_brain|engineMapper_io_readRes_toStream_fifo|fifo|logic_ptr_push[0]         ;        ;
+; pifoEngines_3|enque_brain|engineMapper|io_readReq_valid_regNext                                ;        ;
+; pifoEngines_3|enque_brain|lastVirtualMapper|io_readReq_valid_regNext                           ;        ;
+; pifoEngines_3|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ptr_pop[1]         ;        ;
+; pifoEngines_3|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ptr_push[1]        ;        ;
+; pifoEngines_3|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ptr_pop[0]         ;        ;
+; pifoEngines_3|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ptr_push[0]        ;        ;
+; guard|emptyPifos_0_18                                                                          ;        ;
+; pifoEngines_3|enque_brain|engineCAM|io_readReq_valid_regNext                                   ;        ;
+; pifoEngines_3|enque_brain|io_request_fork|logic_linkEnable_0                                   ;        ;
+; pifoEngines_3|enque_brain|brainStateMem|io_readReq_valid_regNext                               ;        ;
+; pifoEngines_3|enque_flowIdStream_fifo|fifo|logic_ptr_pop[1]                                    ;        ;
+; pifoEngines_3|enque_flowIdStream_fifo|fifo|logic_ptr_push[1]                                   ;        ;
+; pifoEngines_3|enque_brain|io_outputs_4_fifo|fifo|logic_ptr_pop[1]                              ;        ;
+; pifoEngines_3|enque_brain|io_outputs_4_fifo|fifo|logic_ptr_push[1]                             ;        ;
+; pifoEngines_3|enque_brain|io_outputs_4_fifo|fifo|logic_ptr_pop[0]                              ;        ;
+; pifoEngines_3|enque_brain|io_outputs_4_fifo|fifo|logic_ptr_push[0]                             ;        ;
+; pifoEngines_3|enque_flowIdStream_fifo|fifo|logic_ptr_pop[0]                                    ;        ;
+; guard|emptyPifos_0_22                                                                          ;        ;
+; pifoEngines_3|enque_flowIdStream_fifo|fifo|logic_ptr_push[0]                                   ;        ;
+; pifoEngines_3|io_enqueRequest_fork2_logic_linkEnable_0                                         ;        ;
+; pifoEngines_3|enque_enqueMapper|io_readReq_valid_regNext                                       ;        ;
+; pifoEngines_3|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ptr_push[1]            ;        ;
+; pifoEngines_3|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ptr_push[0]            ;        ;
+; pifoEngines_3|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ptr_pop[0]             ;        ;
+; pifoEngines_3|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ptr_pop[1]                  ;        ;
+; pifoEngines_3|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ptr_push[1]                 ;        ;
+; pifoEngines_3|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ptr_pop[0]                  ;        ;
+; pifoEngines_3|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ptr_push[0]                 ;        ;
+; guard|emptyPifos_0_60                                                                          ;        ;
+; pifoEngines_3|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~4                  ;        ;
+; pifoEngines_3|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~19                      ;        ;
+; pifoEngines_3|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~0                  ;        ;
+; pifoEngines_3|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~15                      ;        ;
+; pifoEngines_3|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~38                      ;        ;
+; pifoEngines_3|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~8                  ;        ;
+; pifoEngines_3|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~16                      ;        ;
+; pifoEngines_3|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~39                      ;        ;
+; pifoEngines_3|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~1                  ;        ;
+; pifoEngines_3|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~9                  ;        ;
+; guard|emptyPifos_0_48                                                                          ;        ;
+; pifoEngines_3|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~2                  ;        ;
+; pifoEngines_3|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~17                      ;        ;
+; pifoEngines_3|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~40                      ;        ;
+; pifoEngines_3|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~10                 ;        ;
+; pifoEngines_3|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~18                      ;        ;
+; pifoEngines_3|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~41                      ;        ;
+; pifoEngines_3|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~3                  ;        ;
+; pifoEngines_3|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~11                 ;        ;
+; pifoEngines_3|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~22                      ;        ;
+; pifoEngines_3|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~7                  ;        ;
+; pifoEngines_0|enque_brain|engineMapper_io_readRes_toStream_fifo|fifo|logic_ptr_pop[0]          ;        ;
+; guard|emptyPifos_0_52                                                                          ;        ;
+; pifoEngines_3|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~15                 ;        ;
+; pifoEngines_3|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~6                  ;        ;
+; pifoEngines_3|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~21                      ;        ;
+; pifoEngines_3|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~44                      ;        ;
+; pifoEngines_3|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~5                  ;        ;
+; pifoEngines_3|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~20                      ;        ;
+; pifoEngines_3|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~43                      ;        ;
+; pifoEngines_3|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~13                 ;        ;
+; pifoEngines_3|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~14                 ;        ;
+; pifoEngines_3|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~45                      ;        ;
+; guard|emptyPifos_0_61                                                                          ;        ;
+; pifoEngines_3|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~42                      ;        ;
+; pifoEngines_3|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~12                 ;        ;
+; pifoEngines_3|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ptr_pop[1]                 ;        ;
+; pifoEngines_3|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ptr_push[1]                ;        ;
+; pifoEngines_3|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ptr_pop[0]                 ;        ;
+; pifoEngines_3|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ptr_push[0]                ;        ;
+; pifoEngines_3|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~0              ;        ;
+; pifoEngines_3|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~8              ;        ;
+; pifoEngines_3|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~6                      ;        ;
+; pifoEngines_3|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~20                     ;        ;
+; guard|emptyPifos_0_53                                                                          ;        ;
+; pifoEngines_3|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~1              ;        ;
+; pifoEngines_3|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~9              ;        ;
+; pifoEngines_3|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~7                      ;        ;
+; pifoEngines_3|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~21                     ;        ;
+; pifoEngines_3|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~2              ;        ;
+; pifoEngines_3|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~10             ;        ;
+; pifoEngines_3|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~8                      ;        ;
+; pifoEngines_3|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~22                     ;        ;
+; pifoEngines_3|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~3              ;        ;
+; pifoEngines_3|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~11             ;        ;
+; guard|emptyPifos_0_56                                                                          ;        ;
+; pifoEngines_3|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~9                      ;        ;
+; pifoEngines_3|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~23                     ;        ;
+; pifoEngines_3|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~4              ;        ;
+; pifoEngines_3|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~12             ;        ;
+; pifoEngines_3|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~10                     ;        ;
+; pifoEngines_3|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~24                     ;        ;
+; pifoEngines_3|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~5              ;        ;
+; pifoEngines_3|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~13             ;        ;
+; pifoEngines_3|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~11                     ;        ;
+; pifoEngines_3|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~25                     ;        ;
+; guard|emptyPifos_0_57                                                                          ;        ;
+; pifoEngines_3|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~6              ;        ;
+; pifoEngines_3|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~14             ;        ;
+; pifoEngines_3|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~12                     ;        ;
+; pifoEngines_3|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~26                     ;        ;
+; pifoEngines_3|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~7              ;        ;
+; pifoEngines_3|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram~15             ;        ;
+; pifoEngines_3|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~13                     ;        ;
+; pifoEngines_3|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram~27                     ;        ;
+; pifoEngines_4|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ptr_pop[1]             ;        ;
+; pifoEngines_4|enque_brain|lastVirtualMapper_io_readRes_toStream_fifo|fifo|logic_ptr_pop[1]     ;        ;
+; guard|emptyPifos_0_49                                                                          ;        ;
+; pifoEngines_4|enque_brain|lastVirtualMapper_io_readRes_toStream_fifo|fifo|logic_ptr_push[1]    ;        ;
+; pifoEngines_4|enque_brain|lastVirtualMapper_io_readRes_toStream_fifo|fifo|logic_ptr_pop[0]     ;        ;
+; pifoEngines_4|enque_brain|lastVirtualMapper_io_readRes_toStream_fifo|fifo|logic_ptr_push[0]    ;        ;
+; pifoEngines_4|enque_brain|engineMapper_io_readRes_toStream_fifo|fifo|logic_ptr_pop[1]          ;        ;
+; pifoEngines_4|enque_brain|engineMapper_io_readRes_toStream_fifo|fifo|logic_ptr_push[1]         ;        ;
+; pifoEngines_4|enque_brain|engineMapper_io_readRes_toStream_fifo|fifo|logic_ptr_pop[0]          ;        ;
+; pifoEngines_4|enque_brain|engineMapper_io_readRes_toStream_fifo|fifo|logic_ptr_push[0]         ;        ;
+; pifoEngines_4|enque_brain|engineMapper|io_readReq_valid_regNext                                ;        ;
+; pifoEngines_4|enque_brain|lastVirtualMapper|io_readReq_valid_regNext                           ;        ;
+; pifoEngines_4|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ptr_pop[1]         ;        ;
+; guard|emptyPifos_1_15                                                                          ;        ;
+; pifoEngines_4|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ptr_push[1]        ;        ;
+; pifoEngines_4|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ptr_pop[0]         ;        ;
+; pifoEngines_4|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ptr_push[0]        ;        ;
+; pifoEngines_4|enque_brain|engineCAM|io_readReq_valid_regNext                                   ;        ;
+; pifoEngines_4|enque_brain|io_request_fork|logic_linkEnable_0                                   ;        ;
+; pifoEngines_4|enque_brain|brainStateMem|io_readReq_valid_regNext                               ;        ;
+; pifoEngines_4|enque_flowIdStream_fifo|fifo|logic_ptr_pop[1]                                    ;        ;
+; pifoEngines_4|enque_flowIdStream_fifo|fifo|logic_ptr_push[1]                                   ;        ;
+; pifoEngines_4|enque_brain|io_outputs_4_fifo|fifo|logic_ptr_pop[1]                              ;        ;
+; pifoEngines_4|enque_brain|io_outputs_4_fifo|fifo|logic_ptr_push[1]                             ;        ;
+; guard|emptyPifos_1_7                                                                           ;        ;
+; pifoEngines_4|enque_brain|io_outputs_4_fifo|fifo|logic_ptr_pop[0]                              ;        ;
+; pifoEngines_4|enque_brain|io_outputs_4_fifo|fifo|logic_ptr_push[0]                             ;        ;
+; pifoEngines_4|enque_flowIdStream_fifo|fifo|logic_ptr_pop[0]                                    ;        ;
+; pifoEngines_4|enque_flowIdStream_fifo|fifo|logic_ptr_push[0]                                   ;        ;
+; pifoEngines_4|io_enqueRequest_fork2_logic_linkEnable_0                                         ;        ;
+; pifoEngines_4|enque_enqueMapper|io_readReq_valid_regNext                                       ;        ;
+; pifoEngines_4|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ptr_push[1]            ;        ;
+; pifoEngines_4|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ptr_push[0]            ;        ;
+; pifoEngines_4|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ptr_pop[0]             ;        ;
+; pifoEngines_4|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ptr_pop[1]                  ;        ;
+; guard|emptyPifos_1_10                                                                          ;        ;
+; pifoEngines_4|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ptr_push[1]                 ;        ;
+; pifoEngines_4|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ptr_pop[0]                  ;        ;
+; pifoEngines_4|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ptr_push[0]                 ;        ;
+; pifoEngines_4|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~4                  ;        ;
+; pifoEngines_4|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~19                      ;        ;
+; pifoEngines_4|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~0                  ;        ;
+; pifoEngines_4|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~15                      ;        ;
+; pifoEngines_4|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~38                      ;        ;
+; pifoEngines_4|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~8                  ;        ;
+; pifoEngines_4|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~16                      ;        ;
+; guard|emptyPifos_1_11                                                                          ;        ;
+; pifoEngines_4|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~39                      ;        ;
+; pifoEngines_4|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~1                  ;        ;
+; pifoEngines_4|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~9                  ;        ;
+; pifoEngines_4|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~2                  ;        ;
+; pifoEngines_4|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~17                      ;        ;
+; pifoEngines_4|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~40                      ;        ;
+; pifoEngines_4|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~10                 ;        ;
+; pifoEngines_4|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~18                      ;        ;
+; pifoEngines_4|enque_brain|flowStateUpdate_toStream_fifo|fifo|logic_ram~41                      ;        ;
+; pifoEngines_4|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram~3                  ;        ;
++------------------------------------------------------------------------------------------------+--------+
+
+
+Status:		PASS
+Severity:		High
+Number of violations: 	0
+Rule Parameters:      	max_violations = 5000
++-------------------------------------------------+
+; LNT-30011 - Design Contains Combinational Loops ;
++-------------------------------------------------+
+
+
+Status:		PASS
+Severity:		Medium
+Number of violations: 	0
+Rule Parameters:      	max_violations = 5000
++-----------------------------------------------------------------------------------------------------------------+
+; LNT-30017 - Register Output Driving Its Own Asynchronous Control Signal Directly or Through Combinational Logic ;
++-----------------------------------------------------------------------------------------------------------------+
+
+
+Status:		PASS
+Severity:		Medium
+Number of violations: 	0
+Rule Parameters:      	max_violations = 5000
++-----------------------------------------------+
+; LNT-30023 - Reset Nets with Polarity Conflict ;
++-----------------------------------------------+
+
+
+Status:		PASS
+Severity:		Medium
+Number of violations: 	0
+Rule Parameters:      	max_violations = 5000
++-------------------------------------------------+
+; RES-30132 - Registers May Not Be Properly Reset ;
++-------------------------------------------------+
+
+
+Status:		PASS
+Severity:		Medium
+Number of violations: 	0
+Rule Parameters:      	
+		max_violations = 5000
+		exclude_ram_blocks_without_mif = True
++---------------------------------------------------------------------------------------------------------------------+
+; RES-30133 - Embedded Memory Blocks with Initialized Content That Might be Modified Before the FPGA Enters User Mode ;
++---------------------------------------------------------------------------------------------------------------------+
+
+
+Status:		PASS
+Severity:		Medium
+Number of violations: 	0
+Rule Parameters:      	max_violations = 5000
++--------------------------------------------------------+
+; TMC-20052 - Paths with Post Synthesis Inferred Latches ;
++--------------------------------------------------------+
+
+
+Status:		PASS
+Severity:		Low
+Number of violations: 	0
+Rule Parameters:      	max_violations = 5000
++------------------------------------------------+
+; FLP-10500 - Non Driving Top Level Inputs Found ;
++------------------------------------------------+
+
+
+Status:		PASS
+Severity:		Low
+Number of violations: 	0
+Rule Parameters:      	max_violations = 5000
++--------------------------------------------------------------+
+; LNT-30010 - Nets Driving both Reset and Clock Enable Signals ;
++--------------------------------------------------------------+
+
+
+Status:		PASS
+Severity:		Low
+Number of violations: 	0
+Rule Parameters:      	
+		max_violations = 5000
+		DSP_Chain_Threshold = 2
+		DSP_Check_User_WYSIWYGs = True
++--------------------------------------------------------------+
+; LNT-50006 - DSP Control Signal Registers Reset Mode Mismatch ;
++--------------------------------------------------------------+
+
+
+Status:		PASS
+Severity:		Low
+Number of violations: 	0
+Rule Parameters:      	
+		max_violations = 5000
+		DSP_High_Fanout_Net_Threshold = 500
+		DSP_Chain_Threshold = 2
+		DSP_Check_User_WYSIWYGs = True
++---------------------------------------------------+
+; TMC-20053 - DSP Inputs Driven by High Fan-Out Net ;
++---------------------------------------------------+
+
+
+Status:		PASS
+Severity:		Low
+Number of violations: 	0
+Rule Parameters:      	max_violations = 5000
++-----------------------------------------------------------------------+
+; TMC-20500 - Hierarchical Tree Duplication was Shallower than Possible ;
++-----------------------------------------------------------------------+
+
+
+Status:		PASS
+Severity:		Low
+Number of violations: 	0
+Rule Parameters:      	max_violations = 5000
++------------------------------------------------------------------------+
+; TMC-20501 - Hierarchical Tree Duplication was Shallower than Requested ;
++------------------------------------------------------------------------+
+
+
