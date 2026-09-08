@@ -1,11 +1,13 @@
 TEX = main.tex
 PDF = main.pdf
+# Files \input from main.tex. Without these, editing a figure leaves `make` a no-op.
+DEPS = fig-tour.tex fig-hardware.tex xxx.sty main.bib
 
 .PHONY: all clean watch
 
 all: $(PDF)
 
-$(PDF): $(TEX)
+$(PDF): $(TEX) $(DEPS)
 	tectonic -X compile --keep-logs --keep-intermediates $(TEX)
 
 watch:

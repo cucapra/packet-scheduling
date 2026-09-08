@@ -4,7 +4,7 @@
 \usepackage{array}
 \usepackage{mathtools}
 \usepackage{tikz}
-\usetikzlibrary{positioning,arrows.meta,calc,trees,matrix,fit,backgrounds}
+\usetikzlibrary{positioning,arrows.meta,calc,trees,matrix,fit,backgrounds,decorations.pathreplacing}
 \usepackage{cancel}
 \usepackage{forest}
 \usepackage{xcolor}
@@ -823,6 +823,9 @@ The root-level fallback shows what that is worth: it puts the entire running tre
 \cref{app:planner-emits} gives the case analysis in full.
 
 
+% Issued before the section head so fig:hardware lands on the page sec:hardware
+% starts on rather than the one after it.
+\input{fig-hardware}
 \section{Rio Hardware Design}\label{sec:hardware}
 
 We show how to extend a PIFO-tree-based packet scheduler with support for live policy reconfiguration.
@@ -833,12 +836,6 @@ atomic state updates (\cref{sec:hw-commit})
 and support for $\Designate$ (\cref{sec:hw-survivor}).
 \Cref{fig:hardware} shows both mechanisms on top of a standard PIFO tree.
 
-\begin{figure}
-  \centering
-  \includegraphics[width=0.8\columnwidth]{pifo_hardware.pdf}
-  \caption{Rio PIFO Hardware. Adding transactional commit and support for $\Designate$ on top of PIFO implementations.}
-  \label{fig:hardware}
-\end{figure}
 
 \subsection{The PIFO Tree Substrate}\label{sec:hw-substrate}
 
