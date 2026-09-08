@@ -909,17 +909,10 @@ Instructions can change the PIFO tree topology (the \emph{lifecycle} instruction
 Some instructions have preconditions: for example,
 \texttt{emancipate} requires that the subtree is empty.
 It is the compiler's responsibility to enforce these preconditions.
-\xxx[AM to Zhiyuan]{This sentence (from Adrian) feels slightly wrong to me.
-The emptiness preconditions cannot be checked statically, so I do not see how a compiler enforces them; I believe \cref{sec:sequences} discharges them at runtime, with a guard that the controller waits on.
-Please chime in and say which it is on your side.}
-\xxx[as]{Here is how the compiler checks this. It executes a guard saying to wait for subtree A to become empty, followed by a transaction to remove A. Therefore, the combination of the guard and the transaction serve to guarantee that \texttt{emancipate}'s precondition is satisfied.}
-\xxx[as]{Just checking: are there any requirements on what can go in a single transaction? (Are there two things that you can do in separate transactions but not all together in one?) If so, this would be the place to bring it up.}
-\xxx[am]{Maybe I'm stating the obvious here, but you can't merge when a guard separates them, since the later edit becomes legal only once that guard has become true (\cref{sec:sequences}).
-\Retire{} is the example: its \Remove{} cannot join its \Quiesce{} in one transaction, because the subtree has to drain in between.
-Beyond that we make no claim.
-Zhiyuan will need to back me up, but I believe that two edits with no guard between them (or with the \emph{same} guard) can share a transaction.}
-\xxx[zhiyuan]{Compiler's duty is to insert guard seems correct to me. yes, i'd see instruction sequence as the following structure: transaction1(add, policy-update, add, ...); guard;transaction2(...).
-To make the point general, I think generating the transactional sequence is compiler's duty.}
+It emits the whole sequence of transactions and guards, so an instruction that needs an empty subtree is preceded by a guard on that emptiness (\cref{sec:sequences}).
+% Guards also bound what may share a transaction.
+% Two edits with no guard between them may share one transaction, and two that a guard separates may not.
+% The \Retire{} idiom is an example: it waits for emptiness between its \Quiesce{} and its \Remove{}.
 
 
 \xxx[as]{I am also a bit confused about this. For things like \texttt{adopt}, I'm not sure it matters that \texttt{i} ``chang[es] which PIFO an index names''; its semantics are still ``hey hardware, please associate a new child with this PIFO, which I will henceforth refer to child i.'' It doesn't seem to matter that the compiler thinks of i as an ``index'' while the hardware thinks of it as a key in a table. And also, if there are instructions that never affect the hardware, can we just remove them?}
@@ -940,7 +933,6 @@ The structure opcodes are the compiler's own bookkeeping, and \texttt{change\_ar
 A node's \(\mathit{z}.\mathit{admit}\) is its \texttt{Assoc} set, its \(\mathit{z}.\mathit{serves}\) is its \texttt{Map} table, its \(\mathit{z}.\mathit{rank}\) is the ranker that \texttt{set\_policy} installs and \texttt{discipline(v)} reads back, and its \(\mathit{z}.\mathit{meta}\) is the metadata that \texttt{set\_arm\_meta} writes.
 Each of \zz's parts is thus the target of an opcode.
 
-\xxx[zhiyuan to as]{it's a good place to put "it's compiler's job to geneate valid sequence"?}
 Each edit (\cref{sec:delta-grammar}) compiles to one transaction.
 \cref{app:lowering} details the translations.
 As one example, consider the edit $\Add(\mathit{path}, D, \mathit{pol}, m)$.
