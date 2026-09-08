@@ -260,8 +260,6 @@ The change from \(p_1\) to \(p'\) is simple enough that a single atomic edit suf
 \Add([\,],\ \Strict,\ \textsf{spotify},\ \mathtt{mid})
 \]
 %
-\xxx[AM to AS]{I can name the four arguments here if you would like them named: the path \([\,]\) points at the node that receives the new arm, here the root, and the other three are the discipline that node runs, the arm to splice in, and the metadatum that tells \Strict{} how to schedule it.
-My view is that leaving them until we meet the grammar in \cref{sec:delta-grammar} is fine.}
 \Cref{sec:delta-grammar} enumerates and formalizes these policy edits,
 and \Cref{sec:hardware} demonstrates how PIFO tree hardware can implement them atomically.
 
@@ -834,15 +832,15 @@ The root-level fallback shows what that is worth: it puts the entire running tre
 We show how to extend a PIFO-tree-based packet scheduler with support for live policy reconfiguration.
 Our design starts with a standard PIFO tree architecture (\cref{sec:hw-substrate}).
 We define an ISA for this reconfiguration and implement a compiler that targets it (\cref{sec:hw-isa}).
-\xxx[zhiyuan to am/as]{I'd like to insert have a hardware figure here; still WIP; let me know what you think we can include in the figure and I can make the edit.}
 It rests on two key mechanisms:
 atomic state updates (\cref{sec:hw-commit})
 and support for $\Designate$ (\cref{sec:hw-survivor}).
+\Cref{fig:hardware} shows both mechanisms on top of a standard PIFO tree.
 
 \begin{figure}
   \centering
   \includegraphics[width=0.8\columnwidth]{pifo_hardware.pdf}
-  \caption{Rio PFIO Hardware. Adding transactional commit and support for $\Designate$ on top of PIFO implementations.}
+  \caption{Rio PIFO Hardware. Adding transactional commit and support for $\Designate$ on top of PIFO implementations.}
   \label{fig:hardware}
 \end{figure}
 
@@ -858,10 +856,7 @@ Every level therefore has the same total PIFO capacity, divided among the nodes 
 
 To enqueue a packet, the architecture must identify the set of PIFOs to insert into (the path from the root to the appropriate leaf) and compute the rank for each.
 The hardware broadcasts each packet to all PEs, and each PE determines which PIFO at that level should accept the packet.
-We assume the hardware comes with rank-assignment logic to support a set of policy disciplines, $D$.
-\xxx[am]{Notation collision. \(D\) is a single discipline everywhere else in the paper, as in \(M_{D}\), \(\mathit{rank}_{D}\), and \Add{}'s second argument.
-Here it names the whole menu.}
-\xxx[as]{No, I meant it the same way. Delete ``set of'' if you think that makes it clearer.}
+We assume the hardware comes with rank-assignment logic to support policy disciplines $D$.
 %
 On dequeue, the scheduler starts from the output port's root PIFO, pops the best-ranked entry, and follows next-hop information from PIFO to PIFO until it reaches a packet to transmit.
 All steps use match--action tables~\cite{Bosshart14}, so installing a policy on such a substrate means writing entries into those tables.
@@ -942,11 +937,9 @@ The classification and survivor opcodes are thus the ones that write a PE's tabl
 The lifecycle opcodes reach a PE too, since \texttt{spawn} and \texttt{gc} claim and release its PIFO storage.
 The structure opcodes are the compiler's own bookkeeping, and \texttt{change\_arity} reaches no PE at all.
 
-\xxx[as]{This is what remains of the old compiler section.}
-\xxx[am]{That's okay, but I kinda feel that some text matching \zz's parts to the ISA should come back. It was the only place \cref{sec:controls}'s model met this ISA, my note in \cref{sec:controls} still points here for it, and \texttt{Assoc} is otherwise never defined.
-Proposal: ``A node's \(\mathit{z}.\mathit{admit}\) is its \texttt{Assoc} set, its \(\mathit{z}.\mathit{serves}\) is its \texttt{Map} table, its \(\mathit{z}.\mathit{rank}\) is the ranker that \texttt{set\_policy} installs and \texttt{discipline(v)} reads back, and its \(\mathit{z}.\mathit{meta}\) is the metadata that \texttt{set\_arm\_meta} writes.
-Each of \zz's parts is thus an opcode's target, and none of them is state that \texttt{push} or \texttt{pop} advances.''}
-\xxx[as]{OK, sounds good. I would remove the last clause (``none of them is state that push or pop advances'') because I think it sounds like a bit of a non sequitur.}
+A node's \(\mathit{z}.\mathit{admit}\) is its \texttt{Assoc} set, its \(\mathit{z}.\mathit{serves}\) is its \texttt{Map} table, its \(\mathit{z}.\mathit{rank}\) is the ranker that \texttt{set\_policy} installs and \texttt{discipline(v)} reads back, and its \(\mathit{z}.\mathit{meta}\) is the metadata that \texttt{set\_arm\_meta} writes.
+Each of \zz's parts is thus the target of an opcode.
+
 \xxx[zhiyuan to as]{it's a good place to put "it's compiler's job to geneate valid sequence"?}
 Each edit (\cref{sec:delta-grammar}) compiles to one transaction.
 \cref{app:lowering} details the translations.
