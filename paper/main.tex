@@ -1106,15 +1106,36 @@ Rio's survivor link stops it for \emph{no time}, no matter how big the backlog, 
 The slope matters more than the constant: without \(\Strictstar\), the price of a transition is determined by how busy the switch was when the request arrived.
 This is also why \textsf{spotify} waits for the drain in \cref{app:ptemp}, since Rio declines to relocate the packets already queued and lets them drain in place instead.
 
+\paragraph{Scaling in the size of the tree}
+
+\begin{figure}[t]
+\centering
+\includegraphics{fig-eval-scaling.pdf}
+\caption{Admitting one new tenant, as the tree it joins grows. The lower panel is measured against the same tree already running the target policy.}
+\label{fig:eval-scaling}
+\end{figure}
+
+Our third experiment holds the request fixed and grows the tree.
+The tree runs \WFQ{} over \(m\) tenants, each tenant a two-flow subtree with its own discipline, and we dial up \(m\) from 2 to 32 so the tree holds 4 to 64 flows.
+Offered load stays at 1.10 of the link at every point and is spread evenly over the flows, so the congestion does not change with the tree.
+The transition request in each case is to \(\Add\) a single tenant at the root.
+
+Rio accomplishes this via the same 21 instructions at every point of the sweep (\cref{fig:eval-scaling}), and finishes in 44 cycles on the smallest tree and 45 on the largest.
+Whole-tree prefill goes from 99 instructions to 1099 and stop-the-world reset from 64 to 704, because both reinstall every tenant whether the request named it or not.
+Rio never stops the scheduler at any point of the sweep.
+% We ran the sweep a second time with a single \(\ChangeMeta\) in place of the \(\Add\), and Rio is flatter still, at 2 instructions and 14 cycles on every tree.
+
+The lower panel measures a flow that the request does not touch, against the same tree already running the target policy.
+Rio costs that flow nothing on the three smallest trees, 15 cycles on the next and 24 on the largest tree.
+Prefill costs it 221 cycles on the smallest tree and 1242 on the largest.
+Stop-the-world sits near 1030 cycles until the largest tree: the 1024-cycle stop we grant it dominates everything else, and only at 64 flows does the cost of rebuilding overtake it.
+
 \paragraph{A larger reconfiguration}
 
-\xxx[zhiyuan]{here we can insert some bar figures (comparing the different trees) mainly targets to show "we can work under different scales of the tree, and different traffic pattern", people will be interested in if the method is scalable? so comparing cycles/latency/etc. under different reconfig scale is always a good thing. as we have multiple transitions. I can also do different packet distribution}.
-
-Our third experiment considers how Rio scales.
+Our fourth experiment considers a request that changes several things at once.
 We set up a fourteen-flow tree on seven processing elements, and we change its policy to reweight two tenants, admit four more, and retire one.
 No single edit does all of that, so the transition planner decomposes the request into a sequence, and part of that sequence has to wait: the tenant being retired still holds packets, and the guard on its \(\Remove\) does not become true until they have drained (\cref{sec:sequences}).
 Rio installs the five unguarded edits in 51 instructions and the guarded \(\Remove\) in 20 more, against 152 for the reset baseline and 201 for whole-tree prefill.
-Rio's instruction count tracks the part of the tree the request names, where both baselines rebuild the tree entirely.
 Rio does not stop the scheduler at all, and the two baselines buffer 571 and 424 packets during theirs, which they can do only because we gave them unbounded input queues.
 
 \paragraph{Hardware cost}
