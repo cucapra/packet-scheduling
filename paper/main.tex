@@ -1135,7 +1135,7 @@ It computes a reconfiguration script, which is a sequence of atomic graph edits 
 It offers three consistency guarantees that may govern the intermediate states visible between the two endpoints.
 Rio similarly works by generating a series of atomic edits to transform one packet-scheduling policy into another (\cref{sec:delta-grammar}).
 Every intermediate state during a Rio update is a legible program in the same language that the user writes to specify policies (\cref{sec:policy-dsl}).
-Its guarantees at the per-edit level therefore resemble FlexCore's strongest consistency level, \emph{program consistency}.
+FlexCore's strongest guarantee, \emph{program consistency}, lets no intermediate state reach a packet, and a Rio transaction provides that for a single \(\delta\) (\cref{sec:hw-commit}).
 Relatedly, \citet{Yang24} demonstrate a system for installing P4 programs on programmable switches without disrupting traffic.
 
 Rio's focus on packet schedulers, as opposed to programmable switches, leads to different techniques.
