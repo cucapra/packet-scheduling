@@ -890,6 +890,8 @@ Opcode & Effect \\
 The control plane updates the scheduling policy by sending a \emph{transaction} consisting of a sequence of these instructions.
 The hardware guarantees that the transaction applies atomically at some time $t$:
 the unmodified policy applies to all packets before $t$ and the updated policy applies to all packets after $t$.
+Each of the six policy edits (\cref{sec:delta-grammar}) installs as one such transaction.
+That is the atomicity the edit grammar demands of every form it admits.
 
 The instructions address PIFOs using opaque ids \texttt{v}
 and children using indices \texttt{i}.
@@ -921,8 +923,7 @@ The discipline opcodes write the rank-assignment logic, and \texttt{spawn} and \
 A node's \(\mathit{z}.\mathit{admit}\) is its \texttt{Assoc} set, its \(\mathit{z}.\mathit{serves}\) is its \texttt{Map} table, its \(\mathit{z}.\mathit{rank}\) is the ranker that \texttt{set\_policy} installs and \texttt{discipline(v)} reads back, and its \(\mathit{z}.\mathit{meta}\) is the metadata that \texttt{set\_arm\_meta} writes.
 Each of \zz's parts is thus the target of an opcode.
 
-Each edit (\cref{sec:delta-grammar}) compiles to one transaction.
-\cref{app:lowering} details the translations.
+\cref{app:lowering} details the lowering of each form.
 As one example, consider the edit $\Add(\mathit{path}, D, \mathit{pol}, m)$.
 Let \texttt{v} be the PIFO at $\mathit{path}$ and let \texttt{n} be its arity.
 The lowering builds the new subtree first:
