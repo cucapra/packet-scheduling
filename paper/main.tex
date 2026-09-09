@@ -938,9 +938,7 @@ For each flow the new arm serves, an \texttt{assoc} at every PIFO from the port 
 \subsection{Atomic Configuration Updates}
 \label{sec:hw-commit}
 
-Our hardware's goal is to apply any of the six Rio policy edits (\cref{sec:delta-grammar}) atomically
-at some instant $t$:
-the unmodified policy applies to all packets before $t$ and the updated policy applies to all packets after $t$.
+\Cref{sec:hw-isa} promises that a transaction takes effect at a single instant $t$, so that the policy changes between two adjacent packets.
 This section describes our hardware's support for edit atomicity.
 
 Instructions can affect two kinds of state:
