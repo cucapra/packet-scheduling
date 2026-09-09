@@ -1185,16 +1185,8 @@ Eiffel argues for scheduling in software on the grounds of a shorter development
 \paragraph{Programmable packet scheduling}
 % \xxx[as]{I am avoiding ``substrate'' in favor of ``packet scheduler'' because this will be more recognizable to experts. ``Substrate'' is kinda solipsistic; a packet scheduler is only a substrate from Rio's perspective.}
 
-\xxx[as]{Can we replace this entire paragraph with: PIFO trees for packet scheduling were introduced in \citet{Sivaraman16}. Subsequent work has explored tweaks to the PIFO tree model and offered efficient hardware implementations~\cite{Shrivastav19,Alcoz20,Alcoz25,Mostafaei25,Yao23,Atre24,Gao22,vPIFO}.}
-\xxx[am]{Yes, but it's quite terse, and it makes it so that we situate the reader a little less. I'll save that cut in case we really need it.}
 \citet{Sivaraman16} introduce the PIFO and the PIFO tree for efficient programmable packet scheduling.
-PIEO generalizes the primitive to extraction from an arbitrary position in the queue~\cite{Shrivastav19}.
-SP-PIFO approximates a PIFO with a stack of strict-priority queues on devices that ship today~\cite{Alcoz20}.
-PACKS approximates a PIFO's scheduling order together with its admission control, where earlier approximations captured one at a time~\cite{Alcoz25}.
-Exp-PIFO approximates one with adaptive exponential bins, keeping two memory cells of state~\cite{Mostafaei25}.
-BMW Tree implements one as a balanced multi-way sorting tree that scales to large flow counts~\cite{Yao23}.
-BBQ reaches hundreds of thousands of concurrent flows by carrying hierarchical find-first-set into a pipelined integer priority queue~\cite{Atre24}.
-Gearbox approximates weighted fair queuing with a hierarchy of queuing levels at constant cost per operation~\cite{Gao22}.
+Subsequent work generalizes the primitive, approximates it on hardware that ships today, and scales it to large flow counts~\cite{Shrivastav19,Alcoz20,Alcoz25,Mostafaei25,Yao23,Atre24,Gao22}.
 vPIFO virtualizes a single physical PIFO into many instances that it can wire into a tree of any shape~\cite{vPIFO}.
 Its Scheduling Description Language compiler generates that wiring offline, so the shape is fixed before traffic arrives, and vPIFO names runtime updating as future work.
 Our policy language is a formal core of theirs (\cref{sec:policy-dsl}).
@@ -2090,7 +2082,7 @@ p_\text{temp} = \Strict(\ &\mathtt{hi}{:}\,\textsf{zoom}, \\
 whose \(\Strictstar\) node serves the packets \textsf{gmail} had already queued ahead of everything that arrives afterward.
 \Cref{sec:tour} derives this sequence and \cref{sec:hw-survivor} implements it.
 
-\begin{figure}[h]
+\begin{figure}[htbp]
 \centering
 \includegraphics{fig-eval-ptemp.pdf}
 \caption{The three flows under Rio's confined replace. The gray band is the interval in which Rio runs $p_\text{temp}$.}
@@ -2103,5 +2095,9 @@ The traffic is the traffic of \cref{sec:eval}.
 \Cref{fig:eval-ptemp} shows what each of the three flows receives.
 \textsf{zoom} holds the high-priority arm but asks for only 0.40 of the link and gets it, so \textsf{gmail} takes the remainder.
 \textsf{gmail} is lifted while \textsf{gmail}\textsubscript{old} drains ahead of new arrivals, and \textsf{spotify} waits on that drain, reaching first service 709 cycles after the request against the stop-the-world baseline's 1408.
+
+% Flush the deferred float before acmart's end-of-document \balance runs;
+% the balance package drops floats that are still deferred when it fires.
+\clearpage
 
 \end{document}
