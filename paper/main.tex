@@ -1124,7 +1124,7 @@ These figures are sums of synthesized components without placement or routing, s
 One category of related work concerns reconfiguring
 packet \emph{forwarding} pipelines (as opposed to scheduling, in this paper).
 Several approaches address applying consistent updates across an entire network.
-\citet{Reitblatt12} uses a versioning scheme:
+\citet{Reitblatt12} use a versioning scheme:
 they label packets according to the version of the network they should see.
 \citet{Namjoshi24} instead sequence changes so that route consistency holds with a single table edited in place.
 \citet{Mahajan13} study the dependencies that a consistency property imposes among rule updates, and find that stronger properties induce more intricate dependencies and therefore slower updates.
@@ -1139,14 +1139,13 @@ Every intermediate state during a Rio update is a legible program in the same la
 FlexCore's strongest guarantee, \emph{program consistency}, lets no intermediate state reach a packet, and a Rio transaction provides that for a single \(\delta\) (\cref{sec:hw-commit}).
 Relatedly, \citet{Yang24} demonstrate a system for installing P4 programs on programmable switches without disrupting traffic.
 
-Rio's focus on packet schedulers, as opposed to programmable switches, leads to different techniques.
+Rio's focus on packet schedulers, as opposed to forwarding pipelines, leads to different techniques.
 The primary difference is state.
 Packet schedulers are fundamentally stateful:
 PIFOs hold in-flight packets,
 and each scheduling policy has its own bookkeeping.
 State is less fundamental in packet forwarding; for example, FlexCore does not support stateful programs.
 Rio therefore has the additional challenge of preserving the state reflecting past packets while reconfiguring the policy for future packets.
-
 
 \paragraph{Reconfiguring a live scheduler}
 
@@ -1174,7 +1173,8 @@ Eiffel argues for scheduling in software on the grounds of a shorter development
 \paragraph{Programmable packet scheduling}
 \xxx[as]{I am avoiding ``substrate'' in favor of ``packet scheduler'' because this will be more recognizable to experts. ``Substrate'' is kinda solipsistic; a packet scheduler is only a substrate from Rio's perspective.}
 
-\xxx[as]{Can we replace this entire paragraph with: PIFO trees for packet scheduling were introduced in \citet{Sivaraman16}. Subsequent work has explored tweaks to the PIFO tree model and offered efficient hardware implementations~\cite{lots,of,stuff}.}
+\xxx[as]{Can we replace this entire paragraph with: PIFO trees for packet scheduling were introduced in \citet{Sivaraman16}. Subsequent work has explored tweaks to the PIFO tree model and offered efficient hardware implementations~\cite{Shrivastav19,Alcoz20,Alcoz25,Mostafaei25,Yao23,Atre24,Gao22,vPIFO}.}
+\xxx[am]{Yes, but it's quite terse, and it makes it so that we situate the reader a little less. I'll save that cut in case we really need it.}
 \citet{Sivaraman16} introduce the PIFO and the PIFO tree for efficient programmable packet scheduling.
 PIEO generalizes the primitive to extraction from an arbitrary position in the queue~\cite{Shrivastav19}.
 SP-PIFO approximates a PIFO with a stack of strict-priority queues on devices that ship today~\cite{Alcoz20}.
