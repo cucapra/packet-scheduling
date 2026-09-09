@@ -1221,6 +1221,10 @@ That compares two schedulers by what they emit, which is how we compare a schedu
 
 \section{Conclusion}\label{sec:concl}
 
+Reconfiguring a packet scheduler inevitably entails some period of chaos:
+when the effective scheduling behavior follows neither the old policy nor the new policy.
+Rio rigorously defines the semantics of that transitional period.
+
 \bibliographystyle{ACM-Reference-Format}
 \bibliography{main}
 
