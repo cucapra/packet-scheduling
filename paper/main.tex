@@ -50,7 +50,6 @@
 \newcommand{\csem}[1]{\mathcal{C}\llbracket #1 \rrbracket}
 \newcommand{\psem}[1]{\mathcal{P}\llbracket #1 \rrbracket}
 \newcommand{\eqR}{=_R}
-\newcommand{\simR}{\sim_R}
 % \notation: a notation name from the formal model. Math-italic, usable in
 % both text and math mode, and does not swallow the space that follows it in
 % text. Write \pol{}s for a plural, \pol{} before any other brace group.
@@ -447,7 +446,7 @@ We choose the set of edits to meet the following criteria:
 % Reading this again, I think it's better to keep it short (i.e., add nothing). The reasons for atomicity come elsewhere. --AS
 \item They are \emph{explainable}. Each edit transforms a policy $p$ in our policy DSL into a new policy $p'$. Later, we also show how each edit applies to live PIFO tree state to reflect these changes (\cref{sec:edit-semantics}).
 \item They are \emph{complete}. For any pair of policies $p_1$ and $p_2$, a sequence of edits suffices to transform $p_1$ into $p_2$. \cref{sec:sequences} gives a ``fallback'' path that always works.
-\item They are \emph{non-disruptive}. Installing an edit never drops, reorders, or re-ranks a packet that is already buffered (\cref{sec:nondisruption}). Edits that delete a subtree, such as $\Remove$, have a precondition that requires the doomed subtree to be empty.
+\item They are \emph{non-disruptive}. Installing an edit never drops, reorders, or re-ranks a packet that is already buffered (\cref{sec:nondisruption}). Edits that delete a subtree, such as $\Remove$, have a precondition that requires the doomed subtree to be empty; deleting an occupied subtree has no canonical realization, and \cref{sec:remove} shows why.
 \end{enumerate}
 %
 An edit describes where in the tree the change lands and what the change is.
@@ -467,6 +466,7 @@ We chose these six forms with care, so that PIFO tree hardware can realize each 
 
 \(\Strictstar\) makes the set complete.
 \Designate{} can introduce an arbitrary new subtree beside a running one without moving a buffered packet, and \Undesignate{} retires the old one once it has drained, so any \(p_1\) reaches any \(p_2\) by wrapping, draining, and unwrapping.
+\Cref{sec:designate} gives the wrapper's classifier, which is what lets the two arms serve overlapping flows while staying operationally disjoint.
 \Cref{sec:tour}'s two-step transition is exactly this: the \(\Strictstar\) node of \(p_\text{temp}\) holds the draining \textsf{gmail}\textsubscript{old} leaf beside the freshly built \RR{} subtree, and collapses once that leaf is empty.
 Everything outside the wrapper keeps running untouched, so it is valuable to wrap the smallest subtree that covers the change (\cref{sec:planner}).
 
@@ -528,6 +528,7 @@ At an internal node, \(\mathit{z}.\mathit{serves}(f)\) is a unique child index s
 This map is easy to construct since distinct leaves carry distinct flows (\cref{sec:policy-dsl}).
 At a leaf the payload is the packet itself, so the map is the trivial one on the single flow that leaf carries.
 Its \emph{admitted set}, written \(\mathit{z}.\mathit{admit} \subseteq \mathrm{dom}(\mathit{z}.\mathit{serves})\), is the subset of the flows that the node currently accepts.
+Keeping the two apart is what lets a silenced subtree go on draining, and \cref{sec:quiesce} is where the containment turns strict.
 \item The \emph{per-arm metadata}, written \(\mathit{z}.\mathit{meta}\), records what this node's discipline needs to know about each of its arms, such as priorities or weights.
 A leaf has no arms, and so no metadata.
 \item The \emph{ranker}, written \(\mathit{z}.\mathit{rank}\), is the scheduling logic that the node's discipline contributes.
@@ -802,7 +803,7 @@ Most forms discharge this through a single fact about \pop{}.
 A \pop{} reads only \pifo contents, never any \stt or \zz (\cref{sec:controls}), so an edit that leaves every live \pifo entry exactly where it found it cannot change what the control emits.
 Four of the six forms touch no live entry at all, and are done on that observation alone.
 \Designate{} inserts a node whose \pifo is not empty and \Undesignate{} drops one, so those two are argued directly on the \pop{} sequence, which is why \cref{thm:nondisruption} is stated on the flush sequence rather than on \pifo contents.
-\cref{sec:per-form} runs the check form by form.
+\cref{sec:per-form} runs the check form by form, and \cref{sec:check-designate,sec:check-undesignate} carry the two \pop{}-sequence arguments.
 
 \subsection{Sequences of Edits}\label{sec:sequences}
 
@@ -829,7 +830,7 @@ The operator hands the runtime \(p_1\), the presently running policy, and \(p_2\
 The operator accepts or rejects that proposal rather than authoring it.
 
 The planner is a heuristic, and we make no claim that what it emits is minimal.
-We claim that it always emits a sequence reaching \(p_2\), since \(\Replace([\,], p_2)\) is available at every point, and that it reaches for that fallback only when nothing tighter applies.
+We claim that it always emits a sequence reaching \(p_2\), since \(\Replace([\,], p_2)\) is available at every point, and that it reaches for that fallback only when none of its strategies finds a tighter edit.
 It compares \(p_1\) and \(p_2\) level by level, descending through the slots at which they already agree, and emits an \Add, a \Retire{} or a \ChangeMeta{} wherever one of those captures the difference.
 Only when none of them suffices does it emit a \Replace, and that too at the deepest slot the descent reached, so the \(\Strictstar\) wrapper covers that subtree and the rest of the tree keeps running.
 The point of the descent is to keep the disturbance small.
@@ -925,7 +926,7 @@ Rio does not guarantee progress; it is the control plane's responsibility to ens
 
 \xxx[as]{I am also a bit confused about this. For things like \texttt{adopt}, I'm not sure it matters that \texttt{i} ``chang[es] which PIFO an index names''; its semantics are still ``hey hardware, please associate a new child with this PIFO, which I will henceforth refer to child i.'' It doesn't seem to matter that the compiler thinks of i as an ``index'' while the hardware thinks of it as a key in a table. And also, if there are instructions that never affect the hardware, can we just remove them?}
 \xxx[am]{On \texttt{adopt}, your paraphrase is right, and nothing there depends on the word \emph{index}.
-The word becomes relevant only at \texttt{undesignate}, which retargets the parent's index \texttt{k} without telling the parent, and reusing \texttt{k} preserves the parent's per-arm metadata for that slot (\cref{sec:lower-undesignate}).
+The word becomes relevant only at \texttt{undesignate}, which retargets the parent's index \texttt{k} without telling the parent, and reusing \texttt{k} preserves the parent's per-arm metadata for that slot (\cref{app:lowering}).
 On removing them from the system outright: yes \texttt{change\_arity} can go (since Zhiyuan has told us that a mapping table allocates no slot in advance).
 \texttt{adopt} and \texttt{emancipate} write no PE themselves, but they fix what a later \texttt{map} means, so dropping them means folding the parent--child relation into \texttt{map}'s arguments. Could do it! 
 That last one is a design question for Zhiyuan.}
@@ -1170,55 +1171,47 @@ These figures are sums of synthesized components without placement or routing, s
 
 \paragraph{Consistent network update}
 
-The work closest to ours in spirit concerns packet \emph{forwarding} rather than packet scheduling.
-An operator who changes the forwarding rules across a set of devices cannot install them everywhere at once, so packets are in flight through the network while the change is spreading.
-\citet{Reitblatt12} observe that such an update passes through intermediate configurations, and that those configurations can behave in ways that neither the old configuration nor the new one would.
-Our work makes that same observation about scheduling.
-Their answer is a versioning discipline, which yields two consistency levels, per-packet and per-flow: a packet is stamped on entry and handled under the stamped version at every device, so one configuration handles it from end to end.
-Rio reaches per-packet consistency by another means: a transaction installs in a single cycle at each PE, so a packet meets one configuration or the other (\cref{sec:hw-commit}).
-
-The two settings differ in what the old configuration holds.
-In forwarding, a forwarding rule holds no traffic, so the old configuration can be retired once the packets stamped with it have left the network.
-In scheduling, a scheduler node holds packets whose ranks were fixed when they were \push{}ed, and no version tag can re-sort them.
-Rio therefore retires the old configuration by draining it, which is precisely what a guard waits for (\cref{sec:sequences}).
-
+One category of related work concerns reconfiguring
+packet \emph{forwarding} pipelines (as opposed to scheduling, in this paper).
+Several approaches address applying consistent updates across an entire network.
+\citet{Reitblatt12} use a versioning scheme:
+they label packets according to the version of the network they should see.
+\citet{Namjoshi24} instead sequence changes so that route consistency holds with a single table edited in place.
 \citet{Mahajan13} study the dependencies that a consistency property imposes among rule updates, and find that stronger properties induce more intricate dependencies and therefore slower updates.
-\citet{Namjoshi24} keep the guarantee and drop the versioning, sequencing the updates so that route consistency holds with a single table edited in place.
-Our guarded sequences are dependency structures of the same kind, drawn inside one scheduler.
-While their dependencies run between rules on separate devices, ours run between edits at different positions of one tree.
+Rio seeks per-packet consistency for each of its edits, inside a single packet scheduler rather than across a network.
+Versioning does not carry over to a scheduler, which holds packets whose ranks were fixed when they were \push{}ed.
 
-All of that work rewrites the entries that a device's tables hold.
-FlexCore~\cite{Xing22} reconfigures the \emph{program} those tables belong to: it changes a live data plane's match-action tables, control flow, and parser.
-It computes a reconfiguration script, which is a sequence of atomic graph edits that carries the old program to the new one, and defines three consistency guarantees over the intermediate states along the way.
-Our guarded sequences (\cref{sec:sequences}) have the same shape.
-This similarity is unsurprising: changing the structure that a packet passes through, without first stopping the traffic, calls for atomic steps and an account of what holds between them, in either their domain (forwarding) or ours (scheduling).
-The strongest of their guarantees, program consistency, lets no intermediate state reach a packet, and a Rio transaction provides that for a single \(\delta\) (\cref{sec:delta-grammar}).
-The two domains diverge over what is being changed.
-A match-action table holds no packet, and FlexCore does not handle stateful programs, leaving for future work how state should be ported to a new program.
-A packet scheduler is exactly such a stateful case, since its entire content is buffered packets whose ranks were fixed at \push{} time.
-Reconfiguring a packet scheduler is therefore what FlexCore sets aside, and what this paper takes up.
+FlexCore~\cite{Xing22} aims to consistently reconfigure the P4 program running on a programmable switch.
+It computes a reconfiguration script, which is a sequence of atomic graph edits that transforms the old program into the new one.
+It offers three consistency guarantees that may govern the intermediate states visible between the two endpoints.
+Rio similarly works by generating a series of atomic edits to transform one packet-scheduling policy into another (\cref{sec:sequences}).
+Every intermediate state during a Rio update is a legible program in the same language that the user writes to specify policies (\cref{thm:interplay}).
+FlexCore's strongest guarantee, \emph{program consistency}, lets no intermediate state reach a packet, and a Rio transaction provides that for a single \(\delta\) (\cref{sec:hw-commit}).
+Relatedly, \citet{Yang24} demonstrate a system for installing P4 programs on programmable switches without disrupting traffic.
 
-These updates run through the interface that P4 calls \emph{population}, the insertion and removal of match-action table entries~\cite{Bosshart14}.
-Population determines the policy applied to packets at any given instant.
-P4 anticipates reconfiguration that does not interrupt forwarding, and leaves the mechanism to implementations.
-\citet{Yang24} take that interface as far as it goes, compiling whole runtime programs down to table entries and installing them without disrupting traffic.
-A Rio transaction is a group of such entry writes that installs together, so that the tables that a packet consults along its path never disagree about which policy is in force (\cref{sec:hw-commit}).
+Rio's focus on packet schedulers, as opposed to forwarding pipelines, leads to different techniques.
+The primary difference is state.
+Packet schedulers are fundamentally stateful:
+PIFOs hold in-flight packets,
+and each scheduling policy has its own bookkeeping.
+State is less fundamental in packet forwarding; for example, FlexCore does not support stateful programs.
+Rio therefore has the additional challenge of preserving the state reflecting past packets while reconfiguring the policy for future packets.
 
 \paragraph{Reconfiguring a live scheduler}
 
-Loom schedules at the NIC over a policy written as a restricted DAG, and it reconfigures that hierarchy while traffic flows~\cite{Stephens19}.
-Configuration values travel inline with packet descriptors and doorbells, and each stage of the match-action pipeline saves the values it is given to its local memory as it processes them.
+Loom~\cite{Stephens19} is a NIC packet scheduler that supports dynamic reconfiguration.
+Configuration values travel inline with packet descriptors, and each pipeline stage saves the values to its local memory.
 A descriptor and the configuration it carries therefore reach each stage together, which is the effect Rio obtains by delay-aligning commit signals across PEs (\cref{sec:hw-commit}).
-Loom does not say what becomes of the packets already buffered under a node whose configuration changes, and the interval in which an update spreads through the pipeline is given no scheduling meaning.
+Loom does not address the effects on in-flight packets or attempt to offer consistent views during reconfiguration.
 
-SP-PIFO also changes its scheduler as it runs, adapting the mapping from packet ranks to a fixed set of strict-priority queues as traffic shifts~\cite{Alcoz20}.
-That adaptation is measured as error against an ideal PIFO, so what SP-PIFO converges on is the policy the operator already wrote.
-Rio instead changes that policy, and reports the change back in the operator's own DSL (\cref{sec:equivalences}).
+SP-PIFO~\cite{Alcoz20} can change the mapping from packet ranks to a fixed set of strict-priority queues as traffic shifts.
+Its goal is to minimize the error with respect to an ideal PIFO, i.e., the policy that the operator wrote.
+Rio instead focuses on changing the policy itself.
 
-\citet{Alcoz23} raise the question directly.
+\citet{Alcoz23} raise the question of scheduler reconfiguration.
 Their scheduling hypervisor deploys per-tenant scheduling policies onto one switch, and they ask how to move from one such policy to another as tenants arrive and depart.
-They name two obstacles, emptying the buffers and resetting the state of the scheduling functions, and leave the mechanism to future runtime-programmable data planes.
-Rio answers the first by draining rather than dropping (\cref{sec:quiesce}), and the second by declining to reset (\cref{sec:changemeta}).
+They name two obstacles: emptying the buffers and resetting the state of the scheduling functions, and leave the mechanism to future runtime-programmable data planes.
+Rio answers the first by draining rather than dropping packets (\cref{sec:quiesce}) and the second by declining to reset (\cref{sec:changemeta}).
 
 Reconfiguration is routine in the schedulers deployed at hosts and NICs.
 Loom updates rate limiters whenever a VM or a flow starts or stops~\cite{Stephens19}.
@@ -1227,9 +1220,12 @@ FairNIC gives each tenant an independent subtree of packet schedulers to configu
 Carousel shapes tens of thousands of flows and policies on a single server~\cite{Saeed17}.
 Eiffel argues for scheduling in software on the grounds of a shorter development cycle~\cite{Saeed19}.
 
-\paragraph{Programmable scheduling substrates}
+\paragraph{Programmable packet scheduling}
+% \xxx[as]{I am avoiding ``substrate'' in favor of ``packet scheduler'' because this will be more recognizable to experts. ``Substrate'' is kinda solipsistic; a packet scheduler is only a substrate from Rio's perspective.}
 
-\citet{Sivaraman16} introduce the PIFO and the PIFO tree, observing that a switch offers a small menu of scheduling algorithms, and that once the silicon is designed an operator can tune a parameter and nothing more.
+\xxx[as]{Can we replace this entire paragraph with: PIFO trees for packet scheduling were introduced in \citet{Sivaraman16}. Subsequent work has explored tweaks to the PIFO tree model and offered efficient hardware implementations~\cite{Shrivastav19,Alcoz20,Alcoz25,Mostafaei25,Yao23,Atre24,Gao22,vPIFO}.}
+\xxx[am]{Yes, but it's quite terse, and it makes it so that we situate the reader a little less. I'll save that cut in case we really need it.}
+\citet{Sivaraman16} introduce the PIFO and the PIFO tree for efficient programmable packet scheduling.
 PIEO generalizes the primitive to extraction from an arbitrary position in the queue~\cite{Shrivastav19}.
 SP-PIFO approximates a PIFO with a stack of strict-priority queues on devices that ship today~\cite{Alcoz20}.
 PACKS approximates a PIFO's scheduling order together with its admission control, where earlier approximations captured one at a time~\cite{Alcoz25}.
@@ -1241,32 +1237,18 @@ vPIFO virtualizes a single physical PIFO into many instances that its PIFO Visor
 Its Scheduling Description Language compiler generates that wiring offline, so the shape is fixed before traffic arrives, and vPIFO names runtime updating as future work.
 Our policy language is a formal core of that one (\cref{sec:policy-dsl}).
 
-All of these substrates fix the tree's shape and the discipline at each node when the scheduler is configured.
-Rio runs above any of them and asks for one property: transactions that are atomic with respect to traffic (\cref{sec:hw-commit}).
-Each is therefore a plausible host, and what it would have to add is a transactional path to the tables that our opcodes write.
+All of these designs fix the tree's shape and the discipline at each node when the scheduler is configured.
+Instead of focusing on the PIFO tree implementation itself, Rio aims to extend any PIFO tree design with run-time reconfiguration.
 
-One recent substrate offers more than Rio assumes.
+One recent design offers more than Rio assumes.
 UIFO adds a level of classes above packets, so that the service order of already-buffered traffic can be updated after the fact~\cite{Wang26}.
-Rio's forms are defined against a substrate where a rank is fixed at \push{} time (\cref{sec:controls}), and our non-disruption theorem (\cref{thm:nondisruption}) is stated against that.
-A substrate that can re-rank a backlog admits reconfigurations for which this grammar has no form.
+Rio's edits are defined against a substrate where a rank is fixed at \push{} time (\cref{sec:controls}), and our non-disruption theorem (\cref{thm:nondisruption}) is stated against that.
+A scheduler that can re-rank a backlog may admit ``retroactive'' reconfigurations that Rio does not consider.
 
-\paragraph{Formal models of scheduling}
-
-\citet{Mohan23} give a syntax and an operational semantics for PIFO trees, separating a tree's topology from the control that runs on it.
+\citet{Mohan23} give a syntax and an operational semantics for PIFO trees.
 Our runtime model (\cref{sec:controls}) is adapted from theirs.
-Their question is whether a policy written for one topology can be realized on a tree of a different shape, which they answer by embedding one topology in another.
-Ours is how a tree may be changed while it runs, answered by our edits (\cref{sec:delta-grammar}), by their agreement with the policy the operator reads back (\cref{thm:interplay}), and by what they cost the backlog (\cref{thm:nondisruption}).
-
-Embedding suggests a route to reconfiguration of its own: embed both \(p_1\)'s tree and \(p_2\)'s tree into a common target, and move between the two embeddings.
-The backlog would be laid out under the first embedding and read under the second.
-In our work, we decline to make such a scheduling decision on the operator's behalf (\cref{sec:remove}).
-
-\citet{Campbell26} ask that same portability question of match-action tables rather than of trees.
-They give table transformations an algebra and a type system under which every well-typed transformation denotes one realizable function, and compile a specification into concrete tables for a chosen target.
-The object there is a table and the target is another environment, where ours is a tree and the target is the same tree a moment later.
-
 \citet{Mittal16} ask whether a single scheduling algorithm can replay the schedule that any other algorithm produced, and find that in general none can.
-That compares two schedulers by what they emit, which is how we compare a scheduler with itself across an edit (\cref{thm:nondisruption}).
+That work compares two schedulers using the sequence of packets they emit, which is how we compare scheduling policies across an edit (\cref{thm:nondisruption}).
 
 \section{Conclusion}\label{sec:concl}
 
@@ -1287,24 +1269,15 @@ and $\csem{\delta}$ for the effect on PIFO tree state.
 
 \paragraph{Notation}
 
-The \pol-level rules below read, overwrite, and shrink child lists.
-A \pol node's child list \(\mathit{ts}\) holds \emph{annotated arms}, each a metadatum paired with a policy (\cref{sec:policy-dsl}).
-We write \(\mathit{ts}[i]\) for the \(i\)-th arm, and \(\mathit{ts}[t/i]\) for \(\mathit{ts}\) with the \emph{policy} of its \(i\)-th arm overwritten by \(t\).
-That arm keeps its annotation, and the arity does not change.
-\(\mathit{ts}[-/k]\) drops the \(k\)-th arm, and later arms shift one slot to the left.
+Besides \(\mathit{ts}[t/i]\) of \cref{sec:edit-semantics}, we write \(\mathit{ts}[i]\) for the \(i\)-th annotated arm of a \pol node's child list, and \(\mathit{ts}[-/k]\) for \(\mathit{ts}\) with its \(k\)-th arm dropped and later arms shifted one slot to the left.
+Control nodes are written \(\langle\mathit{state}, \mathit{pifo}, \mathit{z}\rangle(\mathit{cs})\), and we reuse \(\mathit{cs}[C'/i]\) and \(\mathit{cs}\mathbin{+\!\!+}[C']\) on the child list \(\mathit{cs}\).
 Indices follow the \pth convention of \cref{sec:delta-grammar}.
 
-The control-level rules walk controls the same way.
-Nodes are written \(\langle\mathit{state}, \mathit{pifo}, \mathit{z}\rangle(\mathit{cs})\), as in \cref{sec:controls}, and we reuse \(\mathit{cs}[C'/i]\) and \(\mathit{cs}\mathbin{+\!\!+}[C']\) for the list operations on the child list \(\mathit{cs}\).
-
 One invariant links a node's classifier to the tree, and every form below preserves it.
-At any node, \(\mathrm{dom}(\mathit{z}.\mathit{serves})\) is exactly the set of flows served by the leaves beneath it, and \(\mathit{z}.\mathit{serves}\) sends each of them to the child that leads on toward its leaf.
+At any node, \(\mathrm{dom}(\mathit{z}.\mathit{serves})\) is the set of flows served by the leaves beneath it, and \(\mathit{z}.\mathit{serves}\) sends each of them to the child that leads towards its leaf.
 
-A form's path names a target node, but it is often more convenient to work with the target's parent and the index the parent uses to reach it.
-We recover both by splitting the given path as \(\pi \mathbin{+\!\!+} [k]\): \(\pi\) is the path to the parent, and \(k\) is the child index by which the parent reaches the target.
-We also order paths by prefix.
-\(\nu \sqsubset \tau\) says that \(C@\nu\) is a proper ancestor of \(C@\tau\).
-The loose version \(\nu \sqsubseteq \tau\) allows \(\nu = \tau\) as well.
+Several forms address the target's parent rather than the target, and split the given path as \(\pi \mathbin{+\!\!+} [k]\): \(\pi\) is the path to the parent, and \(k\) is the child index by which the parent reaches the target.
+Paths are also ordered by prefix, with \(\nu \sqsubset \tau\) saying that \(C@\nu\) is a proper ancestor of \(C@\tau\), and \(\nu \sqsubseteq \tau\) allowing \(\nu = \tau\) as well.
 
 Most forms edit only the node that their path points to.
 For such a form we use a small combinator: given a node transformer \(g\) and a path \(\pi\), write \(\mathtt{at}(\pi, g)\) for the operation that walks to the node at \(\pi\), applies \(g\) there, and copies every other node of the tree unchanged:
@@ -1315,15 +1288,11 @@ For such a form we use a small combinator: given a node transformer \(g\) and a 
 \quad \langle\mathit{state},\mathit{pifo},\mathit{z}\rangle(\mathit{cs}[\,\mathtt{at}(\mathit{rest}, g)(\mathit{cs}[i]) / i\,])
 \end{array}
 \]
-The recursive case walks one step down and writes the result back, carrying \(\langle\mathit{state},\mathit{pifo},\mathit{z}\rangle\) unchanged.
-The same combinator serves on \pol, where a node is \(D(\mathit{ts})\).
-There the descent into arm \(i\) rewrites that arm's policy and carries its annotation along.
+The same combinator serves on \pol, where a node is \(D(\mathit{ts})\) and the descent into arm \(i\) rewrites that arm's policy and carries its annotation along.
 We also write \(\mathtt{at}(V, g)\) for the set analogue, applying \(g\) at every node in \(V\) and copying every node outside \(V\) unchanged.
 
-Three operations recur across the forms, and the first two edit a single node's \zz.
-A node's discipline fixes a packet's rank from the local \stt and the chosen child alone, not from the packet itself, so admitting a flow at an already-running node calls for no new rank rule.
-\(\mathtt{extend}(\mathit{z}, F, i)\) therefore touches the classifier and nothing else, recording that child \(i\) is where \(F\) is served and adding \(F\) to the admitted set.
-\(\mathtt{setmeta}(\mathit{z}, i, m)\) annotates arm \(i\) with \(m\) and leaves the classifier and the ranker alone:
+\Cref{sec:edit-semantics}'s \(\mathtt{extend}\) and \(\mathtt{setmeta}\) recur across the forms, and are given in full here.
+A node's discipline fixes a packet's rank from the local \stt and the chosen child alone, not from the packet itself, so admitting a flow at an already-running node calls for no new rank rule, and \(\mathtt{extend}\) therefore touches the classifier and nothing else:
 \[
 \begin{array}{@{}l@{}}
 \mathtt{extend}(\mathit{z}, F, i).\mathit{serves} = \mathit{z}.\mathit{serves}\,[\,f \mapsto i \;\text{for}\; f \in F\,],\\[3pt]
@@ -1331,7 +1300,7 @@ A node's discipline fixes a packet's rank from the local \stt and the chosen chi
 \mathtt{setmeta}(\mathit{z}, i, m).\mathit{meta} = \mathit{z}.\mathit{meta}\,[\,i \mapsto m\,].
 \end{array}
 \]
-Every other field of \zz is carried through unchanged.
+Other fields of \zz are carried through unchanged.
 A form that admits a new set of flows must extend every node on the way down to its target, so \(\mathtt{extend}\) is also applied as a walk.
 At each proper ancestor \(C@\nu\) of the target \(C@\tau\) the walk replaces \zz by \(\mathtt{extend}(\mathit{z}, F, i)\), where \(i\) is the index by which \(\nu\) continues toward \(\tau\), and it copies every other node unchanged.
 
@@ -1343,18 +1312,9 @@ The five that follow lean on it, and we point out only where each one departs fr
 
 \Add{}'s arguments are \(\pi : \mathit{path}\), the node that will receive the new arm as its last child; \(D\), the discipline that node runs; \(\mathit{arm} : \mathit{pol}\), the policy of the new arm; and \(m \in M_{D}\), the metadatum that tells \disc how to schedule that arm (\cref{sec:policy-dsl}).
 
-Say the presently running control is \(C\).
-Intuitively, \Add{} inserts a freshly compiled subtree \(\lceil \mathit{arm} \rceil\) as the new last child of the subtree \(C@\pi\).
-For traffic to reach the new arm, the flows it serves, those bound for leaves inside it, must be admitted along the whole path.
-Every node from the root down to \(C@\pi\) must begin to accept the new flows and send them toward the arm.
-
 \paragraph{Definition}
 
-We must define \(\csem{\Add(\pi, D, \mathit{arm}, m)} : \mathit{control} \rightharpoonup \mathit{control}\) together with the preconditions on the already-running control.
-
 \(\csem{\Add(\pi, D, \mathit{arm}, m)}(C)\) is defined when four things hold: the path \(\pi\) resolves in \(C\) to an internal node, that node runs the discipline \disc the form names, the metadatum \(m\) is drawn from \(M_{D}\), and \arm's leaf labels are disjoint from those of \(C\).
-The last condition spares \Add{} from relocating traffic.
-A change that would move admitted traffic is reached instead as a sequence, in which the old traffic drains in place rather than being re-enqueued (\cref{sec:sequences}).
 
 We define \(\csem{\Add}\) by recursion on \(\pi\), writing \(\mathtt{flows}(\mathit{arm})\) for the set of flows at \(\lceil \mathit{arm} \rceil\)'s leaves:
 {\small
@@ -1376,17 +1336,7 @@ We define \(\csem{\Add}\) by recursion on \(\pi\), writing \(\mathtt{flows}(\mat
 The arguments \disc, \arm, and \(m\) thread unchanged through the recursion, and \(m\) is consumed only at the base case, which annotates the new slot and seeds its bookkeeping.
 Because \(\mathtt{flows}(\mathit{arm})\) lies outside \(\mathrm{dom}(\mathit{z}.\mathit{serves})\), every \(\mathtt{extend}\) along the way is conflict-free.
 The recursive case is exactly the \(\mathtt{extend}\) walk of \cref{sec:edit-semantics}, carrying \(\mathtt{flows}(\mathit{arm})\) down to \(\pi\).
-
-The base case (\(\pi = []\)) has reached the parent of the new arm, where it does three things.
-It appends \(\lceil \mathit{arm} \rceil\) as the last child, which lands at the next free slot \(k = |\mathit{cs}|\).
-It appends that slot's bookkeeping, \(\mathit{init\_slot\_state}_{D}(\mathit{node\_state}, m)\), using the discipline \disc that the form carries.
-And it rewrites the node's transaction, extending the classifier to send the new flows to the new child and annotating slot \(k\) with \(m\).
-Meanwhile, \nodestate and \pifo are untouched.
-Appending the arm is legitimate because our arm-order freedom (\cref{sec:policy-dsl}) lets us place the new child last.
-The recursive case steps into the on-path child \(i\), writes the result back, and extends this ancestor's transaction to \(\mathtt{extend}(\mathit{z}, \mathtt{flows}(\mathit{arm}), i)\), sending the new flows one step further down toward \(\pi\); its \nodestate, \slotstates, and \pifo are carried unchanged.
-
-So every node on the path from the root to \(C@\pi\) has its transaction extended to admit and route the new flows, and nothing else about those nodes changes.
-The new flows were admitted nowhere before (by disjointness), so each extension is conflict-free and no in-flight packet's route moves.
+Appending the arm at the base case is legitimate because our arm-order freedom (\cref{sec:policy-dsl}) lets us place the new child last.
 
 \paragraph{Pol-level reading}
 
@@ -1400,8 +1350,6 @@ We define \(\psem{\cdot}\) by recursion on \(\pi\) as well:
 \end{array}
 \]
 }
-Its node patterns \(D\ \mathit{ts}\) and \(E\ \mathit{ts}\) split a \pol node into its discipline and child list \(\mathit{ts}\).
-The base case reuses the argument name \disc, firing only when the reached node runs that discipline; an ancestor's discipline \(E\) is unconstrained and simply carried along.
 The metadatum \(m\) appears on both sides.
 \(\csem{\Add}\) records it at \(\mathit{z}.\mathit{meta}(k)\), and \(\psem{\Add}\) writes it onto the new arm, so reading the edited control back recovers the annotation the operator asked for.
 
@@ -1409,13 +1357,8 @@ The metadatum \(m\) appears on both sides.
 
 
 \ChangeMeta{} re-tunes a single already-running arm, resetting the metadatum its parent schedules it by, without moving a packet or disturbing any sibling.
-
-\(\tau : \mathit{path}\) is the target arm.
-The path is non-empty (the target arm is required to have a parent), and we destruct it as \(\pi \mathbin{+\!\!+} [k]\), so \(k\) is the arm's slot at its parent \(C@\pi\).
-\disc is the discipline the parent runs, and \(m\) is a fresh value from \(M_{D}\) (\cref{sec:policy-dsl}).
+Its path is non-empty and destructs as \(\pi \mathbin{+\!\!+} [k]\), so \(k\) is the arm's slot at its parent \(C@\pi\); \disc is the discipline the parent runs, and \(m\) is a fresh value from \(M_{D}\).
 Carrying \disc on the form makes \(m \in M_{D}\) checkable from the form alone, rather than only against the control it is about to be applied to.
-
-\paragraph{Definition}
 
 \ChangeMeta{} is defined when \(\tau\) resolves in \(C\) to an arm whose parent runs the \disc the form names, when \(m \in M_{D}\), and when that parent's ranker does not name \(\Strictstar\).
 Changing the metadata of a \(\Strictstar\) is illegal, and \cref{sec:hw-survivor} turns that to account: a node whose priorities cannot change needs no \pifo of its own.
@@ -1429,13 +1372,8 @@ The form applies that transformer at the parent and nowhere else:
 \[
 \csem{\ChangeMeta(\pi \mathbin{+\!\!+} [k],\, D,\, m)} = \mathtt{at}(\pi,\, \mathtt{setmeta}_k).
 \]
-Under \Strict{} the arm's metadatum is its priority, and under \WFQ{} it is its weight.
-That value alone becomes \(m\).
-The evolving per-arm bookkeeping beside it, \WFQ's last-finish tag in \(\mathit{slot\_states}[k]\), is left untouched (the Note below says why).
-
-\paragraph{Pol-level reading}
-
-\ChangeMeta{} reannotates arm \(k\) and leaves that arm's policy, its siblings, and the discipline \disc alone:
+Under \Strict{} the arm's metadatum is its priority, and under \WFQ{} it is its weight; that value alone becomes \(m\), and the evolving per-arm bookkeeping beside it is left untouched.
+At \pol-level, \ChangeMeta{} reannotates arm \(k\) and leaves that arm's policy, its siblings, and the discipline \disc alone:
 \[
 \begin{array}{@{}l@{}}
 \psem{\ChangeMeta(\pi \mathbin{+\!\!+} [k],\, D,\, m)} =\\[3pt]
@@ -1443,9 +1381,6 @@ The evolving per-arm bookkeeping beside it, \WFQ's last-finish tag in \(\mathit{
 \end{array}
 \]
 
-\paragraph{Note: Why the per-arm bookkeeping is preserved}
-
-\ChangeMeta{} rewrites the arm's metadatum and leaves the per-arm bookkeeping beside it untouched.
 That is the line \cref{sec:controls} draws between the configuration the operator chose and what serving traffic left behind.
 Resetting the bookkeeping would pull the targeted arm out of the round in progress, rewarding or penalizing it for no reason the operator asked for.
 Whatever \disc keeps beside the metadatum belongs to \disc (\cref{sec:compilation}), and a re-tuning does not touch it.
@@ -1454,16 +1389,9 @@ A discipline that keeps no per-arm bookkeeping, such as \Strict, does not raise 
 \subsection{\texorpdfstring{\(\Quiesce(\tau)\)}{Quiesce}}\label{sec:quiesce}
 
 
-\(\tau : \mathit{path}\) is the path to the target subtree to silence.
-
-Say the presently running control is \(C\).
-\Quiesce{} strikes every flow served under \(C@\tau\) from the admitted sets of the nodes those flows traverse, so that no packet bound for a leaf there is admitted anywhere.
-It leaves every node's routing in place, so buffered packets can still be popped out.
-This is the payoff of keeping \(\mathit{z}.\mathit{admit}\) separate from \(\mathrm{dom}(\mathit{z}.\mathit{serves})\) (\cref{sec:controls}).
-A silenced flow leaves the admitted set while its entry in the service map stays, so packets already buffered under the node still have a way out.
+\Quiesce{} strikes every flow served under \(C@\tau\) from the admitted sets of the nodes those flows traverse, so that no packet bound for a leaf there is admitted anywhere, while leaving every node's routing in place so buffered packets can still be popped out.
+This is the payoff of keeping \(\mathit{z}.\mathit{admit}\) separate from \(\mathrm{dom}(\mathit{z}.\mathit{serves})\) (\cref{sec:controls}): a silenced flow leaves the admitted set while its entry in the service map stays.
 This is the only way the containment \(\mathit{z}.\mathit{admit} \subseteq \mathrm{dom}(\mathit{z}.\mathit{serves})\) becomes strict, and only \Remove{} deletes the mapping itself.
-
-\paragraph{Definition}
 
 \(\csem{\Quiesce(\tau)}(C)\) is defined whenever \(\tau\) resolves in \(C\) (the empty path silences the whole tree).
 Let \(L = \mathtt{flows}(C@\tau)\) be the flows to silence.
@@ -1481,16 +1409,11 @@ applied at every node of \(V_\tau\):
 \[
 \csem{\Quiesce(\tau)} = \mathtt{at}(V_\tau,\ g_L).
 \]
-Every field other than \(\mathit{z}.\mathit{admit}\), and every node outside \(V_\tau\), is left unchanged.
-
 The restriction has to reach every node of \(V_\tau\) rather than the root alone.
 Under \cref{sec:controls}'s parallel \push{}, every node on the path from the system root to a packet's destination leaf mints an index via its local \zz independently of the others.
-If we restricted \zz at only a subset of those nodes, say only the root or only inside \(C@\tau\), the rest would go on minting indices and enqueueing them.
-The tree would then be malformed, and a later \pop{} would get stuck.
+If we restricted \zz at only a subset of those nodes, say only the root or only inside \(C@\tau\), the rest would go on minting indices and enqueueing them, the tree would be malformed, and a later \pop{} would get stuck.
 
-\paragraph{Pol-level reading}
-
-\(\psem{\Quiesce(\tau)}\) is the identity on \pol.
+At \pol-level, \(\psem{\Quiesce(\tau)}\) is the identity.
 
 \subsection{\texorpdfstring{\(\Remove(\tau)\)}{Remove}}\label{sec:remove}
 
@@ -1524,14 +1447,12 @@ The form drops the arm at its parent and retracts \(L\) at every proper ancestor
 \csem{\Remove(\pi \mathbin{+\!\!+} [k])} = \mathtt{at}(A_\pi,\ \mathit{z} \dsetminus L) \circ \mathtt{at}(\pi,\, \mathtt{drop}_k).
 \]
 Emptiness and \(\vdash C\) force \(C@\pi.\mathit{pifo}\) to hold \emph{no entry} equal to \(k\), so \pifo loses no entry, and surviving entries keep their child.
-\nodestate, and every field of every node outside \(C@\pi\) and the removed subtree other than the ancestor service maps just named, is unchanged.
 
 \paragraph{Note: Why the ancestors are retracted too}
 
 Dropping the arm at its parent alone would leave every node above still mapping \(L\) toward it.
 A later \push{} of an \(L\)-packet would then be admitted at an ancestor and enqueue an index there, while the parent, which no longer serves \(L\), would enqueue nothing.
 This would leave \(\vdash\) broken.
-\Remove{} retracts unconditionally, so that it is sound on its own even when no \Quiesce{} has run, as when it undoes an \Add{} whose arm never carried traffic.
 
 \paragraph{Pol-level reading}
 
@@ -1596,26 +1517,8 @@ We do not wish to make a scheduling decision for the operator, and the only way 
 Our grammar sidesteps the question entirely, by asking that a targeted subtree be empty before it is deleted (\cref{sec:sequences}).
 At the instant \Remove{} fires, no entry above the doomed arm was enqueued on account of a packet inside it, so no entry has to be dropped and the structural deletion is unambiguous.
 
-\subsection{\texorpdfstring{\(\Designate(\tau, \mathit{survivor})\)}{Designate}}\label{sec:designate}
-
-
-\(\tau : \mathit{path}\) is the path to the target subtree being wrapped, and \(\mathit{survivor} : \mathit{pol}\) is the designated-survivor policy that becomes the new \(\Strictstar\) node's low-priority arm.
-
-Say the presently running control is \(C\).
-Intuitively, \Designate{} replaces \(C@\tau\) in place with \(\Strictstar(C@\tau, \lceil \mathit{survivor} \rceil)\).
-It is the mechanism behind non-disruptive in-place replacement (\cref{fig:designate}).
-The \(\Strictstar\) node lets \survivor begin accepting new traffic on a low-priority arm, while the old subtree keeps draining, untouched, on a high-priority one.
-Once the old subtree is empty, \Undesignate{} (\cref{sec:undesignate}) removes it and promotes \survivor in its place.
-That is why the form exists: no single edit can swap one subtree for another without either dropping the old subtree's backlog or stalling the new arm, but the \(\Strictstar\) node lets both coexist for the length of a drain.
-
-\Designate{} installs a ranker that names \(\Strictstar\), and \Undesignate{} retires the node carrying it.
-A node's ranker records which discipline the node runs (\cref{sec:controls}), so both forms state their preconditions structurally.
-No other form disturbs such a node.
-\Remove{} will not retire one (\cref{sec:remove}), and \ChangeMeta{} will not retune its arms (\cref{sec:changemeta}), so its two priorities are the ones \Designate{} gave it for as long as it exists.
-That node is visible at \pol-level as a \(\Strictstar\), which is what \(\lfloor \cdot \rfloor\) (\cref{sec:equivalences}) reports of it.
-An operator may write a \(\Strictstar\) directly (\cref{sec:policy-dsl}), but one usually arises in the middle of a planner sequence, between a \Designate{} and its eventual \Undesignate.
-\cref{sec:hardware} takes up why the two disciplines are kept apart, which turns out to be a question about hardware layout rather than about scheduling.
-
+% Issued before the section head so fig:designate lands on a page A.5
+% can reach, rather than after Appendix A has ended.
 \begin{figure*}[t]
   \centering
   \begin{subfigure}[t]{0.19\linewidth}
@@ -1685,15 +1588,33 @@ An operator may write a \(\Strictstar\) directly (\cref{sec:policy-dsl}), but on
   \label{fig:designate}
 \end{figure*}
 
+\subsection{\texorpdfstring{\(\Designate(\tau, \mathit{survivor})\)}{Designate}}\label{sec:designate}
+
+
+\(\tau : \mathit{path}\) is the path to the target subtree being wrapped, and \(\mathit{survivor} : \mathit{pol}\) is the designated-survivor policy that becomes the new \(\Strictstar\) node's low-priority arm.
+
+Say the presently running control is \(C\).
+Intuitively, \Designate{} replaces \(C@\tau\) in place with \(\Strictstar(C@\tau, \lceil \mathit{survivor} \rceil)\).
+It is the mechanism behind non-disruptive in-place replacement (\cref{fig:designate}).
+The \(\Strictstar\) node lets \survivor begin accepting new traffic on a low-priority arm, while the old subtree keeps draining, on a high-priority one.
+Once the old subtree is empty, \Undesignate{} removes it and promotes \survivor in its place.
+That is why the form exists: no single edit can swap one subtree for another without either dropping the old subtree's backlog or stalling the new arm, but the \(\Strictstar\) node lets both coexist for the length of a drain.
+
+\Designate{} installs a ranker that names \(\Strictstar\), and \Undesignate{} retires the node carrying it.
+A node's ranker records which discipline the node runs (\cref{sec:controls}), so both forms state their preconditions structurally, and no other form disturbs such a node.
+That node is visible at \pol-level as a \(\Strictstar\), which is what \(\lfloor \cdot \rfloor\) (\cref{sec:equivalences}) reports of it.
+An operator may write a \(\Strictstar\) directly, but one usually arises in the middle of a planner sequence, between a \Designate{} and its eventual \Undesignate.
+\cref{sec:hardware} takes up why the two disciplines are kept apart, which turns out to be a question about hardware layout rather than about scheduling.
+
+
 \paragraph{Definition}
 
 \(\csem{\Designate(\tau, \mathit{survivor})}(C)\) is defined when \(\tau\) resolves in \(C\), and when every flow \survivor serves is one that either nothing in \(C\) serves or that \(C@\tau\) itself serves.
-So \survivor may reuse the flows of the subtree it is replacing, and it may bring flows that are new to the whole tree, but it may not claim a flow that some other part of \(C\) is already serving.
-Reuse is the interesting case and the Note below takes it up.
-\cref{fig:designate} draws the target subtree as \tritext{oldcol} and the survivor as \tritext{newcol}, and below we call them the old and new arms.
+So \survivor may reuse the flows of the subtree it is replacing, and it may introduce new flows, but it may not claim a flow that some other part of \(C\) is already serving.
+\cref{fig:designate} draws the target subtree as \tritext{oldcol} and the survivor as \tritext{newcol}.
 Write \(M = C@\tau\) for the target, and let \(P_0\) be the number of packets buffered under it (\(P_0 = 3\) in \cref{fig:designate-before}).
 \Designate{} wraps the target and admits \survivor's flows at every ancestor on the way down.
-That walk is \Add's, with \survivor's flows in place of the new arm's.
+That walk is similar to that of \Add, with \survivor's flows in place of the new arm's.
 The two differ only at the target, since \Add{} appends an arm there while \Designate{} wraps the node it has reached.
 The transformer \(\mathtt{wrap}\) replaces \(M\) with a fresh \(\Strictstar\) node \(N\) over the two arms \([\,M,\ \lceil\mathit{survivor}\rceil\,]\), giving the old arm strict priority over the new arm:
 {\small
@@ -1709,12 +1630,9 @@ The transformer \(\mathtt{wrap}\) replaces \(M\) with a fresh \(\Strictstar\) no
 \end{array}
 \]
 }
-In the vocabulary of \cref{sec:controls}, \(\mathit{z}_N\) serves \survivor's flows at arm \(1\) and everything else the node serves at arm \(0\), and admits both.
 Its ranker names \(\Strictstar\) rather than \Strict, and \cref{sec:undesignate}'s \Undesignate{} later looks for that name.
-Arm \(0\) is \(M\) (\textsf{old}), unchanged down to its whole subtree and buffered packets; arm \(1\) is the freshly compiled \(\lceil\mathit{survivor}\rceil\) (\textsf{new}), initially empty.
-This is \cref{fig:designate-after}.
-\(N\)'s index-\pifo holds \(P_0\) entries for arm \(0\) and none for arm \(1\), one per packet buffered under \textsf{old}.
-That backlog therefore keeps popping through \(N\) ahead of any later arrival, unchanged, while \textsf{new} fills only as fresh traffic arrives (\cref{fig:designate-drain}).
+Arm \(0\) is \(M\) (\textsf{old}), unchanged down to its whole subtree and buffered packets; arm \(1\) is the freshly compiled \(\lceil\mathit{survivor}\rceil\) (\textsf{new}), initially empty (\cref{fig:designate-after}).
+\(N\)'s index-\pifo holds one entry per packet buffered under \textsf{old} and none for arm \(1\), so that backlog keeps popping through \(N\) ahead of any later arrival, unchanged, while \textsf{new} fills only as fresh traffic arrives (\cref{fig:designate-drain}).
 Because \(\mathtt{at}\) writes \(N\) back into the parent's slot \(k\), the parent's \(\mathit{z}.\mathit{meta}(k)\) is unchanged, so \(N\) is transparent to the parent.
 If \(\tau\) is empty the whole control becomes \(N\), with the old root as arm \(0\).
 
@@ -1724,12 +1642,7 @@ Like \(\csem{\Add}\), the form is a recursion on the path, and only its base cas
 \]
 Its recursive case is \(\csem{\Add}\)'s, carrying \(\mathtt{flows}(\mathit{survivor})\) rather than \(\mathtt{flows}(\mathit{arm})\) down toward \(\tau\).
 
-\paragraph{Note: Overlap between the old subtree and \survivor}
-
-Overlap of leaf labels between \(C@\tau\) and \survivor is explicitly permitted.
-The moment when \(\delta\) fires becomes the boundary between old traffic and new.
-Old traffic continues to drain from arm 0, which is \(C@\tau\) carried over; new traffic goes to arm 1.
-From that instant on, an arriving packet whose label appears in \(\lceil \mathit{survivor} \rceil\) is sent by \(N.\mathit{z}\) to slot 1, while the residual packets already under arm 0 drain on their existing \pifo entries.
+Overlap of leaf labels between \(C@\tau\) and \survivor is permitted, and the moment when \(\delta\) fires becomes the boundary between old traffic and new.
 The two arms thus stay operationally disjoint even when their label sets overlap.
 
 \paragraph{Pol-level reading}
@@ -1745,27 +1658,19 @@ The two arms thus stay operationally disjoint even when their label sets overlap
 \subsection{\texorpdfstring{\(\Undesignate(\tau)\)}{Undesignate}}\label{sec:undesignate}
 
 
-\(\tau : \mathit{path}\) targets the \(\Strictstar\) node to unwrap.
-\Undesignate{} is the structural inverse of \Designate.
-It drops a \(\Strictstar\) node whose arm 0 is empty, leaving arm 1 behind (the last step of \cref{fig:designate}).
+\Undesignate{} is the structural inverse of \Designate: it drops a \(\Strictstar\) node whose arm 0 is empty, leaving arm 1 behind (the last step of \cref{fig:designate}).
 Below we write \(N\) for that node and \(B\) for its surviving arm, both as controls, and \(|B|\) for the number of packets buffered under \(B\).
-
-\paragraph{Definition}
 
 \Undesignate{} is defined when \(C@\tau\)'s ranker names \(\Strictstar\), and when its arm 0 is empty.
 \(\mathtt{unwrap}\) returns arm 1 of the node, \(B\), with its subtree and contents unchanged; the node \(N = C@\tau\) and its empty arm-0 subtree are discarded.
-Since \(\mathtt{at}\) writes \(B\) back into the parent's slot \(k\), the parent's \(\mathit{z}.\mathit{meta}(k)\) is unchanged and \(B\) now hangs directly where \(N\) did:
+Since \(\mathtt{at}\) writes \(B\) back into the parent's slot \(k\), the parent's \(\mathit{z}.\mathit{meta}(k)\) is unchanged and \(B\) hangs directly where \(N\) did:
 \[
 \csem{\Undesignate(\tau)} = \mathtt{at}(\tau,\, \mathtt{unwrap}).
 \]
-
-\paragraph{Pol-level reading}
-
-\Undesignate{} collapses the wrapper and leaves its low arm behind:
+At \pol-level the wrapper collapses and its low arm, \(\lfloor B \rfloor\), is left behind:
 \[
 \psem{\Undesignate(\tau)} = \mathtt{at}(\tau,\; \Strictstar(\mathtt{hi}{:}\,a,\ \mathtt{lo}{:}\,b) \mapsto b).
 \]
-That arm is \(\lfloor B \rfloor\).
 The wrapper's own annotations go with it, and the surviving arm inherits the annotation the wrapper held at its parent.
 The empty-arm-0 precondition is operational and leaves no trace at \pol-level.
 
@@ -1806,55 +1711,6 @@ So \(\sim\)-related controls, which share shape and \zz outright, are equal when
 Thus, if \(C \sim C'\), then \(\lfloor C \rfloor = \lfloor C' \rfloor\).
 \end{enumerate}
 
-\paragraph{A gallery of the three equivalences}
-
-\Cref{sec:equivalences} defines \(\sim\) on controls and \(\eqR\) on policies.
-A third relation is convenient here: we write \(C \simR C'\) for the equivalence obtained by closing \(\sim\) under sibling permutations.
-Permuting a node's children renumbers the slots they sit in, so the parent's \pifo entries, its \slotstates, its \(\mathit{z}.\mathit{serves}\), and its \(\mathit{z}.\mathit{meta}\) are all renumbered to match.
-All three relations are shown by example in \cref{fig:equiv-gallery}, over a node running an abstract discipline \(P\) whose two arms carry per-arm metadata \(m_1\) and \(m_2\).
-
-\begin{figure}[t]
-\centering
-\begin{tabular}{c@{\hskip 2.2em}c}
-\begin{tikzpicture}[every node/.style={font=\scriptsize}]
-  \node (S) at (0,0.55) {$P$};
-  \draw (S) -- (-0.7,-0.2) node[midway,left,font=\tiny,inner sep=1pt]{$m_1$};
-  \draw (S) -- (0.7,-0.2) node[midway,right,font=\tiny,inner sep=1pt]{$m_2$};
-  \leaftri{flowA}{-0.7}{-0.2}{2}{0}
-  \leaftri{flowB}{0.7}{-0.2}{1}{0}
-\end{tikzpicture}
-&
-\begin{tikzpicture}[every node/.style={font=\scriptsize}]
-  \node (S) at (0,0.55) {$P$};
-  \draw (S) -- (-0.7,-0.2) node[midway,left,font=\tiny,inner sep=1pt]{$m_1$};
-  \draw (S) -- (0.7,-0.2) node[midway,right,font=\tiny,inner sep=1pt]{$m_2$};
-  \leaftri{flowA}{-0.7}{-0.2}{1}{0}
-  \leaftri{flowB}{0.7}{-0.2}{3}{0}
-\end{tikzpicture}
-\\[-2pt]
-(a) & (b)\\[10pt]
-\begin{tikzpicture}[every node/.style={font=\scriptsize}]
-  \node (S) at (0,0.55) {$P$};
-  \draw (S) -- (-0.7,-0.2) node[midway,left,font=\tiny,inner sep=1pt]{$m_2$};
-  \draw (S) -- (0.7,-0.2) node[midway,right,font=\tiny,inner sep=1pt]{$m_1$};
-  \leaftri{flowB}{-0.7}{-0.2}{1}{0}
-  \leaftri{flowA}{0.7}{-0.2}{2}{0}
-\end{tikzpicture}
-&
-\begin{tikzpicture}[every node/.style={font=\scriptsize}]
-  \node (S) at (0,0.55) {$P$};
-  \draw (S) -- (-0.7,-0.2) node[midway,left,font=\tiny,inner sep=1pt]{$m_2$};
-  \draw (S) -- (0.7,-0.2) node[midway,right,font=\tiny,inner sep=1pt]{$m_1$};
-  \leaftri{flowB}{-0.7}{-0.2}{2}{0}
-  \leaftri{flowA}{0.7}{-0.2}{1}{0}
-\end{tikzpicture}
-\\[-2pt]
-(c) & (d)\\
-\end{tabular}
-
-\caption{Controls running some discipline \(P\), whose per-arm metadata \(m_1\) and \(m_2\) are drawn from whatever set \(P\) declares; the two children are drawn in different colors so they can be tracked across reorderings, and each dot is a buffered packet. \((b)\) differs from \((a)\) only in its backlog, so \((a) \sim (b)\). \((c)\) reorders the arms but keeps \((a)\)'s backlog, so \(\lfloor a \rfloor \eqR \lfloor c \rfloor\). \((d)\) reorders the arms and otherwise differs from \((a)\) only in its backlog, so \((a) \simR (d)\).}
-\label{fig:equiv-gallery}
-\end{figure}
 
 
 \section{Proofs}\label{sec:per-form}
@@ -1864,6 +1720,7 @@ It proves both in one section rather than one section each.
 Neither \(\delta\) nor \(\csem{\delta}\) is recursive, so each theorem is a case analysis over the same six forms, and giving each theorem its own section would run that split twice and separate the checks that a single form owes.
 
 Each form owes three checks, and together the six sets of three prove the two theorems above.
+The Characterizations have content because each is proved against a \(\lfloor \cdot \rfloor\) fixed in advance, so they are six separate claims rather than six readings of one definition.
 Two of the checks feed \cref{thm:interplay}, and the third feeds \cref{thm:nondisruption}.
 Throughout, we write \(C\) for the pre-edit control and \(C'\) for the post-edit control, and \(p = \lfloor C \rfloor\), \(p' = \lfloor C' \rfloor\) for the policies they realize.
 All three checks assume \(\csem{\delta}(C)\) is defined.
@@ -1879,7 +1736,7 @@ We call the nodes and fields that a form touches its \emph{footprint}, and the c
 Where a form's footprint does hold one, we argue directly that the \pop{} sequence is unchanged.
 \end{itemize}
 
-Fifteen of the eighteen checks are immediate from the rules of \cref{sec:edit-semantics}, and run to a sentence or two each: they name the fields that a rule writes and observe that the property at issue does not depend on them.
+Fifteen of the eighteen checks are immediate from the rules of \cref{sec:edit-semantics}: they name the fields that a rule writes and observe that the property at issue does not depend on them.
 The other three take an argument of their own: \Add's Characterization, and Non-disruption for \Designate{} and \Undesignate.
 The six subsections below give all eighteen, in the order \cref{fig:delta-grammar} lists the forms.
 
@@ -1956,7 +1813,7 @@ We argue directly that the \pop{} sequence is unchanged.
 Every in-flight packet lies under arm 0, which is \(C@\tau\) carried over unchanged, so its own entries are untouched.
 If \(P_0 > 0\), every entry in \(N.\mathit{pifo}\) is slot \(0\), so any \pop{} reaching \(N\) descends into arm 0 and returns exactly what it would have returned before.
 If \(P_0 = 0\), then \(\vdash C\) means no \pop{} ever reaches \(N\).
-Arm 1 sees traffic only on a future \push{}, so no buffered packet is dropped, reordered, or re-ranked.
+Arm 1 sees traffic only on a future \push{}, so no buffered packet is affected.
 
 \paragraph{The same checks under the survivor link}
 The checks above are about \(\mathtt{wrap}\)'s node (\cref{sec:designate}), a real \(\Strictstar\) with two real children and a \pifo of its own, so \cref{sec:controls} applies to it word for word.
@@ -1977,105 +1834,11 @@ The only entries dropped are \(N\)'s slot-\(1\) entries, and with arm 0 empty ev
 Eliding \(N\) removes that redundant hop and returns the same packet, and no entry inside \(B\) moves.
 
 
-\paragraph{Taking stock}
-
-That is all six forms, and together they discharge \cref{thm:interplay} and \cref{thm:nondisruption}.
-The Characterizations have content because each was proved against a \(\lfloor \cdot \rfloor\) fixed in advance, so they are six separate claims rather than six readings of one definition.
-
-\paragraph{Note: The check that is deliberately absent}
-
-A fourth check might be expected, and is not there.
-Nothing has to be proved about the \stt of the nodes an edit leaves alone, because every \(\csem{\delta}\) rule names each field of the node it produces, and \(\mathtt{at}(\pi, g)\) copies every off-path node by definition.
-What state survives an edit is therefore read off \cref{sec:edit-semantics} rather than argued for.
 
 
 
-\section{The Planner's Case Analysis in Full}\label{app:planner-emits}
-
-This appendix expands \cref{sec:planner}.
-
-The planner has two parts: a top-level pass over \((p_1, p_2)\) as whole trees, and a \emph{per-level comparator} that the pass defers to.
-Whatever the comparator emits is lifted back to the right depth by prepending the slot indices the recursion descended through.
-
-Both parts compare policies up to \(\eqR\), by comparing canonical representatives.
-Each \(\eqR\)-class has one under any fixed ordering of the arms at a node (\cref{sec:equivalences}), and we call the pass that computes it \emph{normalization}.
-The planner normalizes both sides before it compares them, the operator's request and the policy it reads off the running control.
-The read-off is not canonical on its own, since an edit may splice a new arm into whatever slot the control has free rather than into the slot normalization would have chosen.
-So the planner keeps the permutation that normalizing the read-off applied, and the slot indices it prepends name slots of the running control rather than of the normalized term.
-
-\paragraph{The top-level pass}
-
-The pass tries two cases in order and stops at the first match.
-
-\begin{enumerate}
-\item \(p_1 = p_2\). Emit \([\,]\).
-The test is literal equality on the normalized \pol terms, so two \(\eqR\)-equivalent policies arrive here as identical terms.
-The live control is already serving the requested policy and there is nothing to install.
-
-\item Otherwise. Hand \((p_1, p_2)\) to the per-level comparator.
-\end{enumerate}
-
-\paragraph{What the comparator emits}
-
-The comparator compares the roots of \(p_1\) and \(p_2\).
-If the two roots run different disciplines, or are leaves carrying different flows, it emits a \Replace{}, the always-available idiom of \cref{sec:sequences}.
-If the roots agree, the task reduces to \emph{pairing up the two child lists}, and each pairing yields one of four kinds of edit.
-An arm of \(p_2\) with no partner in \(p_1\) is a fresh \Add{}; an arm of \(p_1\) with no partner in \(p_2\) is a \Retire{}.
-A matched pair whose two arms are identical is set aside and contributes nothing.
-A matched pair whose arms agree but whose slot metadata differs contributes a lone \ChangeMeta{}.
-A matched pair whose arms differ starts a recursion into the pair to localize the change further, with a \ChangeMeta{} beside it when the metadata differs too.
-
-Where that \ChangeMeta{} sits depends on what the recursion does to the slot.
-Ranks freeze at \push{} time (\cref{sec:nondisruption}), so a \ChangeMeta{} governs only the packets that arrive after it fires.
-When the recursion replaces the whole slot the \ChangeMeta{} goes first, since \Designate{} hands the slot to the survivor at once and the \Quiesce{} silences the old arm, so everything the slot accepts from that instant is traffic the new metadatum was written for, while the old subtree drains on ranks no \ChangeMeta{} rewrites.
-When the recursion works strictly below the slot the \ChangeMeta{} goes last, since until the drain completes the slot goes on serving arms that are neither arriving nor departing, and re-tuning them early would hold them at the new metadatum for as long as the drain runs.
-
-\paragraph{Pairing the child lists}
-
-The comparator pairs the arms by the tightest strategy that applies, dropping to a more general one only when the tighter fails.
-All three strategies lean on normalization.
-Arms that genuinely correspond appear in the same relative order on both sides, which is the property that lets the positional strategies pair by position at all.
-
-\textbf{By slot, at equal arity.}
-When the child lists have the same length, the comparator pairs arm \(i\) with arm \(i\).
-A slot whose arm and metadata both agree contributes nothing, and a slot whose metadata alone differs contributes a \ChangeMeta{}.
-A slot whose arm differs recurses: it emits whatever the recursion into that arm localizes, and, when the slot's metadata also changed, a \ChangeMeta{} placed as above.
-One shape is caught before the slot walk.
-At \Strict{} or \WFQ{}, if \(p_1\) and \(p_2\) hold the same arms in a different order, the difference is a pure metadata reshuffle, such as a \Strict{} priority swap that normalization's rank ordering presents as a reordering.
-The comparator then emits one \ChangeMeta{} per slot whose metadata changed.
-
-\textbf{By sub-sequence, at unequal arity.}
-When one child list embeds in the other as an in-order sub-sequence, the surplus arms are the whole of the change.
-Normalization has already aligned the shared arms in a common order, so their appearing in order is the signal that none of them moved or changed and only the extra arms are new or gone.
-If \(p_1\)'s arms are an in-order sub-sequence of \(p_2\)'s, each surplus arm of \(p_2\) is a fresh \Add{}.
-\cref{sec:add}'s leaf-disjointness precondition holds automatically, since a surplus arm's leaves are leaves of \(p_2\) absent from \(p_1\) and hence disjoint by \cref{sec:policy-dsl}'s leaf-partition validity.
-If instead \(p_2\)'s arms are an in-order sub-sequence of \(p_1\)'s, each surplus arm of \(p_1\) \Retire{}s (\cref{sec:sequences}).
-Either way, a stable arm whose metadata changed picks up a \ChangeMeta{} of its own.
-Alongside \Add{}s its position is immaterial, since no step in that emission waits on a guard.
-Alongside \Retire{}s it goes first, since it shares nothing with the drains and would otherwise wait behind them.
-
-\textbf{By shared label, in general.}
-When neither list embeds in the other, the comparator pairs arms by the flows they carry rather than by position.
-A leaf label identifies a unique flow across the whole policy, by \cref{sec:policy-dsl}'s leaf-partition validity.
-A label shared between an arm of \(p_1\) and an arm of \(p_2\) is therefore evidence that one arm changed in place, while an arm whose labels appear on no opposing arm is fresh or vanishing.
-This \emph{label-overlap walk} greedily pairs each \(p_1\) arm with the unique \(p_2\) arm with which it shares a label, then recurses on the pair; unpaired \(p_1\) arms are \Retire{}d and unpaired \(p_2\) arms are \Add{}ed.
-The walk takes the first alignment that satisfies the label constraint, with no notion of cost; if no shared label yields even one pairing, it fails and the comparator gives up with a slot-level \Replace{}.
-The walk is worth running even at equal arity.
-The slot strategy pairs strictly by position, so an arm that has both moved to a new slot \emph{and} changed its subtree is compared against whatever now occupies its old slot, and the change reads as two unrelated edits rather than one.
-The label walk instead follows the shared flow to the arm's new slot and sees the single change, so the comparator runs it alongside the slot walk and, whenever it exposes such a cross-slot pairing, takes it instead.
-
-Consider an example over an abstract discipline \(P\) whose arms carry per-arm metadata, with a nested discipline \(Q\) (the exact disciplines are immaterial to the walk).
-We write each arm's metadata after an \texttt{@}.
-
-\begin{verbatim}
-p1 = P(drive@m1, gmail@m2)
-p2 = P(drive@m1, slack@m3, Q(gmail, x)@m4)
-\end{verbatim}
-
-\cref{fig:label-overlap-example} shows \(p_1\) and \(p_2\), then the two policies the running control passes through once the planner's sequence fires: a transient, and the tree it settles into.
-The settled tree is not \(p_2\) literally but a sibling-reordered representative of its \(\eqR\)-class.
-The transient is not \(\eqR\) to \(p_2\) at all, and becomes so only once it drains and collapses.
-
+% Issued before the section head so fig:label-overlap-example lands on the
+% page app:planner-emits starts on rather than the one after it.
 \begin{figure*}[t]
   \centering
   \begin{subfigure}[t]{0.17\linewidth}
@@ -2160,70 +1923,77 @@ The transient is not \(\eqR\) to \(p_2\) at all, and becomes so only once it dra
   \label{fig:label-overlap-example}
 \end{figure*}
 
+\section{The Planner's Case Analysis in Full}\label{app:planner-emits}
+
+This appendix expands \cref{sec:planner}.
+The planner has two parts: a top-level pass over \((p_1, p_2)\) as whole trees, which emits nothing if they are already equal and otherwise defers to a \emph{per-level comparator}; and the comparator itself, whose emissions are lifted back to the right depth by prepending the slot indices the recursion descended through.
+Both parts compare policies up to \(\eqR\) by first normalizing each side, and the planner keeps the permutation that normalizing the read-off applied, so the slot indices it prepends name slots of the running control rather than of the normalized term.
+
+\paragraph{What the comparator emits}
+
+The comparator compares the roots of \(p_1\) and \(p_2\).
+If the two roots run different disciplines, or are leaves carrying different flows, it emits a \Replace{} (\cref{sec:sequences}).
+If the roots agree, the task reduces to \emph{pairing up the two child lists}, and each pairing yields one of four kinds of edit.
+An arm of \(p_2\) with no partner in \(p_1\) is a fresh \Add{}; an arm of \(p_1\) with no partner in \(p_2\) is a \Retire{}.
+A matched pair whose two arms are identical is set aside and contributes nothing.
+A matched pair whose arms agree but whose slot metadata differs contributes a lone \ChangeMeta{}.
+A matched pair whose arms differ starts a recursion into the pair to localize the change further, with a \ChangeMeta{} beside it when the metadata differs too.
+
+Where that \ChangeMeta{} sits depends on what the recursion does to the slot.
+Ranks freeze at \push{} time (\cref{sec:nondisruption}), so a \ChangeMeta{} governs only the packets that arrive after it fires.
+When the recursion replaces the whole slot the \ChangeMeta{} goes first, since \Designate{} hands the slot to the survivor at once and the \Quiesce{} silences the old arm, so everything the slot accepts from that instant is traffic the new metadatum was written for, while the old subtree drains on ranks no \ChangeMeta{} rewrites.
+When the recursion works strictly below the slot it goes last, since until the drain completes the slot goes on serving arms that are neither arriving nor departing, and re-tuning them early would hold them at the new metadatum for as long as the drain runs.
+The same rule places a \ChangeMeta{} that travels beside \Retire{}s: it goes first, sharing nothing with the drains it would otherwise wait behind.
+
+\paragraph{Pairing the child lists}
+
+The comparator pairs the arms by the tightest strategy that applies, dropping to a more general one only when the tighter fails.
+All three lean on normalization, which puts arms that genuinely correspond into the same relative order on both sides.
+
+\textbf{By slot, at equal arity.}
+When the child lists have the same length, the comparator pairs arm \(i\) with arm \(i\): a slot whose arm and metadata both agree contributes nothing, one whose metadata alone differs contributes a \ChangeMeta{}, and one whose arm differs recurses.
+At \Strict{} or \WFQ{}, the same arms appearing in a different order are a pure metadata reshuffle, such as a priority swap that normalization's rank ordering presents as a reordering, and the comparator emits one \ChangeMeta{} per slot whose metadata changed.
+
+\textbf{By sub-sequence, at unequal arity.}
+When one child list embeds in the other as an in-order sub-sequence, the surplus arms are the whole of the change: each surplus arm of \(p_2\) is a fresh \Add{}, and each surplus arm of \(p_1\) \Retire{}s.
+\cref{sec:add}'s leaf-disjointness precondition holds automatically, since a surplus arm's leaves are leaves of \(p_2\) absent from \(p_1\) and hence disjoint by \cref{sec:policy-dsl}'s leaf-partition validity.
+
+\textbf{By shared label, in general.}
+When neither list embeds in the other, the comparator pairs arms by the flows they carry rather than by position.
+A leaf label identifies a unique flow across the whole policy (\cref{sec:policy-dsl}), so a label shared between an arm of \(p_1\) and an arm of \(p_2\) is evidence that one arm changed in place, while an arm whose labels appear on no opposing arm is fresh or vanishing.
+This \emph{label-overlap walk} greedily pairs each \(p_1\) arm with the unique \(p_2\) arm with which it shares a label and recurses on the pair; unpaired \(p_1\) (resp. \(p_2\)) arms are \Retire{}d (resp. \Add{}ed).
+It takes the first alignment that satisfies the label constraint, with no notion of cost, and if no shared label yields even one pairing it gives up with a slot-level \Replace{}.
+The walk is worth running even at equal arity, since the slot strategy pairs strictly by position and would read an arm that has both moved slot \emph{and} changed its subtree as two unrelated edits rather than one.
+
+Consider an example over an abstract discipline \(P\) whose arms carry per-arm metadata, with a nested discipline \(Q\), writing each arm's metadata after an \texttt{@}:
+
+\begin{verbatim}
+p1 = P(drive@m1, gmail@m2)
+p2 = P(drive@m1, slack@m3, Q(gmail, x)@m4)
+\end{verbatim}
+
 Here \textsf{drive} is unchanged, \textsf{gmail} has grown into a nested \(Q\) over itself and a fresh flow \(x\), and \textsf{slack} is new.
-Neither positional strategy applies.
-The lengths differ, and the sub-sequence check fails because \(g\) in \(p_1\) equals no arm of \(p_2\), so without the label-overlap walk the planner would emit a \Replace{} of the whole root \(P\).
-The trees do share structure.
-\(g\) (\textsf{gmail}) in \(p_1\) and the nested \(Q\) in \(p_2\) share the label \textsf{gmail}, \textsf{drive} matches on both sides, and \textsf{slack} is the only arm whose labels appear nowhere in \(p_1\).
-The walk reads this off directly, pairing \textsf{drive} with \textsf{drive} (no edit) and \textsf{gmail} with the nested \(Q\) (recurse), and treating \textsf{slack} as a pure add.
-The emission is three steps: an \Add{} of \textsf{slack}, which the compiler can handle as a pure append; a \ChangeMeta{} that re-tunes \textsf{gmail}'s slot to \(m_4\); and a \Replace{} at that slot.
+Neither positional strategy applies: the lengths differ, and the sub-sequence check fails because \(g\) in \(p_1\) equals no arm of \(p_2\), so without the label-overlap walk the planner would emit a \Replace{} of the whole root \(P\).
+The walk instead pairs \textsf{drive} with \textsf{drive} (no edit) and \textsf{gmail} with the nested \(Q\) (recurse), and treats \textsf{slack} as a pure add.
+The emission is three steps: an \Add{} of \textsf{slack}, a \ChangeMeta{} re-tuning \textsf{gmail}'s slot to \(m_4\), and a \Replace{} at that slot.
 
-The metadata moves in two different ways as this fires.
-\textsf{slack}'s requested metadatum \(m_3\) is carried by the \Add.
-It is the metadatum the form carries (\cref{sec:add}), so the new arm lands already carrying \(m_3\).
-The changing arm is handled differently, since its metadatum moves from \(m_2\) to \(m_4\).
-Nothing in the \Replace{} can carry that change, so the slot needs a \ChangeMeta{} of its own, and it goes in front, since the \Replace{} takes the whole slot.
-Had it gone last, every packet arriving for the incoming \(Q\) during the drain would stay ranked under \(m_2\) for the rest of its life.
-The slot therefore carries \(m_4\) throughout the transient, which is what \cref{fig:label-overlap-transient} shows, and \Designate{} itself still leaves the slot's metadatum alone (\cref{sec:designate}).
-The example exhibits both behaviors: \(m_1\) and \(m_3\) come through untouched, while \(m_2\) is explicitly re-tuned to \(m_4\).
-
-Panels (c) and (d) of \cref{fig:label-overlap-example} show the two policies the control passes through: first the transient \(\Strictstar\) that drains the old \textsf{gmail} leaf beside the incoming \(Q\), then the settled tree once that drain completes.
+The two metadata moves travel differently.
+\textsf{slack}'s \(m_3\) is carried by the \Add{} itself (\cref{sec:add}), so the new arm lands already carrying it, while nothing in the \Replace{} can carry \textsf{gmail}'s move from \(m_2\) to \(m_4\), so that slot needs a \ChangeMeta{} of its own.
+It goes in front by the rule above: had it gone last, every packet arriving for the incoming \(Q\) during the drain would stay ranked under \(m_2\) for the rest of its life.
+\cref{fig:label-overlap-transient,fig:label-overlap-settled} show the two policies the control passes through, the transient \(\Strictstar\) that drains the old \textsf{gmail} leaf beside the incoming \(Q\), and the settled tree once that drain completes.
 In the settled tree \textsf{slack} sits beside the rebuilt \textsf{gmail} subtree in an order that does not match \(p_2\) literally, but sibling order carries no semantics (\cref{sec:policy-dsl}), so the reordering is invisible to any observer.
-
-\paragraph{Indexing a mixed emission}
-
-When a comparison yields \Add{}s, \Retire{}s, and recursions at once, as the label-overlap walk can, the planner uses the reorder freedom of \cref{sec:policy-dsl} to keep the indexing trivial.
-The \Add{}s are appended at the parent's tail.
-The \Retire{}s fire at their original \(p_1\) indices in descending order, so a higher-index drain does not shift the lower indices still pending.
-Each matched-pair recursion lands at its position among the matches, which is also its slot once the \Retire{}s drain.
-Issuing the \Add{}s first is deliberate: an \Add{} is instantaneous while a \Retire{} waits for its subtree to drain, so the new arms begin carrying traffic immediately instead of waiting on the retirements.
-A matched pair whose arms agree and whose metadata alone moved is issued first for the same reason, since its \ChangeMeta{} shares nothing with any of the drains and would otherwise wait behind them.
-Such a step names the arm's index before the \Retire{}s rather than after, since that is where the arm sits when it fires.
-
-\paragraph{Where the descent localizes the difference}
-
-Every recursion descends through a slot where the two trees agree or where the label-overlap walk has paired them.
-So by the time the per-level comparator gives up and emits a \Replace{} at depth \(k\), every shallower level has already matched a tight case.
-The \Replace{} lands at the deepest slot to which the planner could isolate the difference, leaving every ancestor's other subtrees running undisturbed.
 The slot-level \Replace{} is the idiom of \cref{sec:sequences} with a non-empty path: it wraps only the slot's subtree, quiesces only that subtree, and rewires only the parent edge into it.
-The worst case is the root-level \(\Replace([], p_2)\) of \cref{sec:sequences}, reached only when the per-level comparator gives up at the root with no recursive descent.
 
 
+% Issued before the section head so fig:lowering lands on the page
+% app:lowering starts on rather than the one after it.
+\begin{figure*}[t]
+\footnotesize
 
-\section{Lowering Policy Edits}\label{app:lowering}
 
-This appendix lowers all six forms of \(\delta\) to the ISA of \cref{sec:hw-isa}, in the order \cref{fig:delta-grammar} lists them.
-\Add{} comes first, so that the six can be read together; \cref{sec:hw-isa} gives that same lowering in prose.
-
-\paragraph{Notation}
-
-A tree position and the PIFO sitting at it are different things, so each lowering binds a name to the PIFO that the form targets, and speaks of that PIFO thereafter.
-Queries against a PIFO \texttt{v}, its \texttt{arity(v)} and \texttt{discipline(v)}, are read off the planner's model of the tree as it stands at that point in the sequence, and a parameter an opcode leaves unmentioned is \texttt{v}'s value there.
-\texttt{spawn}'s elided \texttt{pe} argument is the PE at \texttt{v}'s depth (\cref{sec:hw-substrate}).
-
-Two notations recur.
-\texttt{foreach x in S} emits its body once per \texttt{x}, and \texttt{walk(op, C, f)} emits \texttt{op(v, f, \ldots)} at each \(v \in C\), reading positional remainders such as \texttt{map}'s routing index off that same model.
-Of the queries, \texttt{flows(v)} is the set of flows admitted beneath \texttt{v}, and \texttt{chain(f)} runs from \texttt{port\_root} to the leaf admitting \texttt{f}, with \texttt{internals(f)} that chain minus the leaf.
-For a compiled subtree \texttt{T}, \texttt{nodes(T)} is its PIFOs and \texttt{root(T)} its root, and \texttt{layout(T)} spawns and configures all of \texttt{T}, leaving the parent-side \texttt{adopt} of \(\mathtt{root(T)}\) to the caller.
-
-We write \pth for the form's path argument, \texttt{parent} for the PIFO at the position above it, and \texttt{k} for its index at that PIFO.
-For \(\mathit{path} = [\,]\), \texttt{parent} is \texttt{port\_root} and \texttt{k} is \texttt{port\_step}.
-A switch with \(P\) output ports has \(P\) separate trees, and each is wrapped at the ISA in a reserved 1-arm PIFO \texttt{port\_root} whose sole child, reached through the index \texttt{port\_step}, is the actual tree root.
-Three of the forms below are written with their argument split as \(\pi \mathbin{+\!\!+} [k]\) rather than as \pth, because their lowerings address the parent's slot rather than the node itself, and so need \texttt{k} by name.
-
-\subsection{\texorpdfstring{\(\Add(\mathit{path}, D, \mathit{arm}, m)\)}{Add}}\label{sec:lower-add}
-
-\begin{Verbatim}
+\noindent\begin{minipage}[t]{0.47\linewidth}
+\(\Add(\mathit{path}, D, \mathit{arm}, m)\)
+\begin{Verbatim}[fontsize=\footnotesize]
 v := PIFO at path
 n := arity(v)
 layout(arm)
@@ -2233,40 +2003,53 @@ foreach f in flows(arm):
     walk(assoc, chain(f), f)
     walk(map,   internals(f), f)
 \end{Verbatim}
-The new subtree occupies \texttt{v}'s rightmost slot (index \texttt{n}), so existing children's indices are undisturbed.
-The \texttt{adopt} creates that slot and the \texttt{set\_arm\_meta} initializes it, which together are the lowering's counterpart of \(\mathit{init\_slot\_state}_{D}\) in \cref{sec:add}.
-The \texttt{assoc} walk has every PIFO from the port root down to the new leaf begin accepting \texttt{f}, and the \texttt{map} walk records at each interior PIFO of that chain the index carrying \texttt{f} onward.
-\Add's leaf-disjointness precondition (\cref{sec:add}) means that no PIFO on a chain already routes \texttt{f}, so neither walk overwrites a live entry.
-
-\subsection{\texorpdfstring{\(\ChangeMeta(\pi \mathbin{+\!\!+} [k], D, m)\)}{ChangeMeta}}\label{sec:lower-changemeta}
-
-\begin{Verbatim}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.47\linewidth}
+\(\ChangeMeta(\pi \mathbin{+\!\!+} [k], D, m)\)
+\begin{Verbatim}[fontsize=\footnotesize]
 set_arm_meta(parent, k, m)
 \end{Verbatim}
 
-\subsection{\texorpdfstring{\(\Quiesce(\mathit{path})\)}{Quiesce}}\label{sec:lower-quiesce}
-
-\begin{Verbatim}
+\medskip
+\(\Quiesce(\mathit{path})\)
+\begin{Verbatim}[fontsize=\footnotesize]
 v := PIFO at path
 foreach f in flows(v):
     walk(deassoc, chain(f), f)
 \end{Verbatim}
-\Quiesce{}'s wide reach, covering the root-to-\pth chain along with the whole subtree under \texttt{v}, is forced by \cref{sec:policy-dsl}'s parallel push.
-Every node on a packet's path mints its own routing index independently, so dropping \texttt{f} at only some of those nodes would leave the rest minting stray indices, and the tree malformed.
-\Quiesce{} does not issue \texttt{unmap}.
-A silenced flow's Map entries \emph{must outlive the silencing} so that buffered packets can be popped.
-\Remove{} pairs \texttt{emancipate} with \texttt{unmap} precisely because it fires after the drain, when there is no longer any in-flight traffic to preserve.
-A \Quiesce{} that fires in the middle of a \Replace, on the doomed arm of a \(\Strictstar\), restricts its deassoc walk to loser-only flows, since \Designate{} routed the shared flows to the survivor at commit time (\cref{sec:designate}), and de-associating them here would silence live traffic on the survivor.
+\end{minipage}
 
-\subsection{\texorpdfstring{\(\Remove(\pi \mathbin{+\!\!+} [k])\)}{Remove}}\label{sec:lower-remove}
+\medskip
 
-\Remove{} is \Add{} run backwards.
-An \texttt{emancipate} at \texttt{parent}'s index \texttt{k} detaches the arm, an \texttt{unmap} walk over \(\mathtt{internals(f)}\) for each \(f \in \mathtt{flows(v)}\) forgets its routing, and a \texttt{gc} at every PIFO of the departing subtree releases the PE slots.
-The \(\sigma_k\) renumbering of \cref{sec:remove} has no counterpart here, since a child is reached by an opaque per-edge index that \texttt{parent} minted when it adopted that child, so dropping one child leaves every sibling's index as it was.
+\noindent\begin{minipage}[t]{0.47\linewidth}
+\(\Remove(\pi \mathbin{+\!\!+} [k])\)
+\begin{Verbatim}[fontsize=\footnotesize]
+v := PIFO at path
+emancipate(k, parent)
+foreach f in flows(v):
+    walk(unmap, internals(f), f)
+foreach u in nodes(v):
+    gc(u)
+\end{Verbatim}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.47\linewidth}
+\(\Undesignate(\pi \mathbin{+\!\!+} [k])\)
+\begin{Verbatim}[fontsize=\footnotesize]
+loser := PIFO at path
+surv  := survivor(loser)
+undesignate(loser)
+foreach f in flows(loser) \ flows(surv):
+    walk(unmap, internals(f), f)
+foreach u in nodes(loser):
+    gc(u)
+\end{Verbatim}
+\end{minipage}
 
-\subsection{\texorpdfstring{\(\Designate(\mathit{path}, \mathit{survivor})\)}{Designate}}\label{sec:lower-designate}
+\medskip
 
-\begin{Verbatim}
+\noindent\begin{minipage}[t]{0.47\linewidth}
+\(\Designate(\mathit{path}, \mathit{survivor})\)
+\begin{Verbatim}[fontsize=\footnotesize]
 loser := PIFO at path
 surv  := root(survivor)
 layout(survivor)
@@ -2277,26 +2060,43 @@ foreach f in flows(surv):
     walk(assoc, chain(f), f)
     walk(map,   internals(f), f)
 \end{Verbatim}
-This is \Add{}'s lowering, with \texttt{designate} in place of \texttt{adopt} and one walk in front.
-No PIFO is spawned for the \(\Strictstar\) node, and \texttt{loser}'s parent is not touched.
-\texttt{designate} points \texttt{loser}'s designated-survivor link at \texttt{surv} (\cref{sec:hw-survivor}).
-The two walks are the whole of the traffic handover.
+\end{minipage}\hfill\mbox{}
 
-The deassoc walk hands the shared flows over to the survivor.
-Both subtrees can serve a shared flow, and the two roots occupy one position, so the losing arm must stop admitting it.
-The deassociation runs before the assoc walk because \(\mathtt{chain(f)}\) resolves through \texttt{loser} only while \texttt{loser} still admits \texttt{f}.
+\caption{Lowering the six forms of \(\delta\) to the ISA of \cref{tab:isa-opcodes}.}
+\label{fig:lowering}
+\end{figure*}
 
-The assoc and map walks are the same as for \Add{}.
-For a shared flow the chain above the two roots is already in place and the walks rewrite it to no effect.
-Flows in \(\mathtt{flows(loser)} \setminus \mathtt{flows(surv)}\) are left alone entirely, and go on reaching \texttt{loser}'s own subtree, matching \cref{sec:designate}'s rule that loser-only labels drain on arm 0.
-Silencing those, when the operator ultimately wants it, comes from the \Quiesce{} step of the surrounding \Replace{} idiom (\cref{sec:sequences}), not from \Designate.
+\section{Lowering Policy Edits}\label{app:lowering}
 
-\subsection{\texorpdfstring{\(\Undesignate(\pi \mathbin{+\!\!+} [k])\)}{Undesignate}}\label{sec:lower-undesignate}
+\cref{fig:lowering} lowers all six forms of \(\delta\) to the ISA of \cref{sec:hw-isa}, in the order \cref{fig:delta-grammar} lists them, and \cref{sec:hw-isa} walks through the \Add{} case in prose.
 
-\Undesignate{} is likewise \Designate{} run backwards.
-A single \texttt{undesignate(loser)} retargets \texttt{parent}'s index \texttt{k} from \texttt{loser} to \texttt{surv}, the flows in \(\mathtt{flows(loser)} \setminus \mathtt{flows(surv)}\) are unmapped along their internals, and \texttt{loser}'s PIFOs are released.
-Reusing \texttt{k} preserves \texttt{parent}'s per-arm metadata for that slot, so the survivor inherits the annotation that the doomed subtree held.
-The shared flows are deliberately not unmapped, since they serve \texttt{surv} now.
+Each lowering binds \texttt{v} to the PIFO the form targets, and writes \texttt{parent} for the PIFO above \pth and \texttt{k} for its index there.
+For \(\mathit{path} = [\,]\) those two are \texttt{port\_root} and \texttt{port\_step}, naming the reserved 1-arm PIFO that wraps each of a switch's \(P\) per-port trees.
+Queries are read off the planner's model of the tree as it stands at that point in the sequence, and a parameter an opcode leaves unmentioned is \texttt{v}'s value there; \texttt{spawn}'s elided \texttt{pe} argument is the PE at \texttt{v}'s depth (\cref{sec:hw-substrate}).
+\texttt{foreach x in S} emits its body once per \texttt{x}, and \texttt{walk(op, C, f)} emits \texttt{op(v, f, \ldots)} at each \texttt{v} in \texttt{C}.
+
+Of the queries, \texttt{flows(v)} is the set of flows admitted beneath \texttt{v}, and on flow sets \texttt{\&} is intersection and \texttt{\textbackslash} difference.
+\texttt{chain(f)} runs from \texttt{port\_root} to the leaf admitting \texttt{f}, and \texttt{internals(f)} is that chain minus the leaf.
+\texttt{survivor(v)} is \texttt{v}'s designated survivor.
+For a compiled subtree \texttt{T}, \texttt{nodes(T)} is its PIFOs and \texttt{root(T)} its root, and \texttt{layout(T)} spawns and configures all of \texttt{T}, leaving the parent-side \texttt{adopt} to the caller.
+
+The rest of this appendix says only what the emissions themselves cannot.
+
+
+\Add{}'s new subtree occupies \texttt{v}'s rightmost slot, so existing children's indices are undisturbed, and its leaf-disjointness precondition (\cref{sec:add}) means no PIFO on a chain already routes \texttt{f}, so neither walk overwrites a live entry.
+\Remove{} is \Add{} run backwards.
+The \(\sigma_k\) renumbering of \cref{sec:remove} has no counterpart, since a child is reached by an opaque per-edge index that \texttt{parent} minted when it adopted that child, so dropping a child leaves its siblings untouched.
+
+\Quiesce's wide reach, covering the root-to-\pth chain along with the whole subtree under \texttt{v}, is forced by \cref{sec:policy-dsl}: every node on a packet's path mints its own routing index independently, so dropping \texttt{f} at only some of them would leave the rest minting stray indices, and the tree malformed.
+\Quiesce{} does not issue \texttt{unmap}.
+A silenced flow's Map entries \emph{must outlive the silencing} so that buffered packets can be popped, and \Remove{} pairs \texttt{emancipate} with \texttt{unmap} precisely because it fires after the drain, when there is no longer any in-flight traffic to preserve.
+A \Quiesce{} that fires in the middle of a \Replace, on the doomed arm of a \(\Strictstar\), restricts its deassoc walk to loser-only flows, since \Designate{} routed the shared flows to the survivor at commit time (\cref{sec:designate}), and de-associating them here would silence live traffic on the survivor.
+
+\Designate{} is \Add{}'s lowering with \texttt{designate} in place of \texttt{adopt} and one walk in front; no PIFO is spawned for the \(\Strictstar\) node, and \texttt{loser}'s parent is not touched.
+Its deassoc walk hands the shared flows over to the survivor, and runs first because \(\mathtt{chain(f)}\) resolves through \texttt{loser} only while \texttt{loser} still admits \texttt{f}.
+Flows in \(\mathtt{flows(loser)} \setminus \mathtt{flows(surv)}\) are left alone and go on reaching \texttt{loser}'s own subtree, matching \cref{sec:designate}'s rule that loser-only labels drain on arm 0; silencing those, when the operator ultimately wants it, comes from the \Quiesce{} step of the surrounding \Replace{} idiom (\cref{sec:sequences}).
+\Undesignate{} is likewise \Designate{} run backwards, and reusing \texttt{k} preserves \texttt{parent}'s per-arm metadata for that slot, so the survivor inherits the annotation the doomed subtree held.
+Its shared flows are deliberately not unmapped, since they serve \texttt{surv} now.
 
 \section{Inside the Transitional Interval}\label{app:ptemp}
 
