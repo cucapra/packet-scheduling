@@ -2,6 +2,8 @@
 % Encoding: red is what Rio actually does, black is the pol-level narration of it,
 % dashed is the route not taken, and shading is freshly built material.
 \definecolor{actcol}{HTML}{D55E00}
+% Gray parenthetical pointers into the paper. \ref keeps the numbers honest.
+\newcommand{\secptr}[1]{\textup{\textcolor{black!55}{(\S\ref{#1})}}}
 \begin{figure*}[t]
 \centering
   \begin{tikzpicture}[
@@ -73,37 +75,41 @@
   \end{tikzpicture}};
 
   % ===== headings: named policies are the ones an operator wrote =====
-  \node[hd] at (P1.north) {\(p_1\)};
+  \node[hd] at (P1.north) {\(p_1\)\,\secptr{sec:model}};
   \node[hd] at (P2.north) {\(p_\text{temp}\)};
   \node[hd] at (P3.north) {\(p_2\)};
 
   % ============================ controls ============================
   \node[ctlbox] (C1)  at (P1.south |- 0,-4.15) {\(C_1\)};
+  \node[sem, anchor=east] at ($(C1.west)-(0.13,0)$) {\secptr{sec:semantics}};
   \node[ctlbox] (C2m) at (P2.south |- 0,-4.15) {\emph{transitional control}};
   \node[ctlbox] (C2)  at (P3.south |- 0,-4.15) {\(C_2\)};
 
   % ============ black: the pol-level narration of the path ============
   \draw[says,->] ($(P1.north east)+(0.10,-0.42)$) -- ($(P2.north west)+(-0.10,-0.42)$)
-    node[sem, midway, above=0.5pt] {\(\psem{\Designate;\Quiesce}\)};
+    node[sem, midway, above=0.5pt] {\(\psem{\Designate;\Quiesce}\)}
+    node[gd, midway, below=1pt] {\secptr{sec:model}};
   \draw[says,->] ($(P2.north east)+(0.10,-0.42)$) -- ($(P3.north west)+(-0.10,-0.42)$)
-    node[sem, midway, above=0.5pt] {\(\psem{\Undesignate}\)};
+    node[sem, midway, above=0.5pt] {\(\psem{\Undesignate}\)}
+    node[gd, midway, below=1pt] {\secptr{sec:model}};
 
   % ================ red: what Rio actually does ================
   \draw[does,->] ($(C1.east)+(0.10,0)$) -- ($(C2m.west)+(-0.10,0)$)
     node[act, midway, above=1pt] {\(\csem{\Designate;\Quiesce}\)}
-    node[gd, midway, below=1pt] {immediately};
+    node[gd, midway, below=1pt] {immediately \secptr{sec:semantics}};
   \draw[does,->] ($(C2m.east)+(0.10,0)$) -- ($(C2.west)+(-0.10,0)$)
     node[act, midway, above=1pt] {\(\csem{\Undesignate}\)}
-    node[gd, midway, below=1pt] {once \textsf{gmail}\textsubscript{old} drains};
+    node[gd, midway, below=1pt] {once \textsf{gmail}\textsubscript{old} drains \secptr{sec:correctness}};
   \draw[does,->] (P1.south) -- (C1.north)
-    node[act, midway, anchor=east, xshift=-2pt] {\(\lceil \cdot \rceil\)};
+    node[act, midway, anchor=east, xshift=-2pt, align=right]
+      {\(\lceil \cdot \rceil\)\\\secptr{sec:semantics}};
   \draw[does,->] (C2m.north) -- (P2.south)
     node[act, midway, anchor=west, xshift=2pt] {\(\lfloor \cdot \rfloor\)}
-    node[gd, midway, anchor=east, xshift=-3pt] {what the operator\\is told};
+    node[gd, midway, anchor=east, xshift=-3pt] {what the operator\\is told \secptr{sec:correctness}};
 
   % ================ dashed: the route not taken ================
   \draw[notaken,->] (P3.south) -- (C2.north)
-    node[gd, midway, anchor=east, xshift=-4pt] {what a recompile\\would have built};
+    node[gd, midway, anchor=east, xshift=-4pt] {what a recompile\\would have built \secptr{sec:correctness}};
 
   \end{tikzpicture}
   \caption{An example transition between two packet scheduling policies, $p_1$ and $p_2$. Rio uses an intermediate policy, $p_\text{temp}$, to implement the transition in two atomic steps.

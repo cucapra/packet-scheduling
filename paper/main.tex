@@ -285,6 +285,7 @@ At this point, a second atomic step runs, collapsing the $\Strictstar$ policy an
 Rio supports atomic transitions from $p_1$ to $p_\text{temp}$ and from $p_\text{temp}$ to $p_2$.
 The key mechanism in this example is the $\Strictstar$ policy node, which reflects a special mechanism we add to PIFO tree hardware to enable efficient policy changes.
 \Cref{sec:hw-survivor} details $\Strictstar$ and the atomic edits that support it.
+\Cref{sec:eval} evaluates this transition.
 
 Rio can name the policy in force at every instant, in the operator's own language, including throughout the interval in which the scheduler runs a policy that \emph{no operator requested}.
 Rio models the scheduler's state as a \emph{control} (\cref{sec:controls}), and reads the running policy back off it.
