@@ -980,8 +980,8 @@ These restrictions admit a key optimization:
 to implement $\Strictstar(A, B)$,
 we do not need to allocate a separate PE for the $\Strictstar$ node itself.
 Instead, we add simple logic to the PE that houses nodes $A$ and $B$.
-\Cref{fig:hardware} draws that logic as the survivor-link cell sitting beside a PE's PIFOs rather than in the pipeline with them.
-\xxx[am to zg]{Is the previous sentence okay? If I understand correctly, it \emph{is} pipelined, right?}
+A dequeue request meets this survivor-link cell before it reaches the PE's PIFOs (\cref{fig:hardware}).
+It fits into the dequeue pipeline without adding a cycle, whether or not the request is rewritten.
 Adding and deleting the $\Strictstar$ node therefore avoids shifting the tree levels of $A$ and $B$, which would require relocating their packets across physical PIFOs.
 In other words, to compute a node's level, ignore the $\Strictstar$ nodes above it.
 
