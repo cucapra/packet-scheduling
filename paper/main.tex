@@ -870,9 +870,8 @@ Rio does not guarantee progress; it is the control plane's responsibility to ens
 % The \Retire{} idiom is an example: it waits for emptiness between its \Quiesce{} and its \Remove{}.
 
 A PE stores four things: its \texttt{Assoc} set, the flows it admits; a \texttt{Map}, read on enqueue, naming the PIFO each admitted flow enters and the PE that holds it; a next-hop table, read on dequeue, naming the PIFO that each of its indices reaches; and the designated-survivor link (\cref{sec:hw-survivor}).
-
-A node's \(\mathit{z}.\mathit{admit}\) is its \texttt{Assoc} set, its \(\mathit{z}.\mathit{serves}\) is its \texttt{Map} table, its \(\mathit{z}.\mathit{rank}\) is the ranker that \texttt{set\_policy} installs and \texttt{discipline(v)} reads back, and its \(\mathit{z}.\mathit{meta}\) is the metadata that \texttt{set\_arm\_meta} writes.
-Each of \zz's parts is thus the target of an opcode.
+%
+Each of \zz's parts is the target of an opcode, so an edit that rewrites one of them lowers to instructions that write the corresponding PE state.
 \cref{app:lowering} details the lowering of each form.
 
 \subsection{Atomic Configuration Updates}
@@ -2004,6 +2003,7 @@ foreach f in flows(surv):
 \section{Lowering Policy Edits}\label{app:lowering}
 
 \cref{fig:lowering} lowers all six forms of \(\delta\) to the ISA of \cref{sec:hw-isa}, in the order \cref{fig:delta-grammar} lists them, and \cref{sec:hw-isa} walks through the \Add{} case in prose.
+A node's \(\mathit{z}.\mathit{admit}\) is its \texttt{Assoc} set, its \(\mathit{z}.\mathit{serves}\) is its \texttt{Map} table, its \(\mathit{z}.\mathit{rank}\) is the ranker that \texttt{set\_policy} installs and \texttt{discipline(v)} reads back, and its \(\mathit{z}.\mathit{meta}\) is the metadata that \texttt{set\_arm\_meta} writes.
 
 Each lowering binds \texttt{v} to the PIFO the form targets, and writes \texttt{parent} for the PIFO above \pth and \texttt{k} for its index there.
 For \(\mathit{path} = [\,]\) those two are \texttt{port\_root} and \texttt{port\_step}, naming the reserved 1-arm PIFO that wraps each of a switch's \(P\) per-port trees.
