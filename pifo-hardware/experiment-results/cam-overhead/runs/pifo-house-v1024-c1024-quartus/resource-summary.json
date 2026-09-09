@@ -1,0 +1,211 @@
+{
+  "source_report": "/data/work/rio-synthesis/shared-fifo-34e35d2/pifo-house-v1024-c1024-quartus/output_files/pifo.syn.rpt",
+  "status": "Successful - Mon Sep  7 14:03:07 2026",
+  "scope": "Quartus synthesis estimates; no placement or routing",
+  "tables": {
+    "Synthesis Summary": [
+      [
+        "Synthesis Status",
+        "Successful - Mon Sep  7 14:03:07 2026"
+      ],
+      [
+        "Revision Name",
+        "pifo"
+      ],
+      [
+        "Top-level Entity Name",
+        "PifoMesh"
+      ],
+      [
+        "Family",
+        "Agilex 7"
+      ],
+      [
+        "Quartus Prime Version",
+        "25.3.1 Build 100 12/19/2025 SC Pro Edition"
+      ],
+      [
+        "Device",
+        "AGFB014R24B2E2V"
+      ],
+      [
+        "Logic utilization estimate (in ALMs)",
+        "58,380 / 487,200 ( 12 % )"
+      ],
+      [
+        "Total dedicated logic registers",
+        "31810"
+      ],
+      [
+        "Estimated DSP Blocks Post-Merging",
+        "0"
+      ]
+    ],
+    "Partition \"root_partition\" Resource Utilization by Entity": [
+      [
+        "Compilation Hierarchy Node",
+        "Combinational ALUTs",
+        "Dedicated Logic Registers",
+        "Block Memory Bits",
+        "DSP Blocks",
+        "Pins",
+        "Max Depth",
+        "Full Hierarchy Name",
+        "Entity Name",
+        "Library Name"
+      ],
+      [
+        "|",
+        "98361 (1)",
+        "31810 (0)",
+        "0",
+        "0",
+        "144",
+        "24.8 (24.8)",
+        "|",
+        "PifoMesh",
+        "altera_work"
+      ],
+      [
+        "|core|",
+        "98360 (89738)",
+        "31810 (31810)",
+        "0",
+        "0",
+        "0",
+        "24.8 (24.8)",
+        "core",
+        "ConcurrentPifoRTL",
+        "altera_work"
+      ],
+      [
+        "|priorityEncoderLogBlackbox_1|",
+        "1888 (1888)",
+        "0 (0)",
+        "0",
+        "0",
+        "0",
+        "24.8 (24.8)",
+        "core|priorityEncoderLogBlackbox_1",
+        "priority_encode_log",
+        "altera_work"
+      ],
+      [
+        "|priorityEncoderLogBlackbox|",
+        "6734 (6734)",
+        "0 (0)",
+        "0",
+        "0",
+        "0",
+        "24.8 (24.8)",
+        "core|priorityEncoderLogBlackbox",
+        "priority_encode_log",
+        "altera_work"
+      ]
+    ],
+    "Synthesis Resource Usage Summary for Partition \"root_partition\"": [
+      [
+        "Resource",
+        "Usage"
+      ],
+      [
+        "Estimate of Logic utilization (ALMs needed)",
+        "58380"
+      ],
+      [
+        "",
+        ""
+      ],
+      [
+        "Combinational ALUT usage for logic",
+        "98361"
+      ],
+      [
+        "-- 8 input functions",
+        "3706"
+      ],
+      [
+        "-- 7 input functions",
+        "299"
+      ],
+      [
+        "-- 6 input functions",
+        "24324"
+      ],
+      [
+        "-- 5 input functions",
+        "25182"
+      ],
+      [
+        "-- 4 input functions",
+        "11165"
+      ],
+      [
+        "-- <=3 input functions",
+        "33685"
+      ],
+      [
+        "",
+        ""
+      ],
+      [
+        "Dedicated logic registers",
+        "31810"
+      ],
+      [
+        "",
+        ""
+      ],
+      [
+        "I/O pins",
+        "144"
+      ],
+      [
+        "",
+        ""
+      ],
+      [
+        "Total DSP Blocks",
+        "0"
+      ],
+      [
+        "-- [A] Total Fixed Point DSP Blocks",
+        "0"
+      ],
+      [
+        "-- [B] Total Floating Point DSP Blocks",
+        "0"
+      ],
+      [
+        "",
+        ""
+      ],
+      [
+        "Maximum fan-out node",
+        "clk"
+      ],
+      [
+        "Maximum fan-out",
+        "31810"
+      ],
+      [
+        "Total fan-out",
+        "513633"
+      ],
+      [
+        "Average fan-out",
+        "3.94"
+      ]
+    ]
+  },
+  "zero_memory_usage": {
+    "block_memory_bits": 0,
+    "mlab_memory_bits": 0,
+    "hierarchy_entities_checked": 4,
+    "ram_instances": 0,
+    "note": "Quartus omits the memory summary for this RAM-free design. Every hierarchy entity explicitly reports zero Block Memory Bits and there are no inferred RAM instances."
+  },
+  "resource_notes": [
+    "Quartus omits the memory summary for this RAM-free design. Every hierarchy entity explicitly reports zero Block Memory Bits and there are no inferred RAM instances."
+  ]
+}

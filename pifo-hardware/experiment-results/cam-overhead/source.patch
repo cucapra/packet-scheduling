@@ -1,0 +1,1102 @@
+diff --git a/pifo-hardware/.gitignore b/pifo-hardware/.gitignore
+index 708ff07..14f9401 100644
+--- a/pifo-hardware/.gitignore
++++ b/pifo-hardware/.gitignore
+@@ -47,7 +47,9 @@ bin/
+ !experiment-results/hardware-overhead/**/*.log
+ !synthesis/results/**/*.json
+ !synthesis/results/**/*.log
++!hw/verilog/vendor/verilog-cam/UPSTREAM.json
+ !experiment-results/shared-fifo-overhead/**/*.log
++!experiment-results/cam-overhead/**/*.log
+ *.vcd
+ !tester/src/test/resources/*.vhd
+ 
+diff --git a/pifo-hardware/README.md b/pifo-hardware/README.md
+index c0df4dc..3dbe1a7 100644
+--- a/pifo-hardware/README.md
++++ b/pifo-hardware/README.md
+@@ -7,11 +7,13 @@ sbt "runMain rio.sim.PifoMeshSim"
+ For request queues, trace-driven or live workloads, traffic generation, and formal-trace conversion, see the
+ [request-level simulator guide](REQUEST_SIMULATOR.md).
+ 
+-For Quartus and Vivado synthesis, see the [synthesis guide](synthesis/README.md)
+-and [current shared-FIFO replay results](experiment-results/shared-fifo-overhead/README.md).
+-The completed 36-run experiment compares ordinary tables with replay using the same
+-256-entry controller FIFO. The [fixed table](experiment-results/shared-fifo-overhead/r1-fixed/figures/resource-table/figure.svg)
+-and vFlow sweep include five measured PIFOs, BRAM counts, and target-device utilization.
++For Quartus and Vivado synthesis, see the [synthesis guide](synthesis/README.md).
++Bounded CAM lookups and shared-FIFO replay are the defaults, with a 256-entry
++controller FIFO and `2 × vFlows` entries per CAM bank. The CAM experiment compares
++ordinary and replay configurations in the [fixed table](experiment-results/cam-overhead/r1-fixed/figures/resource-table/figure.svg)
++and [vFlow sweep](experiment-results/cam-overhead/r2-vflows/figures/overhead-percent/figure.svg),
++including five measured PIFOs, BRAM counts, and target-device utilization.
++The [previous dense-table results](experiment-results/shared-fifo-overhead/README.md) remain available.
+ Earlier separate-journal measurements and the isolated lookup-pipeline exploration
+ remain in the [historical experiment archive](experiment-results/hardware-overhead/README.md).
+ 
+diff --git a/pifo-hardware/hw/python/finalize_shared_fifo_experiments.py b/pifo-hardware/hw/python/finalize_shared_fifo_experiments.py
+index e16935c..989ec8a 100644
+--- a/pifo-hardware/hw/python/finalize_shared_fifo_experiments.py
++++ b/pifo-hardware/hw/python/finalize_shared_fifo_experiments.py
+@@ -1,5 +1,6 @@
+ #!/usr/bin/env python3
+ """Wait for the synthesis queue, then validate and archive reproducible inputs."""
++import argparse
+ import csv
+ from datetime import datetime, timezone
+ import hashlib
+@@ -13,10 +14,10 @@ import tarfile
+ import time
+ 
+ from pifo_synthesis_results import PROJECT
+-from pifo_shared_fifo_experiments import OUT, FLOWS, name, save, collect
++from pifo_shared_fifo_experiments import OUT, FLOWS, name, save, collect, DEFAULT_BUILD_ROOT, PIFO_RESULTS
+ from validate_shared_fifo_synthesis import main as audit
+ 
+-ROOT=Path('/data/work/rio-synthesis/shared-fifo-34e35d2')
++ROOT=DEFAULT_BUILD_ROOT
+ 
+ 
+ def audit_bram():
+@@ -72,18 +73,21 @@ def audit_bram():
+ 
+ 
+ def main():
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument('--build-root', type=Path, default=DEFAULT_BUILD_ROOT)
++    root = parser.parse_args().build_root.resolve()
+     while not (OUT/'completion.json').exists():
+         save(OUT/'validation/finalization-status.json', dict(status='waiting_for_synthesis',
+             checked_utc=datetime.now(timezone.utc).isoformat()))
+         time.sleep(20)
+-    statuses=collect(ROOT)
+-    assert len(statuses)==36 and all(r['status']=='synthesis_complete' for r in statuses)
++    statuses=collect(root)
++    assert len(statuses)==16 and all(r['status']=='synthesis_complete' for r in statuses)
+     bram_validation = audit_bram()
+-    assert bram_validation['configuration_rows'] == 24
+-    assert bram_validation['comparison_rows'] == 12
+-    audit()
++    assert bram_validation['configuration_rows'] == 16
++    assert bram_validation['comparison_rows'] == 8
++    audit(root)
+     summary=json.loads((OUT/'validation/memory-overhead.json').read_text())
+-    assert len(summary['cases'])==12
++    assert len(summary['cases'])==8
+     with (OUT/'r2-vflows/comparison.csv').open() as stream:
+         rows=list(csv.DictReader(stream))
+     for row in rows:
+@@ -91,7 +95,8 @@ def main():
+         result=[json.loads((OUT/'runs'/name(f,v,p)/'result.json').read_text())
+                 for v in ('static','replay','pifo')]
+         a,b,one=[r['resources'][resource] for r in result]
+-        assert result[0]['source_sha256']==result[1]['source_sha256']==result[2]['source_sha256']
++        assert result[0]['source_sha256']==result[1]['source_sha256']
++        assert json.loads((OUT/'runs'/name(f,'pifo',p)/'reuse-verification.json').read_text())['status']=='passed'
+         for key,value in [('static_rio',a),('replay_rio',b),('pifo_one',one),('pifo_total',5*one),
+                           ('static',a+5*one),('replay',b+5*one),('absolute_change',b-a)]:
+             assert float(row[key])==value,(f,p,resource,key)
+@@ -102,9 +107,19 @@ def main():
+     inputs=[]
+     for flows in FLOWS:
+         for variant in ('static','replay','pifo'):
+-            build=ROOT/name(flows,variant,'quartus')
++            if variant == 'pifo':
++                # Preserve the exact historically synthesized RTL and manifest;
++                # the per-run reuse proof links it to today's equivalent core.
++                component = name(flows,variant,'quartus')
++                target = OUT/'inputs'/component
++                shutil.copytree(PIFO_RESULTS/'inputs'/component,target,dirs_exist_ok=True)
++                inputs.append(dict(vflows=flows,configuration=variant,
++                    archive=str((target/'rtl.tar.gz').relative_to(OUT)),
++                    canonical_rtl_identical_across_vendors=True,reused_prior_synthesis=True))
++                continue
++            build=root/name(flows,variant,'quartus')
+             m=json.loads((build/'manifest.json').read_text())
+-            vm=json.loads((ROOT/name(flows,variant,'vivado')/'manifest.json').read_text())
++            vm=json.loads((root/name(flows,variant,'vivado')/'manifest.json').read_text())
+             assert m['rtl_sha256']==vm['rtl_sha256']
+             target=OUT/'inputs'/build.name
+             target.mkdir(parents=True,exist_ok=True)
+@@ -122,11 +137,12 @@ def main():
+                                canonical_rtl_identical_across_vendors=True))
+     snapshot=OUT/'workflow'
+     sources=[]
+-    for folder in ('hw/spinal/rio','synthesis','hw/python'):
++    for folder in ('hw/spinal/rio','synthesis','hw/python','hw/verilog/vendor/verilog-cam'):
+         for path in (PROJECT/folder).rglob('*'):
+             if any(x in path.parts for x in ('.tools','__pycache__','build','target')):
+                 continue
+-            if path.is_file() and path.suffix in ('.scala','.py','.tcl','.sv'):
++            if path.is_file() and (path.suffix in ('.scala','.py','.tcl','.sv','.v') or
++                                  path.name in ('COPYING','UPSTREAM.json','README.md')):
+                 sources.append(path)
+     sources += [PROJECT/p for p in ('build.sbt','project/build.properties','project/plugins.sbt',
+                                     'synthesis/repositories','synthesis/README.md','hw/verilog/priority_encode_log.v')]
+@@ -138,9 +154,15 @@ def main():
+         hashes[str(path.relative_to(PROJECT))]=hashlib.sha256(path.read_bytes()).hexdigest()
+     save(OUT/'workflow/source-sha256.json',hashes)
+     save(OUT/'inputs/index.json',inputs)
+-    shutil.copy2(ROOT/'manager.log',OUT/'logs/synthesis-manager.log')
+-    save(OUT/'validation/experiment-accounting.json',dict(status='passed',runs=36,
+-        native_pairs=12,comparison_rows=len(rows),same_fifo_depth=256,
++    shutil.copy2(root/'manager.log',OUT/'logs/synthesis-manager.log')
++    for log in root.glob('selected-case-assist*.log'):
++        shutil.copy2(log,OUT/'logs'/log.name)
++    (OUT/'source.patch').write_text(subprocess.check_output(
++        ['git','diff',json.loads((OUT/'execution.json').read_text())['source_commit'],'--','pifo-hardware'],
++        cwd=PROJECT.parent,text=True))
++    save(OUT/'validation/experiment-accounting.json',dict(status='passed',runs=16,
++        reused_pifo_measurements=8,pifo_rtl_equivalence_checked=True,
++        native_pairs=8,comparison_rows=len(rows),same_fifo_depth=256,
+         pifo_included_in_all_percentage_denominators=True,
+         bram_counts_and_target_utilization_checked=True,
+         source_and_rtl_matched_across_platforms=True,
+diff --git a/pifo-hardware/hw/python/pifo_shared_fifo_experiments.py b/pifo-hardware/hw/python/pifo_shared_fifo_experiments.py
+index e355357..32377f9 100644
+--- a/pifo-hardware/hw/python/pifo_shared_fifo_experiments.py
++++ b/pifo-hardware/hw/python/pifo_shared_fifo_experiments.py
+@@ -1,11 +1,13 @@
+ #!/usr/bin/env python3
+-"""Synthesize paired shared-FIFO replay/ordinary RIO and matching house PIFOs."""
++"""Synthesize 16 CAM RIO cases and reuse verified matching PIFO measurements."""
+ import argparse
+ from concurrent.futures import ThreadPoolExecutor
+ from datetime import datetime, timezone
++import fcntl
+ import hashlib
+ import json
+ from pathlib import Path
++import re
+ import shutil
+ import subprocess
+ import sys
+@@ -16,16 +18,24 @@ from pifo_synthesis_results import PROJECT, RESOURCE_NAMES, archive
+ from pifo_shared_fifo_figures import FIGURES_VERSION, write_csv, render
+ from pifo_bram_accounting import TARGETS, bram_pair
+ 
+-FLOWS = [32, 64, 128, 256, 512, 1024]
+-OUT = PROJECT / 'experiment-results/shared-fifo-overhead'
+-CONFIG = dict(schema='rio-shared-fifo-overhead-v1', source_commit='34e35d2',
++FLOWS = [32, 128, 512, 1024]
++OUT = PROJECT / 'experiment-results/cam-overhead'
++PIFO_RESULTS = PROJECT / 'experiment-results/shared-fifo-overhead'
++DEFAULT_BUILD_ROOT = Path('/data/work/rio-synthesis/cam-shared-fifo-20260909')
++SOURCE_COMMIT = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=PROJECT, text=True).strip()
++CONFIG = dict(schema='rio-cam-shared-fifo-overhead-v1', source_commit=SOURCE_COMMIT,
++    source_identity='commit plus source.patch and workflow/source-sha256.json',
+     configurations=['static', 'replay'], platforms=['quartus', 'vivado'],
+     hardware=dict(num_engines=5, vflows=FLOWS, entries_per_pe=1024,
+-                  priority_bits=8, control_queue_depth=256, pifo_backend='external'),
++                  priority_bits=8, control_queue_depth=256, pifo_backend='external',
++                  lookup_backend='cam', cam_entries_per_bank='2 * vflows',
++                  cam_implementation='portable_parallel_tags_synchronous_values'),
+     clock_mhz=100, threads=8, vivado_directive='RuntimeOptimized',
+     plot=dict(dpi=180, version=FIGURES_VERSION), implementation_run=False,
+     bram_targets=TARGETS,
++    rio_synthesis_runs=16, pifo_measurements='reuse_prior_synthesis_after_RTL_equivalence_check',
+     percent_denominator='ordinary_RIO_plus_five_matching_PIFOs')
++JOBS = dict(quartus=4, vivado=4)
+ 
+ 
+ def save(path, value):
+@@ -51,6 +61,8 @@ def command(root, flows, variant, platform):
+         '--component', 'pifo' if variant == 'pifo' else 'rio',
+         '--clock-mhz', '100', '--threads', '8',
+         '--vivado-directive', 'RuntimeOptimized']
++    if variant != 'pifo':
++        args += ['--lookup-backend', 'cam', '--cam-entries-per-pe', str(2*flows)]
+     return args + (['--quartus-compact-init', '--license',
+                    '/data/work/quartus/licenses/LR-187458_License.dat']
+                   if platform == 'quartus' else ['--vivado-allow-over-capacity'])
+@@ -70,7 +82,7 @@ def reusable(build):
+     if not manifest.exists():
+         return None
+     m = json.loads(manifest.read_text())
+-    if m['status'] not in ('prepared', 'synthesis_complete'):
++    if m['status'] not in ('generated', 'prepared', 'synthesis_running', 'synthesis_complete'):
+         raise RuntimeError(f'Inspect incomplete/live build before reuse: {build}')
+     for path, expected in m['source_sha256'].items():
+         assert hashlib.sha256((PROJECT/path).read_bytes()).hexdigest() == expected, path
+@@ -81,15 +93,77 @@ def reusable(build):
+ 
+ def synthesize(root, flows, variant, platform):
+     build = root/name(flows, variant, platform)
+-    if reusable(build) != 'synthesis_complete':
+-        execute(command(root, flows, variant, platform)+['--reuse-rtl'],
+-                OUT/'logs'/(build.name+'-run.log'))
+-    result = archive(build, OUT/'runs'/build.name, platform)
+-    assert result['status'] == 'synthesis_complete', result
++    # Prevent two managers from starting the same prepared job.
++    with (build/'.synthesis.lock').open('w') as lock:
++        fcntl.flock(lock, fcntl.LOCK_EX)
++        # A previous manager may still own the vendor process. Wait for its
++        # result rather than launch a duplicate synthesis of this build.
++        while reusable(build) == 'synthesis_running':
++            live = False
++            for process in Path('/proc').iterdir():
++                if not process.name.isdecimal():
++                    continue
++                try:
++                    argv = (process/'cmdline').read_bytes().split(b'\0')
++                except OSError:
++                    continue
++                if (str(PROJECT/'synthesis/run.py').encode() in argv
++                        and str(root).encode() in argv and build.name.encode() in argv):
++                    live = True
++                    break
++            if not live:
++                # Recheck completion after the process-exit/manifest-write race.
++                if reusable(build) == 'synthesis_complete':
++                    break
++                raise RuntimeError(f'Interrupted build has no live synthesis wrapper: {build}')
++            time.sleep(5)
++        if reusable(build) != 'synthesis_complete':
++            execute(command(root, flows, variant, platform)+['--reuse-rtl'],
++                    OUT/'logs'/(build.name+'-run.log'))
++        result = archive(build, OUT/'runs'/build.name, platform)
++        assert result['status'] == 'synthesis_complete', result
+     print('COMPLETE', build.name, json.dumps(result['resources']), flush=True)
+     return build.name
+ 
+ 
++def reuse_pifo(root, flows):
++    """Compare every generated input byte, ignoring only the Git-hash comment."""
++    reference = root/name(flows, 'pifo', 'quartus')
++    if not (reference/'manifest.json').exists():
++        execute(command(root, flows, 'pifo', 'quartus')+['--generate-only'],
++                OUT/'logs'/(reference.name+'-generate-reference.log'))
++    reusable(reference)  # A stale generated core must not validate a new source tree.
++    current = json.loads((reference/'manifest.json').read_text())
++    assert current['rtl_complete']
++    normalized = {}
++    previous_rtl = PIFO_RESULTS/'inputs'/reference.name/'rtl.tar.gz'
++    def strip_git_comment(data):
++        return re.sub(rb'(?m)^// Git hash  : [0-9a-f]+\r?\n', b'', data)
++    with tarfile.open(previous_rtl, 'r:gz') as tar:
++        old = json.loads((PIFO_RESULTS/'runs'/reference.name/'manifest.json').read_text())
++        assert old['hardware'] == current['hardware']
++        assert set(old['rtl_sha256']) == set(current['rtl_sha256'])
++        for filename, expected in old['rtl_sha256'].items():
++            a = tar.extractfile('rtl/'+filename).read()
++            b = (reference/'rtl'/filename).read_bytes()
++            assert hashlib.sha256(a).hexdigest() == expected
++            assert hashlib.sha256(b).hexdigest() == current['rtl_sha256'][filename]
++            assert strip_git_comment(a) == strip_git_comment(b), filename
++            normalized[filename] = hashlib.sha256(strip_git_comment(a)).hexdigest()
++    for platform in CONFIG['platforms']:
++        source = PIFO_RESULTS/'runs'/name(flows,'pifo',platform)
++        result = json.loads((source/'result.json').read_text())
++        assert result['status'] == 'synthesis_complete'
++        assert result['rtl_sha256'] == old['rtl_sha256']
++        target = OUT/'runs'/source.name
++        shutil.copytree(source, target, dirs_exist_ok=True)
++        save(target/'reuse-verification.json', dict(status='passed', source=str(source),
++            source_result_sha256=hashlib.sha256((source/'result.json').read_bytes()).hexdigest(),
++            current_reference=str(reference), normalized_rtl_sha256=normalized,
++            only_ignored_difference='SpinalHDL Git-hash header comment', synthesis_rerun=False))
++    print('REUSED_PIFO', flows, 'both platforms; RTL equivalent', flush=True)
++
++
+ def collect(root):
+     save(OUT/'experiment-config.json', CONFIG)
+     save(OUT/'bram-targets.json', TARGETS)
+@@ -104,8 +178,9 @@ def collect(root):
+                     status = m['status']
+                 except (OSError, ValueError):
+                     status = 'not_started'
+-                statuses.append(dict(vflows=flows, configuration=variant, platform=platform,
+-                                     status=status, build=str(build)))
++                if variant != 'pifo':
++                    statuses.append(dict(vflows=flows, configuration=variant, platform=platform,
++                                         status=status, build=str(build)))
+                 result_path = OUT/'runs'/build.name/'result.json'
+                 if result_path.exists():
+                     result = json.loads(result_path.read_text())
+@@ -126,6 +201,9 @@ def collect(root):
+                 h = r['hardware']
+                 assert h['commit_queue_depth'] == 256 and h['num_engines'] == 5
+                 assert h['shared_entries_per_pe'] == 1024 and h['global_flow_id_capacity'] == flows
++                assert h['lookup_backend'] == 'cam' and h['cam_entries_per_bank'] == 2*flows
++            assert ordinary['source_sha256'] == replay['source_sha256']
++            assert json.loads((OUT/'runs'/name(flows,'pifo',platform)/'reuse-verification.json').read_text())['status'] == 'passed'
+             assert replay['hardware']['separate_replay_journal'] is False
+             assert pifo['hardware']['token_bits'] == replay['hardware']['token_bits']
+             assert pifo['hardware']['enabled_push_ports'] == 1
+@@ -180,9 +258,11 @@ def collect(root):
+                        for v in ('static','replay','pifo') for p in CONFIG['platforms'])
+         marker = output/'figures-complete.json'
+         previous = json.loads(marker.read_text()) if marker.exists() else {}
+-        if complete and previous.get('version') != FIGURES_VERSION:
++        fingerprint = hashlib.sha256(json.dumps([config, comparisons, bram_comparisons],
++                                                sort_keys=True).encode()).hexdigest()
++        if complete and (previous.get('version'), previous.get('input_sha256')) != (FIGURES_VERSION, fingerprint):
+             render(config, output)
+-            save(marker, dict(status='complete', version=FIGURES_VERSION))
++            save(marker, dict(status='complete', version=FIGURES_VERSION, input_sha256=fingerprint))
+     if budgets:
+         write_csv(OUT/'pifo-component/resources.csv', budgets)
+     return statuses
+@@ -190,7 +270,7 @@ def collect(root):
+ 
+ def main():
+     parser = argparse.ArgumentParser(description=__doc__)
+-    parser.add_argument('--build-root', type=Path, default=Path('/data/work/rio-synthesis/shared-fifo-34e35d2'))
++    parser.add_argument('--build-root', type=Path, default=DEFAULT_BUILD_ROOT)
+     parser.add_argument('--collect-only', action='store_true')
+     args = parser.parse_args()
+     root = args.build_root.resolve()
+@@ -200,27 +280,34 @@ def main():
+     if args.collect_only:
+         collect(root)
+         return
++    for flows in FLOWS:
++        reuse_pifo(root, flows)
++    history_path = OUT/'execution-attempts.json'
++    history = json.loads(history_path.read_text()) if history_path.exists() else []
++    if (OUT/'execution.json').exists():
++        history.append(json.loads((OUT/'execution.json').read_text()))
++    save(history_path, history)
+     save(OUT/'execution.json', dict(argv=sys.argv, build_root=str(root),
+-        started_utc=datetime.now(timezone.utc).isoformat(), source_commit='34e35d2',
+-        jobs=dict(quartus_large=2,vivado_large=1,quartus_small=1,vivado_small=1),
++        started_utc=datetime.now(timezone.utc).isoformat(), source_commit=SOURCE_COMMIT,
++        jobs=JOBS,
+         synthesis_only=True, implementation_run=False))
+     snapshot = OUT/'workflow'
++    hashes = {}
+     for folder in ('hw/spinal/rio','synthesis','hw/python'):
+         for path in (PROJECT/folder).glob('*'):
+             if path.is_file() and path.suffix in ('.scala','.py','.tcl'):
+                 target = snapshot/path.relative_to(PROJECT)
+                 target.parent.mkdir(parents=True,exist_ok=True)
+                 shutil.copy2(path,target)
+-    (OUT/'source.patch').write_text(subprocess.check_output(['git','diff','34e35d2','--','pifo-hardware'],cwd=PROJECT.parent,text=True))
+-    pools = {('quartus',True):ThreadPoolExecutor(max_workers=2),
+-             ('vivado',True):ThreadPoolExecutor(max_workers=1),
+-             ('quartus',False):ThreadPoolExecutor(max_workers=1),
+-             ('vivado',False):ThreadPoolExecutor(max_workers=1)}
++                hashes[str(path.relative_to(PROJECT))] = hashlib.sha256(path.read_bytes()).hexdigest()
++    save(snapshot/'source-sha256.json', hashes)
++    (OUT/'source.patch').write_text(subprocess.check_output(['git','diff',SOURCE_COMMIT,'--','pifo-hardware'],cwd=PROJECT.parent,text=True))
++    pools = {platform:ThreadPoolExecutor(max_workers=count) for platform,count in JOBS.items()}
+     futures = []
+     try:
+-        # Start the fixed case early; independent pools keep smaller points moving.
+-        for flows in [32,1024,64,128,256,512]:
+-            for variant in ('replay','static','pifo'):
++        # Start the fixed case early; bounded pools keep both vendors moving.
++        for flows in [1024,32,128,512]:
++            for variant in ('replay','static'):
+                 qb = root/name(flows,variant,'quartus')
+                 if reusable(qb) is None:
+                     execute(command(root,flows,variant,'quartus')+['--prepare-only'],
+@@ -230,8 +317,7 @@ def main():
+                     execute(command(root,flows,variant,'vivado')+['--rtl-from',str(qb),'--prepare-only'],
+                             OUT/'logs'/(vb.name+'-prepare.log'))
+                 for platform in CONFIG['platforms']:
+-                    large = flows == 1024 and variant != 'pifo'
+-                    futures.append(pools[platform,large].submit(synthesize,root,flows,variant,platform))
++                    futures.append(pools[platform].submit(synthesize,root,flows,variant,platform))
+                 collect(root)
+         while any(not f.done() for f in futures):
+             collect(root)
+@@ -242,9 +328,9 @@ def main():
+         for pool in pools.values():
+             pool.shutdown(wait=True)
+         collect(root)
+-    save(OUT/'completion.json', dict(status='synthesis_complete',runs=len(futures),
++    save(OUT/'completion.json', dict(status='synthesis_complete',runs=len(futures),reused_pifo_measurements=8,
+         completed_utc=datetime.now(timezone.utc).isoformat(),implementation_run=False))
+-    print('SHARED_FIFO_EXPERIMENTS_COMPLETE', OUT, flush=True)
++    print('CAM_SHARED_FIFO_EXPERIMENTS_COMPLETE', OUT, flush=True)
+ 
+ 
+ if __name__ == '__main__':
+diff --git a/pifo-hardware/hw/python/pifo_shared_fifo_figures.py b/pifo-hardware/hw/python/pifo_shared_fifo_figures.py
+index bc9a6cf..ea431c9 100644
+--- a/pifo-hardware/hw/python/pifo_shared_fifo_figures.py
++++ b/pifo-hardware/hw/python/pifo_shared_fifo_figures.py
+@@ -3,7 +3,7 @@ import csv
+ from pifo_bram_accounting import TARGETS
+ from pifo_synthesis_results import RESOURCE_NAMES, count_text
+ 
+-FIGURES_VERSION = 'shared-fifo-bram-capacity-v2'
++FIGURES_VERSION = 'cam-shared-fifo-bram-capacity-v4'
+ 
+ 
+ def write_csv(path, data, fields=None):
+@@ -46,6 +46,9 @@ def render(config, output):
+     memory_note = 'Quartus: inferred RAM bits / 20,480 (M20K capacity estimate; packing not modeled). Vivado: RAMB36 + RAMB18 / 2.'
+     preview = 'Preview · ' if config.get('preview') else ''
+     setup = f'{h["num_engines"]} PEs · {h["entries_per_pe"]:,} PIFO entries per PE'
++    lookup = 'CAM · ' if h.get('lookup_backend') == 'cam' else ''
++    cam_note = ('CAM capacity = 2 × vFlows per bank; tags/valid bits use registers. '
++                if h.get('lookup_backend') == 'cam' else '')
+ 
+     def save(fig, folder, selected):
+         write_csv(folder/'data.csv', selected)
+@@ -93,8 +96,9 @@ def render(config, output):
+                 cell.set_facecolor('#eef3f6')
+             if c < 2:
+                 cell.set_text_props(ha='left')
+-        fig.suptitle(f'{preview}RIO shared-FIFO replay overhead\n{h["num_engines"]} PEs · '
++        fig.suptitle(f'{preview}{lookup}RIO shared-FIFO replay overhead\n{h["num_engines"]} PEs · '
+                      f'{h["vflows"][0]:,} vFlows · {h["entries_per_pe"]:,} PIFO entries per PE',fontweight='bold')
++        fig.text(.02,.165,cam_note,fontsize=10)
+         fig.text(.02,.12,'Totals = RIO synthesis + 5 × measured PIFO. Overhead = difference / ordinary total. '
+                  '% target = total / FPGA resource capacity.',fontsize=10)
+         fig.text(.02,.078,'BRAM targets: Agilex 7 AGFB014 = 7,110 M20Ks; KCU116 XCKU5P = 480 BRAM36 tiles. '
+@@ -139,7 +143,7 @@ def render(config, output):
+                 ax.axhline(limit,color='#a15d18',linestyle='--',linewidth=1,label='100% target capacity')
+                 if group == 'bram-utilization':
+                     ax.set_ylabel('BRAM / target BRAM capacity [%] · log scale')
+-                    ax.yaxis.set_major_formatter(FuncFormatter(lambda x,_:f'{x:,.0f}%'))
++                    ax.yaxis.set_major_formatter(FuncFormatter(lambda x,_:f'{x:g}%'))
+                 else:
+                     ax.set_ylabel(RESOURCE_NAMES[metrics[platform]][0]+' · log scale')
+                     ax.yaxis.set_major_formatter(FuncFormatter(lambda x,_:count_text(x)))
+@@ -148,11 +152,13 @@ def render(config, output):
+                 ax.yaxis.set_major_formatter(FuncFormatter(lambda x,_:f'{x:,.0f}'))
+             ax.legend(frameon=False,fontsize=10)
+         title = 'BRAM utilization' if group == 'bram-utilization' else ('BRAM count' if group == 'memory' else group)
+-        fig.suptitle(f'{preview}RIO {title} versus vFlows · {setup}\n'
++        fig.suptitle(f'{preview}{lookup}RIO {title} versus vFlows · {setup}\n'
+                      'Includes five measured PIFOs; sum of synthesis components',fontweight='bold')
+         if is_memory:
+             fig.text(.02,.06,memory_note,fontsize=9)
+             fig.text(.02,.02,'Values above the dashed line exceed target BRAM capacity. No placement or routing.',fontsize=9)
++        else:
++            fig.text(.02,.04,cam_note,fontsize=9)
+         save(fig,output/'figures'/group,selected)
+ 
+     fig, axes = axes_figure()
+@@ -167,9 +173,10 @@ def render(config, output):
+         axis(ax)
+         ax.set_title(platform.capitalize())
+         ax.axhline(0,color='#999999',linewidth=.8)
+-        ax.set_ylabel('(Replay − ordinary) / (ordinary + PIFOs) [%]')
++        ax.set_ylabel('Replay overhead [%]\nBaseline: ordinary RIO + 5 PIFOs')
+         ax.legend(frameon=False)
+-    fig.suptitle(f'{preview}Shared-FIFO replay overhead · PIFO cost included in the denominator\n'
++    fig.suptitle(f'{preview}{lookup}Shared-FIFO replay overhead · PIFO cost included in the denominator\n'
+                  f'{setup} · sum of synthesis components',fontweight='bold')
+     fig.text(.02,.06,memory_note,fontsize=9)
++    fig.text(.02,.02,cam_note,fontsize=9)
+     save(fig,output/'figures/overhead-percent',selected)
+diff --git a/pifo-hardware/hw/python/validate_shared_fifo_synthesis.py b/pifo-hardware/hw/python/validate_shared_fifo_synthesis.py
+index 9ffc674..e13da1a 100644
+--- a/pifo-hardware/hw/python/validate_shared_fifo_synthesis.py
++++ b/pifo-hardware/hw/python/validate_shared_fifo_synthesis.py
+@@ -8,9 +8,10 @@ import re
+ 
+ from pifo_synthesis_results import PROJECT
+ from pifo_shared_fifo_figures import write_csv
+-from pifo_shared_fifo_experiments import OUT, FLOWS, name, save
++from pifo_shared_fifo_experiments import OUT, FLOWS, name, save, DEFAULT_BUILD_ROOT
++from verify_cam_rtl import inspect as inspect_cam
+ 
+-ROOT = Path('/data/work/rio-synthesis/shared-fifo-34e35d2')
++ROOT = DEFAULT_BUILD_ROOT
+ 
+ 
+ def group(path):
+@@ -36,6 +37,8 @@ def audit_rtl(build):
+     rtl = (build/'rtl/PifoMesh.v').read_text()
+     assert hashlib.sha256(rtl.encode()).hexdigest() == m['rtl_sha256']['PifoMesh.v']
+     replay = m['hardware']['configuration']=='replay'
++    cam = m['hardware'].get('lookup_backend') == 'cam'
++    cam_validation = inspect_cam(build) if cam else None
+     modules = re.findall(r'\bmodule (\w+)\b(.*?)\bendmodule\b',rtl,re.S)
+     assert not any(n.startswith('TransactionalMapper') for n,_ in modules)
+     assert 'journal' not in rtl.lower()
+@@ -61,20 +64,22 @@ def audit_rtl(build):
+             assert '(io_writeReq_fire && (! activeBank))' in body
+     if replay:
+         assert len([r for r in records if r['array']=='storage'])==1
+-        assert len([r for r in records if r['array'].startswith('banks_')])==20
++        assert len([r for r in records if r['array'].startswith('banks_')])==(10 if cam else 20)
+     else:
+-        assert len(records)==11
++        assert len(records)==(6 if cam else 11)
+     controller=[r for r in records if r['component']=='controller_fifo']
+     assert len(controller)==1 and controller[0]['depth']==m['hardware']['commit_queue_depth']
+     controller_bits=controller[0]['width']*controller[0]['depth']
+     mapper_bits=sum(r['width']*r['depth'] for r in records if r['component']=='mapper')
++    if cam:
++        mapper_bits += cam_validation['cam_value_bits'] - m['logical_storage_bits']['flow_state_tables']
+     assert controller_bits==m['logical_storage_bits']['control_queue_payload']
+     assert mapper_bits==sum(m['logical_storage_bits'][k] for k in ('pre_mapper_banks','post_mapper_banks'))
+     return dict(status='passed',configuration=m['hardware']['configuration'],
+                 vflows=m['hardware']['global_flow_id_capacity'],
+                 separate_journal=False,mapper_bank_writes_mutually_exclusive=replay,
+                 logical_controller_bits=controller_bits,logical_mapper_bits=mapper_bits,
+-                arrays=records)
++                arrays=records, cam_value_ram_validation=cam_validation)
+ 
+ 
+ def native(build, platform):
+@@ -116,14 +121,14 @@ def native(build, platform):
+     return counts,memories
+ 
+ 
+-def main():
++def main(root=DEFAULT_BUILD_ROOT):
+     records, rows, differences = [], [], []
+     for flows in FLOWS:
+         for platform in ('quartus','vivado'):
+             pair={}
+             logical={}
+             for variant in ('static','replay'):
+-                build=ROOT/name(flows,variant,platform)
++                build=root/name(flows,variant,platform)
+                 if not (OUT/'runs'/build.name/'resource-summary.json').exists():
+                     continue
+                 if platform=='quartus':
+@@ -153,13 +158,17 @@ def main():
+             assert controller_logical_delta==0
+             logical_delta=sum(logical['replay'][g]-logical['static'][g] for g in ('pre_mapper_banks','post_mapper_banks'))
+             v=(flows-1).bit_length()
+-            expected=5*(flows*v+8*flows*flows*(v+3))
++            cam = manifest['hardware'].get('lookup_backend') == 'cam'
++            depth = manifest['hardware']['cam_entries_per_bank'] if cam else 8*flows*flows
++            expected=5*(flows*v+depth*(v+3))
+             assert logical_delta==expected,(flows,logical_delta,expected)
+             # Mapping to registers/LUTRAM is a measured outcome, not an audit
+             # failure. Keep logical capacity separate from block-memory usage.
+             differences.append(dict(platform=platform,vflows=flows,controller_ram_delta=controller_delta,
+                 controller_logical_storage_delta_bits=controller_logical_delta,
+                 logical_mapper_storage_delta_bits=logical_delta,
++                logical_cam_tag_valid_delta_bits=(logical['replay'].get('cam_tag_valid_registers',0)
++                                                  - logical['static'].get('cam_tag_valid_registers',0)),
+                 mapped_ram_delta=actual,mapper_ram_delta=mapper,
+                 non_mapper_ram_delta=actual-mapper,
+                 all_extra_ram_is_mapper_banks=(actual==mapper),
+diff --git a/pifo-hardware/hw/spinal/rio/ConfigurableMapper.scala b/pifo-hardware/hw/spinal/rio/ConfigurableMapper.scala
+index 0f61b46..e20b67b 100644
+--- a/pifo-hardware/hw/spinal/rio/ConfigurableMapper.scala
++++ b/pifo-hardware/hw/spinal/rio/ConfigurableMapper.scala
+@@ -22,6 +22,7 @@ abstract class ConfigurableMapper(inputWidth: Int, outputWidth: Int) extends Com
+     val writeReq = slave Stream (updater)
+     val commit = in Bool ()
+     val commitReady = out Bool ()
++    val capacityBlocked = out Bool ()
+   }
+   // Retain the observation point used by the existing atomic-visibility tests.
+   val activeBank: Bool
+@@ -39,6 +40,6 @@ case class DirectMapper(inputWidth: Int, outputWidth: Int)
+   io.readRes.valid := RegNext(io.readReq.valid) init (False)
+   io.writeReq.ready := True
+   io.commitReady := True
++  io.capacityBlocked := False
+   ram.write(io.writeReq.payload.inputId, io.writeReq.payload.outputId, io.writeReq.fire)
+ }
+-
+diff --git a/pifo-hardware/hw/spinal/rio/GeneratePifoMesh.scala b/pifo-hardware/hw/spinal/rio/GeneratePifoMesh.scala
+index 6336294..7bbbdc7 100644
+--- a/pifo-hardware/hw/spinal/rio/GeneratePifoMesh.scala
++++ b/pifo-hardware/hw/spinal/rio/GeneratePifoMesh.scala
+@@ -8,8 +8,8 @@ import spinal.lib._
+   */
+ object GeneratePifoMesh {
+   def main(args: Array[String]): Unit = {
+-    require(args.length >= 5 && args.length <= 8,
+-      "Usage: GeneratePifoMesh OUTPUT_DIR NUM_ENGINES NUM_VPIFOS FIFO_DEPTH PRIORITY_BITS [house|external] [replay|static] [CONTROL_QUEUE_DEPTH]")
++    require(args.length >= 5 && args.length <= 10,
++      "Usage: GeneratePifoMesh OUTPUT_DIR NUM_ENGINES NUM_VPIFOS FIFO_DEPTH PRIORITY_BITS [house|external] [replay|static] [CONTROL_QUEUE_DEPTH] [dense|cam] [CAM_ENTRIES_PER_PE]")
+     val Array(output, enginesArg, vpifosArg, depthArg, priorityArg) = args.take(5)
+     val backend = args.lift(5).getOrElse("house")
+     val configuration = args.lift(6).getOrElse("replay")
+@@ -32,11 +32,13 @@ object GeneratePifoMesh {
+       prefetchBufferDepth = 2,
+       pifoBackend = backend,
+       dynamicConfig = configuration != "static",
+-      commitQueueLength = args.lift(7).map(_.toInt).getOrElse(EngineConfig.DefaultCommitQueueLength)
++      commitQueueLength = args.lift(7).map(_.toInt).getOrElse(EngineConfig.DefaultCommitQueueLength),
++      lookupBackend = args.lift(8).getOrElse(EngineConfig.DefaultLookupBackend),
++      camEntriesPerPe = args.lift(9).map(_.toInt).getOrElse(0)
+     )
+     Config.spinal.copy(targetDirectory = output).generateVerilog(PifoMesh(config))
+     println(s"PifoMesh: $engines PEs, $vpifos vPIFO IDs/PE, " +
+-      s"${vpifos * depth} shared entries/PE, $vpifos global flow IDs, $priorityBits rank bits, $backend PIFO, $configuration configuration")
++      s"${vpifos * depth} shared entries/PE, $vpifos global flow IDs, $priorityBits rank bits, $backend PIFO, $configuration configuration, ${config.lookupBackend} lookups, ${config.camCapacity} CAM entries/bank")
+   }
+ }
+ 
+diff --git a/pifo-hardware/hw/spinal/rio/PifoEngine.scala b/pifo-hardware/hw/spinal/rio/PifoEngine.scala
+index f0fd842..49bb9df 100644
+--- a/pifo-hardware/hw/spinal/rio/PifoEngine.scala
++++ b/pifo-hardware/hw/spinal/rio/PifoEngine.scala
+@@ -16,15 +16,22 @@ case class EngineConfig(
+     configDataWidth: Int = 32,
+     commitQueueLength: Int = EngineConfig.DefaultCommitQueueLength,
+     pifoBackend: String = "house",
+-    dynamicConfig: Boolean = true
++    dynamicConfig: Boolean = true,
++    lookupBackend: String = EngineConfig.DefaultLookupBackend,
++    camEntriesPerPe: Int = 0
+ ) {
+   require(Set("house", "external").contains(pifoBackend))
++  require(Set("dense", "cam").contains(lookupBackend))
++  require(camEntriesPerPe >= 0)
+   require(commitQueueLength >= 2 && (commitQueueLength & (commitQueueLength - 1)) == 0,
+     "commitQueueLength must be a power of two >= 2")
+   def vpifoIdWidth = log2Up(numVPIFOs)
+   def numFlows = numVPIFOs * numEngines
+   def engineIdWidth = log2Up(numEngines + 1) // +1 for control port
+   def flowIdWidth = vpifoIdWidth + engineIdWidth
++  // Space for two tree contexts per flow by default; callers can set a larger
++  // bound when more distinct (vPIFO, flow token) pairs coexist.
++  def camCapacity = if (camEntriesPerPe == 0) 2 * numVPIFOs else camEntriesPerPe
+ 
+   def dequePredWidth = vpifoIdWidth + 1 // +1 for exist bit
+ 
+@@ -37,6 +44,7 @@ case class EngineConfig(
+ 
+ object EngineConfig {
+   val DefaultCommitQueueLength = 256
++  val DefaultLookupBackend = "cam"
+ 
+   implicit def toFlowPifoConfig(pifoConfig: EngineConfig): PifoConfig =
+     PifoConfig(
+@@ -255,6 +263,7 @@ case class PIFOBrain(config: EngineConfig) extends Component {
+ 
+     val control = slave Stream (ControlMessage(config))
+     val poped = slave Flow (PifoPopResponse(config))
++    val camCapacityBlocked = if (config.lookupBackend == "cam") out Bool() else null
+   }
+ 
+   val inHeads = StreamFork(io.request, 5)
+@@ -277,16 +286,20 @@ case class PIFOBrain(config: EngineConfig) extends Component {
+   }
+   inHeads(1).map(_.vpifoId).toFlow >> lastVirtualMapper.io.readReq
+ 
+-  val engineCAM = Mapper(config.flowIdWidth + config.vpifoIdWidth, config.flowStateWidth)
++  val engineCAM: ConfigurableMapper = if (config.lookupBackend == "cam")
++    BoundedCamMapper(config.flowIdWidth + config.vpifoIdWidth, config.flowStateWidth,
++      config.camCapacity, replay = false)
++  else DirectMapper(config.flowIdWidth + config.vpifoIdWidth, config.flowStateWidth)
++  engineCAM.io.commit := False
++  if (config.lookupBackend == "cam") io.camCapacityBlocked := engineCAM.io.capacityBlocked
+   inHeads(2).map { data =>
+     data.vpifoId @@ data.flowId
+   }.toFlow >> engineCAM.io.readReq
+   // TODO(zhiyuang): check this priority and flows when updating
+-  val flowStateControl, flowStateUpdate = Flow(engineCAM.updater)
++  val flowStateControl, flowStateUpdate = Stream(engineCAM.updater)
+   engineCAM.io.writeReq << StreamArbiterFactory.lowerFirst
+-    .onArgs(flowStateControl.toStream, flowStateUpdate.toStream.queueLowLatency(2))
+-    .toFlow
+-  controller.dispatch(
++    .onArgs(flowStateControl, flowStateUpdate.queueLowLatency(2))
++  controller.dispatchStream(
+     ControlCommand.UpdateBrainFlowState,
+     flowStateControl
+   ) { (to, from) =>
+@@ -419,7 +432,6 @@ case class PIFOBrain(config: EngineConfig) extends Component {
+   flowStateUpdate << flowUpdates
+     .throwWhen(!flowUpdates.payload.flowUpdate.update)
+     .map(_.flowUpdate.flow)
+-    .toFlow
+ 
+   brainStateUpdate << brainUpdates
+     .throwWhen(!brainUpdates.payload.brainUpdate.update)
+@@ -461,6 +473,7 @@ case class PifoEngine(config: EngineConfig) extends Component {
+     val pifo = if (config.pifoBackend == "external") master(PifoBoundary(config)) else null
+     val nearlyDrained = master Flow (UInt(config.vpifoIdWidth bits))
+     val pushed = Vec(master(Flow(UInt(config.vpifoIdWidth bits))), 2)
++    val camCapacityBlocked = if (config.lookupBackend == "cam") out Bool() else null
+   }
+ 
+   // PIFO
+@@ -503,7 +516,10 @@ case class PifoEngine(config: EngineConfig) extends Component {
+     // Qualify a dequeue rewrite with the PIFO port. This lets old and new
+     // copies of a tree carry the same flow IDs while retaining distinct next
+     // hops during a full-transitive reconfiguration.
+-    val dequeMapper: ConfigurableMapper = if (config.dynamicConfig) ReplayMapper(
++    val dequeMapper: ConfigurableMapper = if (config.lookupBackend == "cam")
++      BoundedCamMapper(config.vpifoIdWidth + config.flowIdWidth, config.flowIdWidth,
++        config.camCapacity, replay = config.dynamicConfig)
++    else if (config.dynamicConfig) ReplayMapper(
+       config.vpifoIdWidth + config.flowIdWidth,
+       config.flowIdWidth
+     ) else DirectMapper(config.vpifoIdWidth + config.flowIdWidth, config.flowIdWidth)
+@@ -580,6 +596,9 @@ case class PifoEngine(config: EngineConfig) extends Component {
+     enque.enqueMapper.io.commitReady &&
+       deque.dequeMapper.io.commitReady
+   io.commitReady := mapperCommitReady
++  if (config.lookupBackend == "cam") {
++    io.camCapacityBlocked := enque.brain.io.camCapacityBlocked || deque.dequeMapper.io.capacityBlocked
++  }
+ 
+   val (control, brainControl, commitControl) = StreamFork3(io.control)
+   controller.build(control)
+diff --git a/pifo-hardware/hw/spinal/rio/PifoMesh.scala b/pifo-hardware/hw/spinal/rio/PifoMesh.scala
+index 47704d3..ec7c184 100644
+--- a/pifo-hardware/hw/spinal/rio/PifoMesh.scala
++++ b/pifo-hardware/hw/spinal/rio/PifoMesh.scala
+@@ -54,11 +54,19 @@ case class PifoMesh(config: EngineConfig) extends Component {
+     val replayBusy = out Bool()
+     // Free non-commit slots in the shared command FIFO; excludes commit reserve.
+     val replayLogAvailable = out UInt(log2Up(config.commitQueueLength + 1) bits)
++    // A new nonzero key is waiting because a bounded CAM bank is full. Existing
++    // entries remain intact; admission must free a slot before inserting it.
++    val camCapacityBlocked = if (config.lookupBackend == "cam") out Bits(config.numEngines bits) else null
+   }
+ 
+   // all datapath
+   val xbar = MessageCrossBar(config)
+   val pifoEngines = Seq.fill(config.numEngines)(PifoEngine(config))
++  if (config.lookupBackend == "cam") {
++    pifoEngines.zipWithIndex.foreach { case (engine, index) =>
++      io.camCapacityBlocked(index) := engine.io.camCapacityBlocked
++    }
++  }
+   if (config.pifoBackend == "external") {
+     (io.pifo zip pifoEngines).foreach { case (boundary, engine) => boundary <> engine.io.pifo }
+   }
+diff --git a/pifo-hardware/hw/spinal/rio/ReplayMapper.scala b/pifo-hardware/hw/spinal/rio/ReplayMapper.scala
+index b1acb0d..deef10c 100644
+--- a/pifo-hardware/hw/spinal/rio/ReplayMapper.scala
++++ b/pifo-hardware/hw/spinal/rio/ReplayMapper.scala
+@@ -22,6 +22,7 @@ case class ReplayMapper(inputWidth: Int, outputWidth: Int)
+   io.readRes.payload := Mux(requestedBank, bankRead(1), bankRead(0))
+   io.writeReq.ready := True
+   io.commitReady := True
++  io.capacityBlocked := False
+   banks(0).write(io.writeReq.inputId, io.writeReq.outputId, io.writeReq.fire && activeBank)
+   banks(1).write(io.writeReq.inputId, io.writeReq.outputId, io.writeReq.fire && !activeBank)
+   when(io.commit) { activeBank := !activeBank }
+diff --git a/pifo-hardware/hw/spinal/rio/sim/ControlIngressRateSim.scala b/pifo-hardware/hw/spinal/rio/sim/ControlIngressRateSim.scala
+index 6ec6003..7a88574 100644
+--- a/pifo-hardware/hw/spinal/rio/sim/ControlIngressRateSim.scala
++++ b/pifo-hardware/hw/spinal/rio/sim/ControlIngressRateSim.scala
+@@ -19,7 +19,8 @@ object ControlIngressRateSim extends App {
+     numVPIFOs = 4,
+     maxPacketPriority = 32,
+     fifoDepth = 2,
+-    prefetchBufferDepth = 2
++    prefetchBufferDepth = 2,
++    lookupBackend = args.headOption.getOrElse(EngineConfig.DefaultLookupBackend)
+   )
+ 
+   SimConfig.withIVerilog
+diff --git a/pifo-hardware/hw/spinal/rio/sim/DrainGuardSim.scala b/pifo-hardware/hw/spinal/rio/sim/DrainGuardSim.scala
+index df4eea6..d1ef7dc 100644
+--- a/pifo-hardware/hw/spinal/rio/sim/DrainGuardSim.scala
++++ b/pifo-hardware/hw/spinal/rio/sim/DrainGuardSim.scala
+@@ -8,7 +8,7 @@ import rio._
+   * sbt "runMain rio.sim.DrainGuardSim"
+   */
+ object DrainGuardSim extends App {
+-  val config = EngineConfig(2, 4, 256, 2, 2)
++  val config = EngineConfig(2, 4, 256, 2, 2, lookupBackend = args.headOption.getOrElse(EngineConfig.DefaultLookupBackend))
+   SimConfig.withIVerilog.addSimulatorFlag("-g2012").compile {
+     val mesh = PifoMesh(config)
+     mesh.pifoEngines.foreach { engine =>
+diff --git a/pifo-hardware/hw/spinal/rio/sim/FrontUnderflowRewriteSim.scala b/pifo-hardware/hw/spinal/rio/sim/FrontUnderflowRewriteSim.scala
+index 6454fa2..82563b7 100644
+--- a/pifo-hardware/hw/spinal/rio/sim/FrontUnderflowRewriteSim.scala
++++ b/pifo-hardware/hw/spinal/rio/sim/FrontUnderflowRewriteSim.scala
+@@ -18,7 +18,8 @@ object FrontUnderflowRewriteSim extends App {
+     numVPIFOs = 8,
+     maxPacketPriority = 64,
+     fifoDepth = 8,
+-    prefetchBufferDepth = 2
++    prefetchBufferDepth = 2,
++    lookupBackend = args.headOption.getOrElse(EngineConfig.DefaultLookupBackend)
+   )
+ 
+   private val sourcePifo = 1
+diff --git a/pifo-hardware/hw/spinal/rio/sim/SharedReplayDriverSim.scala b/pifo-hardware/hw/spinal/rio/sim/SharedReplayDriverSim.scala
+index 7561a34..87b0778 100644
+--- a/pifo-hardware/hw/spinal/rio/sim/SharedReplayDriverSim.scala
++++ b/pifo-hardware/hw/spinal/rio/sim/SharedReplayDriverSim.scala
+@@ -9,7 +9,8 @@ import spinal.core.sim._
+   */
+ object SharedReplayDriverSim extends App {
+   assert(EngineConfig(2, 8, 256, 4, 2).commitQueueLength == 256)
+-  val config = EngineConfig(2, 8, 256, 4, 2, commitQueueLength = 4)
++  val config = EngineConfig(2, 8, 256, 4, 2, commitQueueLength = 4,
++    lookupBackend = args.headOption.getOrElse(EngineConfig.DefaultLookupBackend))
+   def rejected(body: => Unit): Unit = {
+     val failure = scala.util.Try(body).failed.get
+     assert(failure.isInstanceOf[IllegalArgumentException])
+diff --git a/pifo-hardware/hw/spinal/rio/sim/TransactionalConfigSim.scala b/pifo-hardware/hw/spinal/rio/sim/TransactionalConfigSim.scala
+index 8b06765..f0d3194 100644
+--- a/pifo-hardware/hw/spinal/rio/sim/TransactionalConfigSim.scala
++++ b/pifo-hardware/hw/spinal/rio/sim/TransactionalConfigSim.scala
+@@ -16,7 +16,8 @@ object TransactionalConfigSim extends App {
+     numVPIFOs = 4,
+     maxPacketPriority = 32,
+     fifoDepth = 2,
+-    prefetchBufferDepth = 2
++    prefetchBufferDepth = 2,
++    lookupBackend = args.headOption.getOrElse(EngineConfig.DefaultLookupBackend)
+   )
+ 
+   SimConfig.withIVerilog
+diff --git a/pifo-hardware/synthesis/README.md b/pifo-hardware/synthesis/README.md
+index ce6cc8e..ffb2fb6 100644
+--- a/pifo-hardware/synthesis/README.md
++++ b/pifo-hardware/synthesis/README.md
+@@ -1,8 +1,9 @@
+ # Shared-FIFO replay synthesis
+ 
+-This workspace is based on `pifo-hardware` commit `34e35d2`. Replay uses the
+-unchanged shared controller FIFO and remains the default. The controller FIFO
+-depth defaults to 256 for both replay and ordinary tables.
++Portable bounded CAM lookups with shared-FIFO replay are the defaults in the
++hardware configuration, RTL generator, and synthesis CLI. The controller FIFO
++depth defaults to 256 for both replay and ordinary tables. Dense lookup tables
++remain available with `--lookup-backend dense`.
+ 
+ The synthesis adapter adds an ordinary-table baseline and an external PIFO
+ boundary. The ordinary baseline writes one mapper bank directly, retains the
+@@ -13,23 +14,31 @@ not change memory contents, widths, depths, or ports.
+ 
+ ## Run the experiments
+ 
+-From `pifo-hardware`, with Python and matplotlib available:
++From `pifo-hardware`, using the installed Python environment with matplotlib:
+ 
+ ```bash
+-python hw/python/pifo_shared_fifo_experiments.py
+-python hw/python/pifo_shared_fifo_experiments.py --collect-only
++.venv/bin/python hw/python/pifo_shared_fifo_experiments.py
++.venv/bin/python hw/python/pifo_shared_fifo_experiments.py --collect-only
++.venv/bin/python hw/python/finalize_shared_fifo_experiments.py
+ ```
+ 
+ The fixed setup is 5 PEs, 1,024 vFlows, 1,024 PIFO entries per PE, 8-bit ranks,
+-and a 256-entry controller FIFO. The sweep uses 32, 64, 128, 256, 512, and 1,024
+-vFlows. Every configuration is synthesized afresh. One matching house PIFO is
+-also synthesized per width and vendor, including accepted-push notifications.
++and a 256-entry controller FIFO. The sweep uses **32, 128, 512, and 1,024 vFlows**,
++with `2 × vFlows` entries per CAM bank: four sizes × static/replay × two vendors
++= **16 RIO synthesis runs**. Reruns reuse verified completed results. Matching
++house-PIFO measurements are reused from the previous sweep after checking every
++generated RTL input; only the nonfunctional Git-hash header comment may differ.
++The original PIFO reports, manifests, RTL, and reuse proofs remain in the results.
++The manager uses up to four Quartus and four Vivado jobs concurrently, with
++eight threads per job. Completed jobs require matching source and generated-RTL
++hashes before reuse. Incomplete builds must be inspected before a retry.
+ 
+-Results follow `experiment-results/shared-fifo-overhead/{r1-fixed,r2-vflows}`:
++Results follow `experiment-results/cam-overhead/{r1-fixed,r2-vflows}`:
+ configuration JSON, resource/comparison CSVs, and `figures/*/{data.csv,figure.svg,figure.png}`.
+ Native tool evidence and source snapshots are kept under `runs/` and `workflow/`.
+ Large RTL, vendor databases, and checkpoints remain in
+-`/data/work/rio-synthesis/shared-fifo-34e35d2/`.
++`/data/work/rio-synthesis/cam-shared-fifo-20260909/`.
++The earlier dense-table sweep remains in `experiment-results/shared-fifo-overhead/`.
+ 
+ For each native resource, both totals include five measured PIFOs:
+ 
+@@ -78,3 +87,105 @@ are recorded in `logs/`. `--prepare-only` generates the project, `--generate-onl
+ generates RTL only, and `--rtl-from` / `--reuse-rtl` require matching source,
+ parameter, and generated-file hashes. `--component pifo` measures one house PIFO
+ with the same single enabled push port as a PE.
++
++## Default bounded CAM backend
++
++`--lookup-backend cam` replaces the large `(vPIFO, flow token)` flow-state and
++post-mapper tables with portable exact-match CAMs. The pre-mapper remains a
++small dense RAM. CAM lookups and replay are the defaults for the experiment
++workflow and direct hardware elaboration. Individual CAM builds use
++separate `cam-replay` / `cam-replay-vivado` default directories.
++
++Each CAM stores tags and valid bits in registers, with a single-read/single-write
++synchronous value RAM. Lookups take one cycle in RTL. Tag comparisons and match
++encoding are combinational, so clock frequency and FPGA resource use still need
++synthesis and implementation validation. Replay has two complete post-mapper CAM
++banks; flow-state CAMs remain single-bank. The controller still reuses its
++256-entry FIFO for replay.
++
++`--cam-entries-per-pe` bounds distinct nonzero `(vPIFO, flow token)` pairs **per
++table bank**, independently of the key address space and PIFO packet capacity.
++It defaults to twice `--vpifos` to allow two tree contexts per flow; workloads
++with more coexisting pairs must select a larger bound. Missing keys return zero.
++Writing zero deletes an entry. Software must retire obsolete pairs and delete
++before inserting when a bank is full. A full bank continues to accept updates
++to existing keys, but holds a new nonzero-key write and asserts the corresponding
++`camCapacityBlocked` PE bit. A later commit cannot overtake that write. A blocked
++write at the head of the shared FIFO cannot be fixed by queuing a deletion behind
++it; capacity must be checked before submission, or the design must be reset.
++
++Generate the full 5 PE / 1,024 vFlow / 1,024 entries-per-PE CAM design, without
++running synthesis:
++
++```bash
++python synthesis/run.py --tool vivado --board vcu118 \
++  --engines 5 --vpifos 1024 --entries-per-pe 1024 \
++  --configuration replay --lookup-backend cam --cam-entries-per-pe 2048 \
++  --control-queue-depth 256 --pifo-backend external \
++  --name cam-pe5-v1024-c1024-q256 --generate-only
++```
++
++The manifest separates CAM tag/valid registers from value-RAM storage. These
++logical bit counts are not synthesized BRAM or LUT counts. Recorded dense-table
++resource results remain under `experiment-results/shared-fifo-overhead/`.
++
++The local Vivado 2025.2 catalog contains `xilinx.com:ip:cam:5.0`, supporting
++Virtex UltraScale+. Its hardware-managed exact-match mode is selected using
++`CAM_MODE=BCAM` and `UPDATE_MODE=HARDWARE` (CBCAM). The catalog probe on
++2026-09-09 reported **IP license not found / Needs Purchase**, requiring
++`hcam_base@2025.11` or `hcam_advanced@2025.11`. This portable backend does not
++instantiate AMD's licensed IP. Recheck the installed catalog without synthesis:
++
++```bash
++vivado -mode batch -source synthesis/probe_cam_ip.tcl \
++  -tclargs /tmp/rio-cam-catalog
++```
++
++AMD references: [CAM product page](https://www.amd.com/en/products/adaptive-socs-and-fpgas/intellectual-property/ef-di-cam.html),
++[licensing](https://docs.amd.com/r/en-US/pg317-bcam/Licensing-and-Ordering),
++[hardware update interface](https://docs.amd.com/r/en-US/pg317-bcam/Hardware-Update-Interface-Ports-CBCAM-only).
++Vendor CBCAM updates use a multi-cycle ready/valid protocol and would require
++an adapter and lookup/backpressure changes before integration.
++
++Run correctness checks with:
++
++```bash
++sbt "runMain rio.sim.BoundedCamMapperSim" "runMain rio.sim.BoundedCamIntegrationSim"
++sbt "runMain rio.sim.TransactionalConfigSim cam" "runMain rio.sim.SharedReplayDriverSim cam" \
++    "runMain rio.sim.DrainGuardSim cam" "runMain rio.sim.FrontUnderflowRewriteSim cam" \
++    "runMain rio.sim.ControlIngressRateSim cam"
++```
++
++## Optional pipelined CAM
++
++`hw/spinal/rio/PipelinedCamMapper.scala` is a separate experimental module built
++around unmodified [Alex Forencich SRL CAM RTL](https://github.com/alexforencich/verilog-cam/tree/69002598f12d7418d44bbaa88ea0be3bf3b14e6c),
++vendored with its MIT license and file hashes under `hw/verilog/vendor/verilog-cam`.
++Upstream registers the match vector; our wrapper provides the depth pipeline,
++using 128 or 256 entries per stage. For 2,048 entries, these choices give 17 or
++9 cycles minimum lookup latency, including the synchronous value read. An
++unstalled lookup stream accepts one request per cycle after initialization.
++
++Value banks retain one read and one write port. Replay uses the existing shared
++controller FIFO, with no separate journal. Static writes pause lookup admission;
++replay writes wait for old-bank lookups to finish while active-bank reads continue.
++Inserts/deletes include the upstream multi-cycle SRL update; existing-key value
++updates avoid rewriting the index. Output backpressure uses a small register FIFO.
++
++This module has Stream request/response interfaces. It is not selected by the
++current mesh/default synthesis sweep: mesh callers need to honor backpressure
++and align packet metadata for its variable latency. The existing results measure
++`BoundedCamMapper`, not this prototype. SRL index storage differs from the default
++registered-tag CAM; resource and timing improvements have not been measured.
++
++Run correctness checks and generate a self-contained standalone RTL directory:
++
++```bash
++sbt "runMain rio.sim.PipelinedCamMapperSim" "runMain rio.sim.PipelinedCamReplayIntegrationSim"
++sbt "runMain rio.GeneratePipelinedCam /tmp/rio-cam-2048-p128 2048 128 replay"
++python synthesis/verify_pipelined_cam_rtl.py /tmp/rio-cam-2048-p128 \
++  --capacity 2048 --entries-per-stage 128 --replay
++```
++
++The generator copies the two upstream RTL dependencies, license, provenance and
++`rtl-files.f`. These commands do not invoke Quartus or Vivado.
+diff --git a/pifo-hardware/synthesis/run.py b/pifo-hardware/synthesis/run.py
+index d319720..0892f58 100644
+--- a/pifo-hardware/synthesis/run.py
++++ b/pifo-hardware/synthesis/run.py
+@@ -125,9 +125,13 @@ def main():
+                         help="Shared-FIFO replay (default) or ordinary tables with ignored commits (static)")
+     parser.add_argument("--control-queue-depth", type=int, default=256,
+                         help="Shared control FIFO entries for all configurations; replay reserves one for commit")
++    parser.add_argument("--lookup-backend", choices=("dense", "cam"), default="cam",
++                        help="Bounded portable exact-match CAMs (default) or dense pair tables for flow state and post mapping")
++    parser.add_argument("--cam-entries-per-pe", type=int,
++                        help="Distinct nonzero pairs per CAM bank; defaults to twice --vpifos for two tree contexts")
+     parser.add_argument("--pifo-backend", choices=("house", "external"), default="house",
+                         help="house/stock implementation, or external to expose PIFO ports and measure RIO alone")
+-    parser.add_argument("--name", help="Build name; replay defaults use baseline-replay or baseline-replay-vivado")
++    parser.add_argument("--name", help="Build name; default CAM replay uses cam-replay or cam-replay-vivado")
+     parser.add_argument("--build-root", type=Path, default=HERE / "build",
+                         help="Parent of build directories; override for large synthesis sweeps")
+     parser.add_argument("--engines", type=int, default=2)
+@@ -156,11 +160,22 @@ def main():
+     reuse.add_argument("--reuse-rtl", action="store_true", help="Reuse verified RTL in this build")
+     reuse.add_argument("--rtl-from", type=Path, help="Copy verified RTL from another build with matching parameters")
+     args = parser.parse_args()
++    # A standalone PIFO contains no lookup tables. Keep the component command
++    # independent of the default RIO lookup backend.
++    if args.component == "pifo":
++        if args.cam_entries_per_pe is not None:
++            parser.error("--cam-entries-per-pe applies to --component rio only")
++        args.lookup_backend = "dense"
+     if args.control_queue_depth < 2 or args.control_queue_depth & (args.control_queue_depth - 1):
+         parser.error("--control-queue-depth must be a power of two >= 2")
+-    args.name = args.name or (("baseline-replay" if args.tool == "quartus" else "baseline-replay-vivado")
+-                              if args.configuration == "replay" else
+-                              ("baseline" if args.tool == "quartus" else "baseline-vivado"))
++    default_name = (("baseline-replay" if args.tool == "quartus" else "baseline-replay-vivado")
++                    if args.configuration == "replay" else
++                    ("baseline" if args.tool == "quartus" else "baseline-vivado"))
++    if args.lookup_backend == "cam":
++        default_name = f"cam-{args.configuration}" + ("-vivado" if args.tool == "vivado" else "")
++    if args.component == "pifo":
++        default_name = "pifo-house" + ("-vivado" if args.tool == "vivado" else "")
++    args.name = args.name or default_name
+     if args.pifo_backend == "stock" and args.name in (
+             "baseline", "baseline-vivado", "baseline-replay", "baseline-replay-vivado"):
+         args.name = "stock-pifo-replay" if args.configuration == "replay" else "stock-pifo"
+@@ -202,6 +217,12 @@ def main():
+     e = args.engines.bit_length()
+     token_bits = v + e
+     pair_depth = 1 << (v + token_bits)
++    cam_capacity = args.cam_entries_per_pe if args.cam_entries_per_pe is not None else 2 * args.vpifos
++    if args.lookup_backend == "cam" and not 2 <= cam_capacity <= pair_depth:
++        parser.error("--cam-entries-per-pe must be between 2 and the pair address-space size")
++    if args.cam_entries_per_pe is not None and args.lookup_backend != "cam":
++        parser.error("--cam-entries-per-pe requires --lookup-backend cam")
++    table_depth = cam_capacity if args.lookup_backend == "cam" else pair_depth
+     hardware = {
+         "component": args.component,
+         "configuration": args.configuration,
+@@ -218,6 +239,10 @@ def main():
+         "flow_token_address_space": 1 << token_bits,
+         "vpifo_token_pairs_per_pe": pair_depth,
+     }
++    if args.component != "pifo" and args.lookup_backend == "cam":
++        hardware.update(lookup_backend="cam", cam_implementation="portable_parallel_tags_synchronous_values",
++                        cam_entries_per_bank=cam_capacity, cam_zero_write="delete",
++                        cam_full_behavior="backpressure_new_nonzero_key_and_assert_capacityBlocked")
+     if args.configuration == "replay":
+         hardware.update(mapper_sync="shared_control_fifo_replay", replay_storage="control_queue",
+                         separate_replay_journal=False, replay_max_retained_commands=args.control_queue_depth - 1)
+@@ -266,8 +291,8 @@ def main():
+                     (["PIFO cores: storage, sorter, occupancy and drain detection"] if args.pifo_backend == "external" else []),
+         "logical_storage_bits": {
+             "sorted_entry_registers": args.engines * args.entries_per_pe * (v + args.priority_bits + token_bits) if args.pifo_backend != "external" else 0,
+-            "flow_state_tables": args.engines * pair_depth * 32,
+-            "post_mapper_banks": args.engines * pair_depth * token_bits * hardware["mapper_banks"],
++            "flow_state_tables": args.engines * table_depth * 32,
++            "post_mapper_banks": args.engines * table_depth * token_bits * hardware["mapper_banks"],
+             "pre_mapper_banks": args.engines * args.vpifos * v * hardware["mapper_banks"],
+             "brain_policy_tables": args.engines * args.vpifos * 2,
+             "last_virtual_time_tables": args.engines * args.vpifos * args.priority_bits,
+@@ -278,6 +303,9 @@ def main():
+         },
+         "status": "preparing",
+     }
++    if args.component != "pifo" and args.lookup_backend == "cam":
++        metadata["logical_storage_bits"]["cam_tag_valid_registers"] = (
++            args.engines * table_depth * (v + token_bits + 1) * (1 + hardware["mapper_banks"]))
+     if args.component == "pifo":
+         metadata["scope"] = "One house PIFO: sorter, storage, occupancy, empty/drain and accepted-push notifications"
+         metadata["excluded"] = ["RIO PEs, mappers, brains, crossbar, and controller"]
+@@ -318,7 +346,8 @@ def main():
+             # sbt parses its own command string; quote the path for its parser.
+             command = (f'runMain rio.GeneratePifoMesh "{rtl}" {args.engines} '
+                        f'{args.vpifos} {hardware["fifo_depth_parameter"]} {args.priority_bits} '
+-                       f'{args.pifo_backend} {args.configuration} {args.control_queue_depth}')
++                       f'{args.pifo_backend} {args.configuration} {args.control_queue_depth} '
++                       f'{args.lookup_backend} {cam_capacity if args.lookup_backend == "cam" else 0}')
+             if args.component == "pifo":
+                 command = (f'runMain rio.GeneratePifoComponent "{rtl}" {args.engines} '
+                            f'{args.vpifos} {hardware["fifo_depth_parameter"]} {args.priority_bits}')

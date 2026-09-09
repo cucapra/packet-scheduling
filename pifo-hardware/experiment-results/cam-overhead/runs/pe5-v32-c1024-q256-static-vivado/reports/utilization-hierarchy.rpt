@@ -1,0 +1,60 @@
+Copyright 1986-2022 Xilinx, Inc. All Rights Reserved. Copyright 2022-2025 Advanced Micro Devices, Inc. All Rights Reserved.
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+| Tool Version : Vivado v.2025.2 (lin64) Build 6299465 Fri Nov 14 12:34:56 MST 2025
+| Date         : Wed Sep  9 12:21:33 2026
+| Host         : netarch-cxl.ece.cornell.edu running 64-bit Ubuntu 24.04.4 LTS
+| Command      : report_utilization -hierarchical -hierarchical_depth 5 -file /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v32-c1024-q256-static-vivado/reports/utilization-hierarchy.rpt
+| Design       : PifoMesh
+| Device       : xcku5p-ffvb676-2-e
+| Speed File   : -2
+| Design State : Synthesized
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Utilization Design Information
+
+Table of Contents
+-----------------
+1. Utilization by Hierarchy
+
+1. Utilization by Hierarchy
+---------------------------
+
++--------------------------+------------------------+------------+------------+---------+------+-------+--------+--------+------+------------+
+|         Instance         |         Module         | Total LUTs | Logic LUTs | LUTRAMs | SRLs |  FFs  | RAMB36 | RAMB18 | URAM | DSP Blocks |
++--------------------------+------------------------+------------+------------+---------+------+-------+--------+--------+------+------------+
+| PifoMesh                 |                  (top) |      14568 |      13930 |     638 |    0 | 10972 |      1 |      0 |    0 |          0 |
+|   (PifoMesh)             |                  (top) |        340 |          0 |     340 |    0 |     0 |      0 |      0 |    0 |          0 |
+|   guard                  |             DrainGuard |        475 |        475 |       0 |    0 |   320 |      0 |      0 |    0 |          0 |
+|   io_controlRequest_fifo |          StreamFifo_51 |       1347 |       1347 |       0 |    0 |    28 |      1 |      0 |    0 |          0 |
+|   pifoEngines_0          |             PifoEngine |       2462 |       2412 |      50 |    0 |  2099 |      0 |      0 |    0 |          0 |
+|     enque_brain          |              PIFOBrain |       1346 |       1310 |      36 |    0 |   979 |      0 |      0 |    0 |          0 |
+|       streamArbiter_16   |    StreamArbiter_6_119 |         97 |         97 |       0 |    0 |     3 |      0 |      0 |    0 |          0 |
+|       engineCAM          |   BoundedCamMapper_111 |       1098 |       1082 |      16 |    0 |   912 |      0 |      0 |    0 |          0 |
+|     deque_dequeMapper    | BoundedCamMapper_1_102 |        997 |        987 |      10 |    0 |   906 |      0 |      0 |    0 |          0 |
+|     deque_frontRewrite   |  FrontRewriteTable_104 |         49 |         49 |       0 |    0 |   192 |      0 |      0 |    0 |          0 |
+|   pifoEngines_1          |           PifoEngine_1 |       2365 |       2315 |      50 |    0 |  2099 |      0 |      0 |    0 |          0 |
+|     enque_brain          |            PIFOBrain_1 |       1253 |       1217 |      36 |    0 |   979 |      0 |      0 |    0 |          0 |
+|       engineCAM          |    BoundedCamMapper_85 |       1099 |       1083 |      16 |    0 |   912 |      0 |      0 |    0 |          0 |
+|     deque_dequeMapper    |  BoundedCamMapper_1_76 |        993 |        983 |      10 |    0 |   906 |      0 |      0 |    0 |          0 |
+|     deque_frontRewrite   |   FrontRewriteTable_78 |         49 |         49 |       0 |    0 |   192 |      0 |      0 |    0 |          0 |
+|   pifoEngines_2          |           PifoEngine_2 |       2463 |       2413 |      50 |    0 |  2099 |      0 |      0 |    0 |          0 |
+|     enque_brain          |            PIFOBrain_2 |       1348 |       1312 |      36 |    0 |   979 |      0 |      0 |    0 |          0 |
+|       streamArbiter_16   |     StreamArbiter_6_67 |        202 |        202 |       0 |    0 |     3 |      0 |      0 |    0 |          0 |
+|       engineCAM          |    BoundedCamMapper_59 |        995 |        979 |      16 |    0 |   912 |      0 |      0 |    0 |          0 |
+|     deque_dequeMapper    |  BoundedCamMapper_1_50 |        994 |        984 |      10 |    0 |   906 |      0 |      0 |    0 |          0 |
+|     deque_frontRewrite   |   FrontRewriteTable_52 |         49 |         49 |       0 |    0 |   192 |      0 |      0 |    0 |          0 |
+|   pifoEngines_3          |           PifoEngine_3 |       2351 |       2301 |      50 |    0 |  2099 |      0 |      0 |    0 |          0 |
+|     enque_brain          |            PIFOBrain_3 |       1239 |       1203 |      36 |    0 |   979 |      0 |      0 |    0 |          0 |
+|       engineCAM          |    BoundedCamMapper_33 |       1085 |       1069 |      16 |    0 |   912 |      0 |      0 |    0 |          0 |
+|     deque_dequeMapper    |  BoundedCamMapper_1_24 |        993 |        983 |      10 |    0 |   906 |      0 |      0 |    0 |          0 |
+|     deque_frontRewrite   |   FrontRewriteTable_26 |         49 |         49 |       0 |    0 |   192 |      0 |      0 |    0 |          0 |
+|   pifoEngines_4          |           PifoEngine_4 |       2455 |       2405 |      50 |    0 |  2099 |      0 |      0 |    0 |          0 |
+|     enque_brain          |            PIFOBrain_4 |       1343 |       1307 |      36 |    0 |   979 |      0 |      0 |    0 |          0 |
+|       streamArbiter_16   |     StreamArbiter_6_18 |        201 |        201 |       0 |    0 |     3 |      0 |      0 |    0 |          0 |
+|       engineCAM          |       BoundedCamMapper |        993 |        977 |      16 |    0 |   912 |      0 |      0 |    0 |          0 |
+|     deque_dequeMapper    |     BoundedCamMapper_1 |        991 |        981 |      10 |    0 |   906 |      0 |      0 |    0 |          0 |
+|     deque_frontRewrite   |      FrontRewriteTable |         49 |         49 |       0 |    0 |   192 |      0 |      0 |    0 |          0 |
+|   xbar                   |        MessageCrossBar |        310 |        262 |      48 |    0 |   129 |      0 |      0 |    0 |          0 |
++--------------------------+------------------------+------------+------------+---------+------+-------+--------+--------+------+------------+
+
+

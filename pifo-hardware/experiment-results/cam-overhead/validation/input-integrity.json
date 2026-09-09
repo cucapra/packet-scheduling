@@ -1,0 +1,1017 @@
+{
+  "status": "passed",
+  "rio_synthesis_cases": 16,
+  "rio_vendor_pairs": 8,
+  "source_and_rtl_identical_across_vendors": true,
+  "rio_cam_port_audits": [
+    {
+      "status": "passed",
+      "configuration": "static",
+      "vflows": 32,
+      "separate_journal": false,
+      "mapper_bank_writes_mutually_exclusive": false,
+      "logical_controller_bits": 13056,
+      "logical_mapper_bits": 3360,
+      "arrays": [
+        {
+          "module": "StreamFifo_51",
+          "array": "logic_ram",
+          "width": 51,
+          "depth": 256,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "controller_fifo"
+        },
+        {
+          "module": "DirectMapper_4",
+          "array": "ram",
+          "width": 5,
+          "depth": 32,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper_3",
+          "array": "ram",
+          "width": 5,
+          "depth": 32,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper_2",
+          "array": "ram",
+          "width": 5,
+          "depth": 32,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper_1",
+          "array": "ram",
+          "width": 5,
+          "depth": 32,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper",
+          "array": "ram",
+          "width": 5,
+          "depth": 32,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        }
+      ],
+      "cam_value_ram_validation": {
+        "status": "passed",
+        "build": "/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v32-c1024-q256-static-quartus",
+        "configuration": "static",
+        "capacity_per_bank": 64,
+        "cam_instances": 10,
+        "cam_value_banks": 10,
+        "cam_value_bits": 12800,
+        "cam_tag_valid_register_bits": 8960,
+        "replay_bank_writes_mutually_exclusive": false,
+        "value_ram_definitions": {
+          "BoundedCamMapper_1": [
+            {
+              "name": "banks_0_values",
+              "width": 8,
+              "depth": 64,
+              "read_ports": 1,
+              "write_ports": 1
+            }
+          ],
+          "BoundedCamMapper": [
+            {
+              "name": "banks_0_values",
+              "width": 32,
+              "depth": 64,
+              "read_ports": 1,
+              "write_ports": 1
+            }
+          ]
+        },
+        "maximum_declared_ram_depth": 256,
+        "rtl_sha256": "38ff0cf7ee601a8603d4551ff719afdf5e5ce4fc1e282a035c0aaf81fd0ec24b",
+        "synthesis_run": false,
+        "physical_resource_counts_measured": false
+      }
+    },
+    {
+      "status": "passed",
+      "configuration": "replay",
+      "vflows": 32,
+      "separate_journal": false,
+      "mapper_bank_writes_mutually_exclusive": true,
+      "logical_controller_bits": 13056,
+      "logical_mapper_bits": 6720,
+      "arrays": [
+        {
+          "module": "ReplayControlFifo",
+          "array": "storage",
+          "width": 51,
+          "depth": 256,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "controller_fifo"
+        },
+        {
+          "module": "ReplayMapper_4",
+          "array": "banks_0",
+          "width": 5,
+          "depth": 32,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_4",
+          "array": "banks_1",
+          "width": 5,
+          "depth": 32,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_3",
+          "array": "banks_0",
+          "width": 5,
+          "depth": 32,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_3",
+          "array": "banks_1",
+          "width": 5,
+          "depth": 32,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_2",
+          "array": "banks_0",
+          "width": 5,
+          "depth": 32,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_2",
+          "array": "banks_1",
+          "width": 5,
+          "depth": 32,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_1",
+          "array": "banks_0",
+          "width": 5,
+          "depth": 32,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_1",
+          "array": "banks_1",
+          "width": 5,
+          "depth": 32,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper",
+          "array": "banks_0",
+          "width": 5,
+          "depth": 32,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper",
+          "array": "banks_1",
+          "width": 5,
+          "depth": 32,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        }
+      ],
+      "cam_value_ram_validation": {
+        "status": "passed",
+        "build": "/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v32-c1024-q256-replay-quartus",
+        "configuration": "replay",
+        "capacity_per_bank": 64,
+        "cam_instances": 10,
+        "cam_value_banks": 15,
+        "cam_value_bits": 15360,
+        "cam_tag_valid_register_bits": 13440,
+        "replay_bank_writes_mutually_exclusive": true,
+        "value_ram_definitions": {
+          "BoundedCamMapper_1": [
+            {
+              "name": "banks_0_values",
+              "width": 8,
+              "depth": 64,
+              "read_ports": 1,
+              "write_ports": 1
+            },
+            {
+              "name": "banks_1_values",
+              "width": 8,
+              "depth": 64,
+              "read_ports": 1,
+              "write_ports": 1
+            }
+          ],
+          "BoundedCamMapper": [
+            {
+              "name": "banks_0_values",
+              "width": 32,
+              "depth": 64,
+              "read_ports": 1,
+              "write_ports": 1
+            }
+          ]
+        },
+        "maximum_declared_ram_depth": 256,
+        "rtl_sha256": "ea56ddf5dad8453b1cc94c74c4b3b3bfbe504c8f69db16b1b9789e98b8a02374",
+        "synthesis_run": false,
+        "physical_resource_counts_measured": false
+      }
+    },
+    {
+      "status": "passed",
+      "configuration": "static",
+      "vflows": 128,
+      "separate_journal": false,
+      "mapper_bank_writes_mutually_exclusive": false,
+      "logical_controller_bits": 14080,
+      "logical_mapper_bits": 17280,
+      "arrays": [
+        {
+          "module": "StreamFifo_51",
+          "array": "logic_ram",
+          "width": 55,
+          "depth": 256,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "controller_fifo"
+        },
+        {
+          "module": "DirectMapper_4",
+          "array": "ram",
+          "width": 7,
+          "depth": 128,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper_3",
+          "array": "ram",
+          "width": 7,
+          "depth": 128,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper_2",
+          "array": "ram",
+          "width": 7,
+          "depth": 128,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper_1",
+          "array": "ram",
+          "width": 7,
+          "depth": 128,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper",
+          "array": "ram",
+          "width": 7,
+          "depth": 128,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        }
+      ],
+      "cam_value_ram_validation": {
+        "status": "passed",
+        "build": "/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-static-quartus",
+        "configuration": "static",
+        "capacity_per_bank": 256,
+        "cam_instances": 10,
+        "cam_value_banks": 10,
+        "cam_value_bits": 53760,
+        "cam_tag_valid_register_bits": 46080,
+        "replay_bank_writes_mutually_exclusive": false,
+        "value_ram_definitions": {
+          "BoundedCamMapper_1": [
+            {
+              "name": "banks_0_values",
+              "width": 10,
+              "depth": 256,
+              "read_ports": 1,
+              "write_ports": 1
+            }
+          ],
+          "BoundedCamMapper": [
+            {
+              "name": "banks_0_values",
+              "width": 32,
+              "depth": 256,
+              "read_ports": 1,
+              "write_ports": 1
+            }
+          ]
+        },
+        "maximum_declared_ram_depth": 256,
+        "rtl_sha256": "fe53f7327e94b6a1001e69a46e5b6bc32308a8b4b182800c48e3b3025018996d",
+        "synthesis_run": false,
+        "physical_resource_counts_measured": false
+      }
+    },
+    {
+      "status": "passed",
+      "configuration": "replay",
+      "vflows": 128,
+      "separate_journal": false,
+      "mapper_bank_writes_mutually_exclusive": true,
+      "logical_controller_bits": 14080,
+      "logical_mapper_bits": 34560,
+      "arrays": [
+        {
+          "module": "ReplayControlFifo",
+          "array": "storage",
+          "width": 55,
+          "depth": 256,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "controller_fifo"
+        },
+        {
+          "module": "ReplayMapper_4",
+          "array": "banks_0",
+          "width": 7,
+          "depth": 128,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_4",
+          "array": "banks_1",
+          "width": 7,
+          "depth": 128,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_3",
+          "array": "banks_0",
+          "width": 7,
+          "depth": 128,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_3",
+          "array": "banks_1",
+          "width": 7,
+          "depth": 128,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_2",
+          "array": "banks_0",
+          "width": 7,
+          "depth": 128,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_2",
+          "array": "banks_1",
+          "width": 7,
+          "depth": 128,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_1",
+          "array": "banks_0",
+          "width": 7,
+          "depth": 128,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_1",
+          "array": "banks_1",
+          "width": 7,
+          "depth": 128,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper",
+          "array": "banks_0",
+          "width": 7,
+          "depth": 128,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper",
+          "array": "banks_1",
+          "width": 7,
+          "depth": 128,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        }
+      ],
+      "cam_value_ram_validation": {
+        "status": "passed",
+        "build": "/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus",
+        "configuration": "replay",
+        "capacity_per_bank": 256,
+        "cam_instances": 10,
+        "cam_value_banks": 15,
+        "cam_value_bits": 66560,
+        "cam_tag_valid_register_bits": 69120,
+        "replay_bank_writes_mutually_exclusive": true,
+        "value_ram_definitions": {
+          "BoundedCamMapper_1": [
+            {
+              "name": "banks_0_values",
+              "width": 10,
+              "depth": 256,
+              "read_ports": 1,
+              "write_ports": 1
+            },
+            {
+              "name": "banks_1_values",
+              "width": 10,
+              "depth": 256,
+              "read_ports": 1,
+              "write_ports": 1
+            }
+          ],
+          "BoundedCamMapper": [
+            {
+              "name": "banks_0_values",
+              "width": 32,
+              "depth": 256,
+              "read_ports": 1,
+              "write_ports": 1
+            }
+          ]
+        },
+        "maximum_declared_ram_depth": 256,
+        "rtl_sha256": "5d045cf04f92cc654f2bf376c60efaeb794ad85702bd9faa72dd976fd078712a",
+        "synthesis_run": false,
+        "physical_resource_counts_measured": false
+      }
+    },
+    {
+      "status": "passed",
+      "configuration": "static",
+      "vflows": 512,
+      "separate_journal": false,
+      "mapper_bank_writes_mutually_exclusive": false,
+      "logical_controller_bits": 15104,
+      "logical_mapper_bits": 84480,
+      "arrays": [
+        {
+          "module": "StreamFifo_51",
+          "array": "logic_ram",
+          "width": 59,
+          "depth": 256,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "controller_fifo"
+        },
+        {
+          "module": "DirectMapper_4",
+          "array": "ram",
+          "width": 9,
+          "depth": 512,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper_3",
+          "array": "ram",
+          "width": 9,
+          "depth": 512,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper_2",
+          "array": "ram",
+          "width": 9,
+          "depth": 512,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper_1",
+          "array": "ram",
+          "width": 9,
+          "depth": 512,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper",
+          "array": "ram",
+          "width": 9,
+          "depth": 512,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        }
+      ],
+      "cam_value_ram_validation": {
+        "status": "passed",
+        "build": "/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v512-c1024-q256-static-quartus",
+        "configuration": "static",
+        "capacity_per_bank": 1024,
+        "cam_instances": 10,
+        "cam_value_banks": 10,
+        "cam_value_bits": 225280,
+        "cam_tag_valid_register_bits": 225280,
+        "replay_bank_writes_mutually_exclusive": false,
+        "value_ram_definitions": {
+          "BoundedCamMapper_1": [
+            {
+              "name": "banks_0_values",
+              "width": 12,
+              "depth": 1024,
+              "read_ports": 1,
+              "write_ports": 1
+            }
+          ],
+          "BoundedCamMapper": [
+            {
+              "name": "banks_0_values",
+              "width": 32,
+              "depth": 1024,
+              "read_ports": 1,
+              "write_ports": 1
+            }
+          ]
+        },
+        "maximum_declared_ram_depth": 1024,
+        "rtl_sha256": "0b70e686332c882608ff662b98ee1272d13af63b6c27f0ac3756acf8e1c6a531",
+        "synthesis_run": false,
+        "physical_resource_counts_measured": false
+      }
+    },
+    {
+      "status": "passed",
+      "configuration": "replay",
+      "vflows": 512,
+      "separate_journal": false,
+      "mapper_bank_writes_mutually_exclusive": true,
+      "logical_controller_bits": 15104,
+      "logical_mapper_bits": 168960,
+      "arrays": [
+        {
+          "module": "ReplayControlFifo",
+          "array": "storage",
+          "width": 59,
+          "depth": 256,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "controller_fifo"
+        },
+        {
+          "module": "ReplayMapper_4",
+          "array": "banks_0",
+          "width": 9,
+          "depth": 512,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_4",
+          "array": "banks_1",
+          "width": 9,
+          "depth": 512,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_3",
+          "array": "banks_0",
+          "width": 9,
+          "depth": 512,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_3",
+          "array": "banks_1",
+          "width": 9,
+          "depth": 512,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_2",
+          "array": "banks_0",
+          "width": 9,
+          "depth": 512,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_2",
+          "array": "banks_1",
+          "width": 9,
+          "depth": 512,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_1",
+          "array": "banks_0",
+          "width": 9,
+          "depth": 512,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_1",
+          "array": "banks_1",
+          "width": 9,
+          "depth": 512,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper",
+          "array": "banks_0",
+          "width": 9,
+          "depth": 512,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper",
+          "array": "banks_1",
+          "width": 9,
+          "depth": 512,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        }
+      ],
+      "cam_value_ram_validation": {
+        "status": "passed",
+        "build": "/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v512-c1024-q256-replay-quartus",
+        "configuration": "replay",
+        "capacity_per_bank": 1024,
+        "cam_instances": 10,
+        "cam_value_banks": 15,
+        "cam_value_bits": 286720,
+        "cam_tag_valid_register_bits": 337920,
+        "replay_bank_writes_mutually_exclusive": true,
+        "value_ram_definitions": {
+          "BoundedCamMapper_1": [
+            {
+              "name": "banks_0_values",
+              "width": 12,
+              "depth": 1024,
+              "read_ports": 1,
+              "write_ports": 1
+            },
+            {
+              "name": "banks_1_values",
+              "width": 12,
+              "depth": 1024,
+              "read_ports": 1,
+              "write_ports": 1
+            }
+          ],
+          "BoundedCamMapper": [
+            {
+              "name": "banks_0_values",
+              "width": 32,
+              "depth": 1024,
+              "read_ports": 1,
+              "write_ports": 1
+            }
+          ]
+        },
+        "maximum_declared_ram_depth": 1024,
+        "rtl_sha256": "1d968c649e54d7bd01c9155cfc4ed27df9fe661301794ba704b5df31c4acb311",
+        "synthesis_run": false,
+        "physical_resource_counts_measured": false
+      }
+    },
+    {
+      "status": "passed",
+      "configuration": "static",
+      "vflows": 1024,
+      "separate_journal": false,
+      "mapper_bank_writes_mutually_exclusive": false,
+      "logical_controller_bits": 15616,
+      "logical_mapper_bits": 184320,
+      "arrays": [
+        {
+          "module": "StreamFifo_51",
+          "array": "logic_ram",
+          "width": 61,
+          "depth": 256,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "controller_fifo"
+        },
+        {
+          "module": "DirectMapper_4",
+          "array": "ram",
+          "width": 10,
+          "depth": 1024,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper_3",
+          "array": "ram",
+          "width": 10,
+          "depth": 1024,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper_2",
+          "array": "ram",
+          "width": 10,
+          "depth": 1024,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper_1",
+          "array": "ram",
+          "width": 10,
+          "depth": 1024,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "DirectMapper",
+          "array": "ram",
+          "width": 10,
+          "depth": 1024,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        }
+      ],
+      "cam_value_ram_validation": {
+        "status": "passed",
+        "build": "/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-quartus",
+        "configuration": "static",
+        "capacity_per_bank": 2048,
+        "cam_instances": 10,
+        "cam_value_banks": 10,
+        "cam_value_bits": 460800,
+        "cam_tag_valid_register_bits": 491520,
+        "replay_bank_writes_mutually_exclusive": false,
+        "value_ram_definitions": {
+          "BoundedCamMapper_1": [
+            {
+              "name": "banks_0_values",
+              "width": 13,
+              "depth": 2048,
+              "read_ports": 1,
+              "write_ports": 1
+            }
+          ],
+          "BoundedCamMapper": [
+            {
+              "name": "banks_0_values",
+              "width": 32,
+              "depth": 2048,
+              "read_ports": 1,
+              "write_ports": 1
+            }
+          ]
+        },
+        "maximum_declared_ram_depth": 2048,
+        "rtl_sha256": "35dff591229cabdc2e4026f407a6ad50027e021c0daa1b6713cafc2c618af332",
+        "synthesis_run": false,
+        "physical_resource_counts_measured": false
+      }
+    },
+    {
+      "status": "passed",
+      "configuration": "replay",
+      "vflows": 1024,
+      "separate_journal": false,
+      "mapper_bank_writes_mutually_exclusive": true,
+      "logical_controller_bits": 15616,
+      "logical_mapper_bits": 368640,
+      "arrays": [
+        {
+          "module": "ReplayControlFifo",
+          "array": "storage",
+          "width": 61,
+          "depth": 256,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "controller_fifo"
+        },
+        {
+          "module": "ReplayMapper_4",
+          "array": "banks_0",
+          "width": 10,
+          "depth": 1024,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_4",
+          "array": "banks_1",
+          "width": 10,
+          "depth": 1024,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_3",
+          "array": "banks_0",
+          "width": 10,
+          "depth": 1024,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_3",
+          "array": "banks_1",
+          "width": 10,
+          "depth": 1024,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_2",
+          "array": "banks_0",
+          "width": 10,
+          "depth": 1024,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_2",
+          "array": "banks_1",
+          "width": 10,
+          "depth": 1024,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_1",
+          "array": "banks_0",
+          "width": 10,
+          "depth": 1024,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper_1",
+          "array": "banks_1",
+          "width": 10,
+          "depth": 1024,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper",
+          "array": "banks_0",
+          "width": 10,
+          "depth": 1024,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        },
+        {
+          "module": "ReplayMapper",
+          "array": "banks_1",
+          "width": 10,
+          "depth": 1024,
+          "read_ports": 1,
+          "write_ports": 1,
+          "component": "mapper"
+        }
+      ],
+      "cam_value_ram_validation": {
+        "status": "passed",
+        "build": "/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-replay-quartus",
+        "configuration": "replay",
+        "capacity_per_bank": 2048,
+        "cam_instances": 10,
+        "cam_value_banks": 15,
+        "cam_value_bits": 593920,
+        "cam_tag_valid_register_bits": 737280,
+        "replay_bank_writes_mutually_exclusive": true,
+        "value_ram_definitions": {
+          "BoundedCamMapper_1": [
+            {
+              "name": "banks_0_values",
+              "width": 13,
+              "depth": 2048,
+              "read_ports": 1,
+              "write_ports": 1
+            },
+            {
+              "name": "banks_1_values",
+              "width": 13,
+              "depth": 2048,
+              "read_ports": 1,
+              "write_ports": 1
+            }
+          ],
+          "BoundedCamMapper": [
+            {
+              "name": "banks_0_values",
+              "width": 32,
+              "depth": 2048,
+              "read_ports": 1,
+              "write_ports": 1
+            }
+          ]
+        },
+        "maximum_declared_ram_depth": 2048,
+        "rtl_sha256": "f703e5f08ac29ac95af37ea6e4355c99ecdd67b1df4b97840f691b6653f3022f",
+        "synthesis_run": false,
+        "physical_resource_counts_measured": false
+      }
+    }
+  ],
+  "reused_pifo_measurements": 8
+}

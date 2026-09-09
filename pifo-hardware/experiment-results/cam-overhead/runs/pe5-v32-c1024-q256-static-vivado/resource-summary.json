@@ -1,0 +1,926 @@
+{
+  "source_build": "/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v32-c1024-q256-static-vivado",
+  "status": "synthesis_complete",
+  "part": "xcku5p-ffvb676-2-e",
+  "tool_version": "vivado v2025.2 (64-bit)\nTool Version Limit: 2025.11\nSW Build 6299465 on Fri Nov 14 12:34:56 MST 2025\nIP Build 6300035 on Fri Nov 14 10:48:45 MST 2025\nSharedData Build 6298862 on Thu Nov 13 04:50:51 MST 2025\nCopyright 1986-2022 Xilinx, Inc. All Rights Reserved.\nCopyright 2022-2025 Advanced Micro Devices, Inc. All Rights Reserved.",
+  "synthesis_directive": "RuntimeOptimized",
+  "device_capacity_check": "disabled_for_estimation",
+  "hardware": {
+    "component": "rio",
+    "configuration": "static",
+    "mapper_banks": 1,
+    "pifo_backend": "external",
+    "num_engines": 5,
+    "num_vpifos_per_pe": 32,
+    "global_flow_id_capacity": 32,
+    "fifo_depth_parameter": 32,
+    "shared_entries_per_pe": 1024,
+    "total_shared_entries": 5120,
+    "priority_bits": 8,
+    "vpifo_id_bits": 5,
+    "engine_id_bits": 3,
+    "token_bits": 8,
+    "brain_state_bits": 32,
+    "flow_state_bits": 32,
+    "commit_queue_depth": 256,
+    "flow_token_address_space": 256,
+    "vpifo_token_pairs_per_pe": 8192,
+    "lookup_backend": "cam",
+    "cam_implementation": "portable_parallel_tags_synchronous_values",
+    "cam_entries_per_bank": 64,
+    "cam_zero_write": "delete",
+    "cam_full_behavior": "backpressure_new_nonzero_key_and_assert_capacityBlocked"
+  },
+  "completion": "Vivado 2025.2; xcku5p-ffvb676-2-e; PifoMesh; out_of_context; Wed Sep 09 12:21:35 EDT 2026",
+  "scope": "Vivado out-of-context synthesis; no implementation or timing-closure claim",
+  "resources": {
+    "CLB LUTs": {
+      "Used": 14568,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 216960,
+      "Util%": 6.71
+    },
+    "LUT as Logic": {
+      "Used": 13930,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 216960,
+      "Util%": 6.42
+    },
+    "LUT as Memory": {
+      "Used": 638,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 99840,
+      "Util%": 0.64
+    },
+    "LUT as Distributed RAM": {
+      "Used": 638,
+      "Fixed": 0,
+      "Prohibited": "",
+      "Available": "",
+      "Util%": ""
+    },
+    "LUT as Shift Register": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": "",
+      "Available": "",
+      "Util%": ""
+    },
+    "CLB Registers": {
+      "Used": 10972,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 433920,
+      "Util%": 2.53
+    },
+    "Register as Flip Flop": {
+      "Used": 10972,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 433920,
+      "Util%": 2.53
+    },
+    "Register as Latch": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 433920,
+      "Util%": 0.0
+    },
+    "CARRY8": {
+      "Used": 85,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 27120,
+      "Util%": 0.31
+    },
+    "F7 Muxes": {
+      "Used": 145,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 108480,
+      "Util%": 0.13
+    },
+    "F8 Muxes": {
+      "Used": 50,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 54240,
+      "Util%": 0.09
+    },
+    "F9 Muxes": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 27120,
+      "Util%": 0.0
+    },
+    "Unique Control Sets": {
+      "Used": 1013,
+      "Fixed": "",
+      "Prohibited": 0,
+      "Available": 54240,
+      "Util%": 1.87
+    },
+    "Block RAM Tile": {
+      "Used": 1,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 480,
+      "Util%": 0.21
+    },
+    "RAMB36/FIFO": {
+      "Used": 1,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 480,
+      "Util%": 0.21
+    },
+    "RAMB36E2 only": {
+      "Used": 1,
+      "Fixed": "",
+      "Prohibited": "",
+      "Available": "",
+      "Util%": ""
+    },
+    "RAMB18": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 960,
+      "Util%": 0.0
+    },
+    "URAM": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 64,
+      "Util%": 0.0
+    },
+    "DSPs": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 1824,
+      "Util%": 0.0
+    },
+    "Bonded IOB": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 280,
+      "Util%": 0.0
+    },
+    "HPIOB_M": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 96,
+      "Util%": 0.0
+    },
+    "HPIOB_S": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 96,
+      "Util%": 0.0
+    },
+    "HDIOB_M": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 36,
+      "Util%": 0.0
+    },
+    "HDIOB_S": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 36,
+      "Util%": 0.0
+    },
+    "HPIOB_SNGL": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 16,
+      "Util%": 0.0
+    },
+    "HPIOBDIFFINBUF": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 96,
+      "Util%": 0.0
+    },
+    "HPIOBDIFFOUTBUF": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 96,
+      "Util%": 0.0
+    },
+    "HDIOBDIFFINBUF": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 48,
+      "Util%": 0.0
+    },
+    "BITSLICE_CONTROL": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 32,
+      "Util%": 0.0
+    },
+    "BITSLICE_RX_TX": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 1248,
+      "Util%": 0.0
+    },
+    "BITSLICE_TX": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 32,
+      "Util%": 0.0
+    },
+    "RIU_OR": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 16,
+      "Util%": 0.0
+    },
+    "BUFGCE": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 112,
+      "Util%": 0.0
+    },
+    "BUFGCE_DIV": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 16,
+      "Util%": 0.0
+    },
+    "BUFG_GT": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 96,
+      "Util%": 0.0
+    },
+    "BUFGCTRL": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 32,
+      "Util%": 0.0
+    },
+    "PLL": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 8,
+      "Util%": 0.0
+    },
+    "MMCM": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 4,
+      "Util%": 0.0
+    },
+    "CMACE4": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 1,
+      "Util%": 0.0
+    },
+    "GTYE4_CHANNEL": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 16,
+      "Util%": 0.0
+    },
+    "GTYE4_COMMON": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 4,
+      "Util%": 0.0
+    },
+    "OBUFDS_GTE4": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 8,
+      "Util%": 0.0
+    },
+    "OBUFDS_GTE4_ADV": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 8,
+      "Util%": 0.0
+    },
+    "PCIE40E4": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 1,
+      "Util%": 0.0
+    },
+    "SYSMONE4": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 1,
+      "Util%": 0.0
+    },
+    "BSCANE2": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 4,
+      "Util%": 0.0
+    },
+    "DNA_PORTE2": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 1,
+      "Util%": 0.0
+    },
+    "EFUSE_USR": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 1,
+      "Util%": 0.0
+    },
+    "FRAME_ECCE4": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 1,
+      "Util%": 0.0
+    },
+    "ICAPE3": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 2,
+      "Util%": 0.0
+    },
+    "MASTER_JTAG": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 1,
+      "Util%": 0.0
+    },
+    "STARTUPE3": {
+      "Used": 0,
+      "Fixed": 0,
+      "Prohibited": 0,
+      "Available": 1,
+      "Util%": 0.0
+    }
+  },
+  "hierarchy": [
+    {
+      "path": "PifoMesh",
+      "Instance": "PifoMesh",
+      "Module": "(top)",
+      "Total LUTs": 14568,
+      "Logic LUTs": 13930,
+      "LUTRAMs": 638,
+      "SRLs": 0,
+      "FFs": 10972,
+      "RAMB36": 1,
+      "RAMB18": 0,
+      "URAM": 0,
+      "DSP Blocks": 0
+    },
+    {
+      "path": "PifoMesh/(PifoMesh)",
+      "Instance": "(PifoMesh)",
+      "Module": "(top)",
+      "Total LUTs": 340,
+      "Logic LUTs": 0,
+      "LUTRAMs": 340,
+      "SRLs": 0,
+      "FFs": 0,
+      "RAMB36": 0,
+      "RAMB18": 0,
+      "URAM": 0,
+      "DSP Blocks": 0
+    },
+    {
+      "path": "PifoMesh/guard",
+      "Instance": "guard",
+      "Module": "DrainGuard",
+      "Total LUTs": 475,
+      "Logic LUTs": 475,
+      "LUTRAMs": 0,
+      "SRLs": 0,
+      "FFs": 320,
+      "RAMB36": 0,
+      "RAMB18": 0,
+      "URAM": 0,
+      "DSP Blocks": 0
+    },
+    {
+      "path": "PifoMesh/io_controlRequest_fifo",
+      "Instance": "io_controlRequest_fifo",
+      "Module": "StreamFifo_51",
+      "Total LUTs": 1347,
+      "Logic LUTs": 1347,
+      "LUTRAMs": 0,
+      "SRLs": 0,
+      "FFs": 28,
+      "RAMB36": 1,
+      "RAMB18": 0,
+      "URAM": 0,
+      "DSP Blocks": 0
+    },
+    {
+      "path": "PifoMesh/pifoEngines_0",
+      "Instance": "pifoEngines_0",
+      "Module": "PifoEngine",
+      "Total LUTs": 2462,
+      "Logic LUTs": 2412,
+      "LUTRAMs": 50,
+      "SRLs": 0,
+      "FFs": 2099,
+      "RAMB36": 0,
+      "RAMB18": 0,
+      "URAM": 0,
+      "DSP Blocks": 0
+    },
+    {
+      "path": "PifoMesh/pifoEngines_0/enque_brain",
+      "Instance": "enque_brain",
+      "Module": "PIFOBrain",
+      "Total LUTs": 1346,
+      "Logic LUTs": 1310,
+      "LUTRAMs": 36,
+      "SRLs": 0,
+      "FFs": 979,
+      "RAMB36": 0,
+      "RAMB18": 0,
+      "URAM": 0,
+      "DSP Blocks": 0
+    },
+    {
+      "path": "PifoMesh/pifoEngines_0/enque_brain/streamArbiter_16",
+      "Instance": "streamArbiter_16",
+      "Module": "StreamArbiter_6_119",
+      "Total LUTs": 97,
+      "Logic LUTs": 97,
+      "LUTRAMs": 0,
+      "SRLs": 0,
+      "FFs": 3,
+      "RAMB36": 0,
+      "RAMB18": 0,
+      "URAM": 0,
+      "DSP Blocks": 0
+    },
+    {
+      "path": "PifoMesh/pifoEngines_0/enque_brain/engineCAM",
+      "Instance": "engineCAM",
+      "Module": "BoundedCamMapper_111",
+      "Total LUTs": 1098,
+      "Logic LUTs": 1082,
+      "LUTRAMs": 16,
+      "SRLs": 0,
+      "FFs": 912,
+      "RAMB36": 0,
+      "RAMB18": 0,
+      "URAM": 0,
+      "DSP Blocks": 0
+    },
+    {
+      "path": "PifoMesh/pifoEngines_0/deque_dequeMapper",
+      "Instance": "deque_dequeMapper",
+      "Module": "BoundedCamMapper_1_102",
+      "Total LUTs": 997,
+      "Logic LUTs": 987,
+      "LUTRAMs": 10,
+      "SRLs": 0,
+      "FFs": 906,
+      "RAMB36": 0,
+      "RAMB18": 0,
+      "URAM": 0,
+      "DSP Blocks": 0
+    },
+    {
+      "path": "PifoMesh/pifoEngines_0/deque_frontRewrite",
+      "Instance": "deque_frontRewrite",
+      "Module": "FrontRewriteTable_104",
+      "Total LUTs": 49,
+      "Logic LUTs": 49,
+      "LUTRAMs": 0,
+      "SRLs": 0,
+      "FFs": 192,
+      "RAMB36": 0,
+      "RAMB18": 0,
+      "URAM": 0,
+      "DSP Blocks": 0
+    },
+    {
+      "path": "PifoMesh/pifoEngines_1",
+      "Instance": "pifoEngines_1",
+      "Module": "PifoEngine_1",
+      "Total LUTs": 2365,
+      "Logic LUTs": 2315,
+      "LUTRAMs": 50,
+      "SRLs": 0,
+      "FFs": 2099,
+      "RAMB36": 0,
+      "RAMB18": 0,
+      "URAM": 0,
+      "DSP Blocks": 0
+    },
+    {
+      "path": "PifoMesh/pifoEngines_1/enque_brain",
+      "Instance": "enque_brain",
+      "Module": "PIFOBrain_1",
+      "Total LUTs": 1253,
+      "Logic LUTs": 1217,
+      "LUTRAMs": 36,
+      "SRLs": 0,
+      "FFs": 979,
+      "RAMB36": 0,
+      "RAMB18": 0,
+      "URAM": 0,
+      "DSP Blocks": 0
+    },
+    {
+      "path": "PifoMesh/pifoEngines_1/enque_brain/engineCAM",
+      "Instance": "engineCAM",
+      "Module": "BoundedCamMapper_85",
+      "Total LUTs": 1099,
+      "Logic LUTs": 1083,
+      "LUTRAMs": 16,
+      "SRLs": 0,
+      "FFs": 912,
+      "RAMB36": 0,
+      "RAMB18": 0,
+      "URAM": 0,
+      "DSP Blocks": 0
+    },
+    {
+      "path": "PifoMesh/pifoEngines_1/deque_dequeMapper",
+      "Instance": "deque_dequeMapper",
+      "Module": "BoundedCamMapper_1_76",
+      "Total LUTs": 993,
+      "Logic LUTs": 983,
+      "LUTRAMs": 10,
+      "SRLs": 0,
+      "FFs": 906,
+      "RAMB36": 0,
+      "RAMB18": 0,
+      "URAM": 0,
+      "DSP Blocks": 0
+    },
+    {
+      "path": "PifoMesh/pifoEngines_1/deque_frontRewrite",
+      "Instance": "deque_frontRewrite",
+      "Module": "FrontRewriteTable_78",
+      "Total LUTs": 49,
+      "Logic LUTs": 49,
+      "LUTRAMs": 0,
+      "SRLs": 0,
+      "FFs": 192,
+      "RAMB36": 0,
+      "RAMB18": 0,
+      "URAM": 0,
+      "DSP Blocks": 0
+    },
+    {
+      "path": "PifoMesh/pifoEngines_2",
+      "Instance": "pifoEngines_2",
+      "Module": "PifoEngine_2",
+      "Total LUTs": 2463,
+      "Logic LUTs": 2413,
+      "LUTRAMs": 50,
+      "SRLs": 0,
+      "FFs": 2099,
+      "RAMB36": 0,
+      "RAMB18": 0,
+      "URAM": 0,
+      "DSP Blocks": 0
+    },
+    {
+      "path": "PifoMesh/pifoEngines_2/enque_brain",
+      "Instance": "enque_brain",
+      "Module": "PIFOBrain_2",
+      "Total LUTs": 1348,
+      "Logic LUTs": 1312,
+      "LUTRAMs": 36,
+      "SRLs": 0,
+      "FFs": 979,
+      "RAMB36": 0,
+      "RAMB18": 0,
+      "URAM": 0,
+      "DSP Blocks": 0
+    },
+    {
+      "path": "PifoMesh/pifoEngines_2/enque_brain/streamArbiter_16",
+      "Instance": "streamArbiter_16",
+      "Module": "StreamArbiter_6_67",
+      "Total LUTs": 202,
+      "Logic LUTs": 202,
+      "LUTRAMs": 0,
+      "SRLs": 0,
+      "FFs": 3,
+      "RAMB36": 0,
+      "RAMB18": 0,
+      "URAM": 0,
+      "DSP Blocks": 0
+    },
+    {
+      "path": "PifoMesh/pifoEngines_2/enque_brain/engineCAM",
+      "Instance": "engineCAM",
+      "Module": "BoundedCamMapper_59",
+      "Total LUTs": 995,
+      "Logic LUTs": 979,
+      "LUTRAMs": 16,
+      "SRLs": 0,
+      "FFs": 912,
+      "RAMB36": 0,
+      "RAMB18": 0,
+      "URAM": 0,
+      "DSP Blocks": 0
+    },
+    {
+      "path": "PifoMesh/pifoEngines_2/deque_dequeMapper",
+      "Instance": "deque_dequeMapper",
+      "Module": "BoundedCamMapper_1_50",
+      "Total LUTs": 994,
+      "Logic LUTs": 984,
+      "LUTRAMs": 10,
+      "SRLs": 0,
+      "FFs": 906,
+      "RAMB36": 0,
+      "RAMB18": 0,
+      "URAM": 0,
+      "DSP Blocks": 0
+    },
+    {
+      "path": "PifoMesh/pifoEngines_2/deque_frontRewrite",
+      "Instance": "deque_frontRewrite",
+      "Module": "FrontRewriteTable_52",
+      "Total LUTs": 49,
+      "Logic LUTs": 49,
+      "LUTRAMs": 0,
+      "SRLs": 0,
+      "FFs": 192,
+      "RAMB36": 0,
+      "RAMB18": 0,
+      "URAM": 0,
+      "DSP Blocks": 0
+    },
+    {
+      "path": "PifoMesh/pifoEngines_3",
+      "Instance": "pifoEngines_3",
+      "Module": "PifoEngine_3",
+      "Total LUTs": 2351,
+      "Logic LUTs": 2301,
+      "LUTRAMs": 50,
+      "SRLs": 0,
+      "FFs": 2099,
+      "RAMB36": 0,
+      "RAMB18": 0,
+      "URAM": 0,
+      "DSP Blocks": 0
+    },
+    {
+      "path": "PifoMesh/pifoEngines_3/enque_brain",
+      "Instance": "enque_brain",
+      "Module": "PIFOBrain_3",
+      "Total LUTs": 1239,
+      "Logic LUTs": 1203,
+      "LUTRAMs": 36,
+      "SRLs": 0,
+      "FFs": 979,
+      "RAMB36": 0,
+      "RAMB18": 0,
+      "URAM": 0,
+      "DSP Blocks": 0
+    },
+    {
+      "path": "PifoMesh/pifoEngines_3/enque_brain/engineCAM",
+      "Instance": "engineCAM",
+      "Module": "BoundedCamMapper_33",
+      "Total LUTs": 1085,
+      "Logic LUTs": 1069,
+      "LUTRAMs": 16,
+      "SRLs": 0,
+      "FFs": 912,
+      "RAMB36": 0,
+      "RAMB18": 0,
+      "URAM": 0,
+      "DSP Blocks": 0
+    },
+    {
+      "path": "PifoMesh/pifoEngines_3/deque_dequeMapper",
+      "Instance": "deque_dequeMapper",
+      "Module": "BoundedCamMapper_1_24",
+      "Total LUTs": 993,
+      "Logic LUTs": 983,
+      "LUTRAMs": 10,
+      "SRLs": 0,
+      "FFs": 906,
+      "RAMB36": 0,
+      "RAMB18": 0,
+      "URAM": 0,
+      "DSP Blocks": 0
+    },
+    {
+      "path": "PifoMesh/pifoEngines_3/deque_frontRewrite",
+      "Instance": "deque_frontRewrite",
+      "Module": "FrontRewriteTable_26",
+      "Total LUTs": 49,
+      "Logic LUTs": 49,
+      "LUTRAMs": 0,
+      "SRLs": 0,
+      "FFs": 192,
+      "RAMB36": 0,
+      "RAMB18": 0,
+      "URAM": 0,
+      "DSP Blocks": 0
+    },
+    {
+      "path": "PifoMesh/pifoEngines_4",
+      "Instance": "pifoEngines_4",
+      "Module": "PifoEngine_4",
+      "Total LUTs": 2455,
+      "Logic LUTs": 2405,
+      "LUTRAMs": 50,
+      "SRLs": 0,
+      "FFs": 2099,
+      "RAMB36": 0,
+      "RAMB18": 0,
+      "URAM": 0,
+      "DSP Blocks": 0
+    },
+    {
+      "path": "PifoMesh/pifoEngines_4/enque_brain",
+      "Instance": "enque_brain",
+      "Module": "PIFOBrain_4",
+      "Total LUTs": 1343,
+      "Logic LUTs": 1307,
+      "LUTRAMs": 36,
+      "SRLs": 0,
+      "FFs": 979,
+      "RAMB36": 0,
+      "RAMB18": 0,
+      "URAM": 0,
+      "DSP Blocks": 0
+    },
+    {
+      "path": "PifoMesh/pifoEngines_4/enque_brain/streamArbiter_16",
+      "Instance": "streamArbiter_16",
+      "Module": "StreamArbiter_6_18",
+      "Total LUTs": 201,
+      "Logic LUTs": 201,
+      "LUTRAMs": 0,
+      "SRLs": 0,
+      "FFs": 3,
+      "RAMB36": 0,
+      "RAMB18": 0,
+      "URAM": 0,
+      "DSP Blocks": 0
+    },
+    {
+      "path": "PifoMesh/pifoEngines_4/enque_brain/engineCAM",
+      "Instance": "engineCAM",
+      "Module": "BoundedCamMapper",
+      "Total LUTs": 993,
+      "Logic LUTs": 977,
+      "LUTRAMs": 16,
+      "SRLs": 0,
+      "FFs": 912,
+      "RAMB36": 0,
+      "RAMB18": 0,
+      "URAM": 0,
+      "DSP Blocks": 0
+    },
+    {
+      "path": "PifoMesh/pifoEngines_4/deque_dequeMapper",
+      "Instance": "deque_dequeMapper",
+      "Module": "BoundedCamMapper_1",
+      "Total LUTs": 991,
+      "Logic LUTs": 981,
+      "LUTRAMs": 10,
+      "SRLs": 0,
+      "FFs": 906,
+      "RAMB36": 0,
+      "RAMB18": 0,
+      "URAM": 0,
+      "DSP Blocks": 0
+    },
+    {
+      "path": "PifoMesh/pifoEngines_4/deque_frontRewrite",
+      "Instance": "deque_frontRewrite",
+      "Module": "FrontRewriteTable",
+      "Total LUTs": 49,
+      "Logic LUTs": 49,
+      "LUTRAMs": 0,
+      "SRLs": 0,
+      "FFs": 192,
+      "RAMB36": 0,
+      "RAMB18": 0,
+      "URAM": 0,
+      "DSP Blocks": 0
+    },
+    {
+      "path": "PifoMesh/xbar",
+      "Instance": "xbar",
+      "Module": "MessageCrossBar",
+      "Total LUTs": 310,
+      "Logic LUTs": 262,
+      "LUTRAMs": 48,
+      "SRLs": 0,
+      "FFs": 129,
+      "RAMB36": 0,
+      "RAMB18": 0,
+      "URAM": 0,
+      "DSP Blocks": 0
+    }
+  ],
+  "primitive_counts": {
+    "CARRY8": 85,
+    "FDCE": 1898,
+    "FDPE": 405,
+    "FDRE": 8669,
+    "GND": 76,
+    "LUT1": 739,
+    "LUT2": 1869,
+    "LUT3": 783,
+    "LUT4": 2002,
+    "LUT5": 858,
+    "LUT6": 8817,
+    "MUXF7": 145,
+    "MUXF8": 50,
+    "RAM32M": 5,
+    "RAM32M16": 56,
+    "RAM32X1D": 20,
+    "RAM64M8": 15,
+    "RAM64X1D": 5,
+    "RAMB36E2": 1,
+    "RAMD32": 854,
+    "RAMD64E": 130,
+    "RAMS32": 122,
+    "VCC": 87
+  },
+  "ram_instances": [
+    {
+      "Memory Name": "io_controlRequest_fifo/logic_ram_reg",
+      "Primitive": "RAMB36E2",
+      "RAM STYLE": "AUTO",
+      "Available Bits": 36864,
+      "Used Bits": 13056,
+      "Bit Util%": 35.42,
+      "A Depth": 256,
+      "A Depth Avail": 512,
+      "A Depth Util%": 50.0,
+      "A Width": 51,
+      "A Width Avail": 72,
+      "A Width Util%": 70.83,
+      "B Depth": 256,
+      "B Depth Avail": 512,
+      "B Depth Util%": 50.0,
+      "B Width": 51,
+      "B Width Avail": 72,
+      "B Width Util%": 70.83
+    }
+  ],
+  "mapped_memory": {
+    "ramb36_primitives": 1,
+    "ramb18_primitives": 0,
+    "bram36_tile_equivalents": 1.0,
+    "bram_allocated_capacity_bits_including_parity": 36864,
+    "uram_primitives": 0,
+    "reported_bram_uram_used_bits_including_replicas": 13056,
+    "reported_bram_uram_allocated_bits": 36864
+  },
+  "flip_flop_primitives": 10972,
+  "latch_primitives": 0,
+  "dsp_primitives": 0,
+  "unresolved_blackboxes": 0
+}

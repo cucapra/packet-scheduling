@@ -1,0 +1,950 @@
+Info (22747): Value AUTO_DISCOVERY for QSF Assignment PWRMGT_VOLTAGE_OUTPUT_FORMAT is not supported. Hence changing the value to LINEAR_FORMAT
+Info: *******************************************************************
+Info: Running Quartus Prime Synthesis
+    Info: Version 25.3.1 Build 100 12/19/2025 SC Pro Edition
+    Info: Copyright (C) 2025  Altera Corporation. All rights reserved.
+    Info: Your use of Altera Corporation's design tools, logic functions 
+    Info: and other software and tools, and any partner logic 
+    Info: functions, and any output files from any of the foregoing 
+    Info: (including device programming or simulation files), and any 
+    Info: associated documentation or information are expressly subject 
+    Info: to the terms and conditions of the Altera Program License 
+    Info: Subscription Agreement, the Altera Quartus Prime License Agreement,
+    Info: the Altera IP License Agreement, or other applicable license
+    Info: agreement, including, without limitation, that your use is for
+    Info: the sole purpose of programming logic devices manufactured by
+    Info: Altera and sold by Altera or its authorized distributors.  Please
+    Info: refer to the Altera Software License Subscription Agreements 
+    Info: on the Quartus Prime software download page.
+    Info: Processing started: Wed Sep  9 12:38:36 2026
+    Info: System process ID: 714367
+Info: Command: quartus_syn pifo
+Info: qis_default_flow_script.tcl version: #2
+Info: Initializing Synthesis...
+Info: Project = "pifo"
+Info: Revision = "pifo"
+Info (21958): Initialized Quartus Message Database
+Info: Analyzing source files
+Critical Warning (20759): Use the Reset Release IP in Agilex 7 designs to ensure a successful configuration. For more information about the Reset Release IP, refer to the Configuration User Guide.
+Info: Elaborating from top-level entity "PifoMesh"
+Info (22567): Verilog HDL info at PifoMesh.v(49324): extracting RAM for identifier 'logic_ram' File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 49324
+Info (22567): Verilog HDL info at PifoMesh.v(40820): extracting RAM for identifier 'banks_0' File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 40820
+Info (22567): Verilog HDL info at PifoMesh.v(40822): extracting RAM for identifier 'banks_1' File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 40822
+Info (22567): Verilog HDL info at PifoMesh.v(49169): extracting RAM for identifier 'logic_ram' File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 49169
+Info (22567): Verilog HDL info at PifoMesh.v(48962): extracting RAM for identifier 'ram' File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 48962
+Info (22567): Verilog HDL info at PifoMesh.v(48906): extracting RAM for identifier 'ram' File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 48906
+Info (22567): Verilog HDL info at PifoMesh.v(44620): extracting RAM for identifier 'banks_0_values' File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 44620
+Info (22567): Verilog HDL info at PifoMesh.v(50175): extracting RAM for identifier 'logic_ram' File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 50175
+Info (22567): Verilog HDL info at PifoMesh.v(42777): extracting RAM for identifier 'ram' File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 42777
+Info (22567): Verilog HDL info at PifoMesh.v(50030): extracting RAM for identifier 'logic_ram' File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 50030
+Info (22567): Verilog HDL info at PifoMesh.v(49896): extracting RAM for identifier 'logic_ram' File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 49896
+Info (22567): Verilog HDL info at PifoMesh.v(49768): extracting RAM for identifier 'logic_ram' File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 49768
+Info (22567): Verilog HDL info at PifoMesh.v(49638): extracting RAM for identifier 'logic_ram' File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 49638
+Info (22567): Verilog HDL info at PifoMesh.v(49499): extracting RAM for identifier 'logic_ram' File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 49499
+Info (22567): Verilog HDL info at PifoMesh.v(31168): extracting RAM for identifier 'banks_0_values' File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 31168
+Info (22567): Verilog HDL info at PifoMesh.v(31169): extracting RAM for identifier 'banks_1_values' File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 31169
+Info (22567): Verilog HDL info at PifoMesh.v(42172): extracting RAM for identifier 'logic_ram' File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 42172
+Info (22567): Verilog HDL info at PifoMesh.v(20833): extracting RAM for identifier 'banks_0' File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 20833
+Info (22567): Verilog HDL info at PifoMesh.v(20835): extracting RAM for identifier 'banks_1' File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 20835
+Info (22567): Verilog HDL info at PifoMesh.v(42076): extracting RAM for identifier 'ram' File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 42076
+Info (22567): Verilog HDL info at PifoMesh.v(42020): extracting RAM for identifier 'ram' File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 42020
+Info (22567): Verilog HDL info at PifoMesh.v(41958): extracting RAM for identifier 'ram' File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 41958
+Info (22567): Verilog HDL info at PifoMesh.v(19658): extracting RAM for identifier 'banks_0' File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 19658
+Info (22567): Verilog HDL info at PifoMesh.v(19660): extracting RAM for identifier 'banks_1' File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 19660
+Info (22567): Verilog HDL info at PifoMesh.v(41880): extracting RAM for identifier 'ram' File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 41880
+Info (22567): Verilog HDL info at PifoMesh.v(41824): extracting RAM for identifier 'ram' File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 41824
+Info (22567): Verilog HDL info at PifoMesh.v(41762): extracting RAM for identifier 'ram' File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 41762
+Info (22567): Verilog HDL info at PifoMesh.v(18483): extracting RAM for identifier 'banks_0' File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 18483
+Info (22567): Verilog HDL info at PifoMesh.v(18485): extracting RAM for identifier 'banks_1' File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 18485
+Info (22567): Verilog HDL info at PifoMesh.v(41684): extracting RAM for identifier 'ram' File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 41684
+Info (22567): Verilog HDL info at PifoMesh.v(41628): extracting RAM for identifier 'ram' File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 41628
+Info (22567): Verilog HDL info at PifoMesh.v(41566): extracting RAM for identifier 'ram' File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 41566
+Info (22567): Verilog HDL info at PifoMesh.v(17308): extracting RAM for identifier 'banks_0' File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 17308
+Info (22567): Verilog HDL info at PifoMesh.v(17310): extracting RAM for identifier 'banks_1' File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 17310
+Info (22567): Verilog HDL info at PifoMesh.v(41488): extracting RAM for identifier 'ram' File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 41488
+Info (22567): Verilog HDL info at PifoMesh.v(41432): extracting RAM for identifier 'ram' File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 41432
+Info (22567): Verilog HDL info at PifoMesh.v(41370): extracting RAM for identifier 'ram' File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 41370
+Info (22567): Verilog HDL info at PifoMesh.v(10622): extracting RAM for identifier 'storage' File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 10622
+Info: Found 67 design entities
+Info: There are 205 partitions after elaboration.
+Info: DA report generation in native DNI mode
+Info (21615): Running Design Assistant Rules for snapshot 'partitioned'
+Info: No waiver waived any violations
+Info (22360): Design Assistant Results: 8 of 10 enabled rules passed, and 1 rules was disabled, in snapshot 'partitioned'
+Warning (21620): Design Assistant Results: 1 of 1 High severity rules issued violations in snapshot 'partitioned'. Please refer to DRC report '/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/output_files/pifo.drc.partitioned.rpt' for more information
+Info (21621): Design Assistant Results: 1 of 1 Medium severity rules issued violations in snapshot 'partitioned'. Please refer to DRC report '/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/output_files/pifo.drc.partitioned.rpt' for more information
+Info (21622): Design Assistant Results: 0 of 8 Low severity rules issued violations in snapshot 'partitioned'
+Info: Synthesizing partition "root_partition"
+Warning (276020): Inferred RAM node "xbar|io_inputs_0_fifo|fifo|logic_ram_rtl_0" from synchronous design logic.  Pass-through logic has been added to match the read-during-write behavior of the original design. File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 49324
+Warning (276020): Inferred RAM node "xbar|io_inputs_1_fifo|fifo|logic_ram_rtl_0" from synchronous design logic.  Pass-through logic has been added to match the read-during-write behavior of the original design. File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 49324
+Warning (276020): Inferred RAM node "xbar|io_inputs_2_fifo|fifo|logic_ram_rtl_0" from synchronous design logic.  Pass-through logic has been added to match the read-during-write behavior of the original design. File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 49324
+Warning (276020): Inferred RAM node "xbar|io_inputs_3_fifo|fifo|logic_ram_rtl_0" from synchronous design logic.  Pass-through logic has been added to match the read-during-write behavior of the original design. File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 49324
+Warning (276020): Inferred RAM node "xbar|io_inputs_4_fifo|fifo|logic_ram_rtl_0" from synchronous design logic.  Pass-through logic has been added to match the read-during-write behavior of the original design. File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 49324
+Warning (276020): Inferred RAM node "xbar|io_inputs_5_fifo|fifo|logic_ram_rtl_0" from synchronous design logic.  Pass-through logic has been added to match the read-during-write behavior of the original design. File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 49324
+Info (276014): Found 25 instances of uninferred RAM logic
+    Info (276004): RAM logic "pifoEngines_0|enque_brain|flowStateUpdate_fifo|fifo|logic_ram" is uninferred due to inappropriate RAM size File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 50175
+    Info (276004): RAM logic "pifoEngines_0|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram" is uninferred due to inappropriate RAM size File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 50030
+    Info (276004): RAM logic "pifoEngines_0|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram" is uninferred due to inappropriate RAM size File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 49768
+    Info (276004): RAM logic "pifoEngines_0|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram" is uninferred due to inappropriate RAM size File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 49768
+    Info (276004): RAM logic "pifoEngines_0|enque_brain|io_outputs_4_fifo|fifo|logic_ram" is uninferred due to inappropriate RAM size File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 49499
+    Info (276004): RAM logic "pifoEngines_1|enque_brain|flowStateUpdate_fifo|fifo|logic_ram" is uninferred due to inappropriate RAM size File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 50175
+    Info (276004): RAM logic "pifoEngines_1|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram" is uninferred due to inappropriate RAM size File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 50030
+    Info (276004): RAM logic "pifoEngines_1|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram" is uninferred due to inappropriate RAM size File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 49768
+    Info (276004): RAM logic "pifoEngines_1|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram" is uninferred due to inappropriate RAM size File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 49768
+    Info (276004): RAM logic "pifoEngines_1|enque_brain|io_outputs_4_fifo|fifo|logic_ram" is uninferred due to inappropriate RAM size File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 49499
+    Info (276004): RAM logic "pifoEngines_2|enque_brain|flowStateUpdate_fifo|fifo|logic_ram" is uninferred due to inappropriate RAM size File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 50175
+    Info (276004): RAM logic "pifoEngines_2|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram" is uninferred due to inappropriate RAM size File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 50030
+    Info (276004): RAM logic "pifoEngines_2|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram" is uninferred due to inappropriate RAM size File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 49768
+    Info (276004): RAM logic "pifoEngines_2|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram" is uninferred due to inappropriate RAM size File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 49768
+    Info (276004): RAM logic "pifoEngines_2|enque_brain|io_outputs_4_fifo|fifo|logic_ram" is uninferred due to inappropriate RAM size File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 49499
+    Info (276004): RAM logic "pifoEngines_3|enque_brain|flowStateUpdate_fifo|fifo|logic_ram" is uninferred due to inappropriate RAM size File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 50175
+    Info (276004): RAM logic "pifoEngines_3|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram" is uninferred due to inappropriate RAM size File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 50030
+    Info (276004): RAM logic "pifoEngines_3|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram" is uninferred due to inappropriate RAM size File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 49768
+    Info (276004): RAM logic "pifoEngines_3|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram" is uninferred due to inappropriate RAM size File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 49768
+    Info (276004): RAM logic "pifoEngines_3|enque_brain|io_outputs_4_fifo|fifo|logic_ram" is uninferred due to inappropriate RAM size File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 49499
+    Info (276004): RAM logic "pifoEngines_4|enque_brain|flowStateUpdate_fifo|fifo|logic_ram" is uninferred due to inappropriate RAM size File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 50175
+    Info (276004): RAM logic "pifoEngines_4|enque_brain|brainStateUpdate_toStream_fifo|fifo|logic_ram" is uninferred due to inappropriate RAM size File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 50030
+    Info (276004): RAM logic "pifoEngines_4|enque_brain|brainStateMem_io_readRes_toStream_fifo|fifo|logic_ram" is uninferred due to inappropriate RAM size File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 49768
+    Info (276004): RAM logic "pifoEngines_4|enque_brain|engineCAM_io_readRes_toStream_fifo|fifo|logic_ram" is uninferred due to inappropriate RAM size File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 49768
+    Info (276004): RAM logic "pifoEngines_4|enque_brain|io_outputs_4_fifo|fifo|logic_ram" is uninferred due to inappropriate RAM size File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 49499
+Info (19000): Inferred 47 megafunctions from design logic
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "replayControl|storage_rtl_0"  File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 10622
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 55
+        Info (286033): Parameter WIDTHAD_A set to 8
+        Info (286033): Parameter NUMWORDS_A set to 256
+        Info (286033): Parameter WIDTH_B set to 55
+        Info (286033): Parameter WIDTHAD_B set to 8
+        Info (286033): Parameter NUMWORDS_B set to 256
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to NONE
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+        Info (286033): Parameter READ_DURING_WRITE_MODE_MIXED_PORTS set to OLD_DATA
+        Info (286033): Parameter RDCONTROL_REG_B set to CLOCK0
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "pifoEngines_0|enque_enqueMapper|banks_0_rtl_0"  File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 40820
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 7
+        Info (286033): Parameter WIDTHAD_A set to 7
+        Info (286033): Parameter NUMWORDS_A set to 128
+        Info (286033): Parameter WIDTH_B set to 7
+        Info (286033): Parameter WIDTHAD_B set to 7
+        Info (286033): Parameter NUMWORDS_B set to 128
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to NONE
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+        Info (286033): Parameter INIT_FILE set to /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v_toplevel_pifoEngines_0_enque_enqueMapper_banks_0.bin.mif
+        Info (286033): Parameter READ_DURING_WRITE_MODE_MIXED_PORTS set to OLD_DATA
+        Info (286033): Parameter RDCONTROL_REG_B set to CLOCK0
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "pifoEngines_0|enque_enqueMapper|banks_1_rtl_0"  File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 40822
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 7
+        Info (286033): Parameter WIDTHAD_A set to 7
+        Info (286033): Parameter NUMWORDS_A set to 128
+        Info (286033): Parameter WIDTH_B set to 7
+        Info (286033): Parameter WIDTHAD_B set to 7
+        Info (286033): Parameter NUMWORDS_B set to 128
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to NONE
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+        Info (286033): Parameter INIT_FILE set to /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v_toplevel_pifoEngines_0_enque_enqueMapper_banks_1.bin.mif
+        Info (286033): Parameter READ_DURING_WRITE_MODE_MIXED_PORTS set to OLD_DATA
+        Info (286033): Parameter RDCONTROL_REG_B set to CLOCK0
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "pifoEngines_0|deque_dequeMapper|banks_0_values_rtl_0"  File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 31168
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 10
+        Info (286033): Parameter WIDTHAD_A set to 8
+        Info (286033): Parameter NUMWORDS_A set to 256
+        Info (286033): Parameter WIDTH_B set to 10
+        Info (286033): Parameter WIDTHAD_B set to 8
+        Info (286033): Parameter NUMWORDS_B set to 256
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to NONE
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+        Info (286033): Parameter READ_DURING_WRITE_MODE_MIXED_PORTS set to OLD_DATA
+        Info (286033): Parameter RDCONTROL_REG_B set to CLOCK0
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "pifoEngines_0|deque_dequeMapper|banks_1_values_rtl_0"  File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 31169
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 10
+        Info (286033): Parameter WIDTHAD_A set to 8
+        Info (286033): Parameter NUMWORDS_A set to 256
+        Info (286033): Parameter WIDTH_B set to 10
+        Info (286033): Parameter WIDTHAD_B set to 8
+        Info (286033): Parameter NUMWORDS_B set to 256
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to NONE
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+        Info (286033): Parameter READ_DURING_WRITE_MODE_MIXED_PORTS set to OLD_DATA
+        Info (286033): Parameter RDCONTROL_REG_B set to CLOCK0
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "pifoEngines_1|enque_enqueMapper|banks_0_rtl_0"  File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 20833
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 7
+        Info (286033): Parameter WIDTHAD_A set to 7
+        Info (286033): Parameter NUMWORDS_A set to 128
+        Info (286033): Parameter WIDTH_B set to 7
+        Info (286033): Parameter WIDTHAD_B set to 7
+        Info (286033): Parameter NUMWORDS_B set to 128
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to NONE
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+        Info (286033): Parameter INIT_FILE set to /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v_toplevel_pifoEngines_1_enque_enqueMapper_banks_0.bin.mif
+        Info (286033): Parameter READ_DURING_WRITE_MODE_MIXED_PORTS set to OLD_DATA
+        Info (286033): Parameter RDCONTROL_REG_B set to CLOCK0
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "pifoEngines_1|enque_enqueMapper|banks_1_rtl_0"  File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 20835
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 7
+        Info (286033): Parameter WIDTHAD_A set to 7
+        Info (286033): Parameter NUMWORDS_A set to 128
+        Info (286033): Parameter WIDTH_B set to 7
+        Info (286033): Parameter WIDTHAD_B set to 7
+        Info (286033): Parameter NUMWORDS_B set to 128
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to NONE
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+        Info (286033): Parameter INIT_FILE set to /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v_toplevel_pifoEngines_1_enque_enqueMapper_banks_1.bin.mif
+        Info (286033): Parameter READ_DURING_WRITE_MODE_MIXED_PORTS set to OLD_DATA
+        Info (286033): Parameter RDCONTROL_REG_B set to CLOCK0
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "pifoEngines_1|deque_dequeMapper|banks_0_values_rtl_0"  File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 31168
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 10
+        Info (286033): Parameter WIDTHAD_A set to 8
+        Info (286033): Parameter NUMWORDS_A set to 256
+        Info (286033): Parameter WIDTH_B set to 10
+        Info (286033): Parameter WIDTHAD_B set to 8
+        Info (286033): Parameter NUMWORDS_B set to 256
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to NONE
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+        Info (286033): Parameter READ_DURING_WRITE_MODE_MIXED_PORTS set to OLD_DATA
+        Info (286033): Parameter RDCONTROL_REG_B set to CLOCK0
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "pifoEngines_1|deque_dequeMapper|banks_1_values_rtl_0"  File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 31169
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 10
+        Info (286033): Parameter WIDTHAD_A set to 8
+        Info (286033): Parameter NUMWORDS_A set to 256
+        Info (286033): Parameter WIDTH_B set to 10
+        Info (286033): Parameter WIDTHAD_B set to 8
+        Info (286033): Parameter NUMWORDS_B set to 256
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to NONE
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+        Info (286033): Parameter READ_DURING_WRITE_MODE_MIXED_PORTS set to OLD_DATA
+        Info (286033): Parameter RDCONTROL_REG_B set to CLOCK0
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "pifoEngines_2|enque_enqueMapper|banks_0_rtl_0"  File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 19658
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 7
+        Info (286033): Parameter WIDTHAD_A set to 7
+        Info (286033): Parameter NUMWORDS_A set to 128
+        Info (286033): Parameter WIDTH_B set to 7
+        Info (286033): Parameter WIDTHAD_B set to 7
+        Info (286033): Parameter NUMWORDS_B set to 128
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to NONE
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+        Info (286033): Parameter INIT_FILE set to /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v_toplevel_pifoEngines_2_enque_enqueMapper_banks_0.bin.mif
+        Info (286033): Parameter READ_DURING_WRITE_MODE_MIXED_PORTS set to OLD_DATA
+        Info (286033): Parameter RDCONTROL_REG_B set to CLOCK0
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "pifoEngines_2|enque_enqueMapper|banks_1_rtl_0"  File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 19660
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 7
+        Info (286033): Parameter WIDTHAD_A set to 7
+        Info (286033): Parameter NUMWORDS_A set to 128
+        Info (286033): Parameter WIDTH_B set to 7
+        Info (286033): Parameter WIDTHAD_B set to 7
+        Info (286033): Parameter NUMWORDS_B set to 128
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to NONE
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+        Info (286033): Parameter INIT_FILE set to /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v_toplevel_pifoEngines_2_enque_enqueMapper_banks_1.bin.mif
+        Info (286033): Parameter READ_DURING_WRITE_MODE_MIXED_PORTS set to OLD_DATA
+        Info (286033): Parameter RDCONTROL_REG_B set to CLOCK0
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "pifoEngines_2|deque_dequeMapper|banks_0_values_rtl_0"  File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 31168
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 10
+        Info (286033): Parameter WIDTHAD_A set to 8
+        Info (286033): Parameter NUMWORDS_A set to 256
+        Info (286033): Parameter WIDTH_B set to 10
+        Info (286033): Parameter WIDTHAD_B set to 8
+        Info (286033): Parameter NUMWORDS_B set to 256
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to NONE
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+        Info (286033): Parameter READ_DURING_WRITE_MODE_MIXED_PORTS set to OLD_DATA
+        Info (286033): Parameter RDCONTROL_REG_B set to CLOCK0
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "pifoEngines_2|deque_dequeMapper|banks_1_values_rtl_0"  File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 31169
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 10
+        Info (286033): Parameter WIDTHAD_A set to 8
+        Info (286033): Parameter NUMWORDS_A set to 256
+        Info (286033): Parameter WIDTH_B set to 10
+        Info (286033): Parameter WIDTHAD_B set to 8
+        Info (286033): Parameter NUMWORDS_B set to 256
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to NONE
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+        Info (286033): Parameter READ_DURING_WRITE_MODE_MIXED_PORTS set to OLD_DATA
+        Info (286033): Parameter RDCONTROL_REG_B set to CLOCK0
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "pifoEngines_3|enque_enqueMapper|banks_0_rtl_0"  File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 18483
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 7
+        Info (286033): Parameter WIDTHAD_A set to 7
+        Info (286033): Parameter NUMWORDS_A set to 128
+        Info (286033): Parameter WIDTH_B set to 7
+        Info (286033): Parameter WIDTHAD_B set to 7
+        Info (286033): Parameter NUMWORDS_B set to 128
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to NONE
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+        Info (286033): Parameter INIT_FILE set to /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v_toplevel_pifoEngines_3_enque_enqueMapper_banks_0.bin.mif
+        Info (286033): Parameter READ_DURING_WRITE_MODE_MIXED_PORTS set to OLD_DATA
+        Info (286033): Parameter RDCONTROL_REG_B set to CLOCK0
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "pifoEngines_3|enque_enqueMapper|banks_1_rtl_0"  File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 18485
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 7
+        Info (286033): Parameter WIDTHAD_A set to 7
+        Info (286033): Parameter NUMWORDS_A set to 128
+        Info (286033): Parameter WIDTH_B set to 7
+        Info (286033): Parameter WIDTHAD_B set to 7
+        Info (286033): Parameter NUMWORDS_B set to 128
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to NONE
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+        Info (286033): Parameter INIT_FILE set to /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v_toplevel_pifoEngines_3_enque_enqueMapper_banks_1.bin.mif
+        Info (286033): Parameter READ_DURING_WRITE_MODE_MIXED_PORTS set to OLD_DATA
+        Info (286033): Parameter RDCONTROL_REG_B set to CLOCK0
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "pifoEngines_3|deque_dequeMapper|banks_0_values_rtl_0"  File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 31168
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 10
+        Info (286033): Parameter WIDTHAD_A set to 8
+        Info (286033): Parameter NUMWORDS_A set to 256
+        Info (286033): Parameter WIDTH_B set to 10
+        Info (286033): Parameter WIDTHAD_B set to 8
+        Info (286033): Parameter NUMWORDS_B set to 256
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to NONE
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+        Info (286033): Parameter READ_DURING_WRITE_MODE_MIXED_PORTS set to OLD_DATA
+        Info (286033): Parameter RDCONTROL_REG_B set to CLOCK0
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "pifoEngines_3|deque_dequeMapper|banks_1_values_rtl_0"  File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 31169
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 10
+        Info (286033): Parameter WIDTHAD_A set to 8
+        Info (286033): Parameter NUMWORDS_A set to 256
+        Info (286033): Parameter WIDTH_B set to 10
+        Info (286033): Parameter WIDTHAD_B set to 8
+        Info (286033): Parameter NUMWORDS_B set to 256
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to NONE
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+        Info (286033): Parameter READ_DURING_WRITE_MODE_MIXED_PORTS set to OLD_DATA
+        Info (286033): Parameter RDCONTROL_REG_B set to CLOCK0
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "pifoEngines_4|enque_enqueMapper|banks_0_rtl_0"  File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 17308
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 7
+        Info (286033): Parameter WIDTHAD_A set to 7
+        Info (286033): Parameter NUMWORDS_A set to 128
+        Info (286033): Parameter WIDTH_B set to 7
+        Info (286033): Parameter WIDTHAD_B set to 7
+        Info (286033): Parameter NUMWORDS_B set to 128
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to NONE
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+        Info (286033): Parameter INIT_FILE set to /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v_toplevel_pifoEngines_4_enque_enqueMapper_banks_0.bin.mif
+        Info (286033): Parameter READ_DURING_WRITE_MODE_MIXED_PORTS set to OLD_DATA
+        Info (286033): Parameter RDCONTROL_REG_B set to CLOCK0
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "pifoEngines_4|enque_enqueMapper|banks_1_rtl_0"  File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 17310
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 7
+        Info (286033): Parameter WIDTHAD_A set to 7
+        Info (286033): Parameter NUMWORDS_A set to 128
+        Info (286033): Parameter WIDTH_B set to 7
+        Info (286033): Parameter WIDTHAD_B set to 7
+        Info (286033): Parameter NUMWORDS_B set to 128
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to NONE
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+        Info (286033): Parameter INIT_FILE set to /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v_toplevel_pifoEngines_4_enque_enqueMapper_banks_1.bin.mif
+        Info (286033): Parameter READ_DURING_WRITE_MODE_MIXED_PORTS set to OLD_DATA
+        Info (286033): Parameter RDCONTROL_REG_B set to CLOCK0
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "pifoEngines_4|deque_dequeMapper|banks_0_values_rtl_0"  File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 31168
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 10
+        Info (286033): Parameter WIDTHAD_A set to 8
+        Info (286033): Parameter NUMWORDS_A set to 256
+        Info (286033): Parameter WIDTH_B set to 10
+        Info (286033): Parameter WIDTHAD_B set to 8
+        Info (286033): Parameter NUMWORDS_B set to 256
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to NONE
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+        Info (286033): Parameter READ_DURING_WRITE_MODE_MIXED_PORTS set to OLD_DATA
+        Info (286033): Parameter RDCONTROL_REG_B set to CLOCK0
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "pifoEngines_4|deque_dequeMapper|banks_1_values_rtl_0"  File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 31169
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 10
+        Info (286033): Parameter WIDTHAD_A set to 8
+        Info (286033): Parameter NUMWORDS_A set to 256
+        Info (286033): Parameter WIDTH_B set to 10
+        Info (286033): Parameter WIDTHAD_B set to 8
+        Info (286033): Parameter NUMWORDS_B set to 256
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to NONE
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+        Info (286033): Parameter READ_DURING_WRITE_MODE_MIXED_PORTS set to OLD_DATA
+        Info (286033): Parameter RDCONTROL_REG_B set to CLOCK0
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "xbar|io_inputs_0_fifo|fifo|logic_ram_rtl_0"  File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 49324
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 10
+        Info (286033): Parameter WIDTHAD_A set to 3
+        Info (286033): Parameter NUMWORDS_A set to 8
+        Info (286033): Parameter WIDTH_B set to 10
+        Info (286033): Parameter WIDTHAD_B set to 3
+        Info (286033): Parameter NUMWORDS_B set to 8
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to CLEAR0
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "xbar|io_inputs_1_fifo|fifo|logic_ram_rtl_0"  File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 49324
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 10
+        Info (286033): Parameter WIDTHAD_A set to 3
+        Info (286033): Parameter NUMWORDS_A set to 8
+        Info (286033): Parameter WIDTH_B set to 10
+        Info (286033): Parameter WIDTHAD_B set to 3
+        Info (286033): Parameter NUMWORDS_B set to 8
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to CLEAR0
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "xbar|io_inputs_2_fifo|fifo|logic_ram_rtl_0"  File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 49324
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 10
+        Info (286033): Parameter WIDTHAD_A set to 3
+        Info (286033): Parameter NUMWORDS_A set to 8
+        Info (286033): Parameter WIDTH_B set to 10
+        Info (286033): Parameter WIDTHAD_B set to 3
+        Info (286033): Parameter NUMWORDS_B set to 8
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to CLEAR0
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "xbar|io_inputs_3_fifo|fifo|logic_ram_rtl_0"  File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 49324
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 10
+        Info (286033): Parameter WIDTHAD_A set to 3
+        Info (286033): Parameter NUMWORDS_A set to 8
+        Info (286033): Parameter WIDTH_B set to 10
+        Info (286033): Parameter WIDTHAD_B set to 3
+        Info (286033): Parameter NUMWORDS_B set to 8
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to CLEAR0
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "xbar|io_inputs_4_fifo|fifo|logic_ram_rtl_0"  File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 49324
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 10
+        Info (286033): Parameter WIDTHAD_A set to 3
+        Info (286033): Parameter NUMWORDS_A set to 8
+        Info (286033): Parameter WIDTH_B set to 10
+        Info (286033): Parameter WIDTHAD_B set to 3
+        Info (286033): Parameter NUMWORDS_B set to 8
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to CLEAR0
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "xbar|io_inputs_5_fifo|fifo|logic_ram_rtl_0"  File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 49324
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 10
+        Info (286033): Parameter WIDTHAD_A set to 3
+        Info (286033): Parameter NUMWORDS_A set to 8
+        Info (286033): Parameter WIDTH_B set to 10
+        Info (286033): Parameter WIDTHAD_B set to 3
+        Info (286033): Parameter NUMWORDS_B set to 8
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to CLEAR0
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "pifoEngines_0|enque_brain|engineMapper|ram_rtl_0"  File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 48962
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 2
+        Info (286033): Parameter WIDTHAD_A set to 7
+        Info (286033): Parameter NUMWORDS_A set to 128
+        Info (286033): Parameter WIDTH_B set to 2
+        Info (286033): Parameter WIDTHAD_B set to 7
+        Info (286033): Parameter NUMWORDS_B set to 128
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to NONE
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+        Info (286033): Parameter INIT_FILE set to /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v_toplevel_pifoEngines_0_enque_brain_engineMapper_ram.bin.mif
+        Info (286033): Parameter READ_DURING_WRITE_MODE_MIXED_PORTS set to OLD_DATA
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "pifoEngines_0|enque_brain|lastVirtualMapper|ram_rtl_0"  File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 48906
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 8
+        Info (286033): Parameter WIDTHAD_A set to 7
+        Info (286033): Parameter NUMWORDS_A set to 128
+        Info (286033): Parameter WIDTH_B set to 8
+        Info (286033): Parameter WIDTHAD_B set to 7
+        Info (286033): Parameter NUMWORDS_B set to 128
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to NONE
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+        Info (286033): Parameter INIT_FILE set to /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v_toplevel_pifoEngines_0_enque_brain_lastVirtualMapper_ram.bin.mif
+        Info (286033): Parameter READ_DURING_WRITE_MODE_MIXED_PORTS set to OLD_DATA
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "pifoEngines_0|enque_brain|engineCAM|banks_0_values_rtl_0"  File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 44620
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 8
+        Info (286033): Parameter WIDTHAD_A set to 8
+        Info (286033): Parameter NUMWORDS_A set to 256
+        Info (286033): Parameter WIDTH_B set to 8
+        Info (286033): Parameter WIDTHAD_B set to 8
+        Info (286033): Parameter NUMWORDS_B set to 256
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to NONE
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+        Info (286033): Parameter READ_DURING_WRITE_MODE_MIXED_PORTS set to OLD_DATA
+        Info (286033): Parameter RDCONTROL_REG_B set to CLOCK0
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "pifoEngines_0|enque_brain|brainStateMem|ram_rtl_0"  File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 42777
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 32
+        Info (286033): Parameter WIDTHAD_A set to 7
+        Info (286033): Parameter NUMWORDS_A set to 128
+        Info (286033): Parameter WIDTH_B set to 32
+        Info (286033): Parameter WIDTHAD_B set to 7
+        Info (286033): Parameter NUMWORDS_B set to 128
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to NONE
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+        Info (286033): Parameter INIT_FILE set to /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v_toplevel_pifoEngines_0_enque_brain_brainStateMem_ram.bin.mif
+        Info (286033): Parameter READ_DURING_WRITE_MODE_MIXED_PORTS set to OLD_DATA
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "pifoEngines_1|enque_brain|engineMapper|ram_rtl_0"  File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 42076
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 2
+        Info (286033): Parameter WIDTHAD_A set to 7
+        Info (286033): Parameter NUMWORDS_A set to 128
+        Info (286033): Parameter WIDTH_B set to 2
+        Info (286033): Parameter WIDTHAD_B set to 7
+        Info (286033): Parameter NUMWORDS_B set to 128
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to NONE
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+        Info (286033): Parameter INIT_FILE set to /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v_toplevel_pifoEngines_1_enque_brain_engineMapper_ram.bin.mif
+        Info (286033): Parameter READ_DURING_WRITE_MODE_MIXED_PORTS set to OLD_DATA
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "pifoEngines_1|enque_brain|lastVirtualMapper|ram_rtl_0"  File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 42020
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 8
+        Info (286033): Parameter WIDTHAD_A set to 7
+        Info (286033): Parameter NUMWORDS_A set to 128
+        Info (286033): Parameter WIDTH_B set to 8
+        Info (286033): Parameter WIDTHAD_B set to 7
+        Info (286033): Parameter NUMWORDS_B set to 128
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to NONE
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+        Info (286033): Parameter INIT_FILE set to /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v_toplevel_pifoEngines_1_enque_brain_lastVirtualMapper_ram.bin.mif
+        Info (286033): Parameter READ_DURING_WRITE_MODE_MIXED_PORTS set to OLD_DATA
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "pifoEngines_1|enque_brain|engineCAM|banks_0_values_rtl_0"  File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 44620
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 8
+        Info (286033): Parameter WIDTHAD_A set to 8
+        Info (286033): Parameter NUMWORDS_A set to 256
+        Info (286033): Parameter WIDTH_B set to 8
+        Info (286033): Parameter WIDTHAD_B set to 8
+        Info (286033): Parameter NUMWORDS_B set to 256
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to NONE
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+        Info (286033): Parameter READ_DURING_WRITE_MODE_MIXED_PORTS set to OLD_DATA
+        Info (286033): Parameter RDCONTROL_REG_B set to CLOCK0
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "pifoEngines_1|enque_brain|brainStateMem|ram_rtl_0"  File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 41958
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 32
+        Info (286033): Parameter WIDTHAD_A set to 7
+        Info (286033): Parameter NUMWORDS_A set to 128
+        Info (286033): Parameter WIDTH_B set to 32
+        Info (286033): Parameter WIDTHAD_B set to 7
+        Info (286033): Parameter NUMWORDS_B set to 128
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to NONE
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+        Info (286033): Parameter INIT_FILE set to /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v_toplevel_pifoEngines_1_enque_brain_brainStateMem_ram.bin.mif
+        Info (286033): Parameter READ_DURING_WRITE_MODE_MIXED_PORTS set to OLD_DATA
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "pifoEngines_2|enque_brain|engineMapper|ram_rtl_0"  File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 41880
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 2
+        Info (286033): Parameter WIDTHAD_A set to 7
+        Info (286033): Parameter NUMWORDS_A set to 128
+        Info (286033): Parameter WIDTH_B set to 2
+        Info (286033): Parameter WIDTHAD_B set to 7
+        Info (286033): Parameter NUMWORDS_B set to 128
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to NONE
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+        Info (286033): Parameter INIT_FILE set to /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v_toplevel_pifoEngines_2_enque_brain_engineMapper_ram.bin.mif
+        Info (286033): Parameter READ_DURING_WRITE_MODE_MIXED_PORTS set to OLD_DATA
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "pifoEngines_2|enque_brain|lastVirtualMapper|ram_rtl_0"  File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 41824
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 8
+        Info (286033): Parameter WIDTHAD_A set to 7
+        Info (286033): Parameter NUMWORDS_A set to 128
+        Info (286033): Parameter WIDTH_B set to 8
+        Info (286033): Parameter WIDTHAD_B set to 7
+        Info (286033): Parameter NUMWORDS_B set to 128
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to NONE
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+        Info (286033): Parameter INIT_FILE set to /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v_toplevel_pifoEngines_2_enque_brain_lastVirtualMapper_ram.bin.mif
+        Info (286033): Parameter READ_DURING_WRITE_MODE_MIXED_PORTS set to OLD_DATA
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "pifoEngines_2|enque_brain|engineCAM|banks_0_values_rtl_0"  File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 44620
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 8
+        Info (286033): Parameter WIDTHAD_A set to 8
+        Info (286033): Parameter NUMWORDS_A set to 256
+        Info (286033): Parameter WIDTH_B set to 8
+        Info (286033): Parameter WIDTHAD_B set to 8
+        Info (286033): Parameter NUMWORDS_B set to 256
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to NONE
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+        Info (286033): Parameter READ_DURING_WRITE_MODE_MIXED_PORTS set to OLD_DATA
+        Info (286033): Parameter RDCONTROL_REG_B set to CLOCK0
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "pifoEngines_2|enque_brain|brainStateMem|ram_rtl_0"  File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 41762
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 32
+        Info (286033): Parameter WIDTHAD_A set to 7
+        Info (286033): Parameter NUMWORDS_A set to 128
+        Info (286033): Parameter WIDTH_B set to 32
+        Info (286033): Parameter WIDTHAD_B set to 7
+        Info (286033): Parameter NUMWORDS_B set to 128
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to NONE
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+        Info (286033): Parameter INIT_FILE set to /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v_toplevel_pifoEngines_2_enque_brain_brainStateMem_ram.bin.mif
+        Info (286033): Parameter READ_DURING_WRITE_MODE_MIXED_PORTS set to OLD_DATA
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "pifoEngines_3|enque_brain|engineMapper|ram_rtl_0"  File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 41684
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 2
+        Info (286033): Parameter WIDTHAD_A set to 7
+        Info (286033): Parameter NUMWORDS_A set to 128
+        Info (286033): Parameter WIDTH_B set to 2
+        Info (286033): Parameter WIDTHAD_B set to 7
+        Info (286033): Parameter NUMWORDS_B set to 128
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to NONE
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+        Info (286033): Parameter INIT_FILE set to /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v_toplevel_pifoEngines_3_enque_brain_engineMapper_ram.bin.mif
+        Info (286033): Parameter READ_DURING_WRITE_MODE_MIXED_PORTS set to OLD_DATA
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "pifoEngines_3|enque_brain|lastVirtualMapper|ram_rtl_0"  File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 41628
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 8
+        Info (286033): Parameter WIDTHAD_A set to 7
+        Info (286033): Parameter NUMWORDS_A set to 128
+        Info (286033): Parameter WIDTH_B set to 8
+        Info (286033): Parameter WIDTHAD_B set to 7
+        Info (286033): Parameter NUMWORDS_B set to 128
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to NONE
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+        Info (286033): Parameter INIT_FILE set to /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v_toplevel_pifoEngines_3_enque_brain_lastVirtualMapper_ram.bin.mif
+        Info (286033): Parameter READ_DURING_WRITE_MODE_MIXED_PORTS set to OLD_DATA
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "pifoEngines_3|enque_brain|engineCAM|banks_0_values_rtl_0"  File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 44620
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 8
+        Info (286033): Parameter WIDTHAD_A set to 8
+        Info (286033): Parameter NUMWORDS_A set to 256
+        Info (286033): Parameter WIDTH_B set to 8
+        Info (286033): Parameter WIDTHAD_B set to 8
+        Info (286033): Parameter NUMWORDS_B set to 256
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to NONE
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+        Info (286033): Parameter READ_DURING_WRITE_MODE_MIXED_PORTS set to OLD_DATA
+        Info (286033): Parameter RDCONTROL_REG_B set to CLOCK0
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "pifoEngines_3|enque_brain|brainStateMem|ram_rtl_0"  File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 41566
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 32
+        Info (286033): Parameter WIDTHAD_A set to 7
+        Info (286033): Parameter NUMWORDS_A set to 128
+        Info (286033): Parameter WIDTH_B set to 32
+        Info (286033): Parameter WIDTHAD_B set to 7
+        Info (286033): Parameter NUMWORDS_B set to 128
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to NONE
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+        Info (286033): Parameter INIT_FILE set to /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v_toplevel_pifoEngines_3_enque_brain_brainStateMem_ram.bin.mif
+        Info (286033): Parameter READ_DURING_WRITE_MODE_MIXED_PORTS set to OLD_DATA
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "pifoEngines_4|enque_brain|engineMapper|ram_rtl_0"  File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 41488
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 2
+        Info (286033): Parameter WIDTHAD_A set to 7
+        Info (286033): Parameter NUMWORDS_A set to 128
+        Info (286033): Parameter WIDTH_B set to 2
+        Info (286033): Parameter WIDTHAD_B set to 7
+        Info (286033): Parameter NUMWORDS_B set to 128
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to NONE
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+        Info (286033): Parameter INIT_FILE set to /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v_toplevel_pifoEngines_4_enque_brain_engineMapper_ram.bin.mif
+        Info (286033): Parameter READ_DURING_WRITE_MODE_MIXED_PORTS set to OLD_DATA
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "pifoEngines_4|enque_brain|lastVirtualMapper|ram_rtl_0"  File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 41432
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 8
+        Info (286033): Parameter WIDTHAD_A set to 7
+        Info (286033): Parameter NUMWORDS_A set to 128
+        Info (286033): Parameter WIDTH_B set to 8
+        Info (286033): Parameter WIDTHAD_B set to 7
+        Info (286033): Parameter NUMWORDS_B set to 128
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to NONE
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+        Info (286033): Parameter INIT_FILE set to /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v_toplevel_pifoEngines_4_enque_brain_lastVirtualMapper_ram.bin.mif
+        Info (286033): Parameter READ_DURING_WRITE_MODE_MIXED_PORTS set to OLD_DATA
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "pifoEngines_4|enque_brain|engineCAM|banks_0_values_rtl_0"  File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 44620
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 8
+        Info (286033): Parameter WIDTHAD_A set to 8
+        Info (286033): Parameter NUMWORDS_A set to 256
+        Info (286033): Parameter WIDTH_B set to 8
+        Info (286033): Parameter WIDTHAD_B set to 8
+        Info (286033): Parameter NUMWORDS_B set to 256
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to NONE
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+        Info (286033): Parameter READ_DURING_WRITE_MODE_MIXED_PORTS set to OLD_DATA
+        Info (286033): Parameter RDCONTROL_REG_B set to CLOCK0
+    Info (276029): Inferred altsyncram megafunction from the following design logic: "pifoEngines_4|enque_brain|brainStateMem|ram_rtl_0"  File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 41370
+        Info (286033): Parameter OPERATION_MODE set to DUAL_PORT
+        Info (286033): Parameter WIDTH_A set to 32
+        Info (286033): Parameter WIDTHAD_A set to 7
+        Info (286033): Parameter NUMWORDS_A set to 128
+        Info (286033): Parameter WIDTH_B set to 32
+        Info (286033): Parameter WIDTHAD_B set to 7
+        Info (286033): Parameter NUMWORDS_B set to 128
+        Info (286033): Parameter ADDRESS_ACLR_A set to NONE
+        Info (286033): Parameter OUTDATA_REG_B set to UNREGISTERED
+        Info (286033): Parameter ADDRESS_ACLR_B set to NONE
+        Info (286033): Parameter OUTDATA_ACLR_B set to NONE
+        Info (286033): Parameter ADDRESS_REG_B set to CLOCK0
+        Info (286033): Parameter INDATA_ACLR_A set to NONE
+        Info (286033): Parameter WRCONTROL_ACLR_A set to NONE
+        Info (286033): Parameter INIT_FILE set to /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v_toplevel_pifoEngines_4_enque_brain_brainStateMem_ram.bin.mif
+        Info (286033): Parameter READ_DURING_WRITE_MODE_MIXED_PORTS set to OLD_DATA
+Warning (14284): Synthesized away the following node(s):
+    Warning (25637): Synthesized away 120 node(s) of type RAM. See "Registers Removed during Synthesis" report for more details.
+Warning (13024): Output pins are stuck at VCC or GND
+    Warning (13410): Pin "io_pifo_0_push2_payload_data[0..9]" is stuck at GND File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 49
+    Warning (13410): Pin "io_pifo_0_push2_payload_port[0..6]" is stuck at GND File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 50
+    Warning (13410): Pin "io_pifo_0_push2_payload_priority[0..7]" is stuck at GND File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 48
+    Warning (13410): Pin "io_pifo_0_push2_valid" is stuck at GND File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 47
+    Warning (13410): Pin "io_pifo_1_push2_payload_data[0..9]" is stuck at GND File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 71
+    Warning (13410): Pin "io_pifo_1_push2_payload_port[0..6]" is stuck at GND File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 72
+    Warning (13410): Pin "io_pifo_1_push2_payload_priority[0..7]" is stuck at GND File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 70
+    Warning (13410): Pin "io_pifo_1_push2_valid" is stuck at GND File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 69
+    Warning (13410): Pin "io_pifo_2_push2_payload_data[0..9]" is stuck at GND File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 93
+    Warning (13410): Pin "io_pifo_2_push2_payload_port[0..6]" is stuck at GND File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 94
+    Warning (13410): Pin "io_pifo_2_push2_payload_priority[0..7]" is stuck at GND File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 92
+    Warning (13410): Pin "io_pifo_2_push2_valid" is stuck at GND File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 91
+    Warning (13410): Pin "io_pifo_3_push2_payload_data[0..9]" is stuck at GND File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 115
+    Warning (13410): Pin "io_pifo_3_push2_payload_port[0..6]" is stuck at GND File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 116
+    Warning (13410): Pin "io_pifo_3_push2_payload_priority[0..7]" is stuck at GND File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 114
+    Warning (13410): Pin "io_pifo_3_push2_valid" is stuck at GND File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 113
+    Warning (13410): Pin "io_pifo_4_push2_payload_data[0..9]" is stuck at GND File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 137
+    Warning (13410): Pin "io_pifo_4_push2_payload_port[0..6]" is stuck at GND File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 138
+    Warning (13410): Pin "io_pifo_4_push2_payload_priority[0..7]" is stuck at GND File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 136
+    Warning (13410): Pin "io_pifo_4_push2_valid" is stuck at GND File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 135
+    Warning (13410): Pin "io_replayLogAvailable[8]" is stuck at GND File: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/quartus-rtl/PifoMesh.v Line: 156
+Info (17049): 370 registers lost all their fanouts during netlist optimizations.
+Info (21057): Implemented 200961 device resources after synthesis - the final resource count might be different
+    Info (21058): Implemented 385 input pins
+    Info (21059): Implemented 366 output pins
+    Info (21061): Implemented 199795 logic cells
+    Info (21064): Implemented 415 RAM segments
+Info: Successfully synthesized partition
+Info: Saving post-synthesis snapshots for 1 partition(s)
+Info (21615): Running Design Assistant Rules for snapshot 'synthesized'
+Info: No waiver waived any violations
+Info (22360): Design Assistant Results: 12 of 13 enabled rules passed, and 7 rules was disabled, in snapshot 'synthesized'
+Info (21661): Design Assistant Results: 0 of 1 High severity rules issued violations in snapshot 'synthesized'
+Info (21621): Design Assistant Results: 1 of 6 Medium severity rules issued violations in snapshot 'synthesized'. Please refer to DRC report '/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-replay-quartus/output_files/pifo.drc.synthesized.rpt' for more information
+Info (21622): Design Assistant Results: 0 of 6 Low severity rules issued violations in snapshot 'synthesized'
+Info: Quartus Prime Synthesis was successful. 0 errors, 31 warnings
+    Info: Peak virtual memory: 3765 megabytes
+    Info: Processing ended: Wed Sep  9 12:42:26 2026
+    Info: Elapsed time: 00:03:50
+    Info: System process ID: 714367

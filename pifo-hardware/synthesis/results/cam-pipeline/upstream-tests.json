@@ -1,0 +1,24 @@
+{
+  "status": "passed",
+  "repository": "https://github.com/alexforencich/verilog-cam",
+  "revision": "69002598f12d7418d44bbaa88ea0be3bf3b14e6c",
+  "upstream_tests_unmodified": true,
+  "tests": [
+    "test_cam_srl.py",
+    "test_priority_encoder.py"
+  ],
+  "myhdl_version": "0.11.51",
+  "python_executable": "/data/work/rio-cam-pipeline-references/venv/bin/python",
+  "vpi_build_directory": "/data/work/rio-cam-pipeline-references/myhdl-cosimulation",
+  "vvp_wrapper": "#!/bin/sh\nexec /home/zg366/packet-scheduling/pifo-hardware/synthesis/.tools/iverilog/bin/vvp -M/data/work/rio-cam-pipeline-references/myhdl-cosimulation \"$@\"\n",
+  "commands": [
+    "iverilog-vpi myhdl.c myhdl_table.c",
+    "python test_cam_srl.py",
+    "python test_priority_encoder.py"
+  ],
+  "working_directory": "/data/work/rio-cam-pipeline-references/verilog-cam/tb",
+  "log_sha256": {
+    "test_cam_srl.py.log": "c7f0047ada71636a83c6f6a837cded7a5a78d9d1570d8df945fbd894356720e6",
+    "test_priority_encoder.py.log": "0b74ad7dd4e7786794201573e9ce7d0312890feae0dab95e1ea679427721ec1f"
+  }
+}

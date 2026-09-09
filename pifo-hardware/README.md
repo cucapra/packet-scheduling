@@ -7,11 +7,13 @@ sbt "runMain rio.sim.PifoMeshSim"
 For request queues, trace-driven or live workloads, traffic generation, and formal-trace conversion, see the
 [request-level simulator guide](REQUEST_SIMULATOR.md).
 
-For Quartus and Vivado synthesis, see the [synthesis guide](synthesis/README.md)
-and [current shared-FIFO replay results](experiment-results/shared-fifo-overhead/README.md).
-The completed 36-run experiment compares ordinary tables with replay using the same
-256-entry controller FIFO. The [fixed table](experiment-results/shared-fifo-overhead/r1-fixed/figures/resource-table/figure.svg)
-and vFlow sweep include five measured PIFOs, BRAM counts, and target-device utilization.
+For Quartus and Vivado synthesis, see the [synthesis guide](synthesis/README.md).
+Bounded CAM lookups and shared-FIFO replay are the defaults, with a 256-entry
+controller FIFO and `2 × vFlows` entries per CAM bank. The CAM experiment compares
+ordinary and replay configurations in the [fixed table](experiment-results/cam-overhead/r1-fixed/figures/resource-table/figure.svg)
+and [vFlow sweep](experiment-results/cam-overhead/r2-vflows/figures/overhead-percent/figure.svg),
+including five measured PIFOs, BRAM counts, and target-device utilization.
+The [previous dense-table results](experiment-results/shared-fifo-overhead/README.md) remain available.
 Earlier separate-journal measurements and the isolated lookup-pipeline exploration
 remain in the [historical experiment archive](experiment-results/hardware-overhead/README.md).
 

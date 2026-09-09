@@ -1,0 +1,57 @@
+{
+  "groups": {
+    "controller_fifo": {
+      "ram_bits": 36864,
+      "logic_luts": 1347,
+      "registers": 28
+    },
+    "routing_and_other": {
+      "logic_luts": 694,
+      "registers": 110
+    },
+    "drain_guard": {
+      "logic_luts": 475,
+      "registers": 320
+    },
+    "brain": {
+      "logic_luts": 6529,
+      "registers": 4895
+    },
+    "post_mapper": {
+      "logic_luts": 4968,
+      "registers": 4530
+    },
+    "front_rewrite": {
+      "logic_luts": 245,
+      "registers": 960
+    },
+    "crossbar": {
+      "logic_luts": 310,
+      "registers": 129
+    },
+    "pre_mapper": {}
+  },
+  "memories": [
+    {
+      "name": "io_controlRequest_fifo/logic_ram",
+      "mode": "RAM_SDP",
+      "port_a": "512x51",
+      "port_b": "512x51"
+    }
+  ],
+  "logical_storage_bits": {
+    "sorted_entry_registers": 0,
+    "flow_state_tables": 10240,
+    "post_mapper_banks": 2560,
+    "pre_mapper_banks": 800,
+    "brain_policy_tables": 320,
+    "last_virtual_time_tables": 1280,
+    "brain_state_tables": 5120,
+    "front_rewrite_registers": 0,
+    "control_queue_payload": 13056,
+    "crossbar_fifo_payload": 384,
+    "cam_tag_valid_registers": 8960
+  },
+  "controller_uses_block_ram": true,
+  "pre_mapper_uses_block_ram": false
+}

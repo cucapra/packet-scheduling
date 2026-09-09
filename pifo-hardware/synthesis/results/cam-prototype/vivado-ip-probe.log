@@ -1,0 +1,52 @@
+#-----------------------------------------------------------
+# Vivado v2025.2 (64-bit)
+# SW Build 6299465 on Fri Nov 14 12:34:56 MST 2025
+# IP Build 6300035 on Fri Nov 14 10:48:45 MST 2025
+# SharedData Build 6298862 on Thu Nov 13 04:50:51 MST 2025
+# Start of session at: Wed Sep  9 11:55:54 2026
+# Process ID         : 686616
+# Current directory  : /home/zg366/packet-scheduling
+# Command line       : vivado -mode batch -source /home/zg366/packet-scheduling/pifo-hardware/synthesis/probe_cam_ip.tcl -nojournal -log /tmp/rio-cam-catalog-final.log -tclargs /tmp/rio-cam-catalog-final
+# Log file           : /tmp/rio-cam-catalog-final.log
+# Journal file       : 
+# Running On         : netarch-cxl.ece.cornell.edu
+# Platform           : Ubuntu
+# Operating System   : Ubuntu 24.04.4 LTS
+# Processor Detail   : Intel(R) Xeon(R) 6710E
+# CPU Frequency      : 800.135 MHz
+# CPU Physical cores : 128
+# CPU Logical cores  : 128
+# Host memory        : 236228 MB
+# Swap memory        : 4294 MB
+# Total Virtual      : 240523 MB
+# Available Virtual  : 216717 MB
+#-----------------------------------------------------------
+source /home/zg366/packet-scheduling/pifo-hardware/synthesis/probe_cam_ip.tcl
+# if {$argc < 1 || $argc > 2} {
+#     error "usage: probe_cam_ip.tcl OUTPUT_DIRECTORY ?PART?"
+# }
+# set outdir [file normalize [lindex $argv 0]]
+# set part xcvu9p-flga2104-2L-e
+# if {$argc == 2} { set part [lindex $argv 1] }
+# file mkdir $outdir
+# file mkdir [file join $outdir ip]
+# create_project -in_memory -part $part
+# set defs [get_ipdefs -all -quiet *:cam:*]
+# set info [open [file join $outdir catalog.txt] w]
+# puts $info "part=$part"
+# puts $info "definitions=$defs"
+# foreach def $defs {
+#     foreach prop {DISPLAY_NAME LICENSE_KEYS REQUIRES_LICENSE} {
+#         puts $info "$def $prop=[get_property $prop $def]"
+#     }
+# }
+# close $info
+# if {[llength $defs] == 0} { error "No CAM IP found in this installation" }
+# create_ip -vlnv [lindex [lsort -dictionary $defs] end] -module_name rio_cam_probe -dir [file join $outdir ip]
+WARNING: [IP_Flow 19-2162] IP 'rio_cam_probe' is locked:
+* IP 'rio_cam_probe' requires one or more mandatory licenses but no valid licenses were found. However license checkpoints may prevent use of this IP in some tool flows.
+# report_ip_status -file [file join $outdir ip-status.rpt]
+# puts "RIO_CAM_CATALOG_PROBE_COMPLETE: [file join $outdir ip-status.rpt]"
+RIO_CAM_CATALOG_PROBE_COMPLETE: /tmp/rio-cam-catalog-final/ip-status.rpt
+# exit
+INFO: [Common 17-206] Exiting Vivado at Wed Sep  9 11:56:02 2026...

@@ -1,0 +1,73 @@
+Copyright 1986-2022 Xilinx, Inc. All Rights Reserved. Copyright 2022-2025 Advanced Micro Devices, Inc. All Rights Reserved.
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+| Tool Version : Vivado v.2025.2 (lin64) Build 6299465 Fri Nov 14 12:34:56 MST 2025
+| Date         : Wed Sep  9 12:17:15 2026
+| Host         : netarch-cxl.ece.cornell.edu running 64-bit Ubuntu 24.04.4 LTS
+| Command      : report_utilization -hierarchical -hierarchical_depth 5 -file /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v32-c1024-q256-replay-vivado/reports/utilization-hierarchy.rpt
+| Design       : PifoMesh
+| Device       : xcku5p-ffvb676-2-e
+| Speed File   : -2
+| Design State : Synthesized
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Utilization Design Information
+
+Table of Contents
+-----------------
+1. Utilization by Hierarchy
+
+1. Utilization by Hierarchy
+---------------------------
+
++------------------------+------------------------+------------+------------+---------+------+-------+--------+--------+------+------------+
+|        Instance        |         Module         | Total LUTs | Logic LUTs | LUTRAMs | SRLs |  FFs  | RAMB36 | RAMB18 | URAM | DSP Blocks |
++------------------------+------------------------+------------+------------+---------+------+-------+--------+--------+------+------------+
+| PifoMesh               |                  (top) |      21900 |      21192 |     708 |    0 | 16092 |      1 |      0 |    0 |          0 |
+|   (PifoMesh)           |                  (top) |          1 |          1 |       0 |    0 |    34 |      0 |      0 |    0 |          0 |
+|   guard                |             DrainGuard |        469 |        469 |       0 |    0 |   320 |      0 |      0 |    0 |          0 |
+|   pifoEngines_0        |             PifoEngine |       3920 |       3788 |     132 |    0 |  3110 |      0 |      0 |    0 |          0 |
+|     (pifoEngines_0)    |             PifoEngine |         68 |          0 |      68 |    0 |     4 |      0 |      0 |    0 |          0 |
+|     deque_dequeMapper  | BoundedCamMapper_1_105 |       2211 |       2191 |      20 |    0 |  1813 |      0 |      0 |    0 |          0 |
+|     deque_frontRewrite |  FrontRewriteTable_107 |        172 |        172 |       0 |    0 |   288 |      0 |      0 |    0 |          0 |
+|     enque_brain        |              PIFOBrain |       1360 |       1324 |      36 |    0 |   979 |      0 |      0 |    0 |          0 |
+|       streamArbiter_21 |    StreamArbiter_6_122 |        203 |        203 |       0 |    0 |     3 |      0 |      0 |    0 |          0 |
+|       engineCAM        |   BoundedCamMapper_114 |        993 |        977 |      16 |    0 |   912 |      0 |      0 |    0 |          0 |
+|     enque_enqueMapper  |           ReplayMapper |         80 |         72 |       8 |    0 |    13 |      0 |      0 |    0 |          0 |
+|   pifoEngines_1        |           PifoEngine_1 |       3920 |       3788 |     132 |    0 |  3110 |      0 |      0 |    0 |          0 |
+|     (pifoEngines_1)    |           PifoEngine_1 |         68 |          0 |      68 |    0 |     4 |      0 |      0 |    0 |          0 |
+|     deque_dequeMapper  |  BoundedCamMapper_1_79 |       2211 |       2191 |      20 |    0 |  1813 |      0 |      0 |    0 |          0 |
+|     deque_frontRewrite |   FrontRewriteTable_81 |        172 |        172 |       0 |    0 |   288 |      0 |      0 |    0 |          0 |
+|     enque_brain        |            PIFOBrain_1 |       1360 |       1324 |      36 |    0 |   979 |      0 |      0 |    0 |          0 |
+|       streamArbiter_21 |     StreamArbiter_6_96 |        203 |        203 |       0 |    0 |     3 |      0 |      0 |    0 |          0 |
+|       engineCAM        |    BoundedCamMapper_88 |        993 |        977 |      16 |    0 |   912 |      0 |      0 |    0 |          0 |
+|     enque_enqueMapper  |         ReplayMapper_1 |         80 |         72 |       8 |    0 |    13 |      0 |      0 |    0 |          0 |
+|   pifoEngines_2        |           PifoEngine_2 |       3921 |       3789 |     132 |    0 |  3110 |      0 |      0 |    0 |          0 |
+|     (pifoEngines_2)    |           PifoEngine_2 |         68 |          0 |      68 |    0 |     4 |      0 |      0 |    0 |          0 |
+|     deque_dequeMapper  |  BoundedCamMapper_1_53 |       2211 |       2191 |      20 |    0 |  1813 |      0 |      0 |    0 |          0 |
+|     deque_frontRewrite |   FrontRewriteTable_55 |        172 |        172 |       0 |    0 |   288 |      0 |      0 |    0 |          0 |
+|     enque_brain        |            PIFOBrain_2 |       1361 |       1325 |      36 |    0 |   979 |      0 |      0 |    0 |          0 |
+|       streamArbiter_21 |     StreamArbiter_6_70 |        203 |        203 |       0 |    0 |     3 |      0 |      0 |    0 |          0 |
+|       engineCAM        |    BoundedCamMapper_62 |        994 |        978 |      16 |    0 |   912 |      0 |      0 |    0 |          0 |
+|     enque_enqueMapper  |         ReplayMapper_2 |         80 |         72 |       8 |    0 |    13 |      0 |      0 |    0 |          0 |
+|   pifoEngines_3        |           PifoEngine_3 |       3920 |       3788 |     132 |    0 |  3110 |      0 |      0 |    0 |          0 |
+|     (pifoEngines_3)    |           PifoEngine_3 |         68 |          0 |      68 |    0 |     4 |      0 |      0 |    0 |          0 |
+|     deque_dequeMapper  |  BoundedCamMapper_1_27 |       2211 |       2191 |      20 |    0 |  1813 |      0 |      0 |    0 |          0 |
+|     deque_frontRewrite |   FrontRewriteTable_29 |        172 |        172 |       0 |    0 |   288 |      0 |      0 |    0 |          0 |
+|     enque_brain        |            PIFOBrain_3 |       1360 |       1324 |      36 |    0 |   979 |      0 |      0 |    0 |          0 |
+|       streamArbiter_21 |     StreamArbiter_6_44 |        203 |        203 |       0 |    0 |     3 |      0 |      0 |    0 |          0 |
+|       engineCAM        |    BoundedCamMapper_36 |        993 |        977 |      16 |    0 |   912 |      0 |      0 |    0 |          0 |
+|     enque_enqueMapper  |         ReplayMapper_3 |         80 |         72 |       8 |    0 |    13 |      0 |      0 |    0 |          0 |
+|   pifoEngines_4        |           PifoEngine_4 |       3921 |       3789 |     132 |    0 |  3110 |      0 |      0 |    0 |          0 |
+|     (pifoEngines_4)    |           PifoEngine_4 |         68 |          0 |      68 |    0 |     4 |      0 |      0 |    0 |          0 |
+|     deque_dequeMapper  |     BoundedCamMapper_1 |       2211 |       2191 |      20 |    0 |  1813 |      0 |      0 |    0 |          0 |
+|     deque_frontRewrite |      FrontRewriteTable |        172 |        172 |       0 |    0 |   288 |      0 |      0 |    0 |          0 |
+|     enque_brain        |            PIFOBrain_4 |       1361 |       1325 |      36 |    0 |   979 |      0 |      0 |    0 |          0 |
+|       streamArbiter_21 |        StreamArbiter_6 |        203 |        203 |       0 |    0 |     3 |      0 |      0 |    0 |          0 |
+|       engineCAM        |       BoundedCamMapper |        994 |        978 |      16 |    0 |   912 |      0 |      0 |    0 |          0 |
+|     enque_enqueMapper  |         ReplayMapper_4 |         80 |         72 |       8 |    0 |    13 |      0 |      0 |    0 |          0 |
+|   replayControl        |      ReplayControlFifo |       1318 |       1318 |       0 |    0 |    39 |      1 |      0 |    0 |          0 |
+|   xbar                 |        MessageCrossBar |        482 |        434 |      48 |    0 |   129 |      0 |      0 |    0 |          0 |
+|     (xbar)             |        MessageCrossBar |        166 |        166 |       0 |    0 |    39 |      0 |      0 |    0 |          0 |
++------------------------+------------------------+------------+------------+---------+------+-------+--------+--------+------+------------+
+
+

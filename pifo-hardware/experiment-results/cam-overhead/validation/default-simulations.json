@@ -1,0 +1,34 @@
+{
+  "status": "passed",
+  "commands": [
+    "runMain rio.sim.TransactionalConfigSim",
+    "runMain rio.sim.SharedReplayDriverSim"
+  ],
+  "lookup_backend": "cam",
+  "configuration": "replay",
+  "seeds": [
+    1439709041,
+    1013287245
+  ],
+  "shared_replay_driver": {
+    "commits": 11,
+    "empty_commits": 3,
+    "rejected_epochs": 9
+  },
+  "source_sha256": {
+    "hw/spinal/rio/Config.scala": "eb623e40ebce2bfe36151863b1764a1b3531cadfe8c4bd5ae2a97eebe71f5061",
+    "hw/spinal/rio/ControllerFactory.scala": "30efd0c48e7fccc934720714d60677a2e96bcd82a42e872b85a606550f7d9908",
+    "hw/spinal/rio/Pifo.scala": "1c97b917779af58a5faeacc9b5cee4437d8fb0c453bb1492ad583d422767459b",
+    "hw/spinal/rio/StockPifoRTL.scala": "bf53600f671a18e235a8f06f4ea5a7c1d1a59fdd7eb88ceb58d15bc0f88057a7",
+    "hw/spinal/rio/DrainGuard.scala": "f0ef785bf1b5d103e777636636dcad2d5dfc2f217bf9e5f2d6d4eaa50661f865",
+    "hw/spinal/rio/ReplayMapper.scala": "ddea032f25abea8e1d8941cc3c7c10abb1f282372bbe9fe0d52ccc715e16ba8a",
+    "hw/spinal/rio/ConcurrentPifoRTL.scala": "6418ce1f359296e2fcd80e4bf2f8dc96c51a79cfdce910a5d2916a6156c041a9",
+    "hw/spinal/rio/ConfigurableMapper.scala": "bce4696e23de7aea68deb7ecd7b54d5fe85bc9ff0e155d60cbd4e00a022d5b8b",
+    "hw/spinal/rio/GeneratePifoMesh.scala": "03f45333ef12aaaa76c314c48d62f2d3fd2023d42a919fde809ce240ef94b441",
+    "hw/spinal/rio/PifoCore.scala": "860bafa66a50b828b539bf1389cb4916cac77eb9960c4cc63c5d61c9e63b351d",
+    "hw/spinal/rio/PifoEngine.scala": "90621acbc5d40f9d83487ac9085fc6826eae6eacbc6ed236bfc03d7ec4b73f3f",
+    "hw/spinal/rio/PifoMesh.scala": "393986c44bbeb5974f774c799ece39a829365d2e79065dffee9515546dfdb543",
+    "hw/spinal/rio/ReplayControlFifo.scala": "d43818d915394d3c9e7998e75a3184c191d718e02a522cf0f0b76fe257d3b3c4",
+    "hw/spinal/rio/BoundedCamMapper.scala": "94f92156b5e6f34fcf4956d89c778af884ca9d00233a75e7b12ac5124ff54659"
+  }
+}

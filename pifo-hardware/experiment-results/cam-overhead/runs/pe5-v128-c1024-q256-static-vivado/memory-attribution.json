@@ -1,0 +1,88 @@
+{
+  "groups": {
+    "controller_fifo": {
+      "ram_bits": 36864,
+      "logic_luts": 1996,
+      "registers": 28
+    },
+    "brain": {
+      "ram_bits": 92160,
+      "logic_luts": 27175,
+      "registers": 23380
+    },
+    "routing_and_other": {
+      "logic_luts": 310,
+      "registers": 120
+    },
+    "drain_guard": {
+      "logic_luts": 1830,
+      "registers": 1280
+    },
+    "post_mapper": {
+      "logic_luts": 24930,
+      "registers": 23100
+    },
+    "front_rewrite": {
+      "logic_luts": 1610,
+      "registers": 5120
+    },
+    "crossbar": {
+      "logic_luts": 334,
+      "registers": 151
+    },
+    "pre_mapper": {}
+  },
+  "memories": [
+    {
+      "name": "io_controlRequest_fifo/logic_ram",
+      "mode": "RAM_SDP",
+      "port_a": "512x55",
+      "port_b": "512x55"
+    },
+    {
+      "name": "pifoEngines_0/enque_brain/engineCAM/banks_0_values",
+      "mode": "RAM_SDP",
+      "port_a": "512x32",
+      "port_b": "512x32"
+    },
+    {
+      "name": "pifoEngines_1/enque_brain/engineCAM/banks_0_values",
+      "mode": "RAM_SDP",
+      "port_a": "512x32",
+      "port_b": "512x32"
+    },
+    {
+      "name": "pifoEngines_2/enque_brain/engineCAM/banks_0_values",
+      "mode": "RAM_SDP",
+      "port_a": "512x32",
+      "port_b": "512x32"
+    },
+    {
+      "name": "pifoEngines_3/enque_brain/engineCAM/banks_0_values",
+      "mode": "RAM_SDP",
+      "port_a": "512x32",
+      "port_b": "512x32"
+    },
+    {
+      "name": "pifoEngines_4/enque_brain/engineCAM/banks_0_values",
+      "mode": "RAM_SDP",
+      "port_a": "512x32",
+      "port_b": "512x32"
+    }
+  ],
+  "logical_storage_bits": {
+    "sorted_entry_registers": 0,
+    "flow_state_tables": 40960,
+    "post_mapper_banks": 12800,
+    "pre_mapper_banks": 4480,
+    "brain_policy_tables": 1280,
+    "last_virtual_time_tables": 5120,
+    "brain_state_tables": 20480,
+    "front_rewrite_registers": 0,
+    "control_queue_payload": 14080,
+    "crossbar_fifo_payload": 480,
+    "cam_tag_valid_registers": 46080
+  },
+  "controller_uses_block_ram": true,
+  "pre_mapper_uses_block_ram": false
+}

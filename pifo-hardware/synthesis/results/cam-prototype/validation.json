@@ -1,0 +1,57 @@
+{
+  "status": "passed",
+  "timestamp_utc": "2026-09-09T16:04:49.159871+00:00",
+  "branch": "hardware-cam",
+  "simulation_cases_passed": 15,
+  "simulation_programs": [
+    "BoundedCamMapperSim (6 cases)",
+    "BoundedCamIntegrationSim cam (2 cases)",
+    "TransactionalConfigSim cam",
+    "SharedReplayDriverSim cam",
+    "DrainGuardSim cam",
+    "FrontUnderflowRewriteSim cam",
+    "ControlIngressRateSim cam",
+    "BoundedCamIntegrationSim dense",
+    "TransactionalConfigSim dense"
+  ],
+  "full_rtl_configurations": [
+    "5 PE, 1024 vFlow, 1024 PIFO entries/PE, FIFO256, CAM2048, replay",
+    "5 PE, 1024 vFlow, 1024 PIFO entries/PE, FIFO256, CAM2048, static"
+  ],
+  "source_hashes_match_generated_rtl_manifests": true,
+  "vivado_ip": {
+    "vlnv": "xilinx.com:ip:cam:5.0",
+    "target": "xcvu9p-flga2104-2L-e",
+    "catalog_present": true,
+    "license_status": "IP license not found / Needs Purchase",
+    "instantiated_in_rio": false
+  },
+  "implementation": "portable_parallel_tags_synchronous_values",
+  "synthesis_run": false,
+  "implementation_run": false,
+  "physical_resource_counts_measured": false,
+  "test_source_sha256": {
+    "PifoSim.scala": "d07ece4437075c5ecd72f94bd0be2f4927ae654b5174ef0ec136a2c045c28e5e",
+    "ControlIngressRateSim.scala": "4f888fac5590b65f7f3fc3e8d591f4d15d90680590a53c0b099f83046921286d",
+    "MapperSim.scala": "6039023164884e982b5875f4d6458b0dfd7137719ae6ce09b21752eb4c0e50a7",
+    "PifoBrainSim.scala": "a5f15bd660e5b35a10be2abfbcda76594126b9ea38ca0ad6043f6f355365fee5",
+    "PifoEngineSim.scala": "aee328671d20a9c93f32210bc7686b64f3fbdbed1a60c32bff413e0ffb01f81d",
+    "PifoMeshSim.scala": "ef3bd339ec40d62a5c27f9d5922899e95a4e73590e9c36b48dbcb31b742711e5",
+    "RequestTrace.scala": "1d1368930e96c66062c04d3e2ce18446dea70ba55350f94e7e7a8f7617a08063",
+    "TransactionalConfigSim.scala": "9797eeee0409c7eaffa66c7f400231c04913fe0dd0d6a6fe71c2460ae96f9fa7",
+    "TransactionalMapperSim.scala": "26a2ed83449c1bff8e150d8adb088580d402fe9f8a2a369097f35bb11e93d611",
+    "UnixDomainSocketLineServer.scala": "9b2de607caadb034e9440d605b1e41f3c1a66451548ba40b003834d17823e56b",
+    "DrainGuardSim.scala": "1b781d42e270e9a62fad8f38b08b866297f565f275e18331210c2bbdcd3f93e5",
+    "FrontUnderflowRewriteSim.scala": "2e60b36c736a1faccc15fe97194ddbdf2ad84d9eec2e1a21a159bd182f0abe78",
+    "ReplayControlFifoSim.scala": "bb070c774cc583d42c42e2d44574ab79e74774c8293fa7faac6779c08ac76254",
+    "ReplayMapperSim.scala": "79bc987856240ff99358fdfe94b0e3715c1129ea1a0428f899b0768cf791a068",
+    "RequestSimulator.scala": "056ab9e01b25d28030f1ecd411afe938c3455f02233415f78fc1e32fe54518f3",
+    "RequestTransactionProgram.scala": "27492ff6babfa787990cf3aded3a033fb04ff1855c3e6498b8b81dc0be834eb3",
+    "ReplayEpochCapacity.scala": "71d9697cdb58f28ba1dbc150c8a85fb3f9e74810b2e8a90a290fe76c79a818c4",
+    "RequestSimulatorCli.scala": "0a21d38ad928136b6d87e9fdf4b29a25c6d18764a2d1ea1d188ed55c53a63252",
+    "SharedReplayDriverSim.scala": "50398f441ad3037ab1385610d6c6515fd4b7a39658d7e26a15b0f94525cc7185",
+    "Utils.scala": "321193c74595a722a27ac8df65904df7868bb06515387926ed0354787a415885",
+    "BoundedCamMapperSim.scala": "b8f4fd886d7a7ade3784ac5a304e99479e1b93b1b81a0a8c4eb0b5ea43398741",
+    "BoundedCamIntegrationSim.scala": "5f11207be573595c897dd630f4a39535c247f8fab111edff14fe413856d37291"
+  }
+}

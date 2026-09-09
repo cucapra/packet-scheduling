@@ -1,0 +1,129 @@
+Copyright 1986-2022 Xilinx, Inc. All Rights Reserved. Copyright 2022-2025 Advanced Micro Devices, Inc. All Rights Reserved.
+--------------------------------------------------------------------------------------------------------------------------------------------------------------
+| Tool Version : Vivado v.2025.2 (lin64) Build 6299465 Fri Nov 14 12:34:56 MST 2025
+| Date         : Wed Sep  9 12:52:44 2026
+| Host         : netarch-cxl.ece.cornell.edu running 64-bit Ubuntu 24.04.4 LTS
+| Command      : report_ram_utilization -file /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v128-c1024-q256-static-vivado/reports/ram-utilization.rpt
+| Design       : PifoMesh
+| Device       : xcku5p-ffvb676-2-e
+| Speed File   : -2
+--------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+RAM Usage Information
+
+Table of Contents
+-----------------
+1. Summary
+2. Memory Description
+3. Memory Utilization - Inferred
+4. Memory Performance - Inferred
+5. Block Ram / URAM Memory Power - Inferred
+
+1. Summary
+----------
+
++--------------------------+------------+-----------+-------+-----------+
+| Memory Type              | Total Used | Available | Util% | Inferred% |
++--------------------------+------------+-----------+-------+-----------+
+| URAM                     |          0 |        64 |  0.00 |      0.00 |
+| BlockRAM                 |        3.5 |       480 |  0.73 |    100.00 |
+|  RAMB36E2                |          1 |           |       |    100.00 |
+|  RAMB18E2                |          5 |           |       |    100.00 |
+| LUTMs as Distributed RAM |       1048 |     99840 |  1.05 |    100.00 |
+|  LUTMs as RAM64X1D       |         20 |           |       |    100.00 |
+|  LUTMs as RAM64M8        |        480 |           |       |    100.00 |
+|  LUTMs as RAM64M         |         80 |           |       |    100.00 |
+|  LUTMs as RAM32X1D       |         40 |           |       |    100.00 |
+|  LUTMs as RAM32M16       |        368 |           |       |    100.00 |
+|  LUTMs as RAM32M         |         20 |           |       |    100.00 |
+|  LUTMs as RAM128X1D      |         40 |           |       |    100.00 |
++--------------------------+------------+-----------+-------+-----------+
+*  Each RAMB18 is calculated as 0.5 BlockRAM
+**  Tables 2, 3, 4 and 5 cover RAMs inferred by Vivado Synthesis using XPMs or RTL inference
+***  XRAMs are not reported for detailed tables
+
+
+2. Memory Description
+---------------------
+
++---------------------------------------------------------+------------+-----------+-------------+------------------------+------------------------+
+| Memory Name                                             | Array Size | RAM_STYLE | Memory Type | Port 1 Dimension / Map | Port 2 Dimension / Map |
++---------------------------------------------------------+------------+-----------+-------------+------------------------+------------------------+
+| io_controlRequest_fifo/logic_ram                        |      14080 |           | RAM_SDP     | 512x55                 | 512x55                 |
+|  io_controlRequest_fifo/logic_ram_reg                   |      28160 |      AUTO |             |  B:B:256x55            |  A:A:256x55            |
+| pifoEngines_0/enque_brain/engineCAM/banks_0_values      |       8192 |           | RAM_SDP     | 512x32                 | 512x32                 |
+|  pifoEngines_0/enque_brain/engineCAM/banks_0_values_reg |      16384 |      AUTO |             |  B:B:256x32            |  A:A:256x32            |
+| pifoEngines_1/enque_brain/engineCAM/banks_0_values      |       8192 |           | RAM_SDP     | 512x32                 | 512x32                 |
+|  pifoEngines_1/enque_brain/engineCAM/banks_0_values_reg |      16384 |      AUTO |             |  B:B:256x32            |  A:A:256x32            |
+| pifoEngines_2/enque_brain/engineCAM/banks_0_values      |       8192 |           | RAM_SDP     | 512x32                 | 512x32                 |
+|  pifoEngines_2/enque_brain/engineCAM/banks_0_values_reg |      16384 |      AUTO |             |  B:B:256x32            |  A:A:256x32            |
+| pifoEngines_3/enque_brain/engineCAM/banks_0_values      |       8192 |           | RAM_SDP     | 512x32                 | 512x32                 |
+|  pifoEngines_3/enque_brain/engineCAM/banks_0_values_reg |      16384 |      AUTO |             |  B:B:256x32            |  A:A:256x32            |
+| pifoEngines_4/enque_brain/engineCAM/banks_0_values      |       8192 |           | RAM_SDP     | 512x32                 | 512x32                 |
+|  pifoEngines_4/enque_brain/engineCAM/banks_0_values_reg |      16384 |      AUTO |             |  B:B:256x32            |  A:A:256x32            |
++---------------------------------------------------------+------------+-----------+-------------+------------------------+------------------------+
+
+
+3. Memory Utilization - Inferred
+--------------------------------
+
++---------------------------------------------------------+-----------+-----------+----------------+-----------+-----------+---------+---------------+---------------+---------+---------------+---------------+---------+---------------+---------------+---------+---------------+---------------+
+| Memory Name                                             | Primitive | RAM STYLE | Available Bits | Used Bits | Bit Util% | A Depth | A Depth Avail | A Depth Util% | A Width | A Width Avail | A Width Util% | B Depth | B Depth Avail | B Depth Util% | B Width | B Width Avail | B Width Util% |
++---------------------------------------------------------+-----------+-----------+----------------+-----------+-----------+---------+---------------+---------------+---------+---------------+---------------+---------+---------------+---------------+---------+---------------+---------------+
+| io_controlRequest_fifo/logic_ram                        |           |           |                |           |           |         |               |               |         |               |               |         |               |               |         |               |               |
+|  io_controlRequest_fifo/logic_ram_reg                   | RAMB36E2  |      AUTO |          36864 |     14080 |     38.19 |     256 |           512 |         50.00 |      55 |            72 |         76.39 |     256 |           512 |         50.00 |      55 |            72 |         76.39 |
+| pifoEngines_0/enque_brain/engineCAM/banks_0_values      |           |           |                |           |           |         |               |               |         |               |               |         |               |               |         |               |               |
+|  pifoEngines_0/enque_brain/engineCAM/banks_0_values_reg | RAMB18E2  |      AUTO |          18432 |      8192 |     44.44 |     256 |           512 |         50.00 |      32 |            36 |         88.89 |     256 |           512 |         50.00 |      32 |            36 |         88.89 |
+| pifoEngines_1/enque_brain/engineCAM/banks_0_values      |           |           |                |           |           |         |               |               |         |               |               |         |               |               |         |               |               |
+|  pifoEngines_1/enque_brain/engineCAM/banks_0_values_reg | RAMB18E2  |      AUTO |          18432 |      8192 |     44.44 |     256 |           512 |         50.00 |      32 |            36 |         88.89 |     256 |           512 |         50.00 |      32 |            36 |         88.89 |
+| pifoEngines_2/enque_brain/engineCAM/banks_0_values      |           |           |                |           |           |         |               |               |         |               |               |         |               |               |         |               |               |
+|  pifoEngines_2/enque_brain/engineCAM/banks_0_values_reg | RAMB18E2  |      AUTO |          18432 |      8192 |     44.44 |     256 |           512 |         50.00 |      32 |            36 |         88.89 |     256 |           512 |         50.00 |      32 |            36 |         88.89 |
+| pifoEngines_3/enque_brain/engineCAM/banks_0_values      |           |           |                |           |           |         |               |               |         |               |               |         |               |               |         |               |               |
+|  pifoEngines_3/enque_brain/engineCAM/banks_0_values_reg | RAMB18E2  |      AUTO |          18432 |      8192 |     44.44 |     256 |           512 |         50.00 |      32 |            36 |         88.89 |     256 |           512 |         50.00 |      32 |            36 |         88.89 |
+| pifoEngines_4/enque_brain/engineCAM/banks_0_values      |           |           |                |           |           |         |               |               |         |               |               |         |               |               |         |               |               |
+|  pifoEngines_4/enque_brain/engineCAM/banks_0_values_reg | RAMB18E2  |      AUTO |          18432 |      8192 |     44.44 |     256 |           512 |         50.00 |      32 |            36 |         88.89 |     256 |           512 |         50.00 |      32 |            36 |         88.89 |
++---------------------------------------------------------+-----------+-----------+----------------+-----------+-----------+---------+---------------+---------------+---------+---------------+---------------+---------+---------------+---------------+---------+---------------+---------------+
+
+
+4. Memory Performance - Inferred
+--------------------------------
+
++---------------------------------------------------------+-----------+------------------------+------------------------+-------------+-------------------------+-------------+-------------------------+-----------+--------+--------+---------+-----------+--------+--------+---------+
+| Memory Name                                             | Primitive | Port 1 Dimension / Map | Port 2 Dimension / Map | Port A Type | Port A Requirement (ns) | Port B Type | Port B Requirement (ns) | A Cascade | IREG_A | OREG_A | DOA_REG | B Cascade | IREG_B | OREG_B | DOB_REG |
++---------------------------------------------------------+-----------+------------------------+------------------------+-------------+-------------------------+-------------+-------------------------+-----------+--------+--------+---------+-----------+--------+--------+---------+
+| io_controlRequest_fifo/logic_ram                        |           | 512x55                 | 512x55                 |             |                         |             |                         |           |        |        |         |           |        |        |         |
+|  io_controlRequest_fifo/logic_ram_reg                   | RAMB36E2  |  B:B:256x55            |  A:A:256x55            |        Read |                    10.0 |       Write |                    10.0 |      NONE |        |        |       0 |      NONE |        |        |       0 |
+| pifoEngines_0/enque_brain/engineCAM/banks_0_values      |           | 512x32                 | 512x32                 |             |                         |             |                         |           |        |        |         |           |        |        |         |
+|  pifoEngines_0/enque_brain/engineCAM/banks_0_values_reg | RAMB18E2  |  B:B:256x32            |  A:A:256x32            |        Read |                    10.0 |       Write |                    10.0 |      NONE |        |        |       0 |      NONE |        |        |       0 |
+| pifoEngines_1/enque_brain/engineCAM/banks_0_values      |           | 512x32                 | 512x32                 |             |                         |             |                         |           |        |        |         |           |        |        |         |
+|  pifoEngines_1/enque_brain/engineCAM/banks_0_values_reg | RAMB18E2  |  B:B:256x32            |  A:A:256x32            |        Read |                    10.0 |       Write |                    10.0 |      NONE |        |        |       0 |      NONE |        |        |       0 |
+| pifoEngines_2/enque_brain/engineCAM/banks_0_values      |           | 512x32                 | 512x32                 |             |                         |             |                         |           |        |        |         |           |        |        |         |
+|  pifoEngines_2/enque_brain/engineCAM/banks_0_values_reg | RAMB18E2  |  B:B:256x32            |  A:A:256x32            |        Read |                    10.0 |       Write |                    10.0 |      NONE |        |        |       0 |      NONE |        |        |       0 |
+| pifoEngines_3/enque_brain/engineCAM/banks_0_values      |           | 512x32                 | 512x32                 |             |                         |             |                         |           |        |        |         |           |        |        |         |
+|  pifoEngines_3/enque_brain/engineCAM/banks_0_values_reg | RAMB18E2  |  B:B:256x32            |  A:A:256x32            |        Read |                    10.0 |       Write |                    10.0 |      NONE |        |        |       0 |      NONE |        |        |       0 |
+| pifoEngines_4/enque_brain/engineCAM/banks_0_values      |           | 512x32                 | 512x32                 |             |                         |             |                         |           |        |        |         |           |        |        |         |
+|  pifoEngines_4/enque_brain/engineCAM/banks_0_values_reg | RAMB18E2  |  B:B:256x32            |  A:A:256x32            |        Read |                    10.0 |       Write |                    10.0 |      NONE |        |        |       0 |      NONE |        |        |       0 |
++---------------------------------------------------------+-----------+------------------------+------------------------+-------------+-------------------------+-------------+-------------------------+-----------+--------+--------+---------+-----------+--------+--------+---------+
+
+
+5. Block Ram / URAM Memory Power - Inferred
+-------------------------------------------
+
++---------------------------------------------------------+-----------+------------------------+------------------------+--------------------+---------------+-------------------+-----------+--------------------+---------------+-------------------+-----------+
+| Memory Name                                             | Primitive | Port 1 Dimension / Map | Port 2 Dimension / Map | Port A Power Gated | Port A Enable | Port A WRITE_MODE | A Cascade | Port B Power Gated | Port B Enable | Port B WRITE_MODE | B Cascade |
++---------------------------------------------------------+-----------+------------------------+------------------------+--------------------+---------------+-------------------+-----------+--------------------+---------------+-------------------+-----------+
+| io_controlRequest_fifo/logic_ram                        |           | 512x55                 | 512x55                 |                    |               |                   |           |                    |               |                   |           |
+|  io_controlRequest_fifo/logic_ram_reg                   | RAMB36E2  |  B:B:256x55            |  A:A:256x55            |                    |        SIGNAL |        READ_FIRST |      NONE |                    |        SIGNAL |        READ_FIRST |      NONE |
+| pifoEngines_0/enque_brain/engineCAM/banks_0_values      |           | 512x32                 | 512x32                 |                    |               |                   |           |                    |               |                   |           |
+|  pifoEngines_0/enque_brain/engineCAM/banks_0_values_reg | RAMB18E2  |  B:B:256x32            |  A:A:256x32            |                    |        SIGNAL |        READ_FIRST |      NONE |                    |        SIGNAL |        READ_FIRST |      NONE |
+| pifoEngines_1/enque_brain/engineCAM/banks_0_values      |           | 512x32                 | 512x32                 |                    |               |                   |           |                    |               |                   |           |
+|  pifoEngines_1/enque_brain/engineCAM/banks_0_values_reg | RAMB18E2  |  B:B:256x32            |  A:A:256x32            |                    |        SIGNAL |        READ_FIRST |      NONE |                    |        SIGNAL |        READ_FIRST |      NONE |
+| pifoEngines_2/enque_brain/engineCAM/banks_0_values      |           | 512x32                 | 512x32                 |                    |               |                   |           |                    |               |                   |           |
+|  pifoEngines_2/enque_brain/engineCAM/banks_0_values_reg | RAMB18E2  |  B:B:256x32            |  A:A:256x32            |                    |        SIGNAL |        READ_FIRST |      NONE |                    |        SIGNAL |        READ_FIRST |      NONE |
+| pifoEngines_3/enque_brain/engineCAM/banks_0_values      |           | 512x32                 | 512x32                 |                    |               |                   |           |                    |               |                   |           |
+|  pifoEngines_3/enque_brain/engineCAM/banks_0_values_reg | RAMB18E2  |  B:B:256x32            |  A:A:256x32            |                    |        SIGNAL |        READ_FIRST |      NONE |                    |        SIGNAL |        READ_FIRST |      NONE |
+| pifoEngines_4/enque_brain/engineCAM/banks_0_values      |           | 512x32                 | 512x32                 |                    |               |                   |           |                    |               |                   |           |
+|  pifoEngines_4/enque_brain/engineCAM/banks_0_values_reg | RAMB18E2  |  B:B:256x32            |  A:A:256x32            |                    |        SIGNAL |        READ_FIRST |      NONE |                    |        SIGNAL |        READ_FIRST |      NONE |
++---------------------------------------------------------+-----------+------------------------+------------------------+--------------------+---------------+-------------------+-----------+--------------------+---------------+-------------------+-----------+
+
+

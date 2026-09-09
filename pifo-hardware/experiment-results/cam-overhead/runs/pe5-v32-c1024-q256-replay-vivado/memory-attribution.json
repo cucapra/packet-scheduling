@@ -1,0 +1,60 @@
+{
+  "groups": {
+    "controller_fifo": {
+      "ram_bits": 36864,
+      "logic_luts": 1318,
+      "registers": 39
+    },
+    "routing_and_other": {
+      "logic_luts": 514,
+      "registers": 139
+    },
+    "drain_guard": {
+      "logic_luts": 469,
+      "registers": 320
+    },
+    "post_mapper": {
+      "logic_luts": 11055,
+      "registers": 9065
+    },
+    "front_rewrite": {
+      "logic_luts": 860,
+      "registers": 1440
+    },
+    "brain": {
+      "logic_luts": 6802,
+      "registers": 4895
+    },
+    "pre_mapper": {
+      "logic_luts": 400,
+      "registers": 65
+    },
+    "crossbar": {
+      "logic_luts": 482,
+      "registers": 129
+    }
+  },
+  "memories": [
+    {
+      "name": "replayControl/storage",
+      "mode": "RAM_SDP",
+      "port_a": "512x51",
+      "port_b": "512x51"
+    }
+  ],
+  "logical_storage_bits": {
+    "sorted_entry_registers": 0,
+    "flow_state_tables": 10240,
+    "post_mapper_banks": 5120,
+    "pre_mapper_banks": 1600,
+    "brain_policy_tables": 320,
+    "last_virtual_time_tables": 1280,
+    "brain_state_tables": 5120,
+    "front_rewrite_registers": 1440,
+    "control_queue_payload": 13056,
+    "crossbar_fifo_payload": 384,
+    "cam_tag_valid_registers": 13440
+  },
+  "controller_uses_block_ram": true,
+  "pre_mapper_uses_block_ram": false
+}

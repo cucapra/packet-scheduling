@@ -1,0 +1,180 @@
+{
+  "status": "passed",
+  "cases": [
+    {
+      "status": "passed",
+      "build": "/data/work/rio-cam-pipeline-references/rtl-2048-p128-static",
+      "capacity_per_bank": 2048,
+      "entries_per_stage": 128,
+      "banks": 1,
+      "stages": 16,
+      "minimum_read_latency": 17,
+      "upstream_srl_instances": 16,
+      "value_memories": [
+        {
+          "name": "banks_0_values",
+          "width": 13,
+          "depth": 2048,
+          "read_ports": 1,
+          "write_ports": 1
+        }
+      ],
+      "extra_command_journal": false,
+      "response_buffer_uses_registers": true,
+      "synthesis_run": false,
+      "physical_resources_measured": false,
+      "upstream": "69002598f12d7418d44bbaa88ea0be3bf3b14e6c",
+      "rtl_sha256": {
+        "PipelinedCamMapper.v": "e09e2e06122b5f76a2df0675706e19a907760d704d7f55cd89a68148ee45869e",
+        "cam_srl.v": "dbf8cf2061175d8126855544176cb9917447421b7bb2b5f129df485ec358705a",
+        "priority_encoder.v": "9eee1cc4d6bf910aeffe6c3fa5407763c0529bf2a07996ae67549953286ab2f7"
+      },
+      "iverilog_compile_passed": true,
+      "iverilog_command": [
+        "/home/zg366/packet-scheduling/pifo-hardware/synthesis/.tools/iverilog/bin/iverilog",
+        "-g2012",
+        "-s",
+        "PipelinedCamMapper",
+        "-o",
+        "/data/work/rio-cam-pipeline-references/rtl-2048-p128-static/syntax-check.vvp",
+        "-c",
+        "rtl-files.f"
+      ]
+    },
+    {
+      "status": "passed",
+      "build": "/data/work/rio-cam-pipeline-references/rtl-2048-p128-replay",
+      "capacity_per_bank": 2048,
+      "entries_per_stage": 128,
+      "banks": 2,
+      "stages": 16,
+      "minimum_read_latency": 17,
+      "upstream_srl_instances": 32,
+      "value_memories": [
+        {
+          "name": "banks_0_values",
+          "width": 13,
+          "depth": 2048,
+          "read_ports": 1,
+          "write_ports": 1
+        },
+        {
+          "name": "banks_1_values",
+          "width": 13,
+          "depth": 2048,
+          "read_ports": 1,
+          "write_ports": 1
+        }
+      ],
+      "extra_command_journal": false,
+      "response_buffer_uses_registers": true,
+      "synthesis_run": false,
+      "physical_resources_measured": false,
+      "upstream": "69002598f12d7418d44bbaa88ea0be3bf3b14e6c",
+      "rtl_sha256": {
+        "PipelinedCamMapper.v": "31ed0018d75b5eb8d1ac5c437e4b63fbd039f77b9e0c3f7b168c3fb07c5b41e8",
+        "cam_srl.v": "dbf8cf2061175d8126855544176cb9917447421b7bb2b5f129df485ec358705a",
+        "priority_encoder.v": "9eee1cc4d6bf910aeffe6c3fa5407763c0529bf2a07996ae67549953286ab2f7"
+      },
+      "iverilog_compile_passed": true,
+      "iverilog_command": [
+        "/home/zg366/packet-scheduling/pifo-hardware/synthesis/.tools/iverilog/bin/iverilog",
+        "-g2012",
+        "-s",
+        "PipelinedCamMapper",
+        "-o",
+        "/data/work/rio-cam-pipeline-references/rtl-2048-p128-replay/syntax-check.vvp",
+        "-c",
+        "rtl-files.f"
+      ]
+    },
+    {
+      "status": "passed",
+      "build": "/data/work/rio-cam-pipeline-references/rtl-2048-p256-static",
+      "capacity_per_bank": 2048,
+      "entries_per_stage": 256,
+      "banks": 1,
+      "stages": 8,
+      "minimum_read_latency": 9,
+      "upstream_srl_instances": 8,
+      "value_memories": [
+        {
+          "name": "banks_0_values",
+          "width": 13,
+          "depth": 2048,
+          "read_ports": 1,
+          "write_ports": 1
+        }
+      ],
+      "extra_command_journal": false,
+      "response_buffer_uses_registers": true,
+      "synthesis_run": false,
+      "physical_resources_measured": false,
+      "upstream": "69002598f12d7418d44bbaa88ea0be3bf3b14e6c",
+      "rtl_sha256": {
+        "PipelinedCamMapper.v": "5701930ea99dddd664f24a405d3ae297709267970e22ef9b408871c77a6eac6a",
+        "cam_srl.v": "dbf8cf2061175d8126855544176cb9917447421b7bb2b5f129df485ec358705a",
+        "priority_encoder.v": "9eee1cc4d6bf910aeffe6c3fa5407763c0529bf2a07996ae67549953286ab2f7"
+      },
+      "iverilog_compile_passed": true,
+      "iverilog_command": [
+        "/home/zg366/packet-scheduling/pifo-hardware/synthesis/.tools/iverilog/bin/iverilog",
+        "-g2012",
+        "-s",
+        "PipelinedCamMapper",
+        "-o",
+        "/data/work/rio-cam-pipeline-references/rtl-2048-p256-static/syntax-check.vvp",
+        "-c",
+        "rtl-files.f"
+      ]
+    },
+    {
+      "status": "passed",
+      "build": "/data/work/rio-cam-pipeline-references/rtl-2048-p256-replay",
+      "capacity_per_bank": 2048,
+      "entries_per_stage": 256,
+      "banks": 2,
+      "stages": 8,
+      "minimum_read_latency": 9,
+      "upstream_srl_instances": 16,
+      "value_memories": [
+        {
+          "name": "banks_0_values",
+          "width": 13,
+          "depth": 2048,
+          "read_ports": 1,
+          "write_ports": 1
+        },
+        {
+          "name": "banks_1_values",
+          "width": 13,
+          "depth": 2048,
+          "read_ports": 1,
+          "write_ports": 1
+        }
+      ],
+      "extra_command_journal": false,
+      "response_buffer_uses_registers": true,
+      "synthesis_run": false,
+      "physical_resources_measured": false,
+      "upstream": "69002598f12d7418d44bbaa88ea0be3bf3b14e6c",
+      "rtl_sha256": {
+        "PipelinedCamMapper.v": "7179a162d93c8b7bcd9863df925b4561f08caedd252f506428d7234b3ba91f5c",
+        "cam_srl.v": "dbf8cf2061175d8126855544176cb9917447421b7bb2b5f129df485ec358705a",
+        "priority_encoder.v": "9eee1cc4d6bf910aeffe6c3fa5407763c0529bf2a07996ae67549953286ab2f7"
+      },
+      "iverilog_compile_passed": true,
+      "iverilog_command": [
+        "/home/zg366/packet-scheduling/pifo-hardware/synthesis/.tools/iverilog/bin/iverilog",
+        "-g2012",
+        "-s",
+        "PipelinedCamMapper",
+        "-o",
+        "/data/work/rio-cam-pipeline-references/rtl-2048-p256-replay/syntax-check.vvp",
+        "-c",
+        "rtl-files.f"
+      ]
+    }
+  ],
+  "synthesis_run": false
+}

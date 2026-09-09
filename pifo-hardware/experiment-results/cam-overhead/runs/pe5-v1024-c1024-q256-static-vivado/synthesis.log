@@ -1,0 +1,867 @@
+
+****** Vivado v2025.2 (64-bit)
+  **** SW Build 6299465 on Fri Nov 14 12:34:56 MST 2025
+  **** IP Build 6300035 on Fri Nov 14 10:48:45 MST 2025
+  **** SharedData Build 6298862 on Thu Nov 13 04:50:51 MST 2025
+  **** Start of session at: Wed Sep  9 12:27:57 2026
+    ** Copyright 1986-2022 Xilinx, Inc. All Rights Reserved.
+    ** Copyright 2022-2025 Advanced Micro Devices, Inc. All Rights Reserved.
+
+source /home/zg366/packet-scheduling/pifo-hardware/synthesis/vivado_synth.tcl
+# if {$argc < 5 || $argc > 7} {
+#     error {Expected BUILD_DIR PART THREADS CLOCK_PERIOD_NS PREPARE_ONLY [DIRECTIVE] [ALLOW_OVER_CAPACITY]}
+# }
+# lassign $argv build_dir part threads period prepare_only directive allow_over_capacity
+# if {$directive eq ""} { set directive default }
+# if {$allow_over_capacity eq ""} { set allow_over_capacity 0 }
+# set build_dir [file normalize $build_dir]
+# set rtl_dir [file join $build_dir rtl]
+# set report_dir [file join $build_dir reports]
+# file mkdir $report_dir
+# if {[llength [get_parts -quiet $part]] != 1} {
+#     error "Target part is not installed: $part"
+# }
+# puts "PIFO_VIVADO_VERSION: [version -short]"
+PIFO_VIVADO_VERSION: 2025.2
+# puts "PIFO_VIVADO_PART: $part"
+PIFO_VIVADO_PART: xcku5p-ffvb676-2-e
+# set_param general.maxThreads $threads
+# create_project -in_memory -part $part
+# cd $rtl_dir
+# read_verilog -sv [glob -directory $rtl_dir *.v *.sv]
+# set xdc [file join $build_dir pifo.xdc]
+# set constraints [open $xdc w]
+# puts $constraints "create_clock -name clk -period $period \[get_ports clk\]"
+# puts $constraints {set_false_path -from [get_ports reset]}
+# close $constraints
+# read_xdc $xdc
+# if {$prepare_only} {
+#     puts "PIFO_PREPARED: $build_dir"
+#     exit 0
+# }
+# if {$allow_over_capacity} {
+#     # This version-specific Tcl hook skips only the pre-mapping device-capacity
+#     # gate. The RTL, target, optimization passes, and reported device capacities
+#     # remain unchanged. The resulting netlist can exceed the physical device.
+#     # Verified on Vivado 2025.2 with an oversized RAM and an unchanged smaller
+#     # control design; see experiment-results/hardware-overhead/diagnostics.
+#     puts "PIFO_ESTIMATION_ONLY: device-capacity check disabled; no implementation or fit claim"
+#     set_param synth.elaboration.rodinMoreOptions {if {[llength [info commands rt::pifo_device_capacity_check]] == 0} {rename rt::check_resource rt::pifo_device_capacity_check}; proc rt::check_resource {args} {puts "PIFO_DEVICE_CAPACITY_CHECK_SKIPPED: $args"; return 1}}
+# }
+PIFO_ESTIMATION_ONLY: device-capacity check disabled; no implementation or fit claim
+# synth_design -top PifoMesh -part $part -mode out_of_context -flatten_hierarchy rebuilt -directive $directive
+Command: synth_design -top PifoMesh -part xcku5p-ffvb676-2-e -mode out_of_context -flatten_hierarchy rebuilt -directive RuntimeOptimized
+Starting synth_design
+Attempting to get a license for feature 'Synthesis' and/or device 'xcku5p'
+INFO: [Common 17-349] Got license for feature 'Synthesis' and/or device 'xcku5p'
+INFO: [Device 21-403] Loading part xcku5p-ffvb676-2-e
+INFO: [Synth 8-7079] Multithreading enabled for synth_design using a maximum of 7 processes.
+INFO: [Synth 8-7078] Launching helper process for spawning children vivado processes
+INFO: [Synth 8-7075] Helper process launched with PID 708990
+---------------------------------------------------------------------------------
+Starting RTL Elaboration : Time (s): cpu = 00:00:05 ; elapsed = 00:00:05 . Memory (MB): peak = 2834.527 ; gain = 189.688 ; free physical = 154335 ; free virtual = 195562
+---------------------------------------------------------------------------------
+INFO: [Synth 8-6157] synthesizing module 'PifoMesh' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:7]
+INFO: [Synth 8-6157] synthesizing module 'MessageCrossBar' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:71557]
+INFO: [Synth 8-6157] synthesizing module 'StreamFifoLowLatency' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:179814]
+INFO: [Synth 8-6157] synthesizing module 'StreamFifo' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:229562]
+INFO: [Synth 8-6155] done synthesizing module 'StreamFifo' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:229562]
+INFO: [Synth 8-6155] done synthesizing module 'StreamFifoLowLatency' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:179814]
+INFO: [Synth 8-6157] synthesizing module 'StreamDemux' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:179684]
+INFO: [Synth 8-6155] done synthesizing module 'StreamDemux' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:179684]
+INFO: [Synth 8-6157] synthesizing module 'StreamArbiter' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:179502]
+INFO: [Synth 8-6155] done synthesizing module 'StreamArbiter' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:179502]
+INFO: [Synth 8-6155] done synthesizing module 'MessageCrossBar' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:71557]
+INFO: [Synth 8-6157] synthesizing module 'PifoEngine' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:70659]
+INFO: [Synth 8-6157] synthesizing module 'ExternalPifoCore' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:179419]
+INFO: [Synth 8-6155] done synthesizing module 'ExternalPifoCore' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:179419]
+INFO: [Synth 8-6157] synthesizing module 'DirectMapper' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:179362]
+INFO: [Synth 8-3876] $readmem data file 'PifoMesh.v_toplevel_pifoEngines_0_enque_enqueMapper_ram.bin' is read successfully [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:179387]
+INFO: [Synth 8-6155] done synthesizing module 'DirectMapper' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:179362]
+INFO: [Synth 8-6157] synthesizing module 'StreamFifoLowLatency_13' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:179315]
+INFO: [Synth 8-6157] synthesizing module 'StreamFifo_6' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:229407]
+INFO: [Synth 8-6155] done synthesizing module 'StreamFifo_6' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:229407]
+INFO: [Synth 8-6155] done synthesizing module 'StreamFifoLowLatency_13' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:179315]
+INFO: [Synth 8-6157] synthesizing module 'PIFOBrain' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:178256]
+INFO: [Synth 8-6157] synthesizing module 'StreamFork' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:229282]
+INFO: [Synth 8-6155] done synthesizing module 'StreamFork' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:229282]
+INFO: [Synth 8-6157] synthesizing module 'Mapper' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:229229]
+INFO: [Synth 8-3876] $readmem data file 'PifoMesh.v_toplevel_pifoEngines_0_enque_brain_engineMapper_ram.bin' is read successfully [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:229252]
+INFO: [Synth 8-6155] done synthesizing module 'Mapper' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:229229]
+INFO: [Synth 8-6157] synthesizing module 'Mapper_1' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:229176]
+INFO: [Synth 8-3876] $readmem data file 'PifoMesh.v_toplevel_pifoEngines_0_enque_brain_lastVirtualMapper_ram.bin' is read successfully [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:229199]
+INFO: [Synth 8-6155] done synthesizing module 'Mapper_1' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:229176]
+INFO: [Synth 8-6157] synthesizing module 'BoundedCamMapper' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:181421]
+INFO: [Synth 8-6155] done synthesizing module 'BoundedCamMapper' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:181421]
+INFO: [Synth 8-6157] synthesizing module 'StreamFifoLowLatency_6' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:181374]
+INFO: [Synth 8-6157] synthesizing module 'StreamFifo_7' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:230413]
+INFO: [Synth 8-6155] done synthesizing module 'StreamFifo_7' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:230413]
+INFO: [Synth 8-6155] done synthesizing module 'StreamFifoLowLatency_6' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:181374]
+INFO: [Synth 8-6157] synthesizing module 'StreamArbiter_6' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:181303]
+INFO: [Synth 8-6155] done synthesizing module 'StreamArbiter_6' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:181303]
+INFO: [Synth 8-6157] synthesizing module 'Mapper_2' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:181250]
+INFO: [Synth 8-3876] $readmem data file 'PifoMesh.v_toplevel_pifoEngines_0_enque_brain_brainStateMem_ram.bin' is read successfully [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:181273]
+INFO: [Synth 8-6155] done synthesizing module 'Mapper_2' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:181250]
+INFO: [Synth 8-6157] synthesizing module 'StreamFifoLowLatency_7' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:181203]
+INFO: [Synth 8-6157] synthesizing module 'StreamFifo_8' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:230268]
+INFO: [Synth 8-6155] done synthesizing module 'StreamFifo_8' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:230268]
+INFO: [Synth 8-6155] done synthesizing module 'StreamFifoLowLatency_7' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:181203]
+INFO: [Synth 8-6157] synthesizing module 'StreamArbiter_7' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:181132]
+INFO: [Synth 8-6155] done synthesizing module 'StreamArbiter_7' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:181132]
+INFO: [Synth 8-6157] synthesizing module 'StreamFork_1' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:180956]
+INFO: [Synth 8-6155] done synthesizing module 'StreamFork_1' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:180956]
+INFO: [Synth 8-6157] synthesizing module 'StreamFifoLowLatency_8' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:180915]
+INFO: [Synth 8-6157] synthesizing module 'StreamFifo_9' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:230140]
+INFO: [Synth 8-6155] done synthesizing module 'StreamFifo_9' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:230140]
+INFO: [Synth 8-6155] done synthesizing module 'StreamFifoLowLatency_8' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:180915]
+INFO: [Synth 8-6157] synthesizing module 'StreamFifoLowLatency_9' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:180874]
+INFO: [Synth 8-6157] synthesizing module 'StreamFifo_10' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:230012]
+INFO: [Synth 8-6155] done synthesizing module 'StreamFifo_10' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:230012]
+INFO: [Synth 8-6155] done synthesizing module 'StreamFifoLowLatency_9' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:180874]
+INFO: [Synth 8-6157] synthesizing module 'StreamFifoLowLatency_11' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:180831]
+INFO: [Synth 8-6157] synthesizing module 'StreamFifo_12' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:229882]
+INFO: [Synth 8-6155] done synthesizing module 'StreamFifo_12' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:229882]
+INFO: [Synth 8-6155] done synthesizing module 'StreamFifoLowLatency_11' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:180831]
+INFO: [Synth 8-6157] synthesizing module 'StreamFifoLowLatency_12' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:180784]
+INFO: [Synth 8-6157] synthesizing module 'StreamFifo_13' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:229737]
+INFO: [Synth 8-6155] done synthesizing module 'StreamFifo_13' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:229737]
+INFO: [Synth 8-6155] done synthesizing module 'StreamFifoLowLatency_12' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:180784]
+INFO: [Synth 8-6155] done synthesizing module 'PIFOBrain' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:178256]
+INFO: [Synth 8-6157] synthesizing module 'BoundedCamMapper_1' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:130501]
+INFO: [Synth 8-6155] done synthesizing module 'BoundedCamMapper_1' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:130501]
+INFO: [Synth 8-6157] synthesizing module 'FrontRewriteTable' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:77161]
+INFO: [Synth 8-6155] done synthesizing module 'FrontRewriteTable' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:77161]
+INFO: [Synth 8-6157] synthesizing module 'StreamFork_2' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:77062]
+INFO: [Synth 8-6155] done synthesizing module 'StreamFork_2' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:77062]
+INFO: [Synth 8-6157] synthesizing module 'StreamFifoLowLatency_14' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:77003]
+INFO: [Synth 8-6157] synthesizing module 'StreamFifo_14' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:180609]
+INFO: [Synth 8-6155] done synthesizing module 'StreamFifo_14' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:180609]
+INFO: [Synth 8-6155] done synthesizing module 'StreamFifoLowLatency_14' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:77003]
+INFO: [Synth 8-6155] done synthesizing module 'PifoEngine' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:70659]
+INFO: [Synth 8-6157] synthesizing module 'PifoEngine_1' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:69761]
+INFO: [Synth 8-6157] synthesizing module 'DirectMapper_1' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:76942]
+INFO: [Synth 8-3876] $readmem data file 'PifoMesh.v_toplevel_pifoEngines_1_enque_enqueMapper_ram.bin' is read successfully [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:76967]
+INFO: [Synth 8-6155] done synthesizing module 'DirectMapper_1' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:76942]
+INFO: [Synth 8-6157] synthesizing module 'PIFOBrain_1' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:75881]
+INFO: [Synth 8-6157] synthesizing module 'Mapper_3' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:180552]
+INFO: [Synth 8-3876] $readmem data file 'PifoMesh.v_toplevel_pifoEngines_1_enque_brain_engineMapper_ram.bin' is read successfully [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:180575]
+INFO: [Synth 8-6155] done synthesizing module 'Mapper_3' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:180552]
+INFO: [Synth 8-6157] synthesizing module 'Mapper_4' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:180499]
+INFO: [Synth 8-3876] $readmem data file 'PifoMesh.v_toplevel_pifoEngines_1_enque_brain_lastVirtualMapper_ram.bin' is read successfully [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:180522]
+INFO: [Synth 8-6155] done synthesizing module 'Mapper_4' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:180499]
+INFO: [Synth 8-6157] synthesizing module 'Mapper_5' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:180440]
+INFO: [Synth 8-3876] $readmem data file 'PifoMesh.v_toplevel_pifoEngines_1_enque_brain_brainStateMem_ram.bin' is read successfully [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:180463]
+INFO: [Synth 8-6155] done synthesizing module 'Mapper_5' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:180440]
+INFO: [Synth 8-6155] done synthesizing module 'PIFOBrain_1' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:75881]
+INFO: [Synth 8-6155] done synthesizing module 'PifoEngine_1' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:69761]
+INFO: [Synth 8-6157] synthesizing module 'PifoEngine_2' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:68863]
+INFO: [Synth 8-6157] synthesizing module 'DirectMapper_2' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:75812]
+INFO: [Synth 8-3876] $readmem data file 'PifoMesh.v_toplevel_pifoEngines_2_enque_enqueMapper_ram.bin' is read successfully [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:75837]
+INFO: [Synth 8-6155] done synthesizing module 'DirectMapper_2' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:75812]
+INFO: [Synth 8-6157] synthesizing module 'PIFOBrain_2' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:74751]
+INFO: [Synth 8-6157] synthesizing module 'Mapper_6' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:180365]
+INFO: [Synth 8-3876] $readmem data file 'PifoMesh.v_toplevel_pifoEngines_2_enque_brain_engineMapper_ram.bin' is read successfully [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:180388]
+INFO: [Synth 8-6155] done synthesizing module 'Mapper_6' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:180365]
+INFO: [Synth 8-6157] synthesizing module 'Mapper_7' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:180312]
+INFO: [Synth 8-3876] $readmem data file 'PifoMesh.v_toplevel_pifoEngines_2_enque_brain_lastVirtualMapper_ram.bin' is read successfully [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:180335]
+INFO: [Synth 8-6155] done synthesizing module 'Mapper_7' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:180312]
+INFO: [Synth 8-6157] synthesizing module 'Mapper_8' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:180253]
+INFO: [Synth 8-3876] $readmem data file 'PifoMesh.v_toplevel_pifoEngines_2_enque_brain_brainStateMem_ram.bin' is read successfully [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:180276]
+INFO: [Synth 8-6155] done synthesizing module 'Mapper_8' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:180253]
+INFO: [Synth 8-6155] done synthesizing module 'PIFOBrain_2' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:74751]
+INFO: [Synth 8-6155] done synthesizing module 'PifoEngine_2' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:68863]
+INFO: [Synth 8-6157] synthesizing module 'PifoEngine_3' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:67965]
+INFO: [Synth 8-6157] synthesizing module 'DirectMapper_3' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:74682]
+INFO: [Synth 8-3876] $readmem data file 'PifoMesh.v_toplevel_pifoEngines_3_enque_enqueMapper_ram.bin' is read successfully [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:74707]
+INFO: [Synth 8-6155] done synthesizing module 'DirectMapper_3' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:74682]
+INFO: [Synth 8-6157] synthesizing module 'PIFOBrain_3' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:73621]
+INFO: [Synth 8-6157] synthesizing module 'Mapper_9' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:180178]
+INFO: [Synth 8-3876] $readmem data file 'PifoMesh.v_toplevel_pifoEngines_3_enque_brain_engineMapper_ram.bin' is read successfully [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:180201]
+INFO: [Synth 8-6155] done synthesizing module 'Mapper_9' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:180178]
+INFO: [Synth 8-6157] synthesizing module 'Mapper_10' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:180125]
+INFO: [Synth 8-3876] $readmem data file 'PifoMesh.v_toplevel_pifoEngines_3_enque_brain_lastVirtualMapper_ram.bin' is read successfully [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:180148]
+INFO: [Synth 8-6155] done synthesizing module 'Mapper_10' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:180125]
+INFO: [Synth 8-6157] synthesizing module 'Mapper_11' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:180066]
+INFO: [Synth 8-3876] $readmem data file 'PifoMesh.v_toplevel_pifoEngines_3_enque_brain_brainStateMem_ram.bin' is read successfully [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:180089]
+INFO: [Synth 8-6155] done synthesizing module 'Mapper_11' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:180066]
+INFO: [Synth 8-6155] done synthesizing module 'PIFOBrain_3' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:73621]
+INFO: [Synth 8-6155] done synthesizing module 'PifoEngine_3' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:67965]
+INFO: [Synth 8-6157] synthesizing module 'PifoEngine_4' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:67067]
+INFO: [Synth 8-6157] synthesizing module 'DirectMapper_4' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:73552]
+INFO: [Synth 8-3876] $readmem data file 'PifoMesh.v_toplevel_pifoEngines_4_enque_enqueMapper_ram.bin' is read successfully [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:73577]
+INFO: [Synth 8-6155] done synthesizing module 'DirectMapper_4' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:73552]
+INFO: [Synth 8-6157] synthesizing module 'PIFOBrain_4' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:72491]
+INFO: [Synth 8-6157] synthesizing module 'Mapper_12' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:179991]
+INFO: [Synth 8-3876] $readmem data file 'PifoMesh.v_toplevel_pifoEngines_4_enque_brain_engineMapper_ram.bin' is read successfully [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:180014]
+INFO: [Synth 8-6155] done synthesizing module 'Mapper_12' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:179991]
+INFO: [Synth 8-6157] synthesizing module 'Mapper_13' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:179938]
+INFO: [Synth 8-3876] $readmem data file 'PifoMesh.v_toplevel_pifoEngines_4_enque_brain_lastVirtualMapper_ram.bin' is read successfully [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:179961]
+INFO: [Synth 8-6155] done synthesizing module 'Mapper_13' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:179938]
+INFO: [Synth 8-6157] synthesizing module 'Mapper_14' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:179879]
+INFO: [Synth 8-3876] $readmem data file 'PifoMesh.v_toplevel_pifoEngines_4_enque_brain_brainStateMem_ram.bin' is read successfully [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:179902]
+INFO: [Synth 8-6155] done synthesizing module 'Mapper_14' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:179879]
+INFO: [Synth 8-6155] done synthesizing module 'PIFOBrain_4' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:72491]
+INFO: [Synth 8-6155] done synthesizing module 'PifoEngine_4' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:67067]
+INFO: [Synth 8-6157] synthesizing module 'StreamFifo_51' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:66753]
+INFO: [Synth 8-6155] done synthesizing module 'StreamFifo_51' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:66753]
+INFO: [Synth 8-6157] synthesizing module 'DrainGuard' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:1233]
+INFO: [Synth 8-6155] done synthesizing module 'DrainGuard' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:1233]
+INFO: [Synth 8-6157] synthesizing module 'StreamDemux_6' [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:991]
+INFO: [Synth 8-6155] done synthesizing module 'StreamDemux_6' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:991]
+INFO: [Synth 8-6155] done synthesizing module 'PifoMesh' (0#1) [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:7]
+WARNING: [Synth 8-6014] Unused sequential element logic_ptr_wentUp_reg was removed.  [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:229657]
+WARNING: [Synth 8-6014] Unused sequential element logic_ptr_wentUp_reg was removed.  [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:229528]
+WARNING: [Synth 8-6014] Unused sequential element logic_ptr_wentUp_reg was removed.  [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:230534]
+WARNING: [Synth 8-6014] Unused sequential element logic_ptr_wentUp_reg was removed.  [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:230389]
+WARNING: [Synth 8-6014] Unused sequential element logic_ptr_wentUp_reg was removed.  [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:230244]
+WARNING: [Synth 8-6014] Unused sequential element logic_ptr_wentUp_reg was removed.  [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:230116]
+WARNING: [Synth 8-6014] Unused sequential element logic_ptr_wentUp_reg was removed.  [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:229986]
+WARNING: [Synth 8-6014] Unused sequential element logic_ptr_wentUp_reg was removed.  [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:229858]
+WARNING: [Synth 8-6014] Unused sequential element logic_ptr_wentUp_reg was removed.  [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:180760]
+WARNING: [Synth 8-6014] Unused sequential element logic_ptr_wentUp_reg was removed.  [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:67023]
+WARNING: [Synth 8-6014] Unused sequential element logic_pop_addressGen_rData_reg was removed.  [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/rtl/PifoMesh.v:66988]
+WARNING: [Synth 8-3917] design PifoMesh has port io_commitReady driven by constant 1
+WARNING: [Synth 8-3917] design PifoMesh has port io_commitEpoch[31] driven by constant 0
+WARNING: [Synth 8-3917] design PifoMesh has port io_commitEpoch[30] driven by constant 0
+WARNING: [Synth 8-3917] design PifoMesh has port io_commitEpoch[29] driven by constant 0
+WARNING: [Synth 8-3917] design PifoMesh has port io_commitEpoch[28] driven by constant 0
+WARNING: [Synth 8-3917] design PifoMesh has port io_commitEpoch[27] driven by constant 0
+WARNING: [Synth 8-3917] design PifoMesh has port io_commitEpoch[26] driven by constant 0
+WARNING: [Synth 8-3917] design PifoMesh has port io_commitEpoch[25] driven by constant 0
+WARNING: [Synth 8-3917] design PifoMesh has port io_commitEpoch[24] driven by constant 0
+WARNING: [Synth 8-3917] design PifoMesh has port io_commitEpoch[23] driven by constant 0
+WARNING: [Synth 8-3917] design PifoMesh has port io_commitEpoch[22] driven by constant 0
+WARNING: [Synth 8-3917] design PifoMesh has port io_commitEpoch[21] driven by constant 0
+WARNING: [Synth 8-3917] design PifoMesh has port io_commitEpoch[20] driven by constant 0
+WARNING: [Synth 8-3917] design PifoMesh has port io_commitEpoch[19] driven by constant 0
+WARNING: [Synth 8-3917] design PifoMesh has port io_commitEpoch[18] driven by constant 0
+WARNING: [Synth 8-3917] design PifoMesh has port io_commitEpoch[17] driven by constant 0
+WARNING: [Synth 8-3917] design PifoMesh has port io_commitEpoch[16] driven by constant 0
+WARNING: [Synth 8-3917] design PifoMesh has port io_commitEpoch[15] driven by constant 0
+WARNING: [Synth 8-3917] design PifoMesh has port io_commitEpoch[14] driven by constant 0
+WARNING: [Synth 8-3917] design PifoMesh has port io_commitEpoch[13] driven by constant 0
+WARNING: [Synth 8-3917] design PifoMesh has port io_commitEpoch[12] driven by constant 0
+WARNING: [Synth 8-3917] design PifoMesh has port io_commitEpoch[11] driven by constant 0
+WARNING: [Synth 8-3917] design PifoMesh has port io_commitEpoch[10] driven by constant 0
+WARNING: [Synth 8-3917] design PifoMesh has port io_commitEpoch[9] driven by constant 0
+WARNING: [Synth 8-3917] design PifoMesh has port io_commitEpoch[8] driven by constant 0
+WARNING: [Synth 8-3917] design PifoMesh has port io_commitEpoch[7] driven by constant 0
+WARNING: [Synth 8-3917] design PifoMesh has port io_commitEpoch[6] driven by constant 0
+WARNING: [Synth 8-3917] design PifoMesh has port io_commitEpoch[5] driven by constant 0
+WARNING: [Synth 8-3917] design PifoMesh has port io_commitEpoch[4] driven by constant 0
+WARNING: [Synth 8-3917] design PifoMesh has port io_commitEpoch[3] driven by constant 0
+WARNING: [Synth 8-3917] design PifoMesh has port io_commitEpoch[2] driven by constant 0
+WARNING: [Synth 8-3917] design PifoMesh has port io_commitEpoch[1] driven by constant 0
+WARNING: [Synth 8-3917] design PifoMesh has port io_commitEpoch[0] driven by constant 0
+WARNING: [Synth 8-3917] design PifoMesh has port io_replayBusy driven by constant 0
+WARNING: [Synth 8-3917] design PifoMesh has port io_replayLogAvailable[8] driven by constant 0
+WARNING: [Synth 8-3917] design PifoMesh has port io_replayLogAvailable[7] driven by constant 0
+WARNING: [Synth 8-3917] design PifoMesh has port io_replayLogAvailable[6] driven by constant 0
+WARNING: [Synth 8-3917] design PifoMesh has port io_replayLogAvailable[5] driven by constant 0
+WARNING: [Synth 8-3917] design PifoMesh has port io_replayLogAvailable[4] driven by constant 0
+WARNING: [Synth 8-3917] design PifoMesh has port io_replayLogAvailable[3] driven by constant 0
+WARNING: [Synth 8-3917] design PifoMesh has port io_replayLogAvailable[2] driven by constant 0
+WARNING: [Synth 8-3917] design PifoMesh has port io_replayLogAvailable[1] driven by constant 0
+WARNING: [Synth 8-3917] design PifoMesh has port io_replayLogAvailable[0] driven by constant 0
+WARNING: [Synth 8-7129] Port io_commit in module BoundedCamMapper_1 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port reset in module Mapper_14 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_commit in module BoundedCamMapper is either unconnected or has no load
+WARNING: [Synth 8-7129] Port reset in module Mapper_13 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port reset in module Mapper_12 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[12] in module PIFOBrain_4 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[11] in module PIFOBrain_4 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[10] in module PIFOBrain_4 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[9] in module PIFOBrain_4 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[8] in module PIFOBrain_4 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[7] in module PIFOBrain_4 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[6] in module PIFOBrain_4 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[5] in module PIFOBrain_4 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[4] in module PIFOBrain_4 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[3] in module PIFOBrain_4 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[2] in module PIFOBrain_4 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[1] in module PIFOBrain_4 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[0] in module PIFOBrain_4 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_commit in module DirectMapper_4 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_dequeueRequest_payload_engineId[2] in module PifoEngine_4 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_dequeueRequest_payload_engineId[1] in module PifoEngine_4 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_dequeueRequest_payload_engineId[0] in module PifoEngine_4 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port reset in module Mapper_11 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port reset in module Mapper_10 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port reset in module Mapper_9 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[12] in module PIFOBrain_3 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[11] in module PIFOBrain_3 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[10] in module PIFOBrain_3 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[9] in module PIFOBrain_3 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[8] in module PIFOBrain_3 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[7] in module PIFOBrain_3 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[6] in module PIFOBrain_3 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[5] in module PIFOBrain_3 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[4] in module PIFOBrain_3 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[3] in module PIFOBrain_3 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[2] in module PIFOBrain_3 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[1] in module PIFOBrain_3 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[0] in module PIFOBrain_3 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_commit in module DirectMapper_3 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_dequeueRequest_payload_engineId[2] in module PifoEngine_3 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_dequeueRequest_payload_engineId[1] in module PifoEngine_3 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_dequeueRequest_payload_engineId[0] in module PifoEngine_3 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port reset in module Mapper_8 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port reset in module Mapper_7 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port reset in module Mapper_6 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[12] in module PIFOBrain_2 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[11] in module PIFOBrain_2 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[10] in module PIFOBrain_2 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[9] in module PIFOBrain_2 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[8] in module PIFOBrain_2 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[7] in module PIFOBrain_2 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[6] in module PIFOBrain_2 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[5] in module PIFOBrain_2 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[4] in module PIFOBrain_2 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[3] in module PIFOBrain_2 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[2] in module PIFOBrain_2 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[1] in module PIFOBrain_2 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[0] in module PIFOBrain_2 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_commit in module DirectMapper_2 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_dequeueRequest_payload_engineId[2] in module PifoEngine_2 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_dequeueRequest_payload_engineId[1] in module PifoEngine_2 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_dequeueRequest_payload_engineId[0] in module PifoEngine_2 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port reset in module Mapper_5 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port reset in module Mapper_4 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port reset in module Mapper_3 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[12] in module PIFOBrain_1 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[11] in module PIFOBrain_1 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[10] in module PIFOBrain_1 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[9] in module PIFOBrain_1 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[8] in module PIFOBrain_1 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[7] in module PIFOBrain_1 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[6] in module PIFOBrain_1 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[5] in module PIFOBrain_1 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[4] in module PIFOBrain_1 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[3] in module PIFOBrain_1 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[2] in module PIFOBrain_1 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[1] in module PIFOBrain_1 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[0] in module PIFOBrain_1 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_commit in module DirectMapper_1 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_dequeueRequest_payload_engineId[2] in module PifoEngine_1 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_dequeueRequest_payload_engineId[1] in module PifoEngine_1 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_dequeueRequest_payload_engineId[0] in module PifoEngine_1 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port reset in module Mapper_2 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port reset in module Mapper_1 is either unconnected or has no load
+WARNING: [Synth 8-7129] Port reset in module Mapper is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[12] in module PIFOBrain is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[11] in module PIFOBrain is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[10] in module PIFOBrain is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[9] in module PIFOBrain is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[8] in module PIFOBrain is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[7] in module PIFOBrain is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[6] in module PIFOBrain is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[5] in module PIFOBrain is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[4] in module PIFOBrain is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[3] in module PIFOBrain is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[2] in module PIFOBrain is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[1] in module PIFOBrain is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_poped_payload_data[0] in module PIFOBrain is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_commit in module DirectMapper is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_dequeueRequest_payload_engineId[2] in module PifoEngine is either unconnected or has no load
+INFO: [Common 17-14] Message 'Synth 8-7129' appears 100 times and further instances of the messages will be disabled. Use the Tcl command set_msg_config to change the current settings.
+---------------------------------------------------------------------------------
+Finished RTL Elaboration : Time (s): cpu = 00:01:36 ; elapsed = 00:01:39 . Memory (MB): peak = 5355.395 ; gain = 2710.555 ; free physical = 143589 ; free virtual = 185513
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Handling Custom Attributes
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Handling Custom Attributes : Time (s): cpu = 00:01:40 ; elapsed = 00:01:43 . Memory (MB): peak = 5355.395 ; gain = 2710.555 ; free physical = 142680 ; free virtual = 184700
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished RTL Optimization Phase 1 : Time (s): cpu = 00:01:40 ; elapsed = 00:01:43 . Memory (MB): peak = 5355.395 ; gain = 2710.555 ; free physical = 142680 ; free virtual = 184700
+---------------------------------------------------------------------------------
+Netlist sorting complete. Time (s): cpu = 00:00:09 ; elapsed = 00:00:09 . Memory (MB): peak = 5383.895 ; gain = 0.000 ; free physical = 136000 ; free virtual = 177882
+INFO: [Project 1-570] Preparing netlist for logic optimization
+
+Processing XDC Constraints
+Initializing timing engine
+Parsing XDC File [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/pifo.xdc]
+Finished Parsing XDC File [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/pifo.xdc]
+Completed Processing XDC Constraints
+
+Netlist sorting complete. Time (s): cpu = 00:00:00.59 ; elapsed = 00:00:00.58 . Memory (MB): peak = 6475.367 ; gain = 3.602 ; free physical = 132477 ; free virtual = 174220
+INFO: [Project 1-111] Unisim Transformation Summary:
+No Unisim elements were transformed.
+
+---------------------------------------------------------------------------------
+Finished Constraint Validation : Time (s): cpu = 00:04:25 ; elapsed = 00:03:45 . Memory (MB): peak = 6666.375 ; gain = 4021.535 ; free physical = 122248 ; free virtual = 164104
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Loading Part and Timing Information
+---------------------------------------------------------------------------------
+Loading part: xcku5p-ffvb676-2-e
+INFO: [Synth 8-6742] Reading net delay rules and data
+---------------------------------------------------------------------------------
+Finished Loading Part and Timing Information : Time (s): cpu = 00:04:25 ; elapsed = 00:03:45 . Memory (MB): peak = 6674.379 ; gain = 4029.539 ; free physical = 122240 ; free virtual = 164097
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Applying 'set_property' XDC Constraints
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished applying 'set_property' XDC Constraints : Time (s): cpu = 00:04:25 ; elapsed = 00:03:46 . Memory (MB): peak = 6674.379 ; gain = 4029.539 ; free physical = 121110 ; free virtual = 162966
+---------------------------------------------------------------------------------
+INFO: [Synth 8-6904] The RAM "Mapper:/ram_reg" of size (depth=1024 x width=2) is automatically implemented using LUTRAM. BRAM implementation would be inefficient 
+INFO: [Synth 8-6904] The RAM "Mapper_3:/ram_reg" of size (depth=1024 x width=2) is automatically implemented using LUTRAM. BRAM implementation would be inefficient 
+INFO: [Synth 8-6904] The RAM "Mapper_6:/ram_reg" of size (depth=1024 x width=2) is automatically implemented using LUTRAM. BRAM implementation would be inefficient 
+INFO: [Synth 8-6904] The RAM "Mapper_9:/ram_reg" of size (depth=1024 x width=2) is automatically implemented using LUTRAM. BRAM implementation would be inefficient 
+INFO: [Synth 8-6904] The RAM "Mapper_12:/ram_reg" of size (depth=1024 x width=2) is automatically implemented using LUTRAM. BRAM implementation would be inefficient 
+---------------------------------------------------------------------------------
+Finished RTL Optimization Phase 2 : Time (s): cpu = 00:06:43 ; elapsed = 00:06:07 . Memory (MB): peak = 6674.379 ; gain = 4029.539 ; free physical = 119079 ; free virtual = 161143
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start RTL Component Statistics 
+---------------------------------------------------------------------------------
+Detailed RTL Component Info : 
++---Adders : 
+	   2 Input 2048 Bit       Adders := 10    
+	   2 Input    9 Bit       Adders := 4     
+	   3 Input    9 Bit       Adders := 1     
+	   2 Input    8 Bit       Adders := 10    
+	   2 Input    6 Bit       Adders := 6     
+	   2 Input    4 Bit       Adders := 18    
+	   3 Input    4 Bit       Adders := 6     
+	   2 Input    3 Bit       Adders := 1     
+	   3 Input    2 Bit       Adders := 45    
+	   2 Input    2 Bit       Adders := 145   
++---XORs : 
+	   3 Input      9 Bit         XORs := 1     
+	   3 Input      4 Bit         XORs := 6     
+	   3 Input      2 Bit         XORs := 45    
++---Registers : 
+	             1024 Bit    Registers := 5     
+	               61 Bit    Registers := 1     
+	               32 Bit    Registers := 10    
+	               23 Bit    Registers := 20480 
+	               13 Bit    Registers := 5     
+	               10 Bit    Registers := 5131  
+	                9 Bit    Registers := 3     
+	                8 Bit    Registers := 5     
+	                4 Bit    Registers := 12    
+	                3 Bit    Registers := 6     
+	                2 Bit    Registers := 5     
+	                1 Bit    Registers := 46309 
++---RAMs : 
+	              64K Bit	(2048 X 32 bit)          RAMs := 5     
+	              32K Bit	(1024 X 32 bit)          RAMs := 5     
+	              26K Bit	(2048 X 13 bit)          RAMs := 5     
+	              15K Bit	(256 X 61 bit)          RAMs := 1     
+	              10K Bit	(1024 X 10 bit)          RAMs := 5     
+	               8K Bit	(1024 X 8 bit)          RAMs := 5     
+	               2K Bit	(1024 X 2 bit)          RAMs := 5     
++---Muxes : 
+	   2 Input 2048 Bit        Muxes := 10    
+	   2 Input   32 Bit        Muxes := 35    
+	   2 Input   23 Bit        Muxes := 10    
+	   2 Input   13 Bit        Muxes := 15    
+	   2 Input   10 Bit        Muxes := 30    
+	   2 Input    9 Bit        Muxes := 4     
+	   2 Input    8 Bit        Muxes := 25    
+	   4 Input    8 Bit        Muxes := 5     
+	   2 Input    4 Bit        Muxes := 12    
+	   2 Input    3 Bit        Muxes := 5     
+	   2 Input    2 Bit        Muxes := 95    
+	   2 Input    1 Bit        Muxes := 82392 
+	   4 Input    1 Bit        Muxes := 5     
+---------------------------------------------------------------------------------
+Finished RTL Component Statistics 
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Part Resource Summary
+---------------------------------------------------------------------------------
+Part Resources:
+DSPs: 1824 (col length:96)
+BRAMs: 960 (col length: RAMB18 96 RAMB36 48)
+---------------------------------------------------------------------------------
+Finished Part Resource Summary
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Cross Boundary and Area Optimization
+---------------------------------------------------------------------------------
+INFO: [Synth 8-6904] The RAM "PifoMesh/engineMapper/ram_reg" of size (depth=1024 x width=2) is automatically implemented using LUTRAM. BRAM implementation would be inefficient 
+RAM ("PifoMesh/lastVirtualMapper/ram_reg") is too shallow (depth = 1024) to use URAM. Choosing BRAM instead of URAM 
+RAM ("PifoMesh/brainStateMem/ram_reg") is too shallow (depth = 1024) to use URAM. Choosing BRAM instead of URAM 
+RAM ("PifoMesh/enque_enqueMapper/ram_reg") is too shallow (depth = 1024) to use URAM. Choosing BRAM instead of URAM 
+INFO: [Synth 8-6904] The RAM "PifoMesh/engineMapper/ram_reg" of size (depth=1024 x width=2) is automatically implemented using LUTRAM. BRAM implementation would be inefficient 
+RAM ("PifoMesh/lastVirtualMapper/ram_reg") is too shallow (depth = 1024) to use URAM. Choosing BRAM instead of URAM 
+RAM ("PifoMesh/brainStateMem/ram_reg") is too shallow (depth = 1024) to use URAM. Choosing BRAM instead of URAM 
+RAM ("PifoMesh/enque_enqueMapper/ram_reg") is too shallow (depth = 1024) to use URAM. Choosing BRAM instead of URAM 
+INFO: [Synth 8-6904] The RAM "PifoMesh/engineMapper/ram_reg" of size (depth=1024 x width=2) is automatically implemented using LUTRAM. BRAM implementation would be inefficient 
+RAM ("PifoMesh/lastVirtualMapper/ram_reg") is too shallow (depth = 1024) to use URAM. Choosing BRAM instead of URAM 
+RAM ("PifoMesh/brainStateMem/ram_reg") is too shallow (depth = 1024) to use URAM. Choosing BRAM instead of URAM 
+RAM ("PifoMesh/enque_enqueMapper/ram_reg") is too shallow (depth = 1024) to use URAM. Choosing BRAM instead of URAM 
+INFO: [Synth 8-6904] The RAM "PifoMesh/engineMapper/ram_reg" of size (depth=1024 x width=2) is automatically implemented using LUTRAM. BRAM implementation would be inefficient 
+RAM ("PifoMesh/lastVirtualMapper/ram_reg") is too shallow (depth = 1024) to use URAM. Choosing BRAM instead of URAM 
+RAM ("PifoMesh/brainStateMem/ram_reg") is too shallow (depth = 1024) to use URAM. Choosing BRAM instead of URAM 
+RAM ("PifoMesh/enque_enqueMapper/ram_reg") is too shallow (depth = 1024) to use URAM. Choosing BRAM instead of URAM 
+INFO: [Synth 8-6904] The RAM "PifoMesh/engineMapper/ram_reg" of size (depth=1024 x width=2) is automatically implemented using LUTRAM. BRAM implementation would be inefficient 
+RAM ("PifoMesh/lastVirtualMapper/ram_reg") is too shallow (depth = 1024) to use URAM. Choosing BRAM instead of URAM 
+RAM ("PifoMesh/brainStateMem/ram_reg") is too shallow (depth = 1024) to use URAM. Choosing BRAM instead of URAM 
+RAM ("PifoMesh/enque_enqueMapper/ram_reg") is too shallow (depth = 1024) to use URAM. Choosing BRAM instead of URAM 
+RAM ("PifoMesh/io_controlRequest_fifo/logic_ram_reg") is too shallow (depth = 256) to use URAM. Choosing BRAM instead of URAM 
+INFO: [Synth 8-7124] RAM ("BoundedCamMapper__GBM0/banks_0_values_reg") is implemented using BRAM instead of URAM. Memory would be severely underutilized if URAMs are used
+INFO: [Synth 8-7124] RAM ("BoundedCamMapper_1__GBM0/banks_0_values_reg") is implemented using BRAM instead of URAM. Memory would be severely underutilized if URAMs are used
+---------------------------------------------------------------------------------
+Finished Cross Boundary and Area Optimization : Time (s): cpu = 00:11:32 ; elapsed = 00:10:55 . Memory (MB): peak = 6686.305 ; gain = 4041.465 ; free physical = 60619 ; free virtual = 102922
+---------------------------------------------------------------------------------
+PIFO_DEVICE_CAPACITY_CHECK_SKIPPED: -checkfordsp
+PIFO_DEVICE_CAPACITY_CHECK_SKIPPED: -checkforuram
+PIFO_DEVICE_CAPACITY_CHECK_SKIPPED: -checkforram
+---------------------------------------------------------------------------------
+Start ROM, RAM, DSP, Shift Register and Retiming Reporting
+---------------------------------------------------------------------------------
+
+Block RAM: Preliminary Mapping Report (see note below)
++-------------------------+--------------------------------------+------------------------+---+---+------------------------+---+---+------------------+--------+--------+-----------------+
+|Module Name              | RTL Object                           | PORT A (Depth x Width) | W | R | PORT B (Depth x Width) | W | R | Ports driving FF | RAMB18 | RAMB36 | Cascade Heights | 
++-------------------------+--------------------------------------+------------------------+---+---+------------------------+---+---+------------------+--------+--------+-----------------+
+|BoundedCamMapper__GBM0   | banks_0_values_reg                   | 2 K x 32(READ_FIRST)   | W |   | 2 K x 32(WRITE_FIRST)  |   | R | Port A and B     | 0      | 2      | 1,1             | 
+|PifoMesh                 | lastVirtualMapper/ram_reg            | 1 K x 8(READ_FIRST)    | W |   | 1 K x 8(WRITE_FIRST)   |   | R | Port A and B     | 1      | 0      | 1               | 
+|PifoMesh                 | brainStateMem/ram_reg                | 1 K x 32(READ_FIRST)   | W |   | 1 K x 32(WRITE_FIRST)  |   | R | Port A and B     | 0      | 1      | 1               | 
+|BoundedCamMapper_1__GBM0 | banks_0_values_reg                   | 2 K x 13(READ_FIRST)   | W |   | 2 K x 13(WRITE_FIRST)  |   | R | Port A and B     | 0      | 1      | 1               | 
+|PifoMesh                 | enque_enqueMapper/ram_reg            | 1 K x 10(READ_FIRST)   | W |   | 1 K x 10(WRITE_FIRST)  |   | R | Port A and B     | 1      | 0      | 1               | 
+|PifoMesh                 | lastVirtualMapper/ram_reg            | 1 K x 8(READ_FIRST)    | W |   | 1 K x 8(WRITE_FIRST)   |   | R | Port A and B     | 1      | 0      | 1               | 
+|PifoMesh                 | brainStateMem/ram_reg                | 1 K x 32(READ_FIRST)   | W |   | 1 K x 32(WRITE_FIRST)  |   | R | Port A and B     | 0      | 1      | 1               | 
+|PifoMesh                 | enque_enqueMapper/ram_reg            | 1 K x 10(READ_FIRST)   | W |   | 1 K x 10(WRITE_FIRST)  |   | R | Port A and B     | 1      | 0      | 1               | 
+|PifoMesh                 | lastVirtualMapper/ram_reg            | 1 K x 8(READ_FIRST)    | W |   | 1 K x 8(WRITE_FIRST)   |   | R | Port A and B     | 1      | 0      | 1               | 
+|PifoMesh                 | brainStateMem/ram_reg                | 1 K x 32(READ_FIRST)   | W |   | 1 K x 32(WRITE_FIRST)  |   | R | Port A and B     | 0      | 1      | 1               | 
+|PifoMesh                 | enque_enqueMapper/ram_reg            | 1 K x 10(READ_FIRST)   | W |   | 1 K x 10(WRITE_FIRST)  |   | R | Port A and B     | 1      | 0      | 1               | 
+|PifoMesh                 | lastVirtualMapper/ram_reg            | 1 K x 8(READ_FIRST)    | W |   | 1 K x 8(WRITE_FIRST)   |   | R | Port A and B     | 1      | 0      | 1               | 
+|PifoMesh                 | brainStateMem/ram_reg                | 1 K x 32(READ_FIRST)   | W |   | 1 K x 32(WRITE_FIRST)  |   | R | Port A and B     | 0      | 1      | 1               | 
+|PifoMesh                 | enque_enqueMapper/ram_reg            | 1 K x 10(READ_FIRST)   | W |   | 1 K x 10(WRITE_FIRST)  |   | R | Port A and B     | 1      | 0      | 1               | 
+|PifoMesh                 | lastVirtualMapper/ram_reg            | 1 K x 8(READ_FIRST)    | W |   | 1 K x 8(WRITE_FIRST)   |   | R | Port A and B     | 1      | 0      | 1               | 
+|PifoMesh                 | brainStateMem/ram_reg                | 1 K x 32(READ_FIRST)   | W |   | 1 K x 32(WRITE_FIRST)  |   | R | Port A and B     | 0      | 1      | 1               | 
+|PifoMesh                 | enque_enqueMapper/ram_reg            | 1 K x 10(READ_FIRST)   | W |   | 1 K x 10(WRITE_FIRST)  |   | R | Port A and B     | 1      | 0      | 1               | 
+|PifoMesh                 | io_controlRequest_fifo/logic_ram_reg | 256 x 61(READ_FIRST)   | W |   | 256 x 61(WRITE_FIRST)  |   | R | Port A and B     | 0      | 1      |                 | 
++-------------------------+--------------------------------------+------------------------+---+---+------------------------+---+---+------------------+--------+--------+-----------------+
+
+Note: The table above is a preliminary report that shows the Block RAMs at the current stage of the synthesis flow. Some Block RAMs may be reimplemented as non Block RAM primitives later in the synthesis flow. Multiple instantiated Block RAMs are reported only once. 
+
+Distributed RAM: Preliminary Mapping Report (see note below)
++------------+---------------------------------------------------------------+----------------+----------------------+----------------+
+|Module Name | RTL Object                                                    | Inference      | Size (Depth x Width) | Primitives     | 
++------------+---------------------------------------------------------------+----------------+----------------------+----------------+
+|PifoMesh    | engineMapper/ram_reg                                          | Implied        | 1 K x 2              | RAM256X1D x 8  | 
+|PifoMesh    | flowStateUpdate_fifo/fifo/logic_ram_reg                       | User Attribute | 2 x 55               | RAM32M16 x 4   | 
+|PifoMesh    | brainStateUpdate_toStream_fifo/fifo/logic_ram_reg             | User Attribute | 2 x 42               | RAM32M16 x 3   | 
+|PifoMesh    | engineMapper_io_readRes_toStream_fifo/fifo/logic_ram_reg      | User Attribute | 2 x 2                | RAM16X1D x 2   | 
+|PifoMesh    | brainStateMem_io_readRes_toStream_fifo/fifo/logic_ram_reg     | User Attribute | 2 x 32               | RAM32M16 x 3   | 
+|PifoMesh    | engineCAM_io_readRes_toStream_fifo/fifo/logic_ram_reg         | User Attribute | 2 x 32               | RAM32M16 x 3   | 
+|PifoMesh    | lastVirtualMapper_io_readRes_toStream_fifo/fifo/logic_ram_reg | User Attribute | 2 x 8                | RAM32M16 x 1   | 
+|PifoMesh    | io_outputs_4_fifo/fifo/logic_ram_reg                          | User Attribute | 2 x 23               | RAM32M16 x 2   | 
+|PifoMesh    | enque_flowIdStream_fifo/fifo/logic_ram_reg                    | User Attribute | 2 x 13               | RAM32M16 x 1   | 
+|PifoMesh    | engineMapper/ram_reg                                          | Implied        | 1 K x 2              | RAM256X1D x 8  | 
+|PifoMesh    | flowStateUpdate_fifo/fifo/logic_ram_reg                       | User Attribute | 2 x 55               | RAM32M16 x 4   | 
+|PifoMesh    | brainStateUpdate_toStream_fifo/fifo/logic_ram_reg             | User Attribute | 2 x 42               | RAM32M16 x 3   | 
+|PifoMesh    | engineMapper_io_readRes_toStream_fifo/fifo/logic_ram_reg      | User Attribute | 2 x 2                | RAM16X1D x 2   | 
+|PifoMesh    | brainStateMem_io_readRes_toStream_fifo/fifo/logic_ram_reg     | User Attribute | 2 x 32               | RAM32M16 x 3   | 
+|PifoMesh    | engineCAM_io_readRes_toStream_fifo/fifo/logic_ram_reg         | User Attribute | 2 x 32               | RAM32M16 x 3   | 
+|PifoMesh    | lastVirtualMapper_io_readRes_toStream_fifo/fifo/logic_ram_reg | User Attribute | 2 x 8                | RAM32M16 x 1   | 
+|PifoMesh    | io_outputs_4_fifo/fifo/logic_ram_reg                          | User Attribute | 2 x 23               | RAM32M16 x 2   | 
+|PifoMesh    | enque_flowIdStream_fifo/fifo/logic_ram_reg                    | User Attribute | 2 x 13               | RAM32M16 x 1   | 
+|PifoMesh    | engineMapper/ram_reg                                          | Implied        | 1 K x 2              | RAM256X1D x 8  | 
+|PifoMesh    | flowStateUpdate_fifo/fifo/logic_ram_reg                       | User Attribute | 2 x 55               | RAM32M16 x 4   | 
+|PifoMesh    | brainStateUpdate_toStream_fifo/fifo/logic_ram_reg             | User Attribute | 2 x 42               | RAM32M16 x 3   | 
+|PifoMesh    | engineMapper_io_readRes_toStream_fifo/fifo/logic_ram_reg      | User Attribute | 2 x 2                | RAM16X1D x 2   | 
+|PifoMesh    | brainStateMem_io_readRes_toStream_fifo/fifo/logic_ram_reg     | User Attribute | 2 x 32               | RAM32M16 x 3   | 
+|PifoMesh    | engineCAM_io_readRes_toStream_fifo/fifo/logic_ram_reg         | User Attribute | 2 x 32               | RAM32M16 x 3   | 
+|PifoMesh    | lastVirtualMapper_io_readRes_toStream_fifo/fifo/logic_ram_reg | User Attribute | 2 x 8                | RAM32M16 x 1   | 
+|PifoMesh    | io_outputs_4_fifo/fifo/logic_ram_reg                          | User Attribute | 2 x 23               | RAM32M16 x 2   | 
+|PifoMesh    | enque_flowIdStream_fifo/fifo/logic_ram_reg                    | User Attribute | 2 x 13               | RAM32M16 x 1   | 
+|PifoMesh    | engineMapper/ram_reg                                          | Implied        | 1 K x 2              | RAM256X1D x 8  | 
+|PifoMesh    | flowStateUpdate_fifo/fifo/logic_ram_reg                       | User Attribute | 2 x 55               | RAM32M16 x 4   | 
+|PifoMesh    | brainStateUpdate_toStream_fifo/fifo/logic_ram_reg             | User Attribute | 2 x 42               | RAM32M16 x 3   | 
+|PifoMesh    | engineMapper_io_readRes_toStream_fifo/fifo/logic_ram_reg      | User Attribute | 2 x 2                | RAM16X1D x 2   | 
+|PifoMesh    | brainStateMem_io_readRes_toStream_fifo/fifo/logic_ram_reg     | User Attribute | 2 x 32               | RAM32M16 x 3   | 
+|PifoMesh    | engineCAM_io_readRes_toStream_fifo/fifo/logic_ram_reg         | User Attribute | 2 x 32               | RAM32M16 x 3   | 
+|PifoMesh    | lastVirtualMapper_io_readRes_toStream_fifo/fifo/logic_ram_reg | User Attribute | 2 x 8                | RAM32M16 x 1   | 
+|PifoMesh    | io_outputs_4_fifo/fifo/logic_ram_reg                          | User Attribute | 2 x 23               | RAM32M16 x 2   | 
+|PifoMesh    | enque_flowIdStream_fifo/fifo/logic_ram_reg                    | User Attribute | 2 x 13               | RAM32M16 x 1   | 
+|PifoMesh    | engineMapper/ram_reg                                          | Implied        | 1 K x 2              | RAM256X1D x 8  | 
+|PifoMesh    | flowStateUpdate_fifo/fifo/logic_ram_reg                       | User Attribute | 2 x 55               | RAM32M16 x 4   | 
+|PifoMesh    | brainStateUpdate_toStream_fifo/fifo/logic_ram_reg             | User Attribute | 2 x 42               | RAM32M16 x 3   | 
+|PifoMesh    | engineMapper_io_readRes_toStream_fifo/fifo/logic_ram_reg      | User Attribute | 2 x 2                | RAM16X1D x 2   | 
+|PifoMesh    | brainStateMem_io_readRes_toStream_fifo/fifo/logic_ram_reg     | User Attribute | 2 x 32               | RAM32M16 x 3   | 
+|PifoMesh    | engineCAM_io_readRes_toStream_fifo/fifo/logic_ram_reg         | User Attribute | 2 x 32               | RAM32M16 x 3   | 
+|PifoMesh    | lastVirtualMapper_io_readRes_toStream_fifo/fifo/logic_ram_reg | User Attribute | 2 x 8                | RAM32M16 x 1   | 
+|PifoMesh    | io_outputs_4_fifo/fifo/logic_ram_reg                          | User Attribute | 2 x 23               | RAM32M16 x 2   | 
+|PifoMesh    | enque_flowIdStream_fifo/fifo/logic_ram_reg                    | User Attribute | 2 x 13               | RAM32M16 x 1   | 
+|PifoMesh    | xbar/io_inputs_0_fifo/fifo/logic_ram_reg                      | User Attribute | 8 x 13               | RAM32M16 x 1   | 
+|PifoMesh    | xbar/io_inputs_1_fifo/fifo/logic_ram_reg                      | User Attribute | 8 x 13               | RAM32M16 x 1   | 
+|PifoMesh    | xbar/io_inputs_2_fifo/fifo/logic_ram_reg                      | User Attribute | 8 x 13               | RAM32M16 x 1   | 
+|PifoMesh    | xbar/io_inputs_3_fifo/fifo/logic_ram_reg                      | User Attribute | 8 x 13               | RAM32M16 x 1   | 
+|PifoMesh    | xbar/io_inputs_4_fifo/fifo/logic_ram_reg                      | User Attribute | 8 x 13               | RAM32M16 x 1   | 
+|PifoMesh    | xbar/io_inputs_5_fifo/fifo/logic_ram_reg                      | User Attribute | 8 x 13               | RAM32M16 x 1   | 
++------------+---------------------------------------------------------------+----------------+----------------------+----------------+
+
+Note: The table above is a preliminary report that shows the Distributed RAMs at the current stage of the synthesis flow. Some Distributed RAMs may be reimplemented as non Distributed RAM primitives later in the synthesis flow. Multiple instantiated RAMs are reported only once.
+---------------------------------------------------------------------------------
+Finished ROM, RAM, DSP, Shift Register and Retiming Reporting
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Applying XDC Timing Constraints
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Applying XDC Timing Constraints : Time (s): cpu = 00:18:41 ; elapsed = 00:11:18 . Memory (MB): peak = 6773.934 ; gain = 4129.094 ; free physical = 52998 ; free virtual = 95473
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start ROM, RAM, DSP, Shift Register and Retiming Reporting
+---------------------------------------------------------------------------------
+
+Block RAM: Final Mapping Report
++-------------------------+--------------------------------------+------------------------+---+---+------------------------+---+---+------------------+--------+--------+-----------------+
+|Module Name              | RTL Object                           | PORT A (Depth x Width) | W | R | PORT B (Depth x Width) | W | R | Ports driving FF | RAMB18 | RAMB36 | Cascade Heights | 
++-------------------------+--------------------------------------+------------------------+---+---+------------------------+---+---+------------------+--------+--------+-----------------+
+|BoundedCamMapper__GBM0   | banks_0_values_reg                   | 2 K x 32(READ_FIRST)   | W |   | 2 K x 32(WRITE_FIRST)  |   | R | Port A and B     | 0      | 2      | 1,1             | 
+|PifoMesh                 | lastVirtualMapper/ram_reg            | 1 K x 8(READ_FIRST)    | W |   | 1 K x 8(WRITE_FIRST)   |   | R | Port A and B     | 1      | 0      | 1               | 
+|PifoMesh                 | brainStateMem/ram_reg                | 1 K x 32(READ_FIRST)   | W |   | 1 K x 32(WRITE_FIRST)  |   | R | Port A and B     | 0      | 1      | 1               | 
+|BoundedCamMapper_1__GBM0 | banks_0_values_reg                   | 2 K x 13(READ_FIRST)   | W |   | 2 K x 13(WRITE_FIRST)  |   | R | Port A and B     | 0      | 1      | 1               | 
+|PifoMesh                 | enque_enqueMapper/ram_reg            | 1 K x 10(READ_FIRST)   | W |   | 1 K x 10(WRITE_FIRST)  |   | R | Port A and B     | 1      | 0      | 1               | 
+|PifoMesh                 | lastVirtualMapper/ram_reg            | 1 K x 8(READ_FIRST)    | W |   | 1 K x 8(WRITE_FIRST)   |   | R | Port A and B     | 1      | 0      | 1               | 
+|PifoMesh                 | brainStateMem/ram_reg                | 1 K x 32(READ_FIRST)   | W |   | 1 K x 32(WRITE_FIRST)  |   | R | Port A and B     | 0      | 1      | 1               | 
+|PifoMesh                 | enque_enqueMapper/ram_reg            | 1 K x 10(READ_FIRST)   | W |   | 1 K x 10(WRITE_FIRST)  |   | R | Port A and B     | 1      | 0      | 1               | 
+|PifoMesh                 | lastVirtualMapper/ram_reg            | 1 K x 8(READ_FIRST)    | W |   | 1 K x 8(WRITE_FIRST)   |   | R | Port A and B     | 1      | 0      | 1               | 
+|PifoMesh                 | brainStateMem/ram_reg                | 1 K x 32(READ_FIRST)   | W |   | 1 K x 32(WRITE_FIRST)  |   | R | Port A and B     | 0      | 1      | 1               | 
+|PifoMesh                 | enque_enqueMapper/ram_reg            | 1 K x 10(READ_FIRST)   | W |   | 1 K x 10(WRITE_FIRST)  |   | R | Port A and B     | 1      | 0      | 1               | 
+|PifoMesh                 | lastVirtualMapper/ram_reg            | 1 K x 8(READ_FIRST)    | W |   | 1 K x 8(WRITE_FIRST)   |   | R | Port A and B     | 1      | 0      | 1               | 
+|PifoMesh                 | brainStateMem/ram_reg                | 1 K x 32(READ_FIRST)   | W |   | 1 K x 32(WRITE_FIRST)  |   | R | Port A and B     | 0      | 1      | 1               | 
+|PifoMesh                 | enque_enqueMapper/ram_reg            | 1 K x 10(READ_FIRST)   | W |   | 1 K x 10(WRITE_FIRST)  |   | R | Port A and B     | 1      | 0      | 1               | 
+|PifoMesh                 | lastVirtualMapper/ram_reg            | 1 K x 8(READ_FIRST)    | W |   | 1 K x 8(WRITE_FIRST)   |   | R | Port A and B     | 1      | 0      | 1               | 
+|PifoMesh                 | brainStateMem/ram_reg                | 1 K x 32(READ_FIRST)   | W |   | 1 K x 32(WRITE_FIRST)  |   | R | Port A and B     | 0      | 1      | 1               | 
+|PifoMesh                 | enque_enqueMapper/ram_reg            | 1 K x 10(READ_FIRST)   | W |   | 1 K x 10(WRITE_FIRST)  |   | R | Port A and B     | 1      | 0      | 1               | 
+|PifoMesh                 | io_controlRequest_fifo/logic_ram_reg | 256 x 61(READ_FIRST)   | W |   | 256 x 61(WRITE_FIRST)  |   | R | Port A and B     | 0      | 1      |                 | 
++-------------------------+--------------------------------------+------------------------+---+---+------------------------+---+---+------------------+--------+--------+-----------------+
+
+
+Distributed RAM: Final Mapping Report
++------------+---------------------------------------------------------------+----------------+----------------------+----------------+
+|Module Name | RTL Object                                                    | Inference      | Size (Depth x Width) | Primitives     | 
++------------+---------------------------------------------------------------+----------------+----------------------+----------------+
+|PifoMesh    | engineMapper/ram_reg                                          | Implied        | 1 K x 2              | RAM256X1D x 8  | 
+|PifoMesh    | flowStateUpdate_fifo/fifo/logic_ram_reg                       | User Attribute | 2 x 55               | RAM32M16 x 4   | 
+|PifoMesh    | brainStateUpdate_toStream_fifo/fifo/logic_ram_reg             | User Attribute | 2 x 42               | RAM32M16 x 3   | 
+|PifoMesh    | engineMapper_io_readRes_toStream_fifo/fifo/logic_ram_reg      | User Attribute | 2 x 2                | RAM16X1D x 2   | 
+|PifoMesh    | brainStateMem_io_readRes_toStream_fifo/fifo/logic_ram_reg     | User Attribute | 2 x 32               | RAM32M16 x 3   | 
+|PifoMesh    | engineCAM_io_readRes_toStream_fifo/fifo/logic_ram_reg         | User Attribute | 2 x 32               | RAM32M16 x 3   | 
+|PifoMesh    | lastVirtualMapper_io_readRes_toStream_fifo/fifo/logic_ram_reg | User Attribute | 2 x 8                | RAM32M16 x 1   | 
+|PifoMesh    | io_outputs_4_fifo/fifo/logic_ram_reg                          | User Attribute | 2 x 23               | RAM32M16 x 2   | 
+|PifoMesh    | enque_flowIdStream_fifo/fifo/logic_ram_reg                    | User Attribute | 2 x 13               | RAM32M16 x 1   | 
+|PifoMesh    | engineMapper/ram_reg                                          | Implied        | 1 K x 2              | RAM256X1D x 8  | 
+|PifoMesh    | flowStateUpdate_fifo/fifo/logic_ram_reg                       | User Attribute | 2 x 55               | RAM32M16 x 4   | 
+|PifoMesh    | brainStateUpdate_toStream_fifo/fifo/logic_ram_reg             | User Attribute | 2 x 42               | RAM32M16 x 3   | 
+|PifoMesh    | engineMapper_io_readRes_toStream_fifo/fifo/logic_ram_reg      | User Attribute | 2 x 2                | RAM16X1D x 2   | 
+|PifoMesh    | brainStateMem_io_readRes_toStream_fifo/fifo/logic_ram_reg     | User Attribute | 2 x 32               | RAM32M16 x 3   | 
+|PifoMesh    | engineCAM_io_readRes_toStream_fifo/fifo/logic_ram_reg         | User Attribute | 2 x 32               | RAM32M16 x 3   | 
+|PifoMesh    | lastVirtualMapper_io_readRes_toStream_fifo/fifo/logic_ram_reg | User Attribute | 2 x 8                | RAM32M16 x 1   | 
+|PifoMesh    | io_outputs_4_fifo/fifo/logic_ram_reg                          | User Attribute | 2 x 23               | RAM32M16 x 2   | 
+|PifoMesh    | enque_flowIdStream_fifo/fifo/logic_ram_reg                    | User Attribute | 2 x 13               | RAM32M16 x 1   | 
+|PifoMesh    | engineMapper/ram_reg                                          | Implied        | 1 K x 2              | RAM256X1D x 8  | 
+|PifoMesh    | flowStateUpdate_fifo/fifo/logic_ram_reg                       | User Attribute | 2 x 55               | RAM32M16 x 4   | 
+|PifoMesh    | brainStateUpdate_toStream_fifo/fifo/logic_ram_reg             | User Attribute | 2 x 42               | RAM32M16 x 3   | 
+|PifoMesh    | engineMapper_io_readRes_toStream_fifo/fifo/logic_ram_reg      | User Attribute | 2 x 2                | RAM16X1D x 2   | 
+|PifoMesh    | brainStateMem_io_readRes_toStream_fifo/fifo/logic_ram_reg     | User Attribute | 2 x 32               | RAM32M16 x 3   | 
+|PifoMesh    | engineCAM_io_readRes_toStream_fifo/fifo/logic_ram_reg         | User Attribute | 2 x 32               | RAM32M16 x 3   | 
+|PifoMesh    | lastVirtualMapper_io_readRes_toStream_fifo/fifo/logic_ram_reg | User Attribute | 2 x 8                | RAM32M16 x 1   | 
+|PifoMesh    | io_outputs_4_fifo/fifo/logic_ram_reg                          | User Attribute | 2 x 23               | RAM32M16 x 2   | 
+|PifoMesh    | enque_flowIdStream_fifo/fifo/logic_ram_reg                    | User Attribute | 2 x 13               | RAM32M16 x 1   | 
+|PifoMesh    | engineMapper/ram_reg                                          | Implied        | 1 K x 2              | RAM256X1D x 8  | 
+|PifoMesh    | flowStateUpdate_fifo/fifo/logic_ram_reg                       | User Attribute | 2 x 55               | RAM32M16 x 4   | 
+|PifoMesh    | brainStateUpdate_toStream_fifo/fifo/logic_ram_reg             | User Attribute | 2 x 42               | RAM32M16 x 3   | 
+|PifoMesh    | engineMapper_io_readRes_toStream_fifo/fifo/logic_ram_reg      | User Attribute | 2 x 2                | RAM16X1D x 2   | 
+|PifoMesh    | brainStateMem_io_readRes_toStream_fifo/fifo/logic_ram_reg     | User Attribute | 2 x 32               | RAM32M16 x 3   | 
+|PifoMesh    | engineCAM_io_readRes_toStream_fifo/fifo/logic_ram_reg         | User Attribute | 2 x 32               | RAM32M16 x 3   | 
+|PifoMesh    | lastVirtualMapper_io_readRes_toStream_fifo/fifo/logic_ram_reg | User Attribute | 2 x 8                | RAM32M16 x 1   | 
+|PifoMesh    | io_outputs_4_fifo/fifo/logic_ram_reg                          | User Attribute | 2 x 23               | RAM32M16 x 2   | 
+|PifoMesh    | enque_flowIdStream_fifo/fifo/logic_ram_reg                    | User Attribute | 2 x 13               | RAM32M16 x 1   | 
+|PifoMesh    | engineMapper/ram_reg                                          | Implied        | 1 K x 2              | RAM256X1D x 8  | 
+|PifoMesh    | flowStateUpdate_fifo/fifo/logic_ram_reg                       | User Attribute | 2 x 55               | RAM32M16 x 4   | 
+|PifoMesh    | brainStateUpdate_toStream_fifo/fifo/logic_ram_reg             | User Attribute | 2 x 42               | RAM32M16 x 3   | 
+|PifoMesh    | engineMapper_io_readRes_toStream_fifo/fifo/logic_ram_reg      | User Attribute | 2 x 2                | RAM16X1D x 2   | 
+|PifoMesh    | brainStateMem_io_readRes_toStream_fifo/fifo/logic_ram_reg     | User Attribute | 2 x 32               | RAM32M16 x 3   | 
+|PifoMesh    | engineCAM_io_readRes_toStream_fifo/fifo/logic_ram_reg         | User Attribute | 2 x 32               | RAM32M16 x 3   | 
+|PifoMesh    | lastVirtualMapper_io_readRes_toStream_fifo/fifo/logic_ram_reg | User Attribute | 2 x 8                | RAM32M16 x 1   | 
+|PifoMesh    | io_outputs_4_fifo/fifo/logic_ram_reg                          | User Attribute | 2 x 23               | RAM32M16 x 2   | 
+|PifoMesh    | enque_flowIdStream_fifo/fifo/logic_ram_reg                    | User Attribute | 2 x 13               | RAM32M16 x 1   | 
+|PifoMesh    | xbar/io_inputs_0_fifo/fifo/logic_ram_reg                      | User Attribute | 8 x 13               | RAM32M16 x 1   | 
+|PifoMesh    | xbar/io_inputs_1_fifo/fifo/logic_ram_reg                      | User Attribute | 8 x 13               | RAM32M16 x 1   | 
+|PifoMesh    | xbar/io_inputs_2_fifo/fifo/logic_ram_reg                      | User Attribute | 8 x 13               | RAM32M16 x 1   | 
+|PifoMesh    | xbar/io_inputs_3_fifo/fifo/logic_ram_reg                      | User Attribute | 8 x 13               | RAM32M16 x 1   | 
+|PifoMesh    | xbar/io_inputs_4_fifo/fifo/logic_ram_reg                      | User Attribute | 8 x 13               | RAM32M16 x 1   | 
+|PifoMesh    | xbar/io_inputs_5_fifo/fifo/logic_ram_reg                      | User Attribute | 8 x 13               | RAM32M16 x 1   | 
++------------+---------------------------------------------------------------+----------------+----------------------+----------------+
+
+---------------------------------------------------------------------------------
+Finished ROM, RAM, DSP, Shift Register and Retiming Reporting
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Technology Mapping
+---------------------------------------------------------------------------------
+INFO: [Synth 8-7052] The timing for the instance enque_braini_17/lastVirtualMapper/ram_reg_bram_0 (implemented as a Block RAM) might be sub-optimal as no optional output register could be merged into the ram block. Providing additional output register may help in improving timing.
+INFO: [Synth 8-7052] The timing for the instance enque_braini_17/brainStateMem/ram_reg_bram_0 (implemented as a Block RAM) might be sub-optimal as no optional output register could be merged into the ram block. Providing additional output register may help in improving timing.
+INFO: [Synth 8-7052] The timing for the instance pifoEngines_0i_38/enque_enqueMapper/ram_reg_bram_0 (implemented as a Block RAM) might be sub-optimal as no optional output register could be merged into the ram block. Providing additional output register may help in improving timing.
+INFO: [Synth 8-7052] The timing for the instance enque_braini_56/lastVirtualMapper/ram_reg_bram_0 (implemented as a Block RAM) might be sub-optimal as no optional output register could be merged into the ram block. Providing additional output register may help in improving timing.
+INFO: [Synth 8-7052] The timing for the instance enque_braini_56/brainStateMem/ram_reg_bram_0 (implemented as a Block RAM) might be sub-optimal as no optional output register could be merged into the ram block. Providing additional output register may help in improving timing.
+INFO: [Synth 8-7052] The timing for the instance pifoEngines_1i_77/enque_enqueMapper/ram_reg_bram_0 (implemented as a Block RAM) might be sub-optimal as no optional output register could be merged into the ram block. Providing additional output register may help in improving timing.
+INFO: [Synth 8-7052] The timing for the instance enque_braini_95/lastVirtualMapper/ram_reg_bram_0 (implemented as a Block RAM) might be sub-optimal as no optional output register could be merged into the ram block. Providing additional output register may help in improving timing.
+INFO: [Synth 8-7052] The timing for the instance enque_braini_95/brainStateMem/ram_reg_bram_0 (implemented as a Block RAM) might be sub-optimal as no optional output register could be merged into the ram block. Providing additional output register may help in improving timing.
+INFO: [Synth 8-7052] The timing for the instance pifoEngines_2i_116/enque_enqueMapper/ram_reg_bram_0 (implemented as a Block RAM) might be sub-optimal as no optional output register could be merged into the ram block. Providing additional output register may help in improving timing.
+INFO: [Synth 8-7052] The timing for the instance enque_braini_134/lastVirtualMapper/ram_reg_bram_0 (implemented as a Block RAM) might be sub-optimal as no optional output register could be merged into the ram block. Providing additional output register may help in improving timing.
+INFO: [Synth 8-7052] The timing for the instance enque_braini_134/brainStateMem/ram_reg_bram_0 (implemented as a Block RAM) might be sub-optimal as no optional output register could be merged into the ram block. Providing additional output register may help in improving timing.
+INFO: [Synth 8-7052] The timing for the instance pifoEngines_3i_155/enque_enqueMapper/ram_reg_bram_0 (implemented as a Block RAM) might be sub-optimal as no optional output register could be merged into the ram block. Providing additional output register may help in improving timing.
+INFO: [Synth 8-7052] The timing for the instance enque_braini_173/lastVirtualMapper/ram_reg_bram_0 (implemented as a Block RAM) might be sub-optimal as no optional output register could be merged into the ram block. Providing additional output register may help in improving timing.
+INFO: [Synth 8-7052] The timing for the instance enque_braini_173/brainStateMem/ram_reg_bram_0 (implemented as a Block RAM) might be sub-optimal as no optional output register could be merged into the ram block. Providing additional output register may help in improving timing.
+INFO: [Synth 8-7052] The timing for the instance pifoEngines_4i_194/enque_enqueMapper/ram_reg_bram_0 (implemented as a Block RAM) might be sub-optimal as no optional output register could be merged into the ram block. Providing additional output register may help in improving timing.
+INFO: [Synth 8-7052] The timing for the instance i_198/io_controlRequest_fifo/logic_ram_reg (implemented as a Block RAM) might be sub-optimal as no optional output register could be merged into the ram block. Providing additional output register may help in improving timing.
+INFO: [Synth 8-7052] The timing for the instance engineCAMi_0/pifoEngines_0/enque_brain/engineCAM/banks_0_values_reg_bram_0 (implemented as a Block RAM) might be sub-optimal as no optional output register could be merged into the ram block. Providing additional output register may help in improving timing.
+INFO: [Synth 8-7052] The timing for the instance engineCAMi_0/pifoEngines_0/enque_brain/engineCAM/banks_0_values_reg_bram_1 (implemented as a Block RAM) might be sub-optimal as no optional output register could be merged into the ram block. Providing additional output register may help in improving timing.
+INFO: [Synth 8-7052] The timing for the instance deque_dequeMapperi_18/pifoEngines_0/deque_dequeMapper/banks_0_values_reg_bram_0 (implemented as a Block RAM) might be sub-optimal as no optional output register could be merged into the ram block. Providing additional output register may help in improving timing.
+---------------------------------------------------------------------------------
+Finished Technology Mapping : Time (s): cpu = 00:49:10 ; elapsed = 00:46:33 . Memory (MB): peak = 7069.859 ; gain = 4425.020 ; free physical = 61546 ; free virtual = 101860
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start IO Insertion
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Flattening Before IO Insertion
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Flattening Before IO Insertion
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Final Netlist Cleanup
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Final Netlist Cleanup
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished IO Insertion : Time (s): cpu = 01:00:25 ; elapsed = 00:57:55 . Memory (MB): peak = 7779.258 ; gain = 5134.418 ; free physical = 95281 ; free virtual = 136558
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Renaming Generated Instances
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Renaming Generated Instances : Time (s): cpu = 01:00:32 ; elapsed = 00:58:03 . Memory (MB): peak = 7779.258 ; gain = 5134.418 ; free physical = 95188 ; free virtual = 136464
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Rebuilding User Hierarchy
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Rebuilding User Hierarchy : Time (s): cpu = 01:01:46 ; elapsed = 00:59:18 . Memory (MB): peak = 7779.258 ; gain = 5134.418 ; free physical = 95930 ; free virtual = 136188
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Renaming Generated Ports
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Renaming Generated Ports : Time (s): cpu = 01:02:01 ; elapsed = 00:59:32 . Memory (MB): peak = 7779.258 ; gain = 5134.418 ; free physical = 95964 ; free virtual = 136222
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Handling Custom Attributes
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Handling Custom Attributes : Time (s): cpu = 01:02:13 ; elapsed = 00:59:45 . Memory (MB): peak = 7779.258 ; gain = 5134.418 ; free physical = 95944 ; free virtual = 136204
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Renaming Generated Nets
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Renaming Generated Nets : Time (s): cpu = 01:02:17 ; elapsed = 00:59:49 . Memory (MB): peak = 7779.258 ; gain = 5134.418 ; free physical = 95886 ; free virtual = 136146
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Writing Synthesis Report
+---------------------------------------------------------------------------------
+
+Report BlackBoxes: 
++-+--------------+----------+
+| |BlackBox name |Instances |
++-+--------------+----------+
++-+--------------+----------+
+
+Report Cell Usage: 
++------+----------+-------+
+|      |Cell      |Count  |
++------+----------+-------+
+|1     |CARRY8    |  43525|
+|2     |LUT1      |  20584|
+|3     |LUT2      |  37719|
+|4     |LUT3      |  27918|
+|5     |LUT4      |  93643|
+|6     |LUT5      |  19044|
+|7     |LUT6      | 394240|
+|8     |MUXF7     |  14832|
+|9     |MUXF8     |   7416|
+|10    |RAM16X1D  |     10|
+|11    |RAM256X1D |     40|
+|12    |RAM32M    |     10|
+|13    |RAM32M16  |     51|
+|14    |RAMB18E2  |     10|
+|15    |RAMB36E2  |     16|
+|18    |FDCE      |  92458|
+|19    |FDPE      |  10330|
+|20    |FDRE      | 471449|
++------+----------+-------+
+---------------------------------------------------------------------------------
+Finished Writing Synthesis Report : Time (s): cpu = 01:02:18 ; elapsed = 00:59:50 . Memory (MB): peak = 7779.258 ; gain = 5134.418 ; free physical = 95563 ; free virtual = 135824
+---------------------------------------------------------------------------------
+Synthesis finished with 0 errors, 0 critical warnings and 0 warnings.
+Synthesis Optimization Runtime : Time (s): cpu = 00:59:54 ; elapsed = 00:58:15 . Memory (MB): peak = 7779.258 ; gain = 3827.523 ; free physical = 114837 ; free virtual = 155097
+Synthesis Optimization Complete : Time (s): cpu = 01:02:18 ; elapsed = 00:59:56 . Memory (MB): peak = 7779.258 ; gain = 5134.418 ; free physical = 114885 ; free virtual = 155094
+INFO: [Project 1-571] Translating synthesized netlist
+Netlist sorting complete. Time (s): cpu = 00:00:13 ; elapsed = 00:00:13 . Memory (MB): peak = 7779.258 ; gain = 0.000 ; free physical = 125531 ; free virtual = 165835
+INFO: [Netlist 29-17] Analyzing 65884 Unisim elements for replacement
+INFO: [Netlist 29-28] Unisim Transformation completed in 5 CPU seconds
+INFO: [Project 1-570] Preparing netlist for logic optimization
+Parsing XDC File [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/pifo.xdc]
+Finished Parsing XDC File [/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/pifo.xdc]
+INFO: [Opt 31-138] Pushed 0 inverter(s) to 0 load pin(s).
+Netlist sorting complete. Time (s): cpu = 00:00:00.48 ; elapsed = 00:00:00.48 . Memory (MB): peak = 7779.258 ; gain = 0.000 ; free physical = 125283 ; free virtual = 165597
+INFO: [Project 1-111] Unisim Transformation Summary:
+  A total of 111 instances were transformed.
+  RAM16X1D => RAM32X1D (RAMD32(x2)): 10 instances
+  RAM256X1D => RAM256X1D (MUXF7(x4), MUXF8(x2), RAMD64E(x8)): 40 instances
+  RAM32M => RAM32M (RAMD32(x6), RAMS32(x2)): 10 instances
+  RAM32M16 => RAM32M16 (RAMD32(x14), RAMS32(x2)): 51 instances
+
+Synth Design complete | Checksum: c6b1e4a2
+INFO: [Common 17-83] Releasing license: Synthesis
+195 Infos, 154 Warnings, 0 Critical Warnings and 0 Errors encountered.
+synth_design completed successfully
+synth_design: Time (s): cpu = 01:06:35 ; elapsed = 01:04:14 . Memory (MB): peak = 7779.258 ; gain = 6196.512 ; free physical = 123999 ; free virtual = 164364
+INFO: [Common 17-2834] synth_design peak Physical Memory [PSS] (MB): overall = 13682.566; main = 6467.860; forked = 8193.108
+INFO: [Common 17-2834] synth_design peak Virtual Memory [VSS] (MB): overall = 23222.211; main = 7779.262; forked = 16539.820
+# write_checkpoint -force [file join $build_dir pifo_synth.dcp]
+INFO: [Timing 38-35] Done setting XDC timing constraints.
+INFO: [Timing 38-480] Writing timing data to binary archive.
+Write ShapeDB Complete: Time (s): cpu = 00:00:09 ; elapsed = 00:00:02 . Memory (MB): peak = 7859.297 ; gain = 0.000 ; free physical = 132130 ; free virtual = 172602
+INFO: [Common 17-1381] The checkpoint '/data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/pifo_synth.dcp' has been generated.
+write_checkpoint: Time (s): cpu = 00:05:36 ; elapsed = 00:02:09 . Memory (MB): peak = 7859.297 ; gain = 80.039 ; free physical = 132034 ; free virtual = 172555
+# report_utilization -file [file join $report_dir utilization.rpt]
+report_utilization: Time (s): cpu = 00:00:09 ; elapsed = 00:00:09 . Memory (MB): peak = 7859.297 ; gain = 0.000 ; free physical = 132032 ; free virtual = 172552
+# report_utilization -hierarchical -hierarchical_depth 5 -file [file join $report_dir utilization-hierarchy.rpt]
+report_utilization: Time (s): cpu = 00:00:19 ; elapsed = 00:00:20 . Memory (MB): peak = 7859.297 ; gain = 0.000 ; free physical = 131444 ; free virtual = 171954
+# report_ram_utilization -file [file join $report_dir ram-utilization.rpt]
+report_ram_utilization: Time (s): cpu = 00:00:00 ; elapsed = 00:00:00 . Memory (MB): peak = 7859.297 ; gain = 0.000 ; free physical = 131384 ; free virtual = 171894
+# set blackboxes [get_cells -hierarchical -quiet -filter {IS_BLACKBOX == 1}]
+# if {[llength $blackboxes] != 0} {
+#     error "Unresolved blackboxes after synthesis: $blackboxes"
+# }
+# set primitive_counts [dict create]
+# foreach cell [get_cells -hierarchical -quiet -filter {IS_PRIMITIVE == 1}] {
+#     dict incr primitive_counts [get_property REF_NAME $cell]
+# }
+# set counts [open [file join $report_dir primitive-counts.tsv] w]
+# puts $counts "primitive\tcount"
+# foreach name [lsort [dict keys $primitive_counts]] {
+#     puts $counts "$name\t[dict get $primitive_counts $name]"
+# }
+# close $counts
+# set complete [open [file join $build_dir synthesis_complete.txt] w]
+# puts $complete "Vivado [version -short]; $part; PifoMesh; out_of_context; [clock format [clock seconds]]"
+# close $complete
+# puts "PIFO_SYNTHESIS_COMPLETE: $report_dir"
+PIFO_SYNTHESIS_COMPLETE: /data/work/rio-synthesis/cam-shared-fifo-20260909/pe5-v1024-c1024-q256-static-vivado/reports
+INFO: [Common 17-206] Exiting Vivado at Wed Sep  9 13:35:49 2026...
