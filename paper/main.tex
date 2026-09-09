@@ -858,7 +858,6 @@ That is the atomicity the edit grammar demands of every form it admits.
 
 The instructions address PIFOs using opaque ids \texttt{v}
 and children using indices \texttt{i}.
-\xxx[ZG]{if removing the arity: we lways use v for all instructions}
 Instructions can change the PIFO tree topology (the \emph{lifecycle} instructions), set scheduling policies (\emph{discipline} and \emph{survivor}), and associate flows with PIFOs (\emph{classification}).
 Some instructions have preconditions: for example,
 \texttt{emancipate} requires that the subtree is empty.
@@ -870,33 +869,11 @@ Rio does not guarantee progress; it is the control plane's responsibility to ens
 % Two edits with no guard between them may share one transaction, and two that a guard separates may not.
 % The \Retire{} idiom is an example: it waits for emptiness between its \Quiesce{} and its \Remove{}.
 
-
-\xxx[as]{I am also a bit confused about this. For things like \texttt{adopt}, I'm not sure it matters that \texttt{i} ``chang[es] which PIFO an index names''; its semantics are still ``hey hardware, please associate a new child with this PIFO, which I will henceforth refer to child i.'' It doesn't seem to matter that the compiler thinks of i as an ``index'' while the hardware thinks of it as a key in a table. And also, if there are instructions that never affect the hardware, can we just remove them?}
-\xxx[am]{On \texttt{adopt}, your paraphrase is right, and nothing there depends on the word \emph{index}.
-The word becomes relevant only at \texttt{undesignate}, which retargets the parent's index \texttt{k} without telling the parent, and reusing \texttt{k} preserves the parent's per-arm metadata for that slot (\cref{app:lowering}).
-On removing them from the system outright: yes \texttt{change\_arity} can go (since Zhiyuan has told us that a mapping table allocates no slot in advance).
-\texttt{adopt} and \texttt{emancipate} write no PE themselves, but they fix what a later \texttt{map} means, so dropping them means folding the parent--child relation into \texttt{map}'s arguments. Could do it! 
-That last one is a design question for Zhiyuan.}
-\xxx[zhiyuan to am]{we can use v (instead of parent v + i) to point to any PIFO. hardware only need to know next-hop. I think one reason for using i is internally parent PIFO stores index, not v. my point is compiler can take the responsibility to maintain structural info (covers \texttt{adopt} and \texttt{emancipate}) in it's internal and generate the valid sequence. overall, if all ISA insts changes the hardware state, I'd prefer removing this section.}
-Every opcode reaches a PE.
 A PE stores four things: its \texttt{Assoc} set, the flows it admits; a \texttt{Map}, read on enqueue, naming the PIFO each admitted flow enters and the PE that holds it; a next-hop table, read on dequeue, naming the PIFO that each of its indices reaches; and the designated-survivor link (\cref{sec:hw-survivor}).
-The classification opcodes write the first two, the structure opcodes the third, and the survivor opcodes the fourth.
-The discipline opcodes write the rank-assignment logic, and \texttt{spawn} and \texttt{gc} claim and release a PE's PIFO storage.
 
 A node's \(\mathit{z}.\mathit{admit}\) is its \texttt{Assoc} set, its \(\mathit{z}.\mathit{serves}\) is its \texttt{Map} table, its \(\mathit{z}.\mathit{rank}\) is the ranker that \texttt{set\_policy} installs and \texttt{discipline(v)} reads back, and its \(\mathit{z}.\mathit{meta}\) is the metadata that \texttt{set\_arm\_meta} writes.
 Each of \zz's parts is thus the target of an opcode.
-
 \cref{app:lowering} details the lowering of each form.
-As one example, consider the edit $\Add(\mathit{path}, D, \mathit{pol}, m)$.
-Let \texttt{v} be the PIFO at $\mathit{path}$ and let \texttt{n} be its arity.
-The lowering builds the new subtree first:
-for each node,
-it \texttt{spawn}s a PIFO, uses \texttt{set\_policy}, and issues the \texttt{adopt}s to encode parent--child relationships.
-An \texttt{adopt} then attaches the new subtree at the fresh index \texttt{n}, which creates the slot, and a \texttt{set\_arm\_meta} adds the relevant metadatum.
-%
-Finally, the lowering routes traffic into the new arm, which is its counterpart of \(\mathtt{extend}\) in \cref{sec:edit-semantics}.
-For each flow the new arm serves, an \texttt{assoc} at every PIFO from the port root down to the arm's leaf has that PIFO begin accepting the flow, and a \texttt{map} at each of those PIFOs but the leaf records the index that carries the flow onward.
-
 
 \subsection{Atomic Configuration Updates}
 \label{sec:hw-commit}
@@ -960,10 +937,7 @@ The enqueue logic remains unmodified.
 The $\Strictstar$ node is therefore transparent to the tree above it.
 The parent PIFO holds one entry per packet in \emph{either} subtree, and \cref{sec:check-designate} re-reads \cref{sec:controls}'s well-formedness invariant to cover that.
 
-\xxx[zg]{similarly, we can put all pre-conditions to be handled by compiler and introduce in ISA section.}
-As a precondition, the \texttt{undesignate} instruction requires the old subtree to be empty.
-The guard of \cref{sec:sequences} supplies that, and it also gates reclamation.
-\texttt{v}'s PIFOs, and those of everything beneath it, may be released only once the subtree is empty, and a second transaction is guarded on the same emptiness predicate (\cref{sec:hw-isa}).
+The guard of \cref{sec:sequences} gates PIFO reclamation: \texttt{v}'s PIFOs, and those of everything beneath it, may be released only once the subtree is empty, and a second transaction is guarded on the same emptiness predicate.
 After it, nothing in the tree records that a transition happened.
 
 
