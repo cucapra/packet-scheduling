@@ -170,6 +170,20 @@
   \ifnum#5=1 \draw[red, line width=0.9pt] (#2-0.33,#3-0.62) -- (#2+0.21,#3-0.02);\fi
 }
 
+\begin{abstract}
+Push-in-first-out (PIFO) trees are a promising paradigm for efficient programmable packet scheduling.
+This paper studies how to reconfigure these packet schedulers without disrupting live traffic.
+We identify a small set of \emph{policy edits} that PIFO tree hardware, with some minor extensions, can support atomically:
+all packets before the edit see the old scheduling policy,
+and all packets after the edit see the new scheduling policy.
+This set of edits is also complete:
+for any pair of policies, a chain of edits exists to transform between them.
+We define a formal semantics for PIFO trees and their edits, and we use it to prove that our edits consistently implement policy changes on live PIFO state without disrupting in-flight traffic.
+We show how to extend a PIFO tree architecture with two mechanisms to support policy edits:
+atomic state updates and low-cost prioritization between old and new policy subtrees.
+Hardware simulation experiments demonstrate that the system keeps reconfiguration latency low and, during reconfiguration, disrupts traffic less than a stop-the-world approach to reconfiguration.
+\end{abstract}
+
 \begin{document}
 
 \title{Live Reconfiguration of Hierarchical Packet Schedulers}
