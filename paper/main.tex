@@ -1194,23 +1194,10 @@ UIFO adds a level of classes above packets, so that the service order of already
 Rio's edits are defined against a substrate where a rank is fixed at \push{} time (\cref{sec:controls}), and our non-disruption theorem (\cref{thm:nondisruption}) is stated against that.
 A scheduler that can re-rank a backlog may admit ``retroactive'' reconfigurations that Rio does not consider.
 
-\paragraph{Formal models of scheduling}
-
-\citet{Mohan23} give a syntax and an operational semantics for PIFO trees, separating a tree's topology from the control that runs on it.
+\citet{Mohan23} give a syntax and an operational semantics for PIFO trees.
 Our runtime model (\cref{sec:controls}) is adapted from theirs.
-Their question is whether a policy written for one topology can be realized on a tree of a different shape, which they answer by embedding one topology in another.
-Ours is how a tree may be changed while it runs, answered by our edits (\cref{sec:delta-grammar}), by their agreement with the policy the operator reads back (\cref{thm:interplay}), and by what they cost the backlog (\cref{thm:nondisruption}).
-
-Embedding suggests a route to reconfiguration of its own: embed both \(p_1\)'s tree and \(p_2\)'s tree into a common target, and move between the two embeddings.
-The backlog would be laid out under the first embedding and read under the second.
-In our work, we decline to make such a scheduling decision on the operator's behalf (\cref{sec:remove}).
-
-\citet{Campbell26} ask that same portability question of match-action tables rather than of trees.
-They give table transformations an algebra and a type system under which every well-typed transformation denotes one realizable function, and compile a specification into concrete tables for a chosen target.
-The object there is a table and the target is another environment, where ours is a tree and the target is the same tree a moment later.
-
 \citet{Mittal16} ask whether a single scheduling algorithm can replay the schedule that any other algorithm produced, and find that in general none can.
-That compares two schedulers by what they emit, which is how we compare a scheduler with itself across an edit (\cref{thm:nondisruption}).
+That work compares two schedulers using the sequence of packets they emit, which is how we compare scheduling policies across an edit (\cref{thm:nondisruption}).
 
 \section{Conclusion}\label{sec:concl}
 
