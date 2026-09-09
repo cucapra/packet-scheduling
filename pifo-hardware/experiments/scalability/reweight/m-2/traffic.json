@@ -1,0 +1,142 @@
+{
+  "schema": "pifo-traffic-v1",
+  "seed": 20260909,
+  "patterns": [
+    {
+      "name": "Tenant_01_A-before",
+      "flows": [
+        1
+      ],
+      "packets_per_flow": 184,
+      "start_cycle": 0,
+      "packet_rate": {
+        "distribution": "constant",
+        "unit": "packets_per_cycle_per_flow",
+        "value": 0.09166666666666667
+      },
+      "packet_size_bytes": {
+        "distribution": "constant",
+        "value": 48
+      }
+    },
+    {
+      "name": "Tenant_01_B-before",
+      "flows": [
+        2
+      ],
+      "packets_per_flow": 184,
+      "start_cycle": 3,
+      "packet_rate": {
+        "distribution": "constant",
+        "unit": "packets_per_cycle_per_flow",
+        "value": 0.09166666666666667
+      },
+      "packet_size_bytes": {
+        "distribution": "constant",
+        "value": 48
+      }
+    },
+    {
+      "name": "Tenant_02_A-before",
+      "flows": [
+        3
+      ],
+      "packets_per_flow": 183,
+      "start_cycle": 5,
+      "packet_rate": {
+        "distribution": "constant",
+        "unit": "packets_per_cycle_per_flow",
+        "value": 0.09166666666666667
+      },
+      "packet_size_bytes": {
+        "distribution": "constant",
+        "value": 48
+      }
+    },
+    {
+      "name": "Tenant_02_B-before",
+      "flows": [
+        4
+      ],
+      "packets_per_flow": 183,
+      "start_cycle": 8,
+      "packet_rate": {
+        "distribution": "constant",
+        "unit": "packets_per_cycle_per_flow",
+        "value": 0.09166666666666667
+      },
+      "packet_size_bytes": {
+        "distribution": "constant",
+        "value": 48
+      }
+    },
+    {
+      "name": "Tenant_01_A-after",
+      "flows": [
+        1
+      ],
+      "packets_per_flow": 734,
+      "start_cycle": 2000,
+      "packet_rate": {
+        "distribution": "constant",
+        "unit": "packets_per_cycle_per_flow",
+        "value": 0.09166666666666667
+      },
+      "packet_size_bytes": {
+        "distribution": "constant",
+        "value": 48
+      }
+    },
+    {
+      "name": "Tenant_01_B-after",
+      "flows": [
+        2
+      ],
+      "packets_per_flow": 734,
+      "start_cycle": 2003,
+      "packet_rate": {
+        "distribution": "constant",
+        "unit": "packets_per_cycle_per_flow",
+        "value": 0.09166666666666667
+      },
+      "packet_size_bytes": {
+        "distribution": "constant",
+        "value": 48
+      }
+    },
+    {
+      "name": "Tenant_02_A-after",
+      "flows": [
+        3
+      ],
+      "packets_per_flow": 733,
+      "start_cycle": 2005,
+      "packet_rate": {
+        "distribution": "constant",
+        "unit": "packets_per_cycle_per_flow",
+        "value": 0.09166666666666667
+      },
+      "packet_size_bytes": {
+        "distribution": "constant",
+        "value": 48
+      }
+    },
+    {
+      "name": "Tenant_02_B-after",
+      "flows": [
+        4
+      ],
+      "packets_per_flow": 733,
+      "start_cycle": 2008,
+      "packet_rate": {
+        "distribution": "constant",
+        "unit": "packets_per_cycle_per_flow",
+        "value": 0.09166666666666667
+      },
+      "packet_size_bytes": {
+        "distribution": "constant",
+        "value": 48
+      }
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+request,tenants,flows,run,commit,name,start_cycle,commit_cycle,ready_for_next_commit,old_tree_drained_cycle,drain_label,commit_applied_cycle,instruction_count,commit_cycles,bank_replay_cycles
+add,2,4,rio,C1,request,2000,2030,2044,,old-tree-drained,2032,21,32,12
+add,2,4,prefill,C1,request,2000,2112,2280,2433,old-tree-drained,2217,99,217,63
+add,2,4,prefill,C2,collapse,2280,2321,2498,2433,old-tree-drained,2479,41,199,19
+add,2,4,prefill,C3,reclaim,2498,2514,2524,2433,old-tree-drained,2517,16,19,7
+add,2,4,reset,C1,request,2000,2083,2122,2016,old-tree captured (not drained),2086,64,86,36
+add,2,4,reset,C2,retire,3041,3041,3046,2016,old-tree captured (not drained),3045,1,4,1
+add,4,8,rio,C1,request,2000,2030,2044,,old-tree-drained,2032,21,32,12
+add,4,8,prefill,C1,request,2000,2178,2390,2499,old-tree-drained,2283,165,283,107
+add,4,8,prefill,C2,collapse,2390,2466,2611,2499,old-tree-drained,2576,75,186,35
+add,4,8,prefill,C3,reclaim,2611,2636,2649,2499,old-tree-drained,2639,24,28,10
+add,4,8,reset,C1,request,2000,2125,2188,2016,old-tree captured (not drained),2128,106,128,60
+add,4,8,reset,C2,retire,3041,3041,3046,2016,old-tree captured (not drained),3045,1,4,1
+add,8,16,rio,C1,request,2000,2030,2044,,old-tree-drained,2032,21,32,12
+add,8,16,prefill,C1,request,2000,2311,2611,2632,old-tree-drained,2416,299,416,195
+add,8,16,prefill,C2,collapse,2611,2755,2843,2632,old-tree-drained,2776,143,165,67
+add,8,16,prefill,C3,reclaim,2843,2884,2905,2632,old-tree-drained,2886,40,43,19
+add,8,16,reset,C1,request,2000,2210,2321,2016,old-tree captured (not drained),2213,192,213,108
+add,8,16,reset,C2,retire,3042,3042,3047,2016,old-tree captured (not drained),3046,1,4,1
+add,16,32,rio,C1,request,2000,2031,2045,,old-tree-drained,2033,21,33,12
+add,16,32,prefill,C1,request,2000,2578,3054,2899,old-tree-drained,2683,565,683,371
+add,16,32,prefill,C2,collapse,3054,3334,3467,2899,old-tree-drained,3336,279,282,131
+add,16,32,prefill,C3,reclaim,3467,3540,3577,2899,old-tree-drained,3543,72,76,34
+add,16,32,reset,C1,request,2000,2381,2588,2017,old-tree captured (not drained),2384,362,384,204
+add,16,32,reset,C2,retire,3042,3042,3047,2017,old-tree captured (not drained),3046,1,4,1
+add,32,64,rio,C1,request,2000,2031,2045,,old-tree-drained,2033,21,33,12
+add,32,64,prefill,C1,request,2000,3112,3940,3433,old-tree-drained,3217,1099,1217,723
+add,32,64,prefill,C2,collapse,3940,4492,4753,3433,old-tree-drained,4494,551,554,259
+add,32,64,prefill,C3,reclaim,4753,4889,4959,3433,old-tree-drained,4893,136,140,66
+add,32,64,reset,C1,request,2000,2723,3122,2017,old-tree captured (not drained),2726,704,726,396
+add,32,64,reset,C2,retire,3201,3201,3206,2017,old-tree captured (not drained),3205,1,4,1

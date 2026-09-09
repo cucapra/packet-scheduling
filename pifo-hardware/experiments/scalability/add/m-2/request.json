@@ -1,0 +1,99 @@
+{
+  "schema": "pifo-multi-edit-v1",
+  "cycle": 2000,
+  "hardware": {
+    "num_engines": 7,
+    "num_vpifos": 128,
+    "max_packet_priority": 16777216,
+    "fifo_depth": 4,
+    "prefetch_buffer_depth": 16
+  },
+  "before": [
+    {
+      "name": "tenant_01",
+      "slot": 1,
+      "weight": 1,
+      "policy": "SP",
+      "flows": [
+        {
+          "id": 1,
+          "name": "Tenant_01_A"
+        },
+        {
+          "id": 2,
+          "name": "Tenant_01_B"
+        }
+      ]
+    },
+    {
+      "name": "tenant_02",
+      "slot": 2,
+      "weight": 1,
+      "policy": "RR",
+      "flows": [
+        {
+          "id": 3,
+          "name": "Tenant_02_A"
+        },
+        {
+          "id": 4,
+          "name": "Tenant_02_B"
+        }
+      ]
+    }
+  ],
+  "after": [
+    {
+      "name": "tenant_01",
+      "slot": 1,
+      "weight": 1,
+      "policy": "SP",
+      "flows": [
+        {
+          "id": 1,
+          "name": "Tenant_01_A"
+        },
+        {
+          "id": 2,
+          "name": "Tenant_01_B"
+        }
+      ]
+    },
+    {
+      "name": "tenant_02",
+      "slot": 2,
+      "weight": 1,
+      "policy": "RR",
+      "flows": [
+        {
+          "id": 3,
+          "name": "Tenant_02_A"
+        },
+        {
+          "id": 4,
+          "name": "Tenant_02_B"
+        }
+      ]
+    },
+    {
+      "name": "tenant_03",
+      "slot": 3,
+      "weight": 1,
+      "policy": "SP",
+      "flows": [
+        {
+          "id": 5,
+          "name": "Tenant_03_A"
+        },
+        {
+          "id": 6,
+          "name": "Tenant_03_B"
+        }
+      ]
+    }
+  ],
+  "reset_cost": {
+    "teardown_cycles": 512,
+    "install_cycles": 513
+  }
+}

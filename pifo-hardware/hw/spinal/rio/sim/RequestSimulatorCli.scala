@@ -2,6 +2,7 @@ package rio.sim
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path, Paths}
+import scala.jdk.CollectionConverters._
 
 import spinal.core._
 import spinal.core.sim._
@@ -42,11 +43,14 @@ case class RequestSimulatorOptions(
 /** Full request-level PIFO mesh simulation CLI. */
 object RequestSimulatorCli {
   private object HelpRequested extends RuntimeException
+  private type BuildKey = (EngineConfig, Boolean, Boolean, Boolean)
+  private var batchModels: Option[scala.collection.mutable.Map[BuildKey, SimCompiled[PifoMesh]]] = None
 
   private val Usage =
     """Usage: sbt 'runMain rio.sim.RequestSimulatorCli [options]'
       |
       |Workload:
+      |  --batch FILE                 One tab-separated CLI argument list per line; reuse matching builds.
       |  --trace FILE                 Play a canonical request trace CSV.
       |  --live                       Accept requests on a Unix socket until command=end.
       |  --request-socket PATH        Request socket (default /tmp/rio-request.sock).
@@ -99,7 +103,20 @@ object RequestSimulatorCli {
   def main(args: Array[String]): Unit = run(args, evaluation = false)
 
   def run(args: Array[String], evaluation: Boolean): Unit = {
-    try run(parse(args), evaluation)
+    try {
+      if (args.headOption.contains("--batch")) {
+        require(args.length == 2, "--batch requires exactly one argument-list file")
+        val jobs = Files.readAllLines(Paths.get(args(1)), StandardCharsets.UTF_8).asScala
+          .filter(line => line.nonEmpty && !line.startsWith("#")).map(line => parse(line.split("\t", -1)))
+        require(jobs.nonEmpty, "batch contains no simulations")
+        batchModels = Some(scala.collection.mutable.Map.empty)
+        try jobs.zipWithIndex.foreach { case (options, index) =>
+          println(s"[RequestBatch] start ${index + 1}/${jobs.size} output=${options.resultFile.getOrElse("")}")
+          run(options, evaluation)
+          println(s"[RequestBatch] done ${index + 1}/${jobs.size}")
+        } finally batchModels = None
+      } else run(parse(args), evaluation)
+    }
     catch {
       case HelpRequested => println(Usage)
       case error: IllegalArgumentException =>
@@ -197,11 +214,14 @@ object RequestSimulatorCli {
     if (useFlatFifo)
       ReplayEpochCapacity.validate(hardwareConfig, Seq.fill(configuredFlows.size * 2)(ControlCommand.UpdateMapperPre))
 
-    val baseSimConfig = if (options.verilator) SimConfig.withVerilator.workspaceName("PifoMeshVerilator")
-      else SimConfig.withIVerilog.addSimulatorFlag("-g2012")
+    // The evaluation ranker's indexed register writes decode port/flow pairs.
+    val simConfig = SimConfig.withConfig(SpinalConfig(
+      bitVectorWidthMax = math.max(4096, 1 << (2 * hardwareConfig.vpifoIdWidth))))
+    val baseSimConfig = if (options.verilator) simConfig.withVerilator.workspaceName("PifoMeshVerilator")
+      else simConfig.withIVerilog.addSimulatorFlag("-g2012")
     val selectedSimConfig = if (options.waveEnabled) baseSimConfig.withFstWave else baseSimConfig
 
-    selectedSimConfig
+    def compileModel(): SimCompiled[PifoMesh] = selectedSimConfig
       .compile {
         val mesh = if (evaluation) new EvaluationPifoMesh(hardwareConfig) else new PifoMesh(hardwareConfig)
         mesh.guard.emptyPifos.foreach(_.foreach(_.simPublic()))
@@ -245,7 +265,13 @@ object RequestSimulatorCli {
         }
         mesh
       }
-      .doSim { dut =>
+    val key = (hardwareConfig, evaluation, options.verilator, options.waveEnabled)
+    val compiled = batchModels match {
+      case Some(models) => models.getOrElseUpdate(key, compileModel())
+      case None => compileModel()
+    }
+    // doSim constructs a fresh backend instance; only compilation is shared.
+    compiled.doSim { dut =>
         val controller = PifoMeshSimController(hardwareConfig, dut)
         controller.start(options.controlSocketEnabled, options.controlSocketPath, monitorPops = options.verbose)
 

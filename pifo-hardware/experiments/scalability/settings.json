@@ -1,0 +1,22 @@
+{
+  "tenants": [2, 4, 8, 16, 32],
+  "requests": ["add", "reweight"],
+  "runs": ["rio", "prefill", "reset", "control-p2"],
+  "t1": 2000,
+  "end_cycle": 10000,
+  "offered_load": 1.10,
+  "packet_size_bytes": 48,
+  "link_bytes_per_cycle": 16,
+  "queue_depth": 4096,
+  "control_queue_depth": 1024,
+  "max_cycles": 80000,
+  "seed": 20260909,
+  "hardware": {
+    "num_engines": 7,
+    "num_vpifos": 128,
+    "max_packet_priority": 16777216,
+    "fifo_depth": 4,
+    "prefetch_buffer_depth": 16
+  },
+  "untouched_flow_id": 3
+}

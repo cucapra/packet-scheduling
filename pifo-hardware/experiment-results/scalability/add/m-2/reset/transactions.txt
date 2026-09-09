@@ -1,0 +1,110 @@
+schema=pifo-transactions-v1 rootEngine=1 rootVPifoId=1 numEngines=7 numVPifos=128 maxPacketPriority=16777216 fifoDepth=4 prefetchBufferDepth=16
+at=init name=initial mode=direct command=UpdateBrainEngine engineId=1 vPifoId=1 flowId=0 data=4
+at=init name=initial mode=direct command=UpdateRankQuantum engineId=1 vPifoId=1 flowId=1 data=120
+at=init name=initial mode=direct command=UpdateBrainEngine engineId=2 vPifoId=1 flowId=0 data=2
+at=init name=initial mode=direct command=UpdateRankGroup engineId=1 vPifoId=1 flowId=1 data=1
+at=init name=initial mode=direct command=UpdateBrainEngine engineId=3 vPifoId=1 flowId=0 data=3
+at=init name=initial mode=direct command=UpdateBrainFlowState engineId=2 vPifoId=1 flowId=257 data=1
+at=init name=initial mode=direct command=UpdateRankGroup engineId=1 vPifoId=1 flowId=2 data=1
+at=init name=initial mode=direct command=UpdateBrainEngine engineId=3 vPifoId=2 flowId=0 data=3
+at=init name=initial mode=direct command=UpdateBrainFlowState engineId=2 vPifoId=1 flowId=258 data=2
+at=init name=initial mode=direct command=UpdateRankQuantum engineId=1 vPifoId=1 flowId=2 data=120
+at=init name=initial mode=direct command=UpdateBrainEngine engineId=2 vPifoId=2 flowId=0 data=4
+at=init name=initial mode=direct command=UpdateRankGroup engineId=1 vPifoId=1 flowId=3 data=2
+at=init name=initial mode=direct command=UpdateBrainEngine engineId=3 vPifoId=3 flowId=0 data=3
+at=init name=initial mode=direct command=UpdateRankGroup engineId=2 vPifoId=2 flowId=3 data=3
+at=init name=initial mode=direct command=UpdateRankQuantum engineId=2 vPifoId=2 flowId=3 data=120
+at=init name=initial mode=direct command=UpdateRankGroup engineId=1 vPifoId=1 flowId=4 data=2
+at=init name=initial mode=direct command=UpdateBrainEngine engineId=3 vPifoId=4 flowId=0 data=3
+at=init name=initial mode=direct command=UpdateRankGroup engineId=2 vPifoId=2 flowId=4 data=4
+at=init name=initial mode=direct command=UpdateRankQuantum engineId=2 vPifoId=2 flowId=4 data=120
+at=init name=initial mode=direct command=UpdateMapperPre engineId=1 vPifoId=1 flowId=0 data=1
+at=init name=initial mode=direct command=UpdateMapperPost engineId=1 vPifoId=1 flowId=129 data=257
+at=init name=initial mode=direct command=UpdateMapperPre engineId=2 vPifoId=1 flowId=0 data=1
+at=init name=initial mode=direct command=UpdateMapperPost engineId=2 vPifoId=1 flowId=257 data=385
+at=init name=initial mode=direct command=UpdateMapperPre engineId=3 vPifoId=1 flowId=0 data=1
+at=init name=initial mode=direct command=UpdateMapperPost engineId=3 vPifoId=1 flowId=385 data=1
+at=init name=initial mode=direct command=UpdateMapperPre engineId=1 vPifoId=2 flowId=0 data=1
+at=init name=initial mode=direct command=UpdateMapperPost engineId=1 vPifoId=1 flowId=130 data=257
+at=init name=initial mode=direct command=UpdateMapperPre engineId=2 vPifoId=2 flowId=0 data=1
+at=init name=initial mode=direct command=UpdateMapperPost engineId=2 vPifoId=1 flowId=258 data=386
+at=init name=initial mode=direct command=UpdateMapperPre engineId=3 vPifoId=2 flowId=0 data=2
+at=init name=initial mode=direct command=UpdateMapperPost engineId=3 vPifoId=2 flowId=386 data=2
+at=init name=initial mode=direct command=UpdateMapperPre engineId=1 vPifoId=3 flowId=0 data=1
+at=init name=initial mode=direct command=UpdateMapperPost engineId=1 vPifoId=1 flowId=131 data=258
+at=init name=initial mode=direct command=UpdateMapperPre engineId=2 vPifoId=3 flowId=0 data=2
+at=init name=initial mode=direct command=UpdateMapperPost engineId=2 vPifoId=2 flowId=259 data=387
+at=init name=initial mode=direct command=UpdateMapperPre engineId=3 vPifoId=3 flowId=0 data=3
+at=init name=initial mode=direct command=UpdateMapperPost engineId=3 vPifoId=3 flowId=387 data=3
+at=init name=initial mode=direct command=UpdateMapperPre engineId=1 vPifoId=4 flowId=0 data=1
+at=init name=initial mode=direct command=UpdateMapperPost engineId=1 vPifoId=1 flowId=132 data=258
+at=init name=initial mode=direct command=UpdateMapperPre engineId=2 vPifoId=4 flowId=0 data=2
+at=init name=initial mode=direct command=UpdateMapperPost engineId=2 vPifoId=2 flowId=260 data=388
+at=init name=initial mode=direct command=UpdateMapperPre engineId=3 vPifoId=4 flowId=0 data=4
+at=init name=initial mode=direct command=UpdateMapperPost engineId=3 vPifoId=4 flowId=388 data=4
+at=init name=initial mode=direct command=CommitMapper engineId=1 vPifoId=0 flowId=0 data=0
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateBrainEngine engineId=1 vPifoId=1 flowId=0 data=4
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateRankQuantum engineId=1 vPifoId=1 flowId=1 data=120
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateBrainEngine engineId=2 vPifoId=1 flowId=0 data=2
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateRankGroup engineId=1 vPifoId=1 flowId=1 data=1
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateBrainEngine engineId=3 vPifoId=1 flowId=0 data=3
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateBrainFlowState engineId=2 vPifoId=1 flowId=257 data=1
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateRankGroup engineId=1 vPifoId=1 flowId=2 data=1
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateBrainEngine engineId=3 vPifoId=2 flowId=0 data=3
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateBrainFlowState engineId=2 vPifoId=1 flowId=258 data=2
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateRankQuantum engineId=1 vPifoId=1 flowId=2 data=120
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateBrainEngine engineId=2 vPifoId=2 flowId=0 data=4
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateRankGroup engineId=1 vPifoId=1 flowId=3 data=2
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateBrainEngine engineId=3 vPifoId=3 flowId=0 data=3
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateRankGroup engineId=2 vPifoId=2 flowId=3 data=3
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateRankQuantum engineId=2 vPifoId=2 flowId=3 data=120
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateRankGroup engineId=1 vPifoId=1 flowId=4 data=2
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateBrainEngine engineId=3 vPifoId=4 flowId=0 data=3
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateRankGroup engineId=2 vPifoId=2 flowId=4 data=4
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateRankQuantum engineId=2 vPifoId=2 flowId=4 data=120
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateRankQuantum engineId=1 vPifoId=1 flowId=3 data=120
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateBrainEngine engineId=2 vPifoId=3 flowId=0 data=2
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateRankGroup engineId=1 vPifoId=1 flowId=5 data=3
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateBrainEngine engineId=3 vPifoId=5 flowId=0 data=3
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateBrainFlowState engineId=2 vPifoId=3 flowId=261 data=1
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateRankGroup engineId=1 vPifoId=1 flowId=6 data=3
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateBrainEngine engineId=3 vPifoId=6 flowId=0 data=3
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateBrainFlowState engineId=2 vPifoId=3 flowId=262 data=2
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateMapperPre engineId=1 vPifoId=1 flowId=0 data=1
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateMapperPost engineId=1 vPifoId=1 flowId=129 data=257
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateMapperPre engineId=2 vPifoId=1 flowId=0 data=1
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateMapperPost engineId=2 vPifoId=1 flowId=257 data=385
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateMapperPre engineId=3 vPifoId=1 flowId=0 data=1
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateMapperPost engineId=3 vPifoId=1 flowId=385 data=1
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateMapperPre engineId=1 vPifoId=2 flowId=0 data=1
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateMapperPost engineId=1 vPifoId=1 flowId=130 data=257
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateMapperPre engineId=2 vPifoId=2 flowId=0 data=1
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateMapperPost engineId=2 vPifoId=1 flowId=258 data=386
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateMapperPre engineId=3 vPifoId=2 flowId=0 data=2
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateMapperPost engineId=3 vPifoId=2 flowId=386 data=2
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateMapperPre engineId=1 vPifoId=3 flowId=0 data=1
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateMapperPost engineId=1 vPifoId=1 flowId=131 data=258
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateMapperPre engineId=2 vPifoId=3 flowId=0 data=2
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateMapperPost engineId=2 vPifoId=2 flowId=259 data=387
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateMapperPre engineId=3 vPifoId=3 flowId=0 data=3
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateMapperPost engineId=3 vPifoId=3 flowId=387 data=3
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateMapperPre engineId=1 vPifoId=4 flowId=0 data=1
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateMapperPost engineId=1 vPifoId=1 flowId=132 data=258
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateMapperPre engineId=2 vPifoId=4 flowId=0 data=2
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateMapperPost engineId=2 vPifoId=2 flowId=260 data=388
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateMapperPre engineId=3 vPifoId=4 flowId=0 data=4
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateMapperPost engineId=3 vPifoId=4 flowId=388 data=4
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateMapperPre engineId=1 vPifoId=5 flowId=0 data=1
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateMapperPost engineId=1 vPifoId=1 flowId=133 data=259
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateMapperPre engineId=2 vPifoId=5 flowId=0 data=3
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateMapperPost engineId=2 vPifoId=3 flowId=261 data=389
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateMapperPre engineId=3 vPifoId=5 flowId=0 data=5
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateMapperPost engineId=3 vPifoId=5 flowId=389 data=5
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateMapperPre engineId=1 vPifoId=6 flowId=0 data=1
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateMapperPost engineId=1 vPifoId=1 flowId=134 data=259
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateMapperPre engineId=2 vPifoId=6 flowId=0 data=3
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateMapperPost engineId=2 vPifoId=3 flowId=262 data=390
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateMapperPre engineId=3 vPifoId=6 flowId=0 data=6
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=UpdateMapperPost engineId=3 vPifoId=6 flowId=390 data=6
+at=2000 name=request mode=stop_the_world gateFlows=5,6 minStopCycles=1025 command=CommitMapper engineId=1 vPifoId=0 flowId=0 data=0
+at=2000 name=retire mode=direct cleanupOf=request command=CommitMapper engineId=1 vPifoId=0 flowId=0 data=0

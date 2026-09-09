@@ -1,0 +1,1099 @@
+{
+  "schema": "pifo-multi-edit-v1",
+  "cycle": 2000,
+  "hardware": {
+    "num_engines": 7,
+    "num_vpifos": 128,
+    "max_packet_priority": 16777216,
+    "fifo_depth": 4,
+    "prefetch_buffer_depth": 16
+  },
+  "before": [
+    {
+      "name": "tenant_01",
+      "slot": 1,
+      "weight": 1,
+      "policy": "SP",
+      "flows": [
+        {
+          "id": 1,
+          "name": "Tenant_01_A"
+        },
+        {
+          "id": 2,
+          "name": "Tenant_01_B"
+        }
+      ]
+    },
+    {
+      "name": "tenant_02",
+      "slot": 2,
+      "weight": 1,
+      "policy": "RR",
+      "flows": [
+        {
+          "id": 3,
+          "name": "Tenant_02_A"
+        },
+        {
+          "id": 4,
+          "name": "Tenant_02_B"
+        }
+      ]
+    },
+    {
+      "name": "tenant_03",
+      "slot": 3,
+      "weight": 1,
+      "policy": "WFQ",
+      "flows": [
+        {
+          "id": 5,
+          "name": "Tenant_03_A",
+          "weight": 1
+        },
+        {
+          "id": 6,
+          "name": "Tenant_03_B",
+          "weight": 2
+        }
+      ]
+    },
+    {
+      "name": "tenant_04",
+      "slot": 4,
+      "weight": 1,
+      "policy": "SP",
+      "flows": [
+        {
+          "id": 7,
+          "name": "Tenant_04_A"
+        },
+        {
+          "id": 8,
+          "name": "Tenant_04_B"
+        }
+      ]
+    },
+    {
+      "name": "tenant_05",
+      "slot": 5,
+      "weight": 1,
+      "policy": "RR",
+      "flows": [
+        {
+          "id": 9,
+          "name": "Tenant_05_A"
+        },
+        {
+          "id": 10,
+          "name": "Tenant_05_B"
+        }
+      ]
+    },
+    {
+      "name": "tenant_06",
+      "slot": 6,
+      "weight": 1,
+      "policy": "WFQ",
+      "flows": [
+        {
+          "id": 11,
+          "name": "Tenant_06_A",
+          "weight": 1
+        },
+        {
+          "id": 12,
+          "name": "Tenant_06_B",
+          "weight": 2
+        }
+      ]
+    },
+    {
+      "name": "tenant_07",
+      "slot": 7,
+      "weight": 1,
+      "policy": "SP",
+      "flows": [
+        {
+          "id": 13,
+          "name": "Tenant_07_A"
+        },
+        {
+          "id": 14,
+          "name": "Tenant_07_B"
+        }
+      ]
+    },
+    {
+      "name": "tenant_08",
+      "slot": 8,
+      "weight": 1,
+      "policy": "RR",
+      "flows": [
+        {
+          "id": 15,
+          "name": "Tenant_08_A"
+        },
+        {
+          "id": 16,
+          "name": "Tenant_08_B"
+        }
+      ]
+    },
+    {
+      "name": "tenant_09",
+      "slot": 9,
+      "weight": 1,
+      "policy": "WFQ",
+      "flows": [
+        {
+          "id": 17,
+          "name": "Tenant_09_A",
+          "weight": 1
+        },
+        {
+          "id": 18,
+          "name": "Tenant_09_B",
+          "weight": 2
+        }
+      ]
+    },
+    {
+      "name": "tenant_10",
+      "slot": 10,
+      "weight": 1,
+      "policy": "SP",
+      "flows": [
+        {
+          "id": 19,
+          "name": "Tenant_10_A"
+        },
+        {
+          "id": 20,
+          "name": "Tenant_10_B"
+        }
+      ]
+    },
+    {
+      "name": "tenant_11",
+      "slot": 11,
+      "weight": 1,
+      "policy": "RR",
+      "flows": [
+        {
+          "id": 21,
+          "name": "Tenant_11_A"
+        },
+        {
+          "id": 22,
+          "name": "Tenant_11_B"
+        }
+      ]
+    },
+    {
+      "name": "tenant_12",
+      "slot": 12,
+      "weight": 1,
+      "policy": "WFQ",
+      "flows": [
+        {
+          "id": 23,
+          "name": "Tenant_12_A",
+          "weight": 1
+        },
+        {
+          "id": 24,
+          "name": "Tenant_12_B",
+          "weight": 2
+        }
+      ]
+    },
+    {
+      "name": "tenant_13",
+      "slot": 13,
+      "weight": 1,
+      "policy": "SP",
+      "flows": [
+        {
+          "id": 25,
+          "name": "Tenant_13_A"
+        },
+        {
+          "id": 26,
+          "name": "Tenant_13_B"
+        }
+      ]
+    },
+    {
+      "name": "tenant_14",
+      "slot": 14,
+      "weight": 1,
+      "policy": "RR",
+      "flows": [
+        {
+          "id": 27,
+          "name": "Tenant_14_A"
+        },
+        {
+          "id": 28,
+          "name": "Tenant_14_B"
+        }
+      ]
+    },
+    {
+      "name": "tenant_15",
+      "slot": 15,
+      "weight": 1,
+      "policy": "WFQ",
+      "flows": [
+        {
+          "id": 29,
+          "name": "Tenant_15_A",
+          "weight": 1
+        },
+        {
+          "id": 30,
+          "name": "Tenant_15_B",
+          "weight": 2
+        }
+      ]
+    },
+    {
+      "name": "tenant_16",
+      "slot": 16,
+      "weight": 1,
+      "policy": "SP",
+      "flows": [
+        {
+          "id": 31,
+          "name": "Tenant_16_A"
+        },
+        {
+          "id": 32,
+          "name": "Tenant_16_B"
+        }
+      ]
+    },
+    {
+      "name": "tenant_17",
+      "slot": 17,
+      "weight": 1,
+      "policy": "RR",
+      "flows": [
+        {
+          "id": 33,
+          "name": "Tenant_17_A"
+        },
+        {
+          "id": 34,
+          "name": "Tenant_17_B"
+        }
+      ]
+    },
+    {
+      "name": "tenant_18",
+      "slot": 18,
+      "weight": 1,
+      "policy": "WFQ",
+      "flows": [
+        {
+          "id": 35,
+          "name": "Tenant_18_A",
+          "weight": 1
+        },
+        {
+          "id": 36,
+          "name": "Tenant_18_B",
+          "weight": 2
+        }
+      ]
+    },
+    {
+      "name": "tenant_19",
+      "slot": 19,
+      "weight": 1,
+      "policy": "SP",
+      "flows": [
+        {
+          "id": 37,
+          "name": "Tenant_19_A"
+        },
+        {
+          "id": 38,
+          "name": "Tenant_19_B"
+        }
+      ]
+    },
+    {
+      "name": "tenant_20",
+      "slot": 20,
+      "weight": 1,
+      "policy": "RR",
+      "flows": [
+        {
+          "id": 39,
+          "name": "Tenant_20_A"
+        },
+        {
+          "id": 40,
+          "name": "Tenant_20_B"
+        }
+      ]
+    },
+    {
+      "name": "tenant_21",
+      "slot": 21,
+      "weight": 1,
+      "policy": "WFQ",
+      "flows": [
+        {
+          "id": 41,
+          "name": "Tenant_21_A",
+          "weight": 1
+        },
+        {
+          "id": 42,
+          "name": "Tenant_21_B",
+          "weight": 2
+        }
+      ]
+    },
+    {
+      "name": "tenant_22",
+      "slot": 22,
+      "weight": 1,
+      "policy": "SP",
+      "flows": [
+        {
+          "id": 43,
+          "name": "Tenant_22_A"
+        },
+        {
+          "id": 44,
+          "name": "Tenant_22_B"
+        }
+      ]
+    },
+    {
+      "name": "tenant_23",
+      "slot": 23,
+      "weight": 1,
+      "policy": "RR",
+      "flows": [
+        {
+          "id": 45,
+          "name": "Tenant_23_A"
+        },
+        {
+          "id": 46,
+          "name": "Tenant_23_B"
+        }
+      ]
+    },
+    {
+      "name": "tenant_24",
+      "slot": 24,
+      "weight": 1,
+      "policy": "WFQ",
+      "flows": [
+        {
+          "id": 47,
+          "name": "Tenant_24_A",
+          "weight": 1
+        },
+        {
+          "id": 48,
+          "name": "Tenant_24_B",
+          "weight": 2
+        }
+      ]
+    },
+    {
+      "name": "tenant_25",
+      "slot": 25,
+      "weight": 1,
+      "policy": "SP",
+      "flows": [
+        {
+          "id": 49,
+          "name": "Tenant_25_A"
+        },
+        {
+          "id": 50,
+          "name": "Tenant_25_B"
+        }
+      ]
+    },
+    {
+      "name": "tenant_26",
+      "slot": 26,
+      "weight": 1,
+      "policy": "RR",
+      "flows": [
+        {
+          "id": 51,
+          "name": "Tenant_26_A"
+        },
+        {
+          "id": 52,
+          "name": "Tenant_26_B"
+        }
+      ]
+    },
+    {
+      "name": "tenant_27",
+      "slot": 27,
+      "weight": 1,
+      "policy": "WFQ",
+      "flows": [
+        {
+          "id": 53,
+          "name": "Tenant_27_A",
+          "weight": 1
+        },
+        {
+          "id": 54,
+          "name": "Tenant_27_B",
+          "weight": 2
+        }
+      ]
+    },
+    {
+      "name": "tenant_28",
+      "slot": 28,
+      "weight": 1,
+      "policy": "SP",
+      "flows": [
+        {
+          "id": 55,
+          "name": "Tenant_28_A"
+        },
+        {
+          "id": 56,
+          "name": "Tenant_28_B"
+        }
+      ]
+    },
+    {
+      "name": "tenant_29",
+      "slot": 29,
+      "weight": 1,
+      "policy": "RR",
+      "flows": [
+        {
+          "id": 57,
+          "name": "Tenant_29_A"
+        },
+        {
+          "id": 58,
+          "name": "Tenant_29_B"
+        }
+      ]
+    },
+    {
+      "name": "tenant_30",
+      "slot": 30,
+      "weight": 1,
+      "policy": "WFQ",
+      "flows": [
+        {
+          "id": 59,
+          "name": "Tenant_30_A",
+          "weight": 1
+        },
+        {
+          "id": 60,
+          "name": "Tenant_30_B",
+          "weight": 2
+        }
+      ]
+    },
+    {
+      "name": "tenant_31",
+      "slot": 31,
+      "weight": 1,
+      "policy": "SP",
+      "flows": [
+        {
+          "id": 61,
+          "name": "Tenant_31_A"
+        },
+        {
+          "id": 62,
+          "name": "Tenant_31_B"
+        }
+      ]
+    },
+    {
+      "name": "tenant_32",
+      "slot": 32,
+      "weight": 1,
+      "policy": "RR",
+      "flows": [
+        {
+          "id": 63,
+          "name": "Tenant_32_A"
+        },
+        {
+          "id": 64,
+          "name": "Tenant_32_B"
+        }
+      ]
+    }
+  ],
+  "after": [
+    {
+      "name": "tenant_01",
+      "slot": 1,
+      "weight": 1,
+      "policy": "SP",
+      "flows": [
+        {
+          "id": 1,
+          "name": "Tenant_01_A"
+        },
+        {
+          "id": 2,
+          "name": "Tenant_01_B"
+        }
+      ]
+    },
+    {
+      "name": "tenant_02",
+      "slot": 2,
+      "weight": 1,
+      "policy": "RR",
+      "flows": [
+        {
+          "id": 3,
+          "name": "Tenant_02_A"
+        },
+        {
+          "id": 4,
+          "name": "Tenant_02_B"
+        }
+      ]
+    },
+    {
+      "name": "tenant_03",
+      "slot": 3,
+      "weight": 1,
+      "policy": "WFQ",
+      "flows": [
+        {
+          "id": 5,
+          "name": "Tenant_03_A",
+          "weight": 1
+        },
+        {
+          "id": 6,
+          "name": "Tenant_03_B",
+          "weight": 2
+        }
+      ]
+    },
+    {
+      "name": "tenant_04",
+      "slot": 4,
+      "weight": 1,
+      "policy": "SP",
+      "flows": [
+        {
+          "id": 7,
+          "name": "Tenant_04_A"
+        },
+        {
+          "id": 8,
+          "name": "Tenant_04_B"
+        }
+      ]
+    },
+    {
+      "name": "tenant_05",
+      "slot": 5,
+      "weight": 1,
+      "policy": "RR",
+      "flows": [
+        {
+          "id": 9,
+          "name": "Tenant_05_A"
+        },
+        {
+          "id": 10,
+          "name": "Tenant_05_B"
+        }
+      ]
+    },
+    {
+      "name": "tenant_06",
+      "slot": 6,
+      "weight": 1,
+      "policy": "WFQ",
+      "flows": [
+        {
+          "id": 11,
+          "name": "Tenant_06_A",
+          "weight": 1
+        },
+        {
+          "id": 12,
+          "name": "Tenant_06_B",
+          "weight": 2
+        }
+      ]
+    },
+    {
+      "name": "tenant_07",
+      "slot": 7,
+      "weight": 1,
+      "policy": "SP",
+      "flows": [
+        {
+          "id": 13,
+          "name": "Tenant_07_A"
+        },
+        {
+          "id": 14,
+          "name": "Tenant_07_B"
+        }
+      ]
+    },
+    {
+      "name": "tenant_08",
+      "slot": 8,
+      "weight": 1,
+      "policy": "RR",
+      "flows": [
+        {
+          "id": 15,
+          "name": "Tenant_08_A"
+        },
+        {
+          "id": 16,
+          "name": "Tenant_08_B"
+        }
+      ]
+    },
+    {
+      "name": "tenant_09",
+      "slot": 9,
+      "weight": 1,
+      "policy": "WFQ",
+      "flows": [
+        {
+          "id": 17,
+          "name": "Tenant_09_A",
+          "weight": 1
+        },
+        {
+          "id": 18,
+          "name": "Tenant_09_B",
+          "weight": 2
+        }
+      ]
+    },
+    {
+      "name": "tenant_10",
+      "slot": 10,
+      "weight": 1,
+      "policy": "SP",
+      "flows": [
+        {
+          "id": 19,
+          "name": "Tenant_10_A"
+        },
+        {
+          "id": 20,
+          "name": "Tenant_10_B"
+        }
+      ]
+    },
+    {
+      "name": "tenant_11",
+      "slot": 11,
+      "weight": 1,
+      "policy": "RR",
+      "flows": [
+        {
+          "id": 21,
+          "name": "Tenant_11_A"
+        },
+        {
+          "id": 22,
+          "name": "Tenant_11_B"
+        }
+      ]
+    },
+    {
+      "name": "tenant_12",
+      "slot": 12,
+      "weight": 1,
+      "policy": "WFQ",
+      "flows": [
+        {
+          "id": 23,
+          "name": "Tenant_12_A",
+          "weight": 1
+        },
+        {
+          "id": 24,
+          "name": "Tenant_12_B",
+          "weight": 2
+        }
+      ]
+    },
+    {
+      "name": "tenant_13",
+      "slot": 13,
+      "weight": 1,
+      "policy": "SP",
+      "flows": [
+        {
+          "id": 25,
+          "name": "Tenant_13_A"
+        },
+        {
+          "id": 26,
+          "name": "Tenant_13_B"
+        }
+      ]
+    },
+    {
+      "name": "tenant_14",
+      "slot": 14,
+      "weight": 1,
+      "policy": "RR",
+      "flows": [
+        {
+          "id": 27,
+          "name": "Tenant_14_A"
+        },
+        {
+          "id": 28,
+          "name": "Tenant_14_B"
+        }
+      ]
+    },
+    {
+      "name": "tenant_15",
+      "slot": 15,
+      "weight": 1,
+      "policy": "WFQ",
+      "flows": [
+        {
+          "id": 29,
+          "name": "Tenant_15_A",
+          "weight": 1
+        },
+        {
+          "id": 30,
+          "name": "Tenant_15_B",
+          "weight": 2
+        }
+      ]
+    },
+    {
+      "name": "tenant_16",
+      "slot": 16,
+      "weight": 1,
+      "policy": "SP",
+      "flows": [
+        {
+          "id": 31,
+          "name": "Tenant_16_A"
+        },
+        {
+          "id": 32,
+          "name": "Tenant_16_B"
+        }
+      ]
+    },
+    {
+      "name": "tenant_17",
+      "slot": 17,
+      "weight": 1,
+      "policy": "RR",
+      "flows": [
+        {
+          "id": 33,
+          "name": "Tenant_17_A"
+        },
+        {
+          "id": 34,
+          "name": "Tenant_17_B"
+        }
+      ]
+    },
+    {
+      "name": "tenant_18",
+      "slot": 18,
+      "weight": 1,
+      "policy": "WFQ",
+      "flows": [
+        {
+          "id": 35,
+          "name": "Tenant_18_A",
+          "weight": 1
+        },
+        {
+          "id": 36,
+          "name": "Tenant_18_B",
+          "weight": 2
+        }
+      ]
+    },
+    {
+      "name": "tenant_19",
+      "slot": 19,
+      "weight": 1,
+      "policy": "SP",
+      "flows": [
+        {
+          "id": 37,
+          "name": "Tenant_19_A"
+        },
+        {
+          "id": 38,
+          "name": "Tenant_19_B"
+        }
+      ]
+    },
+    {
+      "name": "tenant_20",
+      "slot": 20,
+      "weight": 1,
+      "policy": "RR",
+      "flows": [
+        {
+          "id": 39,
+          "name": "Tenant_20_A"
+        },
+        {
+          "id": 40,
+          "name": "Tenant_20_B"
+        }
+      ]
+    },
+    {
+      "name": "tenant_21",
+      "slot": 21,
+      "weight": 1,
+      "policy": "WFQ",
+      "flows": [
+        {
+          "id": 41,
+          "name": "Tenant_21_A",
+          "weight": 1
+        },
+        {
+          "id": 42,
+          "name": "Tenant_21_B",
+          "weight": 2
+        }
+      ]
+    },
+    {
+      "name": "tenant_22",
+      "slot": 22,
+      "weight": 1,
+      "policy": "SP",
+      "flows": [
+        {
+          "id": 43,
+          "name": "Tenant_22_A"
+        },
+        {
+          "id": 44,
+          "name": "Tenant_22_B"
+        }
+      ]
+    },
+    {
+      "name": "tenant_23",
+      "slot": 23,
+      "weight": 1,
+      "policy": "RR",
+      "flows": [
+        {
+          "id": 45,
+          "name": "Tenant_23_A"
+        },
+        {
+          "id": 46,
+          "name": "Tenant_23_B"
+        }
+      ]
+    },
+    {
+      "name": "tenant_24",
+      "slot": 24,
+      "weight": 1,
+      "policy": "WFQ",
+      "flows": [
+        {
+          "id": 47,
+          "name": "Tenant_24_A",
+          "weight": 1
+        },
+        {
+          "id": 48,
+          "name": "Tenant_24_B",
+          "weight": 2
+        }
+      ]
+    },
+    {
+      "name": "tenant_25",
+      "slot": 25,
+      "weight": 1,
+      "policy": "SP",
+      "flows": [
+        {
+          "id": 49,
+          "name": "Tenant_25_A"
+        },
+        {
+          "id": 50,
+          "name": "Tenant_25_B"
+        }
+      ]
+    },
+    {
+      "name": "tenant_26",
+      "slot": 26,
+      "weight": 1,
+      "policy": "RR",
+      "flows": [
+        {
+          "id": 51,
+          "name": "Tenant_26_A"
+        },
+        {
+          "id": 52,
+          "name": "Tenant_26_B"
+        }
+      ]
+    },
+    {
+      "name": "tenant_27",
+      "slot": 27,
+      "weight": 1,
+      "policy": "WFQ",
+      "flows": [
+        {
+          "id": 53,
+          "name": "Tenant_27_A",
+          "weight": 1
+        },
+        {
+          "id": 54,
+          "name": "Tenant_27_B",
+          "weight": 2
+        }
+      ]
+    },
+    {
+      "name": "tenant_28",
+      "slot": 28,
+      "weight": 1,
+      "policy": "SP",
+      "flows": [
+        {
+          "id": 55,
+          "name": "Tenant_28_A"
+        },
+        {
+          "id": 56,
+          "name": "Tenant_28_B"
+        }
+      ]
+    },
+    {
+      "name": "tenant_29",
+      "slot": 29,
+      "weight": 1,
+      "policy": "RR",
+      "flows": [
+        {
+          "id": 57,
+          "name": "Tenant_29_A"
+        },
+        {
+          "id": 58,
+          "name": "Tenant_29_B"
+        }
+      ]
+    },
+    {
+      "name": "tenant_30",
+      "slot": 30,
+      "weight": 1,
+      "policy": "WFQ",
+      "flows": [
+        {
+          "id": 59,
+          "name": "Tenant_30_A",
+          "weight": 1
+        },
+        {
+          "id": 60,
+          "name": "Tenant_30_B",
+          "weight": 2
+        }
+      ]
+    },
+    {
+      "name": "tenant_31",
+      "slot": 31,
+      "weight": 1,
+      "policy": "SP",
+      "flows": [
+        {
+          "id": 61,
+          "name": "Tenant_31_A"
+        },
+        {
+          "id": 62,
+          "name": "Tenant_31_B"
+        }
+      ]
+    },
+    {
+      "name": "tenant_32",
+      "slot": 32,
+      "weight": 1,
+      "policy": "RR",
+      "flows": [
+        {
+          "id": 63,
+          "name": "Tenant_32_A"
+        },
+        {
+          "id": 64,
+          "name": "Tenant_32_B"
+        }
+      ]
+    },
+    {
+      "name": "tenant_33",
+      "slot": 33,
+      "weight": 1,
+      "policy": "SP",
+      "flows": [
+        {
+          "id": 65,
+          "name": "Tenant_33_A"
+        },
+        {
+          "id": 66,
+          "name": "Tenant_33_B"
+        }
+      ]
+    }
+  ],
+  "reset_cost": {
+    "teardown_cycles": 512,
+    "install_cycles": 513
+  }
+}

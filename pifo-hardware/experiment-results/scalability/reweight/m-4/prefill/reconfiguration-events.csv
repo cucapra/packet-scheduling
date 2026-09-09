@@ -1,0 +1,4 @@
+event,name,mode,from_policy,to_policy,instruction_count,scheduled_cycle,start_cycle,commit_cycle,finish_cycle,drain_cycle,drain_duration_cycles,dropped_packets,retained_packets,peak_buffer_occupancy_packets,minimum_stop_cycles,stop_duration_cycles,commit_applied_cycle,commit_cycles,bank_cleanup_cycles,install_finish_cycle,resume_cycle,cleanup_start_cycle,cleanup_commit_cycle,cleanup_applied_cycle,cleanup_finish_cycle,cleanup_instruction_count,cleanup_commit_cycles,cleanup_bank_cleanup_cycles,cleanup_of,prefilled_tokens
+reconfiguration,request,stop_the_world_pop,,,139,2000,2000,2152,2581,2473,321,0,70,165,0,,2257,257,91,2348,2257,2348,2422,2548,2581,73,200,33,,70
+cleanup_commit,collapse,direct,,,73,2000,2348,2422,2613,,,0,0,0,0,,2548,200,33,2581,,2581,2602,2604,2613,20,23,9,request,
+cleanup_commit,reclaim,direct,,,20,2000,2581,2602,2613,,,0,0,0,0,,2604,23,9,2613,,,,,,,,,collapse,
