@@ -1,4 +1,4 @@
 event,name,mode,from_policy,to_policy,instruction_count,scheduled_cycle,start_cycle,commit_cycle,finish_cycle,drain_cycle,drain_duration_cycles,dropped_packets,retained_packets,peak_buffer_occupancy_packets,minimum_stop_cycles,stop_duration_cycles,commit_applied_cycle,commit_cycles,bank_cleanup_cycles,install_finish_cycle,resume_cycle,cleanup_start_cycle,cleanup_commit_cycle,cleanup_applied_cycle,cleanup_finish_cycle,cleanup_instruction_count,cleanup_commit_cycles,cleanup_bank_cleanup_cycles,cleanup_of,prefilled_tokens
-reconfiguration,replace,stop_the_world_pop,p1,p2b,58,2500,2500,2566,4161,4127,1561,0,253,486,0,,3362,862,49,3411,3362,3411,3432,4150,4161,20,739,11,,253
-cleanup_commit,replace-cleanup,direct,,,20,2500,3411,3432,4182,,,0,0,0,0,,4150,739,11,4161,,4161,4172,4175,4182,11,14,7,replace,
-cleanup_commit,replace-reclaim,direct,,,11,2500,4161,4172,4182,,,0,0,0,0,,4175,14,7,4182,,,,,,,,,replace-cleanup,
+reconfiguration,replace,stop_the_world_pop,p1,p2b,58,2500,2500,2567,3664,3630,1063,0,170,334,0,,3114,614,49,3163,3114,3163,3183,3653,3664,20,490,11,,170
+cleanup_commit,replace-cleanup,direct,,,20,2500,3163,3183,3685,,,0,0,0,0,,3653,490,11,3664,,3664,3675,3678,3685,11,14,7,replace,
+cleanup_commit,replace-reclaim,direct,,,11,2500,3664,3675,3685,,,0,0,0,0,,3678,14,7,3685,,,,,,,,,replace-cleanup,

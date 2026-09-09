@@ -23,7 +23,7 @@ SETTINGS = {'runs': ['link', 'reserved', 'copy'],
  'titles': {'link': 'Strict* link',
             'reserved': 'Reserved-PE Strict wrapper',
             'copy': 'Copy + prefill Strict wrapper'},
- 'title': 'zoom: same whole-tree transition, 207 packets at t₁'}
+ 'title': 'zoom: same whole-tree transition, 141 packets at t₁'}
 
 def timeline(axis, runs):
     backgrounds = ("#dbeafe", "#ffedd5", "#dcfce7")

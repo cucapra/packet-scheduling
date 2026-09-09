@@ -1,8 +1,8 @@
 motivating-example validation: PASS
-r1-add: packets=2136 dropped=0 instructions=7 start=2000 commit=2012 drain=2014 finish=2023 (double-buffer cleanup done) commit_cycles=14 cleanup_instructions=1 cleanup_commit_cycles=4
-r2-stop-the-world: packets=2136 dropped=0 instructions=25 start=2000 commit=2039 drain=2012 finish=3040 (double-buffer cleanup done) commit_cycles=42 cleanup_instructions=1 cleanup_commit_cycles=3
-r3-whole-tree: packets=2136 dropped=0 instructions=26 start=2000 commit=2031 drain=2633 finish=2659 (double-buffer cleanup done) commit_cycles=34 cleanup_instructions=16 cleanup_commit_cycles=601
-r4-confined: packets=2136 dropped=0 instructions=16 start=2000 commit=2018 drain=3033 finish=3041 (double-buffer cleanup done) commit_cycles=21 cleanup_instructions=5 cleanup_commit_cycles=1007
-drain duration: R3=602 cycles, R4=1015 cycles
-R2 lossless stop: retained=203 peak_buffer=483 duration=1024 cycles minimum=1024 cycles output_gap=1044 cycles
-post-start zoom max delay: R1=20, R2=1055, R3=613, R4=21 cycles; R3-R4 gap=592 cycles
+r1-add: packets=2136 dropped=0 instructions=7 start=2000 commit=2013 drain=2015 finish=2024 (double-buffer cleanup done) commit_cycles=15 cleanup_instructions=1 cleanup_commit_cycles=4
+r2-stop-the-world: packets=2136 dropped=0 instructions=25 start=2000 commit=2040 drain=2012 finish=3040 (double-buffer cleanup done) commit_cycles=43 cleanup_instructions=1 cleanup_commit_cycles=4
+r3-whole-tree: packets=2136 dropped=0 instructions=26 start=2000 commit=2032 drain=2431 finish=2457 (double-buffer cleanup done) commit_cycles=35 cleanup_instructions=16 cleanup_commit_cycles=398
+r4-confined: packets=2136 dropped=0 instructions=16 start=2000 commit=2026 drain=2696 finish=2704 (double-buffer cleanup done) commit_cycles=28 cleanup_instructions=5 cleanup_commit_cycles=663
+drain duration: R3=399 cycles, R4=670 cycles
+R2 lossless stop: retained=137 peak_buffer=416 duration=1024 cycles minimum=1024 cycles output_gap=1041 cycles
+post-start zoom max delay: R1=22, R2=1050, R3=411, R4=23 cycles; R3-R4 gap=388 cycles

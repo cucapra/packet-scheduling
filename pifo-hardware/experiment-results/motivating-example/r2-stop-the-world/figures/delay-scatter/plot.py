@@ -22,27 +22,27 @@ COLORS = ('#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e3
  '#17becf')
 PANELS = [{'title': 'R2: stop the world',
   'start': 2000,
-  'markers': [(0, '#1f77b4', '-', 'C1 start'), (39, '#ff7f0e', '--', 'C1 commit accepted'),
-              (58, '#2ca02c', '-.', 'C1 ready_for_next_commit'),
+  'markers': [(0, '#1f77b4', '-', 'C1 start'), (40, '#ff7f0e', '--', 'C1 commit accepted'),
+              (60, '#2ca02c', '-.', 'C1 ready_for_next_commit'),
               (12, '#9467bd', ':', 'C1 old-tree captured (not drained)'),
               (1036, '#1f77b4', '-', 'C2 start'), (1036, '#ff7f0e', '--', 'C2 commit accepted'),
               (1040, '#2ca02c', '-.', 'C2 ready_for_next_commit'),
               (12, '#9467bd', ':', 'C2 old-tree captured (not drained)'),
               (1036, '0.4', '--', 'traffic resumed')],
-  'spans': [(0, 58, '#dbeafe', 'C1: install commit'),
+  'spans': [(0, 60, '#dbeafe', 'C1: install commit'),
             (1036, 1040, '#ffedd5', 'C2: cleanup commit')],
-  'notes': 'C1: start=2000  commit accepted=2039  ready_for_next_commit=2058\n'
+  'notes': 'C1: start=2000  commit accepted=2040  ready_for_next_commit=2060\n'
            'C2: start=3036  commit accepted=3036  ready_for_next_commit=3040\n'
            'old tree captured=2012 (shared by C1/C2)\n'
-           'published: install=2042, cleanup=3039\n'
-           'config=25 inst / 42 cycles to publication\n'
-           'cleanup=1 inst / 3 cycles to publication (guard wait included)\n'
-           'bank replay: install=16, cleanup=1 cycles; ≤1 instruction accepted/cycle\n'
-           'resumed=3036  retained=203  peak buffer=483 packets  stop=1024 cycles',
-  'accounting': 'config=25 inst / 42 cycles to publication\n'
-                'cleanup=1 inst / 3 cycles to publication (guard wait included)\n'
-                'bank replay: install=16, cleanup=1 cycles\n'
-                'STW stop=1024 cycles; retained=203; peak buffer=483 packets'}]
+           'published: install=2043, cleanup=3040\n'
+           'config=25 inst / 43 cycles to publication\n'
+           'cleanup=1 inst / 4 cycles to publication (guard wait included)\n'
+           'bank replay: install=17, cleanup=0 cycles; ≤1 instruction accepted/cycle\n'
+           'resumed=3036  retained=137  peak buffer=416 packets  stop=1024 cycles',
+  'accounting': 'config=25 inst / 43 cycles to publication\n'
+                'cleanup=1 inst / 4 cycles to publication (guard wait included)\n'
+                'bank replay: install=17, cleanup=0 cycles\n'
+                'STW stop=1024 cycles; retained=137; peak buffer=416 packets'}]
 
 with (HERE / 'data.csv').open(newline="", encoding="utf-8-sig") as stream:
     rows = list(csv.DictReader(stream))

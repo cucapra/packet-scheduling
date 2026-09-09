@@ -197,7 +197,7 @@ class StandalonePlotTest(unittest.TestCase):
         self.assertTrue(all(row["size_bytes"] == "" for row in archive))
         current = read_packet_outcomes(root / "rr-to-sp/packet-outcomes.csv")
         self.assertEqual(len(current), 480)
-        self.assertEqual(current[1].pop_cycle, 23)
+        self.assertEqual(current[1].pop_cycle, 25)
         large = read_packet_outcomes(root / "large-tree-rr-to-sp/rr-to-sp-packets.csv")
         self.assertEqual(len(large), 120)
         self.assertEqual({p.size_bytes for p in large}, {512})

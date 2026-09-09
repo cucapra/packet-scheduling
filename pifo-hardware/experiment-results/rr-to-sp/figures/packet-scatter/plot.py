@@ -21,23 +21,23 @@ FLOW_LABELS = {1: 'A', 2: 'B'}
 COLORS = ('#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22',
  '#17becf')
 PANELS = [{'title': 'RR → SP',
-  'start': 601,
-  'markers': [(0, '#1f77b4', '-', 'C1 start'), (15, '#ff7f0e', '--', 'C1 commit accepted'),
-              (23, '#2ca02c', '-.', 'C1 ready_for_next_commit'),
-              (312, '#9467bd', ':', 'C1 old-tree-drained'), (23, '#1f77b4', '-', 'C2 start'),
-              (30, '#ff7f0e', '--', 'C2 commit accepted'),
-              (322, '#2ca02c', '-.', 'C2 ready_for_next_commit'),
-              (312, '#9467bd', ':', 'C2 old-tree-drained')],
-  'spans': [(0, 23, '#dbeafe', 'C1: install commit'), (23, 322, '#ffedd5', 'C2: cleanup commit')],
-  'notes': 'C1: start=601  commit accepted=616  ready_for_next_commit=624\n'
-           'C2: start=624  commit accepted=631  ready_for_next_commit=923\n'
-           'old tree drained=913 (shared by C1/C2)\n'
-           'published: install=619, cleanup=920\n'
-           'config=9 inst / 18 cycles to publication\n'
-           'cleanup=6 inst / 296 cycles to publication (guard wait included)\n'
+  'start': 600,
+  'markers': [(0, '#1f77b4', '-', 'C1 start'), (19, '#ff7f0e', '--', 'C1 commit accepted'),
+              (26, '#2ca02c', '-.', 'C1 ready_for_next_commit'),
+              (299, '#9467bd', ':', 'C1 old-tree-drained'), (26, '#1f77b4', '-', 'C2 start'),
+              (33, '#ff7f0e', '--', 'C2 commit accepted'),
+              (309, '#2ca02c', '-.', 'C2 ready_for_next_commit'),
+              (299, '#9467bd', ':', 'C2 old-tree-drained')],
+  'spans': [(0, 26, '#dbeafe', 'C1: install commit'), (26, 309, '#ffedd5', 'C2: cleanup commit')],
+  'notes': 'C1: start=600  commit accepted=619  ready_for_next_commit=626\n'
+           'C2: start=626  commit accepted=633  ready_for_next_commit=909\n'
+           'old tree drained=899 (shared by C1/C2)\n'
+           'published: install=621, cleanup=906\n'
+           'config=9 inst / 21 cycles to publication\n'
+           'cleanup=6 inst / 280 cycles to publication (guard wait included)\n'
            'bank replay: install=5, cleanup=3 cycles; ≤1 instruction accepted/cycle',
-  'accounting': 'config=9 inst / 18 cycles to publication\n'
-                'cleanup=6 inst / 296 cycles to publication (guard wait included)\n'
+  'accounting': 'config=9 inst / 21 cycles to publication\n'
+                'cleanup=6 inst / 280 cycles to publication (guard wait included)\n'
                 'bank replay: install=5, cleanup=3 cycles'}]
 
 with (HERE / 'data.csv').open(newline="", encoding="utf-8-sig") as stream:

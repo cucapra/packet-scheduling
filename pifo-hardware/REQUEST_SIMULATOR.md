@@ -15,7 +15,8 @@ empty-PIFO response.
 
 For every admitted request, the harness inserts one token into each engine, matching the existing Scala simulator. The
 request is then stored in a bounded FIFO selected by `global_flow_id`. Root pops are issued at the hardware's
-three-cycle accepted initiation interval. Terminal scheduler tokens enter the configured prefetch window; the request
+three-cycle accepted initiation interval. The dequeue driver checks readiness on falling edges, after the rising-edge
+cycle counter update. Terminal scheduler tokens enter the configured prefetch window; the request
 model independently serializes packet bytes at `ceil(size_bytes / link_bytes_per_cycle)` cycles. This reflects the
 real split between compact scheduling tokens and the external packet-data link.
 

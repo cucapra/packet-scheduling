@@ -379,11 +379,12 @@ final class PifoRequestSimulator(
             rootTokenReadyCycles.dequeue()
             controller.requestDequeue(settings.rootEngineId, settings.rootVPifoId)
             // requestDequeue returns on this cycle's falling edge. Waiting two
-            // more rising edges before presenting the next valid makes the
+            // more falling edges before presenting the next valid makes the
             // accepted root-pop interval exactly three cycles.
             nextRootRequestCycle = currentCycle + 2
           } else {
-            dut.clockDomain.waitRisingEdge()
+            // Read currentCycle after the rising-edge observer has updated it.
+            dut.clockDomain.waitFallingEdge()
           }
         }
       }

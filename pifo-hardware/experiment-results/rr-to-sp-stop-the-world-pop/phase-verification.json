@@ -2,48 +2,48 @@
   "schema_version": 1,
   "passed": false,
   "event": {
-    "start_cycle": 600,
-    "commit_cycle": 633,
-    "drain_cycle": 1924,
-    "finish_cycle": 1972,
-    "staging_cycles": 33,
-    "drain_cycles": 1291,
+    "start_cycle": 601,
+    "commit_cycle": 635,
+    "drain_cycle": 1873,
+    "finish_cycle": 1920,
+    "staging_cycles": 34,
+    "drain_cycles": 1238,
     "synchronization_cycles": 18,
     "instruction_count": 25,
-    "commit_applied_cycle": 816,
-    "commit_cycles": 216,
+    "commit_applied_cycle": 811,
+    "commit_cycles": 210,
     "cleanup_instruction_count": 17,
-    "cleanup_commit_cycles": 1111,
+    "cleanup_commit_cycles": 1064,
     "cleanup_bank_cleanup_cycles": 10,
-    "prefilled_tokens": 148,
-    "resume_cycle": 816,
+    "prefilled_tokens": 142,
+    "resume_cycle": 811,
     "commits": [
       {
         "name": "policy-change",
-        "start_cycle": 600,
-        "commit_cycle": 633,
-        "commit_applied_cycle": 816,
-        "install_finish_cycle": 834,
+        "start_cycle": 601,
+        "commit_cycle": 635,
+        "commit_applied_cycle": 811,
+        "install_finish_cycle": 829,
         "instruction_count": 25,
-        "commit_cycles": 216,
+        "commit_cycles": 210,
         "bank_cleanup_cycles": 18
       },
       {
         "name": "policy-change-cleanup",
-        "start_cycle": 834,
-        "commit_cycle": 852,
-        "commit_applied_cycle": 1945,
-        "install_finish_cycle": 1955,
+        "start_cycle": 829,
+        "commit_cycle": 847,
+        "commit_applied_cycle": 1893,
+        "install_finish_cycle": 1903,
         "instruction_count": 17,
-        "commit_cycles": 1111,
+        "commit_cycles": 1064,
         "bank_cleanup_cycles": 10
       },
       {
         "name": "policy-change-reclaim",
-        "start_cycle": 1955,
-        "commit_cycle": 1964,
-        "commit_applied_cycle": 1967,
-        "install_finish_cycle": 1972,
+        "start_cycle": 1903,
+        "commit_cycle": 1912,
+        "commit_applied_cycle": 1915,
+        "install_finish_cycle": 1920,
         "instruction_count": 9,
         "commit_cycles": 12,
         "bank_cleanup_cycles": 5
@@ -52,13 +52,13 @@
   },
   "packet_counts": {
     "total": 480,
-    "old_epoch": 249,
-    "new_epoch": 231,
-    "old_backlog_at_commit": 148,
+    "old_epoch": 250,
+    "new_epoch": 230,
+    "old_backlog_at_commit": 142,
     "admitted_on_commit_edge_as_old": 0,
-    "before_commit": 101,
-    "during_drain": 146,
-    "after_drain": 233
+    "before_commit": 108,
+    "during_drain": 140,
+    "after_drain": 232
   },
   "sp_priorities": {
     "1": 1,
@@ -74,35 +74,35 @@
           "id": "serialized_configuration_rate",
           "description": "cycle span from first through final acceptance at no more than one instruction per cycle",
           "expected": ">= 24",
-          "observed": 33,
+          "observed": 34,
           "passed": true
         },
         {
           "id": "staging_duration",
           "description": "cycles from package start to CommitMapper acceptance",
           "expected": ">= 10",
-          "observed": 33,
+          "observed": 34,
           "passed": true
         },
         {
           "id": "old_backlog_at_commit",
           "description": "old-tree packets still pending when commit is accepted",
           "expected": ">= 64",
-          "observed": 148,
+          "observed": 142,
           "passed": true
         },
         {
           "id": "drain_duration",
           "description": "cycles from commit acceptance until the old root drains",
           "expected": ">= 1000",
-          "observed": 1291,
+          "observed": 1238,
           "passed": true
         },
         {
           "id": "prefill_matches_old_backlog",
           "description": "hardware SP-barrier tokens equal old packets pending at commit",
-          "expected": 148,
-          "observed": 148,
+          "expected": 142,
+          "observed": 142,
           "passed": true
         },
         {
@@ -123,7 +123,7 @@
           "id": "precommit_packet_count",
           "description": "packets completed before commit",
           "expected": ">= 6",
-          "observed": 101,
+          "observed": 108,
           "passed": true
         },
         {
@@ -151,7 +151,7 @@
           "id": "drain_phase_packet_count",
           "description": "packets completed from commit until drain",
           "expected": ">= 6",
-          "observed": 146,
+          "observed": 140,
           "passed": true
         },
         {
@@ -186,7 +186,7 @@
           "id": "postdrain_packet_count",
           "description": "packets completed after drain",
           "expected": ">= 6",
-          "observed": 233,
+          "observed": 232,
           "passed": true
         },
         {

@@ -84,6 +84,8 @@
               ]
             }
           },
+          "copy_list": [],
+          "copy_scope": null,
           "creation_instruction_categories": {
             "rest": 25,
             "designate": 1
@@ -105,24 +107,24 @@
               "instruction_count": "26",
               "scheduled_cycle": "0",
               "start_cycle": "0",
-              "commit_cycle": "33",
-              "finish_cycle": "79",
+              "commit_cycle": "32",
+              "finish_cycle": "78",
               "drain_cycle": "36",
-              "drain_duration_cycles": "3",
+              "drain_duration_cycles": "4",
               "dropped_packets": "0",
               "retained_packets": "0",
               "peak_buffer_occupancy_packets": "0",
               "minimum_stop_cycles": "0",
               "stop_duration_cycles": "",
-              "commit_applied_cycle": "36",
-              "commit_cycles": "36",
+              "commit_applied_cycle": "35",
+              "commit_cycles": "35",
               "bank_cleanup_cycles": "17",
-              "install_finish_cycle": "53",
+              "install_finish_cycle": "52",
               "resume_cycle": "",
-              "cleanup_start_cycle": "53",
+              "cleanup_start_cycle": "52",
               "cleanup_commit_cycle": "69",
-              "cleanup_applied_cycle": "72",
-              "cleanup_finish_cycle": "79",
+              "cleanup_applied_cycle": "71",
+              "cleanup_finish_cycle": "78",
               "cleanup_instruction_count": "16",
               "cleanup_commit_cycles": "19",
               "cleanup_bank_cleanup_cycles": "7",
@@ -137,9 +139,9 @@
               "to_policy": "",
               "instruction_count": "16",
               "scheduled_cycle": "0",
-              "start_cycle": "53",
+              "start_cycle": "52",
               "commit_cycle": "69",
-              "finish_cycle": "79",
+              "finish_cycle": "78",
               "drain_cycle": "",
               "drain_duration_cycles": "",
               "dropped_packets": "0",
@@ -147,10 +149,10 @@
               "peak_buffer_occupancy_packets": "0",
               "minimum_stop_cycles": "0",
               "stop_duration_cycles": "",
-              "commit_applied_cycle": "72",
+              "commit_applied_cycle": "71",
               "commit_cycles": "19",
               "bank_cleanup_cycles": "7",
-              "install_finish_cycle": "79",
+              "install_finish_cycle": "78",
               "resume_cycle": "",
               "cleanup_start_cycle": "",
               "cleanup_commit_cycle": "",
@@ -164,8 +166,8 @@
             }
           ],
           "commit_applied_cycles": [
-            36,
-            72
+            35,
+            71
           ],
           "commits": [
             {
@@ -173,25 +175,25 @@
               "commit": "C1",
               "name": "replace",
               "start_cycle": "0",
-              "commit_cycle": "33",
-              "ready_for_next_commit": "53",
+              "commit_cycle": "32",
+              "ready_for_next_commit": "52",
               "old_tree_drained_cycle": "36",
               "drain_label": "old-tree-drained",
-              "commit_applied_cycle": "36",
+              "commit_applied_cycle": "35",
               "instruction_count": "26",
-              "commit_cycles": "36",
+              "commit_cycles": "35",
               "bank_replay_cycles": "17"
             },
             {
               "run": "link",
               "commit": "C2",
               "name": "replace-cleanup",
-              "start_cycle": "53",
+              "start_cycle": "52",
               "commit_cycle": "69",
-              "ready_for_next_commit": "79",
+              "ready_for_next_commit": "78",
               "old_tree_drained_cycle": "36",
               "drain_label": "old-tree-drained",
-              "commit_applied_cycle": "72",
+              "commit_applied_cycle": "71",
               "instruction_count": "16",
               "commit_cycles": "19",
               "bank_replay_cycles": "7"
@@ -208,11 +210,11 @@
             "spotify": 0
           },
           "last_packet_pop_cycle": 8026,
-          "configuration_finish_cycle": 79,
+          "configuration_finish_cycle": 78,
           "old_root_drained_cycle": 36,
-          "post_commit_old_drain_cycles": 0,
+          "post_commit_old_drain_cycles": 1,
           "old_root_tokens_at_publication": 0,
-          "zoom_peak_delay_cycles": 28,
+          "zoom_peak_delay_cycles": 27,
           "global_stop_cycles": 0,
           "hardware_stop_cycles": 0,
           "prefill_entries": 0,
@@ -225,7 +227,7 @@
           "lifecycle": {
             "drain_watch_armed": [
               {
-                "cycle": 36,
+                "cycle": 35,
                 "engine_id": 1,
                 "vpifo_id": 1,
                 "tokens": 0,
@@ -316,6 +318,8 @@
               ]
             }
           },
+          "copy_list": [],
+          "copy_scope": null,
           "creation_instruction_categories": {
             "rest": 27,
             "wrapper_creation": 11,
@@ -342,10 +346,10 @@
               "instruction_count": "39",
               "scheduled_cycle": "0",
               "start_cycle": "0",
-              "commit_cycle": "47",
+              "commit_cycle": "48",
               "finish_cycle": "146",
               "drain_cycle": "92",
-              "drain_duration_cycles": "45",
+              "drain_duration_cycles": "44",
               "dropped_packets": "0",
               "retained_packets": "1",
               "peak_buffer_occupancy_packets": "24",
@@ -357,12 +361,12 @@
               "install_finish_cycle": "112",
               "resume_cycle": "83",
               "cleanup_start_cycle": "112",
-              "cleanup_commit_cycle": "133",
-              "cleanup_applied_cycle": "135",
+              "cleanup_commit_cycle": "132",
+              "cleanup_applied_cycle": "136",
               "cleanup_finish_cycle": "146",
               "cleanup_instruction_count": "20",
-              "cleanup_commit_cycles": "23",
-              "cleanup_bank_cleanup_cycles": "11",
+              "cleanup_commit_cycles": "24",
+              "cleanup_bank_cleanup_cycles": "10",
               "cleanup_of": "",
               "prefilled_tokens": "1"
             },
@@ -375,7 +379,7 @@
               "instruction_count": "20",
               "scheduled_cycle": "0",
               "start_cycle": "112",
-              "commit_cycle": "133",
+              "commit_cycle": "132",
               "finish_cycle": "167",
               "drain_cycle": "",
               "drain_duration_cycles": "",
@@ -384,9 +388,9 @@
               "peak_buffer_occupancy_packets": "0",
               "minimum_stop_cycles": "0",
               "stop_duration_cycles": "",
-              "commit_applied_cycle": "135",
-              "commit_cycles": "23",
-              "bank_cleanup_cycles": "11",
+              "commit_applied_cycle": "136",
+              "commit_cycles": "24",
+              "bank_cleanup_cycles": "10",
               "install_finish_cycle": "146",
               "resume_cycle": "",
               "cleanup_start_cycle": "146",
@@ -444,7 +448,7 @@
               "commit": "C1",
               "name": "replace",
               "start_cycle": "0",
-              "commit_cycle": "47",
+              "commit_cycle": "48",
               "ready_for_next_commit": "112",
               "old_tree_drained_cycle": "92",
               "drain_label": "old-tree-drained",
@@ -458,14 +462,14 @@
               "commit": "C2",
               "name": "replace-cleanup",
               "start_cycle": "112",
-              "commit_cycle": "133",
+              "commit_cycle": "132",
               "ready_for_next_commit": "146",
               "old_tree_drained_cycle": "92",
               "drain_label": "old-tree-drained",
-              "commit_applied_cycle": "135",
+              "commit_applied_cycle": "136",
               "instruction_count": "20",
-              "commit_cycles": "23",
-              "bank_replay_cycles": "11"
+              "commit_cycles": "24",
+              "bank_replay_cycles": "10"
             },
             {
               "run": "reserved",
@@ -630,7 +634,7 @@
                 "engine_id": 4,
                 "vpifo_id": 0,
                 "tokens": 21,
-                "buffered_packets": 28,
+                "buffered_packets": 27,
                 "ingress_packets": 3
               }
             ]
@@ -651,7 +655,7 @@
           "teardown_all_config_finished_cycles": 55,
           "wrapper_tokens_at_detachment": 22,
           "wrapper_tokens_discarded": 21,
-          "packets_served_after_reclamation": 2120,
+          "packets_served_after_reclamation": 2119,
           "stop_window_drops": 0,
           "stop_window_reorders": 0,
           "teardown_window_drops": 0,
@@ -825,11 +829,11 @@
               "resume_cycle": "",
               "cleanup_start_cycle": "189",
               "cleanup_commit_cycle": "200",
-              "cleanup_applied_cycle": "203",
+              "cleanup_applied_cycle": "204",
               "cleanup_finish_cycle": "210",
               "cleanup_instruction_count": "11",
-              "cleanup_commit_cycles": "14",
-              "cleanup_bank_cleanup_cycles": "7",
+              "cleanup_commit_cycles": "15",
+              "cleanup_bank_cleanup_cycles": "6",
               "cleanup_of": "replace",
               "prefilled_tokens": ""
             },
@@ -851,9 +855,9 @@
               "peak_buffer_occupancy_packets": "0",
               "minimum_stop_cycles": "0",
               "stop_duration_cycles": "",
-              "commit_applied_cycle": "203",
-              "commit_cycles": "14",
-              "bank_cleanup_cycles": "7",
+              "commit_applied_cycle": "204",
+              "commit_cycles": "15",
+              "bank_cleanup_cycles": "6",
               "install_finish_cycle": "210",
               "resume_cycle": "",
               "cleanup_start_cycle": "",
@@ -910,10 +914,10 @@
               "ready_for_next_commit": "210",
               "old_tree_drained_cycle": "115",
               "drain_label": "old-tree-drained",
-              "commit_applied_cycle": "203",
+              "commit_applied_cycle": "204",
               "instruction_count": "11",
-              "commit_cycles": "14",
-              "bank_replay_cycles": "7"
+              "commit_cycles": "15",
+              "bank_replay_cycles": "6"
             }
           ],
           "packets": 2135,
@@ -926,7 +930,7 @@
             "gmail": 0,
             "spotify": 0
           },
-          "last_packet_pop_cycle": 8026,
+          "last_packet_pop_cycle": 8025,
           "configuration_finish_cycle": 210,
           "old_root_drained_cycle": 115,
           "post_commit_old_drain_cycles": 9,
@@ -1041,7 +1045,7 @@
                 "cycle": 178,
                 "engine_id": 2,
                 "vpifo_id": 2,
-                "tokens": 29,
+                "tokens": 28,
                 "buffered_packets": 31,
                 "ingress_packets": 0
               }
@@ -1081,7 +1085,7 @@
                 "cycle": 193,
                 "engine_id": 1,
                 "vpifo_id": 0,
-                "tokens": 27,
+                "tokens": 26,
                 "buffered_packets": 30,
                 "ingress_packets": 0
               }
@@ -1124,7 +1128,7 @@
           "teardown_reclaim_cycles": 39,
           "teardown_all_config_finished_cycles": 55,
           "wrapper_tokens_at_detachment": 27,
-          "wrapper_tokens_discarded": 27,
+          "wrapper_tokens_discarded": 26,
           "packets_served_after_reclamation": 2113,
           "stop_window_drops": 0,
           "stop_window_reorders": 0,
@@ -1217,6 +1221,8 @@
               ]
             }
           },
+          "copy_list": [],
+          "copy_scope": null,
           "creation_instruction_categories": {
             "rest": 25,
             "designate": 1
@@ -1238,26 +1244,26 @@
               "instruction_count": "26",
               "scheduled_cycle": "1000",
               "start_cycle": "1000",
-              "commit_cycle": "1031",
-              "finish_cycle": "1359",
-              "drain_cycle": "1333",
-              "drain_duration_cycles": "302",
+              "commit_cycle": "1034",
+              "finish_cycle": "1257",
+              "drain_cycle": "1231",
+              "drain_duration_cycles": "197",
               "dropped_packets": "0",
               "retained_packets": "0",
               "peak_buffer_occupancy_packets": "0",
               "minimum_stop_cycles": "0",
               "stop_duration_cycles": "",
-              "commit_applied_cycle": "1034",
-              "commit_cycles": "34",
+              "commit_applied_cycle": "1036",
+              "commit_cycles": "36",
               "bank_cleanup_cycles": "17",
-              "install_finish_cycle": "1051",
+              "install_finish_cycle": "1053",
               "resume_cycle": "",
-              "cleanup_start_cycle": "1051",
-              "cleanup_commit_cycle": "1068",
-              "cleanup_applied_cycle": "1352",
-              "cleanup_finish_cycle": "1359",
+              "cleanup_start_cycle": "1053",
+              "cleanup_commit_cycle": "1069",
+              "cleanup_applied_cycle": "1250",
+              "cleanup_finish_cycle": "1257",
               "cleanup_instruction_count": "16",
-              "cleanup_commit_cycles": "301",
+              "cleanup_commit_cycles": "197",
               "cleanup_bank_cleanup_cycles": "7",
               "cleanup_of": "",
               "prefilled_tokens": ""
@@ -1270,9 +1276,9 @@
               "to_policy": "",
               "instruction_count": "16",
               "scheduled_cycle": "1000",
-              "start_cycle": "1051",
-              "commit_cycle": "1068",
-              "finish_cycle": "1359",
+              "start_cycle": "1053",
+              "commit_cycle": "1069",
+              "finish_cycle": "1257",
               "drain_cycle": "",
               "drain_duration_cycles": "",
               "dropped_packets": "0",
@@ -1280,10 +1286,10 @@
               "peak_buffer_occupancy_packets": "0",
               "minimum_stop_cycles": "0",
               "stop_duration_cycles": "",
-              "commit_applied_cycle": "1352",
-              "commit_cycles": "301",
+              "commit_applied_cycle": "1250",
+              "commit_cycles": "197",
               "bank_cleanup_cycles": "7",
-              "install_finish_cycle": "1359",
+              "install_finish_cycle": "1257",
               "resume_cycle": "",
               "cleanup_start_cycle": "",
               "cleanup_commit_cycle": "",
@@ -1297,8 +1303,8 @@
             }
           ],
           "commit_applied_cycles": [
-            1034,
-            1352
+            1036,
+            1250
           ],
           "commits": [
             {
@@ -1306,46 +1312,46 @@
               "commit": "C1",
               "name": "replace",
               "start_cycle": "1000",
-              "commit_cycle": "1031",
-              "ready_for_next_commit": "1051",
-              "old_tree_drained_cycle": "1333",
+              "commit_cycle": "1034",
+              "ready_for_next_commit": "1053",
+              "old_tree_drained_cycle": "1231",
               "drain_label": "old-tree-drained",
-              "commit_applied_cycle": "1034",
+              "commit_applied_cycle": "1036",
               "instruction_count": "26",
-              "commit_cycles": "34",
+              "commit_cycles": "36",
               "bank_replay_cycles": "17"
             },
             {
               "run": "link",
               "commit": "C2",
               "name": "replace-cleanup",
-              "start_cycle": "1051",
-              "commit_cycle": "1068",
-              "ready_for_next_commit": "1359",
-              "old_tree_drained_cycle": "1333",
+              "start_cycle": "1053",
+              "commit_cycle": "1069",
+              "ready_for_next_commit": "1257",
+              "old_tree_drained_cycle": "1231",
               "drain_label": "old-tree-drained",
-              "commit_applied_cycle": "1352",
+              "commit_applied_cycle": "1250",
               "instruction_count": "16",
-              "commit_cycles": "301",
+              "commit_cycles": "197",
               "bank_replay_cycles": "7"
             }
           ],
           "packets": 2536,
           "drops": 0,
           "reorders": 0,
-          "t1_backlog_packets": 107,
-          "pre_t1_link_utilization": 0.882,
+          "t1_backlog_packets": 74,
+          "pre_t1_link_utilization": 0.981,
           "t1_backlog_by_flow": {
             "zoom": 2,
-            "gmail": 105,
+            "gmail": 72,
             "spotify": 0
           },
-          "last_packet_pop_cycle": 9026,
-          "configuration_finish_cycle": 1359,
-          "old_root_drained_cycle": 1333,
-          "post_commit_old_drain_cycles": 299,
-          "old_root_tokens_at_publication": 100,
-          "zoom_peak_delay_cycles": 313,
+          "last_packet_pop_cycle": 9025,
+          "configuration_finish_cycle": 1257,
+          "old_root_drained_cycle": 1231,
+          "post_commit_old_drain_cycles": 195,
+          "old_root_tokens_at_publication": 65,
+          "zoom_peak_delay_cycles": 211,
           "global_stop_cycles": 0,
           "hardware_stop_cycles": 0,
           "prefill_entries": 0,
@@ -1358,11 +1364,11 @@
           "lifecycle": {
             "drain_watch_armed": [
               {
-                "cycle": 1034,
+                "cycle": 1036,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 100,
-                "buffered_packets": 107,
+                "tokens": 65,
+                "buffered_packets": 73,
                 "ingress_packets": 5
               }
             ]
@@ -1449,6 +1455,8 @@
               ]
             }
           },
+          "copy_list": [],
+          "copy_scope": null,
           "creation_instruction_categories": {
             "rest": 27,
             "wrapper_creation": 11,
@@ -1475,29 +1483,29 @@
               "instruction_count": "39",
               "scheduled_cycle": "1000",
               "start_cycle": "1000",
-              "commit_cycle": "1047",
-              "finish_cycle": "1535",
-              "drain_cycle": "1501",
-              "drain_duration_cycles": "454",
+              "commit_cycle": "1049",
+              "finish_cycle": "1403",
+              "drain_cycle": "1369",
+              "drain_duration_cycles": "320",
               "dropped_packets": "0",
-              "retained_packets": "103",
-              "peak_buffer_occupancy_packets": "155",
+              "retained_packets": "70",
+              "peak_buffer_occupancy_packets": "113",
               "minimum_stop_cycles": "0",
               "stop_duration_cycles": "",
-              "commit_applied_cycle": "1185",
-              "commit_cycles": "185",
+              "commit_applied_cycle": "1153",
+              "commit_cycles": "153",
               "bank_cleanup_cycles": "29",
-              "install_finish_cycle": "1214",
-              "resume_cycle": "1185",
-              "cleanup_start_cycle": "1214",
-              "cleanup_commit_cycle": "1235",
-              "cleanup_applied_cycle": "1524",
-              "cleanup_finish_cycle": "1535",
+              "install_finish_cycle": "1182",
+              "resume_cycle": "1153",
+              "cleanup_start_cycle": "1182",
+              "cleanup_commit_cycle": "1203",
+              "cleanup_applied_cycle": "1392",
+              "cleanup_finish_cycle": "1403",
               "cleanup_instruction_count": "20",
-              "cleanup_commit_cycles": "310",
+              "cleanup_commit_cycles": "210",
               "cleanup_bank_cleanup_cycles": "11",
               "cleanup_of": "",
-              "prefilled_tokens": "103"
+              "prefilled_tokens": "70"
             },
             {
               "event": "cleanup_commit",
@@ -1507,9 +1515,9 @@
               "to_policy": "",
               "instruction_count": "20",
               "scheduled_cycle": "1000",
-              "start_cycle": "1214",
-              "commit_cycle": "1235",
-              "finish_cycle": "1556",
+              "start_cycle": "1182",
+              "commit_cycle": "1203",
+              "finish_cycle": "1424",
               "drain_cycle": "",
               "drain_duration_cycles": "",
               "dropped_packets": "0",
@@ -1517,15 +1525,15 @@
               "peak_buffer_occupancy_packets": "0",
               "minimum_stop_cycles": "0",
               "stop_duration_cycles": "",
-              "commit_applied_cycle": "1524",
-              "commit_cycles": "310",
+              "commit_applied_cycle": "1392",
+              "commit_cycles": "210",
               "bank_cleanup_cycles": "11",
-              "install_finish_cycle": "1535",
+              "install_finish_cycle": "1403",
               "resume_cycle": "",
-              "cleanup_start_cycle": "1535",
-              "cleanup_commit_cycle": "1547",
-              "cleanup_applied_cycle": "1549",
-              "cleanup_finish_cycle": "1556",
+              "cleanup_start_cycle": "1403",
+              "cleanup_commit_cycle": "1415",
+              "cleanup_applied_cycle": "1417",
+              "cleanup_finish_cycle": "1424",
               "cleanup_instruction_count": "11",
               "cleanup_commit_cycles": "14",
               "cleanup_bank_cleanup_cycles": "7",
@@ -1540,9 +1548,9 @@
               "to_policy": "",
               "instruction_count": "11",
               "scheduled_cycle": "1000",
-              "start_cycle": "1535",
-              "commit_cycle": "1547",
-              "finish_cycle": "1556",
+              "start_cycle": "1403",
+              "commit_cycle": "1415",
+              "finish_cycle": "1424",
               "drain_cycle": "",
               "drain_duration_cycles": "",
               "dropped_packets": "0",
@@ -1550,10 +1558,10 @@
               "peak_buffer_occupancy_packets": "0",
               "minimum_stop_cycles": "0",
               "stop_duration_cycles": "",
-              "commit_applied_cycle": "1549",
+              "commit_applied_cycle": "1417",
               "commit_cycles": "14",
               "bank_cleanup_cycles": "7",
-              "install_finish_cycle": "1556",
+              "install_finish_cycle": "1424",
               "resume_cycle": "",
               "cleanup_start_cycle": "",
               "cleanup_commit_cycle": "",
@@ -1567,9 +1575,9 @@
             }
           ],
           "commit_applied_cycles": [
-            1185,
-            1524,
-            1549
+            1153,
+            1392,
+            1417
           ],
           "commits": [
             {
@@ -1577,39 +1585,39 @@
               "commit": "C1",
               "name": "replace",
               "start_cycle": "1000",
-              "commit_cycle": "1047",
-              "ready_for_next_commit": "1214",
-              "old_tree_drained_cycle": "1501",
+              "commit_cycle": "1049",
+              "ready_for_next_commit": "1182",
+              "old_tree_drained_cycle": "1369",
               "drain_label": "old-tree-drained",
-              "commit_applied_cycle": "1185",
+              "commit_applied_cycle": "1153",
               "instruction_count": "39",
-              "commit_cycles": "185",
+              "commit_cycles": "153",
               "bank_replay_cycles": "29"
             },
             {
               "run": "reserved",
               "commit": "C2",
               "name": "replace-cleanup",
-              "start_cycle": "1214",
-              "commit_cycle": "1235",
-              "ready_for_next_commit": "1535",
-              "old_tree_drained_cycle": "1501",
+              "start_cycle": "1182",
+              "commit_cycle": "1203",
+              "ready_for_next_commit": "1403",
+              "old_tree_drained_cycle": "1369",
               "drain_label": "old-tree-drained",
-              "commit_applied_cycle": "1524",
+              "commit_applied_cycle": "1392",
               "instruction_count": "20",
-              "commit_cycles": "310",
+              "commit_cycles": "210",
               "bank_replay_cycles": "11"
             },
             {
               "run": "reserved",
               "commit": "C3",
               "name": "replace-reclaim",
-              "start_cycle": "1535",
-              "commit_cycle": "1547",
-              "ready_for_next_commit": "1556",
-              "old_tree_drained_cycle": "1501",
+              "start_cycle": "1403",
+              "commit_cycle": "1415",
+              "ready_for_next_commit": "1424",
+              "old_tree_drained_cycle": "1369",
               "drain_label": "old-tree-drained",
-              "commit_applied_cycle": "1549",
+              "commit_applied_cycle": "1417",
               "instruction_count": "11",
               "commit_cycles": "14",
               "bank_replay_cycles": "7"
@@ -1618,24 +1626,24 @@
           "packets": 2536,
           "drops": 0,
           "reorders": 0,
-          "t1_backlog_packets": 107,
-          "pre_t1_link_utilization": 0.882,
+          "t1_backlog_packets": 74,
+          "pre_t1_link_utilization": 0.981,
           "t1_backlog_by_flow": {
             "zoom": 2,
-            "gmail": 105,
+            "gmail": 72,
             "spotify": 0
           },
-          "last_packet_pop_cycle": 9026,
-          "configuration_finish_cycle": 1556,
-          "old_root_drained_cycle": 1501,
-          "post_commit_old_drain_cycles": 316,
-          "old_root_tokens_at_publication": 103,
-          "zoom_peak_delay_cycles": 511,
-          "global_stop_cycles": 185,
-          "hardware_stop_cycles": 173,
-          "prefill_entries": 103,
-          "prefill_write_cycles": 103,
-          "fixed_stop_overhead_cycles": 82,
+          "last_packet_pop_cycle": 9025,
+          "configuration_finish_cycle": 1424,
+          "old_root_drained_cycle": 1369,
+          "post_commit_old_drain_cycles": 216,
+          "old_root_tokens_at_publication": 70,
+          "zoom_peak_delay_cycles": 379,
+          "global_stop_cycles": 153,
+          "hardware_stop_cycles": 140,
+          "prefill_entries": 70,
+          "prefill_write_cycles": 70,
+          "fixed_stop_overhead_cycles": 83,
           "copy_cycles": 0,
           "copied_entries": 0,
           "copied_pifos": 0,
@@ -1646,145 +1654,145 @@
                 "cycle": 1000,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 103,
-                "buffered_packets": 110,
-                "ingress_packets": 4
+                "tokens": 69,
+                "buffered_packets": 77,
+                "ingress_packets": 3
               }
             ],
             "hardware_stop": [
               {
-                "cycle": 1013,
+                "cycle": 1014,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 103,
-                "buffered_packets": 108,
-                "ingress_packets": 5
+                "tokens": 70,
+                "buffered_packets": 74,
+                "ingress_packets": 4
               }
             ],
             "stop_snapshot": [
               {
-                "cycle": 1046,
+                "cycle": 1047,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 103,
-                "buffered_packets": 119,
-                "ingress_packets": 16
+                "tokens": 70,
+                "buffered_packets": 85,
+                "ingress_packets": 15
               }
             ],
             "prefill_started": [
               {
-                "cycle": 1081,
+                "cycle": 1082,
                 "engine_id": 4,
                 "vpifo_id": 1,
-                "tokens": 103,
-                "buffered_packets": 127,
+                "tokens": 70,
+                "buffered_packets": 94,
                 "ingress_packets": 24
               }
             ],
             "prefill_finished": [
               {
-                "cycle": 1185,
+                "cycle": 1153,
                 "engine_id": 4,
                 "vpifo_id": 1,
-                "tokens": 103,
-                "buffered_packets": 155,
-                "ingress_packets": 52
+                "tokens": 70,
+                "buffered_packets": 113,
+                "ingress_packets": 43
               }
             ],
             "root_detached": [
               {
-                "cycle": 1185,
+                "cycle": 1153,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 103,
-                "buffered_packets": 155,
-                "ingress_packets": 52
+                "tokens": 70,
+                "buffered_packets": 113,
+                "ingress_packets": 43
               },
               {
-                "cycle": 1524,
+                "cycle": 1392,
                 "engine_id": 4,
                 "vpifo_id": 1,
-                "tokens": 132,
-                "buffered_packets": 136,
-                "ingress_packets": 0
+                "tokens": 95,
+                "buffered_packets": 102,
+                "ingress_packets": 1
               }
             ],
             "root_published": [
               {
-                "cycle": 1185,
+                "cycle": 1153,
                 "engine_id": 4,
                 "vpifo_id": 1,
-                "tokens": 103,
-                "buffered_packets": 155,
-                "ingress_packets": 52
+                "tokens": 70,
+                "buffered_packets": 113,
+                "ingress_packets": 43
               },
               {
-                "cycle": 1524,
+                "cycle": 1392,
                 "engine_id": 1,
                 "vpifo_id": 2,
-                "tokens": 134,
-                "buffered_packets": 136,
-                "ingress_packets": 0
+                "tokens": 97,
+                "buffered_packets": 102,
+                "ingress_packets": 1
               }
             ],
             "drain_watch_armed": [
               {
-                "cycle": 1185,
+                "cycle": 1153,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 103,
-                "buffered_packets": 155,
-                "ingress_packets": 52
+                "tokens": 70,
+                "buffered_packets": 113,
+                "ingress_packets": 43
               }
             ],
             "driver_resume": [
               {
-                "cycle": 1185,
+                "cycle": 1153,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 103,
-                "buffered_packets": 155,
-                "ingress_packets": 52
+                "tokens": 70,
+                "buffered_packets": 113,
+                "ingress_packets": 43
               }
             ],
             "hardware_resume": [
               {
-                "cycle": 1186,
+                "cycle": 1154,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 103,
-                "buffered_packets": 155,
-                "ingress_packets": 51
+                "tokens": 70,
+                "buffered_packets": 113,
+                "ingress_packets": 43
               }
             ],
             "clear_engine": [
               {
-                "cycle": 1539,
+                "cycle": 1407,
                 "engine_id": 4,
                 "vpifo_id": 0,
-                "tokens": 131,
-                "buffered_packets": 135,
-                "ingress_packets": 0
+                "tokens": 96,
+                "buffered_packets": 101,
+                "ingress_packets": 2
               }
             ]
           },
-          "prefill_command_to_done_cycles": 104,
+          "prefill_command_to_done_cycles": 71,
           "stop_breakdown_cycles": {
-            "driver_to_observed_hardware_gate": 13,
+            "driver_to_observed_hardware_gate": 14,
             "observed_gate_to_snapshot": 33,
             "snapshot_to_prefill_command_excluding_copy": 35,
             "copy_commands": 0,
-            "token_writes": 103,
+            "token_writes": 70,
             "prefill_command_overhead_to_publication": 1
           },
-          "peak_stop_buffer_packets": 155,
-          "teardown_ready_cycle": 1501,
+          "peak_stop_buffer_packets": 113,
+          "teardown_ready_cycle": 1369,
           "teardown_root_change_cycles": 23,
           "teardown_reclaim_cycles": 39,
           "teardown_all_config_finished_cycles": 55,
-          "wrapper_tokens_at_detachment": 132,
-          "wrapper_tokens_discarded": 131,
-          "packets_served_after_reclamation": 2126,
+          "wrapper_tokens_at_detachment": 95,
+          "wrapper_tokens_discarded": 96,
+          "packets_served_after_reclamation": 2125,
           "stop_window_drops": 0,
           "stop_window_reorders": 0,
           "teardown_window_drops": 0,
@@ -1909,29 +1917,29 @@
               "instruction_count": "58",
               "scheduled_cycle": "1000",
               "start_cycle": "1000",
-              "commit_cycle": "1066",
-              "finish_cycle": "1761",
-              "drain_cycle": "1727",
-              "drain_duration_cycles": "661",
+              "commit_cycle": "1067",
+              "finish_cycle": "1564",
+              "drain_cycle": "1530",
+              "drain_duration_cycles": "463",
               "dropped_packets": "0",
-              "retained_packets": "103",
-              "peak_buffer_occupancy_packets": "216",
+              "retained_packets": "70",
+              "peak_buffer_occupancy_packets": "154",
               "minimum_stop_cycles": "0",
               "stop_duration_cycles": "",
-              "commit_applied_cycle": "1412",
-              "commit_cycles": "412",
+              "commit_applied_cycle": "1314",
+              "commit_cycles": "314",
               "bank_cleanup_cycles": "49",
-              "install_finish_cycle": "1461",
-              "resume_cycle": "1412",
-              "cleanup_start_cycle": "1461",
-              "cleanup_commit_cycle": "1482",
-              "cleanup_applied_cycle": "1750",
-              "cleanup_finish_cycle": "1761",
+              "install_finish_cycle": "1363",
+              "resume_cycle": "1314",
+              "cleanup_start_cycle": "1363",
+              "cleanup_commit_cycle": "1383",
+              "cleanup_applied_cycle": "1553",
+              "cleanup_finish_cycle": "1564",
               "cleanup_instruction_count": "20",
-              "cleanup_commit_cycles": "289",
+              "cleanup_commit_cycles": "190",
               "cleanup_bank_cleanup_cycles": "11",
               "cleanup_of": "",
-              "prefilled_tokens": "103"
+              "prefilled_tokens": "70"
             },
             {
               "event": "cleanup_commit",
@@ -1941,9 +1949,9 @@
               "to_policy": "",
               "instruction_count": "20",
               "scheduled_cycle": "1000",
-              "start_cycle": "1461",
-              "commit_cycle": "1482",
-              "finish_cycle": "1782",
+              "start_cycle": "1363",
+              "commit_cycle": "1383",
+              "finish_cycle": "1585",
               "drain_cycle": "",
               "drain_duration_cycles": "",
               "dropped_packets": "0",
@@ -1951,15 +1959,15 @@
               "peak_buffer_occupancy_packets": "0",
               "minimum_stop_cycles": "0",
               "stop_duration_cycles": "",
-              "commit_applied_cycle": "1750",
-              "commit_cycles": "289",
+              "commit_applied_cycle": "1553",
+              "commit_cycles": "190",
               "bank_cleanup_cycles": "11",
-              "install_finish_cycle": "1761",
+              "install_finish_cycle": "1564",
               "resume_cycle": "",
-              "cleanup_start_cycle": "1761",
-              "cleanup_commit_cycle": "1772",
-              "cleanup_applied_cycle": "1775",
-              "cleanup_finish_cycle": "1782",
+              "cleanup_start_cycle": "1564",
+              "cleanup_commit_cycle": "1575",
+              "cleanup_applied_cycle": "1578",
+              "cleanup_finish_cycle": "1585",
               "cleanup_instruction_count": "11",
               "cleanup_commit_cycles": "14",
               "cleanup_bank_cleanup_cycles": "7",
@@ -1974,9 +1982,9 @@
               "to_policy": "",
               "instruction_count": "11",
               "scheduled_cycle": "1000",
-              "start_cycle": "1761",
-              "commit_cycle": "1772",
-              "finish_cycle": "1782",
+              "start_cycle": "1564",
+              "commit_cycle": "1575",
+              "finish_cycle": "1585",
               "drain_cycle": "",
               "drain_duration_cycles": "",
               "dropped_packets": "0",
@@ -1984,10 +1992,10 @@
               "peak_buffer_occupancy_packets": "0",
               "minimum_stop_cycles": "0",
               "stop_duration_cycles": "",
-              "commit_applied_cycle": "1775",
+              "commit_applied_cycle": "1578",
               "commit_cycles": "14",
               "bank_cleanup_cycles": "7",
-              "install_finish_cycle": "1782",
+              "install_finish_cycle": "1585",
               "resume_cycle": "",
               "cleanup_start_cycle": "",
               "cleanup_commit_cycle": "",
@@ -2001,9 +2009,9 @@
             }
           ],
           "commit_applied_cycles": [
-            1412,
-            1750,
-            1775
+            1314,
+            1553,
+            1578
           ],
           "commits": [
             {
@@ -2011,39 +2019,39 @@
               "commit": "C1",
               "name": "replace",
               "start_cycle": "1000",
-              "commit_cycle": "1066",
-              "ready_for_next_commit": "1461",
-              "old_tree_drained_cycle": "1727",
+              "commit_cycle": "1067",
+              "ready_for_next_commit": "1363",
+              "old_tree_drained_cycle": "1530",
               "drain_label": "old-tree-drained",
-              "commit_applied_cycle": "1412",
+              "commit_applied_cycle": "1314",
               "instruction_count": "58",
-              "commit_cycles": "412",
+              "commit_cycles": "314",
               "bank_replay_cycles": "49"
             },
             {
               "run": "copy",
               "commit": "C2",
               "name": "replace-cleanup",
-              "start_cycle": "1461",
-              "commit_cycle": "1482",
-              "ready_for_next_commit": "1761",
-              "old_tree_drained_cycle": "1727",
+              "start_cycle": "1363",
+              "commit_cycle": "1383",
+              "ready_for_next_commit": "1564",
+              "old_tree_drained_cycle": "1530",
               "drain_label": "old-tree-drained",
-              "commit_applied_cycle": "1750",
+              "commit_applied_cycle": "1553",
               "instruction_count": "20",
-              "commit_cycles": "289",
+              "commit_cycles": "190",
               "bank_replay_cycles": "11"
             },
             {
               "run": "copy",
               "commit": "C3",
               "name": "replace-reclaim",
-              "start_cycle": "1761",
-              "commit_cycle": "1772",
-              "ready_for_next_commit": "1782",
-              "old_tree_drained_cycle": "1727",
+              "start_cycle": "1564",
+              "commit_cycle": "1575",
+              "ready_for_next_commit": "1585",
+              "old_tree_drained_cycle": "1530",
               "drain_label": "old-tree-drained",
-              "commit_applied_cycle": "1775",
+              "commit_applied_cycle": "1578",
               "instruction_count": "11",
               "commit_cycles": "14",
               "bank_replay_cycles": "7"
@@ -2052,221 +2060,213 @@
           "packets": 2536,
           "drops": 0,
           "reorders": 0,
-          "t1_backlog_packets": 107,
-          "pre_t1_link_utilization": 0.882,
+          "t1_backlog_packets": 74,
+          "pre_t1_link_utilization": 0.981,
           "t1_backlog_by_flow": {
             "zoom": 2,
-            "gmail": 105,
+            "gmail": 72,
             "spotify": 0
           },
           "last_packet_pop_cycle": 9026,
-          "configuration_finish_cycle": 1782,
-          "old_root_drained_cycle": 1727,
-          "post_commit_old_drain_cycles": 315,
-          "old_root_tokens_at_publication": 103,
-          "zoom_peak_delay_cycles": 737,
-          "global_stop_cycles": 412,
-          "hardware_stop_cycles": 400,
-          "prefill_entries": 103,
-          "prefill_write_cycles": 103,
-          "fixed_stop_overhead_cycles": 101,
-          "copy_cycles": 208,
-          "copied_entries": 206,
-          "copied_pifos": 3,
-          "copied_buffered_packets": 103,
+          "configuration_finish_cycle": 1585,
+          "old_root_drained_cycle": 1530,
+          "post_commit_old_drain_cycles": 216,
+          "old_root_tokens_at_publication": 70,
+          "zoom_peak_delay_cycles": 540,
+          "global_stop_cycles": 314,
+          "hardware_stop_cycles": 301,
+          "prefill_entries": 70,
+          "prefill_write_cycles": 70,
+          "fixed_stop_overhead_cycles": 102,
+          "copy_cycles": 142,
+          "copied_entries": 140,
+          "copied_pifos": 2,
+          "copied_buffered_packets": 70,
           "lifecycle": {
             "driver_stop": [
               {
                 "cycle": 1000,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 103,
-                "buffered_packets": 110,
-                "ingress_packets": 4
+                "tokens": 69,
+                "buffered_packets": 77,
+                "ingress_packets": 3
               }
             ],
             "hardware_stop": [
               {
-                "cycle": 1013,
+                "cycle": 1014,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 103,
-                "buffered_packets": 108,
-                "ingress_packets": 5
+                "tokens": 70,
+                "buffered_packets": 74,
+                "ingress_packets": 4
               }
             ],
             "stop_snapshot": [
               {
-                "cycle": 1046,
+                "cycle": 1047,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 103,
-                "buffered_packets": 119,
-                "ingress_packets": 16
+                "tokens": 70,
+                "buffered_packets": 85,
+                "ingress_packets": 15
               }
             ],
             "copy_source": [
               {
-                "cycle": 1046,
-                "engine_id": 3,
-                "vpifo_id": 1,
-                "tokens": 1,
-                "buffered_packets": 119,
-                "ingress_packets": 16
-              },
-              {
-                "cycle": 1046,
+                "cycle": 1047,
                 "engine_id": 3,
                 "vpifo_id": 2,
-                "tokens": 102,
-                "buffered_packets": 119,
-                "ingress_packets": 16
+                "tokens": 70,
+                "buffered_packets": 85,
+                "ingress_packets": 15
               },
               {
-                "cycle": 1151,
+                "cycle": 1119,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 103,
-                "buffered_packets": 147,
-                "ingress_packets": 44
+                "tokens": 70,
+                "buffered_packets": 102,
+                "ingress_packets": 32
               }
             ],
             "prefill_started": [
               {
-                "cycle": 1308,
+                "cycle": 1243,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 103,
-                "buffered_packets": 188,
-                "ingress_packets": 85
+                "tokens": 70,
+                "buffered_packets": 137,
+                "ingress_packets": 67
               }
             ],
             "prefill_finished": [
               {
-                "cycle": 1412,
+                "cycle": 1314,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 103,
-                "buffered_packets": 216,
-                "ingress_packets": 113
+                "tokens": 70,
+                "buffered_packets": 154,
+                "ingress_packets": 84
               }
             ],
             "root_detached": [
               {
-                "cycle": 1412,
+                "cycle": 1314,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 103,
-                "buffered_packets": 216,
-                "ingress_packets": 113
+                "tokens": 70,
+                "buffered_packets": 154,
+                "ingress_packets": 84
               },
               {
-                "cycle": 1750,
+                "cycle": 1553,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 192,
-                "buffered_packets": 199,
-                "ingress_packets": 3
+                "tokens": 139,
+                "buffered_packets": 143,
+                "ingress_packets": 0
               }
             ],
             "root_published": [
               {
-                "cycle": 1412,
+                "cycle": 1314,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 103,
-                "buffered_packets": 216,
-                "ingress_packets": 113
+                "tokens": 70,
+                "buffered_packets": 154,
+                "ingress_packets": 84
               },
               {
-                "cycle": 1750,
+                "cycle": 1553,
                 "engine_id": 2,
                 "vpifo_id": 2,
-                "tokens": 194,
-                "buffered_packets": 199,
-                "ingress_packets": 3
+                "tokens": 141,
+                "buffered_packets": 143,
+                "ingress_packets": 0
               }
             ],
             "drain_watch_armed": [
               {
-                "cycle": 1412,
+                "cycle": 1314,
                 "engine_id": 2,
                 "vpifo_id": 1,
-                "tokens": 103,
-                "buffered_packets": 216,
-                "ingress_packets": 113
+                "tokens": 70,
+                "buffered_packets": 154,
+                "ingress_packets": 84
               }
             ],
             "driver_resume": [
               {
-                "cycle": 1412,
+                "cycle": 1314,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 103,
-                "buffered_packets": 216,
-                "ingress_packets": 113
+                "tokens": 70,
+                "buffered_packets": 154,
+                "ingress_packets": 84
               }
             ],
             "hardware_resume": [
               {
-                "cycle": 1413,
+                "cycle": 1315,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 103,
-                "buffered_packets": 216,
-                "ingress_packets": 113
+                "tokens": 70,
+                "buffered_packets": 157,
+                "ingress_packets": 86
               }
             ],
             "clear_engine": [
               {
-                "cycle": 1765,
+                "cycle": 1568,
                 "engine_id": 1,
                 "vpifo_id": 0,
-                "tokens": 191,
-                "buffered_packets": 198,
-                "ingress_packets": 3
+                "tokens": 138,
+                "buffered_packets": 142,
+                "ingress_packets": 0
               }
             ]
           },
           "copy_completions": [
             {
-              "cycle": "1150",
+              "cycle": "1118",
               "phase": "copy_finished",
               "command": "CopyPifoEngine",
               "engine_id": "3",
               "vpifo_id": "0",
               "flow_id": "0",
               "data": "4",
-              "copied_entries": "103"
+              "copied_entries": "70"
             },
             {
-              "cycle": "1255",
+              "cycle": "1190",
               "phase": "copy_finished",
               "command": "CopyPifoEngine",
               "engine_id": "1",
               "vpifo_id": "0",
               "flow_id": "0",
               "data": "2",
-              "copied_entries": "103"
+              "copied_entries": "70"
             }
           ],
-          "prefill_command_to_done_cycles": 104,
+          "prefill_command_to_done_cycles": 71,
           "stop_breakdown_cycles": {
-            "driver_to_observed_hardware_gate": 13,
+            "driver_to_observed_hardware_gate": 14,
             "observed_gate_to_snapshot": 33,
             "snapshot_to_prefill_command_excluding_copy": 54,
-            "copy_commands": 208,
-            "token_writes": 103,
+            "copy_commands": 142,
+            "token_writes": 70,
             "prefill_command_overhead_to_publication": 1
           },
-          "peak_stop_buffer_packets": 216,
-          "teardown_ready_cycle": 1727,
+          "peak_stop_buffer_packets": 154,
+          "teardown_ready_cycle": 1530,
           "teardown_root_change_cycles": 23,
           "teardown_reclaim_cycles": 39,
           "teardown_all_config_finished_cycles": 55,
-          "wrapper_tokens_at_detachment": 192,
-          "wrapper_tokens_discarded": 191,
-          "packets_served_after_reclamation": 2126,
+          "wrapper_tokens_at_detachment": 139,
+          "wrapper_tokens_discarded": 138,
+          "packets_served_after_reclamation": 2125,
           "stop_window_drops": 0,
           "stop_window_reorders": 0,
           "teardown_window_drops": 0,
@@ -2358,6 +2358,8 @@
               ]
             }
           },
+          "copy_list": [],
+          "copy_scope": null,
           "creation_instruction_categories": {
             "rest": 25,
             "designate": 1
@@ -2379,26 +2381,26 @@
               "instruction_count": "26",
               "scheduled_cycle": "2000",
               "start_cycle": "2000",
-              "commit_cycle": "2031",
-              "finish_cycle": "2659",
-              "drain_cycle": "2633",
-              "drain_duration_cycles": "602",
+              "commit_cycle": "2032",
+              "finish_cycle": "2457",
+              "drain_cycle": "2431",
+              "drain_duration_cycles": "399",
               "dropped_packets": "0",
               "retained_packets": "0",
               "peak_buffer_occupancy_packets": "0",
               "minimum_stop_cycles": "0",
               "stop_duration_cycles": "",
-              "commit_applied_cycle": "2034",
-              "commit_cycles": "34",
+              "commit_applied_cycle": "2035",
+              "commit_cycles": "35",
               "bank_cleanup_cycles": "17",
-              "install_finish_cycle": "2051",
+              "install_finish_cycle": "2052",
               "resume_cycle": "",
-              "cleanup_start_cycle": "2051",
+              "cleanup_start_cycle": "2052",
               "cleanup_commit_cycle": "2068",
-              "cleanup_applied_cycle": "2652",
-              "cleanup_finish_cycle": "2659",
+              "cleanup_applied_cycle": "2450",
+              "cleanup_finish_cycle": "2457",
               "cleanup_instruction_count": "16",
-              "cleanup_commit_cycles": "601",
+              "cleanup_commit_cycles": "398",
               "cleanup_bank_cleanup_cycles": "7",
               "cleanup_of": "",
               "prefilled_tokens": ""
@@ -2411,9 +2413,9 @@
               "to_policy": "",
               "instruction_count": "16",
               "scheduled_cycle": "2000",
-              "start_cycle": "2051",
+              "start_cycle": "2052",
               "commit_cycle": "2068",
-              "finish_cycle": "2659",
+              "finish_cycle": "2457",
               "drain_cycle": "",
               "drain_duration_cycles": "",
               "dropped_packets": "0",
@@ -2421,10 +2423,10 @@
               "peak_buffer_occupancy_packets": "0",
               "minimum_stop_cycles": "0",
               "stop_duration_cycles": "",
-              "commit_applied_cycle": "2652",
-              "commit_cycles": "601",
+              "commit_applied_cycle": "2450",
+              "commit_cycles": "398",
               "bank_cleanup_cycles": "7",
-              "install_finish_cycle": "2659",
+              "install_finish_cycle": "2457",
               "resume_cycle": "",
               "cleanup_start_cycle": "",
               "cleanup_commit_cycle": "",
@@ -2438,8 +2440,8 @@
             }
           ],
           "commit_applied_cycles": [
-            2034,
-            2652
+            2035,
+            2450
           ],
           "commits": [
             {
@@ -2447,46 +2449,46 @@
               "commit": "C1",
               "name": "replace",
               "start_cycle": "2000",
-              "commit_cycle": "2031",
-              "ready_for_next_commit": "2051",
-              "old_tree_drained_cycle": "2633",
+              "commit_cycle": "2032",
+              "ready_for_next_commit": "2052",
+              "old_tree_drained_cycle": "2431",
               "drain_label": "old-tree-drained",
-              "commit_applied_cycle": "2034",
+              "commit_applied_cycle": "2035",
               "instruction_count": "26",
-              "commit_cycles": "34",
+              "commit_cycles": "35",
               "bank_replay_cycles": "17"
             },
             {
               "run": "link",
               "commit": "C2",
               "name": "replace-cleanup",
-              "start_cycle": "2051",
+              "start_cycle": "2052",
               "commit_cycle": "2068",
-              "ready_for_next_commit": "2659",
-              "old_tree_drained_cycle": "2633",
+              "ready_for_next_commit": "2457",
+              "old_tree_drained_cycle": "2431",
               "drain_label": "old-tree-drained",
-              "commit_applied_cycle": "2652",
+              "commit_applied_cycle": "2450",
               "instruction_count": "16",
-              "commit_cycles": "601",
+              "commit_cycles": "398",
               "bank_replay_cycles": "7"
             }
           ],
           "packets": 2936,
           "drops": 0,
           "reorders": 0,
-          "t1_backlog_packets": 207,
-          "pre_t1_link_utilization": 0.891,
+          "t1_backlog_packets": 141,
+          "pre_t1_link_utilization": 0.99,
           "t1_backlog_by_flow": {
             "zoom": 2,
-            "gmail": 205,
+            "gmail": 139,
             "spotify": 0
           },
           "last_packet_pop_cycle": 10026,
-          "configuration_finish_cycle": 2659,
-          "old_root_drained_cycle": 2633,
-          "post_commit_old_drain_cycles": 599,
-          "old_root_tokens_at_publication": 200,
-          "zoom_peak_delay_cycles": 613,
+          "configuration_finish_cycle": 2457,
+          "old_root_drained_cycle": 2431,
+          "post_commit_old_drain_cycles": 396,
+          "old_root_tokens_at_publication": 132,
+          "zoom_peak_delay_cycles": 411,
           "global_stop_cycles": 0,
           "hardware_stop_cycles": 0,
           "prefill_entries": 0,
@@ -2499,11 +2501,11 @@
           "lifecycle": {
             "drain_watch_armed": [
               {
-                "cycle": 2034,
+                "cycle": 2035,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 200,
-                "buffered_packets": 207,
+                "tokens": 132,
+                "buffered_packets": 140,
                 "ingress_packets": 5
               }
             ]
@@ -2590,6 +2592,8 @@
               ]
             }
           },
+          "copy_list": [],
+          "copy_scope": null,
           "creation_instruction_categories": {
             "rest": 27,
             "wrapper_creation": 11,
@@ -2616,29 +2620,29 @@
               "instruction_count": "39",
               "scheduled_cycle": "2000",
               "start_cycle": "2000",
-              "commit_cycle": "2046",
-              "finish_cycle": "2934",
-              "drain_cycle": "2900",
-              "drain_duration_cycles": "854",
+              "commit_cycle": "2048",
+              "finish_cycle": "2671",
+              "drain_cycle": "2637",
+              "drain_duration_cycles": "589",
               "dropped_packets": "0",
-              "retained_packets": "203",
-              "peak_buffer_occupancy_packets": "280",
+              "retained_packets": "137",
+              "peak_buffer_occupancy_packets": "197",
               "minimum_stop_cycles": "0",
               "stop_duration_cycles": "",
-              "commit_applied_cycle": "2284",
-              "commit_cycles": "284",
+              "commit_applied_cycle": "2220",
+              "commit_cycles": "220",
               "bank_cleanup_cycles": "29",
-              "install_finish_cycle": "2313",
-              "resume_cycle": "2284",
-              "cleanup_start_cycle": "2313",
-              "cleanup_commit_cycle": "2334",
-              "cleanup_applied_cycle": "2923",
-              "cleanup_finish_cycle": "2934",
+              "install_finish_cycle": "2249",
+              "resume_cycle": "2220",
+              "cleanup_start_cycle": "2249",
+              "cleanup_commit_cycle": "2270",
+              "cleanup_applied_cycle": "2660",
+              "cleanup_finish_cycle": "2671",
               "cleanup_instruction_count": "20",
-              "cleanup_commit_cycles": "610",
+              "cleanup_commit_cycles": "411",
               "cleanup_bank_cleanup_cycles": "11",
               "cleanup_of": "",
-              "prefilled_tokens": "203"
+              "prefilled_tokens": "137"
             },
             {
               "event": "cleanup_commit",
@@ -2648,9 +2652,9 @@
               "to_policy": "",
               "instruction_count": "20",
               "scheduled_cycle": "2000",
-              "start_cycle": "2313",
-              "commit_cycle": "2334",
-              "finish_cycle": "2955",
+              "start_cycle": "2249",
+              "commit_cycle": "2270",
+              "finish_cycle": "2692",
               "drain_cycle": "",
               "drain_duration_cycles": "",
               "dropped_packets": "0",
@@ -2658,15 +2662,15 @@
               "peak_buffer_occupancy_packets": "0",
               "minimum_stop_cycles": "0",
               "stop_duration_cycles": "",
-              "commit_applied_cycle": "2923",
-              "commit_cycles": "610",
+              "commit_applied_cycle": "2660",
+              "commit_cycles": "411",
               "bank_cleanup_cycles": "11",
-              "install_finish_cycle": "2934",
+              "install_finish_cycle": "2671",
               "resume_cycle": "",
-              "cleanup_start_cycle": "2934",
-              "cleanup_commit_cycle": "2945",
-              "cleanup_applied_cycle": "2948",
-              "cleanup_finish_cycle": "2955",
+              "cleanup_start_cycle": "2671",
+              "cleanup_commit_cycle": "2682",
+              "cleanup_applied_cycle": "2685",
+              "cleanup_finish_cycle": "2692",
               "cleanup_instruction_count": "11",
               "cleanup_commit_cycles": "14",
               "cleanup_bank_cleanup_cycles": "7",
@@ -2681,9 +2685,9 @@
               "to_policy": "",
               "instruction_count": "11",
               "scheduled_cycle": "2000",
-              "start_cycle": "2934",
-              "commit_cycle": "2945",
-              "finish_cycle": "2955",
+              "start_cycle": "2671",
+              "commit_cycle": "2682",
+              "finish_cycle": "2692",
               "drain_cycle": "",
               "drain_duration_cycles": "",
               "dropped_packets": "0",
@@ -2691,10 +2695,10 @@
               "peak_buffer_occupancy_packets": "0",
               "minimum_stop_cycles": "0",
               "stop_duration_cycles": "",
-              "commit_applied_cycle": "2948",
+              "commit_applied_cycle": "2685",
               "commit_cycles": "14",
               "bank_cleanup_cycles": "7",
-              "install_finish_cycle": "2955",
+              "install_finish_cycle": "2692",
               "resume_cycle": "",
               "cleanup_start_cycle": "",
               "cleanup_commit_cycle": "",
@@ -2708,9 +2712,9 @@
             }
           ],
           "commit_applied_cycles": [
-            2284,
-            2923,
-            2948
+            2220,
+            2660,
+            2685
           ],
           "commits": [
             {
@@ -2718,39 +2722,39 @@
               "commit": "C1",
               "name": "replace",
               "start_cycle": "2000",
-              "commit_cycle": "2046",
-              "ready_for_next_commit": "2313",
-              "old_tree_drained_cycle": "2900",
+              "commit_cycle": "2048",
+              "ready_for_next_commit": "2249",
+              "old_tree_drained_cycle": "2637",
               "drain_label": "old-tree-drained",
-              "commit_applied_cycle": "2284",
+              "commit_applied_cycle": "2220",
               "instruction_count": "39",
-              "commit_cycles": "284",
+              "commit_cycles": "220",
               "bank_replay_cycles": "29"
             },
             {
               "run": "reserved",
               "commit": "C2",
               "name": "replace-cleanup",
-              "start_cycle": "2313",
-              "commit_cycle": "2334",
-              "ready_for_next_commit": "2934",
-              "old_tree_drained_cycle": "2900",
+              "start_cycle": "2249",
+              "commit_cycle": "2270",
+              "ready_for_next_commit": "2671",
+              "old_tree_drained_cycle": "2637",
               "drain_label": "old-tree-drained",
-              "commit_applied_cycle": "2923",
+              "commit_applied_cycle": "2660",
               "instruction_count": "20",
-              "commit_cycles": "610",
+              "commit_cycles": "411",
               "bank_replay_cycles": "11"
             },
             {
               "run": "reserved",
               "commit": "C3",
               "name": "replace-reclaim",
-              "start_cycle": "2934",
-              "commit_cycle": "2945",
-              "ready_for_next_commit": "2955",
-              "old_tree_drained_cycle": "2900",
+              "start_cycle": "2671",
+              "commit_cycle": "2682",
+              "ready_for_next_commit": "2692",
+              "old_tree_drained_cycle": "2637",
               "drain_label": "old-tree-drained",
-              "commit_applied_cycle": "2948",
+              "commit_applied_cycle": "2685",
               "instruction_count": "11",
               "commit_cycles": "14",
               "bank_replay_cycles": "7"
@@ -2759,24 +2763,24 @@
           "packets": 2936,
           "drops": 0,
           "reorders": 0,
-          "t1_backlog_packets": 207,
-          "pre_t1_link_utilization": 0.891,
+          "t1_backlog_packets": 141,
+          "pre_t1_link_utilization": 0.99,
           "t1_backlog_by_flow": {
             "zoom": 2,
-            "gmail": 205,
+            "gmail": 139,
             "spotify": 0
           },
-          "last_packet_pop_cycle": 10026,
-          "configuration_finish_cycle": 2955,
-          "old_root_drained_cycle": 2900,
-          "post_commit_old_drain_cycles": 616,
-          "old_root_tokens_at_publication": 203,
-          "zoom_peak_delay_cycles": 910,
-          "global_stop_cycles": 284,
-          "hardware_stop_cycles": 273,
-          "prefill_entries": 203,
-          "prefill_write_cycles": 203,
-          "fixed_stop_overhead_cycles": 81,
+          "last_packet_pop_cycle": 10025,
+          "configuration_finish_cycle": 2692,
+          "old_root_drained_cycle": 2637,
+          "post_commit_old_drain_cycles": 417,
+          "old_root_tokens_at_publication": 137,
+          "zoom_peak_delay_cycles": 647,
+          "global_stop_cycles": 220,
+          "hardware_stop_cycles": 207,
+          "prefill_entries": 137,
+          "prefill_write_cycles": 137,
+          "fixed_stop_overhead_cycles": 83,
           "copy_cycles": 0,
           "copied_entries": 0,
           "copied_pifos": 0,
@@ -2787,145 +2791,145 @@
                 "cycle": 2000,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 203,
-                "buffered_packets": 210,
-                "ingress_packets": 4
+                "tokens": 137,
+                "buffered_packets": 143,
+                "ingress_packets": 3
               }
             ],
             "hardware_stop": [
               {
-                "cycle": 2012,
+                "cycle": 2014,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 203,
-                "buffered_packets": 208,
-                "ingress_packets": 5
+                "tokens": 137,
+                "buffered_packets": 141,
+                "ingress_packets": 4
               }
             ],
             "stop_snapshot": [
               {
-                "cycle": 2045,
+                "cycle": 2047,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 203,
-                "buffered_packets": 219,
-                "ingress_packets": 16
+                "tokens": 137,
+                "buffered_packets": 152,
+                "ingress_packets": 15
               }
             ],
             "prefill_started": [
               {
-                "cycle": 2080,
+                "cycle": 2082,
                 "engine_id": 4,
                 "vpifo_id": 1,
-                "tokens": 203,
-                "buffered_packets": 227,
+                "tokens": 137,
+                "buffered_packets": 161,
                 "ingress_packets": 24
               }
             ],
             "prefill_finished": [
               {
-                "cycle": 2284,
+                "cycle": 2220,
                 "engine_id": 4,
                 "vpifo_id": 1,
-                "tokens": 203,
-                "buffered_packets": 280,
-                "ingress_packets": 77
+                "tokens": 137,
+                "buffered_packets": 197,
+                "ingress_packets": 60
               }
             ],
             "root_detached": [
               {
-                "cycle": 2284,
+                "cycle": 2220,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 203,
-                "buffered_packets": 280,
-                "ingress_packets": 77
+                "tokens": 137,
+                "buffered_packets": 197,
+                "ingress_packets": 60
               },
               {
-                "cycle": 2923,
+                "cycle": 2660,
                 "engine_id": 4,
                 "vpifo_id": 1,
-                "tokens": 239,
-                "buffered_packets": 244,
-                "ingress_packets": 0
+                "tokens": 167,
+                "buffered_packets": 174,
+                "ingress_packets": 3
               }
             ],
             "root_published": [
               {
-                "cycle": 2284,
+                "cycle": 2220,
                 "engine_id": 4,
                 "vpifo_id": 1,
-                "tokens": 203,
-                "buffered_packets": 280,
-                "ingress_packets": 77
+                "tokens": 137,
+                "buffered_packets": 197,
+                "ingress_packets": 60
               },
               {
-                "cycle": 2923,
+                "cycle": 2660,
                 "engine_id": 1,
                 "vpifo_id": 2,
-                "tokens": 241,
-                "buffered_packets": 244,
-                "ingress_packets": 0
+                "tokens": 169,
+                "buffered_packets": 174,
+                "ingress_packets": 3
               }
             ],
             "drain_watch_armed": [
               {
-                "cycle": 2284,
+                "cycle": 2220,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 203,
-                "buffered_packets": 280,
-                "ingress_packets": 77
+                "tokens": 137,
+                "buffered_packets": 197,
+                "ingress_packets": 60
               }
             ],
             "driver_resume": [
               {
-                "cycle": 2284,
+                "cycle": 2220,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 203,
-                "buffered_packets": 280,
-                "ingress_packets": 77
+                "tokens": 137,
+                "buffered_packets": 197,
+                "ingress_packets": 60
               }
             ],
             "hardware_resume": [
               {
-                "cycle": 2285,
+                "cycle": 2221,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 203,
-                "buffered_packets": 283,
-                "ingress_packets": 80
+                "tokens": 137,
+                "buffered_packets": 197,
+                "ingress_packets": 60
               }
             ],
             "clear_engine": [
               {
-                "cycle": 2938,
+                "cycle": 2675,
                 "engine_id": 4,
                 "vpifo_id": 0,
-                "tokens": 239,
-                "buffered_packets": 243,
-                "ingress_packets": 1
+                "tokens": 166,
+                "buffered_packets": 173,
+                "ingress_packets": 3
               }
             ]
           },
-          "prefill_command_to_done_cycles": 204,
+          "prefill_command_to_done_cycles": 138,
           "stop_breakdown_cycles": {
-            "driver_to_observed_hardware_gate": 12,
+            "driver_to_observed_hardware_gate": 14,
             "observed_gate_to_snapshot": 33,
             "snapshot_to_prefill_command_excluding_copy": 35,
             "copy_commands": 0,
-            "token_writes": 203,
+            "token_writes": 137,
             "prefill_command_overhead_to_publication": 1
           },
-          "peak_stop_buffer_packets": 280,
-          "teardown_ready_cycle": 2900,
+          "peak_stop_buffer_packets": 197,
+          "teardown_ready_cycle": 2637,
           "teardown_root_change_cycles": 23,
           "teardown_reclaim_cycles": 39,
           "teardown_all_config_finished_cycles": 55,
-          "wrapper_tokens_at_detachment": 239,
-          "wrapper_tokens_discarded": 239,
-          "packets_served_after_reclamation": 2126,
+          "wrapper_tokens_at_detachment": 167,
+          "wrapper_tokens_discarded": 166,
+          "packets_served_after_reclamation": 2125,
           "stop_window_drops": 0,
           "stop_window_reorders": 0,
           "teardown_window_drops": 0,
@@ -3050,29 +3054,29 @@
               "instruction_count": "58",
               "scheduled_cycle": "2000",
               "start_cycle": "2000",
-              "commit_cycle": "2065",
-              "finish_cycle": "3360",
-              "drain_cycle": "3326",
-              "drain_duration_cycles": "1261",
+              "commit_cycle": "2068",
+              "finish_cycle": "2966",
+              "drain_cycle": "2932",
+              "drain_duration_cycles": "864",
               "dropped_packets": "0",
-              "retained_packets": "203",
-              "peak_buffer_occupancy_packets": "395",
+              "retained_packets": "137",
+              "peak_buffer_occupancy_packets": "276",
               "minimum_stop_cycles": "0",
               "stop_duration_cycles": "",
-              "commit_applied_cycle": "2711",
-              "commit_cycles": "711",
+              "commit_applied_cycle": "2515",
+              "commit_cycles": "515",
               "bank_cleanup_cycles": "49",
-              "install_finish_cycle": "2760",
-              "resume_cycle": "2711",
-              "cleanup_start_cycle": "2760",
-              "cleanup_commit_cycle": "2781",
-              "cleanup_applied_cycle": "3349",
-              "cleanup_finish_cycle": "3360",
+              "install_finish_cycle": "2564",
+              "resume_cycle": "2515",
+              "cleanup_start_cycle": "2564",
+              "cleanup_commit_cycle": "2585",
+              "cleanup_applied_cycle": "2955",
+              "cleanup_finish_cycle": "2966",
               "cleanup_instruction_count": "20",
-              "cleanup_commit_cycles": "589",
+              "cleanup_commit_cycles": "391",
               "cleanup_bank_cleanup_cycles": "11",
               "cleanup_of": "",
-              "prefilled_tokens": "203"
+              "prefilled_tokens": "137"
             },
             {
               "event": "cleanup_commit",
@@ -3082,9 +3086,9 @@
               "to_policy": "",
               "instruction_count": "20",
               "scheduled_cycle": "2000",
-              "start_cycle": "2760",
-              "commit_cycle": "2781",
-              "finish_cycle": "3381",
+              "start_cycle": "2564",
+              "commit_cycle": "2585",
+              "finish_cycle": "2987",
               "drain_cycle": "",
               "drain_duration_cycles": "",
               "dropped_packets": "0",
@@ -3092,15 +3096,15 @@
               "peak_buffer_occupancy_packets": "0",
               "minimum_stop_cycles": "0",
               "stop_duration_cycles": "",
-              "commit_applied_cycle": "3349",
-              "commit_cycles": "589",
+              "commit_applied_cycle": "2955",
+              "commit_cycles": "391",
               "bank_cleanup_cycles": "11",
-              "install_finish_cycle": "3360",
+              "install_finish_cycle": "2966",
               "resume_cycle": "",
-              "cleanup_start_cycle": "3360",
-              "cleanup_commit_cycle": "3371",
-              "cleanup_applied_cycle": "3374",
-              "cleanup_finish_cycle": "3381",
+              "cleanup_start_cycle": "2966",
+              "cleanup_commit_cycle": "2977",
+              "cleanup_applied_cycle": "2980",
+              "cleanup_finish_cycle": "2987",
               "cleanup_instruction_count": "11",
               "cleanup_commit_cycles": "14",
               "cleanup_bank_cleanup_cycles": "7",
@@ -3115,9 +3119,9 @@
               "to_policy": "",
               "instruction_count": "11",
               "scheduled_cycle": "2000",
-              "start_cycle": "3360",
-              "commit_cycle": "3371",
-              "finish_cycle": "3381",
+              "start_cycle": "2966",
+              "commit_cycle": "2977",
+              "finish_cycle": "2987",
               "drain_cycle": "",
               "drain_duration_cycles": "",
               "dropped_packets": "0",
@@ -3125,10 +3129,10 @@
               "peak_buffer_occupancy_packets": "0",
               "minimum_stop_cycles": "0",
               "stop_duration_cycles": "",
-              "commit_applied_cycle": "3374",
+              "commit_applied_cycle": "2980",
               "commit_cycles": "14",
               "bank_cleanup_cycles": "7",
-              "install_finish_cycle": "3381",
+              "install_finish_cycle": "2987",
               "resume_cycle": "",
               "cleanup_start_cycle": "",
               "cleanup_commit_cycle": "",
@@ -3142,9 +3146,9 @@
             }
           ],
           "commit_applied_cycles": [
-            2711,
-            3349,
-            3374
+            2515,
+            2955,
+            2980
           ],
           "commits": [
             {
@@ -3152,39 +3156,39 @@
               "commit": "C1",
               "name": "replace",
               "start_cycle": "2000",
-              "commit_cycle": "2065",
-              "ready_for_next_commit": "2760",
-              "old_tree_drained_cycle": "3326",
+              "commit_cycle": "2068",
+              "ready_for_next_commit": "2564",
+              "old_tree_drained_cycle": "2932",
               "drain_label": "old-tree-drained",
-              "commit_applied_cycle": "2711",
+              "commit_applied_cycle": "2515",
               "instruction_count": "58",
-              "commit_cycles": "711",
+              "commit_cycles": "515",
               "bank_replay_cycles": "49"
             },
             {
               "run": "copy",
               "commit": "C2",
               "name": "replace-cleanup",
-              "start_cycle": "2760",
-              "commit_cycle": "2781",
-              "ready_for_next_commit": "3360",
-              "old_tree_drained_cycle": "3326",
+              "start_cycle": "2564",
+              "commit_cycle": "2585",
+              "ready_for_next_commit": "2966",
+              "old_tree_drained_cycle": "2932",
               "drain_label": "old-tree-drained",
-              "commit_applied_cycle": "3349",
+              "commit_applied_cycle": "2955",
               "instruction_count": "20",
-              "commit_cycles": "589",
+              "commit_cycles": "391",
               "bank_replay_cycles": "11"
             },
             {
               "run": "copy",
               "commit": "C3",
               "name": "replace-reclaim",
-              "start_cycle": "3360",
-              "commit_cycle": "3371",
-              "ready_for_next_commit": "3381",
-              "old_tree_drained_cycle": "3326",
+              "start_cycle": "2966",
+              "commit_cycle": "2977",
+              "ready_for_next_commit": "2987",
+              "old_tree_drained_cycle": "2932",
               "drain_label": "old-tree-drained",
-              "commit_applied_cycle": "3374",
+              "commit_applied_cycle": "2980",
               "instruction_count": "11",
               "commit_cycles": "14",
               "bank_replay_cycles": "7"
@@ -3193,213 +3197,213 @@
           "packets": 2936,
           "drops": 0,
           "reorders": 0,
-          "t1_backlog_packets": 207,
-          "pre_t1_link_utilization": 0.891,
+          "t1_backlog_packets": 141,
+          "pre_t1_link_utilization": 0.99,
           "t1_backlog_by_flow": {
             "zoom": 2,
-            "gmail": 205,
+            "gmail": 139,
             "spotify": 0
           },
-          "last_packet_pop_cycle": 10026,
-          "configuration_finish_cycle": 3381,
-          "old_root_drained_cycle": 3326,
-          "post_commit_old_drain_cycles": 615,
-          "old_root_tokens_at_publication": 203,
-          "zoom_peak_delay_cycles": 1336,
-          "global_stop_cycles": 711,
-          "hardware_stop_cycles": 700,
-          "prefill_entries": 203,
-          "prefill_write_cycles": 203,
-          "fixed_stop_overhead_cycles": 100,
-          "copy_cycles": 408,
-          "copied_entries": 406,
+          "last_packet_pop_cycle": 10025,
+          "configuration_finish_cycle": 2987,
+          "old_root_drained_cycle": 2932,
+          "post_commit_old_drain_cycles": 417,
+          "old_root_tokens_at_publication": 137,
+          "zoom_peak_delay_cycles": 942,
+          "global_stop_cycles": 515,
+          "hardware_stop_cycles": 502,
+          "prefill_entries": 137,
+          "prefill_write_cycles": 137,
+          "fixed_stop_overhead_cycles": 102,
+          "copy_cycles": 276,
+          "copied_entries": 274,
           "copied_pifos": 2,
-          "copied_buffered_packets": 203,
+          "copied_buffered_packets": 137,
           "lifecycle": {
             "driver_stop": [
               {
                 "cycle": 2000,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 203,
-                "buffered_packets": 210,
-                "ingress_packets": 4
+                "tokens": 137,
+                "buffered_packets": 143,
+                "ingress_packets": 3
               }
             ],
             "hardware_stop": [
               {
-                "cycle": 2012,
+                "cycle": 2014,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 203,
-                "buffered_packets": 208,
-                "ingress_packets": 5
+                "tokens": 137,
+                "buffered_packets": 141,
+                "ingress_packets": 4
               }
             ],
             "stop_snapshot": [
               {
-                "cycle": 2045,
+                "cycle": 2047,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 203,
-                "buffered_packets": 219,
-                "ingress_packets": 16
+                "tokens": 137,
+                "buffered_packets": 152,
+                "ingress_packets": 15
               }
             ],
             "copy_source": [
               {
-                "cycle": 2045,
+                "cycle": 2047,
                 "engine_id": 3,
                 "vpifo_id": 2,
-                "tokens": 203,
-                "buffered_packets": 219,
-                "ingress_packets": 16
+                "tokens": 137,
+                "buffered_packets": 152,
+                "ingress_packets": 15
               },
               {
-                "cycle": 2250,
+                "cycle": 2186,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 203,
-                "buffered_packets": 272,
-                "ingress_packets": 69
+                "tokens": 137,
+                "buffered_packets": 188,
+                "ingress_packets": 51
               }
             ],
             "prefill_started": [
               {
-                "cycle": 2507,
+                "cycle": 2377,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 203,
-                "buffered_packets": 340,
-                "ingress_packets": 137
+                "tokens": 137,
+                "buffered_packets": 240,
+                "ingress_packets": 103
               }
             ],
             "prefill_finished": [
               {
-                "cycle": 2711,
+                "cycle": 2515,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 203,
-                "buffered_packets": 395,
-                "ingress_packets": 192
+                "tokens": 137,
+                "buffered_packets": 276,
+                "ingress_packets": 139
               }
             ],
             "root_detached": [
               {
-                "cycle": 2711,
+                "cycle": 2515,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 203,
-                "buffered_packets": 395,
-                "ingress_packets": 192
+                "tokens": 137,
+                "buffered_packets": 276,
+                "ingress_packets": 139
               },
               {
-                "cycle": 3349,
+                "cycle": 2955,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 352,
-                "buffered_packets": 356,
+                "tokens": 246,
+                "buffered_packets": 251,
                 "ingress_packets": 0
               }
             ],
             "root_published": [
               {
-                "cycle": 2711,
+                "cycle": 2515,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 203,
-                "buffered_packets": 395,
-                "ingress_packets": 192
+                "tokens": 137,
+                "buffered_packets": 276,
+                "ingress_packets": 139
               },
               {
-                "cycle": 3349,
+                "cycle": 2955,
                 "engine_id": 2,
                 "vpifo_id": 2,
-                "tokens": 354,
-                "buffered_packets": 356,
+                "tokens": 248,
+                "buffered_packets": 251,
                 "ingress_packets": 0
               }
             ],
             "drain_watch_armed": [
               {
-                "cycle": 2711,
+                "cycle": 2515,
                 "engine_id": 2,
                 "vpifo_id": 1,
-                "tokens": 203,
-                "buffered_packets": 395,
-                "ingress_packets": 192
+                "tokens": 137,
+                "buffered_packets": 276,
+                "ingress_packets": 139
               }
             ],
             "driver_resume": [
               {
-                "cycle": 2711,
+                "cycle": 2515,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 203,
-                "buffered_packets": 395,
-                "ingress_packets": 192
+                "tokens": 137,
+                "buffered_packets": 276,
+                "ingress_packets": 139
               }
             ],
             "hardware_resume": [
               {
-                "cycle": 2712,
+                "cycle": 2516,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 203,
-                "buffered_packets": 396,
-                "ingress_packets": 193
+                "tokens": 137,
+                "buffered_packets": 276,
+                "ingress_packets": 138
               }
             ],
             "clear_engine": [
               {
-                "cycle": 3364,
+                "cycle": 2970,
                 "engine_id": 1,
                 "vpifo_id": 0,
-                "tokens": 351,
-                "buffered_packets": 355,
+                "tokens": 246,
+                "buffered_packets": 250,
                 "ingress_packets": 0
               }
             ]
           },
           "copy_completions": [
             {
-              "cycle": "2249",
+              "cycle": "2185",
               "phase": "copy_finished",
               "command": "CopyPifoEngine",
               "engine_id": "3",
               "vpifo_id": "0",
               "flow_id": "0",
               "data": "4",
-              "copied_entries": "203"
+              "copied_entries": "137"
             },
             {
-              "cycle": "2454",
+              "cycle": "2324",
               "phase": "copy_finished",
               "command": "CopyPifoEngine",
               "engine_id": "1",
               "vpifo_id": "0",
               "flow_id": "0",
               "data": "2",
-              "copied_entries": "203"
+              "copied_entries": "137"
             }
           ],
-          "prefill_command_to_done_cycles": 204,
+          "prefill_command_to_done_cycles": 138,
           "stop_breakdown_cycles": {
-            "driver_to_observed_hardware_gate": 12,
+            "driver_to_observed_hardware_gate": 14,
             "observed_gate_to_snapshot": 33,
             "snapshot_to_prefill_command_excluding_copy": 54,
-            "copy_commands": 408,
-            "token_writes": 203,
+            "copy_commands": 276,
+            "token_writes": 137,
             "prefill_command_overhead_to_publication": 1
           },
-          "peak_stop_buffer_packets": 395,
-          "teardown_ready_cycle": 3326,
+          "peak_stop_buffer_packets": 276,
+          "teardown_ready_cycle": 2932,
           "teardown_root_change_cycles": 23,
           "teardown_reclaim_cycles": 39,
           "teardown_all_config_finished_cycles": 55,
-          "wrapper_tokens_at_detachment": 352,
-          "wrapper_tokens_discarded": 351,
-          "packets_served_after_reclamation": 2126,
+          "wrapper_tokens_at_detachment": 246,
+          "wrapper_tokens_discarded": 246,
+          "packets_served_after_reclamation": 2125,
           "stop_window_drops": 0,
           "stop_window_reorders": 0,
           "teardown_window_drops": 0,
@@ -3491,6 +3495,8 @@
               ]
             }
           },
+          "copy_list": [],
+          "copy_scope": null,
           "creation_instruction_categories": {
             "rest": 25,
             "designate": 1
@@ -3512,26 +3518,26 @@
               "instruction_count": "26",
               "scheduled_cycle": "2500",
               "start_cycle": "2500",
-              "commit_cycle": "2531",
-              "finish_cycle": "3309",
-              "drain_cycle": "3283",
-              "drain_duration_cycles": "752",
+              "commit_cycle": "2534",
+              "finish_cycle": "3057",
+              "drain_cycle": "3031",
+              "drain_duration_cycles": "497",
               "dropped_packets": "0",
               "retained_packets": "0",
               "peak_buffer_occupancy_packets": "0",
               "minimum_stop_cycles": "0",
               "stop_duration_cycles": "",
-              "commit_applied_cycle": "2534",
-              "commit_cycles": "34",
+              "commit_applied_cycle": "2536",
+              "commit_cycles": "36",
               "bank_cleanup_cycles": "17",
-              "install_finish_cycle": "2551",
+              "install_finish_cycle": "2553",
               "resume_cycle": "",
-              "cleanup_start_cycle": "2551",
-              "cleanup_commit_cycle": "2568",
-              "cleanup_applied_cycle": "3302",
-              "cleanup_finish_cycle": "3309",
+              "cleanup_start_cycle": "2553",
+              "cleanup_commit_cycle": "2569",
+              "cleanup_applied_cycle": "3050",
+              "cleanup_finish_cycle": "3057",
               "cleanup_instruction_count": "16",
-              "cleanup_commit_cycles": "751",
+              "cleanup_commit_cycles": "497",
               "cleanup_bank_cleanup_cycles": "7",
               "cleanup_of": "",
               "prefilled_tokens": ""
@@ -3544,9 +3550,9 @@
               "to_policy": "",
               "instruction_count": "16",
               "scheduled_cycle": "2500",
-              "start_cycle": "2551",
-              "commit_cycle": "2568",
-              "finish_cycle": "3309",
+              "start_cycle": "2553",
+              "commit_cycle": "2569",
+              "finish_cycle": "3057",
               "drain_cycle": "",
               "drain_duration_cycles": "",
               "dropped_packets": "0",
@@ -3554,10 +3560,10 @@
               "peak_buffer_occupancy_packets": "0",
               "minimum_stop_cycles": "0",
               "stop_duration_cycles": "",
-              "commit_applied_cycle": "3302",
-              "commit_cycles": "751",
+              "commit_applied_cycle": "3050",
+              "commit_cycles": "497",
               "bank_cleanup_cycles": "7",
-              "install_finish_cycle": "3309",
+              "install_finish_cycle": "3057",
               "resume_cycle": "",
               "cleanup_start_cycle": "",
               "cleanup_commit_cycle": "",
@@ -3571,8 +3577,8 @@
             }
           ],
           "commit_applied_cycles": [
-            2534,
-            3302
+            2536,
+            3050
           ],
           "commits": [
             {
@@ -3580,46 +3586,46 @@
               "commit": "C1",
               "name": "replace",
               "start_cycle": "2500",
-              "commit_cycle": "2531",
-              "ready_for_next_commit": "2551",
-              "old_tree_drained_cycle": "3283",
+              "commit_cycle": "2534",
+              "ready_for_next_commit": "2553",
+              "old_tree_drained_cycle": "3031",
               "drain_label": "old-tree-drained",
-              "commit_applied_cycle": "2534",
+              "commit_applied_cycle": "2536",
               "instruction_count": "26",
-              "commit_cycles": "34",
+              "commit_cycles": "36",
               "bank_replay_cycles": "17"
             },
             {
               "run": "link",
               "commit": "C2",
               "name": "replace-cleanup",
-              "start_cycle": "2551",
-              "commit_cycle": "2568",
-              "ready_for_next_commit": "3309",
-              "old_tree_drained_cycle": "3283",
+              "start_cycle": "2553",
+              "commit_cycle": "2569",
+              "ready_for_next_commit": "3057",
+              "old_tree_drained_cycle": "3031",
               "drain_label": "old-tree-drained",
-              "commit_applied_cycle": "3302",
+              "commit_applied_cycle": "3050",
               "instruction_count": "16",
-              "commit_cycles": "751",
+              "commit_cycles": "497",
               "bank_replay_cycles": "7"
             }
           ],
           "packets": 3136,
           "drops": 0,
           "reorders": 0,
-          "t1_backlog_packets": 257,
-          "pre_t1_link_utilization": 0.8928,
+          "t1_backlog_packets": 174,
+          "pre_t1_link_utilization": 0.9924,
           "t1_backlog_by_flow": {
             "zoom": 2,
-            "gmail": 255,
+            "gmail": 172,
             "spotify": 0
           },
-          "last_packet_pop_cycle": 10526,
-          "configuration_finish_cycle": 3309,
-          "old_root_drained_cycle": 3283,
-          "post_commit_old_drain_cycles": 749,
-          "old_root_tokens_at_publication": 250,
-          "zoom_peak_delay_cycles": 763,
+          "last_packet_pop_cycle": 10525,
+          "configuration_finish_cycle": 3057,
+          "old_root_drained_cycle": 3031,
+          "post_commit_old_drain_cycles": 495,
+          "old_root_tokens_at_publication": 165,
+          "zoom_peak_delay_cycles": 511,
           "global_stop_cycles": 0,
           "hardware_stop_cycles": 0,
           "prefill_entries": 0,
@@ -3632,11 +3638,11 @@
           "lifecycle": {
             "drain_watch_armed": [
               {
-                "cycle": 2534,
+                "cycle": 2536,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 250,
-                "buffered_packets": 257,
+                "tokens": 165,
+                "buffered_packets": 173,
                 "ingress_packets": 5
               }
             ]
@@ -3723,6 +3729,8 @@
               ]
             }
           },
+          "copy_list": [],
+          "copy_scope": null,
           "creation_instruction_categories": {
             "rest": 27,
             "wrapper_creation": 11,
@@ -3749,29 +3757,29 @@
               "instruction_count": "39",
               "scheduled_cycle": "2500",
               "start_cycle": "2500",
-              "commit_cycle": "2547",
-              "finish_cycle": "3635",
-              "drain_cycle": "3601",
-              "drain_duration_cycles": "1054",
+              "commit_cycle": "2549",
+              "finish_cycle": "3303",
+              "drain_cycle": "3269",
+              "drain_duration_cycles": "720",
               "dropped_packets": "0",
-              "retained_packets": "253",
-              "peak_buffer_occupancy_packets": "345",
+              "retained_packets": "170",
+              "peak_buffer_occupancy_packets": "238",
               "minimum_stop_cycles": "0",
               "stop_duration_cycles": "",
-              "commit_applied_cycle": "2835",
-              "commit_cycles": "335",
+              "commit_applied_cycle": "2753",
+              "commit_cycles": "253",
               "bank_cleanup_cycles": "29",
-              "install_finish_cycle": "2864",
-              "resume_cycle": "2835",
-              "cleanup_start_cycle": "2864",
-              "cleanup_commit_cycle": "2885",
-              "cleanup_applied_cycle": "3624",
-              "cleanup_finish_cycle": "3635",
+              "install_finish_cycle": "2782",
+              "resume_cycle": "2753",
+              "cleanup_start_cycle": "2782",
+              "cleanup_commit_cycle": "2802",
+              "cleanup_applied_cycle": "3292",
+              "cleanup_finish_cycle": "3303",
               "cleanup_instruction_count": "20",
-              "cleanup_commit_cycles": "760",
+              "cleanup_commit_cycles": "510",
               "cleanup_bank_cleanup_cycles": "11",
               "cleanup_of": "",
-              "prefilled_tokens": "253"
+              "prefilled_tokens": "170"
             },
             {
               "event": "cleanup_commit",
@@ -3781,9 +3789,9 @@
               "to_policy": "",
               "instruction_count": "20",
               "scheduled_cycle": "2500",
-              "start_cycle": "2864",
-              "commit_cycle": "2885",
-              "finish_cycle": "3656",
+              "start_cycle": "2782",
+              "commit_cycle": "2802",
+              "finish_cycle": "3324",
               "drain_cycle": "",
               "drain_duration_cycles": "",
               "dropped_packets": "0",
@@ -3791,15 +3799,15 @@
               "peak_buffer_occupancy_packets": "0",
               "minimum_stop_cycles": "0",
               "stop_duration_cycles": "",
-              "commit_applied_cycle": "3624",
-              "commit_cycles": "760",
+              "commit_applied_cycle": "3292",
+              "commit_cycles": "510",
               "bank_cleanup_cycles": "11",
-              "install_finish_cycle": "3635",
+              "install_finish_cycle": "3303",
               "resume_cycle": "",
-              "cleanup_start_cycle": "3635",
-              "cleanup_commit_cycle": "3647",
-              "cleanup_applied_cycle": "3649",
-              "cleanup_finish_cycle": "3656",
+              "cleanup_start_cycle": "3303",
+              "cleanup_commit_cycle": "3314",
+              "cleanup_applied_cycle": "3317",
+              "cleanup_finish_cycle": "3324",
               "cleanup_instruction_count": "11",
               "cleanup_commit_cycles": "14",
               "cleanup_bank_cleanup_cycles": "7",
@@ -3814,9 +3822,9 @@
               "to_policy": "",
               "instruction_count": "11",
               "scheduled_cycle": "2500",
-              "start_cycle": "3635",
-              "commit_cycle": "3647",
-              "finish_cycle": "3656",
+              "start_cycle": "3303",
+              "commit_cycle": "3314",
+              "finish_cycle": "3324",
               "drain_cycle": "",
               "drain_duration_cycles": "",
               "dropped_packets": "0",
@@ -3824,10 +3832,10 @@
               "peak_buffer_occupancy_packets": "0",
               "minimum_stop_cycles": "0",
               "stop_duration_cycles": "",
-              "commit_applied_cycle": "3649",
+              "commit_applied_cycle": "3317",
               "commit_cycles": "14",
               "bank_cleanup_cycles": "7",
-              "install_finish_cycle": "3656",
+              "install_finish_cycle": "3324",
               "resume_cycle": "",
               "cleanup_start_cycle": "",
               "cleanup_commit_cycle": "",
@@ -3841,9 +3849,9 @@
             }
           ],
           "commit_applied_cycles": [
-            2835,
-            3624,
-            3649
+            2753,
+            3292,
+            3317
           ],
           "commits": [
             {
@@ -3851,39 +3859,39 @@
               "commit": "C1",
               "name": "replace",
               "start_cycle": "2500",
-              "commit_cycle": "2547",
-              "ready_for_next_commit": "2864",
-              "old_tree_drained_cycle": "3601",
+              "commit_cycle": "2549",
+              "ready_for_next_commit": "2782",
+              "old_tree_drained_cycle": "3269",
               "drain_label": "old-tree-drained",
-              "commit_applied_cycle": "2835",
+              "commit_applied_cycle": "2753",
               "instruction_count": "39",
-              "commit_cycles": "335",
+              "commit_cycles": "253",
               "bank_replay_cycles": "29"
             },
             {
               "run": "reserved",
               "commit": "C2",
               "name": "replace-cleanup",
-              "start_cycle": "2864",
-              "commit_cycle": "2885",
-              "ready_for_next_commit": "3635",
-              "old_tree_drained_cycle": "3601",
+              "start_cycle": "2782",
+              "commit_cycle": "2802",
+              "ready_for_next_commit": "3303",
+              "old_tree_drained_cycle": "3269",
               "drain_label": "old-tree-drained",
-              "commit_applied_cycle": "3624",
+              "commit_applied_cycle": "3292",
               "instruction_count": "20",
-              "commit_cycles": "760",
+              "commit_cycles": "510",
               "bank_replay_cycles": "11"
             },
             {
               "run": "reserved",
               "commit": "C3",
               "name": "replace-reclaim",
-              "start_cycle": "3635",
-              "commit_cycle": "3647",
-              "ready_for_next_commit": "3656",
-              "old_tree_drained_cycle": "3601",
+              "start_cycle": "3303",
+              "commit_cycle": "3314",
+              "ready_for_next_commit": "3324",
+              "old_tree_drained_cycle": "3269",
               "drain_label": "old-tree-drained",
-              "commit_applied_cycle": "3649",
+              "commit_applied_cycle": "3317",
               "instruction_count": "11",
               "commit_cycles": "14",
               "bank_replay_cycles": "7"
@@ -3892,24 +3900,24 @@
           "packets": 3136,
           "drops": 0,
           "reorders": 0,
-          "t1_backlog_packets": 257,
-          "pre_t1_link_utilization": 0.8928,
+          "t1_backlog_packets": 174,
+          "pre_t1_link_utilization": 0.9924,
           "t1_backlog_by_flow": {
             "zoom": 2,
-            "gmail": 255,
+            "gmail": 172,
             "spotify": 0
           },
-          "last_packet_pop_cycle": 10526,
-          "configuration_finish_cycle": 3656,
-          "old_root_drained_cycle": 3601,
-          "post_commit_old_drain_cycles": 766,
-          "old_root_tokens_at_publication": 253,
-          "zoom_peak_delay_cycles": 1111,
-          "global_stop_cycles": 335,
-          "hardware_stop_cycles": 323,
-          "prefill_entries": 253,
-          "prefill_write_cycles": 253,
-          "fixed_stop_overhead_cycles": 82,
+          "last_packet_pop_cycle": 10525,
+          "configuration_finish_cycle": 3324,
+          "old_root_drained_cycle": 3269,
+          "post_commit_old_drain_cycles": 516,
+          "old_root_tokens_at_publication": 170,
+          "zoom_peak_delay_cycles": 779,
+          "global_stop_cycles": 253,
+          "hardware_stop_cycles": 240,
+          "prefill_entries": 170,
+          "prefill_write_cycles": 170,
+          "fixed_stop_overhead_cycles": 83,
           "copy_cycles": 0,
           "copied_entries": 0,
           "copied_pifos": 0,
@@ -3920,145 +3928,145 @@
                 "cycle": 2500,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 253,
-                "buffered_packets": 260,
-                "ingress_packets": 4
+                "tokens": 169,
+                "buffered_packets": 177,
+                "ingress_packets": 3
               }
             ],
             "hardware_stop": [
               {
-                "cycle": 2513,
+                "cycle": 2514,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 253,
-                "buffered_packets": 258,
-                "ingress_packets": 5
+                "tokens": 170,
+                "buffered_packets": 174,
+                "ingress_packets": 4
               }
             ],
             "stop_snapshot": [
               {
-                "cycle": 2546,
+                "cycle": 2547,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 253,
-                "buffered_packets": 269,
-                "ingress_packets": 16
+                "tokens": 170,
+                "buffered_packets": 185,
+                "ingress_packets": 15
               }
             ],
             "prefill_started": [
               {
-                "cycle": 2581,
+                "cycle": 2582,
                 "engine_id": 4,
                 "vpifo_id": 1,
-                "tokens": 253,
-                "buffered_packets": 277,
+                "tokens": 170,
+                "buffered_packets": 194,
                 "ingress_packets": 24
               }
             ],
             "prefill_finished": [
               {
-                "cycle": 2835,
+                "cycle": 2753,
                 "engine_id": 4,
                 "vpifo_id": 1,
-                "tokens": 253,
-                "buffered_packets": 345,
-                "ingress_packets": 92
+                "tokens": 170,
+                "buffered_packets": 238,
+                "ingress_packets": 68
               }
             ],
             "root_detached": [
               {
-                "cycle": 2835,
+                "cycle": 2753,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 253,
-                "buffered_packets": 345,
-                "ingress_packets": 92
+                "tokens": 170,
+                "buffered_packets": 238,
+                "ingress_packets": 68
               },
               {
-                "cycle": 3624,
+                "cycle": 3292,
                 "engine_id": 4,
                 "vpifo_id": 1,
-                "tokens": 292,
-                "buffered_packets": 296,
+                "tokens": 202,
+                "buffered_packets": 207,
                 "ingress_packets": 0
               }
             ],
             "root_published": [
               {
-                "cycle": 2835,
+                "cycle": 2753,
                 "engine_id": 4,
                 "vpifo_id": 1,
-                "tokens": 253,
-                "buffered_packets": 345,
-                "ingress_packets": 92
+                "tokens": 170,
+                "buffered_packets": 238,
+                "ingress_packets": 68
               },
               {
-                "cycle": 3624,
+                "cycle": 3292,
                 "engine_id": 1,
                 "vpifo_id": 2,
-                "tokens": 294,
-                "buffered_packets": 296,
+                "tokens": 204,
+                "buffered_packets": 207,
                 "ingress_packets": 0
               }
             ],
             "drain_watch_armed": [
               {
-                "cycle": 2835,
+                "cycle": 2753,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 253,
-                "buffered_packets": 345,
-                "ingress_packets": 92
+                "tokens": 170,
+                "buffered_packets": 238,
+                "ingress_packets": 68
               }
             ],
             "driver_resume": [
               {
-                "cycle": 2835,
+                "cycle": 2753,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 253,
-                "buffered_packets": 345,
-                "ingress_packets": 92
+                "tokens": 170,
+                "buffered_packets": 238,
+                "ingress_packets": 68
               }
             ],
             "hardware_resume": [
               {
-                "cycle": 2836,
+                "cycle": 2754,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 253,
-                "buffered_packets": 345,
-                "ingress_packets": 91
+                "tokens": 170,
+                "buffered_packets": 238,
+                "ingress_packets": 67
               }
             ],
             "clear_engine": [
               {
-                "cycle": 3639,
+                "cycle": 3307,
                 "engine_id": 4,
                 "vpifo_id": 0,
-                "tokens": 291,
-                "buffered_packets": 295,
+                "tokens": 202,
+                "buffered_packets": 206,
                 "ingress_packets": 0
               }
             ]
           },
-          "prefill_command_to_done_cycles": 254,
+          "prefill_command_to_done_cycles": 171,
           "stop_breakdown_cycles": {
-            "driver_to_observed_hardware_gate": 13,
+            "driver_to_observed_hardware_gate": 14,
             "observed_gate_to_snapshot": 33,
             "snapshot_to_prefill_command_excluding_copy": 35,
             "copy_commands": 0,
-            "token_writes": 253,
+            "token_writes": 170,
             "prefill_command_overhead_to_publication": 1
           },
-          "peak_stop_buffer_packets": 345,
-          "teardown_ready_cycle": 3601,
+          "peak_stop_buffer_packets": 238,
+          "teardown_ready_cycle": 3269,
           "teardown_root_change_cycles": 23,
           "teardown_reclaim_cycles": 39,
           "teardown_all_config_finished_cycles": 55,
-          "wrapper_tokens_at_detachment": 292,
-          "wrapper_tokens_discarded": 291,
-          "packets_served_after_reclamation": 2126,
+          "wrapper_tokens_at_detachment": 202,
+          "wrapper_tokens_discarded": 202,
+          "packets_served_after_reclamation": 2125,
           "stop_window_drops": 0,
           "stop_window_reorders": 0,
           "teardown_window_drops": 0,
@@ -4183,29 +4191,29 @@
               "instruction_count": "58",
               "scheduled_cycle": "2500",
               "start_cycle": "2500",
-              "commit_cycle": "2566",
-              "finish_cycle": "4161",
-              "drain_cycle": "4127",
-              "drain_duration_cycles": "1561",
+              "commit_cycle": "2567",
+              "finish_cycle": "3664",
+              "drain_cycle": "3630",
+              "drain_duration_cycles": "1063",
               "dropped_packets": "0",
-              "retained_packets": "253",
-              "peak_buffer_occupancy_packets": "486",
+              "retained_packets": "170",
+              "peak_buffer_occupancy_packets": "334",
               "minimum_stop_cycles": "0",
               "stop_duration_cycles": "",
-              "commit_applied_cycle": "3362",
-              "commit_cycles": "862",
+              "commit_applied_cycle": "3114",
+              "commit_cycles": "614",
               "bank_cleanup_cycles": "49",
-              "install_finish_cycle": "3411",
-              "resume_cycle": "3362",
-              "cleanup_start_cycle": "3411",
-              "cleanup_commit_cycle": "3432",
-              "cleanup_applied_cycle": "4150",
-              "cleanup_finish_cycle": "4161",
+              "install_finish_cycle": "3163",
+              "resume_cycle": "3114",
+              "cleanup_start_cycle": "3163",
+              "cleanup_commit_cycle": "3183",
+              "cleanup_applied_cycle": "3653",
+              "cleanup_finish_cycle": "3664",
               "cleanup_instruction_count": "20",
-              "cleanup_commit_cycles": "739",
+              "cleanup_commit_cycles": "490",
               "cleanup_bank_cleanup_cycles": "11",
               "cleanup_of": "",
-              "prefilled_tokens": "253"
+              "prefilled_tokens": "170"
             },
             {
               "event": "cleanup_commit",
@@ -4215,9 +4223,9 @@
               "to_policy": "",
               "instruction_count": "20",
               "scheduled_cycle": "2500",
-              "start_cycle": "3411",
-              "commit_cycle": "3432",
-              "finish_cycle": "4182",
+              "start_cycle": "3163",
+              "commit_cycle": "3183",
+              "finish_cycle": "3685",
               "drain_cycle": "",
               "drain_duration_cycles": "",
               "dropped_packets": "0",
@@ -4225,15 +4233,15 @@
               "peak_buffer_occupancy_packets": "0",
               "minimum_stop_cycles": "0",
               "stop_duration_cycles": "",
-              "commit_applied_cycle": "4150",
-              "commit_cycles": "739",
+              "commit_applied_cycle": "3653",
+              "commit_cycles": "490",
               "bank_cleanup_cycles": "11",
-              "install_finish_cycle": "4161",
+              "install_finish_cycle": "3664",
               "resume_cycle": "",
-              "cleanup_start_cycle": "4161",
-              "cleanup_commit_cycle": "4172",
-              "cleanup_applied_cycle": "4175",
-              "cleanup_finish_cycle": "4182",
+              "cleanup_start_cycle": "3664",
+              "cleanup_commit_cycle": "3675",
+              "cleanup_applied_cycle": "3678",
+              "cleanup_finish_cycle": "3685",
               "cleanup_instruction_count": "11",
               "cleanup_commit_cycles": "14",
               "cleanup_bank_cleanup_cycles": "7",
@@ -4248,9 +4256,9 @@
               "to_policy": "",
               "instruction_count": "11",
               "scheduled_cycle": "2500",
-              "start_cycle": "4161",
-              "commit_cycle": "4172",
-              "finish_cycle": "4182",
+              "start_cycle": "3664",
+              "commit_cycle": "3675",
+              "finish_cycle": "3685",
               "drain_cycle": "",
               "drain_duration_cycles": "",
               "dropped_packets": "0",
@@ -4258,10 +4266,10 @@
               "peak_buffer_occupancy_packets": "0",
               "minimum_stop_cycles": "0",
               "stop_duration_cycles": "",
-              "commit_applied_cycle": "4175",
+              "commit_applied_cycle": "3678",
               "commit_cycles": "14",
               "bank_cleanup_cycles": "7",
-              "install_finish_cycle": "4182",
+              "install_finish_cycle": "3685",
               "resume_cycle": "",
               "cleanup_start_cycle": "",
               "cleanup_commit_cycle": "",
@@ -4275,9 +4283,9 @@
             }
           ],
           "commit_applied_cycles": [
-            3362,
-            4150,
-            4175
+            3114,
+            3653,
+            3678
           ],
           "commits": [
             {
@@ -4285,39 +4293,39 @@
               "commit": "C1",
               "name": "replace",
               "start_cycle": "2500",
-              "commit_cycle": "2566",
-              "ready_for_next_commit": "3411",
-              "old_tree_drained_cycle": "4127",
+              "commit_cycle": "2567",
+              "ready_for_next_commit": "3163",
+              "old_tree_drained_cycle": "3630",
               "drain_label": "old-tree-drained",
-              "commit_applied_cycle": "3362",
+              "commit_applied_cycle": "3114",
               "instruction_count": "58",
-              "commit_cycles": "862",
+              "commit_cycles": "614",
               "bank_replay_cycles": "49"
             },
             {
               "run": "copy",
               "commit": "C2",
               "name": "replace-cleanup",
-              "start_cycle": "3411",
-              "commit_cycle": "3432",
-              "ready_for_next_commit": "4161",
-              "old_tree_drained_cycle": "4127",
+              "start_cycle": "3163",
+              "commit_cycle": "3183",
+              "ready_for_next_commit": "3664",
+              "old_tree_drained_cycle": "3630",
               "drain_label": "old-tree-drained",
-              "commit_applied_cycle": "4150",
+              "commit_applied_cycle": "3653",
               "instruction_count": "20",
-              "commit_cycles": "739",
+              "commit_cycles": "490",
               "bank_replay_cycles": "11"
             },
             {
               "run": "copy",
               "commit": "C3",
               "name": "replace-reclaim",
-              "start_cycle": "4161",
-              "commit_cycle": "4172",
-              "ready_for_next_commit": "4182",
-              "old_tree_drained_cycle": "4127",
+              "start_cycle": "3664",
+              "commit_cycle": "3675",
+              "ready_for_next_commit": "3685",
+              "old_tree_drained_cycle": "3630",
               "drain_label": "old-tree-drained",
-              "commit_applied_cycle": "4175",
+              "commit_applied_cycle": "3678",
               "instruction_count": "11",
               "commit_cycles": "14",
               "bank_replay_cycles": "7"
@@ -4326,221 +4334,213 @@
           "packets": 3136,
           "drops": 0,
           "reorders": 0,
-          "t1_backlog_packets": 257,
-          "pre_t1_link_utilization": 0.8928,
+          "t1_backlog_packets": 174,
+          "pre_t1_link_utilization": 0.9924,
           "t1_backlog_by_flow": {
             "zoom": 2,
-            "gmail": 255,
+            "gmail": 172,
             "spotify": 0
           },
-          "last_packet_pop_cycle": 10546,
-          "configuration_finish_cycle": 4182,
-          "old_root_drained_cycle": 4127,
-          "post_commit_old_drain_cycles": 765,
-          "old_root_tokens_at_publication": 253,
-          "zoom_peak_delay_cycles": 1637,
-          "global_stop_cycles": 862,
-          "hardware_stop_cycles": 850,
-          "prefill_entries": 253,
-          "prefill_write_cycles": 253,
-          "fixed_stop_overhead_cycles": 101,
-          "copy_cycles": 508,
-          "copied_entries": 506,
-          "copied_pifos": 3,
-          "copied_buffered_packets": 253,
+          "last_packet_pop_cycle": 10526,
+          "configuration_finish_cycle": 3685,
+          "old_root_drained_cycle": 3630,
+          "post_commit_old_drain_cycles": 516,
+          "old_root_tokens_at_publication": 170,
+          "zoom_peak_delay_cycles": 1140,
+          "global_stop_cycles": 614,
+          "hardware_stop_cycles": 601,
+          "prefill_entries": 170,
+          "prefill_write_cycles": 170,
+          "fixed_stop_overhead_cycles": 102,
+          "copy_cycles": 342,
+          "copied_entries": 340,
+          "copied_pifos": 2,
+          "copied_buffered_packets": 170,
           "lifecycle": {
             "driver_stop": [
               {
                 "cycle": 2500,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 253,
-                "buffered_packets": 260,
-                "ingress_packets": 4
+                "tokens": 169,
+                "buffered_packets": 177,
+                "ingress_packets": 3
               }
             ],
             "hardware_stop": [
               {
-                "cycle": 2513,
+                "cycle": 2514,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 253,
-                "buffered_packets": 258,
-                "ingress_packets": 5
+                "tokens": 170,
+                "buffered_packets": 174,
+                "ingress_packets": 4
               }
             ],
             "stop_snapshot": [
               {
-                "cycle": 2546,
+                "cycle": 2547,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 253,
-                "buffered_packets": 269,
-                "ingress_packets": 16
+                "tokens": 170,
+                "buffered_packets": 185,
+                "ingress_packets": 15
               }
             ],
             "copy_source": [
               {
-                "cycle": 2546,
-                "engine_id": 3,
-                "vpifo_id": 1,
-                "tokens": 1,
-                "buffered_packets": 269,
-                "ingress_packets": 16
-              },
-              {
-                "cycle": 2546,
+                "cycle": 2547,
                 "engine_id": 3,
                 "vpifo_id": 2,
-                "tokens": 252,
-                "buffered_packets": 269,
-                "ingress_packets": 16
+                "tokens": 170,
+                "buffered_packets": 185,
+                "ingress_packets": 15
               },
               {
-                "cycle": 2801,
+                "cycle": 2719,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 253,
-                "buffered_packets": 337,
-                "ingress_packets": 84
+                "tokens": 170,
+                "buffered_packets": 230,
+                "ingress_packets": 60
               }
             ],
             "prefill_started": [
               {
-                "cycle": 3108,
+                "cycle": 2943,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 253,
-                "buffered_packets": 418,
-                "ingress_packets": 165
+                "tokens": 170,
+                "buffered_packets": 290,
+                "ingress_packets": 120
               }
             ],
             "prefill_finished": [
               {
-                "cycle": 3362,
+                "cycle": 3114,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 253,
-                "buffered_packets": 486,
-                "ingress_packets": 233
+                "tokens": 170,
+                "buffered_packets": 334,
+                "ingress_packets": 164
               }
             ],
             "root_detached": [
               {
-                "cycle": 3362,
+                "cycle": 3114,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 253,
-                "buffered_packets": 486,
-                "ingress_packets": 233
+                "tokens": 170,
+                "buffered_packets": 334,
+                "ingress_packets": 164
               },
               {
-                "cycle": 4150,
+                "cycle": 3653,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 432,
-                "buffered_packets": 439,
-                "ingress_packets": 3
+                "tokens": 299,
+                "buffered_packets": 303,
+                "ingress_packets": 0
               }
             ],
             "root_published": [
               {
-                "cycle": 3362,
+                "cycle": 3114,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 253,
-                "buffered_packets": 486,
-                "ingress_packets": 233
+                "tokens": 170,
+                "buffered_packets": 334,
+                "ingress_packets": 164
               },
               {
-                "cycle": 4150,
+                "cycle": 3653,
                 "engine_id": 2,
                 "vpifo_id": 2,
-                "tokens": 434,
-                "buffered_packets": 439,
-                "ingress_packets": 3
+                "tokens": 301,
+                "buffered_packets": 303,
+                "ingress_packets": 0
               }
             ],
             "drain_watch_armed": [
               {
-                "cycle": 3362,
+                "cycle": 3114,
                 "engine_id": 2,
                 "vpifo_id": 1,
-                "tokens": 253,
-                "buffered_packets": 486,
-                "ingress_packets": 233
+                "tokens": 170,
+                "buffered_packets": 334,
+                "ingress_packets": 164
               }
             ],
             "driver_resume": [
               {
-                "cycle": 3362,
+                "cycle": 3114,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 253,
-                "buffered_packets": 486,
-                "ingress_packets": 233
+                "tokens": 170,
+                "buffered_packets": 334,
+                "ingress_packets": 164
               }
             ],
             "hardware_resume": [
               {
-                "cycle": 3363,
+                "cycle": 3115,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 253,
-                "buffered_packets": 486,
-                "ingress_packets": 233
+                "tokens": 170,
+                "buffered_packets": 337,
+                "ingress_packets": 166
               }
             ],
             "clear_engine": [
               {
-                "cycle": 4165,
+                "cycle": 3668,
                 "engine_id": 1,
                 "vpifo_id": 0,
-                "tokens": 431,
-                "buffered_packets": 438,
-                "ingress_packets": 3
+                "tokens": 298,
+                "buffered_packets": 302,
+                "ingress_packets": 0
               }
             ]
           },
           "copy_completions": [
             {
-              "cycle": "2800",
+              "cycle": "2718",
               "phase": "copy_finished",
               "command": "CopyPifoEngine",
               "engine_id": "3",
               "vpifo_id": "0",
               "flow_id": "0",
               "data": "4",
-              "copied_entries": "253"
+              "copied_entries": "170"
             },
             {
-              "cycle": "3055",
+              "cycle": "2890",
               "phase": "copy_finished",
               "command": "CopyPifoEngine",
               "engine_id": "1",
               "vpifo_id": "0",
               "flow_id": "0",
               "data": "2",
-              "copied_entries": "253"
+              "copied_entries": "170"
             }
           ],
-          "prefill_command_to_done_cycles": 254,
+          "prefill_command_to_done_cycles": 171,
           "stop_breakdown_cycles": {
-            "driver_to_observed_hardware_gate": 13,
+            "driver_to_observed_hardware_gate": 14,
             "observed_gate_to_snapshot": 33,
             "snapshot_to_prefill_command_excluding_copy": 54,
-            "copy_commands": 508,
-            "token_writes": 253,
+            "copy_commands": 342,
+            "token_writes": 170,
             "prefill_command_overhead_to_publication": 1
           },
-          "peak_stop_buffer_packets": 486,
-          "teardown_ready_cycle": 4127,
+          "peak_stop_buffer_packets": 334,
+          "teardown_ready_cycle": 3630,
           "teardown_root_change_cycles": 23,
           "teardown_reclaim_cycles": 39,
           "teardown_all_config_finished_cycles": 55,
-          "wrapper_tokens_at_detachment": 432,
-          "wrapper_tokens_discarded": 431,
-          "packets_served_after_reclamation": 2126,
+          "wrapper_tokens_at_detachment": 299,
+          "wrapper_tokens_discarded": 298,
+          "packets_served_after_reclamation": 2125,
           "stop_window_drops": 0,
           "stop_window_reorders": 0,
           "teardown_window_drops": 0,
@@ -4632,6 +4632,8 @@
               ]
             }
           },
+          "copy_list": [],
+          "copy_scope": null,
           "creation_instruction_categories": {
             "rest": 25,
             "designate": 1
@@ -4653,26 +4655,26 @@
               "instruction_count": "26",
               "scheduled_cycle": "5000",
               "start_cycle": "5000",
-              "commit_cycle": "5031",
-              "finish_cycle": "6559",
-              "drain_cycle": "6533",
-              "drain_duration_cycles": "1502",
+              "commit_cycle": "5032",
+              "finish_cycle": "6057",
+              "drain_cycle": "6031",
+              "drain_duration_cycles": "999",
               "dropped_packets": "0",
               "retained_packets": "0",
               "peak_buffer_occupancy_packets": "0",
               "minimum_stop_cycles": "0",
               "stop_duration_cycles": "",
-              "commit_applied_cycle": "5034",
-              "commit_cycles": "34",
+              "commit_applied_cycle": "5035",
+              "commit_cycles": "35",
               "bank_cleanup_cycles": "17",
-              "install_finish_cycle": "5051",
+              "install_finish_cycle": "5052",
               "resume_cycle": "",
-              "cleanup_start_cycle": "5051",
+              "cleanup_start_cycle": "5052",
               "cleanup_commit_cycle": "5068",
-              "cleanup_applied_cycle": "6552",
-              "cleanup_finish_cycle": "6559",
+              "cleanup_applied_cycle": "6050",
+              "cleanup_finish_cycle": "6057",
               "cleanup_instruction_count": "16",
-              "cleanup_commit_cycles": "1501",
+              "cleanup_commit_cycles": "998",
               "cleanup_bank_cleanup_cycles": "7",
               "cleanup_of": "",
               "prefilled_tokens": ""
@@ -4685,9 +4687,9 @@
               "to_policy": "",
               "instruction_count": "16",
               "scheduled_cycle": "5000",
-              "start_cycle": "5051",
+              "start_cycle": "5052",
               "commit_cycle": "5068",
-              "finish_cycle": "6559",
+              "finish_cycle": "6057",
               "drain_cycle": "",
               "drain_duration_cycles": "",
               "dropped_packets": "0",
@@ -4695,10 +4697,10 @@
               "peak_buffer_occupancy_packets": "0",
               "minimum_stop_cycles": "0",
               "stop_duration_cycles": "",
-              "commit_applied_cycle": "6552",
-              "commit_cycles": "1501",
+              "commit_applied_cycle": "6050",
+              "commit_cycles": "998",
               "bank_cleanup_cycles": "7",
-              "install_finish_cycle": "6559",
+              "install_finish_cycle": "6057",
               "resume_cycle": "",
               "cleanup_start_cycle": "",
               "cleanup_commit_cycle": "",
@@ -4712,8 +4714,8 @@
             }
           ],
           "commit_applied_cycles": [
-            5034,
-            6552
+            5035,
+            6050
           ],
           "commits": [
             {
@@ -4721,46 +4723,46 @@
               "commit": "C1",
               "name": "replace",
               "start_cycle": "5000",
-              "commit_cycle": "5031",
-              "ready_for_next_commit": "5051",
-              "old_tree_drained_cycle": "6533",
+              "commit_cycle": "5032",
+              "ready_for_next_commit": "5052",
+              "old_tree_drained_cycle": "6031",
               "drain_label": "old-tree-drained",
-              "commit_applied_cycle": "5034",
+              "commit_applied_cycle": "5035",
               "instruction_count": "26",
-              "commit_cycles": "34",
+              "commit_cycles": "35",
               "bank_replay_cycles": "17"
             },
             {
               "run": "link",
               "commit": "C2",
               "name": "replace-cleanup",
-              "start_cycle": "5051",
+              "start_cycle": "5052",
               "commit_cycle": "5068",
-              "ready_for_next_commit": "6559",
-              "old_tree_drained_cycle": "6533",
+              "ready_for_next_commit": "6057",
+              "old_tree_drained_cycle": "6031",
               "drain_label": "old-tree-drained",
-              "commit_applied_cycle": "6552",
+              "commit_applied_cycle": "6050",
               "instruction_count": "16",
-              "commit_cycles": "1501",
+              "commit_cycles": "998",
               "bank_replay_cycles": "7"
             }
           ],
           "packets": 4401,
           "drops": 0,
           "reorders": 0,
-          "t1_backlog_packets": 507,
-          "pre_t1_link_utilization": 0.8964,
+          "t1_backlog_packets": 341,
+          "pre_t1_link_utilization": 0.996,
           "t1_backlog_by_flow": {
             "zoom": 2,
-            "gmail": 505,
+            "gmail": 339,
             "spotify": 0
           },
-          "last_packet_pop_cycle": 14018,
-          "configuration_finish_cycle": 6559,
-          "old_root_drained_cycle": 6533,
-          "post_commit_old_drain_cycles": 1499,
-          "old_root_tokens_at_publication": 500,
-          "zoom_peak_delay_cycles": 1513,
+          "last_packet_pop_cycle": 14019,
+          "configuration_finish_cycle": 6057,
+          "old_root_drained_cycle": 6031,
+          "post_commit_old_drain_cycles": 996,
+          "old_root_tokens_at_publication": 332,
+          "zoom_peak_delay_cycles": 1011,
           "global_stop_cycles": 0,
           "hardware_stop_cycles": 0,
           "prefill_entries": 0,
@@ -4773,11 +4775,11 @@
           "lifecycle": {
             "drain_watch_armed": [
               {
-                "cycle": 5034,
+                "cycle": 5035,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 500,
-                "buffered_packets": 507,
+                "tokens": 332,
+                "buffered_packets": 340,
                 "ingress_packets": 5
               }
             ]
@@ -4864,6 +4866,8 @@
               ]
             }
           },
+          "copy_list": [],
+          "copy_scope": null,
           "creation_instruction_categories": {
             "rest": 27,
             "wrapper_creation": 11,
@@ -4890,29 +4894,29 @@
               "instruction_count": "39",
               "scheduled_cycle": "5000",
               "start_cycle": "5000",
-              "commit_cycle": "5046",
-              "finish_cycle": "7134",
-              "drain_cycle": "7100",
-              "drain_duration_cycles": "2054",
+              "commit_cycle": "5048",
+              "finish_cycle": "6471",
+              "drain_cycle": "6437",
+              "drain_duration_cycles": "1389",
               "dropped_packets": "0",
-              "retained_packets": "503",
-              "peak_buffer_occupancy_packets": "660",
+              "retained_packets": "337",
+              "peak_buffer_occupancy_packets": "452",
               "minimum_stop_cycles": "0",
               "stop_duration_cycles": "",
-              "commit_applied_cycle": "5584",
-              "commit_cycles": "584",
+              "commit_applied_cycle": "5420",
+              "commit_cycles": "420",
               "bank_cleanup_cycles": "29",
-              "install_finish_cycle": "5613",
-              "resume_cycle": "5584",
-              "cleanup_start_cycle": "5613",
-              "cleanup_commit_cycle": "5634",
-              "cleanup_applied_cycle": "7123",
-              "cleanup_finish_cycle": "7134",
+              "install_finish_cycle": "5449",
+              "resume_cycle": "5420",
+              "cleanup_start_cycle": "5449",
+              "cleanup_commit_cycle": "5470",
+              "cleanup_applied_cycle": "6460",
+              "cleanup_finish_cycle": "6471",
               "cleanup_instruction_count": "20",
-              "cleanup_commit_cycles": "1510",
+              "cleanup_commit_cycles": "1011",
               "cleanup_bank_cleanup_cycles": "11",
               "cleanup_of": "",
-              "prefilled_tokens": "503"
+              "prefilled_tokens": "337"
             },
             {
               "event": "cleanup_commit",
@@ -4922,9 +4926,9 @@
               "to_policy": "",
               "instruction_count": "20",
               "scheduled_cycle": "5000",
-              "start_cycle": "5613",
-              "commit_cycle": "5634",
-              "finish_cycle": "7155",
+              "start_cycle": "5449",
+              "commit_cycle": "5470",
+              "finish_cycle": "6492",
               "drain_cycle": "",
               "drain_duration_cycles": "",
               "dropped_packets": "0",
@@ -4932,15 +4936,15 @@
               "peak_buffer_occupancy_packets": "0",
               "minimum_stop_cycles": "0",
               "stop_duration_cycles": "",
-              "commit_applied_cycle": "7123",
-              "commit_cycles": "1510",
+              "commit_applied_cycle": "6460",
+              "commit_cycles": "1011",
               "bank_cleanup_cycles": "11",
-              "install_finish_cycle": "7134",
+              "install_finish_cycle": "6471",
               "resume_cycle": "",
-              "cleanup_start_cycle": "7134",
-              "cleanup_commit_cycle": "7145",
-              "cleanup_applied_cycle": "7148",
-              "cleanup_finish_cycle": "7155",
+              "cleanup_start_cycle": "6471",
+              "cleanup_commit_cycle": "6482",
+              "cleanup_applied_cycle": "6485",
+              "cleanup_finish_cycle": "6492",
               "cleanup_instruction_count": "11",
               "cleanup_commit_cycles": "14",
               "cleanup_bank_cleanup_cycles": "7",
@@ -4955,9 +4959,9 @@
               "to_policy": "",
               "instruction_count": "11",
               "scheduled_cycle": "5000",
-              "start_cycle": "7134",
-              "commit_cycle": "7145",
-              "finish_cycle": "7155",
+              "start_cycle": "6471",
+              "commit_cycle": "6482",
+              "finish_cycle": "6492",
               "drain_cycle": "",
               "drain_duration_cycles": "",
               "dropped_packets": "0",
@@ -4965,10 +4969,10 @@
               "peak_buffer_occupancy_packets": "0",
               "minimum_stop_cycles": "0",
               "stop_duration_cycles": "",
-              "commit_applied_cycle": "7148",
+              "commit_applied_cycle": "6485",
               "commit_cycles": "14",
               "bank_cleanup_cycles": "7",
-              "install_finish_cycle": "7155",
+              "install_finish_cycle": "6492",
               "resume_cycle": "",
               "cleanup_start_cycle": "",
               "cleanup_commit_cycle": "",
@@ -4982,9 +4986,9 @@
             }
           ],
           "commit_applied_cycles": [
-            5584,
-            7123,
-            7148
+            5420,
+            6460,
+            6485
           ],
           "commits": [
             {
@@ -4992,39 +4996,39 @@
               "commit": "C1",
               "name": "replace",
               "start_cycle": "5000",
-              "commit_cycle": "5046",
-              "ready_for_next_commit": "5613",
-              "old_tree_drained_cycle": "7100",
+              "commit_cycle": "5048",
+              "ready_for_next_commit": "5449",
+              "old_tree_drained_cycle": "6437",
               "drain_label": "old-tree-drained",
-              "commit_applied_cycle": "5584",
+              "commit_applied_cycle": "5420",
               "instruction_count": "39",
-              "commit_cycles": "584",
+              "commit_cycles": "420",
               "bank_replay_cycles": "29"
             },
             {
               "run": "reserved",
               "commit": "C2",
               "name": "replace-cleanup",
-              "start_cycle": "5613",
-              "commit_cycle": "5634",
-              "ready_for_next_commit": "7134",
-              "old_tree_drained_cycle": "7100",
+              "start_cycle": "5449",
+              "commit_cycle": "5470",
+              "ready_for_next_commit": "6471",
+              "old_tree_drained_cycle": "6437",
               "drain_label": "old-tree-drained",
-              "commit_applied_cycle": "7123",
+              "commit_applied_cycle": "6460",
               "instruction_count": "20",
-              "commit_cycles": "1510",
+              "commit_cycles": "1011",
               "bank_replay_cycles": "11"
             },
             {
               "run": "reserved",
               "commit": "C3",
               "name": "replace-reclaim",
-              "start_cycle": "7134",
-              "commit_cycle": "7145",
-              "ready_for_next_commit": "7155",
-              "old_tree_drained_cycle": "7100",
+              "start_cycle": "6471",
+              "commit_cycle": "6482",
+              "ready_for_next_commit": "6492",
+              "old_tree_drained_cycle": "6437",
               "drain_label": "old-tree-drained",
-              "commit_applied_cycle": "7148",
+              "commit_applied_cycle": "6485",
               "instruction_count": "11",
               "commit_cycles": "14",
               "bank_replay_cycles": "7"
@@ -5033,24 +5037,24 @@
           "packets": 4401,
           "drops": 0,
           "reorders": 0,
-          "t1_backlog_packets": 507,
-          "pre_t1_link_utilization": 0.8964,
+          "t1_backlog_packets": 341,
+          "pre_t1_link_utilization": 0.996,
           "t1_backlog_by_flow": {
             "zoom": 2,
-            "gmail": 505,
+            "gmail": 339,
             "spotify": 0
           },
-          "last_packet_pop_cycle": 14314,
-          "configuration_finish_cycle": 7155,
-          "old_root_drained_cycle": 7100,
-          "post_commit_old_drain_cycles": 1516,
-          "old_root_tokens_at_publication": 503,
-          "zoom_peak_delay_cycles": 2110,
-          "global_stop_cycles": 584,
-          "hardware_stop_cycles": 573,
-          "prefill_entries": 503,
-          "prefill_write_cycles": 503,
-          "fixed_stop_overhead_cycles": 81,
+          "last_packet_pop_cycle": 14019,
+          "configuration_finish_cycle": 6492,
+          "old_root_drained_cycle": 6437,
+          "post_commit_old_drain_cycles": 1017,
+          "old_root_tokens_at_publication": 337,
+          "zoom_peak_delay_cycles": 1447,
+          "global_stop_cycles": 420,
+          "hardware_stop_cycles": 407,
+          "prefill_entries": 337,
+          "prefill_write_cycles": 337,
+          "fixed_stop_overhead_cycles": 83,
           "copy_cycles": 0,
           "copied_entries": 0,
           "copied_pifos": 0,
@@ -5061,145 +5065,145 @@
                 "cycle": 5000,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 503,
-                "buffered_packets": 510,
-                "ingress_packets": 4
+                "tokens": 337,
+                "buffered_packets": 343,
+                "ingress_packets": 3
               }
             ],
             "hardware_stop": [
               {
-                "cycle": 5012,
+                "cycle": 5014,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 503,
-                "buffered_packets": 508,
-                "ingress_packets": 5
+                "tokens": 337,
+                "buffered_packets": 341,
+                "ingress_packets": 4
               }
             ],
             "stop_snapshot": [
               {
-                "cycle": 5045,
+                "cycle": 5047,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 503,
-                "buffered_packets": 519,
-                "ingress_packets": 16
+                "tokens": 337,
+                "buffered_packets": 352,
+                "ingress_packets": 15
               }
             ],
             "prefill_started": [
               {
-                "cycle": 5080,
+                "cycle": 5082,
                 "engine_id": 4,
                 "vpifo_id": 1,
-                "tokens": 503,
-                "buffered_packets": 527,
+                "tokens": 337,
+                "buffered_packets": 361,
                 "ingress_packets": 24
               }
             ],
             "prefill_finished": [
               {
-                "cycle": 5584,
+                "cycle": 5420,
                 "engine_id": 4,
                 "vpifo_id": 1,
-                "tokens": 503,
-                "buffered_packets": 660,
-                "ingress_packets": 157
+                "tokens": 337,
+                "buffered_packets": 452,
+                "ingress_packets": 115
               }
             ],
             "root_detached": [
               {
-                "cycle": 5584,
+                "cycle": 5420,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 503,
-                "buffered_packets": 660,
-                "ingress_packets": 157
+                "tokens": 337,
+                "buffered_packets": 452,
+                "ingress_packets": 115
               },
               {
-                "cycle": 7123,
+                "cycle": 6460,
                 "engine_id": 4,
                 "vpifo_id": 1,
-                "tokens": 559,
-                "buffered_packets": 564,
+                "tokens": 380,
+                "buffered_packets": 386,
                 "ingress_packets": 0
               }
             ],
             "root_published": [
               {
-                "cycle": 5584,
+                "cycle": 5420,
                 "engine_id": 4,
                 "vpifo_id": 1,
-                "tokens": 503,
-                "buffered_packets": 660,
-                "ingress_packets": 157
+                "tokens": 337,
+                "buffered_packets": 452,
+                "ingress_packets": 115
               },
               {
-                "cycle": 7123,
+                "cycle": 6460,
                 "engine_id": 1,
                 "vpifo_id": 2,
-                "tokens": 561,
-                "buffered_packets": 564,
+                "tokens": 382,
+                "buffered_packets": 386,
                 "ingress_packets": 0
               }
             ],
             "drain_watch_armed": [
               {
-                "cycle": 5584,
+                "cycle": 5420,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 503,
-                "buffered_packets": 660,
-                "ingress_packets": 157
+                "tokens": 337,
+                "buffered_packets": 452,
+                "ingress_packets": 115
               }
             ],
             "driver_resume": [
               {
-                "cycle": 5584,
+                "cycle": 5420,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 503,
-                "buffered_packets": 660,
-                "ingress_packets": 157
+                "tokens": 337,
+                "buffered_packets": 452,
+                "ingress_packets": 115
               }
             ],
             "hardware_resume": [
               {
-                "cycle": 5585,
+                "cycle": 5421,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 503,
-                "buffered_packets": 663,
-                "ingress_packets": 160
+                "tokens": 337,
+                "buffered_packets": 452,
+                "ingress_packets": 114
               }
             ],
             "clear_engine": [
               {
-                "cycle": 7138,
+                "cycle": 6475,
                 "engine_id": 4,
                 "vpifo_id": 0,
-                "tokens": 559,
-                "buffered_packets": 563,
-                "ingress_packets": 1
+                "tokens": 381,
+                "buffered_packets": 385,
+                "ingress_packets": 0
               }
             ]
           },
-          "prefill_command_to_done_cycles": 504,
+          "prefill_command_to_done_cycles": 338,
           "stop_breakdown_cycles": {
-            "driver_to_observed_hardware_gate": 12,
+            "driver_to_observed_hardware_gate": 14,
             "observed_gate_to_snapshot": 33,
             "snapshot_to_prefill_command_excluding_copy": 35,
             "copy_commands": 0,
-            "token_writes": 503,
+            "token_writes": 337,
             "prefill_command_overhead_to_publication": 1
           },
-          "peak_stop_buffer_packets": 660,
-          "teardown_ready_cycle": 7100,
+          "peak_stop_buffer_packets": 452,
+          "teardown_ready_cycle": 6437,
           "teardown_root_change_cycles": 23,
           "teardown_reclaim_cycles": 39,
           "teardown_all_config_finished_cycles": 55,
-          "wrapper_tokens_at_detachment": 559,
-          "wrapper_tokens_discarded": 559,
-          "packets_served_after_reclamation": 2391,
+          "wrapper_tokens_at_detachment": 380,
+          "wrapper_tokens_discarded": 381,
+          "packets_served_after_reclamation": 2390,
           "stop_window_drops": 0,
           "stop_window_reorders": 0,
           "teardown_window_drops": 0,
@@ -5324,29 +5328,29 @@
               "instruction_count": "58",
               "scheduled_cycle": "5000",
               "start_cycle": "5000",
-              "commit_cycle": "5065",
-              "finish_cycle": "8160",
-              "drain_cycle": "8126",
-              "drain_duration_cycles": "3061",
+              "commit_cycle": "5068",
+              "finish_cycle": "7166",
+              "drain_cycle": "7132",
+              "drain_duration_cycles": "2064",
               "dropped_packets": "0",
-              "retained_packets": "503",
-              "peak_buffer_occupancy_packets": "935",
+              "retained_packets": "337",
+              "peak_buffer_occupancy_packets": "636",
               "minimum_stop_cycles": "0",
               "stop_duration_cycles": "",
-              "commit_applied_cycle": "6611",
-              "commit_cycles": "1611",
+              "commit_applied_cycle": "6115",
+              "commit_cycles": "1115",
               "bank_cleanup_cycles": "49",
-              "install_finish_cycle": "6660",
-              "resume_cycle": "6611",
-              "cleanup_start_cycle": "6660",
-              "cleanup_commit_cycle": "6681",
-              "cleanup_applied_cycle": "8149",
-              "cleanup_finish_cycle": "8160",
+              "install_finish_cycle": "6164",
+              "resume_cycle": "6115",
+              "cleanup_start_cycle": "6164",
+              "cleanup_commit_cycle": "6185",
+              "cleanup_applied_cycle": "7155",
+              "cleanup_finish_cycle": "7166",
               "cleanup_instruction_count": "20",
-              "cleanup_commit_cycles": "1489",
+              "cleanup_commit_cycles": "991",
               "cleanup_bank_cleanup_cycles": "11",
               "cleanup_of": "",
-              "prefilled_tokens": "503"
+              "prefilled_tokens": "337"
             },
             {
               "event": "cleanup_commit",
@@ -5356,9 +5360,9 @@
               "to_policy": "",
               "instruction_count": "20",
               "scheduled_cycle": "5000",
-              "start_cycle": "6660",
-              "commit_cycle": "6681",
-              "finish_cycle": "8181",
+              "start_cycle": "6164",
+              "commit_cycle": "6185",
+              "finish_cycle": "7187",
               "drain_cycle": "",
               "drain_duration_cycles": "",
               "dropped_packets": "0",
@@ -5366,15 +5370,15 @@
               "peak_buffer_occupancy_packets": "0",
               "minimum_stop_cycles": "0",
               "stop_duration_cycles": "",
-              "commit_applied_cycle": "8149",
-              "commit_cycles": "1489",
+              "commit_applied_cycle": "7155",
+              "commit_cycles": "991",
               "bank_cleanup_cycles": "11",
-              "install_finish_cycle": "8160",
+              "install_finish_cycle": "7166",
               "resume_cycle": "",
-              "cleanup_start_cycle": "8160",
-              "cleanup_commit_cycle": "8171",
-              "cleanup_applied_cycle": "8174",
-              "cleanup_finish_cycle": "8181",
+              "cleanup_start_cycle": "7166",
+              "cleanup_commit_cycle": "7177",
+              "cleanup_applied_cycle": "7180",
+              "cleanup_finish_cycle": "7187",
               "cleanup_instruction_count": "11",
               "cleanup_commit_cycles": "14",
               "cleanup_bank_cleanup_cycles": "7",
@@ -5389,9 +5393,9 @@
               "to_policy": "",
               "instruction_count": "11",
               "scheduled_cycle": "5000",
-              "start_cycle": "8160",
-              "commit_cycle": "8171",
-              "finish_cycle": "8181",
+              "start_cycle": "7166",
+              "commit_cycle": "7177",
+              "finish_cycle": "7187",
               "drain_cycle": "",
               "drain_duration_cycles": "",
               "dropped_packets": "0",
@@ -5399,10 +5403,10 @@
               "peak_buffer_occupancy_packets": "0",
               "minimum_stop_cycles": "0",
               "stop_duration_cycles": "",
-              "commit_applied_cycle": "8174",
+              "commit_applied_cycle": "7180",
               "commit_cycles": "14",
               "bank_cleanup_cycles": "7",
-              "install_finish_cycle": "8181",
+              "install_finish_cycle": "7187",
               "resume_cycle": "",
               "cleanup_start_cycle": "",
               "cleanup_commit_cycle": "",
@@ -5416,9 +5420,9 @@
             }
           ],
           "commit_applied_cycles": [
-            6611,
-            8149,
-            8174
+            6115,
+            7155,
+            7180
           ],
           "commits": [
             {
@@ -5426,39 +5430,39 @@
               "commit": "C1",
               "name": "replace",
               "start_cycle": "5000",
-              "commit_cycle": "5065",
-              "ready_for_next_commit": "6660",
-              "old_tree_drained_cycle": "8126",
+              "commit_cycle": "5068",
+              "ready_for_next_commit": "6164",
+              "old_tree_drained_cycle": "7132",
               "drain_label": "old-tree-drained",
-              "commit_applied_cycle": "6611",
+              "commit_applied_cycle": "6115",
               "instruction_count": "58",
-              "commit_cycles": "1611",
+              "commit_cycles": "1115",
               "bank_replay_cycles": "49"
             },
             {
               "run": "copy",
               "commit": "C2",
               "name": "replace-cleanup",
-              "start_cycle": "6660",
-              "commit_cycle": "6681",
-              "ready_for_next_commit": "8160",
-              "old_tree_drained_cycle": "8126",
+              "start_cycle": "6164",
+              "commit_cycle": "6185",
+              "ready_for_next_commit": "7166",
+              "old_tree_drained_cycle": "7132",
               "drain_label": "old-tree-drained",
-              "commit_applied_cycle": "8149",
+              "commit_applied_cycle": "7155",
               "instruction_count": "20",
-              "commit_cycles": "1489",
+              "commit_cycles": "991",
               "bank_replay_cycles": "11"
             },
             {
               "run": "copy",
               "commit": "C3",
               "name": "replace-reclaim",
-              "start_cycle": "8160",
-              "commit_cycle": "8171",
-              "ready_for_next_commit": "8181",
-              "old_tree_drained_cycle": "8126",
+              "start_cycle": "7166",
+              "commit_cycle": "7177",
+              "ready_for_next_commit": "7187",
+              "old_tree_drained_cycle": "7132",
               "drain_label": "old-tree-drained",
-              "commit_applied_cycle": "8174",
+              "commit_applied_cycle": "7180",
               "instruction_count": "11",
               "commit_cycles": "14",
               "bank_replay_cycles": "7"
@@ -5467,213 +5471,213 @@
           "packets": 4401,
           "drops": 0,
           "reorders": 0,
-          "t1_backlog_packets": 507,
-          "pre_t1_link_utilization": 0.8964,
+          "t1_backlog_packets": 341,
+          "pre_t1_link_utilization": 0.996,
           "t1_backlog_by_flow": {
             "zoom": 2,
-            "gmail": 505,
+            "gmail": 339,
             "spotify": 0
           },
-          "last_packet_pop_cycle": 15340,
-          "configuration_finish_cycle": 8181,
-          "old_root_drained_cycle": 8126,
-          "post_commit_old_drain_cycles": 1515,
-          "old_root_tokens_at_publication": 503,
-          "zoom_peak_delay_cycles": 3136,
-          "global_stop_cycles": 1611,
-          "hardware_stop_cycles": 1600,
-          "prefill_entries": 503,
-          "prefill_write_cycles": 503,
-          "fixed_stop_overhead_cycles": 100,
-          "copy_cycles": 1008,
-          "copied_entries": 1006,
+          "last_packet_pop_cycle": 14339,
+          "configuration_finish_cycle": 7187,
+          "old_root_drained_cycle": 7132,
+          "post_commit_old_drain_cycles": 1017,
+          "old_root_tokens_at_publication": 337,
+          "zoom_peak_delay_cycles": 2142,
+          "global_stop_cycles": 1115,
+          "hardware_stop_cycles": 1102,
+          "prefill_entries": 337,
+          "prefill_write_cycles": 337,
+          "fixed_stop_overhead_cycles": 102,
+          "copy_cycles": 676,
+          "copied_entries": 674,
           "copied_pifos": 2,
-          "copied_buffered_packets": 503,
+          "copied_buffered_packets": 337,
           "lifecycle": {
             "driver_stop": [
               {
                 "cycle": 5000,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 503,
-                "buffered_packets": 510,
-                "ingress_packets": 4
+                "tokens": 337,
+                "buffered_packets": 343,
+                "ingress_packets": 3
               }
             ],
             "hardware_stop": [
               {
-                "cycle": 5012,
+                "cycle": 5014,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 503,
-                "buffered_packets": 508,
-                "ingress_packets": 5
+                "tokens": 337,
+                "buffered_packets": 341,
+                "ingress_packets": 4
               }
             ],
             "stop_snapshot": [
               {
-                "cycle": 5045,
+                "cycle": 5047,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 503,
-                "buffered_packets": 519,
-                "ingress_packets": 16
+                "tokens": 337,
+                "buffered_packets": 352,
+                "ingress_packets": 15
               }
             ],
             "copy_source": [
               {
-                "cycle": 5045,
+                "cycle": 5047,
                 "engine_id": 3,
                 "vpifo_id": 2,
-                "tokens": 503,
-                "buffered_packets": 519,
-                "ingress_packets": 16
+                "tokens": 337,
+                "buffered_packets": 352,
+                "ingress_packets": 15
               },
               {
-                "cycle": 5550,
+                "cycle": 5386,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 503,
-                "buffered_packets": 652,
-                "ingress_packets": 149
+                "tokens": 337,
+                "buffered_packets": 441,
+                "ingress_packets": 104
               }
             ],
             "prefill_started": [
               {
-                "cycle": 6107,
+                "cycle": 5777,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 503,
-                "buffered_packets": 800,
-                "ingress_packets": 297
+                "tokens": 337,
+                "buffered_packets": 545,
+                "ingress_packets": 208
               }
             ],
             "prefill_finished": [
               {
-                "cycle": 6611,
+                "cycle": 6115,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 503,
-                "buffered_packets": 935,
-                "ingress_packets": 432
+                "tokens": 337,
+                "buffered_packets": 636,
+                "ingress_packets": 299
               }
             ],
             "root_detached": [
               {
-                "cycle": 6611,
+                "cycle": 6115,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 503,
-                "buffered_packets": 935,
-                "ingress_packets": 432
+                "tokens": 337,
+                "buffered_packets": 636,
+                "ingress_packets": 299
               },
               {
-                "cycle": 8149,
+                "cycle": 7155,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 832,
-                "buffered_packets": 836,
+                "tokens": 566,
+                "buffered_packets": 571,
                 "ingress_packets": 0
               }
             ],
             "root_published": [
               {
-                "cycle": 6611,
+                "cycle": 6115,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 503,
-                "buffered_packets": 935,
-                "ingress_packets": 432
+                "tokens": 337,
+                "buffered_packets": 636,
+                "ingress_packets": 299
               },
               {
-                "cycle": 8149,
+                "cycle": 7155,
                 "engine_id": 2,
                 "vpifo_id": 2,
-                "tokens": 834,
-                "buffered_packets": 836,
+                "tokens": 568,
+                "buffered_packets": 571,
                 "ingress_packets": 0
               }
             ],
             "drain_watch_armed": [
               {
-                "cycle": 6611,
+                "cycle": 6115,
                 "engine_id": 2,
                 "vpifo_id": 1,
-                "tokens": 503,
-                "buffered_packets": 935,
-                "ingress_packets": 432
+                "tokens": 337,
+                "buffered_packets": 636,
+                "ingress_packets": 299
               }
             ],
             "driver_resume": [
               {
-                "cycle": 6611,
+                "cycle": 6115,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 503,
-                "buffered_packets": 935,
-                "ingress_packets": 432
+                "tokens": 337,
+                "buffered_packets": 636,
+                "ingress_packets": 299
               }
             ],
             "hardware_resume": [
               {
-                "cycle": 6612,
+                "cycle": 6116,
                 "engine_id": 1,
                 "vpifo_id": 1,
-                "tokens": 503,
-                "buffered_packets": 936,
-                "ingress_packets": 433
+                "tokens": 337,
+                "buffered_packets": 636,
+                "ingress_packets": 298
               }
             ],
             "clear_engine": [
               {
-                "cycle": 8164,
+                "cycle": 7170,
                 "engine_id": 1,
                 "vpifo_id": 0,
-                "tokens": 831,
-                "buffered_packets": 835,
+                "tokens": 566,
+                "buffered_packets": 570,
                 "ingress_packets": 0
               }
             ]
           },
           "copy_completions": [
             {
-              "cycle": "5549",
+              "cycle": "5385",
               "phase": "copy_finished",
               "command": "CopyPifoEngine",
               "engine_id": "3",
               "vpifo_id": "0",
               "flow_id": "0",
               "data": "4",
-              "copied_entries": "503"
+              "copied_entries": "337"
             },
             {
-              "cycle": "6054",
+              "cycle": "5724",
               "phase": "copy_finished",
               "command": "CopyPifoEngine",
               "engine_id": "1",
               "vpifo_id": "0",
               "flow_id": "0",
               "data": "2",
-              "copied_entries": "503"
+              "copied_entries": "337"
             }
           ],
-          "prefill_command_to_done_cycles": 504,
+          "prefill_command_to_done_cycles": 338,
           "stop_breakdown_cycles": {
-            "driver_to_observed_hardware_gate": 12,
+            "driver_to_observed_hardware_gate": 14,
             "observed_gate_to_snapshot": 33,
             "snapshot_to_prefill_command_excluding_copy": 54,
-            "copy_commands": 1008,
-            "token_writes": 503,
+            "copy_commands": 676,
+            "token_writes": 337,
             "prefill_command_overhead_to_publication": 1
           },
-          "peak_stop_buffer_packets": 935,
-          "teardown_ready_cycle": 8126,
+          "peak_stop_buffer_packets": 636,
+          "teardown_ready_cycle": 7132,
           "teardown_root_change_cycles": 23,
           "teardown_reclaim_cycles": 39,
           "teardown_all_config_finished_cycles": 55,
-          "wrapper_tokens_at_detachment": 832,
-          "wrapper_tokens_discarded": 831,
-          "packets_served_after_reclamation": 2391,
+          "wrapper_tokens_at_detachment": 566,
+          "wrapper_tokens_discarded": 566,
+          "packets_served_after_reclamation": 2390,
           "stop_window_drops": 0,
           "stop_window_reorders": 0,
           "teardown_window_drops": 0,

@@ -21,23 +21,23 @@ FLOW_LABELS = {1: 'high priority', 2: 'low priority'}
 COLORS = ('#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22',
  '#17becf')
 PANELS = [{'title': 'RR → SP',
-  'start': 240,
+  'start': 241,
   'markers': [(0, '#1f77b4', '-', 'C1 start'), (38, '#ff7f0e', '--', 'C1 commit accepted'),
-              (58, '#2ca02c', '-.', 'C1 ready_for_next_commit'),
-              (295, '#9467bd', ':', 'C1 old-tree-drained'), (58, '#1f77b4', '-', 'C2 start'),
+              (57, '#2ca02c', '-.', 'C1 ready_for_next_commit'),
+              (283, '#9467bd', ':', 'C1 old-tree-drained'), (57, '#1f77b4', '-', 'C2 start'),
               (88, '#ff7f0e', '--', 'C2 commit accepted'),
-              (347, '#2ca02c', '-.', 'C2 ready_for_next_commit'),
-              (295, '#9467bd', ':', 'C2 old-tree-drained')],
-  'spans': [(0, 58, '#dbeafe', 'C1: install commit'), (58, 347, '#ffedd5', 'C2: cleanup commit')],
-  'notes': 'C1: start=240  commit accepted=278  ready_for_next_commit=298\n'
-           'C2: start=298  commit accepted=328  ready_for_next_commit=587\n'
-           'old tree drained=535 (shared by C1/C2)\n'
-           'published: install=281, cleanup=572\n'
-           'config=27 inst / 41 cycles to publication\n'
-           'cleanup=30 inst / 274 cycles to publication (guard wait included)\n'
+              (335, '#2ca02c', '-.', 'C2 ready_for_next_commit'),
+              (283, '#9467bd', ':', 'C2 old-tree-drained')],
+  'spans': [(0, 57, '#dbeafe', 'C1: install commit'), (57, 335, '#ffedd5', 'C2: cleanup commit')],
+  'notes': 'C1: start=241  commit accepted=279  ready_for_next_commit=298\n'
+           'C2: start=298  commit accepted=329  ready_for_next_commit=576\n'
+           'old tree drained=524 (shared by C1/C2)\n'
+           'published: install=281, cleanup=561\n'
+           'config=27 inst / 40 cycles to publication\n'
+           'cleanup=30 inst / 263 cycles to publication (guard wait included)\n'
            'bank replay: install=17, cleanup=15 cycles; ≤1 instruction accepted/cycle',
-  'accounting': 'config=27 inst / 41 cycles to publication\n'
-                'cleanup=30 inst / 274 cycles to publication (guard wait included)\n'
+  'accounting': 'config=27 inst / 40 cycles to publication\n'
+                'cleanup=30 inst / 263 cycles to publication (guard wait included)\n'
                 'bank replay: install=17, cleanup=15 cycles'}]
 
 with (HERE / 'data.csv').open(newline="", encoding="utf-8-sig") as stream:
@@ -71,7 +71,8 @@ def event_legend(axis, panel):
     resumes = {label: cycle + panel["start"] for cycle, _, _, label in panel["markers"]
                if label == "traffic resumed"}
     data = [(handle, f"{label} = {resumes[label]}" if label in resumes else label)
-            for handle, label in zip(handles, labels) if not label.startswith(("C1", "C2"))]
+            for handle, label in zip(handles, labels)
+            if not label.startswith(tuple(title.split(":")[0] for _, _, _, title in panel["spans"]))]
     if data:
         data_legend = axis.legend(*zip(*data), loc="upper right", fontsize=8)
         axis.add_artist(data_legend)

@@ -22,22 +22,22 @@ COLORS = ('#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e3
  '#17becf')
 PANELS = [{'title': 'R3: whole-tree replace',
   'start': 2000,
-  'markers': [(0, '#1f77b4', '-', 'C1 start'), (31, '#ff7f0e', '--', 'C1 commit accepted'),
-              (51, '#2ca02c', '-.', 'C1 ready_for_next_commit'),
-              (633, '#9467bd', ':', 'C1 old-tree-drained'), (51, '#1f77b4', '-', 'C2 start'),
+  'markers': [(0, '#1f77b4', '-', 'C1 start'), (32, '#ff7f0e', '--', 'C1 commit accepted'),
+              (52, '#2ca02c', '-.', 'C1 ready_for_next_commit'),
+              (431, '#9467bd', ':', 'C1 old-tree-drained'), (52, '#1f77b4', '-', 'C2 start'),
               (68, '#ff7f0e', '--', 'C2 commit accepted'),
-              (659, '#2ca02c', '-.', 'C2 ready_for_next_commit'),
-              (633, '#9467bd', ':', 'C2 old-tree-drained')],
-  'spans': [(0, 51, '#dbeafe', 'C1: install commit'), (51, 659, '#ffedd5', 'C2: cleanup commit')],
-  'notes': 'C1: start=2000  commit accepted=2031  ready_for_next_commit=2051\n'
-           'C2: start=2051  commit accepted=2068  ready_for_next_commit=2659\n'
-           'old tree drained=2633 (shared by C1/C2)\n'
-           'published: install=2034, cleanup=2652\n'
-           'config=26 inst / 34 cycles to publication\n'
-           'cleanup=16 inst / 601 cycles to publication (guard wait included)\n'
+              (457, '#2ca02c', '-.', 'C2 ready_for_next_commit'),
+              (431, '#9467bd', ':', 'C2 old-tree-drained')],
+  'spans': [(0, 52, '#dbeafe', 'C1: install commit'), (52, 457, '#ffedd5', 'C2: cleanup commit')],
+  'notes': 'C1: start=2000  commit accepted=2032  ready_for_next_commit=2052\n'
+           'C2: start=2052  commit accepted=2068  ready_for_next_commit=2457\n'
+           'old tree drained=2431 (shared by C1/C2)\n'
+           'published: install=2035, cleanup=2450\n'
+           'config=26 inst / 35 cycles to publication\n'
+           'cleanup=16 inst / 398 cycles to publication (guard wait included)\n'
            'bank replay: install=17, cleanup=7 cycles; ≤1 instruction accepted/cycle',
-  'accounting': 'config=26 inst / 34 cycles to publication\n'
-                'cleanup=16 inst / 601 cycles to publication (guard wait included)\n'
+  'accounting': 'config=26 inst / 35 cycles to publication\n'
+                'cleanup=16 inst / 398 cycles to publication (guard wait included)\n'
                 'bank replay: install=17, cleanup=7 cycles'}]
 
 with (HERE / 'data.csv').open(newline="", encoding="utf-8-sig") as stream:

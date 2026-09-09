@@ -21,31 +21,31 @@ FLOW_LABELS = {1: 'A', 2: 'B'}
 COLORS = ('#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22',
  '#17becf')
 PANELS = [{'title': 'RR → SP',
-  'start': 600,
-  'markers': [(0, '#1f77b4', '-', 'C1 start'), (33, '#ff7f0e', '--', 'C1 commit accepted'),
-              (234, '#2ca02c', '-.', 'C1 ready_for_next_commit'),
-              (1324, '#9467bd', ':', 'C1 old-tree-drained'), (234, '#1f77b4', '-', 'C2 start'),
-              (252, '#ff7f0e', '--', 'C2 commit accepted'),
-              (1355, '#2ca02c', '-.', 'C2 ready_for_next_commit'),
-              (1324, '#9467bd', ':', 'C2 old-tree-drained'), (1355, '#1f77b4', '-', 'C3 start'),
-              (1364, '#ff7f0e', '--', 'C3 commit accepted'),
-              (1372, '#2ca02c', '-.', 'C3 ready_for_next_commit'),
-              (1324, '#9467bd', ':', 'C3 old-tree-drained'),
-              (216, '0.4', '--', 'traffic resumed')],
-  'spans': [(0, 234, '#dbeafe', 'C1: install commit'), (234, 1355, '#ffedd5', 'C2: cleanup commit'),
-            (1355, 1372, '#dcfce7', 'C3: cleanup commit')],
-  'notes': 'C1: start=600  commit accepted=633  ready_for_next_commit=834\n'
-           'C2: start=834  commit accepted=852  ready_for_next_commit=1955\n'
-           'C3: start=1955  commit accepted=1964  ready_for_next_commit=1972\n'
-           'old tree drained=1924 (shared by C1/C2/C3)\n'
-           'published: install=816, cleanup=1945\n'
-           'config=25 inst / 216 cycles to publication\n'
-           'cleanup=17 inst / 1111 cycles to publication (guard wait included)\n'
+  'start': 601,
+  'markers': [(0, '#1f77b4', '-', 'C1 start'), (34, '#ff7f0e', '--', 'C1 commit accepted'),
+              (228, '#2ca02c', '-.', 'C1 ready_for_next_commit'),
+              (1272, '#9467bd', ':', 'C1 old-tree-drained'), (228, '#1f77b4', '-', 'C2 start'),
+              (246, '#ff7f0e', '--', 'C2 commit accepted'),
+              (1302, '#2ca02c', '-.', 'C2 ready_for_next_commit'),
+              (1272, '#9467bd', ':', 'C2 old-tree-drained'), (1302, '#1f77b4', '-', 'C3 start'),
+              (1311, '#ff7f0e', '--', 'C3 commit accepted'),
+              (1319, '#2ca02c', '-.', 'C3 ready_for_next_commit'),
+              (1272, '#9467bd', ':', 'C3 old-tree-drained'),
+              (210, '0.4', '--', 'traffic resumed')],
+  'spans': [(0, 228, '#dbeafe', 'C1: install commit'), (228, 1302, '#ffedd5', 'C2: cleanup commit'),
+            (1302, 1319, '#dcfce7', 'C3: cleanup commit')],
+  'notes': 'C1: start=601  commit accepted=635  ready_for_next_commit=829\n'
+           'C2: start=829  commit accepted=847  ready_for_next_commit=1903\n'
+           'C3: start=1903  commit accepted=1912  ready_for_next_commit=1920\n'
+           'old tree drained=1873 (shared by C1/C2/C3)\n'
+           'published: install=811, cleanup=1893\n'
+           'config=25 inst / 210 cycles to publication\n'
+           'cleanup=17 inst / 1064 cycles to publication (guard wait included)\n'
            'bank replay: install=18, cleanup=10 cycles\n'
            'C3 cleanup=9 inst / 12 cycles to publication\n'
            'bank replay=5 cycles; ≤1 instruction accepted/cycle',
-  'accounting': 'config=25 inst / 216 cycles to publication\n'
-                'cleanup=17 inst / 1111 cycles to publication (guard wait included)\n'
+  'accounting': 'config=25 inst / 210 cycles to publication\n'
+                'cleanup=17 inst / 1064 cycles to publication (guard wait included)\n'
                 'bank replay: install=18, cleanup=10 cycles\n'
                 'C3 cleanup=9 inst / 12 cycles to publication\n'
                 'bank replay=5 cycles'}]

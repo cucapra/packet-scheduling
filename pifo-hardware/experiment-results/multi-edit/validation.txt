@@ -1,4 +1,7 @@
-Multi-edit p2-control follow-up on merged pifo-hardware (2026-09-08)
+Multi-edit complete rerun after dequeue-clock correction (2026-09-09)
+
+All six hardware runs were regenerated with the falling-edge dequeue driver.
+No packet measurements are carried over from the previous run.
 
 PASS: control, control-p2, rio, prefill, relocate and reset replay the same
       10005-packet source trace (SHA-256
@@ -16,8 +19,8 @@ PASS: shared 256-entry replay FIFO; unbanked setup is hoisted before retained
 PASS: normal GuardDrain + invalidations + cleanup commits. Every retired
       leaf FIFO is guarded, not only its parent. Materialized wrappers have
       separate install, collapse and reclamation commits.
-PASS: relocation transfers 325 entries on each of three PEs: 975 tokens in
-      14 occupied virtual PIFOs, representing 325 buffered packets. Source
+PASS: relocation transfers 273 entries on each of three PEs: 819 tokens in
+      14 occupied virtual PIFOs, representing 273 buffered packets. Source
       occupancy and completed copies are separately logged and cross-checked.
 PASS: four PNG/SVG figures regenerated with full packets.csv, commits.csv,
       plotted data.csv and standalone plot.py in every figure folder. The main
@@ -28,14 +31,14 @@ PASS: each transition commit records start, acceptance, publication, replay
       include all four requested markers and separate commit-background colors.
 
 Claims NOT supported by these measurements:
-- Work/web have no backlog: 13 packets per tenant are measured at t1 in the
-  p1-starting runs.
+- Work/web have no backlog: 2 work packets and 3 web packets are measured at
+  t1 in the p1-starting runs. Pre-t1 utilization including startup is 0.9885.
 - Untouched-path delays are indistinguishable from either control: Gmail, Ssh,
   Http and Https all exceed the paired p95 absolute-delay threshold of 10
   cycles versus both steady p1 and steady p2 in the Rio run.
 - New tenants receive their first service within one or two request cycles.
-  Even the already-configured p2 control first serves them 38--53 cycles after
-  t1; Rio measures 96--210 cycles.
+  Even the already-configured p2 control first serves them 35--50 cycles after
+  t1; Rio measures 106--247 cycles.
 - The saturated 6/17 realtime share is measurable after its queue drains:
   only 0.20 is offered, so the report measures settling to that offered load.
 

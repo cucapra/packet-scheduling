@@ -1,10 +1,11 @@
 # Motivating example: explicit FIFO-leaf rerun
 
-These artifacts were generated together on 2026-09-08 by one invocation of
-`pifo_motivation_all.py`, from the working tree based on merge commit `1cf88bd`.
+These artifacts were generated together on 2026-09-09 by one invocation of
+`pifo_motivation_all.py`, from the working tree based on `d1d44a0`, after fixing
+the dequeue driver's rising-edge cycle-counter race.
 The runner used `rio.sim.EvaluationRequestSimulatorCli`, Verilator 5.039 and
-Temurin JDK 17.0.20.1. No result below is carried over from the earlier
-root-terminated topology.
+Temurin JDK 17.0.20.1. All four hardware cases completed before the comparison
+was rendered from their new CSVs.
 
 Every flow now terminates at a hardware FIFO PIFO:
 
@@ -25,21 +26,29 @@ setting is not presented as a finite global-buffer proof.
 All four runs replay the same 2,136-packet trace and complete every packet with
 zero drops and no within-flow reorderings.
 
+During cycles 200–1700, each run serves 500 packets: 100% of the 16-byte/cycle
+link, split 40% zoom and 60% gmail. The earlier driver served only 450 packets
+in that interval because it sometimes read a stale cycle counter and waited
+an extra cycle. The dequeue check now runs on falling edges, after the
+rising-edge observer updates the counter. The initial empty-pipeline ramp
+and the plot's 240-cycle Hann smoothing remain visible.
+
 | Run | Install instructions | Commit accepted | Old tree/subtree drained | Ready for next commit | Post-start zoom max delay |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| R1 additive | 7 | 2012 | not required | 2023 | 20 |
-| R2 stop the world | 25 | 2039 | captured at 2012 | 3040 | 1055 |
-| R3 whole-tree replace | 26 | 2031 | 2633 | 2659 | 613 |
-| R4 confined replace | 16 | 2018 | 3033 | 3041 | 21 |
+| R1 additive | 7 | 2013 | not required | 2024 | 22 |
+| R2 stop the world | 25 | 2040 | captured at 2012 | 3040 | 1050 |
+| R3 whole-tree replace | 26 | 2032 | 2431 | 2457 | 411 |
+| R4 confined replace | 16 | 2026 | 2696 | 2704 | 23 |
 
-The R3-versus-R4 zoom-delay gap is **592 cycles**. The prior folded-leaf
-artifacts measured 416 versus 17 cycles, a 399-cycle gap; the explicit FIFO
-model therefore widens the observed gap by 193 cycles.
+The R3-versus-R4 zoom-delay gap is **388 cycles**. The previous 592-cycle
+explicit-leaf result and 399-cycle folded-leaf result used the faulty driver
+and are superseded. They do not establish that explicit FIFO leaves widen
+the gap: the driver bug also inflated the pre-transition backlog.
 
-R3 drains for 602 cycles after command acceptance; R4's affected subtree
-drains for 1,015 cycles while zoom remains on its unchanged path. R2's
-lossless 1,024-cycle stop retains 203 admitted packets, reaches a measured peak
-of 483 outstanding packets, and creates a 1,044-cycle output gap.
+R3 drains for 399 cycles after command acceptance; R4's affected subtree
+drains for 670 cycles while zoom remains on its unchanged path. R2's
+lossless 1,024-cycle stop retains 137 admitted packets, reaches a measured peak
+of 416 outstanding packets, and creates a 1,041-cycle output gap.
 
 The machine-checked summary is [validation.txt](validation.txt). Per-run raw
 request, admission, packet-outcome and reconfiguration CSVs sit beside the

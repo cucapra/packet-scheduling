@@ -2,19 +2,43 @@
   "schema_version": 1,
   "passed": false,
   "event": {
-    "start_cycle": 240,
-    "commit_cycle": 278,
-    "drain_cycle": 535,
-    "finish_cycle": 587,
+    "start_cycle": 241,
+    "commit_cycle": 279,
+    "drain_cycle": 524,
+    "finish_cycle": 576,
     "staging_cycles": 38,
-    "drain_cycles": 257,
+    "drain_cycles": 245,
     "synchronization_cycles": 17,
     "instruction_count": 27,
     "commit_applied_cycle": 281,
-    "commit_cycles": 41,
+    "commit_cycles": 40,
     "cleanup_instruction_count": 30,
-    "cleanup_commit_cycles": 274,
-    "cleanup_bank_cleanup_cycles": 15
+    "cleanup_commit_cycles": 263,
+    "cleanup_bank_cleanup_cycles": 15,
+    "prefilled_tokens": null,
+    "resume_cycle": null,
+    "commits": [
+      {
+        "name": "large-tree-policy-change",
+        "start_cycle": 241,
+        "commit_cycle": 279,
+        "commit_applied_cycle": 281,
+        "install_finish_cycle": 298,
+        "instruction_count": 27,
+        "commit_cycles": 40,
+        "bank_cleanup_cycles": 17
+      },
+      {
+        "name": "large-tree-policy-change-cleanup",
+        "start_cycle": 298,
+        "commit_cycle": 329,
+        "commit_applied_cycle": 561,
+        "install_finish_cycle": 576,
+        "instruction_count": 30,
+        "commit_cycles": 263,
+        "bank_cleanup_cycles": 15
+      }
+    ]
   },
   "packet_counts": {
     "total": 120,
@@ -61,7 +85,7 @@
           "id": "drain_duration",
           "description": "cycles from commit acceptance until the old root drains",
           "expected": ">= 800",
-          "observed": 257,
+          "observed": 245,
           "passed": false
         }
       ]
