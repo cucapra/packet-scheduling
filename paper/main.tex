@@ -507,28 +507,13 @@ Both evolve as the node serves traffic, and \slotstates is empty when the node r
 Given the node's \stt and an incoming packet, it returns the payload this node will enqueue for that packet, the rank to enqueue it at, and the node's updated \stt.
 \zz is partial, and when it is undefined for a packet, nothing is enqueued at this node and \stt is unchanged.
 
-\paragraph{The many roles of \zz: classifying, annotating, and ranking}
+\zz has four parts, which the edits of \cref{sec:delta-grammar} rewrite separately.
+Its \emph{admitted set} (\(\mathit{z}.\mathit{admit}\)) is the flows the node currently accepts, its \emph{service map} (\(\mathit{z}.\mathit{serves}\)) sends each flow the node serves to the payload that carries it onward, its \emph{per-arm metadata} (\(\mathit{z}.\mathit{meta}\)) records what the node's discipline needs to know about each arm, and its \emph{ranker} (\(\mathit{z}.\mathit{rank}\)) is the scheduling logic that discipline contributes.
+\Cref{sec:edit-semantics-full} defines the four and shows how \zz composes them.
 
-We write \zz as a single partial function, but it has three parts, and the edits of \cref{sec:delta-grammar} rewrite them separately.
-Mohan et al.\ instead keep one total transaction for the whole tree, returning an entire root-to-leaf path of indices and ranks, but ours is per-node and partial.
-
-The \emph{classifier} answers whether this node accepts a given packet and where it sends it.
-It has a \emph{service map}, written \(\mathit{z}.\mathit{serves}\), which is a partial map from flows to payloads.
-At an internal node, \(\mathit{z}.\mathit{serves}(f)\) is a unique child index, following which brings a packet of flow \(f\) one step closer to its leaf.
-This map is easy to construct since distinct leaves carry distinct flows (\cref{sec:policy-dsl}), and at a leaf the payload is the packet itself, so the map is the trivial one on the single flow that leaf carries.
-Its \emph{admitted set}, written \(\mathit{z}.\mathit{admit} \subseteq \mathrm{dom}(\mathit{z}.\mathit{serves})\), is the subset of the flows that the node currently accepts.
-Keeping the two apart lets a silenced subtree go on draining, and \cref{sec:quiesce} is where the containment turns strict.
-The \emph{per-arm metadata}, written \(\mathit{z}.\mathit{meta}\), records what this node's discipline needs to know about each of its arms, such as priorities or weights; a leaf has no arms, and so no metadata.
-The \emph{ranker}, written \(\mathit{z}.\mathit{rank}\), is the scheduling logic that the node's discipline contributes.
-Its inputs are the node's \stt, the chosen payload, and that payload's arm metadatum, and from these it mints the rank and the updated \stt.
-A node's ranker names the discipline that the node runs.
-
-So \(\mathit{z}(\mathit{state}, p)\) is defined exactly when \(\mathit{flow}(p) \in \mathit{z}.\mathit{admit}\). 
-It then finds \(p\)'s payload in \(\mathit{z}.\mathit{serves}\), and pairs that payload with the rank that \(\mathit{z}.\mathit{rank}\) computes.
-
-At an internal node the ranker sees the payload and not the packet, meaning that the node can discriminate only among its own children. 
-It cannot do finer-grained discrimination based on packet- or flow-specific information. 
-The node's behavior is therefore a function of its own arms alone, which is a win for modularity and composability.
+Two of their consequences carry through the rest of the paper.
+A node admits a subset of the flows it serves, and keeping the two apart lets a silenced subtree go on draining (\cref{sec:quiesce}).
+A node's ranker names the discipline that the node runs, so the discipline is recoverable from a running control rather than lost at compile time (\cref{sec:equivalences}).
 
 \stt and \pifo change as the node serves traffic, whereas \zz changes only when an edit rewrites it.
 That is why the per-arm metadata sits in \zz rather than in \slotstates.
@@ -1227,6 +1212,23 @@ Besides \(\mathit{ts}[t/i]\) of \cref{sec:edit-semantics}, we write \(\mathit{ts
 Control nodes are written \(\langle\mathit{state}, \mathit{pifo}, \mathit{z}\rangle(\mathit{cs})\), and we reuse \(\mathit{cs}[C'/i]\) and \(\mathit{cs}\mathbin{+\!\!+}[C']\) on the child list \(\mathit{cs}\).
 Indices follow the \pth convention of \cref{sec:delta-grammar}.
 We address node-local components of a control by a \pth: the local triple reached by following \pth from \(C\)'s root is written \(C@\mathit{path}\), with fields \(C@\mathit{path}.\mathit{state}\), \(C@\mathit{path}.\mathit{pifo}\) and \(C@\mathit{path}.\mathit{z}\), and we write \(C@\mathit{path}.\mathit{node\_state}\) and \(C@\mathit{path}.\mathit{slot\_states}\) for the two components of \(C@\mathit{path}.\mathit{state}\).
+
+\paragraph{The parts of \zz}
+
+\Cref{sec:controls} names \zz's four parts, and here they are in full.
+The \emph{classifier} answers whether this node accepts a given packet and where it sends it.
+It has a \emph{service map}, written \(\mathit{z}.\mathit{serves}\), which is a partial map from flows to payloads.
+At an internal node, \(\mathit{z}.\mathit{serves}(f)\) is a unique child index, following which brings a packet of flow \(f\) one step closer to its leaf.
+This map is easy to construct since distinct leaves carry distinct flows (\cref{sec:policy-dsl}), and at a leaf the payload is the packet itself, so the map is the trivial one on the single flow that leaf carries.
+Its \emph{admitted set}, written \(\mathit{z}.\mathit{admit} \subseteq \mathrm{dom}(\mathit{z}.\mathit{serves})\), is the subset of the flows that the node currently accepts.
+The \emph{per-arm metadata}, written \(\mathit{z}.\mathit{meta}\), records what this node's discipline needs to know about each of its arms, such as priorities or weights; a leaf has no arms, and so no metadata.
+The \emph{ranker}, written \(\mathit{z}.\mathit{rank}\), is the scheduling logic that the node's discipline contributes.
+Its inputs are the node's \stt, the chosen payload, and that payload's arm metadatum, and from these it mints the rank and the updated \stt.
+
+So \(\mathit{z}(\mathit{state}, p)\) is defined exactly when \(\mathit{flow}(p) \in \mathit{z}.\mathit{admit}\).
+It then finds \(p\)'s payload in \(\mathit{z}.\mathit{serves}\), and pairs that payload with the rank that \(\mathit{z}.\mathit{rank}\) computes.
+At an internal node the ranker sees the payload and not the packet, so the node can discriminate only among its own children, and its behavior is a function of its own arms alone.
+Mohan et al.\ keep one total transaction for the whole tree instead, returning an entire root-to-leaf path of indices and ranks, where ours is per-node and partial.
 
 One invariant links a node's classifier to the tree, and every form below preserves it.
 At any node, \(\mathrm{dom}(\mathit{z}.\mathit{serves})\) is the set of flows served by the leaves beneath it, and \(\mathit{z}.\mathit{serves}\) sends each of them to the child that leads towards its leaf.
