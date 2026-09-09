@@ -1043,22 +1043,22 @@ Before the request the three together ask for more than the link can carry, so t
 \small
 \begin{tabular}{lrrr}
 \toprule
-& install & install & peak \textsf{zoom} \\
-mechanism & instrs & cycles & delay (cycles) \\
+& Install & Install & Peak \textsf{zoom} \\
+Mechanism & Instrs & Cycles & Delay (Cycles) \\
 \midrule
 stop the world & 25 & 42 & 1055 \\
 root-level replace & 26 & 34 & 613 \\
 \textbf{confined replace (Rio)} & \textbf{16} & \textbf{21} & \textbf{21} \\
 \bottomrule
 \end{tabular}
-\caption{The transition of \cref{sec:tour}, three ways.}
+\caption{Install cost and \textsf{zoom}'s peak delay under the three mechanisms that carry \(p_1 \to p_2\) as described in \cref{sec:tour}.}
 \label{tab:eval-motivating}
 \end{table}
 
 \Cref{fig:eval-motivating} separates two ways a transition can go wrong.
 Stopping the scheduler empties the link, so the orange line in the upper panel drops to zero for as long as the stop lasts.
 Root-level replace looks better in that panel, since it keeps the link busy, but the middle panel reveals what it is busy with: it starves \textsf{zoom} for some 500 cycles and then hands it the whole link to catch up.
-We know that \textsf{zoom} sits at the same priority and offers the same rate in every policy here, so a mechanism that touches only what changed should leave textsf{zoom}'s line flat, and only Rio's is flat.
+We know that \textsf{zoom} sits at the same priority and offers the same rate in every policy here, so a mechanism that touches only what changed should leave \textsf{zoom}'s line flat, and only Rio's is flat.
 Rio's peak delay for \textsf{zoom} is 21 cycles, one more than the 20 it sees under a transition that never touches its subtree at all.
 Root-level replace costs it 613 and the baseline 1055 (\cref{tab:eval-motivating}), and neither of them recovers when its interval ends: the baseline is still running above its offered rate 3400 cycles after a stop that lasted 1024 cycles.
 
@@ -1099,9 +1099,9 @@ Rio does not stop the scheduler at all, and the two baselines buffer 624 and 495
 \small
 \begin{tabular}{rrrr}
 \toprule
-& \multicolumn{3}{c}{overhead of Rio's additions} \\
+& \multicolumn{3}{c}{Overhead of Rio's Additions} \\
 \cmidrule(l){2-4}
-vFlows & LUTs & registers & BRAM \\
+vFlows & LUTs & Registers & BRAM \\
 \midrule
 32 & 0.1\% & 0.1\% & 32\% \\
 128 & 0.9\% & 1.5\% & 36\% \\
