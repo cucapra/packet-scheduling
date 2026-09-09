@@ -219,7 +219,7 @@ A transitional policy needs a syntax that the operator can read, a semantics tha
 With these components in hand, a scheduler can clearly define its behavior during reconfiguration.
 We present \emph{Rio}, which supplies all three.
 
-Rio defines a grammar of atomic \emph{policy edits} and designs an extension to PIFO tree hardware to support these edits.
+Rio defines a grammar of atomic \emph{policy edits} (\cref{sec:model}).
 Each edit defines a change to the hierarchical scheduling policy that applies consistently:
 every packet sees either the old policy or the new policy.
 We demonstrate a planner than generates a sequence of edits to transform any old policy into any new policy.
@@ -228,14 +228,14 @@ they never drop, reorder, or re-ranks a packet that is already buffered,
 so pre-edit traffic obeys the old policy.
 
 To clarify the semantics of scheduler reconfiguration,
-we give formal semantics for PIFO trees and Rio's edits.
+we give formal semantics for PIFO trees and Rio's edits (\cref{sec:semantics}).
 For each edit, we prove non-disruption and a consistency property:
 each edit's effects on the low-level PIFO tree configuration
-correspond to equivalent effects on the high-level policy definition.
+correspond to equivalent effects on the high-level policy definition (\cref{sec:correctness}).
 
-We implement a simple PIFO tree packet scheduler and demonstrate two extensions to support atomic policy edits:
-transactional state updates and a mechanism for letting old and new subtrees coexist during a transaction.
-\xxx[as]{Short preview of the results.}
+We implement a simple PIFO tree packet scheduler architecture and demonstrate two extensions to support atomic policy edits:
+transactional state updates and a mechanism for letting old and new subtrees coexist during a transaction (\cref{sec:hardware}).
+\xxx[as]{Short preview of the results (\cref{sec:eval}).}
 
 \section{Rio by Example}\label{sec:tour}
 
