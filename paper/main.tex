@@ -1128,7 +1128,7 @@ Several approaches address applying consistent updates across an entire network.
 they label packets according to the version of the network they should see.
 \citet{Namjoshi24} instead sequence changes so that route consistency holds with a single table edited in place.
 \citet{Mahajan13} study the dependencies that a consistency property imposes among rule updates, and find that stronger properties induce more intricate dependencies and therefore slower updates.
-Rio shares the goal of offering each packet a consistent view of configuration state but focuses on a single packet scheduler.
+Rio seeks per-packet consistency for each of its edits, inside a single packet scheduler rather than across a network.
 Versioning does not carry over to a scheduler, which holds packets whose ranks were fixed when they were \push{}ed.
 
 FlexCore~\cite{Xing22} aims to consistently reconfigure the P4 program running on a programmable switch.
