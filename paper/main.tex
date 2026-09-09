@@ -283,7 +283,7 @@ At this point, a second atomic step runs, collapsing the $\Strictstar$ policy an
 
 % Although an atomic transition from $p_1$ to $p_2$ is not possible,
 Rio supports atomic transitions from $p_1$ to $p_\text{temp}$ and from $p_\text{temp}$ to $p_2$.
-The key mechanism in this example is the $\Strictstar$ policy node, which reflects a special mechanism we add to PIFO tree hardware to enable efficient policy changes.
+The key mechanism in this example is the $\Strictstar$ policy node, which reflects an addition to PIFO tree hardware that lets Rio replace any subtree in place.
 \Cref{sec:hw-survivor} details $\Strictstar$ and the atomic edits that support it.
 \Cref{sec:eval} evaluates this transition.
 
@@ -327,7 +327,7 @@ Our central guarantees are that these edits agree, and that installing one never
 \Cref{sec:hardware} shows how to augment PIFO tree hardware with support for Rio's policy edits.
 We start with a basic PIFO-tree-based packet scheduler and make two additions:
 (1) an instruction set for atomically updating policy scheduler state and lookup tables,
-and (2) support for $\Strictstar$, the mechanism that allows splicing arbitrary policy subtrees without relocating packets across hardware queues.
+and (2) support for $\Strictstar$, which lets a replacement subtree take over from a running subtree as the old one drains.
 \xxx[as]{Short preview of results: e.g., the additions do not add much area, and RTL simulations show that transitions actually work.}
 
 \section{Background}\label{sec:background}
