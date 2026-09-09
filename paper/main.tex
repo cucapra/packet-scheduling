@@ -563,12 +563,6 @@ Following Mohan et al., we write \(\flush(C)\) for the sequence of packets that 
 A control \(C\) is \emph{well-formed} (written \(\vdash C\)) when, at every internal node of \(C\), the \pifo has, for each legal child index \(i\), exactly as many occurrences of \(i\) as there are packets stored in the leaf pifos of the subtree under the \(i\)-th child.
 Otherwise a \pop{} could get stuck.
 
-\paragraph{Addressing a node}
-
-We address node-local components of a control by a \pth, a possibly empty sequence of child indices read from the root.
-The local triple at the node reached by following \pth from control \(C\)'s root is written \(C@\mathit{path}\), with fields \(C@\mathit{path}.\mathit{state}\), \(C@\mathit{path}.\mathit{pifo}\), and \(C@\mathit{path}.\mathit{z}\).
-We also write \(C@\mathit{path}.\mathit{node\_state}\) and \(C@\mathit{path}.\mathit{slot\_states}\) for the two components of \(C@\mathit{path}.\mathit{state}\).
-
 \subsection{Compiling a Policy to a Control}\label{sec:compilation}
 
 \begin{figure}[t]
@@ -627,19 +621,16 @@ Each edit includes preconditions under which it is defined.
 
 The grammatical form \Add{} is representative, so we give it here, and \cref{sec:edit-semantics-full} details all six forms.
 Its arguments are the path \(\pi\) to the node that receives the new arm, the discipline \disc that node runs, the arm's policy \(\mathit{arm}\), and the metadatum \(m \in M_{D}\) that tells \disc how to schedule it.
-Both denotations are defined by recursion on \(\pi\), with a base case for the empty path \([\,]\) and a step case for \(i \mathbin{::} \mathit{rest}\).
+Both denotations are defined by recursion on \(\pi\).
+Here we focus on the base case for the empty path \([\,]\), which is where the work happens.
 On the network operator's side, \Add{} appends an annotated arm to that node's child list:
 {\small
 \[
-\begin{array}{@{}l@{}}
-\psem{\Add([\,],\ D,\ \mathit{arm},\ m)}\ (D\ \mathit{ts}) \;=\; D(\mathit{ts}\mathbin{+\!\!+}[m{:}\,\mathit{arm}])\\[4pt]
-\psem{\Add(i\mathbin{::}\mathit{rest},\ D,\ \mathit{arm},\ m)}\ (E\ \mathit{ts}) \;=\\
-\quad E(\mathit{ts}[\,\psem{\Add(\mathit{rest},\ D,\ \mathit{arm},\ m)}(\mathit{ts}[i])/i\,])
-\end{array}
+\psem{\Add([\,],\ D,\ \mathit{arm},\ m)}\ (D\ \mathit{ts}) \;=\; D(\mathit{ts}\mathbin{+\!\!+}[m{:}\,\mathit{arm}])
 \]
 }
 Here \(\mathit{ts}\) is a node's list of annotated arms and \(\mathit{ts}[t/i]\) overwrites the policy of the \(i\)-th arm.
-The base case fires only at a node running the \disc that the form names, while an ancestor's discipline \(E\) is unconstrained and is carried along.
+The step case descends to the on-path child and writes the result back, changing nothing else at the node it passes through.
 
 On the control's side, \Add{} appends the freshly compiled subtree \(\lceil \mathit{arm} \rceil\) as the last child of the node at \(\pi\), seeds that arm's bookkeeping, and annotates its slot:
 {\small
@@ -650,17 +641,15 @@ On the control's side, \Add{} appends the freshly compiled subtree \(\lceil \mat
 \quad \textbf{where}\ k=|\mathit{cs}|\\
 \quad \phantom{\textbf{where}}\ \mathit{state'}=(\mathit{node\_state},\ \mathit{slot\_states}\mathbin{+\!\!+}[s])\\
 \quad \phantom{\textbf{where}}\ s=\mathit{init\_slot\_state}_{D}(\mathit{node\_state},m)\\
-\quad \phantom{\textbf{where}}\ z'=\mathtt{setmeta}(\mathtt{extend}(\mathit{z},\mathtt{flows}(\mathit{arm}),k),k,m)\\[8pt]
-\csem{\Add(i\mathbin{::}\mathit{rest},\ D,\ \mathit{arm},\ m)}\ \langle\mathit{state},\mathit{pifo},\mathit{z}\rangle(\mathit{cs}) \;=\\
-\quad \langle\mathit{state},\mathit{pifo},z'\rangle(\mathit{cs}[\,c/i\,])\\
-\quad \textbf{where}\ c=\csem{\Add(\mathit{rest},\ D,\ \mathit{arm},\ m)}(\mathit{cs}[i])\\
-\quad \phantom{\textbf{where}}\ z'=\mathtt{extend}(\mathit{z},\mathtt{flows}(\mathit{arm}),i)
+\quad \phantom{\textbf{where}}\ z'=\mathtt{setmeta}(\mathtt{extend}(\mathit{z},\mathtt{flows}(\mathit{arm}),k),k,m)
 \end{array}
 \]
 }
 Here \(\mathit{cs}\) is the node's child list and \(\mathtt{flows}(\mathit{arm})\) is the set of flows at the new arm's leaves.
 \(\mathtt{extend}(\mathit{z},F,i)\) records that the flows \(F\) are served at child \(i\) and adds them to the admitted set, and \(\mathtt{setmeta}(\mathit{z},k,m)\) annotates arm \(k\) with \(m\); neither touches the ranker.
-The step case walks into the on-path child \(i\), writes the result back, and extends this node's classifier to send the new flows one step further toward \(\pi\).
+
+\(\csem{\Add}\)'s step case is more involved.
+While walking downward, it replaces that node's \zz by \(\mathtt{extend}(\mathit{z},\mathtt{flows}(\mathit{arm}),i)\), sending the new flows one step further toward \(\pi\).
 So every node from the root down to \(\pi\) comes to admit and route the new flows, and nothing else about those nodes changes.
 \nodestate and \pifo are left alone at every node, so no buffered packet moves.
 
@@ -1258,6 +1247,7 @@ and $\csem{\delta}$ for the effect on PIFO tree state.
 Besides \(\mathit{ts}[t/i]\) of \cref{sec:edit-semantics}, we write \(\mathit{ts}[i]\) for the \(i\)-th annotated arm of a \pol node's child list, and \(\mathit{ts}[-/k]\) for \(\mathit{ts}\) with its \(k\)-th arm dropped and later arms shifted one slot to the left.
 Control nodes are written \(\langle\mathit{state}, \mathit{pifo}, \mathit{z}\rangle(\mathit{cs})\), and we reuse \(\mathit{cs}[C'/i]\) and \(\mathit{cs}\mathbin{+\!\!+}[C']\) on the child list \(\mathit{cs}\).
 Indices follow the \pth convention of \cref{sec:delta-grammar}.
+We address node-local components of a control by a \pth: the local triple reached by following \pth from \(C\)'s root is written \(C@\mathit{path}\), with fields \(C@\mathit{path}.\mathit{state}\), \(C@\mathit{path}.\mathit{pifo}\) and \(C@\mathit{path}.\mathit{z}\), and we write \(C@\mathit{path}.\mathit{node\_state}\) and \(C@\mathit{path}.\mathit{slot\_states}\) for the two components of \(C@\mathit{path}.\mathit{state}\).
 
 One invariant links a node's classifier to the tree, and every form below preserves it.
 At any node, \(\mathrm{dom}(\mathit{z}.\mathit{serves})\) is the set of flows served by the leaves beneath it, and \(\mathit{z}.\mathit{serves}\) sends each of them to the child that leads towards its leaf.
