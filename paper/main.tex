@@ -1032,9 +1032,12 @@ Reconfiguring the program that a running switch executes has been reported at ar
 Our first experiment considers exactly the transition that \cref{sec:tour} walks through.
 Three mechanisms take the scheduler from \(p_1\) to \(p_2\) over one 2136-packet trace.
 The first is the stop-the-world baseline.
-The second, \emph{whole-tree replace}, builds \(p_2\) fresh alongside the running tree and drains the old one behind it.
-The third is Rio's \emph{confined replace}, which installs the \(\Strictstar\) transitional policy and collapses it once \textsf{gmail}\textsubscript{old} is empty.
-Throughout, \textsf{zoom} offers 0.40 of the link, \textsf{gmail} offers 0.80 before the request and 0.20 after it, and \textsf{spotify} arrives with the request offering 0.20.
+The other two are both Rio's, and the difference between them is where the \(\Replace\) lands.
+\emph{Root-level replace} is the fallback described in \cref{sec:sequences}: it builds \(p_2\) beside the running tree, puts the running tree on the high-priority arm of a \(\Strictstar\), and drains it there.
+\emph{Confined replace} is the path the planner prefers, which does the same thing at the deepest slot that changed, so only \textsf{gmail}'s subtree sits behind the wrapper.
+Throughout, \textsf{zoom} sends enough packets to fill 40\% of the link.
+\textsf{gmail} sends enough to fill 80\% before the request and 20\% after it, and \textsf{spotify} starts sending when the request arrives, enough to fill 20\%.
+Before the request the three together ask for more than the link can carry, so there is a backlog of packets when the request arrives.
 
 \begin{table}[t]
 \centering
@@ -1045,7 +1048,7 @@ Throughout, \textsf{zoom} offers 0.40 of the link, \textsf{gmail} offers 0.80 be
 mechanism & instrs & cycles & delay (cycles) \\
 \midrule
 stop the world & 25 & 42 & 1055 \\
-whole-tree replace & 26 & 34 & 613 \\
+root-level replace & 26 & 34 & 613 \\
 \textbf{confined replace (Rio)} & \textbf{16} & \textbf{21} & \textbf{21} \\
 \bottomrule
 \end{tabular}
@@ -1055,10 +1058,10 @@ whole-tree replace & 26 & 34 & 613 \\
 
 \Cref{fig:eval-motivating} separates two ways a transition can go wrong.
 Stopping the scheduler empties the link, so the orange line in the upper panel drops to zero for as long as the stop lasts.
-Whole-tree replace looks better in that panel, since it keeps the link busy, but the middle panel reveals what it is busy with: it starves \textsf{zoom} for some 500 cycles and then hands it the whole link to catch up.
+Root-level replace looks better in that panel, since it keeps the link busy, but the middle panel reveals what it is busy with: it starves \textsf{zoom} for some 500 cycles and then hands it the whole link to catch up.
 We know that \textsf{zoom} sits at the same priority and offers the same rate in every policy here, so a mechanism that touches only what changed should leave textsf{zoom}'s line flat, and only Rio's is flat.
 Rio's peak delay for \textsf{zoom} is 21 cycles, one more than the 20 it sees under a transition that never touches its subtree at all.
-Whole-tree replace costs it 613 and the baseline 1055 (\cref{tab:eval-motivating}), and neither of them recovers when its interval ends: the baseline is still running above its offered rate 3400 cycles after a stop that lasted 1024 cycles.
+Root-level replace costs it 613 and the baseline 1055 (\cref{tab:eval-motivating}), and neither of them recovers when its interval ends: the baseline is still running above its offered rate 3400 cycles after a stop that lasted 1024 cycles.
 
 Rio's own transitional interval is no shorter than the others.
 The gray band in the figure is the 1018 cycles in which the switch runs \(p_\text{temp}\), a policy no operator requested, and it costs the traffic nothing: the link stays full and \textsf{zoom} is undisturbed from one end of it to the other.
@@ -1066,7 +1069,7 @@ The lower panel shows all three flows.
 \textsf{zoom} holds the high-priority arm but asks for only 0.40 of the link and gets it, so \textsf{gmail} takes the remainder.
 \textsf{gmail} is lifted while \textsf{gmail}\textsubscript{old} drains ahead of new arrivals, and \textsf{spotify} waits on that drain, reaching first service 1045 cycles after the request against the baseline's 1228.
 \xxx[am]{The third panel is Rio alone and measures nothing against a baseline; it illustrates \(p_\text{temp}\) rather than evaluating it.
-Happy to move it to the appendix and drop the prose about it, if \S8 needs the space.}
+Happy to move it to the appendix and drop the prose about it, if \S8 needs the space. I just thought it was fun.}
 At 21 cycles, confinement is also the cheapest of the three to install, since it rewrites one subtree and leaves the rest of the control addressed as it was.
 
 \paragraph{The value of a survivor link}
@@ -1074,9 +1077,11 @@ At 21 cycles, confinement is also the cheapest of the three to install, since it
 \(\Strictstar\) exists so that a transitional policy can prefer buffered packets to new ones without moving them.
 Any other way of expressing that preference has to put the backlog inside a newly built node, which means writing one scheduler token per buffered packet while the scheduler is stopped.
 Our second experiment measures the same transition three ways, across backlogs from 0 to 507 packets standing at the request.
-Materializing the wrapper on a reserved element costs 0.990 stopped cycles per buffered packet, and copying the subtree onto fresh elements costs 2.975.
-A survivor link costs zero at every point of the sweep, because it is a pointer rather than a place to put packets.
-The slope matters more than the constant: without \(\Strictstar\), the price of a transition is set by how busy the switch was when the request arrived, which is when an operator can least afford to pay it.
+There are two ways to build such a node, and we measure both.
+One reserves a spare processing element and fills it with a token for each buffered packet, which stops the scheduler for 0.990 cycles per packet.
+The other copies the old subtree onto fresh processing elements, which stops it for 2.975 cycles per packet.
+Rio's survivor link stops it for \emph{no time}, no matter how big the backlog, because it is a pointer rather than a place to put packets.
+The slope matters more than the constant: without \(\Strictstar\), the price of a transition is determined by how busy the switch was when the request arrived.
 This is also why \textsf{spotify} waits in \cref{fig:eval-motivating}, since Rio declines to relocate the packets already queued and lets them drain in place instead.
 
 \paragraph{A larger reconfiguration}
