@@ -1,0 +1,5 @@
+Running /data/work/vivado/2025.2/Vivado/bin/vivado -version
+  log: /data/work/rio-synthesis/cam-pipeline-vcu118-20260909/pe5-v1024-c1024-q256-p128-replay-vcu118/vivado-version.txt
+Running java -XX:ActiveProcessorCount=8 -Xmx4G -Dsbt.repository.config=/home/zg366/packet-scheduling/pifo-hardware/synthesis/repositories -Dsbt.override.build.repos=true -Dsbt.supershell=false -Dsbt.log.noformat=true -jar /home/zg366/packet-scheduling/pifo-hardware/synthesis/.tools/sbt-launch-1.10.2.jar 'runMain rio.GeneratePifoMesh "/data/work/rio-synthesis/cam-pipeline-vcu118-20260909/pe5-v1024-c1024-q256-p128-replay-vcu118/rtl" 5 1024 1 8 external replay 256 cam-pipelined 2048 128'
+  log: /data/work/rio-synthesis/cam-pipeline-vcu118-20260909/pe5-v1024-c1024-q256-p128-replay-vcu118/generate.log
+generated: /data/work/rio-synthesis/cam-pipeline-vcu118-20260909/pe5-v1024-c1024-q256-p128-replay-vcu118/manifest.json

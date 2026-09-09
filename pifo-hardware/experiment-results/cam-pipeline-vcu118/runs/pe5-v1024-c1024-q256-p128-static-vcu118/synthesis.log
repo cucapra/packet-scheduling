@@ -1,0 +1,63 @@
+
+****** Vivado v2025.2 (64-bit)
+  **** SW Build 6299465 on Fri Nov 14 12:34:56 MST 2025
+  **** IP Build 6300035 on Fri Nov 14 10:48:45 MST 2025
+  **** SharedData Build 6298862 on Thu Nov 13 04:50:51 MST 2025
+  **** Start of session at: Wed Sep  9 14:53:49 2026
+    ** Copyright 1986-2022 Xilinx, Inc. All Rights Reserved.
+    ** Copyright 2022-2025 Advanced Micro Devices, Inc. All Rights Reserved.
+
+source /home/zg366/packet-scheduling/pifo-hardware/synthesis/vivado_synth.tcl
+# if {$argc < 5 || $argc > 7} {
+#     error {Expected BUILD_DIR PART THREADS CLOCK_PERIOD_NS PREPARE_ONLY [DIRECTIVE] [ALLOW_OVER_CAPACITY]}
+# }
+# lassign $argv build_dir part threads period prepare_only directive allow_over_capacity
+# if {$directive eq ""} { set directive default }
+# if {$allow_over_capacity eq ""} { set allow_over_capacity 0 }
+# set build_dir [file normalize $build_dir]
+# set rtl_dir [file join $build_dir rtl]
+# set report_dir [file join $build_dir reports]
+# file mkdir $report_dir
+# if {[llength [get_parts -quiet $part]] != 1} {
+#     error "Target part is not installed: $part"
+# }
+# puts "PIFO_VIVADO_VERSION: [version -short]"
+PIFO_VIVADO_VERSION: 2025.2
+# puts "PIFO_VIVADO_PART: $part"
+PIFO_VIVADO_PART: xcvu9p-flga2104-2L-e
+# set_param general.maxThreads $threads
+# create_project -in_memory -part $part
+# cd $rtl_dir
+# read_verilog -sv [glob -directory $rtl_dir *.v *.sv]
+# set xdc [file join $build_dir pifo.xdc]
+# set constraints [open $xdc w]
+# puts $constraints "create_clock -name clk -period $period \[get_ports clk\]"
+# puts $constraints {set_false_path -from [get_ports reset]}
+# close $constraints
+# read_xdc $xdc
+# if {$prepare_only} {
+#     puts "PIFO_PREPARED: $build_dir"
+#     exit 0
+# }
+# if {$allow_over_capacity} {
+#     # This version-specific Tcl hook skips only the pre-mapping device-capacity
+#     # gate. The RTL, target, optimization passes, and reported device capacities
+#     # remain unchanged. The resulting netlist can exceed the physical device.
+#     # Verified on Vivado 2025.2 with an oversized RAM and an unchanged smaller
+#     # control design; see experiment-results/hardware-overhead/diagnostics.
+#     puts "PIFO_ESTIMATION_ONLY: device-capacity check disabled; no implementation or fit claim"
+#     set_param synth.elaboration.rodinMoreOptions {if {[llength [info commands rt::pifo_device_capacity_check]] == 0} {rename rt::check_resource rt::pifo_device_capacity_check}; proc rt::check_resource {args} {puts "PIFO_DEVICE_CAPACITY_CHECK_SKIPPED: $args"; return 1}}
+# }
+PIFO_ESTIMATION_ONLY: device-capacity check disabled; no implementation or fit claim
+# synth_design -top PifoMesh -part $part -mode out_of_context -flatten_hierarchy rebuilt -directive $directive
+Command: synth_design -top PifoMesh -part xcvu9p-flga2104-2L-e -mode out_of_context -flatten_hierarchy rebuilt -directive RuntimeOptimized
+Starting synth_design
+Attempting to get a license for feature 'Synthesis' and/or device 'xcvu9p'
+WARNING: [Common 17-348] Failed to get the license for feature 'Synthesis' and/or device 'xcvu9p'. Explanation: The license feature Synthesis could not be found.
+Resolution: Check the status of your licenses in the Vivado License Manager. For debug help search Xilinx Support for "Licensing FAQ". 
+0 Infos, 1 Warnings, 0 Critical Warnings and 1 Errors encountered.
+synth_design failed
+ERROR: [Common 17-345] A valid license was not found for feature 'Synthesis' and/or device 'xcvu9p'. Please run the Vivado License Manager for assistance in determining
+which features and devices are licensed for your system.
+Resolution: Check the status of your licenses in the Vivado License Manager. For debug help search Xilinx Support for "Licensing FAQ". If you are using a license server, verify that the license server is up and running a version of the xilinx daemon that is compatible with the version of Xilinx software that you are using. Note: Vivado 2021.1 and later versions require upgrading your license server tools to the Flex 11.17.2.0 versions. Please confirm with your license admin that the correct version of the license server tools are installed.
+INFO: [Common 17-206] Exiting Vivado at Wed Sep  9 14:53:54 2026...

@@ -1,0 +1,248 @@
+Copyright 1986-2022 Xilinx, Inc. All Rights Reserved. Copyright 2022-2025 Advanced Micro Devices, Inc. All Rights Reserved.
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+| Tool Version : Vivado v.2025.2 (lin64) Build 6299465 Fri Nov 14 12:34:56 MST 2025
+| Date         : Wed Sep  9 15:45:41 2026
+| Host         : netarch-cxl.ece.cornell.edu running 64-bit Ubuntu 24.04.4 LTS
+| Command      : report_utilization -hierarchical -hierarchical_depth 5 -file /data/work/rio-synthesis/cam-pipeline-kcu116-20260909/pe5-v512-c1024-q256-p128-replay-kcu116/reports/utilization-hierarchy.rpt
+| Design       : PifoMesh
+| Device       : xcku5p-ffvb676-2-e
+| Speed File   : -2
+| Design State : Synthesized
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Utilization Design Information
+
+Table of Contents
+-----------------
+1. Utilization by Hierarchy
+
+1. Utilization by Hierarchy
+---------------------------
+
++---------------------------------+----------------------------+------------+------------+---------+-------+-------+--------+--------+------+------------+
+|             Instance            |           Module           | Total LUTs | Logic LUTs | LUTRAMs |  SRLs |  FFs  | RAMB36 | RAMB18 | URAM | DSP Blocks |
++---------------------------------+----------------------------+------------+------------+---------+-------+-------+--------+--------+------+------------+
+| PifoMesh                        |                      (top) |     259528 |     167040 |     328 | 92160 | 87251 |      6 |     30 |    0 |          0 |
+|   (PifoMesh)                    |                      (top) |          1 |          1 |       0 |     0 |    34 |      0 |      0 |    0 |          0 |
+|   guard                         |                 DrainGuard |       9686 |       9686 |       0 |     0 |  5120 |      0 |      0 |    0 |          0 |
+|   pifoEngines_0                 |                 PifoEngine |      49683 |      31195 |      56 | 18432 | 16322 |      1 |      6 |    0 |          0 |
+|     streamFifo_57               |          StreamFifo_15_189 |        177 |        177 |       0 |     0 |   369 |      0 |      0 |    0 |          0 |
+|     deque_frontRewrite          |      FrontRewriteTable_184 |       6345 |       6345 |       0 |     0 |  6656 |      0 |      0 |    0 |          0 |
+|     enque_brain                 |                  PIFOBrain |      14736 |       8544 |      48 |  6144 |  3604 |      1 |      2 |    0 |          0 |
+|       (enque_brain)             |                  PIFOBrain |         38 |         22 |      16 |     0 |   527 |      0 |      0 |    0 |          0 |
+|       admitted_fork             |             StreamFork_210 |        100 |        100 |       0 |     0 |     5 |      0 |      0 |    0 |          0 |
+|       io_outputs_4_fifo         | StreamFifoLowLatency_6_212 |        591 |        591 |       0 |     0 |     9 |      0 |      0 |    0 |          0 |
+|         fifo                    |           StreamFifo_8_227 |        591 |        591 |       0 |     0 |     9 |      0 |      0 |    0 |          0 |
+|       pipelinedCamMapper_10     |     PipelinedCamMapper_213 |      13755 |       7611 |       0 |  6144 |  2810 |      1 |      0 |    0 |          0 |
+|         (pipelinedCamMapper_10) |     PipelinedCamMapper_213 |       3304 |       3304 |       0 |     0 |  1465 |      1 |      0 |    0 |          0 |
+|         banks_0_stages_0_core   |                cam_srl_218 |       1291 |        523 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|         banks_0_stages_1_core   |                cam_srl_219 |       1275 |        507 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|         banks_0_stages_2_core   |                cam_srl_220 |       1275 |        507 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|         banks_0_stages_3_core   |                cam_srl_221 |       1281 |        513 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|         banks_0_stages_4_core   |                cam_srl_222 |       1287 |        519 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|         banks_0_stages_5_core   |                cam_srl_223 |       1280 |        512 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|         banks_0_stages_6_core   |                cam_srl_224 |       1276 |        508 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|         banks_0_stages_7_core   |                cam_srl_225 |       1353 |        585 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|         responses               |           StreamFifo_7_226 |        133 |        133 |       0 |     0 |    97 |      0 |      0 |    0 |          0 |
+|       streamFifo_56             |           StreamFifo_9_215 |         72 |         72 |       0 |     0 |    33 |      0 |      0 |    0 |          0 |
+|       streamFifo_57             |          StreamFifo_10_216 |         66 |         66 |       0 |     0 |   105 |      0 |      0 |    0 |          0 |
+|       streamFifo_58             |          StreamFifo_11_217 |         76 |         76 |       0 |     0 |   105 |      0 |      0 |    0 |          0 |
+|     enque_enqueMapper           |               ReplayMapper |        547 |        547 |       0 |     0 |     3 |      0 |      2 |    0 |          0 |
+|     pipelinedCamMapper_10       |   PipelinedCamMapper_1_187 |      27810 |      15522 |       0 | 12288 |  5615 |      0 |      2 |    0 |          0 |
+|       (pipelinedCamMapper_10)   |   PipelinedCamMapper_1_187 |       7088 |       7088 |       0 |     0 |  2978 |      0 |      2 |    0 |          0 |
+|       banks_0_stages_0_core     |                cam_srl_191 |       1283 |        515 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_0_stages_1_core     |                cam_srl_192 |       1280 |        512 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_0_stages_2_core     |                cam_srl_193 |       1273 |        505 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_0_stages_3_core     |                cam_srl_194 |       1273 |        505 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_0_stages_4_core     |                cam_srl_195 |       1274 |        506 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_0_stages_5_core     |                cam_srl_196 |       1273 |        505 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_0_stages_6_core     |                cam_srl_197 |       1273 |        505 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_0_stages_7_core     |                cam_srl_198 |       1434 |        666 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_1_stages_0_core     |                cam_srl_199 |       1279 |        511 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_1_stages_1_core     |                cam_srl_200 |       1279 |        511 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_1_stages_2_core     |                cam_srl_201 |       1279 |        511 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_1_stages_3_core     |                cam_srl_202 |       1280 |        512 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_1_stages_4_core     |                cam_srl_203 |       1279 |        511 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_1_stages_5_core     |                cam_srl_204 |       1279 |        511 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_1_stages_6_core     |                cam_srl_205 |       1284 |        516 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_1_stages_7_core     |                cam_srl_206 |       1313 |        545 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       responses                 |          StreamFifo_12_207 |         87 |         87 |       0 |     0 |   141 |      0 |      0 |    0 |          0 |
+|   pifoEngines_1                 |               PifoEngine_1 |      49682 |      31194 |      56 | 18432 | 16322 |      1 |      6 |    0 |          0 |
+|     streamFifo_57               |          StreamFifo_15_144 |        177 |        177 |       0 |     0 |   369 |      0 |      0 |    0 |          0 |
+|     deque_frontRewrite          |      FrontRewriteTable_139 |       6344 |       6344 |       0 |     0 |  6656 |      0 |      0 |    0 |          0 |
+|     enque_brain                 |                PIFOBrain_1 |      14736 |       8544 |      48 |  6144 |  3604 |      1 |      2 |    0 |          0 |
+|       (enque_brain)             |                PIFOBrain_1 |         38 |         22 |      16 |     0 |   527 |      0 |      0 |    0 |          0 |
+|       admitted_fork             |             StreamFork_165 |        100 |        100 |       0 |     0 |     5 |      0 |      0 |    0 |          0 |
+|       io_outputs_4_fifo         | StreamFifoLowLatency_6_167 |        591 |        591 |       0 |     0 |     9 |      0 |      0 |    0 |          0 |
+|         fifo                    |           StreamFifo_8_182 |        591 |        591 |       0 |     0 |     9 |      0 |      0 |    0 |          0 |
+|       pipelinedCamMapper_10     |     PipelinedCamMapper_168 |      13755 |       7611 |       0 |  6144 |  2810 |      1 |      0 |    0 |          0 |
+|         (pipelinedCamMapper_10) |     PipelinedCamMapper_168 |       3304 |       3304 |       0 |     0 |  1465 |      1 |      0 |    0 |          0 |
+|         banks_0_stages_0_core   |                cam_srl_173 |       1291 |        523 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|         banks_0_stages_1_core   |                cam_srl_174 |       1275 |        507 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|         banks_0_stages_2_core   |                cam_srl_175 |       1275 |        507 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|         banks_0_stages_3_core   |                cam_srl_176 |       1281 |        513 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|         banks_0_stages_4_core   |                cam_srl_177 |       1287 |        519 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|         banks_0_stages_5_core   |                cam_srl_178 |       1280 |        512 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|         banks_0_stages_6_core   |                cam_srl_179 |       1276 |        508 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|         banks_0_stages_7_core   |                cam_srl_180 |       1353 |        585 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|         responses               |           StreamFifo_7_181 |        133 |        133 |       0 |     0 |    97 |      0 |      0 |    0 |          0 |
+|       streamFifo_56             |           StreamFifo_9_170 |         72 |         72 |       0 |     0 |    33 |      0 |      0 |    0 |          0 |
+|       streamFifo_57             |          StreamFifo_10_171 |         66 |         66 |       0 |     0 |   105 |      0 |      0 |    0 |          0 |
+|       streamFifo_58             |          StreamFifo_11_172 |         76 |         76 |       0 |     0 |   105 |      0 |      0 |    0 |          0 |
+|     enque_enqueMapper           |             ReplayMapper_1 |        547 |        547 |       0 |     0 |     3 |      0 |      2 |    0 |          0 |
+|     pipelinedCamMapper_10       |   PipelinedCamMapper_1_142 |      27810 |      15522 |       0 | 12288 |  5615 |      0 |      2 |    0 |          0 |
+|       (pipelinedCamMapper_10)   |   PipelinedCamMapper_1_142 |       7088 |       7088 |       0 |     0 |  2978 |      0 |      2 |    0 |          0 |
+|       banks_0_stages_0_core     |                cam_srl_146 |       1283 |        515 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_0_stages_1_core     |                cam_srl_147 |       1280 |        512 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_0_stages_2_core     |                cam_srl_148 |       1273 |        505 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_0_stages_3_core     |                cam_srl_149 |       1273 |        505 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_0_stages_4_core     |                cam_srl_150 |       1274 |        506 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_0_stages_5_core     |                cam_srl_151 |       1273 |        505 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_0_stages_6_core     |                cam_srl_152 |       1273 |        505 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_0_stages_7_core     |                cam_srl_153 |       1434 |        666 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_1_stages_0_core     |                cam_srl_154 |       1279 |        511 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_1_stages_1_core     |                cam_srl_155 |       1279 |        511 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_1_stages_2_core     |                cam_srl_156 |       1279 |        511 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_1_stages_3_core     |                cam_srl_157 |       1280 |        512 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_1_stages_4_core     |                cam_srl_158 |       1279 |        511 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_1_stages_5_core     |                cam_srl_159 |       1279 |        511 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_1_stages_6_core     |                cam_srl_160 |       1284 |        516 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_1_stages_7_core     |                cam_srl_161 |       1313 |        545 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       responses                 |          StreamFifo_12_162 |         87 |         87 |       0 |     0 |   141 |      0 |      0 |    0 |          0 |
+|   pifoEngines_2                 |               PifoEngine_2 |      49683 |      31195 |      56 | 18432 | 16322 |      1 |      6 |    0 |          0 |
+|     streamFifo_57               |           StreamFifo_15_99 |        177 |        177 |       0 |     0 |   369 |      0 |      0 |    0 |          0 |
+|     deque_frontRewrite          |       FrontRewriteTable_94 |       6344 |       6344 |       0 |     0 |  6656 |      0 |      0 |    0 |          0 |
+|     enque_brain                 |                PIFOBrain_2 |      14736 |       8544 |      48 |  6144 |  3604 |      1 |      2 |    0 |          0 |
+|       (enque_brain)             |                PIFOBrain_2 |         38 |         22 |      16 |     0 |   527 |      0 |      0 |    0 |          0 |
+|       admitted_fork             |             StreamFork_120 |        100 |        100 |       0 |     0 |     5 |      0 |      0 |    0 |          0 |
+|       io_outputs_4_fifo         | StreamFifoLowLatency_6_122 |        591 |        591 |       0 |     0 |     9 |      0 |      0 |    0 |          0 |
+|         fifo                    |           StreamFifo_8_137 |        591 |        591 |       0 |     0 |     9 |      0 |      0 |    0 |          0 |
+|       pipelinedCamMapper_10     |     PipelinedCamMapper_123 |      13755 |       7611 |       0 |  6144 |  2810 |      1 |      0 |    0 |          0 |
+|         (pipelinedCamMapper_10) |     PipelinedCamMapper_123 |       3304 |       3304 |       0 |     0 |  1465 |      1 |      0 |    0 |          0 |
+|         banks_0_stages_0_core   |                cam_srl_128 |       1291 |        523 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|         banks_0_stages_1_core   |                cam_srl_129 |       1275 |        507 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|         banks_0_stages_2_core   |                cam_srl_130 |       1275 |        507 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|         banks_0_stages_3_core   |                cam_srl_131 |       1281 |        513 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|         banks_0_stages_4_core   |                cam_srl_132 |       1287 |        519 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|         banks_0_stages_5_core   |                cam_srl_133 |       1280 |        512 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|         banks_0_stages_6_core   |                cam_srl_134 |       1276 |        508 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|         banks_0_stages_7_core   |                cam_srl_135 |       1353 |        585 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|         responses               |           StreamFifo_7_136 |        133 |        133 |       0 |     0 |    97 |      0 |      0 |    0 |          0 |
+|       streamFifo_56             |           StreamFifo_9_125 |         72 |         72 |       0 |     0 |    33 |      0 |      0 |    0 |          0 |
+|       streamFifo_57             |          StreamFifo_10_126 |         66 |         66 |       0 |     0 |   105 |      0 |      0 |    0 |          0 |
+|       streamFifo_58             |          StreamFifo_11_127 |         76 |         76 |       0 |     0 |   105 |      0 |      0 |    0 |          0 |
+|     enque_enqueMapper           |             ReplayMapper_2 |        547 |        547 |       0 |     0 |     3 |      0 |      2 |    0 |          0 |
+|     pipelinedCamMapper_10       |    PipelinedCamMapper_1_97 |      27811 |      15523 |       0 | 12288 |  5615 |      0 |      2 |    0 |          0 |
+|       (pipelinedCamMapper_10)   |    PipelinedCamMapper_1_97 |       7089 |       7089 |       0 |     0 |  2978 |      0 |      2 |    0 |          0 |
+|       banks_0_stages_0_core     |                cam_srl_101 |       1283 |        515 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_0_stages_1_core     |                cam_srl_102 |       1280 |        512 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_0_stages_2_core     |                cam_srl_103 |       1273 |        505 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_0_stages_3_core     |                cam_srl_104 |       1273 |        505 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_0_stages_4_core     |                cam_srl_105 |       1274 |        506 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_0_stages_5_core     |                cam_srl_106 |       1273 |        505 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_0_stages_6_core     |                cam_srl_107 |       1273 |        505 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_0_stages_7_core     |                cam_srl_108 |       1434 |        666 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_1_stages_0_core     |                cam_srl_109 |       1279 |        511 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_1_stages_1_core     |                cam_srl_110 |       1279 |        511 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_1_stages_2_core     |                cam_srl_111 |       1279 |        511 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_1_stages_3_core     |                cam_srl_112 |       1280 |        512 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_1_stages_4_core     |                cam_srl_113 |       1279 |        511 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_1_stages_5_core     |                cam_srl_114 |       1279 |        511 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_1_stages_6_core     |                cam_srl_115 |       1284 |        516 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_1_stages_7_core     |                cam_srl_116 |       1313 |        545 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       responses                 |          StreamFifo_12_117 |         87 |         87 |       0 |     0 |   141 |      0 |      0 |    0 |          0 |
+|   pifoEngines_3                 |               PifoEngine_3 |      49682 |      31194 |      56 | 18432 | 16322 |      1 |      6 |    0 |          0 |
+|     streamFifo_57               |           StreamFifo_15_54 |        177 |        177 |       0 |     0 |   369 |      0 |      0 |    0 |          0 |
+|     deque_frontRewrite          |       FrontRewriteTable_49 |       6344 |       6344 |       0 |     0 |  6656 |      0 |      0 |    0 |          0 |
+|     enque_brain                 |                PIFOBrain_3 |      14736 |       8544 |      48 |  6144 |  3604 |      1 |      2 |    0 |          0 |
+|       (enque_brain)             |                PIFOBrain_3 |         38 |         22 |      16 |     0 |   527 |      0 |      0 |    0 |          0 |
+|       admitted_fork             |              StreamFork_75 |        100 |        100 |       0 |     0 |     5 |      0 |      0 |    0 |          0 |
+|       io_outputs_4_fifo         |  StreamFifoLowLatency_6_77 |        591 |        591 |       0 |     0 |     9 |      0 |      0 |    0 |          0 |
+|         fifo                    |            StreamFifo_8_92 |        591 |        591 |       0 |     0 |     9 |      0 |      0 |    0 |          0 |
+|       pipelinedCamMapper_10     |      PipelinedCamMapper_78 |      13755 |       7611 |       0 |  6144 |  2810 |      1 |      0 |    0 |          0 |
+|         (pipelinedCamMapper_10) |      PipelinedCamMapper_78 |       3304 |       3304 |       0 |     0 |  1465 |      1 |      0 |    0 |          0 |
+|         banks_0_stages_0_core   |                 cam_srl_83 |       1291 |        523 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|         banks_0_stages_1_core   |                 cam_srl_84 |       1275 |        507 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|         banks_0_stages_2_core   |                 cam_srl_85 |       1275 |        507 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|         banks_0_stages_3_core   |                 cam_srl_86 |       1281 |        513 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|         banks_0_stages_4_core   |                 cam_srl_87 |       1287 |        519 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|         banks_0_stages_5_core   |                 cam_srl_88 |       1280 |        512 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|         banks_0_stages_6_core   |                 cam_srl_89 |       1276 |        508 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|         banks_0_stages_7_core   |                 cam_srl_90 |       1353 |        585 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|         responses               |            StreamFifo_7_91 |        133 |        133 |       0 |     0 |    97 |      0 |      0 |    0 |          0 |
+|       streamFifo_56             |            StreamFifo_9_80 |         72 |         72 |       0 |     0 |    33 |      0 |      0 |    0 |          0 |
+|       streamFifo_57             |           StreamFifo_10_81 |         66 |         66 |       0 |     0 |   105 |      0 |      0 |    0 |          0 |
+|       streamFifo_58             |           StreamFifo_11_82 |         76 |         76 |       0 |     0 |   105 |      0 |      0 |    0 |          0 |
+|     enque_enqueMapper           |             ReplayMapper_3 |        547 |        547 |       0 |     0 |     3 |      0 |      2 |    0 |          0 |
+|     pipelinedCamMapper_10       |    PipelinedCamMapper_1_52 |      27810 |      15522 |       0 | 12288 |  5615 |      0 |      2 |    0 |          0 |
+|       (pipelinedCamMapper_10)   |    PipelinedCamMapper_1_52 |       7088 |       7088 |       0 |     0 |  2978 |      0 |      2 |    0 |          0 |
+|       banks_0_stages_0_core     |                 cam_srl_56 |       1283 |        515 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_0_stages_1_core     |                 cam_srl_57 |       1280 |        512 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_0_stages_2_core     |                 cam_srl_58 |       1273 |        505 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_0_stages_3_core     |                 cam_srl_59 |       1273 |        505 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_0_stages_4_core     |                 cam_srl_60 |       1274 |        506 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_0_stages_5_core     |                 cam_srl_61 |       1273 |        505 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_0_stages_6_core     |                 cam_srl_62 |       1273 |        505 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_0_stages_7_core     |                 cam_srl_63 |       1434 |        666 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_1_stages_0_core     |                 cam_srl_64 |       1279 |        511 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_1_stages_1_core     |                 cam_srl_65 |       1279 |        511 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_1_stages_2_core     |                 cam_srl_66 |       1279 |        511 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_1_stages_3_core     |                 cam_srl_67 |       1280 |        512 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_1_stages_4_core     |                 cam_srl_68 |       1279 |        511 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_1_stages_5_core     |                 cam_srl_69 |       1279 |        511 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_1_stages_6_core     |                 cam_srl_70 |       1284 |        516 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_1_stages_7_core     |                 cam_srl_71 |       1313 |        545 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       responses                 |           StreamFifo_12_72 |         87 |         87 |       0 |     0 |   141 |      0 |      0 |    0 |          0 |
+|   pifoEngines_4                 |               PifoEngine_4 |      49682 |      31194 |      56 | 18432 | 16322 |      1 |      6 |    0 |          0 |
+|     streamFifo_57               |           StreamFifo_15_22 |        177 |        177 |       0 |     0 |   369 |      0 |      0 |    0 |          0 |
+|     deque_frontRewrite          |          FrontRewriteTable |       6344 |       6344 |       0 |     0 |  6656 |      0 |      0 |    0 |          0 |
+|     enque_brain                 |                PIFOBrain_4 |      14736 |       8544 |      48 |  6144 |  3604 |      1 |      2 |    0 |          0 |
+|       (enque_brain)             |                PIFOBrain_4 |         38 |         22 |      16 |     0 |   527 |      0 |      0 |    0 |          0 |
+|       admitted_fork             |                 StreamFork |        100 |        100 |       0 |     0 |     5 |      0 |      0 |    0 |          0 |
+|       io_outputs_4_fifo         |  StreamFifoLowLatency_6_39 |        591 |        591 |       0 |     0 |     9 |      0 |      0 |    0 |          0 |
+|         fifo                    |               StreamFifo_8 |        591 |        591 |       0 |     0 |     9 |      0 |      0 |    0 |          0 |
+|       pipelinedCamMapper_10     |         PipelinedCamMapper |      13755 |       7611 |       0 |  6144 |  2810 |      1 |      0 |    0 |          0 |
+|         (pipelinedCamMapper_10) |         PipelinedCamMapper |       3304 |       3304 |       0 |     0 |  1465 |      1 |      0 |    0 |          0 |
+|         banks_0_stages_0_core   |                 cam_srl_40 |       1291 |        523 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|         banks_0_stages_1_core   |                 cam_srl_41 |       1275 |        507 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|         banks_0_stages_2_core   |                 cam_srl_42 |       1275 |        507 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|         banks_0_stages_3_core   |                 cam_srl_43 |       1281 |        513 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|         banks_0_stages_4_core   |                 cam_srl_44 |       1287 |        519 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|         banks_0_stages_5_core   |                 cam_srl_45 |       1280 |        512 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|         banks_0_stages_6_core   |                 cam_srl_46 |       1276 |        508 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|         banks_0_stages_7_core   |                 cam_srl_47 |       1353 |        585 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|         responses               |               StreamFifo_7 |        133 |        133 |       0 |     0 |    97 |      0 |      0 |    0 |          0 |
+|       streamFifo_56             |               StreamFifo_9 |         72 |         72 |       0 |     0 |    33 |      0 |      0 |    0 |          0 |
+|       streamFifo_57             |              StreamFifo_10 |         66 |         66 |       0 |     0 |   105 |      0 |      0 |    0 |          0 |
+|       streamFifo_58             |              StreamFifo_11 |         76 |         76 |       0 |     0 |   105 |      0 |      0 |    0 |          0 |
+|     enque_enqueMapper           |             ReplayMapper_4 |        547 |        547 |       0 |     0 |     3 |      0 |      2 |    0 |          0 |
+|     pipelinedCamMapper_10       |       PipelinedCamMapper_1 |      27810 |      15522 |       0 | 12288 |  5615 |      0 |      2 |    0 |          0 |
+|       (pipelinedCamMapper_10)   |       PipelinedCamMapper_1 |       7088 |       7088 |       0 |     0 |  2978 |      0 |      2 |    0 |          0 |
+|       banks_0_stages_0_core     |                    cam_srl |       1283 |        515 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_0_stages_1_core     |                 cam_srl_23 |       1280 |        512 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_0_stages_2_core     |                 cam_srl_24 |       1273 |        505 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_0_stages_3_core     |                 cam_srl_25 |       1273 |        505 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_0_stages_4_core     |                 cam_srl_26 |       1274 |        506 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_0_stages_5_core     |                 cam_srl_27 |       1273 |        505 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_0_stages_6_core     |                 cam_srl_28 |       1273 |        505 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_0_stages_7_core     |                 cam_srl_29 |       1434 |        666 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_1_stages_0_core     |                 cam_srl_30 |       1279 |        511 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_1_stages_1_core     |                 cam_srl_31 |       1279 |        511 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_1_stages_2_core     |                 cam_srl_32 |       1279 |        511 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_1_stages_3_core     |                 cam_srl_33 |       1280 |        512 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_1_stages_4_core     |                 cam_srl_34 |       1279 |        511 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_1_stages_5_core     |                 cam_srl_35 |       1279 |        511 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_1_stages_6_core     |                 cam_srl_36 |       1284 |        516 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       banks_1_stages_7_core     |                 cam_srl_37 |       1313 |        545 |       0 |   768 |   156 |      0 |      0 |    0 |          0 |
+|       responses                 |              StreamFifo_12 |         87 |         87 |       0 |     0 |   141 |      0 |      0 |    0 |          0 |
+|   replayControl                 |          ReplayControlFifo |        750 |        750 |       0 |     0 |    39 |      1 |      0 |    0 |          0 |
+|   xbar                          |            MessageCrossBar |        646 |        598 |      48 |     0 |   428 |      0 |      0 |    0 |          0 |
+|     (xbar)                      |            MessageCrossBar |          1 |          1 |       0 |     0 |   338 |      0 |      0 |    0 |          0 |
+|     streamArbiter_22            |            StreamArbiter_9 |         88 |         88 |       0 |     0 |     7 |      0 |      0 |    0 |          0 |
+|     streamArbiter_23            |           StreamArbiter_10 |         88 |         88 |       0 |     0 |     7 |      0 |      0 |    0 |          0 |
+|     streamArbiter_24            |           StreamArbiter_11 |         89 |         89 |       0 |     0 |     7 |      0 |      0 |    0 |          0 |
+|     streamArbiter_25            |           StreamArbiter_12 |         86 |         86 |       0 |     0 |     7 |      0 |      0 |    0 |          0 |
+|     streamArbiter_26            |           StreamArbiter_13 |         88 |         88 |       0 |     0 |     7 |      0 |      0 |    0 |          0 |
++---------------------------------+----------------------------+------------+------------+---------+-------+-------+--------+--------+------+------------+
+
+

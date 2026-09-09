@@ -1,0 +1,318 @@
+
+****** Vivado v2025.2 (64-bit)
+  **** SW Build 6299465 on Fri Nov 14 12:34:56 MST 2025
+  **** IP Build 6300035 on Fri Nov 14 10:48:45 MST 2025
+  **** SharedData Build 6298862 on Thu Nov 13 04:50:51 MST 2025
+  **** Start of session at: Wed Sep  9 15:59:02 2026
+    ** Copyright 1986-2022 Xilinx, Inc. All Rights Reserved.
+    ** Copyright 2022-2025 Advanced Micro Devices, Inc. All Rights Reserved.
+
+source /home/zg366/packet-scheduling/pifo-hardware/synthesis/vivado_synth.tcl
+# if {$argc < 5 || $argc > 7} {
+#     error {Expected BUILD_DIR PART THREADS CLOCK_PERIOD_NS PREPARE_ONLY [DIRECTIVE] [ALLOW_OVER_CAPACITY]}
+# }
+# lassign $argv build_dir part threads period prepare_only directive allow_over_capacity
+# if {$directive eq ""} { set directive default }
+# if {$allow_over_capacity eq ""} { set allow_over_capacity 0 }
+# set build_dir [file normalize $build_dir]
+# set rtl_dir [file join $build_dir rtl]
+# set report_dir [file join $build_dir reports]
+# file mkdir $report_dir
+# if {[llength [get_parts -quiet $part]] != 1} {
+#     error "Target part is not installed: $part"
+# }
+# puts "PIFO_VIVADO_VERSION: [version -short]"
+PIFO_VIVADO_VERSION: 2025.2
+# puts "PIFO_VIVADO_PART: $part"
+PIFO_VIVADO_PART: xcku5p-ffvb676-2-e
+# set_param general.maxThreads $threads
+# create_project -in_memory -part $part
+# cd $rtl_dir
+# read_verilog -sv [glob -directory $rtl_dir *.v *.sv]
+# set xdc [file join $build_dir pifo.xdc]
+# set constraints [open $xdc w]
+# puts $constraints "create_clock -name clk -period $period \[get_ports clk\]"
+# puts $constraints {set_false_path -from [get_ports reset]}
+# close $constraints
+# read_xdc $xdc
+# if {$prepare_only} {
+#     puts "PIFO_PREPARED: $build_dir"
+#     exit 0
+# }
+# if {$allow_over_capacity} {
+#     # This version-specific Tcl hook skips only the pre-mapping device-capacity
+#     # gate. The RTL, target, optimization passes, and reported device capacities
+#     # remain unchanged. The resulting netlist can exceed the physical device.
+#     # Verified on Vivado 2025.2 with an oversized RAM and an unchanged smaller
+#     # control design; see experiment-results/hardware-overhead/diagnostics.
+#     puts "PIFO_ESTIMATION_ONLY: device-capacity check disabled; no implementation or fit claim"
+#     set_param synth.elaboration.rodinMoreOptions {if {[llength [info commands rt::pifo_device_capacity_check]] == 0} {rename rt::check_resource rt::pifo_device_capacity_check}; proc rt::check_resource {args} {puts "PIFO_DEVICE_CAPACITY_CHECK_SKIPPED: $args"; return 1}}
+# }
+PIFO_ESTIMATION_ONLY: device-capacity check disabled; no implementation or fit claim
+# synth_design -top PifoMesh -part $part -mode out_of_context -flatten_hierarchy rebuilt -directive $directive
+Command: synth_design -top PifoMesh -part xcku5p-ffvb676-2-e -mode out_of_context -flatten_hierarchy rebuilt -directive RuntimeOptimized
+Starting synth_design
+Attempting to get a license for feature 'Synthesis' and/or device 'xcku5p'
+INFO: [Common 17-349] Got license for feature 'Synthesis' and/or device 'xcku5p'
+INFO: [Device 21-403] Loading part xcku5p-ffvb676-2-e
+INFO: [Synth 8-7079] Multithreading enabled for synth_design using a maximum of 7 processes.
+INFO: [Synth 8-7078] Launching helper process for spawning children vivado processes
+INFO: [Synth 8-7075] Helper process launched with PID 765798
+---------------------------------------------------------------------------------
+Starting RTL Elaboration : Time (s): cpu = 00:00:05 ; elapsed = 00:00:05 . Memory (MB): peak = 2833.617 ; gain = 181.688 ; free physical = 158865 ; free virtual = 199059
+---------------------------------------------------------------------------------
+INFO: [Synth 8-6157] synthesizing module 'PifoMesh' [/data/work/rio-synthesis/cam-pipeline-kcu116-20260909/pifo-v32-c1024-kcu116/rtl/PifoMesh.v:7]
+INFO: [Synth 8-6157] synthesizing module 'ConcurrentPifoRTL' [/data/work/rio-synthesis/cam-pipeline-kcu116-20260909/pifo-v32-c1024-kcu116/rtl/PifoMesh.v:96]
+INFO: [Synth 8-6157] synthesizing module 'priority_encode_log' [/data/work/rio-synthesis/cam-pipeline-kcu116-20260909/pifo-v32-c1024-kcu116/rtl/priority_encode_log.v:1]
+	Parameter width bound to: 1024 - type: integer 
+	Parameter log_width bound to: 10 - type: integer 
+INFO: [Synth 8-6155] done synthesizing module 'priority_encode_log' (0#1) [/data/work/rio-synthesis/cam-pipeline-kcu116-20260909/pifo-v32-c1024-kcu116/rtl/priority_encode_log.v:1]
+INFO: [Synth 8-6155] done synthesizing module 'ConcurrentPifoRTL' (0#1) [/data/work/rio-synthesis/cam-pipeline-kcu116-20260909/pifo-v32-c1024-kcu116/rtl/PifoMesh.v:96]
+INFO: [Synth 8-6155] done synthesizing module 'PifoMesh' (0#1) [/data/work/rio-synthesis/cam-pipeline-kcu116-20260909/pifo-v32-c1024-kcu116/rtl/PifoMesh.v:7]
+WARNING: [Synth 8-3936] Found unconnected internal register 'genblk1[9].part_idx_reg[9]' and it is trimmed from '1024' to '11' bits. [/data/work/rio-synthesis/cam-pipeline-kcu116-20260909/pifo-v32-c1024-kcu116/rtl/priority_encode_log.v:33]
+WARNING: [Synth 8-3936] Found unconnected internal register 'genblk1[8].part_idx_reg[8]' and it is trimmed from '1024' to '522' bits. [/data/work/rio-synthesis/cam-pipeline-kcu116-20260909/pifo-v32-c1024-kcu116/rtl/priority_encode_log.v:33]
+WARNING: [Synth 8-3936] Found unconnected internal register 'genblk1[7].part_idx_reg[7]' and it is trimmed from '1024' to '777' bits. [/data/work/rio-synthesis/cam-pipeline-kcu116-20260909/pifo-v32-c1024-kcu116/rtl/priority_encode_log.v:33]
+WARNING: [Synth 8-3936] Found unconnected internal register 'genblk1[6].part_idx_reg[6]' and it is trimmed from '1024' to '904' bits. [/data/work/rio-synthesis/cam-pipeline-kcu116-20260909/pifo-v32-c1024-kcu116/rtl/priority_encode_log.v:33]
+WARNING: [Synth 8-3936] Found unconnected internal register 'genblk1[5].part_idx_reg[5]' and it is trimmed from '1024' to '967' bits. [/data/work/rio-synthesis/cam-pipeline-kcu116-20260909/pifo-v32-c1024-kcu116/rtl/priority_encode_log.v:33]
+WARNING: [Synth 8-3936] Found unconnected internal register 'genblk1[4].part_idx_reg[4]' and it is trimmed from '1024' to '998' bits. [/data/work/rio-synthesis/cam-pipeline-kcu116-20260909/pifo-v32-c1024-kcu116/rtl/priority_encode_log.v:33]
+WARNING: [Synth 8-3936] Found unconnected internal register 'genblk1[3].part_idx_reg[3]' and it is trimmed from '1024' to '1013' bits. [/data/work/rio-synthesis/cam-pipeline-kcu116-20260909/pifo-v32-c1024-kcu116/rtl/priority_encode_log.v:33]
+WARNING: [Synth 8-3936] Found unconnected internal register 'genblk1[2].part_idx_reg[2]' and it is trimmed from '1024' to '1020' bits. [/data/work/rio-synthesis/cam-pipeline-kcu116-20260909/pifo-v32-c1024-kcu116/rtl/priority_encode_log.v:33]
+WARNING: [Synth 8-3936] Found unconnected internal register 'genblk1[1].part_idx_reg[1]' and it is trimmed from '1024' to '1023' bits. [/data/work/rio-synthesis/cam-pipeline-kcu116-20260909/pifo-v32-c1024-kcu116/rtl/priority_encode_log.v:33]
+WARNING: [Synth 8-7129] Port clk in module priority_encode_log is either unconnected or has no load
+WARNING: [Synth 8-7129] Port rst in module priority_encode_log is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_push2_valid in module PifoMesh is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_push2_payload_priority[7] in module PifoMesh is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_push2_payload_priority[6] in module PifoMesh is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_push2_payload_priority[5] in module PifoMesh is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_push2_payload_priority[4] in module PifoMesh is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_push2_payload_priority[3] in module PifoMesh is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_push2_payload_priority[2] in module PifoMesh is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_push2_payload_priority[1] in module PifoMesh is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_push2_payload_priority[0] in module PifoMesh is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_push2_payload_data[7] in module PifoMesh is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_push2_payload_data[6] in module PifoMesh is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_push2_payload_data[5] in module PifoMesh is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_push2_payload_data[4] in module PifoMesh is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_push2_payload_data[3] in module PifoMesh is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_push2_payload_data[2] in module PifoMesh is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_push2_payload_data[1] in module PifoMesh is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_push2_payload_data[0] in module PifoMesh is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_push2_payload_port[4] in module PifoMesh is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_push2_payload_port[3] in module PifoMesh is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_push2_payload_port[2] in module PifoMesh is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_push2_payload_port[1] in module PifoMesh is either unconnected or has no load
+WARNING: [Synth 8-7129] Port io_push2_payload_port[0] in module PifoMesh is either unconnected or has no load
+---------------------------------------------------------------------------------
+Finished RTL Elaboration : Time (s): cpu = 00:00:45 ; elapsed = 00:00:47 . Memory (MB): peak = 4008.906 ; gain = 1356.977 ; free physical = 161586 ; free virtual = 201778
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Handling Custom Attributes
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Handling Custom Attributes : Time (s): cpu = 00:00:45 ; elapsed = 00:00:47 . Memory (MB): peak = 4008.906 ; gain = 1356.977 ; free physical = 161602 ; free virtual = 201794
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished RTL Optimization Phase 1 : Time (s): cpu = 00:00:45 ; elapsed = 00:00:47 . Memory (MB): peak = 4008.906 ; gain = 1356.977 ; free physical = 161602 ; free virtual = 201794
+---------------------------------------------------------------------------------
+Netlist sorting complete. Time (s): cpu = 00:00:06 ; elapsed = 00:00:06 . Memory (MB): peak = 4105.211 ; gain = 16.305 ; free physical = 161526 ; free virtual = 201719
+INFO: [Project 1-570] Preparing netlist for logic optimization
+
+Processing XDC Constraints
+Initializing timing engine
+Parsing XDC File [/data/work/rio-synthesis/cam-pipeline-kcu116-20260909/pifo-v32-c1024-kcu116/pifo.xdc]
+Finished Parsing XDC File [/data/work/rio-synthesis/cam-pipeline-kcu116-20260909/pifo-v32-c1024-kcu116/pifo.xdc]
+Completed Processing XDC Constraints
+
+Netlist sorting complete. Time (s): cpu = 00:00:00.02 ; elapsed = 00:00:00.02 . Memory (MB): peak = 5144.738 ; gain = 0.000 ; free physical = 160505 ; free virtual = 200698
+INFO: [Project 1-111] Unisim Transformation Summary:
+No Unisim elements were transformed.
+
+---------------------------------------------------------------------------------
+Finished RTL Optimization Phase 2 : Time (s): cpu = 00:02:45 ; elapsed = 00:02:43 . Memory (MB): peak = 5168.750 ; gain = 2516.820 ; free physical = 157934 ; free virtual = 198141
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start RTL Component Statistics 
+---------------------------------------------------------------------------------
+Detailed RTL Component Info : 
++---Adders : 
+	   4 Input   11 Bit       Adders := 1     
+	   3 Input   11 Bit       Adders := 1     
+	   2 Input   11 Bit       Adders := 1     
++---Registers : 
+	                8 Bit    Registers := 2050  
+	                5 Bit    Registers := 1028  
+	                1 Bit    Registers := 5     
++---Muxes : 
+	   2 Input   11 Bit        Muxes := 1     
+	   2 Input    9 Bit        Muxes := 3     
+	   2 Input    8 Bit        Muxes := 10239 
+	   2 Input    7 Bit        Muxes := 12    
+	   2 Input    6 Bit        Muxes := 24    
+	   2 Input    5 Bit        Muxes := 5164  
+	   2 Input    4 Bit        Muxes := 96    
+	   2 Input    3 Bit        Muxes := 192   
+	   2 Input    2 Bit        Muxes := 384   
+	   2 Input    1 Bit        Muxes := 2819  
+---------------------------------------------------------------------------------
+Finished RTL Component Statistics 
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Part Resource Summary
+---------------------------------------------------------------------------------
+Part Resources:
+DSPs: 1824 (col length:96)
+BRAMs: 960 (col length: RAMB18 96 RAMB36 48)
+---------------------------------------------------------------------------------
+Finished Part Resource Summary
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Cross Boundary and Area Optimization
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Cross Boundary and Area Optimization : Time (s): cpu = 00:03:29 ; elapsed = 00:03:27 . Memory (MB): peak = 5180.676 ; gain = 2528.746 ; free physical = 155342 ; free virtual = 195556
+---------------------------------------------------------------------------------
+PIFO_DEVICE_CAPACITY_CHECK_SKIPPED: -checkfordsp
+PIFO_DEVICE_CAPACITY_CHECK_SKIPPED: -checkforuram
+PIFO_DEVICE_CAPACITY_CHECK_SKIPPED: -checkforram
+---------------------------------------------------------------------------------
+Start Applying XDC Timing Constraints
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Applying XDC Timing Constraints : Time (s): cpu = 00:04:54 ; elapsed = 00:03:39 . Memory (MB): peak = 5268.305 ; gain = 2616.375 ; free physical = 155182 ; free virtual = 195397
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Technology Mapping
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Technology Mapping : Time (s): cpu = 00:05:31 ; elapsed = 00:04:17 . Memory (MB): peak = 5280.230 ; gain = 2628.301 ; free physical = 152478 ; free virtual = 192704
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start IO Insertion
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Flattening Before IO Insertion
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Flattening Before IO Insertion
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Final Netlist Cleanup
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Final Netlist Cleanup
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished IO Insertion : Time (s): cpu = 00:05:53 ; elapsed = 00:04:40 . Memory (MB): peak = 5280.230 ; gain = 2628.301 ; free physical = 152534 ; free virtual = 192760
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Renaming Generated Instances
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Renaming Generated Instances : Time (s): cpu = 00:05:54 ; elapsed = 00:04:40 . Memory (MB): peak = 5280.230 ; gain = 2628.301 ; free physical = 152535 ; free virtual = 192761
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Rebuilding User Hierarchy
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Rebuilding User Hierarchy : Time (s): cpu = 00:05:57 ; elapsed = 00:04:44 . Memory (MB): peak = 5280.230 ; gain = 2628.301 ; free physical = 152540 ; free virtual = 192765
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Renaming Generated Ports
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Renaming Generated Ports : Time (s): cpu = 00:05:57 ; elapsed = 00:04:44 . Memory (MB): peak = 5280.230 ; gain = 2628.301 ; free physical = 152587 ; free virtual = 192812
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Handling Custom Attributes
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Handling Custom Attributes : Time (s): cpu = 00:05:58 ; elapsed = 00:04:45 . Memory (MB): peak = 5280.230 ; gain = 2628.301 ; free physical = 152587 ; free virtual = 192812
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Renaming Generated Nets
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Finished Renaming Generated Nets : Time (s): cpu = 00:05:58 ; elapsed = 00:04:45 . Memory (MB): peak = 5280.230 ; gain = 2628.301 ; free physical = 152587 ; free virtual = 192812
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
+Start Writing Synthesis Report
+---------------------------------------------------------------------------------
+
+Report BlackBoxes: 
++-+--------------+----------+
+| |BlackBox name |Instances |
++-+--------------+----------+
++-+--------------+----------+
+
+Report Cell Usage: 
++------+-------+------+
+|      |Cell   |Count |
++------+-------+------+
+|1     |CARRY8 |  2048|
+|2     |LUT1   |     6|
+|3     |LUT2   |  1987|
+|4     |LUT3   | 16905|
+|5     |LUT4   |  9690|
+|6     |LUT5   | 38268|
+|7     |LUT6   | 39484|
+|8     |MUXF7  |  2461|
+|9     |MUXF8  |  1133|
+|10    |FDCE   |    64|
+|11    |FDRE   | 21526|
++------+-------+------+
+---------------------------------------------------------------------------------
+Finished Writing Synthesis Report : Time (s): cpu = 00:05:58 ; elapsed = 00:04:45 . Memory (MB): peak = 5280.230 ; gain = 2628.301 ; free physical = 152587 ; free virtual = 192812
+---------------------------------------------------------------------------------
+Synthesis finished with 0 errors, 0 critical warnings and 0 warnings.
+Synthesis Optimization Runtime : Time (s): cpu = 00:05:09 ; elapsed = 00:04:07 . Memory (MB): peak = 5280.230 ; gain = 1480.547 ; free physical = 163456 ; free virtual = 203682
+Synthesis Optimization Complete : Time (s): cpu = 00:05:59 ; elapsed = 00:04:52 . Memory (MB): peak = 5280.230 ; gain = 2628.301 ; free physical = 163472 ; free virtual = 203679
+INFO: [Project 1-571] Translating synthesized netlist
+Netlist sorting complete. Time (s): cpu = 00:00:01 ; elapsed = 00:00:01 . Memory (MB): peak = 5280.230 ; gain = 0.000 ; free physical = 163482 ; free virtual = 203689
+INFO: [Netlist 29-17] Analyzing 5642 Unisim elements for replacement
+INFO: [Netlist 29-28] Unisim Transformation completed in 0 CPU seconds
+WARNING: [Netlist 29-101] Netlist 'PifoMesh' is not ideal for floorplanning, since the cellview 'ConcurrentPifoRTL' contains a large number of primitives.  Please consider enabling hierarchy in synthesis if you want to do floorplanning.
+INFO: [Project 1-570] Preparing netlist for logic optimization
+Parsing XDC File [/data/work/rio-synthesis/cam-pipeline-kcu116-20260909/pifo-v32-c1024-kcu116/pifo.xdc]
+Finished Parsing XDC File [/data/work/rio-synthesis/cam-pipeline-kcu116-20260909/pifo-v32-c1024-kcu116/pifo.xdc]
+INFO: [Opt 31-138] Pushed 0 inverter(s) to 0 load pin(s).
+Netlist sorting complete. Time (s): cpu = 00:00:00.03 ; elapsed = 00:00:00.03 . Memory (MB): peak = 5280.230 ; gain = 0.000 ; free physical = 163510 ; free virtual = 203717
+INFO: [Project 1-111] Unisim Transformation Summary:
+No Unisim elements were transformed.
+
+Synth Design complete | Checksum: 209bb2d1
+INFO: [Common 17-83] Releasing license: Synthesis
+21 Infos, 34 Warnings, 0 Critical Warnings and 0 Errors encountered.
+synth_design completed successfully
+synth_design: Time (s): cpu = 00:06:31 ; elapsed = 00:05:23 . Memory (MB): peak = 5280.230 ; gain = 3649.832 ; free physical = 163513 ; free virtual = 203720
+INFO: [Common 17-2834] synth_design peak Physical Memory [PSS] (MB): overall = 12615.760; main = 4556.166; forked = 8537.104
+INFO: [Common 17-2834] synth_design peak Virtual Memory [VSS] (MB): overall = 21728.375; main = 5276.316; forked = 16551.617
+# write_checkpoint -force [file join $build_dir pifo_synth.dcp]
+INFO: [Timing 38-35] Done setting XDC timing constraints.
+INFO: [Timing 38-480] Writing timing data to binary archive.
+Write ShapeDB Complete: Time (s): cpu = 00:00:00.83 ; elapsed = 00:00:00.21 . Memory (MB): peak = 5356.348 ; gain = 0.000 ; free physical = 163528 ; free virtual = 203746
+INFO: [Common 17-1381] The checkpoint '/data/work/rio-synthesis/cam-pipeline-kcu116-20260909/pifo-v32-c1024-kcu116/pifo_synth.dcp' has been generated.
+write_checkpoint: Time (s): cpu = 00:00:24 ; elapsed = 00:00:15 . Memory (MB): peak = 5356.348 ; gain = 76.117 ; free physical = 163524 ; free virtual = 203749
+# report_utilization -file [file join $report_dir utilization.rpt]
+# report_utilization -hierarchical -hierarchical_depth 5 -file [file join $report_dir utilization-hierarchy.rpt]
+# report_ram_utilization -file [file join $report_dir ram-utilization.rpt]
+report_ram_utilization: Time (s): cpu = 00:00:00 ; elapsed = 00:00:00 . Memory (MB): peak = 5356.348 ; gain = 0.000 ; free physical = 163520 ; free virtual = 203744
+# set blackboxes [get_cells -hierarchical -quiet -filter {IS_BLACKBOX == 1}]
+# if {[llength $blackboxes] != 0} {
+#     error "Unresolved blackboxes after synthesis: $blackboxes"
+# }
+# set primitive_counts [dict create]
+# foreach cell [get_cells -hierarchical -quiet -filter {IS_PRIMITIVE == 1}] {
+#     dict incr primitive_counts [get_property REF_NAME $cell]
+# }
+# set counts [open [file join $report_dir primitive-counts.tsv] w]
+# puts $counts "primitive\tcount"
+# foreach name [lsort [dict keys $primitive_counts]] {
+#     puts $counts "$name\t[dict get $primitive_counts $name]"
+# }
+# close $counts
+# set complete [open [file join $build_dir synthesis_complete.txt] w]
+# puts $complete "Vivado [version -short]; $part; PifoMesh; out_of_context; [clock format [clock seconds]]"
+# close $complete
+# puts "PIFO_SYNTHESIS_COMPLETE: $report_dir"
+PIFO_SYNTHESIS_COMPLETE: /data/work/rio-synthesis/cam-pipeline-kcu116-20260909/pifo-v32-c1024-kcu116/reports
+INFO: [Common 17-206] Exiting Vivado at Wed Sep  9 16:04:53 2026...

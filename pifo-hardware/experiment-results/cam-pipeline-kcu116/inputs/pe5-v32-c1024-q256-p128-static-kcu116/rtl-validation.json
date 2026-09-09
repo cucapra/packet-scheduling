@@ -1,0 +1,35 @@
+{
+  "status": "passed",
+  "build": "/data/work/rio-synthesis/cam-pipeline-kcu116-20260909/pe5-v32-c1024-q256-p128-static-kcu116",
+  "configuration": "static",
+  "vflows": 32,
+  "entries_per_stage": 128,
+  "stages": 1,
+  "minimum_lookup_latency": 2,
+  "cam_instances": 10,
+  "srl_cam_instances": 10,
+  "value_memories": [
+    {
+      "module": "PipelinedCamMapper",
+      "instances": 5,
+      "array": "banks_0_values",
+      "width": 32,
+      "depth": 64,
+      "read_ports": 1,
+      "write_ports": 1
+    },
+    {
+      "module": "PipelinedCamMapper_1",
+      "instances": 5,
+      "array": "banks_0_values",
+      "width": 8,
+      "depth": 64,
+      "read_ports": 1,
+      "write_ports": 1
+    }
+  ],
+  "replay_controller_storage": [],
+  "copied_upstream_hashes_checked": true,
+  "implementation_run": false,
+  "synthesis_run": false
+}

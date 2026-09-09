@@ -1,0 +1,115 @@
+{
+  "status": "synthesis_complete",
+  "build": "/data/work/rio-synthesis/cam-pipeline-kcu116-20260909/pifo-v512-c1024-kcu116",
+  "platform": "vivado",
+  "resources": {
+    "logic_luts": 121016,
+    "registers": 29804,
+    "bram36_tiles": 0.0,
+    "uram288_blocks": 0,
+    "bram_uram_allocated_bits": 0,
+    "lutram_luts": 0,
+    "dsp_blocks": 0,
+    "distributed_ram_luts": 0,
+    "srl_luts": 0
+  },
+  "part": "xcku5p-ffvb676-2-e",
+  "hardware": {
+    "component": "pifo",
+    "configuration": "static",
+    "mapper_banks": 1,
+    "pifo_backend": "house",
+    "num_engines": 5,
+    "num_vpifos_per_pe": 512,
+    "global_flow_id_capacity": 512,
+    "fifo_depth_parameter": 2,
+    "shared_entries_per_pe": 1024,
+    "total_shared_entries": 5120,
+    "priority_bits": 8,
+    "vpifo_id_bits": 9,
+    "engine_id_bits": 3,
+    "token_bits": 12,
+    "brain_state_bits": 32,
+    "flow_state_bits": 32,
+    "commit_queue_depth": 256,
+    "flow_token_address_space": 4096,
+    "vpifo_token_pairs_per_pe": 2097152,
+    "instances": 1,
+    "budget_instances": 5,
+    "enabled_push_ports": 1,
+    "push2_valid": 0
+  },
+  "source_sha256": {
+    "hw/spinal/rio/BoundedCamMapper.scala": "94f92156b5e6f34fcf4956d89c778af884ca9d00233a75e7b12ac5124ff54659",
+    "hw/spinal/rio/ConcurrentPifoRTL.scala": "96de7696f6016d7f21d12bfc95e9f38068853fbd4004da31954847f227e5f520",
+    "hw/spinal/rio/Config.scala": "eb623e40ebce2bfe36151863b1764a1b3531cadfe8c4bd5ae2a97eebe71f5061",
+    "hw/spinal/rio/ConfigurableMapper.scala": "bce4696e23de7aea68deb7ecd7b54d5fe85bc9ff0e155d60cbd4e00a022d5b8b",
+    "hw/spinal/rio/ControllerFactory.scala": "30efd0c48e7fccc934720714d60677a2e96bcd82a42e872b85a606550f7d9908",
+    "hw/spinal/rio/DrainGuard.scala": "f0ef785bf1b5d103e777636636dcad2d5dfc2f217bf9e5f2d6d4eaa50661f865",
+    "hw/spinal/rio/GeneratePifoMesh.scala": "7c83eeae839937b023507ec7a66f5255dd264fb2f5cc0459c2c7db9e9374cf3c",
+    "hw/spinal/rio/Pifo.scala": "1c97b917779af58a5faeacc9b5cee4437d8fb0c453bb1492ad583d422767459b",
+    "hw/spinal/rio/PifoCore.scala": "860bafa66a50b828b539bf1389cb4916cac77eb9960c4cc63c5d61c9e63b351d",
+    "hw/spinal/rio/PifoEngine.scala": "1bb3181aac6fee977846cc1eb98a5ae8a394b50b24a475ceeea5c56550dca41f",
+    "hw/spinal/rio/PifoMesh.scala": "c1891f43d030b47b095012fec7c44d6548c9dacf09b2873b98241b1c4249a596",
+    "hw/spinal/rio/PipelinedCamMapper.scala": "1a068451e82a35b9b5e2609408ecca7fe8cbb313278e7534d4718105532de639",
+    "hw/spinal/rio/PipelinedCamMesh.scala": "2baea2f5a6bca9d464cc6fc575ad5eab2ff8be4907203f9f574731029451300b",
+    "hw/spinal/rio/ReplayControlFifo.scala": "d43818d915394d3c9e7998e75a3184c191d718e02a522cf0f0b76fe257d3b3c4",
+    "hw/spinal/rio/ReplayMapper.scala": "ddea032f25abea8e1d8941cc3c7c10abb1f282372bbe9fe0d52ccc715e16ba8a",
+    "hw/spinal/rio/StockPifoRTL.scala": "bf53600f671a18e235a8f06f4ea5a7c1d1a59fdd7eb88ceb58d15bc0f88057a7",
+    "hw/verilog/priority_encode_log.v": "2a63070396dc60fd2106c5ef1d0719e027ff6bf797afbef166cf99c9b49537c2",
+    "build.sbt": "557f8381ce0cf9b0da205fdd6600ebbdda0477a87f71691ced7ed18643b7f72e",
+    "project/build.properties": "97e9b0adc044c92dbf8dc1e671a268242449320b6911d1623cc93427f0bb1b61",
+    "project/plugins.sbt": "e1da7997f71038c21e15631c0f062bdc5d6c6a103d73087e7e659f78b07b9b6f"
+  },
+  "rtl_sha256": {
+    "PifoMesh.v": "c277947d6b3427ea6c6f4795d6e252888c4e14ddd6bdadabce4e31593f308ce6",
+    "priority_encode_log.v": "2a63070396dc60fd2106c5ef1d0719e027ff6bf797afbef166cf99c9b49537c2"
+  },
+  "tool_version": "vivado v2025.2 (64-bit)\nTool Version Limit: 2025.11\nSW Build 6299465 on Fri Nov 14 12:34:56 MST 2025\nIP Build 6300035 on Fri Nov 14 10:48:45 MST 2025\nSharedData Build 6298862 on Thu Nov 13 04:50:51 MST 2025\nCopyright 1986-2022 Xilinx, Inc. All Rights Reserved.\nCopyright 2022-2025 Advanced Micro Devices, Inc. All Rights Reserved.",
+  "clock_target_mhz": 100.0,
+  "device_capacity_check": "disabled_for_estimation",
+  "capacity_checks": [
+    {
+      "resource": "logic_luts",
+      "used": 121016,
+      "available": 216960,
+      "utilization_percent": 55.778023598820056,
+      "exceeds_capacity": false
+    },
+    {
+      "resource": "registers",
+      "used": 29804,
+      "available": 433920,
+      "utilization_percent": 6.868547197640118,
+      "exceeds_capacity": false
+    },
+    {
+      "resource": "bram36_tiles",
+      "used": 0,
+      "available": 480,
+      "utilization_percent": 0.0,
+      "exceeds_capacity": false
+    },
+    {
+      "resource": "uram288_blocks",
+      "used": 0,
+      "available": 64,
+      "utilization_percent": 0.0,
+      "exceeds_capacity": false
+    },
+    {
+      "resource": "dsp_blocks",
+      "used": 0,
+      "available": 1824,
+      "utilization_percent": 0.0,
+      "exceeds_capacity": false
+    },
+    {
+      "resource": "lutram_luts",
+      "used": 0,
+      "available": 99840,
+      "utilization_percent": 0.0,
+      "exceeds_capacity": false
+    }
+  ]
+}

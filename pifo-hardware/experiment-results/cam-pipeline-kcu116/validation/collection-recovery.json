@@ -1,0 +1,11 @@
+{
+  "status": "corrected",
+  "cause": "Vivado omits distributed-RAM and SRL detail rows when LUT as Memory is zero. The original manager had already loaded the old parser before it was corrected.",
+  "observed_collection_errors": [
+    "LUT as Distributed RAM",
+    "distributed_ram_luts"
+  ],
+  "correction": "Default omitted detail rows to zero and require their sum to equal the native LUT as Memory total; reparse all completed reports.",
+  "recovery_command": ".venv/bin/python hw/python/pifo_pipelined_cam_experiments.py --board kcu116 --finalize-only",
+  "native_synthesis_runs_repeated": 0
+}

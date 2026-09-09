@@ -1,0 +1,62 @@
+{
+  "schema": "cam-pipeline-vcu118-v1",
+  "source_commit": "03e7de9ceb98c661ed036efc406e6961e49f9a89",
+  "source_identity": "commit plus workflow/source-sha256.json and source.patch",
+  "configurations": [
+    "static",
+    "replay"
+  ],
+  "platforms": [
+    "vivado"
+  ],
+  "board_reference": {
+    "definition": "/data/work/vivado/2025.2/Vivado/data/xhub/boards/XilinxBoardStore/boards/Xilinx/vcu118/2.4/board.xml",
+    "name": "Virtex UltraScale+ VCU118 Evaluation Platform",
+    "board_name": "vcu118",
+    "version": "2.4",
+    "part": "xcvu9p-flga2104-2L-e"
+  },
+  "hardware": {
+    "num_engines": 5,
+    "vflows": [
+      32,
+      128,
+      512,
+      1024
+    ],
+    "entries_per_pe": 1024,
+    "priority_bits": 8,
+    "control_queue_depth": 256,
+    "pifo_backend": "external",
+    "lookup_backend": "cam-pipelined",
+    "cam_entries_per_bank": "2 * vflows",
+    "cam_entries_per_stage": 128,
+    "cam_implementation": "alexforencich_srl_staged",
+    "rank_dependency_interlock": "one_inflight_request_per_vpifo"
+  },
+  "bram_targets": {
+    "vivado": {
+      "part": "xcvu9p-flga2104-2L-e",
+      "label": "VCU118 XCVU9P",
+      "resource": "bram36_tiles",
+      "native_resource": "bram36_tiles",
+      "native_units_per_block": 1,
+      "available": null,
+      "unit": "BRAM36 equivalents",
+      "measurement_kind": "mapped_bram36_tile_equivalent",
+      "count_definition": "RAMB36 primitives + RAMB18 primitives / 2",
+      "capacity_source": "native reports/utilization.rpt: Block RAM Tile / Available"
+    }
+  },
+  "clock_mhz": 100,
+  "threads": 8,
+  "vivado_directive": "RuntimeOptimized",
+  "rio_synthesis_runs": 8,
+  "pifo_synthesis_runs": 4,
+  "implementation_run": false,
+  "plot": {
+    "dpi": 180,
+    "version": "cam-pipeline-vcu118-v1"
+  },
+  "percent_denominator": "ordinary_RIO_plus_five_matching_PIFOs"
+}

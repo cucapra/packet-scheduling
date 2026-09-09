@@ -1,0 +1,683 @@
+diff --git a/pifo-hardware/.gitignore b/pifo-hardware/.gitignore
+index 14f9401..56ee4af 100644
+--- a/pifo-hardware/.gitignore
++++ b/pifo-hardware/.gitignore
+@@ -50,6 +50,8 @@ bin/
+ !hw/verilog/vendor/verilog-cam/UPSTREAM.json
+ !experiment-results/shared-fifo-overhead/**/*.log
+ !experiment-results/cam-overhead/**/*.log
++!experiment-results/cam-pipeline-vcu118/**/*.log
++!experiment-results/cam-pipeline-kcu116/**/*.log
+ *.vcd
+ !tester/src/test/resources/*.vhd
+ 
+diff --git a/pifo-hardware/hw/python/pifo_bram_accounting.py b/pifo-hardware/hw/python/pifo_bram_accounting.py
+index decafaa..75697f7 100644
+--- a/pifo-hardware/hw/python/pifo_bram_accounting.py
++++ b/pifo-hardware/hw/python/pifo_bram_accounting.py
+@@ -20,8 +20,8 @@ TARGETS = {
+ }
+ 
+ 
+-def bram_pair(flows, platform, ordinary, replay, pifo, sources, pifo_source):
+-    target = TARGETS[platform]
++def bram_pair(flows, platform, ordinary, replay, pifo, sources, pifo_source, target=None):
++    target = target or TARGETS[platform]
+     assert all(r['part'] == target['part'] for r in (ordinary, replay, pifo))
+     available = target['available']
+     if platform == 'vivado':
+diff --git a/pifo-hardware/hw/python/pifo_shared_fifo_figures.py b/pifo-hardware/hw/python/pifo_shared_fifo_figures.py
+index ea431c9..b3a0625 100644
+--- a/pifo-hardware/hw/python/pifo_shared_fifo_figures.py
++++ b/pifo-hardware/hw/python/pifo_shared_fifo_figures.py
+@@ -29,6 +29,7 @@ def render(config, output):
+         'svg.hashsalt':FIGURES_VERSION, 'axes.spines.top':False, 'axes.spines.right':False})
+     h = config['hardware']
+     platforms = config['platforms']
++    targets = config.get('bram_targets', TARGETS)
+     def read_selected(filename):
+         return [r for r in read_csv(output/filename)
+                 if int(r['vflows']) in h['vflows'] and r['platform'] in platforms]
+@@ -40,15 +41,20 @@ def render(config, output):
+                 for r in read_selected('device-capacity.csv')}
+     groups = {'logic':{'quartus':'logic_alms', 'vivado':'logic_luts'},
+               'registers':{'quartus':'registers', 'vivado':'registers'},
+-              'memory':{p:t['resource'] for p,t in TARGETS.items()}}
++              'memory':{p:t['resource'] for p,t in targets.items()}}
+     variants = [('static','Ordinary + PIFOs','#52687a','s'),
+                 ('replay','Replay + PIFOs','#007e87','o')]
+     memory_note = 'Quartus: inferred RAM bits / 20,480 (M20K capacity estimate; packing not modeled). Vivado: RAMB36 + RAMB18 / 2.'
++    if platforms == ['vivado']:
++        memory_note = 'Vivado BRAM36 equivalents = RAMB36 + RAMB18 / 2; capacity comes from the native target report.'
+     preview = 'Preview · ' if config.get('preview') else ''
+     setup = f'{h["num_engines"]} PEs · {h["entries_per_pe"]:,} PIFO entries per PE'
+     lookup = 'CAM · ' if h.get('lookup_backend') == 'cam' else ''
+     cam_note = ('CAM capacity = 2 × vFlows per bank; tags/valid bits use registers. '
+                 if h.get('lookup_backend') == 'cam' else '')
++    if h.get('lookup_backend') == 'cam-pipelined':
++        lookup = 'Staged SRL CAM · '
++        cam_note = f'CAM capacity = 2 × vFlows per bank; {h["cam_entries_per_stage"]} entries per stage; controller FIFO = 256.'
+ 
+     def save(fig, folder, selected):
+         write_csv(folder/'data.csv', selected)
+@@ -60,10 +66,12 @@ def render(config, output):
+         plt.close(fig)
+ 
+     if len(h['vflows']) == 1:
+-        selected = [r for r in comparison if r['resource'] in
+-                    ('logic_alms','logic_aluts','logic_luts','registers')]
++        fixed_metrics = ['logic_alms','logic_aluts','logic_luts','registers']
++        if h.get('lookup_backend') == 'cam-pipelined':
++            fixed_metrics.append('lutram_luts')
++        selected = [r for r in comparison if r['resource'] in fixed_metrics]
+         selected += bram_comparison
+-        order = ['logic_alms','logic_aluts','logic_luts','registers','m20k_equivalents','bram36_tiles']
++        order = ['logic_alms','logic_aluts','logic_luts','registers','lutram_luts','m20k_equivalents','bram36_tiles']
+         selected.sort(key=lambda r:(platforms.index(r['platform']), order.index(r['resource'])))
+         for row in selected:
+             for variant in ('static','replay'):
+@@ -101,8 +109,8 @@ def render(config, output):
+         fig.text(.02,.165,cam_note,fontsize=10)
+         fig.text(.02,.12,'Totals = RIO synthesis + 5 × measured PIFO. Overhead = difference / ordinary total. '
+                  '% target = total / FPGA resource capacity.',fontsize=10)
+-        fig.text(.02,.078,'BRAM targets: Agilex 7 AGFB014 = 7,110 M20Ks; KCU116 XCKU5P = 480 BRAM36 tiles. '
+-                 'Values above 100% exceed capacity; no placement or routing.',fontsize=10)
++        target_note = '; '.join(f'{targets[p]["label"]} = {targets[p]["available"]:,} {targets[p]["unit"]}' for p in platforms)
++        fig.text(.02,.078,f'BRAM targets: {target_note}. Values above 100% exceed capacity; no placement or routing.',fontsize=10)
+         fig.text(.02,.035,memory_note+'  — = capacity not reported.',fontsize=9)
+         save(fig,output/'figures/resource-table',selected)
+         return
+@@ -135,7 +143,7 @@ def render(config, output):
+             ax.set_title(platform.capitalize())
+             ax.set_ylabel(RESOURCE_NAMES[metrics[platform]][0])
+             if is_memory:
+-                target = TARGETS[platform]
++                target = targets[platform]
+                 ax.set_title(f'{platform.capitalize()} · {target["label"]}\n'
+                              f'Target: {target["available"]:,} {target["unit"]}')
+                 ax.set_yscale('log')
+diff --git a/pifo-hardware/hw/python/pifo_synthesis_results.py b/pifo-hardware/hw/python/pifo_synthesis_results.py
+index 249f487..60e4375 100644
+--- a/pifo-hardware/hw/python/pifo_synthesis_results.py
++++ b/pifo-hardware/hw/python/pifo_synthesis_results.py
+@@ -20,7 +20,9 @@ RESOURCE_NAMES={
+     "m20k_equivalents": ("M20K equivalents (est.)","M20K equivalents"),
+     "uram288_blocks": ("URAM288 blocks","blocks"),
+     "bram_uram_allocated_bits": ("Allocated BRAM + URAM bits","bits"),
+-    "lutram_luts": ("LUTs used as RAM","LUTs"),
++    "lutram_luts": ("LUTs as memory (RAM/SRL)","LUTs"),
++    "distributed_ram_luts": ("LUTs as distributed RAM","LUTs"),
++    "srl_luts": ("LUTs as shift registers","LUTs"),
+     "dsp_blocks": ("DSP blocks","blocks"),
+ }
+ 
+diff --git a/pifo-hardware/hw/spinal/rio/ConcurrentPifoRTL.scala b/pifo-hardware/hw/spinal/rio/ConcurrentPifoRTL.scala
+index fa5ef04..47017df 100644
+--- a/pifo-hardware/hw/spinal/rio/ConcurrentPifoRTL.scala
++++ b/pifo-hardware/hw/spinal/rio/ConcurrentPifoRTL.scala
+@@ -122,7 +122,9 @@ class ConcurrentPifoRTL(config: PifoConfig) extends PifoCore(config) {
+   io.portPushed(1).valid := RegNext(push2Fire) init (False)
+   io.portPushed(1).payload := RegNext(io.push2.port) init (0)
+ 
+-  io.popResponse.valid := RegNext(io.popRequest.valid)
++  // The response credit counter must see an idle interface on the first edge
++  // after reset, before the first registered pop response is available.
++  io.popResponse.valid := RegNext(io.popRequest.valid) init(False)
+   io.popResponse.port := RegNext(io.popRequest.port)
+   io.popResponse.exist := RegNext(popExists)
+   io.popResponse.data := RegNext(pifoArray(popPosition).data)
+diff --git a/pifo-hardware/hw/spinal/rio/GeneratePifoMesh.scala b/pifo-hardware/hw/spinal/rio/GeneratePifoMesh.scala
+index 7bbbdc7..3949445 100644
+--- a/pifo-hardware/hw/spinal/rio/GeneratePifoMesh.scala
++++ b/pifo-hardware/hw/spinal/rio/GeneratePifoMesh.scala
+@@ -8,8 +8,8 @@ import spinal.lib._
+   */
+ object GeneratePifoMesh {
+   def main(args: Array[String]): Unit = {
+-    require(args.length >= 5 && args.length <= 10,
+-      "Usage: GeneratePifoMesh OUTPUT_DIR NUM_ENGINES NUM_VPIFOS FIFO_DEPTH PRIORITY_BITS [house|external] [replay|static] [CONTROL_QUEUE_DEPTH] [dense|cam] [CAM_ENTRIES_PER_PE]")
++    require(args.length >= 5 && args.length <= 11,
++      "Usage: GeneratePifoMesh OUTPUT_DIR NUM_ENGINES NUM_VPIFOS FIFO_DEPTH PRIORITY_BITS [house|external] [replay|static] [CONTROL_QUEUE_DEPTH] [dense|cam|cam-pipelined] [CAM_ENTRIES_PER_PE] [CAM_ENTRIES_PER_STAGE]")
+     val Array(output, enginesArg, vpifosArg, depthArg, priorityArg) = args.take(5)
+     val backend = args.lift(5).getOrElse("house")
+     val configuration = args.lift(6).getOrElse("replay")
+@@ -34,9 +34,17 @@ object GeneratePifoMesh {
+       dynamicConfig = configuration != "static",
+       commitQueueLength = args.lift(7).map(_.toInt).getOrElse(EngineConfig.DefaultCommitQueueLength),
+       lookupBackend = args.lift(8).getOrElse(EngineConfig.DefaultLookupBackend),
+-      camEntriesPerPe = args.lift(9).map(_.toInt).getOrElse(0)
++      camEntriesPerPe = args.lift(9).map(_.toInt).getOrElse(0),
++      camEntriesPerStage = args.lift(10).map(_.toInt).getOrElse(128)
+     )
+     Config.spinal.copy(targetDirectory = output).generateVerilog(PifoMesh(config))
++    if (config.pipelinedCam) {
++      val vendor = java.nio.file.Paths.get("hw/verilog/vendor/verilog-cam")
++      for (filename <- Seq("cam_srl.v", "priority_encoder.v")) {
++        java.nio.file.Files.copy(vendor.resolve("rtl").resolve(filename),
++          java.nio.file.Paths.get(output, filename), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
++      }
++    }
+     println(s"PifoMesh: $engines PEs, $vpifos vPIFO IDs/PE, " +
+       s"${vpifos * depth} shared entries/PE, $vpifos global flow IDs, $priorityBits rank bits, $backend PIFO, $configuration configuration, ${config.lookupBackend} lookups, ${config.camCapacity} CAM entries/bank")
+   }
+diff --git a/pifo-hardware/hw/spinal/rio/PifoEngine.scala b/pifo-hardware/hw/spinal/rio/PifoEngine.scala
+index 49bb9df..b79198e 100644
+--- a/pifo-hardware/hw/spinal/rio/PifoEngine.scala
++++ b/pifo-hardware/hw/spinal/rio/PifoEngine.scala
+@@ -18,11 +18,17 @@ case class EngineConfig(
+     pifoBackend: String = "house",
+     dynamicConfig: Boolean = true,
+     lookupBackend: String = EngineConfig.DefaultLookupBackend,
+-    camEntriesPerPe: Int = 0
++    camEntriesPerPe: Int = 0,
++    camEntriesPerStage: Int = 128
+ ) {
+   require(Set("house", "external").contains(pifoBackend))
+-  require(Set("dense", "cam").contains(lookupBackend))
++  require(Set("dense", "cam", "cam-pipelined").contains(lookupBackend))
+   require(camEntriesPerPe >= 0)
++  require(camEntriesPerStage >= 2 && isPow2(camEntriesPerStage))
++  def usesCam = lookupBackend != "dense"
++  def pipelinedCam = lookupBackend == "cam-pipelined"
++  def camReadLatency = (camCapacity + camEntriesPerStage - 1) / camEntriesPerStage + 1
++  def lookupBufferDepth = camReadLatency + 3
+   require(commitQueueLength >= 2 && (commitQueueLength & (commitQueueLength - 1)) == 0,
+     "commitQueueLength must be a power of two >= 2")
+   def vpifoIdWidth = log2Up(numVPIFOs)
+@@ -263,14 +269,19 @@ case class PIFOBrain(config: EngineConfig) extends Component {
+ 
+     val control = slave Stream (ControlMessage(config))
+     val poped = slave Flow (PifoPopResponse(config))
+-    val camCapacityBlocked = if (config.lookupBackend == "cam") out Bool() else null
++    val camCapacityBlocked = if (config.usesCam) out Bool() else null
+   }
+ 
+-  val inHeads = StreamFork(io.request, 5)
++  // Keep a queue's dependent rank updates ordered through a multi-cycle CAM
++  // write. Other vPIFOs may overlap; release only after all output/update sinks
++  // acknowledge, including completion of the flow-state CAM write.
++  val rankBusy = if (config.pipelinedCam) Vec.fill(config.numVPIFOs)(RegInit(False)) else null
++  val admitted = if (config.pipelinedCam) io.request.haltWhen(rankBusy(io.request.vpifoId)) else io.request
++  if (config.pipelinedCam) when(admitted.fire) { rankBusy(admitted.vpifoId) := True }
++  val inHeads = StreamFork(admitted, 5)
+   val controller = new ControllerFactory(config)
+ 
+   val engineMapper = Mapper(config.vpifoIdWidth, log2Up(BrainType.elements.size))
+-  inHeads(0).map(_.vpifoId).toFlow >> engineMapper.io.readReq
+   controller.dispatch(
+     ControlCommand.UpdateBrainEngine,
+     engineMapper.io.writeReq
+@@ -284,21 +295,17 @@ case class PIFOBrain(config: EngineConfig) extends Component {
+     to.inputId := from.port
+     to.outputId := from.priority
+   }
+-  inHeads(1).map(_.vpifoId).toFlow >> lastVirtualMapper.io.readReq
+-
+-  val engineCAM: ConfigurableMapper = if (config.lookupBackend == "cam")
+-    BoundedCamMapper(config.flowIdWidth + config.vpifoIdWidth, config.flowStateWidth,
+-      config.camCapacity, replay = false)
+-  else DirectMapper(config.flowIdWidth + config.vpifoIdWidth, config.flowStateWidth)
++  val engineCAM = MeshCamLookup(config.flowIdWidth + config.vpifoIdWidth,
++    config.flowStateWidth, config, replay = false)
+   engineCAM.io.commit := False
+-  if (config.lookupBackend == "cam") io.camCapacityBlocked := engineCAM.io.capacityBlocked
++  if (config.usesCam) io.camCapacityBlocked := engineCAM.io.capacityBlocked
+   inHeads(2).map { data =>
+     data.vpifoId @@ data.flowId
+-  }.toFlow >> engineCAM.io.readReq
++  } >> engineCAM.io.readReq
+   // TODO(zhiyuang): check this priority and flows when updating
+   val flowStateControl, flowStateUpdate = Stream(engineCAM.updater)
+-  engineCAM.io.writeReq << StreamArbiterFactory.lowerFirst
+-    .onArgs(flowStateControl, flowStateUpdate.queueLowLatency(2))
++  engineCAM.io.writeReq << StreamArbiterFactory.lowerFirst.transactionLock
++    .onArgs(flowStateControl, if (config.pipelinedCam) flowStateUpdate else flowStateUpdate.queueLowLatency(2))
+   controller.dispatchStream(
+     ControlCommand.UpdateBrainFlowState,
+     flowStateControl
+@@ -308,12 +315,11 @@ case class PIFOBrain(config: EngineConfig) extends Component {
+   }
+ 
+   val brainStateMem = Mapper(config.vpifoIdWidth, config.brainStateWidth)
+-  inHeads(3).map { _.vpifoId }.toFlow >> brainStateMem.io.readReq
+-  val brainStateControl, brainStateUpdate = Flow(brainStateMem.updater)
+-  brainStateMem.io.writeReq << StreamArbiterFactory.lowerFirst
+-    .onArgs(brainStateControl.toStream, brainStateUpdate.toStream.queueLowLatency(2))
++  val brainStateControl, brainStateUpdate = Stream(brainStateMem.updater)
++  brainStateMem.io.writeReq << StreamArbiterFactory.lowerFirst.transactionLock
++    .onArgs(brainStateControl, if (config.pipelinedCam) brainStateUpdate else brainStateUpdate.queueLowLatency(2))
+     .toFlow
+-  controller.dispatch(
++  controller.dispatchStream(
+     ControlCommand.UpdateBrainState,
+     brainStateControl
+   ) { (to, from) =>
+@@ -323,11 +329,19 @@ case class PIFOBrain(config: EngineConfig) extends Component {
+ 
+   controller.build(io.control)
+ 
+-  val engineFifo = engineMapper.io.readRes.toStream.queueLowLatency(2)
+-  val brainStateFifo = brainStateMem.io.readRes.toStream.queueLowLatency(2)
+-  val flowStateFifo = engineCAM.io.readRes.toStream.queueLowLatency(2)
+-  val lastVirtualFifo = lastVirtualMapper.io.readRes.toStream.queueLowLatency(2)
+-  val inputFifo = inHeads(4).queueLowLatency(2)
++  def tableRead(input: Stream[UInt], mapper: Mapper): Stream[UInt] = {
++    if (config.pipelinedCam) BufferedMapperRead(input, mapper.io.readReq,
++      mapper.io.readRes, config.lookupBufferDepth)
++    else {
++      mapper.io.readReq << input.toFlow
++      mapper.io.readRes.toStream.queueLowLatency(2)
++    }
++  }
++  val engineFifo = tableRead(inHeads(0).map(_.vpifoId), engineMapper)
++  val brainStateFifo = tableRead(inHeads(3).map(_.vpifoId), brainStateMem)
++  val flowStateFifo = if (config.pipelinedCam) engineCAM.io.readRes else engineCAM.io.readRes.queueLowLatency(2)
++  val lastVirtualFifo = tableRead(inHeads(1).map(_.vpifoId), lastVirtualMapper)
++  val inputFifo = inHeads(4).queueLowLatency(if (config.pipelinedCam) config.lookupBufferDepth else 2)
+ 
+   val engineStream = StreamJoin(
+     Seq(
+@@ -424,6 +438,7 @@ case class PIFOBrain(config: EngineConfig) extends Component {
+   }
+ 
+   val (output, flowUpdates, brainUpdates) = StreamFork3(outStream)
++  if (config.pipelinedCam) when(outStream.fire) { rankBusy(outStream.entry.port) := False }
+ 
+   io.response << output
+     .throwWhen(output.entry.priority === 0)
+@@ -436,7 +451,6 @@ case class PIFOBrain(config: EngineConfig) extends Component {
+   brainStateUpdate << brainUpdates
+     .throwWhen(!brainUpdates.payload.brainUpdate.update)
+     .map(_.brainUpdate.brain)
+-    .toFlow
+ }
+ 
+ case class PifoMessage(config: EngineConfig) extends Bundle {
+@@ -473,7 +487,7 @@ case class PifoEngine(config: EngineConfig) extends Component {
+     val pifo = if (config.pifoBackend == "external") master(PifoBoundary(config)) else null
+     val nearlyDrained = master Flow (UInt(config.vpifoIdWidth bits))
+     val pushed = Vec(master(Flow(UInt(config.vpifoIdWidth bits))), 2)
+-    val camCapacityBlocked = if (config.lookupBackend == "cam") out Bool() else null
++    val camCapacityBlocked = if (config.usesCam) out Bool() else null
+   }
+ 
+   // PIFO
+@@ -491,10 +505,15 @@ case class PifoEngine(config: EngineConfig) extends Component {
+     val enqueMapper: ConfigurableMapper = if (config.dynamicConfig)
+       ReplayMapper(config.vpifoIdWidth, config.vpifoIdWidth)
+     else DirectMapper(config.vpifoIdWidth, config.vpifoIdWidth)
+-    enqueMapper.io.readReq << mapperRead.map(_.vPifoId).toFlow
++    val mapped = if (config.pipelinedCam) BufferedMapperRead(mapperRead.map(_.vPifoId),
++      enqueMapper.io.readReq, enqueMapper.io.readRes, 4)
++    else {
++      enqueMapper.io.readReq << mapperRead.map(_.vPifoId).toFlow
++      enqueMapper.io.readRes.toStream
++    }
+ 
+     val brainInput = Stream(BrainInput(config))
+-    StreamJoin(enqueMapper.io.readRes.toStream, flowIdStream.queueLowLatency(2))
++    StreamJoin(mapped, flowIdStream.queueLowLatency(if (config.pipelinedCam) 4 else 2))
+       .translateInto(brainInput) { (to, from) =>
+         to.vpifoId := from._1
+         to.flowId := from._2.flowId
+@@ -516,13 +535,8 @@ case class PifoEngine(config: EngineConfig) extends Component {
+     // Qualify a dequeue rewrite with the PIFO port. This lets old and new
+     // copies of a tree carry the same flow IDs while retaining distinct next
+     // hops during a full-transitive reconfiguration.
+-    val dequeMapper: ConfigurableMapper = if (config.lookupBackend == "cam")
+-      BoundedCamMapper(config.vpifoIdWidth + config.flowIdWidth, config.flowIdWidth,
+-        config.camCapacity, replay = config.dynamicConfig)
+-    else if (config.dynamicConfig) ReplayMapper(
+-      config.vpifoIdWidth + config.flowIdWidth,
+-      config.flowIdWidth
+-    ) else DirectMapper(config.vpifoIdWidth + config.flowIdWidth, config.flowIdWidth)
++    val dequeMapper = MeshCamLookup(config.vpifoIdWidth + config.flowIdWidth,
++      config.flowIdWidth, config, replay = config.dynamicConfig)
+     val frontRewrite = FrontRewriteTable(config.vpifoIdWidth)
+ 
+     // Rewrites happen before the PIFO lookup. The last successful source pop
+@@ -543,23 +557,35 @@ case class PifoEngine(config: EngineConfig) extends Component {
+ 
+     val enablingRewrite =
+       frontRewrite.io.drainEnablesRewrite || frontRewrite.io.emptyEnablesRewrite
+-    pifos.io.popRequest.valid := io.dequeueRequest.valid && !enablingRewrite
++    val pending = if (config.pipelinedCam)
++      Reg(UInt(log2Up(config.lookupBufferDepth + 1) bits)) init(0) else null
++    val room = if (config.pipelinedCam) pending < config.lookupBufferDepth else True
++    pifos.io.popRequest.valid := io.dequeueRequest.valid && !enablingRewrite && room
+     pifos.io.popRequest.port := frontPort
+-    io.dequeueRequest.ready := !enablingRewrite
++    io.dequeueRequest.ready := !enablingRewrite && room
+ 
+     // An underflow is an invalid pop and produces no mesh message. A configured
+     // transition enables before the next request, so it does not underflow.
+-    val existingPop = pifos.io.popResponse.toStream.throwWhen(!pifos.io.popResponse.exist)
++    val existingPop = if (config.pipelinedCam) {
++      val captured = new StreamFifo(PifoPopResponse(config), config.lookupBufferDepth,
++        withAsyncRead = true, withBypass = true, useVec = true)
++      captured.io.push.valid := pifos.io.popResponse.valid && pifos.io.popResponse.exist
++      captured.io.push.payload := pifos.io.popResponse.payload
++      assert(!captured.io.push.valid || captured.io.push.ready, "PIFO response credit overflow")
++      val underflow = pifos.io.popResponse.valid && !pifos.io.popResponse.exist
++      pending := pending + io.dequeueRequest.fire.asUInt - underflow.asUInt - io.dequeueResponse.fire.asUInt
++      captured.io.pop
++    } else pifos.io.popResponse.toStream.throwWhen(!pifos.io.popResponse.exist)
+     val popResps = StreamFork(existingPop, 3)
+ 
+     enque.brain.io.poped << popResps(0).toFlow
+ 
+-    dequeMapper.io.readReq << popResps(1).map(response => response.port @@ response.data).toFlow
++    dequeMapper.io.readReq << popResps(1).map(response => response.port @@ response.data)
+ 
+-    val popFifo = popResps(2).queueLowLatency(2)
++    val popFifo = popResps(2).queueLowLatency(if (config.pipelinedCam) config.lookupBufferDepth else 2)
+     StreamJoin(
+       Seq(
+-        dequeMapper.io.readRes.toStream,
++        dequeMapper.io.readRes,
+         popFifo
+       )
+     ).translateInto(io.dequeueResponse) { case (to, from) =>
+@@ -596,7 +622,7 @@ case class PifoEngine(config: EngineConfig) extends Component {
+     enque.enqueMapper.io.commitReady &&
+       deque.dequeMapper.io.commitReady
+   io.commitReady := mapperCommitReady
+-  if (config.lookupBackend == "cam") {
++  if (config.usesCam) {
+     io.camCapacityBlocked := enque.brain.io.camCapacityBlocked || deque.dequeMapper.io.capacityBlocked
+   }
+ 
+diff --git a/pifo-hardware/hw/spinal/rio/PifoMesh.scala b/pifo-hardware/hw/spinal/rio/PifoMesh.scala
+index ec7c184..c48692b 100644
+--- a/pifo-hardware/hw/spinal/rio/PifoMesh.scala
++++ b/pifo-hardware/hw/spinal/rio/PifoMesh.scala
+@@ -56,13 +56,13 @@ case class PifoMesh(config: EngineConfig) extends Component {
+     val replayLogAvailable = out UInt(log2Up(config.commitQueueLength + 1) bits)
+     // A new nonzero key is waiting because a bounded CAM bank is full. Existing
+     // entries remain intact; admission must free a slot before inserting it.
+-    val camCapacityBlocked = if (config.lookupBackend == "cam") out Bits(config.numEngines bits) else null
++    val camCapacityBlocked = if (config.usesCam) out Bits(config.numEngines bits) else null
+   }
+ 
+   // all datapath
+   val xbar = MessageCrossBar(config)
+   val pifoEngines = Seq.fill(config.numEngines)(PifoEngine(config))
+-  if (config.lookupBackend == "cam") {
++  if (config.usesCam) {
+     pifoEngines.zipWithIndex.foreach { case (engine, index) =>
+       io.camCapacityBlocked(index) := engine.io.camCapacityBlocked
+     }
+diff --git a/pifo-hardware/hw/spinal/rio/sim/BoundedCamIntegrationSim.scala b/pifo-hardware/hw/spinal/rio/sim/BoundedCamIntegrationSim.scala
+index 941a9ff..b365a11 100644
+--- a/pifo-hardware/hw/spinal/rio/sim/BoundedCamIntegrationSim.scala
++++ b/pifo-hardware/hw/spinal/rio/sim/BoundedCamIntegrationSim.scala
+@@ -66,7 +66,7 @@ object BoundedCamIntegrationSim extends App {
+       dut.io.request.valid #= false
+       monitor.join()
+       assert(count == (if (priority == 0) 0 else 1))
+-      if (config.lookupBackend == "cam") assert(!dut.io.camCapacityBlocked.toBoolean)
++      if (config.usesCam) assert(!dut.io.camCapacityBlocked.toBoolean)
+       dut.clockDomain.waitFallingEdge()
+     }
+     import ControlCommand._
+@@ -90,7 +90,7 @@ object BoundedCamIntegrationSim extends App {
+     simSuccess()
+   }
+ 
+-  if (config.lookupBackend == "cam") SimUtils.RioSimConfig.compile(PifoMesh(config)).doSim { dut =>
++  if (config.usesCam) SimUtils.RioSimConfig.compile(PifoMesh(config)).doSim { dut =>
+     SimTimeout(100000)
+     dut.clockDomain.forkStimulus(period = 10)
+     dut.io.dataRequest.valid #= false
+diff --git a/pifo-hardware/hw/spinal/rio/sim/FrontUnderflowRewriteSim.scala b/pifo-hardware/hw/spinal/rio/sim/FrontUnderflowRewriteSim.scala
+index 82563b7..1592c37 100644
+--- a/pifo-hardware/hw/spinal/rio/sim/FrontUnderflowRewriteSim.scala
++++ b/pifo-hardware/hw/spinal/rio/sim/FrontUnderflowRewriteSim.scala
+@@ -85,8 +85,8 @@ object FrontUnderflowRewriteSim extends App {
+         dut.io.control.payload.flowId #= flowId
+         dut.io.control.payload.data #= data
+         dut.clockDomain.waitSamplingWhere(dut.io.control.ready.toBoolean)
+-        dut.io.control.valid #= false
+         dut.clockDomain.waitFallingEdge()
++        dut.io.control.valid #= false
+       }
+ 
+       // This bench instantiates a PE without PifoMesh. Supply the mesh's replay
+@@ -107,6 +107,7 @@ object FrontUnderflowRewriteSim extends App {
+         dut.io.enqueRequest.payload.engineId #= 1
+         dut.io.enqueRequest.payload.vPifoId #= rawFlow
+         dut.clockDomain.waitSamplingWhere(dut.io.enqueRequest.ready.toBoolean)
++        dut.clockDomain.waitFallingEdge()
+         dut.io.enqueRequest.valid #= false
+       }
+ 
+@@ -115,6 +116,7 @@ object FrontUnderflowRewriteSim extends App {
+         dut.io.dequeueRequest.payload.engineId #= 1
+         dut.io.dequeueRequest.payload.vPifoId #= vPifoId
+         dut.clockDomain.waitSamplingWhere(dut.io.dequeueRequest.ready.toBoolean)
++        dut.clockDomain.waitFallingEdge()
+         dut.io.dequeueRequest.valid #= false
+       }
+ 
+diff --git a/pifo-hardware/synthesis/README.md b/pifo-hardware/synthesis/README.md
+index ffb2fb6..dad4b29 100644
+--- a/pifo-hardware/synthesis/README.md
++++ b/pifo-hardware/synthesis/README.md
+@@ -156,7 +156,85 @@ sbt "runMain rio.sim.TransactionalConfigSim cam" "runMain rio.sim.SharedReplayDr
+     "runMain rio.sim.ControlIngressRateSim cam"
+ ```
+ 
+-## Optional pipelined CAM
++## Staged CAM Vivado sweep
++
++Run the four-size sweep on the previous KCU116 target with:
++
++```bash
++.venv/bin/python hw/python/pifo_pipelined_cam_experiments.py --board kcu116
++.venv/bin/python hw/python/pifo_pipelined_cam_experiments.py --board kcu116 --collect-only
++```
++
++KCU116 is the sweep manager's default board. The installed Vivado 2025.2 board
++definition is
++`/data/work/vivado/2025.2/data/xhub/boards/XilinxBoardStore/boards/Xilinx/kcu116/1.5/board.xml`,
++selecting `xcku5p-ffvb676-2-e`. To reuse the already validated RTL from the
++interrupted VCU118 attempt while synthesizing it afresh for KCU116:
++
++```bash
++.venv/bin/python hw/python/pifo_pipelined_cam_experiments.py --board kcu116 \
++  --rtl-from-root /data/work/rio-synthesis/cam-pipeline-vcu118-20260909
++```
++
++RTL reuse checks hardware parameters, source hashes and generated file hashes.
++Each copied input records its original manifest in `rtl-origin.json`; native
++resource counts and device capacities always come from the selected target.
++`--collect-only` reparses completed native reports and updates available tables;
++`--finalize-only` also archives a fully completed sweep. Neither invokes synthesis,
++so a report-parser or figure change does not require repeating a native run.
++
++This experiment uses 5 PEs, 1,024 shared PIFO entries per PE, a 256-entry shared
++controller FIFO, and 100 MHz synthesis constraints. CAM capacity is twice the
++vFlow count, with 128 entries per stage:
++
++| vFlows | CAM entries per bank | Stages | Minimum lookup cycles |
++|---:|---:|---:|---:|
++| 32 | 64 | 1 | 2 |
++| 128 | 256 | 2 | 3 |
++| 512 | 1,024 | 8 | 9 |
++| 1,024 | 2,048 | 16 | 17 |
++
++There are eight RIO runs (four sizes × static/replay), plus four single-PIFO
++measurements on the same selected part. Both totals and the overhead denominator
++include five matching PIFOs. The PIFO measurements also include the response-valid
++reset correction used by this RTL revision. The manager uses at most four Vivado
++jobs with eight threads per job.
++Results, figures, exact inputs, validation records, and native reports follow
++the repository format under `experiment-results/cam-pipeline-kcu116/`.
++The build root is `/data/work/rio-synthesis/cam-pipeline-kcu116-20260909/`.
++The memory and device-utilization denominators come from native KCU116 reports.
++The fixed table also lists LUT memory (distributed RAM plus SRLs), which has its
++own device capacity and is already included in the total LUT count.
++These are synthesis-only component sums; no placement, routing, or timing
++closure is performed.
++
++To reproduce one RIO case:
++
++```bash
++python synthesis/run.py --tool vivado --board kcu116 --component rio \
++  --engines 5 --vpifos 1024 --entries-per-pe 1024 --priority-bits 8 \
++  --configuration replay --control-queue-depth 256 --pifo-backend external \
++  --lookup-backend cam-pipelined --cam-entries-per-pe 2048 --cam-entries-per-stage 128 \
++  --clock-mhz 100 --threads 8 --vivado-directive RuntimeOptimized \
++  --vivado-allow-over-capacity --name staged-cam-v1024-replay-kcu116
++```
++
++The first VCU118 attempts on 2026-09-09 stopped before synthesis with
++`Common 17-345`: no license for `Synthesis` / `xcvu9p`. Their prepared inputs and
++failure evidence remain under `experiment-results/cam-pipeline-vcu118/`.
++No VCU118 resource measurements completed. If a suitable license becomes
++available, that separate sweep can be resumed with:
++
++```bash
++XILINXD_LICENSE_FILE=/path/to/license.lic \
++  .venv/bin/python hw/python/pifo_pipelined_cam_experiments.py --board vcu118 --retry-failed
++```
++
++`XILINXD_LICENSE_FILE` also accepts `port@server`. `--generate-only` prepares all
++inputs without requesting a synthesis license. Failed attempts are archived
++before a retry; they are never treated as resource measurements.
++
++## Pipelined CAM implementation
+ 
+ `hw/spinal/rio/PipelinedCamMapper.scala` is a separate experimental module built
+ around unmodified [Alex Forencich SRL CAM RTL](https://github.com/alexforencich/verilog-cam/tree/69002598f12d7418d44bbaa88ea0be3bf3b14e6c),
+@@ -172,16 +250,29 @@ replay writes wait for old-bank lookups to finish while active-bank reads contin
+ Inserts/deletes include the upstream multi-cycle SRL update; existing-key value
+ updates avoid rewriting the index. Output backpressure uses a small register FIFO.
+ 
+-This module has Stream request/response interfaces. It is not selected by the
+-current mesh/default synthesis sweep: mesh callers need to honor backpressure
+-and align packet metadata for its variable latency. The existing results measure
+-`BoundedCamMapper`, not this prototype. SRL index storage differs from the default
+-registered-tag CAM; resource and timing improvements have not been measured.
++The `cam-pipelined` mesh backend connects its Stream request/response interfaces
++through `PipelinedCamMesh.scala`. Companion RAM reads reserve response storage,
++metadata queues keep their results in order, and PIFO pop credits include both
++pending lookups and stalled outputs. Underflows release their reserved credit.
++The PIFO response-valid register resets to false so a new credit counter never
++consumes an uninitialized response at startup.
++
++The brain allows one in-flight request per vPIFO until its output and dependent
++rank writes finish. Different vPIFOs can overlap. This conservative interlock
++preserves WFQ/FIFO state dependencies at longer lookup latencies; the standalone
++CAM's one-request-per-cycle rate is not a guarantee for repeated requests to one
++vPIFO. Both experiment variants use these adapters and the same interlock.
++
++The original `cam` backend remains the default for existing callers. Its archived
++results in `experiment-results/cam-overhead/` measure registered-tag CAMs. The
++staged sweep explicitly selects `cam-pipelined` and records its SRL index
++storage and latency separately.
+ 
+ Run correctness checks and generate a self-contained standalone RTL directory:
+ 
+ ```bash
+ sbt "runMain rio.sim.PipelinedCamMapperSim" "runMain rio.sim.PipelinedCamReplayIntegrationSim"
++sbt "runMain rio.sim.PipelinedCamMeshSim" "runMain rio.sim.BoundedCamIntegrationSim cam-pipelined"
+ sbt "runMain rio.GeneratePipelinedCam /tmp/rio-cam-2048-p128 2048 128 replay"
+ python synthesis/verify_pipelined_cam_rtl.py /tmp/rio-cam-2048-p128 \
+   --capacity 2048 --entries-per-stage 128 --replay
+diff --git a/pifo-hardware/synthesis/run.py b/pifo-hardware/synthesis/run.py
+index 0892f58..755a7ff 100644
+--- a/pifo-hardware/synthesis/run.py
++++ b/pifo-hardware/synthesis/run.py
+@@ -125,10 +125,12 @@ def main():
+                         help="Shared-FIFO replay (default) or ordinary tables with ignored commits (static)")
+     parser.add_argument("--control-queue-depth", type=int, default=256,
+                         help="Shared control FIFO entries for all configurations; replay reserves one for commit")
+-    parser.add_argument("--lookup-backend", choices=("dense", "cam"), default="cam",
++    parser.add_argument("--lookup-backend", choices=("dense", "cam", "cam-pipelined"), default="cam",
+                         help="Bounded portable exact-match CAMs (default) or dense pair tables for flow state and post mapping")
+     parser.add_argument("--cam-entries-per-pe", type=int,
+                         help="Distinct nonzero pairs per CAM bank; defaults to twice --vpifos for two tree contexts")
++    parser.add_argument("--cam-entries-per-stage", type=int, default=128,
++                        help="Power-of-two entries per staged SRL CAM block (default 128)")
+     parser.add_argument("--pifo-backend", choices=("house", "external"), default="house",
+                         help="house/stock implementation, or external to expose PIFO ports and measure RIO alone")
+     parser.add_argument("--name", help="Build name; default CAM replay uses cam-replay or cam-replay-vivado")
+@@ -171,8 +173,8 @@ def main():
+     default_name = (("baseline-replay" if args.tool == "quartus" else "baseline-replay-vivado")
+                     if args.configuration == "replay" else
+                     ("baseline" if args.tool == "quartus" else "baseline-vivado"))
+-    if args.lookup_backend == "cam":
+-        default_name = f"cam-{args.configuration}" + ("-vivado" if args.tool == "vivado" else "")
++    if args.lookup_backend in ("cam", "cam-pipelined"):
++        default_name = f"{args.lookup_backend}-{args.configuration}" + ("-vivado" if args.tool == "vivado" else "")
+     if args.component == "pifo":
+         default_name = "pifo-house" + ("-vivado" if args.tool == "vivado" else "")
+     args.name = args.name or default_name
+@@ -218,11 +220,14 @@ def main():
+     token_bits = v + e
+     pair_depth = 1 << (v + token_bits)
+     cam_capacity = args.cam_entries_per_pe if args.cam_entries_per_pe is not None else 2 * args.vpifos
+-    if args.lookup_backend == "cam" and not 2 <= cam_capacity <= pair_depth:
++    uses_cam = args.lookup_backend in ("cam", "cam-pipelined")
++    if uses_cam and not 2 <= cam_capacity <= pair_depth:
+         parser.error("--cam-entries-per-pe must be between 2 and the pair address-space size")
+-    if args.cam_entries_per_pe is not None and args.lookup_backend != "cam":
+-        parser.error("--cam-entries-per-pe requires --lookup-backend cam")
+-    table_depth = cam_capacity if args.lookup_backend == "cam" else pair_depth
++    if args.cam_entries_per_pe is not None and not uses_cam:
++        parser.error("--cam-entries-per-pe requires a CAM lookup backend")
++    if args.cam_entries_per_stage < 2 or args.cam_entries_per_stage & (args.cam_entries_per_stage - 1):
++        parser.error("--cam-entries-per-stage must be a power of two >= 2")
++    table_depth = cam_capacity if uses_cam else pair_depth
+     hardware = {
+         "component": args.component,
+         "configuration": args.configuration,
+@@ -243,6 +248,15 @@ def main():
+         hardware.update(lookup_backend="cam", cam_implementation="portable_parallel_tags_synchronous_values",
+                         cam_entries_per_bank=cam_capacity, cam_zero_write="delete",
+                         cam_full_behavior="backpressure_new_nonzero_key_and_assert_capacityBlocked")
++    if args.component != "pifo" and args.lookup_backend == "cam-pipelined":
++        stages = math.ceil(cam_capacity / args.cam_entries_per_stage)
++        hardware.update(lookup_backend="cam-pipelined", cam_implementation="alexforencich_srl_staged",
++                        cam_entries_per_bank=cam_capacity, cam_entries_per_stage=args.cam_entries_per_stage,
++                        cam_stages=stages, cam_minimum_read_latency=stages + 1, cam_zero_write="delete",
++                        cam_full_behavior="backpressure_new_nonzero_key_until_reset",
++                        mesh_lookup_backpressure=True, mesh_pop_credit_depth=stages + 4,
++                        rank_dependency_interlock="one_inflight_request_per_vpifo",
++                        cam_upstream_revision="69002598f12d7418d44bbaa88ea0be3bf3b14e6c")
+     if args.configuration == "replay":
+         hardware.update(mapper_sync="shared_control_fifo_replay", replay_storage="control_queue",
+                         separate_replay_journal=False, replay_max_retained_commands=args.control_queue_depth - 1)
+@@ -254,6 +268,10 @@ def main():
+         external_rtl, PROJECT / "build.sbt",
+         PROJECT / "project/build.properties", PROJECT / "project/plugins.sbt",
+     ]
++    if args.lookup_backend == "cam-pipelined":
++        vendor = PROJECT / "hw/verilog/vendor/verilog-cam"
++        sources += [vendor / filename for filename in
++                    ("rtl/cam_srl.v", "rtl/priority_encoder.v", "COPYING", "UPSTREAM.json")]
+     source_hashes = {str(path.relative_to(PROJECT)): hashlib.sha256(path.read_bytes()).hexdigest()
+                      for path in sources}
+     manifest_path = build / "manifest.json"
+@@ -306,6 +324,11 @@ def main():
+     if args.component != "pifo" and args.lookup_backend == "cam":
+         metadata["logical_storage_bits"]["cam_tag_valid_registers"] = (
+             args.engines * table_depth * (v + token_bits + 1) * (1 + hardware["mapper_banks"]))
++    if args.component != "pifo" and args.lookup_backend == "cam-pipelined":
++        metadata["logical_storage_bits"].update(
++            cam_occupied_registers=args.engines * table_depth * (1 + hardware["mapper_banks"]),
++            rank_dependency_registers=args.engines * args.vpifos)
++        metadata["logical_storage_note"] = "Value RAM payload and occupancy only; SRL index, update history and elastic buffer storage are measured by native synthesis."
+     if args.component == "pifo":
+         metadata["scope"] = "One house PIFO: sorter, storage, occupancy, empty/drain and accepted-push notifications"
+         metadata["excluded"] = ["RIO PEs, mappers, brains, crossbar, and controller"]
+@@ -347,7 +370,7 @@ def main():
+             command = (f'runMain rio.GeneratePifoMesh "{rtl}" {args.engines} '
+                        f'{args.vpifos} {hardware["fifo_depth_parameter"]} {args.priority_bits} '
+                        f'{args.pifo_backend} {args.configuration} {args.control_queue_depth} '
+-                       f'{args.lookup_backend} {cam_capacity if args.lookup_backend == "cam" else 0}')
++                       f'{args.lookup_backend} {cam_capacity if uses_cam else 0} {args.cam_entries_per_stage}')
+             if args.component == "pifo":
+                 command = (f'runMain rio.GeneratePifoComponent "{rtl}" {args.engines} '
+                            f'{args.vpifos} {hardware["fifo_depth_parameter"]} {args.priority_bits}')

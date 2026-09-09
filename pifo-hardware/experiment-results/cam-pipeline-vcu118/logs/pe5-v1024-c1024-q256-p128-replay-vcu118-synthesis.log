@@ -1,0 +1,25 @@
+Running /data/work/vivado/2025.2/Vivado/bin/vivado -version
+  log: /data/work/rio-synthesis/cam-pipeline-vcu118-20260909/pe5-v1024-c1024-q256-p128-replay-vcu118/vivado-version.txt
+Running /data/work/vivado/2025.2/Vivado/bin/vivado -mode batch -nojournal -log /data/work/rio-synthesis/cam-pipeline-vcu118-20260909/pe5-v1024-c1024-q256-p128-replay-vcu118/vivado.log -source /home/zg366/packet-scheduling/pifo-hardware/synthesis/vivado_synth.tcl -tclargs /data/work/rio-synthesis/cam-pipeline-vcu118-20260909/pe5-v1024-c1024-q256-p128-replay-vcu118 xcvu9p-flga2104-2L-e 8 10.0 0 RuntimeOptimized 1
+  log: /data/work/rio-synthesis/cam-pipeline-vcu118-20260909/pe5-v1024-c1024-q256-p128-replay-vcu118/synthesis.log
+#     # gate. The RTL, target, optimization passes, and reported device capacities
+#     # remain unchanged. The resulting netlist can exceed the physical device.
+#     # Verified on Vivado 2025.2 with an oversized RAM and an unchanged smaller
+#     # control design; see experiment-results/hardware-overhead/diagnostics.
+#     puts "PIFO_ESTIMATION_ONLY: device-capacity check disabled; no implementation or fit claim"
+#     set_param synth.elaboration.rodinMoreOptions {if {[llength [info commands rt::pifo_device_capacity_check]] == 0} {rename rt::check_resource rt::pifo_device_capacity_check}; proc rt::check_resource {args} {puts "PIFO_DEVICE_CAPACITY_CHECK_SKIPPED: $args"; return 1}}
+# }
+PIFO_ESTIMATION_ONLY: device-capacity check disabled; no implementation or fit claim
+# synth_design -top PifoMesh -part $part -mode out_of_context -flatten_hierarchy rebuilt -directive $directive
+Command: synth_design -top PifoMesh -part xcvu9p-flga2104-2L-e -mode out_of_context -flatten_hierarchy rebuilt -directive RuntimeOptimized
+Starting synth_design
+Attempting to get a license for feature 'Synthesis' and/or device 'xcvu9p'
+WARNING: [Common 17-348] Failed to get the license for feature 'Synthesis' and/or device 'xcvu9p'. Explanation: The license feature Synthesis could not be found.
+Resolution: Check the status of your licenses in the Vivado License Manager. For debug help search Xilinx Support for "Licensing FAQ". 
+0 Infos, 1 Warnings, 0 Critical Warnings and 1 Errors encountered.
+synth_design failed
+ERROR: [Common 17-345] A valid license was not found for feature 'Synthesis' and/or device 'xcvu9p'. Please run the Vivado License Manager for assistance in determining
+which features and devices are licensed for your system.
+Resolution: Check the status of your licenses in the Vivado License Manager. For debug help search Xilinx Support for "Licensing FAQ". If you are using a license server, verify that the license server is up and running a version of the xilinx daemon that is compatible with the version of Xilinx software that you are using. Note: Vivado 2021.1 and later versions require upgrading your license server tools to the Flex 11.17.2.0 versions. Please confirm with your license admin that the correct version of the license server tools are installed.
+INFO: [Common 17-206] Exiting Vivado at Wed Sep  9 14:53:14 2026...
+Command '[PosixPath('/data/work/vivado/2025.2/Vivado/bin/vivado'), '-mode', 'batch', '-nojournal', '-log', PosixPath('/data/work/rio-synthesis/cam-pipeline-vcu118-20260909/pe5-v1024-c1024-q256-p128-replay-vcu118/vivado.log'), '-source', PosixPath('/home/zg366/packet-scheduling/pifo-hardware/synthesis/vivado_synth.tcl'), '-tclargs', PosixPath('/data/work/rio-synthesis/cam-pipeline-vcu118-20260909/pe5-v1024-c1024-q256-p128-replay-vcu118'), 'xcvu9p-flga2104-2L-e', '8', '10.0', '0', 'RuntimeOptimized', '1']' returned non-zero exit status 1.

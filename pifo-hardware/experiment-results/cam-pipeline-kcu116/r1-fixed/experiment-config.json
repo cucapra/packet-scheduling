@@ -1,0 +1,59 @@
+{
+  "schema": "cam-pipeline-kcu116-v1",
+  "source_commit": "03e7de9ceb98c661ed036efc406e6961e49f9a89",
+  "source_identity": "commit plus workflow/source-sha256.json and source.patch",
+  "configurations": [
+    "static",
+    "replay"
+  ],
+  "platforms": [
+    "vivado"
+  ],
+  "board_reference": {
+    "definition": "/data/work/vivado/2025.2/data/xhub/boards/XilinxBoardStore/boards/Xilinx/kcu116/1.5/board.xml",
+    "name": "Kintex UltraScale+ KCU116 Evaluation Platform",
+    "board_name": "kcu116",
+    "version": "1.5",
+    "part": "xcku5p-ffvb676-2-e"
+  },
+  "hardware": {
+    "num_engines": 5,
+    "vflows": [
+      1024
+    ],
+    "entries_per_pe": 1024,
+    "priority_bits": 8,
+    "control_queue_depth": 256,
+    "pifo_backend": "external",
+    "lookup_backend": "cam-pipelined",
+    "cam_entries_per_bank": "2 * vflows",
+    "cam_entries_per_stage": 128,
+    "cam_implementation": "alexforencich_srl_staged",
+    "rank_dependency_interlock": "one_inflight_request_per_vpifo"
+  },
+  "bram_targets": {
+    "vivado": {
+      "part": "xcku5p-ffvb676-2-e",
+      "label": "KCU116 XCKU5P",
+      "resource": "bram36_tiles",
+      "native_resource": "bram36_tiles",
+      "native_units_per_block": 1,
+      "available": 480,
+      "unit": "BRAM36 equivalents",
+      "measurement_kind": "mapped_bram36_tile_equivalent",
+      "count_definition": "RAMB36 primitives + RAMB18 primitives / 2",
+      "capacity_source": "native reports/utilization.rpt: Block RAM Tile / Available"
+    }
+  },
+  "clock_mhz": 100,
+  "threads": 8,
+  "vivado_directive": "RuntimeOptimized",
+  "rio_synthesis_runs": 8,
+  "pifo_synthesis_runs": 4,
+  "implementation_run": false,
+  "plot": {
+    "dpi": 180,
+    "version": "cam-pipeline-kcu116-v1"
+  },
+  "percent_denominator": "ordinary_RIO_plus_five_matching_PIFOs"
+}

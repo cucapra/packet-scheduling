@@ -1,0 +1,20 @@
+{
+  "status": "blocked_missing_vivado_license",
+  "target": "xcvu9p-flga2104-2L-e",
+  "tool": "Vivado 2025.2",
+  "missing_feature": "Synthesis and/or xcvu9p",
+  "error_code": "Common 17-345",
+  "failed_attempts": [
+    "pe5-v1024-c1024-q256-p128-replay-vcu118",
+    "pe5-v1024-c1024-q256-p128-static-vcu118"
+  ],
+  "synthesis_completed_cases": 0,
+  "license_environment": {
+    "XILINXD_LICENSE_FILE": null,
+    "LM_LICENSE_FILE": null
+  },
+  "applicable_license_found": false,
+  "license_contents_recorded": false,
+  "installed_vivado_licenses": "bundled IP licenses only",
+  "resume_command": "XILINXD_LICENSE_FILE=/path/to/license.lic .venv/bin/python hw/python/pifo_pipelined_cam_experiments.py --retry-failed"
+}

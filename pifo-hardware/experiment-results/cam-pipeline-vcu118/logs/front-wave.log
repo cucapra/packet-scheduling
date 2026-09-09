@@ -1,0 +1,66 @@
+[info] welcome to sbt 1.10.2 (Ubuntu Java 21.0.10)
+[info] loading settings for project pifo-hardware-build from plugins.sbt ...
+[info] loading project definition from /home/zg366/packet-scheduling/pifo-hardware/project
+[info] loading settings for project rio from build.sbt ...
+[info] set current project to rio (in build file:/home/zg366/packet-scheduling/pifo-hardware/)
+[info] compiling 1 Scala source to /home/zg366/packet-scheduling/pifo-hardware/target/scala-2.13/classes ...
+[warn] 65 feature warnings; re-run with -feature for details
+[warn] one warning found
+[info] done compiling
+[info] running (fork) rio.sim.FrontUnderflowRewriteSim cam-pipelined
+[info] [Runtime] SpinalHDL v1.12.3    git head : 591e64062329e5e2e2b81f4d52422948053edb97
+[info] [Runtime] JVM max memory : 30208.0MiB
+[info] [Runtime] Current date : 2026.09.09 14:48:33
+[info] [Progress] at 0.000 : Elaborate components
+[info] [Progress] at 1.197 : Checks and transforms
+[info] [Progress] at 2.072 : Generate Verilog to ./simWorkspace/tmp/job_1
+[info] [Warning] toplevel/enque_brain/io_outputs_4_fifo/fifo/logic_ram : Mem[5*7 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/enque_flowIdStream_fifo/fifo/logic_ram : Mem[4*4 bits].readAsync can only be write first into Verilog
+[info] [Warning] toplevel/io_outputs_2_fifo/fifo/logic_ram : Mem[5*14 bits].readAsync can only be write first into Verilog
+[info] [Warning] 205 signals were pruned. You can call printPruned on the backend report to get more informations.
+[info] [Done] at 2.530
+[info] [Progress] Simulation workspace in /home/zg366/packet-scheduling/pifo-hardware/./simWorkspace/PifoEngine
+[info] [Progress] IVerilog compilation started
+[info] [Progress] IVerilog compilation done in 30.545 ms
+[info] [Progress] Start PifoEngine test simulation with seed 1856403505
+[info] POST_WRITE t=560 active=false key=25 value=1
+[info] POST_WRITE t=810 active=true key=25 value=1
+[info] PUSH t=940 port=1 key=9
+[info] PUSH t=970 port=1 key=9
+[info] POST_WRITE t=1250 active=true key=41 value=1
+[info] POST_WRITE t=1500 active=false key=41 value=1
+[info] PUSH t=1560 port=2 key=9
+[info] POST_READ t=1630 active=false key=25
+[info] [Error] Simulation failed at time=1650
+[info] Shared memory key : SpinalHDL_0_1_654299840_1672228466_1788979716405_3176280838758312281
+[info] Start of simulation
+[info] VCD info: dumpfile /home/zg366/packet-scheduling/pifo-hardware/simWorkspace/PifoEngine/test/wave.vcd opened for output.
+[info] Warning, value 'x' at position 0 is neither '0' or '1'. value set to '0'.
+[info] Warning, value 'x' at position 0 is neither '0' or '1'. value set to '0'.
+[info] Warning, value 'x' at position 0 is neither '0' or '1'. value set to '0'.
+[info] Warning, value 'x' at position 0 is neither '0' or '1'. value set to '0'.
+[info] Warning, value 'x' at position 0 is neither '0' or '1'. value set to '0'.
+[info] Warning, value 'x' at position 0 is neither '0' or '1'. value set to '0'.
+[info] Warning, value 'x' at position 0 is neither '0' or '1'. value set to '0'.
+[info] Warning, value 'x' at position 0 is neither '0' or '1'. value set to '0'.
+[info] Warning, value 'x' at position 0 is neither '0' or '1'. value set to '0'.
+[info] Warning, value 'x' at position 0 is neither '0' or '1'. value set to '0'.
+[info] Warning, value 'x' at position 0 is neither '0' or '1'. value set to '0'.
+[info] Warning, value 'x' at position 0 is neither '0' or '1'. value set to '0'.
+[info] Warning, value 'x' at position 0 is neither '0' or '1'. value set to '0'.
+[info] Warning, value 'x' at position 0 is neither '0' or '1'. value set to '0'.
+[error] Exception in thread "main" java.lang.AssertionError: assertion failed
+[error] 	at scala.Predef$.assert(Predef.scala:264)
+[info] Warning, value 'x' at position 0 is neither '0' or '1'. value set to '0'.
+[info] Warning, value 'x' at position 0 is neither '0' or '1'. value set to '0'.
+[info] Warning, value 'x' at position 1 is neither '0' or '1'. value set to '0'.
+[info] Warning, value 'x' at position 2 is neither '0' or '1'. value set to '0'.
+[info] End of simulation
+[error] 	at rio.sim.FrontUnderflowRewriteSim$.$anonfun$new$12(FrontUnderflowRewriteSim.scala:202)
+[error] 	at scala.collection.immutable.Range.foreach$mVc$sp(Range.scala:190)
+[error] 	at rio.sim.FrontUnderflowRewriteSim$.$anonfun$new$11(FrontUnderflowRewriteSim.scala:199)
+[error] 	at spinal.sim.SimThread.$anonfun$jvmThread$1(SimThread.scala:90)
+[error] 	at spinal.sim.JvmThread.run(SimManager.scala:51)
+[error] Nonzero exit code returned from runner: 1
+[error] (Compile / runMain) Nonzero exit code returned from runner: 1
+[error] Total time: 10 s, completed Sep 9, 2026, 2:48:36 PM

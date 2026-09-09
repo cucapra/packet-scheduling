@@ -1,0 +1,51 @@
+{
+  "status": "passed",
+  "build": "/data/work/rio-synthesis/cam-pipeline-kcu116-20260909/pe5-v128-c1024-q256-p128-replay-kcu116",
+  "configuration": "replay",
+  "vflows": 128,
+  "entries_per_stage": 128,
+  "stages": 2,
+  "minimum_lookup_latency": 3,
+  "cam_instances": 10,
+  "srl_cam_instances": 30,
+  "value_memories": [
+    {
+      "module": "PipelinedCamMapper",
+      "instances": 5,
+      "array": "banks_0_values",
+      "width": 32,
+      "depth": 256,
+      "read_ports": 1,
+      "write_ports": 1
+    },
+    {
+      "module": "PipelinedCamMapper_1",
+      "instances": 5,
+      "array": "banks_0_values",
+      "width": 10,
+      "depth": 256,
+      "read_ports": 1,
+      "write_ports": 1
+    },
+    {
+      "module": "PipelinedCamMapper_1",
+      "instances": 5,
+      "array": "banks_1_values",
+      "width": 10,
+      "depth": 256,
+      "read_ports": 1,
+      "write_ports": 1
+    }
+  ],
+  "replay_controller_storage": [
+    {
+      "module": "ReplayControlFifo",
+      "array": "storage",
+      "width": 55,
+      "depth": 256
+    }
+  ],
+  "copied_upstream_hashes_checked": true,
+  "implementation_run": false,
+  "synthesis_run": false
+}
