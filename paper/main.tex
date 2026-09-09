@@ -511,9 +511,9 @@ Given the node's \stt and an incoming packet, it returns the payload this node w
 Its \emph{admitted set} (\(\mathit{z}.\mathit{admit}\)) is the flows the node currently accepts, its \emph{service map} (\(\mathit{z}.\mathit{serves}\)) sends each flow the node serves to the payload that carries it onward, its \emph{per-arm metadata} (\(\mathit{z}.\mathit{meta}\)) records what the node's discipline needs to know about each arm, and its \emph{ranker} (\(\mathit{z}.\mathit{rank}\)) is the scheduling logic that discipline contributes.
 \Cref{sec:edit-semantics-full} defines the four and shows how \zz composes them.
 
-Two of their consequences carry through the rest of the paper.
-A node admits a subset of the flows it serves, and keeping the two apart lets a silenced subtree go on draining (\cref{sec:quiesce}).
-A node's ranker names the discipline that the node runs, so the discipline is recoverable from a running control rather than lost at compile time (\cref{sec:equivalences}).
+%Two of their consequences carry through the rest of the paper.
+%A node admits a subset of the flows it serves, and keeping the two apart lets a silenced subtree go on draining (\cref{sec:quiesce}).
+%A node's ranker names the discipline that the node runs, so the discipline is recoverable from a running control rather than lost at compile time (\cref{sec:equivalences}).
 
 \stt and \pifo change as the node serves traffic, whereas \zz changes only when an edit rewrites it.
 That is why the per-arm metadata sits in \zz rather than in \slotstates.
