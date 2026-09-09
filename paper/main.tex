@@ -194,36 +194,48 @@ Hardware simulation experiments demonstrate that the system keeps reconfiguratio
 \section{Introduction}\label{sec:intro}
 
 A \emph{packet scheduler} decides which of the packets buffered at an output port leaves next.
-On programmable switches, network operators configure schedulers to isolate tenants from one another and to hold latency-sensitive traffic to its budget.
-The policies they write are usually hierarchical~\cite{Stephens19,Kumar19,Grant20,vPIFO}, each level running a scheduling discipline of its own.
-Whatever the policy, the scheduler must keep up with the wire.
-A \emph{PIFO}, a priority queue that a switch can maintain at line rate, makes this affordable in hardware.
+On programmable switches and SmartNICs, network operators configure schedulers to isolate tenants from one another or to prioritize latency-sensitive traffic.
+The policies they write are usually hierarchical~\cite{Stephens19,Kumar19,Grant20,vPIFO}, with each level running a scheduling discipline of its own.
+% Whatever the policy, the scheduler must keep up with the wire.
+A \emph{PIFO} is a priority queue that supports line-rate scheduling with flexible policies.
 A hierarchical policy runs on a tree of PIFOs, one queue per node~\cite{Sivaraman16}.
 
 % It needs to be inputted here so it lands on the top of page 2
 \input{fig-tour}
 
 The policy on a switch does not stay fixed.
-Traffic patterns shift, tenants arrive and leave, and telemetry downstream tells the network operator that the policy is no longer apt.
-But the scheduler is compiled expressly for the policy it runs: its tree shape, per-node disciplines, and table contents are selected to realize \emph{a fresh policy}, not \emph{a change to the running policy}~\cite{Sivaraman16,Gao22,vPIFO}.
-When the operator requests a new policy, the freshly compiled scheduler is agnostic to the running policy and the backlog of buffered packets~\cite{vPIFO,Alcoz23}.
-The whole tree is rebuilt, including the nodes that could have been carried over unchanged.
-What becomes of the backlog is up to the implementation: it can be dropped, recirculated, or left to be scheduled through a chaotic period in which the hardware follows no clearly defined policy.
-Each of those is itself tacitly a \emph{scheduling decision}, and the operator is unable to specify which one they want.
+Traffic patterns shift, tenants arrive and leave, and telemetry tells the network operator that the current policy is no longer optimal.
+Existing work, however, configures PIFO-tree schedulers from scratch~\cite{Sivaraman16,Gao22,vPIFO}.
+Any newly installed policy is unaware of the previous policy and the backlog of buffered packets~\cite{vPIFO,Alcoz23}.
+% The whole tree is rebuilt, including the nodes that could have been carried over unchanged.
+Implementations may deal with in-flight traffic in different ways:
+dropping packets, recirculating them, or entering a chaotic period in which the hardware follows no clearly defined policy.
+Each of those is a tacit scheduling decision.
+Existing approaches do not offer control over this scheduling behavior during a transition.
 
-Our thesis is that the interval during which a scheduler is being reprogrammed is itself a scheduling policy, since packets keep arriving and leaving while it lasts. 
+Our thesis is that the interval during reconfiguration is itself a scheduling policy, since packets keep arriving during that interval.
 Understanding it is a language problem.
-A transitional policy needs a syntax that the operator can read, a semantics that says which packet leaves next, and a compiler that accepts a change to the running policy.
-With those in hand, whether a transition was carried out correctly becomes a theorem about the semantics rather than a measurement taken after the fact.
+A transitional policy needs a syntax that the operator can read, a semantics that says which packet leaves next, and a compiler that applies changes to the running policy.
+With these components in hand, a scheduler can clearly define its behavior during reconfiguration.
 We present \emph{Rio}, which supplies all three.
 
-Rio's language is a grammar of atomic policy edits, each one a change the hardware can install in a single instant.
-Its semantics gives every edit a meaning in the operator's own policy language, so the scheduler is always running a policy the operator can read, even mid-transition.
-A planner turns a requested policy into a sequence of those edits, and a mechanical lowering carries each edit down to the instructions that a switch runs.
-A transition from any running policy to any requested policy is always available, and many touch only the part of the tree that actually changes, carrying the rest over unchanged.
-What becomes of the backlog is no longer up to the implementation, and we call the property that settles it \emph{non-disruption}.
-Reconfiguring never drops, reorders, or re-ranks a packet that is already buffered, so any disruption the operator observes is the new policy correctly governing new arrivals.
-\xxx[AM]{Conclude here once the results are in. The cost model is still a legit open question, and this is where we say what we shorten and what we stop dropping.}
+Rio defines a grammar of atomic \emph{policy edits} and designs an extension to PIFO tree hardware to support these edits.
+Each edit defines a change to the hierarchical scheduling policy that applies consistently:
+every packet sees either the old policy or the new policy.
+We demonstrate a planner than generates a sequence of edits to transform any old policy into any new policy.
+Rio's edits are \emph{non-disruptive:}
+they never drop, reorder, or re-ranks a packet that is already buffered,
+so pre-edit traffic obeys the old policy.
+
+To clarify the semantics of scheduler reconfiguration,
+we give formal semantics for PIFO trees and Rio's edits.
+For each edit, we prove non-disruption and a consistency property:
+each edit's effects on the low-level PIFO tree configuration
+correspond to equivalent effects on the high-level policy definition.
+
+We implement a simple PIFO tree packet scheduler and demonstrate two extensions to support atomic policy edits:
+transactional state updates and a mechanism for letting old and new subtrees coexist during a transaction.
+\xxx[as]{Short preview of the results.}
 
 \section{Rio by Example}\label{sec:tour}
 
