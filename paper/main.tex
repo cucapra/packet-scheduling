@@ -1137,6 +1137,7 @@ We set up a fourteen-flow tree on seven processing elements, and we change its p
 No single edit does all of that, so the transition planner decomposes the request into a sequence, and part of that sequence has to wait: the tenant being retired still holds packets, and the guard on its \(\Remove\) does not become true until they have drained (\cref{sec:sequences}).
 Rio installs the five unguarded edits in 51 instructions and the guarded \(\Remove\) in 20 more, against 152 for the reset baseline and 201 for whole-tree prefill.
 Rio does not stop the scheduler at all, and the two baselines buffer 571 and 424 packets during theirs, which they can do only because we gave them unbounded input queues.
+\xxx[am]{Zhiyuan requested a timeline-style figure here but idk if we have the room, and idk if it's punchy enough. Happy to discuss more.}
 
 \paragraph{Hardware cost}
 
