@@ -1087,10 +1087,12 @@ The last \textsf{gmail} packet enqueued before the request waits 2618 cycles und
 Root-level replace again looks good, but the \textsf{zoom} panel reveals the problem: it clears the backlog quickly because it hands the whole link to the old tree, at \textsf{zoom}'s expense.
 Under confinement, \textsf{gmail}\textsubscript{old} takes its own 670-cycle drain and no more.
 
-The gray band in both figures is the 674 cycles in which the switch runs \(p_\text{temp}\), a policy no operator requested.
-That is two thirds as long as the baseline's stop, and it costs the traffic nothing: the link stays full and \textsf{zoom} is undisturbed from one end of it to the other.
+The gray band in both figures is the interval in which the switch runs \(p_\text{temp}\), the transitional policy the planner discovered on the way to \(p_2\), and its two edges are the two atomic steps of \cref{sec:tour}.
+Rio's first step takes effect 28 cycles after the request, at the left edge, where the \(\Strictstar\) node appears above \textsf{gmail}\textsubscript{old} and the freshly built \RR{} subtree.
+That step is the cheapest install of the three, since it rewrites one subtree and leaves the rest of the control addressed as it was.
+\textsf{gmail}\textsubscript{old} runs empty 696 cycles after the request, the drain guard of \cref{sec:sequences} becomes true, and the second step collapses the \(\Strictstar\) six cycles later at the right edge.
+The band is 674 cycles wide, which is two thirds of the baseline's stop. Further, it costs the traffic nothing: the link stays full and \textsf{zoom} is undisturbed from one end of it to the other.
 \xxx[am]{Want to point to \Cref{app:ptemp} from here?}
-At 28 cycles, confinement is also the cheapest of the three to install, since it rewrites one subtree and leaves the rest of the control addressed as it was.
 
 \paragraph{The value of a survivor link}
 
@@ -1103,8 +1105,6 @@ The other copies the old subtree onto fresh processing elements, which stops it 
 Rio's survivor link stops it for \emph{no time}, no matter how big the backlog, because it is a pointer rather than a place to put packets.
 The slope matters more than the constant: without \(\Strictstar\), the price of a transition is determined by how busy the switch was when the request arrived.
 This is also why \textsf{spotify} waits for the drain in \cref{app:ptemp}, since Rio declines to relocate the packets already queued and lets them drain in place instead.
-
-\xxx[zhiyuan]{additionally, find a place to show one example of four operations: start, commit, replay-finish, drain, maybe a full timeline under figure 7 include the cleanup commit.}
 
 \paragraph{A larger reconfiguration}
 
@@ -2276,7 +2276,6 @@ A single \texttt{undesignate(loser)} retargets \texttt{parent}'s index \texttt{k
 Reusing \texttt{k} preserves \texttt{parent}'s per-arm metadata for that slot, so the survivor inherits the annotation that the doomed subtree held.
 The shared flows are deliberately not unmapped, since they serve \texttt{surv} now.
 
-\clearpage
 \section{Inside the Transitional Interval}\label{app:ptemp}
 
 The first experiment of \cref{sec:eval} carries a scheduler from
