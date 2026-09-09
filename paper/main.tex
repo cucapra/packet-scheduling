@@ -1150,7 +1150,7 @@ Rio therefore has the additional challenge of preserving the state reflecting pa
 \paragraph{Reconfiguring a live scheduler}
 
 Loom~\cite{Stephens19} is a NIC packet scheduler that supports dynamic reconfiguration.
-Configuration values travel inline with packet descriptors.
+Configuration values travel inline with packet descriptors, and each pipeline stage saves the values to its local memory.
 A descriptor and the configuration it carries therefore reach each stage together, which is the effect Rio obtains by delay-aligning commit signals across PEs (\cref{sec:hw-commit}).
 Loom does not address the effects on in-flight packets or attempt to offer consistent views during reconfiguration.
 
