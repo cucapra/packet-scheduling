@@ -1008,30 +1008,116 @@ After it, nothing in the tree records that a transition happened.
 
 \section{Evaluation}\label{sec:eval}
 
-\xxx[AM to Zhiyuan]{The runs behind this section still drop a flow's leaf when the parent can rank it directly.
-Our compiler never does that, and the folded tree is not something our model can describe, so the two sides are not yet measuring the same policy.
-You said you would turn the elision off and rerun, and the same goes for the fourteen-flow mixed-change experiment, whose four runs include a no-transition control.}
+We built Rio's two substrate additions into a PIFO tree scheduler written in SpinalHDL, measured transitions in cycle-accurate simulation, and synthesized the design for an FPGA.
 
-\xxx[AM to Zhiyuan]{Please report cycles rather than instructions, since some instructions take several.
-Keep the instruction counts beside them if that is cheap, because the two together say that the confined transition is both cheaper to install and quicker to take effect.
-Say also which of your six control commands cost more than one cycle, and note that the counts include the Brain commands, which do not install atomically.}
+\begin{figure}[t]
+\centering
+\includegraphics{fig-eval-motivating.pdf}
+\caption{The transition of \cref{sec:tour}, as a share of link capacity. The middle panel is just \textsf{zoom}, which the transition request ought not affect; the lower one is all three flows under Rio. The gray band is the interval in which Rio runs $p_\text{temp}$.}
+\label{fig:eval-motivating}
+\end{figure}
 
-\xxx[AM to Zhiyuan]{The paper has to convert cycles to time exactly once, and here is where.
-You offered a 1\,GHz ASIC or a 250\,MHz FPGA and I would take the ASIC, which makes the 1024-cycle stop almost exactly a microsecond.
-Confirm that, and tell me how many bytes the switch moves per cycle so I can name a line rate.}
-\xxx[zg]{we are taling about control plane, so our rate here is packets/s (PPS). our rate is ii=1 enque and ii=3 (cycles) deque, which regardless of packetsize, is a decent performance for PPS.}
+\paragraph{The baseline}
 
-\xxx[AM to Zhiyuan]{You have no citation for the reconfiguration figure and say a real P4 switch measures up to seconds.
-So I plan to present the 1024 as a floor we grant the baseline rather than as a measurement: we stop the world for about a microsecond, which is faster than any reported reconfiguration of a running switch, and Rio beats it anyway.
-Say if you would rather the baseline had a different number.}
-\xxx[zg]{we should look for some reference on the reconfiguration time; but real time will be MUCH longer than 1us, we should explicitly say that. some quick cites: FlexCore NSDI 22, ~500ms}
+A switch that stops to reconfigure can do many things with the traffic that arrives meanwhile, and how bad each one is depends on the deployment.
+Rather than measure chaos, we remove it from the comparison.
+Our stop-the-world baseline is constructed to be lossless and order-preserving: it freezes admission and dequeue, captures the metadata of every buffered packet, installs the target configuration, and replays exactly one scheduler token per captured packet.
+Its sources keep generating while it is stopped, and we give it an unbounded input queue, so it never drops a packet when stopped.
 
-\xxx[AM to Zhiyuan]{You told me the guarded garbage collection already exists in hardware and that you would add its evaluation line.
-\cref{sec:hw-survivor} describes it as a second commit guarded on the same emptiness predicate, so the line belongs here.}
+We also give the baseline a short period of stoppage: 1024 cycles, a little over a microsecond at the rate of one nanosecond per cycle.
+Reconfiguring the program that a running switch executes has been reported at around half a second~\cite{Xing22}, so this is far shorter than any published figure.
 
-\xxx[AM to Zhiyuan]{\texttt{settings.json} sets a queue depth of 256 while the stop-the-world run peaks at 417 buffered packets and drops nothing.
-Raise it or drop it, whichever is honest.
-If 256 bounds something real elsewhere in the switch, then a switch configured this way would have dropped during the stop, and that is a stronger claim than the one we make now.}
+\paragraph{The transition of \cref{sec:tour}}
+
+Our first experiment considers exactly the transition that \cref{sec:tour} walks through.
+Three mechanisms take the scheduler from \(p_1\) to \(p_2\) over one 2136-packet trace.
+The first is the stop-the-world baseline.
+The other two are both Rio's, and the difference between them is where the \(\Replace\) lands.
+\emph{Root-level replace} is the fallback described in \cref{sec:sequences}: it builds \(p_2\) beside the running tree, puts the running tree on the high-priority arm of a \(\Strictstar\), and drains it there.
+\emph{Confined replace} is the path the planner prefers, which does the same thing at the deepest slot that changed, so only \textsf{gmail}'s subtree sits behind the wrapper.
+Throughout, \textsf{zoom} sends enough packets to fill 40\% of the link.
+\textsf{gmail} sends enough to fill 80\% before the request and 20\% after it, and \textsf{spotify} starts sending when the request arrives, enough to fill 20\%.
+Before the request the three together ask for more than the link can carry, so there is a backlog of packets when the request arrives.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{lrrr}
+\toprule
+& install & install & peak \textsf{zoom} \\
+mechanism & instrs & cycles & delay (cycles) \\
+\midrule
+stop the world & 25 & 42 & 1055 \\
+root-level replace & 26 & 34 & 613 \\
+\textbf{confined replace (Rio)} & \textbf{16} & \textbf{21} & \textbf{21} \\
+\bottomrule
+\end{tabular}
+\caption{The transition of \cref{sec:tour}, three ways.}
+\label{tab:eval-motivating}
+\end{table}
+
+\Cref{fig:eval-motivating} separates two ways a transition can go wrong.
+Stopping the scheduler empties the link, so the orange line in the upper panel drops to zero for as long as the stop lasts.
+Root-level replace looks better in that panel, since it keeps the link busy, but the middle panel reveals what it is busy with: it starves \textsf{zoom} for some 500 cycles and then hands it the whole link to catch up.
+We know that \textsf{zoom} sits at the same priority and offers the same rate in every policy here, so a mechanism that touches only what changed should leave textsf{zoom}'s line flat, and only Rio's is flat.
+Rio's peak delay for \textsf{zoom} is 21 cycles, one more than the 20 it sees under a transition that never touches its subtree at all.
+Root-level replace costs it 613 and the baseline 1055 (\cref{tab:eval-motivating}), and neither of them recovers when its interval ends: the baseline is still running above its offered rate 3400 cycles after a stop that lasted 1024 cycles.
+
+Rio's own transitional interval is no shorter than the others.
+The gray band in the figure is the 1018 cycles in which the switch runs \(p_\text{temp}\), a policy no operator requested, and it costs the traffic nothing: the link stays full and \textsf{zoom} is undisturbed from one end of it to the other.
+The lower panel shows all three flows.
+\textsf{zoom} holds the high-priority arm but asks for only 0.40 of the link and gets it, so \textsf{gmail} takes the remainder.
+\textsf{gmail} is lifted while \textsf{gmail}\textsubscript{old} drains ahead of new arrivals, and \textsf{spotify} waits on that drain, reaching first service 1045 cycles after the request against the baseline's 1228.
+\xxx[am]{The third panel is Rio alone and measures nothing against a baseline; it illustrates \(p_\text{temp}\) rather than evaluating it.
+Happy to move it to the appendix and drop the prose about it, if \S8 needs the space. I just thought it was fun.}
+At 21 cycles, confinement is also the cheapest of the three to install, since it rewrites one subtree and leaves the rest of the control addressed as it was.
+
+\paragraph{The value of a survivor link}
+
+\(\Strictstar\) exists so that a transitional policy can prefer buffered packets to new ones without moving them.
+Any other way of expressing that preference has to put the backlog inside a newly built node, which means writing one scheduler token per buffered packet while the scheduler is stopped.
+Our second experiment measures the same transition three ways, across backlogs from 0 to 507 packets standing at the request.
+There are two ways to build such a node, and we measure both.
+One reserves a spare processing element and fills it with a token for each buffered packet, which stops the scheduler for 0.990 cycles per packet.
+The other copies the old subtree onto fresh processing elements, which stops it for 2.975 cycles per packet.
+Rio's survivor link stops it for \emph{no time}, no matter how big the backlog, because it is a pointer rather than a place to put packets.
+The slope matters more than the constant: without \(\Strictstar\), the price of a transition is determined by how busy the switch was when the request arrived.
+This is also why \textsf{spotify} waits in \cref{fig:eval-motivating}, since Rio declines to relocate the packets already queued and lets them drain in place instead.
+
+\paragraph{A larger reconfiguration}
+
+Our third experiment considers how Rio scales.
+We set up a fourteen-flow tree on seven processing elements, and we change its policy to reweight two tenants, admit four more, and retire one.
+No single edit does all of that, so the transition planner decomposes the request into a sequence, and part of that sequence has to wait: the tenant being retired still holds packets, and the guard on its \(\Remove\) does not become true until they have drained (\cref{sec:sequences}).
+Rio installs the five unguarded edits in 51 instructions and the guarded \(\Remove\) in 20 more, against 152 for the reset baseline and 201 for whole-tree prefill.
+Rio's instruction count tracks the part of the tree the request names, where both baselines rebuild the tree entirely.
+Rio does not stop the scheduler at all, and the two baselines buffer 624 and 495 packets during theirs, which they can do only because we gave them unbounded input queues.
+
+\paragraph{Hardware cost}
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{rrrr}
+\toprule
+& \multicolumn{3}{c}{overhead of Rio's additions} \\
+\cmidrule(l){2-4}
+vFlows & LUTs & registers & BRAM \\
+\midrule
+32 & 0.1\% & 0.1\% & 32\% \\
+128 & 0.9\% & 1.5\% & 36\% \\
+512 & 1.5\% & 0.1\% & 41\% \\
+1024 & 3.2\% & 0.2\% & 43\% \\
+\bottomrule
+\end{tabular}
+\caption{Synthesis overhead on a Xilinx XCKU5P, five processing elements, 1024 PIFO entries each.}
+\label{tab:eval-resources}
+\end{table}
+
+We synthesized the scheduler with and without Rio's additions for a Xilinx XCKU5P, sweeping the number of virtual flows the tables must address (\cref{tab:eval-resources}).
+The additions cost little logic: at most 3.2\% more LUTs and 1.5\% more registers across a thirty-two-fold range in flow count.
+They are paid for in memory, at 32\% to 43\% more block RAM, and the reason is the second table bank of \cref{sec:hw-commit}: making an update atomic means holding a second copy of what the update rewrites.
+These figures are sums of synthesized components without placement or routing, so they are not a timing closure, and the denser rows of \cref{tab:eval-resources} exceed the part's own memory.
 
 \section{Related Work}\label{sec:related}
 
