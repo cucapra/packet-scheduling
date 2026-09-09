@@ -125,10 +125,10 @@
 % ===== the two walks, drawn last so they run in front of the blocks =====
 % Enqueue: up a quarter into classify, right along the band, down a third into the PIFOs.
 \draw[walk,->] (1.585,1.74) -- (1.585,2.64) -- (5.213,2.64) -- (5.213,1.96);
-% Dequeue: in through the survivor link, up two thirds into the PIFOs, right along the
-% band, down three quarters into next hop.
-\draw[walk] (5.727,1.74) -- (5.727,1.96);
-\draw[walk,->] (5.727,2.26) -- (5.727,2.64) -- (7.67,2.64) -- (7.67,1.96);
+% Dequeue: in over the survivor link, up two thirds into the PIFOs, right along the
+% band, down three quarters into next hop. One unbroken route, running in front of the
+% link box as it does in front of every other block.
+\draw[walk,->] (5.727,1.74) -- (5.727,2.64) -- (7.67,2.64) -- (7.67,1.96);
 \node[tl, anchor=north] at (1.585,1.70) {enqueue};
 \node[tl, anchor=north] at (5.727,1.70) {dequeue};
 
