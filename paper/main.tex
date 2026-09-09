@@ -1060,9 +1060,9 @@ Before the request the three together ask for more than the link can carry, so t
 & Install & Install & Peak \textsf{zoom} \\
 Mechanism & Instrs & Cycles & Delay (Cycles) \\
 \midrule
-stop the world & 25 & 42 & 1055 \\
-root-level replace & 26 & 34 & 613 \\
-\textbf{confined replace (Rio)} & \textbf{16} & \textbf{21} & \textbf{21} \\
+stop the world & 25 & 43 & 1050 \\
+root-level replace & 26 & 35 & 411 \\
+\textbf{confined replace (Rio)} & \textbf{16} & \textbf{28} & \textbf{23} \\
 \bottomrule
 \end{tabular}
 \caption{Install cost and \textsf{zoom}'s peak delay under the three mechanisms that carry \(p_1 \to p_2\) as described in \cref{sec:tour}.}
@@ -1071,21 +1071,21 @@ root-level replace & 26 & 34 & 613 \\
 
 \Cref{fig:eval-motivating} separates two ways a transition can go wrong.
 Stopping the scheduler empties the link, so the orange line in the upper panel drops to zero for as long as the stop lasts.
-Root-level replace looks better in that panel, since it keeps the link busy, but the middle panel reveals what it is busy with: it starves \textsf{zoom} for some 500 cycles and then hands it the whole link to catch up.
+Root-level replace looks better in that panel, since it keeps the link busy, but the middle panel reveals what it is busy with: it starves \textsf{zoom} for some 300 cycles and then hands it the whole link to catch up.
 We know that \textsf{zoom} sits at the same priority and offers the same rate in every policy here, so a mechanism that touches only what changed should leave \textsf{zoom}'s line flat, and only Rio's is flat.
-Rio's peak delay for \textsf{zoom} is 21 cycles, one more than the 20 it sees under a transition that never touches its subtree at all.
-Root-level replace costs it 613 and the baseline 1055 (\cref{tab:eval-motivating}), and neither of them recovers when its interval ends: the baseline is still running above its offered rate 3400 cycles after a stop that lasted 1024 cycles.
+Rio's peak delay for \textsf{zoom} is 23 cycles, one more than the 22 it sees under a transition that never touches its subtree at all.
+Root-level replace costs it 411 and the baseline 1050 (\cref{tab:eval-motivating}), and neither of them recovers when its interval ends: the baseline is still running above its offered rate 3500 cycles after a stop that lasted 1024 cycles.
 
 \xxx[zhiyuan]{can we in figure to show that we follows the theory?}
 
-Rio's own transitional interval is no shorter than the others.
-The gray band in the figure is the 1018 cycles in which the switch runs \(p_\text{temp}\), a policy no operator requested, and it costs the traffic nothing: the link stays full and \textsf{zoom} is undisturbed from one end of it to the other.
+The gray band in the figure is the 674 cycles in which the switch runs \(p_\text{temp}\), a policy no operator requested.
+That is two thirds as long as the baseline's stop, and it costs the traffic nothing: the link stays full and \textsf{zoom} is undisturbed from one end of it to the other.
 The lower panel shows all three flows.
 \textsf{zoom} holds the high-priority arm but asks for only 0.40 of the link and gets it, so \textsf{gmail} takes the remainder.
-\textsf{gmail} is lifted while \textsf{gmail}\textsubscript{old} drains ahead of new arrivals, and \textsf{spotify} waits on that drain, reaching first service 1045 cycles after the request against the baseline's 1228.
+\textsf{gmail} is lifted while \textsf{gmail}\textsubscript{old} drains ahead of new arrivals, and \textsf{spotify} waits on that drain, reaching first service 709 cycles after the request against the baseline's 1408.
 \xxx[am]{The third panel is Rio alone and measures nothing against a baseline; it illustrates \(p_\text{temp}\) rather than evaluating it.
 Happy to move it to the appendix and drop the prose about it, if \S8 needs the space. I just thought it was fun.}
-At 21 cycles, confinement is also the cheapest of the three to install, since it rewrites one subtree and leaves the rest of the control addressed as it was.
+At 28 cycles, confinement is also the cheapest of the three to install, since it rewrites one subtree and leaves the rest of the control addressed as it was.
 
 \paragraph{The value of a survivor link}
 
@@ -1093,10 +1093,10 @@ At 21 cycles, confinement is also the cheapest of the three to install, since it
 
 \(\Strictstar\) exists so that a transitional policy can prefer buffered packets to new ones without moving them.
 Any other way of expressing that preference has to put the backlog inside a newly built node, which means writing one scheduler token per buffered packet while the scheduler is stopped.
-Our second experiment measures the same transition three ways, across backlogs from 0 to 507 packets standing at the request.
+Our second experiment measures the same transition three ways, across backlogs from 0 to 341 packets standing at the request.
 There are two ways to build such a node, and we measure both.
-One reserves a spare processing element and fills it with a token for each buffered packet, which stops the scheduler for 0.990 cycles per packet.
-The other copies the old subtree onto fresh processing elements, which stops it for 2.975 cycles per packet.
+One reserves a spare processing element and fills it with a token for each buffered packet, which stops the scheduler for 0.991 cycles per packet.
+The other copies the old subtree onto fresh processing elements, which stops it for 2.969 cycles per packet.
 Rio's survivor link stops it for \emph{no time}, no matter how big the backlog, because it is a pointer rather than a place to put packets.
 The slope matters more than the constant: without \(\Strictstar\), the price of a transition is determined by how busy the switch was when the request arrived.
 This is also why \textsf{spotify} waits in \cref{fig:eval-motivating}, since Rio declines to relocate the packets already queued and lets them drain in place instead.
@@ -1112,7 +1112,7 @@ We set up a fourteen-flow tree on seven processing elements, and we change its p
 No single edit does all of that, so the transition planner decomposes the request into a sequence, and part of that sequence has to wait: the tenant being retired still holds packets, and the guard on its \(\Remove\) does not become true until they have drained (\cref{sec:sequences}).
 Rio installs the five unguarded edits in 51 instructions and the guarded \(\Remove\) in 20 more, against 152 for the reset baseline and 201 for whole-tree prefill.
 Rio's instruction count tracks the part of the tree the request names, where both baselines rebuild the tree entirely.
-Rio does not stop the scheduler at all, and the two baselines buffer 624 and 495 packets during theirs, which they can do only because we gave them unbounded input queues.
+Rio does not stop the scheduler at all, and the two baselines buffer 571 and 424 packets during theirs, which they can do only because we gave them unbounded input queues.
 
 \paragraph{Hardware cost}
 
