@@ -1063,6 +1063,8 @@ We know that \textsf{zoom} sits at the same priority and offers the same rate in
 Rio's peak delay for \textsf{zoom} is 21 cycles, one more than the 20 it sees under a transition that never touches its subtree at all.
 Root-level replace costs it 613 and the baseline 1055 (\cref{tab:eval-motivating}), and neither of them recovers when its interval ends: the baseline is still running above its offered rate 3400 cycles after a stop that lasted 1024 cycles.
 
+\xxx[zhiyuan]{can we in figure to show that we follows the theory?}
+
 Rio's own transitional interval is no shorter than the others.
 The gray band in the figure is the 1018 cycles in which the switch runs \(p_\text{temp}\), a policy no operator requested, and it costs the traffic nothing: the link stays full and \textsf{zoom} is undisturbed from one end of it to the other.
 The lower panel shows all three flows.
@@ -1074,6 +1076,8 @@ At 21 cycles, confinement is also the cheapest of the three to install, since it
 
 \paragraph{The value of a survivor link}
 
+\xxx[zhiyuan]{maybe atlease include a scatter figure?}
+
 \(\Strictstar\) exists so that a transitional policy can prefer buffered packets to new ones without moving them.
 Any other way of expressing that preference has to put the backlog inside a newly built node, which means writing one scheduler token per buffered packet while the scheduler is stopped.
 Our second experiment measures the same transition three ways, across backlogs from 0 to 507 packets standing at the request.
@@ -1084,7 +1088,11 @@ Rio's survivor link stops it for \emph{no time}, no matter how big the backlog, 
 The slope matters more than the constant: without \(\Strictstar\), the price of a transition is determined by how busy the switch was when the request arrived.
 This is also why \textsf{spotify} waits in \cref{fig:eval-motivating}, since Rio declines to relocate the packets already queued and lets them drain in place instead.
 
+\xxx[zhiyuan]{additionally, find a place to show one example of four operations: start, commit, replay-finish, drain, maybe a full timeline under figure 7 include the cleanup commit.}
+
 \paragraph{A larger reconfiguration}
+
+\xxx[zhiyuan]{here we can insert some bar figures (comparing the different trees) mainly targets to show "we can work under different scales of the tree, and different traffic pattern", people will be interested in if the method is scalable? so comparing cycles/latency/etc. under different reconfig scale is always a good thing. as we have multiple transitions. I can also do different packet distribution}.
 
 Our third experiment considers how Rio scales.
 We set up a fourteen-flow tree on seven processing elements, and we change its policy to reweight two tenants, admit four more, and retire one.
@@ -1100,7 +1108,7 @@ Rio does not stop the scheduler at all, and the two baselines buffer 624 and 495
 \small
 \begin{tabular}{rrrr}
 \toprule
-& \multicolumn{3}{c}{Overhead of Rio's Additions} \\
+& \multicolumn{3}{c}{Rio's Additions compared to Orignial PIFO} \\
 \cmidrule(l){2-4}
 vFlows & LUTs & Registers & BRAM \\
 \midrule
@@ -1113,6 +1121,7 @@ vFlows & LUTs & Registers & BRAM \\
 \caption{Synthesis overhead on a Xilinx XCKU5P, five processing elements, 1024 PIFO entries each.}
 \label{tab:eval-resources}
 \end{table}
+\xxx[zhiyuan]{for the table we can also note percentage of hardare resources on FPGA}
 
 We synthesized the scheduler with and without Rio's additions for a Xilinx XCKU5P, sweeping the number of virtual flows the tables must address (\cref{tab:eval-resources}).
 The additions cost little logic: at most 3.2\% more LUTs and 1.5\% more registers across a thirty-two-fold range in flow count.
