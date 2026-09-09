@@ -1124,7 +1124,7 @@ Rio does not stop the scheduler at all, and the two baselines buffer 571 and 424
 \small
 \begin{tabular}{rrrr}
 \toprule
-& \multicolumn{3}{c}{Rio's Additions compared to Orignial PIFO} \\
+& \multicolumn{3}{c}{Overhead of Rio's Additions} \\
 \cmidrule(l){2-4}
 vFlows & LUTs & Registers & BRAM \\
 \midrule
@@ -1134,7 +1134,7 @@ vFlows & LUTs & Registers & BRAM \\
 1024 & 3.2\% & 0.2\% & 43\% \\
 \bottomrule
 \end{tabular}
-\caption{Synthesis overhead on a Xilinx XCKU5P, five processing elements, 1024 PIFO entries each.}
+\caption{Synthesis overhead on a Xilinx XCKU5P, five processing elements, 1024 PIFO entries each. Each figure is a percentage of the same design without Rio's additions.}
 \label{tab:eval-resources}
 \end{table}
 \xxx[zhiyuan]{for the table we can also note percentage of hardare resources on FPGA}
