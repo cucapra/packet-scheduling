@@ -507,44 +507,32 @@ C \mathrel{::=} \langle \mathit{state}, \mathit{pifo}, \mathit{z} \rangle(C_1, \
 \]
 The subtrees \(C_1 \ldots C_n\) are the node's children and \(n\) is its arity.
 A node with no children is a \emph{leaf}, and a node with children is \emph{internal}.
-The three components of the triple are:
-
-\begin{itemize}
-\item \stt is a pair \((\mathit{node\_state}, \mathit{slot\_states})\): the scheduling discipline's per-node bookkeeping and a list of per-arm entries, one per child.
-Both evolve as the node serves traffic.
-When the node runs a discipline that keeps no per-arm bookkeeping, \slotstates is empty.
-\item \pifo is a PIFO of ranked \emph{payloads}.
-A payload is what this node enqueues when presented with a packet.
-At an internal node the payload is an index into the child list, and at a leaf it is the packet itself.
-\item \zz is the node's \emph{scheduling transaction},
+The triple has three components.
+\stt is a pair \((\mathit{node\_state}, \mathit{slot\_states})\): the scheduling discipline's per-node bookkeeping and a list of per-arm entries, one per child.
+Both evolve as the node serves traffic, and \slotstates is empty when the node runs a discipline that keeps no per-arm bookkeeping.
+\pifo is a PIFO of ranked \emph{payloads}, a payload being what a node enqueues when presented with a packet: an index into the child list at an internal node, and the packet itself at a leaf.
+\zz is the \emph{scheduling transaction},
 \[
 \mathit{z} : \mathit{state} \times \mathit{Pkt} \rightharpoonup (\mathit{payload} \times \mathit{rank}) \times \mathit{state}.
 \]
 Given the node's \stt and an incoming packet, it returns the payload this node will enqueue for that packet, the rank to enqueue it at, and the node's updated \stt.
-\zz is partial.
-When it is undefined for a packet, nothing is enqueued at this node and \stt is unchanged.
-\end{itemize}
+\zz is partial, and when it is undefined for a packet, nothing is enqueued at this node and \stt is unchanged.
 
 \paragraph{The many roles of \zz: classifying, annotating, and ranking}
 
 We write \zz as a single partial function, but it has three parts, and the edits of \cref{sec:delta-grammar} rewrite them separately.
 Mohan et al.\ instead keep one total transaction for the whole tree, returning an entire root-to-leaf path of indices and ranks, but ours is per-node and partial.
 
-\begin{itemize}
-\item The \emph{classifier} answers whether this node accepts a given packet and where it sends it.
-It has a \emph{service map}, written \(\mathit{z}.\mathit{serves}\), which is a partial map from flows to payloads.  
-At an internal node, \(\mathit{z}.\mathit{serves}(f)\) is a unique child index such that following that child brings a packet of flow \(f\) one step closer to its leaf.
-This map is easy to construct since distinct leaves carry distinct flows (\cref{sec:policy-dsl}).
-At a leaf the payload is the packet itself, so the map is the trivial one on the single flow that leaf carries.
+The \emph{classifier} answers whether this node accepts a given packet and where it sends it.
+It has a \emph{service map}, written \(\mathit{z}.\mathit{serves}\), which is a partial map from flows to payloads.
+At an internal node, \(\mathit{z}.\mathit{serves}(f)\) is a unique child index, following which brings a packet of flow \(f\) one step closer to its leaf.
+This map is easy to construct since distinct leaves carry distinct flows (\cref{sec:policy-dsl}), and at a leaf the payload is the packet itself, so the map is the trivial one on the single flow that leaf carries.
 Its \emph{admitted set}, written \(\mathit{z}.\mathit{admit} \subseteq \mathrm{dom}(\mathit{z}.\mathit{serves})\), is the subset of the flows that the node currently accepts.
-Keeping the two apart is what lets a silenced subtree go on draining, and \cref{sec:quiesce} is where the containment turns strict.
-\item The \emph{per-arm metadata}, written \(\mathit{z}.\mathit{meta}\), records what this node's discipline needs to know about each of its arms, such as priorities or weights.
-A leaf has no arms, and so no metadata.
-\item The \emph{ranker}, written \(\mathit{z}.\mathit{rank}\), is the scheduling logic that the node's discipline contributes.
-Its inputs are the node's \stt, the chosen payload, and that payload's arm metadatum.
-From this it mints the rank and the updated \stt.
+Keeping the two apart lets a silenced subtree go on draining, and \cref{sec:quiesce} is where the containment turns strict.
+The \emph{per-arm metadata}, written \(\mathit{z}.\mathit{meta}\), records what this node's discipline needs to know about each of its arms, such as priorities or weights; a leaf has no arms, and so no metadata.
+The \emph{ranker}, written \(\mathit{z}.\mathit{rank}\), is the scheduling logic that the node's discipline contributes.
+Its inputs are the node's \stt, the chosen payload, and that payload's arm metadatum, and from these it mints the rank and the updated \stt.
 A node's ranker names the discipline that the node runs.
-\end{itemize}
 
 So \(\mathit{z}(\mathit{state}, p)\) is defined exactly when \(\mathit{flow}(p) \in \mathit{z}.\mathit{admit}\). 
 It then finds \(p\)'s payload in \(\mathit{z}.\mathit{serves}\), and pairs that payload with the rank that \(\mathit{z}.\mathit{rank}\) computes.
