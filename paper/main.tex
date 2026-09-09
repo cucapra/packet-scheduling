@@ -1149,19 +1149,19 @@ Rio therefore has the additional challenge of preserving the state reflecting pa
 
 \paragraph{Reconfiguring a live scheduler}
 
-Loom schedules at the NIC over a policy written as a restricted DAG, and it reconfigures that hierarchy while traffic flows~\cite{Stephens19}.
-Configuration values travel inline with packet descriptors and doorbells, and each stage of the match-action pipeline saves the values it is given to its local memory as it processes them.
+Loom~\cite{Stephens19} is a NIC packet scheduler that supports dynamic reconfiguration.
+Configuration values travel inline with packet descriptors.
 A descriptor and the configuration it carries therefore reach each stage together, which is the effect Rio obtains by delay-aligning commit signals across PEs (\cref{sec:hw-commit}).
-Loom does not say what becomes of the packets already buffered under a node whose configuration changes, and the interval in which an update spreads through the pipeline is given no scheduling meaning.
+Loom does not address the effects on in-flight packets or attempt to offer consistent views during reconfiguration.
 
-SP-PIFO also changes its scheduler as it runs, adapting the mapping from packet ranks to a fixed set of strict-priority queues as traffic shifts~\cite{Alcoz20}.
-That adaptation is measured as error against an ideal PIFO, so what SP-PIFO converges on is the policy the operator already wrote.
-Rio instead changes that policy, and reports the change back in the operator's own DSL (\cref{sec:equivalences}).
+SP-PIFO~\cite{Alcoz20} can change the mapping from packet ranks to a fixed set of strict-priority queues as traffic shifts.
+Its goal is to minimize the error with respect to an ideal PIFO, i.e., the policy that the operator wrote.
+Rio instead focuses on changing the policy itself.
 
-\citet{Alcoz23} raise the question directly.
+\citet{Alcoz23} raise the question of scheduler reconfiguration.
 Their scheduling hypervisor deploys per-tenant scheduling policies onto one switch, and they ask how to move from one such policy to another as tenants arrive and depart.
-They name two obstacles, emptying the buffers and resetting the state of the scheduling functions, and leave the mechanism to future runtime-programmable data planes.
-Rio answers the first by draining rather than dropping (\cref{sec:quiesce}), and the second by declining to reset (\cref{sec:changemeta}).
+They name two obstacles: emptying the buffers and resetting the state of the scheduling functions, and leave the mechanism to future runtime-programmable data planes.
+Rio answers the first by draining rather than dropping packets (\cref{sec:quiesce}) and the second by declining to reset (\cref{sec:changemeta}).
 
 Reconfiguration is routine in the schedulers deployed at hosts and NICs.
 Loom updates rate limiters whenever a VM or a flow starts or stops~\cite{Stephens19}.
