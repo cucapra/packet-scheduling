@@ -1075,16 +1075,24 @@ Root-level replace looks better since it keeps the link busy, but the lower pane
 We know that \textsf{zoom} sits at the same priority and sends the same rate of traffic in every policy here, and yet only Rio gives consistent service to \textsf{zoom}: our peak delay for \textsf{zoom} is 23 cycles, one more than the 22 it sees under a transition that never touches its subtree at all.
 Root-level replace costs it 411 and the baseline 1050 (\cref{tab:eval-motivating}), and neither of them recovers when its interval ends: the baseline is still running above its offered rate 3500 cycles after a stop that lasted 1024 cycles.
 
-\xxx[zhiyuan]{can we in figure to show that we follows the theory?}
+\begin{figure}[t]
+\centering
+\includegraphics{fig-eval-delay.pdf}
+\caption{Delay from arrival to departure, per packet. The upper panel is \textsf{zoom} and the lower is \textsf{gmail}, which holds the backlog.}
+\label{fig:eval-delay}
+\end{figure}
 
-The gray band in the figure is the 674 cycles in which the switch runs \(p_\text{temp}\), a policy no operator requested.
+\cref{fig:eval-delay} shows how long a packet waits between arrival and departure; the request arrives at cycle 0.
+The last \textsf{gmail} packet enqueued before the request waits 2618 cycles under the baseline, 433 under root-level replace and 694 under confined replace.
+Root-level replace again looks good, but the \textsf{zoom} panel reveals the problem: it clears the backlog quickly because it hands the whole link to the old tree, at \textsf{zoom}'s expense.
+Under confinement, \textsf{gmail}\textsubscript{old} takes its own 670-cycle drain and no more.
+
+The gray band in both figures is the 674 cycles in which the switch runs \(p_\text{temp}\), a policy no operator requested.
 That is two thirds as long as the baseline's stop, and it costs the traffic nothing: the link stays full and \textsf{zoom} is undisturbed from one end of it to the other.
 \xxx[am]{Want to point to \Cref{app:ptemp} from here?}
 At 28 cycles, confinement is also the cheapest of the three to install, since it rewrites one subtree and leaves the rest of the control addressed as it was.
 
 \paragraph{The value of a survivor link}
-
-\xxx[zhiyuan]{maybe atlease include a scatter figure?}
 
 \(\Strictstar\) exists so that a transitional policy can prefer buffered packets to new ones without moving them.
 Any other way of expressing that preference has to put the backlog inside a newly built node, which means writing one scheduler token per buffered packet while the scheduler is stopped.
