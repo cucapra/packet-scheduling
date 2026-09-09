@@ -1121,39 +1121,31 @@ These figures are sums of synthesized components without placement or routing, s
 
 \paragraph{Consistent network update}
 
-The work closest to ours in spirit concerns packet \emph{forwarding} rather than packet scheduling.
-An operator who changes the forwarding rules across a set of devices cannot install them everywhere at once, so packets are in flight through the network while the change is spreading.
-\citet{Reitblatt12} observe that such an update passes through intermediate configurations, and that those configurations can behave in ways that neither the old configuration nor the new one would.
-Our work makes that same observation about scheduling.
-Their answer is a versioning discipline, which yields two consistency levels, per-packet and per-flow: a packet is stamped on entry and handled under the stamped version at every device, so one configuration handles it from end to end.
-Rio reaches per-packet consistency by another means: a transaction installs in a single cycle at each PE, so a packet meets one configuration or the other (\cref{sec:hw-commit}).
-
-The two settings differ in what the old configuration holds.
-In forwarding, a forwarding rule holds no traffic, so the old configuration can be retired once the packets stamped with it have left the network.
-In scheduling, a scheduler node holds packets whose ranks were fixed when they were \push{}ed, and no version tag can re-sort them.
-Rio therefore retires the old configuration by draining it, which is precisely what a guard waits for (\cref{sec:sequences}).
-
+One category of related work concerns reconfiguring
+packet \emph{forwarding} pipelines (as opposed to scheduling, in this paper).
+Several approaches address applying consistent updates across an entire network.
+\citet{Reitblatt12} uses a versioning scheme:
+they label packets according to the version of the network they should see.
+\citet{Namjoshi24} instead sequence changes so that route consistency holds with a single table edited in place.
 \citet{Mahajan13} study the dependencies that a consistency property imposes among rule updates, and find that stronger properties induce more intricate dependencies and therefore slower updates.
-\citet{Namjoshi24} keep the guarantee and drop the versioning, sequencing the updates so that route consistency holds with a single table edited in place.
-Our guarded sequences are dependency structures of the same kind, drawn inside one scheduler.
-While their dependencies run between rules on separate devices, ours run between edits at different positions of one tree.
+Rio shares the goal of offering each packet a consistent view of configuration state but focuses on a single packet scheduler.
 
-All of that work rewrites the entries that a device's tables hold.
-FlexCore~\cite{Xing22} reconfigures the \emph{program} those tables belong to: it changes a live data plane's match-action tables, control flow, and parser.
-It computes a reconfiguration script, which is a sequence of atomic graph edits that carries the old program to the new one, and defines three consistency guarantees over the intermediate states along the way.
-Our guarded sequences (\cref{sec:sequences}) have the same shape.
-This similarity is unsurprising: changing the structure that a packet passes through, without first stopping the traffic, calls for atomic steps and an account of what holds between them, in either their domain (forwarding) or ours (scheduling).
-The strongest of their guarantees, program consistency, lets no intermediate state reach a packet, and a Rio transaction provides that for a single \(\delta\) (\cref{sec:delta-grammar}).
-The two domains diverge over what is being changed.
-A match-action table holds no packet, and FlexCore does not handle stateful programs, leaving for future work how state should be ported to a new program.
-A packet scheduler is exactly such a stateful case, since its entire content is buffered packets whose ranks were fixed at \push{} time.
-Reconfiguring a packet scheduler is therefore what FlexCore sets aside, and what this paper takes up.
+FlexCore~\cite{Xing22} aims to consistently reconfigure the P4 program running on a programmable switch.
+It computes a reconfiguration script, which is a sequence of atomic graph edits that transforms the old program into the new one.
+It offers three consistency guarantees that may govern the intermediate states visible between the two endpoints.
+Rio similarly works by generating a series of atomic edits to transform one packet-scheduling policy into another (\cref{sec:delta-grammar}).
+Every intermediate state during a Rio update is a legible program in the same language that the user writes to specify policies (\cref{sec:policy-dsl}).
+Its guarantees at the per-edit level therefore resemble FlexCore's strongest consistency level, \emph{program consistency}.
+Relatedly, \citet{Yang24} demonstrate a system for installing P4 programs on programmable switches without disrupting traffic.
 
-These updates run through the interface that P4 calls \emph{population}, the insertion and removal of match-action table entries~\cite{Bosshart14}.
-Population determines the policy applied to packets at any given instant.
-P4 anticipates reconfiguration that does not interrupt forwarding, and leaves the mechanism to implementations.
-\citet{Yang24} take that interface as far as it goes, compiling whole runtime programs down to table entries and installing them without disrupting traffic.
-A Rio transaction is a group of such entry writes that installs together, so that the tables that a packet consults along its path never disagree about which policy is in force (\cref{sec:hw-commit}).
+Rio's focus on packet schedulers, as opposed to programmable switches, leads to different techniques.
+The primary difference is state.
+Packet schedulers are fundamentally stateful:
+PIFOs hold in-flight packets,
+and each scheduling policy has its own bookkeeping.
+State is less fundamental in packet forwarding; for example, FlexCore does not support stateful programs.
+Rio therefore has the additional challenge of preserving the state reflecting past packets while reconfiguring the policy for future packets.
+
 
 \paragraph{Reconfiguring a live scheduler}
 
