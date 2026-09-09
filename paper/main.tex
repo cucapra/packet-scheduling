@@ -1170,9 +1170,11 @@ FairNIC gives each tenant an independent subtree of packet schedulers to configu
 Carousel shapes tens of thousands of flows and policies on a single server~\cite{Saeed17}.
 Eiffel argues for scheduling in software on the grounds of a shorter development cycle~\cite{Saeed19}.
 
-\paragraph{Programmable scheduling substrates}
+\paragraph{Programmable packet scheduling}
+\xxx[as]{I am avoiding ``substrate'' in favor of ``packet scheduler'' because this will be more recognizable to experts. ``Substrate'' is kinda solipsistic; a packet scheduler is only a substrate from Rio's perspective.}
 
-\citet{Sivaraman16} introduce the PIFO and the PIFO tree, observing that a switch offers a small menu of scheduling algorithms, and that once the silicon is designed an operator can tune a parameter and nothing more.
+\xxx[as]{Can we replace this entire paragraph with: PIFO trees for packet scheduling were introduced in \citet{Sivaraman16}. Subsequent work has explored tweaks to the PIFO tree model and offered efficient hardware implementations~\cite{lots,of,stuff}.}
+\citet{Sivaraman16} introduce the PIFO and the PIFO tree for efficient programmable packet scheduling.
 PIEO generalizes the primitive to extraction from an arbitrary position in the queue~\cite{Shrivastav19}.
 SP-PIFO approximates a PIFO with a stack of strict-priority queues on devices that ship today~\cite{Alcoz20}.
 PACKS approximates a PIFO's scheduling order together with its admission control, where earlier approximations captured one at a time~\cite{Alcoz25}.
@@ -1184,14 +1186,13 @@ vPIFO virtualizes a single physical PIFO into many instances that its PIFO Visor
 Its Scheduling Description Language compiler generates that wiring offline, so the shape is fixed before traffic arrives, and vPIFO names runtime updating as future work.
 Our policy language is a formal core of that one (\cref{sec:policy-dsl}).
 
-All of these substrates fix the tree's shape and the discipline at each node when the scheduler is configured.
-Rio runs above any of them and asks for one property: transactions that are atomic with respect to traffic (\cref{sec:hw-commit}).
-Each is therefore a plausible host, and what it would have to add is a transactional path to the tables that our opcodes write.
+These designs do not address reconfiguration.
+Instead of focusing on the PIFO tree implementation itself, Rio aims to extend any PIFO tree design with run-time reconfiguration.
 
-One recent substrate offers more than Rio assumes.
+One recent design offers more than Rio assumes.
 UIFO adds a level of classes above packets, so that the service order of already-buffered traffic can be updated after the fact~\cite{Wang26}.
-Rio's forms are defined against a substrate where a rank is fixed at \push{} time (\cref{sec:controls}), and our non-disruption theorem (\cref{thm:nondisruption}) is stated against that.
-A substrate that can re-rank a backlog admits reconfigurations for which this grammar has no form.
+Rio's edits are defined against a substrate where a rank is fixed at \push{} time (\cref{sec:controls}), and our non-disruption theorem (\cref{thm:nondisruption}) is stated against that.
+A scheduler that can re-rank a backlog may admit ``retroactive'' reconfigurations that Rio does not consider.
 
 \paragraph{Formal models of scheduling}
 
