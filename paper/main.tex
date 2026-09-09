@@ -528,17 +528,10 @@ It is the configuration the operator chose, not bookkeeping that the traffic lef
 
 \paragraph{\push{} and \pop{}}
 
-A control exposes exactly two operations to the network:
-\[
-\begin{array}{@{}r@{\;}l@{}}
-\push{} &: \mathit{control} \times \mathit{Pkt} \to \mathit{control},\\
-\pop{} &: \mathit{control} \rightharpoonup \mathit{Pkt} \times \mathit{control}.
-\end{array}
-\]
-A \push{} offers the packet in parallel to every node on its root-to-leaf path, and each of those nodes enqueues the payload its own \zz returns, at the rank \zz mints for it.
+A control exposes two operations to the network.
+A \(\push : \mathit{control} \times \mathit{Pkt} \to \mathit{control}\) offers the packet in parallel to every node on its root-to-leaf path, and each of those nodes enqueues the payload its own \zz returns, at the rank \zz mints for it.
 Ranks are fixed at \push{} time and never revised.
-A \pop{} releases the best-ranked packet, resolving ``best-ranked'' from the top down.
-It releases the best-ranked index at the root, follows that index to a child, recurses, and releases a packet once it reaches a leaf.
+A \(\pop : \mathit{control} \rightharpoonup \mathit{Pkt} \times \mathit{control}\) releases the best-ranked packet, resolving ``best-ranked'' from the top down: it releases the best-ranked index at the root, follows that index to a child, recurses, and releases a packet once it reaches a leaf.
 It consults \pifo contents alone, never \stt or \zz.
 These two are the \emph{only} observable interactions with a scheduler, which is why we frame an \emph{atomic} transition in terms of \push{}/\pop{} observability.
 Following Mohan et al., we write \(\flush(C)\) for the sequence of packets that \(C\) releases under successive \pop{}s until it is empty~\cite{Mohan23}.
