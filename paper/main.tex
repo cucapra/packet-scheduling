@@ -1186,7 +1186,7 @@ vPIFO virtualizes a single physical PIFO into many instances that its PIFO Visor
 Its Scheduling Description Language compiler generates that wiring offline, so the shape is fixed before traffic arrives, and vPIFO names runtime updating as future work.
 Our policy language is a formal core of that one (\cref{sec:policy-dsl}).
 
-These designs do not address reconfiguration.
+All of these designs fix the tree's shape and the discipline at each node when the scheduler is configured.
 Instead of focusing on the PIFO tree implementation itself, Rio aims to extend any PIFO tree design with run-time reconfiguration.
 
 One recent design offers more than Rio assumes.
