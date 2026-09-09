@@ -1039,7 +1039,7 @@ We built Rio's two substrate additions into a PIFO tree scheduler written in Spi
 \begin{figure}[t]
 \centering
 \includegraphics{fig-eval-motivating.pdf}
-\caption{The transition of \cref{sec:tour}, as a share of link capacity. The middle panel is just \textsf{zoom}, which the transition request ought not affect; the lower one is all three flows under Rio. The gray band is the interval in which Rio runs $p_\text{temp}$.}
+\caption{The transition of \cref{sec:tour}, as a share of link capacity. The lower panel is just \textsf{zoom}, which the transition request ought not affect. The gray band is the interval in which Rio runs $p_\text{temp}$.}
 \label{fig:eval-motivating}
 \end{figure}
 
@@ -1073,9 +1073,9 @@ Before the request the three together ask for more than the link can carry, so t
 & Install & Install & Peak \textsf{zoom} \\
 Mechanism & Instrs & Cycles & Delay (Cycles) \\
 \midrule
-stop the world & 25 & 42 & 1055 \\
-root-level replace & 26 & 34 & 613 \\
-\textbf{confined replace (Rio)} & \textbf{16} & \textbf{21} & \textbf{21} \\
+stop the world & 25 & 43 & 1050 \\
+root-level replace & 26 & 35 & 411 \\
+\textbf{confined replace (Rio)} & \textbf{16} & \textbf{28} & \textbf{23} \\
 \bottomrule
 \end{tabular}
 \caption{Install cost and \textsf{zoom}'s peak delay under the three mechanisms that carry \(p_1 \to p_2\) as described in \cref{sec:tour}.}
@@ -1084,48 +1084,73 @@ root-level replace & 26 & 34 & 613 \\
 
 \Cref{fig:eval-motivating} separates two ways a transition can go wrong.
 Stopping the scheduler empties the link, so the orange line in the upper panel drops to zero for as long as the stop lasts.
-Root-level replace looks better in that panel, since it keeps the link busy, but the middle panel reveals what it is busy with: it starves \textsf{zoom} for some 500 cycles and then hands it the whole link to catch up.
-We know that \textsf{zoom} sits at the same priority and offers the same rate in every policy here, so a mechanism that touches only what changed should leave \textsf{zoom}'s line flat, and only Rio's is flat.
-Rio's peak delay for \textsf{zoom} is 21 cycles, one more than the 20 it sees under a transition that never touches its subtree at all.
-Root-level replace costs it 613 and the baseline 1055 (\cref{tab:eval-motivating}), and neither of them recovers when its interval ends: the baseline is still running above its offered rate 3400 cycles after a stop that lasted 1024 cycles.
+Root-level replace looks better since it keeps the link busy, but the lower panel reveals what it is busy with: it starves \textsf{zoom} for some 300 cycles and then hands it the whole link to catch up.
+We know that \textsf{zoom} sits at the same priority and sends the same rate of traffic in every policy here, and yet only Rio gives consistent service to \textsf{zoom}: our peak delay for \textsf{zoom} is 23 cycles, one more than the 22 it sees under a transition that never touches its subtree at all.
+Root-level replace costs it 411 and the baseline 1050 (\cref{tab:eval-motivating}), and neither of them recovers when its interval ends: the baseline is still running above its offered rate 3500 cycles after a stop that lasted 1024 cycles.
 
-\xxx[zhiyuan]{can we in figure to show that we follows the theory?}
+\begin{figure}[t]
+\centering
+\includegraphics{fig-eval-delay.pdf}
+\caption{Delay from arrival to departure, per packet. The upper panel is \textsf{zoom} and the lower is \textsf{gmail}, which holds the backlog.}
+\label{fig:eval-delay}
+\end{figure}
 
-Rio's own transitional interval is no shorter than the others.
-The gray band in the figure is the 1018 cycles in which the switch runs \(p_\text{temp}\), a policy no operator requested, and it costs the traffic nothing: the link stays full and \textsf{zoom} is undisturbed from one end of it to the other.
-The lower panel shows all three flows.
-\textsf{zoom} holds the high-priority arm but asks for only 0.40 of the link and gets it, so \textsf{gmail} takes the remainder.
-\textsf{gmail} is lifted while \textsf{gmail}\textsubscript{old} drains ahead of new arrivals, and \textsf{spotify} waits on that drain, reaching first service 1045 cycles after the request against the baseline's 1228.
-\xxx[am]{The third panel is Rio alone and measures nothing against a baseline; it illustrates \(p_\text{temp}\) rather than evaluating it.
-Happy to move it to the appendix and drop the prose about it, if \S8 needs the space. I just thought it was fun.}
-At 21 cycles, confinement is also the cheapest of the three to install, since it rewrites one subtree and leaves the rest of the control addressed as it was.
+\cref{fig:eval-delay} shows how long a packet waits between arrival and departure; the request arrives at cycle 0.
+The last \textsf{gmail} packet enqueued before the request waits 2618 cycles under the baseline, 433 under root-level replace and 694 under confined replace.
+Root-level replace again looks good, but the \textsf{zoom} panel reveals the problem: it clears the backlog quickly because it hands the whole link to the old tree, at \textsf{zoom}'s expense.
+Under confinement, \textsf{gmail}\textsubscript{old} takes its own 670-cycle drain and no more.
+
+The gray band in both figures is the interval in which the switch runs \(p_\text{temp}\), the transitional policy the planner discovered on the way to \(p_2\), and its two edges are the two atomic steps of \cref{sec:tour}.
+Rio's first step takes effect 28 cycles after the request, at the left edge, where the \(\Strictstar\) node appears above \textsf{gmail}\textsubscript{old} and the freshly built \RR{} subtree.
+That step is the cheapest install of the three, since it rewrites one subtree and leaves the rest of the control addressed as it was.
+\textsf{gmail}\textsubscript{old} runs empty 696 cycles after the request, the drain guard of \cref{sec:sequences} becomes true, and the second step collapses the \(\Strictstar\) six cycles later at the right edge.
+The band is 674 cycles wide, which is two thirds of the baseline's stop. Further, it costs the traffic nothing: the link stays full and \textsf{zoom} is undisturbed from one end of it to the other.
+\xxx[am]{Want to point to \Cref{app:ptemp} from here?}
 
 \paragraph{The value of a survivor link}
 
-\xxx[zhiyuan]{maybe atlease include a scatter figure?}
-
 \(\Strictstar\) exists so that a transitional policy can prefer buffered packets to new ones without moving them.
 Any other way of expressing that preference has to put the backlog inside a newly built node, which means writing one scheduler token per buffered packet while the scheduler is stopped.
-Our second experiment measures the same transition three ways, across backlogs from 0 to 507 packets standing at the request.
+Our second experiment measures the same transition three ways, across backlogs from 0 to 341 packets standing at the request.
 There are two ways to build such a node, and we measure both.
-One reserves a spare processing element and fills it with a token for each buffered packet, which stops the scheduler for 0.990 cycles per packet.
-The other copies the old subtree onto fresh processing elements, which stops it for 2.975 cycles per packet.
+One reserves a spare processing element and fills it with a token for each buffered packet, which stops the scheduler for 0.991 cycles per packet.
+The other copies the old subtree onto fresh processing elements, which stops it for 2.969 cycles per packet.
 Rio's survivor link stops it for \emph{no time}, no matter how big the backlog, because it is a pointer rather than a place to put packets.
 The slope matters more than the constant: without \(\Strictstar\), the price of a transition is determined by how busy the switch was when the request arrived.
-This is also why \textsf{spotify} waits in \cref{fig:eval-motivating}, since Rio declines to relocate the packets already queued and lets them drain in place instead.
+This is also why \textsf{spotify} waits for the drain in \cref{app:ptemp}, since Rio declines to relocate the packets already queued and lets them drain in place instead.
 
-\xxx[zhiyuan]{additionally, find a place to show one example of four operations: start, commit, replay-finish, drain, maybe a full timeline under figure 7 include the cleanup commit.}
+\paragraph{Scaling in the size of the tree}
+
+\begin{figure}[t]
+\centering
+\includegraphics{fig-eval-scaling.pdf}
+\caption{Admitting one new tenant, as the tree it joins grows. The lower panel is measured against the same tree already running the target policy.}
+\label{fig:eval-scaling}
+\end{figure}
+
+Our third experiment holds the request fixed and grows the tree.
+The tree runs \WFQ{} over \(m\) tenants, each tenant a two-flow subtree with its own discipline, and we dial up \(m\) from 2 to 32 so the tree holds 4 to 64 flows.
+Offered load stays at 1.10 of the link at every point and is spread evenly over the flows, so the congestion does not change with the tree.
+The transition request in each case is to \(\Add\) a single tenant at the root.
+
+Rio accomplishes this via the same 21 instructions at every point of the sweep (\cref{fig:eval-scaling}), and finishes in 44 cycles on the smallest tree and 45 on the largest.
+Whole-tree prefill goes from 99 instructions to 1099 and stop-the-world reset from 64 to 704, because both reinstall every tenant whether the request named it or not.
+Rio never stops the scheduler at any point of the sweep.
+% We ran the sweep a second time with a single \(\ChangeMeta\) in place of the \(\Add\), and Rio is flatter still, at 2 instructions and 14 cycles on every tree.
+
+The lower panel measures a flow that the request does not touch, against the same tree already running the target policy.
+Rio costs that flow nothing on the three smallest trees, 15 cycles on the next and 24 on the largest tree.
+Prefill costs it 221 cycles on the smallest tree and 1242 on the largest.
+Stop-the-world sits near 1030 cycles until the largest tree: the 1024-cycle stop we grant it dominates everything else, and only at 64 flows does the cost of rebuilding overtake it.
 
 \paragraph{A larger reconfiguration}
 
-\xxx[zhiyuan]{here we can insert some bar figures (comparing the different trees) mainly targets to show "we can work under different scales of the tree, and different traffic pattern", people will be interested in if the method is scalable? so comparing cycles/latency/etc. under different reconfig scale is always a good thing. as we have multiple transitions. I can also do different packet distribution}.
-
-Our third experiment considers how Rio scales.
+Our fourth experiment considers a request that changes several things at once.
 We set up a fourteen-flow tree on seven processing elements, and we change its policy to reweight two tenants, admit four more, and retire one.
 No single edit does all of that, so the transition planner decomposes the request into a sequence, and part of that sequence has to wait: the tenant being retired still holds packets, and the guard on its \(\Remove\) does not become true until they have drained (\cref{sec:sequences}).
 Rio installs the five unguarded edits in 51 instructions and the guarded \(\Remove\) in 20 more, against 152 for the reset baseline and 201 for whole-tree prefill.
-Rio's instruction count tracks the part of the tree the request names, where both baselines rebuild the tree entirely.
-Rio does not stop the scheduler at all, and the two baselines buffer 624 and 495 packets during theirs, which they can do only because we gave them unbounded input queues.
+Rio does not stop the scheduler at all, and the two baselines buffer 571 and 424 packets during theirs, which they can do only because we gave them unbounded input queues.
+\xxx[am]{Zhiyuan requested a timeline-style figure here but idk if we have the room, and idk if it's punchy enough. Happy to discuss more.}
 
 \paragraph{Hardware cost}
 
@@ -1134,7 +1159,7 @@ Rio does not stop the scheduler at all, and the two baselines buffer 624 and 495
 \small
 \begin{tabular}{rrrr}
 \toprule
-& \multicolumn{3}{c}{Rio's Additions compared to Orignial PIFO} \\
+& \multicolumn{3}{c}{Overhead of Rio's Additions} \\
 \cmidrule(l){2-4}
 vFlows & LUTs & Registers & BRAM \\
 \midrule
@@ -1144,7 +1169,7 @@ vFlows & LUTs & Registers & BRAM \\
 1024 & 3.2\% & 0.2\% & 43\% \\
 \bottomrule
 \end{tabular}
-\caption{Synthesis overhead on a Xilinx XCKU5P, five processing elements, 1024 PIFO entries each.}
+\caption{Synthesis overhead on a Xilinx XCKU5P, five processing elements, 1024 PIFO entries each. Each figure is a percentage of the same design without Rio's additions.}
 \label{tab:eval-resources}
 \end{table}
 \xxx[zhiyuan]{for the table we can also note percentage of hardare resources on FPGA}
@@ -2085,5 +2110,43 @@ Flows in \(\mathtt{flows(loser)} \setminus \mathtt{flows(surv)}\) are left alone
 \Undesignate{} is likewise \Designate{} run backwards, and reusing \texttt{k} preserves \texttt{parent}'s per-arm metadata for that slot, so the survivor inherits the annotation the doomed subtree held.
 Its shared flows are deliberately not unmapped, since they serve \texttt{surv} now.
 
+\section{Inside the Transitional Interval}\label{app:ptemp}
+
+The first experiment of \cref{sec:eval} carries a scheduler from
+%
+\[ p_1 = \Strict(\mathtt{hi}{:}\,\textsf{zoom},\ \mathtt{lo}{:}\,\textsf{gmail}) \]
+%
+to
+%
+\[ p_2 = \Strict(\mathtt{hi}{:}\,\textsf{zoom},\ \mathtt{lo}{:}\,\RR(\textsf{gmail},\allowbreak\ \textsf{spotify})) \]
+%
+Both policies serve \textsf{zoom} ahead of everything else, and \(p_2\) admits \textsf{spotify} by sharing the low-priority arm between it and \textsf{gmail}.
+Inserting that \(\RR\) node would relocate the \textsf{gmail} packets already queued, so Rio reaches \(p_2\) in two atomic steps instead, and between them the scheduler runs
+%
+\[
+\begin{aligned}
+p_\text{temp} = \Strict(\ &\mathtt{hi}{:}\,\textsf{zoom}, \\
+ &\mathtt{lo}{:}\,\Strictstar( \\
+ &\quad \mathtt{hi}{:}\,\textsf{gmail}_\text{old}, \\
+ &\quad \mathtt{lo}{:}\,\RR(\textsf{gmail}_\text{new},\ \textsf{spotify})))
+\end{aligned}
+\]
+%
+whose \(\Strictstar\) node serves the packets \textsf{gmail} had already queued ahead of everything that arrives afterward.
+\Cref{sec:tour} derives this sequence and \cref{sec:hw-survivor} implements it.
+
+\begin{figure}[h]
+\centering
+\includegraphics{fig-eval-ptemp.pdf}
+\caption{The three flows under Rio's confined replace. The gray band is the interval in which Rio runs $p_\text{temp}$.}
+\label{fig:eval-ptemp}
+\end{figure}
+
+The traffic is the traffic of \cref{sec:eval}.
+\textsf{zoom} sends enough packets to fill 40\% of the link throughout, \textsf{gmail} fills 80\% before the request and 20\% after it, and \textsf{spotify} starts sending when the request arrives, enough to fill 20\%.
+
+\Cref{fig:eval-ptemp} shows what each of the three flows receives.
+\textsf{zoom} holds the high-priority arm but asks for only 0.40 of the link and gets it, so \textsf{gmail} takes the remainder.
+\textsf{gmail} is lifted while \textsf{gmail}\textsubscript{old} drains ahead of new arrivals, and \textsf{spotify} waits on that drain, reaching first service 709 cycles after the request against the stop-the-world baseline's 1408.
 
 \end{document}
