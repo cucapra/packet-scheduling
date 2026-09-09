@@ -216,7 +216,7 @@ Existing approaches do not offer control over this scheduling behavior during a 
 Our thesis is that the interval during reconfiguration is itself a scheduling policy, since packets keep arriving during that interval.
 Understanding it is a language problem.
 A transitional policy needs a syntax that the operator can read, a semantics that says which packet leaves next, and a compiler that applies changes to the running policy.
-With these components in hand, a scheduler can clearly define its behavior during reconfiguration.
+With these in hand, a scheduler can clearly define its behavior during reconfiguration.
 We present \emph{Rio}, which supplies all three.
 
 Rio defines a grammar of atomic \emph{policy edits} (\cref{sec:model}).
@@ -297,19 +297,19 @@ Rio does not support a single atomic transition from $p_1$ to $p_2$.
 The problem is that inserting the $\RR$ node would require relocating all the in-flight \textsf{gmail} packets from one hardware queue to another:
 a costly, long-latency data copy.
 Instead, we can implement the transition in two atomic steps.
-In our first atomic step, we install a transitional policy, $p_\text{temp}$ (shown in the middle of the top row of \cref{fig:tour}).
-The idea is to insert a new, empty $\RR$ subtree
+In our first atomic step, we install a transitional policy, $p_\text{temp}$ (top row of \cref{fig:tour}).
+We insert a new, empty $\RR$ subtree
 without deleting the old \textsf{gmail} queue and its in-flight packets.
 The $\Strictstar$ policy prioritizes the old packets over new packets.
 The two leaves that \cref{fig:tour} tags \textsf{gmail}\textsubscript{old} and \textsf{gmail}\textsubscript{new} carry the same flow, split by arrival time: all new traffic (that is, traffic arriving after the first atomic step has run) goes to the new subtree, while the previously buffered packets in \textsf{gmail}\textsubscript{old} drain.
 When \textsf{gmail}\textsubscript{old} becomes empty, $p_\text{temp}$ behaves identically to $p_2$.
 At this point, a second atomic step runs, collapsing the $\Strictstar$ policy and transitioning to $p_2$, as desired.
+\Cref{sec:eval} evaluates exactly this transition.
 
 % Although an atomic transition from $p_1$ to $p_2$ is not possible,
 Rio supports atomic transitions from $p_1$ to $p_\text{temp}$ and from $p_\text{temp}$ to $p_2$.
 The key mechanism in this example is the $\Strictstar$ policy node, which reflects an addition to PIFO tree hardware that lets Rio replace any subtree in place.
 \Cref{sec:hw-survivor} details $\Strictstar$ and the atomic edits that support it.
-\Cref{sec:eval} evaluates this transition.
 
 Rio can name the policy in force at every instant, in the operator's own language, including throughout the interval in which the scheduler runs a policy that \emph{no operator requested}.
 Rio models the scheduler's state as a \emph{control} (\cref{sec:controls}), and reads the running policy back off it.
@@ -473,44 +473,41 @@ Informally, the six forms do the following.
 \Remove{} unhooks an already-empty arm.
 \Designate{} wraps the edit site in a fresh \(\Strictstar\) node, giving the running subtree the high-priority arm and a newly compiled \emph{survivor} policy the low-priority arm.
 \Undesignate{} collapses a \(\Strictstar\) node once its high-priority arm has drained, promoting the survivor into the slot that the \(\Strictstar\) node held.
-
 We chose these six forms with care, so that PIFO tree hardware can realize each one atomically (\cref{sec:hardware}).
 
-\(\Strictstar\) makes the set complete.
 \Designate{} can introduce an arbitrary new subtree beside a running one without moving a buffered packet, and \Undesignate{} retires the old one once it has drained, so any \(p_1\) reaches any \(p_2\) by wrapping, draining, and unwrapping.
 \Cref{sec:designate} gives the wrapper's classifier, which is what lets the two arms serve overlapping flows while staying operationally disjoint.
 \Cref{sec:tour}'s two-step transition is exactly this: the \(\Strictstar\) node of \(p_\text{temp}\) holds the draining \textsf{gmail}\textsubscript{old} leaf beside the freshly built \RR{} subtree, and collapses once that leaf is empty.
 Everything outside the wrapper keeps running untouched, so it is valuable to wrap the smallest subtree that covers the change (\cref{sec:planner}).
 
-\Cref{sec:edit-semantics} gives the formal semantics for policy edits, in terms of both their effects on policies $p$ and on the state of live PIFO trees.
+\Cref{sec:edit-semantics} gives the formal semantics for policy edits in terms of their effects on policies $p$ and the state of live PIFO trees.
 
 \section{Semantics}\label{sec:semantics}
 
-This section formalizes the semantics of PIFO trees.
-We formalize the state of PIFO tree hardware (\cref{sec:controls}),
+In this section we formalize the state of PIFO tree hardware (\cref{sec:controls}),
 outline the compilation process from high-level policy trees $p$ into this state (\cref{sec:compilation}),
 and describe what each policy edit denotes (\cref{sec:edit-semantics}).
 
 \subsection{PIFO Tree Controls}\label{sec:controls}
 
-We first introduce a formal model for PIFO-tree-based packet schedulers.
+We introduce a formal model for PIFO-tree-based packet schedulers.
 A \emph{control} includes the complete state of the PIFO tree:
 the shape of the tree,
 the policy-specific scheduling logic,
-the PIFO contents (packets),
+the PIFO contents,
 and any policy bookkeeping state.
-The name and the model are from Mohan et al.~\cite{Mohan23}, and we note our departures from them as they arise.
+The name and the model are adapted from~\citet{Mohan23}.
 % A control is the concrete state a programmable switch executes at line rate, realizable on an FPGA or SmartNIC (\cref{sec:hardware} lowers a control to exactly such a target).
 
 \paragraph{Syntax}
 
-A control \(C\) is a finite tree whose every node carries a triple:
+A control \(C\) is a finite tree; every node carries:
 \[
 C \mathrel{::=} \langle \mathit{state}, \mathit{pifo}, \mathit{z} \rangle(C_1, \ldots, C_n), \qquad n \geq 0.
 \]
 The subtrees \(C_1 \ldots C_n\) are the node's children and \(n\) is its arity.
 A node with no children is a \emph{leaf}, and a node with children is \emph{internal}.
-The three components of the triple are as follows.
+The three components of the triple are:
 
 \begin{itemize}
 \item \stt is a pair \((\mathit{node\_state}, \mathit{slot\_states})\): the scheduling discipline's per-node bookkeeping and a list of per-arm entries, one per child.
@@ -633,7 +630,7 @@ A discipline's interface is visible to us and its behavior is not.
 The interface comes with two conditions.
 The first is path-consistency of admission: a packet's flow must be admitted at every node on that flow's root-to-leaf path, or at none of them.
 This is a global property, not a concern of any node-local \zz, and it keeps \(\vdash\) true under compilation and under every \(\delta\).
-The second is that \(\mathit{rank}_{D}\) records which discipline the node runs, and not merely how that discipline ranks payloads.
+The second is that \(\mathit{rank}_{D}\) records which discipline the node runs.
 Two disciplines that happened to rank alike would otherwise be indistinguishable in a running control, and \cref{sec:equivalences} could report the wrong one back to the operator.
 
 \paragraph{From \pol to control}
@@ -812,7 +809,7 @@ Then \(\flush(C) = \flush(\csem{\delta}(C))\).
 \end{theorem}
 
 Most forms discharge this through a single fact about \pop{}.
-A \pop{} reads only \pifo contents, never any \stt or \zz (\cref{sec:controls}), so an edit that leaves every live \pifo entry exactly where it found it cannot change what the control emits.
+A \pop{} reads only \pifo contents, never any \stt or \zz (\cref{sec:controls}), so an edit that leaves every live \pifo entry untouched cannot change what the control emits.
 Four of the six forms touch no live entry at all, and are done on that observation alone.
 \Designate{} inserts a node whose \pifo is not empty and \Undesignate{} drops one, so those two are argued directly on the \pop{} sequence, which is why \cref{thm:nondisruption} is stated on the flush sequence rather than on \pifo contents.
 \cref{sec:per-form} runs the check form by form, and \cref{sec:check-designate,sec:check-undesignate} carry the two \pop{}-sequence arguments.
@@ -856,7 +853,7 @@ The root-level fallback shows what that is worth: it puts the entire running tre
 \input{fig-hardware}
 \section{Rio Hardware Design}\label{sec:hardware}
 
-We show how to extend a PIFO-tree-based packet scheduler with support for live policy reconfiguration.
+We extend a PIFO-tree-based packet scheduler with support for live policy reconfiguration.
 Our design starts with a standard PIFO tree architecture (\cref{sec:hw-substrate}).
 We define an ISA for this reconfiguration and implement a compiler that targets it (\cref{sec:hw-isa}).
 It rests on two key mechanisms:
@@ -905,8 +902,8 @@ Opcode & Effect \\
 \texttt{map(v, f, i)} & \texttt{v} routes \texttt{f} to index \texttt{i} \\
 \texttt{unmap(v, f)} & \texttt{v} forgets its mapping for \texttt{f} \\[3pt]
 \multicolumn{2}{@{}l}{\emph{Discipline}} \\
-\texttt{set\_policy(v, t, n)} & Give \texttt{v} policy type \texttt{t} and initial arity \texttt{n}; once, at spawn \\
-\texttt{set\_arm\_meta(v, i, m)} & Metadatum \texttt{m} on \texttt{v}'s arm \texttt{i}, read per \texttt{v}'s policy type \\[3pt]
+\texttt{set\_policy(v, t, n)} & Give \texttt{v} policy type \texttt{t} and initial arity \texttt{n} \\
+\texttt{set\_arm\_meta(v, i, m)} & Metadatum \texttt{m} on \texttt{v}'s arm \texttt{i}, read per \texttt{v}'s policy \\[3pt]
 \multicolumn{2}{@{}l}{\emph{Survivor}} \\
 \texttt{designate(v, surv)} & Point \texttt{v}'s designated-survivor link at \texttt{surv} \\
 \texttt{undesignate(v)} & \texttt{v}'s parent's index now reaches that survivor \\
@@ -915,7 +912,7 @@ Opcode & Effect \\
 \end{table}
 
 \cref{tab:isa-opcodes} lists an instruction set architecture (ISA) for configuring a packet scheduler.
-The control plane updates the scheduling policy by sending a \emph{transaction} consisting of a sequence of these instructions.
+The control plane updates the scheduling policy by sending a \emph{transaction} consisting of a sequence of instructions.
 The hardware guarantees that the transaction applies atomically at some time $t$:
 the unmodified policy applies to all packets before $t$ and the updated policy applies to all packets after $t$.
 Each of the six policy edits (\cref{sec:delta-grammar}) installs as one such transaction.
@@ -944,7 +941,7 @@ On removing them from the system outright: yes \texttt{change\_arity} can go (si
 That last one is a design question for Zhiyuan.}
 \xxx[zhiyuan to am]{we can use v (instead of parent v + i) to point to any PIFO. hardware only need to know next-hop. I think one reason for using i is internally parent PIFO stores index, not v. my point is compiler can take the responsibility to maintain structural info (covers \texttt{adopt} and \texttt{emancipate}) in it's internal and generate the valid sequence. overall, if all ISA insts changes the hardware state, I'd prefer removing this section.}
 Every opcode reaches a PE.
-A PE stores four things: its \texttt{Assoc} set, the flows it admits; a \texttt{Map}, read on enqueue, naming the PIFO each admitted flow enters and the PE that holds it; a next-hop table, read on dequeue, naming the PIFO that each of its indices reaches; and the designated-survivor link of \cref{sec:hw-survivor}.
+A PE stores four things: its \texttt{Assoc} set, the flows it admits; a \texttt{Map}, read on enqueue, naming the PIFO each admitted flow enters and the PE that holds it; a next-hop table, read on dequeue, naming the PIFO that each of its indices reaches; and the designated-survivor link (\cref{sec:hw-survivor}).
 The classification opcodes write the first two, the structure opcodes the third, and the survivor opcodes the fourth.
 The discipline opcodes write the rank-assignment logic, and \texttt{spawn} and \texttt{gc} claim and release a PE's PIFO storage.
 
@@ -1058,7 +1055,7 @@ Reconfiguring the program that a running switch executes has been reported at ar
 Our first experiment considers exactly the transition that \cref{sec:tour} walks through.
 Three mechanisms take the scheduler from \(p_1\) to \(p_2\) over one 2136-packet trace.
 The first is the stop-the-world baseline.
-The other two are both Rio's, and the difference between them is where the \(\Replace\) lands.
+The other two are both Rio's.
 \emph{Root-level replace} is the fallback described in \cref{sec:sequences}: it builds \(p_2\) beside the running tree, puts the running tree on the high-priority arm of a \(\Strictstar\), and drains it there.
 \emph{Confined replace} is the path the planner prefers, which does the same thing at the deepest slot that changed, so only \textsf{gmail}'s subtree sits behind the wrapper.
 Throughout, \textsf{zoom} sends enough packets to fill 40\% of the link.
@@ -1083,7 +1080,7 @@ root-level replace & 26 & 35 & 411 \\
 \end{table}
 
 \Cref{fig:eval-motivating} separates two ways a transition can go wrong.
-Stopping the scheduler empties the link, so the orange line in the upper panel drops to zero for as long as the stop lasts.
+Stopping the scheduler empties the link, so it drops to zero for as long as the stop lasts.
 Root-level replace looks better since it keeps the link busy, but the lower panel reveals what it is busy with: it starves \textsf{zoom} for some 300 cycles and then hands it the whole link to catch up.
 We know that \textsf{zoom} sits at the same priority and sends the same rate of traffic in every policy here, and yet only Rio gives consistent service to \textsf{zoom}: our peak delay for \textsf{zoom} is 23 cycles, one more than the 22 it sees under a transition that never touches its subtree at all.
 Root-level replace costs it 411 and the baseline 1050 (\cref{tab:eval-motivating}), and neither of them recovers when its interval ends: the baseline is still running above its offered rate 3500 cycles after a stop that lasted 1024 cycles.
@@ -1245,9 +1242,9 @@ Exp-PIFO approximates one with adaptive exponential bins, keeping two memory cel
 BMW Tree implements one as a balanced multi-way sorting tree that scales to large flow counts~\cite{Yao23}.
 BBQ reaches hundreds of thousands of concurrent flows by carrying hierarchical find-first-set into a pipelined integer priority queue~\cite{Atre24}.
 Gearbox approximates weighted fair queuing with a hierarchy of queuing levels at constant cost per operation~\cite{Gao22}.
-vPIFO virtualizes a single physical PIFO into many instances that its PIFO Visor can wire into a tree of any shape~\cite{vPIFO}.
+vPIFO virtualizes a single physical PIFO into many instances that it can wire into a tree of any shape~\cite{vPIFO}.
 Its Scheduling Description Language compiler generates that wiring offline, so the shape is fixed before traffic arrives, and vPIFO names runtime updating as future work.
-Our policy language is a formal core of that one (\cref{sec:policy-dsl}).
+Our policy language is a formal core of theirs (\cref{sec:policy-dsl}).
 
 All of these designs fix the tree's shape and the discipline at each node when the scheduler is configured.
 Instead of focusing on the PIFO tree implementation itself, Rio aims to extend any PIFO tree design with run-time reconfiguration.
