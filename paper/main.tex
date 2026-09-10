@@ -1948,7 +1948,8 @@ For \(\mathit{path} = [\,]\) those two are \texttt{port\_root} and \texttt{port\
 Queries are read off the planner's model of the tree as it stands at that point in the sequence, and a parameter an opcode leaves unmentioned is \texttt{v}'s value there; \texttt{spawn}'s elided \texttt{pe} argument is the PE at \texttt{v}'s depth (\cref{sec:hw-substrate}).
 \texttt{foreach x in S} emits its body once per \texttt{x}, and \texttt{walk(op, C, f)} emits \texttt{op(v, f, \ldots)} at each \texttt{v} in \texttt{C}.
 
-Of the queries, \texttt{flows(v)} is the set of flows admitted beneath \texttt{v}, and on flow sets \texttt{\&} is intersection and \texttt{\textbackslash} difference.
+Of the queries, \texttt{flows(v)} is the set of flows served beneath \texttt{v}, less any that \texttt{v}'s designated survivor has taken over, and on flow sets \texttt{\&} is intersection and \texttt{\textbackslash} difference.
+Admission does not enter it, so a \Quiesce{} leaves it alone and the walks that fire after a drain still have flows to walk.
 \texttt{chain(f)} runs from \texttt{port\_root} to the leaf admitting \texttt{f}, and \texttt{internals(f)} is that chain minus the leaf.
 \texttt{survivor(v)} is \texttt{v}'s designated survivor.
 For a compiled subtree \texttt{T}, \texttt{nodes(T)} is its PIFOs and \texttt{root(T)} its root, and \texttt{layout(T)} spawns and configures all of \texttt{T}, leaving the parent-side \texttt{adopt} to the caller.
