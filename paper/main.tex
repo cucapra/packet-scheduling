@@ -891,26 +891,22 @@ We built Rio's two substrate additions into a PIFO tree scheduler written in Spi
 
 \paragraph{The baseline}
 
-A switch that stops to reconfigure can do many things with the traffic that arrives meanwhile, and how bad each one is depends on the deployment.
-Rather than measure chaos, we remove it from the comparison.
+A switch that stops to reconfigure can do many things with the traffic that arrives when it is stopped.
+Rather than try to try and measure that chaos, we remove it from the comparison.
 Our stop-the-world baseline is constructed to be lossless and order-preserving: it freezes admission and dequeue, captures the metadata of every buffered packet, installs the target configuration, and replays exactly one scheduler token per captured packet.
 Its sources keep generating while it is stopped, and we give it an unbounded input queue, so it never drops a packet when stopped.
-
-We also give the baseline a short period of stoppage: 1024 cycles, a little over a microsecond at the rate of one nanosecond per cycle.
-Reconfiguring the program that a running switch executes has been reported at around half a second~\cite{Xing22}, so this is far shorter than any published figure.
+%
+We also give it a short stoppage of 1024 cycles, a little over a microsecond at one nanosecond per cycle, which is far shorter than any published figure: reconfiguring the program a running switch executes has been reported at around half a second~\cite{Xing22}.
 
 \paragraph{The transition of \cref{sec:tour}}
 
-Our first experiment considers exactly the transition that \cref{sec:tour} walks through.
-Three mechanisms take the scheduler from \(p_1\) to \(p_2\) over one 2136-packet trace.
-The first is the stop-the-world baseline.
-The other two are both Rio's.
+Our first experiment considers exactly the transition that \cref{sec:tour} presents, taking the scheduler from \(p_1\) to \(p_2\) over one 2136-packet trace by three mechanisms.
+\emph{Stop the world} is as above.
 \emph{Root-level replace} is the fallback described in \cref{sec:sequences}: it builds \(p_2\) beside the running tree, puts the running tree on the high-priority arm of a \(\Strictstar\), and drains it there.
-\emph{Confined replace} is the path the planner prefers, which does the same thing at the deepest slot that changed, so only \textsf{gmail}'s subtree sits behind the wrapper.
+\emph{Confined replace} is the path the planner prefers, which does the same thing at the deepest slot that changed.
 Throughout, \textsf{zoom} sends enough packets to fill 40\% of the link.
 \textsf{gmail} sends enough to fill 80\% before the request and 20\% after it, and \textsf{spotify} starts sending when the request arrives, enough to fill 20\%.
-Before the request the three together ask for more than the link can carry, so there is a backlog of packets when the request arrives.
-The request arrives at cycle 0.
+Before the request, the three together ask for more than the link can carry, so a backlog is standing when the request arrives at cycle 0.
 
 \begin{table}[t]
 \centering
@@ -929,11 +925,9 @@ root-level replace & 26 & 35 & 411 \\
 \label{tab:eval-motivating}
 \end{table}
 
-\Cref{fig:eval-motivating} separates two ways a transition can go wrong.
-Stopping the scheduler empties the link, so it drops to zero for as long as the stop lasts.
-Root-level replace looks better since it keeps the link busy, but the lower panel reveals what it is busy with: it starves \textsf{zoom} for some 300 cycles and then hands it the whole link to catch up.
-\textsf{zoom} sits at the same priority and sends the same rate of traffic under all three, so any delay it suffers is the transition's doing.
-Only Rio leaves it alone (\cref{tab:eval-motivating}): its peak delay is within a cycle of what \textsf{zoom} sees under a transition that never touches its subtree, where the other two cost it an order of magnitude more and neither recovers when its interval ends.
+\Cref{fig:eval-motivating} shows each mechanism's share of the link and \cref{fig:eval-delay} shows how long a packet waits between arrival and departure, and together they separate two ways a transition can go wrong.
+Stopping the scheduler empties the link, so throughput drops to zero for as long as the stop lasts.
+Root-level replace keeps the link busy and clears the \textsf{gmail} backlog quickly, but the \textsf{zoom} panels reveal what it is busy with: it hands the whole link to the old tree, starving \textsf{zoom} for some 300 cycles before letting it catch up.
 
 \begin{figure}[t]
 \centering
@@ -942,27 +936,22 @@ Only Rio leaves it alone (\cref{tab:eval-motivating}): its peak delay is within 
 \label{fig:eval-delay}
 \end{figure}
 
-\cref{fig:eval-delay} shows how long a packet waits between arrival and departure.
-Root-level replace again looks good in the \textsf{gmail} panel, but the \textsf{zoom} panel reveals the problem: it clears the backlog quickly because it hands the whole link to the old tree, at \textsf{zoom}'s expense.
+Any delay that \textsf{zoom} suffers is the transition's doing.
+Only Rio leaves it alone (\cref{tab:eval-motivating}): its peak delay is within a cycle of what \textsf{zoom} sees under a transition that never touches its subtree, where the other two cost it an order of magnitude more and neither recovers when its interval ends.
 Under confinement, \textsf{gmail}\textsubscript{old} takes its own 670-cycle drain and no more.
 
 The gray band in both figures is the interval in which the switch runs \(p_\text{temp}\), the transitional policy the planner discovered on the way to \(p_2\), and its two edges are the two atomic steps of \cref{sec:tour}.
-The first step installs the \(\Strictstar\) node above \textsf{gmail}\textsubscript{old} and the freshly built \RR{} subtree, and it is the cheapest install of the three (\cref{tab:eval-motivating}) because it rewrites one subtree and leaves the rest of the control addressed as it was.
-The second collapses that node once \textsf{gmail}\textsubscript{old} has drained and the guard of \cref{sec:sequences} becomes true.
 The band is two thirds as wide as the baseline's stop and, unlike that stop, costs the traffic nothing: the link stays full and \textsf{zoom} is undisturbed from one end of it to the other.
-\xxx[am]{Want to point to \Cref{app:ptemp} from here?}
 
 \paragraph{The value of a survivor link}
 
 \(\Strictstar\) exists so that a transitional policy can prefer buffered packets to new ones without moving them.
-Any other way of doing this must put the backlog inside a newly built node, which means writing one scheduler token per buffered packet while the scheduler is stopped.
-Our second experiment measures the same transition three ways, across backlogs from 0 to 341 packets standing at the request.
-There are two ways to build such a node, and we measure both.
-One reserves a spare processing element and fills it with a token for each buffered packet, which stops the scheduler for 0.991 cycles per packet.
-The other copies the old subtree onto fresh processing elements, which stops it for 2.969 cycles per packet.
+Any other way of doing this must put the backlog inside a newly built node.
+Our second experiment measures the same transition across backlogs from 0 to 341 packets standing at the request, by Rio and by each of the two ways of building such a node.
+Reserving a spare processing element and filling it with a token per buffered packet stops the scheduler for 0.991 cycles per packet, and copying the old subtree onto fresh processing elements stops it for 2.969.
 Rio's survivor link stops it for \emph{no time}, no matter how big the backlog, because it is a pointer rather than a place to put packets.
 The slope matters more than the constant: without \(\Strictstar\), the price of a transition is determined by how busy the switch was when the request arrived.
-This is also why \textsf{spotify} waits for the drain in \cref{app:ptemp}, since Rio declines to relocate the packets already queued and lets them drain in place instead.
+It is also why \textsf{spotify} waits for the drain in \cref{app:ptemp}.
 
 \paragraph{Scaling in the size of the tree}
 
@@ -973,20 +962,17 @@ This is also why \textsf{spotify} waits for the drain in \cref{app:ptemp}, since
 \label{fig:eval-scaling}
 \end{figure}
 
-Our third experiment holds the request fixed and grows the tree.
-The tree runs \WFQ{} over \(m\) tenants, each tenant a two-flow subtree with its own discipline, and we dial up \(m\) from 2 to 32 so the tree holds 4 to 64 flows.
-Offered load stays at 1.10 of the link at every point and is spread evenly over the flows, so the congestion does not change with the tree.
-The transition request in each case is to \(\Add\) a single tenant at the root.
+Our third experiment holds the request fixed and grows the tree, which runs \WFQ{} over \(m\) tenants, each a two-flow subtree with its own discipline, with \(m\) dialled up from 2 to 32 so the tree holds 4 to 64 flows.
+Offered load stays at 1.10 of the link at every point and is spread evenly over the flows, so the congestion does not change.
+The transition request in each case is to \(\Add\) a tenant at the root.
 
-Rio accomplishes this via the same 21 instructions at every point of the sweep (\cref{fig:eval-scaling}), and finishes in 44 cycles on the smallest tree and 45 on the largest.
-Whole-tree prefill goes from 99 instructions to 1099 and stop-the-world reset from 64 to 704, because both reinstall every tenant whether the request named it or not.
-Rio never stops the scheduler at any point of the sweep.
+Rio issues the same 21 instructions at every point of the sweep and finishes within a cycle of the same time throughout (\cref{fig:eval-scaling}), and it never stops the scheduler.
+Whole-tree prefill and stop-the-world reset both grow by more than an order of magnitude across the same range, because they reinstall every tenant whether the request named it or not.
 % We ran the sweep a second time with a single \(\ChangeMeta\) in place of the \(\Add\), and Rio is flatter still, at 2 instructions and 14 cycles on every tree.
 
-The lower panel measures a flow that the request does not touch, against the same tree already running the target policy.
-Rio costs that flow nothing on the three smallest trees, 15 cycles on the next and 24 on the largest tree.
-Prefill costs it 221 cycles on the smallest tree and 1242 on the largest.
-Stop-the-world sits near 1030 cycles until the largest tree: the 1024-cycle stop we grant it dominates everything else, and only at 64 flows does the cost of rebuilding overtake it.
+The lower panel measures a flow that the request does not touch.
+Rio costs it nothing on the smaller trees and a few tens of cycles on the largest, where prefill costs it hundreds throughout and climbs steadily.
+Stop-the-world is dominated by the 1024-cycle stop we grant it until the largest tree, where the cost of rebuilding finally overtakes even that.
 
 \paragraph{A larger reconfiguration}
 
@@ -1037,10 +1023,10 @@ they label packets according to the version of the network they should see.
 Rio seeks per-packet consistency for each of its edits, inside a single packet scheduler rather than across a network.
 Versioning does not carry over to a scheduler, which holds packets whose ranks were fixed when they were \push{}ed.
 
-FlexCore~\cite{Xing22} consistently reconfigures the P4 program running on a switch.
+FlexCore~\cite{Xing22} reconfigures the P4 program running on a switch.
 It computes a reconfiguration script, a sequence of atomic graph edits that transforms the old program into the new one.
-It offers three consistency guarantees that may govern the intermediate states visible between the two endpoints.
-Rio similarly works by generating a series of atomic edits to transform one packet-scheduling policy into another (\cref{sec:sequences}).
+It offers three consistency guarantees that govern the intermediate states visible between the two endpoints.
+Rio generates a series of atomic edits to transform a scheduling policy into another (\cref{sec:sequences}).
 Every intermediate state during a Rio update is a legible program in the same language that the user writes to specify policies (\cref{thm:interplay}).
 FlexCore's strongest guarantee, \emph{program consistency}, lets no intermediate state reach a packet; a Rio transaction provides that for a single \(\delta\) (\cref{sec:hw-commit}).
 Relatedly, \citet{Yang24} demonstrate a system for installing P4 programs on programmable switches without disrupting traffic.
