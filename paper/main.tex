@@ -1496,9 +1496,13 @@ The transformer \(\mathtt{wrap}\) replaces \(M\) with a fresh \(\Strictstar\) no
 \quad n_N = \mathit{init\_node\_state}_{\Strictstar},\\[3pt]
 \quad s_N = (\,n_N,\ [\,\mathit{init\_slot\_state}_{\Strictstar}(n_N, \mathtt{hi}),\\
 \quad\qquad\qquad\ \ \mathit{init\_slot\_state}_{\Strictstar}(n_N, \mathtt{lo})\,]\,),\\[3pt]
-\quad q_N = \text{the \pifo of } P_0 \text{ copies of the entry } (0,\ \mathtt{hi}),\\[3pt]
+\quad q_N = \text{the \pifo of } P_0 \text{ entries, each the payload } 0\\
+\quad\qquad\qquad \text{at the rank } \mathit{rank}_{\Strictstar} \text{ mints for } \mathtt{hi},\\[3pt]
+\quad \mathit{z}_N.\mathit{serves}(f) = 1\ \text{if}\ f \in \mathtt{flows}(\mathit{survivor}),\ \text{else}\ 0,\\
+\quad\qquad \text{on } \mathrm{dom}(\mathit{z}_N.\mathit{serves}) = \mathtt{flows}(M) \cup \mathtt{flows}(\mathit{survivor}),\\[3pt]
+\quad \mathit{z}_N.\mathit{admit} = \mathrm{dom}(\mathit{z}_N.\mathit{serves}),\\[3pt]
 \quad \mathit{z}_N.\mathit{meta} = \{\, 0 \mapsto \mathtt{hi},\ 1 \mapsto \mathtt{lo} \,\},\\[3pt]
-\quad \mathit{z}_N(p) = (1,\ \mathtt{lo})\ \text{if}\ \mathit{flow}(p) \in \mathtt{flows}(\mathit{survivor}),\ \text{else}\ (0,\ \mathtt{hi}).
+\quad \mathit{z}_N.\mathit{rank} = \mathit{rank}_{\Strictstar}.
 \end{array}
 \]
 }
@@ -1809,7 +1813,7 @@ Both parts compare policies up to \(\eqR\) by first normalizing each side, and t
 
 The comparator compares the roots of \(p_1\) and \(p_2\).
 If the two roots run different disciplines, or are leaves carrying different flows, it emits a \Replace{} (\cref{sec:sequences}).
-If the roots agree, the task reduces to \emph{pairing up the two child lists}, and each pairing yields one of four kinds of edit.
+If the roots agree, the task reduces to \emph{pairing up the two child lists}, and the comparator settles each pairing on its own.
 An arm of \(p_2\) with no partner in \(p_1\) is a fresh \Add{}; an arm of \(p_1\) with no partner in \(p_2\) is a \Retire{}.
 A matched pair whose two arms are identical is set aside and contributes nothing.
 A matched pair whose arms agree but whose slot metadata differs contributes a lone \ChangeMeta{}.
@@ -1851,7 +1855,8 @@ p2 = P(drive@m1, slack@m3, Q(gmail, x)@m4)
 Here \textsf{drive} is unchanged, \textsf{gmail} has grown into a nested \(Q\) over itself and a fresh flow \(x\), and \textsf{slack} is new.
 Neither positional strategy applies: the lengths differ, and the sub-sequence check fails because \(g\) in \(p_1\) equals no arm of \(p_2\), so without the label-overlap walk the planner would emit a \Replace{} of the whole root \(P\).
 The walk instead pairs \textsf{drive} with \textsf{drive} (no edit) and \textsf{gmail} with the nested \(Q\) (recurse), and treats \textsf{slack} as a pure add.
-The emission is three steps: an \Add{} of \textsf{slack}, a \ChangeMeta{} re-tuning \textsf{gmail}'s slot to \(m_4\), and a \Replace{} at that slot.
+The comparator emits three: an \Add{} of \textsf{slack}, a \ChangeMeta{} re-tuning \textsf{gmail}'s slot to \(m_4\), and a \Replace{} at that slot.
+Those three make two steps (\cref{sec:sequences}), since the only guard is the one inside \Replace{} that waits for the old \textsf{gmail} leaf to drain.
 
 The two metadata moves travel differently.
 \textsf{slack}'s \(m_3\) is carried by the \Add{} itself (\cref{sec:add}), so the new arm lands already carrying it, while nothing in the \Replace{} can carry \textsf{gmail}'s move from \(m_2\) to \(m_4\), so that slot needs a \ChangeMeta{} of its own.
