@@ -1601,7 +1601,9 @@ Outside the region \cref{sec:edit-semantics} specifies, \(\csem{\delta}\) is und
 Any packets or index entries that \(\csem{\delta}\) drops or adds must leave the per-node pifo and packet counts in balance.
 \item \emph{Characterization.} Prove that reading the policy off the edited control agrees, up to \(\eqR\), with applying the \(\psem{\delta}\) of \cref{sec:edit-semantics} to the policy read off the original: \(p' \eqR \psem{\delta}(p)\).
 \item \emph{Non-disruption.} A \pop{} reads only \pifo contents: it pops the root index-\pifo to a child, recurses, and finally emits a leaf packet, never consulting any \stt or \zz (\cref{sec:controls}).
-So if \(\csem{\delta}\) leaves the contents of every non-empty \pifo of \(C\) unchanged, never rewriting, reordering, or removing a live entry and introducing only empty \pifo{}s, then the backlog survives entry-for-entry and \(\flush(C) = \flush(C')\).
+A \pop{} consults three things about a live entry: its rank, its place in the queue, and the child it names.
+An entry is undisturbed when all three survive, whatever numeral denotes that child.
+So if \(\csem{\delta}\) leaves every live entry of \(C\) undisturbed, never reordering or removing one, and introduces only empty \pifo{}s, then the backlog survives entry-for-entry and \(\flush(C) = \flush(C')\).
 We call the nodes and fields that a form touches its \emph{footprint}, and the check is that the footprint holds no live \pifo entry.
 Where a form's footprint does hold one, we argue directly that the \pop{} sequence is unchanged.
 \end{itemize}
@@ -1663,7 +1665,9 @@ Emptiness and \(\vdash C\) leave \(C@\pi.\mathit{pifo}\) with no entry equal to 
 The parent keeps its ranker, so it reads as the same \disc with slot \(k\) gone.
 
 \paragraph{Non-disruption}
-The ancestor retractions delete nothing, since they narrow admission for future pushes only.
+\(\mathtt{drop}_k\) compacts the child list and relabels the entries above the gap in the same step, so each one goes on reaching the child it reached before, at the rank and in the place it already held.
+Emptiness leaves no entry equal to \(k\) for it to delete, and the ancestor retractions delete nothing either, since they narrow admission for future pushes only.
+The substrate does the same thing without relabeling anything, since it leaves slot indices where they are (\cref{app:lowering}).
 
 \subsection{\texorpdfstring{\Designate}{Designate}}\label{sec:check-designate}
 
