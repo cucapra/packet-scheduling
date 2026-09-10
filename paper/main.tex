@@ -882,10 +882,10 @@ After it, nothing in the tree records that a transition happened.
 
 \section{Evaluation}\label{sec:eval}
 
-We built Rio's two substrate additions into a PIFO tree scheduler written in SpinalHDL, measured transitions in cycle-accurate simulation, and synthesized the design for an FPGA.
-The implementation is 750 lines of Scala.
-\xxx[zhiyuan]{scala code is 750 Loc; we can claim we use other pifo components from original paper here.}
-\xxx[as]{Zhiyuan, I don't know what that means---what exactly was reused?}
+We implemented Rio's tree scheduler with two substrate additions in SpinalHDL, integrating on top of an existing PIFO implementation \cite{Sivaraman16,Sivaraman16Repo},
+We implemented Rio's language and transition planner in OCaml.
+We measured transitions in cycle-accurate simulation, and synthesized the design for an FPGA.
+In total, the implementation contains 750 lines of Scala and 1500 lines of OCaml code.
 
 \begin{figure}[t]
 \centering
