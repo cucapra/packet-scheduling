@@ -1255,15 +1255,21 @@ A discipline that keeps no per-arm bookkeeping, such as \Strict, does not raise 
 \subsection{\texorpdfstring{\(\Quiesce(\tau)\)}{Quiesce}}\label{sec:quiesce}
 
 
-\Quiesce{} strikes every flow served under \(C@\tau\) from the admitted sets of the nodes those flows traverse, so that no packet bound for a leaf there is admitted anywhere, while leaving every node's routing in place so buffered packets can still be popped out.
+\Quiesce{} strikes every flow that \(C\) routes into \(C@\tau\) from the admitted sets of the nodes that flow traverses, so that no packet the tree would deliver there is admitted anywhere, while leaving every node's routing in place so buffered packets can still be popped out.
 This is the payoff of keeping \(\mathit{z}.\mathit{admit}\) separate from \(\mathrm{dom}(\mathit{z}.\mathit{serves})\) (\cref{sec:controls}): a silenced flow leaves the admitted set while its entry in the service map stays.
 This is the only way the containment \(\mathit{z}.\mathit{admit} \subseteq \mathrm{dom}(\mathit{z}.\mathit{serves})\) becomes strict, and only \Remove{} deletes the mapping itself.
 
 \(\csem{\Quiesce(\tau)}(C)\) is defined whenever \(\tau\) resolves in \(C\) (the empty path silences the whole tree).
-Let \(L = \mathtt{flows}(C@\tau)\) be the flows to silence.
+The flows to silence are the ones the control would carry into \(C@\tau\).
+Write \(\mathtt{route}(C, f)\) for the nodes a packet of flow \(f\) visits: start at \(C\)'s root and follow \(\mathit{z}.\mathit{serves}(f)\) at each internal node until a leaf is reached.
+Each \(\mathit{z}.\mathit{serves}\) sends a flow to a single child, so the route is unique, and
+\[
+L = \{\, f \;:\; C@\tau \in \mathtt{route}(C, f) \,\}.
+\]
+Wherever \(C\)'s leaves carry pairwise distinct flows this is \(\mathtt{flows}(C@\tau)\), the flows that \(C@\tau\) serves; the note below covers the one case in which the two part company.
 Write \(\mathit{z} \setminus L\) for \zz with \(L\) struck from its admitted set, so \((\mathit{z} \setminus L).\mathit{admit} = \mathit{z}.\mathit{admit} \setminus L\).
 Its service map and its ranker are unchanged.
-The nodes that those flows traverse are the spine down to \(\tau\) together with \(\tau\)'s whole subtree:
+Each route into \(C@\tau\) runs down the spine to \(\tau\) and continues inside it, so the nodes to narrow lie in
 \[
 V_\tau = \{\, C@\nu \;:\; \nu \sqsubseteq \tau \,\} \;\cup\; \{\, \text{every node of } C@\tau \,\}.
 \] 
@@ -1288,7 +1294,7 @@ As before, \(\tau : \mathit{path}\) is the non-empty target arm; destruct it as 
 
 \paragraph{Definition}
 
-As in \cref{sec:quiesce}, let \(L = \mathtt{flows}(C@\tau)\), here the flows that the doomed arm serves.
+Let \(L = \mathtt{flows}(C@\tau)\) be the flows that the doomed arm serves.
 Write \(\mathit{z} \dsetminus L\) for \zz with \(L\) struck from its service map, and hence, by the containment of \cref{sec:controls}, from its admitted set too.
 Its ranker is unchanged.
 \Remove{} drops the arm at its parent and strikes \(L\) from the service map of every proper ancestor above that parent, the set \(A_\pi = \{\, C@\nu \;:\; \nu \sqsubset \pi \,\}\).
