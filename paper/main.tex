@@ -235,7 +235,9 @@ correspond to equivalent effects on the high-level policy definition (\cref{sec:
 
 We implement a simple PIFO tree packet scheduler architecture and demonstrate two extensions to support atomic policy edits:
 transactional state updates and a mechanism for letting old and new subtrees coexist during a transaction (\cref{sec:hardware}).
-\xxx[as]{Short preview of the results (\cref{sec:eval}).}
+In cycle-accurate simulation, Rio never pauses the scheduler to install a transition, and an unaffected flow suffers only a single cycle of delay.
+Pausing the scheduler to install the same change costs that unaffected flow more than a thousand cycles.
+On an FPGA, the two extensions add under 9\% to the scheduler's lookup tables and flip-flops (\cref{sec:eval}).
 
 \section{Rio by Example}\label{sec:tour}
 
@@ -352,7 +354,7 @@ Our central guarantees are that these edits agree, and that installing one never
 We start with a basic PIFO-tree-based packet scheduler and make two additions:
 (1) an instruction set for atomically updating policy scheduler state and lookup tables,
 and (2) support for $\Strictstar$, which lets a replacement subtree take over from a running subtree as the old one drains.
-\xxx[as]{Short preview of results: e.g., the additions do not add much area, and RTL simulations show that transitions actually work.}
+\Cref{sec:eval} returns to this example in cycle-accurate simulation, where the transition above keeps the link full and leaves \textsf{zoom} undisturbed from one end of \(p_\text{temp}\) to the other, and where both additions synthesize onto an FPGA.
 
 \section{Background}\label{sec:background}
 
