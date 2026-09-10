@@ -1556,11 +1556,9 @@ An internal node is named by the discipline its ranker names, and its arms are a
 \]
 
 The recursion runs on a finite tree and consults neither \stt nor \pifo nor \(\mathit{z}.\mathit{admit}\), so it returns a single value.
-\xxx[AM to AS]{You suggested defining \(\lfloor \cdot \rfloor\) as the inverse of \(\lceil \cdot \rceil\), and then worried that \(\lceil \cdot \rceil\) is not invertible if one is strict about sibling order.
-\(\lfloor \cdot \rfloor\) is now a structural recursion on \(C\), so it is total and single-valued by construction, and no inverse has to be argued for.
-The two items below are then consequences rather than defining rules, and the agreement of \cref{sec:interplay} is a third.}
-\xxx[as]{OK, I see that this is true. But I am not sure what this separate definition (instead of defining it as an inverse) has bought us. It seems to create a new proof obligation, i.e., to prove that the two things happen to be inverses. Let's discuss this.}
 Every well-formed control therefore determines one \pol, independently of how that control was reached, and we may write \(\lfloor C \rfloor\) and use it as a function.
+This includes the controls that no compilation produces: one carrying a standing backlog, or one that a \(\delta\) has since edited.
+Its agreement with \(\lceil \cdot \rceil\) is therefore something to prove.
 
 Two facts follow.
 
