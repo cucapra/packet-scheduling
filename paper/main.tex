@@ -736,8 +736,8 @@ Then \(\flush(C) = \flush(\csem{\delta}(C))\).
 \end{theorem}
 
 A \pop{} reads only \pifo contents, never any \stt or \zz (\cref{sec:controls}), so most forms discharge the theorem by leaving every live \pifo entry untouched.
-\Designate{} and \Undesignate{} do disturb entries, inserting and dropping a node whose \pifo is not empty, and they are argued on the \pop{} sequence instead, which is why the theorem is stated on the flush sequence rather than on \pifo contents.
-\cref{sec:per-form} proves it form by form.
+\Designate{} and \Undesignate{} disturb entries, inserting and dropping a node whose \pifo is not empty, and they are argued on the \pop{} sequence instead, which is why the theorem is stated on the flush sequence rather than on \pifo contents.
+\cref{sec:per-form} proves this.
 
 \subsection{Sequences and the Transition Planner}\label{sec:sequences}\label{sec:planner}
 
@@ -945,7 +945,8 @@ Any delay that \textsf{zoom} suffers is the transition's doing.
 Only Rio keeps it steady (\cref{tab:eval-motivating}): its peak delay is within a cycle of what \textsf{zoom} sees under a transition that never touches its subtree, where the other two cost it an order of magnitude more. Neither recovers when its interval ends.
 % Under confinement, \textsf{gmail}\textsubscript{old} takes its own 670-cycle drain and no more.
 
-The gray band in both figures is the interval in which the switch runs \(p_\text{temp}\), the transitional policy the planner discovered on the way to \(p_2\), and its two edges are the two atomic steps of \cref{sec:tour}.
+The gray band in both figures is the interval in which the switch runs \(p_\text{temp}\), the transitional policy the planner discovered on the way to \(p_2\).
+Its two edges are the two atomic steps of \cref{sec:tour}.
 The band is two thirds as wide as the baseline's stop and, unlike that stop, costs the traffic nothing: the link stays full and \textsf{zoom} is undisturbed from one end of it to the other.
 
 \paragraph{The value of a survivor link}
