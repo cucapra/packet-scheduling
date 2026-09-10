@@ -1297,8 +1297,9 @@ Let \(L = \mathtt{flows}(C@\tau)\) be the flows that the doomed arm serves.
 Write \(\mathit{z} \dsetminus L\) for \zz with \(L\) struck from its service map, and hence, by the containment of \cref{sec:controls}, from its admitted set too.
 Its ranker is unchanged.
 \Remove{} drops the arm at its parent and strikes \(L\) from the service map of every proper ancestor above that parent, the set \(A_\pi = \{\, C@\nu \;:\; \nu \sqsubset \pi \,\}\).
-It is defined when \(\tau\) resolves in \(C\), when the subtree at \(\tau\) is empty, and when \(C@\tau\)'s ranker does not name \(\Strictstar\).
+It is defined when \(\tau\) resolves in \(C\), when the subtree at \(\tau\) is empty, and when neither \(C@\tau\)'s ranker nor \(C@\pi\)'s names \(\Strictstar\).
 A \(\Strictstar\) node can only be retired by \Undesignate{} (\cref{sec:undesignate}), which promotes the arm beneath it and is the only way \cref{sec:hw-survivor} leaves the substrate to dismantle one.
+The same holds of a wrapper's arms, since \Remove{} retracts \(L\) at the parent and above, which at a wrapper would strike the flows \Designate{} routed to the survivor.
 Dropping arm \(k\) shifts every later arm one slot to the left, and we name that shift \(\sigma_k\): the map on child indices that fixes every \(i < k\) and sends every \(i > k\) to \(i-1\).
 The node transformer \(\mathtt{drop}_k\) unhooks child \(k\) and renumbers what named it:
 {\small
