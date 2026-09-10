@@ -881,7 +881,7 @@ After it, nothing in the tree records that a transition happened.
 \section{Evaluation}\label{sec:eval}
 
 We built Rio's two substrate additions into a PIFO tree scheduler written in SpinalHDL, measured transitions in cycle-accurate simulation, and synthesized the design for an FPGA.
-The implementation consists of 750 lines of Scala.
+The implementation is 750 lines of Scala.
 \xxx[zhiyuan]{scala code is 750 Loc; we can claim we use other pifo components from original paper here.}
 \xxx[as]{Zhiyuan, I don't know what that means---what exactly was reused?}
 
@@ -940,8 +940,8 @@ Root-level replace keeps the link busy and clears the \textsf{gmail} backlog qui
 \end{figure}
 
 Any delay that \textsf{zoom} suffers is the transition's doing.
-Only Rio leaves it alone (\cref{tab:eval-motivating}): its peak delay is within a cycle of what \textsf{zoom} sees under a transition that never touches its subtree, where the other two cost it an order of magnitude more and neither recovers when its interval ends.
-Under confinement, \textsf{gmail}\textsubscript{old} takes its own 670-cycle drain and no more.
+Only Rio keeps it steady (\cref{tab:eval-motivating}): its peak delay is within a cycle of what \textsf{zoom} sees under a transition that never touches its subtree, where the other two cost it an order of magnitude more. Neither recovers when its interval ends.
+% Under confinement, \textsf{gmail}\textsubscript{old} takes its own 670-cycle drain and no more.
 
 The gray band in both figures is the interval in which the switch runs \(p_\text{temp}\), the transitional policy the planner discovered on the way to \(p_2\), and its two edges are the two atomic steps of \cref{sec:tour}.
 The band is two thirds as wide as the baseline's stop and, unlike that stop, costs the traffic nothing: the link stays full and \textsf{zoom} is undisturbed from one end of it to the other.
