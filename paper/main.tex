@@ -881,6 +881,9 @@ After it, nothing in the tree records that a transition happened.
 \section{Evaluation}\label{sec:eval}
 
 We built Rio's two substrate additions into a PIFO tree scheduler written in SpinalHDL, measured transitions in cycle-accurate simulation, and synthesized the design for an FPGA.
+The implementation consists of 750 lines of Scala.
+\xxx[zhiyuan]{scala code is 750 Loc; we can claim we use other pifo components from original paper here.}
+\xxx[as]{Zhiyuan, I don't know what that means---what exactly was reused?}
 
 \begin{figure}[t]
 \centering
@@ -991,23 +994,28 @@ Rio does not stop the scheduler at all, and the two baselines buffer 571 and 424
 \toprule
 & \multicolumn{3}{c}{Overhead of Rio's Additions} \\
 \cmidrule(l){2-4}
-vFlows & LUTs & Registers & BRAM \\
+vFlows & LUTs & FFs & BRAM \\ 
 \midrule
-32 & 0.1\% & 0.1\% & 32\% \\
-128 & 0.9\% & 1.5\% & 36\% \\
-512 & 1.5\% & 0.1\% & 41\% \\
-1024 & 3.2\% & 0.2\% & 43\% \\
+32 & 0.1\% & 1.2\% & 0\% \\
+128 & 1.0\% & 3.6\% & 0\% \\
+512 & 1.5\% & 6.2\% & 31\% \\
+1024 & 3.2\% & 8.8\% & 35\% \\
 \bottomrule
 \end{tabular}
-\caption{Synthesis overhead on a Xilinx XCKU5P, five processing elements, 1024 PIFO entries each. Each figure is a percentage of the same design without Rio's additions.}
+\caption{Resource overhead on a Xilinx XCKU5P, using five processing elements with 1024 PIFO entries each. Each figure is a percentage of the same design without Rio additions.}
 \label{tab:eval-resources}
 \end{table}
-\xxx[zhiyuan]{for the table we can also note percentage of hardare resources on FPGA}
+% \xxx[zhiyuan]{for the table we can also note percentage of hardare resources on FPGA}
 
-We synthesized the scheduler with and without Rio's additions for a Xilinx XCKU5P, sweeping the number of virtual flows the tables must address (\cref{tab:eval-resources}).
-Logic is nearly free and stays flat across a thirty-two-fold range in flow count; memory is where the additions are paid for, and it grows with that range.
-The reason is the second table bank of \cref{sec:hw-commit}: making an update atomic means holding a second copy of what the update rewrites.
-These figures are sums of synthesized components without placement or routing, so they are not a timing closure, and the denser rows of \cref{tab:eval-resources} exceed the part's own memory.
+We synthesize the PIFO engine, both with and without Rio's additions, targeting a Xilinx XCKU5P FPGA and sweeping the number of virtual flows addressable by the tables (\cref{tab:eval-resources}).
+With Rio's additions, as in the baseline design, the added logic meets timing at $250\,\mathrm{MHz}$. The PIFO itself is unchanged and continues to operate at $100\,\mathrm{MHz}$.
+Rio's logic overhead is low: it uses at most 3.2\% more LUTs and 8.8\% more registers across a 32-fold range in flow count.
+For memory, 7 additional BRAMS (or 35\% more than the baseline) are required.
+In total, the augmented design consumes at most 5.9\% of FPGA's available BRAMs.
+Its memory overhead mostly stems from the double-buffered tables
+(\cref{sec:hw-commit}): making an update atomic means holding a second copy of the state.
+
+% These figures are sums of synthesized components without placement or routing, so they are not a timing closure, and the denser rows of \cref{tab:eval-resources} exceed the part's own memory.
 
 \section{Related Work}\label{sec:related}
 
@@ -1087,6 +1095,13 @@ Rio rigorously defines the semantics of that transitional period.
 
 \bibliographystyle{ACM-Reference-Format}
 \bibliography{main}
+
+
+\section{Acknowledgements}\label{sec:ack}
+
+We used ChatGPT to construct experiment scripts.
+In all cases, authors did not directly copy or use the LLM’s output (code or text).
+Authors are fully responsible for all content written, and authors confirm that the content is, to the best of their knowledge, accurate and correct.
 
 \appendix
 
