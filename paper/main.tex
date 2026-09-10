@@ -710,7 +710,7 @@ Applying that edit to the running scheduler state yields the PIFO tree \(C_2' = 
 We want the policy the operator requested and the policy we report to agree, that is, \(p_2 \eqR p_2'\).
 The figure also names \(C_2 = \lceil p_2 \rceil\), the control a fresh compile of \(p_2\) would have built, which realizes the same policy as \(C_2'\) but without its backlog.
 
-We prove this correctness theorem, which suffices to show agreement in the above scenario:
+\Cref{sec:per-form} proves this correctness theorem, which suffices to show agreement in the above scenario:
 %
 \begin{theorem}[Edit Agreement]\label{thm:interplay}
 Let \(C\) be a well-formed control, and let \(\csem{\delta}(C)\) be defined for some \(\delta\).
@@ -957,7 +957,6 @@ Our second experiment measures the same transition across backlogs from 0 to 341
 Reserving a spare processing element and filling it with a token per buffered packet stops the scheduler for 0.991 cycles per packet, and copying the old subtree onto fresh processing elements stops it for 2.969.
 Rio's survivor link stops it for \emph{no time}, no matter how big the backlog, because it is a pointer rather than a place to put packets.
 The slope matters more than the constant: without \(\Strictstar\), the price of a transition is determined by how busy the switch was when the request arrived.
-It is also why \textsf{spotify} waits for the drain in \cref{app:ptemp}.
 
 \paragraph{Scaling in the size of the tree}
 
@@ -1198,7 +1197,7 @@ We define \(\csem{\Add}\) by recursion on \(\pi\), writing \(\mathtt{flows}(\mat
 The arguments \disc, \arm, and \(m\) thread unchanged through the recursion, and \(m\) is consumed only at the base case, which annotates the new slot and seeds its bookkeeping.
 Because \(\mathtt{flows}(\mathit{arm})\) lies outside \(\mathrm{dom}(\mathit{z}.\mathit{serves})\), every \(\mathtt{extend}\) along the way is conflict-free.
 The recursive case is exactly the \(\mathtt{extend}\) walk of \cref{sec:edit-semantics}, carrying \(\mathtt{flows}(\mathit{arm})\) down to \(\pi\).
-Appending the arm at the base case is legitimate because our arm-order freedom (\cref{sec:policy-dsl}) lets us place the new child last.
+Appending the arm at the base case is legitimate because our arm-order freedom (\cref{sec:equivalences}) lets us place the new child last.
 
 \paragraph{Pol-level reading}
 
@@ -1255,15 +1254,21 @@ A discipline that keeps no per-arm bookkeeping, such as \Strict, does not raise 
 \subsection{\texorpdfstring{\(\Quiesce(\tau)\)}{Quiesce}}\label{sec:quiesce}
 
 
-\Quiesce{} strikes every flow served under \(C@\tau\) from the admitted sets of the nodes those flows traverse, so that no packet bound for a leaf there is admitted anywhere, while leaving every node's routing in place so buffered packets can still be popped out.
+\Quiesce{} strikes every flow that \(C\) routes into \(C@\tau\) from the admitted sets of the nodes that flow traverses, so that no packet the tree would deliver there is admitted anywhere, while leaving every node's routing in place so buffered packets can still be popped out.
 This is the payoff of keeping \(\mathit{z}.\mathit{admit}\) separate from \(\mathrm{dom}(\mathit{z}.\mathit{serves})\) (\cref{sec:controls}): a silenced flow leaves the admitted set while its entry in the service map stays.
 This is the only way the containment \(\mathit{z}.\mathit{admit} \subseteq \mathrm{dom}(\mathit{z}.\mathit{serves})\) becomes strict, and only \Remove{} deletes the mapping itself.
 
 \(\csem{\Quiesce(\tau)}(C)\) is defined whenever \(\tau\) resolves in \(C\) (the empty path silences the whole tree).
-Let \(L = \mathtt{flows}(C@\tau)\) be the flows to silence.
+The flows to silence are the ones the control would carry into \(C@\tau\).
+Write \(\mathtt{route}(C, f)\) for the nodes a packet of flow \(f\) visits: start at \(C\)'s root and follow \(\mathit{z}.\mathit{serves}(f)\) at each internal node until a leaf is reached.
+Each \(\mathit{z}.\mathit{serves}\) sends a flow to a single child, so the route is unique, and
+\[
+L = \{\, f \;:\; C@\tau \in \mathtt{route}(C, f) \,\}.
+\]
+Wherever \(C\)'s leaves carry pairwise distinct flows this is \(\mathtt{flows}(C@\tau)\), the flows that \(C@\tau\) serves; the note below covers the one case in which the two part company.
 Write \(\mathit{z} \setminus L\) for \zz with \(L\) struck from its admitted set, so \((\mathit{z} \setminus L).\mathit{admit} = \mathit{z}.\mathit{admit} \setminus L\).
 Its service map and its ranker are unchanged.
-The nodes that those flows traverse are the spine down to \(\tau\) together with \(\tau\)'s whole subtree:
+Each route into \(C@\tau\) runs down the spine to \(\tau\) and continues inside it, so the nodes to narrow lie in
 \[
 V_\tau = \{\, C@\nu \;:\; \nu \sqsubseteq \tau \,\} \;\cup\; \{\, \text{every node of } C@\tau \,\}.
 \] 
@@ -1288,12 +1293,13 @@ As before, \(\tau : \mathit{path}\) is the non-empty target arm; destruct it as 
 
 \paragraph{Definition}
 
-As in \cref{sec:quiesce}, let \(L = \mathtt{flows}(C@\tau)\), here the flows that the doomed arm serves.
+Let \(L = \mathtt{flows}(C@\tau)\) be the flows that the doomed arm serves.
 Write \(\mathit{z} \dsetminus L\) for \zz with \(L\) struck from its service map, and hence, by the containment of \cref{sec:controls}, from its admitted set too.
 Its ranker is unchanged.
 \Remove{} drops the arm at its parent and strikes \(L\) from the service map of every proper ancestor above that parent, the set \(A_\pi = \{\, C@\nu \;:\; \nu \sqsubset \pi \,\}\).
-It is defined when \(\tau\) resolves in \(C\), when the subtree at \(\tau\) is empty, and when \(C@\tau\)'s ranker does not name \(\Strictstar\).
+It is defined when \(\tau\) resolves in \(C\), when the subtree at \(\tau\) is empty, and when neither \(C@\tau\)'s ranker nor \(C@\pi\)'s names \(\Strictstar\).
 A \(\Strictstar\) node can only be retired by \Undesignate{} (\cref{sec:undesignate}), which promotes the arm beneath it and is the only way \cref{sec:hw-survivor} leaves the substrate to dismantle one.
+The same holds of a wrapper's arms, since \Remove{} retracts \(L\) at the parent and above, which at a wrapper would strike the flows \Designate{} routed to the survivor.
 Dropping arm \(k\) shifts every later arm one slot to the left, and we name that shift \(\sigma_k\): the map on child indices that fixes every \(i < k\) and sends every \(i > k\) to \(i-1\).
 The node transformer \(\mathtt{drop}_k\) unhooks child \(k\) and renumbers what named it:
 {\small
@@ -1458,6 +1464,7 @@ At the instant \Remove{} fires, no entry above the doomed arm was enqueued on ac
 
 
 \(\tau : \mathit{path}\) is the path to the target subtree being wrapped, and \(\mathit{survivor} : \mathit{pol}\) is the designated-survivor policy that becomes the new \(\Strictstar\) node's low-priority arm.
+A non-empty \(\tau\) destructs as \(\pi \mathbin{+\!\!+} [k]\), as before.
 
 Say the presently running control is \(C\).
 Intuitively, \Designate{} replaces \(C@\tau\) in place with \(\Strictstar(C@\tau, \lceil \mathit{survivor} \rceil)\).
@@ -1490,9 +1497,13 @@ The transformer \(\mathtt{wrap}\) replaces \(M\) with a fresh \(\Strictstar\) no
 \quad n_N = \mathit{init\_node\_state}_{\Strictstar},\\[3pt]
 \quad s_N = (\,n_N,\ [\,\mathit{init\_slot\_state}_{\Strictstar}(n_N, \mathtt{hi}),\\
 \quad\qquad\qquad\ \ \mathit{init\_slot\_state}_{\Strictstar}(n_N, \mathtt{lo})\,]\,),\\[3pt]
-\quad q_N = \text{the \pifo of } P_0 \text{ copies of the entry } (0,\ \mathtt{hi}),\\[3pt]
+\quad q_N = \text{the \pifo of } P_0 \text{ entries, each the payload } 0\\
+\quad\qquad\qquad \text{at the rank } \mathit{rank}_{\Strictstar} \text{ mints for } \mathtt{hi},\\[3pt]
+\quad \mathit{z}_N.\mathit{serves}(f) = 1\ \text{if}\ f \in \mathtt{flows}(\mathit{survivor}),\ \text{else}\ 0,\\
+\quad\qquad \text{on } \mathrm{dom}(\mathit{z}_N.\mathit{serves}) = \mathtt{flows}(M) \cup \mathtt{flows}(\mathit{survivor}),\\[3pt]
+\quad \mathit{z}_N.\mathit{admit} = \mathrm{dom}(\mathit{z}_N.\mathit{serves}),\\[3pt]
 \quad \mathit{z}_N.\mathit{meta} = \{\, 0 \mapsto \mathtt{hi},\ 1 \mapsto \mathtt{lo} \,\},\\[3pt]
-\quad \mathit{z}_N(p) = (1,\ \mathtt{lo})\ \text{if}\ \mathit{flow}(p) \in \mathtt{flows}(\mathit{survivor}),\ \text{else}\ (0,\ \mathtt{hi}).
+\quad \mathit{z}_N.\mathit{rank} = \mathit{rank}_{\Strictstar}.
 \end{array}
 \]
 }
@@ -1525,7 +1536,7 @@ The two arms thus stay operationally disjoint even when their label sets overlap
 
 
 \Undesignate{} is the structural inverse of \Designate: it drops a \(\Strictstar\) node whose arm 0 is empty, leaving arm 1 behind (the last step of \cref{fig:designate}).
-Below we write \(N\) for that node and \(B\) for its surviving arm, both as controls, and \(|B|\) for the number of packets buffered under \(B\).
+Below we write \(N\) for that node and \(B\) for its surviving arm, both as controls, and \(|B|\) for the number of packets buffered under \(B\), with \(\pi\) and \(k\) as in \cref{sec:designate}.
 
 \Undesignate{} is defined when \(C@\tau\)'s ranker names \(\Strictstar\), and when its arm 0 is empty.
 \(\mathtt{unwrap}\) returns arm 1 of the node, \(B\), with its subtree and contents unchanged; the node \(N = C@\tau\) and its empty arm-0 subtree are discarded.
@@ -1588,19 +1599,21 @@ The Characterizations have content because each is proved against a \(\lfloor \c
 Two of the checks feed \cref{thm:interplay}, and the third feeds \cref{thm:nondisruption}.
 Throughout, we write \(C\) for the pre-edit control and \(C'\) for the post-edit control, and \(p = \lfloor C \rfloor\), \(p' = \lfloor C' \rfloor\) for the policies they realize.
 All three checks assume \(\csem{\delta}(C)\) is defined.
-Outside the region \cref{sec:edit-semantics} specifies, \(\csem{\delta}\) is undefined.
+Outside the region \cref{sec:edit-semantics-full} specifies, \(\csem{\delta}\) is undefined.
 
 \begin{itemize}
 \item \emph{Preservation of \(\vdash\).} \(\vdash C\) implies \(\vdash C'\).
 Any packets or index entries that \(\csem{\delta}\) drops or adds must leave the per-node pifo and packet counts in balance.
-\item \emph{Characterization.} Prove that reading the policy off the edited control agrees, up to \(\eqR\), with applying the \(\psem{\delta}\) of \cref{sec:edit-semantics} to the policy read off the original: \(p' \eqR \psem{\delta}(p)\).
+\item \emph{Characterization.} Prove that reading the policy off the edited control agrees, up to \(\eqR\), with applying the \(\psem{\delta}\) of \cref{sec:edit-semantics-full} to the policy read off the original: \(p' \eqR \psem{\delta}(p)\).
 \item \emph{Non-disruption.} A \pop{} reads only \pifo contents: it pops the root index-\pifo to a child, recurses, and finally emits a leaf packet, never consulting any \stt or \zz (\cref{sec:controls}).
-So if \(\csem{\delta}\) leaves the contents of every non-empty \pifo of \(C\) unchanged, never rewriting, reordering, or removing a live entry and introducing only empty \pifo{}s, then the backlog survives entry-for-entry and \(\flush(C) = \flush(C')\).
+A \pop{} consults three things about a live entry: its rank, its place in the queue, and the child it names.
+An entry is undisturbed when all three survive, whatever numeral denotes that child.
+So if \(\csem{\delta}\) leaves every live entry of \(C\) undisturbed, never reordering or removing one, and introduces only empty \pifo{}s, then the backlog survives entry-for-entry and \(\flush(C) = \flush(C')\).
 We call the nodes and fields that a form touches its \emph{footprint}, and the check is that the footprint holds no live \pifo entry.
 Where a form's footprint does hold one, we argue directly that the \pop{} sequence is unchanged.
 \end{itemize}
 
-Fifteen of the eighteen checks are immediate from the rules of \cref{sec:edit-semantics}: they name the fields that a rule writes and observe that the property at issue does not depend on them.
+Fifteen of the eighteen checks are immediate from the rules of \cref{sec:edit-semantics-full}: they name the fields that a rule writes and observe that the property at issue does not depend on them.
 The other three take an argument of their own: \Add's Characterization, and Non-disruption for \Designate{} and \Undesignate.
 The six subsections below give all eighteen, in the order \cref{fig:delta-grammar} lists the forms.
 
@@ -1657,11 +1670,13 @@ Emptiness and \(\vdash C\) leave \(C@\pi.\mathit{pifo}\) with no entry equal to 
 The parent keeps its ranker, so it reads as the same \disc with slot \(k\) gone.
 
 \paragraph{Non-disruption}
-The ancestor retractions delete nothing, since they narrow admission for future pushes only.
+\(\mathtt{drop}_k\) compacts the child list and relabels the entries above the gap in the same step, so each one goes on reaching the child it reached before, at the rank and in the place it already held.
+Emptiness leaves no entry equal to \(k\) for it to delete, and the ancestor retractions delete nothing either, since they narrow admission for future pushes only.
+The substrate does the same thing without relabeling anything, since it leaves slot indices where they are (\cref{app:lowering}).
 
 \subsection{\texorpdfstring{\Designate}{Designate}}\label{sec:check-designate}
 
-Throughout this subsection and the next, \(N\) is the wrapper node and \(B\) the control under its arm 1, as in \cref{sec:designate}.
+Throughout this subsection and the next, \(N\) is the wrapper node, \(B\) the control under its arm 1, and \(\pi\) and \(k\) the parent path and slot, as in \cref{sec:designate}.
 We write \(P_0\) for the number of packets buffered under arm 0.
 
 \paragraph{Preservation of \(\vdash\)}
@@ -1799,7 +1814,7 @@ Both parts compare policies up to \(\eqR\) by first normalizing each side, and t
 
 The comparator compares the roots of \(p_1\) and \(p_2\).
 If the two roots run different disciplines, or are leaves carrying different flows, it emits a \Replace{} (\cref{sec:sequences}).
-If the roots agree, the task reduces to \emph{pairing up the two child lists}, and each pairing yields one of four kinds of edit.
+If the roots agree, the task reduces to \emph{pairing up the two child lists}, and the comparator settles each pairing on its own.
 An arm of \(p_2\) with no partner in \(p_1\) is a fresh \Add{}; an arm of \(p_1\) with no partner in \(p_2\) is a \Retire{}.
 A matched pair whose two arms are identical is set aside and contributes nothing.
 A matched pair whose arms agree but whose slot metadata differs contributes a lone \ChangeMeta{}.
@@ -1839,15 +1854,16 @@ p2 = P(drive@m1, slack@m3, Q(gmail, x)@m4)
 \end{verbatim}
 
 Here \textsf{drive} is unchanged, \textsf{gmail} has grown into a nested \(Q\) over itself and a fresh flow \(x\), and \textsf{slack} is new.
-Neither positional strategy applies: the lengths differ, and the sub-sequence check fails because \(g\) in \(p_1\) equals no arm of \(p_2\), so without the label-overlap walk the planner would emit a \Replace{} of the whole root \(P\).
+Neither positional strategy applies: the lengths differ, and the sub-sequence check fails because \textsf{gmail} in \(p_1\) equals no arm of \(p_2\), so without the label-overlap walk the planner would emit a \Replace{} of the whole root \(P\).
 The walk instead pairs \textsf{drive} with \textsf{drive} (no edit) and \textsf{gmail} with the nested \(Q\) (recurse), and treats \textsf{slack} as a pure add.
-The emission is three steps: an \Add{} of \textsf{slack}, a \ChangeMeta{} re-tuning \textsf{gmail}'s slot to \(m_4\), and a \Replace{} at that slot.
+The comparator emits three: an \Add{} of \textsf{slack}, a \ChangeMeta{} re-tuning \textsf{gmail}'s slot to \(m_4\), and a \Replace{} at that slot.
+Those three make two steps (\cref{sec:sequences}), since the only guard is the one inside \Replace{} that waits for the old \textsf{gmail} leaf to drain.
 
 The two metadata moves travel differently.
 \textsf{slack}'s \(m_3\) is carried by the \Add{} itself (\cref{sec:add}), so the new arm lands already carrying it, while nothing in the \Replace{} can carry \textsf{gmail}'s move from \(m_2\) to \(m_4\), so that slot needs a \ChangeMeta{} of its own.
 It goes in front by the rule above: had it gone last, every packet arriving for the incoming \(Q\) during the drain would stay ranked under \(m_2\) for the rest of its life.
 \cref{fig:label-overlap-transient,fig:label-overlap-settled} show the two policies the control passes through, the transient \(\Strictstar\) that drains the old \textsf{gmail} leaf beside the incoming \(Q\), and the settled tree once that drain completes.
-In the settled tree \textsf{slack} sits beside the rebuilt \textsf{gmail} subtree in an order that does not match \(p_2\) literally, but sibling order carries no semantics (\cref{sec:policy-dsl}), so the reordering is invisible to any observer.
+In the settled tree \textsf{slack} sits beside the rebuilt \textsf{gmail} subtree in an order that does not match \(p_2\) literally, but sibling order carries no semantics (\cref{sec:equivalences}), so the reordering is invisible to any observer.
 The slot-level \Replace{} is the idiom of \cref{sec:sequences} with a non-empty path: it wraps only the slot's subtree, quiesces only that subtree, and rewires only the parent edge into it.
 
 
@@ -1861,7 +1877,7 @@ The slot-level \Replace{} is the idiom of \cref{sec:sequences} with a non-empty 
 \(\Add(\mathit{path}, D, \mathit{arm}, m)\)
 \begin{Verbatim}[fontsize=\footnotesize]
 v := PIFO at path
-n := arity(v)
+n := freeslot(v)
 layout(arm)
 adopt(n, v, root(arm))
 set_arm_meta(v, n, m)
@@ -1934,7 +1950,7 @@ foreach f in flows(surv):
 
 \section{Lowering Policy Edits}\label{app:lowering}
 
-\cref{fig:lowering} lowers all six forms of \(\delta\) to the ISA of \cref{sec:hw-isa}, in the order \cref{fig:delta-grammar} lists them, and \cref{sec:hw-isa} walks through the \Add{} case in prose.
+\cref{fig:lowering} lowers all six forms of \(\delta\) to the ISA of \cref{sec:hw-isa}, in the order \cref{fig:delta-grammar} lists them, and \cref{sec:hw-commit} walks through the \Add{} case in prose.
 A node's \(\mathit{z}.\mathit{admit}\) is its \texttt{Assoc} set, its \(\mathit{z}.\mathit{serves}\) is its \texttt{Map} table, its \(\mathit{z}.\mathit{rank}\) is the ranker that \texttt{set\_policy} installs and \texttt{discipline(v)} reads back, and its \(\mathit{z}.\mathit{meta}\) is the metadata that \texttt{set\_arm\_meta} writes.
 
 Each lowering binds \texttt{v} to the PIFO the form targets, and writes \texttt{parent} for the PIFO above \pth and \texttt{k} for its index there.
@@ -1942,19 +1958,21 @@ For \(\mathit{path} = [\,]\) those two are \texttt{port\_root} and \texttt{port\
 Queries are read off the planner's model of the tree as it stands at that point in the sequence, and a parameter an opcode leaves unmentioned is \texttt{v}'s value there; \texttt{spawn}'s elided \texttt{pe} argument is the PE at \texttt{v}'s depth (\cref{sec:hw-substrate}).
 \texttt{foreach x in S} emits its body once per \texttt{x}, and \texttt{walk(op, C, f)} emits \texttt{op(v, f, \ldots)} at each \texttt{v} in \texttt{C}.
 
-Of the queries, \texttt{flows(v)} is the set of flows admitted beneath \texttt{v}, and on flow sets \texttt{\&} is intersection and \texttt{\textbackslash} difference.
+Of the queries, \texttt{flows(v)} is the set of flows served beneath \texttt{v}, less any that \texttt{v}'s designated survivor has taken over, and on flow sets \texttt{\&} is intersection and \texttt{\textbackslash} difference.
+Admission does not enter it, so a \Quiesce{} leaves it alone and the walks that fire after a drain still have flows to walk.
 \texttt{chain(f)} runs from \texttt{port\_root} to the leaf admitting \texttt{f}, and \texttt{internals(f)} is that chain minus the leaf.
-\texttt{survivor(v)} is \texttt{v}'s designated survivor.
+\texttt{survivor(v)} is \texttt{v}'s designated survivor, and \texttt{freeslot(v)} is an index that no child of \texttt{v} holds.
 For a compiled subtree \texttt{T}, \texttt{nodes(T)} is its PIFOs and \texttt{root(T)} its root, and \texttt{layout(T)} spawns and configures all of \texttt{T}, leaving the parent-side \texttt{adopt} to the caller.
 
 The rest of this appendix says only what the emissions themselves cannot.
 
 
-\Add{}'s new subtree occupies \texttt{v}'s rightmost slot, so existing children's indices are undisturbed, and its leaf-disjointness precondition (\cref{sec:add}) means no PIFO on a chain already routes \texttt{f}, so neither walk overwrites a live entry.
+\Add{}'s new subtree takes a slot that no child of \texttt{v} holds, so existing children's indices are undisturbed, and its leaf-disjointness precondition (\cref{sec:add}) means no PIFO on a chain already routes \texttt{f}, so neither walk overwrites a live entry.
 \Remove{} is \Add{} run backwards.
-The \(\sigma_k\) renumbering of \cref{sec:remove} has no counterpart, since a child is reached by an opaque per-edge index that \texttt{parent} minted when it adopted that child, so dropping a child leaves its siblings untouched.
+The \(\sigma_k\) renumbering of \cref{sec:remove} has no counterpart on the substrate: a child sits at the index \texttt{adopt} named for it, and \texttt{emancipate} frees that index without moving another, so every \texttt{map} and \texttt{set\_arm\_meta} entry naming a surviving sibling stays valid.
+Slot indices are stable and need not be dense, where \cref{sec:remove} keeps a dense child list and renumbers to restore it, and the two agree on the child that each surviving entry reaches.
 
-\Quiesce's wide reach, covering the root-to-\pth chain along with the whole subtree under \texttt{v}, is forced by \cref{sec:policy-dsl}: every node on a packet's path mints its own routing index independently, so dropping \texttt{f} at only some of them would leave the rest minting stray indices, and the tree malformed.
+\Quiesce's wide reach, covering the root-to-\pth chain along with the whole subtree under \texttt{v}, is forced by \cref{sec:controls}'s parallel \push{}: every node on a packet's path mints its own routing index independently, so dropping \texttt{f} at only some of them would leave the rest minting stray indices, and the tree malformed.
 \Quiesce{} does not issue \texttt{unmap}.
 A silenced flow's Map entries \emph{must outlive the silencing} so that buffered packets can be popped, and \Remove{} pairs \texttt{emancipate} with \texttt{unmap} precisely because it fires after the drain, when there is no longer any in-flight traffic to preserve.
 A \Quiesce{} that fires in the middle of a \Replace, on the doomed arm of a \(\Strictstar\), restricts its deassoc walk to loser-only flows, since \Designate{} routed the shared flows to the survivor at commit time (\cref{sec:designate}), and de-associating them here would silence live traffic on the survivor.
@@ -1964,45 +1982,6 @@ Its deassoc walk hands the shared flows over to the survivor, and runs first bec
 Flows in \(\mathtt{flows(loser)} \setminus \mathtt{flows(surv)}\) are left alone and go on reaching \texttt{loser}'s own subtree, matching \cref{sec:designate}'s rule that loser-only labels drain on arm 0; silencing those, when the operator ultimately wants it, comes from the \Quiesce{} step of the surrounding \Replace{} idiom (\cref{sec:sequences}).
 \Undesignate{} is likewise \Designate{} run backwards, and reusing \texttt{k} preserves \texttt{parent}'s per-arm metadata for that slot, so the survivor inherits the annotation the doomed subtree held.
 Its shared flows are deliberately not unmapped, since they serve \texttt{surv} now.
-
-\section{Inside the Transitional Interval}\label{app:ptemp}
-
-The first experiment of \cref{sec:eval} carries a scheduler from
-%
-\[ p_1 = \Strict(\mathtt{hi}{:}\,\textsf{zoom},\ \mathtt{lo}{:}\,\textsf{gmail}) \]
-%
-to
-%
-\[ p_2 = \Strict(\mathtt{hi}{:}\,\textsf{zoom},\ \mathtt{lo}{:}\,\RR(\textsf{gmail},\allowbreak\ \textsf{spotify})) \]
-%
-Both policies serve \textsf{zoom} ahead of everything else, and \(p_2\) admits \textsf{spotify} by sharing the low-priority arm between it and \textsf{gmail}.
-Inserting that \(\RR\) node would relocate the \textsf{gmail} packets already queued, so Rio reaches \(p_2\) in two atomic steps instead, and between them the scheduler runs
-%
-\[
-\begin{aligned}
-p_\text{temp} = \Strict(\ &\mathtt{hi}{:}\,\textsf{zoom}, \\
- &\mathtt{lo}{:}\,\Strictstar( \\
- &\quad \mathtt{hi}{:}\,\textsf{gmail}_\text{old}, \\
- &\quad \mathtt{lo}{:}\,\RR(\textsf{gmail}_\text{new},\ \textsf{spotify})))
-\end{aligned}
-\]
-%
-whose \(\Strictstar\) node serves the packets \textsf{gmail} had already queued ahead of everything that arrives afterward.
-\Cref{sec:tour} derives this sequence and \cref{sec:hw-survivor} implements it.
-
-\begin{figure}[htbp]
-\centering
-\includegraphics{fig-eval-ptemp.pdf}
-\caption{The three flows under Rio's confined replace. The gray band is the interval in which Rio runs $p_\text{temp}$.}
-\label{fig:eval-ptemp}
-\end{figure}
-
-The traffic is the traffic of \cref{sec:eval}.
-\textsf{zoom} sends enough packets to fill 40\% of the link throughout, \textsf{gmail} fills 80\% before the request and 20\% after it, and \textsf{spotify} starts sending when the request arrives, enough to fill 20\%.
-
-\Cref{fig:eval-ptemp} shows what each of the three flows receives.
-\textsf{zoom} holds the high-priority arm but asks for only 0.40 of the link and gets it, so \textsf{gmail} takes the remainder.
-\textsf{gmail} is lifted while \textsf{gmail}\textsubscript{old} drains ahead of new arrivals, and \textsf{spotify} waits on that drain, reaching first service 709 cycles after the request against the stop-the-world baseline's 1408.
 
 % Flush the deferred float before acmart's end-of-document \balance runs;
 % the balance package drops floats that are still deferred when it fires.

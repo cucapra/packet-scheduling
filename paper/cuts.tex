@@ -1015,3 +1015,57 @@ Suppose we added a form \(\textsf{Reset}(p_2)\), with \(\csem{\textsf{Reset}(p_2
 It satisfies both clauses of \cref{thm:interplay}, since \(\lceil p_2 \rceil\) is well-formed and \(\lfloor \lceil p_2 \rceil \rfloor \eqR p_2\), and it is exactly the stop-the-world baseline: buffered packets dropped on the floor.
 So the agreement theorem alone cannot tell our contribution apart from the thing we claim to beat, and \cref{sec:intro}'s promise to improve on the state of the art is never discharged formally.
 My counter-offer is to promote non-disruption to a collected theorem rather than demote it.}
+
+% ---------------------------------------------------------------------------
+% R11. Appendix F, ``Inside the Transitional Interval''
+% From: main.tex, the last appendix, label app:ptemp, with fig:eval-ptemp
+% (fig-eval-ptemp.pdf, still on disk and still in the Makefile's DEPS).
+% Cut 2026-09-09 on AM's instruction, during the appendix consistency pass.
+% It restated \S2's p_1/p_temp/p_2 and \S8's traffic mix, then read one figure:
+% spotify reaches first service 709 cycles after the request against the
+% stop-the-world baseline's 1408. That number lives nowhere else in the paper.
+% Cutting it also closed review item 18, which was that the figure shows
+% spotify flat at zero for the width of the band while \S8 says the interval
+% ``costs the traffic nothing''.
+% \S8's pointer to it went too, one sentence in ``The value of a survivor
+% link'': ``It is also why spotify waits for the drain in \cref{app:ptemp}.''
+% ---------------------------------------------------------------------------
+
+\section{Inside the Transitional Interval}\label{app:ptemp}
+
+The first experiment of \cref{sec:eval} carries a scheduler from
+%
+\[ p_1 = \Strict(\mathtt{hi}{:}\,\textsf{zoom},\ \mathtt{lo}{:}\,\textsf{gmail}) \]
+%
+to
+%
+\[ p_2 = \Strict(\mathtt{hi}{:}\,\textsf{zoom},\ \mathtt{lo}{:}\,\RR(\textsf{gmail},\allowbreak\ \textsf{spotify})) \]
+%
+Both policies serve \textsf{zoom} ahead of everything else, and \(p_2\) admits \textsf{spotify} by sharing the low-priority arm between it and \textsf{gmail}.
+Inserting that \(\RR\) node would relocate the \textsf{gmail} packets already queued, so Rio reaches \(p_2\) in two atomic steps instead, and between them the scheduler runs
+%
+\[
+\begin{aligned}
+p_\text{temp} = \Strict(\ &\mathtt{hi}{:}\,\textsf{zoom}, \\
+ &\mathtt{lo}{:}\,\Strictstar( \\
+ &\quad \mathtt{hi}{:}\,\textsf{gmail}_\text{old}, \\
+ &\quad \mathtt{lo}{:}\,\RR(\textsf{gmail}_\text{new},\ \textsf{spotify})))
+\end{aligned}
+\]
+%
+whose \(\Strictstar\) node serves the packets \textsf{gmail} had already queued ahead of everything that arrives afterward.
+\Cref{sec:tour} derives this sequence and \cref{sec:hw-survivor} implements it.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics{fig-eval-ptemp.pdf}
+\caption{The three flows under Rio's confined replace. The gray band is the interval in which Rio runs $p_\text{temp}$.}
+\label{fig:eval-ptemp}
+\end{figure}
+
+The traffic is the traffic of \cref{sec:eval}.
+\textsf{zoom} sends enough packets to fill 40\% of the link throughout, \textsf{gmail} fills 80\% before the request and 20\% after it, and \textsf{spotify} starts sending when the request arrives, enough to fill 20\%.
+
+\Cref{fig:eval-ptemp} shows what each of the three flows receives.
+\textsf{zoom} holds the high-priority arm but asks for only 0.40 of the link and gets it, so \textsf{gmail} takes the remainder.
+\textsf{gmail} is lifted while \textsf{gmail}\textsubscript{old} drains ahead of new arrivals, and \textsf{spotify} waits on that drain, reaching first service 709 cycles after the request against the stop-the-world baseline's 1408.
