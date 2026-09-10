@@ -1008,12 +1008,10 @@ vFlows & LUTs & FFs & BRAM \\
 % \xxx[zhiyuan]{for the table we can also note percentage of hardare resources on FPGA}
 
 We synthesize the PIFO engine, both with and without Rio's additions, targeting a Xilinx XCKU5P FPGA and sweeping the number of virtual flows addressable by the tables (\cref{tab:eval-resources}).
-With Rio's additions, as in the baseline design, the added logic meets timing at $250\,\mathrm{MHz}$. The PIFO itself is unchanged and continues to operate at $100\,\mathrm{MHz}$.
-Rio's logic overhead is low: it uses at most 3.2\% more LUTs and 8.8\% more registers across a 32-fold range in flow count.
-For memory, 7 additional BRAMS (or 35\% more than the baseline) are required.
-In total, the augmented design consumes at most 5.9\% of FPGA's available BRAMs.
-Its memory overhead mostly stems from the double-buffered tables
-(\cref{sec:hw-commit}): making an update atomic means holding a second copy of the state.
+The added logic meets timing at $250\,\mathrm{MHz}$, as the baseline design does, and the PIFO itself is unchanged and continues to operate at $100\,\mathrm{MHz}$.
+Rio's logic overhead stays under a tenth of the baseline's LUTs and flip-flops across a 32-fold range in flow count.
+Memory is where the additions are paid for, and only once the tables are large: the widest configuration needs 7 additional BRAMs, bringing the augmented design to at most 5.9\% of the FPGA's available BRAMs.
+That overhead stems from the double-buffered tables of \cref{sec:hw-commit}, since making an update atomic means holding a second copy of the state.
 
 % These figures are sums of synthesized components without placement or routing, so they are not a timing closure, and the denser rows of \cref{tab:eval-resources} exceed the part's own memory.
 
