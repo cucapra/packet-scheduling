@@ -1867,7 +1867,7 @@ The slot-level \Replace{} is the idiom of \cref{sec:sequences} with a non-empty 
 \(\Add(\mathit{path}, D, \mathit{arm}, m)\)
 \begin{Verbatim}[fontsize=\footnotesize]
 v := PIFO at path
-n := arity(v)
+n := freeslot(v)
 layout(arm)
 adopt(n, v, root(arm))
 set_arm_meta(v, n, m)
@@ -1951,15 +1951,16 @@ Queries are read off the planner's model of the tree as it stands at that point 
 Of the queries, \texttt{flows(v)} is the set of flows served beneath \texttt{v}, less any that \texttt{v}'s designated survivor has taken over, and on flow sets \texttt{\&} is intersection and \texttt{\textbackslash} difference.
 Admission does not enter it, so a \Quiesce{} leaves it alone and the walks that fire after a drain still have flows to walk.
 \texttt{chain(f)} runs from \texttt{port\_root} to the leaf admitting \texttt{f}, and \texttt{internals(f)} is that chain minus the leaf.
-\texttt{survivor(v)} is \texttt{v}'s designated survivor.
+\texttt{survivor(v)} is \texttt{v}'s designated survivor, and \texttt{freeslot(v)} is an index that no child of \texttt{v} holds.
 For a compiled subtree \texttt{T}, \texttt{nodes(T)} is its PIFOs and \texttt{root(T)} its root, and \texttt{layout(T)} spawns and configures all of \texttt{T}, leaving the parent-side \texttt{adopt} to the caller.
 
 The rest of this appendix says only what the emissions themselves cannot.
 
 
-\Add{}'s new subtree occupies \texttt{v}'s rightmost slot, so existing children's indices are undisturbed, and its leaf-disjointness precondition (\cref{sec:add}) means no PIFO on a chain already routes \texttt{f}, so neither walk overwrites a live entry.
+\Add{}'s new subtree takes a slot that no child of \texttt{v} holds, so existing children's indices are undisturbed, and its leaf-disjointness precondition (\cref{sec:add}) means no PIFO on a chain already routes \texttt{f}, so neither walk overwrites a live entry.
 \Remove{} is \Add{} run backwards.
-The \(\sigma_k\) renumbering of \cref{sec:remove} has no counterpart, since a child is reached by an opaque per-edge index that \texttt{parent} minted when it adopted that child, so dropping a child leaves its siblings untouched.
+The \(\sigma_k\) renumbering of \cref{sec:remove} has no counterpart on the substrate: a child sits at the index \texttt{adopt} named for it, and \texttt{emancipate} frees that index without moving another, so every \texttt{map} and \texttt{set\_arm\_meta} entry naming a surviving sibling stays valid.
+Slot indices are stable and need not be dense, where \cref{sec:remove} keeps a dense child list and renumbers to restore it, and the two agree on the child that each surviving entry reaches.
 
 \Quiesce's wide reach, covering the root-to-\pth chain along with the whole subtree under \texttt{v}, is forced by \cref{sec:policy-dsl}: every node on a packet's path mints its own routing index independently, so dropping \texttt{f} at only some of them would leave the rest minting stray indices, and the tree malformed.
 \Quiesce{} does not issue \texttt{unmap}.
