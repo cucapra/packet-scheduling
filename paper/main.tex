@@ -1222,7 +1222,7 @@ Its path is non-empty and destructs as \(\pi \mathbin{+\!\!+} [k]\), so \(k\) is
 Carrying \disc on the form makes \(m \in M_{D}\) checkable from the form alone, rather than only against the control it is about to be applied to.
 
 \ChangeMeta{} is defined when \(\tau\) resolves in \(C\) to an arm whose parent runs the \disc the form names, when \(m \in M_{D}\), and when that parent's ranker does not name \(\Strictstar\).
-Changing the metadata of a \(\Strictstar\) is illegal, and \cref{sec:hw-survivor} turns that to account: a node whose priorities cannot change needs no \pifo of its own.
+Changing the metadata of a \(\Strictstar\) is illegal, and \cref{sec:hw-survivor} turns that to account: a node whose priorities cannot change needs no PIFO of its own.
 Its node transformer \(\mathtt{setmeta}_k\) rewrites the node's \zz and nothing else:
 {\small
 \[
@@ -1369,12 +1369,12 @@ This would leave \(\vdash\) broken.
 Deleting an \emph{occupied} child has no canonical local realization.
 Consider the well-formed tree of \cref{fig:remove-orig}, whose internal nodes are \(P\) and \(Q\), with the annotations on the arms showing how a parent refers to a child.
 Say the operator asks us to delete \tritext{flowC}, dropping its packets.
-To restore well-formedness, we need to remove two instances of the index \(1\) from \(Q\)'s PIFO and two instances of the index \(0\) from \(P\)'s PIFO.
+To restore well-formedness, we need to remove two instances of the index \(1\) from \(Q\)'s \pifo and two instances of the index \(0\) from \(P\)'s \pifo.
 
 At \(Q\) the edit is unambiguous.
-Well-formedness of the original tree forces \(Q\)'s PIFO to have exactly two instances of \(1\), and we delete those two.
+Well-formedness of the original tree forces \(Q\)'s \pifo to have exactly two instances of \(1\), and we delete those two.
 The trouble is one level up.
-\(P\)'s PIFO originally had four instances of \(0\), and well-formedness demands that we remove two of them.
+\(P\)'s \pifo originally had four instances of \(0\), and well-formedness demands that we remove two of them.
 But \emph{which} two?
 No entry in \(P\) carries the meta-information ``I was enqueued when a packet was inserted into \tritext{flowC}''; an entry \(0\) in \(P\) only means ``when this index is popped, recursively ask subtree \(Q\) to emit the next packet'' (see \cref{sec:controls}).
 This absence of meta-information is a \emph{feature} of PIFO trees, not a defect: an entry is deliberately detached from the packet it was enqueued with, which lets each node schedule its own discipline in isolation and lets a subtree be reconfigured without rewriting its ancestors.
@@ -1696,7 +1696,7 @@ Arm 1 sees traffic only on a future \push{}, so no buffered packet is affected.
 
 \paragraph{The same checks under the survivor link}
 The checks above are about \(\mathtt{wrap}\)'s node (\cref{sec:designate}), a real \(\Strictstar\) with two real children and a \pifo of its own, so \cref{sec:controls} applies to it word for word.
-The substrate has no such node, since \cref{sec:hw-survivor} realizes it as a link, and the doomed node's parent then holds \pifo entries for packets in a subtree that is not its child at all.
+The substrate has no such node, since \cref{sec:hw-survivor} realizes it as a link, and the doomed node's parent then holds PIFO entries for packets in a subtree that is not its child at all.
 That count is still correct once ``the subtree under index \(i\)'' is read as the subtree at \(i\) together with its designated survivor's, and an index that leads to a node that has drained does not reach a leaf with nothing to emit, since it reaches the survivor.
 
 \subsection{\texorpdfstring{\Undesignate}{Undesignate}}\label{sec:check-undesignate}
