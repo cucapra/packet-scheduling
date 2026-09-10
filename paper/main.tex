@@ -710,7 +710,7 @@ Applying that edit to the running scheduler state yields the PIFO tree \(C_2' = 
 We want the policy the operator requested and the policy we report to agree, that is, \(p_2 \eqR p_2'\).
 The figure also names \(C_2 = \lceil p_2 \rceil\), the control a fresh compile of \(p_2\) would have built, which realizes the same policy as \(C_2'\) but without its backlog.
 
-We prove this correctness theorem, which suffices to show agreement in the above scenario:
+\Cref{sec:per-form} proves this correctness theorem, which suffices to show agreement in the above scenario:
 %
 \begin{theorem}[Edit Agreement]\label{thm:interplay}
 Let \(C\) be a well-formed control, and let \(\csem{\delta}(C)\) be defined for some \(\delta\).
