@@ -737,34 +737,24 @@ A \pop{} reads only \pifo contents, never any \stt or \zz (\cref{sec:controls}),
 \Designate{} and \Undesignate{} do disturb entries, inserting and dropping a node whose \pifo is not empty, and they are argued on the \pop{} sequence instead, which is why the theorem is stated on the flush sequence rather than on \pifo contents.
 \cref{sec:per-form} proves it form by form.
 
-\subsection{Sequences of Edits}\label{sec:sequences}
+\subsection{Sequences and the Transition Planner}\label{sec:sequences}\label{sec:planner}
 
 No single \(\delta\) carries a running scheduler from an arbitrary \(p_1\) to an arbitrary \(p_2\).
 We therefore compose the forms into \emph{guarded sequences}, written \((\varphi ; \delta^{*})^{*}\).
 A guard \(\varphi\) is a condition on the live control that the substrate can be asked to wait for, and the only guard we need is that a given subtree has drained to empty.
 A \emph{step} is one guard together with the run of \(\delta\)s that guard releases.
+Both theorems hold at every step: each \(\delta\) fires on the well-formed control that the previous one left behind (\cref{thm:interplay}), so \(\lfloor \cdot \rfloor\) names the \pol in force at every point, exactly as \cref{sec:intro} promises of the transitional period, and the backlog survives the whole sequence (\cref{thm:nondisruption}).
 
-Both theorems hold at every step of a sequence.
-Each \(\delta\) fires on the well-formed control that the previous one left behind (\cref{thm:interplay}), so \(\lfloor \cdot \rfloor\) names the \pol in force at every point, and \cref{sec:intro} promises exactly this of the transitional period.
-The backlog survives the whole sequence (\cref{thm:nondisruption}).
-
-A sequence that reconfigures a real tree is a list of small edits, which is not how an operator thinks about their scheduler.
-An \emph{idiom} is a name for a sequence that recurs, and two of them cover what we need.
+An \emph{idiom} is just a named sequence.
 \Retire(\pth) tears a subtree down gracefully: it quiesces the subtree at \pth, waits for it to drain, and then removes it.
-\Replace(\pth, \survivor) swaps \survivor in for \(\mathit{pol}@\mathit{path}\): it designates \survivor beside the running subtree, quiesces that subtree, waits for it to drain, and then collapses the \(\Strictstar\) wrapper to leave \survivor alone at \pth.
-\(\Replace([\,], p_2)\) discharges the completeness criterion of \cref{sec:delta-grammar}: it reaches any \(p_2\) from any \(p_1\).
-\cref{sec:planner} treats it as the planner's fallback.
+\Replace(\pth, \survivor) swaps \survivor in for \(\mathit{pol}@\mathit{path}\): it designates \survivor beside the running subtree, quiesces that subtree, waits for it to drain, and then collapses the \(\Strictstar\) wrapper.
 
-\subsection{The Transition Planner}\label{sec:planner}
-
-A guarded sequence has to come from somewhere.
-The operator hands the runtime \(p_1\), the presently running policy, and \(p_2\), the one they now want, and a \emph{transition planner} proposes a guarded sequence (\cref{sec:sequences}) that carries the one to the other.
-The operator accepts or rejects that proposal rather than authoring it.
-
+% Sequences are proposed rather than authored.
+The operator hands the runtime \(p_1\), the presently running policy, and \(p_2\), the one they now want, and a \emph{transition planner} returns a guarded sequence carrying the one to the other, which the operator is free to accept or reject.
 The planner is a heuristic, and we make no claim that what it emits is minimal.
-We claim that it always emits a sequence reaching \(p_2\), since \(\Replace([\,], p_2)\) is available at every point, and that it reaches for that fallback only when none of its strategies finds a tighter edit.
-It descends through the slots at which \(p_1\) and \(p_2\) already agree and installs the difference at the deepest slot it reaches, so a change confined to one subtree leaves every other part of the tree scheduling its own traffic untouched.
-The root-level fallback shows what that is worth: it puts the entire running tree on the high-priority arm of a \(\Strictstar\), so every packet arriving during the transition waits behind the whole existing backlog.
+It always reaches \(p_2\), because \(\Replace([\,], p_2)\) is available at every point and discharges the completeness criterion of \cref{sec:delta-grammar} on its own.
+It reaches for that fallback only when none of its strategies finds a tighter edit, descending through the slots at which \(p_1\) and \(p_2\) already agree and installing the difference at the deepest slot it reaches, so that a change confined to one subtree leaves every other part of the tree scheduling its own traffic untouched.
+The root-level fallback shows what that confinement is worth: it puts the entire running tree on the high-priority arm of a \(\Strictstar\), so every packet arriving during the transition waits behind the whole existing backlog.
 \cref{app:planner-emits} gives the case analysis in full.
 
 
@@ -992,7 +982,7 @@ The band is two thirds as wide as the baseline's stop and, unlike that stop, cos
 \paragraph{The value of a survivor link}
 
 \(\Strictstar\) exists so that a transitional policy can prefer buffered packets to new ones without moving them.
-Any other way of expressing that preference has to put the backlog inside a newly built node, which means writing one scheduler token per buffered packet while the scheduler is stopped.
+Any other way of doing this must put the backlog inside a newly built node, which means writing one scheduler token per buffered packet while the scheduler is stopped.
 Our second experiment measures the same transition three ways, across backlogs from 0 to 341 packets standing at the request.
 There are two ways to build such a node, and we measure both.
 One reserves a spare processing element and fills it with a token for each buffered packet, which stops the scheduler for 0.991 cycles per packet.
@@ -1074,12 +1064,12 @@ they label packets according to the version of the network they should see.
 Rio seeks per-packet consistency for each of its edits, inside a single packet scheduler rather than across a network.
 Versioning does not carry over to a scheduler, which holds packets whose ranks were fixed when they were \push{}ed.
 
-FlexCore~\cite{Xing22} aims to consistently reconfigure the P4 program running on a programmable switch.
-It computes a reconfiguration script, which is a sequence of atomic graph edits that transforms the old program into the new one.
+FlexCore~\cite{Xing22} consistently reconfigures the P4 program running on a switch.
+It computes a reconfiguration script, a sequence of atomic graph edits that transforms the old program into the new one.
 It offers three consistency guarantees that may govern the intermediate states visible between the two endpoints.
 Rio similarly works by generating a series of atomic edits to transform one packet-scheduling policy into another (\cref{sec:sequences}).
 Every intermediate state during a Rio update is a legible program in the same language that the user writes to specify policies (\cref{thm:interplay}).
-FlexCore's strongest guarantee, \emph{program consistency}, lets no intermediate state reach a packet, and a Rio transaction provides that for a single \(\delta\) (\cref{sec:hw-commit}).
+FlexCore's strongest guarantee, \emph{program consistency}, lets no intermediate state reach a packet; a Rio transaction provides that for a single \(\delta\) (\cref{sec:hw-commit}).
 Relatedly, \citet{Yang24} demonstrate a system for installing P4 programs on programmable switches without disrupting traffic.
 
 Rio's focus on packet schedulers, as opposed to forwarding pipelines, leads to different techniques, and the difference is state.
