@@ -823,20 +823,15 @@ the unmodified policy applies to all packets before $t$ and the updated policy a
 Each of the six policy edits (\cref{sec:delta-grammar}) installs as one such transaction.
 That is the atomicity the edit grammar demands of every form it admits.
 
-The instructions address PIFOs using opaque ids \texttt{v}
-and children using indices \texttt{i}.
 Instructions can change the PIFO tree topology (the \emph{lifecycle} instructions), set scheduling policies (\emph{discipline} and \emph{survivor}), and associate flows with PIFOs (\emph{classification}).
-Some instructions have preconditions: for example,
-\texttt{emancipate} requires that the subtree is empty.
-It is the compiler's responsibility to enforce these preconditions.
-It emits the whole sequence of transactions and guards, so an instruction that needs an empty subtree is preceded by a guard on that emptiness (\cref{sec:sequences}).
-Rio's configuration controller implements such a guard as a blocking command in its queue: a blocking command remains at the head of the queue until its predicate becomes true.
-Rio does not guarantee progress; it is the control plane's responsibility to ensure that it only waits on the emptiness of subtrees that will eventually become empty.
+Some instructions have preconditions, e.g., \texttt{emancipate} requires that the subtree it detaches is empty.
+Enforcing them is the compiler's responsibility: it emits the whole sequence of transactions and guards, so an instruction that needs an empty subtree is preceded by a guard on that emptiness (\cref{sec:sequences}), and the controller holds the sequence there until the guard's predicate becomes true.
+Rio does not guarantee progress, and the control plane must take care to wait only on subtrees that will eventually empty.
 % Guards also bound what may share a transaction.
 % Two edits with no guard between them may share one transaction, and two that a guard separates may not.
 % The \Retire{} idiom is an example: it waits for emptiness between its \Quiesce{} and its \Remove{}.
 
-A PE stores four things: its \texttt{Assoc} set, the flows it admits; a \texttt{Map}, read on enqueue, naming the PIFO each admitted flow enters and the PE that holds it; a next-hop table, read on dequeue, naming the PIFO that each of its indices reaches; and the designated-survivor link (\cref{sec:hw-survivor}).
+A PE stores four things: its \texttt{Assoc} set, the flows it admits; a \texttt{Map}, read on enqueue, naming the PIFO each admitted flow enters; a next-hop table, read on dequeue; and the designated-survivor link (\cref{sec:hw-survivor}).
 %
 Each of \zz's parts is the target of an opcode, so an edit that rewrites one of them lowers to instructions that write the corresponding PE state.
 \cref{app:lowering} details the lowering of each form.
@@ -845,24 +840,14 @@ Each of \zz's parts is the target of an opcode, so an edit that rewrites one of 
 \label{sec:hw-commit}
 
 \Cref{sec:hw-isa} promises that a transaction takes effect at a single instant $t$, so that the policy changes between two adjacent packets.
-This section describes our hardware's support for edit atomicity.
+Instructions affect two kinds of state, match--action tables and ranking logic, and our key observation is that atomicity needs hardware support for the tables but \emph{not} for the ranking logic.
+That suffices for all six edits, because each of them affects at most one \emph{live} scheduling policy and so can be staged.
+\Add{} is the pattern they all follow: it first configures the policies for the new subtree and then activates it, and only the activation needs a transactional update, since the fresh subtree is not visible to live traffic until then.
 
-Instructions can affect two kinds of state:
-match--action tables (e.g., \texttt{adopt} and \texttt{assoc})
-and ranking logic (e.g., \texttt{set\_policy}).
-Our key observation is that we need hardware support for atomic MAT updates but \emph{not} for ranking-logic modifications.
-This level of transactional semantics suffices to implement all six atomic edits that Rio requires because each edit affects at most one \emph{live} scheduling policy.
-For example, the $\Add$ edit uses two phases: it (1) configures the policies for the new subtree and then (2) activates it.
-To make this entire $\Add$ edit apply atomically, only the activation step needs a transactional update; non-transactional updates suffice in the first phase because the fresh subtree is not visible to live traffic.
-All six edits in \cref{fig:delta-grammar} follow this pattern.
+Rio makes those table updates atomic by double-buffering, a common technique for atomically updating packet-processing pipelines~\cite{Xing22,Yang24}.
+Configuration instructions write the inactive copy, and committing a transaction swaps the active and inactive copies.
 
-Rio implements atomic MAT updates by double-buffering these tables.
-Double buffering is a common technique for atomically updating packet-processing pipelines~\cite{Xing22,Yang24}.
-Configuration instructions affect the inactive MATs,
-and committing a transaction swaps the active and inactive MATs.
-
-A swap takes a single cycle, so it is straightforward to make updates atomic within a PE,
-but transactions can affect multiple PEs.
+A swap takes a single cycle, which makes updates atomic within a PE, but a transaction can affect several PEs.
 We \emph{delay-align} each transaction's commit across PEs according to the PIFO tree topology:
 % The new configuration becomes visible at different PEs at carefully chosen times, so that
 although the update happens across several cycles, pipelined enqueues and dequeues follow the updates so that each sees either the old or the new configuration.
@@ -871,37 +856,25 @@ although the update happens across several cycles, pipelined enqueues and dequeu
 
 \subsection{Designated Survivors}\label{sec:hw-survivor}
 
-Rio's second addition to the PIFO tree substrate supports the $\Designate$ and $\Undesignate$ policy edits (\cref{sec:delta-grammar}).
-These edits introduce and delete a $\Strictstar$ policy node that behaves identically to $\Strict$ but with an efficient hardware implementation.
-Rio supports $\Strictstar$ with a minimal hardware modification and without relocating packets across PEs.
+Rio's second addition to the PIFO tree substrate supports the $\Designate$ and $\Undesignate$ policy edits (\cref{sec:delta-grammar}), which introduce and delete a $\Strictstar$ node.
+A $\Strictstar$ behaves exactly as $\Strict$ does, and Rio implements it with a minimal hardware modification and without relocating packets across PEs.
+The \texttt{designate} instruction creates a relationship between two PIFOs resembling a $\Strict$ node, but a restricted one: its priorities can never change, since \texttt{set\_arm\_meta} is disallowed, and only \texttt{undesignate} can delete it.
 
-The Rio ISA's \texttt{designate} instruction creates a relationship between two PIFOs that resembles a $\Strict$ node created with \texttt{set\_policy}.
-However, the priorities for this special $\Strictstar$ node can never change (\texttt{set\_arm\_meta} is disallowed),
-and only \texttt{undesignate} can delete the node.
+These restrictions admit a key optimization: to implement $\Strictstar(A, B)$ we need no separate PE for the $\Strictstar$ node itself, and instead add simple logic to the PE that already houses $A$ and $B$.
+A dequeue request meets this survivor-link cell before it reaches the PE's PIFOs (\cref{fig:hardware}), and it fits into the dequeue pipeline without adding a cycle, whether or not the request is rewritten.
+Adding and deleting a $\Strictstar$ node therefore shifts no tree levels, where shifting them would mean relocating $A$'s and $B$'s packets across physical PIFOs.
 
-These restrictions admit a key optimization:
-to implement $\Strictstar(A, B)$,
-we do not need to allocate a separate PE for the $\Strictstar$ node itself.
-Instead, we add simple logic to the PE that houses nodes $A$ and $B$.
-A dequeue request meets this survivor-link cell before it reaches the PE's PIFOs (\cref{fig:hardware}).
-It fits into the dequeue pipeline without adding a cycle, whether or not the request is rewritten.
-Adding and deleting the $\Strictstar$ node therefore avoids shifting the tree levels of $A$ and $B$, which would require relocating their packets across physical PIFOs.
-In other words, to compute a node's level, ignore the $\Strictstar$ nodes above it.
-
-Rio adds, to each PIFO, a \emph{designated-survivor link}.
-It is initially null.
-The \texttt{designate(v, surv)} instruction points the doomed node \texttt{v}'s link at the survivor's root \texttt{surv}.
+Rio adds to each PIFO a \emph{designated-survivor link}, initially null, and \texttt{designate} points the doomed node's link at the survivor's root.
 % The link is written through the transactional path of \cref{sec:hw-commit}, so it becomes visible in the same instant as the classification writes that hand the traffic over.
-As a precondition, \texttt{v} and \texttt{surv} must already sit in the same PE.
-\texttt{v}'s parent is not told, and \texttt{v} keeps the one index it had, so \texttt{undesignate} is later a single retarget that preserves the parent's per-arm metadata for that slot.
+The two must already sit in the same PE.
+The parent is not told, so \texttt{undesignate} is later a single retarget that leaves the parent's per-arm metadata intact.
 
-We modify the packet dequeue logic to follow designated-survivor links.
-Whenever a PE would dequeue from an empty PIFO, it checks for a link and dequeues from the survivor instead.
+We modify the dequeue logic to follow these links: whenever a PE would dequeue from an empty PIFO, it checks for a link and dequeues from the survivor instead.
 The enqueue logic remains unmodified.
 The $\Strictstar$ node is therefore transparent to the tree above it.
 The parent PIFO holds one entry per packet in \emph{either} subtree, and \cref{sec:check-designate} re-reads \cref{sec:controls}'s well-formedness invariant to cover that.
-
-The guard of \cref{sec:sequences} gates PIFO reclamation: \texttt{v}'s PIFOs, and those of everything beneath it, may be released only once the subtree is empty, and a second transaction is guarded on the same emptiness predicate.
+%
+The guard of \cref{sec:sequences} gates PIFO reclamation too, since the doomed subtree's PIFOs may be released only once it is empty.
 After it, nothing in the tree records that a transition happened.
 
 
