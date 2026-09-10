@@ -1464,6 +1464,7 @@ At the instant \Remove{} fires, no entry above the doomed arm was enqueued on ac
 
 
 \(\tau : \mathit{path}\) is the path to the target subtree being wrapped, and \(\mathit{survivor} : \mathit{pol}\) is the designated-survivor policy that becomes the new \(\Strictstar\) node's low-priority arm.
+A non-empty \(\tau\) destructs as \(\pi \mathbin{+\!\!+} [k]\), as before.
 
 Say the presently running control is \(C\).
 Intuitively, \Designate{} replaces \(C@\tau\) in place with \(\Strictstar(C@\tau, \lceil \mathit{survivor} \rceil)\).
@@ -1535,7 +1536,7 @@ The two arms thus stay operationally disjoint even when their label sets overlap
 
 
 \Undesignate{} is the structural inverse of \Designate: it drops a \(\Strictstar\) node whose arm 0 is empty, leaving arm 1 behind (the last step of \cref{fig:designate}).
-Below we write \(N\) for that node and \(B\) for its surviving arm, both as controls, and \(|B|\) for the number of packets buffered under \(B\).
+Below we write \(N\) for that node and \(B\) for its surviving arm, both as controls, and \(|B|\) for the number of packets buffered under \(B\), with \(\pi\) and \(k\) as in \cref{sec:designate}.
 
 \Undesignate{} is defined when \(C@\tau\)'s ranker names \(\Strictstar\), and when its arm 0 is empty.
 \(\mathtt{unwrap}\) returns arm 1 of the node, \(B\), with its subtree and contents unchanged; the node \(N = C@\tau\) and its empty arm-0 subtree are discarded.
@@ -1675,7 +1676,7 @@ The substrate does the same thing without relabeling anything, since it leaves s
 
 \subsection{\texorpdfstring{\Designate}{Designate}}\label{sec:check-designate}
 
-Throughout this subsection and the next, \(N\) is the wrapper node and \(B\) the control under its arm 1, as in \cref{sec:designate}.
+Throughout this subsection and the next, \(N\) is the wrapper node, \(B\) the control under its arm 1, and \(\pi\) and \(k\) the parent path and slot, as in \cref{sec:designate}.
 We write \(P_0\) for the number of packets buffered under arm 0.
 
 \paragraph{Preservation of \(\vdash\)}
