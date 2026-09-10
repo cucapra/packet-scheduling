@@ -957,7 +957,6 @@ Our second experiment measures the same transition across backlogs from 0 to 341
 Reserving a spare processing element and filling it with a token per buffered packet stops the scheduler for 0.991 cycles per packet, and copying the old subtree onto fresh processing elements stops it for 2.969.
 Rio's survivor link stops it for \emph{no time}, no matter how big the backlog, because it is a pointer rather than a place to put packets.
 The slope matters more than the constant: without \(\Strictstar\), the price of a transition is determined by how busy the switch was when the request arrived.
-It is also why \textsf{spotify} waits for the drain in \cref{app:ptemp}.
 
 \paragraph{Scaling in the size of the tree}
 
@@ -1854,7 +1853,7 @@ p2 = P(drive@m1, slack@m3, Q(gmail, x)@m4)
 \end{verbatim}
 
 Here \textsf{drive} is unchanged, \textsf{gmail} has grown into a nested \(Q\) over itself and a fresh flow \(x\), and \textsf{slack} is new.
-Neither positional strategy applies: the lengths differ, and the sub-sequence check fails because \(g\) in \(p_1\) equals no arm of \(p_2\), so without the label-overlap walk the planner would emit a \Replace{} of the whole root \(P\).
+Neither positional strategy applies: the lengths differ, and the sub-sequence check fails because \textsf{gmail} in \(p_1\) equals no arm of \(p_2\), so without the label-overlap walk the planner would emit a \Replace{} of the whole root \(P\).
 The walk instead pairs \textsf{drive} with \textsf{drive} (no edit) and \textsf{gmail} with the nested \(Q\) (recurse), and treats \textsf{slack} as a pure add.
 The comparator emits three: an \Add{} of \textsf{slack}, a \ChangeMeta{} re-tuning \textsf{gmail}'s slot to \(m_4\), and a \Replace{} at that slot.
 Those three make two steps (\cref{sec:sequences}), since the only guard is the one inside \Replace{} that waits for the old \textsf{gmail} leaf to drain.
@@ -1982,45 +1981,6 @@ Its deassoc walk hands the shared flows over to the survivor, and runs first bec
 Flows in \(\mathtt{flows(loser)} \setminus \mathtt{flows(surv)}\) are left alone and go on reaching \texttt{loser}'s own subtree, matching \cref{sec:designate}'s rule that loser-only labels drain on arm 0; silencing those, when the operator ultimately wants it, comes from the \Quiesce{} step of the surrounding \Replace{} idiom (\cref{sec:sequences}).
 \Undesignate{} is likewise \Designate{} run backwards, and reusing \texttt{k} preserves \texttt{parent}'s per-arm metadata for that slot, so the survivor inherits the annotation the doomed subtree held.
 Its shared flows are deliberately not unmapped, since they serve \texttt{surv} now.
-
-\section{Inside the Transitional Interval}\label{app:ptemp}
-
-The first experiment of \cref{sec:eval} carries a scheduler from
-%
-\[ p_1 = \Strict(\mathtt{hi}{:}\,\textsf{zoom},\ \mathtt{lo}{:}\,\textsf{gmail}) \]
-%
-to
-%
-\[ p_2 = \Strict(\mathtt{hi}{:}\,\textsf{zoom},\ \mathtt{lo}{:}\,\RR(\textsf{gmail},\allowbreak\ \textsf{spotify})) \]
-%
-Both policies serve \textsf{zoom} ahead of everything else, and \(p_2\) admits \textsf{spotify} by sharing the low-priority arm between it and \textsf{gmail}.
-Inserting that \(\RR\) node would relocate the \textsf{gmail} packets already queued, so Rio reaches \(p_2\) in two atomic steps instead, and between them the scheduler runs
-%
-\[
-\begin{aligned}
-p_\text{temp} = \Strict(\ &\mathtt{hi}{:}\,\textsf{zoom}, \\
- &\mathtt{lo}{:}\,\Strictstar( \\
- &\quad \mathtt{hi}{:}\,\textsf{gmail}_\text{old}, \\
- &\quad \mathtt{lo}{:}\,\RR(\textsf{gmail}_\text{new},\ \textsf{spotify})))
-\end{aligned}
-\]
-%
-whose \(\Strictstar\) node serves the packets \textsf{gmail} had already queued ahead of everything that arrives afterward.
-\Cref{sec:tour} derives this sequence and \cref{sec:hw-survivor} implements it.
-
-\begin{figure}[htbp]
-\centering
-\includegraphics{fig-eval-ptemp.pdf}
-\caption{The three flows under Rio's confined replace. The gray band is the interval in which Rio runs $p_\text{temp}$.}
-\label{fig:eval-ptemp}
-\end{figure}
-
-The traffic is the traffic of \cref{sec:eval}.
-\textsf{zoom} sends enough packets to fill 40\% of the link throughout, \textsf{gmail} fills 80\% before the request and 20\% after it, and \textsf{spotify} starts sending when the request arrives, enough to fill 20\%.
-
-\Cref{fig:eval-ptemp} shows what each of the three flows receives.
-\textsf{zoom} holds the high-priority arm but asks for only 0.40 of the link and gets it, so \textsf{gmail} takes the remainder.
-\textsf{gmail} is lifted while \textsf{gmail}\textsubscript{old} drains ahead of new arrivals, and \textsf{spotify} waits on that drain, reaching first service 709 cycles after the request against the stop-the-world baseline's 1408.
 
 % Flush the deferred float before acmart's end-of-document \balance runs;
 % the balance package drops floats that are still deferred when it fires.
