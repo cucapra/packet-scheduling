@@ -1047,19 +1047,18 @@ Configuration values travel inline with packet descriptors, and each pipeline st
 A descriptor and the configuration it carries therefore reach each stage together, which is the effect Rio obtains by delay-aligning commit signals across PEs (\cref{sec:hw-commit}).
 Loom does not address the effects on in-flight packets or attempt to offer consistent views during reconfiguration.
 
-SP-PIFO~\cite{Alcoz20} can change the mapping from packet ranks to a fixed set of strict-priority queues as traffic shifts.
-Its goal is to minimize the error with respect to an ideal PIFO, i.e., the policy that the operator wrote.
-Rio instead focuses on changing the policy itself.
+SP-PIFO~\cite{Alcoz20} changes the mapping from packet ranks to a fixed set of strict-priority queues as traffic shifts, minimizing the error with respect to an ideal PIFO (the policy that the operator wrote).
+Rio focuses on changing the policy itself.
 
-\citet{Alcoz23} raise the question of scheduler reconfiguration.
-Their scheduling hypervisor deploys per-tenant scheduling policies onto one switch, and they ask how to move from one such policy to another as tenants arrive and depart.
-They name two obstacles: emptying the buffers and resetting the state of the scheduling functions, and leave the mechanism to future runtime-programmable data planes.
-Rio answers the first by draining rather than dropping packets (\cref{sec:quiesce}) and the second by declining to reset (\cref{sec:changemeta}).
+\citet{Alcoz23} consider scheduler reconfiguration.
+Their scheduling hypervisor deploys per-tenant scheduling policies onto a switch, and they ask how to move from one such policy to another as tenants come and go.
+They name two obstacles: emptying the buffers and resetting the state of the scheduling functions, and leave the mechanism to future programmable data planes.
+Rio answers these by draining rather than dropping packets (\cref{sec:quiesce}) and by declining to reset (\cref{sec:changemeta}).
 
 Reconfiguration is routine in the schedulers deployed at hosts and NICs.
 Loom updates rate limiters whenever a VM or a flow starts or stops~\cite{Stephens19}.
 PicNIC reacts to a breakdown of isolation between tenants at sub-millisecond timescales~\cite{Kumar19}.
-FairNIC gives each tenant an independent subtree of packet schedulers to configure~\cite{Grant20}, so the set of tenants fixes the shape of the tree.
+FairNIC gives each tenant an independent subtree of packet schedulers to configure~\cite{Grant20}.
 Carousel shapes tens of thousands of flows and policies on a single server~\cite{Saeed17}.
 Eiffel argues for scheduling in software on the grounds of a shorter development cycle~\cite{Saeed19}.
 
