@@ -8,8 +8,7 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
-from pifo_experiment_config import (
-    ExperimentConfig,
+from pifo_config import (
     InitialTreeConfig,
     PolicyChangeConfig,
     parse_policy_change_config,
@@ -53,19 +52,19 @@ class TreeMoveProgram:
         )
 
 
-def write_tree_move_program(path: Path, config: ExperimentConfig) -> None:
-    simulation = config.simulation
+def write_tree_move_program(path: Path, program: TreeMoveProgram) -> None:
+    hardware = program.hardware
     payload = {
         "schema": SCHEMA,
         "hardware": {
-            "num_engines": simulation.num_engines,
-            "num_vpifos": simulation.num_vpifos,
-            "max_packet_priority": simulation.max_packet_priority,
-            "fifo_depth": simulation.fifo_depth,
-            "prefetch_buffer_depth": simulation.prefetch_buffer_depth,
+            "num_engines": hardware.num_engines,
+            "num_vpifos": hardware.num_vpifos,
+            "max_packet_priority": hardware.max_packet_priority,
+            "fifo_depth": hardware.fifo_depth,
+            "prefetch_buffer_depth": hardware.prefetch_buffer_depth,
         },
-        "old_tree": tree_to_dict(config.initial_tree),
-        "move": reconfiguration_to_dict(config.reconfiguration),
+        "old_tree": tree_to_dict(program.old_tree),
+        "move": reconfiguration_to_dict(program.move),
     }
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")

@@ -7,8 +7,8 @@
 | [hw/spinal/](hw/spinal/README.md) | SpinalHDL hardware and hardware tests |
 | [hw/spinal/rio/sim/](hw/spinal/rio/sim/README.md) | Simulator interfaces, commands, and output formats |
 | [hw/verilog/](hw/verilog/) | Verilog modules and testbenches |
-| [hw/python/](hw/python/README.md) | Compiler, input formats, simulator tools, plotting, and core tests |
-| [experiments/](experiments/README.md) | Experiment source JSONs and reproduction guide |
+| [hw/python/](hw/python/README.md) | Shared compiler, input formats, simulator tools, and core tests |
+| [experiments/](experiments/README.md) | Experiment JSONs, runners, plotting scripts, and reproduction guide |
 | [run_experiments.py](run_experiments.py) | Runner for all experiment suites |
 
 ## Run experiments

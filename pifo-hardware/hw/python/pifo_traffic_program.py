@@ -6,7 +6,7 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
-from pifo_experiment_config import (
+from pifo_config import (
     PACKET_RATE_UNIT,
     TrafficConfig,
     generate_distributed_requests,

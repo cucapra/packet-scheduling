@@ -5,21 +5,21 @@ Run from `pifo-hardware`:
 Use a Python environment with `requirements.txt` installed; the commands below use the repository's `.venv`.
 
 ```sh
-.venv/bin/python hw/python/pifo_survivor_all.py
+.venv/bin/python experiments/designated-survivor/pifo_survivor_all.py
 ```
 
 The runner invokes two separate CLIs: `pifo_survivor_compiler.py` generates direct timed transactions using the existing tree-to-tree compiler; `pifo_simulator.py` consumes those transactions and a separate traffic file. Results go to `experiment-results/designated-survivor/`, with one directory per pre-phase and one subdirectory per mechanism.
 
 ```sh
 # The canonical 2000-cycle pre-phase only:
-.venv/bin/python hw/python/pifo_survivor_all.py --pre-cycles 2000
+.venv/bin/python experiments/designated-survivor/pifo_survivor_all.py --pre-cycles 2000
 # Add only the copy series, reusing the existing link/reserved results:
-.venv/bin/python hw/python/pifo_survivor_all.py --runs copy
+.venv/bin/python experiments/designated-survivor/pifo_survivor_all.py --runs copy
 # Replot/revalidate existing triples without rerunning RTL:
-.venv/bin/python hw/python/pifo_survivor_all.py --render-only
+.venv/bin/python experiments/designated-survivor/pifo_survivor_all.py --render-only
 # Independent, minimal per-figure scripts:
-.venv/bin/python hw/python/pifo_survivor_zoom_figure.py
-.venv/bin/python hw/python/pifo_survivor_stop_figure.py
+.venv/bin/python experiments/designated-survivor/pifo_survivor_zoom_figure.py
+.venv/bin/python experiments/designated-survivor/pifo_survivor_stop_figure.py
 ```
 
 `tree-move.json` describes p1 = Strict(zoom, gmail) to p2b = Strict(zoom, RR(gmail, spotify)). Every flow terminates in a distinct hardware FIFO node, in addition to the simulator-side packet metadata FIFO. Push creates a token at each node on its path, including the FIFO; pop must traverse the FIFO before reaching the packet output. RTL still stores scheduler tokens, not packet payloads.

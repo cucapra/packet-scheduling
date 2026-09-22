@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 
-from pifo_experiment_config import (
+from pifo_config import (
     InitialTreeConfig,
     PolicyChangeConfig,
     TreeNodeConfig,

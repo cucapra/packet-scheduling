@@ -12,17 +12,17 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 SUITES = {
-    "rr-to-sp": ("pifo_experiment_figures.py", "run", "--config", "experiments/rr-to-sp.json"),
+    "rr-to-sp": ("experiments/pifo_experiment_figures.py", "run", "--config", "experiments/rr-to-sp.json"),
     "large-tree-rr-to-sp": (
-        "pifo_experiment_figures.py", "run", "--config", "experiments/large-tree-rr-to-sp.json",
+        "experiments/pifo_experiment_figures.py", "run", "--config", "experiments/large-tree-rr-to-sp.json",
     ),
     "rr-to-sp-stop-the-world-pop": (
-        "pifo_experiment_figures.py", "run", "--config", "experiments/rr-to-sp-stop-the-world-pop.json",
+        "experiments/pifo_experiment_figures.py", "run", "--config", "experiments/rr-to-sp-stop-the-world-pop.json",
     ),
-    "motivating-example": ("pifo_motivation_all.py",),
-    "designated-survivor": ("pifo_survivor_all.py",),
-    "multi-edit": ("pifo_multiedit_all.py",),
-    "scalability": ("pifo_scalability.py", "batch"),
+    "motivating-example": ("experiments/motivating-example/pifo_motivation_all.py",),
+    "designated-survivor": ("experiments/designated-survivor/pifo_survivor_all.py",),
+    "multi-edit": ("experiments/multi-edit/pifo_multiedit_all.py",),
+    "scalability": ("experiments/scalability/pifo_scalability.py", "batch"),
 }
 
 
@@ -35,7 +35,7 @@ def main(argv: list[str] | None = None) -> int:
     # The RTL simulators share a build workspace, so suites must run serially.
     for suite in dict.fromkeys(args.experiments):
         script, *arguments = SUITES[suite]
-        command = [sys.executable, str(ROOT / "hw/python" / script), *arguments]
+        command = [sys.executable, str(ROOT / script), *arguments]
         print(f"[{suite}] {shlex.join(command)}", flush=True)
         if args.dry_run:
             continue

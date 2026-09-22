@@ -4,11 +4,20 @@ The tree compiler turns a declarative tree change into controller instructions.
 The simulator consumes those instructions together with a separate traffic JSON.
 Run the commands below from `pifo-hardware/`.
 
+This directory contains only shared tools. Experiment runners, specialized
+compilers, validation, and plotting live beside the JSONs under
+[experiments/](../../experiments/README.md).
+
 | Tool | Input | Output |
 | --- | --- | --- |
 | [pifo_tree_compiler.py](pifo_tree_compiler.py) | `tree-move.json` | `transactions.txt` |
 | [pifo_simulator.py](pifo_simulator.py) | `transactions.txt` and `traffic.json` | Request, packet-outcome, and event CSVs |
-| [pifo_bandwidth_figure.py](pifo_bandwidth_figure.py), [pifo_packet_scatter_figure.py](pifo_packet_scatter_figure.py) | Simulator CSVs | Figures and standalone plot scripts |
+
+[pifo_config.py](pifo_config.py) defines the shared tree, policy-change, and traffic
+types. It has no dependency on experiment configuration or plotting. The
+transaction and traffic file formats are handled by
+[pifo_transaction_program.py](pifo_transaction_program.py) and
+[pifo_traffic_program.py](pifo_traffic_program.py).
 
 Keep authored inputs under `experiments/<name>/`: `tree-move.json`, `traffic.json`,
 and optional runner-specific `settings.json`. Multi-edit and scalability use

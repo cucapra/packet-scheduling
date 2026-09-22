@@ -4,7 +4,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from pifo_experiment_config import (
+from pifo_config import (
     InitialTreeConfig,
     NodePolicyChangeConfig,
     PolicyChangeConfig,

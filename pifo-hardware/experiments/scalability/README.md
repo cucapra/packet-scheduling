@@ -49,8 +49,8 @@ The source gate remains unbounded and measured, not claimed as hardware RAM.
 Select JDK 17 in `JAVA_HOME` and `PATH`. Commands run from `pifo-hardware/`:
 
 ```sh
-.venv/bin/python hw/python/pifo_scalability.py prepare
-.venv/bin/python hw/python/pifo_scalability.py run --requests reweight --tenants 2 16 --runs rio
+.venv/bin/python experiments/scalability/pifo_scalability.py prepare
+.venv/bin/python experiments/scalability/pifo_scalability.py run --requests reweight --tenants 2 16 --runs rio
 ```
 
 Compare the pilot rows in `experiment-results/scalability/measurements.csv`
@@ -66,10 +66,10 @@ workspace. All commands stop on simulation or validation failure.
 The full matrix, or selected remaining runs:
 
 ```sh
-.venv/bin/python hw/python/pifo_scalability.py run
-.venv/bin/python hw/python/pifo_scalability.py batch --skip-completed
-.venv/bin/python hw/python/pifo_scalability.py run --requests add --tenants 4 --runs rio prefill reset control-p2
-.venv/bin/python hw/python/pifo_scalability.py summarize
+.venv/bin/python experiments/scalability/pifo_scalability.py run
+.venv/bin/python experiments/scalability/pifo_scalability.py batch --skip-completed
+.venv/bin/python experiments/scalability/pifo_scalability.py run --requests add --tenants 4 --runs rio prefill reset control-p2
+.venv/bin/python experiments/scalability/pifo_scalability.py summarize
 ```
 
 `batch` elaborates/compiles each distinct hardware/backend configuration once,

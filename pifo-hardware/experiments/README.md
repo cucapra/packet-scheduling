@@ -3,8 +3,22 @@
 Keep experiment JSONs and Python sources in version control. All raw traces,
 compiled transaction plans, measurements, reports, exported standalone plotters,
 and PNG/SVG figures are generated under the ignored `experiment-results/` tree.
-Plotting sources live in `hw/python/pifo_*figure*.py`, `hw/python/pifo_figures/`,
-the comparison scripts, and `experiments/scalability/plot.py`.
+Each suite keeps its runners, specialized compilers, validation, and plotting
+scripts beside its JSONs. Shared RR/SP drivers and figure CLIs live directly in
+`experiments/`; their drawing and export helpers are in `pifo_figures/`.
+The shared hardware compiler, simulator, and trace tools remain in `hw/python/`.
+
+| Directory | Scripts and inputs |
+| --- | --- |
+| `experiments/` | RR/SP JSONs, `pifo_experiment_figures.py`, bandwidth/scatter CLIs, shared plot export |
+| `motivating-example/` | `pifo_motivation_*.py`, per-case tree moves, shared traffic/settings |
+| `designated-survivor/` | `pifo_survivor_*.py`, tree move and settings |
+| `multi-edit/` | `pifo_multiedit_*.py`, request, traffic, and settings |
+| `scalability/` | `pifo_scalability.py`, `plot.py`, per-case request/traffic, and settings |
+
+Scripts can be invoked directly; no `PYTHONPATH` setup is required. `_paths.py`
+connects experiment scripts to the shared hardware tools and runs child CLIs
+from `pifo-hardware/`.
 
 Install Python 3.10 or newer, JDK 17, sbt, Icarus Verilog, Verilator, and a C++
 build toolchain. Select JDK 17 with `JAVA_HOME` and `PATH`, then run from
@@ -78,15 +92,15 @@ the [simulator guide](../hw/spinal/rio/sim/README.md#reconfiguration-timestamps-
 The checked example starts with RR and changes to SP:
 
 ```bash
-python3 hw/python/pifo_experiment_figures.py validate experiments/rr-to-sp.json
-python3 hw/python/pifo_experiment_figures.py run --config experiments/rr-to-sp.json
+python3 experiments/pifo_experiment_figures.py validate experiments/rr-to-sp.json
+python3 experiments/pifo_experiment_figures.py run --config experiments/rr-to-sp.json
 ```
 
 The evaluation-only stop-the-world comparison uses the same interface:
 
 ```bash
-python3 hw/python/pifo_experiment_figures.py validate experiments/rr-to-sp-stop-the-world-pop.json
-python3 hw/python/pifo_experiment_figures.py run --config experiments/rr-to-sp-stop-the-world-pop.json
+python3 experiments/pifo_experiment_figures.py validate experiments/rr-to-sp-stop-the-world-pop.json
+python3 experiments/pifo_experiment_figures.py run --config experiments/rr-to-sp-stop-the-world-pop.json
 ```
 
 The output directory exposes every boundary: `tree-move.json`, `traffic.json`, compiled `transactions.txt`, request and
@@ -117,16 +131,16 @@ the report cannot mix old and new topology artifacts.
 Each run has a minimal standalone script and always creates both formats requested from its own raw packet CSV:
 
 ```bash
-.venv/bin/python hw/python/pifo_motivation_r1.py
-.venv/bin/python hw/python/pifo_motivation_r2.py
-.venv/bin/python hw/python/pifo_motivation_r3.py
-.venv/bin/python hw/python/pifo_motivation_r4.py
+.venv/bin/python experiments/motivating-example/pifo_motivation_r1.py
+.venv/bin/python experiments/motivating-example/pifo_motivation_r2.py
+.venv/bin/python experiments/motivating-example/pifo_motivation_r3.py
+.venv/bin/python experiments/motivating-example/pifo_motivation_r4.py
 ```
 
 Run all four plus the shared-axis comparisons with:
 
 ```bash
-.venv/bin/python hw/python/pifo_motivation_all.py
+.venv/bin/python experiments/motivating-example/pifo_motivation_all.py
 ```
 
 Resources live under `experiments/motivating-example/`; outputs live under
@@ -148,7 +162,7 @@ spike relative to R4.
 Regenerate only the bandwidth figure and its aggregate/per-flow data:
 
 ```bash
-python3 hw/python/pifo_bandwidth_figure.py \
+python3 experiments/pifo_bandwidth_figure.py \
   --results experiment-results/rr-to-sp/request-results.csv \
   --events experiment-results/rr-to-sp/reconfiguration-events.csv \
   --output-dir experiment-results/rr-to-sp/figures/bandwidth \
@@ -170,7 +184,7 @@ estimate is written and drawn. In an experiment JSON file, use the equivalent pl
 Regenerate only the packet timing data and 1:1 scatter figure:
 
 ```bash
-python3 hw/python/pifo_packet_scatter_figure.py \
+python3 experiments/pifo_packet_scatter_figure.py \
   --results experiment-results/rr-to-sp/request-results.csv \
   --events experiment-results/rr-to-sp/reconfiguration-events.csv \
   --output-dir experiment-results/rr-to-sp/figures/packet-scatter \
@@ -272,14 +286,14 @@ properties hold:
    old packet completes, and SP priority order has no reversal.
 
 ```bash
-python3 hw/python/pifo_experiment_figures.py validate experiments/large-tree-rr-to-sp.json
-python3 hw/python/pifo_experiment_figures.py run --config experiments/large-tree-rr-to-sp.json
+python3 experiments/pifo_experiment_figures.py validate experiments/large-tree-rr-to-sp.json
+python3 experiments/pifo_experiment_figures.py run --config experiments/large-tree-rr-to-sp.json
 ```
 
 To check saved CSVs without rerunning RTL:
 
 ```bash
-python3 hw/python/pifo_experiment_figures.py verify \
+python3 experiments/pifo_experiment_figures.py verify \
   --config experiments/large-tree-rr-to-sp.json \
   --results experiment-results/large-tree-rr-to-sp/request-results.csv \
   --events experiment-results/large-tree-rr-to-sp/reconfiguration-events.csv \

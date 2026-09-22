@@ -3,9 +3,9 @@
 Run from `pifo-hardware`:
 
 ```sh
-.venv/bin/python hw/python/pifo_multiedit_all.py
-.venv/bin/python hw/python/pifo_multiedit_all.py --runs control-p2
-.venv/bin/python hw/python/pifo_multiedit_all.py --render-only
+.venv/bin/python experiments/multi-edit/pifo_multiedit_all.py
+.venv/bin/python experiments/multi-edit/pifo_multiedit_all.py --runs control-p2
+.venv/bin/python experiments/multi-edit/pifo_multiedit_all.py --render-only
 ```
 
 `request.json` contains the before/after tenant trees, stable physical slots,
@@ -21,7 +21,7 @@ longer steady-state recovery tail remain in its data CSV and measurements.
 The compiler and simulator remain separate CLIs:
 
 ```sh
-.venv/bin/python hw/python/pifo_multiedit_compiler.py experiments/multi-edit/request.json \
+.venv/bin/python experiments/multi-edit/pifo_multiedit_compiler.py experiments/multi-edit/request.json \
   --mechanism relocate --output experiment-results/multi-edit/relocate/transactions.txt
 .venv/bin/python hw/python/pifo_simulator.py \
   --transactions experiment-results/multi-edit/relocate/transactions.txt \
