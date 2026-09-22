@@ -2,24 +2,30 @@
 `ifndef CONTROL_DEPTH
 `define CONTROL_DEPTH 4
 `endif
+`ifndef COMMAND_WIDTH
+`define COMMAND_WIDTH 4
+`endif
 // The reference model expands each accepted epoch into its first execution
 // followed by only its mapper writes. It does not inspect DUT RAM or pointers.
 module shared_control_fifo_tb;
   localparam D=`CONTROL_DEPTH;
+  localparam W=`COMMAND_WIDTH+2+3+5+32;
   reg clk=0, reset=1, valid=0, out_ready=1;
-  reg [2:0] command=0, port=0;
+  reg [`COMMAND_WIDTH-1:0] command=0;
+  reg [2:0] port=0;
   reg [1:0] engine=1;
   reg [4:0] flow=0;
   reg [31:0] data=0;
   wire ready, out_valid, busy;
-  wire [2:0] out_command, out_port;
+  wire [`COMMAND_WIDTH-1:0] out_command;
+  wire [2:0] out_port;
   wire [1:0] out_engine;
   wire [4:0] out_flow;
   wire [31:0] out_data;
   wire [$clog2(D+1)-1:0] available;
-  wire [44:0] input_word={command,engine,port,flow,data};
-  wire [44:0] output_word={out_command,out_engine,out_port,out_flow,out_data};
-  reg [44:0] expected [0:196607 + 4*D], epoch [0:D-1], held;
+  wire [W-1:0] input_word={command,engine,port,flow,data};
+  wire [W-1:0] output_word={out_command,out_engine,out_port,out_flow,out_data};
+  reg [W-1:0] expected [0:196607 + 4*D], epoch [0:D-1], held;
   reg expected_replay [0:196607 + 4*D];
   reg stalled=0;
   reg [31:0] random_state=32'h719af02d;
@@ -102,6 +108,9 @@ module shared_control_fifo_tb;
     send(0,7);step();send(3);drain();
     // Immediate commands without mapper updates must not accumulate forever.
     for(integer k=0;k<64;k=k+1) send(k%5==0 ? 7 : (k%4==0 ? 2 : 4+(k%3)),k);
+    drain();
+    // Preserve the high command bit as well as the original core opcodes.
+    for(integer k=8;k<(1<<`COMMAND_WIDTH);k=k+1) send(k,k);
     drain();
     // A fully retained epoch still has a slot for commit, even with a stalled consumer.
     ready_mode=0;
