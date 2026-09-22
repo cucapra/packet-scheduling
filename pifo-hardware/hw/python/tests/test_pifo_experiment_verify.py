@@ -83,6 +83,31 @@ class PifoExperimentVerifyTest(unittest.TestCase):
         self.assertEqual(checks["new_packets_during_drain"]["observed"], 1)
         self.assertFalse(checks["new_packets_during_drain"]["passed"])
 
+    def test_old_packets_can_finish_downstream_after_root_drain(self) -> None:
+        packets = self._passing_packets() + [
+            CompletedPacket(9, 1, 0, 7, 20),
+            CompletedPacket(10, 2, 0, 8, 21),
+        ]
+        timing = TransactionTiming("full_transitive", 7, 10, 40, 20)
+        report = verify_rr_to_sp_phases(self._small_threshold_config(), packets, timing)
+        self.assertTrue(report["passed"])
+        self.assertEqual(report["packet_counts"]["old_completions_after_root_drain"], 2)
+        self.assertEqual(report["event"]["last_old_completion_cycle"], 21)
+
+    def test_new_output_cannot_overtake_old_packets_still_in_the_pipeline(self) -> None:
+        packets = self._passing_packets() + [
+            CompletedPacket(9, 1, 0, 7, 20),
+            CompletedPacket(10, 2, 0, 8, 23),
+        ]
+        report = verify_rr_to_sp_phases(
+            self._small_threshold_config(), packets,
+            TransactionTiming("full_transitive", 7, 10, 40, 20),
+        )
+        self.assertFalse(report["passed"])
+        checks = {check["id"]: check for check in report["facts"][3]["checks"]}
+        self.assertEqual(checks["new_packets_before_old_completion"]["observed"], 1)
+        self.assertFalse(checks["new_packets_before_old_completion"]["passed"])
+
     def test_rejects_more_than_one_configuration_acceptance_per_cycle(self) -> None:
         report = verify_rr_to_sp_phases(
             self._small_threshold_config(),

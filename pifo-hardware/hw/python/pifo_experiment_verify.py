@@ -278,6 +278,10 @@ def verify_rr_to_sp_phases(
         for packet in old_packets
         if packet.completed_cycle >= timing.publication_cycle
     ]
+    # drain_cycle observes the old root's last pop, not the packet output.
+    # Those last packets can still be traversing downstream FIFO leaves.
+    # Require the entire old epoch to finish before any new-epoch output.
+    last_old_completion = max((packet.completed_cycle for packet in old_packets), default=-1)
     stop_mode_checks: list[VerificationCheck] = []
     if timing.mode == "stop_the_world_pop":
         assert timing.prefilled_tokens is not None
@@ -325,7 +329,7 @@ def verify_rr_to_sp_phases(
                 ),
                 _at_least(
                     "old_backlog_at_commit",
-                    "old-tree packets still pending when commit is accepted",
+                    "old-tree packets still pending when the new mappings are published",
                     thresholds.minimum_old_backlog_packets,
                     len(old_backlog),
                 ),
@@ -394,19 +398,19 @@ def verify_rr_to_sp_phases(
         ),
         (
             "after_drain_new_policy",
-            "After drain, only the new SP tree runs and lower priorities finish first.",
+            "After the old packets leave the pipeline, new SP packets finish in priority order.",
             [
                 _at_least(
                     "postdrain_packet_count",
-                    "packets completed after drain",
+                    "new-tree packets completed after root drain",
                     thresholds.minimum_packets_per_phase,
-                    len(after_drain),
+                    len(new_after),
                 ),
                 _equals(
-                    "old_packets_after_drain",
-                    "old-tree packets completed after drain",
+                    "new_packets_before_old_completion",
+                    "new-tree packets completed before the final old-tree packet leaves the pipeline",
                     0,
-                    len(old_after),
+                    sum(packet.completed_cycle <= last_old_completion for packet in new_packets),
                 ),
                 _equals(
                     "sp_priority_reversals",
@@ -438,6 +442,7 @@ def verify_rr_to_sp_phases(
             "start_cycle": timing.start_cycle,
             "commit_cycle": timing.commit_cycle,
             "drain_cycle": timing.drain_cycle,
+            "last_old_completion_cycle": last_old_completion if old_packets else None,
             "finish_cycle": timing.finish_cycle,
             "staging_cycles": timing.staging_cycles,
             "drain_cycles": timing.drain_cycles,
@@ -461,6 +466,7 @@ def verify_rr_to_sp_phases(
             "before_commit": len(before_commit),
             "during_drain": len(during_drain),
             "after_drain": len(after_drain),
+            "old_completions_after_root_drain": len(old_after),
         },
         "sp_priorities": {
             str(flow_id): priorities[flow_id] for flow_id in sorted(priorities)
@@ -564,6 +570,12 @@ def _report_markdown(report: Mapping[str, object]) -> str:
             f"**{counts['during_drain']} during drain**, and "
             f"**{counts['after_drain']} after drain**; "
             f"**{counts['old_backlog_at_commit']} old packets** were pending at commit."
+        ),
+        "",
+        (
+            f"Root drain and packet completion are distinct: **{counts['old_completions_after_root_drain']} old packets** "
+            f"completed at or after root drain; the last completed at **{event['last_old_completion_cycle']}**. "
+            "New-tree output must follow the final old-tree completion."
         ),
         "",
     ]

@@ -1,5 +1,6 @@
 import ast
 import json
+import os
 import sys
 import tempfile
 import unittest
@@ -31,6 +32,8 @@ class EvaluationTest(unittest.TestCase):
         guard_nodes = {(c.engine_id, c.vpifo_id) for c in program.transactions[1].commands if c.command == "GuardDrain"}
         self.assertEqual(guard_nodes, {(2, 4), (3, 3), (3, 4)})
 
+    @unittest.skipUnless(os.environ.get("PIFO_EXPERIMENT_RESULTS") == "1",
+                         "run run_experiments.py, then set PIFO_EXPERIMENT_RESULTS=1")
     def test_all_current_survivor_commits_keep_their_own_ready_time(self):
         run = ROOT / "experiment-results/designated-survivor/pre-2000/reserved"
         rows = commit_rows({"reserved": run})
@@ -57,6 +60,8 @@ class EvaluationTest(unittest.TestCase):
                 imports |= {node.module.split(".")[0] for node in ast.walk(parsed) if isinstance(node, ast.ImportFrom)}
                 self.assertEqual(imports, {"csv", "pathlib", "matplotlib"})
 
+    @unittest.skipUnless(os.environ.get("PIFO_EXPERIMENT_RESULTS") == "1",
+                         "run run_experiments.py, then set PIFO_EXPERIMENT_RESULTS=1")
     def test_every_evaluation_figure_bundles_full_packet_traces_and_commits(self):
         figures = [p for group in ("multi-edit", "designated-survivor")
                    for p in (ROOT / "experiment-results" / group / "figures").glob("*/plot.py")]

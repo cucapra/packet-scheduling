@@ -7,6 +7,12 @@ sbt "runMain rio.sim.PifoMeshSim"
 For request queues, trace-driven or live workloads, traffic generation, and formal-trace conversion, see the
 [request-level simulator guide](REQUEST_SIMULATOR.md).
 
+To regenerate all seven experiment suites (68 RTL runs), their measurements and
+figures from source, run `.venv/bin/python run_experiments.py`. See the
+[experiment guide](experiments/README.md) for prerequisites, suite selection,
+and verification. Generated outputs live in the ignored `experiment-results/`
+directory; only experiment inputs and plotting sources are versioned.
+
 This contains a PifoMesh Implementation. Current implementation assumes the insert input to be a `PacketToken = engineId ## flowId`. The `PacketToken` will be processed in PifoEngine in the following process:
 
 ### Enqueue Path
@@ -187,9 +193,8 @@ To add standalone scripts and local packet traces to saved results without rerun
 `.venv/bin/python hw/python/pifo_export_plot_scripts.py`. Legacy folders with two named figures receive two
 `rr-to-sp-*-plot.py` scripts instead of one `plot.py`. Exporting again replaces the generated scripts, so keep custom
 edits separately if you will regenerate an experiment.
-Legacy root-level plots use `rr-to-sp-packets.csv` for their archived completions. The old 160-packet RR plots and
-the current 480-packet run are distinct datasets: unavailable historical packet sizes remain blank, and historical
-drop records cannot be reconstructed. New figures always use the complete simulator outcomes, including drops.
+The obsolete root-level plots are no longer versioned. The canonical RR/SP JSON
+generates 480 packets, and its figures use complete simulator outcomes, including drops.
 
 The checked `experiments/large-tree-rr-to-sp.json` regression uses a seven-node tree over four engines and validates
 the observable RR-before-commit, old-tree-drain-first, and SP-after-drain phases. A `verification` block makes these

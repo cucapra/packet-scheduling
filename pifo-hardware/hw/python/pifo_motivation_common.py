@@ -67,6 +67,8 @@ def run_case(
             "--verilator",
             "--sbt",
             sbt,
+            "--simulation-seed",
+            settings["simulation_seed"],
         ]
         if wave:
             simulator_args.append("--wave")
@@ -165,6 +167,7 @@ def load_settings() -> Mapping[str, object]:
         "queue_depth",
         "max_cycles",
         "warmup_cycles",
+        "simulation_seed",
         "bandwidth_window_cycles",
         "bandwidth_sample_cycles",
         "dpi",

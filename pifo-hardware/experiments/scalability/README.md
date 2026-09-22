@@ -54,8 +54,11 @@ Select JDK 17 in `JAVA_HOME` and `PATH`. Commands run from `pifo-hardware/`:
 ```
 
 Compare the pilot rows in `experiment-results/scalability/measurements.csv`
-and the individual commit rows before launching the rest. `prepare` emits
-request/traffic files and compiled plans, but no simulated measurements.
+and the individual commit rows before launching the rest. `prepare` explicitly
+regenerates the checked-in request/traffic JSONs from `settings.json` and writes
+compiled plans under `experiment-results/`, but no simulated measurements.
+`run` and `batch` consume the existing JSONs without overwriting source edits.
+Generated flow-name CSVs stay in each result directory.
 Single runs write an ignored `simulation.log` in their run directory.
 Do not run RTL jobs concurrently: the existing simulator shares its build
 workspace. All commands stop on simulation or validation failure.
@@ -127,5 +130,5 @@ for each request and a separate bank-replay figure. Each of `figures/add/`,
 `figures/reweight/`, and `figures/bank-replay/` under the results directory
 contains `data.csv`, `commits.csv`, and a self-contained `plot.py`; rerendering
 requires only those local files and Matplotlib. Raw packet CSVs remain in the
-per-point directories, with flow-name mappings in the matching input directory.
+per-point directories, with flow-name mappings in each run's `flows.csv`.
 This measures cycles on a fixed substrate, not area scaling or timing closure.

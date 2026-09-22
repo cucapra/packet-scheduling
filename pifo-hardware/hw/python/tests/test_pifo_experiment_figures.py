@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import json
+import os
 import re
 import sys
 import tempfile
@@ -179,7 +180,9 @@ class PifoExperimentFiguresTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "generation cycle"):
                 validate_run("r1-add", run_dir)
 
-    def test_checked_in_stop_world_result_exposes_delay_and_peak_buffer(self) -> None:
+    @unittest.skipUnless(os.environ.get("PIFO_EXPERIMENT_RESULTS") == "1",
+                         "run run_experiments.py, then set PIFO_EXPERIMENT_RESULTS=1")
+    def test_regenerated_stop_world_result_exposes_delay_and_peak_buffer(self) -> None:
         run_dir = (
             Path(__file__).resolve().parents[3]
             / "experiment-results"
@@ -197,7 +200,9 @@ class PifoExperimentFiguresTest(unittest.TestCase):
         self.assertEqual(event.peak_buffer_occupancy_packets, 416)
         self.assertGreaterEqual(zoom_delay, event.minimum_stop_cycles)
 
-    def test_checked_in_explicit_leaf_rerun_zoom_gap(self) -> None:
+    @unittest.skipUnless(os.environ.get("PIFO_EXPERIMENT_RESULTS") == "1",
+                         "run run_experiments.py, then set PIFO_EXPERIMENT_RESULTS=1")
+    def test_regenerated_explicit_leaf_rerun_zoom_gap(self) -> None:
         root = (Path(__file__).resolve().parents[3]
                 / "experiment-results" / "motivating-example")
         report = validate_comparison(root)

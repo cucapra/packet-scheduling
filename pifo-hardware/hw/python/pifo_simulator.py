@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import math
+import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -31,6 +32,11 @@ def run_simulator(args: argparse.Namespace) -> tuple[Path, Path, Path, Path]:
         raise ValueError("--warmup-cycles must be non-negative")
     transactions = load_transaction_program(args.transactions)
     traffic = load_traffic_program(args.traffic)
+    simulation_seed = getattr(args, "simulation_seed", None)
+    if simulation_seed is None:
+        simulation_seed = int(os.environ.get("SPINAL_SIM_SEED", traffic.seed % (1 << 31)))
+    if not 0 <= simulation_seed < (1 << 31):
+        raise ValueError("simulation seed must be between 0 and 2147483647")
     if transactions.initial is None:
         raise ValueError("transaction timeline must contain one at=init package")
     requests = generate_traffic(traffic)
@@ -107,10 +113,11 @@ def run_simulator(args: argparse.Namespace) -> tuple[Path, Path, Path, Path]:
     )
     print(
         f"Simulating {len(requests)} packets with "
-        f"{len(transactions.transactions)} timed transaction(s)...",
+        f"{len(transactions.transactions)} timed transaction(s), RTL seed {simulation_seed}...",
         flush=True,
     )
-    subprocess.run([sbt_path, sbt_command], cwd=HARDWARE_ROOT, check=True)
+    subprocess.run([sbt_path, sbt_command], cwd=HARDWARE_ROOT, check=True,
+                   env={**os.environ, "SPINAL_SIM_SEED": str(simulation_seed)})
     return trace_path, results_path, outcomes_path, events_path
 
 
@@ -136,6 +143,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-cycles", type=int, default=100_000)
     parser.add_argument("--warmup-cycles", type=int, default=4)
     parser.add_argument("--sbt", default="sbt")
+    parser.add_argument("--simulation-seed", type=int,
+                        help="RTL seed (default: SPINAL_SIM_SEED, otherwise the traffic seed modulo 2^31).")
     parser.add_argument("--wave", action="store_true")
     parser.add_argument("--verbose", action="store_true")
     parser.add_argument("--verilator", action="store_true")

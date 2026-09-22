@@ -7,6 +7,7 @@ import copy
 import csv
 import hashlib
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -52,7 +53,7 @@ def tenant(index, policy):
             "flows": flows}
 
 
-def prepare(cfg, request, m):
+def generate_inputs(cfg, request, m):
     before = [tenant(i, ("SP", "RR", "WFQ")[(i - 1) % 3]) for i in range(1, m + 1)]
     after = copy.deepcopy(before)
     if request == "add":
@@ -83,9 +84,14 @@ def prepare(cfg, request, m):
                                              "unit": "packets_per_cycle_per_flow", "value": rate},
                              "packet_size_bytes": {"distribution": "constant", "value": cfg["packet_size_bytes"]}})
     write_json(folder / "traffic.json", {"schema": "pifo-traffic-v1", "seed": cfg["seed"], "patterns": patterns})
-    flows = [f for t in after for f in t["flows"]]
-    write_csv(folder / "flows.csv", [{"flow": f["id"], "flow_name": f["name"],
-                                     "untouched_witness": f["id"] == cfg["untouched_flow_id"]} for f in flows])
+
+
+def prepare(cfg, request, m):
+    folder = RESOURCES / request / f"m-{m}"
+    spec = json.loads((folder / "request.json").read_text())
+    flows = [{"flow": f["id"], "flow_name": f["name"],
+              "untouched_witness": f["id"] == cfg["untouched_flow_id"]}
+             for tenant_spec in spec["after"] for f in tenant_spec["flows"]]
     traffic = generate_traffic(load_traffic_program(folder / "traffic.json"))
     assert all(p.size_bytes == cfg["packet_size_bytes"] and p.cycle < cfg["end_cycle"] for p in traffic)
     counts = Counter(p.global_flow_id for p in traffic if p.cycle < cfg["t1"])
@@ -107,7 +113,7 @@ def prepare(cfg, request, m):
         plan["retained_epoch_commands"] = retained_peaks
         write_transaction_program(path / "transactions.txt", program)
         write_json(path / "transactions.plan.json", plan)
-        shutil.copyfile(folder / "flows.csv", path / "flows.csv")
+        write_csv(path / "flows.csv", flows)
     return folder
 
 
@@ -154,7 +160,7 @@ def measure(cfg, request, m, run):
     t1 = cfg["t1"]
     backlog = [p for p in packets if int(p["push_cycle"]) < t1 <= int(p["pop_cycle"])]
     witness = cfg["untouched_flow_id"]
-    labels = {int(r["flow"]): r["flow_name"] for r in read_csv(RESOURCES / request / f"m-{m}" / "flows.csv")}
+    labels = {int(r["flow"]): r["flow_name"] for r in read_csv(path / "flows.csv")}
     result = {"request": request, "tenants": m, "flows": 2 * m, "run": run,
               "main_install_instructions": plan["eligible_at_t1_instructions"],
               "guarded_instructions": plan["guarded_instructions"],
@@ -315,6 +321,8 @@ def main():
     jobs = []
     for request in args.requests or cfg["requests"]:
         for m in args.tenants or cfg["tenants"]:
+            if args.action == "prepare":
+                generate_inputs(cfg, request, m)
             source = prepare(cfg, request, m)
             if args.action == "prepare":
                 continue
@@ -358,7 +366,9 @@ def main():
         command = ["sbt", f"runMain rio.sim.EvaluationRequestSimulatorCli --batch {manifest.relative_to(ROOT)}"]
         with (RESULTS / "batch.log").open("w") as log:
             process = subprocess.Popen(command, cwd=ROOT, stdout=subprocess.PIPE,
-                                       stderr=subprocess.STDOUT, text=True)
+                                       stderr=subprocess.STDOUT, text=True,
+                                       env={**os.environ, "SPINAL_SIM_SEED": os.environ.get(
+                                           "SPINAL_SIM_SEED", str(cfg["seed"] % (1 << 31)))})
             for line in process.stdout:
                 log.write(line)
                 log.flush()

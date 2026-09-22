@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import os
 import sys
 import tempfile
 import unittest
@@ -37,12 +38,36 @@ from pifo_tree_compiler import (  # noqa: E402
     write_tree_move_program,
 )
 import pifo_experiment_figures  # noqa: E402
+from pifo_simulator import build_parser as simulator_parser, run_simulator
 
 
 HARDWARE_ROOT = Path(__file__).resolve().parents[3]
 
 
 class PifoCliProgramsTest(unittest.TestCase):
+    def test_simulator_passes_a_reproducible_rtl_seed_to_sbt(self) -> None:
+        resources = HARDWARE_ROOT / "experiments/motivating-example"
+        program = compile_tree_move(load_tree_move_program(resources / "r2-stop-the-world/tree-move.json"))
+        traffic = load_traffic_program(resources / "traffic.json")
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            transactions = root / "transactions.txt"
+            write_transaction_program(transactions, program)
+            for environment, override, expected in (
+                ({}, [], str(traffic.seed % (1 << 31))),
+                ({"SPINAL_SIM_SEED": "42"}, [], "42"),
+                ({"SPINAL_SIM_SEED": "42"}, ["--simulation-seed", "1179218032"], "1179218032"),
+            ):
+                args = simulator_parser().parse_args([
+                    "--transactions", str(transactions), "--traffic", str(resources / "traffic.json"),
+                    "--output-dir", str(root), *override,
+                ])
+                with self.subTest(seed=expected), patch.dict(os.environ, environment, clear=True), \
+                        patch("pifo_simulator.shutil.which", return_value="/usr/bin/sbt"), \
+                        patch("pifo_simulator.subprocess.run") as run, redirect_stdout(io.StringIO()):
+                    run_simulator(args)
+                self.assertEqual(run.call_args.kwargs["env"]["SPINAL_SIM_SEED"], expected)
+
     def test_experiment_invokes_each_boundary_cli(self) -> None:
         calls: list[tuple[str, tuple[object, ...]]] = []
         with tempfile.TemporaryDirectory() as directory:

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import ast
 import csv
+import json
+import os
 import runpy
 import shutil
 import subprocess
@@ -29,9 +31,11 @@ ROOT = Path(__file__).resolve().parents[3]
 
 
 class StandalonePlotTest(unittest.TestCase):
+    @unittest.skipUnless(os.environ.get("PIFO_EXPERIMENT_RESULTS") == "1",
+                         "run run_experiments.py, then set PIFO_EXPERIMENT_RESULTS=1")
     def test_saved_result_scripts_run_in_isolated_folders(self):
         scripts = sorted((ROOT / "experiment-results").rglob("*plot.py"))
-        self.assertGreaterEqual(len(scripts), 16)
+        self.assertEqual(len(scripts), 25)
         with tempfile.TemporaryDirectory() as directory:
             for index, script in enumerate(scripts):
                 with self.subTest(script=script.relative_to(ROOT)):
@@ -140,14 +144,32 @@ class StandalonePlotTest(unittest.TestCase):
             self.assertTrue((Path(directory) / "packets.csv").is_file())
 
     def test_backfill_preserves_saved_artifacts_and_their_original_timestamps(self):
-        archive = ROOT / "experiment-results/rr-to-sp"
-        files = ("experiment-config.json", "reconfiguration-events.csv", "bandwidth.csv", "packet-times.csv",
-                 "rr-to-sp-bandwidth.svg", "rr-to-sp-packet-scatter.svg")
+        # Model an old plot next to a newer event log without checking in results.
+        files = {
+            "experiment-config.json": json.dumps({"plot": {"flow_labels": {"1": "A"}, "dpi": 60}}),
+            "reconfiguration-events.csv": (
+                "event,from_policy,to_policy,scheduled_cycle,start_cycle,commit_cycle,finish_cycle\n"
+                "reconfiguration,RR,SP,600,600,619,909\n"
+            ),
+            "bandwidth.csv": "time_relative_to_start,total_link_fraction,flow_1_link_fraction\n-288,0.5,0.5\n",
+            "packet-times.csv": (
+                "request_id,flow_id,input_cycle,output_cycle,input_relative_to_start,output_relative_to_start\n"
+                "1,1,0,9,-320,-311\n"
+            ),
+            "requests.csv": "cycle,request_id,global_flow_id,size_bytes\n0,1,1,48\n",
+            "request-results.csv": (
+                "request_id,global_flow_id,size_bytes,arrival_cycle,admitted_cycle,completed_cycle\n"
+                "1,1,48,0,10,25\n"
+            ),
+            "packet-outcomes.csv": "request_id,flow,size_bytes,push_cycle,pop_cycle,dropped\n1,1,48,0,25,false\n",
+            "rr-to-sp-bandwidth.svg": "<svg><text>start=320 commit=330 drain=400 finish=450</text></svg>",
+            "rr-to-sp-packet-scatter.svg": "<svg><text>start=320 commit=330 drain=400 finish=450</text></svg>",
+        }
         with tempfile.TemporaryDirectory() as directory:
             target = Path(directory) / "rr-to-sp"
             target.mkdir()
-            for name in files:
-                shutil.copy2(archive / name, target / name)
+            for name, content in files.items():
+                (target / name).write_text(content)
             before = {name: (target / name).read_bytes() for name in files}
             scripts = export_saved_figures(Path(directory))
             self.assertEqual(len(scripts), 2)
@@ -163,14 +185,17 @@ class StandalonePlotTest(unittest.TestCase):
                 self.assertTrue(all(not label.startswith("C2") for _, _, _, label in panel["markers"]))
             with (target / "rr-to-sp-packets.csv").open() as stream:
                 rows = list(csv.DictReader(stream))
-            self.assertEqual(len(rows), 160)
+            self.assertEqual(len(rows), 1)
+            self.assertEqual(rows[0]["pop_cycle"], "9")
             self.assertTrue(all(row["size_bytes"] == "" for row in rows))
 
-    def test_saved_packet_traces_match_their_own_run_not_neighboring_archives(self):
+    @unittest.skipUnless(os.environ.get("PIFO_EXPERIMENT_RESULTS") == "1",
+                         "run run_experiments.py, then set PIFO_EXPERIMENT_RESULTS=1")
+    def test_saved_packet_traces_match_their_own_run(self):
         root = ROOT / "experiment-results"
         local_traces = sorted(p for p in root.glob("**/figures/*/packets.csv")
                               if (p.parents[2] / "packet-outcomes.csv").exists())
-        self.assertGreaterEqual(len(local_traces), 12)  # Per-run figures, excluding multi-run bundles.
+        self.assertEqual(len(local_traces), 14)  # Per-run figures, excluding multi-run bundles.
         for trace in local_traces:
             with self.subTest(trace=trace):
                 self.assertEqual(read_packet_outcomes(trace),
@@ -190,15 +215,9 @@ class StandalonePlotTest(unittest.TestCase):
                 for row, packet in zip(selected, expected):
                     self.assertEqual((int(row["request_id"]), int(row["flow"]), int(row["push_cycle"]), int(row["pop_cycle"])),
                                      (packet.request_id, packet.flow_id, packet.push_cycle, packet.pop_cycle))
-        with (root / "rr-to-sp/rr-to-sp-packets.csv").open() as stream:
-            archive = list(csv.DictReader(stream))
-        self.assertEqual(len(archive), 160)
-        self.assertEqual(archive[1]["pop_cycle"], "21")
-        self.assertTrue(all(row["size_bytes"] == "" for row in archive))
         current = read_packet_outcomes(root / "rr-to-sp/packet-outcomes.csv")
         self.assertEqual(len(current), 480)
-        self.assertEqual(current[1].pop_cycle, 25)
-        large = read_packet_outcomes(root / "large-tree-rr-to-sp/rr-to-sp-packets.csv")
+        large = read_packet_outcomes(root / "large-tree-rr-to-sp/packet-outcomes.csv")
         self.assertEqual(len(large), 120)
         self.assertEqual({p.size_bytes for p in large}, {512})
 

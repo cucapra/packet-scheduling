@@ -490,8 +490,8 @@ timestamps and counts for single-event figure readers. Each package still ends i
 
 `install_finish_cycle` and `drain_cycle` are independent: the first bank replay may finish while the old tree is still
 draining. Guarded retirement and its commit follow; the final bank replay finishes at `finish_cycle`. For STW, capture
-precedes the install commit; resume and final configuration cleanup are separate milestones. The checked-in motivating
-example was rerun on its explicit FIFO-leaf topology with cleanup commits and records both milestones. Older RR/SP archives predate this schema;
+precedes the install commit; resume and final configuration cleanup are separate milestones. The motivating
+example regenerates both milestones from its explicit FIFO-leaf topology and cleanup commits. Older RR/SP archives predate this schema;
 readers preserve their legacy interpretation rather than retroactively claiming they executed cleanup commits.
 
 Figures display both commits instead of one ambiguous finish line:
@@ -537,7 +537,8 @@ properties hold:
 1. The transaction and old-tree drain are long enough to observe.
 2. Output before commit follows RR.
 3. From commit until drain, only old-tree packets leave and they continue following RR.
-4. After drain, only new-tree packets leave and SP priority order has no reversal.
+4. Old packets still in downstream FIFOs may complete after root drain. New-tree output starts only after the last
+   old packet completes, and SP priority order has no reversal.
 
 ```bash
 python3 hw/python/pifo_experiment_figures.py validate experiments/large-tree-rr-to-sp.json
@@ -555,17 +556,22 @@ python3 hw/python/pifo_experiment_figures.py verify \
 ```
 
 The reference package has 27 commands: 7 new-node brain selections, 2 SP flow-state writes, 16 per-path mapper
-writes, 1 front underflow rewrite, and 1 commit. The run accepted them with a 28-cycle span (`start=240`, `commit=268`), had 45 old
-packets pending at commit, drained the old tree at cycle 1464 (1196 drain cycles), and finished mapper synchronization
-at cycle 8464. It observed
-9 completions before commit, 45 during old-tree drain, and 66 after drain, with zero RR repetitions, zero early
-new-tree outputs, zero late old-tree outputs, and zero SP priority reversals. A packet admitted on the commit edge is
-classified as old, matching the mapper-bank publication contract.
+writes, 1 front underflow rewrite, and 1 commit. The verifier requires at least 24 old packets pending at publication
+and 200 cycles from commit acceptance to root drain. These bounds reflect the corrected dequeue timing and
+immediate mapper replay; the former 32-packet/800-cycle bounds belonged to an older simulator.
+The workload itself is unchanged. Fresh measurements and both root-drain and final-old-packet timestamps are
+written to the generated verification report. A packet admitted on the publication edge is classified as old,
+matching the mapper-bank contract.
 
 The Python simulator converts only the traffic patterns to canonical request CSV. It passes that CSV and the unchanged
 direct timeline to Scala with `--trace` and `--transactions`; the old bundle of single-transaction flags is gone. Run
 `sbt 'runMain rio.sim.RequestSimulatorCli --help'` for the low-level syntax. The live control socket remains available
 at `/tmp/rio-control.sock` unless disabled.
+
+`pifo_simulator.py` also fixes the RTL initialization seed: by default it uses the traffic seed modulo 2³¹ via
+SpinalHDL's `SPINAL_SIM_SEED`. Set that environment variable or pass `--simulation-seed` to override it; the CLI
+option takes precedence. The selected seed is printed before simulation. Direct Scala invocations still use
+SpinalHDL's default random seed unless the environment variable is set.
 
 ## Live request feeder
 

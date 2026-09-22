@@ -1,3 +1,4 @@
+import os
 import sys
 import shutil
 import subprocess
@@ -129,6 +130,8 @@ class SurvivorTest(unittest.TestCase):
                 {"push_cycle": 6, "pop_cycle": 13}]
         self.assertEqual(peak_buffer(rows, 3, 7), 3)
 
+    @unittest.skipUnless(os.environ.get("PIFO_EXPERIMENT_RESULTS") == "1",
+                         "run run_experiments.py, then set PIFO_EXPERIMENT_RESULTS=1")
     def test_both_saved_figures_include_copy_and_its_commit_markers(self):
         results = RESOURCES.parents[1] / "experiment-results/designated-survivor"
         for figure in ("zoom-delay", "prefill-stop"):
@@ -141,6 +144,8 @@ class SurvivorTest(unittest.TestCase):
             self.assertEqual({r["commit"] for r in copy}, {"C1", "C2", "C3"})
             self.assertTrue(all(r["old_tree_drained_cycle"] and r["ready_for_next_commit"] for r in copy))
 
+    @unittest.skipUnless(os.environ.get("PIFO_EXPERIMENT_RESULTS") == "1",
+                         "run run_experiments.py, then set PIFO_EXPERIMENT_RESULTS=1")
     def test_saved_survivor_figures_replot_from_only_local_csvs(self):
         figures = RESOURCES.parents[1] / "experiment-results/designated-survivor/figures"
         with tempfile.TemporaryDirectory() as directory:

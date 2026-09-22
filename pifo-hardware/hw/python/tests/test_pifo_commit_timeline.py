@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ast
 import csv
+import os
 import runpy
 import sys
 import tempfile
@@ -38,10 +39,12 @@ EXPECTED = {
 
 
 class CommitTimelineTest(unittest.TestCase):
+    @unittest.skipUnless(os.environ.get("PIFO_EXPERIMENT_RESULTS") == "1",
+                         "run run_experiments.py, then set PIFO_EXPERIMENT_RESULTS=1")
     def test_saved_figure_markers_match_each_runs_recorded_commits(self):
         root = Path(__file__).resolve().parents[3] / "experiment-results"
         scripts = sorted(script for script in root.rglob("plot.py") if "PANELS =" in script.read_text())
-        self.assertGreaterEqual(len(scripts), 14)
+        self.assertEqual(len(scripts), 16)
         cases = {"R2": "r2-stop-the-world", "R3": "r3-whole-tree", "R4": "r4-confined"}
         for script in scripts:
             with self.subTest(script=script):
