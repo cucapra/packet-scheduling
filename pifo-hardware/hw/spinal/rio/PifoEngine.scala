@@ -5,20 +5,36 @@ import spinal.lib._
 
 // flow = vPIFOs + FlowId
 
-case class EngineConfig (
-    numEngines : Int,
-    numVPIFOs : Int,
+case class EngineConfig(
+    numEngines: Int,
+    numVPIFOs: Int,
     maxPacketPriority: Int,
     fifoDepth: Int,
-    prefetchBufferDepth: Int
+    prefetchBufferDepth: Int,
+    brainStateWidth: Int = 32,
+    flowStateWidth: Int = 32,
+    configDataWidth: Int = 32,
+    commitQueueLength: Int = EngineConfig.DefaultCommitQueueLength
 ) {
-    def vpifoIdWidth = log2Up(numVPIFOs)
-    def numFlows = numVPIFOs * numEngines
-    def flowIdWidth = log2Up(numFlows)
-    def engineIdWidth = log2Up(numEngines)
+  require(commitQueueLength >= 2 && (commitQueueLength & (commitQueueLength - 1)) == 0,
+    "commitQueueLength must be a power of two >= 2")
+  def vpifoIdWidth = log2Up(numVPIFOs)
+  def numFlows = numVPIFOs * numEngines
+  def engineIdWidth = log2Up(numEngines + 1) // +1 for control port
+  def flowIdWidth = vpifoIdWidth + engineIdWidth
+
+  def dequePredWidth = vpifoIdWidth + 1 // +1 for exist bit
+
+  def numBrainState = 1 << brainStateWidth
+  def numFlowState = 1 << flowStateWidth
+
+  assert(flowStateWidth <= configDataWidth, "flowStateWidth should be less than configDataWidth")
+  assert(brainStateWidth % configDataWidth == 0, "brainStateWidth should be multiple of configDataWidth")
 }
 
 object EngineConfig {
+  val DefaultCommitQueueLength = 256
+
   implicit def toFlowPifoConfig(pifoConfig: EngineConfig): PifoConfig =
     PifoConfig(
       numPifo = pifoConfig.numVPIFOs * pifoConfig.fifoDepth,
@@ -28,24 +44,24 @@ object EngineConfig {
     )
 }
 
-case class MapperUpdater(numInputs : Int, numOutputs : Int) extends Bundle {
-  val inputId = UInt(log2Up(numInputs) bits)
-  val outputId = UInt(log2Up(numOutputs) bits)
+case class MapperUpdater(inputWidth: Int, outputWidth: Int) extends Bundle {
+  val inputId = UInt(inputWidth bits)
+  val outputId = UInt(outputWidth bits)
 }
 
-case class Mapper(numInputs : Int, numOutputs : Int) extends Component {
-  val inputWidth = log2Up(numInputs)
-  val outputWidth = log2Up(numOutputs)
-  def updater = MapperUpdater(numInputs, numOutputs)
+// TODO(zhiyuang): check for the writeFirst policy
+case class Mapper(inputWidth: Int, outputWidth: Int) extends Component {
+  val numInputs = 1 << inputWidth
+  def updater = MapperUpdater(inputWidth, outputWidth)
 
   val io = new Bundle {
-    val readReq = slave Flow(UInt(log2Up(numInputs) bits))
-    val readRes = master Flow(UInt(log2Up(numOutputs) bits))
+    val readReq = slave Flow (UInt(inputWidth bits))
+    val readRes = master Flow (UInt(outputWidth bits))
 
-    val writeReq = slave Flow(updater)
+    val writeReq = slave Flow (updater)
   }
 
-  val ram = Mem(UInt(outputWidth bits), numInputs)
+  val ram = Mem(UInt(outputWidth bits), numInputs) init (Seq.fill(numInputs)(0))
 
   // read logic
   ram.flowReadSync(io.readReq) >> io.readRes
@@ -57,167 +73,637 @@ case class Mapper(numInputs : Int, numOutputs : Int) extends Component {
   }
 }
 
-case class BrainInput(config : EngineConfig) extends Bundle {
+/**
+  * A mapper whose control-plane writes become packet-visible atomically.
+  *
+  * Packet reads use the active bank while updates write the backup bank. A commit
+  * swaps the banks in one cycle, then the new active bank is copied back before
+  * another update or commit is accepted.
+  */
+case class TransactionalMapper(inputWidth: Int, outputWidth: Int) extends Component {
+  require(inputWidth > 0, "inputWidth must be positive")
+  require(outputWidth > 0, "outputWidth must be positive")
+
+  val numInputs = 1 << inputWidth
+  def updater = MapperUpdater(inputWidth, outputWidth)
+
+  val io = new Bundle {
+    val readReq = slave Flow (UInt(inputWidth bits))
+    val readRes = master Flow (UInt(outputWidth bits))
+
+    val writeReq = slave Stream (updater)
+    val commit = in Bool ()
+    val commitReady = out Bool ()
+  }
+
+  val banks = Seq.fill(2)(Mem(UInt(outputWidth bits), numInputs) init (Seq.fill(numInputs)(0)))
+  val activeBank = RegInit(False)
+  val copying = RegInit(False)
+  val copyAddress = Reg(UInt(inputWidth bits)) init (0)
+  val copyWriteValid = RegNext(copying) init (False)
+  val copyWriteAddress = RegNext(copyAddress) init (0)
+  val synchronizing = copying || copyWriteValid
+
+  // Read both banks so a request issued on the commit cycle still returns data
+  // from the bank that was active for that request.
+  val bankRead = Seq(
+    banks(0).readSync(io.readReq.payload, io.readReq.valid && !activeBank),
+    banks(1).readSync(io.readReq.payload, io.readReq.valid && activeBank)
+  )
+  val requestedBank = Reg(Bool()) init (False)
+  when(io.readReq.valid) {
+    requestedBank := activeBank
+  }
+  io.readRes.valid := RegNext(io.readReq.valid) init (False)
+  io.readRes.payload := Mux(requestedBank, bankRead(1), bankRead(0))
+
+  io.writeReq.ready := !synchronizing
+  io.commitReady := !synchronizing
+
+  // A second synchronous read port walks the active bank during synchronization.
+  // Its one-cycle-delayed result uses the backup bank's normal write port, while
+  // packet reads continue through the first port.
+  val copyRead = Seq(
+    banks(0).readSync(copyAddress, copying && !activeBank),
+    banks(1).readSync(copyAddress, copying && activeBank)
+  )
+  val copyData = Mux(
+    activeBank,
+    copyRead(1),
+    copyRead(0)
+  )
+  val writeAddress = Mux(copyWriteValid, copyWriteAddress, io.writeReq.payload.inputId)
+  val writeData = Mux(copyWriteValid, copyData, io.writeReq.payload.outputId)
+  val writeEnable = copyWriteValid || io.writeReq.fire
+
+  banks(0).write(writeAddress, writeData, writeEnable && activeBank)
+  banks(1).write(writeAddress, writeData, writeEnable && !activeBank)
+
+  when(io.commit && io.commitReady) {
+    activeBank := !activeBank
+    copying := True
+    copyAddress := 0
+  } elsewhen (copying) {
+    when(copyAddress === U(numInputs - 1, inputWidth bits)) {
+      copying := False
+    } otherwise {
+      copyAddress := copyAddress + 1
+    }
+  }
+}
+
+/** A single-bank front-end rewrite table activated by a drained PIFO port.
+  *
+  * Control writes install source -> target with rewriting disabled. A mapper
+  * commit arms newly installed entries, and the successful pop of the source's
+  * final entry enables its rewrite. The table is intentionally not copied or
+  * banked: its runtime enable bit is data-plane state rather than transactional
+  * mapper state.
+  */
+case class FrontRewriteTable(pifoIdWidth: Int, evaluation: Boolean = false) extends Component {
+  require(pifoIdWidth > 0, "pifoIdWidth must be positive")
+
+  val numPifos = 1 << pifoIdWidth
+
+  val io = new Bundle {
+    val lookupSource = in UInt (pifoIdWidth bits)
+    val lookupTarget = out UInt (pifoIdWidth bits)
+    val lookupEnabled = out Bool ()
+    val lookupCanEnable = out Bool ()
+    val probeSource = evaluation generate (in UInt (pifoIdWidth bits) default(0))
+    val probeTarget = evaluation generate (out UInt (pifoIdWidth bits))
+    val probeEnabled = evaluation generate (out Bool ())
+    val probeCanEnable = evaluation generate (out Bool ())
+
+    val drained = slave Flow (UInt(pifoIdWidth bits))
+    val drainEnablesRewrite = out Bool ()
+    val emptySource = slave Flow (UInt(pifoIdWidth bits))
+    val emptyEnablesRewrite = out Bool ()
+
+    val writeReq = slave Stream (MapperUpdater(pifoIdWidth, pifoIdWidth))
+    val commit = in Bool ()
+  }
+
+  val targets = Vec.fill(numPifos)(Reg(UInt(pifoIdWidth bits)) init (0))
+  val configured = Vec.fill(numPifos)(Reg(Bool()) init (False))
+  val pending = Vec.fill(numPifos)(Reg(Bool()) init (False))
+  val armed = Vec.fill(numPifos)(Reg(Bool()) init (False))
+  val enabled = Vec.fill(numPifos)(Reg(Bool()) init (False))
+
+  val drainedEntryEligible =
+    armed(io.drained.payload) || (io.commit && pending(io.drained.payload))
+  io.drainEnablesRewrite :=
+    io.drained.valid && configured(io.drained.payload) && drainedEntryEligible
+
+  io.lookupTarget := targets(io.lookupSource)
+  io.lookupEnabled := enabled(io.lookupSource)
+  if (evaluation) {
+  io.probeTarget := targets(io.probeSource)
+  io.probeEnabled := enabled(io.probeSource)
+  io.probeCanEnable := configured(io.probeSource) && armed(io.probeSource) && !enabled(io.probeSource)
+  }
+  io.lookupCanEnable :=
+    configured(io.lookupSource) && !enabled(io.lookupSource) && (
+      armed(io.lookupSource) || (io.commit && pending(io.lookupSource))
+    )
+
+  val emptyEntryEligible =
+    armed(io.emptySource.payload) || (io.commit && pending(io.emptySource.payload))
+  io.emptyEnablesRewrite :=
+    io.emptySource.valid && configured(io.emptySource.payload) && emptyEntryEligible
+
+  io.writeReq.ready := True
+
+  // The final successful source pop enables the entry for all subsequent
+  // requests. This can coincide with the commit that arms the entry.
+  when(io.drainEnablesRewrite) {
+    enabled(io.drained.payload) := True
+  }
+
+  // If an entry was already empty when it became armed, suppress its first
+  // would-underflow request and enable the rewrite directly.
+  when(io.emptyEnablesRewrite) {
+    enabled(io.emptySource.payload) := True
+  }
+
+  // Mapper publication arms entries written since the preceding commit. The
+  // target itself is single-bank and was already installed by the control write.
+  when(io.commit) {
+    for (index <- 0 until numPifos) {
+      when(pending(index)) {
+        pending(index) := False
+        armed(index) := True
+      }
+    }
+  }
+
+  // Give a new control write priority over a coincident old drain/commit for
+  // the same source. Reprogramming starts a fresh disabled, pending entry.
+  when(io.writeReq.fire) {
+    val source = io.writeReq.payload.inputId
+    targets(source) := io.writeReq.payload.outputId
+    configured(source) := True
+    pending(source) := True
+    armed(source) := False
+    enabled(source) := False
+  }
+}
+
+case class BrainInput(config: EngineConfig) extends Bundle {
   val vpifoId = UInt(config.vpifoIdWidth bits)
   val flowId = UInt(config.flowIdWidth bits)
 }
 
-case class PIFOBrain(config : EngineConfig) extends Component {
+case class PIFOBrain(config: EngineConfig, evaluation: Boolean = false) extends Component {
   val io = new Bundle {
-    val in = slave Stream(BrainInput(config))
-    val out = master Stream(PifoEntry(config))
+    val request = slave Stream (BrainInput(config))
+    val response = master Stream (PifoEntry(config))
 
-    val control = new Bundle {
-    }
+    val control = slave Stream (ControlMessage(config))
+    val poped = slave Flow (PifoPopResponse(config))
+    val commit = in Bool () default(False)
+    val evaluationFinished = evaluation generate (master Flow(UInt(config.vpifoIdWidth bits)))
   }
 
-  val inHeads = StreamFork(io.in, 4)
+  val inHeads = StreamFork(io.request, 5)
+  val controller = new ControllerFactory(config)
 
-  val engineMapper = Mapper(config.numVPIFOs, 16)
+  val engineMapper = Mapper(config.vpifoIdWidth, if (evaluation) log2Up(BrainType.elements.size) else 2)
   inHeads(0).map(_.vpifoId).toFlow >> engineMapper.io.readReq
+  controller.dispatch(
+    ControlCommand.UpdateBrainEngine,
+    engineMapper.io.writeReq
+  ) { (to, from) =>
+    to.inputId := from.vPifoId
+    to.outputId := from.data.resized
+  }
 
+  val lastVirtualMapper = Mapper(config.vpifoIdWidth, config.bitPrio)
+  lastVirtualMapper.io.writeReq.translateFrom(io.poped.throwWhen(!io.poped.exist)) { (to, from) =>
+    to.inputId := from.port
+    to.outputId := from.priority
+  }
+  inHeads(1).map(_.vpifoId).toFlow >> lastVirtualMapper.io.readReq
 
-  val engineCAM = Mapper(config.numVPIFOs * config.numFlows, 16)
-  inHeads(1).map { data =>
+  val engineCAM = Mapper(config.flowIdWidth + config.vpifoIdWidth, config.flowStateWidth)
+  inHeads(2).map { data =>
     data.vpifoId @@ data.flowId
   }.toFlow >> engineCAM.io.readReq
-
-  val brainStateMem = Mapper(config.numVPIFOs, 1024)
-  inHeads(2).map { _.vpifoId }.toFlow >> brainStateMem.io.readReq
-
-  val engineStream = StreamJoin(Seq(
-    engineMapper.io.readRes.toStream,
-    engineCAM.io.readRes.toStream,
-    brainStateMem.io.readRes.toStream,
-    inHeads(3)
-  )).translateWith(
-    new Bundle {
-      val pifoId = inHeads(3).payload.vpifoId
-      val flowId = inHeads(3).payload.flowId
-      val engineId = engineMapper.io.readRes.payload
-      val flowState = engineCAM.io.readRes.payload
-      val brainState = brainStateMem.io.readRes.payload
-    }
-  )
-  
-
-  // Brain types for the PIFO brain engine
-  object BrainType extends SpinalEnum {
-    val NOP, SP, RR, FIFO = newElement()
+  // TODO(zhiyuang): check this priority and flows when updating
+  val flowStateControl, flowStateUpdate = Flow(engineCAM.updater)
+  engineCAM.io.writeReq << StreamArbiterFactory.lowerFirst
+    .onArgs(flowStateControl.toStream, flowStateUpdate.toStream.queueLowLatency(2))
+    .toFlow
+  controller.dispatch(
+    ControlCommand.UpdateBrainFlowState,
+    flowStateControl
+  ) { (to, from) =>
+    to.inputId := from.vPifoId @@ from.flowId
+    to.outputId := from.data.resized
   }
 
+  val brainStateMem = Mapper(config.vpifoIdWidth, config.brainStateWidth)
+  inHeads(3).map { _.vpifoId }.toFlow >> brainStateMem.io.readReq
+  val brainStateControl, brainStateUpdate = Flow(brainStateMem.updater)
+  brainStateMem.io.writeReq << StreamArbiterFactory.lowerFirst
+    .onArgs(brainStateControl.toStream, brainStateUpdate.toStream.queueLowLatency(2))
+    .toFlow
+  controller.dispatch(
+    ControlCommand.UpdateBrainState,
+    brainStateControl
+  ) { (to, from) =>
+    to.inputId := from.vPifoId
+    to.outputId := from.data.resized
+  }
+
+  controller.build(io.control)
+
+  val engineFifo = engineMapper.io.readRes.toStream.queueLowLatency(2)
+  val brainStateFifo = brainStateMem.io.readRes.toStream.queueLowLatency(2)
+  val flowStateFifo = engineCAM.io.readRes.toStream.queueLowLatency(2)
+  val lastVirtualFifo = lastVirtualMapper.io.readRes.toStream.queueLowLatency(2)
+  val inputFifo = inHeads(4).queueLowLatency(2)
+
+  val engineStream = StreamJoin(
+    Seq(
+      engineFifo,
+      brainStateFifo,
+      flowStateFifo,
+      lastVirtualFifo,
+      inputFifo
+    )
+  ).map { data =>
+    val anno = new Bundle {
+      val pifoId = cloneOf(inHeads(4).payload.vpifoId)
+      val flowId = cloneOf(inHeads(4).payload.flowId)
+      val engineId = cloneOf(engineMapper.io.readRes.payload)
+      val flowState = cloneOf(engineCAM.io.readRes.payload)
+      val brainState = cloneOf(brainStateMem.io.readRes.payload)
+      val virutalTime = cloneOf(lastVirtualMapper.io.readRes.payload)
+    }
+
+    anno.pifoId := inputFifo.payload.vpifoId
+    anno.flowId := inputFifo.payload.flowId
+    anno.engineId := engineFifo.payload
+    anno.flowState := flowStateFifo.payload
+    anno.brainState := brainStateFifo.payload
+    anno.virutalTime := lastVirtualFifo.payload
+
+    anno
+  }
+
+  val weighted = evaluation generate WeightedRanker(config)
+  if (evaluation) {
+    io.evaluationFinished.valid := engineStream.fire
+    io.evaluationFinished.payload := engineStream.pifoId
+  }
+  if (evaluation) {
+  weighted.io.port := engineStream.pifoId
+  weighted.io.flow := engineStream.flowId.resized
+  weighted.io.accept := engineStream.fire && engineStream.engineId === BrainType.HWFQ.position
+  weighted.io.pop << io.poped
+  weighted.io.control.valid := io.control.fire
+  weighted.io.control.payload := io.control.payload
+  weighted.io.commit := io.commit
+  }
+
+  // TODO(zhiyaung): add update logic for different brain types
   // Engine Logic
   val outStream = engineStream.map { data =>
-    val entry = PifoEntry(config)
-    entry.port := data.pifoId
-    
-    switch(data.engineId) {
+    val res = new Bundle {
+      val entry = cloneOf(io.response.payload)
+      val flowUpdate = new Bundle {
+        val flow = engineCAM.updater
+        val update = Bool()
+      }
+      val brainUpdate = new Bundle {
+        val brain = brainStateMem.updater
+        val update = Bool()
+      }
+    }
+
+    // set data to data.id
+    res.entry.port := data.pifoId
+    res.entry.priority := 0
+    res.entry.data := data.flowId
+    res.flowUpdate.flow.inputId := data.pifoId @@ data.flowId
+    res.flowUpdate.flow.outputId := 0
+    res.flowUpdate.update := False
+    res.brainUpdate.brain.inputId := data.pifoId
+    res.brainUpdate.brain.outputId := 0
+    res.brainUpdate.update := False
+
+    val brainType = BrainType()
+    brainType.assignFromBits(data.engineId.asBits.resized)
+
+    switch(brainType) {
+      if (evaluation) {
+        is(BrainType.HWFQ) { res.entry.priority := weighted.io.rank }
+      }
       // strict priority
       is(BrainType.SP) {
-        entry.priority := data.flowState.resized
+        res.entry.priority := data.flowState.resized
       }
 
-      // round robin
-      is(BrainType.RR) {
+      // WFQ
+      // Currently this works like a Round-Robin: as its weight is same for all flows
+      // TODO(zhiyuang): need some assertation on weight configuration: we need to make sure it fits into the bits
+      is(BrainType.WFQ) {
+        val virtualTime = data.virutalTime.resize(config.bitPrio bits)
+        val lastFinish = data.flowState.resize(config.bitPrio bits)
 
+        val newStart = Mux(virtualTime > lastFinish, virtualTime, lastFinish)
+
+        val newTime = newStart + U(16, config.bitPrio bits)
+        // TODO(zhiyuang): weight handling in per-flow state
+        res.entry.priority := newTime
+
+        res.flowUpdate.update := True
+        res.flowUpdate.flow.outputId := newTime.resized
       }
 
       // FIFO
       is(BrainType.FIFO) {
+        val current = data.brainState.resize(config.bitPrio bits)
+        val newPriority = current + 1
 
-      }
-
-      default {
-        // invalid entry
-        entry.priority := 0
+        res.entry.priority := newPriority
+        res.brainUpdate.update := True
+        res.brainUpdate.brain.outputId := newPriority.resized
       }
     }
 
-    entry
+    res
   }
 
-  // priority should not be zero
-  io.out << outStream.throwWhen(outStream.payload.priority === 0)
+  val (output, flowUpdates, brainUpdates) = StreamFork3(outStream)
+
+  io.response << output
+    .throwWhen(output.entry.priority === 0)
+    .map(_.entry)
+
+  flowStateUpdate << flowUpdates
+    .throwWhen(!flowUpdates.payload.flowUpdate.update)
+    .map(_.flowUpdate.flow)
+    .toFlow
+
+  brainStateUpdate << brainUpdates
+    .throwWhen(!brainUpdates.payload.brainUpdate.update)
+    .map(_.brainUpdate.brain)
+    .toFlow
 }
 
 case class PifoMessage(config: EngineConfig) extends Bundle {
   val engineId = UInt(config.engineIdWidth bits)
   val vPifoId = UInt(config.vpifoIdWidth bits)
 
-  def flowId : UInt = engineId @@ vPifoId
+  def flowId: UInt = engineId @@ vPifoId
+  def fromFlowId(id: UInt) = {
+    engineId := id(config.flowIdWidth - 1 downto config.vpifoIdWidth)
+    vPifoId := id(config.vpifoIdWidth - 1 downto 0)
+  }
+}
+
+case class PifoPrefillRequest(config: EngineConfig) extends Bundle {
+  val port = UInt(config.vpifoIdWidth bits)
+  val token = UInt(config.flowIdWidth bits)
+  val count = UInt(config.flowStateWidth bits)
 }
 
 object PifoMessage {
-  def fromData(config : EngineConfig, data : UInt) : PifoMessage = {
+  def fromData(config: EngineConfig, data: UInt, exist: Bool): PifoMessage = {
     val msg = PifoMessage(config)
-    msg.engineId := data(config.engineIdWidth - 1 downto 0)
-    msg.vPifoId := data(config.engineIdWidth + config.vpifoIdWidth - 1 downto config.engineIdWidth)
+    // If not exist, set engineId to 0
+    msg.engineId := Mux(exist, data(config.flowIdWidth - 1 downto config.vpifoIdWidth), U(0))
+    msg.vPifoId := data(config.vpifoIdWidth - 1 downto 0)
     msg
   }
 }
 
-case class PifoEngine(config : EngineConfig) extends Component {
+class PifoEngine private[rio](config: EngineConfig, evaluation: Boolean) extends Component {
+  def this(config: EngineConfig) = this(config, false)
   val io = new Bundle {
-    val enqueRequest = slave Stream(PifoMessage(config))
-    val dequeueRequest = slave Stream(PifoMessage(config))
+    val enqueRequest = slave Stream (PifoMessage(config))
+    val dequeueRequest = slave Stream (PifoMessage(config))
 
-    val dequeueResponse = master Stream(PifoMessage(config))
+    val dequeueResponse = master Stream (PifoMessage(config))
+
+    val inspectPifo = evaluation generate (in UInt (config.vpifoIdWidth bits))
+    val inspectCount = evaluation generate (out UInt ((config.bitPifo + 1) bits))
+    val probePifo = evaluation generate (in UInt (config.vpifoIdWidth bits) default(0))
+    val probeEmpty = evaluation generate (out Bool ())
+    val copyIndex = evaluation generate (in UInt (config.bitPifo bits) default(0))
+    val copyEntry = evaluation generate (master Flow (PifoEntry(config)))
+    val copyInsert = evaluation generate (slave Stream (PifoEntry(config)))
+    val copyClear = evaluation generate (in Bool () default(False))
+    val copyEmpty = evaluation generate (out Bool ())
+    val maintenanceIdle = evaluation generate (out Bool())
 
     // control signals
-    val control = slave Stream(ControlMessage(config))
+    val control = slave Stream (ControlMessage(config))
+    val commitReady = out Bool ()
+    val nearlyDrained = master Flow (UInt(config.vpifoIdWidth bits))
+    val pushed = Vec(master(Flow(UInt(config.vpifoIdWidth bits))), 2)
   }
 
   // PIFO
-  val pifos = new PifoRTL(config)
+  val pifos = if (evaluation) new EvaluationPifoRTL(config) else new ConcurrentPifoRTL(config)
+  io.nearlyDrained << pifos.io.portDrained
+  (io.pushed zip pifos.io.portPushed).foreach { case (out, in) => out << in }
+  if (evaluation) {
+  pifos.io.inspectPort := io.inspectPifo
+  io.inspectCount := pifos.io.inspectCount
+  pifos.io.copyIndex := io.copyIndex
+  io.copyEntry << pifos.io.copyEntry
+  pifos.io.copyInsert << io.copyInsert
+  pifos.io.copyClear := io.copyClear
+  io.copyEmpty := pifos.io.copyEmpty
+  }
 
   // enque logic
   // enqueMapper maps flowIds to VPIFO ids
   val enque = new Area {
     val (mapperRead, flowIdStream) = StreamFork2(io.enqueRequest)
 
-    val enqueMapper = Mapper(config.numFlows, config.numVPIFOs)
-    enqueMapper.io.readReq << mapperRead.map(_.flowId).toFlow
+    val enqueMapper = ReplayMapper(config.vpifoIdWidth, config.vpifoIdWidth)
+    enqueMapper.io.readReq << mapperRead.map(_.vPifoId).toFlow
 
     val brainInput = Stream(BrainInput(config))
-    StreamJoin(enqueMapper.io.readRes.toStream, flowIdStream)
+    StreamJoin(enqueMapper.io.readRes.toStream, flowIdStream.queueLowLatency(2))
       .translateInto(brainInput) { (to, from) =>
         to.vpifoId := from._1
         to.flowId := from._2.flowId
       }
-    
+
     // brain takes (vpid, flowid) to PIFOEntry(priority, flowid)
     // each VPIFO has its own brain
-    val brain = PIFOBrain(config)
-    brain.io.in << brainInput
-    
+    val brain = PIFOBrain(config, evaluation)
+    brain.io.request << brainInput
 
     // flow PIFO will give the result
-    pifos.io.push1 << brain.io.out.toFlow
+    pifos.io.push1 << brain.io.response.toFlow
+  }
+
+  // Stop-the-world prefill entries are scheduler tokens, not packet
+  // admissions. One control instruction starts an autonomous one-token-per-
+  // cycle fill through the PIFO's second insertion port.
+  val prefill = evaluation generate new Area {
+    val request = Stream(PifoPrefillRequest(config))
+    val port = Reg(UInt(config.vpifoIdWidth bits)) init (0)
+    val token = Reg(UInt(config.flowIdWidth bits)) init (0)
+    val remaining = Reg(UInt(config.flowStateWidth bits)) init (0)
+    val busy = remaining =/= 0
+
+    request.ready := !busy
+    pifos.io.push2.valid := busy
+    pifos.io.push2.port := port
+    pifos.io.push2.priority := U(1, config.bitPrio bits)
+    pifos.io.push2.data := token
+
+    when(request.fire) {
+      port := request.port
+      token := request.token
+      remaining := request.count
+    }
+    when(busy && pifos.io.push2Ready) {
+      remaining := remaining - 1
+    }
+  }
+
+  if (!evaluation) {
+    pifos.io.push2.valid := False
+    pifos.io.push2.payload.assignDontCare()
   }
 
   val deque = new Area {
-    // dequeue also need a mapper, reinterpret vpifoId if needed
-    val dequeMapper = Mapper(config.numVPIFOs, config.numVPIFOs)
+    // Qualify a dequeue rewrite with the PIFO port. This lets old and new
+    // copies of a tree carry the same flow IDs while retaining distinct next
+    // hops during a full-transitive reconfiguration.
+    val dequeMapper = ReplayMapper(
+      config.vpifoIdWidth + config.flowIdWidth,
+      config.flowIdWidth
+    )
+    val frontRewrite = FrontRewriteTable(config.vpifoIdWidth, evaluation)
 
-    pifos.io.popRequest.translateFrom(dequeMapper.io.readRes) { _.port := _ }
+    // Rewrites happen before the PIFO lookup. The last successful source pop
+    // enables its entry. The activating cycle backpressures this PE once so the
+    // waiting request observes the registered enable on the following cycle.
+    frontRewrite.io.lookupSource := io.dequeueRequest.payload.vPifoId
+    val frontPort = Mux(
+      frontRewrite.io.lookupEnabled,
+      frontRewrite.io.lookupTarget,
+      io.dequeueRequest.payload.vPifoId
+    )
 
-    pifos.io.popResponse
-      .throwWhen(!pifos.io.popResponse.exist)
-      .map(resp => PifoMessage.fromData(config, resp.data))
-      .toStream >> io.dequeueResponse
+    frontRewrite.io.drained << pifos.io.portDrained
+
+    frontRewrite.io.emptySource.valid :=
+      io.dequeueRequest.valid && frontRewrite.io.lookupCanEnable && pifos.io.popPortEmpty
+    frontRewrite.io.emptySource.payload := io.dequeueRequest.payload.vPifoId
+
+    val enablingRewrite =
+      frontRewrite.io.drainEnablesRewrite || frontRewrite.io.emptyEnablesRewrite
+    pifos.io.popRequest.valid := io.dequeueRequest.valid && !enablingRewrite
+    pifos.io.popRequest.port := frontPort
+    io.dequeueRequest.ready := !enablingRewrite
+
+    // An underflow is an invalid pop and produces no mesh message. A configured
+    // transition enables before the next request, so it does not underflow.
+    val existingPop = pifos.io.popResponse.toStream.throwWhen(!pifos.io.popResponse.exist)
+    val popResps = StreamFork(existingPop, 3)
+
+    enque.brain.io.poped << popResps(0).toFlow
+
+    dequeMapper.io.readReq << popResps(1).map(response => response.port @@ response.data).toFlow
+
+    val popFifo = popResps(2).queueLowLatency(2)
+    StreamJoin(
+      Seq(
+        dequeMapper.io.readRes.toStream,
+        popFifo
+      )
+    ).translateInto(io.dequeueResponse) { case (to, from) =>
+      to.fromFlowId(dequeMapper.io.readRes.payload)
+    }
   }
 
-  val control = new Area {
-    // control logic to write the mappers and brain state
-    val controlHeads = StreamFork(io.control, 5)
-    controlHeads(0)
-      .takeWhen(controlHeads(0).payload.command == ControlCommand.MODIFY_MAPPING && controlHeads(0).mappingId == MappingId.InputMapper)
-      .translateInto(Stream(enque.enqueMapper.updater)) { (to, from) =>
-        to.inputId := from.flowId
-        to.outputId := from.vPifoId
-      }.toFlow >> enque.enqueMapper.io.writeReq
-
-    // continue with other control paths...
-
+  val controller = new ControllerFactory(config)
+  controller.dispatchStream(
+    ControlCommand.UpdateMapperPre,
+    enque.enqueMapper.io.writeReq
+  ) { (to, from) =>
+    to.inputId := from.vPifoId
+    to.outputId := from.data.resized
   }
+
+  controller.dispatchStream(
+    ControlCommand.UpdateMapperPost,
+    deque.dequeMapper.io.writeReq
+  ) { (to, from) =>
+    to.inputId := from.vPifoId @@ from.flowId
+    to.outputId := from.data.resized
+  }
+
+  controller.dispatchStream(
+    ControlCommand.UpdateMapperNonExist,
+    deque.frontRewrite.io.writeReq
+  ) { (to, from) =>
+    to.inputId := from.vPifoId
+    to.outputId := from.data(config.vpifoIdWidth - 1 downto 0)
+  }
+
+  if (evaluation) controller.dispatchStream(
+    ControlCommand.PrefillPifo,
+    prefill.request
+  ) { (to, from) =>
+    to.port := from.vPifoId
+    to.token := from.flowId
+    to.count := from.data
+  }
+
+  val mapperCommitReady =
+    enque.enqueMapper.io.commitReady &&
+      deque.dequeMapper.io.commitReady &&
+      (if (evaluation) !prefill.busy else True)
+  io.commitReady := mapperCommitReady
+
+  val (control, brainControl, commitControl) = StreamFork3(io.control)
+  controller.build(control)
+  enque.brain.io.control << brainControl
+
+  val commit = commitControl.takeWhen(commitControl.payload.command === ControlCommand.CommitMapper)
+  commit.ready := mapperCommitReady
+  val commitPulse = commit.fire
+
+  enque.enqueMapper.io.commit := commitPulse
+  deque.dequeMapper.io.commit := commitPulse
+  deque.frontRewrite.io.commit := commitPulse
+  enque.brain.io.commit := commitPulse
+  if (evaluation) {
+  deque.frontRewrite.io.probeSource := io.probePifo
+  pifos.io.probePort := Mux(deque.frontRewrite.io.probeEnabled,
+    deque.frontRewrite.io.probeTarget, io.probePifo)
+  io.probeEmpty := pifos.io.probeCount === 0 &&
+    !deque.frontRewrite.io.probeCanEnable
+  // Ignore null-sink inserts: packets are broadcast even to unused PEs.
+  // Count mapped tokens through the brain and all outstanding post-map reads.
+  val insertsInFlight = Reg(UInt((config.bitPifo + 2) bits)) init(0)
+  val popsInFlight = Reg(UInt((config.bitPifo + 2) bits)) init(0)
+  val insertStarted = enque.brainInput.fire && enque.brainInput.vpifoId =/= 0
+  val insertFinished = enque.brain.io.evaluationFinished.valid && enque.brain.io.evaluationFinished.payload =/= 0
+  when(insertStarted =/= insertFinished) {
+    when(insertStarted) { insertsInFlight := insertsInFlight + 1 }
+      .otherwise { insertsInFlight := insertsInFlight - 1 }
+  }
+  when(io.dequeueRequest.fire =/= io.dequeueResponse.fire) {
+    when(io.dequeueRequest.fire) { popsInFlight := popsInFlight + 1 }
+      .otherwise { popsInFlight := popsInFlight - 1 }
+  }
+  io.maintenanceIdle := insertsInFlight === 0 && popsInFlight === 0 &&
+    !(enque.brainInput.valid && enque.brainInput.vpifoId =/= 0) && !io.dequeueRequest.valid
+  }
+}
+
+object PifoEngine {
+  def apply(config: EngineConfig): PifoEngine = new PifoEngine(config)
 }

@@ -32,13 +32,14 @@ case class PifoPopResponse(config: PifoConfig) extends Bundle {
   val exist = Bool()
   val priority = UInt(config.bitPrio bits)
   val data = UInt(config.bitData bits)
+  val port = UInt(config.bitPort bits)
 }
 
 // Push interface bundle
 case class PifoEntry(config: PifoConfig) extends Bundle {
   val priority = UInt(config.bitPrio bits)
-  val data = UInt(config.bitData bits)
-  val port = UInt(config.bitPort bits)
+  val data     = UInt(config.bitData bits)
+  val port     = UInt(config.bitPort bits)
 }
 
 // SpinalHDL blackbox wrapper for the pifo Verilog module
@@ -179,8 +180,8 @@ class PifoRTL(config: PifoConfig) extends Component {
     nextCount \= nextCount - 1
   }
 
-  val (_, pos1) = findFirstPosition(True) { _.priority < io.push1.priority }
-  val (_, pos2) = findFirstPosition(True) { _.priority < io.push2.priority }
+  val (_, pos1) = findFirstPosition(True) { _.priority > io.push1.priority }
+  val (_, pos2) = findFirstPosition(True) { _.priority > io.push2.priority }
 
   var adjustedPos1 = CombInit(pos1)
   when(popPosition < pos1 && io.popRequest.valid) { adjustedPos1 \= adjustedPos1 - 1 }
@@ -231,6 +232,7 @@ class PifoRTL(config: PifoConfig) extends Component {
 
   // output next cycle
   io.popResponse.valid := RegNext(io.popRequest.valid)
+  io.popResponse.port := RegNext(io.popRequest.port)
   io.popResponse.exist := RegNext(popExists)
   io.popResponse.data := RegNext(pifoArray(popPosition).data)
   io.popResponse.priority := RegNext(pifoArray(popPosition).priority)
@@ -239,7 +241,7 @@ class PifoRTL(config: PifoConfig) extends Component {
 }
 
 // SpinalHDL blackbox wrapper for priority_encode_log.v
-case class PriorityEncoderLogBlackbox(width: Int) extends BlackBox {
+case class PriorityEncoderLogBlackbox(width: Int, evaluation: Boolean = false) extends BlackBox {
   assert(isPow2(width), "Width must be a power of 2")
   val logWidth = log2Up(width)
 
@@ -260,9 +262,9 @@ case class PriorityEncoderLogBlackbox(width: Int) extends BlackBox {
   mapCurrentClockDomain(io.clk, io.rst)
   
   // Set the Verilog module name
-  setDefinitionName("priority_encode_log")
+  setDefinitionName(if (evaluation) "priority_encode_log_evaluation" else "priority_encode_log")
   
   // Add the Verilog file path
-  addRTLPath("hw/verilog/priority_encode_log.v")
+  addRTLPath(if (evaluation) "hw/verilog/evaluation/priority_encode_log_evaluation.v"
+    else "hw/verilog/priority_encode_log.v")
 }
-

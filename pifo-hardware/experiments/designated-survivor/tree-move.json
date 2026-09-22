@@ -1,0 +1,42 @@
+{
+  "schema": "pifo-tree-move-v1",
+  "hardware": {
+    "num_engines": 4,
+    "num_vpifos": 8,
+    "max_packet_priority": 1048576,
+    "fifo_depth": 128,
+    "prefetch_buffer_depth": 16
+  },
+  "old_tree": {
+    "root": "root",
+    "nodes": {
+      "root": {"engine_id": 1, "vpifo_id": 1, "policy": "SP", "flow_state": {"1": 1, "2": 3}},
+      "zoom_fifo": {"engine_id": 3, "vpifo_id": 1, "policy": "FIFO", "flow_state": {}},
+      "gmail_fifo": {"engine_id": 3, "vpifo_id": 2, "policy": "FIFO", "flow_state": {}}
+    },
+    "flow_paths": {"1": ["root", "zoom_fifo"], "2": ["root", "gmail_fifo"]}
+  },
+  "move": {
+    "type": "policy_change",
+    "mode": "full_transitive",
+    "cycle": 2000,
+    "name": "replace",
+    "before_label": "p1",
+    "after_label": "p2b",
+    "target_tree": {
+      "root": "root",
+      "nodes": {
+        "root": {"engine_id": 1, "vpifo_id": 1, "policy": "SP", "flow_state": {"1": 1, "2": 3, "3": 3}},
+        "shared_rr": {"engine_id": 2, "vpifo_id": 1, "policy": "RR", "flow_state": {}},
+        "zoom_fifo": {"engine_id": 3, "vpifo_id": 1, "policy": "FIFO", "flow_state": {}},
+        "gmail_fifo": {"engine_id": 3, "vpifo_id": 2, "policy": "FIFO", "flow_state": {}},
+        "spotify_fifo": {"engine_id": 3, "vpifo_id": 3, "policy": "FIFO", "flow_state": {}}
+      },
+      "flow_paths": {
+        "1": ["root", "zoom_fifo"],
+        "2": ["root", "shared_rr", "gmail_fifo"],
+        "3": ["root", "shared_rr", "spotify_fifo"]
+      }
+    }
+  }
+}

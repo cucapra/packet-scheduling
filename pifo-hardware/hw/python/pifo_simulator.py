@@ -1,0 +1,173 @@
+#!/usr/bin/env python3
+"""Run RTL from a direct transaction timeline and a traffic-pattern file."""
+
+from __future__ import annotations
+
+import argparse
+import math
+import os
+import shutil
+import subprocess
+from pathlib import Path
+
+from pifo_traffic_program import generate_traffic, load_traffic_program
+from pifo_transaction_program import load_transaction_program
+from request_trace import write_trace
+
+
+HARDWARE_ROOT = Path(__file__).resolve().parents[2]
+
+
+def run_simulator(args: argparse.Namespace) -> tuple[Path, Path, Path, Path]:
+    control_queue_depth = getattr(args, "control_queue_depth", 256)
+    if control_queue_depth < 2 or control_queue_depth & (control_queue_depth - 1):
+        raise ValueError("--control-queue-depth must be a power of two >= 2")
+    if args.queue_depth <= 0:
+        raise ValueError("--queue-depth must be positive")
+    if not math.isfinite(args.link_bytes_per_cycle) or args.link_bytes_per_cycle <= 0:
+        raise ValueError("--link-bytes-per-cycle must be finite and positive")
+    if args.max_cycles <= 0:
+        raise ValueError("--max-cycles must be positive")
+    if args.warmup_cycles < 0:
+        raise ValueError("--warmup-cycles must be non-negative")
+    transactions = load_transaction_program(args.transactions)
+    traffic = load_traffic_program(args.traffic)
+    simulation_seed = getattr(args, "simulation_seed", None)
+    if simulation_seed is None:
+        simulation_seed = int(os.environ.get("SPINAL_SIM_SEED", traffic.seed % (1 << 31)))
+    if not 0 <= simulation_seed < (1 << 31):
+        raise ValueError("simulation seed must be between 0 and 2147483647")
+    if transactions.initial is None:
+        raise ValueError("transaction timeline must contain one at=init package")
+    requests = generate_traffic(traffic)
+    max_flow_id = transactions.hardware.num_vpifos - 1
+    invalid_flows = sorted(
+        {
+            request.global_flow_id
+            for request in requests
+            if request.global_flow_id >= max_flow_id
+        }
+    )
+    if invalid_flows:
+        raise ValueError(
+            "traffic flow IDs must be below the reserved empty-PIFO ID "
+            f"{max_flow_id}: {','.join(map(str, invalid_flows))}"
+        )
+    late = [
+        transaction.name
+        for transaction in transactions.transactions
+        if transaction.at_cycle is not None and transaction.at_cycle >= args.max_cycles
+    ]
+    if late:
+        raise ValueError(
+            "transactions scheduled at or after --max-cycles: " + ", ".join(late)
+        )
+
+    output_dir = args.output_dir.resolve()
+    output_dir.mkdir(parents=True, exist_ok=True)
+    trace_path = output_dir / "requests.csv"
+    results_path = output_dir / "request-results.csv"
+    outcomes_path = output_dir / "packet-outcomes.csv"
+    events_path = output_dir / "reconfiguration-events.csv"
+    with trace_path.open("w", newline="", encoding="utf-8") as destination:
+        write_trace(requests, destination)
+
+    sbt_path = shutil.which(args.sbt)
+    if sbt_path is None:
+        raise RuntimeError(f"could not find sbt executable {args.sbt!r}")
+    simulator_args = [
+        "--trace",
+        str(trace_path),
+        "--transactions",
+        str(args.transactions.resolve()),
+        "--output",
+        str(results_path),
+        "--packet-outcomes",
+        str(outcomes_path),
+        "--queue-depth",
+        str(args.queue_depth),
+        "--control-queue-depth",
+        str(control_queue_depth),
+        "--link-bytes-per-cycle",
+        str(args.link_bytes_per_cycle),
+        "--max-cycles",
+        str(args.max_cycles),
+        "--warmup-cycles",
+        str(args.warmup_cycles),
+        "--no-control-socket",
+        "--no-flat-fifo",
+    ]
+    if transactions.transactions:
+        simulator_args += ["--transaction-event-output", str(events_path)]
+    if getattr(args, "unadmitted_flows", None):
+        simulator_args += ["--unadmitted-flows", args.unadmitted_flows]
+    if not args.wave:
+        simulator_args.append("--no-wave")
+    if not args.verbose:
+        simulator_args.append("--quiet")
+    if getattr(args, "verilator", False):
+        simulator_args.append("--verilator")
+    top_level = "EvaluationRequestSimulatorCli" if getattr(args, "evaluation_hardware", False) else "RequestSimulatorCli"
+    sbt_command = f"runMain rio.sim.{top_level} " + " ".join(
+        _quote_sbt(value) for value in simulator_args
+    )
+    print(
+        f"Simulating {len(requests)} packets with "
+        f"{len(transactions.transactions)} timed transaction(s), RTL seed {simulation_seed}...",
+        flush=True,
+    )
+    subprocess.run([sbt_path, sbt_command], cwd=HARDWARE_ROOT, check=True,
+                   env={**os.environ, "SPINAL_SIM_SEED": str(simulation_seed)})
+    return trace_path, results_path, outcomes_path, events_path
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--transactions",
+        type=Path,
+        required=True,
+        help="pifo-transactions-v1 direct command timeline.",
+    )
+    parser.add_argument(
+        "--traffic",
+        type=Path,
+        required=True,
+        help="pifo-traffic-v1 pattern timeline.",
+    )
+    parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument("--queue-depth", type=int, default=32)
+    parser.add_argument("--control-queue-depth", type=int, default=256,
+                        help="Shared command/replay FIFO entries; retain at most depth minus one commands per epoch.")
+    parser.add_argument("--link-bytes-per-cycle", type=float, default=64.0)
+    parser.add_argument("--max-cycles", type=int, default=100_000)
+    parser.add_argument("--warmup-cycles", type=int, default=4)
+    parser.add_argument("--sbt", default="sbt")
+    parser.add_argument("--simulation-seed", type=int,
+                        help="RTL seed (default: SPINAL_SIM_SEED, otherwise the traffic seed modulo 2^31).")
+    parser.add_argument("--wave", action="store_true")
+    parser.add_argument("--verbose", action="store_true")
+    parser.add_argument("--verilator", action="store_true")
+    parser.add_argument("--evaluation-hardware", action="store_true",
+                        help="Build the separate evaluation top level with hardware stop/prefill/copy support.")
+    parser.add_argument("--unadmitted-flows", help="Control-only flows without an arm; log unserved, not dropped.")
+    return parser
+
+
+def main() -> None:
+    args = build_parser().parse_args()
+    try:
+        generated = run_simulator(args)
+    except (OSError, RuntimeError, ValueError, subprocess.CalledProcessError) as error:
+        raise SystemExit(f"error: {error}") from error
+    print("Generated:")
+    for path in generated:
+        print(f"  {path}")
+
+
+def _quote_sbt(value: str) -> str:
+    return '"' + value.replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+
+if __name__ == "__main__":
+    main()

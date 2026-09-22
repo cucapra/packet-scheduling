@@ -1,0 +1,278 @@
+{
+  "schema": "pifo-traffic-v1",
+  "seed": 20260909,
+  "patterns": [
+    {
+      "name": "Tenant_01_A-before",
+      "flows": [
+        1
+      ],
+      "packets_per_flow": 92,
+      "start_cycle": 0,
+      "packet_rate": {
+        "distribution": "constant",
+        "unit": "packets_per_cycle_per_flow",
+        "value": 0.04583333333333334
+      },
+      "packet_size_bytes": {
+        "distribution": "constant",
+        "value": 48
+      }
+    },
+    {
+      "name": "Tenant_01_B-before",
+      "flows": [
+        2
+      ],
+      "packets_per_flow": 92,
+      "start_cycle": 3,
+      "packet_rate": {
+        "distribution": "constant",
+        "unit": "packets_per_cycle_per_flow",
+        "value": 0.04583333333333334
+      },
+      "packet_size_bytes": {
+        "distribution": "constant",
+        "value": 48
+      }
+    },
+    {
+      "name": "Tenant_02_A-before",
+      "flows": [
+        3
+      ],
+      "packets_per_flow": 92,
+      "start_cycle": 5,
+      "packet_rate": {
+        "distribution": "constant",
+        "unit": "packets_per_cycle_per_flow",
+        "value": 0.04583333333333334
+      },
+      "packet_size_bytes": {
+        "distribution": "constant",
+        "value": 48
+      }
+    },
+    {
+      "name": "Tenant_02_B-before",
+      "flows": [
+        4
+      ],
+      "packets_per_flow": 92,
+      "start_cycle": 8,
+      "packet_rate": {
+        "distribution": "constant",
+        "unit": "packets_per_cycle_per_flow",
+        "value": 0.04583333333333334
+      },
+      "packet_size_bytes": {
+        "distribution": "constant",
+        "value": 48
+      }
+    },
+    {
+      "name": "Tenant_03_A-before",
+      "flows": [
+        5
+      ],
+      "packets_per_flow": 92,
+      "start_cycle": 11,
+      "packet_rate": {
+        "distribution": "constant",
+        "unit": "packets_per_cycle_per_flow",
+        "value": 0.04583333333333334
+      },
+      "packet_size_bytes": {
+        "distribution": "constant",
+        "value": 48
+      }
+    },
+    {
+      "name": "Tenant_03_B-before",
+      "flows": [
+        6
+      ],
+      "packets_per_flow": 92,
+      "start_cycle": 14,
+      "packet_rate": {
+        "distribution": "constant",
+        "unit": "packets_per_cycle_per_flow",
+        "value": 0.04583333333333334
+      },
+      "packet_size_bytes": {
+        "distribution": "constant",
+        "value": 48
+      }
+    },
+    {
+      "name": "Tenant_04_A-before",
+      "flows": [
+        7
+      ],
+      "packets_per_flow": 91,
+      "start_cycle": 16,
+      "packet_rate": {
+        "distribution": "constant",
+        "unit": "packets_per_cycle_per_flow",
+        "value": 0.04583333333333334
+      },
+      "packet_size_bytes": {
+        "distribution": "constant",
+        "value": 48
+      }
+    },
+    {
+      "name": "Tenant_04_B-before",
+      "flows": [
+        8
+      ],
+      "packets_per_flow": 91,
+      "start_cycle": 19,
+      "packet_rate": {
+        "distribution": "constant",
+        "unit": "packets_per_cycle_per_flow",
+        "value": 0.04583333333333334
+      },
+      "packet_size_bytes": {
+        "distribution": "constant",
+        "value": 48
+      }
+    },
+    {
+      "name": "Tenant_01_A-after",
+      "flows": [
+        1
+      ],
+      "packets_per_flow": 367,
+      "start_cycle": 2000,
+      "packet_rate": {
+        "distribution": "constant",
+        "unit": "packets_per_cycle_per_flow",
+        "value": 0.04583333333333334
+      },
+      "packet_size_bytes": {
+        "distribution": "constant",
+        "value": 48
+      }
+    },
+    {
+      "name": "Tenant_01_B-after",
+      "flows": [
+        2
+      ],
+      "packets_per_flow": 367,
+      "start_cycle": 2003,
+      "packet_rate": {
+        "distribution": "constant",
+        "unit": "packets_per_cycle_per_flow",
+        "value": 0.04583333333333334
+      },
+      "packet_size_bytes": {
+        "distribution": "constant",
+        "value": 48
+      }
+    },
+    {
+      "name": "Tenant_02_A-after",
+      "flows": [
+        3
+      ],
+      "packets_per_flow": 367,
+      "start_cycle": 2005,
+      "packet_rate": {
+        "distribution": "constant",
+        "unit": "packets_per_cycle_per_flow",
+        "value": 0.04583333333333334
+      },
+      "packet_size_bytes": {
+        "distribution": "constant",
+        "value": 48
+      }
+    },
+    {
+      "name": "Tenant_02_B-after",
+      "flows": [
+        4
+      ],
+      "packets_per_flow": 367,
+      "start_cycle": 2008,
+      "packet_rate": {
+        "distribution": "constant",
+        "unit": "packets_per_cycle_per_flow",
+        "value": 0.04583333333333334
+      },
+      "packet_size_bytes": {
+        "distribution": "constant",
+        "value": 48
+      }
+    },
+    {
+      "name": "Tenant_03_A-after",
+      "flows": [
+        5
+      ],
+      "packets_per_flow": 367,
+      "start_cycle": 2011,
+      "packet_rate": {
+        "distribution": "constant",
+        "unit": "packets_per_cycle_per_flow",
+        "value": 0.04583333333333334
+      },
+      "packet_size_bytes": {
+        "distribution": "constant",
+        "value": 48
+      }
+    },
+    {
+      "name": "Tenant_03_B-after",
+      "flows": [
+        6
+      ],
+      "packets_per_flow": 367,
+      "start_cycle": 2014,
+      "packet_rate": {
+        "distribution": "constant",
+        "unit": "packets_per_cycle_per_flow",
+        "value": 0.04583333333333334
+      },
+      "packet_size_bytes": {
+        "distribution": "constant",
+        "value": 48
+      }
+    },
+    {
+      "name": "Tenant_04_A-after",
+      "flows": [
+        7
+      ],
+      "packets_per_flow": 366,
+      "start_cycle": 2016,
+      "packet_rate": {
+        "distribution": "constant",
+        "unit": "packets_per_cycle_per_flow",
+        "value": 0.04583333333333334
+      },
+      "packet_size_bytes": {
+        "distribution": "constant",
+        "value": 48
+      }
+    },
+    {
+      "name": "Tenant_04_B-after",
+      "flows": [
+        8
+      ],
+      "packets_per_flow": 366,
+      "start_cycle": 2019,
+      "packet_rate": {
+        "distribution": "constant",
+        "unit": "packets_per_cycle_per_flow",
+        "value": 0.04583333333333334
+      },
+      "packet_size_bytes": {
+        "distribution": "constant",
+        "value": 48
+      }
+    }
+  ]
+}
